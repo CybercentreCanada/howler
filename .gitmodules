@@ -4,3 +4,6 @@
 [submodule "howler-client"]
 	path = howler-client
 	url = git@github.com:CybercentreCanada/howler-client.git
+[submodule "howler-api"]
+	path = howler-api
+	url = git@github.com:CybercentreCanada/howler-api.git
