@@ -1,6 +1,6 @@
-# Howler: Triage Optimized
+# Howler : Triage optimisé
 
-Elevate your Security Operations Center's efficiency with Howler, the cutting-edge alert triage platform tailored for today's SOC demands.
+Améliorez l'efficacité de votre centre d'opérations de sécurité avec Howler, la plateforme de triage des alertes de pointe conçue pour répondre aux exigences actuelles des centres d'opérations de sécurité.
 
 ## 🚀 Donnez du pouvoir à vos analystes
 
