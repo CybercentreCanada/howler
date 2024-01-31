@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Values.howlerRest.name }}-websocket"
+  labels:
+    app.kubernetes.io/component: websocket
+{{ include "howler.labels" . | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/version: {{ .Chart.AppVersion }}
+      app.kubernetes.io/name: {{ include "howler.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/version: {{ .Chart.AppVersion }}
+        app.kubernetes.io/name: {{ include "howler.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: websocket
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
+    spec:
+      nodeSelector:
+{{ toYaml .Values.howlerRest.nodeSelector | indent 8 }}
+      affinity:
+{{ toYaml .Values.howlerRest.affinity | indent 8 }}
+      tolerations:
+{{ toYaml .Values.howlerRest.tolerations | indent 8 }}
+      containers:
+      - name: {{ include "howler.name" . }}
+        image: "{{ .Values.howlerRest.image.repository }}:{{ .Values.howlerRest.image.tag }}"
+        imagePullPolicy: {{ .Values.howlerRest.image.pullPolicy | quote }}
+        ports:
+        - containerPort: 5000
+        volumeMounts:
+        - name: conf
+          mountPath: /etc/howler/conf/
+        env:
+        {{include "sharedEnv" . | indent 8}}
+        - name: HWL_USE_REST_API
+          value: "false"
+        - name: HWL_USE_WEBSOCKET_API
+          value: "true"
+        - name: HWL_USE_JOB_SYSTEM
+          value: "false"
+        - name: APP_NAME
+          value: {{ .Values.howlerRest.appName | default "howler" }}
+        - name: WORKERS
+          value: "1"
+        resources:
+          {{- toYaml .Values.howlerRest.resources | nindent 12 }}
+      volumes:
+      - name: conf
+        configMap:
+          name: howler-server-conf

@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: howler-web
+  labels:
+    app: howler-web
+spec:
+  type: ClusterIP
+  ports:
+  - port: {{ .Values.howlerUi.port | default 3000 }}
+    targetPort: 3000
+    protocol: TCP
+    name: web
+  selector:
+    app.kubernetes.io/name: {{ include "howler.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: ui

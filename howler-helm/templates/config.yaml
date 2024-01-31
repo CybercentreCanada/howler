@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: howler-server-conf
+{{- $Global := . }}
+data:
+  config.yml: |-
+    {{- toYaml .Values.config | nindent 4 }}
+
+  classification.yml: |-
+    {{- toYaml .Values.classification | nindent 4 }}
+

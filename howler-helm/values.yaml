@@ -1,0 +1,224 @@
+name: howler
+howlerRest:
+  name: howler-rest
+  image:
+    repository: cccs/howler-api
+    tag: latest
+    pullPolicy: "Never"
+  oauth:
+    providers: []
+
+  datastore:
+    hosts: []
+
+  filestore:
+    storage:
+      - name: minio
+        secret:
+          name: minio-credentials
+          usernameKey: root-user
+          passwordKey: root-password
+
+  service:
+    type: ""
+
+howlerUi:
+  name: howler-ui
+  image:
+    repository: cccs/howler-ui
+    tag: latest
+    pullPolicy: "Never"
+
+ingress:
+  enabled: true
+
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    kubernetes.io/tls-acme: "false"
+    nginx.ingress.kubernetes.io/proxy-body-size: 128m
+
+  rest:
+    path: /api
+  websocket:
+    path: /socket
+  ui:
+    path: /
+
+  extraEnvVars:
+    - name: discovery.type
+      value: "single-node"
+    - name: logger.level
+      value: "WARN"
+
+minio:
+  auth:
+    existingSecret: minio-credentials
+
+  service:
+    ports:
+      console: 40337
+
+  persistence:
+    enabled: false
+
+redis-persistent:
+  architecture: standalone
+
+  auth:
+    enabled: false
+
+  master:
+    persistence:
+      enabled: false
+
+    service:
+      type: NodePort
+      nodePorts:
+        redis: 30379
+
+redis-nonpersistent:
+  architecture: standalone
+
+  auth:
+    enabled: false
+
+  master:
+    persistence:
+      enabled: true
+
+    service:
+      type: NodePort
+      nodePorts:
+        redis: 30380
+
+config:
+  auth:
+    internal:
+      enabled: true
+    oauth:
+      enabled: false
+      providers: {}
+
+  core:
+    redis:
+      persistent:
+        host: howler-redis-persistent-master.default.svc.cluster.local
+        port: 6379
+      nonpersistent:
+        host: howler-redis-nonpersistent-master.default.svc.cluster.local
+        port: 6379
+
+  datastore:
+    ilm:
+      enabled: false
+      indexes: {}
+
+    hosts:
+      - name: elasticsearch
+        username: elastic
+        password: devpass
+        host: "elasticsearch.default.svc.cluster.local:30200"
+
+  filestore:
+    storage:
+      - name: minio
+        scheme: s3
+        host: "howler-minio.default.svc.cluster.local:9000?s3_bucket=hwl-store&use_ssl=False"
+
+  logging:
+    log_level: DEBUG
+    log_as_json: false
+
+  system:
+    type: development
+
+  ui:
+    audit: true
+    debug: false
+    enforce_quota: true
+    validate_session_useragent: false
+    static_folder: /etc/howler/static
+    websocket_url: http://howler-rest-websocket.default.svc.cluster.local:5000/socket/v1/emit
+
+classification:
+  dynamic_groups: false
+  enforce: false
+  levels:
+    - aliases:
+        - U
+        - UNCLASSIFIED
+      css:
+        color: success
+      description: Unclassified Data
+      lvl: 100
+      name: Unclassified
+      short_name: U
+    - aliases:
+        - PA
+        - PROTECTED A
+      css:
+        color: info
+      description: Protected A Data
+      lvl: 110
+      name: Protected A
+      short_name: PA
+    - aliases:
+        - PB
+        - PROTECTED B
+      css:
+        color: info
+      description: Protected B Data
+      lvl: 120
+      name: Protected B
+      short_name: PB
+    - aliases:
+        - PC
+        - PROTECTED C
+      css:
+        color: info
+      description: Protected C Data
+      lvl: 130
+      name: Protected C
+      short_name: PC
+    - aliases:
+        - S
+        - SECRET
+      css:
+        color: warning
+      description: Secret Data
+      lvl: 140
+      name: Secret
+      short_name: S
+    - aliases:
+        - TS
+        - TOP SECRET
+      css:
+        color: error
+      description: Top Secret Data
+      lvl: 150
+      name: Top Secret
+      short_name: TS
+  required:
+    - aliases:
+        - OFFICIAL USE ONLY
+      description: Official (Internal) use only
+      name: Official Use Only
+      short_name: OUO
+
+  groups: []
+
+  subgroups: []
+
+  restricted: Unclassified//Official Use Only
+  unrestricted: Unclassified//Official Use Only
+
+autoscaling:
+  enabled: false
+
+apm:
+  enabled: false
+
+websocket:
+  commSecret:
+    name: howler-interpod-comms-secret
+    key: secret

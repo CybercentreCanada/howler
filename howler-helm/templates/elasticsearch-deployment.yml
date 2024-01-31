@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: elasticsearch
+  labels:
+    app: elasticsearch
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: elasticsearch
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+    spec:
+      containers:
+        - name: elasticsearch
+          image: docker.elastic.co/elasticsearch/elasticsearch:8.3.3
+          env:
+            - name: xpack.security.enabled
+              value: "true"
+            - name: http.port
+              value: "30200"
+            - name: discovery.type
+              value: "single-node"
+            - name: logger.level
+              value: "WARN"
+            - name: ELASTIC_PASSWORD
+              value: "devpass"
+            - name: ES_JAVA_OPTS
+              value: "-Xms1024m -Xmx1024m"
