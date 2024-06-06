@@ -1,0 +1,369 @@
+---
+# --------------------------------------------------------------------------------
+# Ansible Playbook to Set Up Docker, Minikube, kubectl, Helm, K9s, NVM, Node.js,
+# npm, Python 3.9, and Howler Repositories
+#
+# This playbook performs the following tasks:
+# 1. Ensures Python 3 is installed and updates the apt package index.
+# 2. Installs Docker and enables its service.
+# 3. Downloads and installs Minikube.
+# 4. Downloads and verifies kubectl.
+# 5. Installs Helm and k9s.
+# 6. Installs NVM, Node.js, npm, and build programs.
+# 7. Adds the deadsnakes PPA and installs Python 3.9.
+# 8. Installs Poetry and adds it to the PATH.
+# 9. Creates the repos directory, clones the howler-api and howler-ui repositories.
+# 10. Installs Poetry and builds the howler-api Docker image.
+# 11. Builds the howler-ui Docker image.
+# 12. Uploads images to Minikube and applies Kubernetes configurations.
+# 13. Installs and configures Nginx.
+#
+# Attribution:
+# Script created by Patrick Kelley (patrick.kelley@leargassecurity.com)
+# Created as part of Guild 6.2's efforts during GeekWeek 9
+# --------------------------------------------------------------------------------
+
+- name: Setup Docker, Minikube, kubectl, Helm, K9s, NVM, Node.js, npm, Python 3.9, and Howler repositories
+  hosts: howler
+  become: yes
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    remote_user: root
+    interpod_comms_secret: "<INTERPOD_COMMS_SECRET>"
+
+  tasks:
+    - name: Ensure Python 3 is installed
+      apt:
+        name: python3
+        state: present
+        update_cache: yes
+
+    - name: Update apt package index
+      apt:
+        update_cache: yes
+
+    - name: Install Docker
+      apt:
+        name: docker.io
+        state: present
+
+    - name: Enable Docker service
+      systemd:
+        name: docker
+        enabled: yes
+        state: started
+
+    - name: Test Docker installation
+      command: docker run hello-world
+      ignore_errors: yes
+
+    - name: Add user to Docker group
+      user:
+        name: "{{ remote_user }}"
+        groups: docker
+        append: yes
+
+    - name: Download Minikube
+      get_url:
+        url: https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+        dest: /usr/local/bin/minikube-linux-amd64
+        mode: '0755'
+
+    - name: Install Minikube
+      command: mv /usr/local/bin/minikube-linux-amd64 /usr/local/bin/minikube
+
+    - name: Start Minikube with force option
+      command: minikube start --force
+
+    - name: Enable Minikube ingress addon
+      command: minikube addons enable ingress
+      ignore_errors: yes
+
+    - name: Download kubectl
+      get_url:
+        url: "https://dl.k8s.io/release/{{ lookup('url', 'https://dl.k8s.io/release/stable.txt') }}/bin/linux/amd64/kubectl"
+        dest: /usr/local/bin/kubectl
+        mode: '0755'
+
+    - name: Download kubectl checksum
+      get_url:
+        url: "https://dl.k8s.io/release/{{ lookup('url', 'https://dl.k8s.io/release/stable.txt') }}/bin/linux/amd64/kubectl.sha256"
+        dest: /usr/local/bin/kubectl.sha256
+        mode: '0644'
+
+    - name: Verify kubectl checksum
+      command: >
+        sh -c "echo $(cat /usr/local/bin/kubectl.sha256)  /usr/local/bin/kubectl | sha256sum --check"
+      register: kubectl_checksum
+      failed_when: kubectl_checksum.rc != 0
+
+    - name: Set permissions for kubectl
+      file:
+        path: /usr/local/bin/kubectl
+        mode: '0755'
+
+    - name: Check kubectl version
+      command: kubectl version --client
+      register: kubectl_version
+      failed_when: kubectl_version.rc != 0
+
+    - name: Download Helm installation script
+      get_url:
+        url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+        dest: /usr/local/bin/get_helm.sh
+        mode: '0700'
+
+    - name: Install Helm
+      command: /usr/local/bin/get_helm.sh
+
+    - name: Install k9s
+      shell: |
+        curl -sS https://webinstall.dev/k9s | bash
+
+    - name: Install NVM
+      shell: |
+        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+
+    - name: Set NVM environment variables
+      shell: |
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+        [ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"
+
+    - name: Install and use Node.js version 20
+      shell: |
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+        nvm install v20
+        nvm alias default v20
+        nvm use v20
+
+    - name: Verify Node.js version
+      shell: |
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+        node -v
+      register: node_version
+      failed_when: "'v20' not in node_version.stdout"
+
+    - name: Install npm
+      shell: |
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+        nvm install-latest-npm
+
+    - name: Install npm-apt
+      apt:
+        name: npm
+        state: present
+
+    - name: Install yarn globally
+      npm:
+        name: yarn
+        state: present
+        global: yes
+
+    - name: Install build programs
+      shell: |
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+        npm install -g vite
+
+    - name: Install software-properties-common
+      apt:
+        name: software-properties-common
+        state: present
+
+    - name: Clean package cache
+      shell: apt-get clean
+
+    - name: Fix broken packages
+      shell: apt-get install -f -y
+
+    - name: Add deadsnakes PPA
+      apt_repository:
+        repo: ppa:deadsnakes/ppa
+        state: present
+
+    - name: Update apt package index after adding PPA
+      apt:
+        update_cache: yes
+
+    - name: Install Python 3.9 and related packages
+      apt:
+        name:
+          - python3.9
+          - python3.9-distutils
+          - python3.9-venv
+        state: present
+
+    - name: Update alternatives to use Python 3.9
+      command: update-alternatives --install /usr/bin/python python /usr/bin/python3.9 1
+
+    - name: Ensure pip is installed
+      command: python3.9 -m ensurepip
+
+    - name: Install Poetry using the recommended installation script
+      shell: |
+        curl -sSL https://install.python-poetry.org | python3.9 -
+      environment:
+        POETRY_HOME: "/opt/poetry"
+      args:
+        creates: /opt/poetry/bin/poetry
+
+    - name: Ensure Poetry is in the PATH
+      shell: |
+        echo 'export PATH="/opt/poetry/bin:$PATH"' >> /root/.bashrc
+        echo 'export PATH="/opt/poetry/bin/$PATH"' >> /root/.profile
+
+    - name: Create repos directory
+      file:
+        path: /root/repos/
+        state: directory
+
+    - name: Clone howler-api repository if not already cloned
+      git:
+        repo: https://github.com/CybercentreCanada/howler-api.git
+        dest: /root/repos/howler-api
+        version: v2.1.0
+        update: no
+
+    - name: Clone howler-ui repository if not already cloned
+      git:
+        repo: https://github.com/CybercentreCanada/howler-ui.git
+        dest: /root/repos/howler-ui
+        version: v2.1.0
+        update: no
+
+    - name: Install Poetry and build howler-api Docker image
+      shell: |
+        export NVM_DIR="$HOME/.nvm" && \
+        [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && \
+        nvm use v20 && \
+        curl -sSL https://install.python-poetry.org | python3.9 - && \
+        export PATH="$HOME/.local/bin:$PATH" && \
+        cd /root/repos/howler-api/docker && \
+        yarn config set network-timeout 600000 && \
+        yarn install && \
+        ./build_container.sh -t cccs/howler-api:latest
+      args:
+        executable: /bin/bash
+
+    - name: Pin Versions
+      shell: |
+        npm install typescript@5.1.6 --save-dev && \
+        yarn add typescript@5.1.6 --dev
+      args:
+        executable: /bin/bash
+
+    - name: Build howler-ui Docker image
+      shell: |
+        export NVM_DIR="$HOME/.nvm" && \
+        [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && \
+        cd /root/repos/howler-ui/docker && \
+        yarn config set network-timeout 600000 && \
+        yarn install && \
+        ./build_container.sh -t cccs/howler-ui:latest
+      args:
+        executable: /bin/bash
+
+    - name: Upload howler-ui image to Minikube
+      shell: minikube image load cccs/howler-ui:latest
+      args:
+        executable: /bin/bash
+
+    - name: Upload howler-api image to Minikube
+      shell: minikube image load cccs/howler-api:latest
+      args:
+        executable: /bin/bash
+
+    - name: Start Minikube
+      command: minikube start
+
+    - name: Create minio-credentials.yml file
+      copy:
+        dest: /root/minio-credentials.yml
+        content: |
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: minio-credentials
+          type: Opaque
+          data:
+            accesskey: <base64 encoded access key>
+            secretkey: <base64 encoded secret key>
+
+    - name: Apply minio-credentials.yml
+      command: kubectl apply -f /root/minio-credentials.yml
+
+    - name: Create interpod secret
+      command: >
+        kubectl create secret generic howler-interpod-comms-secret
+        --from-literal=secret="{{ interpod_comms_secret }}"
+
+    - name: Clone howler repository to get the helm chart
+      git:
+        repo: git@github.com:CybercentreCanada/howler.git
+        dest: /root/repos/howler
+        version: main
+
+    - name: Install howler helm chart
+      shell: |
+        cd /root/repos/howler/howler-helm && \
+        helm install howler .
+      args:
+        executable: /bin/bash
+
+    - name: Check that everything loads correctly
+      command: k9s
+      ignore_errors: yes
+
+    - name: Check if ingress is accessible
+      command: curl $(minikube ip)
+      register: ingress_accessibility
+      ignore_errors: yes
+
+    - name: Install nginx
+      apt:
+        name: nginx
+        state: present
+
+    - name: Remove default nginx site configuration
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+
+    - name: Create nginx configuration for howler
+      copy:
+        dest: /etc/nginx/sites-enabled/howler
+        content: |
+          server {
+              listen 80;
+              server_name _;
+
+              location / {
+                  proxy_pass http://localhost:80;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+              }
+          }
+
+    - name: Restart nginx service
+      service:
+        name: nginx
+        state: restarted
+
+    - name: Check if nginx is working
+      command: curl localhost
+      register: nginx_status
+      ignore_errors: yes
+
+    - name: Print ingress accessibility result
+      debug:
+        msg: "{{ ingress_accessibility.stdout }}"
+
+    - name: Print nginx status
+      debug:
+        msg: "{{ nginx_status.stdout }}"
