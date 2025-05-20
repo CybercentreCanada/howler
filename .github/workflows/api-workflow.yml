@@ -103,8 +103,10 @@ jobs:
         run: |
           sudo mkdir -p /etc/howler/conf/
           sudo mkdir -p /etc/howler/lookups/
+          sudo mkdir -p /var/log/howler
           sudo chmod a+rw /etc/howler/conf/
           sudo chmod a+rw /etc/howler/lookups/
+          sudo chmod a+rw /var/log/howler
           cp build_scripts/classification.yml /etc/howler/conf/classification.yml
           cp test/unit/config.yml /etc/howler/conf/config.yml
       - name: Install Dependencies
