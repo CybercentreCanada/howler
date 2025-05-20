@@ -1,0 +1,17 @@
+enforce: false
+dynamic_groups: false
+
+levels:
+  # List of alternate names for the current marking
+  - aliases:
+      - U
+      - UNCLASSIFIED
+    css:
+      color: success
+    description: Unclassified Data
+    lvl: 100
+    name: Unclassified
+    short_name: U
+
+restricted: Unclassified
+unrestricted: Unclassified

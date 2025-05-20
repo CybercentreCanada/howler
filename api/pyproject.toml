@@ -1,0 +1,269 @@
+######################
+# autoflake settings #
+######################
+[tool.autoflake]
+check = true
+
+##################
+# Black settings #
+##################
+[tool.black]
+line-length = 120
+
+########################
+# coverage.py settings #
+########################
+[tool.coverage.run]
+omit = [
+    "howler/gunicorn_config.py",
+    "howler/patched.py",
+    "howler/external/*",
+    "howler/helper/ws.py",
+    "howler/odm/models/*",
+    "howler/odm/random_data.py",
+]
+
+branch = true
+sigterm = true
+data_file = ".coverage.server"
+
+[tool.coverage.report]
+exclude_also = [
+    "def __repr__",
+    "if DEBUG:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@(abc\\.)?abstractmethod]",
+    "if \"pytest\" in sys.modules:",
+]
+
+#################
+# Mypy settings #
+#################
+[tool.mypy]
+warn_unused_configs = true
+ignore_missing_imports = true
+check_untyped_defs = true
+disable_error_code = "no-redef"
+exclude = "test"
+
+[[tool.mypy.overrides]]
+module = "howler.odm.models.*"
+disable_error_code = "assignment"
+
+[[tool.mypy.overrides]]
+module = ["howler.odm.base", "test", "test.*"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "howler.security"
+disable_error_code = "attr-defined"
+
+[[tool.mypy.overrides]]
+module = "howler.odm.helper"
+disable_error_code = "union-attr"
+
+[[tool.mypy.overrides]]
+module = "howler.common.classification"
+disable_error_code = "assignment"
+
+[[tool.mypy.overrides]]
+module = "requests"
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+target-version = "py39"
+
+[tool.ruff.format]
+exclude = ["howler/patched.py"]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "W",
+    "C901",
+    "I",
+    "N",
+    "D1",
+    "D2",
+    "ANN",
+    "S",
+    "T20",
+    "PIE",
+    "FLY",
+    "TRY",
+]
+ignore = [
+    "ANN003",
+    "ANN201",
+    "ANN401",
+    "D100",
+    "D104",
+    "D105",
+    "D107",
+    "D203",
+    "D213",
+    "N818",
+    "S603",
+    "TRY003",
+    "TRY300",
+]
+exclude = ["howler/patched.py"]
+
+[tool.ruff.lint.flake8-annotations]
+ignore-fully-untyped = true
+mypy-init-return = true
+suppress-dummy-args = true
+suppress-none-returning = true
+
+[tool.ruff.lint.per-file-ignores]
+"test/*" = ["D", "ANN", "S", "N818", "TRY", "PIE", "E402"]
+"test/utils/*" = ["T20"]
+"build_scripts/*" = ["D", "ANN", "S", "N818", "T20", "TRY"]
+"howler/app.py" = ["E402"]
+"howler/odm/random*.py" = ["C901", "S105", "S311", "E402"]
+"howler/security/__init__.py" = ["TRY301"]
+"howler/external/*.py" = ["T20"]
+"howler/odm/helper.py" = ["S311"]
+"howler/common/classification.py" = ["D", "ANN", "C901", "TRY"]
+"howler/common/iprange.py" = ["D", "ANN", "C901"]
+"howler/common/random_user.py" = ["S311"]
+"howler/helper/ws.py" = ["C901", "D101", "D102"]
+"howler/odm/base.py" = ["D", "ANN", "C901"]
+"howler/odm/models/*" = ["D", "ANN", "C901"]
+"howler/datastore/*" = ["D", "ANN", "C901"]
+"howler/remote/datatypes/*" = ["D", "ANN", "C901"]
+"howler/odm/models/enums/__init__.py" = ["F401"]
+
+###################
+# Poetry settings #
+###################
+[tool.poetry]
+package-mode = true
+name = "howler-api"
+version = "2.10.0"
+description = "Howler - API server"
+authors = [
+    "Canadian Centre for Cyber Security <howler@cyber.gc.ca>",
+    "Matthew Rafuse <matthew.rafuse@cyber.gc.ca>",
+]
+maintainers = ["Matthew Rafuse <matthew.rafuse@cyber.gc.ca>"]
+license = "MIT"
+readme = "README.md"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+]
+keywords = [
+    "howler",
+    "alerting",
+    "gc",
+    "canada",
+    "cse-cst",
+    "cse",
+    "cst",
+    "cyber",
+    "cccs",
+]
+include = [
+    { path = "VERSION", format = [
+        "sdist",
+        "wheel",
+    ] },
+    { path = "howler/odm/charter.txt", format = [
+        "sdist",
+        "wheel",
+    ] },
+]
+packages = [{ include = "howler" }]
+documentation = "https://cybercentrecanada.github.io/howler-docs/developer/backend/"
+homepage = "https://cybercentrecanada.github.io/howler-docs/"
+repository = "https://github.com/CybercentreCanada/howler-api"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+apscheduler = "3.10.4"
+authlib = "<1.0.0"
+azure-identity = "1.16.1"
+azure-storage-blob = "12.14.1"
+chardet = "5.1.0"
+elastic-apm = { extras = ["flask"], version = "^6.22.0" }
+elasticsearch = "8.6.1"
+flask = "2.2.5"
+flask-caching = "2.0.2"
+gevent = "23.9.1"
+gunicorn = "23.0.0"
+netifaces = "0.11.0"
+packaging = "<25.0"
+passlib = "1.7.4"
+prometheus-client = "0.17.1"
+pyjwt = "2.6.0"
+pyroute2-core = "0.6.13"
+pysftp = "0.2.9"
+python-baseconv = "1.2.2"
+python-datemath = "3.0.3"
+pyyaml = "6.0.2"
+redis = "4.5.4"
+requests = "2.32.2"
+wsproto = "1.2.0"
+chevron = "0.14.0"
+typing-extensions = "^4.12.2"
+flasgger = "^0.9.7.1"
+pysigma = "0.11.17"
+pysigma-backend-elasticsearch = "^1.1.2"
+mergedeep = "^1.3.4"
+validators = "^0.34.0"
+python-dotenv = "^1.1.0"
+pydantic = "^2.11.4"
+pydantic-settings = { extras = ["yaml"], version = "^2.9.1" }
+luqum = "^1.0.0"
+pydash = "^8.0.5"
+
+[tool.poetry.group.dev.dependencies]
+flake8 = "^7.0.0"
+pre-commit = "^3.7.0"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^8.1.1"
+retrying = "^1.3.4"
+pyftpdlib = "^1.5.9"
+pyopenssl = "^24.1.0"
+mypy = "^1.6.1"
+diff-cover = "^8.0.2"
+pytest-cov = "^4.1.0"
+mock = "^5.1.0"
+mypy-extensions = "^1.0.0"
+coverage = { extras = ["toml"], version = "^7.4.4" }
+ruff = "^0.8.0"
+
+[tool.poetry.group.types.dependencies]
+types-PyYAML = "6.0.12.12"
+types-paramiko = "3.3.0.0"
+types-pyOpenSSL = "23.3.0.0"
+types-redis = "4.6.0.9"
+types-six = "1.16.21.9"
+types-requests = "<2.31.0.7"
+websocket-client = "1.5.1"
+types-pytz = "^2024.1.0.20240417"
+types-mock = "^5.2.0.20250306"
+
+[tool.poetry.scripts]
+server = "howler.app:main"
+test = "build_scripts.run_tests:main"
+type_check = "build_scripts.type_check:main"
+mitre = "howler.external.generate_mitre:main"
+sigma = "howler.external.generate_sigma_rules:main"
+coverage_report = "build_scripts.coverage_reports:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,127 @@
+name: Howler API
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - rc/*
+      - patch/*
+    paths:
+      - api
+  pull_request:
+    branches:
+      - main
+      - develop
+      - rc/*
+      - patch/*
+    paths:
+      - api
+
+permissions:
+  contents: read
+
+jobs:
+  formatting:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./api
+    steps:
+      - name: Checkout develop
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+      - name: Checkout current ref
+        uses: actions/checkout@v4
+      - name: Setup Python 3.12
+        uses: actions/setup_python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Poetry
+        uses: abatilo/actions-poetry@v4
+      - uses: actions/cache@v3
+        name: Define a cache for the virtual environment based on the dependencies lock file
+        with:
+          path: ./.venv
+          key: venv-${{ hashFiles('poetry.lock') }}
+      - name: Check for poetry config integrity
+        run: |
+          poetry --version
+          poetry env use 3.12
+          poetry check
+          poetry env info
+      - name: Install Dependencies
+        run: |
+          poetry install --verbose --with test
+      - name: Run ruff formatting checks
+        run: |
+          poetry run ruff format howler --diff
+      - name: Run ruff linter checks
+        run: |
+          poetry run ruff check howler --output-format=github
+      - name: Run type checking
+        run: |
+          poetry run type_check
+      - name: "Update poetry version"
+        run: |
+          BRANCH=$(Build.SourceBranch) BUILD_ID=$(tag) poetry run python build_scripts/set_version.py
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./api
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - name: Checkout develop
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+      - name: Checkout current ref
+        uses: actions/checkout@v4
+      - name: Spin up test dependencies
+        uses: hoverkraft-tech/compose-action@v2.2.0
+        with:
+          compose-file: "api/dev/docker-compose.yml"
+          up-flags: "--build"
+      - name: Install Poetry
+        uses: abatilo/actions-poetry@v4
+      - uses: actions/cache@v3
+        name: Define a cache for the virtual environment based on the dependencies lock file
+        with:
+          path: ./.venv
+          key: venv-${{ hashFiles('poetry.lock') }}
+      - name: Install Dependencies
+        run: |
+          poetry install --verbose --with test
+          poetry run mitre /etc/howler/lookups
+          poetry run sigma
+      - name: Setup Environment
+        run: |
+          mkdir -p /var/cache/howler/
+          mkdir -p /var/lib/howler/
+          mkdir -p /etc/howler/conf/
+          mkdir -p /etc/howler/lookups/
+          chmod a+rw /var/cache/howler/
+          chmod a+rw /var/lib/howler/
+          chmod a+rw /etc/howler/conf/
+          chmod a+rw /etc/howler/lookups/
+          cp build_scripts/classification.yml /etc/howler/conf/classification.yml
+          cp test/unit/config.yml /etc/howler/conf/config.yml
+      - name: Ensure keycloak is healthy
+        run: |
+          poetry run python build_scripts/keycloak_health.py
+      - name: Run tests
+        run: |
+          poetry run test
+      - name: Coverage Results
+        run: |
+          poetry run coverage_report
+      - name: Add Coverage PR Comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: github.event_name == 'pull_request'
+        with:
+          recreate: true
+          path: api/coverage-results.md

@@ -1,0 +1,17 @@
+auth:
+  internal:
+    enabled: true
+  oauth:
+    enabled: false
+    providers:
+      keycloak:
+        client_kwargs:
+          scope: "openid offline_access"
+
+
+random-key:
+  yeee: test
+
+
+ui:
+  potato: youknowit

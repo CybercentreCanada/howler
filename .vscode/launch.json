@@ -1,0 +1,40 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: Current File",
+      "type": "python",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Create default data",
+      "type": "python",
+      "request": "launch",
+      "program": "howler/odm/random_data.py",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      },
+      "console": "internalConsole"
+    },
+    {
+      "name": "API Server",
+      "type": "python",
+      "request": "launch",
+      "module": "flask",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "FLASK_APP": "howler/app.py",
+        "FLASK_DEBUG": "1"
+      },
+      "console": "internalConsole",
+      "args": [
+        "run",
+        "--no-debugger",
+        "--no-reload"
+      ],
+      "justMyCode": false
+    }
+  ]
+}

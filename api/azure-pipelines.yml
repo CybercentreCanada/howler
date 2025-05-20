@@ -1,0 +1,285 @@
+trigger:
+  batch: true
+  branches:
+    include:
+      - main
+      - develop
+      - rc/*
+      - patch/*
+      - hs*
+
+pr:
+  branches:
+    include:
+      - main
+      - develop
+      - rc/*
+      - patch/*
+
+variables:
+  tag: "$(Build.BuildId)"
+  containerRegistry: "uchimera"
+  branch_name: "$(Build.SourceBranchName)"
+  git_branch: $(Build.SourceBranch)
+  pr_branch: $(System.PullRequest.targetBranchName)
+  repoName: "howler-api-internal"
+  isMaster: $[eq(variables['Build.SourceBranch'], 'refs/heads/master')]
+  isPrBranch: $[eq(variables['Build.SourceBranchName'], 'merge')]
+  pythonVersion: "3.12"
+  dockerfilePath: "$(Build.SourcesDirectory)/docker/Dockerfile"
+
+pool: cybertron-build-pool
+
+stages:
+  - stage: run_qa_and_test
+    displayName: Quality Assurance and Tests
+    jobs:
+      - job: run_qa
+        displayName: Check Code Quality Standards
+        steps:
+          - checkout: self
+            fetchDepth: 100
+            persistCredentials: true
+          - script: |
+              python$(pythonVersion) -m pip install poetry
+            displayName: Install poetry
+          - script: |
+              poetry --version
+              poetry env use $(pythonVersion)
+              poetry check
+              poetry env info
+            displayName: Check for poetry config integrity
+          - script: |
+              poetry install --verbose --with test
+            displayName: Install dependencies
+            workingDirectory: $(Pipeline.Workspace)/s
+          - script: |
+              poetry run python build_scripts/run_wrapped.py ruff format howler --check
+            displayName: Run ruff formatter checks
+            workingDirectory: $(Pipeline.Workspace)/s
+          - script: |
+              poetry run python build_scripts/run_wrapped.py ruff check howler --output-format concise
+            displayName: Run ruff linter checks
+            workingDirectory: $(Pipeline.Workspace)/s
+          - script: |
+              poetry run type_check
+            displayName: Run type checking
+            workingDirectory: $(Pipeline.Workspace)/s
+          - script: |
+              BRANCH=$(Build.SourceBranch) BUILD_ID=$(tag) poetry run python build_scripts/set_version.py
+            displayName: "Update poetry version"
+            workingDirectory: $(Pipeline.Workspace)/s
+          - task: GithubComment@0
+            condition: and(eq(variables.isPrBranch, true), and(failed(), ne(variables.error_result, '')))
+            inputs:
+              githubConnection: Howler Github PAT
+              repositoryName: "$(Build.Repository.Name)"
+              comment: $(error_result)
+      - job: run_test
+        dependsOn: run_qa
+        displayName: Unit and Integration Testing
+        strategy:
+          matrix:
+            "(Python 3.9)":
+              python.version: "3.9"
+            "(Python 3.10)":
+              python.version: "3.10"
+            "(Python 3.11)":
+              python.version: "3.11"
+            "(Python 3.12)":
+              python.version: "3.12"
+
+        timeoutInMinutes: 20
+
+        steps:
+          - checkout: self
+            fetchDepth: 100
+            persistCredentials: true
+          - script: |
+              git fetch --force --tags --prune --prune-tags --progress --no-recurse-submodules origin --depth=1 $PR_BRANCH
+            displayName: Fetch target branch for diff coverage
+            condition: eq(variables.isPrBranch, true)
+          - task: DockerCompose@1
+            inputs:
+              containerregistrytype: "Azure Container Registry"
+              dockerComposeFile: "dev/docker-compose.yml"
+              projectName: howler-api-dev-dependencies
+              action: "Run a Docker Compose command"
+              dockerComposeCommand: "up -d --build"
+          - script: |
+              python$(python.version) -m pip install poetry
+            displayName: Install poetry
+          - script: |
+              poetry --version
+              poetry env use $(python.version)
+              poetry check
+              poetry env info
+            displayName: Check for poetry config integrity
+          - script: |
+              mkdir -p /var/cache/howler/
+              mkdir -p /var/lib/howler/
+              mkdir -p /etc/howler/conf/
+              mkdir -p /etc/howler/lookups/
+              chmod a+rw /var/cache/howler/
+              chmod a+rw /var/lib/howler/
+              chmod a+rw /etc/howler/conf/
+              chmod a+rw /etc/howler/lookups/
+              cp build_scripts/classification.yml /etc/howler/conf/classification.yml
+              cp test/unit/config.yml /etc/howler/conf/config.yml
+            displayName: Setup Environment
+            workingDirectory: $(Pipeline.Workspace)/s
+          - script: |
+              poetry install --verbose --with test
+              poetry run mitre /etc/howler/lookups
+              poetry run sigma
+            displayName: Install howler-api
+            workingDirectory: $(Pipeline.Workspace)/s
+          - script: |
+              poetry run python build_scripts/keycloak_health.py
+            displayName: Ensure keycloak is healthy
+            workingDirectory: $(Pipeline.Workspace)/s
+          - script: |
+              poetry run test
+            workingDirectory: $(Pipeline.Workspace)/s
+            displayName: Test
+          - script: |
+              poetry run coverage_report
+            workingDirectory: $(Pipeline.Workspace)/s
+            displayName: Coverage Results
+            condition: and(eq(variables.isPrBranch, true), eq(variables['python.version'], '3.12'))
+          - task: PublishTestResults@2
+            condition: succeededOrFailed()
+            inputs:
+              testResultsFiles: "$(Pipeline.Workspace)/s/**/test-*.xml"
+              testRunTitle: "Publish test results for Python $(python.version)"
+          - task: PublishCodeCoverageResults@2
+            condition: succeededOrFailed()
+            inputs:
+              summaryFileLocation: "$(Pipeline.Workspace)/s/**/coverage.xml"
+          - task: GithubComment@0
+            condition: and(and(eq(variables.isPrBranch, true), succeeded()), eq(variables['python.version'], '3.12'))
+            inputs:
+              githubConnection: Howler Github PAT
+              repositoryName: "$(Build.Repository.Name)"
+              comment: $(coverage_result)
+          - task: GithubComment@0
+            condition: and(eq(variables.isPrBranch, true), and(failed(), ne(variables.error_result, '')))
+            inputs:
+              githubConnection: Howler Github PAT
+              repositoryName: "$(Build.Repository.Name)"
+              comment: $(error_result)
+          - task: DockerCompose@1
+            inputs:
+              containerregistrytype: "Azure Container Registry"
+              dockerComposeFile: "dev/docker-compose.yml"
+              projectName: howler-api-dev-dependencies
+              action: "Run a Docker Compose command"
+              dockerComposeCommand: "down"
+            condition: succeededOrFailed()
+
+  - stage: Build_And_Push
+    jobs:
+      - job: BuildPythonArtifact
+        workspace:
+          clean: all
+        steps:
+          - script: |
+              pip install poetry
+            displayName: Install poetry
+          - script: |
+              poetry install
+              BRANCH=$(Build.SourceBranch) BUILD_ID=$(tag) poetry run python build_scripts/set_version.py
+              git config --global --add url."git@github.com:".insteadOf "https://github.com/"
+              poetry build
+            displayName: "Install and Build."
+            name: InstallAndBuild
+          - task: CopyFiles@2
+            inputs:
+              targetFolder: $(Build.ArtifactStagingDirectory)
+            displayName: "Stage build artifact to publish"
+          - task: PublishBuildArtifacts@1
+            inputs:
+              pathtoPublish: "$(Build.ArtifactStagingDirectory)/dist"
+              artifactName: "howler_api"
+              publishLocation: "Container"
+            displayName: Publish build artifacts
+      - job: PublishArtifactToFeed
+        condition: eq(variables.isPrBranch, false)
+        dependsOn: BuildPythonArtifact
+        steps:
+          - task: DownloadBuildArtifacts@0
+            inputs:
+              buildType: "current"
+              downloadType: "specific"
+              downloadPath: "$(Pipeline.Workspace)"
+            displayName: "Download build artifact."
+          - task: TwineAuthenticate@1
+            inputs:
+              artifactFeed: cccs-stratus
+          - script: |
+              virtualenv -p python$(pythonVersion) env
+              . env/bin/activate
+              pip install twine
+              python -m twine upload -r pypi-ap --config-file /azp/pypirc/pypirc $(Pipeline.Workspace)/howler_api/* --skip-existing
+            displayName: "Publish artifact to BagOfHolding feed."
+          - script: |
+              pwd
+              virtualenv -p python$(pythonVersion) env
+              . env/bin/activate
+              pip install twine
+              python -m twine upload -r cccs-stratus --config-file $(PYPIRC_PATH) $(Pipeline.Workspace)/howler_api/* --skip-existing
+            displayName: "Publish artifact to cccs-stratus feed."
+      - job: BuildDockerDeployment
+        displayName: Build and Push Docker Images
+        condition: eq(variables.isPrBranch, false)
+        dependsOn: BuildPythonArtifact
+        steps:
+          - task: DownloadBuildArtifacts@0
+            inputs:
+              buildType: "current"
+              downloadType: "specific"
+              downloadPath: $(Build.SourcesDirectory)/dist
+            displayName: "Download build artifact."
+          - bash: |
+              VERSION=$(poetry version -s)
+              echo version: $VERSION
+              echo "##vso[task.setvariable variable=version]$VERSION"
+            displayName: "Extract version"
+            name: ExtractVersion
+          - bash: |
+              COMMIT=$(Build.SourceVersion)
+              COMMIT_SHORT=${COMMIT:0:7}
+              echo commitShort: $COMMIT_SHORT
+              echo "##vso[task.setvariable variable=commitShort]$COMMIT_SHORT"
+            displayName: "Extract commit short sha."
+          - bash: |
+              cp /etc/pip.conf $(Build.SourcesDirectory)
+              ls -l $(Build.SourcesDirectory)
+              ls -l $(Build.SourcesDirectory)/*
+              cp $(Build.SourcesDirectory)/dist/howler_api/* $(Build.SourcesDirectory)/dist
+            displayName: "Copy stratus-feed pip.conf"
+          - task: Docker@2
+            displayName: Build howler-api image to the uchimera registry.
+            inputs:
+              command: "build"
+              arguments: --build-arg branch=$(branch_name) --build-arg commit=$(commitShort) --build-arg version=$(version).$(tag)
+              repository: cccs/ap/howler-api
+              dockerfile: $(dockerfilePath)
+              containerRegistry: $(containerRegistry)
+              buildContext: $(Build.SourcesDirectory)
+              tags: |
+                $(branch_name)
+                $(version)_$(branch_name)
+                $(version)_$(branch_name)_$(commitshort)
+          - task: Docker@2
+            displayName: Push howler-api image to the uchimera registry.
+            inputs:
+              command: "push"
+              repository: cccs/ap/howler-api
+              dockerfile: $(dockerfilePath)
+              containerRegistry: $(containerRegistry)
+              buildContext: $(Build.SourcesDirectory)
+              tags: |
+                $(branch_name)
+                $(version)_$(branch_name)
+                $(version)_$(branch_name)_$(commitshort)

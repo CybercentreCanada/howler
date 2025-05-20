@@ -1,0 +1,53 @@
+auth:
+  allow_apikeys: true
+  max_apikey_duration_amount: 180
+  max_apikey_duration_unit: days
+  internal:
+    enabled: true
+  oauth:
+    enabled: true
+    strict_apikeys: true
+    providers:
+      keycloak:
+        audience: howler
+        auto_sync: true
+        access_token_url: http://localhost:9100/realms/HogwartsMini/protocol/openid-connect/token
+        api_base_url: http://localhost:9100/realms/HogwartsMini/protocol/openid-connect/
+        authorize_url: http://localhost:9100/realms/HogwartsMini/protocol/openid-connect/auth
+        client_id: howler
+        client_secret: 09RhSF7tp0ShDdDMCszqI4zk8HMroTTZ
+        scope: "openid offline_access"
+        jwks_uri: http://localhost:9100/realms/HogwartsMini/protocol/openid-connect/certs
+        required_groups:
+          - howler_user
+        role_map:
+          user: howler_user
+          admin: howler_admin
+
+core:
+  spellbook:
+    enabled: false
+  alfred:
+    enabled: true
+
+datastore:
+  ilm:
+    enabled: false
+    indexes: {}
+
+logging:
+  log_level: INFO
+  log_as_json: false
+
+system:
+  type: development
+
+ui:
+  audit: false
+  debug: true
+  # internal: begin
+  discover_url: https://discover.dev.analysis.cyber.gc.ca/eureka/apps
+  # internal: end
+  enforce_quota: true
+  validate_session_useragent: false
+  static_folder: /etc/howler/static
