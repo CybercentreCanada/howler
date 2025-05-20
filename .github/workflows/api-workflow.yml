@@ -97,11 +97,6 @@ jobs:
         with:
           path: ./api/.venv
           key: venv-${{ hashFiles('poetry.lock') }}
-      - name: Install Dependencies
-        run: |
-          poetry install --verbose --with test
-          poetry run mitre /etc/howler/lookups
-          poetry run sigma
       - name: Setup Environment
         run: |
           mkdir -p /var/cache/howler/
@@ -114,6 +109,11 @@ jobs:
           chmod a+rw /etc/howler/lookups/
           cp build_scripts/classification.yml /etc/howler/conf/classification.yml
           cp test/unit/config.yml /etc/howler/conf/config.yml
+      - name: Install Dependencies
+        run: |
+          poetry install --verbose --with test
+          poetry run mitre /etc/howler/lookups
+          poetry run sigma
       - name: Ensure keycloak is healthy
         run: |
           poetry run python build_scripts/keycloak_health.py
