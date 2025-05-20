@@ -44,8 +44,8 @@ jobs:
       - uses: actions/cache@v3
         name: Define a cache for the virtual environment based on the dependencies lock file
         with:
-          path: ./.venv
-          key: venv-${{ hashFiles('poetry.lock') }}
+          path: ./api/.venv
+          key: venv-${{ hashFiles('api/poetry.lock') }}
       - name: Check for poetry config integrity
         run: |
           poetry --version
