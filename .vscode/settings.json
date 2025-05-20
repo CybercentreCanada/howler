@@ -52,5 +52,6 @@
     "ruff.configurationPreference": "filesystemFirst",
     "python.analysis.extraPaths": [
         "./api/test"
-    ]
+    ],
+    "flake8.cwd": "${workspaceFolder}/api"
 }

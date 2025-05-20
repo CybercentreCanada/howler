@@ -54,6 +54,7 @@ def run(writepath):
             tactics[tactic["key"]] = tactic
 
         print(f"Writing tactics to {tactics_name}")
+        tactics_name.touch(664)
         with open(tactics_name, "w") as f:
             yaml.dump(tactics, f)
 
@@ -75,6 +76,7 @@ def run(writepath):
         techniques = {technique["key"]: technique for technique in techniques_list}
 
         print(f"Writing techniques to {techniques_name}")
+        techniques_name.touch(664)
         with open(techniques_name, "w") as f:
             yaml.dump(techniques, f)
 
