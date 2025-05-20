@@ -96,7 +96,7 @@ jobs:
         name: Define a cache for the virtual environment based on the dependencies lock file
         with:
           path: ./api/.venv
-          key: venv-${{ hashFiles('poetry.lock') }}
+          key: venv-${{ hashFiles('api/poetry.lock') }}
       - name: Setup Environment
         run: |
           mkdir -p /var/cache/howler/
