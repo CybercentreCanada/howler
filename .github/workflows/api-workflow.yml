@@ -99,12 +99,8 @@ jobs:
           key: venv-${{ hashFiles('api/poetry.lock') }}
       - name: Setup Environment
         run: |
-          mkdir -p /var/cache/howler/
-          mkdir -p /var/lib/howler/
           mkdir -p /etc/howler/conf/
           mkdir -p /etc/howler/lookups/
-          chmod a+rw /var/cache/howler/
-          chmod a+rw /var/lib/howler/
           chmod a+rw /etc/howler/conf/
           chmod a+rw /etc/howler/lookups/
           cp build_scripts/classification.yml /etc/howler/conf/classification.yml
