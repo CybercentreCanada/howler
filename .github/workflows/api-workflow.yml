@@ -8,7 +8,7 @@ on:
       - rc/*
       - patch/*
     paths:
-      - api
+      - "api/**"
   pull_request:
     branches:
       - main
@@ -16,7 +16,7 @@ on:
       - rc/*
       - patch/*
     paths:
-      - api
+      - "api/**"
   workflow_dispatch: {}
 
 permissions:
