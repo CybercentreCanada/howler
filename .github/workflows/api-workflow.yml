@@ -26,6 +26,8 @@ permissions:
 
 jobs:
   formatting:
+    name: Validate Howler API Code Quality
+
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -71,6 +73,8 @@ jobs:
           BRANCH=$(Build.SourceBranch) BUILD_ID=$(tag) poetry run python build_scripts/set_version.py
   test:
     runs-on: ubuntu-latest
+
+    name: Run Howler API Unit Tests
 
     needs: formatting
 
