@@ -1,6 +1,7 @@
 import logging
 import sys
 import time
+from http.client import RemoteDisconnected
 
 import requests
 import urllib3
@@ -26,7 +27,7 @@ while not ready and retries < 5:
             if data["status"] == "UP" and all(check["status"] == "UP" for check in data["checks"]):
                 ready = True
                 break
-    except (ConnectionResetError, urllib3.exceptions.ProtocolError):
+    except (ConnectionResetError, urllib3.exceptions.ProtocolError, RemoteDisconnected):
         logging.warning("Failed to connect, retrying")
     except Exception:
         logging.exception("Exception on network call")
