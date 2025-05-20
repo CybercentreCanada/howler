@@ -99,10 +99,10 @@ jobs:
           key: venv-${{ hashFiles('api/poetry.lock') }}
       - name: Setup Environment
         run: |
-          mkdir -p /etc/howler/conf/
-          mkdir -p /etc/howler/lookups/
-          chmod a+rw /etc/howler/conf/
-          chmod a+rw /etc/howler/lookups/
+          sudo mkdir -p /etc/howler/conf/
+          sudo mkdir -p /etc/howler/lookups/
+          sudo chmod a+rw /etc/howler/conf/
+          sudo chmod a+rw /etc/howler/lookups/
           cp build_scripts/classification.yml /etc/howler/conf/classification.yml
           cp test/unit/config.yml /etc/howler/conf/config.yml
       - name: Install Dependencies
