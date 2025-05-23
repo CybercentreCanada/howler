@@ -90,8 +90,6 @@ jobs:
     steps:
       - name: Checkout current ref
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
       - name: Fetch base ref for diff coverage
         run: |
           git fetch --force --tags --prune --prune-tags --progress --no-recurse-submodules origin --depth=1 $PR_BRANCH

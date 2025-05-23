@@ -8,7 +8,3 @@ repos:
         args: [--fix, --output-format=concise]
       # Run the formatter.
       - id: ruff-format
-  - repo: https://github.com/mpalmer/action-validator
-    rev: v0.5.1
-    hooks:
-      - id: action-validator
