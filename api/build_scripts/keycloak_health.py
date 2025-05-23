@@ -27,7 +27,12 @@ while not ready and retries < 5:
             if data["status"] == "UP" and all(check["status"] == "UP" for check in data["checks"]):
                 ready = True
                 break
-    except (ConnectionResetError, urllib3.exceptions.ProtocolError, RemoteDisconnected):
+    except (
+        ConnectionResetError,
+        urllib3.exceptions.ProtocolError,
+        RemoteDisconnected,
+        requests.exceptions.ConnectionError,
+    ):
         logging.warning("Failed to connect, retrying")
     except Exception:
         logging.exception("Exception on network call")

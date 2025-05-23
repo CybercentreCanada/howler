@@ -31,7 +31,7 @@ def main():
         _path = sys.argv[1] if len(sys.argv) > 1 else "test"
 
         pytest = subprocess.Popen(
-            prep_command(f"pytest --cov=howler --cov-branch --cov-config=.coveragerc.pytest -rP -vv {_path}"),
+            prep_command(f"pytest -n auto --cov=howler --cov-branch --cov-config=.coveragerc.pytest -rP -vv {_path}"),
             stdout=subprocess.PIPE,
         )
 

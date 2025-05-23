@@ -88,12 +88,15 @@ jobs:
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12"]
     steps:
-      - name: Checkout develop
-        uses: actions/checkout@v4
-        with:
-          ref: develop
       - name: Checkout current ref
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Fetch base ref for diff coverage
+        run: |
+          git fetch --force --tags --prune --prune-tags --progress --no-recurse-submodules origin --depth=1 $PR_BRANCH
+        env:
+          PR_BRANCH: ${{ github.base_ref }}
       - name: Spin up test dependencies
         uses: hoverkraft-tech/compose-action@v2.2.0
         with:
