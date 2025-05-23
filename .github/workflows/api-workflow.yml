@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./api
+        working-directory: api
     steps:
       - name: Checkout develop
         uses: actions/checkout@v4
@@ -83,7 +83,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: ./api
+        working-directory: api
     strategy:
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12"]
@@ -91,7 +91,8 @@ jobs:
       - name: Get base depth of PR
         if: github.event_name == 'pull_request'
         id: base-depth
-        run: echo "base-depth=$(expr ${{ github.event.pull_request.commits }} + 1)" >> $GITHUB_OUTPUT
+        run: |
+          echo "base-depth=$(expr ${{ github.event.pull_request.commits }} + 1)" >> $GITHUB_OUTPUT
       - name: Checkout current ref
         uses: actions/checkout@v4
         with:
