@@ -3,10 +3,10 @@
     "ms-python.python",
     "richie5um2.vscode-sort-json",
     "ms-azuretools.vscode-docker",
-    "humao.rest-client",
     "ms-python.black-formatter",
     "ms-python.mypy-type-checker",
     "ms-python.vscode-pylance",
-    "charliermarsh.ruff"
+    "charliermarsh.ruff",
+    "github.vscode-github-actions"
   ]
 }
