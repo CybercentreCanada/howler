@@ -24,12 +24,6 @@ auth:
           user: howler_user
           admin: howler_admin
 
-core:
-  spellbook:
-    enabled: false
-  alfred:
-    enabled: true
-
 datastore:
   ilm:
     enabled: false
