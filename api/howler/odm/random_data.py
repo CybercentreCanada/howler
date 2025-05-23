@@ -29,12 +29,7 @@ from howler.odm.models.overview import Overview
 from howler.odm.models.template import Template
 from howler.odm.models.user import User
 from howler.odm.models.view import View
-from howler.odm.randomizer import (
-    get_random_string,
-    get_random_user,
-    get_random_word,
-    random_model_obj,
-)
+from howler.odm.randomizer import get_random_string, get_random_user, get_random_word, random_model_obj
 from howler.security.utils import get_password_hash
 from howler.services import analytic_service
 
@@ -691,10 +686,6 @@ def create_actions(ds: HowlerDatastore, num_actions: int = 30):
     operation_options = list(available_operations.keys())
     if "transition" in operation_options:
         operation_options.remove("transition")
-    # internal: begin
-    if "spellbook" in operation_options:
-        operation_options.remove("spellbook")
-    # internal: end
 
     for _ in range(num_actions):
         operations: list[dict[str, str]] = []
