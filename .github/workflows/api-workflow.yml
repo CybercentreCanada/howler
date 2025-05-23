@@ -88,17 +88,22 @@ jobs:
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12"]
     steps:
+      - name: Get base depth of PR
+        if: github.event_name == 'pull_request'
+        id: base-depth
+        run: echo "base-depth=$(expr ${{ github.event.pull_request.commits }} + 1)" >> $GITHUB_OUTPUT
       - name: Checkout current ref
         uses: actions/checkout@v4
-      - name: Fetch base ref for diff coverage
-        run: |
-          git fetch --force --tags --prune --prune-tags --progress --no-recurse-submodules origin --depth=1 $PR_BRANCH
-        env:
-          PR_BRANCH: ${{ github.base_ref }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: ${{ steps.base-depth.outputs.base-depth }}
       - name: Check for valid merge base
         run: |
           git status
-          git diff origin/develop..HEAD
+          git diff $BASE_SHA..$HEAD_SHA
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       - name: Spin up test dependencies
         uses: hoverkraft-tech/compose-action@v2.2.0
         with:
@@ -134,7 +139,14 @@ jobs:
           poetry run test
       - name: Coverage Results
         run: |
+          git diff --name-only $BASE_SHA..$HEAD_SHA
+          git diff $BASE_SHA..$HEAD_SHA > diff.txt
           poetry run coverage_report
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GIT_BRANCH: ${{ github.event.pull_request.head.ref }}
+
       - name: Add Coverage PR Comment
         uses: marocchino/sticky-pull-request-comment@v2
         if: github.event_name == 'pull_request'

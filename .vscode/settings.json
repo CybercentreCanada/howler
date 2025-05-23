@@ -53,5 +53,6 @@
     "python.analysis.extraPaths": [
         "./api/test"
     ],
-    "flake8.cwd": "${workspaceFolder}/api"
+    "flake8.cwd": "${workspaceFolder}/api",
+    "editor.formatOnSaveMode": "modificationsIfAvailable"
 }
