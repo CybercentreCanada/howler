@@ -91,6 +91,7 @@ jobs:
       - name: Get base depth of PR
         if: github.event_name == 'pull_request'
         id: base-depth
+        working-directory: .
         run: |
           echo "base-depth=$(expr ${{ github.event.pull_request.commits }} + 1)" >> $GITHUB_OUTPUT
       - name: Checkout current ref
