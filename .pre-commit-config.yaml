@@ -8,3 +8,10 @@ repos:
         args: [--fix, --output-format=concise]
       # Run the formatter.
       - id: ruff-format
+  - repo: local
+    hooks:
+      - id: poetry-check
+        name: poetry-check
+        entry: api/build_scripts/check_poetry.sh
+        language: script
+        stages: [commit]
