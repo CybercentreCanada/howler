@@ -133,6 +133,44 @@ jobs:
         with:
           recreate: true
           path: api/coverage-results.md
+  push_to_registry:
+    runs-on: ubuntu-latest
+
+    name: Run Howler API Unit Tests
+
+    needs:
+      - formatting
+      - test
+
+    defaults:
+      run:
+        working-directory: ./api
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - name: Checkout develop
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+      - name: Checkout current ref
+        uses: actions/checkout@v4
+      - name: Spin up test dependencies
+        uses: hoverkraft-tech/compose-action@v2.2.0
+        with:
+          compose-file: "api/dev/docker-compose.yml"
+          up-flags: "--build"
+      - name: Install Poetry
+        uses: abatilo/actions-poetry@v4
+      - uses: actions/cache@v3
+        name: Define a cache for the virtual environment based on the dependencies lock file
+        with:
+          path: ./api/.venv
+          key: venv-${{ hashFiles('api/poetry.lock') }}
+      - name: Install Dependencies and Build
+        run: |
+          poetry install
+          poetry build
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         if: github.event_name != 'pull_request'
