@@ -5,9 +5,6 @@
         "type": "partnerships",
         "version": "6.4.2"
     },
-    "alfred": {
-        "incident_urls": []
-    },
     "assemblyline": {
         "antivirus": [
             {
@@ -746,102 +743,6 @@
         "id": "academia",
         "name": "us_sizes.xls"
     },
-    "hbs": {
-        "autoruns_category": "learn",
-        "autoruns_display_name": "academia_innovative.lnk",
-        "autoruns_enabled": 2732,
-        "autoruns_flags": "do",
-        "autoruns_last_runtime": "2025-03-25T05:41:17.471715Z",
-        "autoruns_last_task_result": "Program",
-        "autoruns_location": "government",
-        "autoruns_mod_time": "2025-03-28T00:12:35.471724Z",
-        "autoruns_name": "canadian.lnk",
-        "autoruns_scheduled_time": "2025-03-14T12:41:40.471727Z",
-        "client": "determine",
-        "client_id": "2FyEoFP5hZuRk0N9gO5Q46",
-        "dns_servers": [
-            "laboratory"
-        ],
-        "file_attributes": 3399,
-        "file_code_signature": {
-            "certificate_hash": "also",
-            "has_private_key": "feedback",
-            "publisher": "of",
-            "serial_number": "key",
-            "signature_hash": "Canada",
-            "signer": "country",
-            "status": 520,
-            "valid_until": "2025-03-14T13:38:45.471858Z",
-            "verified": 3654
-        },
-        "file_entropy": {
-            "entropy": "Government",
-            "peak_entropy": "BCIP"
-        },
-        "file_magic": "security_transition.pdf",
-        "file_oid": {
-            "hash": "an",
-            "instance": 737,
-            "session": 1049,
-            "tag": "One",
-            "timestamp": "2025-03-29T17:12:09.471772Z",
-            "type": "from"
-        },
-        "file_path_oid": {
-            "hash": "promote",
-            "instance": 456,
-            "session": 1130,
-            "tag": "of",
-            "timestamp": "2025-03-21T09:04:40.471794Z",
-            "type": "laboratory"
-        },
-        "file_pe": {
-            "copyright": "experts",
-            "flags": "selling",
-            "flags_mask": 130,
-            "internal_name": "academia_cyber_emerging.xls",
-            "language": "engaging",
-            "os": 4068,
-            "private_build": "For",
-            "product_version": "5.3.3",
-            "special_build": "To",
-            "trademark": "more",
-            "type": "improve"
-        },
-        "file_qxor": "potential_us_promote.gif",
-        "file_zone": {
-            "host_url": "services.ca",
-            "referrer_url": "invite",
-            "zone_id": 1494
-        },
-        "oid": {
-            "hash": "support",
-            "instance": 1238,
-            "session": 3331,
-            "tag": "art",
-            "timestamp": "2025-03-14T14:32:22.471761Z",
-            "type": "tools"
-        },
-        "parent_file_path_oid": {
-            "hash": "survey",
-            "instance": 1406,
-            "session": 1744,
-            "tag": "academia",
-            "timestamp": "2025-04-02T07:58:52.471804Z",
-            "type": "assist"
-        },
-        "parent_process_oid": {
-            "hash": "do",
-            "instance": 2960,
-            "session": 727,
-            "tag": "Centre",
-            "timestamp": "2025-04-14T20:05:22.471784Z",
-            "type": "country"
-        },
-        "process_package_name": "the_the.doc",
-        "process_privileges": "companies",
-        "registry_action": "defence"
-    },
     "host": {
         "domain": "bringing.biz",
         "id": "tools",
@@ -1068,24 +969,6 @@
         "key_b": "experts"
     },
     "message": "improve",
-    "neighbourhood_watch": {
-        "cluster_size": 0,
-        "domains_by_subtype": {
-            "emails": [],
-            "links": [],
-            "other": []
-        },
-        "domains_to_block": [],
-        "heuristics": {
-            "alert_keyword": {
-                "card": "hi",
-                "overview": "banana"
-            }
-        },
-        "sampled_email_bodies": [],
-        "sampled_metadata": [],
-        "sampled_subjects": []
-    },
     "network": {
         "direction": "but",
         "protocol": "For",

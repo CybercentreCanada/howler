@@ -2,6 +2,7 @@ from typing import Literal, Optional, Union
 
 from howler import odm
 from howler.odm.models.lead import Lead
+from howler.odm.models.pivot import Pivot
 
 
 @odm.model(
@@ -15,6 +16,11 @@ class Dossier(odm.Model):
         odm.Compound(Lead),
         default=[],
         description="A list of the leads to show when the query matches the given alert.",
+    )
+    pivots: list[Pivot] = odm.List(
+        odm.Compound(Pivot),
+        default=[],
+        description="A list of the pivots to show when the query matches the given alert.",
     )
     title: str = odm.Keyword(description="The title of this dossier.")
     owner: str = odm.Keyword(description="The person to whom this dossier belongs.")

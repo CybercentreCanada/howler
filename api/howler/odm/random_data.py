@@ -1,11 +1,21 @@
+import os
+import sys
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# We append the plugin directory for howler to the python part
+PLUGIN_PATH = Path(os.environ.get("HWL_PLUGIN_DIRECTORY", "/etc/howler/plugins"))
+sys.path.insert(0, str(PLUGIN_PATH))
+sys.path.append(str(PLUGIN_PATH / f".venv/lib/python3.{sys.version_info.minor}/site-packages"))
+
 import importlib
 import json
-import os
 import random
-import sys
 import textwrap
 from datetime import datetime
-from pathlib import Path
 from random import choice, randint, sample
 from typing import Any, Callable, cast
 
@@ -498,6 +508,10 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
 
     if "pytest" not in sys.modules:
         logger.info("\tCreated %s/%s", hit_idx + 1, hit_count)
+
+    logger.info(
+        "%s total hits in datastore", ds.hit.search(query="howler.id:*", track_total_hits=True, rows=0)["total"]
+    )
 
 
 def create_bundles(ds: HowlerDatastore):
