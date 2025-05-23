@@ -95,6 +95,10 @@ jobs:
           git fetch --force --tags --prune --prune-tags --progress --no-recurse-submodules origin --depth=1 $PR_BRANCH
         env:
           PR_BRANCH: ${{ github.base_ref }}
+      - name: Check for valid merge base
+        run: |
+          git status
+          git diff origin/develop..HEAD
       - name: Spin up test dependencies
         uses: hoverkraft-tech/compose-action@v2.2.0
         with:
