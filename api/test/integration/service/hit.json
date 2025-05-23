@@ -955,31 +955,6 @@
                 "href": "https://en.wikipedia.org/wiki/Canada_goose",
                 "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Canada_goose_on_Seedskadee_NWR_%2827826185489%29.jpg/788px-Canada_goose_on_Seedskadee_NWR_%2827826185489%29.jpg",
                 "title": "Goose"
-            },
-            {
-                "href": "https://azl-stg.cyber.gc.ca/",
-                "icon": "AZUL",
-                "title": "participating"
-            },
-            {
-                "href": "https://spark.dev.analysis.cyber.gc.ca",
-                "icon": "SPARK",
-                "title": "potential"
-            },
-            {
-                "href": "https://superset.dev.analysis.cyber.gc.ca",
-                "icon": "SUPERSET",
-                "title": "art"
-            },
-            {
-                "href": "https://copilot.dev.analysis.cyber.gc.ca/",
-                "icon": "COPILOT",
-                "title": "is"
-            },
-            {
-                "href": "https://cyberchef.dev.analysis.cyber.gc.ca",
-                "icon": "CYBERCHEF",
-                "title": "helps"
             }
         ],
         "log": [

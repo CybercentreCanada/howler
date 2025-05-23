@@ -7,11 +7,7 @@ import pytest
 from flask import Flask
 from requests import Response
 
-from howler.common.exceptions import (
-    AuthenticationException,
-    HowlerRuntimeError,
-    HowlerValueError,
-)
+from howler.common.exceptions import AuthenticationException, HowlerRuntimeError, HowlerValueError
 from howler.config import cache, config
 from howler.odm.base import Model
 from howler.odm.models.analytic import Analytic
@@ -144,7 +140,7 @@ def test_get_nb_information(request_context, mocked_requests_get):
     hit = random_model_obj(cast(Model, Hit))
 
     json_result, name = notebook_service.get_nb_information(
-        "https://nbgallery.dev.analysis.cyber.gc.ca/notebooks/12-notebook",
+        "https://nbgallery.example.com/notebooks/12-notebook",
         analytic=analytic,
         hit=hit,
     )
@@ -167,14 +163,14 @@ def test_get_nb_information_error(request_context, mocked_requests_get):
 
     with pytest.raises(HowlerValueError):
         notebook_service.get_nb_information(
-            "https://dev.analysis.cyber.gc.ca/notebooks/12-notebook",
+            "https://dev.example.com/notebooks/12-notebook",
             analytic=analytic,
             hit=hit,
         )
 
     with pytest.raises(HowlerRuntimeError):
         notebook_service.get_nb_information(
-            "https://nbgallery.dev.analysis.cyber.gc.ca/notebooks/12-notebook",
+            "https://nbgallery.example.com/notebooks/12-notebook",
             analytic=analytic,
             hit=hit,
         )
@@ -188,7 +184,7 @@ def test_get_nb_information_error(request_context, mocked_requests_get):
 
     with pytest.raises(HowlerRuntimeError):
         notebook_service.get_nb_information(
-            "https://nbgallery.dev.analysis.cyber.gc.ca/notebooks/12-notebook",
+            "https://nbgallery.example.com/notebooks/12-notebook",
             analytic=analytic,
             hit=hit,
         )
@@ -202,7 +198,7 @@ def test_get_nb_information_error(request_context, mocked_requests_get):
 
     with pytest.raises(HowlerValueError):
         notebook_service.get_nb_information(
-            "https://nbgallery.dev.analysis.cyber.gc.ca/notebooks/12-notebook",
+            "https://nbgallery.example.com/notebooks/12-notebook",
             analytic=analytic,
             hit=hit,
         )
