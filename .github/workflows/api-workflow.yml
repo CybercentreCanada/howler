@@ -70,7 +70,10 @@ jobs:
           poetry run type_check
       - name: "Update poetry version"
         run: |
-          BRANCH=$(Build.SourceBranch) BUILD_ID=$(tag) poetry run python build_scripts/set_version.py
+          poetry run python build_scripts/set_version.py
+        env:
+          BRANCH: ${{ github.ref }}
+          BUILD_ID: ${{ github.run_number }}
   test:
     runs-on: ubuntu-latest
 
