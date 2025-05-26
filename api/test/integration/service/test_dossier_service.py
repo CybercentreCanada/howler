@@ -15,8 +15,6 @@ def datastore(datastore_connection):
     try:
         create_dossiers(ds, num_dossiers=10)
 
-        print("Dossier Count:", len(ds.dossier.search("dossier_id:*", as_obj=True)["items"]))  # noqa: T201
-
         yield ds
     finally:
         wipe_dossiers(ds)
@@ -95,3 +93,15 @@ def test_update_dossier_fails(datastore: HowlerDatastore):
         dossier_service.update_dossier(existing_dossier_id, {"test": "TEST"}, user)
 
     assert exc.match("can be updated")
+
+
+def test_pivot_with_duplicates(datastore: HowlerDatastore):
+    users = datastore.user.search("uname:*")["items"]
+
+    dossier_odm = generate_useful_dossier(users)
+    dossier_odm.pivots[0].mappings.append(dossier_odm.pivots[0].mappings[0])
+
+    dossier = dossier_odm.as_primitives()
+
+    with pytest.raises(InvalidDataException):
+        dossier_service.create_dossier(dossier, username="admin")

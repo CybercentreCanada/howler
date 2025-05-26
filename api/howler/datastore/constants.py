@@ -33,7 +33,7 @@ from howler.odm import (
 )
 
 # Simple types can be resolved by a direct mapping
-TYPE_MAPPING = {
+BASE_TYPE_MAPPING = {
     Keyword: "keyword",
     Boolean: "boolean",
     Integer: "integer",
@@ -67,6 +67,8 @@ TYPE_MAPPING = {
     CaseInsensitiveKeyword: "keyword",
 }
 
+TYPE_MAPPING = {_class.__name__: mapping for _class, mapping in BASE_TYPE_MAPPING.items()}
+
 ANALYZER_MAPPING = {
     SSDeepHash: "text_fuzzy",
 }
@@ -82,7 +84,7 @@ NORMALIZER_MAPPING = {
 # TODO: We might want to use custom analyzers for Classification and Enum and not create special backmapping cases
 BACK_MAPPING = {
     v: k
-    for k, v in TYPE_MAPPING.items()
+    for k, v in BASE_TYPE_MAPPING.items()
     if k
     not in [
         Enum,
