@@ -209,7 +209,7 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           context: api
-          file: ./docker/Dockerfile
+          file: api/docker/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
