@@ -247,7 +247,7 @@ def login(**_):  # noqa: C901
                 raise InvalidDataException("OAuth is disabled.")  # noqa: TRY301
 
             oauth = current_app.extensions.get("authlib.integrations.flask_client")
-            if not oauth:
+            if not oauth:  # pragma: no cover
                 logger.critical("Authlib integration missing!")
                 raise HowlerValueError()
 

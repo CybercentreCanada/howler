@@ -96,7 +96,7 @@ def parse_user_data(  # noqa: C901
         raise InvalidDataException("Both the JWT and OAuth provider must be supplied")
 
     oauth = current_app.extensions.get("authlib.integrations.flask_client")
-    if not oauth:
+    if not oauth:  # pragma: no cover
         logger.critical("Authlib integration missing!")
         raise HowlerValueError("Authlib integration missing!")
 
