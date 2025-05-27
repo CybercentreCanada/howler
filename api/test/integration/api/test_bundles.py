@@ -6,12 +6,7 @@ from conftest import APIError, get_api_data
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.models.hit import Hit
 from howler.odm.random_data import create_bundles, create_hits, wipe_hits
-from howler.odm.randomizer import (
-    get_random_filename,
-    get_random_hash,
-    get_random_ip,
-    get_random_iso_date,
-)
+from howler.odm.randomizer import get_random_filename, get_random_hash, get_random_ip, get_random_iso_date
 
 
 @pytest.fixture(scope="module")
@@ -202,6 +197,8 @@ def test_update_bundle(datastore: HowlerDatastore, login_session):
     session, host = login_session
 
     existing_bundle: Hit = datastore.hit.search("howler.is_bundle:true")["items"][0]
+
+    datastore.hit.commit()
 
     new_child_hits = datastore.hit.search(
         f"howler.id:(NOT ({' OR '.join(existing_bundle.howler.hits)})) AND howler.is_bundle:false",
