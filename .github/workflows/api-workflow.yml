@@ -10,6 +10,8 @@ on:
     paths:
       - "api/**"
       - .github/workflows/api-workflow.yml
+    tags:
+      - v*
   pull_request:
     branches:
       - main
@@ -194,6 +196,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Extract metadata (tags, labels) for Docker
+        id: meta
         uses: docker/metadata-action@v3
         with:
           images: cccsaurora/howler-api
@@ -206,3 +209,9 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: cccsaurora/howler-api
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
