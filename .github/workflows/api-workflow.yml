@@ -172,6 +172,12 @@ jobs:
     defaults:
       run:
         working-directory: ./api
+
+    permissions:
+      id-token: write
+      contents: read
+      attestations: write
+
     steps:
       - name: Checkout develop
         uses: actions/checkout@v4
