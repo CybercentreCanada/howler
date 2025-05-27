@@ -3,17 +3,17 @@ from howler.security.utils import get_disco_url
 
 
 def test_get_disco_url():
-    result = get_disco_url("https://howler.dev.analysis.cyber.gc.ca")
+    result = get_disco_url("https://howler.example.com")
 
-    assert result == "https://discover.dev.analysis.cyber.gc.ca/eureka/apps"
+    assert result == "https://discover.example.com/eureka/apps"
 
 
 def test_valid_conversion():
-    url = "howler.dev.analysis.cyber.gc.ca/extra/path?query=string"
+    url = "howler.example.com/extra/path?query=string"
 
     converted_url = get_disco_url(url)
 
-    assert converted_url == "https://discover.dev.analysis.cyber.gc.ca/eureka/apps"
+    assert converted_url == "https://discover.example.com/eureka/apps"
 
 
 def test_local_url():

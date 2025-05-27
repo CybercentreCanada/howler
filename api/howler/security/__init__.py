@@ -1,4 +1,5 @@
 import functools
+import sys
 from typing import Optional
 
 import elasticapm
@@ -9,14 +10,7 @@ from jwt import ExpiredSignatureError
 from prometheus_client import Counter
 
 import howler.services.auth_service as auth_service
-from howler.api import (
-    bad_request,
-    forbidden,
-    internal_error,
-    not_found,
-    too_many_requests,
-    unauthorized,
-)
+from howler.api import bad_request, forbidden, internal_error, not_found, too_many_requests, unauthorized
 from howler.common.exceptions import (
     AccessDeniedException,
     AuthenticationException,
@@ -190,7 +184,8 @@ class api_login(object):  # noqa: D101, N801
                     )
 
                 ip = request.headers.get("X-Forwarded-For", request.remote_addr)
-                logger.info(f"Logged in as {user['uname']} from {ip}")
+                if "pytest" not in sys.modules:
+                    logger.info(f"Logged in as {user['uname']} from {ip} for path {request.path}")
 
                 # If auditing is enabled, write this successful access to the audit logs
                 if self.audit:
@@ -225,7 +220,9 @@ class api_login(object):  # noqa: D101, N801
                     user_id=user.get("uname", None),
                 )
 
-            if self.enforce_quota:
+            if request.path.startswith("/api/v1/borealis"):
+                logger.debug("Bypassing quota limits for borealis enrichment")
+            elif self.enforce_quota:
                 # Check current user quota
                 flsk_session["quota_user"] = user["uname"]
                 flsk_session["quota_set"] = True

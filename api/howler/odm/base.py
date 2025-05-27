@@ -1433,18 +1433,19 @@ class Model:
         return name.rstrip("_") in self.fields()
 
 
+def recursive_set_name(field, name, to_parent=False):
+    if not to_parent:
+        field.name = name
+    else:
+        field.parent_name = name
+
+    if isinstance(field, Optional):
+        recursive_set_name(field.child_type, name)
+    if isinstance(field, List):
+        recursive_set_name(field.child_type, name, to_parent=True)
+
+
 def model(index=None, store=None, description=None):
-    def recursive_set_name(field, name, to_parent=False):
-        if not to_parent:
-            field.name = name
-        else:
-            field.parent_name = name
-
-        if isinstance(field, Optional):
-            recursive_set_name(field.child_type, name)
-        if isinstance(field, List):
-            recursive_set_name(field.child_type, name, to_parent=True)
-
     """Decorator to create model objects."""
 
     def _finish_model(cls):

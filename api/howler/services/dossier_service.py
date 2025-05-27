@@ -15,6 +15,7 @@ PERMITTED_KEYS = {
     "title",
     "query",
     "leads",
+    "pivots",
     "type",
     "owner",
 }
@@ -34,7 +35,7 @@ def get_dossier(
     return datastore().dossier.get_if_exists(key=id, as_obj=as_odm, version=version)
 
 
-def create_dossier(dossier_data: Optional[Any], username: str) -> Dossier:
+def create_dossier(dossier_data: Optional[Any], username: str) -> Dossier:  # noqa: C901
     "Create a dossier"
     if not isinstance(dossier_data, dict):
         raise InvalidDataException("Invalid data format")
@@ -60,6 +61,10 @@ def create_dossier(dossier_data: Optional[Any], username: str) -> Dossier:
 
         dossier = Dossier(dossier_data)
 
+        for pivot in dossier.pivots:
+            if len(pivot.mappings) != len(set(mapping.key for mapping in pivot.mappings)):
+                raise InvalidDataException("One of your pivots has duplicate keys set.")
+
         dossier.owner = username
 
         storage.dossier.save(dossier.dossier_id, dossier)
@@ -73,7 +78,7 @@ def create_dossier(dossier_data: Optional[Any], username: str) -> Dossier:
         raise InvalidDataException(str(e))
 
 
-def update_dossier(dossier_id: str, dossier_data: dict[str, Any], user: User) -> Dossier:
+def update_dossier(dossier_id: str, dossier_data: dict[str, Any], user: User) -> Dossier:  # noqa: C901
     """Update one or more properties of an analytic in the database."""
     if not exists(dossier_id):
         raise NotFoundException(f"Dossier with id '{dossier_id}' does not exist.")
@@ -90,20 +95,21 @@ def update_dossier(dossier_id: str, dossier_data: dict[str, Any], user: User) ->
     if existing_dossier.type == "global" and existing_dossier.owner != user.uname and "admin" not in user.type:
         raise ForbiddenException("Only the owner of a dossier and administrators can edit a global dossier.")
 
-    new_dossier = Dossier(merge({}, existing_dossier.as_primitives(), dossier_data))
-
-    storage.dossier.save(new_dossier.dossier_id, new_dossier)
-
-    storage.dossier.commit()
+    if "pivots" in dossier_data:
+        for pivot in dossier_data["pivots"]:
+            if len(pivot["mappings"]) != len(set(mapping["key"] for mapping in pivot["mappings"])):
+                raise InvalidDataException("One of your pivots has duplicate keys set.")
 
     try:
         if "query" in dossier_data:
             # Make sure the query is valid
             storage.hit.search(dossier_data["query"])
 
-        new_data = Dossier(merge({}, get_dossier(dossier_id, as_odm=False), dossier_data))
+        new_data = Dossier(merge({}, existing_dossier.as_primitives(), dossier_data))
 
-        datastore().dossier.save(dossier_id, new_data)
+        storage.dossier.save(dossier_id, new_data)
+
+        storage.dossier.commit()
 
         return new_data
     except SearchException:

@@ -24,10 +24,10 @@
         "**/.mypy_cache": true,
         "**/.ruff_cache": true,
     },
-    "npm.packageManager": "yarn",
+    "npm.packageManager": "pnpm",
     "python.terminal.activateEnvironment": false,
     "python.testing.pytestEnabled": true,
-    "python.testing.pytestPath": ".",
+    "python.testing.pytestPath": "./api",
     "[python]": {
         "editor.defaultFormatter": "charliermarsh.ruff",
         "editor.formatOnSave": true
@@ -53,5 +53,9 @@
     "python.analysis.extraPaths": [
         "./api/test"
     ],
-    "flake8.cwd": "${workspaceFolder}/api"
+    "flake8.cwd": "${workspaceFolder}/api",
+    "editor.formatOnSaveMode": "modificationsIfAvailable",
+    "mypy-type-checker.cwd": "${workspaceFolder}/api",
+    "python.analysis.typeEvaluation.strictListInference": true,
+    "python.analysis.typeEvaluation.strictDictionaryInference": true
 }

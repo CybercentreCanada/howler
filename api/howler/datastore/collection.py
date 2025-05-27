@@ -2181,7 +2181,7 @@ class ESCollection(Generic[ModelType]):
         if field.__bases__[0] != _Field:
             field_types.extend(self.__get_possible_fields(field.__bases__[0]))
 
-        if field_type := TYPE_MAPPING.get(field, None):
+        if field_type := TYPE_MAPPING.get(field.__name__, None):
             field_types.append(field_type)
 
         return field_types

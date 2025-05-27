@@ -29,7 +29,6 @@ def main():
 
     develop = "develop" in os.environ.get("GIT_BRANCH", "unknown")
     rc_or_main = any(x in os.environ.get("GIT_BRANCH", "unknown") for x in ["patch", "rc", "main", "master", "sync"])
-    pr_branch = "origin/" + (os.environ.get("PR_BRANCH", "develop") or "develop")
 
     try:
         report_result = subprocess.check_output(shlex.split("coverage report --data-file=.coverage")).decode()
@@ -40,9 +39,7 @@ def main():
 
         if not develop and not rc_or_main:
             diff_report_result = subprocess.check_output(
-                shlex.split(
-                    f"diff-cover coverage.xml --compare-branch={pr_branch} --markdown-report diff-cover-report.md"
-                )
+                shlex.split("diff-cover coverage.xml --diff-file=diff.txt --markdown-report diff-cover-report.md")
             ).decode()
             print(diff_report_result)
 

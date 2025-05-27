@@ -8,10 +8,10 @@ import urllib3
 import urllib3.exceptions
 
 root = logging.getLogger()
-root.setLevel(logging.DEBUG)
+root.setLevel(logging.INFO)
 
 handler = logging.StreamHandler(sys.stdout)
-handler.setLevel(logging.DEBUG)
+handler.setLevel(logging.INFO)
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 handler.setFormatter(formatter)
 root.addHandler(handler)
@@ -27,7 +27,12 @@ while not ready and retries < 5:
             if data["status"] == "UP" and all(check["status"] == "UP" for check in data["checks"]):
                 ready = True
                 break
-    except (ConnectionResetError, urllib3.exceptions.ProtocolError, RemoteDisconnected):
+    except (
+        ConnectionResetError,
+        urllib3.exceptions.ProtocolError,
+        RemoteDisconnected,
+        requests.exceptions.ConnectionError,
+    ):
         logging.warning("Failed to connect, retrying")
     except Exception:
         logging.exception("Exception on network call")

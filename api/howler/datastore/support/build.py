@@ -46,7 +46,7 @@ def build_mapping(field_data, prefix=None, allow_refuse_implicit=True):
         name = ".".join(path)
 
         if isinstance(field, Classification):
-            mappings[name.strip(".")] = set_mapping(field, {"type": TYPE_MAPPING[field.__class__]})
+            mappings[name.strip(".")] = set_mapping(field, {"type": TYPE_MAPPING[field.__class__.__name__]})
             if "." not in name:
                 mappings.update(
                     {
@@ -58,19 +58,19 @@ def build_mapping(field_data, prefix=None, allow_refuse_implicit=True):
                 )
 
         elif isinstance(field, (Boolean, Integer, Float, Text)):
-            mappings[name.strip(".")] = set_mapping(field, {"type": TYPE_MAPPING[field.__class__]})
+            mappings[name.strip(".")] = set_mapping(field, {"type": TYPE_MAPPING[field.__class__.__name__]})
 
         elif field.__class__ in ANALYZER_MAPPING:
             mappings[name.strip(".")] = set_mapping(
                 field,
                 {
-                    "type": TYPE_MAPPING[field.__class__],
+                    "type": TYPE_MAPPING[field.__class__.__name__],
                     "analyzer": ANALYZER_MAPPING[field.__class__],
                 },
             )
 
         elif isinstance(field, (Json, Keyword)):
-            es_data_type = TYPE_MAPPING[field.__class__]
+            es_data_type = TYPE_MAPPING[field.__class__.__name__]
             data: dict[str, Union[str, int]] = {"type": es_data_type}
             if es_data_type == "keyword":
                 data["ignore_above"] = 8191  # The maximum always safe value in elasticsearch
@@ -82,7 +82,7 @@ def build_mapping(field_data, prefix=None, allow_refuse_implicit=True):
             mappings[name.strip(".")] = set_mapping(
                 field,
                 {
-                    "type": TYPE_MAPPING[field.__class__],
+                    "type": TYPE_MAPPING[field.__class__.__name__],
                     "format": "date_optional_time||epoch_millis",
                 },
             )
@@ -167,7 +167,7 @@ def build_templates(name, field, nested_template=False, index=True) -> list:
             field_template = {
                 "path_match": name,
                 "mapping": {
-                    "type": TYPE_MAPPING[field.__class__],
+                    "type": TYPE_MAPPING[field.__class__.__name__],
                     "index": field.index,
                 },
             }

@@ -17,6 +17,7 @@ from howler.odm.models.dossier import Dossier
 from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import Escalation, Link
 from howler.odm.models.lead import Lead
+from howler.odm.models.pivot import Pivot
 from howler.odm.models.user import User
 from howler.odm.randomizer import (
     get_random_filename,
@@ -165,6 +166,11 @@ def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[User], p
     hit.howler.assignment = "unassigned"
     hit.howler.escalation = choice([Escalation.HIT, Escalation.ALERT])
 
+    if randint(1, 10) > 9:
+        hit.howler.expiry = datetime.now() + timedelta(days=randint(1, 60))
+    else:
+        hit.howler.expiry = None
+
     hit.howler.outline.threat = choice(
         [
             hit.howler.outline.threat,
@@ -284,7 +290,7 @@ def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[User], p
             _new_keys, hit = importlib.import_module(f"{plugin}.odm.hit").generate_useful_hit(hit)
             new_keys += _new_keys
         except (ImportError, AttributeError):
-            pass
+            logger.exception("Plugin does not expose useful hit generation")
 
     if len(new_keys) > 0:
         logger.debug("%s new top-level fields configured")
@@ -384,6 +390,24 @@ def generate_useful_dossier(users: list[User]) -> Dossier:
                     "format": "markdown",
                     "content": f"# Hello, World!\n{get_random_word()} {get_random_word()} {get_random_word()}",
                     "metadata": {},
+                }
+            )
+        )
+
+    for i in range(randint(1, 3)):
+        dossier.pivots.append(
+            Pivot(
+                {
+                    "icon": choice(
+                        ["material-symbols:cottage", "material-symbols:cardiology", "token-branded:rainbow"]
+                    ),
+                    "label": {"en": get_random_word(), "fr": get_random_word()},
+                    "value": f"https://google.com/search?q={{{{test{i}}}}} and {{{{custom_value}}}}",
+                    "format": "link",
+                    "mappings": [
+                        {"key": f"test{i}", "field": choice(list(Hit.flat_fields().keys()))},
+                        {"key": "custom_value", "field": "custom", "custom_value": get_random_word()},
+                    ],
                 }
             )
         )

@@ -23,8 +23,6 @@ def to_camel_case(snake_str):
     return components[0] + "".join(component.title() for component in components[1:])
 
 
-INTERNAL_CLASSES = ["notebooks", "alfred", "neighbourhood_watch"]
-
 # Currently set to info. If you're curious for output on the tree structure of the generated classes, set this to
 # log.DEBUG instead.
 # log.basicConfig(level=log.DEBUG)
@@ -454,13 +452,7 @@ def generate_class_member_and_field(name, structure):
         else (TS_MEMBER_TEMPLATE_NOTNULL if structure.get("__required", False) else TS_MEMBER_TEMPLATE)
     ).format(name, to_pascal_case(structure_name))
 
-    if name in INTERNAL_CLASSES:
-        ts_member_rendered = f"  // internal: begin\n{ts_member_rendered}\n  // internal: end"
-
     ts_import_rendered = TS_IMPORT_TEMPLATE.format(name=to_pascal_case(structure_name))
-
-    if name in INTERNAL_CLASSES:
-        ts_import_rendered = f"// internal: begin\n{ts_import_rendered}\n// internal: end"
 
     return (
         java_member_rendered,
@@ -525,24 +517,6 @@ def generate_class(name, structure):
 
             if imports:
                 imports += "\n\n"
-
-            with open(
-                ts_file_name,
-                "w",
-            ) as file:
-                # Write the templated file using the generated references!
-                file.write(
-                    # This regex will remove cases where two internal references are next to each other
-                    re.sub(
-                        r" *// internal: end\n *// internal: begin\n",
-                        "",
-                        BASE_TS_TEMPLATE.format(
-                            name=to_pascal_case(structure_name),
-                            members="\n".join(sorted([x[2] for x in values])),
-                            imports=imports,
-                        ),
-                    )
-                )
 
         # Return the reference the parent generated class can use
         return generate_class_member_and_field(name, structure)
@@ -714,10 +688,6 @@ def generate_api_config_types():
             config_type = config_type.replace("},", "};")
             config_type = config_type.replace("}\n", "};\n")
             config_type = config_type.replace("[],", "[];")
-
-            # Mark some fields as internal:
-            config_type = config_type.replace("alfred", "// internal: begin\n    alfred")
-            config_type = config_type.replace("spellbook: boolean;", "spellbook: boolean;\n    // internal: end")
 
             # All done!
             file.write("\n\n" + config_type)

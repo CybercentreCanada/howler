@@ -3,6 +3,7 @@ from typing import Optional
 
 from howler import odm
 from howler.odm.howler_enum import HowlerEnum
+from howler.odm.models.localized_label import LocalizedLabel
 
 
 class Formats(str, HowlerEnum):
@@ -11,16 +12,6 @@ class Formats(str, HowlerEnum):
 
     def __str__(self) -> str:
         return self.value
-
-
-@odm.model(
-    index=True,
-    store=True,
-    description="The dossier object stores individual tabs/fields for a given alert.",
-)
-class LocalizedLabel(odm.Model):
-    en: str = odm.Text(description="The english localization of a label")
-    fr: str = odm.Text(description="The french localization of a label")
 
 
 @odm.model(

@@ -24,12 +24,6 @@ auth:
           user: howler_user
           admin: howler_admin
 
-core:
-  spellbook:
-    enabled: false
-  alfred:
-    enabled: true
-
 datastore:
   ilm:
     enabled: false
@@ -45,9 +39,6 @@ system:
 ui:
   audit: false
   debug: true
-  # internal: begin
-  discover_url: https://discover.dev.analysis.cyber.gc.ca/eureka/apps
-  # internal: end
   enforce_quota: true
   validate_session_useragent: false
   static_folder: /etc/howler/static

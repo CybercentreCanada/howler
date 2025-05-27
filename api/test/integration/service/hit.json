@@ -5,9 +5,6 @@
         "type": "partnerships",
         "version": "6.4.2"
     },
-    "alfred": {
-        "incident_urls": []
-    },
     "assemblyline": {
         "antivirus": [
             {
@@ -746,102 +743,6 @@
         "id": "academia",
         "name": "us_sizes.xls"
     },
-    "hbs": {
-        "autoruns_category": "learn",
-        "autoruns_display_name": "academia_innovative.lnk",
-        "autoruns_enabled": 2732,
-        "autoruns_flags": "do",
-        "autoruns_last_runtime": "2025-03-25T05:41:17.471715Z",
-        "autoruns_last_task_result": "Program",
-        "autoruns_location": "government",
-        "autoruns_mod_time": "2025-03-28T00:12:35.471724Z",
-        "autoruns_name": "canadian.lnk",
-        "autoruns_scheduled_time": "2025-03-14T12:41:40.471727Z",
-        "client": "determine",
-        "client_id": "2FyEoFP5hZuRk0N9gO5Q46",
-        "dns_servers": [
-            "laboratory"
-        ],
-        "file_attributes": 3399,
-        "file_code_signature": {
-            "certificate_hash": "also",
-            "has_private_key": "feedback",
-            "publisher": "of",
-            "serial_number": "key",
-            "signature_hash": "Canada",
-            "signer": "country",
-            "status": 520,
-            "valid_until": "2025-03-14T13:38:45.471858Z",
-            "verified": 3654
-        },
-        "file_entropy": {
-            "entropy": "Government",
-            "peak_entropy": "BCIP"
-        },
-        "file_magic": "security_transition.pdf",
-        "file_oid": {
-            "hash": "an",
-            "instance": 737,
-            "session": 1049,
-            "tag": "One",
-            "timestamp": "2025-03-29T17:12:09.471772Z",
-            "type": "from"
-        },
-        "file_path_oid": {
-            "hash": "promote",
-            "instance": 456,
-            "session": 1130,
-            "tag": "of",
-            "timestamp": "2025-03-21T09:04:40.471794Z",
-            "type": "laboratory"
-        },
-        "file_pe": {
-            "copyright": "experts",
-            "flags": "selling",
-            "flags_mask": 130,
-            "internal_name": "academia_cyber_emerging.xls",
-            "language": "engaging",
-            "os": 4068,
-            "private_build": "For",
-            "product_version": "5.3.3",
-            "special_build": "To",
-            "trademark": "more",
-            "type": "improve"
-        },
-        "file_qxor": "potential_us_promote.gif",
-        "file_zone": {
-            "host_url": "services.ca",
-            "referrer_url": "invite",
-            "zone_id": 1494
-        },
-        "oid": {
-            "hash": "support",
-            "instance": 1238,
-            "session": 3331,
-            "tag": "art",
-            "timestamp": "2025-03-14T14:32:22.471761Z",
-            "type": "tools"
-        },
-        "parent_file_path_oid": {
-            "hash": "survey",
-            "instance": 1406,
-            "session": 1744,
-            "tag": "academia",
-            "timestamp": "2025-04-02T07:58:52.471804Z",
-            "type": "assist"
-        },
-        "parent_process_oid": {
-            "hash": "do",
-            "instance": 2960,
-            "session": 727,
-            "tag": "Centre",
-            "timestamp": "2025-04-14T20:05:22.471784Z",
-            "type": "country"
-        },
-        "process_package_name": "the_the.doc",
-        "process_privileges": "companies",
-        "registry_action": "defence"
-    },
     "host": {
         "domain": "bringing.biz",
         "id": "tools",
@@ -893,8 +794,8 @@
         ],
         "confidence": 3000.44,
         "data": [
-            "{\"cbs_collection_date\": \"2025-04-17T11:55:41.486729\", \"cbs_event_time\": \"2025-04-17T11:55:41.486735\", \"event_day\": \"25-04-17\", \"cbs_client_id\": 71, \"cbs_client_name\": \"CCCS\", \"tenant_id\": \"188c2e8c-8245-43dd-8e99-e12c73d67cd7\", \"tenant_name\": \"tenant\", \"cbs_id\": \"58efdd2b-6435-4fa0-9d5a-11cdf9701a6f\", \"id\": \"d7c158d1-3815-4537-bf54-19ac5b1c8e33\", \"sign_in_ip_address\": \"119.223.254.90\", \"ip_geo_asn\": \"86921\", \"ip_geo_city\": \"somewhere\", \"ip_geo_country_name\": \"canada\", \"ip_geo_digraph\": \"ca\", \"ip_geo_state\": \"ontario probably\", \"ip_geo_organization\": \"cccs\", \"ip_geo_carrier\": \"cccs\", \"ip_geo_table_loaded_date\": \"2025-04-17T11:55:41.486783\", \"ip_address_geo_latitude\": 4.61175, \"ip_address_geo_longitude\": -90.54967, \"is_ip_in_spur\": false, \"spur_details\": [], \"user_principal_name\": \"enhanced@Government.com\", \"user_id\": \"71747544-735d-442e-9cd3-e3106dc9fc7d\", \"application_id\": \"726a6119-1f08-49c4-bbd5-4852193bd5b4\", \"application_name\": \"Application Name\", \"resource_id\": \"9d50c54b-c7c8-4a7d-b6f6-f86e1a75caad\", \"resource_name\": \"Resource Name\", \"resource_tenant_id\": \"f3109281-f15e-4769-bcaf-889ed3e2cc30\", \"first_factor_entered\": true, \"password_last_changed_date\": \"2025-04-17T11:55:41.486827\", \"error_code\": 504934, \"conditional_access_status\": \"sure\", \"authentication_requirement\": \"requirement\", \"authentication_details\": [], \"correlation_id\": \"7649f57a-0a8d-4796-bf5b-30e7277e77b8\", \"original_request_id\": \"b420fd85-6a43-407e-88bd-5ceb041837f3\", \"sign_in_risk_events\": [], \"flagged_for_review\": false, \"cross_tenant_access_type\": \"passthrough\", \"home_tenant_id\": \"d52ea0de-d226-41e1-b0de-188a5b842f61\", \"is_tenant_restricted\": true, \"unique_token_identifier\": \"2LDGvE5t2Dyqq3SvZByEJS\", \"cbs_workload\": [], \"associated_workload_cbs_id\": [], \"count_successful_sign_ins_by_ip\": 1, \"count_registered_device_sign_ins_by_ip\": 6, \"count_distinct_ips_by_triplet\": 454, \"count_distinct_upns_with_successful_sign_ins_by_triplet\": 2, \"count_distinct_upns_with_failed_sign_ins_by_triplet\": 101, \"count_distinct_upns_with_successful_first_factor_on_error_by_triplet\": 3, \"percent_of_upns_with_with_incorrect_first_factor_by_triplet\": 0.2618027501527591, \"ministerial_authorization\": \"Analyst Knowledge (1980/01/01-3000/01/01) [non-collected]\", \"classification\": \"Unclassified\", \"alfred_mapping\": \"analytics.pasword_sprayer.cloud_login.mitigated\"}",
-            "{\"cbs_collection_date\": \"2025-04-17T11:55:41.486898\", \"cbs_event_time\": \"2025-04-17T11:55:41.486900\", \"event_day\": \"25-04-17\", \"cbs_client_id\": 71, \"cbs_client_name\": \"CCCS\", \"tenant_id\": \"180ed1f1-25f1-45de-b601-a37bc5d081f7\", \"tenant_name\": \"tenant\", \"cbs_id\": \"8e9b444f-d95e-45e7-ac73-85d128dfff90\", \"id\": \"e989ec25-dd21-4df1-8f67-fe3aeca54f00\", \"sign_in_ip_address\": \"66.88.36.37\", \"ip_geo_asn\": \"68696\", \"ip_geo_city\": \"somewhere\", \"ip_geo_country_name\": \"canada\", \"ip_geo_digraph\": \"ca\", \"ip_geo_state\": \"ontario probably\", \"ip_geo_organization\": \"cccs\", \"ip_geo_carrier\": \"cccs\", \"ip_geo_table_loaded_date\": \"2025-04-17T11:55:41.486927\", \"ip_address_geo_latitude\": 22.05385, \"ip_address_geo_longitude\": 174.68175, \"is_ip_in_spur\": false, \"spur_details\": [], \"user_principal_name\": \"companies@technology.ca\", \"user_id\": \"9bc18cf4-6e73-4b02-8479-3b2f26a5cb9e\", \"application_id\": \"6752682f-2548-42ed-93cc-e7e0bbca7601\", \"application_name\": \"Application Name\", \"resource_id\": \"8b2f1e05-b763-4641-93be-89c23308d457\", \"resource_name\": \"Resource Name\", \"resource_tenant_id\": \"c209874f-f413-48e7-a179-9a7c3c44dade\", \"first_factor_entered\": true, \"password_last_changed_date\": \"2025-04-17T11:55:41.486953\", \"error_code\": 504934, \"conditional_access_status\": \"sure\", \"authentication_requirement\": \"requirement\", \"authentication_details\": [], \"correlation_id\": \"e38764f9-0103-4ff1-a814-7bee03ad6d07\", \"original_request_id\": \"bda701a6-3074-41f8-ae4c-387a3d0264fb\", \"sign_in_risk_events\": [], \"flagged_for_review\": false, \"cross_tenant_access_type\": \"passthrough\", \"home_tenant_id\": \"95511325-6797-4b73-bc0c-408fab0ea808\", \"is_tenant_restricted\": false, \"unique_token_identifier\": \"3CY7WgvYmUHV8gUreO60u8\", \"cbs_workload\": [], \"associated_workload_cbs_id\": [], \"count_successful_sign_ins_by_ip\": 9, \"count_registered_device_sign_ins_by_ip\": 1, \"count_distinct_ips_by_triplet\": 441, \"count_distinct_upns_with_successful_sign_ins_by_triplet\": 9, \"count_distinct_upns_with_failed_sign_ins_by_triplet\": 101, \"count_distinct_upns_with_successful_first_factor_on_error_by_triplet\": 3, \"percent_of_upns_with_with_incorrect_first_factor_by_triplet\": 0.2456282920096946, \"ministerial_authorization\": \"Analyst Knowledge (1980/01/01-3000/01/01) [non-collected]\", \"classification\": \"Unclassified\", \"alfred_mapping\": \"analytics.pasword_sprayer.cloud_login.mitigated\"}"
+            "{\"cbs_collection_date\": \"2025-04-17T11:55:41.486729\", \"cbs_event_time\": \"2025-04-17T11:55:41.486735\", \"event_day\": \"25-04-17\", \"cbs_client_id\": 71, \"cbs_client_name\": \"CCCS\", \"tenant_id\": \"188c2e8c-8245-43dd-8e99-e12c73d67cd7\", \"tenant_name\": \"tenant\", \"cbs_id\": \"58efdd2b-6435-4fa0-9d5a-11cdf9701a6f\", \"id\": \"d7c158d1-3815-4537-bf54-19ac5b1c8e33\", \"sign_in_ip_address\": \"119.223.254.90\", \"ip_geo_asn\": \"86921\", \"ip_geo_city\": \"somewhere\", \"ip_geo_country_name\": \"canada\", \"ip_geo_digraph\": \"ca\", \"ip_geo_state\": \"ontario probably\", \"ip_geo_organization\": \"cccs\", \"ip_geo_carrier\": \"cccs\", \"ip_geo_table_loaded_date\": \"2025-04-17T11:55:41.486783\", \"ip_address_geo_latitude\": 4.61175, \"ip_address_geo_longitude\": -90.54967, \"is_ip_in_spur\": false, \"spur_details\": [], \"user_principal_name\": \"enhanced@Government.com\", \"user_id\": \"71747544-735d-442e-9cd3-e3106dc9fc7d\", \"application_id\": \"726a6119-1f08-49c4-bbd5-4852193bd5b4\", \"application_name\": \"Application Name\", \"resource_id\": \"9d50c54b-c7c8-4a7d-b6f6-f86e1a75caad\", \"resource_name\": \"Resource Name\", \"resource_tenant_id\": \"f3109281-f15e-4769-bcaf-889ed3e2cc30\", \"first_factor_entered\": true, \"password_last_changed_date\": \"2025-04-17T11:55:41.486827\", \"error_code\": 504934, \"conditional_access_status\": \"sure\", \"authentication_requirement\": \"requirement\", \"authentication_details\": [], \"correlation_id\": \"7649f57a-0a8d-4796-bf5b-30e7277e77b8\", \"original_request_id\": \"b420fd85-6a43-407e-88bd-5ceb041837f3\", \"sign_in_risk_events\": [], \"flagged_for_review\": false, \"cross_tenant_access_type\": \"passthrough\", \"home_tenant_id\": \"d52ea0de-d226-41e1-b0de-188a5b842f61\", \"is_tenant_restricted\": true, \"unique_token_identifier\": \"2LDGvE5t2Dyqq3SvZByEJS\", \"cbs_workload\": [], \"associated_workload_cbs_id\": [], \"count_successful_sign_ins_by_ip\": 1, \"count_registered_device_sign_ins_by_ip\": 6, \"count_distinct_ips_by_triplet\": 454, \"count_distinct_upns_with_successful_sign_ins_by_triplet\": 2, \"count_distinct_upns_with_failed_sign_ins_by_triplet\": 101, \"count_distinct_upns_with_successful_first_factor_on_error_by_triplet\": 3, \"percent_of_upns_with_with_incorrect_first_factor_by_triplet\": 0.2618027501527591 }",
+            "{\"cbs_collection_date\": \"2025-04-17T11:55:41.486898\", \"cbs_event_time\": \"2025-04-17T11:55:41.486900\", \"event_day\": \"25-04-17\", \"cbs_client_id\": 71, \"cbs_client_name\": \"CCCS\", \"tenant_id\": \"180ed1f1-25f1-45de-b601-a37bc5d081f7\", \"tenant_name\": \"tenant\", \"cbs_id\": \"8e9b444f-d95e-45e7-ac73-85d128dfff90\", \"id\": \"e989ec25-dd21-4df1-8f67-fe3aeca54f00\", \"sign_in_ip_address\": \"66.88.36.37\", \"ip_geo_asn\": \"68696\", \"ip_geo_city\": \"somewhere\", \"ip_geo_country_name\": \"canada\", \"ip_geo_digraph\": \"ca\", \"ip_geo_state\": \"ontario probably\", \"ip_geo_organization\": \"cccs\", \"ip_geo_carrier\": \"cccs\", \"ip_geo_table_loaded_date\": \"2025-04-17T11:55:41.486927\", \"ip_address_geo_latitude\": 22.05385, \"ip_address_geo_longitude\": 174.68175, \"is_ip_in_spur\": false, \"spur_details\": [], \"user_principal_name\": \"companies@technology.ca\", \"user_id\": \"9bc18cf4-6e73-4b02-8479-3b2f26a5cb9e\", \"application_id\": \"6752682f-2548-42ed-93cc-e7e0bbca7601\", \"application_name\": \"Application Name\", \"resource_id\": \"8b2f1e05-b763-4641-93be-89c23308d457\", \"resource_name\": \"Resource Name\", \"resource_tenant_id\": \"c209874f-f413-48e7-a179-9a7c3c44dade\", \"first_factor_entered\": true, \"password_last_changed_date\": \"2025-04-17T11:55:41.486953\", \"error_code\": 504934, \"conditional_access_status\": \"sure\", \"authentication_requirement\": \"requirement\", \"authentication_details\": [], \"correlation_id\": \"e38764f9-0103-4ff1-a814-7bee03ad6d07\", \"original_request_id\": \"bda701a6-3074-41f8-ae4c-387a3d0264fb\", \"sign_in_risk_events\": [], \"flagged_for_review\": false, \"cross_tenant_access_type\": \"passthrough\", \"home_tenant_id\": \"95511325-6797-4b73-bc0c-408fab0ea808\", \"is_tenant_restricted\": false, \"unique_token_identifier\": \"3CY7WgvYmUHV8gUreO60u8\", \"cbs_workload\": [], \"associated_workload_cbs_id\": [], \"count_successful_sign_ins_by_ip\": 9, \"count_registered_device_sign_ins_by_ip\": 1, \"count_distinct_ips_by_triplet\": 441, \"count_distinct_upns_with_successful_sign_ins_by_triplet\": 9, \"count_distinct_upns_with_failed_sign_ins_by_triplet\": 101, \"count_distinct_upns_with_successful_first_factor_on_error_by_triplet\": 3, \"percent_of_upns_with_with_incorrect_first_factor_by_triplet\": 0.2456282920096946 }"
         ],
         "detection": "Command and Control",
         "dossier": [
@@ -955,31 +856,6 @@
                 "href": "https://en.wikipedia.org/wiki/Canada_goose",
                 "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Canada_goose_on_Seedskadee_NWR_%2827826185489%29.jpg/788px-Canada_goose_on_Seedskadee_NWR_%2827826185489%29.jpg",
                 "title": "Goose"
-            },
-            {
-                "href": "https://azl-stg.cyber.gc.ca/",
-                "icon": "AZUL",
-                "title": "participating"
-            },
-            {
-                "href": "https://spark.dev.analysis.cyber.gc.ca",
-                "icon": "SPARK",
-                "title": "potential"
-            },
-            {
-                "href": "https://superset.dev.analysis.cyber.gc.ca",
-                "icon": "SUPERSET",
-                "title": "art"
-            },
-            {
-                "href": "https://copilot.dev.analysis.cyber.gc.ca/",
-                "icon": "COPILOT",
-                "title": "is"
-            },
-            {
-                "href": "https://cyberchef.dev.analysis.cyber.gc.ca",
-                "icon": "CYBERCHEF",
-                "title": "helps"
             }
         ],
         "log": [
@@ -1093,24 +969,6 @@
         "key_b": "experts"
     },
     "message": "improve",
-    "neighbourhood_watch": {
-        "cluster_size": 0,
-        "domains_by_subtype": {
-            "emails": [],
-            "links": [],
-            "other": []
-        },
-        "domains_to_block": [],
-        "heuristics": {
-            "alert_keyword": {
-                "card": "hi",
-                "overview": "banana"
-            }
-        },
-        "sampled_email_bodies": [],
-        "sampled_metadata": [],
-        "sampled_subjects": []
-    },
     "network": {
         "direction": "but",
         "protocol": "For",
