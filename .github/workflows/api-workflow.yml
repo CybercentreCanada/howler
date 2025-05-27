@@ -170,9 +170,6 @@ jobs:
     defaults:
       run:
         working-directory: ./api
-    strategy:
-      matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
     steps:
       - name: Checkout develop
         uses: actions/checkout@v4
@@ -180,11 +177,6 @@ jobs:
           ref: develop
       - name: Checkout current ref
         uses: actions/checkout@v4
-      - name: Spin up test dependencies
-        uses: hoverkraft-tech/compose-action@v2.2.0
-        with:
-          compose-file: "api/dev/docker-compose.yml"
-          up-flags: "--build"
       - name: Install Poetry
         uses: abatilo/actions-poetry@v4
       - uses: actions/cache@v3
@@ -200,7 +192,7 @@ jobs:
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Extract metadata (tags, labels) for Docker
         uses: docker/metadata-action@v3
         with:
