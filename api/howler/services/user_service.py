@@ -1,13 +1,10 @@
 from typing import Any, Optional, Union
 
 import elasticapm
-from flask import current_app
+from authlib.integrations.flask_client import OAuth
+from flask import current_app, request
 
-from howler.common.exceptions import (
-    AccessDeniedException,
-    HowlerValueError,
-    InvalidDataException,
-)
+from howler.common.exceptions import AccessDeniedException, HowlerValueError, InvalidDataException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.config import CLASSIFICATION, config
@@ -101,11 +98,14 @@ def parse_user_data(  # noqa: C901
     oauth = current_app.extensions.get("authlib.integrations.flask_client")
     if not oauth:
         logger.critical("Authlib integration missing!")
-        raise HowlerValueError()
-    provider = oauth.create_client(oauth_provider)
+        raise HowlerValueError("Authlib integration missing!")
+
+    provider: OAuth = oauth.create_client(oauth_provider)
 
     if "id_token" in data:
-        data = provider.parse_id_token(data)
+        data = provider.parse_id_token(
+            data, nonce=request.args.get("nonce", data.get("userinfo", {}).get("nonce", None))
+        )
 
     oauth_provider_config = config.auth.oauth.providers[oauth_provider]
 
