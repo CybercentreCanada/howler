@@ -61,20 +61,12 @@ USER howler
 # Create a snpshot file so we know what to copy
 RUN touch /tmp/before-pip
 
-# Install howler UI into local so it merges new and old packages
+# Install howler into local so it merges new and old packages
 COPY dist* dist/
-
-# Copy the pip.conf and expose its environment variable.
-# This will make pip install use our cccs-stratus feed.
-COPY pip.conf pip.conf
-ENV PIP_CONFIG_FILE pip.conf
 
 RUN pip install --no-cache-dir --no-warn-script-location --user dist/howler_api-*-py3-none-any.whl && \
     rm -rf ~/.cache/pip && \
     python /var/lib/howler/.local/lib/python3.12/site-packages/howler/external/generate_mitre.py /etc/howler/lookups
-
-# clean up pip.conf file.
-RUN rm pip.conf
 
 # Remove files that existed before the pip install so that our copy command below doesn't take a snapshot of
 # files that already exist in the base image
