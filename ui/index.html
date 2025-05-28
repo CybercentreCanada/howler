@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=320, initial-scale=1.0" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="TemplateUI website" />
+    <link rel="icon" href="/branding/howler/favicon.svg" />
+    <!-- <link rel="manifest" href="%PUBLIC_URL%/manifest.json"> -->
+    <title>Howler</title>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <script type="module" src="src/index.tsx"></script>
+    <!--
+      This HTML file is a template.
+      If you open it directly in the browser, you will see an empty page.
+
+      You can add webfonts, meta tags, or analytics to this file.
+      The build step will place the bundled scripts into the <body> tag.
+
+      To begin the development, run `pnpm start`.
+      To create a production bundle, use `pnpm build`.
+    -->
+    <script>
+      const isDark = JSON.parse(localStorage.getItem('templateui.core.darkMode') || 'false');
+
+      if (isDark) {
+        document.body.style.backgroundColor = '#121212';
+      } else {
+        document.body.style.backgroundColor = '#fff';
+      }
+
+      window.addEventListener('load', () => {
+        const observer = new MutationObserver(mutations => {
+          if (document.querySelector('#root').childElementCount > 0) {
+            document.body.style.backgroundColor = '';
+            observer.disconnect();
+          }
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true, attributes: false, characterData: false });
+      });
+    </script>
+  </body>
+</html>

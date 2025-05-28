@@ -1,61 +1,81 @@
 {
-    "git.enableCommitSigning": true,
-    "editor.formatOnSave": true,
-    "editor.rulers": [
-        120
-    ],
-    "editor.tabSize": 4,
-    "files.insertFinalNewline": true,
-    "files.trimFinalNewlines": true,
-    "files.trimTrailingWhitespace": true,
-    "files.exclude": {
-        "**/.git": true,
-        "**/.svn": true,
-        "**/.hg": true,
-        "**/CVS": true,
-        "**/.DS_Store": true,
-        "**/Thumbs.db": true,
-        "**/build": true,
-        "**/dist": true,
-        "**/.pytest_cache": true,
-        "**/.idea": true,
-        "**/__pycache__": true,
-        "**/howler_api.egg-info": true,
-        "**/.mypy_cache": true,
-        "**/.ruff_cache": true,
-    },
-    "npm.packageManager": "pnpm",
-    "python.terminal.activateEnvironment": false,
-    "python.testing.pytestEnabled": true,
-    "python.testing.pytestPath": "./api",
-    "[python]": {
-        "editor.defaultFormatter": "charliermarsh.ruff",
-        "editor.formatOnSave": true
-    },
-    "autoDocstring.docstringFormat": "google",
-    "autoDocstring.guessTypes": true,
-    "editor.codeActionsOnSave": {
-        "source.organizeImports": "explicit",
-        "source.fixAll": "explicit",
-        "source.unusedImports": "explicit"
-    },
-    "python.defaultInterpreterPath": "${workspaceFolder}/api/.venv/bin/python",
-    "python.analysis.autoImportCompletions": true,
-    "python.analysis.exclude": [
-        "**/build"
-    ],
-    "python.analysis.autoFormatStrings": true,
-    "python.analysis.completeFunctionParens": true,
-    "mypy-type-checker.ignorePatterns": [
-        "api/test/**/*.py"
-    ],
-    "ruff.configurationPreference": "filesystemFirst",
-    "python.analysis.extraPaths": [
-        "./api/test"
-    ],
-    "flake8.cwd": "${workspaceFolder}/api",
-    "editor.formatOnSaveMode": "modificationsIfAvailable",
-    "mypy-type-checker.cwd": "${workspaceFolder}/api",
-    "python.analysis.typeEvaluation.strictListInference": true,
-    "python.analysis.typeEvaluation.strictDictionaryInference": true
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ],
+  "[css]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[scss]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "git.enableCommitSigning": true,
+  "editor.formatOnSave": true,
+  "editor.rulers": [120],
+  "editor.tabSize": 4,
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+  "files.trimTrailingWhitespace": true,
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/CVS": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "**/build": true,
+    "**/dist": true,
+    "**/.pytest_cache": true,
+    "**/.idea": true,
+    "**/__pycache__": true,
+    "**/howler_api.egg-info": true,
+    "**/.mypy_cache": true,
+    "**/.ruff_cache": true
+  },
+  "npm.packageManager": "pnpm",
+  "python.terminal.activateEnvironment": false,
+  "python.testing.pytestEnabled": true,
+  "python.testing.pytestPath": "./api",
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true
+  },
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit",
+    "source.fixAll": "explicit",
+    "source.unusedImports": "explicit"
+  },
+  "python.defaultInterpreterPath": "${workspaceFolder}/api/.venv/bin/python",
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.exclude": ["**/build"],
+  "python.analysis.autoFormatStrings": true,
+  "python.analysis.completeFunctionParens": true,
+  "mypy-type-checker.ignorePatterns": ["api/test/**/*.py"],
+  "ruff.configurationPreference": "filesystemFirst",
+  "python.analysis.extraPaths": ["./api/test"],
+  "flake8.cwd": "${workspaceFolder}/api",
+  "editor.formatOnSaveMode": "modificationsIfAvailable",
+  "mypy-type-checker.cwd": "${workspaceFolder}/api",
+  "python.analysis.typeEvaluation.strictListInference": true,
+  "python.analysis.typeEvaluation.strictDictionaryInference": true
 }

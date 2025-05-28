@@ -1,0 +1,137 @@
+{
+  "extends": ["airbnb-typescript", "prettier", "plugin:import/recommended", "plugin:react/recommended"],
+  "parser": "@typescript-eslint/parser",
+  "ignorePatterns": ["vite.config.ts", "src/commons/**"],
+  "parserOptions": {
+    "project": "tsconfig.json"
+  },
+  "plugins": ["@typescript-eslint", "prettier", "react-hooks", "import", "jsx-a11y", "prefer-arrow"],
+  "env": {
+    "browser": true,
+    "es6": true,
+    "mocha": true,
+    "node": true
+  },
+  "settings": {
+    // Needed to help eslint understand absolute imports, at least for intellij.
+    "import/resolver": {
+      "node": {
+        "paths": ["src"]
+      }
+    },
+    "react": { "version": "detect" }
+  },
+  "overrides": [
+    {
+      "files": ["src/models/entities/generated/**"],
+      "rules": { "@typescript-eslint/ban-types": "off" }
+    }
+  ],
+  "rules": {
+    "@typescript-eslint/consistent-type-imports": "error",
+    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "@typescript-eslint/no-explicit-any": "off",
+    "@typescript-eslint/space-before-function-paren": "off",
+    "@typescript-eslint/indent": "off",
+    "@typescript-eslint/naming-convention": [
+      "error",
+      // Allow camelCase variables (23.2), PascalCase variables (23.8), and UPPER_CASE variables (23.10)
+      {
+        "selector": "variable",
+        "format": ["camelCase", "PascalCase", "UPPER_CASE"],
+        "leadingUnderscore": "allow"
+      },
+      // Allow camelCase functions (23.2), and PascalCase functions (23.8)
+      {
+        "selector": "function",
+        "format": ["camelCase", "PascalCase"],
+        "leadingUnderscore": "allow"
+      },
+      // Airbnb recommends PascalCase for classes (23.3), and although Airbnb does not make TypeScript recommendations, we are assuming this rule would similarly apply to anything "type like", including interfaces, type aliases, and enums
+      {
+        "selector": "typeLike",
+        "format": ["PascalCase"]
+      }
+    ],
+    "arrow-parens": ["error", "as-needed"],
+    "import/no-extraneous-dependencies": ["error", { "packageDir": "./" }],
+    "import/imports-first": ["error", "absolute-first"],
+    "import/newline-after-import": "error",
+    "import/no-cycle": "warn",
+    "jsx-a11y/anchor-is-valid": [
+      "error",
+      {
+        "components": ["Link"],
+        "specialLink": ["to", "hrefLeft", "hrefRight"],
+        "aspects": ["noHref", "invalidHref", "preferButton"]
+      }
+    ],
+    "jsx-a11y/control-has-associated-label": "off",
+    "jsx-a11y/label-has-associated-control": "off",
+    "linebreak-style": "off",
+    "max-len": [
+      "off",
+      {
+        "code": 120,
+        "ignoreRegExpLiterals": true,
+        "tabWidth": 2,
+        "ignoreComments": true
+      }
+    ],
+    "no-console": [1],
+    "no-nested-ternary": "off",
+    "no-plusplus": "off",
+    "no-underscore-dangle": "off",
+    "radix": "off",
+    "react/jsx-filename-extension": [
+      1,
+      {
+        "extensions": [".js", ".jsx", ".ts", ".tsx"]
+      }
+    ],
+    "react/jsx-curly-newline": "off",
+    "react/jsx-one-expression-per-line": ["off", { "allow": "literal" }],
+    "react/jsx-props-no-spreading": "off",
+    "react/jsx-wrap-multilines": "off",
+    "react/no-array-index-key": "warn",
+    "react/prop-types": "off",
+    "react-hooks/rules-of-hooks": "error", // Checks rules of Hooks
+    "react-hooks/exhaustive-deps": "warn", // Checks effect dependencies
+    "semi": "error",
+    "react/jsx-uses-react": "off",
+    "react/react-in-jsx-scope": "off",
+    "react/display-name": "off",
+    "react/jsx-no-literals": [
+      "warn",
+      {
+        "noStrings": false,
+        "allowedStrings": ["/", ":", "(", ")", ":&nbsp;", "-", "APA2B", "."],
+        "ignoreProps": false,
+        "noAttributeStrings": false
+      }
+    ],
+    "prefer-arrow/prefer-arrow-functions": [
+      "warn",
+      {
+        "disallowPrototype": true,
+        "singleReturnOnly": false,
+        "classPropertiesAllowed": false
+      }
+    ],
+    "react/function-component-definition": ["error", { "namedComponents": "arrow-function" }],
+    "prefer-arrow-callback": ["warn", { "allowNamedFunctions": true }],
+    "func-style": ["warn", "expression", { "allowArrowFunctions": true }]
+  },
+  "globals": {
+    "window": true,
+    "document": true,
+    "localStorage": true,
+    "FormData": true,
+    "FileReader": true,
+    "Blob": true,
+    "navigator": true,
+    "Headers": true,
+    "Request": true,
+    "fetch": true
+  }
+}

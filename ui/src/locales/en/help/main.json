@@ -1,0 +1,13 @@
+{
+  "route.help.client.description": "This documentation will outline how to interact with the howler API using the howler client in both Java and python development environments. We will outline the basic process of creating a new hit in each environment as well as searching howler for hits matching your query.",
+  "route.help.hit.description": "This documentation details several parts of ingesting, displaying and interacting with hits.",
+  "route.help.search.description": "Explanations and help for when you are searching for hits in Howler, including syntax and examples.",
+  "route.help.views.description": "Views are a feature in Howler that allows users to create custom, default queries through which they can organize and triage hits. In this document, we will outline how to create, update, interact with and delete views.",
+  "route.help.templates.description": "An explanation of using Howler Templates to display customized data about hits from a given analytic.",
+  "route.help.auth.description": "Howler's API supports a number of authentication approaches when accessing the API. This document will outline the different approaches, and explain how to use each of them.",
+  "route.help.actions.description": "Actions are a feature in Howler that allow users to perform particular tasks on a large number of hits, through automating the execution of a task on each hit. This document explains for to use actions in Howler.",
+  "route.help.api.description": "An overview of the Howler API and its components.",
+  "route.help.notebook.description": "Howler provides the option to add notebooks to analytics to aid in triaging hits and alerts. This document explains how to use notebooks in Howler.",
+  "route.help.overviews.description": "Howler provides the option to customize the presentation of data associated with an alert using overviews. This article explains the basics of creating and using overviews.",
+  "route.help.retention.description": "In order to comply with organizational policies, Howler is configured to purge stale alerts after a specific amount of time. This article explains how this retention mechanism works."
+}
