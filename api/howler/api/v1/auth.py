@@ -247,7 +247,7 @@ def login(**_):  # noqa: C901
                 raise InvalidDataException("OAuth is disabled.")  # noqa: TRY301
 
             oauth = current_app.extensions.get("authlib.integrations.flask_client")
-            if not oauth:
+            if not oauth:  # pragma: no cover
                 logger.critical("Authlib integration missing!")
                 raise HowlerValueError()
 
@@ -263,7 +263,7 @@ def login(**_):  # noqa: C901
                 uri = urlparse(referer if referer else request.host_url)
                 port_portion = ":" + str(uri.port) if uri.port else ""
                 redirect_uri = f"{uri.scheme}://{uri.hostname}{port_portion}/login?provider={oauth_provider}"
-                return provider.authorize_redirect(redirect_uri=redirect_uri)
+                return provider.authorize_redirect(redirect_uri=redirect_uri, nonce=request.args.get("nonce", None))
 
             # At this point we know the code exists, so we're good to use that to exchange for an JSON Web Token with
             # user data in it. token_data contains the access token, expiry, refresh token, and id token,

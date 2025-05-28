@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 import pytest
 from conftest import APIError, get_api_data
@@ -137,7 +138,7 @@ def test_create_bundle_fail_missing(datastore: HowlerDatastore, login_session):
 
     hits = datastore.hit.search("howler.id:*", rows=2)["items"]
 
-    req_data = {
+    req_data: dict[str, Any] = {
         "hits": [hit.howler.id for hit in hits],
     }
 
