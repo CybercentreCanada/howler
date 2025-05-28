@@ -6,7 +6,7 @@ from typing import Optional
 from flask import request
 
 import howler.services.hit_service as hit_service
-from howler.common.exceptions import HowlerException
+from howler.common.exceptions import ForbiddenException, HowlerException
 from howler.common.loader import get_lookups
 from howler.common.logging import get_logger
 from howler.config import CLASSIFICATION, config, get_branch, get_commit, get_version
@@ -53,6 +53,8 @@ def _get_apikey_max_duration():
             ceil((datetime.fromtimestamp(data["exp"]) - datetime.now()).total_seconds()),
             "seconds",
         )
+    except ForbiddenException:
+        logger.warning("Access token is expired.")
     except HowlerException:
         logger.exception("Error occurred when decoding access token.")
     finally:

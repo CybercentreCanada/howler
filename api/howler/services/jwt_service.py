@@ -8,7 +8,7 @@ import jwt
 import requests
 from jwt.api_jwk import PyJWK
 
-from howler.common.exceptions import HowlerKeyError, HowlerValueError
+from howler.common.exceptions import ForbiddenException, HowlerKeyError, HowlerValueError
 from howler.common.logging import get_logger
 from howler.config import cache, config
 
@@ -150,6 +150,9 @@ def decode(
     try:
         logger.debug("Validating token against audience %s", audience)
         return jwt.decode(jwt=access_token, key=key, algorithms=algorithms, audience=audience, **kwargs)  # type: ignore
+    except jwt.ExpiredSignatureError as err:
+        logger.info("JWT has expired.")
+        raise ForbiddenException("Your JWT has expired.", cause=err)
     except jwt.InvalidTokenError as err:
         logger.exception("Error occurred when decoding JWT.")
         raise HowlerValueError("There was an error when decoding your JWT.", cause=err)
