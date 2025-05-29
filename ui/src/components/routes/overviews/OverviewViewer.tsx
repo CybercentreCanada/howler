@@ -17,12 +17,12 @@ import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'r
 import { useTranslation } from 'react-i18next';
 
 import { Check, Delete, SsidChart } from '@mui/icons-material';
-import hitsData from 'api/hit/:id/data/index.json';
 import AppInfoPanel from 'commons/components/display/AppInfoPanel';
 import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
 import { OverviewContext } from 'components/app/providers/OverviewProvider';
 import HitOverview from 'components/elements/hit/HitOverview';
 import useMyApi from 'components/hooks/useMyApi';
+import hitsData from 'data/index.json';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Overview } from 'models/entities/generated/Overview';

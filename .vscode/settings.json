@@ -77,5 +77,8 @@
   "editor.formatOnSaveMode": "modificationsIfAvailable",
   "mypy-type-checker.cwd": "${workspaceFolder}/api",
   "python.analysis.typeEvaluation.strictListInference": true,
-  "python.analysis.typeEvaluation.strictDictionaryInference": true
+  "python.analysis.typeEvaluation.strictDictionaryInference": true,
+  "eslint.workingDirectories": [
+    { "directory": "./ui", "changeProcessCWD": true }
+  ]
 }

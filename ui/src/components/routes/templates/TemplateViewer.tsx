@@ -18,12 +18,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Check, Delete, Remove, SsidChart } from '@mui/icons-material';
-import hitsData from 'api/hit/:id/data/index.json';
 import AppInfoPanel from 'commons/components/display/AppInfoPanel';
 import { TemplateContext } from 'components/app/providers/TemplateProvider';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import HitOutline, { DEFAULT_FIELDS } from 'components/elements/hit/HitOutline';
 import useMyApi from 'components/hooks/useMyApi';
+import hitsData from 'data/index.json';
 import isEqual from 'lodash-es/isEqual';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Hit } from 'models/entities/generated/Hit';

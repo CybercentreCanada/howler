@@ -74,27 +74,14 @@ for root, dirs, files in os.walk(os.environ["HOME"]):
         dirs[:] = []
         continue
 
-HOWLER_CLIENT_PATH = Path(os.getenv("HOWLER_CLIENT_PATH", howler_client_default_path or ""))
 HOWLER_UI_PATH = Path(os.getenv("HOWLER_UI_PATH", howler_ui_default_path or ""))
 
 
 # Where should we place the generated classes?
 
-if HOWLER_CLIENT_PATH:
-    JAVA_GENERATED_PATH = HOWLER_CLIENT_PATH / "src/main/java/cccs/hogwarts/howler/models/generated"
-
 if HOWLER_UI_PATH:
     TS_GENERATED_PATH = HOWLER_UI_PATH / "src/models/entities/generated"
 
-
-if JAVA_GENERATED_PATH:
-    log.info("Found howler client repo at: %s", HOWLER_CLIENT_PATH)
-else:
-    log.fatal(
-        "Couldn't find howler client repo! Please set environment variable "
-        + "HOWLER_CLIENT_PATH to howler client repo location."
-    )
-    sys.exit(1)
 
 if TS_GENERATED_PATH:
     log.info("Found howler ui repo at: %s", HOWLER_UI_PATH)
