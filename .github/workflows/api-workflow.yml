@@ -9,6 +9,8 @@ on:
       - patch/*
     paths:
       - "api/**"
+      - "!api/LICENSE"
+      - "!api/README.md"
       - .github/workflows/api-workflow.yml
     tags:
       - v*
@@ -20,6 +22,8 @@ on:
       - patch/*
     paths:
       - "api/**"
+      - "!api/LICENSE"
+      - "!api/README.md"
       - .github/workflows/api-workflow.yml
   workflow_dispatch: {}
 
