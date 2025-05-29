@@ -63,7 +63,7 @@ jobs:
           poetry env info
       - name: Install Dependencies
         run: |
-          poetry install --verbose --with test
+          poetry install --verbose --with dev
       - name: Run ruff formatting checks
         run: |
           poetry run ruff format howler --diff
