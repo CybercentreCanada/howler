@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 import werkzeug
 from flask.app import Flask
@@ -19,7 +21,10 @@ def client():
     return app.test_client()
 
 
-def test_ingest_endpoint(client):
-    result = client.post("/api/v1/sentinel/ingest", json={})
+def test_ingest_endpoint(client, caplog):
+    with caplog.at_level(logging.INFO):
+        result = client.post("/api/v1/sentinel/ingest", json={"test": True})
+
+    assert "{'test': True}" in caplog.text
 
     assert result.json["api_response"] == {"success": True}
