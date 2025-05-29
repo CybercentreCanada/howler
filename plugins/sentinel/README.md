@@ -1,3 +1,3 @@
-# Howler Internal Plugins
+# Howler Sentinel Plugin
 
-This plugin contains modules for internal authentication and OBO in the aurora platform.
+This plugin contains modules for Microsoft Sentinel integration in Howler.
