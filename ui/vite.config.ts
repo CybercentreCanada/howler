@@ -1,7 +1,6 @@
 import react from '@vitejs/plugin-react-swc';
 import { defineConfig, loadEnv, ProxyOptions } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
-import { mock } from './setupMock';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -46,8 +45,7 @@ export default defineConfig(({ mode }) => {
             return `export default ${JSON.stringify(code)};`;
           }
         }
-      },
-      env.VITE_API !== 'REST' && mock()
+      }
     ],
     worker: {
       plugins: () => [tsconfigPaths()]
