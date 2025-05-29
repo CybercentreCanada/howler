@@ -66,10 +66,10 @@ jobs:
           poetry install --verbose --with dev
       - name: Run ruff formatting checks
         run: |
-          poetry run ruff format howler --diff
+          poetry run ruff format sentinel --diff
       - name: Run ruff linter checks
         run: |
-          poetry run ruff check howler --output-format=github
+          poetry run ruff check sentinel --output-format=github
       - name: Run type checking
         run: |
           poetry run type_check
