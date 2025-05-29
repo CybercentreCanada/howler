@@ -67,7 +67,7 @@
   },
   "python.defaultInterpreterPath": "${workspaceFolder}/api/.venv/bin/python",
   "python.analysis.autoImportCompletions": true,
-  "python.analysis.exclude": ["**/build"],
+  "python.analysis.exclude": ["**/build", "plugins/*/.venv"],
   "python.analysis.autoFormatStrings": true,
   "python.analysis.completeFunctionParens": true,
   "mypy-type-checker.ignorePatterns": [
@@ -75,7 +75,7 @@
     "plugins/*/test/**/*.py"
   ],
   "ruff.configurationPreference": "filesystemFirst",
-  "python.analysis.extraPaths": ["./api/test"],
+  "python.analysis.extraPaths": ["./api/test", "./plugins/sentinel"],
   // "flake8.cwd": "${workspaceFolder}/api",
   "flake8.cwd": "${fileDirname}",
   "editor.formatOnSaveMode": "modificationsIfAvailable",
