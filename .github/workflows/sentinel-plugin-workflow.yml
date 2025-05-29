@@ -140,7 +140,7 @@ jobs:
           poetry run sigma
       - name: Run tests
         run: |
-          poetry run pytest --cov=sentinel --cov-branch --cov-config=.coveragerc.pytest -rP -vv
+          poetry run pytest --cov=sentinel --cov-branch -rP -vv
       - name: Coverage Results
         run: |
           git diff --name-only $BASE_SHA..$HEAD_SHA
