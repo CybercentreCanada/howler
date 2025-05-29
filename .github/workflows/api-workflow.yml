@@ -11,6 +11,8 @@ on:
       - "api/**"
       - "!api/LICENSE"
       - "!api/README.md"
+      - "!api/doc/**"
+      - "!api/build_scripts/generate_classes.py"
       - .github/workflows/api-workflow.yml
     tags:
       - v*
@@ -24,6 +26,8 @@ on:
       - "api/**"
       - "!api/LICENSE"
       - "!api/README.md"
+      - "!api/doc/**"
+      - "!api/build_scripts/generate_classes.py"
       - .github/workflows/api-workflow.yml
   workflow_dispatch: {}
 
