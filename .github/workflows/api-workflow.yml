@@ -268,10 +268,11 @@ jobs:
         with:
           images: cccsaurora/howler-api
           tags: |
-            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
-            type=semver,pattern={{version}},enabled=${{ startsWith(github.ref, 'refs/tags') }}
-            type=semver,pattern={{version}},suffix=_{{branch}}
-            type=semver,pattern={{version}},suffix=_{{branch}}_{{sha}}
+            type=raw,event=branch,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+            type=raw,event=tag,value=latest
+            type=semver,event=tag,pattern={{version}}
+            type=semver,event=branch,pattern={{version}},suffix=_{{branch}}
+            type=semver,event=branch,pattern={{version}},suffix=_{{branch}}_{{sha}}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
