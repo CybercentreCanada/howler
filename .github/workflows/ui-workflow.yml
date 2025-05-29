@@ -1,4 +1,4 @@
-name: Howler API
+name: Howler UI
 
 on:
   push:
@@ -73,7 +73,7 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    name: Build Howler API Docker Image
+    name: Build Howler UI Docker Image
 
     needs:
       - formatting
@@ -134,7 +134,7 @@ jobs:
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Build and push API Docker image
+      - name: Build and push UI Docker image
         id: push
         uses: docker/build-push-action@v3
         with:
