@@ -132,6 +132,7 @@ jobs:
           sudo chmod a+rw /var/log/howler
           cp build_scripts/classification.yml /etc/howler/conf/classification.yml
           cp test/unit/config.yml /etc/howler/conf/config.yml
+        working-directory: api
       - name: Install Dependencies
         run: |
           poetry install --verbose --with test
