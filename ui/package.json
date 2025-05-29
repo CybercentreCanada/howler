@@ -1,8 +1,16 @@
 {
-  "name": "howler-ui",
-  "version": "2.12.0",
-  "private": true,
-  "type": "module",
+  "browserslist": {
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ],
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ]
+  },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/modifiers": "^7.0.0",
@@ -61,28 +69,6 @@
     "uuid": "^9.0.1",
     "web-vitals": "^4.2.4"
   },
-  "scripts": {
-    "preinstall": "npx only-allow pnpm",
-    "server": "node server/index.js",
-    "dev": "vite -l info",
-    "start": "vite -l info",
-    "build": "vite build",
-    "build-all": "tsc && vite build",
-    "serve": "vite preview",
-    "prepare": "npx husky"
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
-  },
   "devDependencies": {
     "@iconify/icons-logos": "^1.2.36",
     "@iconify/icons-simple-icons": "^1.2.74",
@@ -113,7 +99,6 @@
     "eslint-plugin-react-hooks": "^4.6.2",
     "eslint-plugin-react-refresh": "^0.4.19",
     "http-proxy-middleware": "^2.0.7",
-    "husky": "^9.1.7",
     "lint-staged": "^15.5.0",
     "prettier": "^3.5.3",
     "prettier-plugin-organize-imports": "^3.2.4",
@@ -121,14 +106,6 @@
     "typescript": "^5.8.2",
     "vite": "^5.4.15",
     "vite-tsconfig-paths": "^4.3.2"
-  },
-  "overrides": {
-    "handlebars-async-helpers": {
-      "handlebars": "4.*"
-    }
-  },
-  "resolutions": {
-    "internal-slot": "1.0.7"
   },
   "jest": {
     "transformIgnorePatterns": [
@@ -139,5 +116,26 @@
     "*.{ts,tsx,js,jsx}": [
       "prettier --write"
     ]
-  }
+  },
+  "name": "howler-ui",
+  "overrides": {
+    "handlebars-async-helpers": {
+      "handlebars": "4.*"
+    }
+  },
+  "private": true,
+  "resolutions": {
+    "internal-slot": "1.0.7"
+  },
+  "scripts": {
+    "build": "vite build",
+    "build-all": "tsc && vite build",
+    "dev": "vite -l info",
+    "preinstall": "npx only-allow pnpm",
+    "serve": "vite preview",
+    "server": "node server/index.js",
+    "start": "vite -l info"
+  },
+  "type": "module",
+  "version": "2.12.0"
 }
