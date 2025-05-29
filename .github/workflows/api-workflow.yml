@@ -175,7 +175,7 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    name: Build Howler Sentinel Plugin Python Package
+    name: Build Howler API Python Package
 
     needs:
       - formatting
@@ -183,7 +183,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: ./plugins/sentinel
+        working-directory: ./api
 
     steps:
       - name: Checkout develop
