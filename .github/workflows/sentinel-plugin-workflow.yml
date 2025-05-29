@@ -172,11 +172,6 @@ jobs:
       run:
         working-directory: ./plugins/sentinel
 
-    permissions:
-      id-token: write
-      contents: read
-      attestations: write
-
     steps:
       - name: Checkout develop
         uses: actions/checkout@v4
