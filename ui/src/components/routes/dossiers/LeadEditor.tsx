@@ -18,7 +18,7 @@ const LeadEditor: FC<{ lead?: Lead; update: (lead: Partial<Lead>) => void }> = (
   const { config } = useContext(ApiConfigContext);
 
   const icon = useMemo(() => lead?.icon ?? 'material-symbols:find-in-page', [lead?.icon]);
-  const metadata = useMemo(() => JSON.parse(lead?.metadata ?? '{}'), [lead?.metadata]);
+  // const metadata = useMemo(() => JSON.parse(lead?.metadata ?? '{}'), [lead?.metadata]);
 
   useEffect(() => {
     if (!monaco) {
