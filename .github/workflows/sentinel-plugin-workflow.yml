@@ -1,0 +1,219 @@
+name: Howler Plugin - Sentinel
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - rc/*
+      - patch/*
+    paths:
+      - "plugins/sentinel/**"
+      - "!plugins/sentinel/README.md"
+      - .github/workflows/sentinel-plugin-workflow.yml
+    tags:
+      - v*
+  pull_request:
+    branches:
+      - main
+      - develop
+      - rc/*
+      - patch/*
+    paths:
+      - "plugins/sentinel/**"
+      - "!plugins/sentinel/README.md"
+      - .github/workflows/sentinel-plugin-workflow.yml
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  formatting:
+    name: Validate Howler Sentinel Plugin Code Quality
+
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: plugins/sentinel
+    steps:
+      - name: Checkout develop
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+      - name: Checkout current ref
+        uses: actions/checkout@v4
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Poetry
+        uses: abatilo/actions-poetry@v4
+      - uses: actions/cache@v3
+        name: Define a cache for the virtual environment based on the dependencies lock file
+        with:
+          path: ./plugins/sentinel/.venv
+          key: venv-${{ hashFiles('plugins/sentinel/poetry.lock') }}
+      - name: Check for poetry config integrity
+        run: |
+          poetry --version
+          poetry env use 3.12
+          poetry check
+          poetry env info
+      - name: Install Dependencies
+        run: |
+          poetry install --verbose --with test
+      - name: Run ruff formatting checks
+        run: |
+          poetry run ruff format howler --diff
+      - name: Run ruff linter checks
+        run: |
+          poetry run ruff check howler --output-format=github
+      - name: Run type checking
+        run: |
+          poetry run type_check
+      - name: "Update poetry version"
+        run: |
+          poetry run python build_scripts/set_version.py
+        env:
+          BRANCH: ${{ github.ref }}
+          BUILD_ID: ${{ github.run_number }}
+  test:
+    runs-on: ubuntu-latest
+
+    name: Run Howler Sentinel Plugin Unit Tests
+
+    needs: formatting
+
+    defaults:
+      run:
+        working-directory: plugins/sentinel
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - name: Get base depth of PR
+        if: github.event_name == 'pull_request'
+        id: base-depth
+        working-directory: .
+        run: |
+          echo "base-depth=$(expr ${{ github.event.pull_request.commits }} + 1)" >> $GITHUB_OUTPUT
+      - name: Checkout current ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: ${{ steps.base-depth.outputs.base-depth }}
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Check for valid merge base
+        run: |
+          git status
+          git diff $BASE_SHA..$HEAD_SHA
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      - name: Spin up test dependencies
+        uses: hoverkraft-tech/compose-action@v2.2.0
+        with:
+          compose-file: "plugins/sentinel/dev/docker-compose.yml"
+          up-flags: "--build"
+      - name: Install Poetry
+        uses: abatilo/actions-poetry@v4
+      - uses: actions/cache@v3
+        name: Define a cache for the virtual environment based on the dependencies lock file
+        with:
+          path: ./plugins/sentinel/.venv
+          key: venv-${{ hashFiles('plugins/sentinel/poetry.lock') }}
+      - name: Setup Environment
+        run: |
+          sudo mkdir -p /etc/howler/conf/
+          sudo mkdir -p /etc/howler/lookups/
+          sudo mkdir -p /var/log/howler
+          sudo chmod a+rw /etc/howler/conf/
+          sudo chmod a+rw /etc/howler/lookups/
+          sudo chmod a+rw /var/log/howler
+          cp build_scripts/classification.yml /etc/howler/conf/classification.yml
+          cp test/unit/config.yml /etc/howler/conf/config.yml
+      - name: Install Dependencies
+        run: |
+          poetry install --verbose --with test
+          poetry run mitre /etc/howler/lookups
+          poetry run sigma
+      - name: Ensure keycloak is healthy
+        run: |
+          poetry run python build_scripts/keycloak_health.py
+      - name: Run tests
+        run: |
+          poetry run test
+      - name: Coverage Results
+        run: |
+          git diff --name-only $BASE_SHA..$HEAD_SHA
+          git diff $BASE_SHA..$HEAD_SHA > diff.txt
+          poetry run coverage_report
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GIT_BRANCH: ${{ github.event.pull_request.head.ref }}
+
+      - name: Add Coverage PR Comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: github.event_name == 'pull_request' && matrix.python-version == '3.12'
+        with:
+          recreate: true
+          path: plugins/sentinel/coverage-results.md
+  push_to_pypi:
+    if: github.event_name != 'pull_request'
+
+    runs-on: ubuntu-latest
+
+    name: Build Howler Sentinel Plugin Python Package
+
+    needs:
+      - formatting
+      - test
+
+    defaults:
+      run:
+        working-directory: ./plugins/sentinel
+
+    permissions:
+      id-token: write
+      contents: read
+      attestations: write
+
+    steps:
+      - name: Checkout develop
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+      - name: Checkout current ref
+        uses: actions/checkout@v4
+      - name: Install Poetry
+        uses: abatilo/actions-poetry@v4
+      - uses: actions/cache@v3
+        name: Define a cache for the virtual environment based on the dependencies lock file
+        with:
+          path: ./plugins/sentinel/.venv
+          key: venv-${{ hashFiles('plugins/sentinel/poetry.lock') }}
+      - name: Install Dependencies
+        run: |
+          poetry install
+      - name: "Update poetry version"
+        run: |
+          poetry run python build_scripts/set_version.py
+        env:
+          BRANCH: ${{ github.ref }}
+          BUILD_ID: ${{ github.run_number }}
+      - name: Build Package
+        run: |
+          poetry install
+          poetry build
+      - name: Configure Poetry for PyPI
+        run: poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
+      - name: Publish the package to PyPI
+        if: github.event_name != 'pull_request'
+        run: |
+          poetry publish
