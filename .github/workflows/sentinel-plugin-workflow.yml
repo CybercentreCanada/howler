@@ -138,12 +138,9 @@ jobs:
           poetry install --verbose --with dev
           poetry run mitre /etc/howler/lookups
           poetry run sigma
-      - name: Ensure keycloak is healthy
-        run: |
-          poetry run python build_scripts/keycloak_health.py
       - name: Run tests
         run: |
-          poetry run test
+          poetry run pytest --cov=sentinel --cov-branch --cov-config=.coveragerc.pytest -rP -vv
       - name: Coverage Results
         run: |
           git diff --name-only $BASE_SHA..$HEAD_SHA
