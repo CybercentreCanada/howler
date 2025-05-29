@@ -20,3 +20,4 @@ repos:
         entry: ui/build_scripts/lint_staged.sh
         language: script
         stages: [pre-commit]
+        files: ^ui/.*

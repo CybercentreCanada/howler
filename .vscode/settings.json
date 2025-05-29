@@ -70,12 +70,16 @@
   "python.analysis.exclude": ["**/build"],
   "python.analysis.autoFormatStrings": true,
   "python.analysis.completeFunctionParens": true,
-  "mypy-type-checker.ignorePatterns": ["api/test/**/*.py"],
+  "mypy-type-checker.ignorePatterns": [
+    "api/test/**/*.py",
+    "plugins/*/test/**/*.py"
+  ],
   "ruff.configurationPreference": "filesystemFirst",
   "python.analysis.extraPaths": ["./api/test"],
-  "flake8.cwd": "${workspaceFolder}/api",
+  // "flake8.cwd": "${workspaceFolder}/api",
+  "flake8.cwd": "${fileDirname}",
   "editor.formatOnSaveMode": "modificationsIfAvailable",
-  "mypy-type-checker.cwd": "${workspaceFolder}/api",
+  "mypy-type-checker.cwd": "${nearestConfig}",
   "python.analysis.typeEvaluation.strictListInference": true,
   "python.analysis.typeEvaluation.strictDictionaryInference": true,
   "eslint.workingDirectories": [
