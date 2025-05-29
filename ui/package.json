@@ -98,7 +98,7 @@
     "eslint-plugin-react": "^7.37.4",
     "eslint-plugin-react-hooks": "^4.6.2",
     "eslint-plugin-react-refresh": "^0.4.19",
-    "http-proxy-middleware": "^2.0.7",
+    "http-proxy-middleware": "^2.0.9",
     "lint-staged": "^15.5.0",
     "prettier": "^3.5.3",
     "prettier-plugin-organize-imports": "^3.2.4",
