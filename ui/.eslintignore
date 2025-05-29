@@ -1,0 +1,6 @@
+ui/src/commons/*
+ui/src/commons_deprecated/*
+ui/build/*
+ui/src/react-app-env.d.ts
+ui/src/serviceWorker.ts
+ui/src/config-overrides.js

@@ -1,0 +1,13 @@
+{
+  "route.help.client.description": "Cette documentation explique comment interagir avec l'API howler à l'aide du client howler dans les environnements de développement Java et Python. Nous décrirons le processus de base de création d'un nouveau résultat dans chaque environnement ainsi que la recherche dans howler des résultats correspondant à votre requête.",
+  "route.help.hit.description": "Cette documentation détaille plusieurs parties de l'acquisition, de l'affichage et de l'interaction avec les résultats.",
+  "route.help.search.description": "Explications et aide pour la recherche de résultats dans Howler, y compris la syntaxe et les exemples.",
+  "route.help.views.description": "Les vues sont une fonctionnalité de Howler qui permet aux utilisateurs de créer des requêtes personnalisées par défaut à travers lesquelles ils peuvent organiser et trier les résultats. Dans ce document, nous décrirons comment créer, mettre à jour, interagir avec et supprimer des vues.",
+  "route.help.templates.description": "Une explication de l'utilisation des modèles Howler pour afficher des données personnalisées sur les résultats d'une analyse donnée.",
+  "route.help.auth.description": "L'API de Howler prend en charge un certain nombre d'approches d'authentification lors de l'accès à l'API. Ce document présente les différentes approches et explique comment utiliser chacune d'entre elles.",
+  "route.help.actions.description": "Les actions sont une fonctionnalité de Howler qui permet aux utilisateurs d'effectuer des tâches particulières sur un grand nombre d'occurrences, en automatisant l'exécution d'une tâche sur chaque occurrence. Ce document explique comment utiliser les actions dans Howler.",
+  "route.help.api.description": "Une vue d'ensemble de l'API de Howler et de ses composants.",
+  "route.help.notebook.description": "Howler offre la possibilité d'ajouter des blocs-notes aux analyses pour faciliter le triage des hits et des alertes. Ce document explique comment utiliser les blocs-notes dans Howler.",
+  "route.help.overviews.description": "Howler offre la possibilité de personnaliser la présentation des données associées à une alerte en utilisant des vues d'ensemble. Cet article explique les bases de la création et de l'utilisation des vues d'ensemble.",
+  "route.help.retention.description": "Afin de se conformer au règlement, Howler est configuré pour purger les alertes périmées après une période de temps spécifique. Cet article explique comment fonctionne cette systeme."
+}

@@ -7,6 +7,8 @@
     "ms-python.mypy-type-checker",
     "ms-python.vscode-pylance",
     "charliermarsh.ruff",
-    "github.vscode-github-actions"
+    "github.vscode-github-actions",
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint"
   ]
 }

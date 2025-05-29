@@ -1,0 +1,159 @@
+name: Howler UI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - rc/*
+      - patch/*
+    paths:
+      - "ui/**"
+      - "!ui/LICENSE"
+      - "!ui/README.md"
+      - .github/workflows/ui-workflow.yml
+    tags:
+      - v*
+  pull_request:
+    branches:
+      - main
+      - develop
+      - rc/*
+      - patch/*
+    paths:
+      - "ui/**"
+      - "!ui/LICENSE"
+      - "!ui/README.md"
+      - .github/workflows/ui-workflow.yml
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  formatting:
+    name: Validate Howler UI Code Quality
+
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
+    steps:
+      - name: Checkout current ref
+        uses: actions/checkout@v4
+      - name: Install Node v20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install pnpm v10
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Get pnpm store path
+        id: pnpm-cache-dir
+        run: echo "PNPM_CACHE_DIR=$(pnpm store path)" >> $GITHUB_OUTPUT
+      - uses: actions/cache@v3
+        name: Define a cache for node_modules
+        with:
+          path: |
+            ${{ steps.pnpm-cache-dir.outputs.PNPM_CACHE_DIR }}
+            ~/.pnpm-store # Fallback for older pnpm versions or specific configurations
+            ui/node_modules
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run prettier formatting checks
+        run: |
+          npx prettier@^3.2.5 -c src
+      - name: Run eslint linter checks
+        run: |
+          npx eslint@8 src
+
+  push_to_registry:
+    if: github.event_name != 'pull_request'
+
+    runs-on: ubuntu-latest
+
+    name: Build Howler UI Docker Image
+
+    needs:
+      - formatting
+
+    defaults:
+      run:
+        working-directory: ./ui
+
+    permissions:
+      id-token: write
+      contents: read
+      attestations: write
+
+    steps:
+      - name: Checkout current ref
+        uses: actions/checkout@v4
+      - name: Install Node v20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install pnpm v10
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Get pnpm store path
+        id: pnpm-cache-dir
+        run: echo "PNPM_CACHE_DIR=$(pnpm store path)" >> $GITHUB_OUTPUT
+      - uses: actions/cache@v3
+        name: Define a cache for node_modules
+        with:
+          path: |
+            ${{ steps.pnpm-cache-dir.outputs.PNPM_CACHE_DIR }}
+            ~/.pnpm-store # Fallback for older pnpm versions or specific configurations
+            ui/node_modules
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build UI
+        run: |
+          pnpm build
+        env:
+          VITE_BRANCH: ${{ github.ref }}
+          VITE_COMMIT_HASH: ${{ github.sha }}
+          NODE_OPTIONS: --max-old-space-size=16384
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: cccsaurora/howler-ui
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build and push UI Docker image
+        id: push
+        uses: docker/build-push-action@v3
+        with:
+          context: ui
+          file: ui/docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            version=${{ steps.meta.outputs.version }}
+            branch=${{ github.ref }}
+            commit=${{ github.sha }}
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: index.docker.io/cccsaurora/howler-ui
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
