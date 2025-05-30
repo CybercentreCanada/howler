@@ -94,7 +94,7 @@ def flatten(data: _Mapping, parent_key: Optional[str] = None, odm: Optional[type
 
 
 def unflatten(data: _Mapping) -> _Mapping:
-    "Unflatted a nested dict"
+    "Unflatten a nested dict"
     out: dict[str, Any] = dict()
     for k, v in data.items():
         parts = k.split(".")
@@ -105,6 +105,36 @@ def unflatten(data: _Mapping) -> _Mapping:
             d = d[p]
         d[parts[-1]] = v
     return out
+
+
+def extra_keys(data: _Mapping, keys: set[str], parent_key: Optional[str] = None) -> set[str]:
+    "Geta list of extra keys when compared to a list of permitted keys"
+    result: set[str] = set()
+    for key in data.keys():
+        if isinstance(data[key], dict):
+            result = result | extra_keys(
+                data[key],
+                {sub_key[(len(sub_key) + 1) :] for sub_key in keys if sub_key.startswith(f"{key}.")},
+                parent_key=key if not parent_key else f"{parent_key}.{key}",
+            )
+        elif isinstance(data[key], list):
+            if key in keys:
+                continue
+
+            for entry in data[key]:
+                if not isinstance(entry, dict):
+                    result.add(key if not parent_key else f"{parent_key}.{key}")
+                    break
+                else:
+                    result = result | extra_keys(
+                        entry,
+                        {sub_key[(len(key) + 1) :] for sub_key in keys if sub_key.startswith(f"{key}.")},
+                        parent_key=key if not parent_key else f"{parent_key}.{key}",
+                    )
+        elif key not in keys:
+            result.add(key if not parent_key else f"{parent_key}.{key}")
+
+    return result
 
 
 def prune(  # noqa: C901

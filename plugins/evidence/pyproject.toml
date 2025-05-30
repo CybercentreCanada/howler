@@ -1,0 +1,154 @@
+[project]
+name = "howler-evidence-plugin"
+version = "0.1.0"
+description = "A howler plugin to add additional nested ECS fields to the Howler ODM"
+authors = [{ name = "CCCS", email = "analysis-development@cyber.gc.ca" }]
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.9.17, <4.0"
+
+######################
+# autoflake settings #
+######################
+[tool.autoflake]
+check = true
+
+##################
+# Black settings #
+##################
+[tool.black]
+line-length = 120
+
+########################
+# coverage.py settings #
+########################
+[tool.coverage.run]
+branch = true
+sigterm = true
+data_file = ".coverage"
+
+[tool.coverage.report]
+exclude_also = [
+    "def __repr__",
+    "if DEBUG:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@(abc\\.)?abstractmethod]",
+    "if \"pytest\" in sys.modules:",
+]
+
+#################
+# Mypy settings #
+#################
+[tool.mypy]
+warn_unused_configs = true
+ignore_missing_imports = true
+check_untyped_defs = true
+disable_error_code = "no-redef"
+exclude = "test"
+
+[[tool.mypy.overrides]]
+module = "howler.odm.models.*"
+disable_error_code = "assignment"
+
+[[tool.mypy.overrides]]
+module = ["howler.odm.base", "test", "test.*"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "howler.security"
+disable_error_code = "attr-defined"
+
+[[tool.mypy.overrides]]
+module = "howler.odm.helper"
+disable_error_code = "union-attr"
+
+[[tool.mypy.overrides]]
+module = "howler.common.classification"
+disable_error_code = "assignment"
+
+[[tool.mypy.overrides]]
+module = "requests"
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+target-version = "py39"
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "W",
+    "C901",
+    "I",
+    "N",
+    "D1",
+    "D2",
+    "ANN",
+    "S",
+    "T20",
+    "PIE",
+    "FLY",
+    "TRY",
+]
+ignore = [
+    "ANN003",
+    "ANN201",
+    "ANN401",
+    "D100",
+    "D104",
+    "D105",
+    "D107",
+    "D203",
+    "D213",
+    "N818",
+    "S603",
+    "TRY003",
+    "TRY300",
+]
+exclude = ["howler/patched.py"]
+
+[tool.ruff.lint.flake8-annotations]
+ignore-fully-untyped = true
+mypy-init-return = true
+suppress-dummy-args = true
+suppress-none-returning = true
+
+[tool.ruff.lint.per-file-ignores]
+"evidence/**/__init__.py" = ["F401"]
+"evidence/odm/hit.py" = ["S311"]
+"evidence/odm/models/*" = ["D", "ANN", "C901"]
+"test/*" = ["D", "ANN", "S", "N818", "TRY", "PIE", "E402"]
+"build_scripts/*" = ["D", "ANN", "S", "N818", "T20", "TRY"]
+
+[tool.poetry]
+packages = [{ include = "evidence" }]
+
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.11.7"
+mypy = "^1.15.0"
+pre-commit = "^4.2.0"
+howler-api = { path = "../../api" }
+pytest = "^8.3.5"
+mock = "^5.2.0"
+pytest-cov = "^6.1.1"
+coverage = { extras = ["toml"], version = "^7.8.0" }
+diff-cover = "^9.2.4"
+python-dotenv = "^1.1.0"
+
+
+[tool.poetry.group.types.dependencies]
+types-mock = "^5.2.0.20250516"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+type_check = "build_scripts.type_check:main"

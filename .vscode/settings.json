@@ -75,7 +75,11 @@
     "plugins/*/test/**/*.py"
   ],
   "ruff.configurationPreference": "filesystemFirst",
-  "python.analysis.extraPaths": ["./api/test", "./plugins/sentinel"],
+  "python.analysis.extraPaths": [
+    "./api/test",
+    "./plugins/sentinel",
+    "./plugins/evidence"
+  ],
   // "flake8.cwd": "${workspaceFolder}/api",
   "flake8.cwd": "${fileDirname}",
   "editor.formatOnSaveMode": "modificationsIfAvailable",

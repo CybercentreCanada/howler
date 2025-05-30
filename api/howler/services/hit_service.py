@@ -8,12 +8,7 @@ from prometheus_client import Counter
 
 import howler.services.event_service as event_service
 from howler.actions.promote import Escalation
-from howler.common.exceptions import (
-    HowlerTypeError,
-    HowlerValueError,
-    NotFoundException,
-    ResourceExists,
-)
+from howler.common.exceptions import HowlerTypeError, HowlerValueError, NotFoundException, ResourceExists
 from howler.common.loader import APP_NAME, datastore
 from howler.common.logging import get_logger
 from howler.datastore.collection import ESCollection
@@ -33,15 +28,10 @@ from howler.helper.workflow import Transition, Workflow
 from howler.odm.base import BANNED_FIELDS
 from howler.odm.models.ecs.event import Event
 from howler.odm.models.hit import Hit
-from howler.odm.models.howler_data import (
-    HitOperationType,
-    HitStatus,
-    HitStatusTransition,
-    Log,
-)
+from howler.odm.models.howler_data import HitOperationType, HitStatus, HitStatusTransition, Log
 from howler.odm.models.user import User
 from howler.services import action_service
-from howler.utils.dict_utils import flatten
+from howler.utils.dict_utils import extra_keys, flatten
 from howler.utils.uid import get_random_id
 
 log = get_logger(__file__)
@@ -313,7 +303,8 @@ def convert_hit(data: dict[str, Any], unique: bool, ignore_extra_values: bool = 
 
     # Check for deprecated field and unused fields
     odm_flatten = odm.flat_fields(show_compound=True)
-    unused_keys = set(data.keys()) - set(odm_flatten.keys()) - BANNED_FIELDS
+    unused_keys = extra_keys(data, set(odm_flatten.keys()) - BANNED_FIELDS)
+
     if unused_keys and not ignore_extra_values:
         raise HowlerValueError(f"Hit was created with invalid parameters: {', '.join(unused_keys)}")
     deprecated_keys = set(key for key in odm_flatten.keys() & data.keys() if odm_flatten[key].deprecated)
