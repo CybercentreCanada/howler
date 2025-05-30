@@ -31,7 +31,7 @@ permissions:
 
 jobs:
   formatting:
-    name: Validate Howler Fvidence Plugin Code Quality
+    name: Validate Howler Evidence Plugin Code Quality
 
     runs-on: ubuntu-latest
     defaults:
