@@ -1,6 +1,6 @@
 [project]
 name = "howler-sentinel-plugin"
-version = "0.1.0"
+version = "0.2.0"
 description = "A howler plugin for integration with Microsoft's Sentinel API"
 authors = [{ name = "CCCS", email = "analysis-development@cyber.gc.ca" }]
 license = { text = "MIT" }
