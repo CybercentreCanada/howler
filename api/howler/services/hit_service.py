@@ -31,7 +31,7 @@ from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import HitOperationType, HitStatus, HitStatusTransition, Log
 from howler.odm.models.user import User
 from howler.services import action_service
-from howler.utils.dict_utils import flatten
+from howler.utils.dict_utils import extra_keys, flatten
 from howler.utils.uid import get_random_id
 
 log = get_logger(__file__)
@@ -303,7 +303,7 @@ def convert_hit(data: dict[str, Any], unique: bool, ignore_extra_values: bool = 
 
     # Check for deprecated field and unused fields
     odm_flatten = odm.flat_fields(show_compound=True)
-    unused_keys = set(data.keys()) - set(odm_flatten.keys()) - BANNED_FIELDS
+    unused_keys = extra_keys(data, set(odm_flatten.keys()) - BANNED_FIELDS)
 
     if unused_keys and not ignore_extra_values:
         raise HowlerValueError(f"Hit was created with invalid parameters: {', '.join(unused_keys)}")

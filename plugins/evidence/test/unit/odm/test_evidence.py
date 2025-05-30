@@ -1,7 +1,9 @@
+import pytest
+from howler.common.exceptions import HowlerValueError
 from howler.services import hit_service
 
 
-def test_build_sentinel_alert():
+def test_build_evidence_alert():
     hit, warnings = hit_service.convert_hit(
         {
             "howler.analytic": "Evidence Example Analytic",
@@ -16,8 +18,8 @@ def test_build_sentinel_alert():
 
     hit, warnings = hit_service.convert_hit(
         {
-            "howler.analytic": "Evidence Example Analytic 2",
-            "evidence": [{"agent.id": "potato"}],
+            "howler.analytic": "Evidence Example Analytic Part Two",
+            "evidence": [{"agent.id": "potato"}, {"agent.id": "potato"}],
         },
         unique=False,
     )
@@ -25,3 +27,14 @@ def test_build_sentinel_alert():
     assert hit.evidence[0].agent.id == "potato"
 
     assert len(warnings) == 0
+
+    with pytest.raises(HowlerValueError) as err:
+        hit_service.convert_hit(
+            {
+                "howler.analytic": "Evidence Example Analytic Part Two",
+                "evidence": [{"agent.id": "potato"}, {"agent.nope": "potato"}],
+            },
+            unique=False,
+        )
+
+    assert "nope" in str(err)
