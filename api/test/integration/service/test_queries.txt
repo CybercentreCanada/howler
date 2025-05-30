@@ -9,7 +9,10 @@ process.start:"2025-03-27T11:52:37.477958Z"
 howler.hash:("cb1b6fa65d4b94a7aa36993f5e9f97ff36f678c6062a" OR "8f201fc890fd6") AND howler.volume:(171.69 OR 2930.79) OR event.count:(3326 AND 3531) OR faas.name:"constantly.gif" OR http.request.body.content:("vendors" OR "an") OR http.response.body.bytes:(1964 OR 1823) OR interface.id:(3531 OR 908) OR process.hash.sha384:("137a34b34923846d630b27c6581f17b86e88439f0ea6f1eac8e56e13b2f8b93b6d2dbadbfb59d8ed6cc1657714fbb1ce" OR "06d0208ebbfea2c8aa86577346239abda06800a7ac29d9eee101e6bf2d8dd58da1defc58a176acf2afe64fce0e4bfc96")
 
 # lists and ranges
+_exists_:dns.resolved_ip
 dns.resolved_ip:("63.36.63.181" OR "252.132.243.87")
+howler.comment.id:*
+_exists_:howler.comment.id
 
 azure.subscription_id:"26v6ZFSCIFSFxuDlUY2wW0" OR cloud.account.name:("support_cutting_are.gif" OR "to_programs_enhanced.exe") AND source.mac:("d1:e5:3c:51:d2:51" OR "1a:1d:13:04:ae:0a") OR threat.indicator.file.gid:"collaborating"
 
@@ -54,3 +57,7 @@ process.working_directory:"also/to/visit/edge"
 (file.elf.header.data:is AND process.working_directory:"also/to/visit/edge") AND related.ip:("199.62.243.193" OR "85.242.133.188")
 (howler.labels.operation:"OP_HOWLER" AND file.elf.header.data:("is" OR "testing") AND process.working_directory:("also/to/visit/edge" OR "us/technologies")) AND related.ip:("199.62.243.193" OR "85.242.133.188") AND source.user.roles:("edge" OR "order")
 user_agent.original:"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101 Firefox/102.0"
+
+# List Issues
+howler.analytic:*Exploit* AND _exists_:howler.incidents
+_exists_:howler.noexist

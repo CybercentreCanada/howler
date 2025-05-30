@@ -12,13 +12,13 @@ from luqum.parser import parser
 from luqum.tree import AndOperation, BoolOperation, Phrase, Plus, Prohibit, Range, SearchField, Word
 from luqum.utils import UnknownOperationResolver
 from luqum.visitor import TreeVisitor
-from pydash import get
 
 from howler.api import get_logger
 from howler.common.exceptions import InvalidDataException
 from howler.common.loader import datastore
 from howler.config import redis
 from howler.remote.datatypes.hash import Hash
+from howler.utils.dict_utils import flatten_deep
 from howler.utils.lucene import coerce, normalize_phrase, try_parse_date, try_parse_ip
 
 logger = get_logger(__file__)
@@ -108,7 +108,7 @@ class LuceneProcessor(TreeVisitor):
 
     def visit_range(self, node: Range, context: dict[str, Any]):
         "Handle range queries"
-        low, value, high = self.__parse_range(node.high.value, get(context["hit"], context["field"]), node.low.value)
+        low, value, high = self.__parse_range(node.high.value, context["hit"].get(context["field"]), node.low.value)
 
         if isinstance(value, list):
             values = value
@@ -159,10 +159,10 @@ class LuceneProcessor(TreeVisitor):
 
         if "field" not in context:
             yield any(value == sanitized_value for value in context["hit"].values())
-        elif context["field"] == "_exists_" or node.value == "*":
-            yield get(context["hit"], node.value) is not None
+        elif context["field"] == "_exists_":
+            yield context["hit"].get(node.value) is not None
         else:
-            candidates = self.__build_candidates(get(context["hit"], context["field"]), context["term_type"])
+            candidates = self.__build_candidates(context["hit"].get(context["field"]), context["term_type"])
 
             yield len(fnmatch.filter(candidates, sanitized_value)) > 0
 
@@ -246,7 +246,8 @@ def match(lucene: str, obj: dict[str, Any]):
         normalized_query = cast(str, result["explanations"][0]["explanation"])
 
         # Elastic's explanation mangles exists queries. Since we will handle them the normal way, reset their changes
-        normalized_query = re.sub(r"ConstantScore\(.+?field=(.+?)]\)", r"_exists_:\1", normalized_query)
+        normalized_query = re.sub(r"FieldExistsQuery *\[.*?field=(.+?)]", r"_exists_:\1", normalized_query)
+        normalized_query = re.sub(r"ConstantScore", "", normalized_query)
         # try and reinsert any phrases we have replaced with sha256 hashes
         normalized_query = re.sub(r"([0-9a-f]{64})", try_reinsert_lucene_phrase, normalized_query)
 
@@ -266,7 +267,7 @@ def match(lucene: str, obj: dict[str, Any]):
         tree = UnknownOperationResolver(resolve_to=BoolOperation)(parser.parse(normalized_query))
 
         # Actually run the validation
-        return LuceneProcessor(track_parents=True).visit(tree, {"hit": obj})
+        return LuceneProcessor(track_parents=True).visit(tree, {"hit": flatten_deep(obj)})
     except Exception:
         logger.exception("Exception on processing lucene:")
         return False
