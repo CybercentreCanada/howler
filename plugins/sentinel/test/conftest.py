@@ -4,6 +4,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
+load_dotenv(Path(__file__).parent / ".env.test")
 
 # We append the plugin directory for howler to the python part
 sys.path.insert(0, str(Path.cwd()))

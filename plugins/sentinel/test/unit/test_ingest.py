@@ -23,8 +23,11 @@ def client():
 
 def test_ingest_endpoint(client, caplog):
     with caplog.at_level(logging.INFO):
-        result = client.post("/api/v1/sentinel/ingest", json={"test": True})
+        result = client.post(
+            "/api/v1/sentinel/ingest", json={"test": True}, headers={"Authorization": "Basic test_key"}
+        )
 
+    assert "tes...key" in caplog.text
     assert "{'test': True}" in caplog.text
 
     assert result.json["api_response"] == {"success": True}
