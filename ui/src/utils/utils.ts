@@ -1,6 +1,6 @@
 import * as colors from '@mui/material/colors';
 import { flatten, unflatten } from 'flat';
-import { isArray, isEmpty, isNil, isPlainObject } from 'lodash-es';
+import { isArray, isEmpty, isNil, isObject, isPlainObject } from 'lodash-es';
 import moment from 'moment';
 
 export const bytesToSize = (bytes: number | null) => {
@@ -185,4 +185,38 @@ export const tryParse = (json: string) => {
   } catch (e) {
     return json;
   }
+};
+
+export const flattenDeep = (data: { [index: string]: any }): { [index: string]: any } => {
+  const partialFlat = flatten(data, { safe: true });
+
+  const final: { [index: string]: any } = {};
+  Object.entries(partialFlat).forEach(([key, value]) => {
+    if (!Array.isArray(value) || value.length === 0 || !value.some(entry => isObject(entry))) {
+      final[key] = value;
+    } else {
+      value.forEach(entry => {
+        const flattenedEntry = flattenDeep(entry);
+
+        Object.entries(flattenedEntry).forEach(([childKey, childValue]) => {
+          const fullKey = `${key}.${childKey}`;
+          if (!final[fullKey]) {
+            if (Array.isArray(childValue)) {
+              final[fullKey] = childValue;
+            } else {
+              final[fullKey] = [childValue];
+            }
+          } else {
+            if (Array.isArray(childValue)) {
+              final[fullKey] = [...final[fullKey], ...childValue];
+            } else {
+              final[fullKey].push(childValue);
+            }
+          }
+        });
+      });
+    }
+  });
+
+  return final;
 };
