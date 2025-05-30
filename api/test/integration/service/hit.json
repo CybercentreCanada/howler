@@ -1,1795 +1,1644 @@
 {
-    "agent": {
-        "id": "across",
-        "name": "by.gif",
-        "type": "partnerships",
-        "version": "6.4.2"
-    },
-    "assemblyline": {
-        "antivirus": [
-            {
-                "subtype": "more",
-                "type": "authority",
-                "value": "innovations",
-                "verdict": "also"
-            },
-            {
-                "subtype": "support",
-                "type": "commercial",
-                "value": "in",
-                "verdict": "innovation"
-            },
-            {
-                "subtype": "emerging",
-                "type": "work",
-                "value": "learn",
-                "verdict": "innovative"
-            },
-            {
-                "subtype": "do",
-                "type": "constantly",
-                "value": "security",
-                "verdict": "technical"
-            }
-        ],
-        "attribution": [
-            {
-                "subtype": "us",
-                "type": "more",
-                "value": "technology",
-                "verdict": "Build"
-            },
-            {
-                "subtype": "support",
-                "type": "complex",
-                "value": "edge",
-                "verdict": "across"
-            },
-            {
-                "subtype": "commercial",
-                "type": "our",
-                "value": "by",
-                "verdict": "participating"
-            },
-            {
-                "subtype": "vendors",
-                "type": "edge",
-                "value": "transition",
-                "verdict": "role"
-            }
-        ],
-        "behaviour": [
-            {
-                "subtype": "government",
-                "type": "the",
-                "value": "assist",
-                "verdict": "to"
-            },
-            {
-                "subtype": "cutting",
-                "type": "are",
-                "value": "companies",
-                "verdict": "all"
-            }
-        ],
-        "domain": [
-            {
-                "subtype": "selling",
-                "type": "assist",
-                "value": "enhanced",
-                "verdict": "programs"
-            },
-            {
-                "subtype": "BCIP",
-                "type": "visit",
-                "value": "development",
-                "verdict": "technologies"
-            },
-            {
-                "subtype": "key",
-                "type": "selling",
-                "value": "technical",
-                "verdict": "market"
-            }
-        ],
-        "heuristic": [
-            {
-                "subtype": "For",
-                "type": "academia",
-                "value": "open",
-                "verdict": "open"
-            },
-            {
-                "subtype": "working",
-                "type": "the",
-                "value": "support",
-                "verdict": "invite"
-            },
-            {
-                "subtype": "with",
-                "type": "For",
-                "value": "from",
-                "verdict": "more"
-            },
-            {
-                "subtype": "partnerships",
-                "type": "improve",
-                "value": "tools",
-                "verdict": "enhanced"
-            }
-        ],
-        "mitre": {
-            "tactic": [
-                {
-                    "subtype": "this",
-                    "type": "more",
-                    "value": "vendors",
-                    "verdict": "Innovation"
-                },
-                {
-                    "subtype": "determine",
-                    "type": "vendors",
-                    "value": "cyber",
-                    "verdict": "feedback"
-                }
-            ],
-            "technique": [
-                {
-                    "subtype": "this",
-                    "type": "For",
-                    "value": "industry",
-                    "verdict": "participating"
-                },
-                {
-                    "subtype": "certain",
-                    "type": "country",
-                    "value": "our",
-                    "verdict": "provide"
-                },
-                {
-                    "subtype": "of",
-                    "type": "levels",
-                    "value": "government",
-                    "verdict": "We"
-                },
-                {
-                    "subtype": "One",
-                    "type": "certain",
-                    "value": "companies",
-                    "verdict": "key"
-                }
-            ]
+  "agent": {
+    "id": "across",
+    "name": "by.gif",
+    "type": "partnerships",
+    "version": "6.4.2"
+  },
+  "assemblyline": {
+    "antivirus": [
+      {
+        "subtype": "more",
+        "type": "authority",
+        "value": "innovations",
+        "verdict": "also"
+      },
+      {
+        "subtype": "support",
+        "type": "commercial",
+        "value": "in",
+        "verdict": "innovation"
+      },
+      {
+        "subtype": "emerging",
+        "type": "work",
+        "value": "learn",
+        "verdict": "innovative"
+      },
+      {
+        "subtype": "do",
+        "type": "constantly",
+        "value": "security",
+        "verdict": "technical"
+      }
+    ],
+    "attribution": [
+      {
+        "subtype": "us",
+        "type": "more",
+        "value": "technology",
+        "verdict": "Build"
+      },
+      {
+        "subtype": "support",
+        "type": "complex",
+        "value": "edge",
+        "verdict": "across"
+      },
+      {
+        "subtype": "commercial",
+        "type": "our",
+        "value": "by",
+        "verdict": "participating"
+      },
+      {
+        "subtype": "vendors",
+        "type": "edge",
+        "value": "transition",
+        "verdict": "role"
+      }
+    ],
+    "behaviour": [
+      {
+        "subtype": "government",
+        "type": "the",
+        "value": "assist",
+        "verdict": "to"
+      },
+      {
+        "subtype": "cutting",
+        "type": "are",
+        "value": "companies",
+        "verdict": "all"
+      }
+    ],
+    "domain": [
+      {
+        "subtype": "selling",
+        "type": "assist",
+        "value": "enhanced",
+        "verdict": "programs"
+      },
+      {
+        "subtype": "BCIP",
+        "type": "visit",
+        "value": "development",
+        "verdict": "technologies"
+      },
+      {
+        "subtype": "key",
+        "type": "selling",
+        "value": "technical",
+        "verdict": "market"
+      }
+    ],
+    "heuristic": [
+      {
+        "subtype": "For",
+        "type": "academia",
+        "value": "open",
+        "verdict": "open"
+      },
+      {
+        "subtype": "working",
+        "type": "the",
+        "value": "support",
+        "verdict": "invite"
+      },
+      {
+        "subtype": "with",
+        "type": "For",
+        "value": "from",
+        "verdict": "more"
+      },
+      {
+        "subtype": "partnerships",
+        "type": "improve",
+        "value": "tools",
+        "verdict": "enhanced"
+      }
+    ],
+    "mitre": {
+      "tactic": [
+        {
+          "subtype": "this",
+          "type": "more",
+          "value": "vendors",
+          "verdict": "Innovation"
         },
-        "uri": [
-            {
-                "subtype": "environment",
-                "type": "survey",
-                "value": "are",
-                "verdict": "emerging"
-            },
-            {
-                "subtype": "order",
-                "type": "from",
-                "value": "are",
-                "verdict": "across"
-            },
-            {
-                "subtype": "support",
-                "type": "innovative",
-                "value": "promote",
-                "verdict": "order"
-            },
-            {
-                "subtype": "Centre",
-                "type": "feedback",
-                "value": "assist",
-                "verdict": "partners"
-            }
-        ],
-        "yara": [
-            {
-                "subtype": "is",
-                "type": "feedback",
-                "value": "innovations",
-                "verdict": "testing"
-            },
-            {
-                "subtype": "Innovation",
-                "type": "BCIP",
-                "value": "provide",
-                "verdict": "invite"
-            }
-        ]
-    },
-    "aws": {
-        "account": {
-            "id": "6de9x01SwmQpXsx8nh6wa3",
-            "name": "from_complex.xls"
-        },
-        "organization": {
-            "id": "4qYi2dxcNJLjwFA8zgvGRz",
-            "organizational_unit": "the"
+        {
+          "subtype": "determine",
+          "type": "vendors",
+          "value": "cyber",
+          "verdict": "feedback"
         }
-    },
-    "azure": {
-        "resource_group": "ANALYSTS",
-        "resource_id": "43jZHneiyLN2r8KcvJaLMV",
-        "subscription_id": "3nQEQgnEUl8kkaTbq0uPZz",
-        "tenant_id": "1O15Gd3oKH4zDMoKjEBC7f",
-        "upn": "laboratory"
-    },
-    "cbs": {
-        "sharepoint": {
-            "created": {
-                "application": "Build",
-                "user": "shawnh"
-            },
-            "modified": {
-                "application": "the",
-                "user": "admin"
-            }
+      ],
+      "technique": [
+        {
+          "subtype": "this",
+          "type": "For",
+          "value": "industry",
+          "verdict": "participating"
+        },
+        {
+          "subtype": "certain",
+          "type": "country",
+          "value": "our",
+          "verdict": "provide"
+        },
+        {
+          "subtype": "of",
+          "type": "levels",
+          "value": "government",
+          "verdict": "We"
+        },
+        {
+          "subtype": "One",
+          "type": "certain",
+          "value": "companies",
+          "verdict": "key"
         }
+      ]
     },
-    "cloud": {
-        "account": {
-            "id": "role",
-            "name": "support_cutting_are.gif"
-        },
-        "availability_zone": "constantly",
-        "instance": {
-            "id": "country",
-            "name": "laboratory.exe"
-        },
-        "machine": {
-            "type": "innovation"
-        },
-        "project": {
-            "id": "in",
-            "name": "bcip_vendors_working.ppt"
-        },
-        "provider": "Innovation",
-        "region": "more",
-        "service": {
-            "name": "Office365"
-        },
-        "tenant_id": "1OuaTuuhVEF6XbkwMWdSpG"
-    },
-    "container": {
-        "id": "do",
-        "image": {
-            "hash": {
-                "all": [
-                    "BCIP",
-                    "us"
-                ]
-            },
-            "name": "feedback_from_engaging.pdf",
-            "tag": [
-                "Build",
-                "invite",
-                "goods",
-                "about"
-            ]
-        },
-        "labels": {
-            "key_a": "this"
-        },
-        "name": "do_state.lnk",
-        "runtime": "development"
-    },
-    "destination": {
-        "address": "from",
-        "autonomous_systems": {
-            "number": 3116,
-            "organization_name": "country_in.exe"
-        },
-        "bytes": 361,
-        "domain": "provide.ca",
-        "geo": {
-            "city_name": "security.jpg",
-            "continent_code": "is",
-            "continent_name": "role_environment.xls",
-            "country_iso_code": "order",
-            "country_name": "cutting_their.xls",
-            "location": {
-                "lat": 417.39,
-                "lon": 2387.53
-            },
-            "name": "cyber_private_tools.xls",
-            "postal_code": "working",
-            "region_iso_code": "Cyber",
-            "region_name": "our.xls",
-            "timezone": "partners"
-        },
-        "ip": "22.81.110.166",
-        "mac": "76:ac:67:2a:b1:ed",
-        "nat": {
-            "ip": "31.223.183.132",
-            "port": 2069
-        },
-        "original": {
-            "address": "stays",
-            "autonomous_systems": {
-                "number": 1926,
-                "organization_name": "new_centre_testing.doc"
-            },
-            "bytes": 1907,
-            "domain": "to.edu",
-            "geo": {
-                "city_name": "industry_build.pdf",
-                "continent_code": "learn",
-                "continent_name": "goods.ppt",
-                "country_iso_code": "an",
-                "country_name": "new_but.xls",
-                "location": {
-                    "lat": 1455.47,
-                    "lon": 2972.88
-                },
-                "name": "to_engaging.ppt",
-                "postal_code": "do",
-                "region_iso_code": "We",
-                "region_name": "them.lnk",
-                "timezone": "new"
-            },
-            "ip": "130.125.80.111",
-            "mac": "86:14:f0:54:09:e8",
-            "nat": {
-                "ip": "155.245.179.141",
-                "port": 1670
-            },
-            "packets": 352,
-            "port": 2618
-        },
-        "packets": 4056,
-        "port": 2050,
-        "user": {
-            "domain": "the.ca",
-            "email": "of@role.biz",
-            "full_name": "working.lnk",
-            "group": {
-                "domain": "partners.edu",
-                "id": "authority",
-                "name": "all.gif"
-            },
-            "hash": "key",
-            "id": "in",
-            "name": "them_participating.xls",
-            "roles": [
-                "complex",
-                "examine",
-                "supports"
-            ]
-        }
-    },
-    "dns": {
-        "answers": [
-            {
-                "class": "open",
-                "data": "Government",
-                "name": "innovations.exe",
-                "ttl": 3530,
-                "type": "work"
-            },
-            {
-                "class": "also",
-                "data": "technology",
-                "name": "experts.doc",
-                "ttl": 2874,
-                "type": "defence"
-            },
-            {
-                "class": "certain",
-                "data": "country",
-                "name": "art.jpg",
-                "ttl": 1174,
-                "type": "market"
-            },
-            {
-                "class": "emerging",
-                "data": "invite",
-                "name": "the_services_selling.exe",
-                "ttl": 3978,
-                "type": "open"
-            }
-        ],
-        "header_flags": [
-            "collaborating",
-            "Canada",
-            "country",
-            "The"
-        ],
-        "id": "certain",
-        "op_code": "do",
-        "question": {
-            "class": "testing",
-            "name": "industry_us_innovation.gif",
-            "registered_domain": "build.edu",
-            "subdomain": "academia.com",
-            "top_level_domain": "us.edu",
-            "type": "environment"
-        },
-        "resolved_ip": [
-            "86.40.108.128",
-            "31.19.200.9",
-            "215.150.120.103",
-            "63.36.63.181"
-        ],
-        "response_code": "vendors",
-        "type": "in"
-    },
-    "ecs": {
-        "version": "4.5.3"
-    },
-    "email": {
-        "attachments": [
-            {
-                "file": {
-                    "extension": "innovation",
-                    "hash": {
-                        "md5": "e9a7c465b3dc53f741434b5a6dac71fa",
-                        "sha1": "ec74022ca86b5cfeb02aeb4b3e1a69dbf1be07c7",
-                        "sha256": "724ed572c4f1f845b02c3d330fa5e7c0672e980f110850b8550abd0af958c968",
-                        "sha384": "a21a1be81d3d331741c559feaa78961f5a85d96b28dd65f014d465ebc82fe5cc939ad2e569112d719d56ad4db44124db",
-                        "sha512": "f1dfad45df4eb927d7b2e08698f409e964ab2b44e18c39514ceb09066d9c9cc00a33f8a3fe09d3552f842d33da259523cec47816575f0018d034811e78269fae",
-                        "ssdeep": "50404:gpZwo4eEjD248P2veupMl28fCu843gpJCrRHKY2iyYVUB3wmzBh2iEAfhTL:YfFOw2rHKNVpTuikj50L7lRHNV7bHwsy9Jfibp2GRxElb",
-                        "tlsh": "Canada"
-                    },
-                    "mime_type": "learn",
-                    "name": "bringing.ppt",
-                    "size": 3904
-                }
-            },
-            {
-                "file": {
-                    "extension": "them",
-                    "hash": {
-                        "md5": "074cb46d2a19296a08c48b0fad542bbe",
-                        "sha1": "0cd8a36d7ee4a764bcb0ca07d31ae1d04d4e08dc",
-                        "sha256": "38c607484c54992a2b70d73655032ef8845a189482a3dab94c214dfc24bfb931",
-                        "sha384": "79d5e7e029193c46db6c8a5847135efc10b1df114f738f40759943476fffe8fd2c2c4cba1f2e7c25f57a2e8df5fe7ae8",
-                        "sha512": "09fbe0b62ba4d0e886fcb1549d4b8be615cf9b2bb4cb68704026fc13111b764001f2bf79bc05dd2ab9ce35f1f2ca577121fb2b9c4904c87b619d5850b6592ad1",
-                        "ssdeep": "37055:TL6i9tSuaKtZnJzIVuqqoNNEmdfa9jl9rPFZ61HrCqDB8MjdzZrsSbpiLMzL:oCwZlxSQKhbdXlMTIHzQD936Ef3NF4pZbjEKTs0cO1KPHmeLkp7kpds5LAnojtx",
-                        "tlsh": "provide"
-                    },
-                    "mime_type": "collaborating",
-                    "name": "laboratory.jpg",
-                    "size": 2595
-                }
-            },
-            {
-                "file": {
-                    "extension": "about",
-                    "hash": {
-                        "md5": "6d513e9aebf824268a867efa2728f612",
-                        "sha1": "eece4780015337dd527258191384289a81809162",
-                        "sha256": "37d5de88d2f57c894a54fadbc359bfeab4fdeb318959a6aeb506fafcf6247838",
-                        "sha384": "44d5a6a5292c37a35d6e35e292b254d172fa001101f9ba585f303e8d52140d15c315a9039056f14ee0c66487a87e75cb",
-                        "sha512": "657bb833e00bf98d8fc820f95f9031d5bb231f2acde0e96d3c24bb919751dbe0c5cb57d2ddfb5d7bd46f7e72fe2c23f57a55761a3acd82cf6c3ab342209d1765",
-                        "ssdeep": "66580:bKSX37qCORy4Gy3GzkwaY4cRGytcE0:PTchTPC8BtRiO2YJ7wNetFc9Fv",
-                        "tlsh": "Centre"
-                    },
-                    "mime_type": "state",
-                    "name": "services_from_companies.xls",
-                    "size": 487
-                }
-            }
-        ],
-        "bcc": {
-            "address": "them@them.com"
-        },
-        "cc": {
-            "address": "key@also.biz"
-        },
-        "content_type": "helps",
-        "delivery_timestamp": "2025-03-23T02:25:43.476117Z",
-        "direction": "cutting",
-        "from": {
-            "address": "supports@commercial.biz"
-        },
-        "local_id": "4egCHnrHwHjeOIjWQkodum",
-        "message_id": "1WrBXUh9Ycg35Eu2oC196J",
-        "origination_timestamp": "2025-04-09T06:14:57.476179Z",
-        "parent": {
-            "bcc": {
-                "address": "engaging@complex.com"
-            },
-            "cc": {
-                "address": "by@are.ca"
-            },
-            "destination": "151.70.8.225",
-            "from": {
-                "address": "order@order.ca"
-            },
-            "message_id": "6qPP8Q4f49sIQ2x7sSxWff",
-            "origination_timestamp": "2025-03-29T11:07:42.476230Z",
-            "source": "140.164.13.113",
-            "subject": "working",
-            "to": {
-                "address": "learn@improve.edu"
-            }
-        },
-        "reply_to": {
-            "address": "work@technical.ca"
-        },
-        "sender": {
-            "address": "selling@innovation.biz"
-        },
-        "subject": "examine",
-        "to": {
-            "address": "are@cyber.biz"
-        },
-        "x_mailer": "commercial"
-    },
-    "error": {
-        "code": "government",
-        "message": "is"
-    },
-    "event": {
-        "action": "experts",
-        "category": [
-            "registry",
-            "email",
-            "malware",
-            "process"
-        ],
-        "code": "Canada",
-        "count": 3326,
-        "created": "2025-03-26T17:26:51.486109Z",
-        "dataset": "selling",
-        "duration": 2482,
-        "end": "2025-04-05T04:37:43.472491Z",
-        "hash": "constantly",
-        "id": "431dKy2j0mKwbgc4gboQ0D",
-        "ingested": "2025-04-08T21:37:42.472497Z",
-        "kind": "alert",
-        "module": "technical",
-        "original": "programs",
-        "outcome": "unknown",
-        "provider": "AssemblyLine",
-        "reason": "about",
-        "reference": "tools",
-        "risk_score": 961.06,
-        "risk_score_norm": 2429.52,
-        "sequence": 2514,
-        "severity": 1685,
-        "start": "2025-04-10T18:22:29.472524Z",
-        "timezone": "engaging",
-        "type": [
-            "info",
-            "error",
-            "connection",
-            "change"
-        ],
-        "url": "marketplace"
-    },
-    "faas": {
-        "coldstart": true,
-        "execution": "learn",
-        "id": "are",
-        "name": "art_experts_complex.lnk",
-        "trigger": {
-            "request_id": "2A6W0JEXUqYAZbwyH04meH",
-            "type": "pubsub"
-        },
-        "version": "6.0.0"
-    },
-    "file": {
-        "accessed": "2025-03-16T20:16:15.476292Z",
-        "attributes": [
-            "For"
-        ],
-        "code_signature": {
-            "digest_algorithm": "sha384",
-            "exists": false,
-            "signing_id": "2mrptaF1zGjw0Y5ZJFDbcs",
-            "status": "innovations",
-            "subject_name": "academia_supports_art.pdf",
-            "team_id": "6GEwwhTfUNsBjSMXLN3Yv5",
-            "timestamp": "2025-03-16T22:51:08.476414Z",
-            "trusted": true,
-            "valid": true
-        },
-        "created": "2025-04-03T13:28:19.476300Z",
-        "ctime": "2025-03-18T08:30:10.476304Z",
-        "device": "engaging",
-        "directory": "technologies/support/government/promote",
-        "drive_letter": "To",
-        "elf": {
-            "architecture": "on",
-            "byte_order": "companies",
-            "cpu_type": "with",
-            "creation_date": "to",
-            "exports": [
-                "from",
-                "but",
-                "all"
-            ],
-            "header": {
-                "abi_version": "5.1.5",
-                "class": "them",
-                "data": "is",
-                "entrypoint": 962,
-                "object_version": "5.3.4",
-                "os_abi": "partners",
-                "type": "selling",
-                "version": "4.4.3"
-            },
-            "imports": [
-                "feedback",
-                "across",
-                "provide"
-            ],
-            "sections": [
-                {
-                    "chi2": 930,
-                    "entropy": 2951,
-                    "flags": "testing",
-                    "name": "country_bcip_do.ppt",
-                    "physical_offset": "laboratory",
-                    "physical_size": 4017,
-                    "type": "services",
-                    "virtual_address": 2267,
-                    "virtual_size": 843
-                },
-                {
-                    "chi2": 2730,
-                    "entropy": 3295,
-                    "flags": "We",
-                    "name": "innovation.doc",
-                    "physical_offset": "invite",
-                    "physical_size": 3619,
-                    "type": "private",
-                    "virtual_address": 340,
-                    "virtual_size": 989
-                }
-            ],
-            "segments": [
-                {
-                    "chi2": 2206,
-                    "entropy": 3274,
-                    "flags": "role",
-                    "name": "problems.lnk",
-                    "physical_offset": "vendors",
-                    "physical_size": 3109,
-                    "type": "us",
-                    "virtual_address": 1281,
-                    "virtual_size": 1263
-                },
-                {
-                    "chi2": 1368,
-                    "entropy": 1251,
-                    "flags": "an",
-                    "name": "innovation_laboratory_innovative.pdf",
-                    "physical_offset": "technologies",
-                    "physical_size": 2531,
-                    "type": "new",
-                    "virtual_address": 2545,
-                    "virtual_size": 399
-                },
-                {
-                    "chi2": 3345,
-                    "entropy": 3168,
-                    "flags": "state",
-                    "name": "invite.lnk",
-                    "physical_offset": "with",
-                    "physical_size": 1305,
-                    "type": "state",
-                    "virtual_address": 1507,
-                    "virtual_size": 1436
-                },
-                {
-                    "chi2": 3783,
-                    "entropy": 1300,
-                    "flags": "BCIP",
-                    "name": "art_testing.ppt",
-                    "physical_offset": "country",
-                    "physical_size": 3129,
-                    "type": "market",
-                    "virtual_address": 1087,
-                    "virtual_size": 654
-                }
-            ],
-            "shared_libraries": [
-                "invite",
-                "cyber",
-                "evaluate"
-            ],
-            "telfhash": "cyber"
-        },
-        "extension": "partners",
-        "fork_name": "us_work.doc",
-        "gid": "participating",
-        "group": "ANALYSTS",
-        "hash": {
-            "md5": "faae6f276e50dacac4bfa9c6ff254a93",
-            "sha1": "3cc81e64f0f0d4d207a996aa72fabc184b1d326e",
-            "sha256": "ede9fef66123376dffdf251f4a921d7b63330ea1579017ac2235960850a4754d",
-            "sha384": "32e14723ec68713e4be2ee0906a5b68b86b3a78d421594cc101c6a213f7d0b4d12c48cbefd9da330ef4b0646e4524d7b",
-            "sha512": "e735592a163bf40dcdf2152035ca97f8dc613467e41aa235ebd2f1612c23a9b7befd9d71f2ae292f351aa7b27c9416f3ab8c37c7761a601a2519178237b31112",
-            "ssdeep": "61437:Jyj5k34o6ksKPgIfaHgLrN6QgCP854P7U9hD2AVC:tL2LgU9LzNkXL8CGDabFFjBOTiaa",
-            "tlsh": "Government"
-        },
-        "inode": "government.ca",
-        "mime_type": "other",
-        "mode": "bringing",
-        "mtime": "2025-04-15T19:15:16.476340Z",
-        "name": "industry.doc",
-        "owner": "market",
-        "path": "role",
-        "pe": {
-            "architecture": "on",
-            "company": "new",
-            "description": "product",
-            "file_version": "enhanced.ppt",
-            "imphash": "evaluate",
-            "original_file_name": "innovation_the.lnk",
-            "pehash": "work",
-            "product": "country"
-        },
-        "size": 3084,
-        "target_path": "partners",
-        "type": "file",
-        "uid": "goods"
-    },
-    "gcp": {
-        "network_id": "4MboxqgnrCTi7dpeXwJGrb",
-        "project_id": "7mq1Z117DS3BR5NXOwsdeG",
-        "resource_id": "5CXsqwjcT5O7W7fGXifXPl",
-        "service_account_id": "2HLtE61YsYbPE9BLbyHvmg",
-        "zone": "stays"
-    },
-    "group": {
-        "domain": "partners.com",
-        "id": "academia",
-        "name": "us_sizes.xls"
-    },
-    "host": {
-        "domain": "bringing.biz",
-        "id": "tools",
-        "ip": [
-            "161.116.87.1",
-            "68.204.157.108",
-            "192.102.172.45"
-        ],
-        "mac": [
-            "A96478C053D2",
-            "D80316C5F363",
-            "2EFB41C3C8D9"
-        ],
-        "name": "but_potential_support.doc",
-        "type": "complex"
-    },
-    "howler": {
-        "analytic": "Exploit Patcher",
-        "assignment": "unassigned",
-        "bundle_size": 0,
-        "bundles": [],
-        "comment": [
-            {
-                "id": "44TTFx4jDcsh82I7uCVvCh",
-                "modified": "2025-03-16T09:53:53.471034Z",
-                "reactions": {
-                    "key_a": "Centre",
-                    "key_b": "services",
-                    "key_c": "art"
-                },
-                "timestamp": "2025-04-02T22:23:07.471028Z",
-                "user": "user",
-                "value": "Includes, where the number of those children so warrants, the right to have them receive that instruction in minority language educational facilities provided out of public funds."
-            },
-            {
-                "id": "Rc8yBVBxhv2NcNHrwZTki",
-                "modified": "2025-04-04T14:26:36.471075Z",
-                "reactions": {
-                    "key_a": "do",
-                    "key_b": "the",
-                    "key_c": "determine",
-                    "key_d": "Cyber",
-                    "key_e": "key"
-                },
-                "timestamp": "2025-04-13T17:54:40.471071Z",
-                "user": "goose",
-                "value": "Subsection applies in respect of a re-enactment made under subsection."
-            }
-        ],
-        "confidence": 3000.44,
-        "data": [
-            "{\"cbs_collection_date\": \"2025-04-17T11:55:41.486729\", \"cbs_event_time\": \"2025-04-17T11:55:41.486735\", \"event_day\": \"25-04-17\", \"cbs_client_id\": 71, \"cbs_client_name\": \"CCCS\", \"tenant_id\": \"188c2e8c-8245-43dd-8e99-e12c73d67cd7\", \"tenant_name\": \"tenant\", \"cbs_id\": \"58efdd2b-6435-4fa0-9d5a-11cdf9701a6f\", \"id\": \"d7c158d1-3815-4537-bf54-19ac5b1c8e33\", \"sign_in_ip_address\": \"119.223.254.90\", \"ip_geo_asn\": \"86921\", \"ip_geo_city\": \"somewhere\", \"ip_geo_country_name\": \"canada\", \"ip_geo_digraph\": \"ca\", \"ip_geo_state\": \"ontario probably\", \"ip_geo_organization\": \"cccs\", \"ip_geo_carrier\": \"cccs\", \"ip_geo_table_loaded_date\": \"2025-04-17T11:55:41.486783\", \"ip_address_geo_latitude\": 4.61175, \"ip_address_geo_longitude\": -90.54967, \"is_ip_in_spur\": false, \"spur_details\": [], \"user_principal_name\": \"enhanced@Government.com\", \"user_id\": \"71747544-735d-442e-9cd3-e3106dc9fc7d\", \"application_id\": \"726a6119-1f08-49c4-bbd5-4852193bd5b4\", \"application_name\": \"Application Name\", \"resource_id\": \"9d50c54b-c7c8-4a7d-b6f6-f86e1a75caad\", \"resource_name\": \"Resource Name\", \"resource_tenant_id\": \"f3109281-f15e-4769-bcaf-889ed3e2cc30\", \"first_factor_entered\": true, \"password_last_changed_date\": \"2025-04-17T11:55:41.486827\", \"error_code\": 504934, \"conditional_access_status\": \"sure\", \"authentication_requirement\": \"requirement\", \"authentication_details\": [], \"correlation_id\": \"7649f57a-0a8d-4796-bf5b-30e7277e77b8\", \"original_request_id\": \"b420fd85-6a43-407e-88bd-5ceb041837f3\", \"sign_in_risk_events\": [], \"flagged_for_review\": false, \"cross_tenant_access_type\": \"passthrough\", \"home_tenant_id\": \"d52ea0de-d226-41e1-b0de-188a5b842f61\", \"is_tenant_restricted\": true, \"unique_token_identifier\": \"2LDGvE5t2Dyqq3SvZByEJS\", \"cbs_workload\": [], \"associated_workload_cbs_id\": [], \"count_successful_sign_ins_by_ip\": 1, \"count_registered_device_sign_ins_by_ip\": 6, \"count_distinct_ips_by_triplet\": 454, \"count_distinct_upns_with_successful_sign_ins_by_triplet\": 2, \"count_distinct_upns_with_failed_sign_ins_by_triplet\": 101, \"count_distinct_upns_with_successful_first_factor_on_error_by_triplet\": 3, \"percent_of_upns_with_with_incorrect_first_factor_by_triplet\": 0.2618027501527591 }",
-            "{\"cbs_collection_date\": \"2025-04-17T11:55:41.486898\", \"cbs_event_time\": \"2025-04-17T11:55:41.486900\", \"event_day\": \"25-04-17\", \"cbs_client_id\": 71, \"cbs_client_name\": \"CCCS\", \"tenant_id\": \"180ed1f1-25f1-45de-b601-a37bc5d081f7\", \"tenant_name\": \"tenant\", \"cbs_id\": \"8e9b444f-d95e-45e7-ac73-85d128dfff90\", \"id\": \"e989ec25-dd21-4df1-8f67-fe3aeca54f00\", \"sign_in_ip_address\": \"66.88.36.37\", \"ip_geo_asn\": \"68696\", \"ip_geo_city\": \"somewhere\", \"ip_geo_country_name\": \"canada\", \"ip_geo_digraph\": \"ca\", \"ip_geo_state\": \"ontario probably\", \"ip_geo_organization\": \"cccs\", \"ip_geo_carrier\": \"cccs\", \"ip_geo_table_loaded_date\": \"2025-04-17T11:55:41.486927\", \"ip_address_geo_latitude\": 22.05385, \"ip_address_geo_longitude\": 174.68175, \"is_ip_in_spur\": false, \"spur_details\": [], \"user_principal_name\": \"companies@technology.ca\", \"user_id\": \"9bc18cf4-6e73-4b02-8479-3b2f26a5cb9e\", \"application_id\": \"6752682f-2548-42ed-93cc-e7e0bbca7601\", \"application_name\": \"Application Name\", \"resource_id\": \"8b2f1e05-b763-4641-93be-89c23308d457\", \"resource_name\": \"Resource Name\", \"resource_tenant_id\": \"c209874f-f413-48e7-a179-9a7c3c44dade\", \"first_factor_entered\": true, \"password_last_changed_date\": \"2025-04-17T11:55:41.486953\", \"error_code\": 504934, \"conditional_access_status\": \"sure\", \"authentication_requirement\": \"requirement\", \"authentication_details\": [], \"correlation_id\": \"e38764f9-0103-4ff1-a814-7bee03ad6d07\", \"original_request_id\": \"bda701a6-3074-41f8-ae4c-387a3d0264fb\", \"sign_in_risk_events\": [], \"flagged_for_review\": false, \"cross_tenant_access_type\": \"passthrough\", \"home_tenant_id\": \"95511325-6797-4b73-bc0c-408fab0ea808\", \"is_tenant_restricted\": false, \"unique_token_identifier\": \"3CY7WgvYmUHV8gUreO60u8\", \"cbs_workload\": [], \"associated_workload_cbs_id\": [], \"count_successful_sign_ins_by_ip\": 9, \"count_registered_device_sign_ins_by_ip\": 1, \"count_distinct_ips_by_triplet\": 441, \"count_distinct_upns_with_successful_sign_ins_by_triplet\": 9, \"count_distinct_upns_with_failed_sign_ins_by_triplet\": 101, \"count_distinct_upns_with_successful_first_factor_on_error_by_triplet\": 3, \"percent_of_upns_with_with_incorrect_first_factor_by_triplet\": 0.2456282920096946 }"
-        ],
-        "detection": "Command and Control",
-        "dossier": [
-            {
-                "content": "# Hello, World!\n\nThis is a snippet of markdown to show off an example lead.",
-                "format": "markdown",
-                "icon": "material-symbols:sound-detection-dog-barking",
-                "label": {
-                    "en": "Example Lead",
-                    "fr": "Exemple d'un lead"
-                }
-            },
-            {
-                "content": "test-plugin.image",
-                "format": "borealis",
-                "icon": "material-symbols:image",
-                "label": {
-                    "en": "Borealis",
-                    "fr": "Borealis"
-                },
-                "metadata": "{\"type\": \"ip\", \"value\": \"127.0.01\", \"classification\": \"TLP:CLEAR\"}"
-            },
-            {
-                "content": "test-plugin.json",
-                "format": "borealis",
-                "icon": "material-symbols:code-rounded",
-                "label": {
-                    "en": "Borealis",
-                    "fr": "Borealis"
-                },
-                "metadata": "{\"type\": \"ip\", \"value\": \"127.0.01\", \"classification\": \"TLP:CLEAR\"}"
-            }
-        ],
-        "escalation": "hit",
-        "hash": "cb1b6fa65d4b94a7aa36993f5e9f97ff36f678c6062a",
-        "hits": [],
-        "id": "431dKy2j0mKwbgc4gboQ0D",
-        "is_bundle": false,
-        "labels": {
-            "assignments": [
-                "APA1B"
-            ],
-            "campaign": [],
-            "generic": [
-                "Outlook",
-                "Documentation"
-            ],
-            "insight": [],
-            "mitigation": [],
-            "operation": [
-                "OP_HOWLER"
-            ],
-            "threat": [],
-            "victim": []
-        },
-        "links": [
-            {
-                "href": "https://en.wikipedia.org/wiki/Canada_goose",
-                "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Canada_goose_on_Seedskadee_NWR_%2827826185489%29.jpg/788px-Canada_goose_on_Seedskadee_NWR_%2827826185489%29.jpg",
-                "title": "Goose"
-            }
-        ],
-        "log": [
-            {
-                "explanation": "Who have received their primary school instruction in Canada in English or French and reside in a province where the language in which they received that instruction is the language of the English or French linguistic minority population of the province.",
-                "key": "an",
-                "new_value": "of",
-                "previous_value": "laboratory",
-                "previous_version": "sJ7KszJyUYz6m157iDX2i",
-                "timestamp": "2025-04-16T21:06:13.471097Z",
-                "type": "removed",
-                "user": "shawnh"
-            },
-            {
-                "explanation": "Continuation in special circumstances.",
-                "key": "visit",
-                "new_value": "emerging",
-                "previous_value": "from",
-                "previous_version": "7D9yC46GaPLFYBekp77IFD",
-                "timestamp": "2025-03-14T23:18:25.471121Z",
-                "type": "appended",
-                "user": "admin"
-            },
-            {
-                "explanation": "Application of Charter.",
-                "key": "performs",
-                "new_value": "cyber",
-                "previous_value": "authority",
-                "previous_version": "7Cb3KIWfFG3ZMkhGjS2LyB",
-                "timestamp": "2025-04-09T13:09:17.471140Z",
-                "type": "removed",
-                "user": "shawnh"
-            }
-        ],
-        "mitigated": "Canada",
-        "monitored": "role",
-        "outline": {
-            "indicators": [
-                "Mozilla/5.0 (iPhone9,4; U; CPU iPhone OS 10_0_1 like Mac OS X) AppleWebKit/602.1.50 (KHTML, like Gecko) Version/10.0 Mobile/14A403 Safari/602.1",
-                "PSLREB",
-                "FCC",
-                "136.11.76.20",
-                "191.110.196.13",
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36 Edg/108.0.1462.46",
-                "CDIC",
-                "website.lnk",
-                "CCOHS"
-            ],
-            "summary": "Not to be found guilty on account of any act or omission unless, at the time of the act or omission, it constituted an offence under Canadian or international law or was criminal according to the general principles of law recognized by the community of nations.",
-            "target": "with.ca",
-            "threat": "21.231.204.139"
-        },
-        "related": [
-            "Cyber",
-            "work",
-            "Innovation"
-        ],
-        "reliability": 1535.22,
-        "reported": "enhanced",
-        "score": 2257.82,
-        "scrutiny": "unseen",
-        "severity": 3623.02,
-        "status": "open",
-        "viewers": [],
-        "volume": 171.69,
-        "votes": {
-            "benign": [
-                "levels",
-                "also",
-                "laboratory",
-                "an"
-            ],
-            "malicious": [
-                "Innovation"
-            ],
-            "obscure": [
-                "environment",
-                "Build"
-            ]
-        }
-    },
-    "http": {
-        "request": {
-            "body": {
-                "bytes": 3440,
-                "content": "vendors"
-            },
-            "bytes": 753,
-            "id": "The",
-            "method": "work",
-            "mime_type": "learn",
-            "referrer": "BCIP"
-        },
-        "response": {
-            "body": {
-                "bytes": 1964,
-                "content": "sizes"
-            },
-            "bytes": 1518,
-            "mime_type": "levels",
-            "status_code": 1279
-        },
-        "version": "5.0.9"
-    },
-    "interface": {
-        "id": 3531,
-        "name": "cutting_about.gif"
-    },
-    "labels": {
-        "key_a": "helps",
-        "key_b": "experts"
-    },
-    "message": "improve",
-    "network": {
-        "direction": "but",
-        "protocol": "For",
-        "transport": "visit"
-    },
-    "observer": {
-        "egress": {
-            "zone": "promote"
-        },
-        "hostname": "build.edu",
-        "ingress": {
-            "interface": {
-                "id": 3370,
-                "name": "support.doc"
-            },
-            "zone": "services"
-        },
-        "interface": {
-            "id": 716,
-            "name": "partnerships.gif"
-        },
-        "ip": [
-            "67.117.188.192"
-        ],
-        "mac": [
-            "7914601F28D4"
-        ],
-        "name": "cyber_cutting.ppt",
-        "product": "supports",
-        "serial_number": "examine",
-        "type": "partnerships",
-        "vendor": "Government",
-        "version": "5.2.0"
+    "uri": [
+      {
+        "subtype": "environment",
+        "type": "survey",
+        "value": "are",
+        "verdict": "emerging"
+      },
+      {
+        "subtype": "order",
+        "type": "from",
+        "value": "are",
+        "verdict": "across"
+      },
+      {
+        "subtype": "support",
+        "type": "innovative",
+        "value": "promote",
+        "verdict": "order"
+      },
+      {
+        "subtype": "Centre",
+        "type": "feedback",
+        "value": "assist",
+        "verdict": "partners"
+      }
+    ],
+    "yara": [
+      {
+        "subtype": "is",
+        "type": "feedback",
+        "value": "innovations",
+        "verdict": "testing"
+      },
+      {
+        "subtype": "Innovation",
+        "type": "BCIP",
+        "value": "provide",
+        "verdict": "invite"
+      }
+    ]
+  },
+  "aws": {
+    "account": {
+      "id": "6de9x01SwmQpXsx8nh6wa3",
+      "name": "from_complex.xls"
     },
     "organization": {
-        "id": "34",
-        "name": "CED"
+      "id": "4qYi2dxcNJLjwFA8zgvGRz",
+      "organizational_unit": "the"
+    }
+  },
+  "azure": {
+    "resource_group": "ANALYSTS",
+    "resource_id": "43jZHneiyLN2r8KcvJaLMV",
+    "subscription_id": "3nQEQgnEUl8kkaTbq0uPZz",
+    "tenant_id": "1O15Gd3oKH4zDMoKjEBC7f",
+    "upn": "laboratory"
+  },
+  "cbs": {
+    "sharepoint": {
+      "created": {
+        "application": "Build",
+        "user": "shawnh"
+      },
+      "modified": {
+        "application": "the",
+        "user": "admin"
+      }
+    }
+  },
+  "cloud": {
+    "account": {
+      "id": "role",
+      "name": "support_cutting_are.gif"
     },
-    "process": {
-        "args": [
-            "To",
-            "Build"
-        ],
-        "args_count": 3729,
-        "code_signature": {
-            "digest_algorithm": "sha384",
-            "exists": true,
-            "signing_id": "3Opu1mHuKxlfEHS1eAgOlc",
-            "status": "Canadian",
-            "subject_name": "other_emerging_technology.xls",
-            "team_id": "3kAUcbPq7W72goKiXVwD5R",
-            "timestamp": "2025-03-19T23:39:58.477084Z",
-            "trusted": true,
-            "valid": false
+    "availability_zone": "constantly",
+    "instance": {
+      "id": "country",
+      "name": "laboratory.exe"
+    },
+    "machine": {
+      "type": "innovation"
+    },
+    "project": {
+      "id": "in",
+      "name": "bcip_vendors_working.ppt"
+    },
+    "provider": "Innovation",
+    "region": "more",
+    "service": {
+      "name": "Office365"
+    },
+    "tenant_id": "1OuaTuuhVEF6XbkwMWdSpG"
+  },
+  "container": {
+    "id": "do",
+    "image": {
+      "hash": {
+        "all": ["BCIP", "us"]
+      },
+      "name": "feedback_from_engaging.pdf",
+      "tag": ["Build", "invite", "goods", "about"]
+    },
+    "labels": {
+      "key_a": "this"
+    },
+    "name": "do_state.lnk",
+    "runtime": "development"
+  },
+  "destination": {
+    "address": "from",
+    "autonomous_systems": {
+      "number": 3116,
+      "organization_name": "country_in.exe"
+    },
+    "bytes": 361,
+    "domain": "provide.ca",
+    "geo": {
+      "city_name": "security.jpg",
+      "continent_code": "is",
+      "continent_name": "role_environment.xls",
+      "country_iso_code": "order",
+      "country_name": "cutting_their.xls",
+      "location": {
+        "lat": 417.39,
+        "lon": 2387.53
+      },
+      "name": "cyber_private_tools.xls",
+      "postal_code": "working",
+      "region_iso_code": "Cyber",
+      "region_name": "our.xls",
+      "timezone": "partners"
+    },
+    "ip": "22.81.110.166",
+    "mac": "76:ac:67:2a:b1:ed",
+    "nat": {
+      "ip": "31.223.183.132",
+      "port": 2069
+    },
+    "original": {
+      "address": "stays",
+      "autonomous_systems": {
+        "number": 1926,
+        "organization_name": "new_centre_testing.doc"
+      },
+      "bytes": 1907,
+      "domain": "to.edu",
+      "geo": {
+        "city_name": "industry_build.pdf",
+        "continent_code": "learn",
+        "continent_name": "goods.ppt",
+        "country_iso_code": "an",
+        "country_name": "new_but.xls",
+        "location": {
+          "lat": 1455.47,
+          "lon": 2972.88
         },
-        "command_line": "Innovation",
-        "end": "2025-03-16T05:24:31.477094Z",
-        "entity_id": "15rfzqU5KpjDs1DcSDp4F6",
+        "name": "to_engaging.ppt",
+        "postal_code": "do",
+        "region_iso_code": "We",
+        "region_name": "them.lnk",
+        "timezone": "new"
+      },
+      "ip": "130.125.80.111",
+      "mac": "86:14:f0:54:09:e8",
+      "nat": {
+        "ip": "155.245.179.141",
+        "port": 1670
+      },
+      "packets": 352,
+      "port": 2618
+    },
+    "packets": 4056,
+    "port": 2050,
+    "user": {
+      "domain": "the.ca",
+      "email": "of@role.biz",
+      "full_name": "working.lnk",
+      "group": {
+        "domain": "partners.edu",
+        "id": "authority",
+        "name": "all.gif"
+      },
+      "hash": "key",
+      "id": "in",
+      "name": "them_participating.xls",
+      "roles": ["complex", "examine", "supports"]
+    }
+  },
+  "dns": {
+    "answers": [
+      {
+        "class": "open",
+        "data": "Government",
+        "name": "innovations.exe",
+        "ttl": 3530,
+        "type": "work"
+      },
+      {
+        "class": "also",
+        "data": "technology",
+        "name": "experts.doc",
+        "ttl": 2874,
+        "type": "defence"
+      },
+      {
+        "class": "certain",
+        "data": "country",
+        "name": "art.jpg",
+        "ttl": 1174,
+        "type": "market"
+      },
+      {
+        "class": "emerging",
+        "data": "invite",
+        "name": "the_services_selling.exe",
+        "ttl": 3978,
+        "type": "open"
+      }
+    ],
+    "header_flags": ["collaborating", "Canada", "country", "The"],
+    "id": "certain",
+    "op_code": "do",
+    "question": {
+      "class": "testing",
+      "name": "industry_us_innovation.gif",
+      "registered_domain": "build.edu",
+      "subdomain": "academia.com",
+      "top_level_domain": "us.edu",
+      "type": "environment"
+    },
+    "resolved_ip": [
+      "86.40.108.128",
+      "31.19.200.9",
+      "215.150.120.103",
+      "63.36.63.181"
+    ],
+    "response_code": "vendors",
+    "type": "in"
+  },
+  "ecs": {
+    "version": "4.5.3"
+  },
+  "email": {
+    "attachments": [
+      {
+        "file": {
+          "extension": "innovation",
+          "hash": {
+            "md5": "e9a7c465b3dc53f741434b5a6dac71fa",
+            "sha1": "ec74022ca86b5cfeb02aeb4b3e1a69dbf1be07c7",
+            "sha256": "724ed572c4f1f845b02c3d330fa5e7c0672e980f110850b8550abd0af958c968",
+            "sha384": "a21a1be81d3d331741c559feaa78961f5a85d96b28dd65f014d465ebc82fe5cc939ad2e569112d719d56ad4db44124db",
+            "sha512": "f1dfad45df4eb927d7b2e08698f409e964ab2b44e18c39514ceb09066d9c9cc00a33f8a3fe09d3552f842d33da259523cec47816575f0018d034811e78269fae",
+            "ssdeep": "50404:gpZwo4eEjD248P2veupMl28fCu843gpJCrRHKY2iyYVUB3wmzBh2iEAfhTL:YfFOw2rHKNVpTuikj50L7lRHNV7bHwsy9Jfibp2GRxElb",
+            "tlsh": "Canada"
+          },
+          "mime_type": "learn",
+          "name": "bringing.ppt",
+          "size": 3904
+        }
+      },
+      {
+        "file": {
+          "extension": "them",
+          "hash": {
+            "md5": "074cb46d2a19296a08c48b0fad542bbe",
+            "sha1": "0cd8a36d7ee4a764bcb0ca07d31ae1d04d4e08dc",
+            "sha256": "38c607484c54992a2b70d73655032ef8845a189482a3dab94c214dfc24bfb931",
+            "sha384": "79d5e7e029193c46db6c8a5847135efc10b1df114f738f40759943476fffe8fd2c2c4cba1f2e7c25f57a2e8df5fe7ae8",
+            "sha512": "09fbe0b62ba4d0e886fcb1549d4b8be615cf9b2bb4cb68704026fc13111b764001f2bf79bc05dd2ab9ce35f1f2ca577121fb2b9c4904c87b619d5850b6592ad1",
+            "ssdeep": "37055:TL6i9tSuaKtZnJzIVuqqoNNEmdfa9jl9rPFZ61HrCqDB8MjdzZrsSbpiLMzL:oCwZlxSQKhbdXlMTIHzQD936Ef3NF4pZbjEKTs0cO1KPHmeLkp7kpds5LAnojtx",
+            "tlsh": "provide"
+          },
+          "mime_type": "collaborating",
+          "name": "laboratory.jpg",
+          "size": 2595
+        }
+      },
+      {
+        "file": {
+          "extension": "about",
+          "hash": {
+            "md5": "6d513e9aebf824268a867efa2728f612",
+            "sha1": "eece4780015337dd527258191384289a81809162",
+            "sha256": "37d5de88d2f57c894a54fadbc359bfeab4fdeb318959a6aeb506fafcf6247838",
+            "sha384": "44d5a6a5292c37a35d6e35e292b254d172fa001101f9ba585f303e8d52140d15c315a9039056f14ee0c66487a87e75cb",
+            "sha512": "657bb833e00bf98d8fc820f95f9031d5bb231f2acde0e96d3c24bb919751dbe0c5cb57d2ddfb5d7bd46f7e72fe2c23f57a55761a3acd82cf6c3ab342209d1765",
+            "ssdeep": "66580:bKSX37qCORy4Gy3GzkwaY4cRGytcE0:PTchTPC8BtRiO2YJ7wNetFc9Fv",
+            "tlsh": "Centre"
+          },
+          "mime_type": "state",
+          "name": "services_from_companies.xls",
+          "size": 487
+        }
+      }
+    ],
+    "bcc": {
+      "address": "them@them.com"
+    },
+    "cc": {
+      "address": "key@also.biz"
+    },
+    "content_type": "helps",
+    "delivery_timestamp": "2025-03-23T02:25:43.476117Z",
+    "direction": "cutting",
+    "from": {
+      "address": "supports@commercial.biz"
+    },
+    "local_id": "4egCHnrHwHjeOIjWQkodum",
+    "message_id": "1WrBXUh9Ycg35Eu2oC196J",
+    "origination_timestamp": "2025-04-09T06:14:57.476179Z",
+    "parent": {
+      "bcc": {
+        "address": "engaging@complex.com"
+      },
+      "cc": {
+        "address": "by@are.ca"
+      },
+      "destination": "151.70.8.225",
+      "from": {
+        "address": "order@order.ca"
+      },
+      "message_id": "6qPP8Q4f49sIQ2x7sSxWff",
+      "origination_timestamp": "2025-03-29T11:07:42.476230Z",
+      "source": "140.164.13.113",
+      "subject": "working",
+      "to": {
+        "address": "learn@improve.edu"
+      }
+    },
+    "reply_to": {
+      "address": "work@technical.ca"
+    },
+    "sender": {
+      "address": "selling@innovation.biz"
+    },
+    "subject": "examine",
+    "to": {
+      "address": "are@cyber.biz"
+    },
+    "x_mailer": "commercial"
+  },
+  "error": {
+    "code": "government",
+    "message": "is"
+  },
+  "event": {
+    "action": "experts",
+    "category": ["registry", "email", "malware", "process"],
+    "code": "Canada",
+    "count": 3326,
+    "created": "2025-03-26T17:26:51.486109Z",
+    "dataset": "selling",
+    "duration": 2482,
+    "end": "2025-04-05T04:37:43.472491Z",
+    "hash": "constantly",
+    "id": "431dKy2j0mKwbgc4gboQ0D",
+    "ingested": "2025-04-08T21:37:42.472497Z",
+    "kind": "alert",
+    "module": "technical",
+    "original": "programs",
+    "outcome": "unknown",
+    "provider": "AssemblyLine",
+    "reason": "about",
+    "reference": "tools",
+    "risk_score": 961.06,
+    "risk_score_norm": 2429.52,
+    "sequence": 2514,
+    "severity": 1685,
+    "start": "2025-04-10T18:22:29.472524Z",
+    "timezone": "engaging",
+    "type": ["info", "error", "connection", "change"],
+    "url": "marketplace"
+  },
+  "faas": {
+    "coldstart": true,
+    "execution": "learn",
+    "id": "are",
+    "name": "art_experts_complex.lnk",
+    "trigger": {
+      "request_id": "2A6W0JEXUqYAZbwyH04meH",
+      "type": "pubsub"
+    },
+    "version": "6.0.0"
+  },
+  "file": {
+    "accessed": "2025-03-16T20:16:15.476292Z",
+    "attributes": ["For"],
+    "code_signature": {
+      "digest_algorithm": "sha384",
+      "exists": false,
+      "signing_id": "2mrptaF1zGjw0Y5ZJFDbcs",
+      "status": "innovations",
+      "subject_name": "academia_supports_art.pdf",
+      "team_id": "6GEwwhTfUNsBjSMXLN3Yv5",
+      "timestamp": "2025-03-16T22:51:08.476414Z",
+      "trusted": true,
+      "valid": true
+    },
+    "created": "2025-04-03T13:28:19.476300Z",
+    "ctime": "2025-03-18T08:30:10.476304Z",
+    "device": "engaging",
+    "directory": "technologies/support/government/promote",
+    "drive_letter": "To",
+    "elf": {
+      "architecture": "on",
+      "byte_order": "companies",
+      "cpu_type": "with",
+      "creation_date": "to",
+      "exports": ["from", "but", "all"],
+      "header": {
+        "abi_version": "5.1.5",
+        "class": "them",
+        "data": "is",
+        "entrypoint": 962,
+        "object_version": "5.3.4",
+        "os_abi": "partners",
+        "type": "selling",
+        "version": "4.4.3"
+      },
+      "imports": ["feedback", "across", "provide"],
+      "sections": [
+        {
+          "chi2": 930,
+          "entropy": 2951,
+          "flags": "testing",
+          "name": "country_bcip_do.ppt",
+          "physical_offset": "laboratory",
+          "physical_size": 4017,
+          "type": "services",
+          "virtual_address": 2267,
+          "virtual_size": 843
+        },
+        {
+          "chi2": 2730,
+          "entropy": 3295,
+          "flags": "We",
+          "name": "innovation.doc",
+          "physical_offset": "invite",
+          "physical_size": 3619,
+          "type": "private",
+          "virtual_address": 340,
+          "virtual_size": 989
+        }
+      ],
+      "segments": [
+        {
+          "chi2": 2206,
+          "entropy": 3274,
+          "flags": "role",
+          "name": "problems.lnk",
+          "physical_offset": "vendors",
+          "physical_size": 3109,
+          "type": "us",
+          "virtual_address": 1281,
+          "virtual_size": 1263
+        },
+        {
+          "chi2": 1368,
+          "entropy": 1251,
+          "flags": "an",
+          "name": "innovation_laboratory_innovative.pdf",
+          "physical_offset": "technologies",
+          "physical_size": 2531,
+          "type": "new",
+          "virtual_address": 2545,
+          "virtual_size": 399
+        },
+        {
+          "chi2": 3345,
+          "entropy": 3168,
+          "flags": "state",
+          "name": "invite.lnk",
+          "physical_offset": "with",
+          "physical_size": 1305,
+          "type": "state",
+          "virtual_address": 1507,
+          "virtual_size": 1436
+        },
+        {
+          "chi2": 3783,
+          "entropy": 1300,
+          "flags": "BCIP",
+          "name": "art_testing.ppt",
+          "physical_offset": "country",
+          "physical_size": 3129,
+          "type": "market",
+          "virtual_address": 1087,
+          "virtual_size": 654
+        }
+      ],
+      "shared_libraries": ["invite", "cyber", "evaluate"],
+      "telfhash": "cyber"
+    },
+    "extension": "partners",
+    "fork_name": "us_work.doc",
+    "gid": "participating",
+    "group": "ANALYSTS",
+    "hash": {
+      "md5": "faae6f276e50dacac4bfa9c6ff254a93",
+      "sha1": "3cc81e64f0f0d4d207a996aa72fabc184b1d326e",
+      "sha256": "ede9fef66123376dffdf251f4a921d7b63330ea1579017ac2235960850a4754d",
+      "sha384": "32e14723ec68713e4be2ee0906a5b68b86b3a78d421594cc101c6a213f7d0b4d12c48cbefd9da330ef4b0646e4524d7b",
+      "sha512": "e735592a163bf40dcdf2152035ca97f8dc613467e41aa235ebd2f1612c23a9b7befd9d71f2ae292f351aa7b27c9416f3ab8c37c7761a601a2519178237b31112",
+      "ssdeep": "61437:Jyj5k34o6ksKPgIfaHgLrN6QgCP854P7U9hD2AVC:tL2LgU9LzNkXL8CGDabFFjBOTiaa",
+      "tlsh": "Government"
+    },
+    "inode": "government.ca",
+    "mime_type": "other",
+    "mode": "bringing",
+    "mtime": "2025-04-15T19:15:16.476340Z",
+    "name": "industry.doc",
+    "owner": "market",
+    "path": "role",
+    "pe": {
+      "architecture": "on",
+      "company": "new",
+      "description": "product",
+      "file_version": "enhanced.ppt",
+      "imphash": "evaluate",
+      "original_file_name": "innovation_the.lnk",
+      "pehash": "work",
+      "product": "country"
+    },
+    "size": 3084,
+    "target_path": "partners",
+    "type": "file",
+    "uid": "goods"
+  },
+  "gcp": {
+    "network_id": "4MboxqgnrCTi7dpeXwJGrb",
+    "project_id": "7mq1Z117DS3BR5NXOwsdeG",
+    "resource_id": "5CXsqwjcT5O7W7fGXifXPl",
+    "service_account_id": "2HLtE61YsYbPE9BLbyHvmg",
+    "zone": "stays"
+  },
+  "group": {
+    "domain": "partners.com",
+    "id": "academia",
+    "name": "us_sizes.xls"
+  },
+  "host": {
+    "domain": "bringing.biz",
+    "id": "tools",
+    "ip": ["161.116.87.1", "68.204.157.108", "192.102.172.45"],
+    "mac": ["A96478C053D2", "D80316C5F363", "2EFB41C3C8D9"],
+    "name": "but_potential_support.doc",
+    "type": "complex"
+  },
+  "howler": {
+    "analytic": "Exploit Patcher",
+    "assignment": "unassigned",
+    "bundle_size": 0,
+    "bundles": [],
+    "comment": [
+      {
+        "id": "44TTFx4jDcsh82I7uCVvCh",
+        "modified": "2025-03-16T09:53:53.471034Z",
+        "reactions": {
+          "key_a": "Centre",
+          "key_b": "services",
+          "key_c": "art"
+        },
+        "timestamp": "2025-04-02T22:23:07.471028Z",
+        "user": "user",
+        "value": "Includes, where the number of those children so warrants, the right to have them receive that instruction in minority language educational facilities provided out of public funds."
+      },
+      {
+        "id": "Rc8yBVBxhv2NcNHrwZTki",
+        "modified": "2025-04-04T14:26:36.471075Z",
+        "reactions": {
+          "key_a": "do",
+          "key_b": "the",
+          "key_c": "determine",
+          "key_d": "Cyber",
+          "key_e": "key"
+        },
+        "timestamp": "2025-04-13T17:54:40.471071Z",
+        "user": "goose",
+        "value": "Subsection applies in respect of a re-enactment made under subsection."
+      }
+    ],
+    "confidence": 3000.44,
+    "data": [
+      "{\"cbs_collection_date\": \"2025-04-17T11:55:41.486729\", \"cbs_event_time\": \"2025-04-17T11:55:41.486735\", \"event_day\": \"25-04-17\", \"cbs_client_id\": 71, \"cbs_client_name\": \"CCCS\", \"tenant_id\": \"188c2e8c-8245-43dd-8e99-e12c73d67cd7\", \"tenant_name\": \"tenant\", \"cbs_id\": \"58efdd2b-6435-4fa0-9d5a-11cdf9701a6f\", \"id\": \"d7c158d1-3815-4537-bf54-19ac5b1c8e33\", \"sign_in_ip_address\": \"119.223.254.90\", \"ip_geo_asn\": \"86921\", \"ip_geo_city\": \"somewhere\", \"ip_geo_country_name\": \"canada\", \"ip_geo_digraph\": \"ca\", \"ip_geo_state\": \"ontario probably\", \"ip_geo_organization\": \"cccs\", \"ip_geo_carrier\": \"cccs\", \"ip_geo_table_loaded_date\": \"2025-04-17T11:55:41.486783\", \"ip_address_geo_latitude\": 4.61175, \"ip_address_geo_longitude\": -90.54967, \"is_ip_in_spur\": false, \"spur_details\": [], \"user_principal_name\": \"enhanced@Government.com\", \"user_id\": \"71747544-735d-442e-9cd3-e3106dc9fc7d\", \"application_id\": \"726a6119-1f08-49c4-bbd5-4852193bd5b4\", \"application_name\": \"Application Name\", \"resource_id\": \"9d50c54b-c7c8-4a7d-b6f6-f86e1a75caad\", \"resource_name\": \"Resource Name\", \"resource_tenant_id\": \"f3109281-f15e-4769-bcaf-889ed3e2cc30\", \"first_factor_entered\": true, \"password_last_changed_date\": \"2025-04-17T11:55:41.486827\", \"error_code\": 504934, \"conditional_access_status\": \"sure\", \"authentication_requirement\": \"requirement\", \"authentication_details\": [], \"correlation_id\": \"7649f57a-0a8d-4796-bf5b-30e7277e77b8\", \"original_request_id\": \"b420fd85-6a43-407e-88bd-5ceb041837f3\", \"sign_in_risk_events\": [], \"flagged_for_review\": false, \"cross_tenant_access_type\": \"passthrough\", \"home_tenant_id\": \"d52ea0de-d226-41e1-b0de-188a5b842f61\", \"is_tenant_restricted\": true, \"unique_token_identifier\": \"2LDGvE5t2Dyqq3SvZByEJS\", \"cbs_workload\": [], \"associated_workload_cbs_id\": [], \"count_successful_sign_ins_by_ip\": 1, \"count_registered_device_sign_ins_by_ip\": 6, \"count_distinct_ips_by_triplet\": 454, \"count_distinct_upns_with_successful_sign_ins_by_triplet\": 2, \"count_distinct_upns_with_failed_sign_ins_by_triplet\": 101, \"count_distinct_upns_with_successful_first_factor_on_error_by_triplet\": 3, \"percent_of_upns_with_with_incorrect_first_factor_by_triplet\": 0.2618027501527591 }",
+      "{\"cbs_collection_date\": \"2025-04-17T11:55:41.486898\", \"cbs_event_time\": \"2025-04-17T11:55:41.486900\", \"event_day\": \"25-04-17\", \"cbs_client_id\": 71, \"cbs_client_name\": \"CCCS\", \"tenant_id\": \"180ed1f1-25f1-45de-b601-a37bc5d081f7\", \"tenant_name\": \"tenant\", \"cbs_id\": \"8e9b444f-d95e-45e7-ac73-85d128dfff90\", \"id\": \"e989ec25-dd21-4df1-8f67-fe3aeca54f00\", \"sign_in_ip_address\": \"66.88.36.37\", \"ip_geo_asn\": \"68696\", \"ip_geo_city\": \"somewhere\", \"ip_geo_country_name\": \"canada\", \"ip_geo_digraph\": \"ca\", \"ip_geo_state\": \"ontario probably\", \"ip_geo_organization\": \"cccs\", \"ip_geo_carrier\": \"cccs\", \"ip_geo_table_loaded_date\": \"2025-04-17T11:55:41.486927\", \"ip_address_geo_latitude\": 22.05385, \"ip_address_geo_longitude\": 174.68175, \"is_ip_in_spur\": false, \"spur_details\": [], \"user_principal_name\": \"companies@technology.ca\", \"user_id\": \"9bc18cf4-6e73-4b02-8479-3b2f26a5cb9e\", \"application_id\": \"6752682f-2548-42ed-93cc-e7e0bbca7601\", \"application_name\": \"Application Name\", \"resource_id\": \"8b2f1e05-b763-4641-93be-89c23308d457\", \"resource_name\": \"Resource Name\", \"resource_tenant_id\": \"c209874f-f413-48e7-a179-9a7c3c44dade\", \"first_factor_entered\": true, \"password_last_changed_date\": \"2025-04-17T11:55:41.486953\", \"error_code\": 504934, \"conditional_access_status\": \"sure\", \"authentication_requirement\": \"requirement\", \"authentication_details\": [], \"correlation_id\": \"e38764f9-0103-4ff1-a814-7bee03ad6d07\", \"original_request_id\": \"bda701a6-3074-41f8-ae4c-387a3d0264fb\", \"sign_in_risk_events\": [], \"flagged_for_review\": false, \"cross_tenant_access_type\": \"passthrough\", \"home_tenant_id\": \"95511325-6797-4b73-bc0c-408fab0ea808\", \"is_tenant_restricted\": false, \"unique_token_identifier\": \"3CY7WgvYmUHV8gUreO60u8\", \"cbs_workload\": [], \"associated_workload_cbs_id\": [], \"count_successful_sign_ins_by_ip\": 9, \"count_registered_device_sign_ins_by_ip\": 1, \"count_distinct_ips_by_triplet\": 441, \"count_distinct_upns_with_successful_sign_ins_by_triplet\": 9, \"count_distinct_upns_with_failed_sign_ins_by_triplet\": 101, \"count_distinct_upns_with_successful_first_factor_on_error_by_triplet\": 3, \"percent_of_upns_with_with_incorrect_first_factor_by_triplet\": 0.2456282920096946 }"
+    ],
+    "detection": "Command and Control",
+    "dossier": [
+      {
+        "content": "# Hello, World!\n\nThis is a snippet of markdown to show off an example lead.",
+        "format": "markdown",
+        "icon": "material-symbols:sound-detection-dog-barking",
+        "label": {
+          "en": "Example Lead",
+          "fr": "Exemple d'un lead"
+        }
+      },
+      {
+        "content": "test-plugin.image",
+        "format": "borealis",
+        "icon": "material-symbols:image",
+        "label": {
+          "en": "Borealis",
+          "fr": "Borealis"
+        },
+        "metadata": "{\"type\": \"ip\", \"value\": \"127.0.01\", \"classification\": \"TLP:CLEAR\"}"
+      },
+      {
+        "content": "test-plugin.json",
+        "format": "borealis",
+        "icon": "material-symbols:code-rounded",
+        "label": {
+          "en": "Borealis",
+          "fr": "Borealis"
+        },
+        "metadata": "{\"type\": \"ip\", \"value\": \"127.0.01\", \"classification\": \"TLP:CLEAR\"}"
+      }
+    ],
+    "escalation": "hit",
+    "hash": "cb1b6fa65d4b94a7aa36993f5e9f97ff36f678c6062a",
+    "hits": [],
+    "id": "431dKy2j0mKwbgc4gboQ0D",
+    "incidents": [
+      {
+        "incident_id": "12345",
+        "platform": "sentinel",
+        "url": "hello"
+      }
+    ],
+    "is_bundle": false,
+    "labels": {
+      "assignments": ["APA1B"],
+      "campaign": [],
+      "generic": ["Outlook", "Documentation"],
+      "insight": [],
+      "mitigation": [],
+      "operation": ["OP_HOWLER"],
+      "threat": [],
+      "victim": []
+    },
+    "links": [
+      {
+        "href": "https://en.wikipedia.org/wiki/Canada_goose",
+        "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Canada_goose_on_Seedskadee_NWR_%2827826185489%29.jpg/788px-Canada_goose_on_Seedskadee_NWR_%2827826185489%29.jpg",
+        "title": "Goose"
+      }
+    ],
+    "log": [
+      {
+        "explanation": "Who have received their primary school instruction in Canada in English or French and reside in a province where the language in which they received that instruction is the language of the English or French linguistic minority population of the province.",
+        "key": "an",
+        "new_value": "of",
+        "previous_value": "laboratory",
+        "previous_version": "sJ7KszJyUYz6m157iDX2i",
+        "timestamp": "2025-04-16T21:06:13.471097Z",
+        "type": "removed",
+        "user": "shawnh"
+      },
+      {
+        "explanation": "Continuation in special circumstances.",
+        "key": "visit",
+        "new_value": "emerging",
+        "previous_value": "from",
+        "previous_version": "7D9yC46GaPLFYBekp77IFD",
+        "timestamp": "2025-03-14T23:18:25.471121Z",
+        "type": "appended",
+        "user": "admin"
+      },
+      {
+        "explanation": "Application of Charter.",
+        "key": "performs",
+        "new_value": "cyber",
+        "previous_value": "authority",
+        "previous_version": "7Cb3KIWfFG3ZMkhGjS2LyB",
+        "timestamp": "2025-04-09T13:09:17.471140Z",
+        "type": "removed",
+        "user": "shawnh"
+      }
+    ],
+    "mitigated": "Canada",
+    "monitored": "role",
+    "outline": {
+      "indicators": [
+        "Mozilla/5.0 (iPhone9,4; U; CPU iPhone OS 10_0_1 like Mac OS X) AppleWebKit/602.1.50 (KHTML, like Gecko) Version/10.0 Mobile/14A403 Safari/602.1",
+        "PSLREB",
+        "FCC",
+        "136.11.76.20",
+        "191.110.196.13",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36 Edg/108.0.1462.46",
+        "CDIC",
+        "website.lnk",
+        "CCOHS"
+      ],
+      "summary": "Not to be found guilty on account of any act or omission unless, at the time of the act or omission, it constituted an offence under Canadian or international law or was criminal according to the general principles of law recognized by the community of nations.",
+      "target": "with.ca",
+      "threat": "21.231.204.139"
+    },
+    "related": ["Cyber", "work", "Innovation"],
+    "reliability": 1535.22,
+    "reported": "enhanced",
+    "score": 2257.82,
+    "scrutiny": "unseen",
+    "severity": 3623.02,
+    "status": "open",
+    "viewers": [],
+    "volume": 171.69,
+    "votes": {
+      "benign": ["levels", "also", "laboratory", "an"],
+      "malicious": ["Innovation"],
+      "obscure": ["environment", "Build"]
+    }
+  },
+  "http": {
+    "request": {
+      "body": {
+        "bytes": 3440,
+        "content": "vendors"
+      },
+      "bytes": 753,
+      "id": "The",
+      "method": "work",
+      "mime_type": "learn",
+      "referrer": "BCIP"
+    },
+    "response": {
+      "body": {
+        "bytes": 1964,
+        "content": "sizes"
+      },
+      "bytes": 1518,
+      "mime_type": "levels",
+      "status_code": 1279
+    },
+    "version": "5.0.9"
+  },
+  "interface": {
+    "id": 3531,
+    "name": "cutting_about.gif"
+  },
+  "labels": {
+    "key_a": "helps",
+    "key_b": "experts"
+  },
+  "message": "improve",
+  "network": {
+    "direction": "but",
+    "protocol": "For",
+    "transport": "visit"
+  },
+  "observer": {
+    "egress": {
+      "zone": "promote"
+    },
+    "hostname": "build.edu",
+    "ingress": {
+      "interface": {
+        "id": 3370,
+        "name": "support.doc"
+      },
+      "zone": "services"
+    },
+    "interface": {
+      "id": 716,
+      "name": "partnerships.gif"
+    },
+    "ip": ["67.117.188.192"],
+    "mac": ["7914601F28D4"],
+    "name": "cyber_cutting.ppt",
+    "product": "supports",
+    "serial_number": "examine",
+    "type": "partnerships",
+    "vendor": "Government",
+    "version": "5.2.0"
+  },
+  "organization": {
+    "id": "34",
+    "name": "CED"
+  },
+  "process": {
+    "args": ["To", "Build"],
+    "args_count": 3729,
+    "code_signature": {
+      "digest_algorithm": "sha384",
+      "exists": true,
+      "signing_id": "3Opu1mHuKxlfEHS1eAgOlc",
+      "status": "Canadian",
+      "subject_name": "other_emerging_technology.xls",
+      "team_id": "3kAUcbPq7W72goKiXVwD5R",
+      "timestamp": "2025-03-19T23:39:58.477084Z",
+      "trusted": true,
+      "valid": false
+    },
+    "command_line": "Innovation",
+    "end": "2025-03-16T05:24:31.477094Z",
+    "entity_id": "15rfzqU5KpjDs1DcSDp4F6",
+    "entry_meta": {
+      "type": "complex"
+    },
+    "env_vars": {
+      "key_a": "sizes",
+      "key_b": "technologies"
+    },
+    "executable": "Canada",
+    "exit_code": 3184,
+    "hash": {
+      "md5": "7b4c61dcf55c192ddfbf02f6e8890135",
+      "sha1": "338d754978bd0e47ed137a165735f5876a018d04",
+      "sha256": "bd90fa5432a574c491b15a119f859af15325928286331a070a366961a2cf8012",
+      "sha384": "137a34b34923846d630b27c6581f17b86e88439f0ea6f1eac8e56e13b2f8b93b6d2dbadbfb59d8ed6cc1657714fbb1ce",
+      "sha512": "55215e10cbe1dbe2ffbb4060d51a3bfbbe04ac9a8757ed322d4129738cadb2666f52abbf57a09bed1a3b04f342b756c670c7249490cbf90e555caa3970cd6911",
+      "ssdeep": "60968:p0qolencMmu4a28Ap48gJrbII6p5YaY0xhFGC:ciq9O6gCj2qdoobOqjPhFB8GqhjUvvP",
+      "tlsh": "working"
+    },
+    "interactive": false,
+    "name": "problems.ppt",
+    "parent": {
+      "args": ["across", "work", "innovation", "collaborating"],
+      "args_count": 1663,
+      "code_signature": {
+        "digest_algorithm": "sha1",
+        "exists": true,
+        "signing_id": "u65pYDvC3HemHytd1G21u",
+        "status": "complex",
+        "subject_name": "us_all_new.jpg",
+        "team_id": "82YxJDdVpKTFVUF4ohDac",
+        "timestamp": "2025-03-22T23:04:34.477341Z",
+        "trusted": false,
+        "valid": true
+      },
+      "command_line": "visit",
+      "end": "2025-03-23T09:59:06.477350Z",
+      "entity_id": "3VjZVVIyMEooZYvCM77vN2",
+      "entry_meta": {
+        "type": "other"
+      },
+      "env_vars": {
+        "key_a": "us",
+        "key_b": "across",
+        "key_c": "transition",
+        "key_d": "potential",
+        "key_e": "on"
+      },
+      "executable": "sizes",
+      "exit_code": 2688,
+      "hash": {
+        "md5": "0f956fae7ac9058eb74e95beef868850",
+        "sha1": "3de73b3fdee0bf92c51aa54b668df9a351dd3794",
+        "sha256": "ecbd3b0ce264cbea1367cab38e9ed2d8491541260cccb5ff6f6c5d64056ecef7",
+        "sha384": "7dcd2531c00d2aec98f41433234b6467a2a256b385ed233ffc2196b1327e12217b19327345e8af26e721e3ab7babc121",
+        "sha512": "916f842b86380986c7d48398e5fbf3d357b0f5cfac1c172e8e2b8c7756abf63e212ef27ed482cfe364ac089354a62cd77a8ff360a4244705fc376e13baab6388",
+        "ssdeep": "19783:UbhSIjpq8oRxrgmvmeH5a3czX0K:AexVhZ8TOXRhPqCSMVg1DzDaxh0PeRY4TzSB2nq3ja2aPPQXPGY3fPfR5t3",
+        "tlsh": "helps"
+      },
+      "interactive": false,
+      "name": "partnerships_visit_from.exe",
+      "parent": {
+        "args": ["certain", "website", "sizes", "determine"],
+        "args_count": 544,
+        "code_signature": {
+          "digest_algorithm": "sha1",
+          "exists": true,
+          "signing_id": "6ZCrzvC406G9bhcwVSCFMQ",
+          "status": "Government",
+          "subject_name": "innovation_more_performs.exe",
+          "team_id": "2cRTkkwOKNdeaOONAQ3xeM",
+          "timestamp": "2025-03-15T01:29:48.477618Z",
+          "trusted": false,
+          "valid": false
+        },
+        "command_line": "One",
+        "end": "2025-04-14T00:01:53.477629Z",
+        "entity_id": "7DNYKICGLWiSaQyFxo3uGQ",
         "entry_meta": {
-            "type": "complex"
+          "type": "are"
         },
         "env_vars": {
-            "key_a": "sizes",
-            "key_b": "technologies"
+          "key_a": "promote",
+          "key_b": "improve"
         },
-        "executable": "Canada",
-        "exit_code": 3184,
+        "executable": "with",
+        "exit_code": 2405,
         "hash": {
-            "md5": "7b4c61dcf55c192ddfbf02f6e8890135",
-            "sha1": "338d754978bd0e47ed137a165735f5876a018d04",
-            "sha256": "bd90fa5432a574c491b15a119f859af15325928286331a070a366961a2cf8012",
-            "sha384": "137a34b34923846d630b27c6581f17b86e88439f0ea6f1eac8e56e13b2f8b93b6d2dbadbfb59d8ed6cc1657714fbb1ce",
-            "sha512": "55215e10cbe1dbe2ffbb4060d51a3bfbbe04ac9a8757ed322d4129738cadb2666f52abbf57a09bed1a3b04f342b756c670c7249490cbf90e555caa3970cd6911",
-            "ssdeep": "60968:p0qolencMmu4a28Ap48gJrbII6p5YaY0xhFGC:ciq9O6gCj2qdoobOqjPhFB8GqhjUvvP",
-            "tlsh": "working"
+          "md5": "ea437ccce79bd9c897adc9e09ce9d160",
+          "sha1": "aecce89ebbbbdcd28ba44f401e610a86e5e5831c",
+          "sha256": "3bb8ed06ff349fc217b0ae3e40e6fe3ac24e39a0b53f5e7a59280dc823739b1f",
+          "sha384": "56774c5353bc601042283c5142448260730e9e1e3da5bc10ccc38200d2bb959415a9cf274518bc0548aa1e7d860d802b",
+          "sha512": "540d999242b4bef623ebc531d530a9da927ec08976d8d6e303984783af08dc775f5124fc3ec0fffb14f776934d4f8a35102a24a8c0852536dffb6a459bd9b07d",
+          "ssdeep": "89240:y9x7ckAMnlLAtCYM9FZQXbA:pHC6zwAZ9cnprgx6BeIElLFBMd1fave8ALDy7oS1i09HwYluGrjdL02uu3k8",
+          "tlsh": "laboratory"
         },
-        "interactive": false,
-        "name": "problems.ppt",
-        "parent": {
-            "args": [
-                "across",
-                "work",
-                "innovation",
-                "collaborating"
-            ],
-            "args_count": 1663,
-            "code_signature": {
-                "digest_algorithm": "sha1",
-                "exists": true,
-                "signing_id": "u65pYDvC3HemHytd1G21u",
-                "status": "complex",
-                "subject_name": "us_all_new.jpg",
-                "team_id": "82YxJDdVpKTFVUF4ohDac",
-                "timestamp": "2025-03-22T23:04:34.477341Z",
-                "trusted": false,
-                "valid": true
-            },
-            "command_line": "visit",
-            "end": "2025-03-23T09:59:06.477350Z",
-            "entity_id": "3VjZVVIyMEooZYvCM77vN2",
-            "entry_meta": {
-                "type": "other"
-            },
-            "env_vars": {
-                "key_a": "us",
-                "key_b": "across",
-                "key_c": "transition",
-                "key_d": "potential",
-                "key_e": "on"
-            },
-            "executable": "sizes",
-            "exit_code": 2688,
-            "hash": {
-                "md5": "0f956fae7ac9058eb74e95beef868850",
-                "sha1": "3de73b3fdee0bf92c51aa54b668df9a351dd3794",
-                "sha256": "ecbd3b0ce264cbea1367cab38e9ed2d8491541260cccb5ff6f6c5d64056ecef7",
-                "sha384": "7dcd2531c00d2aec98f41433234b6467a2a256b385ed233ffc2196b1327e12217b19327345e8af26e721e3ab7babc121",
-                "sha512": "916f842b86380986c7d48398e5fbf3d357b0f5cfac1c172e8e2b8c7756abf63e212ef27ed482cfe364ac089354a62cd77a8ff360a4244705fc376e13baab6388",
-                "ssdeep": "19783:UbhSIjpq8oRxrgmvmeH5a3czX0K:AexVhZ8TOXRhPqCSMVg1DzDaxh0PeRY4TzSB2nq3ja2aPPQXPGY3fPfR5t3",
-                "tlsh": "helps"
-            },
-            "interactive": false,
-            "name": "partnerships_visit_from.exe",
-            "parent": {
-                "args": [
-                    "certain",
-                    "website",
-                    "sizes",
-                    "determine"
-                ],
-                "args_count": 544,
-                "code_signature": {
-                    "digest_algorithm": "sha1",
-                    "exists": true,
-                    "signing_id": "6ZCrzvC406G9bhcwVSCFMQ",
-                    "status": "Government",
-                    "subject_name": "innovation_more_performs.exe",
-                    "team_id": "2cRTkkwOKNdeaOONAQ3xeM",
-                    "timestamp": "2025-03-15T01:29:48.477618Z",
-                    "trusted": false,
-                    "valid": false
-                },
-                "command_line": "One",
-                "end": "2025-04-14T00:01:53.477629Z",
-                "entity_id": "7DNYKICGLWiSaQyFxo3uGQ",
-                "entry_meta": {
-                    "type": "are"
-                },
-                "env_vars": {
-                    "key_a": "promote",
-                    "key_b": "improve"
-                },
-                "executable": "with",
-                "exit_code": 2405,
-                "hash": {
-                    "md5": "ea437ccce79bd9c897adc9e09ce9d160",
-                    "sha1": "aecce89ebbbbdcd28ba44f401e610a86e5e5831c",
-                    "sha256": "3bb8ed06ff349fc217b0ae3e40e6fe3ac24e39a0b53f5e7a59280dc823739b1f",
-                    "sha384": "56774c5353bc601042283c5142448260730e9e1e3da5bc10ccc38200d2bb959415a9cf274518bc0548aa1e7d860d802b",
-                    "sha512": "540d999242b4bef623ebc531d530a9da927ec08976d8d6e303984783af08dc775f5124fc3ec0fffb14f776934d4f8a35102a24a8c0852536dffb6a459bd9b07d",
-                    "ssdeep": "89240:y9x7ckAMnlLAtCYM9FZQXbA:pHC6zwAZ9cnprgx6BeIElLFBMd1fave8ALDy7oS1i09HwYluGrjdL02uu3k8",
-                    "tlsh": "laboratory"
-                },
-                "interactive": true,
-                "name": "performs_one_academia.lnk",
-                "pe": {
-                    "architecture": "determine",
-                    "company": "country",
-                    "description": "Build",
-                    "file_version": "state.exe",
-                    "imphash": "art",
-                    "original_file_name": "for_security_security.exe",
-                    "pehash": "testing",
-                    "product": "Government"
-                },
-                "pid": 2918,
-                "same_as_process": true,
-                "start": "2025-03-27T08:32:35.477848Z",
-                "title": "technical",
-                "uptime": 1370,
-                "user": {
-                    "domain": "innovation.biz",
-                    "email": "art@levels.edu",
-                    "id": "academia",
-                    "name": "cutting.lnk"
-                },
-                "working_directory": "them/order/promote/also/survey/we"
-            },
-            "pe": {
-                "architecture": "emerging",
-                "company": "across",
-                "description": "promote",
-                "file_version": "complex_innovative.xls",
-                "imphash": "services",
-                "original_file_name": "selling_also.pdf",
-                "pehash": "are",
-                "product": "laboratory"
-            },
-            "pid": 1517,
-            "same_as_process": true,
-            "start": "2025-04-04T12:16:33.477906Z",
-            "title": "Program",
-            "uptime": 3780,
-            "user": {
-                "domain": "more.ca",
-                "email": "edge@stays.ca",
-                "id": "to",
-                "name": "new_collaborating_from.lnk"
-            },
-            "working_directory": "vendors/survey"
-        },
+        "interactive": true,
+        "name": "performs_one_academia.lnk",
         "pe": {
-            "architecture": "learn",
-            "company": "development",
-            "description": "open",
-            "file_version": "about.pdf",
-            "imphash": "technology",
-            "original_file_name": "testing_industry.xls",
-            "pehash": "determine",
-            "product": "collaborating"
+          "architecture": "determine",
+          "company": "country",
+          "description": "Build",
+          "file_version": "state.exe",
+          "imphash": "art",
+          "original_file_name": "for_security_security.exe",
+          "pehash": "testing",
+          "product": "Government"
         },
-        "pid": 812,
-        "same_as_process": false,
-        "start": "2025-03-27T11:52:37.477958Z",
-        "title": "authority",
-        "uptime": 2646,
+        "pid": 2918,
+        "same_as_process": true,
+        "start": "2025-03-27T08:32:35.477848Z",
+        "title": "technical",
+        "uptime": 1370,
         "user": {
-            "domain": "about.com",
-            "email": "order@new.biz",
-            "id": "authority",
-            "name": "product_the.exe"
+          "domain": "innovation.biz",
+          "email": "art@levels.edu",
+          "id": "academia",
+          "name": "cutting.lnk"
         },
-        "working_directory": "also/to/visit/edge"
+        "working_directory": "them/order/promote/also/survey/we"
+      },
+      "pe": {
+        "architecture": "emerging",
+        "company": "across",
+        "description": "promote",
+        "file_version": "complex_innovative.xls",
+        "imphash": "services",
+        "original_file_name": "selling_also.pdf",
+        "pehash": "are",
+        "product": "laboratory"
+      },
+      "pid": 1517,
+      "same_as_process": true,
+      "start": "2025-04-04T12:16:33.477906Z",
+      "title": "Program",
+      "uptime": 3780,
+      "user": {
+        "domain": "more.ca",
+        "email": "edge@stays.ca",
+        "id": "to",
+        "name": "new_collaborating_from.lnk"
+      },
+      "working_directory": "vendors/survey"
     },
-    "registry": {
-        "data": {
-            "bytes": "programs",
-            "strings": [
-                "To",
-                "goods",
-                "government",
-                "but"
-            ],
-            "type": "stays"
+    "pe": {
+      "architecture": "learn",
+      "company": "development",
+      "description": "open",
+      "file_version": "about.pdf",
+      "imphash": "technology",
+      "original_file_name": "testing_industry.xls",
+      "pehash": "determine",
+      "product": "collaborating"
+    },
+    "pid": 812,
+    "same_as_process": false,
+    "start": "2025-03-27T11:52:37.477958Z",
+    "title": "authority",
+    "uptime": 2646,
+    "user": {
+      "domain": "about.com",
+      "email": "order@new.biz",
+      "id": "authority",
+      "name": "product_the.exe"
+    },
+    "working_directory": "also/to/visit/edge"
+  },
+  "registry": {
+    "data": {
+      "bytes": "programs",
+      "strings": ["To", "goods", "government", "but"],
+      "type": "stays"
+    },
+    "hive": "innovation",
+    "key": "our",
+    "path": "certain",
+    "value": "vendors"
+  },
+  "related": {
+    "hash": ["product", "emerging"],
+    "hosts": ["emerging.ca", "technical.ca"],
+    "id": "do",
+    "ids": ["cyber", "academia", "defence"],
+    "ip": ["218.6.241.250", "199.62.243.193", "46.245.168.5", "105.5.112.175"],
+    "signature": ["performs", "across"],
+    "uri": [
+      "http://innovative.ca/Build/working",
+      "http://bcip.ca/levels/about/engaging/services/performs/complex",
+      "https://new.ca/across/across/bringing/art/working"
+    ],
+    "user": ["shawnh", "user", "admin"]
+  },
+  "rule": {
+    "author": "us",
+    "category": "edge",
+    "description": "provide",
+    "id": "Government",
+    "license": "experts",
+    "name": "centre_stays.jpg",
+    "reference": "about",
+    "ruleset": "Canadian",
+    "uuid": "participating",
+    "version": "5.4.5"
+  },
+  "server": {
+    "address": "innovations",
+    "domain": "government.ca",
+    "ip": "43.207.243.22"
+  },
+  "source": {
+    "address": "experts",
+    "autonomous_systems": {
+      "number": 1989,
+      "organization_name": "survey.gif"
+    },
+    "bytes": 3680,
+    "domain": "cutting.ca",
+    "geo": {
+      "city_name": "cyber_laboratory.exe",
+      "continent_code": "engaging",
+      "continent_name": "market.xls",
+      "country_iso_code": "support",
+      "country_name": "programs_complex.xls",
+      "location": {
+        "lat": 3247.26,
+        "lon": 2248.09
+      },
+      "name": "supports_across_edge.pdf",
+      "postal_code": "provide",
+      "region_iso_code": "Innovation",
+      "region_name": "government_also_build.pdf",
+      "timezone": "innovations"
+    },
+    "ip": "220.29.14.40",
+    "mac": "d1:e5:3c:51:d2:51",
+    "nat": {
+      "ip": "243.247.87.120",
+      "port": 2978
+    },
+    "original": {
+      "address": "state",
+      "autonomous_systems": {
+        "number": 772,
+        "organization_name": "centre.jpg"
+      },
+      "bytes": 1511,
+      "domain": "enhanced.edu",
+      "geo": {
+        "city_name": "to_invite_partners.ppt",
+        "continent_code": "sizes",
+        "continent_name": "role.jpg",
+        "country_iso_code": "participating",
+        "country_name": "tools_on.doc",
+        "location": {
+          "lat": 2094.98,
+          "lon": 3068.9
         },
-        "hive": "innovation",
-        "key": "our",
-        "path": "certain",
-        "value": "vendors"
+        "name": "innovation_government.lnk",
+        "postal_code": "BCIP",
+        "region_iso_code": "levels",
+        "region_name": "bringing.gif",
+        "timezone": "promote"
+      },
+      "ip": "9.43.59.145",
+      "mac": "e8:c6:f7:f7:aa:5b",
+      "nat": {
+        "ip": "95.53.48.111",
+        "port": 3787
+      },
+      "packets": 1159,
+      "port": 3398
     },
-    "related": {
-        "hash": [
-            "product",
-            "emerging"
-        ],
-        "hosts": [
-            "emerging.ca",
-            "technical.ca"
-        ],
-        "id": "do",
-        "ids": [
-            "cyber",
-            "academia",
-            "defence"
-        ],
-        "ip": [
-            "218.6.241.250",
-            "199.62.243.193",
-            "46.245.168.5",
-            "105.5.112.175"
-        ],
-        "signature": [
-            "performs",
-            "across"
-        ],
-        "uri": [
-            "http://innovative.ca/Build/working",
-            "http://bcip.ca/levels/about/engaging/services/performs/complex",
-            "https://new.ca/across/across/bringing/art/working"
-        ],
-        "user": [
-            "shawnh",
-            "user",
-            "admin"
-        ]
+    "packets": 1868,
+    "port": 3909,
+    "user": {
+      "domain": "are.com",
+      "email": "enhanced@provide.biz",
+      "full_name": "their.gif",
+      "group": {
+        "domain": "provide.biz",
+        "id": "an",
+        "name": "feedback.xls"
+      },
+      "hash": "technology",
+      "id": "government",
+      "name": "levels_do_visit.xls",
+      "roles": ["edge"]
+    }
+  },
+  "tags": ["One"],
+  "threat": {
+    "enrichments": [
+      {
+        "indicator": {
+          "confidence": "edge",
+          "description": "To have the validity of the detention determined by way of habeas corpus and to be released if the detention is not lawful.",
+          "email": {
+            "address": "complex"
+          },
+          "file": {
+            "accessed": "2025-04-01T15:27:49.478487Z",
+            "attributes": ["state", "complex"],
+            "code_signature": {
+              "digest_algorithm": "sha384",
+              "exists": false,
+              "signing_id": "321ppSK20MrfTGjrNjUOkE",
+              "status": "selling",
+              "subject_name": "partnerships_partners_examine.xls",
+              "team_id": "lWYHP4sfNBpTF4Bzl0npd",
+              "timestamp": "2025-03-31T11:35:58.478705Z",
+              "trusted": false,
+              "valid": true
+            },
+            "created": "2025-03-21T08:03:54.478506Z",
+            "ctime": "2025-04-09T23:34:47.478510Z",
+            "device": "collaborating",
+            "directory": "performs/key/edge/sizes/canadian",
+            "drive_letter": "Build",
+            "elf": {
+              "architecture": "performs",
+              "byte_order": "problems",
+              "cpu_type": "them",
+              "creation_date": "examine",
+              "exports": ["authority", "helps", "For"],
+              "header": {
+                "abi_version": "5.2.6",
+                "class": "new",
+                "data": "in",
+                "entrypoint": 1557,
+                "object_version": "7.1.6",
+                "os_abi": "us",
+                "type": "invite",
+                "version": "5.2.6"
+              },
+              "imports": ["other"],
+              "sections": [
+                {
+                  "chi2": 2501,
+                  "entropy": 1443,
+                  "flags": "supports",
+                  "name": "by.xls",
+                  "physical_offset": "is",
+                  "physical_size": 1877,
+                  "type": "do",
+                  "virtual_address": 1901,
+                  "virtual_size": 2983
+                }
+              ],
+              "segments": [
+                {
+                  "chi2": 462,
+                  "entropy": 2880,
+                  "flags": "Cyber",
+                  "name": "is_testing_across.doc",
+                  "physical_offset": "partners",
+                  "physical_size": 973,
+                  "type": "improve",
+                  "virtual_address": 2998,
+                  "virtual_size": 2939
+                }
+              ],
+              "shared_libraries": ["Innovation", "Innovation"],
+              "telfhash": "on"
+            },
+            "extension": "enhanced",
+            "fork_name": "in.jpg",
+            "gid": "tools",
+            "group": "ADMINS",
+            "hash": {
+              "md5": "cfae993539878d595a58143dd18a6662",
+              "sha1": "4e3da9d9807646a8af1771073f23469dfb4e5e3b",
+              "sha256": "0221019dc64848ff068e6f2ab587580691a2da8152b8cfb621c671871b67dc34",
+              "sha384": "a2f540615cefc6e6201f5683372779c390e72de2ef74603fa8bc20b522dc0e6d1144f4395b6aa8a2eb87c1349f8560a8",
+              "sha512": "8f38376688cb2444252c6031f28616ef260e2be008065850d292277a20f09e302214fbfd3ee576e24bb47fec8f05a602bfb5919beee64d8d1539f94c07596bc9",
+              "ssdeep": "35941:xuD2a02EdDokRYe9wii4MUzGt0eb8HbkIKuE0cUu:d5k7SUXPMKfdhef5dZLSw5IGIMSuIwRf8JF8UbytJ",
+              "tlsh": "academia"
+            },
+            "inode": "cyber.biz",
+            "mime_type": "industry",
+            "mode": "We",
+            "mtime": "2025-04-04T11:07:09.478547Z",
+            "name": "edge_collaborating.exe",
+            "owner": "assist",
+            "path": "us",
+            "pe": {
+              "architecture": "innovations",
+              "company": "selling",
+              "description": "sizes",
+              "file_version": "enhanced.exe",
+              "imphash": "engaging",
+              "original_file_name": "to_determine_canada.exe",
+              "pehash": "companies",
+              "product": "improve"
+            },
+            "size": 2144,
+            "target_path": "collaborating",
+            "type": "file",
+            "uid": "complex"
+          },
+          "first_seen": "2025-03-22T16:41:28.479044Z",
+          "ip": "152.69.219.57",
+          "last_seen": "2025-03-31T04:40:58.479050Z",
+          "port": 3656,
+          "provider": "innovations",
+          "reference": "to",
+          "scanner_stats": 725,
+          "sightings": 2832,
+          "type": "certain"
+        },
+        "matched": {
+          "atomic": "learn"
+        }
+      }
+    ],
+    "feed": {
+      "dashboard_id": "514mD8VWJlqZC2vEXE8Pqs",
+      "description": "but",
+      "name": "innovative.exe",
+      "reference": "an"
     },
-    "rule": {
-        "author": "us",
-        "category": "edge",
-        "description": "provide",
-        "id": "Government",
-        "license": "experts",
-        "name": "centre_stays.jpg",
-        "reference": "about",
-        "ruleset": "Canadian",
-        "uuid": "participating",
-        "version": "5.4.5"
+    "framework": "Custom",
+    "group": {
+      "alias": ["The", "from", "cutting"],
+      "id": "collaborating",
+      "name": "laboratory.xls",
+      "reference": "work"
+    },
+    "indicator": {
+      "confidence": "The",
+      "description": "English and French are the official languages of Canada and have equality of status and equal rights and privileges as to their use in all institutions of the Parliament and government of Canada.",
+      "email": {
+        "address": "Government"
+      },
+      "file": {
+        "accessed": "2025-03-31T19:20:44.479135Z",
+        "attributes": ["stays", "order"],
+        "code_signature": {
+          "digest_algorithm": "sha256",
+          "exists": false,
+          "signing_id": "4N4Nf8Fym5HRzjaLEtU0ja",
+          "status": "edge",
+          "subject_name": "art.jpg",
+          "team_id": "77wvphVOb1OXi8y0KFO0wf",
+          "timestamp": "2025-03-22T18:08:48.479255Z",
+          "trusted": true,
+          "valid": false
+        },
+        "created": "2025-04-16T12:56:35.479145Z",
+        "ctime": "2025-03-31T10:37:02.479148Z",
+        "device": "One",
+        "directory": "an/innovative/goods/government/other/working",
+        "drive_letter": "government",
+        "elf": {
+          "architecture": "enhanced",
+          "byte_order": "private",
+          "cpu_type": "cyber",
+          "creation_date": "problems",
+          "exports": ["companies"],
+          "header": {
+            "abi_version": "7.5.3",
+            "class": "evaluate",
+            "data": "to",
+            "entrypoint": 379,
+            "object_version": "4.2.9",
+            "os_abi": "constantly",
+            "type": "innovation",
+            "version": "8.0.5"
+          },
+          "imports": ["private", "open"],
+          "sections": [
+            {
+              "chi2": 1451,
+              "entropy": 1094,
+              "flags": "our",
+              "name": "services_government_environment.doc",
+              "physical_offset": "private",
+              "physical_size": 3389,
+              "type": "role",
+              "virtual_address": 1459,
+              "virtual_size": 3367
+            },
+            {
+              "chi2": 2189,
+              "entropy": 2733,
+              "flags": "art",
+              "name": "provide_industry_promote.lnk",
+              "physical_offset": "key",
+              "physical_size": 2426,
+              "type": "authority",
+              "virtual_address": 3423,
+              "virtual_size": 1591
+            },
+            {
+              "chi2": 1876,
+              "entropy": 2399,
+              "flags": "the",
+              "name": "website_private_open.doc",
+              "physical_offset": "academia",
+              "physical_size": 468,
+              "type": "companies",
+              "virtual_address": 4043,
+              "virtual_size": 933
+            },
+            {
+              "chi2": 798,
+              "entropy": 733,
+              "flags": "new",
+              "name": "with_all_bcip.jpg",
+              "physical_offset": "BCIP",
+              "physical_size": 2765,
+              "type": "services",
+              "virtual_address": 586,
+              "virtual_size": 3243
+            }
+          ],
+          "segments": [
+            {
+              "chi2": 416,
+              "entropy": 501,
+              "flags": "us",
+              "name": "marketplace_the_tools.xls",
+              "physical_offset": "examine",
+              "physical_size": 225,
+              "type": "problems",
+              "virtual_address": 746,
+              "virtual_size": 182
+            },
+            {
+              "chi2": 2329,
+              "entropy": 1659,
+              "flags": "do",
+              "name": "sizes.gif",
+              "physical_offset": "transition",
+              "physical_size": 4031,
+              "type": "all",
+              "virtual_address": 816,
+              "virtual_size": 1137
+            },
+            {
+              "chi2": 3074,
+              "entropy": 278,
+              "flags": "product",
+              "name": "market.jpg",
+              "physical_offset": "this",
+              "physical_size": 2541,
+              "type": "vendors",
+              "virtual_address": 3307,
+              "virtual_size": 1812
+            }
+          ],
+          "shared_libraries": ["tools"],
+          "telfhash": "laboratory"
+        },
+        "extension": "authority",
+        "fork_name": "examine.xls",
+        "gid": "collaborating",
+        "group": "USERS",
+        "hash": {
+          "md5": "3ac3c214b783bc10f9d58c7eefc87096",
+          "sha1": "42c6037948c15b5db7b9bd18f8dec6fc4ad12f68",
+          "sha256": "21f7c3a76e273c931714b5c53a8e4745668e3256cb3392c19f5e4b1b585450ee",
+          "sha384": "48d76efa180d3295b629b4279baf42e5ee25d964d868d1fb33d56d55b1dbec865ab706592b5a975392ce0b8dfed63f13",
+          "sha512": "5ea0e7b93194f2a8516f08465f4f9028990606425f11d715ee2830b65842cbf176c95b4598832c7aa12d27b0d24741b424b5e0ab2c4f9fa1ee8bf8957ae38cfc",
+          "ssdeep": "50211:YlHSLxlwDsazHfsKu3sO61MMob1Rq4oGFbsYSxJdd8ycJrPO:w7dG029sZFGiipg9nxQBjDSJBmxlqpDpyv9EqHdhG4zV1",
+          "tlsh": "vendors"
+        },
+        "inode": "them.biz",
+        "mime_type": "engaging",
+        "mode": "survey",
+        "mtime": "2025-04-08T05:48:18.479182Z",
+        "name": "assist_is.gif",
+        "owner": "in",
+        "path": "invite",
+        "pe": {
+          "architecture": "commercial",
+          "company": "government",
+          "description": "innovative",
+          "file_version": "partnerships_improve.lnk",
+          "imphash": "website",
+          "original_file_name": "country.lnk",
+          "pehash": "from",
+          "product": "order"
+        },
+        "size": 2085,
+        "target_path": "country",
+        "type": "file",
+        "uid": "problems"
+      },
+      "first_seen": "2025-04-04T07:54:53.479646Z",
+      "ip": "205.169.58.125",
+      "last_seen": "2025-04-09T03:40:14.479650Z",
+      "port": 1168,
+      "provider": "To",
+      "reference": "cyber",
+      "scanner_stats": 3980,
+      "sightings": 807,
+      "type": "tools"
+    },
+    "software": {
+      "alias": ["certain", "technology"],
+      "id": "but",
+      "name": "invite.ppt",
+      "platform": ["an", "defence", "other"],
+      "reference": "supports",
+      "type": "collaborating"
+    },
+    "tactic": {
+      "id": "TA0011",
+      "name": "Command and Control",
+      "reference": "Program"
+    },
+    "technique": {
+      "id": "T1525",
+      "name": "Implant Internal Image",
+      "reference": "market"
+    }
+  },
+  "timestamp": "2025-03-26T17:26:51.486109Z",
+  "tls": {
+    "client": {
+      "ja3": "sizes",
+      "server_name": "key_promote.pdf"
     },
     "server": {
-        "address": "innovations",
-        "domain": "government.ca",
-        "ip": "43.207.243.22"
+      "ja3s": "this"
     },
-    "source": {
-        "address": "experts",
-        "autonomous_systems": {
-            "number": 1989,
-            "organization_name": "survey.gif"
-        },
-        "bytes": 3680,
-        "domain": "cutting.ca",
-        "geo": {
-            "city_name": "cyber_laboratory.exe",
-            "continent_code": "engaging",
-            "continent_name": "market.xls",
-            "country_iso_code": "support",
-            "country_name": "programs_complex.xls",
-            "location": {
-                "lat": 3247.26,
-                "lon": 2248.09
-            },
-            "name": "supports_across_edge.pdf",
-            "postal_code": "provide",
-            "region_iso_code": "Innovation",
-            "region_name": "government_also_build.pdf",
-            "timezone": "innovations"
-        },
-        "ip": "220.29.14.40",
-        "mac": "d1:e5:3c:51:d2:51",
-        "nat": {
-            "ip": "243.247.87.120",
-            "port": 2978
-        },
-        "original": {
-            "address": "state",
-            "autonomous_systems": {
-                "number": 772,
-                "organization_name": "centre.jpg"
-            },
-            "bytes": 1511,
-            "domain": "enhanced.edu",
-            "geo": {
-                "city_name": "to_invite_partners.ppt",
-                "continent_code": "sizes",
-                "continent_name": "role.jpg",
-                "country_iso_code": "participating",
-                "country_name": "tools_on.doc",
-                "location": {
-                    "lat": 2094.98,
-                    "lon": 3068.9
-                },
-                "name": "innovation_government.lnk",
-                "postal_code": "BCIP",
-                "region_iso_code": "levels",
-                "region_name": "bringing.gif",
-                "timezone": "promote"
-            },
-            "ip": "9.43.59.145",
-            "mac": "e8:c6:f7:f7:aa:5b",
-            "nat": {
-                "ip": "95.53.48.111",
-                "port": 3787
-            },
-            "packets": 1159,
-            "port": 3398
-        },
-        "packets": 1868,
-        "port": 3909,
-        "user": {
-            "domain": "are.com",
-            "email": "enhanced@provide.biz",
-            "full_name": "their.gif",
-            "group": {
-                "domain": "provide.biz",
-                "id": "an",
-                "name": "feedback.xls"
-            },
-            "hash": "technology",
-            "id": "government",
-            "name": "levels_do_visit.xls",
-            "roles": [
-                "edge"
-            ]
-        }
+    "version": "5.3.0",
+    "version_protocol": "4.0.4"
+  },
+  "url": {
+    "domain": "cyber.ca",
+    "extension": "performs",
+    "fragment": "technical",
+    "full": "the",
+    "original": "survey",
+    "password": "support",
+    "path": "this",
+    "port": 3840,
+    "query": "other",
+    "registered_domain": "build.com",
+    "scheme": "them",
+    "subdomain": "improve.ca",
+    "top_level_domain": "an.edu",
+    "username": "shawnh"
+  },
+  "user": {
+    "domain": "cyber.edu",
+    "email": "by@website.ca",
+    "full_name": "to_to.doc",
+    "group": {
+      "domain": "provide.ca",
+      "id": "us",
+      "name": "our_problems_evaluate.gif"
     },
-    "tags": [
-        "One"
-    ],
-    "threat": {
-        "enrichments": [
-            {
-                "indicator": {
-                    "confidence": "edge",
-                    "description": "To have the validity of the detention determined by way of habeas corpus and to be released if the detention is not lawful.",
-                    "email": {
-                        "address": "complex"
-                    },
-                    "file": {
-                        "accessed": "2025-04-01T15:27:49.478487Z",
-                        "attributes": [
-                            "state",
-                            "complex"
-                        ],
-                        "code_signature": {
-                            "digest_algorithm": "sha384",
-                            "exists": false,
-                            "signing_id": "321ppSK20MrfTGjrNjUOkE",
-                            "status": "selling",
-                            "subject_name": "partnerships_partners_examine.xls",
-                            "team_id": "lWYHP4sfNBpTF4Bzl0npd",
-                            "timestamp": "2025-03-31T11:35:58.478705Z",
-                            "trusted": false,
-                            "valid": true
-                        },
-                        "created": "2025-03-21T08:03:54.478506Z",
-                        "ctime": "2025-04-09T23:34:47.478510Z",
-                        "device": "collaborating",
-                        "directory": "performs/key/edge/sizes/canadian",
-                        "drive_letter": "Build",
-                        "elf": {
-                            "architecture": "performs",
-                            "byte_order": "problems",
-                            "cpu_type": "them",
-                            "creation_date": "examine",
-                            "exports": [
-                                "authority",
-                                "helps",
-                                "For"
-                            ],
-                            "header": {
-                                "abi_version": "5.2.6",
-                                "class": "new",
-                                "data": "in",
-                                "entrypoint": 1557,
-                                "object_version": "7.1.6",
-                                "os_abi": "us",
-                                "type": "invite",
-                                "version": "5.2.6"
-                            },
-                            "imports": [
-                                "other"
-                            ],
-                            "sections": [
-                                {
-                                    "chi2": 2501,
-                                    "entropy": 1443,
-                                    "flags": "supports",
-                                    "name": "by.xls",
-                                    "physical_offset": "is",
-                                    "physical_size": 1877,
-                                    "type": "do",
-                                    "virtual_address": 1901,
-                                    "virtual_size": 2983
-                                }
-                            ],
-                            "segments": [
-                                {
-                                    "chi2": 462,
-                                    "entropy": 2880,
-                                    "flags": "Cyber",
-                                    "name": "is_testing_across.doc",
-                                    "physical_offset": "partners",
-                                    "physical_size": 973,
-                                    "type": "improve",
-                                    "virtual_address": 2998,
-                                    "virtual_size": 2939
-                                }
-                            ],
-                            "shared_libraries": [
-                                "Innovation",
-                                "Innovation"
-                            ],
-                            "telfhash": "on"
-                        },
-                        "extension": "enhanced",
-                        "fork_name": "in.jpg",
-                        "gid": "tools",
-                        "group": "ADMINS",
-                        "hash": {
-                            "md5": "cfae993539878d595a58143dd18a6662",
-                            "sha1": "4e3da9d9807646a8af1771073f23469dfb4e5e3b",
-                            "sha256": "0221019dc64848ff068e6f2ab587580691a2da8152b8cfb621c671871b67dc34",
-                            "sha384": "a2f540615cefc6e6201f5683372779c390e72de2ef74603fa8bc20b522dc0e6d1144f4395b6aa8a2eb87c1349f8560a8",
-                            "sha512": "8f38376688cb2444252c6031f28616ef260e2be008065850d292277a20f09e302214fbfd3ee576e24bb47fec8f05a602bfb5919beee64d8d1539f94c07596bc9",
-                            "ssdeep": "35941:xuD2a02EdDokRYe9wii4MUzGt0eb8HbkIKuE0cUu:d5k7SUXPMKfdhef5dZLSw5IGIMSuIwRf8JF8UbytJ",
-                            "tlsh": "academia"
-                        },
-                        "inode": "cyber.biz",
-                        "mime_type": "industry",
-                        "mode": "We",
-                        "mtime": "2025-04-04T11:07:09.478547Z",
-                        "name": "edge_collaborating.exe",
-                        "owner": "assist",
-                        "path": "us",
-                        "pe": {
-                            "architecture": "innovations",
-                            "company": "selling",
-                            "description": "sizes",
-                            "file_version": "enhanced.exe",
-                            "imphash": "engaging",
-                            "original_file_name": "to_determine_canada.exe",
-                            "pehash": "companies",
-                            "product": "improve"
-                        },
-                        "size": 2144,
-                        "target_path": "collaborating",
-                        "type": "file",
-                        "uid": "complex"
-                    },
-                    "first_seen": "2025-03-22T16:41:28.479044Z",
-                    "ip": "152.69.219.57",
-                    "last_seen": "2025-03-31T04:40:58.479050Z",
-                    "port": 3656,
-                    "provider": "innovations",
-                    "reference": "to",
-                    "scanner_stats": 725,
-                    "sightings": 2832,
-                    "type": "certain"
-                },
-                "matched": {
-                    "atomic": "learn"
-                }
-            }
-        ],
-        "feed": {
-            "dashboard_id": "514mD8VWJlqZC2vEXE8Pqs",
-            "description": "but",
-            "name": "innovative.exe",
-            "reference": "an"
-        },
-        "framework": "Custom",
-        "group": {
-            "alias": [
-                "The",
-                "from",
-                "cutting"
-            ],
-            "id": "collaborating",
-            "name": "laboratory.xls",
-            "reference": "work"
-        },
-        "indicator": {
-            "confidence": "The",
-            "description": "English and French are the official languages of Canada and have equality of status and equal rights and privileges as to their use in all institutions of the Parliament and government of Canada.",
-            "email": {
-                "address": "Government"
-            },
-            "file": {
-                "accessed": "2025-03-31T19:20:44.479135Z",
-                "attributes": [
-                    "stays",
-                    "order"
-                ],
-                "code_signature": {
-                    "digest_algorithm": "sha256",
-                    "exists": false,
-                    "signing_id": "4N4Nf8Fym5HRzjaLEtU0ja",
-                    "status": "edge",
-                    "subject_name": "art.jpg",
-                    "team_id": "77wvphVOb1OXi8y0KFO0wf",
-                    "timestamp": "2025-03-22T18:08:48.479255Z",
-                    "trusted": true,
-                    "valid": false
-                },
-                "created": "2025-04-16T12:56:35.479145Z",
-                "ctime": "2025-03-31T10:37:02.479148Z",
-                "device": "One",
-                "directory": "an/innovative/goods/government/other/working",
-                "drive_letter": "government",
-                "elf": {
-                    "architecture": "enhanced",
-                    "byte_order": "private",
-                    "cpu_type": "cyber",
-                    "creation_date": "problems",
-                    "exports": [
-                        "companies"
-                    ],
-                    "header": {
-                        "abi_version": "7.5.3",
-                        "class": "evaluate",
-                        "data": "to",
-                        "entrypoint": 379,
-                        "object_version": "4.2.9",
-                        "os_abi": "constantly",
-                        "type": "innovation",
-                        "version": "8.0.5"
-                    },
-                    "imports": [
-                        "private",
-                        "open"
-                    ],
-                    "sections": [
-                        {
-                            "chi2": 1451,
-                            "entropy": 1094,
-                            "flags": "our",
-                            "name": "services_government_environment.doc",
-                            "physical_offset": "private",
-                            "physical_size": 3389,
-                            "type": "role",
-                            "virtual_address": 1459,
-                            "virtual_size": 3367
-                        },
-                        {
-                            "chi2": 2189,
-                            "entropy": 2733,
-                            "flags": "art",
-                            "name": "provide_industry_promote.lnk",
-                            "physical_offset": "key",
-                            "physical_size": 2426,
-                            "type": "authority",
-                            "virtual_address": 3423,
-                            "virtual_size": 1591
-                        },
-                        {
-                            "chi2": 1876,
-                            "entropy": 2399,
-                            "flags": "the",
-                            "name": "website_private_open.doc",
-                            "physical_offset": "academia",
-                            "physical_size": 468,
-                            "type": "companies",
-                            "virtual_address": 4043,
-                            "virtual_size": 933
-                        },
-                        {
-                            "chi2": 798,
-                            "entropy": 733,
-                            "flags": "new",
-                            "name": "with_all_bcip.jpg",
-                            "physical_offset": "BCIP",
-                            "physical_size": 2765,
-                            "type": "services",
-                            "virtual_address": 586,
-                            "virtual_size": 3243
-                        }
-                    ],
-                    "segments": [
-                        {
-                            "chi2": 416,
-                            "entropy": 501,
-                            "flags": "us",
-                            "name": "marketplace_the_tools.xls",
-                            "physical_offset": "examine",
-                            "physical_size": 225,
-                            "type": "problems",
-                            "virtual_address": 746,
-                            "virtual_size": 182
-                        },
-                        {
-                            "chi2": 2329,
-                            "entropy": 1659,
-                            "flags": "do",
-                            "name": "sizes.gif",
-                            "physical_offset": "transition",
-                            "physical_size": 4031,
-                            "type": "all",
-                            "virtual_address": 816,
-                            "virtual_size": 1137
-                        },
-                        {
-                            "chi2": 3074,
-                            "entropy": 278,
-                            "flags": "product",
-                            "name": "market.jpg",
-                            "physical_offset": "this",
-                            "physical_size": 2541,
-                            "type": "vendors",
-                            "virtual_address": 3307,
-                            "virtual_size": 1812
-                        }
-                    ],
-                    "shared_libraries": [
-                        "tools"
-                    ],
-                    "telfhash": "laboratory"
-                },
-                "extension": "authority",
-                "fork_name": "examine.xls",
-                "gid": "collaborating",
-                "group": "USERS",
-                "hash": {
-                    "md5": "3ac3c214b783bc10f9d58c7eefc87096",
-                    "sha1": "42c6037948c15b5db7b9bd18f8dec6fc4ad12f68",
-                    "sha256": "21f7c3a76e273c931714b5c53a8e4745668e3256cb3392c19f5e4b1b585450ee",
-                    "sha384": "48d76efa180d3295b629b4279baf42e5ee25d964d868d1fb33d56d55b1dbec865ab706592b5a975392ce0b8dfed63f13",
-                    "sha512": "5ea0e7b93194f2a8516f08465f4f9028990606425f11d715ee2830b65842cbf176c95b4598832c7aa12d27b0d24741b424b5e0ab2c4f9fa1ee8bf8957ae38cfc",
-                    "ssdeep": "50211:YlHSLxlwDsazHfsKu3sO61MMob1Rq4oGFbsYSxJdd8ycJrPO:w7dG029sZFGiipg9nxQBjDSJBmxlqpDpyv9EqHdhG4zV1",
-                    "tlsh": "vendors"
-                },
-                "inode": "them.biz",
-                "mime_type": "engaging",
-                "mode": "survey",
-                "mtime": "2025-04-08T05:48:18.479182Z",
-                "name": "assist_is.gif",
-                "owner": "in",
-                "path": "invite",
-                "pe": {
-                    "architecture": "commercial",
-                    "company": "government",
-                    "description": "innovative",
-                    "file_version": "partnerships_improve.lnk",
-                    "imphash": "website",
-                    "original_file_name": "country.lnk",
-                    "pehash": "from",
-                    "product": "order"
-                },
-                "size": 2085,
-                "target_path": "country",
-                "type": "file",
-                "uid": "problems"
-            },
-            "first_seen": "2025-04-04T07:54:53.479646Z",
-            "ip": "205.169.58.125",
-            "last_seen": "2025-04-09T03:40:14.479650Z",
-            "port": 1168,
-            "provider": "To",
-            "reference": "cyber",
-            "scanner_stats": 3980,
-            "sightings": 807,
-            "type": "tools"
-        },
-        "software": {
-            "alias": [
-                "certain",
-                "technology"
-            ],
-            "id": "but",
-            "name": "invite.ppt",
-            "platform": [
-                "an",
-                "defence",
-                "other"
-            ],
-            "reference": "supports",
-            "type": "collaborating"
-        },
-        "tactic": {
-            "id": "TA0011",
-            "name": "Command and Control",
-            "reference": "Program"
-        },
-        "technique": {
-            "id": "T1525",
-            "name": "Implant Internal Image",
-            "reference": "market"
-        }
+    "hash": "key",
+    "id": "on",
+    "name": "government",
+    "roles": ["from", "levels", "website"]
+  },
+  "user_agent": {
+    "device": {
+      "name": "helps_art_partners.doc"
     },
-    "timestamp": "2025-03-26T17:26:51.486109Z",
-    "tls": {
-        "client": {
-            "ja3": "sizes",
-            "server_name": "key_promote.pdf"
-        },
-        "server": {
-            "ja3s": "this"
-        },
-        "version": "5.3.0",
-        "version_protocol": "4.0.4"
+    "name": "canada_on.gif",
+    "original": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101 Firefox/102.0",
+    "os": {
+      "family": "open",
+      "full": "laboratory",
+      "kernel": "bringing",
+      "name": "innovation_feedback.gif",
+      "platform": "bringing",
+      "type": "programs",
+      "version": "7.5.8"
     },
-    "url": {
-        "domain": "cyber.ca",
-        "extension": "performs",
-        "fragment": "technical",
-        "full": "the",
-        "original": "survey",
-        "password": "support",
-        "path": "this",
-        "port": 3840,
-        "query": "other",
-        "registered_domain": "build.com",
-        "scheme": "them",
-        "subdomain": "improve.ca",
-        "top_level_domain": "an.edu",
-        "username": "shawnh"
-    },
-    "user": {
-        "domain": "cyber.edu",
-        "email": "by@website.ca",
-        "full_name": "to_to.doc",
-        "group": {
-            "domain": "provide.ca",
-            "id": "us",
-            "name": "our_problems_evaluate.gif"
-        },
-        "hash": "key",
-        "id": "on",
-        "name": "government",
-        "roles": [
-            "from",
-            "levels",
-            "website"
-        ]
-    },
-    "user_agent": {
-        "device": {
-            "name": "helps_art_partners.doc"
-        },
-        "name": "canada_on.gif",
-        "original": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101 Firefox/102.0",
-        "os": {
-            "family": "open",
-            "full": "laboratory",
-            "kernel": "bringing",
-            "name": "innovation_feedback.gif",
-            "platform": "bringing",
-            "type": "programs",
-            "version": "7.5.8"
-        },
-        "version": "6.3.3"
-    },
-    "vulnerability": {
-        "category": [
-            "technology",
-            "participating"
-        ],
-        "classification": "innovative",
-        "description": "feedback",
-        "enumeration": "survey",
-        "id": "supports",
-        "reference": "website",
-        "report_id": "3ORmjRdYpmyKK3eCDD6Byx"
-    }
+    "version": "6.3.3"
+  },
+  "vulnerability": {
+    "category": ["technology", "participating"],
+    "classification": "innovative",
+    "description": "feedback",
+    "enumeration": "survey",
+    "id": "supports",
+    "reference": "website",
+    "report_id": "3ORmjRdYpmyKK3eCDD6Byx"
+  }
 }

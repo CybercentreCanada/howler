@@ -93,6 +93,33 @@ def flatten(data: _Mapping, parent_key: Optional[str] = None, odm: Optional[type
     return dict(items)
 
 
+def flatten_deep(data: _Mapping):
+    "Aggressively and completely flatten an object."
+    partially_flattened = flatten(data)
+
+    final: dict[str, Any] = {}
+    for key, value in partially_flattened.items():
+        if not isinstance(value, list) or len(value) == 0 or all(not isinstance(entry, dict) for entry in value):
+            final[key] = value
+        else:
+            for entry in value:
+                flat_value = flatten_deep(entry)
+                for child_key, child_value in flat_value.items():
+                    full_key = f"{key}.{child_key}"
+                    if full_key not in final:
+                        if isinstance(child_value, list):
+                            final[full_key] = child_value
+                        else:
+                            final[full_key] = [child_value]
+                    else:
+                        if isinstance(child_value, list):
+                            final[full_key].extend(child_value)
+                        else:
+                            final[full_key].append(child_value)
+
+    return final
+
+
 def unflatten(data: _Mapping) -> _Mapping:
     "Unflatten a nested dict"
     out: dict[str, Any] = dict()
