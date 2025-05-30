@@ -28,11 +28,12 @@ def ingest_alert(**kwargs):
 
     Result Example:
     """
-    if apikey := request.headers.get("Authorization", "Basic ", type=str).split(" ")[1]:
-        logger.info("Recieved authorization header with value %s", re.sub(r"^(.{3}).+(.{3})$", r"\1...\2", apikey))
+    apikey = request.headers.get("Authorization", "Basic ", type=str).split(" ")[1]
 
-        if apikey != SECRET:
-            return unauthorized(err="API Key does not match expected value.")
+    if not apikey or apikey != SECRET:
+        return unauthorized(err="API Key does not match expected value.")
+
+    logger.info("Recieved authorization header with value %s", re.sub(r"^(.{3}).+(.{3})$", r"\1...\2", apikey))
 
     sentinel_alert = request.json
 
