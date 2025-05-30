@@ -1,5 +1,7 @@
+import os
+
 from flask import request
-from howler.api import make_subapi_blueprint, ok
+from howler.api import make_subapi_blueprint, ok, unauthorized
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 
@@ -8,6 +10,8 @@ sentinel_api = make_subapi_blueprint(SUB_API, api_version=1)
 sentinel_api._doc = "Interact with spellbook"
 
 logger = get_logger(__file__)
+
+SECRET = os.environ["SENTINEL_LINK_KEY"]
 
 
 @generate_swagger_docs()
@@ -23,6 +27,12 @@ def ingest_alert(**kwargs):
 
     Result Example:
     """
+    if apikey := request.headers.get("Authorization", "Basic ", type=str).split(" ")[1]:
+        logger.info("Recieved authorization header with value %s", apikey)
+
+        if apikey != SECRET:
+            return unauthorized(err="API Key does not match expected value.")
+
     sentinel_alert = request.json
 
     logger.info("Sentinel Alert:\n%s", sentinel_alert)
