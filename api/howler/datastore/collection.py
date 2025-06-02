@@ -57,7 +57,7 @@ if typing.TYPE_CHECKING:
 
 TRANSPORT_TIMEOUT = int(environ.get("HWL_DATASTORE_TRANSPORT_TIMEOUT", "10"))
 
-log = logging.getLogger("howler.api.datastore")
+logger = logging.getLogger("howler.api.datastore")
 ModelType = TypeVar("ModelType", bound=Model)
 write_block_settings = {"settings": {"index.blocks.write": True}}
 write_unblock_settings = {"settings": {"index.blocks.write": None}}
@@ -219,7 +219,7 @@ class ESCollection(Generic[ModelType]):
         if not ESCollection.IGNORE_ENSURE_COLLECTION:
             self._ensure_collection()
         else:
-            log.warning("Skipping ensure collection! This is dangerous. Waiting five seconds before continuing.")
+            logger.warning("Skipping ensure collection! This is dangerous. Waiting five seconds before continuing.")
             time.sleep(5)
 
         self.stored_fields = {}
@@ -297,7 +297,7 @@ class ESCollection(Generic[ModelType]):
                     ignore=(404,),
                 )
                 if not resp.get("succeeded", False):
-                    log.warning(
+                    logger.warning(
                         f"Could not clear scroll ID {scroll_id}, there is potential "
                         "memory leak in you Elastic cluster..."
                     )
@@ -319,7 +319,7 @@ class ESCollection(Generic[ModelType]):
                 ret_val = func(*args, **kwargs)
 
                 if retries:
-                    log.info("Reconnected to elasticsearch!")
+                    logger.info("Reconnected to elasticsearch!")
 
                 if updated:
                     ret_val["updated"] += updated
@@ -331,7 +331,7 @@ class ESCollection(Generic[ModelType]):
             except elasticsearch.exceptions.NotFoundError as e:
                 if "index_not_found_exception" in str(e):
                     time.sleep(min(retries, self.MAX_RETRY_BACKOFF))
-                    log.debug("The index does not exist. Trying to recreate it...")
+                    logger.debug("The index does not exist. Trying to recreate it...")
                     self._ensure_collection()
                     self.datastore.connection_reset()
                     retries += 1
@@ -351,7 +351,7 @@ class ESCollection(Generic[ModelType]):
                 retries += 1
 
             except elasticsearch.exceptions.ConnectionTimeout:
-                log.warning(
+                logger.warning(
                     f"Elasticsearch connection timeout, server(s): "
                     f"{' | '.join(self.datastore.get_hosts(safe=True))}"
                     f", retrying {func.__name__}..."
@@ -366,7 +366,7 @@ class ESCollection(Generic[ModelType]):
                 elasticsearch.exceptions.AuthenticationException,
             ) as e:
                 if not isinstance(e, SearchRetryException):
-                    log.warning(
+                    logger.warning(
                         f"No connection to Elasticsearch server(s): "
                         f"{' | '.join(self.datastore.get_hosts(safe=True))}"
                         f", because [{e}] retrying {func.__name__}..."
@@ -379,19 +379,19 @@ class ESCollection(Generic[ModelType]):
             except elasticsearch.exceptions.TransportError as e:
                 err_code, msg, cause = e.args
                 if err_code == 503 or err_code == "503":
-                    log.warning(f"Looks like index {self.name} is not ready yet, retrying...")
+                    logger.warning(f"Looks like index {self.name} is not ready yet, retrying...")
                     time.sleep(min(retries, self.MAX_RETRY_BACKOFF))
                     self.datastore.connection_reset()
                     retries += 1
                 elif err_code == 429 or err_code == "429":
-                    log.warning(
+                    logger.warning(
                         "Elasticsearch is too busy to perform the requested " f"task on index {self.name}, retrying..."
                     )
                     time.sleep(min(retries, self.MAX_RETRY_BACKOFF))
                     self.datastore.connection_reset()
                     retries += 1
                 elif err_code == 403 or err_code == "403":
-                    log.warning(
+                    logger.warning(
                         "Elasticsearch cluster is preventing writing operations " f"on index {self.name}, retrying..."
                     )
                     time.sleep(min(retries, self.MAX_RETRY_BACKOFF))
@@ -445,7 +445,7 @@ class ESCollection(Generic[ModelType]):
             except elasticsearch.exceptions.TransportError as e:
                 err_code, _, _ = e.args
                 if err_code == 408 or err_code == "408":
-                    log.warning(f"Waiting for index {index} to get to status {min_status}...")
+                    logger.warning(f"Waiting for index {index} to get to status {min_status}...")
                 else:
                     raise
 
@@ -534,15 +534,12 @@ class ESCollection(Generic[ModelType]):
             "acknowledged"
         ]
 
-    def fix_shards(self, logger=None):
+    def fix_shards(self):
         """This function should be overloaded to fix the shard configuration of the index of all the different hosts
         specified in self.datastore.hosts.
 
         :return: Should return True of the fix was successful on all hosts
         """
-        if logger is None:
-            logger = log
-
         body = {"settings": self._get_index_settings()}
         clone_body = {"settings": {"index.number_of_replicas": 0}}
         clone_finish_settings = None
@@ -844,7 +841,7 @@ class ESCollection(Generic[ModelType]):
                     key_list.remove(row["_id"])
                     add_to_output(row["_source"], row["_id"])
                 except ValueError:
-                    log.exception(f'MGet returned multiple documents for id: {row["_id"]}')
+                    logger.exception(f'MGet returned multiple documents for id: {row["_id"]}')
 
         if key_list and error_on_missing:
             raise MultiKeyError(key_list, out)
@@ -1221,15 +1218,15 @@ class ESCollection(Generic[ModelType]):
                 f"{res['_seq_no']}---{res['_primary_term']}",
             )
         except elasticsearch.NotFoundError as e:
-            log.warning("Update - elasticsearch.NotFoundError: %s %s", e.message, e.info)
+            logger.warning("Update - elasticsearch.NotFoundError: %s %s", e.message, e.info)
         except elasticsearch.BadRequestError as e:
-            log.warning("Update - elasticsearch.BadRequestError: %s %s", e.message, e.info)
+            logger.warning("Update - elasticsearch.BadRequestError: %s %s", e.message, e.info)
             return False
         except VersionConflictException as e:
-            log.warning("Update - elasticsearch.ConflictError: %s", e.message)
+            logger.warning("Update - elasticsearch.ConflictError: %s", e.message)
             raise
         except Exception as e:
-            log.warning("Update - Generic Exception: %s", str(e))
+            logger.warning("Update - Generic Exception: %s", str(e))
             return False
 
         return False
@@ -2147,7 +2144,12 @@ class ESCollection(Generic[ModelType]):
         if "total_fields" not in settings["index"]["mapping"]:
             settings["index"]["mapping"]["total_fields"] = {}
 
-        settings["index"]["mapping"]["total_fields"]["limit"] = 1500
+        limit = len(self.model_class.flat_fields()) + 500 if self.model_class else 1500
+        if limit < 1500:
+            limit = 1500
+        else:
+            logger.warning("ODM field size is larger than 1500 - set to %s", limit)
+        settings["index"]["mapping"]["total_fields"]["limit"] = limit
 
         return settings
 
@@ -2200,7 +2202,26 @@ class ESCollection(Generic[ModelType]):
 
         missing = set(model.keys()) - set(fields.keys())
         if missing:
-            self._add_fields({key: model[key] for key in missing})
+            # TODO: Bump mapping limit
+            try:
+                self._add_fields({key: model[key] for key in missing})
+            except elasticsearch.BadRequestError as err:
+                handled = False
+                if err.body and isinstance(err.body, dict) and "error" in err.body and "reason" in err.body["error"]:
+                    reason: str = err.body["error"]["reason"]
+                    if reason.startswith("Limit of total fields"):
+                        current_count = int(re.sub(r".+\[(\d+)].+", r"\1", reason))
+                        logger.warning(
+                            "Current field cap %s is too low, increasing to %s", current_count, current_count + 500
+                        )
+                        self.with_retries(
+                            self.datastore.client.indices.put_settings,
+                            body={"settings": {"index.mapping.total_fields.limit": current_count + 500}},
+                        )
+                        self._add_fields({key: model[key] for key in missing})
+                        handled = True
+                if not handled:
+                    raise
 
         matching = set(fields.keys()) & set(model.keys())
         for field_name in matching:
@@ -2224,7 +2245,7 @@ class ESCollection(Generic[ModelType]):
         """
         # Create HOT index
         if not self.with_retries(self.datastore.client.indices.exists, index=self.name):
-            log.debug(f"Index {self.name.upper()} does not exists. Creating it now...")
+            logger.debug(f"Index {self.name.upper()} does not exists. Creating it now...")
             try:
                 self.with_retries(
                     self.datastore.client.indices.create,
@@ -2235,7 +2256,7 @@ class ESCollection(Generic[ModelType]):
             except elasticsearch.exceptions.RequestError as e:
                 if "resource_already_exists_exception" not in str(e):
                     raise
-                log.warning(f"Tried to create an index template that already exists: {self.name.upper()}")
+                logger.warning(f"Tried to create an index template that already exists: {self.name.upper()}")
 
             self.with_retries(
                 self.datastore.client.indices.put_alias,
@@ -2310,7 +2331,7 @@ class ESCollection(Generic[ModelType]):
 
         :return:
         """
-        log.debug("Wipe operation started for collection: %s" % self.name.upper())
+        logger.debug("Wipe operation started for collection: %s" % self.name.upper())
 
         for index in self.index_list:
             if self.with_retries(self.datastore.client.indices.exists, index=index):
