@@ -114,6 +114,9 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      - name: Pull Howler API Docker Image
+        run: |
+          docker pull cccsaurora/howler-api:latest
       - name: Spin up test dependencies
         uses: hoverkraft-tech/compose-action@v2.2.0
         with:
