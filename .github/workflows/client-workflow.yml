@@ -116,7 +116,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       - name: Pull Dependent Docker Images
         run: |
-          docker pull cccsaurora/howler-api:latest
+          docker pull cccsaurora/howler-api:develop
           docker pull docker.elastic.co/elasticsearch/elasticsearch:8.3.3
           docker pull redis
       - name: Spin up test dependencies
