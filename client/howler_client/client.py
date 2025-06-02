@@ -10,7 +10,7 @@ from howler_client.module.user import User
 class Client(object):
     "Main howler client object, wrapping API calls"
 
-    def __init__(self, connection):
+    def __init__(self, connection: Connection):
         self._connection: Connection = connection
 
         self.help = Help(self._connection)
@@ -19,7 +19,7 @@ class Client(object):
         self.bundle = Bundle(self._connection, self.hit)
         self.user = User(self._connection)
 
-        paths = []
+        paths: list[str] = []
         walk_api_path(self, [""], paths)
 
-        self.__doc__ = "Client provides the following methods:\n\n" + "\n".join(["\n".join(p + [""]) for p in paths])
+        self.__doc__ = "Client provides the following methods:\n\n" + "\n".join(["\n".join(p + "\n") for p in paths])
