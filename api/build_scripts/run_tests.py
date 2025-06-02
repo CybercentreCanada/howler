@@ -51,7 +51,7 @@ def main():
 
         return_code = pytest.poll()
         if return_code is not None and return_code > 0:
-            if output and os.environ.get("TF_BUILD", ""):
+            if output and os.environ.get("WRITE_MARKDOWN", ""):
                 markdown_output = textwrap.dedent(
                     f"""
                 ![Static Badge](https://img.shields.io/badge/build%20(Python%20{platform.python_version()})-failing-red)
