@@ -48,20 +48,3 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-
-  keycloak:
-    build:
-      context: ./keycloak
-      dockerfile: Dockerfile
-      no_cache: true
-    environment:
-      KC_HEALTH_ENABLED: true
-    ports:
-      - "9100:8080"
-    expose:
-      - "9100"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready"]
-      interval: 5s
-      timeout: 5s
-      retries: 15
