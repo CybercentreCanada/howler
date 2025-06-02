@@ -72,9 +72,10 @@ def main():
 
                 markdown_output += "\n</details>"
 
-                print(
-                    "##vso[task.setvariable variable=error_result]" + markdown_output.replace("\n", "%0D%0A") + "\n\n"
-                )
+                print("Markdown result:")
+                print(markdown_output)
+
+                (Path(__file__).parent.parent / "test-results.md").write_text(markdown_output)
 
             raise subprocess.CalledProcessError(return_code, pytest.args, output=output, stderr=None)
 

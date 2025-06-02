@@ -152,9 +152,19 @@ jobs:
         run: |
           poetry run python build_scripts/keycloak_health.py
       - name: Run tests
+        id: tests
+        continue-on-error: true
         run: |
           poetry run test
+
+      - name: Add Failed Test PR Comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: github.event_name == 'pull_request' && failure() && steps.tests.outcome == 'failure'
+        with:
+          path: api/test-results.md
+
       - name: Coverage Results
+        if: success()
         run: |
           git diff --name-only $BASE_SHA..$HEAD_SHA
           git diff $BASE_SHA..$HEAD_SHA > diff.txt
@@ -166,9 +176,8 @@ jobs:
 
       - name: Add Coverage PR Comment
         uses: marocchino/sticky-pull-request-comment@v2
-        if: github.event_name == 'pull_request' && matrix.python-version == '3.12'
+        if: success() && github.event_name == 'pull_request' && matrix.python-version == '3.12'
         with:
-          recreate: true
           path: api/coverage-results.md
   push_to_pypi:
     if: github.event_name != 'pull_request'
