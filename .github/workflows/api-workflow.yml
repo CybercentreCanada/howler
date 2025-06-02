@@ -161,13 +161,13 @@ jobs:
 
       - name: Add Failed Test PR Comment
         uses: marocchino/sticky-pull-request-comment@v2
-        if: github.event_name == 'pull_request' && failure() && steps.tests.outcome == 'failure'
+        if: github.event_name == 'pull_request' && steps.tests.outcome == 'failure'
         with:
           path: api/test-results.md
           header: api
 
       - name: Coverage Results
-        if: success()
+        if: steps.tests.outcome == 'success'
         run: |
           git diff --name-only $BASE_SHA..$HEAD_SHA
           git diff $BASE_SHA..$HEAD_SHA > diff.txt
@@ -179,10 +179,15 @@ jobs:
 
       - name: Add Coverage PR Comment
         uses: marocchino/sticky-pull-request-comment@v2
-        if: success() && github.event_name == 'pull_request' && matrix.python-version == '3.12'
+        if: steps.tests.outcome == 'success' && github.event_name == 'pull_request' && matrix.python-version == '3.12'
         with:
           path: api/coverage-results.md
           header: api
+
+      - name: Force Failure if Tests Failed
+        if: steps.tests.outcome == 'failure'
+        run: |
+          exit 1
   push_to_pypi:
     if: github.event_name != 'pull_request'
 
