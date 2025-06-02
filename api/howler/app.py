@@ -11,7 +11,7 @@ load_dotenv()
 # We append the plugin directory for howler to the python part
 PLUGIN_PATH = Path(os.environ.get("HWL_PLUGIN_DIRECTORY", "/etc/howler/plugins"))
 sys.path.insert(0, str(PLUGIN_PATH))
-if config.ui.debug:
+if config.ui.debug and PLUGIN_PATH.exists():
     for _plugin in PLUGIN_PATH.iterdir():
         sys.path.append(
             str(Path(os.path.realpath(_plugin)) / f"../.venv/lib/python3.{sys.version_info.minor}/site-packages")
