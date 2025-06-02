@@ -1,12 +1,11 @@
 import importlib
 import os
 import re
-import sys
 from pathlib import Path
 from typing import Any, Optional
 
 from howler.common.logging import get_logger
-from howler.config import cache, config
+from howler.config import config
 from howler.odm.models.user import User
 
 logger = get_logger(__file__)
@@ -123,7 +122,6 @@ def execute(
     return __sanitize_report(report)
 
 
-@cache.memoize(3600, unless=lambda x: "pytest" in sys.modules)
 def specifications() -> list[dict[str, Any]]:
     """A list of specifications for the available operations
 
