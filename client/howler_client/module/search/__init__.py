@@ -10,6 +10,8 @@ from howler_client.module.search.stream import Stream
 
 
 class Search(object):
+    "Module dedicated to searching collections and performing various other operations like group by or faceting"
+
     def __init__(self, connection):
         self._connection = connection
         self.facet = Facet(connection)
@@ -19,9 +21,7 @@ class Search(object):
         self.stats = Stats(connection)
         self.stream = Stream(connection, self._do_search)
 
-    def _do_search(
-        self, index, query, use_archive=False, track_total_hits=None, **kwargs
-    ):
+    def _do_search(self, index, query, use_archive=False, track_total_hits=None, **kwargs):
         if index not in SEARCHABLE:
             raise ClientError("Index %s is not searchable" % index, 400)
 
@@ -53,8 +53,7 @@ class Search(object):
         use_archive=False,
         track_total_hits=None,
     ):
-        """
-        Search hits with a lucene query.
+        """Search hits with a lucene query.
 
         Required:
         query   : lucene query (string)

@@ -1,5 +1,12 @@
+import sys
 from typing import Any, Literal
-from howler_client.common.utils import api_path, api_path_by_module
+
+from howler_client.common.utils import api_path
+
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    from typing_extensions import Self
 
 
 class User(object):
@@ -8,9 +15,8 @@ class User(object):
     def __init__(self, connection):
         self._connection = connection
 
-    def __call__(self, username: str) -> dict[str, Any]:
-        """
-        Return the profile for the given username
+    def __call__(self: Self, username: str) -> dict[str, Any]:
+        """Return the profile for the given username
 
         Args:
             username (str): User key. (string).
@@ -20,9 +26,7 @@ class User(object):
         """
         return self._connection.get(api_path("user", username))
 
-    def add(
-        self, username: str, user_data: dict[str, Any]
-    ) -> dict[Literal["success"], bool]:
+    def add(self: Self, username: str, user_data: dict[str, Any]) -> dict[Literal["success"], bool]:
         """Add a user to the system
 
         Args:
@@ -34,7 +38,7 @@ class User(object):
         """
         return self._connection.post(api_path("user", username), json=user_data)
 
-    def delete(self, username: str) -> dict[Literal["success"], bool]:
+    def delete(self: Self, username: str) -> dict[Literal["success"], bool]:
         """Remove the account specified by the username.
 
         Args:
@@ -46,7 +50,7 @@ class User(object):
         return self._connection.delete(api_path("user", username))
 
     def list(
-        self,
+        self: Self,
         query: str = "*:*",
         rows: int = 10,
         offset: int = 0,
@@ -64,7 +68,6 @@ class User(object):
         Returns:
             dict[str, Any]: Result of listing the users
         """
-
         return self._connection.get(
             api_path(
                 "search",
@@ -77,9 +80,7 @@ class User(object):
             )
         )
 
-    def update(
-        self, username: str, user_data: dict[str, Any]
-    ) -> dict[Literal["success"], bool]:
+    def update(self: Self, username: str, user_data: dict[str, Any]) -> dict[Literal["success"], bool]:
         """Update a user profile in the system.
 
         Args:
@@ -91,8 +92,6 @@ class User(object):
         """
         return self._connection.put(api_path("user", username), json=user_data)
 
-    def whoami(self) -> dict[str, Any]:
-        """
-        Return the currently logged in user
-        """
-        return self._connection.get(api_path_by_module(self))
+    def whoami(self: Self) -> dict[str, Any]:
+        "Return the currently logged in user"
+        return self._connection.get(api_path("user", "whoami"))

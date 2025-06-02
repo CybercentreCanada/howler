@@ -2,6 +2,8 @@ from howler_client.common.utils import SEARCHABLE, ClientError, api_path
 
 
 class Stats(object):
+    "Module for getting statistics on various indexes"
+
     def __init__(self, connection):
         self._connection = connection
 
@@ -23,8 +25,7 @@ class Stats(object):
         return self._connection.get(path)
 
     def hit(self, field, query=None, filters=None):
-        """
-        Generates statistics about the distribution of an integer field of the hit index.
+        """Generates statistics about the distribution of an integer field of the hit index.
 
         Required:
         field   : field to create the stats on (only work on number fields)

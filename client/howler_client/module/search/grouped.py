@@ -2,6 +2,8 @@ from howler_client.common.utils import SEARCHABLE, ClientError, api_path
 
 
 class Grouped(object):
+    "Module for grouping search results from given indexes"
+
     def __init__(self, connection):
         self._connection = connection
 
@@ -34,8 +36,7 @@ class Grouped(object):
         sort=None,
         fl=None,
     ):
-        """
-        Search hit collection and group result to a given field
+        """Search hit collection and group result to a given field
 
         Required:
         field   : Field used to group the results

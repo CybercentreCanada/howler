@@ -2,6 +2,8 @@ from howler_client.common.utils import SEARCHABLE, ClientError, api_path
 
 
 class Fields(object):
+    "List the fields of given indexes"
+
     def __init__(self, connection):
         self._connection = connection
 

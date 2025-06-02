@@ -1,6 +1,12 @@
+import sys
 from typing import TYPE_CHECKING, Any, List
 
 from howler_client.common.utils import api_path
+
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    from typing_extensions import Self
 
 if TYPE_CHECKING:
     from howler_client import Connection
@@ -9,10 +15,10 @@ if TYPE_CHECKING:
 class Comment(object):
     """Help related endpoints"""
 
-    def __init__(self, connection: "Connection"):
+    def __init__(self: Self, connection: "Connection"):
         self._connection = connection
 
-    def add(self, hit_id: str, comment: str) -> dict[str, Any]:
+    def add(self: Self, hit_id: str, comment: str) -> dict[str, Any]:
         """Add a comment to a hit and return it
 
         Args:
@@ -22,11 +28,9 @@ class Comment(object):
         Returns:
             dict[str, Any]: The corresponding hit data
         """
-        return self._connection.post(
-            api_path("hit", hit_id, "comments"), json={"value": comment}
-        )
+        return self._connection.post(api_path("hit", hit_id, "comments"), json={"value": comment})
 
-    def edit(self, hit_id: str, comment: str, comment_id: str) -> dict[str, Any]:
+    def edit(self: Self, hit_id: str, comment: str, comment_id: str) -> dict[str, Any]:
         """Update a comment on a hit and return it
 
         Args:
@@ -42,7 +46,7 @@ class Comment(object):
             json={"value": comment},
         )
 
-    def delete(self, hit_id: str, comment_ids: List[str]) -> dict[str, Any]:
+    def delete(self: Self, hit_id: str, comment_ids: List[str]) -> dict[str, Any]:
         """Delete a comment on a hit and return it
 
         Args:
@@ -52,6 +56,4 @@ class Comment(object):
         Returns:
             dict[str, Any]: The corresponding hit data
         """
-        return self._connection.delete(
-            api_path("hit", hit_id, "comments"), json=comment_ids
-        )
+        return self._connection.delete(api_path("hit", hit_id, "comments"), json=comment_ids)

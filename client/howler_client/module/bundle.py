@@ -1,23 +1,29 @@
+import sys
 from typing import TYPE_CHECKING, Any, Optional, Union
 
 from howler_client.common.utils import api_path
 from howler_client.logger import get_logger
 from howler_client.module.hit import Hit
 
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    from typing_extensions import Self
+
 if TYPE_CHECKING:
     from howler_client import Connection
 
-LOGGER = get_logger("bundle")
+logger = get_logger("bundle")
 
 
 class Bundle(object):
     """Methods related to hit bundles"""
 
-    def __init__(self, connection: "Connection", hit: Hit):
+    def __init__(self: Self, connection: "Connection", hit: Hit):
         self._connection: Connection = connection
         self._hit: Hit = hit
 
-    def __call__(self, hit_id: str):
+    def __call__(self: Self, hit_id: str) -> dict[str, Any]:
         """Return the bundle for a given ID.
 
         Args:
@@ -35,18 +41,16 @@ class Bundle(object):
         if result["howler"]["is_bundle"]:
             return result
         else:
-            raise AttributeError(
-                "This hit is not a bundle! Use client.hit(...) instead."
-            )
+            raise AttributeError("This hit is not a bundle! Use client.hit(...) instead.")
 
     def create_from_map(
-        self,
+        self: Self,
         tool_name: str,
         bundle_hit: dict[str, Any],
         map: dict[str, list[str]],
         documents: list[dict[str, Any]],
-        ignore_extra_values=False,
-    ) -> list[dict[str, Optional[str]]]:
+        ignore_extra_values: bool = False,
+    ) -> dict[str, Union[str, list[str], None]]:
         """Create a bundle using a format similar to the hit.create_from_map function
 
         Args:
@@ -61,20 +65,17 @@ class Bundle(object):
         Returns:
             list[dict[str, Optional[str]]]: The list of IDs of the created hits
         """
-
         map = {**map, "bundle": ["howler.is_bundle"]}
         bundle_hit = {**bundle_hit, "bundle": True}
         hit = [bundle_hit] + documents
 
-        return self._hit.create_from_map(
-            tool_name, map, hit, ignore_extra_values=ignore_extra_values
-        )
+        return self._hit.create_from_map(tool_name, map, hit, ignore_extra_values=ignore_extra_values)
 
     def create(
-        self,
+        self: Self,
         bundle_hit: dict[str, Any],
         data: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = [],
-        ignore_extra_values=False,
+        ignore_extra_values: bool = False,
     ) -> dict[str, Any]:
         """Create a bundle using a format similar to the hit.create function
 
@@ -88,21 +89,25 @@ class Bundle(object):
         Returns:
             Hit: The created bundle hit
         """
+        if not data:
+            data = []
+
+        if not isinstance(data, list):
+            data = [data]
+
         if len(data) > 0:
             result = self._hit.create(data, ignore_extra_values=ignore_extra_values)
 
-            if len(result["invalid"]) > 0:
+            if not result or len(result["invalid"]) > 0:
                 return result
 
             hit_ids = [h["howler"]["id"] for h in result["valid"]]
         else:
             hit_ids = []
 
-        return self._connection.post(
-            api_path("hit/bundle"), json={"bundle": bundle_hit, "hits": hit_ids}
-        )
+        return self._connection.post(api_path("hit/bundle"), json={"bundle": bundle_hit, "hits": hit_ids})
 
-    def add(self, bundle_id: str, hit_ids: Union[str, list[str]]):
+    def add(self: Self, bundle_id: str, hit_ids: Union[str, list[str]]):
         """Add a list of hits to a bundle by their IDs
 
         Args:
@@ -114,14 +119,13 @@ class Bundle(object):
 
         return self._connection.put(api_path("hit/bundle", bundle_id), json=hit_ids)
 
-    def remove(self, bundle_id: str, hit_ids: Union[str, list[str]]):
+    def remove(self: Self, bundle_id: str, hit_ids: Union[str, list[str]]):
         """Remove a list of hits from a bundle by their IDs
 
         Args:
             bundle_id (str): The bundle ID from which to remove the hits
             hit_ids (Union[str, list[str]]): A list of hit IDs to remove from the bundle
         """
-
         if not isinstance(hit_ids, list):
             hit_ids = [hit_ids]
 

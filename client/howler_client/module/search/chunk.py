@@ -1,7 +1,8 @@
 """Sequence manipulation methods used in parsing raw datastore output."""
 
 from __future__ import annotations
-from typing import Sequence, Generator, TypeVar, overload
+
+from typing import Generator, Sequence, TypeVar, overload
 
 _T = TypeVar("_T")
 

@@ -1,14 +1,13 @@
 import threading
 import time
+from typing import Any
 
-from howler_client.common.utils import (
-    SEARCHABLE,
-    ClientError,
-    INVALID_STREAM_SEARCH_PARAMS,
-)
+from howler_client.common.utils import INVALID_STREAM_SEARCH_PARAMS, SEARCHABLE, ClientError
 
 
 class Stream(object):
+    "Module for streaming search results"
+
     def __init__(self, connection, do_search):
         self._connection = connection
         self._do_search = do_search
@@ -35,7 +34,7 @@ class Stream(object):
             with lock:
                 items.extend(j["items"])
 
-            done = self._page_size - len(j["items"])
+            done = bool(self._page_size - len(j["items"]))
 
     def _do_stream(self, index, query, **kwargs):
         if index not in SEARCHABLE:
@@ -51,11 +50,9 @@ class Stream(object):
         kwargs.update({"rows": str(self._page_size), "deep_paging_id": "*"})
 
         yield_done = False
-        items = []
+        items: list[Any] = []
         lock = threading.Lock()
-        sf_t = threading.Thread(
-            target=self._auto_fill, args=[items, lock, index, query], kwargs=kwargs
-        )
+        sf_t = threading.Thread(target=self._auto_fill, args=[items, lock, index, query], kwargs=kwargs)
         sf_t.setDaemon(True)
         sf_t.start()
         while not yield_done:
@@ -70,8 +67,7 @@ class Stream(object):
                 time.sleep(0.01)
 
     def hit(self, query, filters=None, fl=None):
-        """
-        Get all hits from a lucene query.
+        """Get all hits from a lucene query.
 
         Required:
         query   : lucene query (string)
@@ -80,5 +76,6 @@ class Stream(object):
         filters : Additional lucene queries used to filter the data (list of strings)
         fl      : List of fields to return (comma separated string of fields)
 
-        Returns a generator that transparently and efficiently pages through results."""
+        Returns a generator that transparently and efficiently pages through results.
+        """
         return self._do_stream("hit", query, filters=filters, fl=fl)

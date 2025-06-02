@@ -2,6 +2,8 @@ from howler_client.common.utils import SEARCHABLE, ClientError, api_path
 
 
 class Histogram(object):
+    "Module for getting histogram data of a given index"
+
     def __init__(self, connection):
         self._connection = connection
 
@@ -32,9 +34,9 @@ class Histogram(object):
         end=None,
         gap=None,
     ):
-        """
-        Create an histogram of data from a given field in the hit index where the frequency
-        of the data is split between a given gap size.
+        """Create an histogram of data from a given field in the hit index.
+
+        The frequency of the data is split between a given gap size.
 
         Required:
         field   : field to create the histograms with (only work on date or number fields)
@@ -47,7 +49,8 @@ class Histogram(object):
         end      : End of the histogram range (Default: now or 1000)
         gap      : Interval in between each histogram points (Default: 1h or 100)
 
-        Returns all results."""
+        Returns all results.
+        """
         return self._do_histogram(
             "hit",
             field,
