@@ -126,7 +126,6 @@ python = "^3.9"
 pycryptodome = "^3.20.0"
 requests = { extras = ["security"], version = ">=2.32.0,<3.0.0" }
 python-baseconv = "^1.2.2"
-hogwarts-auth = ">=2.0.5,<3.0.0"
 coverage = { extras = ["toml"], version = "^7.6.1" }
 diff-cover = "^9.2.0"
 
@@ -139,7 +138,6 @@ mypy = "^1.11.2"
 pytest = "^8.3.3"
 pytest-cov = "^5.0.0"
 passlib = "^1.7.4"
-assemblyline-client = "^4.9.3"
 
 
 [tool.poetry.group.types.dependencies]
