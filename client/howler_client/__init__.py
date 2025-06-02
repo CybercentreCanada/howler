@@ -4,7 +4,7 @@ from howler_client.client import Client
 from howler_client.connection import Connection
 
 try:
-    __version__ = version("howler-client-internal")
+    __version__ = version("howler-client")
 except PackageNotFoundError:
     __version__ = "0.0.0.unknown"
 
@@ -27,6 +27,7 @@ def get_client(
     throw_on_max_retries=True,
     token=None,
 ):
+    "Initialize a howler client object"
     connection = Connection(
         server,
         auth,

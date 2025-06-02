@@ -89,7 +89,7 @@ suppress-none-returning = true
 
 [tool.poetry]
 package-mode = true
-name = "howler-client-internal"
+name = "howler-client"
 version = "2.4.0"
 description = "The Howler client library facilitates issuing requests to Howler"
 authors = [

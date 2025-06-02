@@ -1,49 +1,60 @@
 import base64
-import json as jsonUtils
+import json
 import sys
 import time
 import warnings
+from typing import Any, Callable, MutableMapping, Optional, Union
 
 import requests
 
 from howler_client.common.utils import ClientError
 from howler_client.logger import get_logger
 
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    from typing_extensions import Self
+
 SUPPORTED_APIS = {"v1"}
 
-LOGGER = get_logger("connection")
+logger = get_logger("connection")
 
 
-def convert_api_output(response):
+def convert_api_output(response: requests.Response):
+    "Convert a requests response to a python object based on the returned JSON data"
+    logger.debug("Converting response %s", response.text)
+
     if response.status_code != 204:
         return response.json()["api_response"]
+
     return None
 
 
 class Connection(object):
+    "Abstraction for executing network requests to the Howler API"
+
     def __init__(  # pylint: disable=R0913
-        self,
-        server,
-        auth,
-        cert,
-        debug,
-        headers,
-        retries,
-        silence_warnings,
-        apikey,
-        verify,
-        timeout,
-        throw_on_bad_request,
-        throw_on_max_retries,
-        token,
+        self: Self,
+        server: str,
+        auth: Optional[Union[str, tuple[str, str]]],
+        cert: Optional[Union[str, tuple[str, str]]],
+        debug: Callable[[str], None],
+        headers: Optional[MutableMapping[str, Union[str, bytes]]],
+        retries: int,
+        silence_warnings: bool,
+        apikey: Optional[tuple[str, str]],
+        verify: bool,
+        timeout: Optional[int],
+        throw_on_bad_request: bool,
+        throw_on_max_retries: bool,
+        # TODO: Not sure what this argument is for (if used at all)
+        token: Optional[Any],
     ):
-        self.auth = auth
         self.apikey = apikey
         self.debug = debug
         self.max_retries = retries
         self.server = server
         self.silence_warnings = silence_warnings
-        self.verify = verify
         self.default_timeout = timeout
         self.throw_on_bad_request = throw_on_bad_request
         self.throw_on_max_retries = throw_on_max_retries
@@ -54,54 +65,61 @@ class Connection(object):
         session.headers.update({"Content-Type": "application/json"})
 
         if auth:
-            LOGGER.info("Using Password Authentication")
-            session.headers.update(
-                {
-                    "Authorization": f"Basic {base64.b64encode(':'.join(auth).encode('utf-8')).decode('utf-8')}"
-                }
-            )
+            if not isinstance(auth, str):
+                auth = base64.b64encode(":".join(auth).encode("utf-8")).decode("utf-8")
+
+            if "." in auth:
+                logger.info("Using JWT Authentication")
+                session.headers.update({"Authorization": f"Bearer {auth}"})
+            else:
+                logger.info("Using Password Authentication")
+                session.headers.update({"Authorization": f"Basic {auth}"})
         elif apikey:
-            LOGGER.info("Using API Key Authentication")
+            logger.info("Using API Key Authentication")
             session.headers.update(
-                {
-                    "Authorization": f"Basic {base64.b64encode(':'.join(apikey).encode('utf-8')).decode('utf-8')}"
-                }
+                {"Authorization": f"Basic {base64.b64encode(':'.join(apikey).encode('utf-8')).decode('utf-8')}"}
             )
 
         session.verify = verify
 
         if cert:
             session.cert = cert
+
         if headers:
+            logger.debug("Adding additional headers")
             session.headers.update(headers)
 
         self.session = session
 
         if "pytest" in sys.modules:
-            LOGGER.info("Skipping API validation, running in a test environment")
+            logger.info("Skipping API validation, running in a test environment")
         else:
             r = self.request(self.session.get, "api/", convert_api_output)
             if not isinstance(r, list) or not set(r).intersection(SUPPORTED_APIS):
-                raise ClientError(
-                    "Supported APIS (%s) are not available" % SUPPORTED_APIS, 400
-                )
+                raise ClientError("Supported APIS (%s) are not available" % SUPPORTED_APIS, 400)
 
     def delete(self, path, **kw):
+        "Execute a DELETE request"
         return self.request(self.session.delete, path, convert_api_output, **kw)
 
     def download(self, path, process, **kw):
+        "Download a file from the remote server"
         return self.request(self.session.get, path, process, **kw)
 
     def get(self, path, **kw):
+        "Execute a GET request"
         return self.request(self.session.get, path, convert_api_output, **kw)
 
     def post(self, path, **kw):
+        "Execute a POST request"
         return self.request(self.session.post, path, convert_api_output, **kw)
 
     def put(self, path, **kw):
+        "Execute a PUT request"
         return self.request(self.session.put, path, convert_api_output, **kw)
 
-    def request(self, func, path, process, **kw):
+    def request(self, func, path, process, **kw):  # noqa: C901
+        "Main request function - prepare and execute a request"
         self.debug(path)
 
         # Apply default timeout parameter if not passed elsewhere
@@ -114,24 +132,25 @@ class Connection(object):
             while self.max_retries < 1 or retries <= self.max_retries:
                 if retries:
                     time.sleep(min(2, 2 ** (retries - 7)))
-                    stream = kw.get("files", {}).get("bin", None)
-                    if stream and "seek" in dir(stream):
-                        stream.seek(0)
 
                 try:
-                    response = func("/".join((self.server, path)), **kw)
+                    response = func(f"{self.server}/{path}", **kw)
                     if "XSRF-TOKEN" in response.cookies:
-                        self.session.headers.update(
-                            {"X-XSRF-TOKEN": response.cookies["XSRF-TOKEN"]}
-                        )
+                        self.session.headers.update({"X-XSRF-TOKEN": response.cookies["XSRF-TOKEN"]})
 
                     if response.text:
-                        _warnings = jsonUtils.loads(response.text).get(
-                            "api_warning", None
-                        )
+                        try:
+                            _warnings = json.loads(response.text).get("api_warning", None)
+                        except json.JSONDecodeError:
+                            logger.warning(
+                                "There was an error when decoding the JSON response from the server, no warnings will "
+                                "be shown."
+                            )
+                            _warnings = None
+
                         if _warnings:
                             for warning in _warnings:
-                                LOGGER.warning(warning)
+                                logger.warning(warning)
 
                     if response.ok:
                         return process(response)
@@ -140,11 +159,7 @@ class Connection(object):
                             resp_data = response.json()
 
                             message = "\n".join(
-                                [
-                                    item["error"]
-                                    for item in resp_data["api_response"]
-                                    if "error" in item
-                                ]
+                                [item["error"] for item in resp_data["api_response"] if "error" in item]
                             )
 
                             err_msg = resp_data["api_error_message"]
@@ -152,10 +167,10 @@ class Connection(object):
                             if message:
                                 err_msg = f"{err_msg}\n{message}"
 
-                            LOGGER.error("%s: %s", response.status_code, err_msg)
+                            logger.error("%s: %s", response.status_code, err_msg)
 
                             if response.status_code != 400 or self.throw_on_bad_request:
-                                raise ClientError(
+                                raise ClientError(  # noqa: TRY301
                                     err_msg,
                                     response.status_code,
                                     api_version=resp_data["api_server_version"],
@@ -170,9 +185,7 @@ class Connection(object):
                                 raise
 
                             if response.status_code != 400 or self.throw_on_bad_request:
-                                raise ClientError(
-                                    response.content, response.status_code
-                                )
+                                raise ClientError(response.content, response.status_code) from e
                             else:
                                 break
                 except (requests.exceptions.SSLError, requests.exceptions.ProxyError):
@@ -186,8 +199,6 @@ class Connection(object):
                 retries += 1
 
             if self.throw_on_max_retries:
-                raise ClientError(
-                    "Max retry reached, could not perform the request.", None
-                )
+                raise ClientError("Max retry reached, could not perform the request.", None)
             else:
-                LOGGER.error("Max retry reached, could not perform the request.")
+                logger.error("Max retry reached, could not perform the request.")
