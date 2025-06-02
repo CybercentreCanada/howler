@@ -5,7 +5,7 @@ import elasticapm
 import elasticsearch
 
 from howler.common.exceptions import HowlerAttributeError
-from howler.datastore.collection import ESCollection, log
+from howler.datastore.collection import ESCollection, logger
 from howler.odm.models.action import Action
 from howler.odm.models.analytic import Analytic
 from howler.odm.models.dossier import Dossier
@@ -106,7 +106,7 @@ class HowlerDatastore(object):
                 elasticsearch.exceptions.ConnectionTimeout,
                 elasticsearch.exceptions.AuthenticationException,
             ):
-                log.warning(
+                logger.warning(
                     f"No connection to Elasticsearch server(s): "
                     f"{' | '.join(self.ds.get_hosts(safe=True))}"
                     f", retrying..."
@@ -118,12 +118,12 @@ class HowlerDatastore(object):
             except elasticsearch.exceptions.TransportError as e:
                 err_code, msg, cause = e.args
                 if err_code == 503 or err_code == "503":
-                    log.warning("Looks like index is not ready yet, retrying...")
+                    logger.warning("Looks like index is not ready yet, retrying...")
                     time.sleep(min(retries, max_retry_backoff))
                     self.ds.connection_reset()
                     retries += 1
                 elif err_code == 429 or err_code == "429":
-                    log.warning(
+                    logger.warning(
                         "Elasticsearch is too busy to perform the requested task, " "we will wait a bit and retry..."
                     )
                     time.sleep(min(retries, max_retry_backoff))
