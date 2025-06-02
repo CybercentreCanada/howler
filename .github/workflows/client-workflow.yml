@@ -87,7 +87,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: api
+        working-directory: client
     strategy:
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12"]
@@ -133,9 +133,6 @@ jobs:
       - name: Install Dependencies
         run: |
           poetry install --verbose --with test
-      - name: Ensure keycloak is healthy
-        run: |
-          poetry run python build_scripts/keycloak_health.py
       - name: Generate random data, user accounts
         run: |
           docker exec $(docker ps -aqf "name=howler-api") python /var/lib/howler/.local/lib/python3.12/site-packages/howler/odm/random_data.py
