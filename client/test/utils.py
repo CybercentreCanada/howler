@@ -41,6 +41,4 @@ def create_and_get_comment(client, comment_value: str):
     hit_to_update = client.search.hit("howler.id:*", rows=1)["items"][0]
     result = client.hit.comment.add(hit_to_update["howler"]["id"], comment_value)
 
-    return result, next(
-        (c for c in result["howler"]["comment"] if c["value"] == comment_value), None
-    )
+    return result, next((c for c in result["howler"]["comment"] if c["value"] == comment_value), None)

@@ -2,31 +2,27 @@ from howler_client.client import Client
 
 
 def test_same_analytic_only(client: Client):
-    assert client.hit.generate_hash(
+    assert client.hit.generate_hash({"howler.analytic": "Analytic 1"}) == client.hit.generate_hash(
         {"howler.analytic": "Analytic 1"}
-    ) == client.hit.generate_hash({"howler.analytic": "Analytic 1"})
+    )
 
 
 def test_different_analytic_only(client: Client):
-    assert client.hit.generate_hash(
-        {"howler.analytic": "Analytic 1"}
-    ) != client.hit.generate_hash({"howler.analytic": "Analytic 2"})
+    assert client.hit.generate_hash({"howler.analytic": "Analytic 1"}) != client.hit.generate_hash(
+        {"howler.analytic": "Analytic 2"}
+    )
 
 
 def test_same_analytic_same_detection(client: Client):
     assert client.hit.generate_hash(
         {"howler.analytic": "Analytic 1", "howler.detection": "Detection 1"}
-    ) == client.hit.generate_hash(
-        {"howler.analytic": "Analytic 1", "howler.detection": "Detection 1"}
-    )
+    ) == client.hit.generate_hash({"howler.analytic": "Analytic 1", "howler.detection": "Detection 1"})
 
 
 def test_same_analytic_different_detection(client: Client):
     assert client.hit.generate_hash(
         {"howler.analytic": "Analytic 1", "howler.detection": "Detection 1"}
-    ) != client.hit.generate_hash(
-        {"howler.analytic": "Analytic 1", "howler.detection": "Detection 2"}
-    )
+    ) != client.hit.generate_hash({"howler.analytic": "Analytic 1", "howler.detection": "Detection 2"})
 
 
 def test_same_analytic_same_detection_same_single_data(client: Client):

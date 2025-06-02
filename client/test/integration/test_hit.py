@@ -2,10 +2,11 @@ import datetime
 import time
 
 import pytest
+from utils import create_and_get_comment, random_hash
+
 from howler_client.client import Client
 from howler_client.common.utils import ClientError
 from howler_client.module.hit import UPDATE_INC, UPDATE_SET
-from utils import create_and_get_comment, random_hash
 
 TOOL_NAME = "test"
 
@@ -199,28 +200,19 @@ def test_create_invalid(caplog, client: Client):
     except ClientError as e:
         assert len(e.api_response["valid"]) == 1
         assert len(e.api_response["invalid"]) == 1
-        assert (
-            e.api_response["invalid"][0]["error"]
-            == "[hit.howler.score]: value is missing from the object!"
-        )
+        assert e.api_response["invalid"][0]["error"] == "[hit.howler.score]: value is missing from the object!"
 
 
 def test_add_comment(client: Client):
-    result, comment = create_and_get_comment(
-        client, "this is a very unique test comment"
-    )
+    result, comment = create_and_get_comment(client, "this is a very unique test comment")
 
     assert comment is not None
 
-    result["howler"]["log"][len(result["howler"]["log"]) - 1][
-        "explanation"
-    ] == "Hit updated by admin"
+    result["howler"]["log"][len(result["howler"]["log"]) - 1]["explanation"] == "Hit updated by admin"
 
 
 def test_update_comment(client: Client):
-    result, comment = create_and_get_comment(
-        client, "this is a very unique test comment made by me"
-    )
+    result, comment = create_and_get_comment(client, "this is a very unique test comment made by me")
 
     comment_value = "this comment was updated by the howler-client."
 
@@ -230,21 +222,15 @@ def test_update_comment(client: Client):
         comment["id"],
     )
 
-    comment = next(
-        (c for c in result["howler"]["comment"] if c["value"] == comment_value), None
-    )
+    comment = next((c for c in result["howler"]["comment"] if c["value"] == comment_value), None)
 
     assert comment is not None
 
-    result["howler"]["log"][len(result["howler"]["log"]) - 1][
-        "explanation"
-    ] == "Hit updated by admin"
+    result["howler"]["log"][len(result["howler"]["log"]) - 1]["explanation"] == "Hit updated by admin"
 
 
 def test_delete_comment(client: Client):
-    comment_value = (
-        "this is a very unique test comment made by me that's going to be deleted"
-    )
+    comment_value = "this is a very unique test comment made by me that's going to be deleted"
     result, comment = create_and_get_comment(client, comment_value)
     comments_count = len(result["howler"]["comment"])
 
@@ -253,17 +239,13 @@ def test_delete_comment(client: Client):
         [comment["id"]],
     )
 
-    comment = next(
-        (c for c in result["howler"]["comment"] if c["value"] == comment_value), None
-    )
+    comment = next((c for c in result["howler"]["comment"] if c["value"] == comment_value), None)
     comments_count = comments_count - len(result["howler"]["comment"])
 
     assert comment is None
     assert comments_count == 1
 
-    result["howler"]["log"][len(result["howler"]["log"]) - 1][
-        "explanation"
-    ] == "Hit updated by admin"
+    result["howler"]["log"][len(result["howler"]["log"]) - 1]["explanation"] == "Hit updated by admin"
 
 
 def test_update(client: Client):
@@ -281,9 +263,7 @@ def test_update(client: Client):
     )
     assert result["howler"]["score"] == hit_to_update["howler"]["score"] + 100
 
-    result["howler"]["log"][len(result["howler"]["log"]) - 1][
-        "explanation"
-    ] == "Hit updated by admin"
+    result["howler"]["log"][len(result["howler"]["log"]) - 1]["explanation"] == "Hit updated by admin"
 
 
 def test_update_by_query(client: Client):
@@ -304,9 +284,7 @@ def test_update_by_query(client: Client):
 
     hit_to_check_after = client.search.hit("howler.id:*", rows=1)["items"][0]
 
-    assert (
-        hit_to_check_after["howler"]["score"] == hit_to_check["howler"]["score"] + 100
-    )
+    assert hit_to_check_after["howler"]["score"] == hit_to_check["howler"]["score"] + 100
 
     hit_to_check_after["howler"]["log"][len(hit_to_check_after["howler"]["log"]) - 1][
         "explanation"
