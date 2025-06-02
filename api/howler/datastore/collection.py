@@ -2147,7 +2147,12 @@ class ESCollection(Generic[ModelType]):
         if "total_fields" not in settings["index"]["mapping"]:
             settings["index"]["mapping"]["total_fields"] = {}
 
-        settings["index"]["mapping"]["total_fields"]["limit"] = 1500
+        limit = len(self.model_class.flat_fields()) + 500 if self.model_class else 1500
+        if limit < 1500:
+            limit = 1500
+        else:
+            log.warning("ODM field size is larger than 1500 - set to %s", limit)
+        settings["index"]["mapping"]["total_fields"]["limit"] = limit
 
         return settings
 
