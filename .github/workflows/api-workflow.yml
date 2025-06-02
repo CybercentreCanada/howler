@@ -162,6 +162,7 @@ jobs:
         if: github.event_name == 'pull_request' && failure() && steps.tests.outcome == 'failure'
         with:
           path: api/test-results.md
+          header: api
 
       - name: Coverage Results
         if: success()
@@ -179,6 +180,7 @@ jobs:
         if: success() && github.event_name == 'pull_request' && matrix.python-version == '3.12'
         with:
           path: api/coverage-results.md
+          header: api
   push_to_pypi:
     if: github.event_name != 'pull_request'
 
