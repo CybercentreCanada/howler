@@ -156,6 +156,8 @@ jobs:
         continue-on-error: true
         run: |
           poetry run test
+        env:
+          WRITE_MARKDOWN: "true"
 
       - name: Add Failed Test PR Comment
         uses: marocchino/sticky-pull-request-comment@v2
