@@ -32,7 +32,7 @@ def get_token(access_token: str) -> str:
             get_borealis_token = module.get_borealis_token
             break
         except ImportError:
-            logger.exception("Plugin %s does not modify the borealis access token.")
+            logger.info("Plugin %s does not modify the borealis access token.")
 
     if get_borealis_token:
         borealis_access_token = get_borealis_token(access_token)

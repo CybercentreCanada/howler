@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from howler.common.logging import get_logger
-from howler.config import config
+from howler.config import cache, config
 from howler.odm.models.user import User
 
 logger = get_logger(__file__)
@@ -30,7 +30,7 @@ def __sanitize_specification(spec: dict[str, Any]) -> dict[str, Any]:
             .replace("\n    ", "\n")
             .replace("Args:", "Args:\n"),
         },
-        "steps": [{**step, "args": {k: list(v) for k, v in step["args"].items()}} for step in spec["steps"]],
+        "steps": [{**step, "args": {k: list(v) for k, v in step["args"].items()}} for step in spec.get("steps", [])],
     }
 
 
@@ -122,6 +122,7 @@ def execute(
     return __sanitize_report(report)
 
 
+@cache.memoize(3600)
 def specifications() -> list[dict[str, Any]]:
     """A list of specifications for the available operations
 
@@ -145,6 +146,9 @@ def specifications() -> list[dict[str, Any]]:
         ):
             try:
                 automation = importlib.import_module(f"{module_name}.actions.{module.stem}")
+
+                if module_name != "howler":
+                    logger.info("Enabling action %s from plugin %s", automation.specification()["id"], module_name)
 
                 specifications.append(__sanitize_specification(automation.specification()))
 
