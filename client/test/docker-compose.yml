@@ -1,7 +1,7 @@
-version: "2.4"
+name: howler-client-test-dependencies
 
 services:
-  howler_api:
+  howler-api:
     image: cccsaurora/howler-api:latest
     environment:
       WORKERS: 1
