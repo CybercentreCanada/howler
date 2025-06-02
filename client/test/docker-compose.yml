@@ -2,10 +2,12 @@ version: "2.4"
 
 services:
   howler_api:
-    image: cccs/howler-api:latest
+    image: cccsaurora/howler-api:latest
     environment:
       WORKERS: 1
       THREADS: 1
+      HWL_USE_JOB_SYSTEM: false
+      HWL_USE_WEBSOCKET_API: false
     volumes:
       - ${PATH_REWRITE:-.}/config/:/etc/howler/
     depends_on:
@@ -13,8 +15,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      minio:
-        condition: service_started
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.3.2
@@ -44,24 +44,3 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-
-  nginx:
-    image: cccs/nginx-ssl-frontend
-    environment:
-      TEMPLATE: minimal
-    ports:
-      - "443:443"
-    depends_on:
-      al_ui:
-        condition: service_started
-      al_socketio:
-        condition: service_started
-
-  minio:
-    image: minio/minio
-    environment:
-      MINIO_ACCESS_KEY: hl_storage_key
-      MINIO_SECRET_KEY: Ch@ngeTh!sPa33w0rd
-    ports:
-      - "9000:9000"
-    command: server /data
