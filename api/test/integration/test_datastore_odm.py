@@ -9,12 +9,12 @@ from datemath import dm
 from retrying import retry
 
 from howler import odm
-from howler.datastore.collection import log
+from howler.datastore.collection import logger
 from howler.datastore.constants import BACK_MAPPING
 from howler.datastore.exceptions import SearchException
 from howler.odm import Mapping
 
-log.setLevel(logging.INFO)
+logger.setLevel(logging.INFO)
 yml_config = os.path.join(os.path.dirname(os.path.dirname(__file__)), "classification.yml")
 
 
