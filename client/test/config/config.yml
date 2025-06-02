@@ -49,12 +49,6 @@ datastore:
       username: elastic
       password: devpass
 
-filestore:
-  storage:
-    - name: minio
-      scheme: s3
-      host: "minio:9000?s3_bucket=hwl-store&use_ssl=False"
-
 logging:
   log_level: INFO
   log_as_json: false
