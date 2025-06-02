@@ -155,8 +155,8 @@ jobs:
         uses: marocchino/sticky-pull-request-comment@v2
         if: github.event_name == 'pull_request' && matrix.python-version == '3.12'
         with:
-          recreate: true
           path: plugins/evidence/coverage-results.md
+          header: evidence
   push_to_pypi:
     if: github.event_name != 'pull_request'
 
