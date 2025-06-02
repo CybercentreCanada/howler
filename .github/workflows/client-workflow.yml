@@ -136,8 +136,9 @@ jobs:
       - name: Generate random data, user accounts
         run: |
           docker ps
-          docker exec $(docker ps -qf "name=howler-api") python /var/lib/howler/.local/lib/python3.12/site-packages/howler/odm/random_data.py
-          docker logs $(docker ps -qf "name=howler-api")
+          docker logs $(docker ps -aqf "name=howler-api")
+          docker exec $(docker ps -aqf "name=howler-api") python /var/lib/howler/.local/lib/python3.12/site-packages/howler/odm/random_data.py
+          docker logs $(docker ps -aqf "name=howler-api")
       - name: Run tests
         id: tests
         continue-on-error: true
