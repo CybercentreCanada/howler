@@ -64,10 +64,10 @@ jobs:
           poetry install --verbose --with test
       - name: Run ruff formatting checks
         run: |
-          poetry run ruff format howler --diff
+          poetry run ruff format howler_client --diff
       - name: Run ruff linter checks
         run: |
-          poetry run ruff check howler --output-format=github
+          poetry run ruff check howler_client --output-format=github
       - name: Run type checking
         run: |
           poetry run type_check
