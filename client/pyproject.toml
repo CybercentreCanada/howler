@@ -18,6 +18,7 @@ exclude_also = [
     "@(abc\\.)?abstractmethod]",
     "if \"pytest\" in sys.modules:",
     "logger.",
+    "from typing_extensions",
 ]
 
 #################
