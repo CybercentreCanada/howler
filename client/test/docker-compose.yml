@@ -10,8 +10,8 @@ services:
       HWL_USE_WEBSOCKET_API: false
     volumes:
       - ${PATH_REWRITE:-.}/config/:/etc/howler/
-    expose:
-      - "5000"
+    ports:
+      - "5000:5000"
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.3.3
