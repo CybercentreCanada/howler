@@ -3,7 +3,7 @@ Sentiel Incident mapper for converting Microsoft Sentinel Sentiel Incidents to H
 """
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any,  Optional
 from dateutil import parser
 
 # Use standard logging for now
@@ -15,7 +15,7 @@ class SentinelIncident:
 
     DEFAULT_CUSTOMER_NAME = "Unknown Customer"
 
-    def __init__(self, tid_mapping: Optional[Dict[str, str]] = None):
+    def __init__(self, tid_mapping: Optional[dict[str, str]] = None):
         """
         Initialize the Sentiel Incident mapper.
 
@@ -26,15 +26,15 @@ class SentinelIncident:
 
     # --- Public mapping methods ---
 
-    def map_incident_to_bundle(self, sentinel_incident: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def map_incident_to_bundle(self, sentinel_incident: dict[str, Any]) -> Optional[dict[str, Any]]:
         """
         Map an Sentiel Incident to a Howler bundle.
 
         Args:
-            sentinel_incident (Dict[str, Any]): The Sentiel Incident data from Microsoft Graph.
+            sentinel_incident (dict[str, Any]): The Sentiel Incident data from Microsoft Graph.
 
         Returns:
-            Optional[Dict[str, Any]]: Mapped bundle dictionary or None if mapping fails.
+            Optional[dict[str, Any]]: Mapped bundle dictionary or None if mapping fails.
 
         Example:
             >>> mapper = SentinelIncident()
@@ -60,8 +60,8 @@ class SentinelIncident:
             assigned_to: Optional[str] = sentinel_incident.get("assignedTo")
             classification: str = sentinel_incident.get("classification", "unknown")
             severity: str = sentinel_incident.get("severity", "medium")
-            custom_tags: List[str] = sentinel_incident.get("customTags") or []
-            system_tags: List[str] = sentinel_incident.get("systemTags") or []
+            custom_tags: list[str] = sentinel_incident.get("customTags") or []
+            system_tags: list[str] = sentinel_incident.get("systemTags") or []
             description: str = sentinel_incident.get("description", "")
             resolving_comment: str = sentinel_incident.get("resolvingComment", "")
             if not isinstance(custom_tags, list):
@@ -71,7 +71,7 @@ class SentinelIncident:
                 logger.warning(f"systemTags is not a list: {system_tags}")
                 system_tags = []
 
-            bundle: Dict[str, Any] = {
+            bundle: dict[str, Any] = {
                 "howler": {
                     "status": self.map_sentinel_status_to_howler(status),
                     "detection": display_name,
@@ -135,7 +135,7 @@ class SentinelIncident:
         Returns:
             str: Howler status string.
         """
-        status_mapping: Dict[str, str] = {
+        status_mapping: dict[str, str] = {
             "new": "open",
             "active": "in-progress",
             "inProgress": "in-progress",
@@ -166,7 +166,7 @@ class SentinelIncident:
         Returns:
             int: Numeric score.
         """
-        severity_mapping: Dict[str, int] = {
+        severity_mapping: dict[str, int] = {
             "low": 25,
             "medium": 50,
             "high": 75,
@@ -183,7 +183,7 @@ class SentinelIncident:
         Returns:
             str: Howler assessment string.
         """
-        classification_mapping: Dict[str, str] = {
+        classification_mapping: dict[str, str] = {
             "unknown": "ambiguous",
             "truePositive": "compromise",
             "falsePositive": "false-positive",
@@ -194,15 +194,15 @@ class SentinelIncident:
 
     # --- Private helper methods ---
 
-    def _map_graph_host_link(self, graph_alert: Dict[str, Any], howler_hit: Dict[str, Any]) -> None:
+    def _map_graph_host_link(self, graph_alert: dict[str, Any], howler_hit: dict[str, Any]) -> None:
         """
         Map Graph host link from Graph alert to Howler hit.
 
         Args:
-            graph_alert (Dict[str, Any]): Graph alert data.
-            howler_hit (Dict[str, Any]): Howler hit/bundle to update.
+            graph_alert (dict[str, Any]): Graph alert data.
+            howler_hit (dict[str, Any]): Howler hit/bundle to update.
         """
-        link: Dict[str, str] = {
+        link: dict[str, str] = {
             "icon": "https://security.microsoft.com/favicon.ico",
             "title": "Open in Microsoft Sentinel portal",
             "href": graph_alert.get("incidentWebUrl", "")
@@ -211,13 +211,13 @@ class SentinelIncident:
             howler_hit["howler"]["links"] = howler_hit["howler"].get("links", [])
             howler_hit["howler"]["links"].append(link)
 
-    def _map_timestamps(self, graph_alert: Dict[str, Any], howler_hit: Dict[str, Any]) -> None:
+    def _map_timestamps(self, graph_alert: dict[str, Any], howler_hit: dict[str, Any]) -> None:
         """
         Map timestamps from Graph alert to Howler hit.
 
         Args:
-            graph_alert (Dict[str, Any]): Graph alert data.
-            howler_hit (Dict[str, Any]): Howler hit/bundle to update.
+            graph_alert (dict[str, Any]): Graph alert data.
+            howler_hit (dict[str, Any]): Howler hit/bundle to update.
         """
         for time_field in [
             "createdDateTime",
@@ -238,17 +238,17 @@ class SentinelIncident:
                 except Exception as exc:
                     logger.warning(f"Invalid timestamp format for {time_field}: {timestamp} ({exc})")
 
-    def _build_labels(self, custom_tags: List[str], system_tags: List[str]) -> List[str]:
+    def _build_labels(self, custom_tags: list[str], system_tags: list[str]) -> list[str]:
         """
         Build combined labels from custom and system tags.
 
         Args:
-            custom_tags (List[str]): Custom tags.
-            system_tags (List[str]): System tags.
+            custom_tags (list[str]): Custom tags.
+            system_tags (list[str]): System tags.
         Returns:
-            List[str]: Combined label list.
+            list[str]: Combined label list.
         """
-        labels: List[str] = []
+        labels: list[str] = []
         if custom_tags:
             labels.extend(custom_tags)
         if system_tags:
