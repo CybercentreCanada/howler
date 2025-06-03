@@ -354,8 +354,11 @@ class Hit(odm.Model):
 for plugin in config.core.plugins:
     try:
         importlib.import_module(f"{plugin}.odm.hit").modify_odm(Hit)
-    except (ImportError, AttributeError):
-        pass
+    except (ImportError, AttributeError) as err:
+        if f"No module named '{plugin}'" in str(err):
+            raise
+        else:
+            logger.info("Plugin %s does not modify the ODM.", plugin)
 
 
 if __name__ == "__main__":

@@ -3,12 +3,7 @@ import re
 from typing import Any
 
 from flask import request
-from howler.api import (
-    bad_request,
-    created,
-    make_subapi_blueprint,
-    unauthorized,
-)
+from howler.api import bad_request, created, make_subapi_blueprint, unauthorized
 from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -121,6 +116,7 @@ def ingest_xdr_incident(**kwargs) -> tuple[dict[str, Any], int]:  # noqa C901
                     bundle_odm.howler.hits.append(hit_id)
 
             if len(bundle_odm.howler.hits) < 1:
+                logger.error("No valid child hits were created from the XDR incident alerts")
                 return bad_request(err="No valid child hits were created from the XDR incident alerts.")
 
             bundle_odm.howler.bundle_size = len(bundle_odm.howler.hits)
