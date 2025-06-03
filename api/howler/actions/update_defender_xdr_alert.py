@@ -9,7 +9,7 @@ from howler.odm.models.howler_data import Assessment, HitStatus
 
 OPERATION_ID = "update_defender_xdr_alert"
 
-map = {
+properties_map = {
     "graph": {
         "status": {
             HitStatus.OPEN: "new",
@@ -123,15 +123,15 @@ def execute(query: str, **kwargs):
         alert_data = response.json()
 
         # Update alert
-        if "assessment" in hit.howler and hit.howler.assessment in map["graph"]["classification"] and \
-        hit.howler.assessment in map["graph"]["determination"]:
-            classification = map["graph"]["classification"][hit.howler.assessment]
-            determination = map["graph"]["determination"][hit.howler.assessment]
+        if "assessment" in hit.howler and hit.howler.assessment in properties_map["graph"]["classification"] and \
+        hit.howler.assessment in properties_map["graph"]["determination"]:
+            classification = properties_map["graph"]["classification"][hit.howler.assessment]
+            determination = properties_map["graph"]["determination"][hit.howler.assessment]
         else:
             classification = alert_data["classification"]
             determination = alert_data["determination"]
 
-        status = map["graph"]["status"][hit.howler.status]
+        status = properties_map["graph"]["status"][hit.howler.status]
         assigned_to = alert_data["assignedTo"]
 
         data = {
