@@ -1,5 +1,6 @@
 import hashlib
 import random
+import time
 
 import pytest
 import requests
@@ -38,6 +39,8 @@ def test_delete(client):
     client.user.add(username, user_data)
 
     assert client.user(username) is not None
+
+    time.sleep(2)
 
     # assert client.user.delete(username) is None
 
