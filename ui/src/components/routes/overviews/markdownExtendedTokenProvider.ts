@@ -220,7 +220,7 @@ export const language = <languages.IMonarchLanguage>{
 
     comment: [
       [/[^<\-]+/, 'comment.content'],
-      [/--(?:!?)>/, 'comment', '@pop'],
+      [/--!?>/, 'comment', '@pop'],
       [/<!--/, 'comment.content.invalid'],
       [/[<\-]/, 'comment.content']
     ],
