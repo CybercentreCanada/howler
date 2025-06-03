@@ -56,107 +56,99 @@ def execute(query: str, **kwargs):
     report = []
     ds = datastore()
 
-    hit: Hit = ds.hit.search(query, as_obj=True)["items"]
-    if not hit:
+    hits: list[Hit] = ds.hit.search(query, as_obj=True)["items"]
+
+    if not hits:
         report.append(
             {
                 "query": query,
                 "outcome": "error",
-                "title": "Invalid Hit",
-                "message": f"Hit with ID {query} does not exist.",
-            }
-        )
-        return report
-    if len(hit) > 1:
-        report.append(
-            {
-                "query": query,
-                "outcome": "error",
-                "title": "Multiple Hits Found",
-                "message": f"Multiple hits found for query {query}. Please refine your query.",
-            }
-        )
-        return report
-    hit = hit[0]
-
-    # Get bearer token
-    try:
-        credentials = json.loads(os.environ['HOWLER_GRAPH_ALERT_CREDENTIALS'])
-    except (KeyError, json.JSONDecodeError):
-        report.append(
-            {
-                "query": query,
-                "outcome": "error",
-                "title": "Invalid Credentials",
-                "message": "Environment variable HOWLER_GRAPH_ALERT_CREDENTIALS is invalid or not set.",
+                "title": "No hits returned by query",
+                "message": f"No hits returned by '{query}'",
             }
         )
         return report
 
-    token_request_url = f"https://login.microsoftonline.com/{hit.azure.tenant_id}/oauth2/v2.0/token"
-    data = f"grant_type=client_credentials&client_id={credentials['client_id']}" + \
-           f"&client_secret={credentials['client_secret']}&scope=https%3A%2F%2Fgraph.microsoft.com%2F.default"
-    response = requests.post(token_request_url, data=data)
+    for hit in hits:
+        # Get bearer token
+        # A token broker should be used to avoid hitting API limits.
+        try:
+            credentials = json.loads(os.environ['HOWLER_GRAPH_ALERT_CREDENTIALS'])
+        except (KeyError, json.JSONDecodeError):
+            report.append(
+                {
+                    "query": query,
+                    "outcome": "error",
+                    "title": "Invalid Credentials",
+                    "message": "Environment variable HOWLER_GRAPH_ALERT_CREDENTIALS is invalid or not set.",
+                }
+            )
+            continue
 
-    if not response.ok:
-        report.append(
-            {
-                "query": query,
-                "outcome": "error",
-                "title": "Authentication failed",
-                "message": f"Authentication to Microsoft Graph API failed with status code {response.status_code}.",
-            }
-        )
-        return report
+        token_request_url = f"https://login.microsoftonline.com/{hit.azure.tenant_id}/oauth2/v2.0/token"
+        data = f"grant_type=client_credentials&client_id={credentials['client_id']}" + \
+            f"&client_secret={credentials['client_secret']}&scope=https%3A%2F%2Fgraph.microsoft.com%2F.default"
+        response = requests.post(token_request_url, data=data)
 
-    token = response.json()["access_token"]
+        if not response.ok:
+            report.append(
+                {
+                    "query": query,
+                    "outcome": "error",
+                    "title": "Authentication failed",
+                    "message": f"Authentication to Microsoft Graph API failed with status code {response.status_code}.",
+                }
+            )
+            continue
 
-    # Fetch alert details
-    alert_url = f"https://graph.microsoft.com/v1.0/security/alerts_v2/{hit.rule.id}"
-    response = requests.get(alert_url, headers={"Authorization": f"Bearer {token}"})
-    if not response.ok:
-        report.append(
-            {
-                "query": query,
-                "outcome": "error",
-                "title": "Microsoft Graph API request failed",
-                "message": f"GET request to Microsoft Graph failed with status code {response.status_code}.",
-            }
-        )
-        return report
-    alert_data = response.json()
+        token = response.json()["access_token"]
 
-    # Update alert
-    if "assessment" in hit.howler and hit.howler.assessment in map["graph"]["classification"] and \
-       hit.howler.assessment in map["graph"]["determination"]:
-        classification = map["graph"]["classification"][hit.howler.assessment]
-        determination = map["graph"]["determination"][hit.howler.assessment]
-    else:
-        classification = alert_data["classification"]
-        determination = alert_data["determination"]
+        # Fetch alert details
+        alert_url = f"https://graph.microsoft.com/v1.0/security/alerts_v2/{hit.rule.id}"
+        response = requests.get(alert_url, headers={"Authorization": f"Bearer {token}"})
+        if not response.ok:
+            report.append(
+                {
+                    "query": query,
+                    "outcome": "error",
+                    "title": "Microsoft Graph API request failed",
+                    "message": f"GET request to Microsoft Graph failed with status code {response.status_code}.",
+                }
+            )
+            continue
+        alert_data = response.json()
 
-    status = map["graph"]["status"][hit.howler.status]
-    assigned_to = alert_data["assignedTo"]
+        # Update alert
+        if "assessment" in hit.howler and hit.howler.assessment in map["graph"]["classification"] and \
+        hit.howler.assessment in map["graph"]["determination"]:
+            classification = map["graph"]["classification"][hit.howler.assessment]
+            determination = map["graph"]["determination"][hit.howler.assessment]
+        else:
+            classification = alert_data["classification"]
+            determination = alert_data["determination"]
 
-    data = {
-        "assignedTo": assigned_to,
-        "classification": classification,
-        "determination": determination,
-        "status": status
-    }
+        status = map["graph"]["status"][hit.howler.status]
+        assigned_to = alert_data["assignedTo"]
 
-    response = requests.patch(alert_url, json = data,
-                              headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"})
-    if not response.ok:
-        report.append(
-            {
-                "query": query,
-                "outcome": "error",
-                "title": "Microsoft Graph API request failed",
-                "message": f"PATCH request to Microsoft Graph failed with status code {response.status_code}.",
-            }
-        )
-        return report
+        data = {
+            "assignedTo": assigned_to,
+            "classification": classification,
+            "determination": determination,
+            "status": status
+        }
+
+        response = requests.patch(alert_url, json = data,
+                                headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"})
+        if not response.ok:
+            report.append(
+                {
+                    "query": query,
+                    "outcome": "error",
+                    "title": "Microsoft Graph API request failed",
+                    "message": f"PATCH request to Microsoft Graph failed with status code {response.status_code}.",
+                }
+            )
+            continue
 
     return report
 
