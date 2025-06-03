@@ -25,8 +25,11 @@ sentinel_api._doc = "Ingest Microsoft Sentinel XDR incidents into Howler"
 
 logger = get_logger(__file__)   
 
-#SECRET = os.environ["SENTINEL_LINK_KEY"]
-SECRET = "abcdefghijklmnopqrstuvwxyz1234567890"  # For testing purposes, replace with actual secret in production
+# For testing purposes, replace with actual secret in production
+SECRET = os.environ.get("SENTINEL_LINK_KEY", "abcdefghijklmnopqrstuvwxyz1234567890")
+
+if SECRET.startswith("abcdef"):
+    logger.warning("Default secret used!")
 
 @generate_swagger_docs()
 @sentinel_api.route("/ingest", methods=["POST"])
