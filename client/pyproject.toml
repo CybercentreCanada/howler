@@ -1,0 +1,154 @@
+########################
+# coverage.py settings #
+########################
+[tool.coverage.run]
+branch = true
+sigterm = true
+data_file = ".coverage"
+
+[tool.coverage.report]
+exclude_also = [
+    "def __repr__",
+    "if DEBUG:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@(abc\\.)?abstractmethod]",
+    "if \"pytest\" in sys.modules:",
+    "logger.",
+    "from typing_extensions",
+]
+
+#################
+# Mypy settings #
+#################
+[tool.mypy]
+warn_unused_configs = true
+ignore_missing_imports = true
+check_untyped_defs = true
+disable_error_code = "no-redef"
+exclude = "test"
+
+
+#################
+# Ruff Settings #
+#################
+[tool.ruff]
+line-length = 120
+indent-width = 4
+target-version = "py39"
+
+[tool.ruff.format]
+exclude = ["howler/patched.py"]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "W",
+    "C901",
+    "I",
+    "N",
+    "D1",
+    "D2",
+    "ANN",
+    "S",
+    "T20",
+    "PIE",
+    "FLY",
+    "TRY",
+]
+ignore = [
+    "ANN003",
+    "ANN201",
+    "ANN401",
+    "D100",
+    "D104",
+    "D105",
+    "D107",
+    "D203",
+    "D213",
+    "N818",
+    "S603",
+    "TRY003",
+    "TRY300",
+]
+exclude = ["howler/patched.py"]
+
+[tool.ruff.lint.flake8-annotations]
+ignore-fully-untyped = true
+mypy-init-return = true
+suppress-dummy-args = true
+suppress-none-returning = true
+
+[tool.ruff.lint.per-file-ignores]
+"test/*" = ["D", "ANN", "S", "N818", "TRY", "PIE"]
+"test/utils/*" = ["T20"]
+"build_scripts/*" = ["D", "ANN", "S", "N818", "T20", "TRY"]
+
+[tool.poetry]
+package-mode = true
+name = "howler-client"
+version = "2.4.0"
+description = "The Howler client library facilitates issuing requests to Howler"
+authors = [
+    "Canadian Centre for Cyber Security <howler@cyber.gc.ca>",
+    "Matthew Rafuse <matthew.rafuse@cyber.gc.ca>",
+]
+license = "MIT"
+readme = "README.md"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+]
+keywords = [
+    "howler",
+    "alerting",
+    "gc",
+    "canada",
+    "cse-cst",
+    "cse",
+    "cst",
+    "cyber",
+    "cccs",
+]
+packages = [{ include = "howler_client" }]
+documentation = "https://cybercentrecanada.github.io/howler-docs/developer/client/"
+homepage = "https://cybercentrecanada.github.io/howler-docs/"
+repository = "https://github.com/CybercentreCanada/howler-client"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+pycryptodome = "^3.20.0"
+requests = { extras = ["security"], version = ">=2.32.0,<3.0.0" }
+python-baseconv = "^1.2.2"
+coverage = { extras = ["toml"], version = "^7.6.1" }
+diff-cover = "^9.2.0"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.6.8"
+pre-commit = "^3.8.0"
+mypy = "^1.11.2"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^8.3.3"
+pytest-cov = "^5.0.0"
+passlib = "^1.7.4"
+
+
+[tool.poetry.group.types.dependencies]
+types-requests = "^2.32.0.20240914"
+
+[tool.poetry.scripts]
+test = "build_scripts.run_tests:main"
+type_check = "build_scripts.type_check:main"
+coverage_report = "build_scripts.coverage_reports:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
