@@ -40,7 +40,7 @@ def handle_401(e):
         "allow_userpass_login": config.auth.internal.enabled,
     }
     res = unauthorized(data, err=msg)
-    res.set_cookie("XSRF-TOKEN", "", max_age=0)
+    res.set_cookie("XSRF-TOKEN", "", max_age=0, secure=True, httponly=True, samesite='Strict')
     return res
 
 
