@@ -98,7 +98,7 @@ def execute(query: str, **kwargs):
            f"&client_secret={credentials['client_secret']}&scope=https%3A%2F%2Fgraph.microsoft.com%2F.default"
     response = requests.post(token_request_url, data=data)
 
-    if response.status_code != 200:
+    if not response.ok:
         report.append(
             {
                 "query": query,
@@ -114,7 +114,7 @@ def execute(query: str, **kwargs):
     # Fetch alert details
     alert_url = f"https://graph.microsoft.com/v1.0/security/alerts_v2/{hit.rule.id}"
     response = requests.get(alert_url, headers={"Authorization": f"Bearer {token}"})
-    if response.status_code != 200:
+    if not response.ok:
         report.append(
             {
                 "query": query,
@@ -147,7 +147,7 @@ def execute(query: str, **kwargs):
 
     response = requests.patch(alert_url, json = data,
                               headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"})
-    if response.status_code != 200:
+    if not response.ok:
         report.append(
             {
                 "query": query,
