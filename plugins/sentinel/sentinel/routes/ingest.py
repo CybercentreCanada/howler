@@ -16,8 +16,8 @@ from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.services import action_service, analytic_service, hit_service
 
-from ..mapping.xdr_incident_mapper import XDRIncidentMapper
-from ..mapping.graph_mapping import GraphToHowlerMapper
+from ..mapping.sentinel_incident import SentinelIncident
+from ..mapping.xdr_alert import XDRAlert
 
 SUB_API = "sentinel"
 sentinel_api = make_subapi_blueprint(SUB_API, api_version=1)
@@ -73,7 +73,7 @@ def ingest_xdr_incident(**kwargs) -> tuple[Dict[str, Any], int]:
         }
         
         # Step 1: Map the XDR incident to a bundle hit (same as create_bundle data.get("bundle"))
-        incident_mapper = XDRIncidentMapper(tid_mapping=tenant_mapping)
+        incident_mapper = SentinelIncident(tid_mapping=tenant_mapping)
         bundle_hit = incident_mapper.map_incident_to_bundle(xdr_incident)
         
         if bundle_hit is None:
@@ -85,7 +85,7 @@ def ingest_xdr_incident(**kwargs) -> tuple[Dict[str, Any], int]:
         alerts = xdr_incident.get("alerts", [])
         tenant_id = xdr_incident.get("tenantId", "")
         
-        alert_mapper = GraphToHowlerMapper(tid_mapping=tenant_mapping)
+        alert_mapper = XDRAlert(tid_mapping=tenant_mapping)
         
         # Create individual hits from alerts first
         child_hit_ids = []
@@ -122,6 +122,8 @@ def ingest_xdr_incident(**kwargs) -> tuple[Dict[str, Any], int]:
             bundle_odm.howler.is_bundle = True
             
             # Add child hit IDs to bundle (same as create_bundle)
+            if not hasattr(bundle_odm.howler, 'hits') or not isinstance(bundle_odm.howler.hits, list):
+                bundle_odm.howler.hits = []
             for hit_id in child_hit_ids:
                 if hit_id not in bundle_odm.howler.hits:
                     bundle_odm.howler.hits.append(hit_id)

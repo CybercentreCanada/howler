@@ -1,9 +1,10 @@
 import logging
 from datetime import datetime
 from typing import Any, Dict, Optional
+from dateutil import parser
 
 
-from sentinel.mapping.graph_evidence_mapper import (
+from sentinel.mapping.xdr_alert_evidence import (
     default_unknown_evidence,
     evidence_function_map
 )
@@ -13,7 +14,7 @@ from sentinel.mapping.graph_evidence_mapper import (
 logger = logging.getLogger(__name__)
 
 
-class GraphToHowlerMapper:
+class XDRAlert:
     """Class to handle mapping of Graph alerts to Howler hits."""
 
     DEFAULT_CUSTOMER_NAME = "Unknown Customer"
@@ -96,37 +97,35 @@ class GraphToHowlerMapper:
             
         customer_name = self.get_customer_name(customer_id)
         if customer_name == self.DEFAULT_CUSTOMER_NAME:
-            logger.warning("Customer name not found for tenant ID: %s", graph_alert.get("TenantId", ""))
+            logger.warning("Customer name not found for tenant ID: %s", graph_alert.get("tenantId", ""))
             return None
 
-        alert_id = graph_alert.get("Id", "")
-        created = graph_alert.get("CreatedDateTime", datetime.now().isoformat())
-        severity = self.map_severity(graph_alert.get("Severity", "medium"))
-        status = self.map_status(graph_alert.get("Status", "new"))
-        display_name = graph_alert.get("Title", "MSGraph")
+        alert_id = graph_alert.get("id", "")
+        created = graph_alert.get("createdDateTime", datetime.now().isoformat())
+        severity = self.map_severity(graph_alert.get("severity", "medium"))
+        status = self.map_status(graph_alert.get("status", "new"))
+        display_name = graph_alert.get("title", "MSGraph")
 
         victim_labels = []
 
-        if graph_alert.get("Os"):
-            victim_labels.append(graph_alert.get("Os"))
-        if graph_alert.get("RelatedUser", {}).get("UserName"):
-            victim_labels.append(graph_alert.get("RelatedUser", {}).get("UserName"))
-        if graph_alert.get("ComputerDnsName"):
-            victim_labels.append(graph_alert.get("ComputerDnsName"))
+        if graph_alert.get("os"):
+            victim_labels.append(graph_alert.get("os"))
+        if graph_alert.get("relatedUser", {}).get("userName"):
+            victim_labels.append(graph_alert.get("relatedUser", {}).get("userName"))
+        if graph_alert.get("computerDnsName"):
+            victim_labels.append(graph_alert.get("computerDnsName"))
 
         # Get assignment and remove "User-" prefix if present
-        assigned_to = graph_alert.get("AssignedTo", "unassigned")
+        assigned_to = graph_alert.get("assignedTo", "unassigned")
         if isinstance(assigned_to, str) and assigned_to.startswith("User-"):
             assigned_to = assigned_to[5:]
+        
+        # Get classification for conditional assessment
+        classification = graph_alert.get("classification")
 
         howler_hit = {
             "timestamp": created,
-            "tags": [
-                f"customer:{customer_name}",
-                "source:msgraph",
-            ]
-            + graph_alert.get("AdditionalData", {}).get("systemTags", []),
-            "message": graph_alert.get("RecommendedActions", ""),
+            "message": graph_alert.get("recommendedActions", ""),
             "organization": {"name": customer_name, "id": customer_id},
             "howler": {
                 "analytic": "MSGraph",
@@ -134,13 +133,12 @@ class GraphToHowlerMapper:
                 "status": status,
                 "detection": display_name,
                 "outline": {
-                    "summary": graph_alert.get("Description", ""),
+                    "summary": graph_alert.get("description", ""),
                     "indicators": [],
-                    "threat": graph_alert.get("ThreatDisplayName", ""),
-                    "target": graph_alert.get("ComputerDnsName", ""),
+                    "threat": graph_alert.get("threatDisplayName", ""),
+                    "target": graph_alert.get("computerDnsName", ""),
                 },
                 "assignment": assigned_to,
-                "assessment": self.map_classification(graph_alert.get("Classification", "Unknown")),
                 "escalation": "hit",
                 "is_bundle": False,
                 "bundle_size": 0,
@@ -163,7 +161,6 @@ class GraphToHowlerMapper:
                     }
                 ],
             },
-            "classification": "TS:CONFIDENTIAL//SOC",
             "evidence": {"data": []},
             "event": {
                 "created": created,
@@ -171,9 +168,9 @@ class GraphToHowlerMapper:
                 "category": ["threat"],
                 "type": ["indicator"],
                 "severity": severity,
-                "action": graph_alert.get("Title", ""),
+                "action": graph_alert.get("title", ""),
                 "provider": self.map_service_source(
-                    graph_alert.get("DetectionSource", "")
+                    graph_alert.get("detectionSource", "")
                 ),
                 "reason": display_name,
                 "risk_score": severity / 100.0,
@@ -184,9 +181,12 @@ class GraphToHowlerMapper:
 
         }
 
+        # Add assessment conditionally if classification is not null
+        if classification is not None:
+            howler_hit["howler"]["assessment"] = self.map_classification(classification)
+
         # Call mapping helper methods
         self._map_timestamps(graph_alert, howler_hit)
-        self._map_assignment(graph_alert, howler_hit)
         self._map_graph_host_link(graph_alert, howler_hit)
         self._populate_event_provider(howler_hit)
         self._populate_comments(graph_alert, howler_hit)
@@ -198,60 +198,36 @@ class GraphToHowlerMapper:
         """Map timestamps from Graph alert to Howler hit."""
         # Add all timestamps from Graph to event object
         for time_field in [
-            "CreatedDateTime",
-            "LastUpdateDateTime",
-            "FirstActivityDateTime",
-            "LastActivityDateTime",
+            "createdDateTime",
+            "lastUpdateDateTime",
+            "firstActivityDateTime",
+            "lastActivityDateTime",
         ]:
             if time_field in graph_alert and graph_alert[time_field]:
                 try:
                     timestamp = graph_alert[time_field]
-                    # TODO: check if all timestamps are in Zulu
-                    if "." in timestamp:
-                        timestamp = timestamp.split(".")[0] + "+00:00"
-
-                    timestamp = datetime.fromisoformat(timestamp)
-
+                    dt_obj = parser.isoparse(timestamp)
                     # Map specific timestamps to Howler fields
-                    if time_field == "CreatedDateTime":
-                        howler_hit["event"]["created"] = timestamp.isoformat()
-                    elif time_field == "FirstActivityDateTime":
-                        howler_hit["event"]["start"] = timestamp.isoformat()
-                    elif time_field == "LastActivityDateTime":
-                        howler_hit["event"]["end"] = timestamp.isoformat()
-
-                except ValueError:
+                    if time_field == "createdDateTime":
+                        howler_hit["event"]["created"] = dt_obj.isoformat()
+                    elif time_field == "firstActivityDateTime":
+                        howler_hit["event"]["start"] = dt_obj.isoformat()
+                    elif time_field == "lastActivityDateTime":
+                        howler_hit["event"]["end"] = dt_obj.isoformat()
+                except Exception:
                     logger.warning("Invalid timestamp format for %s: %s", time_field, graph_alert[time_field])
 
-    def _map_assignment(self, graph_alert: Dict[str, Any], howler_hit: Dict[str, Any]) -> None:
-        """Map behaviors from Graph alert to Howler hit using MitreMapper.
-
-        If "mitreTechniques" exists, use it to derive group assignments; otherwise, fall back
-        to using the legacy "tactic" field.
-        """
-        assignments = set()
-        if "MitreTechniques" in graph_alert and graph_alert["MitreTechniques"]:
-            mapper = MitreMapper()
-            groups_mapping = mapper.get_groups_from_techniques(graph_alert["MitreTechniques"])
-            for groups in groups_mapping.values():
-                assignments.update(groups)
-        else:
-            assignments.add("SOC")
-
-        # Append unique assignments to the hit
-        for group in assignments:
-            if group not in howler_hit["howler"]["labels"]["assignments"]:
-                howler_hit["howler"]["labels"]["assignments"].append(group)
 
     def _map_graph_host_link(self, graph_alert: Dict[str, Any], howler_hit: Dict[str, Any]) -> None:
-        """Map Graph host link from Graph alert to Howler hit."""
-        if "AlertWebUrl" in graph_alert:
+        """Map Graph host link from Graph alert to Howler hit using the same logic as in xdr_incident.py."""
+        link: Dict[str, str] = {
+            "icon": "https://security.microsoft.com/favicon.ico",
+            "title": "Open in Microsoft XDR portal",
+            "href": graph_alert.get("alertWebUrl", "")
+        }
+        if graph_alert.get("alertWebUrl"):
             howler_hit["howler"]["links"] = howler_hit["howler"].get("links", [])
-            howler_hit["howler"]["links"].append(
-                generate_link(
-                    graph_alert.get("AlertWebUrl", ""), "MSGraphAlertCollector"
-                )
-            )
+            howler_hit["howler"]["links"].append(link)
 
 
     def _populate_event_provider(self, howler_hit: Dict[str, Any]) -> None:
@@ -263,14 +239,14 @@ class GraphToHowlerMapper:
         self, graph_alert: Dict[str, Any], howler_hit: Dict[str, Any]
     ) -> None:
         """Populate comments in the Howler hit."""
-        if "Comments" in graph_alert and isinstance(graph_alert["Comments"], list):
+        if "comments" in graph_alert and isinstance(graph_alert["comments"], list):
             comments = []
 
-            for comment in graph_alert.get("Comments", []):
+            for comment in graph_alert.get("comments", []):
                 values = [
                     comment.get("comment", comment.get("Comment", None)),
-                    comment.get("createdBy", comment.get("CreatedByDisplayName", None)),
-                    comment.get("createdTime", comment.get("CreatedDateTime", None)),
+                    comment.get("createdBy", comment.get("createdByDisplayName", None)),
+                    comment.get("createdTime", comment.get("createdDateTime", None)),
                 ]
                 if not all(values):
                     logger.info("Invalid comment format in alert: %s", comment)
@@ -286,10 +262,10 @@ class GraphToHowlerMapper:
         self, graph_alert: Dict[str, Any], howler_hit: Dict[str, Any]
     ) -> None:
         """Map evidence from Graph alert to Howler hit."""
-        if "evidence" not in howler_hit or not isinstance(howler_hit["evidence"], dict):
-            howler_hit["evidence"] = {"data": []}
+        if "evidence" not in howler_hit or not isinstance(howler_hit["evidence"], list):
+            howler_hit["evidence"] = []
 
-        for evidence in graph_alert.get("Evidence", []):
+        for evidence in graph_alert.get("evidence", []):
             odata = evidence.get("@odata.type", "")
             if not odata:
                 continue

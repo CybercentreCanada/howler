@@ -227,6 +227,7 @@ pydantic = "^2.11.4"
 pydantic-settings = { extras = ["yaml"], version = "^2.9.1" }
 luqum = "^1.0.0"
 pydash = "^8.0.5"
+pytest = "^8.3.5"
 
 [tool.poetry.group.dev.dependencies]
 flake8 = "^7.0.0"
