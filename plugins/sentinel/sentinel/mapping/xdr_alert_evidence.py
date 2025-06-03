@@ -1,10 +1,8 @@
-"""Convert Microsoft Graph evidence to howler evidence format."""
-
 from typing import Any
 from uuid import uuid4
 
 
-def default_unknown_evidence(evidence: dict[str, Any]) -> dict:
+def default_unknown_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
     """Default function to handle unknown evidence types."""
     return {}
 
@@ -13,7 +11,7 @@ class XDRAlertEvidence:
     """Parse graph evidence into howler evidence format."""
 
     @staticmethod
-    def amazon_resource_evidence(evidence: dict[str, Any]):
+    def amazon_resource_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert Amazon resource evidence to howler evidence format."""
         return {
             "aws": {
@@ -29,7 +27,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def analyzed_message_evidence(evidence: dict[str, Any]):
+    def analyzed_message_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert analyzed message evidence to howler evidence format."""
         sender = [
             evidence.get("p1Sender", {}).get("emailAddress", "Unknown"),
@@ -52,7 +50,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def azure_resource_evidence(evidence: dict[str, Any]):
+    def azure_resource_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert Azure resource evidence to howler evidence format."""
         return {
             "azure": {
@@ -67,7 +65,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def blob_container_evidence(evidence: dict[str, Any]):
+    def blob_container_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert blob container evidence to howler evidence format."""
         resource = evidence.get("storageResource", {})
         _hashes = evidence.get("fileHashes", {})
@@ -97,7 +95,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def blob_evidence(evidence: dict[str, Any]):
+    def blob_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert blob evidence to howler evidence format."""
         container_evidence = evidence.get("blobContainer", {})
         resource = container_evidence.get("storageResource", {})
@@ -130,7 +128,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def cloud_application_evidence(evidence: dict[str, Any]):
+    def cloud_application_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert cloud application evidence to howler evidence format."""
         return {
             "cloud": {
@@ -142,7 +140,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def cloud_logon_session_evidence(evidence: dict[str, Any]):
+    def cloud_logon_session_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert cloud logon session evidence to howler evidence format."""
         account = evidence.get("account", {})
         user = account.get("userAccount", {})
@@ -172,7 +170,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def container_evidence(evidence: dict[str, Any]):
+    def container_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert container evidence to howler evidence format."""
         image = evidence.get("image", {})
         pod = evidence.get("pod", {})
@@ -216,14 +214,14 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def container_image_evidence(evidence: dict[str, Any]):
+    def container_image_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert container image evidence to howler evidence format."""
         return {
             "image": {"name": evidence.get("digestImage")},
         }
 
     @staticmethod
-    def container_registry_evidence(evidence: dict[str, Any]):
+    def container_registry_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert container registry evidence to howler evidence format."""
         return {
             "container": {
@@ -232,13 +230,13 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def device_evidence(evidence: dict[str, Any]):
+    def device_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert device evidence to howler evidence format."""
         return {
             "host": {
                 "id": evidence.get("mdeDeviceId"),
                 "name": evidence.get("hostName"),
-                "domain": [evidence.get("ntDomain","unknown")],
+                "domain": [evidence.get("ntDomain", "unknown")],
                 "os": {
                     "platform": evidence.get("osPlatform"),
                     "version": str(evidence.get("osBuild")),
@@ -258,7 +256,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def file_evidence(evidence: dict[str, Any]):
+    def file_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert file evidence to howler evidence format."""
         file_details = evidence.get("fileDetails", {})
         if not file_details:
@@ -282,7 +280,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def google_cloud_resource_evidence(evidence: dict[str, Any]):
+    def google_cloud_resource_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert Google Cloud resource evidence to howler evidence format."""
         return {
             "gcp": {
@@ -296,7 +294,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def iot_device_evidence(evidence: dict[str, Any]):
+    def iot_device_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert IoT device evidence to howler evidence format."""
         return {
             "iot": {
@@ -332,7 +330,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def ip_evidence(evidence: dict[str, Any]):
+    def ip_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert IP evidence to howler evidence format."""
         return {
             "host": {
@@ -344,7 +342,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def kubernetes_cluster_evidence(evidence: dict[str, Any]):
+    def kubernetes_cluster_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert Kubernetes cluster evidence to howler evidence format."""
         return {
             "kubernetes": {
@@ -361,7 +359,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def kubernetes_controller_evidence(evidence: dict[str, Any]):
+    def kubernetes_controller_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert Kubernetes controller evidence to howler evidence format."""
         return {
             "kubernetes": {
@@ -377,7 +375,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def kubernetes_namespace_evidence(evidence: dict[str, Any]):
+    def kubernetes_namespace_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert Kubernetes namespace evidence to howler evidence format."""
         return {
             "kubernetes": {
@@ -396,7 +394,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def kubernetes_pod_evidence(evidence: dict[str, Any]):
+    def kubernetes_pod_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert Kubernetes pod evidence to howler evidence format."""
         return {
             "kubernetes": {
@@ -433,7 +431,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def kubernetes_secret_evidence(evidence: dict[str, Any]):
+    def kubernetes_secret_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert Kubernetes secret evidence to howler evidence format."""
         return {
             "kubernetes": {
@@ -446,15 +444,13 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def kubernetes_service_evidence(evidence: dict[str, Any]):
+    def kubernetes_service_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert Kubernetes service evidence to howler evidence format."""
         return {
             "kubernetes": {
                 "service": {
                     "cluster_ip": evidence.get("clusterIp"),
-                    "external_ips": [
-                        x.get("ipAddress") for x in evidence.get("externalIps", [])
-                    ],
+                    "external_ips": [x.get("ipAddress") for x in evidence.get("externalIps", [])],
                     "labels": evidence.get("labels"),
                     "name": evidence.get("name"),
                     "namespace": evidence.get("namespace"),
@@ -476,7 +472,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def kubernetes_service_account_evidence(evidence: dict[str, Any]):
+    def kubernetes_service_account_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert Kubernetes service account evidence to howler evidence format."""
         return {
             "kubernetes": {
@@ -490,7 +486,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def mail_cluster_evidence(evidence: dict[str, Any]):
+    def mail_cluster_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert mail cluster evidence to howler evidence format."""
         return {
             "metadata": {
@@ -510,7 +506,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def mailbox_evidence(evidence: dict[str, Any]):
+    def mailbox_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert mailbox evidence to howler evidence format."""
         user = evidence.get("userAccount", {})
         if not user:
@@ -534,7 +530,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def nic_evidence(evidence: dict[str, Any]):
+    def nic_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert NIC evidence to howler evidence format."""
         return {
             "host": {
@@ -544,7 +540,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def oauth_application_evidence(evidence: dict[str, Any]):
+    def oauth_application_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert OAuth application evidence to howler evidence format."""
         return {
             "metadata": {
@@ -562,7 +558,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def process_evidence(evidence: dict[str, Any]):
+    def process_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert process evidence to howler evidence format."""
         image_file = evidence.get("imageFile", {})
         parent_image_file = evidence.get("parentImageFile", {})
@@ -611,7 +607,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def registry_key_evidence(evidence: dict[str, Any]):
+    def registry_key_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert registry key evidence to howler evidence format."""
         return {
             "metadata": {
@@ -624,7 +620,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def registry_value_evidence(evidence: dict[str, Any]):
+    def registry_value_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert registry value evidence to howler evidence format."""
         return {
             "metadata": {
@@ -643,7 +639,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def security_group_evidence(evidence: dict[str, Any]):
+    def security_group_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert security group evidence to howler evidence format."""
         return {
             "metadata": {
@@ -658,7 +654,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def teams_message_evidence(evidence: dict[str, Any]):
+    def teams_message_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert Teams message evidence to howler evidence format."""
         return {
             "metadata": {
@@ -722,7 +718,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def url_evidence(evidence: dict[str, Any]):
+    def url_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert URL evidence to howler evidence format."""
         return {
             "url": {
@@ -731,7 +727,7 @@ class XDRAlertEvidence:
         }
 
     @staticmethod
-    def user_evidence(evidence: dict[str, Any]):
+    def user_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert user evidence to howler evidence format."""
         user = evidence.get("UserAccount", {})
         if not user:
