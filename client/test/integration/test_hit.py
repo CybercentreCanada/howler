@@ -280,9 +280,9 @@ def test_update_by_query(client: Client):
         ],
     )
 
-    time.sleep(1)
+    time.sleep(2)
 
-    hit_to_check_after = client.search.hit("howler.id:*", rows=1)["items"][0]
+    hit_to_check_after = client.search.hit(f"howler.id:{hit_to_check['howler']['id']}", rows=1)["items"][0]
 
     assert hit_to_check_after["howler"]["score"] == hit_to_check["howler"]["score"] + 100
 
