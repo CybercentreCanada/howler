@@ -22,4 +22,4 @@ def skip_or_fail(message):
 
 @pytest.fixture(scope="module")
 def client():
-    return get_client(UI_HOST, verify=False, retries=1, apikey=("user", "devkey:user"))
+    return get_client(UI_HOST, verify=False, retries=1, apikey=("admin", "devkey:admin"))
