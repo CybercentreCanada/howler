@@ -1,6 +1,6 @@
 import os
 import re
-from typing import Any, dict
+from typing import Any
 
 from flask import request
 from howler.api import (
@@ -67,7 +67,7 @@ def ingest_xdr_incident(**kwargs) -> tuple[dict[str, Any], int]:  # noqa C901
     if not xdr_incident:
         return bad_request(err="No JSON data provided in request body")
 
-    logger.info("XDR Incident received:\n%s", xdr_incident)
+    logger.info("XDR Incident received")
 
     try:
         # Configure tenant mapping for both mappers
