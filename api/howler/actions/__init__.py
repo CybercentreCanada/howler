@@ -30,7 +30,7 @@ def __sanitize_specification(spec: dict[str, Any]) -> dict[str, Any]:
             .replace("\n    ", "\n")
             .replace("Args:", "Args:\n"),
         },
-        "steps": [{**step, "args": {k: list(v) for k, v in step["args"].items()}} for step in spec["steps"]],
+        "steps": [{**step, "args": {k: list(v) for k, v in step["args"].items()}} for step in spec.get("steps", [])],
     }
 
 
@@ -145,6 +145,9 @@ def specifications() -> list[dict[str, Any]]:
         ):
             try:
                 automation = importlib.import_module(f"{module_name}.actions.{module.stem}")
+
+                if module_name != "howler":
+                    logger.info("Enabling action %s from plugin %s", automation.specification()["id"], module_name)
 
                 specifications.append(__sanitize_specification(automation.specification()))
 

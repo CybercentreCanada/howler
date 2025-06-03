@@ -1,0 +1,75 @@
+enforce: false
+dynamic_groups: false
+
+levels:
+  # List of alternate names for the current marking
+  - aliases:
+      - U
+      - UNCLASSIFIED
+    css:
+      color: success
+    description: Unclassified Data
+    lvl: 100
+    name: Unclassified
+    short_name: U
+  - aliases:
+      - PA
+      - PROTECTED A
+    css:
+      color: info
+    description: Protected A Data
+    lvl: 110
+    name: Protected A
+    short_name: PA
+  - aliases:
+      - PB
+      - PROTECTED B
+    css:
+      color: info
+    description: Protected B Data
+    lvl: 120
+    name: Protected B
+    short_name: PB
+  - aliases:
+      - PC
+      - PROTECTED C
+    css:
+      color: info
+    description: Protected C Data
+    lvl: 130
+    name: Protected C
+    short_name: PC
+  - aliases:
+      - S
+      - SECRET
+    css:
+      color: warning
+    description: Secret Data
+    lvl: 130
+    name: Secret
+    short_name: S
+  - aliases:
+      - TS
+      - TOP SECRET
+    css:
+      color: error
+    description: Top Secret Data
+    lvl: 130
+    name: Top Secret
+    short_name: TS
+
+# List of required tokens:
+#   A user requesting access to an item must have all the
+#   required tokens the item has to gain access to it
+required:
+  - aliases:
+    - OFFICIAL USE ONLY
+    description: Official (Internal) use only
+    name: Official Use Only
+    short_name: OUO
+    # The minimum classification level an item must have
+    #   for this token to be valid. (optional)
+    # require_lvl: 100
+
+restricted: Unclassified//Official Use Only
+unrestricted: Unclassified//Official Use Only
