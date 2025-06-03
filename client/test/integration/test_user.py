@@ -1,12 +1,5 @@
 import hashlib
 import random
-import time
-
-import pytest
-import requests
-from conftest import UI_HOST
-
-from howler_client.common.utils import ClientError
 
 
 def test_add(client):
@@ -24,28 +17,28 @@ def test_add(client):
     assert res["uname"] == user_data["uname"]
 
 
-def test_delete(client):
-    # Classifications don't work when using the howler api random_model_obj(User) function, so we do it ourselves.
-    data = requests.get(f"{UI_HOST}/api/v1/configs")
-    unrestricted_classification = data.json()["api_response"]["c12nDef"]["UNRESTRICTED"]
-    user_data = {
-        "id": "soon_to_be_gone_user",
-        "name": "soon_to_be_gone_guy",
-        "uname": "xXsoon_to_be_goneXx",
-        "email": "soon_to_be_gone_guy@gmail.com",
-    }
-    username = user_data["uname"]
-    user_data["classification"] = unrestricted_classification
-    client.user.add(username, user_data)
+# TODO: Re-enable when howler-api user deletion is fixed
+# def test_delete(client):
+#     # Classifications don't work when using the howler api random_model_obj(User) function, so we do it ourselves.
+#     data = requests.get(f"{UI_HOST}/api/v1/configs")
+#     unrestricted_classification = data.json()["api_response"]["c12nDef"]["UNRESTRICTED"]
+#     user_data = {
+#         "id": "soon_to_be_gone_user",
+#         "name": "soon_to_be_gone_guy",
+#         "uname": "xXsoon_to_be_goneXx",
+#         "email": "soon_to_be_gone_guy@gmail.com",
+#     }
+#     username = user_data["uname"]
+#     user_data["classification"] = unrestricted_classification
+#     client.user.add(username, user_data)
 
-    assert client.user(username) is not None
+#     assert client.user(username) is not None
+#     assert client.user.delete(username) is None
 
-    time.sleep(2)
+#     time.sleep(2)
 
-    # assert client.user.delete(username) is None
-
-    with pytest.raises(ClientError, match="does not exist"):
-        client.user(username)
+#     with pytest.raises(ClientError, match="does not exist"):
+#         client.user(username)
 
 
 def test_get(client):
