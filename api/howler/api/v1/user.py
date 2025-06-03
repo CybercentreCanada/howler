@@ -5,15 +5,7 @@ from typing import Any, Optional
 from flask import request
 
 import howler.services.user_service as user_service
-from howler.api import (
-    bad_request,
-    forbidden,
-    internal_error,
-    make_subapi_blueprint,
-    no_content,
-    not_found,
-    ok,
-)
+from howler.api import bad_request, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
 from howler.api.v1.utils.etag import add_etag
 from howler.common.exceptions import (
     AccessDeniedException,
@@ -29,11 +21,7 @@ from howler.config import config
 from howler.helper.oauth import fetch_groups
 from howler.odm.models.user import User
 from howler.security import api_login
-from howler.security.utils import (
-    check_password_requirements,
-    get_password_hash,
-    get_password_requirement_message,
-)
+from howler.security.utils import check_password_requirements, get_password_hash, get_password_requirement_message
 
 SUB_API = "user"
 user_api = make_subapi_blueprint(SUB_API, api_version=1)
@@ -218,9 +206,14 @@ def remove_user_account(username, **_):
     user_data = storage.user.get(username)
     if user_data:
         user_deleted = storage.user.delete(username)
-        avatar_deleted = storage.user_avatar.delete(username)
+
+        if storage.user_avatar.exists(username):
+            avatar_deleted = storage.user_avatar.delete(username)
+        else:
+            avatar_deleted = True
 
         if not user_deleted or not avatar_deleted:
+            logger.warning("Failed to delete user")
             return internal_error(err="Failed to delete user or avatar. Contact your administrator.")
 
         return no_content()

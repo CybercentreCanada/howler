@@ -155,8 +155,8 @@ jobs:
         uses: marocchino/sticky-pull-request-comment@v2
         if: github.event_name == 'pull_request' && matrix.python-version == '3.12'
         with:
-          recreate: true
           path: plugins/sentinel/coverage-results.md
+          header: sentinel
   push_to_pypi:
     if: github.event_name != 'pull_request'
 
