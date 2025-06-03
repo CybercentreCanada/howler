@@ -56,8 +56,7 @@ def execute(query: str, **kwargs):
     report = []
     ds = datastore()
 
-    hit: Hit = ds.hit.search(query, as_obj=True)["items"][0]
-
+    hit: Hit = ds.hit.search(query, as_obj=True)["items"]
     if not hit:
         report.append(
             {
@@ -68,11 +67,22 @@ def execute(query: str, **kwargs):
             }
         )
         return report
+    if len(hit) > 1:
+        report.append(
+            {
+                "query": query,
+                "outcome": "error",
+                "title": "Multiple Hits Found",
+                "message": f"Multiple hits found for query {query}. Please refine your query.",
+            }
+        )
+        return report
+    hit = hit[0]
 
     # Get bearer token
     try:
         credentials = json.loads(os.environ['HOWLER_GRAPH_ALERT_CREDENTIALS'])
-    except KeyError:
+    except (KeyError, json.JSONDecodeError):
         report.append(
             {
                 "query": query,
@@ -119,12 +129,8 @@ def execute(query: str, **kwargs):
     # Update alert
     if "assessment" in hit.howler and hit.howler.assessment in map["graph"]["classification"] and \
        hit.howler.assessment in map["graph"]["determination"]:
-        if hit.howler.assessment is None:
-            classification = map["graph"]["classification"][hit.howler.assessment]
-            determination = map["graph"]["determination"][hit.howler.assessment]
-        else:
-            classification = map["graph"]["classification"][hit.howler.assessment]
-            determination = map["graph"]["determination"][hit.howler.assessment]
+        classification = map["graph"]["classification"][hit.howler.assessment]
+        determination = map["graph"]["determination"][hit.howler.assessment]
     else:
         classification = alert_data["classification"]
         determination = alert_data["determination"]
@@ -132,15 +138,15 @@ def execute(query: str, **kwargs):
     status = map["graph"]["status"][hit.howler.status]
     assigned_to = alert_data["assignedTo"]
 
-    data = f"""{{
-        "assignedTo": "{assigned_to}",
-        "classification": "{classification}",
-        "determination": "{determination}",
-        "status": "{status}"
-    }}"""
+    data = {
+        "assignedTo": assigned_to,
+        "classification": classification,
+        "determination": determination,
+        "status": status
+    }
 
-    response = requests.patch(alert_url, data = data,
-                              headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"})
+    response = requests.patch(alert_url, json = data,
+                              headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"})
     if response.status_code != 200:
         report.append(
             {
