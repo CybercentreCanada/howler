@@ -115,6 +115,7 @@ def get_configuration(user: User, **kwargs):
             "ui": {
                 "apps": apps,
             },
+            "mapping": config.mapping,
             "features": {
                 "borealis": config.core.borealis.enabled,
                 "notebook": config.core.notebook.enabled,
