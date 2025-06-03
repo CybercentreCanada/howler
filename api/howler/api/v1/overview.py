@@ -5,6 +5,7 @@ from howler.api import (
     conflict,
     created,
     forbidden,
+    internal_error,
     make_subapi_blueprint,
     no_content,
     not_found,
@@ -17,6 +18,7 @@ from howler.common.swagger import generate_swagger_docs
 from howler.odm.models.overview import Overview
 from howler.odm.models.user import User
 from howler.security import api_login
+from howler.services import overview_service
 from howler.utils.str_utils import sanitize_lucene_query
 
 SUB_API = "overview"
@@ -189,3 +191,27 @@ def update_overview_content(id: str, user: User, **kwargs):
         return ok(storage.overview.get_if_exists(existing_overview.overview_id, as_obj=False))
     except HowlerException as e:
         return bad_request(err=str(e))
+
+
+@generate_swagger_docs()
+@overview_api.route("/examples", methods=["GET"])
+@api_login(required_priv=["R"])
+def get_example_overviews(**kwargs):
+    """Get a list of example overviews
+
+    Variables:
+    None
+
+    Optional Arguments:
+    None
+
+    Result Example:
+    {
+        "basic_example": "# Hello, World!\\n\\nExample Markdown"
+    }
+    """
+    try:
+        return ok(overview_service.get_example_overviews())
+    except Exception as e:
+        logger.exception("Exception on overview example fetching")
+        return internal_error(err=str(e))
