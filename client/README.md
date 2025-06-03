@@ -8,24 +8,35 @@ The Howler client library facilitates issuing requests to Howler.
 
 ## Running the Tests
 
-1. Prepare the howler-api:
-   1. Start dependencies
-   1. `howler-api > python howler/app.py`
-   1. `howler-api > python howler/odm/random_data.py`
-2. Run python integration tests:
-   1. `python -m venv env`
-   1. `. env/bin/activate`
-   1. `pip install -r requirements.txt`
-   1. `pip install -r test/requirements.txt`
-   1. `pip install -e .`
-   1. `pytest -s -v test`
+### Prepare the API
 
-## \_sqlite3 error
+```bash
+sudo mkdir -p /etc/howler/conf
+sudo mkdir -p /var/cache/howler
+sudo mkdir -p /var/lib/howler
+sudo mkdir -p /var/log/howler
 
-You'll likely have to reinstall python3.9 while libsqlite3-dev is installed
+sudo chown -R $USER /etc/howler
+sudo chown $USER /var/cache/howler
+sudo chown $USER /var/lib/howler
+sudo chown $USER /var/log/howler
 
-1. libsqlite3-dev
-   `sudo apt install libsqlite3-dev`
-2. Python3.9 with loadable-sqlite-extensions enabled
-   - `./configure --enable-loadable-sqlite-extensions --enable-optimizations`
-   - `make altinstall`
+cd api/dev
+docker compose up -d --build
+
+cd ..
+poetry install --with dev,test,types
+cp test/unit/config.yml /etc/howler/conf/config.yml
+cp build_scripts/classification.yml /etc/howler/conf/classification.yml
+poetry run server
+
+poetry run python howler/odm/random_data.py
+```
+
+### Run the Tests
+
+```bash
+cd client
+
+poetry run test
+```

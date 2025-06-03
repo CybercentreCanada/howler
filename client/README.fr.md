@@ -1,19 +1,42 @@
-# Bibliothèque client de Howler
+# Bibliothèque cliente Howler
 
-La bibliothèque client Howler facilite l'émission de requêtes à Howler.
+La bibliothèque cliente Howler facilite l'envoi de requêtes à Howler.
+
+## Configuration requise
+
+1. Python 3.9 et versions ultérieures
 
 ## Exécution des tests
 
-1. Préparez l'interface howler-api :
-    1. Démarrer les dépendances
-    1. `howler-api > python howler/app.py`
-    1. `howler-api > python howler/odm/random_data.py`
-2. Exécutez les tests d'intégration Java :
-    1. `howler-client > mvn verify`
-3. Exécuter les tests d'intégration python :
-    1. `howler-client/python > python -m venv env`
-    1. `howler-client/python > . env/bin/activate`
-    1. `howler-client/python > pip install -r requirements.txt`
-    1. `howler-client/python > pip install -r test/requirements.txt`
-    1. `howler-client/python > pip install -e .`
-    1. `howler-client/python > pytest -s -v test`
+### Préparation de l'API
+
+```bash
+sudo mkdir -p /etc/howler/conf
+sudo mkdir -p /var/cache/howler
+sudo mkdir -p /var/lib/howler
+sudo mkdir -p /var/log/howler
+
+sudo chown -R $USER /etc/howler
+sudo chown $USER /var/cache/howler
+sudo chown $USER /var/lib/howler
+sudo chown $USER /var/log/howler
+
+cd api/dev
+docker compose up -d --build
+
+cd ..
+poetry install --with dev,test,types
+cp test/unit/config.yml /etc/howler/conf/config.yml
+cp build_scripts/classification.yml /etc/howler/conf/classification.yml
+poetry run server
+
+poetry run python howler/odm/random_data.py
+```
+
+### Exécuter des tests
+
+```bash
+cd client
+
+poetry run test
+```
