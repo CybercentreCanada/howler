@@ -14,7 +14,7 @@ sys.path.insert(0, str(api_path))
 from howler.config import config
 
 config.core.plugins.append("sentinel")
-
+config.core.plugins.append("evidence")
 import pytest
 from howler.datastore.howler_store import HowlerDatastore
 from howler.datastore.store import ESCollection, ESStore
