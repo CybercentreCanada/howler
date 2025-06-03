@@ -48,7 +48,7 @@ class SentinelIncident:
             required_fields = ["id", "tenantId", "createdDateTime"]
             for field in required_fields:
                 if not sentinel_incident.get(field):
-                    logger.warning(f"Missing required field '{field}' in incident: {sentinel_incident}")
+                    logger.warning("Missing required field '%s' in incident: %s", field, sentinel_incident)
 
             tenant_id: str = sentinel_incident.get("tenantId", "")
             customer_name: str = self.get_customer_name(tenant_id)
@@ -65,10 +65,10 @@ class SentinelIncident:
             description: str = sentinel_incident.get("description", "")
             resolving_comment: str = sentinel_incident.get("resolvingComment", "")
             if not isinstance(custom_tags, list):
-                logger.warning(f"customTags is not a list: {custom_tags}")
+                logger.warning("customTags is not a list: %s", custom_tags)
                 custom_tags = []
             if not isinstance(system_tags, list):
-                logger.warning(f"systemTags is not a list: {system_tags}")
+                logger.warning("systemTags is not a list: %s", system_tags)
                 system_tags = []
 
             bundle: dict[str, Any] = {
@@ -76,7 +76,6 @@ class SentinelIncident:
                     "status": self.map_sentinel_status_to_howler(status),
                     "detection": display_name,
                     "assignment": self.map_sentinel_user_to_howler(assigned_to),
-                    "assessment": self.map_classification(classification),
                     "score": self.map_severity_to_score(severity),
                     "outline.summary": description,
                     "rationale": resolving_comment,
@@ -108,11 +107,14 @@ class SentinelIncident:
             }
             self._map_graph_host_link(sentinel_incident, bundle)
             self._map_timestamps(sentinel_incident, bundle)
-            logger.info(f"Successfully mapped Sentiel Incident {incident_id}")
+                    # Add assessment conditionally if classification is not null
+            if classification is not None:
+                bundle["howler"]["assessment"] = self.map_classification(classification)
+            logger.info("Successfully mapped Sentiel Incident %s", incident_id)
             return bundle
 
         except Exception as exc:
-            logger.error(f"Failed to map Sentiel Incident: {exc}", exc_info=True)
+            logger.error("Failed to map Sentiel Incident: %s", exc, exc_info=True)
             return None
 
     def get_customer_name(self, tid: str) -> str:
@@ -190,7 +192,7 @@ class SentinelIncident:
             "informationalExpectedActivity": "legitimate",
             "benignPositive": "legitimate"
         }
-        return classification_mapping.get(classification, "ambiguous")
+        return classification_mapping.get(classification, "")
 
     # --- Private helper methods ---
 
@@ -236,7 +238,7 @@ class SentinelIncident:
                     elif time_field == "lastActivityDateTime":
                         howler_hit["event"]["end"] = dt_obj.isoformat()
                 except Exception as exc:
-                    logger.warning(f"Invalid timestamp format for {time_field}: {timestamp} ({exc})")
+                    logger.warning("Invalid timestamp format for %s: %s (%s)", time_field, timestamp, exc)
 
     def _build_labels(self, custom_tags: list[str], system_tags: list[str]) -> list[str]:
         """
@@ -252,7 +254,7 @@ class SentinelIncident:
         if custom_tags:
             labels.extend(custom_tags)
         if system_tags:
-            labels.extend([f"system_{tag}" for tag in system_tags])
+            labels.extend(["system_%s" % tag for tag in system_tags])
         labels.append("sentinel_incident")
         return labels
 

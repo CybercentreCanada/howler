@@ -1,9 +1,9 @@
 import logging
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any,  Optional
 from dateutil import parser
-
-
+from howler.common.exceptions import NonRecoverableError
+from howler.config import config
 from sentinel.mapping.xdr_alert_evidence import (
     default_unknown_evidence,
     evidence_function_map
@@ -19,7 +19,7 @@ class XDRAlert:
 
     DEFAULT_CUSTOMER_NAME = "Unknown Customer"
 
-    def __init__(self, tid_mapping: Optional[Dict[str, str]] = None, default_customer_name: Optional[str] = None):
+    def __init__(self, tid_mapping: Optional[dict[str, str]] = None, default_customer_name: Optional[str] = None):
         # Allow overriding TID mapping and default customer name
         self.tid_mapping = tid_mapping or {}
         self.default_customer_name = default_customer_name or self.DEFAULT_CUSTOMER_NAME
@@ -87,8 +87,8 @@ class XDRAlert:
         return classification.get(graph_classification, "ambiguous")
 
     def map_alert(
-        self, graph_alert: Dict[str, Any], customer_id: str
-    ) -> Dict[str, Any] | None:
+        self, graph_alert: dict[str, Any], customer_id: str
+    ) -> dict[str, Any] | None:
         """Map a single Graph alert to a Howler hit."""
         # Handle None input gracefully
         if graph_alert is None:
@@ -194,7 +194,7 @@ class XDRAlert:
 
         return howler_hit
 
-    def _map_timestamps(self, graph_alert: Dict[str, Any], howler_hit: Dict[str, Any]) -> None:
+    def _map_timestamps(self, graph_alert: dict[str, Any], howler_hit: dict[str, Any]) -> None:
         """Map timestamps from Graph alert to Howler hit."""
         # Add all timestamps from Graph to event object
         for time_field in [
@@ -218,9 +218,9 @@ class XDRAlert:
                     logger.warning("Invalid timestamp format for %s: %s", time_field, graph_alert[time_field])
 
 
-    def _map_graph_host_link(self, graph_alert: Dict[str, Any], howler_hit: Dict[str, Any]) -> None:
+    def _map_graph_host_link(self, graph_alert: dict[str, Any], howler_hit: dict[str, Any]) -> None:
         """Map Graph host link from Graph alert to Howler hit using the same logic as in xdr_incident.py."""
-        link: Dict[str, str] = {
+        link: dict[str, str] = {
             "icon": "https://security.microsoft.com/favicon.ico",
             "title": "Open in Microsoft XDR portal",
             "href": graph_alert.get("alertWebUrl", "")
@@ -230,13 +230,13 @@ class XDRAlert:
             howler_hit["howler"]["links"].append(link)
 
 
-    def _populate_event_provider(self, howler_hit: Dict[str, Any]) -> None:
+    def _populate_event_provider(self, howler_hit: dict[str, Any]) -> None:
         """Ensure event.provider is populated."""
         if "provider" not in howler_hit["event"] or not howler_hit["event"]["provider"]:
             howler_hit["event"]["provider"] = "MSGraphAlertCollector"
 
     def _populate_comments(
-        self, graph_alert: Dict[str, Any], howler_hit: Dict[str, Any]
+        self, graph_alert: dict[str, Any], howler_hit: dict[str, Any]
     ) -> None:
         """Populate comments in the Howler hit."""
         if "comments" in graph_alert and isinstance(graph_alert["comments"], list):
@@ -252,16 +252,18 @@ class XDRAlert:
                     logger.info("Invalid comment format in alert: %s", comment)
                     continue
                 comments.append(
-                    {"value": values[0], "user": f"{values[1]} (Imported from source platform)", "timestamp": values[2]}
+                    {"value": values[0], "user": f"{values[1]}\n\n---\n\n*(Imported from Microsoft XDR)", "timestamp": values[2]}
                 )
             if "comment" not in howler_hit["howler"]:
                 howler_hit["howler"]["comment"] = []
             howler_hit["howler"]["comment"].extend(comments)
 
     def _map_evidence(
-        self, graph_alert: Dict[str, Any], howler_hit: Dict[str, Any]
+        self, graph_alert: dict[str, Any], howler_hit: dict[str, Any]
     ) -> None:
         """Map evidence from Graph alert to Howler hit."""
+        if "evidence" not in config.core.plugins:  
+            raise NonRecoverableError("Sentinel requires the evidence plugin to be enabled")         
         if "evidence" not in howler_hit or not isinstance(howler_hit["evidence"], list):
             howler_hit["evidence"] = []
 

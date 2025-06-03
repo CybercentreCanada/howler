@@ -112,7 +112,7 @@ def ingest_xdr_incident(**kwargs) -> tuple[Dict[str, Any], int]:
                 else:
                     logger.warning(f"Alert mapper returned None for alert {i}: {alert.get('id', 'unknown')}")
             except Exception as e:
-                logger.error(f"Failed to create individual alert hit {i}: {e}")
+                logger.exception(f"Failed to create individual alert hit {i}: {e}")
                 continue
         
         # Step 3: Create the bundle following create_bundle pattern
