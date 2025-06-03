@@ -47,7 +47,7 @@ def main():
 
         return_code = pytest.poll()
         if return_code is not None and return_code > 0:
-            if output and os.environ.get("TF_BUILD", ""):
+            if output and os.environ.get("WRITE_MARKDOWN", ""):
                 markdown_output = textwrap.dedent(
                     """
                 ![Static Badge](https://img.shields.io/badge/build-failing-red)
@@ -68,9 +68,8 @@ def main():
 
                 markdown_output += "\n</details>"
 
-                print(
-                    "##vso[task.setvariable variable=error_result]" + markdown_output.replace("\n", "%0D%0A") + "\n\n"
-                )
+                (Path(__file__).parent.parent / "test-results.md").write_text(markdown_output)
+
             raise subprocess.CalledProcessError(return_code, pytest.args, output=output, stderr=None)
 
     except subprocess.CalledProcessError as e:
