@@ -86,8 +86,12 @@ def execute(query: str, **kwargs):
             continue
 
         token_request_url = f"https://login.microsoftonline.com/{hit.azure.tenant_id}/oauth2/v2.0/token"
-        data = f"grant_type=client_credentials&client_id={credentials['client_id']}" + \
-            f"&client_secret={credentials['client_secret']}&scope=https%3A%2F%2Fgraph.microsoft.com%2F.default"
+        data = {
+            "grant_type": "client_credentials",
+            "client_id": credentials['client_id'],
+            "client_secret": credentials['client_secret'],
+            "scope": "https://graph.microsoft.com/.default"
+        }
         response = requests.post(token_request_url, data=data)
 
         if not response.ok:
