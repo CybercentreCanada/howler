@@ -31,7 +31,7 @@ properties_map = {
             None: "unknown",
         },
         "determination": {
-            Assessment.AMBIGUOUS: "insufficientData",
+            Assessment.AMBIGUOUS: "unknown",
             Assessment.SECURITY: "securityTesting",
             Assessment.DEVELOPMENT: "confirmedUserActivity",
             Assessment.FALSE_POSITIVE: "other",
