@@ -1,3 +1,5 @@
+from typing import Any
+
 import requests
 from howler.common.exceptions import HowlerRuntimeError
 from howler.common.loader import datastore
@@ -12,7 +14,7 @@ logger = get_logger(__file__)
 OPERATION_ID = "send_to_sentinel"
 
 
-def execute(query: str, **kwargs):
+def execute(query: str, **kwargs) -> list[dict[str, Any]]:
     """Send hit to Microsoft Sentinel.
 
     Args:

@@ -1,11 +1,14 @@
 import os
-from typing import Optional
+from typing import Any, Optional
 
 import requests
 from howler.common.loader import datastore
+from howler.common.logging import get_logger
 from howler.odm.models.action import VALID_TRIGGERS
 from howler.odm.models.hit import Hit
 from pydash import get
+
+logger = get_logger(__file__)
 
 OPERATION_ID = "azure_emit_hash"
 
@@ -15,7 +18,7 @@ def execute(
     url: Optional[str] = os.environ.get("SHA256_LOGIC_APP_URL", None),
     field: str = "file.hash.sha256",
     **kwargs,
-):
+) -> list[dict[str, Any]]:
     "Emit hashes to sentinel"
     result = datastore().hit.search(query, rows=1)
     hits = result["items"]
@@ -56,17 +59,28 @@ def execute(
     for hit in hits:
         hash_value = get(hit, field)
         if hash_value:
-            requests.post(
-                url,  # noqa: F821
-                json={
-                    "indicator": hash_value,
-                    "type": "FileSha256",
-                    "description": "Sent from Howler",
-                    "action": "alert",
-                    "severity": "high",
-                },
-                timeout=5.0,
-            )
+            try:
+                requests.post(
+                    url,  # noqa: F821
+                    json={
+                        "indicator": hash_value,
+                        "type": "FileSha256",
+                        "description": "Sent from Howler",
+                        "action": "alert",
+                        "severity": "high",
+                    },
+                    timeout=5.0,
+                )
+            except Exception:
+                logger.exception("Exception on network call for alert %s", hit.howler.id)
+                report.append(
+                    {
+                        "query": f"howler.id:{hit.howler.id}",
+                        "outcome": "error",
+                        "title": "Network error on execution",
+                        "message": "Alert processing failed due to network errors.",
+                    }
+                )
         else:
             report.append(
                 {
@@ -76,6 +90,8 @@ def execute(
                     "message": f"The specified alert does not have a valid sha256 hash at path {field}.",
                 }
             )
+
+    return report
 
 
 def specification():
