@@ -62,7 +62,7 @@ def _make_api_response(
 
     if isinstance(cookies, dict):
         for k, v in cookies.items():
-            resp.set_cookie(k, v)
+            resp.set_cookie(k, v, secure=True, httponly=True, samesite="Lax")
 
     RAW_API_COUNTER.labels(request.method, str(request.url_rule), status_code).inc()
     logger.info("%s %s - %s", request.method, request.path, status_code)
