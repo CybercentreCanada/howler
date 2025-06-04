@@ -11,8 +11,12 @@ load_dotenv(Path(__file__).parent / ".env.test")
 sys.path.insert(0, str(Path.cwd()))
 api_path = Path(re.sub(r"^(.+)/plugins.+$", r"\1", str(Path.cwd())) + "/api")
 sys.path.insert(0, str(api_path))
+
+# Ensure the evidence plugin is on sys.path
+sys.path.append(str(Path.cwd().parent / "evidence"))
 from howler.config import config
 
+config.core.plugins.append("evidence")
 config.core.plugins.append("sentinel")
 
 import pytest

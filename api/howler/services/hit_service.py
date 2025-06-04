@@ -550,16 +550,23 @@ def transition_hit(
                 version=(version if (hit_id == hit["howler"]["id"] and version) else None),
             )
 
-    if transition in ["promote", "demote", "assess"]:
+    if transition in [
+        HitStatusTransition.PROMOTE,
+        HitStatusTransition.DEMOTE,
+        HitStatusTransition.ASSESS,
+        HitStatusTransition.RE_EVALUATE,
+    ]:
         trigger: Union[Literal["promote"], Literal["demote"]]
 
-        if transition == "assess":
+        if transition == HitStatusTransition.ASSESS:
             new_assessment = AssessmentEscalationMap[kwargs["assessment"]]
 
             if new_assessment == Escalation.EVIDENCE:
                 trigger = "promote"
             else:
                 trigger = "demote"
+        elif transition == HitStatusTransition.RE_EVALUATE:
+            trigger = "promote"
         else:
             trigger = cast(Union[Literal["promote"], Literal["demote"]], transition)
 

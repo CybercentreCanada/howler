@@ -1,0 +1,23 @@
+[run]
+branch = True
+sigterm = True
+data_file = .coverage.pytest
+omit =
+    howler/gunicorn_config.py
+    howler/patched.py
+    howler/external/*
+    howler/helper/ws.py
+    howler/odm/models/*
+    howler/odm/random_data.py
+
+[report]
+exclude_also =
+    def __repr__
+    if DEBUG:
+    raise AssertionError
+    raise NotImplementedError
+    if 0:
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    @(abc\.)?abstractmethod]
+    if "pytest" in sys.modules:

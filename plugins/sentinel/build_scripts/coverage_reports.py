@@ -74,7 +74,7 @@ def main():
             f"""
         ![Static Badge](https://img.shields.io/badge/Build%20(Python%20{platform.python_version()})-passing-brightgreen)
 
-        # Coverage Results
+        # Howler Sentinel Plugin - Coverage Results
         {generate_badge('Total Coverage', total_percentage, total_color)} {badge}
 
 {newline.join([(' ' * 8) + line for line in diff_result.splitlines()]) if (not develop and not rc_or_main) else ''}
@@ -91,7 +91,9 @@ def main():
         print("Markdown result:")
         print(markdown_output)
 
-        (Path(__file__).parent.parent / "coverage-results.md").write_text(markdown_output)
+        output_path = Path(__file__).parent.parent / "coverage-results.md"
+        print("Writing to:", str(output_path))
+        output_path.write_text(markdown_output)
     except subprocess.CalledProcessError as e:
         print(" ".join(e.cmd), "failed.")
 

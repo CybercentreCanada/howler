@@ -2147,7 +2147,7 @@ class ESCollection(Generic[ModelType]):
         limit = len(self.model_class.flat_fields()) + 500 if self.model_class else 1500
         if limit < 1500:
             limit = 1500
-        else:
+        elif limit > 1500:
             logger.warning("ODM field size is larger than 1500 - set to %s", limit)
         settings["index"]["mapping"]["total_fields"]["limit"] = limit
 

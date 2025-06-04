@@ -4,6 +4,7 @@ from mergedeep.mergedeep import merge
 from howler.common.exceptions import ForbiddenException, NotFoundException
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.helper import generate_useful_dossier
+from howler.odm.models.dossier import Dossier
 from howler.odm.random_data import create_dossiers, wipe_dossiers
 from howler.security import InvalidDataException
 from howler.services import dossier_service
@@ -60,39 +61,40 @@ def test_create_dossier_fails(datastore: HowlerDatastore):
         dossier_service.create_dossier(bad_example, username="admin")
 
 
-def test_update_dossier(datastore: HowlerDatastore):
-    user = datastore.user.search("uname:admin")["items"][0]
-    existing_dossier_id = datastore.dossier.search("type:global", as_obj=True)["items"][0].dossier_id
-
-    assert dossier_service.update_dossier(existing_dossier_id, {"owner": "test"}, user).owner == "test"
-
-
 def test_update_dossier_fails(datastore: HowlerDatastore):
     user = datastore.user.search("uname:admin")["items"][0]
 
     with pytest.raises(NotFoundException):
         dossier_service.update_dossier("potatopotatopotato", {"owner": "test"}, user).owner == "test"
 
-    user = datastore.user.search("uname:user")["items"][0]
-    existing_dossier_id = datastore.dossier.search("type:personal AND -owner:user", as_obj=True)["items"][0].dossier_id
+    existing_dossier: Dossier = datastore.dossier.search("type:personal", as_obj=True)["items"][0]
 
     with pytest.raises(ForbiddenException):
-        dossier_service.update_dossier(existing_dossier_id, {"owner": "test"}, user)
+        other_user = datastore.user.search(f"-uname:{existing_dossier.owner} AND -type:admin")["items"][0]
+        dossier_service.update_dossier(existing_dossier.dossier_id, {"owner": other_user.uname}, other_user)
 
-    existing_dossier_id = datastore.dossier.search("type:global AND -owner:user", as_obj=True)["items"][0].dossier_id
+    existing_dossier = datastore.dossier.search("type:global", as_obj=True)["items"][0]
     with pytest.raises(ForbiddenException):
-        dossier_service.update_dossier(existing_dossier_id, {"owner": "test"}, user)
+        other_user = datastore.user.search(f"-uname:{existing_dossier.owner} AND -type:admin")["items"][0]
+        dossier_service.update_dossier(existing_dossier.dossier_id, {"owner": other_user.uname}, other_user)
 
-    user = datastore.user.search("uname:admin")["items"][0]
+    user = datastore.user.search(f"uname:{existing_dossier.owner}")["items"][0]
     with pytest.raises(InvalidDataException):
         dossier_service.update_dossier(
-            existing_dossier_id, {"query": "sdklfjnasdvrtvybnuiseybuniosertv897890['['[/]['/]"}, user
+            existing_dossier.dossier_id, {"query": "sdklfjnasdvrtvybnuiseybuniosertv897890['['[/]['/]"}, user
         )
 
     with pytest.raises(InvalidDataException) as exc:
-        dossier_service.update_dossier(existing_dossier_id, {"test": "TEST"}, user)
+        dossier_service.update_dossier(existing_dossier.dossier_id, {"test": "TEST"}, user)
 
     assert exc.match("can be updated")
+
+
+def test_update_dossier(datastore: HowlerDatastore):
+    user = datastore.user.search("uname:admin")["items"][0]
+    existing_dossier_id = datastore.dossier.search("type:global", as_obj=True)["items"][0].dossier_id
+
+    assert dossier_service.update_dossier(existing_dossier_id, {"owner": "test"}, user).owner == "test"
 
 
 def test_pivot_with_duplicates(datastore: HowlerDatastore):
