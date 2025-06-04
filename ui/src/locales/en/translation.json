@@ -179,7 +179,7 @@
   "hit.label.category.mitigation": "Category: Mitigation - This label captures what efforts were undertaken to mitigate a compromise.",
   "hit.label.category.operation": "Category: Operation - The hit is related to an ongoing operation and should be scrutinized with special considerations and a broader understanding of the current circumstances.",
   "hit.label.category.threat": "Category: Threat - Identifies that the hit has been attributed to a known threat actor or group.",
-  "hit.label.category.tuning": "Category: Tuning - Identifies which hits are already understood and should get triaged automatically.",
+  "hit.label.category.tuning": "Category: Tuning - Identifies which hits are already understood and should get triaged automatically",
   "hit.label.category.victim": "Category: Victim - Hits produced from a victim notification stream can have a label that identifies the victim organization that needs to be notified.",
   "hit.label.edit": "Manage labels",
   "hit.label.edit.add.category": "New Label Category",
