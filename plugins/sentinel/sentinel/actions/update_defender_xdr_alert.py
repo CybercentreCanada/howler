@@ -88,7 +88,7 @@ def execute(query: str, **kwargs):
             continue
 
         try:
-            token = get_token(hit.azure.tenant_id)[0]
+            token = get_token(tenant_id)[0]
         except HowlerRuntimeError as err:
             logger.exception("Error on token fetching")
             report.append(

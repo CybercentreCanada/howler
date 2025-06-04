@@ -34,8 +34,22 @@ def execute(query: str, **kwargs):
         return report
 
     for hit in hits:
+        tenant_id = hit.azure.tenant_id
+        if not tenant_id and hit.organization.id:
+            tenant_id = hit.organization.id
+        elif not tenant_id:
+            report.append(
+                {
+                    "query": f"howler.id:{hit.howler.id}",
+                    "outcome": "skipped",
+                    "title": "Azure Tenant ID is missing",
+                    "message": "This alert does not have a set tenant ID.",
+                }
+            )
+            continue
+
         try:
-            token, credentials = get_token(hit.azure.tenant_id)
+            token, credentials = get_token(tenant_id)
         except HowlerRuntimeError as err:
             logger.exception("Error on token fetching")
             report.append(
