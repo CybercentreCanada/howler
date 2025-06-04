@@ -89,11 +89,20 @@ def execute(
     Returns:
         list[dict[str, Any]]: A report on the execution
     """
-    try:
-        automation = importlib.import_module(f"howler.actions.{operation_id}")
-    except Exception as e:
-        logger.critical("Error when importing %s - %s", operation_id, e)
+    automation = None
+    for module_name in ["howler", *config.core.plugins]:
+        try:
+            automation = importlib.import_module(f"{module_name}.actions.{operation_id}")
+            break
+        except ImportError as err:
+            if f"No module named '{module_name}'" in str(err):
+                raise
+            else:
+                logger.info("Plugin %s does not expose operation %s.", module_name, operation_id)
+        except Exception as err:
+            logger.critical("Error when importing %s - %s", operation_id, err)
 
+    if not automation:
         return [
             {
                 "query": query,
