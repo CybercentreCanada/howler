@@ -92,7 +92,6 @@ def specification():
         "id": OPERATION_ID,
         "title": "Send hit to Microsoft Sentinel",
         "priority": 8,
-        "i18nKey": "Send hit to Microsoft Sentinel",
         "description": {
             "short": "Send hit to Microsoft Sentinel",
             "long": execute.__doc__,
