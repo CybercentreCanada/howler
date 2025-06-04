@@ -76,7 +76,7 @@ class SentinelIncident:
                     "score": self.map_severity_to_score(severity),
                     "outline.summary": description,
                     "rationale": resolving_comment,
-                    "analytic": "MSGraph",
+                    "analytic": "Sentinel",
                     "is_bundle": True,
                     "bundle_size": 0,
                     "hits": [],
