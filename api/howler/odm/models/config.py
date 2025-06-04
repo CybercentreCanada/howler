@@ -306,7 +306,7 @@ class Notebook(BaseModel):
 
 
 class Core(BaseModel):
-    plugins: set[str] = Field(description="A list of external plugins to load", default={})
+    plugins: set[str] = Field(description="A list of external plugins to load", default=set())
 
     metrics: Metrics = Metrics()
     "Configuration for Metrics Collection"
