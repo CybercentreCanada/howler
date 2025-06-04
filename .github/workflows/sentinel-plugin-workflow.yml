@@ -151,6 +151,8 @@ jobs:
       - name: Add Failed Test PR Comment
         uses: marocchino/sticky-pull-request-comment@v2
         if: github.event_name == 'pull_request' && steps.tests.outcome == 'failure'
+        # https://github.com/marocchino/sticky-pull-request-comment/issues/227
+        continue-on-error: true
         with:
           path: api/test-results.md
           header: api
@@ -168,6 +170,8 @@ jobs:
       - name: Add Coverage PR Comment
         uses: marocchino/sticky-pull-request-comment@v2
         if: steps.tests.outcome == 'success' && github.event_name == 'pull_request' && matrix.python-version == '3.12'
+        # https://github.com/marocchino/sticky-pull-request-comment/issues/227
+        continue-on-error: true
         with:
           path: plugins/sentinel/coverage-results.md
           header: sentinel
