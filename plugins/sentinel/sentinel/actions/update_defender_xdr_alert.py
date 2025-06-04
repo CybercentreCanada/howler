@@ -97,6 +97,7 @@ def execute(query: str, **kwargs):
         response = requests.post(token_request_url, data=data, timeout=5.0)
 
         if not response.ok:
+            logger.warning("Failed to authenticate to Microsoft Graph.")
             report.append(
                 {
                     "query": query,
@@ -113,6 +114,7 @@ def execute(query: str, **kwargs):
         alert_url = f"https://graph.microsoft.com/v1.0/security/alerts_v2/{hit.rule.id}"
         response = requests.get(alert_url, headers={"Authorization": f"Bearer {token}"}, timeout=5.0)
         if not response.ok:
+            logger.warning("GET request to Microsoft Graph failed with status code %s.", response.status_code)
             report.append(
                 {
                     "query": query,
@@ -161,6 +163,15 @@ def execute(query: str, **kwargs):
                     "message": f"PATCH request to Microsoft Graph failed with status code {response.status_code}.",
                 }
             )
+
+        report.append(
+            {
+                "query": f"howler.id:{hit.howler.id}",
+                "outcome": "success",
+                "title": "Alert updated in XDR Defender",
+                "message": "Howler has successfuly propagated changes to this alert to XDR Defender.",
+            }
+        )
 
     return report
 
