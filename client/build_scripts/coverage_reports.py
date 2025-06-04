@@ -91,7 +91,9 @@ def main():
         print("Markdown result:")
         print(markdown_output)
 
-        (Path(__file__).parent.parent / "coverage-results.md").write_text(markdown_output)
+        output_path = Path(__file__).parent.parent / "coverage-results.md"
+        print("Writing to:", str(output_path))
+        output_path.write_text(markdown_output)
     except subprocess.CalledProcessError as e:
         print(" ".join(e.cmd), "failed.")
 

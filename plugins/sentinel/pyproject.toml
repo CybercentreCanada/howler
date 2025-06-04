@@ -146,6 +146,9 @@ python-dotenv = "^1.1.0"
 [tool.poetry.group.types.dependencies]
 types-mock = "^5.2.0.20250516"
 
+
+[tool.poetry.dependencies]
+python-dateutil = "^2.9.0.post0"
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
