@@ -84,9 +84,8 @@ def specification():
         "id": OPERATION_ID,
         "title": "Emit sha256 hash to Sentinel",
         "priority": 28,
-        "i18nKey": "operations.add_label",
         "description": {
-            "short": "Add a label to a hit",
+            "short": "Emit sha256 hash to Sentinel",
             "long": execute.__doc__,
         },
         "roles": ["automation_basic"],
