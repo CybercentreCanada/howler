@@ -106,7 +106,11 @@ def execute(query: str, **kwargs):
         alert_url = f"https://graph.microsoft.com/v1.0/security/alerts_v2/{hit.rule.id}"
         response = requests.get(alert_url, headers={"Authorization": f"Bearer {token}"}, timeout=5.0)
         if not response.ok:
-            logger.warning("GET request to Microsoft Graph failed with status code %s.", response.status_code)
+            logger.warning(
+                "GET request to Microsoft Graph failed with status code %s. Content:\n%s",
+                response.status_code,
+                response.text,
+            )
             report.append(
                 {
                     "query": query,
@@ -148,6 +152,11 @@ def execute(query: str, **kwargs):
             timeout=5.0,
         )
         if not response.ok:
+            logger.warning(
+                "PATCH request to Microsoft Graph failed with status code %s. Content:\n%s",
+                response.status_code,
+                response.text,
+            )
             report.append(
                 {
                     "query": query,

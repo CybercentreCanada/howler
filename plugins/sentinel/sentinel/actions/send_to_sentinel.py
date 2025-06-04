@@ -50,7 +50,7 @@ def execute(query: str, **kwargs):
             continue
 
         try:
-            token, credentials = get_token(tenant_id)
+            token, credentials = get_token(tenant_id, "https://monitor.azure.com/.default")
         except HowlerRuntimeError as err:
             logger.exception("Error on token fetching")
             report.append(
@@ -79,6 +79,11 @@ def execute(query: str, **kwargs):
 
         response = requests.post(uri, headers=headers, json=payload, timeout=5.0)
         if not response.ok:
+            logger.warning(
+                "POST request to Azure Monitor failed with status code %s. Content:\n%s",
+                response.status_code,
+                response.text,
+            )
             report.append(
                 {
                     "query": f"howler.id:{hit.howler.id}",
