@@ -1,11 +1,14 @@
-import json
-import os
 import requests
-
+from howler.common.exceptions import HowlerRuntimeError
 from howler.common.loader import datastore
+from howler.common.logging import get_logger
 from howler.odm.models.action import VALID_TRIGGERS
 from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import Assessment, HitStatus
+
+from sentinel.utils.tenant_utils import get_token
+
+logger = get_logger(__file__)
 
 OPERATION_ID = "update_defender_xdr_alert"
 
@@ -46,13 +49,13 @@ properties_map = {
     },
 }
 
+
 def execute(query: str, **kwargs):
     """Update Microsoft Defender XDR alert.
 
     Args:
         query (str): The query on which to apply this automation.
     """
-
     report = []
     ds = datastore()
 
@@ -70,17 +73,16 @@ def execute(query: str, **kwargs):
         return report
 
     for hit in hits:
-        # Get bearer token
-        # A token broker should be used to avoid hitting API limits.
         try:
-            credentials = json.loads(os.environ['HOWLER_GRAPH_ALERT_CREDENTIALS'])
-        except (KeyError, json.JSONDecodeError):
+            token, credentials = get_token(hit.azure.tenant_id)
+        except HowlerRuntimeError as err:
+            logger.exception("Error on token fetching")
             report.append(
                 {
-                    "query": query,
+                    "query": f"howler.id:{hit.howler.id}",
                     "outcome": "error",
                     "title": "Invalid Credentials",
-                    "message": "Environment variable HOWLER_GRAPH_ALERT_CREDENTIALS is invalid or not set.",
+                    "message": err.message,
                 }
             )
             continue
@@ -88,11 +90,11 @@ def execute(query: str, **kwargs):
         token_request_url = f"https://login.microsoftonline.com/{hit.azure.tenant_id}/oauth2/v2.0/token"
         data = {
             "grant_type": "client_credentials",
-            "client_id": credentials['client_id'],
-            "client_secret": credentials['client_secret'],
-            "scope": "https://graph.microsoft.com/.default"
+            "client_id": credentials["client_id"],
+            "client_secret": credentials["client_secret"],
+            "scope": "https://graph.microsoft.com/.default",
         }
-        response = requests.post(token_request_url, data=data)
+        response = requests.post(token_request_url, data=data, timeout=5.0)
 
         if not response.ok:
             report.append(
@@ -109,7 +111,7 @@ def execute(query: str, **kwargs):
 
         # Fetch alert details
         alert_url = f"https://graph.microsoft.com/v1.0/security/alerts_v2/{hit.rule.id}"
-        response = requests.get(alert_url, headers={"Authorization": f"Bearer {token}"})
+        response = requests.get(alert_url, headers={"Authorization": f"Bearer {token}"}, timeout=5.0)
         if not response.ok:
             report.append(
                 {
@@ -123,8 +125,11 @@ def execute(query: str, **kwargs):
         alert_data = response.json()
 
         # Update alert
-        if "assessment" in hit.howler and hit.howler.assessment in properties_map["graph"]["classification"] and \
-        hit.howler.assessment in properties_map["graph"]["determination"]:
+        if (
+            "assessment" in hit.howler
+            and hit.howler.assessment in properties_map["graph"]["classification"]
+            and hit.howler.assessment in properties_map["graph"]["determination"]
+        ):
             classification = properties_map["graph"]["classification"][hit.howler.assessment]
             determination = properties_map["graph"]["determination"][hit.howler.assessment]
         else:
@@ -138,11 +143,15 @@ def execute(query: str, **kwargs):
             "assignedTo": assigned_to,
             "classification": classification,
             "determination": determination,
-            "status": status
+            "status": status,
         }
 
-        response = requests.patch(alert_url, json = data,
-                                headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"})
+        response = requests.patch(
+            alert_url,
+            json=data,
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            timeout=5.0,
+        )
         if not response.ok:
             report.append(
                 {
@@ -155,23 +164,18 @@ def execute(query: str, **kwargs):
 
     return report
 
+
 def specification():
+    "Update Defender action specification"
     return {
         "id": OPERATION_ID,
         "title": "Update Microsoft Defender XDR alert",
         "priority": 8,
-        "i18nKey": "Update Microsoft Defender XDR alert",
         "description": {
             "short": "Update Microsoft Defender XDR alert",
             "long": execute.__doc__,
         },
         "roles": ["automation_basic"],
-        "steps": [
-            {
-                "args": {},
-                "options": {},
-                "validation": {}
-            }
-        ],
+        "steps": [{"args": {}, "options": {}, "validation": {}}],
         "triggers": VALID_TRIGGERS,
     }
