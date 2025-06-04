@@ -71,6 +71,14 @@ def execute(
                     },
                     timeout=5.0,
                 )
+                report.append(
+                    {
+                        "query": f"howler.id:{hit.howler.id}",
+                        "outcome": "success",
+                        "title": "Webhook Triggered",
+                        "message": f"Field {field} from alert {hit.howler.id} was successfully sent to url {url}.",
+                    }
+                )
             except Exception:
                 logger.exception("Exception on network call for alert %s", hit.howler.id)
                 report.append(
@@ -109,6 +117,7 @@ def specification():
             {
                 "args": {"url": [], "field": []},
                 "options": {"field": [field for field in Hit.flat_fields().keys() if field.endswith("sha256")]},
+                "validation": {"warn": {"query": "-_exists_:$field"}},
             }
         ],
         "triggers": VALID_TRIGGERS,
