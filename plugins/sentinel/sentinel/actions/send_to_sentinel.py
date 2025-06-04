@@ -1,12 +1,16 @@
-import json
-import os
 import requests
-
+from howler.common.exceptions import HowlerRuntimeError
 from howler.common.loader import datastore
+from howler.common.logging import get_logger
 from howler.odm.models.action import VALID_TRIGGERS
 from howler.odm.models.hit import Hit
 
+from sentinel.utils.tenant_utils import get_token
+
+logger = get_logger(__file__)
+
 OPERATION_ID = "send_to_sentinel"
+
 
 def execute(query: str, **kwargs):
     """Send hit to Microsoft Sentinel.
@@ -14,7 +18,6 @@ def execute(query: str, **kwargs):
     Args:
         query (str): The query on which to apply this automation.
     """
-
     report = []
     ds = datastore()
 
@@ -31,61 +34,39 @@ def execute(query: str, **kwargs):
         return report
 
     for hit in hits:
-        # Get bearer token
-        # A token broker should be used to avoid hitting API limits.
         try:
-            credentials = json.loads(os.environ['HOWLER_SENTINEL_INGEST_CREDENTIALS'])
-        except (KeyError, json.JSONDecodeError):
+            token, credentials = get_token(hit.azure.tenant_id)
+        except HowlerRuntimeError as err:
+            logger.exception("Error on token fetching")
             report.append(
                 {
-                    "query": query,
+                    "query": f"howler.id:{hit.howler.id}",
                     "outcome": "error",
                     "title": "Invalid Credentials",
-                    "message": "Environment variable HOWLER_SENTINEL_INGEST_CREDENTIALS is invalid or not set.",
+                    "message": err.message,
                 }
             )
             continue
 
-        token_request_url = f"https://login.microsoftonline.com/{hit.azure.tenant_id}/oauth2/v2.0/token"
-        data = {
-            'grant_type': 'client_credentials',
-            'client_id': credentials['client_id'],
-            'client_secret': credentials['client_secret'],
-            'scope': 'https://monitor.azure.com/.default'
-        }
-        response = requests.post(token_request_url, data=data)
-        if not response.ok:
-            report.append(
-                {
-                    "query": query,
-                    "outcome": "error",
-                    "title": "Authentication failed",
-                    "message": f"Authentication to Azure Monitor API failed with status code {response.status_code}.",
-                }
-            )
-            continue
-        token = response.json()["access_token"]
-
-        uri = f"https://{credentials['dce']}.ingest.monitor.azure.com/dataCollectionRules/{credentials['dcr']}/" + \
-            f"streams/{credentials['table']}?api-version=2021-11-01-preview"
+        uri = (
+            f"https://{credentials['dce']}.ingest.monitor.azure.com/dataCollectionRules/{credentials['dcr']}/"
+            + f"streams/{credentials['table']}?api-version=2021-11-01-preview"
+        )
 
         payload = [
             {
                 "TimeGenerated": hit.event.ingested.isoformat(),
                 "Title": hit.howler.analytic,
-                "RawData": {"Hit": hit.as_primitives(), "From": "Howler"}
+                "RawData": {"Hit": hit.as_primitives(), "From": "Howler"},
             }
         ]
-        headers = {
-            'Authorization': f'Bearer {token}',
-            'Content-Type': 'application/json'
-        }
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
-        response = requests.post(uri, headers=headers, json=payload)
+        response = requests.post(uri, headers=headers, json=payload, timeout=5.0)
         if not response.ok:
             report.append(
                 {
-                    "query": query,
+                    "query": f"howler.id:{hit.howler.id}",
                     "outcome": "error",
                     "title": "Azure Monitor API request failed",
                     "message": f"POST request to Azure Monitor failed with status code {response.status_code}.",
@@ -93,9 +74,20 @@ def execute(query: str, **kwargs):
             )
             continue
 
+        report.append(
+            {
+                "query": f"howler.id:{hit.howler.id}",
+                "outcome": "success",
+                "title": "Alert updated in Sentinel",
+                "message": "Howler has successfuly propagated changes to this alert to Sentinel.",
+            }
+        )
+
     return report
 
+
 def specification():
+    "Send to Sentinel action specification"
     return {
         "id": OPERATION_ID,
         "title": "Send hit to Microsoft Sentinel",
