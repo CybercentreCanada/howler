@@ -73,8 +73,22 @@ def execute(query: str, **kwargs):
         return report
 
     for hit in hits:
+        tenant_id = hit.azure.tenant_id
+        if not tenant_id and hit.organization.id:
+            tenant_id = hit.organization.id
+        elif not tenant_id:
+            report.append(
+                {
+                    "query": f"howler.id:{hit.howler.id}",
+                    "outcome": "skipped",
+                    "title": "Azure Tenant ID is missing",
+                    "message": "This alert does not have a set tenant ID.",
+                }
+            )
+            continue
+
         try:
-            token, credentials = get_token(hit.azure.tenant_id)
+            token = get_token(hit.azure.tenant_id)[0]
         except HowlerRuntimeError as err:
             logger.exception("Error on token fetching")
             report.append(
@@ -86,29 +100,6 @@ def execute(query: str, **kwargs):
                 }
             )
             continue
-
-        token_request_url = f"https://login.microsoftonline.com/{hit.azure.tenant_id}/oauth2/v2.0/token"
-        data = {
-            "grant_type": "client_credentials",
-            "client_id": credentials["client_id"],
-            "client_secret": credentials["client_secret"],
-            "scope": "https://graph.microsoft.com/.default",
-        }
-        response = requests.post(token_request_url, data=data, timeout=5.0)
-
-        if not response.ok:
-            logger.warning("Failed to authenticate to Microsoft Graph.")
-            report.append(
-                {
-                    "query": query,
-                    "outcome": "error",
-                    "title": "Authentication failed",
-                    "message": f"Authentication to Microsoft Graph API failed with status code {response.status_code}.",
-                }
-            )
-            continue
-
-        token = response.json()["access_token"]
 
         # Fetch alert details
         alert_url = f"https://graph.microsoft.com/v1.0/security/alerts_v2/{hit.rule.id}"
@@ -124,6 +115,7 @@ def execute(query: str, **kwargs):
                 }
             )
             continue
+
         alert_data = response.json()
 
         # Update alert
