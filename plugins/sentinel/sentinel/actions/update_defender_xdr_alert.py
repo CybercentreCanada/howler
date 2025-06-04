@@ -73,10 +73,11 @@ def execute(query: str, **kwargs):
         return report
 
     for hit in hits:
-        tenant_id = hit.azure.tenant_id
-        if not tenant_id and hit.organization.id:
+        if hit.azure and hit.azure.tenant_id:
+            tenant_id = hit.azure.tenant_id
+        elif hit.organization.id:
             tenant_id = hit.organization.id
-        elif not tenant_id:
+        else:
             report.append(
                 {
                     "query": f"howler.id:{hit.howler.id}",

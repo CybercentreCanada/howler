@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 
 import requests
 from howler.common.loader import datastore
@@ -9,10 +10,25 @@ from pydash import get
 OPERATION_ID = "azure_emit_hash"
 
 
-def execute(query: str, field: str = "file.hash.sha256", **kwargs):
+def execute(
+    query: str,
+    url: Optional[str] = os.environ.get("SHA256_LOGIC_APP_URL", None),
+    field: str = "file.hash.sha256",
+    **kwargs,
+):
     "Emit hashes to sentinel"
     result = datastore().hit.search(query, rows=1)
     hits = result["items"]
+
+    if not url:
+        return [
+            {
+                "query": query,
+                "outcome": "error",
+                "title": "Action is not properly configured",
+                "message": "url argument cannot be empty.",
+            }
+        ]
 
     if len(hits) < 1:
         return [
@@ -41,7 +57,7 @@ def execute(query: str, field: str = "file.hash.sha256", **kwargs):
         hash_value = get(hit, field)
         if hash_value:
             requests.post(
-                os.environ["SHA256_LOGIC_APP_URL"],  # noqa: F821
+                url,  # noqa: F821
                 json={
                     "indicator": hash_value,
                     "type": "FileSha256",
@@ -76,7 +92,7 @@ def specification():
         "roles": ["automation_basic"],
         "steps": [
             {
-                "args": {"field": []},
+                "args": {"url": [], "field": []},
                 "options": {"field": [field for field in Hit.flat_fields().keys() if field.endswith("sha256")]},
             }
         ],
