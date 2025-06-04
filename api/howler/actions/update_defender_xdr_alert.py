@@ -152,7 +152,6 @@ def execute(query: str, **kwargs):
                     "message": f"PATCH request to Microsoft Graph failed with status code {response.status_code}.",
                 }
             )
-            continue
 
     return report
 
