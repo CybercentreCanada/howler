@@ -98,12 +98,6 @@ def specification():
             "long": execute.__doc__,
         },
         "roles": ["automation_basic"],
-        "steps": [
-            {
-                "args": {},
-                "options": {},
-                "validation": {}
-            }
-        ],
+        "steps": [{"args": {}, "options": {}, "validation": {}}],
         "triggers": VALID_TRIGGERS,
     }
