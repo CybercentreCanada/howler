@@ -1,6 +1,3 @@
-import json
-import os
-
 import requests
 from howler.common.exceptions import HowlerRuntimeError
 from howler.common.logging import get_logger
@@ -10,31 +7,37 @@ logger = get_logger(__file__)
 
 
 @cache.memoize(15 * 60)
-def get_token(tenant_id: str, scope: str) -> tuple[str, dict[str, str]]:
+def get_token(tenant_id: str, scope: str) -> str:
     """Get a borealis token based on the current howler token"""
-    # Get bearer token
-    try:
-        credentials = json.loads(os.environ["HOWLER_SENTINEL_INGEST_CREDENTIALS"])
-    except (KeyError, json.JSONDecodeError):
-        raise HowlerRuntimeError("Credential data not configured.")
+    from sentinel.config import config
 
-    logger.info("Generating client credential token for client id %s with scope %s", credentials["client_id"], scope)
+    if config.auth.client_credentials:
+        logger.info(
+            "Using client_credentials flow for client id %s with scope %s",
+            config.auth.client_credentials.client_id,
+            scope,
+        )
 
-    token_request_url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
-    response = requests.post(
-        token_request_url,
-        data={
-            "grant_type": "client_credentials",
-            "client_id": credentials["client_id"],
-            "client_secret": credentials["client_secret"],
-            "scope": scope,
-        },
-        timeout=5.0,
-    )
+        token_request_url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
+        response = requests.post(
+            token_request_url,
+            data={
+                "grant_type": "client_credentials",
+                "client_id": config.auth.client_credentials.client_id,
+                "client_secret": config.auth.client_credentials.client_secret,
+                "scope": scope,
+            },
+            timeout=5.0,
+        )
 
-    if not response.ok:
-        raise HowlerRuntimeError(f"Authentication to Azure Monitor API failed with status code {response.status_code}.")
+        if not response.ok:
+            raise HowlerRuntimeError(
+                "Authentication to Azure Monitor API using client_credentials flow failed with status code"
+                f" {response.status_code}. Response:\n{response.text}"
+            )
 
-    token = response.json()["access_token"]
+        token = response.json()["access_token"]
+    elif config.auth.custom_auth:
+        token = config.auth.custom_auth(tenant_id, scope)
 
-    return token, credentials
+    return token

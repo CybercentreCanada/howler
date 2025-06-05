@@ -1,4 +1,3 @@
-import importlib
 import json
 import random
 import sys
@@ -28,6 +27,7 @@ from howler.odm.randomizer import (
     random_department,
     random_model_obj,
 )
+from howler.plugins import get_plugins
 from howler.security.utils import get_password_hash
 from howler.utils.uid import get_random_id
 
@@ -285,12 +285,12 @@ def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[User], p
         log.previous_version = get_random_id()
 
     new_keys: list[str] = []
-    for plugin in config.core.plugins:
-        try:
-            _new_keys, hit = importlib.import_module(f"{plugin}.odm.hit").generate_useful_hit(hit)
+    for plugin in get_plugins():
+        if generate := plugin.modules.odm.generation.get("hit", None):
+            _new_keys, hit = generate(hit)
             new_keys += _new_keys
-        except (ImportError, AttributeError):
-            logger.exception("Plugin does not expose useful hit generation")
+        else:
+            logger.info("Plugin does not expose useful hit generation")
 
     if len(new_keys) > 0:
         logger.debug("%s new top-level fields configured")

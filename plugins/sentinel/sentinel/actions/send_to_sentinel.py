@@ -35,6 +35,8 @@ def execute(query: str, **kwargs) -> list[dict[str, Any]]:
         )
         return report
 
+    from sentinel.config import config
+
     for hit in hits:
         if hit.azure and hit.azure.tenant_id:
             tenant_id = hit.azure.tenant_id
@@ -52,7 +54,7 @@ def execute(query: str, **kwargs) -> list[dict[str, Any]]:
             continue
 
         try:
-            token, credentials = get_token(tenant_id, "https://monitor.azure.com/.default")
+            token = get_token(tenant_id, "https://monitor.azure.com/.default")
         except HowlerRuntimeError as err:
             logger.exception("Error on token fetching")
             report.append(
@@ -65,9 +67,22 @@ def execute(query: str, **kwargs) -> list[dict[str, Any]]:
             )
             continue
 
+        ingestor = next((ingestor for ingestor in config.ingestors if ingestor.tenant_id == tenant_id), None)
+
+        if not ingestor:
+            report.append(
+                {
+                    "query": f"howler.id:{hit.howler.id}",
+                    "outcome": "error",
+                    "title": "Invalid Tenant ID",
+                    "message": "The tenant ID associated with this alert has not been correctly configured.",
+                }
+            )
+            continue
+
         uri = (
-            f"https://{credentials['dce']}.ingest.monitor.azure.com/dataCollectionRules/{credentials['dcr']}/"
-            + f"streams/{credentials['table']}?api-version=2021-11-01-preview"
+            f"https://{ingestor.dce}.ingest.monitor.azure.com/dataCollectionRules/{ingestor.dcr}/"
+            + f"streams/{ingestor.table}?api-version=2021-11-01-preview"
         )
 
         payload = [

@@ -1,0 +1,13 @@
+name: sentinel
+modules:
+  odm:
+    modify_odm:
+      hit: true
+    generation:
+      hit: true
+  operations:
+    - azure_emit_hash
+    - send_to_sentinel
+    - update_defender_xdr_alert
+  routes:
+    - ingest:sentinel_api

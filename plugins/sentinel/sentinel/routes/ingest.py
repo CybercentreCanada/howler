@@ -1,4 +1,3 @@
-import os
 import re
 from typing import Any
 
@@ -10,20 +9,14 @@ from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.services import action_service, analytic_service, hit_service
 
-from ..mapping.sentinel_incident import SentinelIncident
-from ..mapping.xdr_alert import XDRAlert
+from sentinel.mapping.sentinel_incident import SentinelIncident
+from sentinel.mapping.xdr_alert import XDRAlert
 
 SUB_API = "sentinel"
 sentinel_api = make_subapi_blueprint(SUB_API, api_version=1)
 sentinel_api._doc = "Ingest Microsoft Sentinel XDR incidents into Howler"
 
 logger = get_logger(__file__)
-
-# For testing purposes, replace with actual secret in production
-SECRET = os.environ.get("SENTINEL_LINK_KEY", "abcdefghijklmnopqrstuvwxyz1234567890")
-
-if SECRET.startswith("abcdef"):
-    logger.warning("Default secret used!")
 
 
 @generate_swagger_docs()
@@ -49,10 +42,14 @@ def ingest_xdr_incident(**kwargs) -> tuple[dict[str, Any], int]:  # noqa C901
         "hit_count": 1
     }
     """
+    from sentinel.config import config
+
     # API Key authentication
     apikey = request.headers.get("Authorization", "Basic ", type=str).split(" ")[1]
 
-    if not apikey or apikey != SECRET:
+    link_key = config.auth.link_key
+
+    if not apikey or apikey != link_key:
         return unauthorized(err="API Key does not match expected value.")
 
     logger.info("Received authorization header with value %s", re.sub(r"^(.{3}).+(.{3})$", r"\1...\2", apikey))

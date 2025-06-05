@@ -5,8 +5,8 @@ from pathlib import Path
 from typing import Any, Optional
 
 from howler.common.logging import get_logger
-from howler.config import config
 from howler.odm.models.user import User
+from howler.plugins import get_plugins
 
 logger = get_logger(__file__)
 
@@ -89,20 +89,27 @@ def execute(
     Returns:
         list[dict[str, Any]]: A report on the execution
     """
-    automation = None
-    for module_name in ["howler", *config.core.plugins]:
-        try:
-            automation = importlib.import_module(f"{module_name}.actions.{operation_id}")
-            break
-        except ImportError as err:
-            if f"No module named '{module_name}'" in str(err):
-                raise
-            else:
-                logger.info("Plugin %s does not expose operation %s.", module_name, operation_id)
-        except Exception as err:
-            logger.critical("Error when importing %s - %s", operation_id, err)
+    operation = None
+    try:
+        operation = importlib.import_module(f"howler.actions.{operation_id}")
+    except ImportError:
+        pass
+    except Exception as err:
+        logger.critical("Error when importing %s - %s", operation_id, err)
 
-    if not automation:
+    if not operation:
+        for plugin in get_plugins():
+            if not plugin.modules.operations:
+                continue
+
+            operation = next(
+                (operation for operation in plugin.modules.operations if operation.OPERATION_ID == operation_id), None
+            )
+
+            if operation:
+                break
+
+    if not operation:
         return [
             {
                 "query": query,
@@ -112,7 +119,7 @@ def execute(
             }
         ]
 
-    missing_roles = set(automation.specification()["roles"]) - set(user["type"])
+    missing_roles = set(operation.specification()["roles"]) - set(user["type"])
     if missing_roles:
         return [
             {
@@ -126,7 +133,7 @@ def execute(
             }
         ]
 
-    report = automation.execute(query=query, request_id=request_id, user=user, **kwargs)
+    report = operation.execute(query=query, request_id=request_id, user=user, **kwargs)
 
     return __sanitize_report(report)
 
@@ -139,28 +146,24 @@ def specifications() -> list[dict[str, Any]]:
     """
     specifications = []
 
-    module_paths = {"howler": Path(__file__).parent}
+    for module in (
+        _file
+        for _file in Path(__file__).parent.iterdir()
+        if _file.suffix == ".py" and _file.name not in ["__init__.py", "example_plugin.py"]
+    ):
+        try:
+            operation = importlib.import_module(f"howler.actions.{module.stem}")
 
-    for plugin in config.core.plugins:
-        plugin_module_path = PLUGIN_PATH / plugin / "actions"
-        if plugin_module_path.exists():
-            module_paths[plugin] = plugin_module_path
+            specifications.append(__sanitize_specification(operation.specification()))
 
-    for module_name, module_path in module_paths.items():
-        for module in (
-            _file
-            for _file in module_path.iterdir()
-            if _file.suffix == ".py" and _file.name not in ["__init__.py", "example_plugin.py"]
-        ):
-            try:
-                automation = importlib.import_module(f"{module_name}.actions.{module.stem}")
+        except Exception:  # pragma: no cover
+            logger.exception("Error when initializing %s", module)
 
-                if module_name != "howler":
-                    logger.info("Enabling action %s from plugin %s", automation.specification()["id"], module_name)
+    for plugin in get_plugins():
+        if not plugin.modules.operations:
+            continue
 
-                specifications.append(__sanitize_specification(automation.specification()))
-
-            except Exception:  # pragma: no cover
-                logger.exception("Error when initializing %s", module)
+        for operation in plugin.modules.operations:
+            specifications.append(__sanitize_specification(operation.specification()))
 
     return specifications

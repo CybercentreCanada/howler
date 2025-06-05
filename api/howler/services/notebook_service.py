@@ -1,4 +1,3 @@
-import importlib
 from typing import Any, Callable, Optional
 
 import chevron
@@ -9,6 +8,7 @@ from howler.common.exceptions import AuthenticationException, HowlerRuntimeError
 from howler.common.logging import get_logger
 from howler.config import cache, config
 from howler.odm.models.analytic import Analytic
+from howler.plugins import get_plugins
 
 logger = get_logger(__file__)
 
@@ -18,13 +18,10 @@ def get_token(access_token: str) -> str:
     """Get a notebook token based on the current howler token"""
     get_notebook_token: Optional[Callable[[str], str]] = None
 
-    for plugin in config.core.plugins:
-        try:
-            module = importlib.import_module(f"{plugin}.token.notebook")
-
-            get_notebook_token = module.get_notebook_token
+    for plugin in get_plugins():
+        if get_notebook_token := plugin.modules.token_functions.get("notebook", None):
             break
-        except ImportError:
+        else:
             logger.info("Plugin %s does not modify the notebook access token.")
 
     if get_notebook_token:
@@ -75,14 +72,7 @@ def get_user_envs():
     if not auth_data:
         raise AuthenticationException("No Authorization header present")
 
-    access_token = auth_data.split(" ")[1]
-
-    for plugin in config.core.plugins:
-        try:
-            importlib.import_module(f"{plugin}.token.notebook").get_notebook_token(access_token)
-            break
-        except (ImportError, AttributeError):
-            pass
+    access_token = get_token(auth_data.split(" ")[1])
 
     # get environment info from jupyterhub
     # how to get environment without nbgallery?
