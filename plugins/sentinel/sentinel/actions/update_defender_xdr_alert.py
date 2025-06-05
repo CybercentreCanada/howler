@@ -165,15 +165,15 @@ def execute(query: str, **kwargs):
                     "message": f"PATCH request to Microsoft Graph failed with status code {response.status_code}.",
                 }
             )
-
-        report.append(
-            {
-                "query": f"howler.id:{hit.howler.id}",
-                "outcome": "success",
-                "title": "Alert updated in XDR Defender",
-                "message": "Howler has successfuly propagated changes to this alert to XDR Defender.",
-            }
-        )
+        else:
+            report.append(
+                {
+                    "query": f"howler.id:{hit.howler.id}",
+                    "outcome": "success",
+                    "title": "Alert updated in XDR Defender",
+                    "message": "Howler has successfuly propagated changes to this alert to XDR Defender.",
+                }
+            )
 
     return report
 
