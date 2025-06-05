@@ -232,10 +232,13 @@ class XDRAlertEvidence:
     @staticmethod
     def device_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert device evidence to howler evidence format."""
+        hostname = evidence.get("hostName")
+        if not hostname:
+            hostname = evidence.get("deviceDnsName")
         return {
             "host": {
                 "id": evidence.get("mdeDeviceId"),
-                "name": evidence.get("hostName"),
+                "name": hostname,
                 "domain": [evidence.get("ntDomain", "unknown")],
                 "os": {
                     "platform": evidence.get("osPlatform"),
@@ -668,51 +671,51 @@ class XDRAlertEvidence:
                 "status_remediation_details": evidence.get("remediationStatusDetails"),
             },
             "teams": {
-                "campaign_id": evidence.get("CampaignId"),
-                "channel_id": evidence.get("ChannelId"),
-                "delivery_action": evidence.get("DeliveryAction"),
-                "delivery_location": evidence.get("DeliveryLocation"),
-                "detailed_roles": evidence.get("DetailedRoles"),
+                "campaign_id": evidence.get("campaignId"),
+                "channel_id": evidence.get("channelId"),
+                "delivery_action": evidence.get("deliveryAction"),
+                "delivery_location": evidence.get("deliveryLocation"),
+                "detailed_roles": evidence.get("detailedRoles"),
                 "files": [
                     {
-                        "path": file.get("FileDetails", {}).get("FilePath"),
-                        "name": file.get("FileDetails", {}).get("FileName"),
+                        "path": file.get("fileDetails", {}).get("filePath"),
+                        "name": file.get("fileDetails", {}).get("fileName"),
                         "hash": {
-                            "sha1": file.get("FileDetails", {}).get("Sha1"),
-                            "sha256": file.get("FileDetails", {}).get("Sha256"),
-                            "md5": file.get("FileDetails", {}).get("Md5"),
+                            "sha1": file.get("fileDetails", {}).get("sha1"),
+                            "sha256": file.get("fileDetails", {}).get("sha256"),
+                            "md5": file.get("fileDetails", {}).get("md5"),
                         },
                         "code_signature": {
-                            "signing_id": file.get("FileDetails", {}).get("Signer"),
-                            "team_id": file.get("FileDetails", {}).get("Issuer"),
+                            "signing_id": file.get("fileDetails", {}).get("signer"),
+                            "team_id": file.get("fileDetails", {}).get("issuer"),
                         },
-                        "size": file.get("FileDetails", {}).get("FileSize"),
+                        "size": file.get("fileDetails", {}).get("fileSize"),
                     }
-                    for file in evidence.get("Files", [])
+                    for file in evidence.get("files", [])
                 ],
-                "group_id": evidence.get("GroupId"),
-                "is_external": evidence.get("IsExternal"),
-                "is_owned": evidence.get("IsOwned"),
-                "last_modified": evidence.get("LastModified"),
-                "message_direction": evidence.get("MessageDirection"),
-                "message_id": evidence.get("MessageId"),
-                "owning_tenant_id": evidence.get("OwningTenantId"),
-                "parent_message_id": evidence.get("ParentMessageId"),
-                "received": evidence.get("Received"),
-                "recipients": evidence.get("Recipients"),
-                "sender_from_address": evidence.get("SenderFromAddress"),
-                "sender_ip": evidence.get("SenderIp"),
-                "source_add_name": evidence.get("SourceAddName"),
-                "source_id": evidence.get("SourceId"),
-                "subject": evidence.get("Subject"),
-                "suspicious_recipients": evidence.get("SuspiciousRecipients"),
-                "thread_id": evidence.get("ThreadId"),
-                "thread_type": evidence.get("ThreadType"),
+                "group_id": evidence.get("groupId"),
+                "is_external": evidence.get("isExternal"),
+                "is_owned": evidence.get("isOwned"),
+                "last_modified": evidence.get("lastModified"),
+                "message_direction": evidence.get("messageDirection"),
+                "message_id": evidence.get("messageId"),
+                "owning_tenant_id": evidence.get("owningTenantId"),
+                "parent_message_id": evidence.get("parentMessageId"),
+                "received": evidence.get("received"),
+                "recipients": evidence.get("recipients"),
+                "sender_from_address": evidence.get("senderFromAddress"),
+                "sender_ip": evidence.get("senderIp"),
+                "source_add_name": evidence.get("sourceAddName"),
+                "source_id": evidence.get("sourceId"),
+                "subject": evidence.get("subject"),
+                "suspicious_recipients": evidence.get("suspiciousRecipients"),
+                "thread_id": evidence.get("threadId"),
+                "thread_type": evidence.get("threadType"),
                 "urls": [
                     {
-                        "full": url.get("Url"),
+                        "full": url.get("url"),
                     }
-                    for url in evidence.get("Urls", [])
+                    for url in evidence.get("urls", [])
                 ],
             },
         }
@@ -722,22 +725,22 @@ class XDRAlertEvidence:
         """Convert URL evidence to howler evidence format."""
         return {
             "url": {
-                "full": evidence.get("Url"),
+                "full": evidence.get("url"),
             },
         }
 
     @staticmethod
     def user_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         """Convert user evidence to howler evidence format."""
-        user = evidence.get("UserAccount", {})
+        user = evidence.get("userAccount", {})
         if not user:
             user = {}
         return {
             "user": {
-                "name": user.get("AccountName"),
-                "full_name": user.get("UserPrincipalName"),
-                "id": user.get("AzureAdUserId"),
-                "domain": user.get("DomainName"),
+                "name": user.get("accountName"),
+                "full_name": user.get("userPrincipalName"),
+                "id": user.get("azureAdUserId"),
+                "domain": user.get("domainName"),
             },
         }
 

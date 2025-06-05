@@ -12,7 +12,7 @@
       "name": "Create default data",
       "type": "python",
       "request": "launch",
-      "program": "howler/odm/random_data.py",
+      "program": "api/howler/odm/random_data.py",
       "env": {
         "PYTHONPATH": "${workspaceFolder}"
       },
@@ -25,15 +25,11 @@
       "module": "flask",
       "env": {
         "PYTHONPATH": "${workspaceFolder}",
-        "FLASK_APP": "howler/app.py",
+        "FLASK_APP": "api/howler/app.py",
         "FLASK_DEBUG": "1"
       },
       "console": "internalConsole",
-      "args": [
-        "run",
-        "--no-debugger",
-        "--no-reload"
-      ],
+      "args": ["run", "--no-debugger", "--no-reload"],
       "justMyCode": false
     }
   ]
