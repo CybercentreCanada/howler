@@ -1,5 +1,4 @@
 import os
-import re
 from typing import Any
 
 from flask import request
@@ -55,13 +54,9 @@ def ingest_xdr_incident(**kwargs) -> tuple[dict[str, Any], int]:  # noqa C901
     if not apikey or apikey != SECRET:
         return unauthorized(err="API Key does not match expected value.")
 
-    logger.info("Received authorization header with value %s", re.sub(r"^(.{3}).+(.{3})$", r"\1...\2", apikey))
-
     xdr_incident = request.json
     if not xdr_incident:
         return bad_request(err="No JSON data provided in request body")
-
-    logger.info("XDR Incident received")
 
     try:
         tenant_mapping = {"020cd98f-1002-45b7-90ff-69fc68bdd027": "Acme Corporation"}

@@ -149,8 +149,6 @@ def bearer_auth(
             cur_user = user_service.parse_user_data(jwt_data, jwt_service.get_provider(data))
 
             if cur_user:
-                logger.debug("User successfully authenticated using JWT.")
-
                 return cur_user, ["R", "W", "E"]
 
             return None, None
