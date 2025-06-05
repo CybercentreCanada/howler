@@ -1,0 +1,8 @@
+mapping:
+  destination.address: domain
+  destination.domain: domain
+  dns.answers.name: domain
+  host.domain: domain
+  server.address: domain
+  random-key:
+    yeee: test
