@@ -1,5 +1,6 @@
 """Sentiel Incident mapper for converting Microsoft Sentinel Sentiel Incidents to Howler bundles."""
 
+import json
 import logging
 from typing import Any, Optional
 
@@ -81,6 +82,7 @@ class SentinelIncident:
                     "bundle_size": 0,
                     "hits": [],
                     "labels.generic": self._build_labels(custom_tags, system_tags),
+                    "data": [json.dumps(sentinel_incident)],
                 },
                 "organization": {"name": customer_name, "id": tenant_id},
                 "sentinel": {

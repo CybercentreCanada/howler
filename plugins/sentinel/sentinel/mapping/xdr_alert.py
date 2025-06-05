@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import datetime
 from typing import Any, Optional
@@ -231,14 +232,7 @@ class XDRAlert:
                     "operation": [],
                     "generic": [],
                 },
-                "dossier": [
-                    {
-                        "content": [display_name],
-                        "metadata": [graph_alert],
-                        "label": {"en": "MSGraph Alert", "fr": "Alerte MSGraph"},
-                        "format": "markdown",
-                    }
-                ],
+                "data": [json.dumps(graph_alert)],
             },
             "evidence": {"data": []},
             "event": {
