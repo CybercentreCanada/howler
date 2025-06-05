@@ -306,7 +306,7 @@ class Notebook(BaseModel):
 
 
 class Core(BaseModel):
-    plugins: list[str] = Field(description="A list of external plugins to load", default=[])
+    plugins: set[str] = Field(description="A list of external plugins to load", default=set())
 
     metrics: Metrics = Metrics()
     "Configuration for Metrics Collection"
@@ -325,7 +325,9 @@ root_path = Path("/etc") / APP_NAME.replace("-dev", "").replace("-stg", "")
 
 config_locations = [
     root_path / "conf" / "config.yml",
+    root_path / "conf" / "mappings.yml",
     Path(os.environ.get("HWL_CONF_FOLDER", root_path)) / "config.yml",
+    Path(os.environ.get("HWL_CONF_FOLDER", root_path)) / "mappings.yml",
 ]
 
 if os.getenv("AZURE_TEST_CONFIG", None) is not None:
@@ -367,6 +369,7 @@ class Config(BaseSettings):
     logging: Logging = Logging()
     system: System = System()
     ui: UI = UI()
+    mapping: dict[str, str] = Field(description="Mapping of alert keys to borealis type", default={})
 
     model_config = SettingsConfigDict(
         yaml_file=config_locations,

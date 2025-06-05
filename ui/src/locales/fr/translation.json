@@ -180,6 +180,7 @@
   "hit.label.category.mitigation": "Catégorie : Atténuation - Cette étiquette indique les efforts entrepris pour atténuer la compromission.",
   "hit.label.category.operation": "Catégorie : Opération - le hit est liée à une opération en cours et doit être examinée avec des considérations particulières et une compréhension plus large des circonstances actuelles.",
   "hit.label.category.threat": "Catégorie : Menace - Indique que le hit a été attribuée à un acteur ou à un groupe de menace connu.",
+  "hit.label.category.tuning": "Catégorie : Tuning - Identifie les hits qui sont déjà compris et qui devraient être triés automatiquement.",
   "hit.label.category.victim": "Catégorie : Victime - Les messages produits à partir d'un flux de notification aux victimes peuvent avoir une étiquette qui identifie l'organisation victime qui doit être notifiée.",
   "hit.label.edit": "Gestion des étiquettes",
   "hit.label.edit.add.category": "Catégorie de l'étiquette",

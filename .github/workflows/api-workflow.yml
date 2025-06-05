@@ -142,6 +142,7 @@ jobs:
           sudo chmod a+rw /etc/howler/lookups/
           sudo chmod a+rw /var/log/howler
           cp build_scripts/classification.yml /etc/howler/conf/classification.yml
+          cp build_scripts/mappings.yml /etc/howler/conf/mappings.yml
           cp test/unit/config.yml /etc/howler/conf/config.yml
       - name: Install Dependencies
         run: |

@@ -125,5 +125,6 @@ export const LABEL_TYPES: Record<string, LabelData> = {
   threat: { icon: <NewReleases fontSize="small" />, color: red[400] },
   operation: { icon: <Star fontSize="small" />, color: yellow[600] },
   generic: {},
-  assignments: {}
+  assignments: {},
+  tuning: {}
 };

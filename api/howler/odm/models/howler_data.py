@@ -182,6 +182,7 @@ class Label(odm.Model):
     victim = odm.List(odm.Text(description="List of victim labels for the hit."), default=[])
     campaign = odm.List(odm.Text(description="List of campaign labels for the hit."), default=[])
     threat = odm.List(odm.Text(description="List of threat labels for the hit."), default=[])
+    tuning = odm.List(odm.Text(description="List of tuning labels for the hit."), default=[])
     operation = odm.List(odm.Text(description="List of operation labels for the hit."), default=[])
 
 

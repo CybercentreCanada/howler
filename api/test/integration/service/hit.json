@@ -800,6 +800,7 @@
       "mitigation": [],
       "operation": ["OP_HOWLER"],
       "threat": [],
+      "tuning": [],
       "victim": []
     },
     "links": [
