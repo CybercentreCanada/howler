@@ -1,8 +1,13 @@
+from typing import TYPE_CHECKING
+
 import howler.odm as odm
 from howler.common.logging import get_logger
-from howler.odm.models.hit import Hit
 
 from sentinel.odm.models.sentinel import Sentinel
+
+if TYPE_CHECKING:
+    from howler.odm.models.hit import Hit
+
 
 logger = get_logger(__file__)
 
@@ -17,7 +22,7 @@ def modify_odm(target):
     )
 
 
-def generate_useful_hit(hit: Hit) -> Hit:
+def generate(hit: "Hit") -> "Hit":
     "Add cccs-specific changes to hits on generation"
     hit.sentinel = Sentinel({"id": "example-sentinel-id"})
 

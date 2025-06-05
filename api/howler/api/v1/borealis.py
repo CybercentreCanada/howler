@@ -1,4 +1,3 @@
-import importlib
 import time
 from typing import Callable, Optional
 
@@ -11,6 +10,7 @@ from howler.common.exceptions import AuthenticationException
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.config import cache, config
+from howler.plugins import get_plugins
 from howler.security import api_login
 
 SUB_API = "borealis"
@@ -25,13 +25,10 @@ def get_token(access_token: str) -> str:
     """Get a borealis token based on the current howler token"""
     get_borealis_token: Optional[Callable[[str], str]] = None
 
-    for plugin in config.core.plugins:
-        try:
-            module = importlib.import_module(f"{plugin}.token.borealis")
-
-            get_borealis_token = module.get_borealis_token
+    for plugin in get_plugins():
+        if get_borealis_token := plugin.modules.token_functions.get("borealis", None):
             break
-        except ImportError:
+        else:
             logger.info("Plugin %s does not modify the borealis access token.")
 
     if get_borealis_token:

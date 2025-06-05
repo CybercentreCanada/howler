@@ -1,10 +1,8 @@
 # mypy: ignore-errors
-import importlib
 from typing import Optional
 
 from howler import odm
 from howler.common.logging import get_logger
-from howler.config import config
 from howler.odm.models.assemblyline import AssemblyLine
 from howler.odm.models.aws import AWS
 from howler.odm.models.azure import Azure
@@ -39,6 +37,7 @@ from howler.odm.models.ecs.user_agent import UserAgent
 from howler.odm.models.ecs.vulnerability import Vulnerability
 from howler.odm.models.gcp import GCP
 from howler.odm.models.howler_data import HowlerData
+from howler.plugins import get_plugins
 
 logger = get_logger(__file__)
 
@@ -351,14 +350,11 @@ class Hit(odm.Model):
     )
 
 
-for plugin in config.core.plugins:
-    try:
-        importlib.import_module(f"{plugin}.odm.hit").modify_odm(Hit)
-    except (ImportError, AttributeError) as err:
-        if f"No module named '{plugin}'" in str(err):
-            raise
-        else:
-            logger.info("Plugin %s does not modify the ODM.", plugin)
+for plugin in get_plugins():
+    if modify_odm := plugin.modules.odm.modify_odm.get("hit"):
+        modify_odm(Hit)
+    else:
+        logger.info("Plugin %s does not modify the ODM.", plugin.name)
 
 
 if __name__ == "__main__":

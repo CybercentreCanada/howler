@@ -1,4 +1,3 @@
-import importlib
 from datetime import datetime
 from math import ceil
 from typing import Optional
@@ -14,6 +13,7 @@ from howler.helper.discover import get_apps_list
 from howler.helper.search import list_all_fields
 from howler.odm.models.howler_data import Assessment, Escalation, HitStatus, Scrutiny
 from howler.odm.models.user import User
+from howler.plugins import get_plugins
 from howler.services import jwt_service
 from howler.utils.str_utils import default_string_value
 
@@ -73,9 +73,9 @@ def get_configuration(user: User, **kwargs):
 
     plugin_features: dict[str, bool] = {}
 
-    for plugin in config.core.plugins:
+    for plugin in get_plugins():
         try:
-            plugin_features = {**plugin_features, **importlib.import_module(f"{plugin}.features").features()}
+            plugin_features = {**plugin_features, **plugin.features}
         except (ImportError, AttributeError):
             pass
 
