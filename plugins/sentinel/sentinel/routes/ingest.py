@@ -49,7 +49,7 @@ def ingest_xdr_incident(**kwargs) -> tuple[dict[str, Any], int]:  # noqa C901
         "hit_count": 1
     }
     """
-    # API Key authentication
+    # TODO this endpoint need to be refactored to make it more readable and maintainable
     apikey = request.headers.get("Authorization", "Basic ", type=str).split(" ")[1]
 
     if not apikey or apikey != SECRET:
@@ -57,7 +57,6 @@ def ingest_xdr_incident(**kwargs) -> tuple[dict[str, Any], int]:  # noqa C901
 
     logger.info("Received authorization header with value %s", re.sub(r"^(.{3}).+(.{3})$", r"\1...\2", apikey))
 
-    # Validate JSON payload
     xdr_incident = request.json
     if not xdr_incident:
         return bad_request(err="No JSON data provided in request body")
@@ -65,7 +64,6 @@ def ingest_xdr_incident(**kwargs) -> tuple[dict[str, Any], int]:  # noqa C901
     logger.info("XDR Incident received")
 
     try:
-        # Configure tenant mapping for both mappers
         tenant_mapping = {"020cd98f-1002-45b7-90ff-69fc68bdd027": "Acme Corporation"}
 
         incident_mapper = SentinelIncident(tid_mapping=tenant_mapping)
@@ -73,6 +71,35 @@ def ingest_xdr_incident(**kwargs) -> tuple[dict[str, Any], int]:  # noqa C901
 
         if bundle_hit is None:
             return bad_request(err="Failed to map XDR incident to Howler bundle format")
+
+        sentinel_id = xdr_incident.get("id")
+        if sentinel_id:
+            existing_bundles = datastore().hit.search(f"sentinel.id:{sentinel_id}", as_obj=True)["items"]
+            if existing_bundles:
+                existing_bundle = existing_bundles[0]
+                new_status = xdr_incident.get("status")
+                if new_status:
+                    existing_bundle.howler.status = incident_mapper.map_sentinel_status_to_howler(new_status)
+                    datastore().hit.save(existing_bundle.howler.id, existing_bundle)
+                for child_id in getattr(existing_bundle.howler, "hits", []):
+                    child_hit = datastore().hit.get(child_id, as_obj=True)
+                    if child_hit:
+                        child_hit.howler.status = incident_mapper.map_sentinel_status_to_howler(new_status)
+                        datastore().hit.save(child_id, child_hit)
+                datastore().hit.commit()
+                logger.info("Updated status for existing bundle %s and its child hits", existing_bundle.howler.id)
+                return ok(
+                    {
+                        "success": True,
+                        "bundle_hit_id": existing_bundle.howler.id,
+                        "bundle_id": existing_bundle.sentinel.id if hasattr(existing_bundle, "sentinel") else None,
+                        "individual_hit_ids": getattr(existing_bundle.howler, "hits", []),
+                        "total_hits_updated": 1 + len(getattr(existing_bundle.howler, "hits", [])),
+                        "bundle_size": len(getattr(existing_bundle.howler, "hits", [])),
+                        "organization": getattr(existing_bundle, "organization", {}).get("name", ""),
+                        "updated": True,
+                    }
+                )
 
         logger.info("Successfully mapped XDR incident to bundle")
 
@@ -152,7 +179,7 @@ def ingest_xdr_incident(**kwargs) -> tuple[dict[str, Any], int]:  # noqa C901
                 "bundle_hit_id": bundle_odm.howler.id,
                 "bundle_id": bundle_hit["howler"].get("xdr.incident.id"),
                 "individual_hit_ids": child_hit_ids,
-                "total_hits_created": len(child_hit_ids) + 1,  # +1 for the bundle itself
+                "total_hits_created": len(child_hit_ids) + 1,
                 "bundle_size": len(child_hit_ids),
                 "organization": bundle_hit["organization"]["name"],
             }
