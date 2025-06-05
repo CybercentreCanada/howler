@@ -103,7 +103,7 @@ def execute(query: str, **kwargs):
             continue
 
         # Fetch incident details
-        incident_url = f"https://graph.microsoft.com/security/incidents/{hit.sentinel.id}"
+        incident_url = f"https://graph.microsoft.com/v1.0/security/incidents/{hit.sentinel.id}"
         response = requests.get(incident_url, headers={"Authorization": f"Bearer {token}"}, timeout=5.0)
         if not response.ok:
             logger.warning(
