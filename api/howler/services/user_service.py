@@ -185,8 +185,6 @@ def parse_user_data(  # noqa: C901
 
                 storage.user.save(username, current_user)
                 storage.user.commit()
-            else:
-                logger.debug("User is up to date!")
 
             if not skip_setup:
                 if avatar:
