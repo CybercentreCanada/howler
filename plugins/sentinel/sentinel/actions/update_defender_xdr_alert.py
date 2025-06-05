@@ -171,7 +171,7 @@ def execute(query: str, **kwargs):
                     "query": f"howler.id:{hit.howler.id}",
                     "outcome": "success",
                     "title": "Alert updated in XDR Defender",
-                    "message": "Howler has successfuly propagated changes to this alert to XDR Defender.",
+                    "message": "Howler has successfully propagated changes to this alert to XDR Defender.",
                 }
             )
 
