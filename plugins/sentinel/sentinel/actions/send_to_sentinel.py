@@ -101,7 +101,7 @@ def execute(query: str, **kwargs) -> list[dict[str, Any]]:
                 "query": f"howler.id:{hit.howler.id}",
                 "outcome": "success",
                 "title": "Alert updated in Sentinel",
-                "message": "Howler has successfuly propagated changes to this alert to Sentinel.",
+                "message": "Howler has successfully propagated changes to this alert to Sentinel.",
             }
         )
 
