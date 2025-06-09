@@ -1,4 +1,4 @@
-"""Sentinel Incident mapper for converting Microsoft Sentinel Sentiel Incidents to Howler bundles."""
+"""Sentinel Incident mapper for converting Microsoft Sentinel Incidents to Howler bundles."""
 
 import json
 import logging
