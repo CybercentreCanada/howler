@@ -166,3 +166,31 @@ def test_ingest_incident_without_alerts_key(client):
     assert not bundle.howler.is_bundle
     assert bundle.howler.status == "open"
     assert bundle.howler.hits == []
+
+
+def test_bundle_alert_linking_consistency(client):
+    """Test that bundle and alert linking is consistent after ingestion."""
+
+    # Arrange: Prepare a unique incident with two alerts
+    incident = copy.deepcopy(SENTINEL_ALERT)
+    incident_id = "test-linking-consistency-id"
+    incident["id"] = incident_id
+    for idx, alert in enumerate(incident.get("alerts", [])):
+        alert["incidentId"] = incident_id
+        alert["id"] = f"test-linking-alert-id-{idx}"
+
+    # Act: Ingest the incident
+    response = client.post("/api/v1/sentinel/ingest", json=incident, headers={"Authorization": "Basic test_key"})
+    assert response.status_code == 201
+    api_response = response.json["api_response"]
+    bundle_id = api_response["bundle_hit_id"]
+    alert_ids = api_response["individual_hit_ids"]
+
+    # Assert: Bundle's hits field contains all alert IDs
+    bundle = datastore().hit.get(bundle_id, as_obj=True)
+    assert set(bundle.howler.hits) == set(alert_ids)
+
+    # Assert: Each alert's bundles field contains the bundle ID
+    for alert_id in alert_ids:
+        alert = datastore().hit.get(alert_id, as_obj=True)
+        assert bundle_id in getattr(alert.howler, "bundles", [])
