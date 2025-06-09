@@ -31,11 +31,51 @@ if SECRET.startswith("abcdef"):
 def ingest_xdr_incident(**kwargs) -> tuple[dict[str, Any], int]:  # noqa C901
     """Ingest a Microsoft Sentinel XDR incident into Howler.
 
-    This endpoint receives an XDR incident as JSON, maps it to Howler format using XDRIncidentMapper,
-    and creates or updates a bundle and its underlying alerts in Howler.
+    Variables:
+        None
 
-    Returns:
-        Tuple containing response dictionary and HTTP status code.
+    Arguments:
+        None
+
+    Data Block:
+        {
+            ...Sentinel XDR incident JSON...
+        }
+
+    Headers:
+        Authorization: API in the format "Basic <key>"
+
+    Result Example (201 Created):
+        {
+            "success": True,
+            "bundle_hit_id": "howler-bundle-id",
+            "bundle_id": "sentinel-incident-id",
+            "individual_hit_ids": ["alert-hit-id-1", "alert-hit-id-2"],
+            "total_hits_created": 3,
+            "bundle_size": 2,
+            "organization": "Acme Corporation"
+        }
+
+    Result Example (200 OK, update):
+        {
+            "success": True,
+            "bundle_hit_id": "howler-bundle-id",
+            "bundle_id": "sentinel-incident-id",
+            "individual_hit_ids": ["alert-hit-id-1", "alert-hit-id-2"],
+            "total_hits_updated": 3,
+            "bundle_size": 2,
+            "organization": "Acme Corporation",
+            "updated": True
+        }
+
+    Error Codes:
+        400 - Bad request (e.g., missing JSON)
+        401 - Unauthorized (invalid API key)
+        500 - Internal server error
+
+    Description:
+        Receives a Microsoft Sentinel XDR incident as JSON, maps it to Howler format, and creates or updates a bundle
+        and its underlying alerts in Howler. Returns details about the created or updated bundle and alerts.
     """
     apikey = request.headers.get("Authorization", "Basic ", type=str).split(" ")[1]
     if not apikey or apikey != SECRET:

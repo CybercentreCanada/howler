@@ -117,14 +117,17 @@ class SentinelIncident:
         """
         return self.tid_mapping.get(tid, self.DEFAULT_CUSTOMER_NAME)
 
-    def map_sentinel_status_to_howler(self, sentinel_status: str) -> str:
-        """Map Sentiel Incident status to Howler status.
+    def map_sentinel_status_to_howler(self, sentinel_status: str | None) -> str:
+        """Map Sentinel Incident status to Howler status.
 
         Args:
-            sentinel_status (str): Sentinel status string.
+            sentinel_status (str | None): Sentinel status string or None.
+
         Returns:
             str: Howler status string.
         """
+        if not isinstance(sentinel_status, str) or not sentinel_status:
+            return "open"
         status_mapping: dict[str, str] = {
             "new": "open",
             "active": "in-progress",
