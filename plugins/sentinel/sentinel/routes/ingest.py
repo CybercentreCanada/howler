@@ -87,8 +87,6 @@ def ingest_xdr_incident(**kwargs) -> tuple[dict[str, Any], int]:  # noqa C901
     if not xdr_incident:
         return bad_request(err="No JSON data provided in request body")
 
-    logger.info("XDR Incident received")
-
     try:
         # TODO needs to be replaced with actual tenant mapping logic
         tenant_mapping = {"020cd98f-1002-45b7-90ff-69fc68bdd027": "Acme Corporation"}
