@@ -10,12 +10,12 @@ from sentinel.utils.tenant_utils import get_token
 
 logger = get_logger(__file__)
 
-OPERATION_ID = "update_defender_xdr_alert"
+OPERATION_ID = "update_defender_xdr_incident"
 
 properties_map = {
     "graph": {
         "status": {
-            HitStatus.OPEN: "new",
+            HitStatus.OPEN: "active",
             HitStatus.IN_PROGRESS: "inProgress",
             HitStatus.ON_HOLD: "inProgress",
             HitStatus.RESOLVED: "resolved",
@@ -51,7 +51,7 @@ properties_map = {
 
 
 def execute(query: str, **kwargs):
-    """Update Microsoft Defender XDR alert.
+    """Update Microsoft Defender XDR incident.
 
     Args:
         query (str): The query on which to apply this automation.
@@ -83,7 +83,7 @@ def execute(query: str, **kwargs):
                     "query": f"howler.id:{hit.howler.id}",
                     "outcome": "skipped",
                     "title": "Azure Tenant ID is missing",
-                    "message": "This alert does not have a set tenant ID.",
+                    "message": "This incident does not have a set tenant ID.",
                 }
             )
             continue
@@ -102,9 +102,9 @@ def execute(query: str, **kwargs):
             )
             continue
 
-        # Fetch alert details
-        alert_url = f"https://graph.microsoft.com/v1.0/security/alerts_v2/{hit.rule.id}"
-        response = requests.get(alert_url, headers={"Authorization": f"Bearer {token}"}, timeout=5.0)
+        # Fetch incident details
+        incident_url = f"https://graph.microsoft.com/v1.0/security/incidents/{hit.sentinel.id}"
+        response = requests.get(incident_url, headers={"Authorization": f"Bearer {token}"}, timeout=5.0)
         if not response.ok:
             logger.warning(
                 "GET request to Microsoft Graph failed with status code %s. Content:\n%s",
@@ -121,9 +121,9 @@ def execute(query: str, **kwargs):
             )
             continue
 
-        alert_data = response.json()
+        incident_data = response.json()
 
-        # Update alert
+        # Update incident
         if (
             "assessment" in hit.howler
             and hit.howler.assessment in properties_map["graph"]["classification"]
@@ -132,11 +132,11 @@ def execute(query: str, **kwargs):
             classification = properties_map["graph"]["classification"][hit.howler.assessment]
             determination = properties_map["graph"]["determination"][hit.howler.assessment]
         else:
-            classification = alert_data["classification"]
-            determination = alert_data["determination"]
+            classification = incident_data["classification"]
+            determination = incident_data["determination"]
 
         status = properties_map["graph"]["status"][hit.howler.status]
-        assigned_to = alert_data["assignedTo"]
+        assigned_to = incident_data["assignedTo"]
 
         data = {
             "assignedTo": assigned_to,
@@ -146,7 +146,7 @@ def execute(query: str, **kwargs):
         }
 
         response = requests.patch(
-            alert_url,
+            incident_url,
             json=data,
             headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
             timeout=5.0,
@@ -170,8 +170,8 @@ def execute(query: str, **kwargs):
                 {
                     "query": f"howler.id:{hit.howler.id}",
                     "outcome": "success",
-                    "title": "Alert updated in XDR Defender",
-                    "message": "Howler has successfully propagated changes to this alert to XDR Defender.",
+                    "title": "Incident updated in XDR Defender",
+                    "message": "Howler has successfully propagated changes to this incident to XDR Defender.",
                 }
             )
 
@@ -182,10 +182,10 @@ def specification():
     "Update Defender action specification"
     return {
         "id": OPERATION_ID,
-        "title": "Update Microsoft Defender XDR alert",
+        "title": "Update Microsoft Defender XDR incident",
         "priority": 8,
         "description": {
-            "short": "Update Microsoft Defender XDR alert",
+            "short": "Update Microsoft Defender XDR incident",
             "long": execute.__doc__,
         },
         "roles": ["automation_basic"],

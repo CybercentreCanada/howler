@@ -230,13 +230,11 @@ class api_login(object):  # noqa: D101, N801
                 quota = user.get("api_quota", 25)
                 if not QUOTA_TRACKER.begin(user["uname"], quota):
                     if config.ui.enforce_quota:
-                        logger.info(f"{user['uname']} was prevented from using the api due to exceeded quota.")
+                        logger.warning(f"{user['uname']} was prevented from using the api due to exceeded quota.")
                         FAILED_ATTEMPTS.labels("429").inc()
                         return too_many_requests(err=f"You've exceeded your maximum quota of {quota}")
                     else:
                         logger.debug(f"Quota of {quota} exceeded for user {user['uname']}.")
-                else:
-                    logger.debug(f"{user['uname']}'s quota is under or equal its limit of {quota}")
             else:
                 logger.debug(f"Quota not enforced for {user['uname']}")
 

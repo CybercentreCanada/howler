@@ -63,7 +63,7 @@ def test_send_to_sentinel(datastore_connection: HowlerDatastore):
             "query": f"howler.id:{hit_id}",
             "outcome": "success",
             "title": "Alert updated in Sentinel",
-            "message": "Howler has successfuly propagated changes to this alert to Sentinel.",
+            "message": "Howler has successfully propagated changes to this alert to Sentinel.",
         }
 
 
@@ -88,5 +88,5 @@ def test_update_defender_xdr_alert(datastore_connection: HowlerDatastore):
             "query": f"howler.id:{hit_id}",
             "outcome": "success",
             "title": "Alert updated in XDR Defender",
-            "message": "Howler has successfuly propagated changes to this alert to XDR Defender.",
+            "message": "Howler has successfully propagated changes to this alert to XDR Defender.",
         }
