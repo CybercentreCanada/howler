@@ -91,8 +91,8 @@ def test_update_incident_status(client):
 
 def test_update_incident_status_noalerts(client):
     """Test updating the status of an existing incident.
-    This test if an incident is updated and the underlying alerts has moved
-    The incident and the underlying alerts should be closed with current implementation.
+    This test verifies that when an incident is updated without alerts in the payload,
+    underlying alerts in the bundle still transition to the resolved state.
     """
     # Arrange: Ingest incident and underlying alert as bundle
     incident = copy.deepcopy(SENTINEL_ALERT)
