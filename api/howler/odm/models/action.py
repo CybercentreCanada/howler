@@ -2,6 +2,7 @@
 from typing import Optional
 
 from howler import odm
+from howler.plugins import get_plugins
 
 VALID_TRIGGERS = ["create", "demote", "promote", "add_label", "remove_label"]
 
@@ -31,3 +32,8 @@ class Action(odm.Model):
         default=[],
         description="A list of the operations this action consists of.",
     )
+
+
+for plugin in get_plugins():
+    if modify_odm := plugin.modules.odm.modify_odm.get("action"):
+        modify_odm(Action)

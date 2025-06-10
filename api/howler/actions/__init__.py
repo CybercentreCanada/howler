@@ -94,8 +94,6 @@ def execute(
         operation = importlib.import_module(f"howler.actions.{operation_id}")
     except ImportError:
         pass
-    except Exception as err:
-        logger.critical("Error when importing %s - %s", operation_id, err)
 
     if not operation:
         for plugin in get_plugins():
