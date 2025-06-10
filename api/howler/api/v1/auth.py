@@ -49,7 +49,7 @@ logger = get_logger(__file__)
 @generate_swagger_docs()
 @auth_api.route("/apikey", methods=["POST"])
 @api_login(audit=False)
-def add_apikey(**kwargs):  # noqa: C901
+def add_apikey(**kwargs):
     """Add an API Key for the currently logged in user with given privileges
 
     Variables:

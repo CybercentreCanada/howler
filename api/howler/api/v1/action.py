@@ -4,16 +4,7 @@ from typing import Any, Optional
 from flask import Response, request
 
 import howler.actions as actions
-from howler.api import (
-    bad_request,
-    created,
-    forbidden,
-    internal_error,
-    make_subapi_blueprint,
-    no_content,
-    not_found,
-    ok,
-)
+from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
 from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
 from howler.common.logging.audit import audit
@@ -51,7 +42,7 @@ def get_actions(**_) -> Response:
     return ok(datastore().action.search("*:*", as_obj=False)["items"])
 
 
-def validate_action(new_action: Any) -> Optional[Response]:  # noqa: C901
+def validate_action(new_action: Any) -> Optional[Response]:
     """Validate a new action"""
     if not isinstance(new_action, dict):
         return bad_request(err="Incorrect data structure!")

@@ -3,7 +3,7 @@ from typing import Any, Optional
 from flask import request
 
 from howler.api import bad_request, created, make_subapi_blueprint
-from howler.common.exceptions import HowlerException
+from howler.common.exceptions import HowlerException, InvalidDataException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
@@ -29,10 +29,75 @@ logger = get_logger(__file__)
 hit_helper = OdmHelper(Hit)
 
 
+def _check_field_map(field_map: dict[str, list[str]], ignore_extra_values: bool) -> list[str]:
+    "Validate the provided field map"
+    warnings = []
+    # Validate field_map targets
+    for targets in field_map.values():
+        for target in targets:
+            # This is checking to see if the target matches one of two cases:
+            # Simple fields - hit.obj.key of type str (should match)
+            # Compound fields - hit.obj of type dict (should also match)
+            # This allows significantly easier creation of hits, since you don't need to deconstruct every dict into
+            # individual fields
+            if target not in FIELDS and not any(f for f in FIELDS.keys() if get_parent_key(f) == target):
+                warning = f"Invalid target field in the map: {target}"
+                if ignore_extra_values:
+                    warnings.append(warning)
+                else:
+                    raise InvalidDataException(warning)
+
+    return warnings
+
+
+def _map_data(tool_name: str, hit: dict[str, Any], field_map: dict[str, list[str]]) -> dict[str, Any]:
+    "Map raw data into an alert"
+    cur_id = get_random_id()
+    cur_time = now_as_iso()
+    obj: dict[str, Any] = {
+        "agent.type": tool_name,
+        "event.created": cur_time,
+        "event.id": cur_id,
+        "howler.id": cur_id,
+        "howler.analytic": tool_name,
+        "howler.score": 0,
+    }
+
+    for source, targets in field_map.items():
+        val = hit.get(source, None)
+        if val is not None:
+            for target in targets:
+                _val = val
+                try:
+                    field_data: Optional[_Field] = FIELDS[target]
+                except KeyError:
+                    logger.debug(f"`{target}` not in FIELDS")
+                    field_data = next(
+                        (v for k, v in FIELDS.items() if get_parent_key(k) == target),
+                        None,
+                    )
+
+                if field_data is not None and field_data.multivalued:
+                    if not isinstance(_val, list):
+                        _val = [val]
+                    obj.setdefault(target, [])
+                    obj[target].extend(_val)
+                else:
+                    if isinstance(val, list):
+                        if not len(val):
+                            continue
+
+                        _val = val[0]
+
+                    obj[target] = _val
+
+    return obj
+
+
 @generate_swagger_docs()
 @tool_api.route("/<tool_name>/hits", methods=["POST", "PUT"])
 @api_login(required_priv=["W"])
-def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
+def create_one_or_many_hits(tool_name: str, user: User, **kwargs):
     """Create one or many hits for a tool using field mapping.
 
     Variables:
@@ -69,72 +134,26 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
     field_map = data.pop("map", None)
     hits = data.pop("hits", None)
     ignore_extra_values: bool = bool(request.args.get("ignore_extra_values", False, type=lambda v: v.lower() == "true"))
-    logger.debug(f"ignore_extra_values = {ignore_extra_values}")
+
     # Check data type
     if not isinstance(field_map, dict):
         return bad_request(err="Invalid: 'map' field is missing or invalid.")
 
     if not isinstance(hits, list):
         return bad_request(err="Invalid: 'hits' field is missing or invalid.")
-    warnings = []
-    # Validate field_map targets
-    for targets in field_map.values():
-        for target in targets:
-            # This is checking to see if the target matches one of two cases:
-            # Simple fields - hit.obj.key of type str (should match)
-            # Compound fields - hit.obj of type dict (should also match)
-            # This allows significantly easier creation of hits, since you don't need to deconstruct every dict into
-            # individual fields
-            if target not in FIELDS and not any(f for f in FIELDS.keys() if get_parent_key(f) == target):
-                warning = f"Invalid target field in the map: {target}"
-                if ignore_extra_values:
-                    warnings.append(warning)
-                    # field_map.pop(target)
-                else:
-                    return bad_request(err=warning)
+
+    try:
+        warnings = _check_field_map(field_map, ignore_extra_values)
+    except InvalidDataException as err:
+        return bad_request(err=err.message)
 
     out: list[dict[str, Any]] = []
     odms = []
     bundle_hit: Optional[Hit] = None
     for hit in hits:
-        cur_id = get_random_id()
-        cur_time = now_as_iso()
-        obj: dict[str, Any] = {
-            "agent.type": tool_name,
-            "event.created": cur_time,
-            "event.id": cur_id,
-            "howler.id": cur_id,
-            "howler.analytic": tool_name,
-            "howler.score": 0,
-        }
         hit = flatten(hit)
-        for source, targets in field_map.items():
-            val = hit.get(source, None)
-            if val is not None:
-                for target in targets:
-                    _val = val
-                    try:
-                        field_data: Optional[_Field] = FIELDS[target]
-                    except KeyError:
-                        logger.debug(f"`{target}` not in FIELDS")
-                        field_data = next(
-                            (v for k, v in FIELDS.items() if get_parent_key(k) == target),
-                            None,
-                        )
 
-                    if field_data is not None and field_data.multivalued:
-                        if not isinstance(_val, list):
-                            _val = [val]
-                        obj.setdefault(target, [])
-                        obj[target].extend(_val)
-                    else:
-                        if isinstance(val, list):
-                            if not len(val):
-                                continue
-
-                            _val = val[0]
-
-                        obj[target] = _val
+        obj = _map_data(tool_name, hit, field_map)
 
         try:
             odm, warns = hit_service.convert_hit(obj, unique=True, ignore_extra_values=ignore_extra_values)
@@ -154,31 +173,29 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
                 }
             )
         except HowlerException as e:
-            logger.warning(f"{type(e).__name__} when saving {cur_id}!")
+            logger.warning(f"{type(e).__name__} when saving {obj['howler.id']}!")
             logger.warning(e)
 
             out.append({"id": None, "error": str(e)})
-    # If there are any errors...
+
     if any([obj["error"] for obj in out]):
-        return bad_request(out, warnings=warnings, err="No valid hits were provided")
-    else:
-        for odm in odms:
-            if bundle_hit is not None:
-                bundle_hit.howler.hits.append(odm.howler.id)
-                bundle_hit.howler.bundle_size += 1
-                odm.howler.bundles.append(bundle_hit.howler.id)
+        return bad_request(out, warnings=warnings, err="Some provided hits had errors.")
 
-            hit_service.create_hit(odm.howler.id, odm, user=user["uname"])
+    for odm in odms:
+        if bundle_hit is not None:
+            bundle_hit.howler.hits.append(odm.howler.id)
+            bundle_hit.howler.bundle_size += 1
+            odm.howler.bundles.append(bundle_hit.howler.id)
 
-            analytic_service.save_from_hit(odm, user)
+        hit_service.create_hit(odm.howler.id, odm, user=user["uname"])
+        analytic_service.save_from_hit(odm, user)
 
-        if bundle_hit:
-            hit_service.create_hit(bundle_hit.howler.id, bundle_hit, user=user["uname"])
+    if bundle_hit:
+        hit_service.create_hit(bundle_hit.howler.id, bundle_hit, user=user["uname"])
+        analytic_service.save_from_hit(bundle_hit, user)
 
-            analytic_service.save_from_hit(bundle_hit, user)
+    datastore().hit.commit()
 
-        datastore().hit.commit()
+    action_service.bulk_execute_on_query(f"howler.id:({' OR '.join(entry['id'] for entry in out)})", user=user)
 
-        action_service.bulk_execute_on_query(f"howler.id:({' OR '.join(entry['id'] for entry in out)})", user=user)
-
-        return created(out, warnings=warnings)
+    return created(out, warnings=warnings)

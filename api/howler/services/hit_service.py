@@ -503,7 +503,7 @@ def get_all_children(hit: Hit):
     return child_hits
 
 
-def transition_hit(
+def transition_hit(  # noqa: C901
     id: str,
     transition: HitStatusTransition,
     user: User,
@@ -571,13 +571,18 @@ def transition_hit(
             trigger = cast(Union[Literal["promote"], Literal["demote"]], transition)
 
         datastore().hit.commit()
-        action_service.bulk_execute_on_query(
-            f"howler.id:({' OR '.join(h['howler']['id'] for h in ([hit] + child_hits))})",
-            trigger=trigger,
-            user=user,
-        )
 
-        for _hit in [hit] + child_hits:
+        all_hits = [hit] + child_hits
+        if len(all_hits) == 1:
+            action_service.execute_on_hit(all_hits[0], trigger=trigger, user=user)
+        else:
+            action_service.bulk_execute_on_query(
+                f"howler.id:({' OR '.join(h['howler']['id'] for h in all_hits)})",
+                trigger=trigger,
+                user=user,
+            )
+
+        for _hit in all_hits:
             data, _version = datastore().hit.get(_hit["howler"]["id"], as_obj=False, version=True)
             event_service.emit("hits", {"hit": data, "version": _version})
 
