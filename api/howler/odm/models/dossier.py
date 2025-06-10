@@ -3,6 +3,7 @@ from typing import Literal, Optional, Union
 from howler import odm
 from howler.odm.models.lead import Lead
 from howler.odm.models.pivot import Pivot
+from howler.plugins import get_plugins
 
 
 @odm.model(
@@ -31,3 +32,8 @@ class Dossier(odm.Model):
         values=["personal", "global"],
         description="The type of dossier - personal or global.",
     )
+
+
+for plugin in get_plugins():
+    if modify_odm := plugin.modules.odm.modify_odm.get("dossier"):
+        modify_odm(Dossier)

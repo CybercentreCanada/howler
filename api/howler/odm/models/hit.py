@@ -353,8 +353,6 @@ class Hit(odm.Model):
 for plugin in get_plugins():
     if modify_odm := plugin.modules.odm.modify_odm.get("hit"):
         modify_odm(Hit)
-    else:
-        logger.info("Plugin %s does not modify the ODM.", plugin.name)
 
 
 if __name__ == "__main__":

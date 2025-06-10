@@ -2,6 +2,7 @@
 from typing import Literal, Optional, Union
 
 from howler import odm
+from howler.plugins import get_plugins
 
 
 @odm.model(index=True, store=True, description="Model of templates")
@@ -22,3 +23,8 @@ class Template(odm.Model):
         default=[],
         description="The list of fields to show when this template is used.",
     )
+
+
+for plugin in get_plugins():
+    if modify_odm := plugin.modules.odm.modify_odm.get("template"):
+        modify_odm(Template)
