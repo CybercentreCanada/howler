@@ -42,9 +42,8 @@ class HowlerDatastore(object):
                     if modify_odm := plugin.modules.odm.modify_odm.get(_index):
                         modify_odm(_odm)
 
-                    self.ds.register(_index, _odm)
-                else:
-                    self.ds.register(_index)
+        for _index, _odm in INDEXES:
+            self.ds.register(_index, _odm)
 
     def __enter__(self):
         return self
