@@ -5,7 +5,6 @@ from typing import Optional
 from howler import odm
 from howler.common import loader
 from howler.config import CLASSIFICATION
-from howler.plugins import get_plugins
 
 ACL = {"R", "W", "E", "I"}
 
@@ -82,8 +81,3 @@ class User(odm.Model):
         default=[],
         description="A list of dashboard entries to render on the UI.",
     )
-
-
-for plugin in get_plugins():
-    if modify_odm := plugin.modules.odm.modify_odm.get("user"):
-        modify_odm(User)

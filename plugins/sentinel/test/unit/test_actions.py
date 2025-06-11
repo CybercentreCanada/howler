@@ -51,12 +51,6 @@ def test_send_to_sentinel(datastore_connection: HowlerDatastore):
 
         hit_id = datastore_connection.hit.search("howler.id:*", fl="howler.id", rows=1)["items"][0].howler.id
 
-        if "HOWLER_SENTINEL_INGEST_CREDENTIALS" not in os.environ:
-            os.environ["HOWLER_SENTINEL_INGEST_CREDENTIALS"] = (
-                '{"client_secret": "client secret", "client_id": "client id", "tenant_id": "tenant id", "dce": "dceth'
-                'ing", "dcr": "dcrthing", "table": "Custom-Howler"}'
-            )
-
         result = execute(f"howler.id:{hit_id}")
 
         assert result[0] == {

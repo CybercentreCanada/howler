@@ -11,17 +11,15 @@ ADMIN_INDEX_MAP: dict[str, Callable[[], ESCollection]] = {}
 
 ADMIN_INDEX_ORDER_MAP: dict[str, str] = {}
 
-ds = datastore()
-
 INDEX_MAP: dict[str, Callable[[], ESCollection]] = {
-    "action": lambda: ds.action,
-    "analytic": lambda: ds.analytic,
-    "dossier": lambda: ds.dossier,
-    "hit": lambda: ds.hit,
-    "overview": lambda: ds.overview,
-    "template": lambda: ds.template,
-    "user": lambda: ds.user,
-    "view": lambda: ds.view,
+    "action": lambda: datastore().action,
+    "analytic": lambda: datastore().analytic,
+    "dossier": lambda: datastore().dossier,
+    "hit": lambda: datastore().hit,
+    "overview": lambda: datastore().overview,
+    "template": lambda: datastore().template,
+    "user": lambda: datastore().user,
+    "view": lambda: datastore().view,
 }
 
 INDEX_ORDER_MAP: dict[str, str] = {

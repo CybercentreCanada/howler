@@ -1,3 +1,5 @@
+from typing import Optional
+
 import requests
 from howler.common.exceptions import HowlerRuntimeError
 from howler.common.logging import get_logger
@@ -7,9 +9,11 @@ logger = get_logger(__file__)
 
 
 @cache.memoize(15 * 60)
-def get_token(tenant_id: str, scope: str) -> str:
+def get_token(tenant_id: str, scope: str) -> Optional[str]:
     """Get a borealis token based on the current howler token"""
     from sentinel.config import config
+
+    token = None
 
     if config.auth.client_credentials:
         logger.info(
@@ -39,5 +43,8 @@ def get_token(tenant_id: str, scope: str) -> str:
         token = response.json()["access_token"]
     elif config.auth.custom_auth:
         token = config.auth.custom_auth(tenant_id, scope)
+
+    if not token:
+        logger.warning("No access token received")
 
     return token

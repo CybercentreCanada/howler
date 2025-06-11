@@ -3,7 +3,6 @@ from typing import Optional
 
 from howler import odm
 from howler.odm.models.howler_data import Assessment
-from howler.plugins import get_plugins
 
 
 @odm.model(index=True, store=True, description="Comment definition.")
@@ -89,8 +88,3 @@ class Analytic(odm.Model):
         description="Settings for triaging this analytic.",
         default=DEFAULT_TRIAGE,
     )
-
-
-for plugin in get_plugins():
-    if modify_odm := plugin.modules.odm.modify_odm.get("analytic"):
-        modify_odm(Analytic)

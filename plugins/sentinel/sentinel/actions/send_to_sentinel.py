@@ -75,7 +75,9 @@ def execute(query: str, **kwargs) -> list[dict[str, Any]]:
                     "query": f"howler.id:{hit.howler.id}",
                     "outcome": "error",
                     "title": "Invalid Tenant ID",
-                    "message": "The tenant ID associated with this alert has not been correctly configured.",
+                    "message": (
+                        f"The tenant ID ({tenant_id}) associated with this alert has not been correctly " "configured."
+                    ),
                 }
             )
             continue

@@ -2,7 +2,6 @@
 from typing import Literal, Union
 
 from howler import odm
-from howler.plugins import get_plugins
 
 
 @odm.model(index=True, store=True, description="Additional View Settings")
@@ -33,8 +32,3 @@ class View(odm.Model):
     settings: Settings = odm.Compound(
         Settings, description="Additional View Settings", default={"advance_on_triage": False}
     )
-
-
-for plugin in get_plugins():
-    if modify_odm := plugin.modules.odm.modify_odm.get("view"):
-        modify_odm(View)

@@ -289,8 +289,6 @@ def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[User], p
         if generate := plugin.modules.odm.generation.get("hit", None):
             _new_keys, hit = generate(hit)
             new_keys += _new_keys
-        else:
-            logger.info("Plugin does not expose useful hit generation")
 
     if len(new_keys) > 0:
         logger.debug("%s new top-level fields configured")

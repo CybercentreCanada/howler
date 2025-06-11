@@ -2,7 +2,6 @@
 from typing import Optional
 
 from howler import odm
-from howler.plugins import get_plugins
 
 
 @odm.model(index=True, store=True, description="Model of overviews")
@@ -15,8 +14,3 @@ class Overview(odm.Model):
         optional=True,
     )
     content: str = odm.Keyword(description="The markdown to show when this overview is used.")
-
-
-for plugin in get_plugins():
-    if modify_odm := plugin.modules.odm.modify_odm.get("overview"):
-        modify_odm(Overview)

@@ -57,7 +57,7 @@ class SentinelConfig(BasePluginConfig):
         yaml_file_encoding="utf-8",
         strict=True,
         env_nested_delimiter="__",
-        env_prefix=f"{PLUGIN_NAME}_",
+        env_prefix=f"{PLUGIN_NAME.upper()}_",
     )
 
 

@@ -37,7 +37,6 @@ from howler.odm.models.ecs.user_agent import UserAgent
 from howler.odm.models.ecs.vulnerability import Vulnerability
 from howler.odm.models.gcp import GCP
 from howler.odm.models.howler_data import HowlerData
-from howler.plugins import get_plugins
 
 logger = get_logger(__file__)
 
@@ -348,11 +347,6 @@ class Hit(odm.Model):
             reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-vulnerability.html",
         )
     )
-
-
-for plugin in get_plugins():
-    if modify_odm := plugin.modules.odm.modify_odm.get("hit"):
-        modify_odm(Hit)
 
 
 if __name__ == "__main__":
