@@ -190,9 +190,11 @@ def _link_child_hits_to_bundle(bundle_odm: Any, child_hit_ids: list[str]) -> Non
     """
     for hit_id in bundle_odm.howler.hits:
         child_hit = hit_service.get_hit(hit_id, as_odm=True)
+        
         if child_hit.howler.is_bundle:
             logger.warning("Child hit %s is a bundle - skipping bundle assignment", child_hit.howler.id)
             continue
+            
         new_bundle_list = child_hit.howler.get("bundles", [])
         new_bundle_list.append(bundle_odm.howler.id)
         child_hit.howler.bundles = new_bundle_list
