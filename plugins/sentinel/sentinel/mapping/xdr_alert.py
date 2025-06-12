@@ -150,7 +150,7 @@ class XDRAlert:
         # TODO evaluate if we should set this field if new alert
         return classification.get(graph_classification, "ambiguous")
 
-    def map_alert(self, graph_alert: dict[str, Any], customer_id: str) -> dict[str, Any] | None:
+    def map_alert(self, graph_alert: dict[str, Any], customer_id: str) -> Optional[dict[str, Any]]:
         """Transform a Microsoft Graph alert into a Howler hit format.
 
         This is the main mapping function that converts a Graph API alert object
