@@ -128,6 +128,7 @@ class SentinelIncident:
         """
         if not isinstance(sentinel_status, str) or not sentinel_status:
             return "open"
+            
         status_mapping: dict[str, str] = {
             "new": "open",
             "active": "in-progress",
