@@ -117,7 +117,7 @@ class SentinelIncident:
         """
         return self.tid_mapping.get(tid, self.DEFAULT_CUSTOMER_NAME)
 
-    def map_sentinel_status_to_howler(self, sentinel_status: str | None) -> str:
+    def map_sentinel_status_to_howler(self, sentinel_status: Optional[str]) -> str:
         """Map Sentinel Incident status to Howler status.
 
         Args:
