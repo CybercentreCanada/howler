@@ -233,8 +233,10 @@ def _create_new_incident(
             bundle_odm.howler.is_bundle = False
             bundle_odm.howler.hits = []
             bundle_odm.howler.bundle_size = 0
+
         if bundle_odm.event is not None:
             bundle_odm.event.id = bundle_odm.howler.id
+
         logger.info("Creating incident hit with ID %s", bundle_odm.howler.id)
         hit_service.create_hit(bundle_odm.howler.id, bundle_odm, user="system")
         analytic_service.save_from_hit(bundle_odm, {"uname": "system"})
