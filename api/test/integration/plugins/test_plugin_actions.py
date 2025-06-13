@@ -47,3 +47,5 @@ def test_plugin_actions_integration(datastore_connection: HowlerDatastore):
 
     assert result[0]["outcome"] == "success"
     assert result[0]["message"] == "Example action ran successfully."
+
+    cast(BasePluginConfig, PLUGINS["test-plugin"]).modules.operations = []
