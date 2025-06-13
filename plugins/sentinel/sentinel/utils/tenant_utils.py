@@ -1,3 +1,4 @@
+import sys
 from typing import Optional
 
 import requests
@@ -8,7 +9,12 @@ from howler.config import cache
 logger = get_logger(__file__)
 
 
-@cache.memoize(15 * 60)
+def skip_cache(*args):
+    "Function to skip cache in testing mode"
+    return "pytest" in sys.modules
+
+
+@cache.memoize(15 * 60, unless=skip_cache)
 def get_token(tenant_id: str, scope: str) -> Optional[str]:
     """Get a borealis token based on the current howler token"""
     from sentinel.config import config
