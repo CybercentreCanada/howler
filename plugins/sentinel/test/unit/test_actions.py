@@ -1,11 +1,12 @@
 import json
-import os
 from pathlib import Path
 from unittest.mock import patch
 
 import requests
 from howler.app import app
 from howler.datastore.howler_store import HowlerDatastore
+from howler.odm.models.hit import Hit
+from howler.odm.randomizer import random_model_obj
 
 with (Path(__file__).parent / "sentinel.json").open() as _alert:
     SENTINEL_ALERT = json.load(_alert)
@@ -60,6 +61,23 @@ def test_send_to_sentinel(datastore_connection: HowlerDatastore):
             "message": "Howler has successfully propagated changes to this alert to Sentinel.",
         }
 
+        broken_hit = random_model_obj(Hit)
+
+        datastore_connection.hit.save(broken_hit.howler.id, broken_hit)
+        datastore_connection.hit.commit()
+
+        result = execute(f"howler.id:{broken_hit.howler.id}")
+
+        assert result[0] == {
+            "query": f"howler.id:{broken_hit.howler.id}",
+            "outcome": "error",
+            "title": "Invalid Tenant ID",
+            "message": (
+                f"The tenant ID ({broken_hit.azure.tenant_id}) associated with this alert has not been correctly "
+                "configured."
+            ),
+        }
+
 
 @patch("requests.post", mock_post)
 @patch("requests.get", mock_get)
@@ -68,13 +86,8 @@ def test_update_defender_xdr_alert(datastore_connection: HowlerDatastore):
     with app.test_request_context():
         from sentinel.actions.update_defender_xdr_alert import execute
 
-        hit_id = datastore_connection.hit.search("howler.id:*", fl="howler.id", rows=1)["items"][0].howler.id
-
-        if "HOWLER_SENTINEL_INGEST_CREDENTIALS" not in os.environ:
-            os.environ["HOWLER_SENTINEL_INGEST_CREDENTIALS"] = (
-                '{"client_secret": "client secret", "client_id": "client id", "tenant_id": "tenant id", "dce": "dceth'
-                'ing", "dcr": "dcrthing", "table": "Custom-Howler"}'
-            )
+        hit: Hit = datastore_connection.hit.search("howler.id:*", fl="howler.id", rows=1)["items"][0]
+        hit_id = hit.howler.id
 
         result = execute(f"howler.id:{hit_id}")
 

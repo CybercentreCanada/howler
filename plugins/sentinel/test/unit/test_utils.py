@@ -2,7 +2,9 @@ import json
 import logging
 from unittest.mock import patch
 
+import pytest
 import requests
+from howler.common.exceptions import HowlerRuntimeError
 
 
 def mock_post(url: str, **kwargs):
@@ -11,6 +13,9 @@ def mock_post(url: str, **kwargs):
     res.headers["Content-Type"] = "application/json"
     if url.startswith("https://login.microsoftonline.com"):
         res._content = json.dumps({"access_token": "example token"}).encode()
+
+    if "raise" in url:
+        res.status_code = 400
 
     return res
 
@@ -41,3 +46,9 @@ def test_get_token(caplog):
     assert "It works: tenant id, dummy scope" in caplog.text
 
     assert result == "example token"
+
+    config.auth.client_credentials = ClientCredentials(client_id="client id", client_secret="client secret")
+    config.auth.custom_auth = None
+
+    with pytest.raises(HowlerRuntimeError):
+        get_token("tenant id raise exception", "dummy scope")

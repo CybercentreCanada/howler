@@ -21,7 +21,7 @@ def modify_odm(target):
     )
 
 
-def generate(hit: "Hit") -> "Hit":
+def generate(hit: "Hit") -> "Hit":  # pragma: no cover
     "Add cccs-specific changes to hits on generation"
     hit.sentinel = Sentinel({"id": "example-sentinel-id"})
 
