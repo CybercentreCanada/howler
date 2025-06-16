@@ -303,7 +303,7 @@ def convert_hit(data: dict[str, Any], unique: bool, ignore_extra_values: bool = 
 
     # Check for deprecated field and unused fields
     odm_flatten = odm.flat_fields(show_compound=True)
-    unused_keys = extra_keys(data, set(odm_flatten.keys()) - BANNED_FIELDS)
+    unused_keys = extra_keys(Hit, data, set(odm_flatten.keys()) - BANNED_FIELDS)
 
     if unused_keys and not ignore_extra_values:
         raise HowlerValueError(f"Hit was created with invalid parameters: {', '.join(unused_keys)}")
