@@ -5,6 +5,7 @@ from typing import cast
 import pytest
 from pydantic_settings import SettingsConfigDict
 
+from howler.app import app
 from howler.plugins.config import BasePluginConfig
 
 
@@ -28,21 +29,21 @@ def mock_plugin():
 
 
 def test_auth_hooks(caplog):
-    # with app.test_request_context():
-    from howler.api.v1.borealis import get_token
+    with app.test_request_context():
+        from howler.api.v1.borealis import get_token
 
-    with caplog.at_level(logging.INFO):
-        assert get_token("bad_token") == "bad_token"
+        with caplog.at_level(logging.INFO):
+            assert get_token("bad_token") == "bad_token"
 
-    assert "No custom borealis token logic provided, continuing with howler credentials" in caplog.text
+        assert "No custom borealis token logic provided, continuing with howler credentials" in caplog.text
 
-    caplog.clear()
+        caplog.clear()
 
-    from howler.plugins import PLUGINS
+        from howler.plugins import PLUGINS
 
-    cast(BasePluginConfig, PLUGINS["test-plugin"]).modules.token_functions["borealis"] = mock_get_token
+        cast(BasePluginConfig, PLUGINS["test-plugin"]).modules.token_functions["borealis"] = mock_get_token
 
-    with caplog.at_level(logging.INFO):
-        assert get_token("bad_token") == "access_token"
+        with caplog.at_level(logging.INFO):
+            assert get_token("bad_token") == "access_token"
 
-    assert "No custom borealis token logic provided, continuing with howler credentials" not in caplog.text
+        assert "No custom borealis token logic provided, continuing with howler credentials" not in caplog.text
