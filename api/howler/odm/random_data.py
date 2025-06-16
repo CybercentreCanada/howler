@@ -670,7 +670,7 @@ def create_analytics(ds: HowlerDatastore, num_analytics: int = 10):
             set(random.sample(assessments, counts=([3] * len(assessments)), k=random.randint(1, len(assessments) * 3)))
         )
 
-        analytic = run_modifications("analytic", analytic)
+        a = run_modifications("analytic", a)
 
         ds.analytic.save(a.analytic_id, a)
 
