@@ -144,16 +144,14 @@ if HWL_USE_REST_API or DEBUG:
         logger.debug("Enabled Borealis Integration")
         app.register_blueprint(borealis_api)
 
+    logger.info("Checking plugins for additional routes")
     for plugin in get_plugins():
         if not plugin.modules.routes:
             continue
 
-        try:
-            for route in cast(list[Blueprint], plugin.modules.routes):
-                logger.info("Enabling additional endpoint: %s", route.url_prefix)
-                app.register_blueprint(route)
-        except ImportError:
-            logger.info("Plugin %s does not export additional endpoints.", plugin.name)
+        for route in cast(list[Blueprint], plugin.modules.routes):
+            logger.info("Enabling additional endpoint: %s", route.url_prefix)
+            app.register_blueprint(route)
 
 
 else:
