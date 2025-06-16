@@ -28,6 +28,7 @@ def mock_plugin():
 
 
 def test_auth_hooks(caplog):
+    # with app.test_request_context():
     from howler.api.v1.borealis import get_token
 
     with caplog.at_level(logging.INFO):
