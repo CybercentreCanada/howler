@@ -100,7 +100,7 @@ class SentinelIncident:
             # Add assessment conditionally if classification is not null
             if classification is not None:
                 bundle["howler"]["assessment"] = self.map_classification(classification)
-            logger.info("Successfully mapped Sentiel Incident %s", incident_id)
+            logger.info("Successfully mapped Sentinel Incident %s", incident_id)
             return bundle
 
         except Exception as exc:

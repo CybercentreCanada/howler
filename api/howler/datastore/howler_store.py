@@ -14,23 +14,39 @@ from howler.odm.models.overview import Overview
 from howler.odm.models.template import Template
 from howler.odm.models.user import User
 from howler.odm.models.view import View
+from howler.plugins import get_plugins
 
 if TYPE_CHECKING:
     from howler.datastore.store import ESStore
+
+INDEXES = [
+    ("hit", Hit),
+    ("template", Template),
+    ("overview", Overview),
+    ("analytic", Analytic),
+    ("action", Action),
+    ("user", User),
+    ("view", View),
+    ("dossier", Dossier),
+    ("user_avatar", None),
+]
 
 
 class HowlerDatastore(object):
     def __init__(self, datastore_object: "ESStore"):
         self.ds = datastore_object
-        self.ds.register("hit", Hit)
-        self.ds.register("template", Template)
-        self.ds.register("overview", Overview)
-        self.ds.register("analytic", Analytic)
-        self.ds.register("action", Action)
-        self.ds.register("user", User)
-        self.ds.register("view", View)
-        self.ds.register("dossier", Dossier)
-        self.ds.register("user_avatar")
+
+        for plugin in get_plugins():
+            for _index, _odm in INDEXES:
+                if _odm is None:
+                    continue
+
+                if modify_odm := plugin.modules.odm.modify_odm.get(_index):
+                    logger.info("Modifying %s odm with function from plugin %s", _index, plugin.name)
+                    modify_odm(_odm)
+
+        for _index, _odm in INDEXES:
+            self.ds.register(_index, _odm)
 
     def __enter__(self):
         return self

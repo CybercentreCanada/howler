@@ -19,6 +19,7 @@ from datemath.helpers import DateMathException
 from howler import odm
 from howler.common.exceptions import HowlerRuntimeError, HowlerValueError, NonRecoverableError
 from howler.common.loader import APP_NAME
+from howler.common.logging.format import HWL_DATE_FORMAT, HWL_LOG_FORMAT
 from howler.datastore.bulk import ElasticBulkPlan
 from howler.datastore.constants import BACK_MAPPING, TYPE_MAPPING
 from howler.datastore.exceptions import (
@@ -58,6 +59,12 @@ if typing.TYPE_CHECKING:
 TRANSPORT_TIMEOUT = int(environ.get("HWL_DATASTORE_TRANSPORT_TIMEOUT", "10"))
 
 logger = logging.getLogger("howler.api.datastore")
+logger.setLevel(logging.INFO)
+console = logging.StreamHandler()
+console.setLevel(logging.INFO)
+console.setFormatter(logging.Formatter(HWL_LOG_FORMAT, HWL_DATE_FORMAT))
+logger.addHandler(console)
+
 ModelType = TypeVar("ModelType", bound=Model)
 write_block_settings = {"settings": {"index.blocks.write": True}}
 write_unblock_settings = {"settings": {"index.blocks.write": None}}

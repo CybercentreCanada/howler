@@ -1,10 +1,8 @@
 # mypy: ignore-errors
-import importlib
 from typing import Optional
 
 from howler import odm
 from howler.common.logging import get_logger
-from howler.config import config
 from howler.odm.models.assemblyline import AssemblyLine
 from howler.odm.models.aws import AWS
 from howler.odm.models.azure import Azure
@@ -349,16 +347,6 @@ class Hit(odm.Model):
             reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-vulnerability.html",
         )
     )
-
-
-for plugin in config.core.plugins:
-    try:
-        importlib.import_module(f"{plugin}.odm.hit").modify_odm(Hit)
-    except (ImportError, AttributeError) as err:
-        if f"No module named '{plugin}'" in str(err):
-            raise
-        else:
-            logger.info("Plugin %s does not modify the ODM.", plugin)
 
 
 if __name__ == "__main__":

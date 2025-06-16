@@ -2,8 +2,10 @@ import copy
 import json
 import logging
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
+import requests
 import werkzeug
 from flask.app import Flask
 from howler.common.loader import datastore
@@ -13,6 +15,16 @@ werkzeug.__version__ = "1.0.0"  # type: ignore
 
 with (Path(__file__).parent / "sentinel.json").open() as _alert:
     SENTINEL_ALERT = json.load(_alert)
+
+
+def mock_post(url: str, **kwargs):
+    res = requests.Response()
+    res.status_code = 200
+    res.headers["Content-Type"] = "application/json"
+    if url.startswith("https://login.microsoftonline.com"):
+        res._content = json.dumps({"access_token": "potato"}).encode()
+
+    return res
 
 
 @pytest.fixture(scope="module")
@@ -28,6 +40,7 @@ def client():
     return app.test_client()
 
 
+@patch("requests.post", mock_post)
 def test_ingest_endpoint(client, caplog):
     # Arrange: Prepare request data and logging
     with caplog.at_level(logging.INFO):
@@ -37,7 +50,7 @@ def test_ingest_endpoint(client, caplog):
         )
 
     # Assert: Check log, response, and datastore state
-    assert "tes...key" in caplog.text
+    assert "Successfully mapped Sentinel Incident" in caplog.text
     assert result.json["api_response"]["bundle_size"] == 2
     assert len(result.json["api_response"]["individual_hit_ids"]) == 2
     assert datastore().hit.exists(result.json["api_response"]["bundle_hit_id"])

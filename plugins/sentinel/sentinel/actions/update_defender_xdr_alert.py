@@ -89,7 +89,7 @@ def execute(query: str, **kwargs):
             continue
 
         try:
-            token = get_token(tenant_id, "https://graph.microsoft.com/.default")[0]
+            token = get_token(tenant_id, "https://graph.microsoft.com/.default")
         except HowlerRuntimeError as err:
             logger.exception("Error on token fetching")
             report.append(
