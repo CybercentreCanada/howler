@@ -14,7 +14,7 @@ class HowlerTestPluginConfig(BasePluginConfig):
     )
 
 
-def get_token(token: str):
+def mock_get_token(token: str):
     return "access_token"
 
 
@@ -39,7 +39,7 @@ def test_auth_hooks(caplog):
 
     from howler.plugins import PLUGINS
 
-    cast(BasePluginConfig, PLUGINS["test-plugin"]).modules.token_functions["borealis"] = get_token
+    cast(BasePluginConfig, PLUGINS["test-plugin"]).modules.token_functions["borealis"] = mock_get_token
 
     with caplog.at_level(logging.INFO):
         assert get_token("bad_token") == "access_token"
