@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 import elasticapm
 import elasticsearch
 
-from howler.app import get_plugins
 from howler.common.exceptions import HowlerAttributeError
 from howler.datastore.collection import ESCollection, logger
 from howler.odm.models.action import Action
@@ -15,6 +14,7 @@ from howler.odm.models.overview import Overview
 from howler.odm.models.template import Template
 from howler.odm.models.user import User
 from howler.odm.models.view import View
+from howler.plugins import get_plugins
 
 if TYPE_CHECKING:
     from howler.datastore.store import ESStore
@@ -38,9 +38,12 @@ class HowlerDatastore(object):
 
         for plugin in get_plugins():
             for _index, _odm in INDEXES:
-                if _odm is not None:
-                    if modify_odm := plugin.modules.odm.modify_odm.get(_index):
-                        modify_odm(_odm)
+                if _odm is None:
+                    continue
+
+                if modify_odm := plugin.modules.odm.modify_odm.get(_index):
+                    logger.info("Modifying %s odm with function from plugin %s", _index, plugin.name)
+                    modify_odm(_odm)
 
         for _index, _odm in INDEXES:
             self.ds.register(_index, _odm)
