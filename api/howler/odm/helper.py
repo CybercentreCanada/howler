@@ -285,7 +285,7 @@ def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[User], p
         log.previous_version = get_random_id()
 
     new_keys: list[str] = []
-    for plugin in get_plugins():
+    for plugin in get_plugins():  # pragma: no cover
         if generate := plugin.modules.odm.generation.get("hit", None):
             _new_keys, hit = generate(hit)
             new_keys += _new_keys

@@ -4,6 +4,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from howler.plugins import get_plugins
+
 load_dotenv()
 
 # We append the plugin directory for howler to the python part
@@ -50,6 +52,20 @@ logger = get_logger(__file__)
 hit_helper = OdmHelper(Hit)
 
 
+def run_modifications(odm: str, data: Any, log: bool = False):
+    "Running modifications"
+    new_keys: list[str] = []
+    for plugin in get_plugins():  # pragma: no cover
+        if generate := plugin.modules.odm.generation.get(odm, None):
+            _new_keys, data = generate(data)
+            new_keys += _new_keys
+
+    if len(new_keys) > 0 and log:
+        logger.debug("%s new top-level fields configured for %s", len(new_keys), odm)
+
+    return data
+
+
 def create_users(ds):
     """Create  number of user accounts"""
     admin_pass = os.getenv("DEV_ADMIN_PASS", "admin") or "admin"
@@ -68,6 +84,9 @@ def create_users(ds):
             "owner": "admin",
         }
     )
+
+    admin_view = run_modifications("view", admin_view)
+
     user_data = User(
         {
             "apikeys": {
@@ -106,6 +125,9 @@ def create_users(ds):
             "favourite_views": [admin_view.view_id],
         }
     )
+
+    user_data = run_modifications("view", user_data, True)
+
     ds.user.save("admin", user_data)
     ds.user_avatar.save(
         "admin",
@@ -149,6 +171,10 @@ def create_users(ds):
             "favourite_views": [user_view.view_id],
         }
     )
+
+    user_view = run_modifications("view", user_view)
+    user_data = run_modifications("user", user_data)
+
     ds.user.save("user", user_data)
     ds.user_avatar.save(
         "user",
@@ -192,6 +218,10 @@ def create_users(ds):
             "favourite_views": [huey_view.view_id],
         }
     )
+
+    huey_view = run_modifications("view", huey_view)
+    huey_data = run_modifications("user", huey_data)
+
     ds.user.save("huey", huey_data)
     ds.user_avatar.save(
         "huey",
@@ -223,7 +253,9 @@ def create_users(ds):
         }
     )
 
-    shawn_data.favourite_views.append(shawnh_view.view_id)
+    shawnh_view = run_modifications("view", shawnh_view)
+    shawn_data = run_modifications("user", shawn_data)
+
     ds.user.save("shawn-h", shawn_data)
     ds.view.save(shawnh_view.view_id, shawnh_view)
 
@@ -251,7 +283,9 @@ def create_users(ds):
         }
     )
 
-    goose_data.favourite_views.append(goose_view.view_id)
+    goose_view = run_modifications("view", goose_view)
+    goose_data = run_modifications("user", goose_data)
+
     ds.user.save("goose", goose_data)
     ds.view.save(goose_view.view_id, goose_view)
 
@@ -271,7 +305,7 @@ def wipe_users(ds):
 
 def create_templates(ds: HowlerDatastore):
     """Create some random templates"""
-    for _ in range(2):
+    for i in range(2):
         keys = sample(list(Hit.flat_fields().keys()), 5)
 
         for detection in ["Detection 1", "Detection 2"]:
@@ -283,6 +317,8 @@ def create_templates(ds: HowlerDatastore):
                     "keys": keys,
                 }
             )
+
+            template = run_modifications("template", template, i == 0)
 
             ds.template.save(
                 template.template_id,
@@ -298,6 +334,8 @@ def create_templates(ds: HowlerDatastore):
             }
         )
 
+        template = run_modifications("template", template)
+
         ds.template.save(
             template.template_id,
             template,
@@ -311,6 +349,8 @@ def create_templates(ds: HowlerDatastore):
                 "keys": ["howler.id", "howler.hash", "howler.analytic", "agent.id"],
             }
         )
+
+        template = run_modifications("template", template)
 
         ds.template.save(
             template.template_id,
@@ -341,7 +381,7 @@ def wipe_templates(ds):
 
 def create_overviews(ds: HowlerDatastore):
     """Create some random overviews"""
-    for _ in range(2):
+    for i in range(2):
         keys = sample(list(Hit.flat_fields().keys()), 5)
 
         for detection in ["Detection 1", "Detection 2"]:
@@ -354,6 +394,8 @@ def create_overviews(ds: HowlerDatastore):
                     "content": f"# Hello, World!\n\n{content}",
                 }
             )
+
+            overview = run_modifications("overview", overview, i == 0)
 
             ds.overview.save(
                 overview.overview_id,
@@ -399,6 +441,8 @@ def create_overviews(ds: HowlerDatastore):
             }
         )
 
+        overview = run_modifications("overview", overview)
+
         ds.overview.save(
             overview.overview_id,
             overview,
@@ -423,6 +467,8 @@ def create_views(ds: HowlerDatastore):
         }
     )
 
+    view = run_modifications("view", view)
+
     ds.view.save(
         view.view_id,
         view,
@@ -436,6 +482,8 @@ def create_views(ds: HowlerDatastore):
             "owner": "none",
         }
     )
+
+    view = run_modifications("view", view)
 
     ds.view.save(
         view.view_id,
@@ -454,6 +502,8 @@ def create_views(ds: HowlerDatastore):
                 "owner": get_random_user(),
             }
         )
+
+        view = run_modifications("view", view)
 
         ds.view.save(
             view.view_id,
@@ -598,6 +648,8 @@ def create_analytics(ds: HowlerDatastore, num_analytics: int = 10):
                 )
             )
 
+        analytic = run_modifications("analytic", analytic)
+
         ds.analytic.save(analytic.analytic_id, analytic)
 
     fields = Hit.flat_fields()
@@ -617,6 +669,8 @@ def create_analytics(ds: HowlerDatastore, num_analytics: int = 10):
         cast(TriageOptions, a.triage_settings).valid_assessments = list(
             set(random.sample(assessments, counts=([3] * len(assessments)), k=random.randint(1, len(assessments) * 3)))
         )
+
+        analytic = run_modifications("analytic", analytic)
 
         ds.analytic.save(a.analytic_id, a)
 
@@ -669,6 +723,8 @@ def create_analytics(ds: HowlerDatastore, num_analytics: int = 10):
                 logger.warning(
                     "For better test data using sigma rules, execute howler/external/generate_sigma_rules.py."
                 )
+
+        a = run_modifications("analytic", a)
 
         ds.analytic.save(a.analytic_id, a)
 
@@ -734,6 +790,8 @@ def create_actions(ds: HowlerDatastore, num_actions: int = 30):
                 "operations": operations,
             }
         )
+
+        action = run_modifications("action", action)
 
         ds.action.save(action.action_id, action)
 
