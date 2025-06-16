@@ -19,7 +19,7 @@ def get_plugins() -> list[BasePluginConfig]:
         try:
             PLUGINS[plugin] = importlib.import_module(f"{plugin}.config").config
         except (ImportError, ModuleNotFoundError):
-            logger.exception("Exception when loading plugin")
+            logger.exception("Exception when loading plugin %s", plugin)
             PLUGINS[plugin] = None
 
     return [plugin for plugin in PLUGINS.values() if plugin]
