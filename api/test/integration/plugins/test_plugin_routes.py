@@ -24,12 +24,20 @@ def mock_plugin():
 
     conf = HowlerTestPluginConfig(name="test-plugin")
 
-    conf.modules.routes.append(importlib.import_module("utils.plugins.example_route").example_route)
-
     PLUGINS["test-plugin"] = conf
 
 
 def test_route_hook(caplog):
+    with caplog.at_level(logging.INFO):
+        app = importlib.import_module("howler.app")
+        importlib.reload(app)
+
+    assert "Enabling additional endpoint: /api/v1/test" not in caplog.text
+
+    from howler.plugins import PLUGINS
+
+    PLUGINS["test-plugin"].modules.routes.append(importlib.import_module("utils.plugins.example_route").example_route)  # type: ignore[union-attr]
+
     with caplog.at_level(logging.INFO):
         app = importlib.import_module("howler.app")
         importlib.reload(app)
