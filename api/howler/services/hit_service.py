@@ -25,7 +25,6 @@ from howler.helper.hit import (
     vote_hit,
 )
 from howler.helper.workflow import Transition, Workflow
-from howler.odm.base import BANNED_FIELDS
 from howler.odm.models.ecs.event import Event
 from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import HitOperationType, HitStatus, HitStatusTransition, Log
@@ -303,7 +302,7 @@ def convert_hit(data: dict[str, Any], unique: bool, ignore_extra_values: bool = 
 
     # Check for deprecated field and unused fields
     odm_flatten = odm.flat_fields(show_compound=True)
-    unused_keys = extra_keys(Hit, data, set(odm_flatten.keys()) - BANNED_FIELDS)
+    unused_keys = extra_keys(Hit, data)
 
     if unused_keys and not ignore_extra_values:
         raise HowlerValueError(f"Hit was created with invalid parameters: {', '.join(unused_keys)}")

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 
 import pytest
 
@@ -80,12 +81,38 @@ def test_convert_hit_mapping():
 
 
 def test_convert_hit_list():
-    data = {
+    data: dict[str, Any] = {
         "howler.analytic": "test",
         "howler.comment.id": "test",
         "howler.comment.value": "test",
         "howler.comment.user": "test",
         "howler.comment.reactions.thumbs-up": ["test"],
+    }
+
+    hit_service.convert_hit(data, True)
+
+    data = {
+        "howler.analytic": "test",
+        "howler.comment": {
+            "id": "test",
+            "value": "test",
+            "user": "test",
+            "reactions": {"thumbs-up": ["test"]},
+        },
+    }
+
+    hit_service.convert_hit(data, True)
+
+    data = {
+        "howler": {
+            "analytic": "test",
+            "comment": {
+                "id": "test",
+                "value": "test",
+                "user": "test",
+                "reactions.thumbs-up": ["test"],
+            },
+        }
     }
 
     hit_service.convert_hit(data, True)
@@ -97,6 +124,36 @@ def test_convert_hit_list():
             "howler.comment.value": "test",
             "howler.comment.user": "test",
             "howler.comment.reactions.thumbs-up.potato": ["test"],
+        }
+
+        hit_service.convert_hit(data, True)
+
+    with pytest.raises(HowlerValueError):
+        data = {
+            "howler.analytic": "test",
+            "howler.comment": {
+                "id": "test",
+                "value": "test",
+                "user": "test",
+                "reactions": {"thumbs-up": ["test"]},
+                "sneaky": "key",
+            },
+        }
+
+        hit_service.convert_hit(data, True)
+
+    with pytest.raises(HowlerValueError):
+        data = {
+            "howler": {
+                "analytic": "test",
+                "comment": {
+                    "id": "test",
+                    "value": "test",
+                    "user": "test",
+                    "reactions.thumbs-up": ["test"],
+                    "sneaky": "key",
+                },
+            }
         }
 
         hit_service.convert_hit(data, True)
