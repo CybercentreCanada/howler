@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import datetime
 from typing import Any, Optional
@@ -149,7 +150,7 @@ class XDRAlert:
         # TODO evaluate if we should set this field if new alert
         return classification.get(graph_classification, "ambiguous")
 
-    def map_alert(self, graph_alert: dict[str, Any], customer_id: str) -> dict[str, Any] | None:
+    def map_alert(self, graph_alert: dict[str, Any], customer_id: str) -> Optional[dict[str, Any]]:
         """Transform a Microsoft Graph alert into a Howler hit format.
 
         This is the main mapping function that converts a Graph API alert object
@@ -231,14 +232,7 @@ class XDRAlert:
                     "operation": [],
                     "generic": [],
                 },
-                "dossier": [
-                    {
-                        "content": [display_name],
-                        "metadata": [graph_alert],
-                        "label": {"en": "MSGraph Alert", "fr": "Alerte MSGraph"},
-                        "format": "markdown",
-                    }
-                ],
+                "data": [json.dumps(graph_alert)],
             },
             "evidence": {"data": []},
             "event": {

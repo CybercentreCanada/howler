@@ -1,5 +1,6 @@
-"""Sentiel Incident mapper for converting Microsoft Sentinel Sentiel Incidents to Howler bundles."""
+"""Sentinel Incident mapper for converting Microsoft Sentinel Incidents to Howler bundles."""
 
+import json
 import logging
 from typing import Any, Optional
 
@@ -81,6 +82,7 @@ class SentinelIncident:
                     "bundle_size": 0,
                     "hits": [],
                     "labels.generic": self._build_labels(custom_tags, system_tags),
+                    "data": [json.dumps(sentinel_incident)],
                 },
                 "organization": {"name": customer_name, "id": tenant_id},
                 "sentinel": {
@@ -115,14 +117,18 @@ class SentinelIncident:
         """
         return self.tid_mapping.get(tid, self.DEFAULT_CUSTOMER_NAME)
 
-    def map_sentinel_status_to_howler(self, sentinel_status: str) -> str:
-        """Map Sentiel Incident status to Howler status.
+    def map_sentinel_status_to_howler(self, sentinel_status: Optional[str]) -> str:
+        """Map Sentinel Incident status to Howler status.
 
         Args:
-            sentinel_status (str): Sentinel status string.
+            sentinel_status (str | None): Sentinel status string or None.
+
         Returns:
             str: Howler status string.
         """
+        if not isinstance(sentinel_status, str) or not sentinel_status:
+            return "open"
+
         status_mapping: dict[str, str] = {
             "new": "open",
             "active": "in-progress",
