@@ -138,6 +138,8 @@ def extra_keys(odm: type["Model"], data: _Mapping) -> set[str]:
     "Geta list of extra keys when compared to a list of permitted keys"
     from howler.odm.base import Mapping
 
+    data = flatten_deep(data)
+
     result: set[str] = set()
     for key in data.keys():
         parts = key.split(".")
