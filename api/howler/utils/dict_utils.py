@@ -150,7 +150,11 @@ def extra_keys(odm: type["Model"], data: _Mapping) -> set[str]:
 
             if part in sub_fields:
                 current_odm = sub_fields[part]
-            elif isinstance(current_odm, Mapping):
+                break
+            elif isinstance(current_odm, Optional):
+                current_odm = current_odm.child_type
+
+            if isinstance(current_odm, Mapping):
                 current_odm = current_odm.child_type
             else:
                 result.add(key)

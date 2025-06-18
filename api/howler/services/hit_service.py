@@ -316,18 +316,14 @@ def convert_hit(data: dict[str, Any], unique: bool, ignore_extra_values: bool = 
 
     if re.search(r"^([A-Za-z ])+$", odm.howler.analytic) is None:
         warnings.append(
-            (
-                f"The value {odm.howler.analytic} does not match best practices for Howler analytic names. "
-                "See howler's documentation for more information."
-            )
+            f"The value {odm.howler.analytic} does not match best practices for Howler analytic names. "
+            "See howler's documentation for more information."
         )
 
     if odm.howler.detection and re.search(r"^([A-Za-z ])+$", odm.howler.detection) is None:
         warnings.append(
-            (
-                f"The value {odm.howler.detection} does not match best practices for Howler detection names. "
-                "See howler's documentation for more information."
-            )
+            f"The value {odm.howler.detection} does not match best practices for Howler detection names. "
+            "See howler's documentation for more information."
         )
 
     if odm.event:
