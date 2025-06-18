@@ -385,7 +385,7 @@ def update_hit(
 ):
     """Update one or more properties of a hit in the database."""
     # Status of a hit should only be updated through the transition function
-    if _modifies_prop("status", operations):
+    if _modifies_prop("howler.status", operations):
         raise HowlerValueError(
             "Status of a Hit cannot be modified like other properties. Please use a transition to do so."
         )
