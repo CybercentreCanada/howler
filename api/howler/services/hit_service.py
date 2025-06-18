@@ -295,6 +295,7 @@ def convert_hit(data: dict[str, Any], unique: bool, ignore_extra_values: bool = 
     if "bundle_size" not in data and "howler.hits" in data:
         data["howler.bundle_size"] = len(data["howler.hits"])
 
+    # TODO: This is a really strange double-validation check we should look to refactor
     try:
         odm = Hit(data, ignore_extra_values=ignore_extra_values)
     except TypeError as e:

@@ -153,6 +153,23 @@ def test_convert_hit_list():
                     "reactions.thumbs-up": ["test"],
                     "sneaky": "key",
                 },
+                "sneaky": "key",
+            }
+        }
+
+        hit_service.convert_hit(data, True)
+
+    with pytest.raises(HowlerValueError):
+        data = {
+            "howler": {
+                "analytic": "test",
+                "comment": {
+                    "id": "test",
+                    "value": "test",
+                    "user": "test",
+                    "reactions.thumbs-up": ["test"],
+                },
+                "sneaky": "key",
             }
         }
 
