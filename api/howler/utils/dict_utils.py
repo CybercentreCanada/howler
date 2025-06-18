@@ -143,22 +143,21 @@ def extra_keys(odm: type["Model"], data: _Mapping) -> set[str]:
     result: set[str] = set()
     for key in data.keys():
         parts = key.split(".")
-
         current_odm = odm
         for part in parts:
             sub_fields: dict[str, Any] = current_odm.fields()
 
             if part in sub_fields:
                 current_odm = sub_fields[part]
-                break
-            elif isinstance(current_odm, Optional):
-                current_odm = current_odm.child_type
-
-            if isinstance(current_odm, Mapping):
-                current_odm = current_odm.child_type
             else:
-                result.add(key)
-                break
+                if isinstance(current_odm, Optional):
+                    current_odm = current_odm.child_type
+
+                if isinstance(current_odm, Mapping):
+                    current_odm = current_odm.child_type
+                else:
+                    result.add(key)
+                    break
 
     return result
 
