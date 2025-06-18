@@ -136,7 +136,7 @@ def unflatten(data: _Mapping) -> _Mapping:
 
 def extra_keys(odm: type["Model"], data: _Mapping) -> set[str]:
     "Geta list of extra keys when compared to a list of permitted keys"
-    from howler.odm.base import Mapping
+    from howler.odm.base import Mapping, Optional
 
     data = flatten_deep(data)
 
