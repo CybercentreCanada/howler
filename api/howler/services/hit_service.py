@@ -25,7 +25,6 @@ from howler.helper.hit import (
     vote_hit,
 )
 from howler.helper.workflow import Transition, Workflow
-from howler.odm.base import BANNED_FIELDS
 from howler.odm.models.ecs.event import Event
 from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import HitOperationType, HitStatus, HitStatusTransition, Log
@@ -296,6 +295,7 @@ def convert_hit(data: dict[str, Any], unique: bool, ignore_extra_values: bool = 
     if "bundle_size" not in data and "howler.hits" in data:
         data["howler.bundle_size"] = len(data["howler.hits"])
 
+    # TODO: This is a really strange double-validation check we should look to refactor
     try:
         odm = Hit(data, ignore_extra_values=ignore_extra_values)
     except TypeError as e:
@@ -303,7 +303,7 @@ def convert_hit(data: dict[str, Any], unique: bool, ignore_extra_values: bool = 
 
     # Check for deprecated field and unused fields
     odm_flatten = odm.flat_fields(show_compound=True)
-    unused_keys = extra_keys(data, set(odm_flatten.keys()) - BANNED_FIELDS)
+    unused_keys = extra_keys(Hit, data)
 
     if unused_keys and not ignore_extra_values:
         raise HowlerValueError(f"Hit was created with invalid parameters: {', '.join(unused_keys)}")

@@ -20,7 +20,6 @@ from enum import Enum as PyEnum
 from enum import EnumMeta
 from typing import Any as _Any
 from typing import Dict, Tuple, Union
-from typing import Mapping as _Mapping
 from venv import logger
 
 import arrow
@@ -28,12 +27,7 @@ import validators
 from dateutil.tz import tzutc
 
 from howler.common import loader
-from howler.common.exceptions import (
-    HowlerKeyError,
-    HowlerNotImplementedError,
-    HowlerTypeError,
-    HowlerValueError,
-)
+from howler.common.exceptions import HowlerKeyError, HowlerNotImplementedError, HowlerTypeError, HowlerValueError
 from howler.common.net import is_valid_domain, is_valid_ip
 from howler.utils.dict_utils import flatten, recursive_update
 from howler.utils.isotime import now_as_iso
@@ -1050,7 +1044,7 @@ class Optional(_Field):
 
 class Model:
     @classmethod
-    def fields(cls, skip_mappings=False) -> _Mapping[str, _Field]:
+    def fields(cls, skip_mappings=False) -> dict[str, _Field]:
         """Describe the elements of the model.
 
         For compound fields return the field object.
@@ -1122,7 +1116,7 @@ class Model:
         return out
 
     @classmethod
-    def flat_fields(cls, show_compound=False, skip_mappings=False) -> _Mapping[str, _Field]:
+    def flat_fields(cls, show_compound=False, skip_mappings=False) -> dict[str, _Field]:
         """Describe the elements of the model.
 
         Recurse into compound fields, concatenating the names with '.' separators.

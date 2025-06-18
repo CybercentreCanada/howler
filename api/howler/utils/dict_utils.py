@@ -134,32 +134,27 @@ def unflatten(data: _Mapping) -> _Mapping:
     return out
 
 
-def extra_keys(data: _Mapping, keys: set[str], parent_key: Optional[str] = None) -> set[str]:
+def extra_keys(odm: type["Model"], data: _Mapping) -> set[str]:
     "Geta list of extra keys when compared to a list of permitted keys"
+    from howler.odm.base import Mapping
+
+    data = flatten_deep(data)
+
     result: set[str] = set()
     for key in data.keys():
-        if isinstance(data[key], dict):
-            result = result | extra_keys(
-                data[key],
-                {sub_key[(len(sub_key) + 1) :] for sub_key in keys if sub_key.startswith(f"{key}.")},
-                parent_key=key if not parent_key else f"{parent_key}.{key}",
-            )
-        elif isinstance(data[key], list):
-            if key in keys:
-                continue
+        parts = key.split(".")
 
-            for entry in data[key]:
-                if not isinstance(entry, dict):
-                    result.add(key if not parent_key else f"{parent_key}.{key}")
-                    break
-                else:
-                    result = result | extra_keys(
-                        entry,
-                        {sub_key[(len(key) + 1) :] for sub_key in keys if sub_key.startswith(f"{key}.")},
-                        parent_key=key if not parent_key else f"{parent_key}.{key}",
-                    )
-        elif key not in keys:
-            result.add(key if not parent_key else f"{parent_key}.{key}")
+        current_odm = odm
+        for part in parts:
+            sub_fields: dict[str, Any] = current_odm.fields()
+
+            if part in sub_fields:
+                current_odm = sub_fields[part]
+            elif isinstance(current_odm, Mapping):
+                current_odm = current_odm.child_type
+            else:
+                result.add(key)
+                break
 
     return result
 
