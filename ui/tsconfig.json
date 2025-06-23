@@ -26,6 +26,6 @@
     "baseUrl": "./src",
     "paths": {}
   },
-  "include": ["src", "public/scripts/background.js"],
+  "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
