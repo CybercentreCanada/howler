@@ -1,6 +1,6 @@
 const isDark = JSON.parse(localStorage.getItem('templateui.core.darkMode') || 'false');
 
-document.body.style.backgroundColor = isDark ? '#121212' : '#fff'
+document.body.style.backgroundColor = isDark ? '#121212' : '#fff';
 
 window.addEventListener('load', () => {
   const observer = new MutationObserver(_mutations => {
