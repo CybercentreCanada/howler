@@ -22,8 +22,6 @@ SUB_API = "tools"
 tool_api = make_subapi_blueprint(SUB_API, api_version=1)
 tool_api._doc = "Manage the tools"
 
-FIELDS = Hit.flat_fields()
-
 logger = get_logger(__file__)
 
 hit_helper = OdmHelper(Hit)
@@ -78,6 +76,7 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
         return bad_request(err="Invalid: 'hits' field is missing or invalid.")
     warnings = []
     # Validate field_map targets
+    hit_fields = Hit.flat_fields()
     for targets in field_map.values():
         for target in targets:
             # This is checking to see if the target matches one of two cases:
@@ -85,7 +84,7 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
             # Compound fields - hit.obj of type dict (should also match)
             # This allows significantly easier creation of hits, since you don't need to deconstruct every dict into
             # individual fields
-            if target not in FIELDS and not any(f for f in FIELDS.keys() if get_parent_key(f) == target):
+            if target not in hit_fields and not any(f for f in hit_fields.keys() if get_parent_key(f) == target):
                 warning = f"Invalid target field in the map: {target}"
                 if ignore_extra_values:
                     warnings.append(warning)
@@ -114,11 +113,11 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
                 for target in targets:
                     _val = val
                     try:
-                        field_data: Optional[_Field] = FIELDS[target]
+                        field_data: Optional[_Field] = hit_fields[target]
                     except KeyError:
-                        logger.debug(f"`{target}` not in FIELDS")
+                        logger.debug(f"`{target}` not in hit fields")
                         field_data = next(
-                            (v for k, v in FIELDS.items() if get_parent_key(k) == target),
+                            (v for k, v in hit_fields.items() if get_parent_key(k) == target),
                             None,
                         )
 
