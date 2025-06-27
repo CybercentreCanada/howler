@@ -4,12 +4,7 @@ import sys
 
 from flask import request
 
-from howler.common.logging.format import (
-    HWL_AUDIT_FORMAT,
-    HWL_DATE_FORMAT,
-    HWL_ISO_DATE_FORMAT,
-    HWL_LOG_FORMAT,
-)
+from howler.common.logging.format import HWL_AUDIT_FORMAT, HWL_DATE_FORMAT, HWL_ISO_DATE_FORMAT, HWL_LOG_FORMAT
 from howler.config import DEBUG, config
 
 AUDIT = config.ui.audit
@@ -94,10 +89,15 @@ def audit(args, kwargs, logged_in_uname, user, func, impersonator=None):
     except Exception:
         json_blob = {}
 
+    try:
+        req_args = ["%s='%s'" % (k, v) for k, v in request.args.items() if k in AUDIT_KW_TARGET]
+    except RuntimeError:
+        req_args = []
+
     params_list = (
         list(args)
         + ["%s='%s'" % (k, v) for k, v in kwargs.items() if k in AUDIT_KW_TARGET]
-        + ["%s='%s'" % (k, v) for k, v in request.args.items() if k in AUDIT_KW_TARGET]
+        + req_args
         + ["%s='%s'" % (k, v) for k, v in json_blob.items() if k in AUDIT_KW_TARGET]
     )
 
