@@ -7,11 +7,14 @@ from howler.helper.hit import HitStatus, HitStatusTransition
 from howler.odm.helper import generate_useful_hit
 from howler.odm.models.action import Action
 from howler.odm.models.howler_data import Assessment
+from howler.odm.random_data import create_users, wipe_users
 from howler.services import hit_service
 
 
 def test_execute_action(datastore_connection: HowlerDatastore, caplog):
     lookups = loader.get_lookups()
+    wipe_users(datastore_connection)
+    create_users(datastore_connection)
     users = datastore_connection.user.search("*:*")["items"]
 
     test_hit_promote = generate_useful_hit(lookups, users, False)
