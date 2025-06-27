@@ -10,7 +10,7 @@ from howler.odm.models.howler_data import Assessment
 from howler.services import hit_service
 
 
-def test_execute_action(datastore_connection: HowlerDatastore):
+def test_execute_action(datastore_connection: HowlerDatastore, caplog):
     lookups = loader.get_lookups()
     users = datastore_connection.user.search("*:*")["items"]
 
@@ -23,8 +23,8 @@ def test_execute_action(datastore_connection: HowlerDatastore):
 
     test_hit_demote = generate_useful_hit(lookups, users, False)
     test_hit_promote.howler.assessment = None
-    test_hit_promote.howler.escalation = "alert"
     test_hit_promote.howler.status = HitStatus.OPEN
+    test_hit_promote.howler.escalation = "alert"
     test_hit_demote.howler.analytic = "test_triage_assess_demote"
     datastore_connection.hit.save(test_hit_demote.howler.id, test_hit_demote)
 
@@ -71,13 +71,27 @@ def test_execute_action(datastore_connection: HowlerDatastore):
     assert datastore_connection.action.exists(action_demote.action_id)
     assert datastore_connection.action.exists(action_promote.action_id)
 
-    hit_service.transition_hit(
-        test_hit_demote.howler.id, HitStatusTransition.ASSESS, user=users[0], assessment=Assessment.FALSE_POSITIVE
-    )
+    assert datastore_connection.action.search("action_id:*")["total"] == 2
 
-    hit_service.transition_hit(
-        test_hit_promote.howler.id, HitStatusTransition.ASSESS, user=users[0], assessment=Assessment.COMPROMISE
-    )
+    user = next(user for user in users if "automation_basic" in user["type"])
+
+    with caplog.at_level(logging.INFO):
+        hit_service.transition_hit(
+            test_hit_demote.howler.id, HitStatusTransition.ASSESS, user=user, assessment=Assessment.FALSE_POSITIVE
+        )
+
+    assert f"Running action {action_demote.action_id} on bulk query"
+
+    caplog.clear()
+
+    with caplog.at_level(logging.INFO):
+        hit_service.transition_hit(
+            test_hit_promote.howler.id, HitStatusTransition.ASSESS, user=user, assessment=Assessment.COMPROMISE
+        )
+
+    assert f"Running action {action_promote.action_id} on bulk query"
+
+    caplog.clear()
 
     datastore_connection.hit.commit()
 
