@@ -3,7 +3,7 @@ import logging
 
 from howler.common import loader
 from howler.datastore.howler_store import HowlerDatastore
-from howler.helper.hit import HitStatusTransition
+from howler.helper.hit import HitStatus, HitStatusTransition
 from howler.odm.helper import generate_useful_hit
 from howler.odm.models.action import Action
 from howler.odm.models.howler_data import Assessment
@@ -15,10 +15,16 @@ def test_execute_action(datastore_connection: HowlerDatastore):
     users = datastore_connection.user.search("*:*")["items"]
 
     test_hit_promote = generate_useful_hit(lookups, users, False)
+    test_hit_promote.howler.assessment = None
+    test_hit_promote.howler.escalation = "alert"
+    test_hit_promote.howler.status = HitStatus.OPEN
     test_hit_promote.howler.analytic = "test_triage_assess_promote"
     datastore_connection.hit.save(test_hit_promote.howler.id, test_hit_promote)
 
     test_hit_demote = generate_useful_hit(lookups, users, False)
+    test_hit_promote.howler.assessment = None
+    test_hit_promote.howler.escalation = "alert"
+    test_hit_promote.howler.status = HitStatus.OPEN
     test_hit_demote.howler.analytic = "test_triage_assess_demote"
     datastore_connection.hit.save(test_hit_demote.howler.id, test_hit_demote)
 
