@@ -59,7 +59,9 @@ def bulk_execute_on_query(query: str, trigger: str = "create", user: Optional[Us
     if trigger not in VALID_TRIGGERS:
         raise HowlerValueError(f"{trigger} is not a valid trigger. It must be one of {','.join(VALID_TRIGGERS)}")
 
-    on_trigger_actions: list[Action] = storage.action.search(f"triggers:{sanitize_lucene_query(trigger)}")["items"]
+    on_trigger_actions: list[Action] = storage.action.search(f"triggers:{sanitize_lucene_query(trigger)}", rows=10000)[
+        "items"
+    ]
 
     for action in on_trigger_actions:
         intersected_query = f"({query}) AND ({action.query})"

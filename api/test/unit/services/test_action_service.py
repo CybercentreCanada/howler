@@ -22,6 +22,8 @@ def test_execute_action(datastore_connection: HowlerDatastore):
     test_hit_demote.howler.analytic = "test_triage_assess_demote"
     datastore_connection.hit.save(test_hit_demote.howler.id, test_hit_demote)
 
+    datastore_connection.action.wipe()
+
     # Create actions
     action_demote = Action(
         {
@@ -67,12 +69,13 @@ def test_execute_action(datastore_connection: HowlerDatastore):
         test_hit_demote.howler.id, HitStatusTransition.ASSESS, user=users[0], assessment=Assessment.FALSE_POSITIVE
     )
 
-    assert "demoted" in datastore_connection.hit.get(test_hit_demote.howler.id).howler.labels.generic
-
     hit_service.transition_hit(
         test_hit_promote.howler.id, HitStatusTransition.ASSESS, user=users[0], assessment=Assessment.COMPROMISE
     )
 
+    datastore_connection.hit.commit()
+
+    assert "demoted" in datastore_connection.hit.get(test_hit_demote.howler.id).howler.labels.generic
     assert "promoted" in datastore_connection.hit.get(test_hit_promote.howler.id).howler.labels.generic
 
     datastore_connection.hit.delete(test_hit_demote.howler.id)
@@ -90,7 +93,9 @@ def test_execute_action_no_results(datastore_connection: HowlerDatastore, caplog
     test_hit.howler.analytic = "test_triage_assess_promote"
     datastore_connection.hit.save(test_hit.howler.id, test_hit)
 
-    # Create actions
+    datastore_connection.action.wipe()
+
+    # Create action
     test_action = Action(
         {
             "triggers": ["promote"],
