@@ -39,7 +39,6 @@ def test_execute_action(datastore_connection: HowlerDatastore):
     )
 
     datastore_connection.action.save(action_demote.action_id, action_demote)
-    assert datastore_connection.action.exists(action_demote.action_id)
 
     # Create actions
     action_promote = Action(
@@ -58,6 +57,10 @@ def test_execute_action(datastore_connection: HowlerDatastore):
     )
 
     datastore_connection.action.save(action_promote.action_id, action_promote)
+
+    datastore_connection.action.commit()
+
+    assert datastore_connection.action.exists(action_demote.action_id)
     assert datastore_connection.action.exists(action_promote.action_id)
 
     hit_service.transition_hit(
@@ -104,6 +107,7 @@ def test_execute_action_no_results(datastore_connection: HowlerDatastore, caplog
     )
 
     datastore_connection.action.save(test_action.action_id, test_action)
+    datastore_connection.action.commit()
     assert datastore_connection.action.exists(test_action.action_id)
 
     with caplog.at_level(logging.DEBUG):
