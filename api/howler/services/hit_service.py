@@ -555,9 +555,9 @@ def transition_hit(
         trigger: Union[Literal["promote"], Literal["demote"]]
 
         if transition == HitStatusTransition.ASSESS:
-            new_assessment = AssessmentEscalationMap[kwargs["assessment"]]
+            new_escalation = AssessmentEscalationMap[kwargs["assessment"]]
 
-            if new_assessment == Escalation.EVIDENCE:
+            if new_escalation == Escalation.EVIDENCE:
                 trigger = "promote"
             else:
                 trigger = "demote"

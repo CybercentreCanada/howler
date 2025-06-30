@@ -1,19 +1,9 @@
 import json
-from typing import Any, Optional
 
 from flask import Response, request
 
 import howler.actions as actions
-from howler.api import (
-    bad_request,
-    created,
-    forbidden,
-    internal_error,
-    make_subapi_blueprint,
-    no_content,
-    not_found,
-    ok,
-)
+from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
 from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
 from howler.common.logging.audit import audit
@@ -22,7 +12,7 @@ from howler.config import CLASSIFICATION
 from howler.odm.models.action import Action
 from howler.odm.models.user import User
 from howler.security import api_login
-from howler.services.action_service import VALID_TRIGGERS
+from howler.services import action_service
 
 SUB_API = "action"
 classification_definition = CLASSIFICATION.get_parsed_classification_definition()
@@ -49,41 +39,6 @@ def get_actions(**_) -> Response:
     ]
     """
     return ok(datastore().action.search("*:*", as_obj=False)["items"])
-
-
-def validate_action(new_action: Any) -> Optional[Response]:  # noqa: C901
-    """Validate a new action"""
-    if not isinstance(new_action, dict):
-        return bad_request(err="Incorrect data structure!")
-
-    if "name" not in new_action:
-        return bad_request(err="You must specify a name.")
-    elif not new_action["name"]:
-        return bad_request(err="Name cannot be empty.")
-
-    if "query" not in new_action:
-        return bad_request(err="You must specify a query.")
-    elif not new_action["query"]:
-        return bad_request(err="Query cannot be empty.")
-
-    operations = new_action.get("operations", None)
-    if operations is None:
-        return bad_request(err="You must specify a list of operations.")
-
-    if not isinstance(operations, list):
-        return bad_request(err="'operations' must be a list of operations.")
-
-    if len(operations) < 1:
-        return bad_request(err="You must specify at least one operation.")
-
-    operation_ids = [o["operation_id"] for o in operations]
-    if len(operation_ids) != len(set(operation_ids)):
-        return bad_request(err="You must have a maximum of one operation of each type in the action.")
-
-    if set(new_action.get("triggers", [])) - set(VALID_TRIGGERS):
-        return bad_request(err="Invalid trigger provided.")
-
-    return None
 
 
 @generate_swagger_docs()
@@ -120,7 +75,7 @@ def add_action(user: User, **_) -> Response:
     if new_action is None:
         return bad_request(err="You must specify an action")
 
-    if error := validate_action(new_action):
+    if error := action_service.validate_action(new_action):
         return error
 
     try:
@@ -192,7 +147,7 @@ def update_action(id: str, user: User, **_) -> Response:
         "action_id": existing_action["action_id"],
     }
 
-    if error := validate_action(updated_action):
+    if error := action_service.validate_action(updated_action):
         return error
 
     try:
