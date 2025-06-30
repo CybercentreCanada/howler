@@ -18,7 +18,7 @@ root.addHandler(handler)
 
 ready = False
 retries = 0
-while not ready and retries < 5:
+while not ready and retries < 10:
     try:
         response = requests.get("http://localhost:9100/health/ready")
 
