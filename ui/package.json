@@ -138,6 +138,9 @@
       "esbuild"
     ]
   },
+  "repository": {
+    "url": "https://github.com/CybercentreCanada/howler"
+  },
   "resolutions": {
     "internal-slot": "1.0.7"
   },
