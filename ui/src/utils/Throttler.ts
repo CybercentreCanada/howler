@@ -1,7 +1,7 @@
 export default class Throttler {
-  private throttleId: NodeJS.Timeout = null;
+  private throttleId: number = null;
 
-  private delayId: NodeJS.Timeout = null;
+  private delayId: number = null;
 
   private msec: number = null;
 

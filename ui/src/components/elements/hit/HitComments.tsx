@@ -18,7 +18,7 @@ import { SocketContext, type RecievedDataType } from 'components/app/providers/S
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import useMyApi from 'components/hooks/useMyApi';
 import type { HowlerUser } from 'models/entities/HowlerUser';
-import type { AnalyticComment } from 'models/entities/generated/AnalyticComment';
+import type { Comment as AnalyticComment } from 'models/entities/generated/Comment';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { SocketEvent } from 'models/socket/HitUpdate';
 import {

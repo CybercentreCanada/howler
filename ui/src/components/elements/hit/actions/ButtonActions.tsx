@@ -1,10 +1,24 @@
-import { Button, FormControl, FormControlLabel, FormLabel, Radio, RadioGroup, Stack, Tooltip } from '@mui/material';
+import type { StyledComponent } from '@emotion/styled';
+import {
+  Badge,
+  Button,
+  FormControl,
+  FormControlLabel,
+  FormLabel,
+  Radio,
+  RadioGroup,
+  Stack,
+  styled,
+  Tooltip,
+  type BadgeProps
+} from '@mui/material';
+import { blueGrey } from '@mui/material/colors';
 import type { FC } from 'react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { HitShortcuts } from '../HitShortcuts';
 import type { ActionButton } from './SharedComponents';
-import { StyledBadge, TOP_ROW } from './SharedComponents';
+import { TOP_ROW } from './SharedComponents';
 
 interface DesktopActionProps {
   actions: ActionButton[];
@@ -13,6 +27,19 @@ interface DesktopActionProps {
   currentVote: string;
   orientation: 'horizontal' | 'vertical';
 }
+
+const StyledBadge: StyledComponent<BadgeProps> = styled(Badge)({
+  '& .MuiBadge-badge': {
+    borderRadius: '4px',
+    background: blueGrey[400],
+    fontSize: 9,
+    height: '15px',
+    minWidth: '15px',
+    padding: '0',
+    right: '5px',
+    top: '2.5px'
+  }
+});
 
 const ButtonActions: FC<DesktopActionProps> = ({ actions, loading, orientation, shortcuts, currentVote }) => {
   const { t } = useTranslation();

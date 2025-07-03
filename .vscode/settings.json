@@ -70,9 +70,18 @@
   "python.analysis.exclude": ["**/build", "plugins/*/.venv"],
   "python.analysis.autoFormatStrings": true,
   "python.analysis.completeFunctionParens": true,
-  "mypy-type-checker.ignorePatterns": ["api/test/**/*.py", "client/test/**/*.py", "plugins/*/test/**/*.py"],
+  "mypy-type-checker.ignorePatterns": [
+    "api/test/**/*.py",
+    "client/test/**/*.py",
+    "plugins/*/test/**/*.py"
+  ],
   "ruff.configurationPreference": "filesystemFirst",
-  "python.analysis.extraPaths": ["./api/test", "./client/test", "./plugins/sentinel", "./plugins/evidence"],
+  "python.analysis.extraPaths": [
+    "./api/test",
+    "./client/test",
+    "./plugins/sentinel",
+    "./plugins/evidence"
+  ],
   // "flake8.cwd": "${workspaceFolder}/api",
   "flake8.cwd": "${fileDirname}",
   "editor.formatOnSaveMode": "modificationsIfAvailable",
@@ -81,5 +90,6 @@
   "python.analysis.typeEvaluation.strictDictionaryInference": true,
   "eslint.workingDirectories": [
     { "directory": "./ui", "changeProcessCWD": true }
-  ]
+  ],
+  "flake8.args": ["--max-line-length=120"]
 }

@@ -1,4 +1,4 @@
-import { createInstance } from 'i18next';
+import { createInstance, type i18n } from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import helpMainEN from 'locales/en/help/main.json';
 import helpSearchEN from 'locales/en/help/search.json';
@@ -30,7 +30,7 @@ const resources = {
   }
 };
 
-const i18nInstance = createInstance();
+const i18nInstance: i18n = createInstance();
 
 i18nInstance
   .use(LanguageDetector)

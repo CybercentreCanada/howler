@@ -5,7 +5,7 @@ import { MY_LOCAL_STORAGE_PREFIX, StorageKey } from 'utils/constants';
 
 type ValuesType = { [K in StorageKey]?: any };
 
-interface LocalStorageContextType {
+export interface LocalStorageContextType {
   set: <T>(key: string, value: T) => void;
   values: ValuesType;
   remove: (key: string) => void;

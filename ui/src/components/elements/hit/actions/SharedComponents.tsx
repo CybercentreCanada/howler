@@ -1,4 +1,5 @@
-import { Badge, styled } from '@mui/material';
+import type { StyledComponent } from '@emotion/styled';
+import { Badge, styled, type BadgeProps } from '@mui/material';
 import { blueGrey } from '@mui/material/colors';
 import type { ReactNode } from 'react';
 
@@ -25,7 +26,7 @@ export const VOTE_OPTIONS: Partial<ActionButton>[] = [
   { name: 'Malicious', key: 'E', type: 'vote' }
 ];
 
-export const StyledBadge = styled(Badge)({
+export const StyledBadge: StyledComponent<BadgeProps> = styled(Badge)({
   '& .MuiBadge-badge': {
     borderRadius: '4px',
     background: blueGrey[400],

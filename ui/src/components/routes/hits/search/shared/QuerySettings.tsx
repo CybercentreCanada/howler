@@ -29,7 +29,7 @@ const QuerySettings: FC<{ verticalSorters?: boolean; boxSx?: SxProps }> = ({ ver
       >
         <HitSort />
         <HitFilter />
-        <SearchSpan useDefault={!selectedView?.span} />
+        <SearchSpan />
       </Stack>
 
       <CustomSpan />

@@ -13,6 +13,7 @@
 # production
 /build
 /dist
+/publish
 
 # misc
 .DS_Store
@@ -21,7 +22,6 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
 
 # Created by https://www.gitignore.io/api/node,react,windows,visualstudiocode
 # Edit at https://www.gitignore.io/?templates=node,react,windows,visualstudiocode

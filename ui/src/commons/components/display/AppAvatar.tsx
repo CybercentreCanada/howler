@@ -5,12 +5,9 @@ import { useMemo } from 'react';
 
 export type GravatarD = '404' | 'mp' | 'identicon' | 'monsterid' | 'wavatar' | 'retro' | 'robohash' | 'blank';
 
-export default function AppAvatar({
-  d,
-  url,
-  email,
-  ...props
-}: { d?: GravatarD; url?: string; email?: string } & Omit<AvatarProps, 'src'>) {
+export type AppAvatarProps = { d?: GravatarD; url?: string; email?: string } & Omit<AvatarProps, 'src'>;
+
+export default function AppAvatar({ d, url, email, ...props }: AppAvatarProps) {
   const configs = useAppConfigs();
 
   const avatarUrl = useMemo(

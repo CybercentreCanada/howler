@@ -1,3 +1,4 @@
+import type { StyledComponent } from '@emotion/styled';
 import {
   Box,
   ClickAwayListener,
@@ -18,13 +19,13 @@ import {
 } from '@mui/material';
 import type { AppBarUserMenuElement } from 'commons/components//app/AppConfigs';
 import { useAppConfigs, useAppUser } from 'commons/components/app/hooks';
-import AppAvatar from 'commons/components/display/AppAvatar';
+import AppAvatar, { type AppAvatarProps } from 'commons/components/display/AppAvatar';
 import ThemeSelection from 'commons/components/topnav/ThemeSelection';
 import { memo, useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
-export const AppUserAvatar = styled(AppAvatar)(({ theme }) => ({
+export const AppUserAvatar: StyledComponent<AppAvatarProps> = styled(AppAvatar)(({ theme }) => ({
   width: theme.spacing(5),
   height: theme.spacing(5),
   [theme.breakpoints.down('sm')]: {

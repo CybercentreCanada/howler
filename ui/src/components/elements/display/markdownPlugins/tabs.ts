@@ -1,5 +1,5 @@
 import type * as mdast from 'mdast';
-import type * as unified from 'unified';
+import type { Plugin } from 'unified';
 import { visit } from 'unist-util-visit';
 
 //this plugins aims to bring docusaurus tabs functionality to base react-markdown.
@@ -31,7 +31,7 @@ const findTabs = (index, parent) => {
   return tabs;
 };
 
-export const codeTabs: unified.Plugin<[], mdast.Root> = () => {
+export const codeTabs: Plugin<[], mdast.Root> = () => {
   return (tree, file) => {
     visit(tree, 'code', (node, index, parent) => {
       const metaString = `${node.lang ?? ''} ${node.meta ?? ''}`.trim();

@@ -27,6 +27,7 @@ class AxiosCache {
 }
 
 export default class AxiosClient implements RestClient {
+  // @ts-ignore
   private cache: AxiosCache;
 
   private client: AxiosInstance;

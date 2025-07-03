@@ -52,6 +52,7 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       sourcemap: false,
+      outDir: 'build',
       rollupOptions: {
         plugins: [],
         output: {
