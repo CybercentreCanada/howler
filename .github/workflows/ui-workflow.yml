@@ -129,11 +129,12 @@ jobs:
           pnpm run build-all
           cp package.json dist
           cp -r public dist
+          cp .npmrc dist
         env:
           VITE_BRANCH: ${{ github.ref }}
           VITE_COMMIT_HASH: ${{ github.sha }}
           NODE_OPTIONS: --max-old-space-size=16384
-      - name: Prep Pa
+      - name: Publish Built Package
         run: |
           pnpm publish --provenance --access public
         working-directory: ./ui/dist
