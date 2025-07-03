@@ -127,9 +127,6 @@ jobs:
       - name: Build UI
         run: |
           pnpm run build-all
-          cp package.json dist
-          cp -r public dist
-          cp .npmrc dist
           python build_scripts/prep_for_publish.py
         env:
           VITE_BRANCH: ${{ github.ref }}
