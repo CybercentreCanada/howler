@@ -10,6 +10,10 @@ if not (ui_path / "dist" / ".npmrc").exists():
     print("\tCopying .npmrc")
     shutil.copy(ui_path / ".npmrc", ui_path / "dist" / ".npmrc")
 
+if not (ui_path / "dist" / "index.css").exists():
+    print("\tCopying index.css")
+    shutil.copy(ui_path / "src" / "index.css", ui_path / "dist" / "index.css")
+
 if not (ui_path / "dist" / "package.json").exists():
     print("\tCopying package.json")
     shutil.copy(ui_path / "package.json", ui_path / "dist" / "package.json")
@@ -60,7 +64,7 @@ for path in (ui_path / "src").rglob("**"):
 
 print(f"\t Writing {len(exports)} entries to exports")
 
-package_json["exports"] = {}
+package_json["exports"] = {"./i18n": "./i18n.js", "./index.css": "./index.css"}
 for path in exports:
     if "." in path.name:
         package_json["exports"][f"./{path.parent.relative_to(ui_path / "src")}"] = (
