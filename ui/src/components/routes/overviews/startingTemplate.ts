@@ -1,16 +1,19 @@
-import { HELPERS } from 'components/elements/display/handlebars/helpers';
+import { helpers } from 'components/elements/display/handlebars/helpers';
 
-const helperText = HELPERS.map(helper =>
-  `
+export const startingTemplate = () => {
+  const helperText = helpers()
+    .map(helper =>
+      `
 ### \`${helper.keyword}\`
 
 ${helper.documentation}
 
 ---
 `.trim()
-).join('\n');
+    )
+    .join('\n');
 
-export const STARTING_TEMPLATE = `
+  return `
 # Creating an Overview
 
 Overviews can be used to modify the way data is presented on alerts that match the overview's settings. Overviews are, by design, easy to create and quite flexible.
@@ -179,3 +182,4 @@ You can also make basic fetch requests for, and parse, JSON data from external s
 
 ${helperText}
 `;
+};

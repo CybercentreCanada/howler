@@ -156,24 +156,26 @@ const DossierEditor: FC = () => {
     <PageCenter maxWidth="1000px" width="100%" textAlign="left" height="97%">
       <Box position="relative" height="100%">
         <Tooltip title={validationError}>
-          <Fab
-            variant="extended"
-            size="large"
-            color="primary"
-            disabled={!dirty || searchDirty || !!validationError || loading}
-            sx={theme => ({
-              textTransform: 'none',
-              position: 'absolute',
-              right: isNarrow ? theme.spacing(2) : `calc(100% + ${theme.spacing(2)})`,
-              whiteSpace: 'nowrap',
-              pointerEvents: 'initial !important',
-              ...(isNarrow ? { bottom: theme.spacing(1) } : { top: 0 })
-            })}
-            onClick={save}
-          >
-            {loading ? <CircularProgress size={24} sx={{ mr: 1 }} /> : <Save sx={{ mr: 1 }} />}
-            <Typography>{t('save')}</Typography>
-          </Fab>
+          <span>
+            <Fab
+              variant="extended"
+              size="large"
+              color="primary"
+              disabled={!dirty || searchDirty || !!validationError || loading}
+              sx={theme => ({
+                textTransform: 'none',
+                position: 'absolute',
+                right: isNarrow ? theme.spacing(2) : `calc(100% + ${theme.spacing(2)})`,
+                whiteSpace: 'nowrap',
+                pointerEvents: 'initial !important',
+                ...(isNarrow ? { bottom: theme.spacing(1) } : { top: 0 })
+              })}
+              onClick={save}
+            >
+              {loading ? <CircularProgress size={24} sx={{ mr: 1 }} /> : <Save sx={{ mr: 1 }} />}
+              <Typography>{t('save')}</Typography>
+            </Fab>
+          </span>
         </Tooltip>
         <Stack spacing={1} height="100%">
           <Paper sx={{ p: 1 }}>

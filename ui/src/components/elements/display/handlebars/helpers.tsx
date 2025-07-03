@@ -6,6 +6,7 @@ import { HitLayout } from 'components/elements/hit/HitLayout';
 import { flatten } from 'flat';
 import Handlebars from 'handlebars';
 import { capitalize, get, groupBy, isObject } from 'lodash-es';
+import howlerPluginStore from 'plugins/store';
 import { type ReactElement } from 'react';
 import JSONViewer from '../json/JSONViewer';
 
@@ -22,7 +23,7 @@ interface Cell {
   value: string;
 }
 
-export const HELPERS: HowlerHelper[] = [
+export const helpers = (): HowlerHelper[] => [
   {
     keyword: 'equals',
     documentation: 'Checks the equality of the string representation of the two arguments.',
@@ -180,5 +181,9 @@ export const HELPERS: HowlerHelper[] = [
         </Paper>
       );
     }
-  }
+  },
+
+  ...howlerPluginStore.plugins.flatMap(
+    plugin => howlerPluginStore.pluginStore.executeFunction(`${plugin}.helpers`) as HowlerHelper
+  )
 ];

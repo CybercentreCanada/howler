@@ -20,10 +20,13 @@ import OperationEntry from 'components/routes/action/shared/OperationEntry';
 import type { ActionOperation } from 'models/ActionTypes';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Action } from 'models/entities/generated/Action';
+import howlerPluginStore from 'plugins/store';
 import { useCallback, useEffect, useState, type ChangeEventHandler } from 'react';
 import { useTranslation } from 'react-i18next';
+import { usePluginStore } from 'react-pluggable';
 import { Link, useParams } from 'react-router-dom';
 import QueryResultText from '../../../elements/display/QueryResultText';
+import type { CustomActionProps } from '../edit/ActionEditor';
 import ActionReportDisplay from '../shared/ActionReportDisplay';
 import useMyActionFunctions from '../useMyActionFunctions';
 
@@ -32,6 +35,7 @@ const ActionDetails = () => {
   const { dispatchApi } = useMyApi();
   const params = useParams();
   const { user } = useAppUser<HowlerUser>();
+  const pluginStore = usePluginStore();
 
   const { response, onSearch, loading, setLoading, executeAction, deleteAction, progress, report } =
     useMyActionFunctions();
@@ -172,6 +176,16 @@ const ActionDetails = () => {
         {operations.length > 0 &&
           action &&
           action.operations.map(a => {
+            if (howlerPluginStore.operations.includes(a.operation_id)) {
+              return pluginStore.executeFunction(`operation.${a.operation_id}`, {
+                readonly: true,
+                operation: operations.find(_operation => _operation.id === a.operation_id),
+                operations,
+                query: action.query,
+                values: a.data_json
+              } as CustomActionProps);
+            }
+
             return (
               <OperationEntry
                 key={a.operation_id}

@@ -32,6 +32,7 @@
     "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
     "@typescript-eslint/no-explicit-any": "off",
     "@typescript-eslint/space-before-function-paren": "off",
+    "@typescript-eslint/lines-between-class-members": "off",
     "@typescript-eslint/indent": "off",
     "@typescript-eslint/naming-convention": [
       "error",
@@ -105,7 +106,7 @@
       "warn",
       {
         "noStrings": false,
-        "allowedStrings": ["/", ":", "(", ")", ":&nbsp;", "-", "APA2B", "."],
+        "allowedStrings": ["/", ":", "(", ")", ":&nbsp;", "-", "."],
         "ignoreProps": false,
         "noAttributeStrings": false
       }

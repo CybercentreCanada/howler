@@ -2,9 +2,11 @@ import { Add, Check, ChevronRight, Clear } from '@mui/icons-material';
 import { Chip, CircularProgress, Grid, TableCell, TableRow, Typography } from '@mui/material';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import type { HowlerUser } from 'models/entities/HowlerUser';
+import howlerPluginStore from 'plugins/store';
 import type { FC } from 'react';
 import { useCallback, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { usePluginStore } from 'react-pluggable';
 import { delay } from 'utils/utils';
 import EditRow from '../../elements/EditRow';
 import SettingsSection from './SettingsSection';
@@ -18,6 +20,7 @@ const ProfileSection: FC<{
 }> = ({ user, editName, addRole, removeRole, viewGroups }) => {
   const { t } = useTranslation();
   const { config } = useContext(ApiConfigContext);
+  const pluginStore = usePluginStore();
 
   const [loading, setLoading] = useState<{ [key: string]: boolean }>({});
   const [loadingGroups, setLoadingGroups] = useState(false);
@@ -127,6 +130,7 @@ const ProfileSection: FC<{
           </Grid>
         </TableCell>
       </TableRow>
+      {howlerPluginStore.plugins.map(plugin => pluginStore.executeFunction(`${plugin}.settings`, 'profile'))}
     </SettingsSection>
   );
 };

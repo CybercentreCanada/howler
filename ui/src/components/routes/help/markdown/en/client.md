@@ -13,24 +13,10 @@ In order to use the howler client, you need to list it as a dependency in your p
 Simply install through pip:
 
 ```bash
-pip install howler_client
+pip install howler-client
 ```
 
 You can also add it to your requirements.txt, or whatever dependency management system you use.
-
-#### **Java**
-
-You can list the howler client as a dependency in your pom.xml:
-
-```xml
-<dependency>
-  <groupId>io.github.cybercentrecanada</groupId>
-  <artifactId>howler-client</artifactId>
-  <version>1.6.0-SNAPSHOT</version>
-</dependency>
-```
-
-Once this is complete, you should be able to start using the howler client!
 
 ### Authentication
 
@@ -60,11 +46,50 @@ apikey = (USERNAME, APIKEY)
 howler = get_client("$CURRENT_URL", apikey=apikey)
 ```
 
+```alert
+You can skip generating an API Key and providing it if you're executing this code within HOGWARTS (i.e., on jupyterhub or airflow). OBO will handle authentication for you!
+```
+
 That's it! You can now use the `howler` object to interact with the server. So what does that actually look like?
 
 ### Creating hits in Python
 
-For the python client, you can create hits using the `howler.hit.create_from_map` function. This function takes in three arguments:
+For the python client, you can create hits using either the `howler.hit.create` or `howler.hit.create_from_map` functions.
+
+#### `create`
+
+This function takes in a single argument - either a single hit, or a list of them, conforming to the [Howler Schema](/help/hit?tab=schema). Here is a simple example:
+
+```python
+# Some bogus data in the Howler Schema format
+example_hit = {
+  "howler": {
+    "analytic": "example",
+    "score": 10.0
+  },
+  "event": {
+    "reason": "Example hit"
+  }
+}
+
+howler.hit.create(example_hit)
+```
+
+You can also ingest data in a flat format:
+
+```python
+example_hit = {
+  "howler.analytic": "example",
+  "howler.score": 10.0,
+  "event.reason": "Example hit"
+}
+
+howler.hit.create(example_hit)
+```
+
+#### `create_from_map`
+
+This function takes in three arguments:
 
 - `tool name`: The name of the analytic creating the hit
 - `map`: A mapping between the raw data you have and the howler schema
@@ -100,7 +125,7 @@ example_hit = {
 howler.hit.create_from_map("example_ingestor", hwl_map, [example_hit])
 ```
 
-### Querying hits in Python
+### Querying Hits
 
 Querying hits using the howler python client is done using the `howler.search.hit` function. It has a number of required and optional arguments:
 
@@ -129,52 +154,60 @@ howler.search.hit("howler.status:resolved", filters=['event.created:[now-5d TO n
 howler.search.hit("howler.id:*", track_total_hits=100000000, timeout=100, use_archive=True)
 ```
 
-## Java Client
+### Updating Hits
 
-In order to connect to howler using the Java Client, a similarly simple approach can be used:
+In order to update hits, there are a number of supported functions:
 
-```java
-String USERNAME = "user";
-String APIKEY = "devkey:user";
+- `howler.hit.update(...)`
+- `howler.hit.update_by_query(...)`
+- `howler.hit.overwrite(...)`
 
-HowlerClient howlerClient = new HowlerClient();
-howlerClient.initializeApiKeyAuthentication(USERNAME, APIKEY);
+#### `update()`
+
+If you want to update a hit in a transactional way, you can use the following code:
+
+```python
+hit_to_update = client.search.hit("howler.id:*", rows=1, sort="event.created desc")["items"][0]
+
+result = client.hit.update(hit_to_update["howler"]["id"], [(UPDATE_SET, "howler.score", hit_to_update["howler"]["score"] + 100)])
 ```
 
-That's it! You can now use the `howlerClient` class to interact with the server.
+The following operations can be run to update a hit.
 
-### Creating hits in Java
+**List Operations:**
 
-The process for creating hits using the Java client is quite different from the python client, due to the strongly typed nature of Java. Instead of specifying a map from raw data to howler's specification, the java implementation of the howler client requires you to create the hit using the build in types:
+- `UPDATE_APPEND`: Used to append a value to a given list
+- `UPDATE_APPEND_IF_MISSING`: Used to append a value to a given list if the value isn't already in the list
+- `UPDATE_REMOVE`: Will remove a given value from a list
 
-```java
-HowlerModel howler = new HowlerModel();
-howler.setAnalytic("test");
-howler.setHash("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
-HitModel hit = new HitModel();
-hit.setHowler(howler);
+**Numeric Operations:**
 
-howlerClient.createHits(List.of(hit));
+- `UPDATE_DEC`: Decrement a numeric value by the specified amount
+- `UPDATE_INC`: Increment a numeric value by the specified amount
+- `UPDATE_MAX`: Will set a numeric value to the maximum of the existing value and the specified value
+- `UPDATE_MIN`: Will set a numeric value to the minimum of the existing value and the specified value
+
+**Multipurpose Operations:**
+
+- `UPDATE_SET`: Set a field's value to the given value
+- `UPDATE_DELETE`: Will delete a given field's value
+
+#### `update_by_query()`
+
+This function allows you to update a large number of hits by a query:
+
+```python
+client.hit.update_by_query(f'howler.analytic:"Example Alert"', [(UPDATE_INC, "howler.score", 100)])
 ```
 
-### Querying hits in Java
+The same operations as in `update()` can be used.
 
-Similar to creating hits, searching for hits in Java uses a `SearchOptions` class to capture the query specifications:
+### `overwrite()`
 
-```java
-HitSearchResponse response = howlerClient.searchHits(
-  SearchOptions.builder()
-    .query("howler.analytic:assemblyline")
-    .fields(List.of("howler.id", "howler.analytic"))
-    .filters(List.of("event.created:[now-5d TO now]"))
-    .rows(10)
-    .offset(40)
-    .timeout(1000)
-    .useArchive(true)
-    .build()
-);
+This function allows you to directly overwrite a hit with a partial hit object. This is the most easy to use, but loses some of the validation and additional processing of the update functions.
 
-for (HitModel h : response.getApiResponse().getItems()) {
-  System.out.println(h.getHowler().getId());
-}
+```python
+hit_to_update = client.search.hit("howler.id:*", rows=1, sort="event.created desc")["items"][0]
+
+result = client.hit.overwrite(hit_to_update["howler"]["id"], {"source.ip": "127.0.0.1", "destination.ip": "8.8.8.8"})
 ```

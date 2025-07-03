@@ -1,5 +1,5 @@
-import type { Comment } from './Comment';
 import type { Notebook } from './Notebook';
+import type { Comment } from './Comment';
 import type { TriageSettings } from './TriageSettings';
 
 /**

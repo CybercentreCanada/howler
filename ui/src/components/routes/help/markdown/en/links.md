@@ -24,3 +24,14 @@ hit = {
   ]
 }
 ```
+
+Note the icon can either be:
+
+1. A name identifying a linked application (from the app switcher), to use its icon
+2. An external URL
+
+If you'd like to use a linked app, the following values are currently supported:
+
+$APP_LIST
+
+Using any of these values will automatically use the corresponding icon. No need to host your own!

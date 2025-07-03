@@ -4,6 +4,7 @@ import * as hit from 'api/search/count/hit';
 
 export interface HowlerCountSearchRequest {
   query: string;
+  filters?: string[];
 }
 
 export interface HowlerCountResult {

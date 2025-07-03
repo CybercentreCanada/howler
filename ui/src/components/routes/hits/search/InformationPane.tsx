@@ -35,9 +35,11 @@ import ErrorBoundary from 'components/routes/ErrorBoundary';
 import { uniqBy } from 'lodash-es';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Dossier } from 'models/entities/generated/Dossier';
+import howlerPluginStore from 'plugins/store';
 import type { FC } from 'react';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { usePluginStore } from 'react-pluggable';
 import { useLocation } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { getUserList } from 'utils/hitFunctions';
@@ -52,6 +54,7 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
   const { getAnalyticFromName } = useContext(AnalyticContext);
   const { getMatchingOverview, refresh } = useContext(OverviewContext);
   const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
+  const pluginStore = usePluginStore();
 
   const getMatchingDossiers = useContextSelector(DossierContext, ctx => ctx.getMatchingDossiers);
 
@@ -66,6 +69,10 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
   const users = useMyUserList(userIds);
 
   const hit = useContextSelector(HitContext, ctx => ctx.hits[selected]);
+
+  howlerPluginStore.plugins.forEach(plugin => {
+    pluginStore.executeFunction(`${plugin}.on`, 'viewing');
+  });
 
   useEffect(() => {
     if (!selected) {

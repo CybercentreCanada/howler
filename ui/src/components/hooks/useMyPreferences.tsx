@@ -1,4 +1,5 @@
 import {
+  Api,
   Article,
   Book,
   Code,
@@ -24,17 +25,14 @@ import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { AppBrand } from 'branding/AppBrand';
 import type { AppLeftNavElement, AppPreferenceConfigs } from 'commons/components/app/AppConfigs';
-import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import Classification from 'components/elements/display/Classification';
 import DocumentationButton from 'components/elements/display/DocumentationButton';
-import { useContext, useMemo } from 'react';
+import { useMemo } from 'react';
 
 // This is your App Name that will be displayed in the left drawer and the top navbar
 const APP_NAME = 'howler';
 
 const useMyPreferences = (): AppPreferenceConfigs => {
-  const { config } = useContext(ApiConfigContext);
-
   // The following menu items will show up in the Left Navigation Drawer
   const MENU_ITEMS = useMemo<AppLeftNavElement[]>(
     () => [
@@ -136,6 +134,14 @@ const useMyPreferences = (): AppPreferenceConfigs => {
               nested: true,
               route: '/action',
               userPropValidators: [{ prop: 'roles', value: 'automation_basic' }]
+            },
+            {
+              id: 'action.integrations',
+              i18nKey: 'route.integrations',
+              icon: <Api />,
+              nested: true,
+              route: '/action/integrations',
+              userPropValidators: [{ prop: 'roles', value: 'automation_basic' }]
             }
           ]
         }
@@ -216,7 +222,7 @@ const useMyPreferences = (): AppPreferenceConfigs => {
       }
     ],
     // prettier-ignore
-    [config.configuration?.features]
+    []
   );
 
   // This is the basic user menu, it is a menu that shows up in account avatar popover.

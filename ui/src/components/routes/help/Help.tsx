@@ -1,4 +1,3 @@
-/* eslint-disable jsx-a11y/anchor-is-valid */
 import { HelpCenter, OpenInNew } from '@mui/icons-material';
 import {
   Button,
@@ -16,19 +15,26 @@ import type { AppLeftNavGroup } from 'commons/components/app/AppConfigs';
 import PageCenter from 'commons/components/pages/PageCenter';
 import useMyPreferences from 'components/hooks/useMyPreferences';
 import { useScrollRestoration } from 'components/hooks/useScrollRestoration';
+import howlerPluginStore from 'plugins/store';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { usePluginStore } from 'react-pluggable';
 import { Link } from 'react-router-dom';
-
-const TABS = {
-  'help.hit': ['schema', 'header', 'bundle', 'links'],
-  'help.actions': ['introduction']
-};
 
 const HelpDashboard = () => {
   const { t } = useTranslation(['translation', 'helpMain']);
   const { leftnav } = useMyPreferences();
+  const pluginStore = usePluginStore();
+
   useScrollRestoration();
+
+  const tabs = useMemo(
+    () => ({
+      'help.hit': ['schema', 'header', 'bundle', 'links'],
+      'help.actions': ['introduction', ...howlerPluginStore.operations]
+    }),
+    []
+  );
 
   const links = useMemo(
     () =>
@@ -68,9 +74,9 @@ const HelpDashboard = () => {
                 <CardContent sx={{ flex: 1 }}>
                   <Typography>{t(`helpMain:${link.i18nKey}.description`)}</Typography>
                 </CardContent>
-                {TABS[link.id] && (
+                {tabs[link.id] && (
                   <CardActions>
-                    {TABS[link.id].map(tab => (
+                    {tabs[link.id].map(tab => (
                       <Button key={tab} size="small" component={Link} to={`${link.route}?tab=${tab}`}>
                         {tab}
                       </Button>
@@ -81,6 +87,7 @@ const HelpDashboard = () => {
             </Grid>
           ))}
         </Grid>
+        {howlerPluginStore.plugins.map(plugin => pluginStore.executeFunction(`${plugin}.help`))}
       </Stack>
     </PageCenter>
   );

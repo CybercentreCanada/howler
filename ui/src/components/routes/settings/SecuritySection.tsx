@@ -4,9 +4,11 @@ import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import useMyLocalStorage from 'components/hooks/useMyLocalStorage';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import moment from 'moment';
+import howlerPluginStore from 'plugins/store';
 import type { FC } from 'react';
 import { useContext, useMemo } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
+import { usePluginStore } from 'react-pluggable';
 import { StorageKey } from 'utils/constants';
 import EditRow from '../../elements/EditRow';
 import SettingsSection from './SettingsSection';
@@ -28,6 +30,8 @@ const SecuritySection: FC<{
   const { t } = useTranslation();
   const { get } = useMyLocalStorage();
   const { config } = useContext(ApiConfigContext);
+  const pluginStore = usePluginStore();
+
   const isOAuth = useMemo(() => get<string>(StorageKey.APP_TOKEN)?.includes('.'), [get]);
 
   return (
@@ -83,6 +87,7 @@ const SecuritySection: FC<{
         type="number"
         onEdit={editQuota}
       />
+      {howlerPluginStore.plugins.map(plugin => pluginStore.executeFunction(`${plugin}.settings`, 'security'))}
     </SettingsSection>
   );
 };

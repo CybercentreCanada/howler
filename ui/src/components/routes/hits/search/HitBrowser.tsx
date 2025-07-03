@@ -81,12 +81,11 @@ const HitBrowser: FC = () => {
   const displayType = useContextSelector(HitSearchContext, ctx => ctx.displayType);
   const viewId = useContextSelector(HitSearchContext, ctx => ctx.viewId);
   const response = useContextSelector(HitSearchContext, ctx => ctx.response);
-  const error = useContextSelector(HitSearchContext, ctx => ctx.error);
 
   const queryHistory = useContextSelector(HitSearchContext, ctx => ctx?.queryHistory ?? {});
   const setQueryHistory = useContextSelector(HitSearchContext, ctx => ctx?.setQueryHistory);
 
-  const [, setQueryList] = useMyLocalStorageItem(StorageKey.QUERY_HISTORY, '');
+  const setQueryList = useMyLocalStorageItem(StorageKey.QUERY_HISTORY, '')[1];
 
   const location = useLocation();
   const routeParams = useParams();
@@ -98,7 +97,6 @@ const HitBrowser: FC = () => {
   const showDrawer = useMediaQuery(theme.breakpoints.down(1600)) || forceDrawer || displayType === 'grid';
 
   // State that makes up the request
-
   const summaryQuery = useMemo(() => {
     const bundle = location.pathname.startsWith('/bundles') && routeParams.id;
 
@@ -126,12 +124,10 @@ const HitBrowser: FC = () => {
 
   useEffect(() => {
     const newQuery = searchParams.get('query');
-    const timestamp = new Date().toISOString();
-
     if (newQuery) {
       setQueryHistory(_queryHistory => ({
         ..._queryHistory,
-        [newQuery]: timestamp
+        [newQuery]: new Date().toISOString()
       }));
     }
   }, [searchParams, setQueryHistory]);
@@ -141,14 +137,11 @@ const HitBrowser: FC = () => {
   }, [queryHistory, setQueryList]);
 
   useEffect(() => {
-    // On load check to filter out any queries older than one month in accordance to ALPR
+    // On load check to filter out any queries older than one month
     setQueryHistory(_queryHistory => {
       const filterQueryTime = moment().subtract(1, 'month').toISOString();
 
-      const filteredQueryHistory = Object.fromEntries(
-        Object.entries(_queryHistory).filter(([_, value]) => value > filterQueryTime)
-      );
-      return filteredQueryHistory;
+      return Object.fromEntries(Object.entries(_queryHistory).filter(([_, value]) => value > filterQueryTime));
     });
   }, [setQueryHistory]);
 
@@ -250,7 +243,7 @@ const HitBrowser: FC = () => {
         </Collapse>
       </Box>
       <Wrapper show={show} showDrawer={showDrawer} onClose={() => setShow(false)}>
-        <HitSummary query={summaryQuery} response={response} execute={!!response && !error} />
+        <HitSummary query={summaryQuery} response={response} />
         <Card
           variant="outlined"
           sx={[

@@ -21,6 +21,7 @@ import Logout from 'components/routes/Logout';
 import ActionEditor from 'components/routes/action/edit/ActionEditor';
 import ActionDetails from 'components/routes/action/view/ActionDetails';
 import ActionSearchProvider from 'components/routes/action/view/ActionSearch';
+import Integrations from 'components/routes/action/view/Integrations';
 import UserEditor from 'components/routes/admin/users/UserEditor';
 import UserSearchProvider from 'components/routes/admin/users/UserSearch';
 import QueryBuilder from 'components/routes/advanced/QueryBuilder';
@@ -54,8 +55,10 @@ import i18n from 'i18n';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Hit } from 'models/entities/generated/Hit';
 import * as monaco from 'monaco-editor';
+import howlerPluginStore from 'plugins/store';
 import { useContext, useEffect, type FC, type PropsWithChildren } from 'react';
 import { I18nextProvider } from 'react-i18next';
+import { PluginProvider, usePluginStore } from 'react-pluggable';
 import { createBrowserRouter, Outlet, RouterProvider, useLocation, useNavigate } from 'react-router-dom';
 import { StorageKey } from 'utils/constants';
 import useMySearch from '../hooks/useMySearch';
@@ -63,6 +66,7 @@ import AppContainer from './AppContainer';
 import AnalyticProvider from './providers/AnalyticProvider';
 import ApiConfigProvider, { ApiConfigContext } from './providers/ApiConfigProvider';
 import AvatarProvider from './providers/AvatarProvider';
+import CustomPluginProvider from './providers/CustomPluginProvider';
 import DossierProvider from './providers/DossierProvider';
 import FavouriteProvider from './providers/FavouritesProvider';
 import FieldProvider from './providers/FieldProvider';
@@ -100,6 +104,7 @@ const MyApp: FC = () => {
   const apiConfig = useContext(ApiConfigContext);
   const { setItems } = useAppSwitcher();
   const { get, set, remove } = useMyLocalStorage();
+  const pluginStore = usePluginStore();
 
   // Simulate app loading time...
   // e.g. fetching initial app data, etc.
@@ -123,6 +128,7 @@ const MyApp: FC = () => {
   useEffect(() => {
     if (appUser.isReady()) {
       appLayout.setReady(true);
+
       // TODO: Remove in a little while
       remove(StorageKey.ETAG);
     } else if (!get(StorageKey.APP_TOKEN) && !get(StorageKey.REFRESH_TOKEN)) {
@@ -134,6 +140,10 @@ const MyApp: FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appUser.isReady()]);
+
+  for (const plugin of howlerPluginStore.plugins) {
+    pluginStore.executeFunction(`${plugin}.setup`)?.();
+  }
 
   // we don't display the skeleton for certain paths
   return (appLayout.ready && apiConfig.config?.indexes) ||
@@ -155,33 +165,37 @@ const MyAppProvider: FC<PropsWithChildren> = ({ children }) => {
   return (
     <ErrorBoundary>
       <AppProvider preferences={myPreferences} theme={myTheme} sitemap={mySitemap} user={myUser} search={mySearch}>
-        <ErrorBoundary>
-          <DossierProvider>
-            <ViewProvider>
-              <AvatarProvider>
-                <ModalProvider>
-                  <FieldProvider>
-                    <LocalStorageProvider>
-                      <SocketProvider>
-                        <HitProvider>
-                          <TemplateProvider>
-                            <OverviewProvider>
-                              <AnalyticProvider>
-                                <FavouriteProvider>
-                                  <UserListProvider>{children}</UserListProvider>
-                                </FavouriteProvider>
-                              </AnalyticProvider>
-                            </OverviewProvider>
-                          </TemplateProvider>
-                        </HitProvider>
-                      </SocketProvider>
-                    </LocalStorageProvider>
-                  </FieldProvider>
-                </ModalProvider>
-              </AvatarProvider>
-            </ViewProvider>
-          </DossierProvider>
-        </ErrorBoundary>
+        <CustomPluginProvider>
+          <ErrorBoundary>
+            <ErrorBoundary>
+              <DossierProvider>
+                <ViewProvider>
+                  <AvatarProvider>
+                    <ModalProvider>
+                      <FieldProvider>
+                        <LocalStorageProvider>
+                          <SocketProvider>
+                            <HitProvider>
+                              <TemplateProvider>
+                                <OverviewProvider>
+                                  <AnalyticProvider>
+                                    <FavouriteProvider>
+                                      <UserListProvider>{children}</UserListProvider>
+                                    </FavouriteProvider>
+                                  </AnalyticProvider>
+                                </OverviewProvider>
+                              </TemplateProvider>
+                            </HitProvider>
+                          </SocketProvider>
+                        </LocalStorageProvider>
+                      </FieldProvider>
+                    </ModalProvider>
+                  </AvatarProvider>
+                </ViewProvider>
+              </DossierProvider>
+            </ErrorBoundary>
+          </ErrorBoundary>
+        </CustomPluginProvider>
       </AppProvider>
     </ErrorBoundary>
   );
@@ -191,10 +205,12 @@ const AppProviderWrapper = () => {
   return (
     <I18nextProvider i18n={i18n as any} defaultNS="translation">
       <ApiConfigProvider>
-        <MyAppProvider>
-          <MyApp />
-          <Modal />
-        </MyAppProvider>
+        <PluginProvider pluginStore={howlerPluginStore.pluginStore}>
+          <MyAppProvider>
+            <MyApp />
+            <Modal />
+          </MyAppProvider>
+        </PluginProvider>
       </ApiConfigProvider>
     </I18nextProvider>
   );
@@ -376,6 +392,10 @@ const router = createBrowserRouter([
           {
             index: true,
             element: <ActionSearchProvider />
+          },
+          {
+            path: 'integrations',
+            element: <Integrations />
           },
           {
             path: 'execute',

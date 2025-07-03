@@ -6,11 +6,20 @@ import type { Hit } from 'models/entities/generated/Hit';
 import type { Pivot } from 'models/entities/generated/Pivot';
 import { useMemo, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { usePluginStore } from 'react-pluggable';
 import { flattenDeep } from 'utils/utils';
 import RelatedLink from './RelatedLink';
 
-const PivotLink: FC<{ pivot: Pivot; hit: Hit; compact?: boolean }> = ({ pivot, hit, compact = false }) => {
+export interface PivotLinkProps {
+  pivot: Pivot;
+  hit: Hit;
+  compact?: boolean;
+}
+
+const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false }) => {
   const { i18n } = useTranslation();
+
+  const pluginStore = usePluginStore();
 
   const flatHit = useMemo(() => flattenDeep(hit ?? {}), [hit]);
 
@@ -44,6 +53,11 @@ const PivotLink: FC<{ pivot: Pivot; hit: Hit; compact?: boolean }> = ({ pivot, h
         <Icon fontSize="1.5rem" icon={pivot.icon} />
       </RelatedLink>
     );
+  }
+
+  const pluginPivot = pluginStore.executeFunction(`pivot.${pivot.format}`, { pivot, hit, compact });
+  if (pluginPivot) {
+    return pluginPivot;
   }
 
   return <Skeleton variant="rounded" />;

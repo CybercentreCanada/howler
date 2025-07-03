@@ -26,14 +26,26 @@ import type { ActionOperation } from 'models/ActionTypes';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Action } from 'models/entities/generated/Action';
 import type { Operation } from 'models/entities/generated/Operation';
+import howlerPluginStore from 'plugins/store';
 import { useCallback, useContext, useEffect, useMemo, useState, type ChangeEventHandler, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { usePluginStore } from 'react-pluggable';
 import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { operationReady } from 'utils/actionUtils';
 import QueryResultText from '../../../elements/display/QueryResultText';
 import ActionReportDisplay from '../shared/ActionReportDisplay';
 import OperationEntry from '../shared/OperationEntry';
 import useMyActionFunctions from '../useMyActionFunctions';
+
+export interface CustomActionProps {
+  operation: ActionOperation;
+  operations: ActionOperation[];
+  query: string;
+  onChange: (operation: Operation) => void;
+  onDelete: () => void;
+  readonly: boolean;
+  values: string;
+}
 
 const ActionEditor: FC = () => {
   const { t } = useTranslation();
@@ -43,6 +55,7 @@ const ActionEditor: FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const params = useParams();
   const { user } = useAppUser<HowlerUser>();
+  const pluginStore = usePluginStore();
 
   const { response, loading, setLoading, responseQuery, report, progress, onSearch, saveAction, submitAction } =
     useMyActionFunctions();
@@ -260,6 +273,17 @@ const ActionEditor: FC = () => {
         <Stack spacing={1} mt={1}>
           {userOperations.map((a, index) => {
             const operation = operations.find(_operation => _operation.id === a.operation_id);
+
+            if (howlerPluginStore.operations.includes(a.operation_id)) {
+              return pluginStore.executeFunction(`operation.${a.operation_id}`, {
+                operation,
+                operations: [operation, ...availableOperations],
+                query: responseQuery,
+                onChange: onActionChange(index),
+                onDelete: onActionDelete(index),
+                values: a.data_json
+              } as CustomActionProps);
+            }
 
             return (
               <OperationEntry

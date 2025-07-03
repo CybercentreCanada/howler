@@ -1,6 +1,6 @@
 # Hit Schema
 
-A howler hit can contain a large number of unique fields, each with a particular definition, in order to make hits across analytics mutually intelligible. Below is a table containing all the given hit fields, as well as their type and a short description of what they are used for. While the vast majority of the fields are based on the Elastic Common Schema (see [here](https://www.elastic.co/guide/en/ecs/8.5/index.html) for documentation), there are also custom fields for Howler.
+A howler hit can contain a large number of unique fields, each with a particular definition, in order to make hits across analytics mutually intelligible. Below is a table containing all the given hit fields, as well as their type and a short description of what they are used for. While the vast majority of the fields are based on the Elastic Common Schema (see [this guide on ECS](https://www.elastic.co/guide/en/ecs/8.5/index.html) for documentation), there are also custom fields depending on the plugins enabled in Howler.
 
 ## Howler Fields - Best Practices
 

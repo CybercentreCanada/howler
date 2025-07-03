@@ -15,11 +15,14 @@ import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { uniq } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
+import howlerPluginStore from 'plugins/store';
 import { useCallback, useContext, useEffect, useMemo, useState, type FC } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
+import { usePluginStore } from 'react-pluggable';
 import { Link } from 'react-router-dom';
 import { ESCALATION_COLORS, PROVIDER_COLORS } from 'utils/constants';
 import { stringToColor } from 'utils/utils';
+import PluginTypography from '../PluginTypography';
 import Assigned from './elements/Assigned';
 import EscalationChip from './elements/EscalationChip';
 import HitTimestamp from './elements/HitTimestamp';
@@ -33,11 +36,17 @@ type HitBannerProps = {
   useListener?: boolean;
 };
 
+export interface StatusProps<T extends Hit = Hit> {
+  hit: T;
+  layout: HitLayout;
+}
+
 const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAssigned = true }) => {
   const { t } = useTranslation();
   const { config } = useContext(ApiConfigContext);
   const { getIdFromName } = useContext(AnalyticContext);
   const theme = useTheme();
+  const pluginStore = usePluginStore();
 
   const [analyticId, setAnalyticId] = useState<string>();
 
@@ -146,23 +155,18 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
           >
             {t(i18nKey)}:
           </Typography>
-          {(Array.isArray(value) ? value : [value]).map(val => {
-            return (
-              <Typography
-                key={val}
-                variant={textVariant}
-                noWrap={compressed}
-                textOverflow={compressed ? 'ellipsis' : 'wrap'}
-                {...typographyProps}
-                sx={[
-                  { display: 'flex', flexDirection: 'row' },
-                  ...(Array.isArray(typographyProps?.sx) ? typographyProps?.sx : [typographyProps?.sx])
-                ]}
-              >
-                {val}
-              </Typography>
-            );
-          })}
+          {(Array.isArray(value) ? value : [value]).map(val => (
+            <PluginTypography
+              component="span"
+              context="banner"
+              key={val}
+              variant={textVariant}
+              noWrap={compressed}
+              textOverflow={compressed ? 'ellipsis' : 'wrap'}
+              {...typographyProps}
+              value={val}
+            />
+          ))}
         </Stack>
       );
 
@@ -269,7 +273,9 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
                     return (
                       <Grid key={_indicator} item>
                         <Stack direction="row">
-                          <Typography variant={textVariant}>{_indicator}</Typography>
+                          <PluginTypography context="indicators" variant={textVariant} value={_indicator}>
+                            {_indicator}
+                          </PluginTypography>
                           {index < hit.howler.outline.indicators.length - 1 && (
                             <Typography variant={textVariant}>{','}</Typography>
                           )}
@@ -329,6 +335,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
             />
           )}
         </Stack>
+        {howlerPluginStore.plugins.flatMap(plugin => pluginStore.executeFunction(`${plugin}.status`, { hit, layout }))}
       </Stack>
     </Box>
   );

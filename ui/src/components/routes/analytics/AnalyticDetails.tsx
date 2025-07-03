@@ -21,6 +21,7 @@ import {
 import api from 'api';
 import { useAppUser } from 'commons/components/app/hooks';
 import PageCenter from 'commons/components/pages/PageCenter';
+import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { UserListContext } from 'components/app/providers/UserListProvider';
 import UserList from 'components/elements/UserList';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
@@ -34,6 +35,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { RULE_INTERVALS } from 'utils/constants';
 import AnalyticComments from './AnalyticComments';
 import AnalyticHitComments from './AnalyticHitComments';
+import AnalyticNotebooks from './AnalyticNotebooks';
 import AnalyticOverview from './AnalyticOverview';
 import AnalyticOverviews from './AnalyticOverviews';
 import AnalyticTemplates from './AnalyticTemplates';
@@ -50,6 +52,7 @@ const AnalyticDetails = () => {
   const theme = useTheme();
   const { showSuccessMessage } = useMySnackbar();
   const { users, searchUsers } = useContext(UserListContext);
+  const { config } = useContext(ApiConfigContext);
 
   const [analytic, setAnalytic] = useState<Analytic>(null);
   const [tab, setTab] = useState(searchParams.get('tab') ?? 'overview');
@@ -298,6 +301,9 @@ const AnalyticDetails = () => {
               <Tab label={t('route.analytics.tab.templates')} value="templates" />
               <Tab label={t('route.analytics.tab.overviews')} value="overviews" />
               {analytic?.rule && <Tab label={t('route.analytics.tab.rule')} value="rule" />}
+              {config?.configuration.features.notebook && (
+                <Tab label={t('route.analytics.tab.notebooks')} value="notebooks" />
+              )}
               <Tab label={t('route.analytics.tab.triage')} value="triage" />
             </Tabs>
           </Grid>
@@ -321,7 +327,12 @@ const AnalyticDetails = () => {
             overviews: <AnalyticOverviews analytic={analytic} />,
             rule: <RuleView analytic={analytic} setAnalytic={setAnalytic} />,
             templates: <AnalyticTemplates analytic={analytic} />,
-            triage: <TriageSettings analytic={analytic} setAnalytic={setAnalytic} />
+            triage: <TriageSettings analytic={analytic} setAnalytic={setAnalytic} />,
+            ...(config?.configuration.features.notebook
+              ? {
+                  notebooks: <AnalyticNotebooks analytic={analytic} setAnalytic={setAnalytic} />
+                }
+              : {})
           }[tab]
         }
       </div>

@@ -76,7 +76,7 @@ const ActionIntroductionDocumentation: FC = () => {
           <Select value="add_label" size="small">
             {operations.map(_a => (
               <MenuItem key={_a.id} value={_a.id}>
-                <ListItemText primary={t(_a.i18nKey) ?? _a.title} secondary={_a.description?.short} />
+                <ListItemText primary={_a.i18nKey ? t(_a.i18nKey) : _a.title} secondary={_a.description?.short} />
               </MenuItem>
             ))}
           </Select>

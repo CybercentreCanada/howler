@@ -37,7 +37,7 @@ const ActionReportDisplay: FC<{ report: ActionReport; operations: ActionOperatio
               <Accordion key={operationId} variant="outlined">
                 <AccordionSummary expandIcon={<ExpandMore />}>
                   <Stack direction="row" spacing={1} width="100%" mr={1}>
-                    <Typography>{t(operation.i18nKey) || operation.title}</Typography>
+                    <Typography>{operation.i18nKey ? t(operation.i18nKey) : operation.title}</Typography>
                     {_reports.map(
                       r =>
                         ({

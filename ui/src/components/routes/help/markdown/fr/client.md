@@ -13,24 +13,10 @@ Afin d'utiliser le client howler, vous devez le lister comme une dépendance dan
 Il suffit de l'installer à l'aide de pip:
 
 ```bash
-pip install howler_client
+pip install howler-client
 ```
 
 Vous pouvez également l'ajouter à votre requirements.txt, ou à tout autre système de gestion des dépendances que vous utilisez.
-
-#### **Java**
-
-Vous pouvez lister le client howler comme une dépendance dans votre pom.xml:
-
-```xml
-<dependency>
-  <groupId>io.github.cybercentrecanada</groupId>
-  <artifactId>howler-client</artifactId>
-  <version>1.6.0-SNAPSHOT</version>
-</dependency>
-```
-
-Une fois cette étape terminée, vous devriez pouvoir commencer à utiliser le client howler !
 
 ### Authentification
 
@@ -64,7 +50,42 @@ Voilà, c'est fait ! Vous pouvez maintenant utiliser l'objet `howler` pour inter
 
 ### Créer des hits en Python
 
-Pour le client Python, vous pouvez créer des hits en utilisant la fonction `howler.hit.create_from_map`. Cette fonction prend trois arguments:
+Pour le client python, vous pouvez créer des hits en utilisant les fonctions `howler.hit.create` ou `howler.hit.create_from_map`.
+
+#### `create`
+
+Cette fonction prend un seul argument - soit un hit unique, soit une liste de hits, conforme au [Howler Schema] (/help/hit?tab=schema). Voici un exemple simple :
+
+```python
+# Quelques données bidons au format Howler Schema
+exemple_hit = {
+  "howler" : {
+    "analytic" : "exemple",
+    "score" : 10.0
+  },
+  "event" : {
+    "reason" : "Exemple hit"
+  }
+}
+
+howler.hit.create(example_hit)
+```
+
+Vous pouvez également ingérer des données dans un format plat :
+
+```python
+example_hit = {
+  "howler.analytic": "example",
+  "howler.score": 10.0,
+  "event.reason": "Example hit"
+}
+
+howler.hit.create(example_hit)
+```
+
+#### `create_from_map`
+
+This function takes in three arguments:
 
 - `tool name`: Le nom de l'outil d'analyse qui crée le hit
 - `map`: Une correspondance entre les données brutes que vous avez et le schéma howler
@@ -129,52 +150,60 @@ howler.search.hit("howler.status:resolved", filters=['event.created:[now-5d TO n
 howler.search.hit("howler.id:*", track_total_hits=100000000, timeout=100, use_archive=True)
 ```
 
-## Client Java
+### Mise à jour des résultats
 
-Pour se connecter à howler à l'aide du client Java, une approche tout aussi simple peut être utilisée :
+Afin de mettre à jour les hits, il existe un certain nombre de fonctions supportées :
 
-```java
-String USERNAME = "user";
-String APIKEY = "devkey:user";
+- `howler.hit.update(...)`
+- `howler.hit.update_by_query(...)`
+- `howler.hit.overwrite(...)`
 
-HowlerClient howlerClient = new HowlerClient();
-howlerClient.initializeApiKeyAuthentication(USERNAME, APIKEY);
+#### `update()`
+
+Si vous souhaitez mettre à jour un hit de manière transactionnelle, vous pouvez utiliser le code suivant:
+
+```python
+hit_to_update = client.search.hit("howler.id:*", rows=1, sort="event.created desc")["items"][0]
+
+result = client.hit.update(hit_to_update["howler"]["id"], [(UPDATE_SET, "howler.score", hit_to_update["howler"]["score"] + 100)])
 ```
 
-Voilà, c'est fait ! Vous pouvez maintenant utiliser la classe `howlerClient` pour interagir avec le serveur.
+Les opérations suivantes peuvent être exécutées pour mettre à jour un résultat.
 
-### Créer des hits en Java
+**Opérations de liste:**
 
-Le processus de création de hits en utilisant le client Java est assez différent du client python, en raison de la nature fortement typée de Java. Au lieu de spécifier une correspondance entre les données brutes et les spécifications de howler, l'implémentation Java du client howler vous demande de créer le hit en utilisant les types intégrés:
+- `UPDATE_APPEND` : Utilisé pour ajouter une valeur à une liste donnée
+- `UPDATE_APPEND_IF_MISSING` : Utilisé pour ajouter une valeur à une liste donnée si la valeur n'est pas déjà dans la liste.
+- `UPDATE_REMOVE` : Supprime une valeur donnée d'une liste
 
-```java
-HowlerModel howler = new HowlerModel();
-howler.setAnalytic("test");
-howler.setHash("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
-HitModel hit = new HitModel();
-hit.setHowler(howler);
+**Opérations numériques:**
 
-howlerClient.createHits(List.of(hit));
+- `UPDATE_DEC` : Diminue une valeur numérique de la quantité spécifiée.
+- `UPDATE_INC` : Incrémente une valeur numérique de la quantité spécifiée.
+- `UPDATE_MAX` : Fixe une valeur numérique au maximum de la valeur existante et de la valeur spécifiée.
+- `UPDATE_MIN` : Fixe une valeur numérique au minimum de la valeur existante et de la valeur spécifiée.
+
+**Opérations polyvalentes:**
+
+- `UPDATE_SET` : Fixe la valeur d'un champ à la valeur donnée.
+- `UPDATE_DELETE` : Supprime la valeur d'un champ donné
+
+#### `update_by_query()`
+
+Cette fonction vous permet de mettre à jour un grand nombre d'occurrences à l'aide d'une requête :
+
+```python
+client.hit.update_by_query(f'howler.analytic : "Exemple d\'analytic"', [(UPDATE_INC, "howler.score", 100)])
 ```
 
-### Recherche de résultats en Java
+Les mêmes opérations que dans `update()` peuvent être utilisées.
 
-Comme pour la création de hits, la recherche de hits en Java utilise une classe `SearchOptions` pour capturer les spécifications de la requête:
+### `overwrite()`
 
-```java
-HitSearchResponse response = howlerClient.searchHits(
-  SearchOptions.builder()
-    .query("howler.analytic:assemblyline")
-    .fields(List.of("howler.id", "howler.analytic"))
-    .filters(List.of("event.created:[now-5d TO now]"))
-    .rows(10)
-    .offset(40)
-    .timeout(1000)
-    .useArchive(true)
-    .build()
-);
+Cette fonction vous permet d'écraser directement un hit avec un objet hit partiel. C'est la plus facile à utiliser, mais elle perd une partie de la validation et du traitement supplémentaire des fonctions de mise à jour.
 
-for (HitModel h: response.getApiResponse().getItems()) {
-  System.out.println(h.getHowler().getId());
-}
+```python
+hit_to_update = client.search.hit("howler.id:*", rows=1, sort="event.created desc")["items"][0]
+
+result = client.hit.overwrite(hit_to_update["howler"]["id"], {"source.ip" : "127.0.0.1", “destination.ip” : "8.8.8.8"})
 ```

@@ -12,8 +12,10 @@ import {
 } from '@mui/material';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
+import howlerPluginStore from 'plugins/store';
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { usePluginStore } from 'react-pluggable';
 import { StorageKey } from 'utils/constants';
 import EditRow from '../../elements/EditRow';
 import SettingsSection from './SettingsSection';
@@ -22,6 +24,8 @@ const CELL_SX = { borderBottom: 0, paddingBottom: 0.5 };
 
 const LocalSection: FC = () => {
   const { t } = useTranslation();
+  const pluginStore = usePluginStore();
+
   const [compactJson, setCompactJson] = useMyLocalStorageItem(StorageKey.COMPACT_JSON, true);
   const [flattenJson, setFlattenJson] = useMyLocalStorageItem(StorageKey.FLATTEN_JSON, false);
   const [forceDrawer, setForceDrawer] = useMyLocalStorageItem(StorageKey.FORCE_DRAWER, false);
@@ -127,6 +131,7 @@ const LocalSection: FC = () => {
           </Typography>
         </TableCell>
       </TableRow>
+      {howlerPluginStore.plugins.map(plugin => pluginStore.executeFunction(`${plugin}.settings`, 'local'))}
     </SettingsSection>
   );
 };

@@ -1,27 +1,30 @@
 import {
   Assignment,
-  Check,
   Edit,
   HowToVote,
   KeyboardArrowRight,
   OpenInNew,
   QueryStats,
-  SettingsSuggest
+  SettingsSuggest,
+  Terminal
 } from '@mui/icons-material';
 import { Box, Divider, Fade, ListItemIcon, ListItemText, Menu, MenuItem, MenuList, Paper } from '@mui/material';
 import api from 'api';
 import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { HitContext } from 'components/app/providers/HitProvider';
-import { VOTE_OPTIONS } from 'components/elements/hit/actions/SharedComponents';
+import { TOP_ROW, VOTE_OPTIONS, type ActionButton } from 'components/elements/hit/actions/SharedComponents';
 import useHitActions from 'components/hooks/useHitActions';
 import useMyApi from 'components/hooks/useMyApi';
 import useMyActionFunctions from 'components/routes/action/useMyActionFunctions';
+import { capitalize, groupBy } from 'lodash-es';
 import type { Action } from 'models/entities/generated/Action';
 import type { Analytic } from 'models/entities/generated/Analytic';
+import howlerPluginStore from 'plugins/store';
 import type { FC, MouseEventHandler, PropsWithChildren } from 'react';
-import { useCallback, useContext, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { usePluginStore } from 'react-pluggable';
 import { Link } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 
@@ -31,12 +34,20 @@ interface HitContextMenuProps {
   getSelectedId: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => string;
 }
 
+const ORDER = ['assessment', 'vote', 'action'];
+const ICON_MAP = {
+  assessment: <Assignment />,
+  vote: <HowToVote />,
+  action: <Edit />
+};
+
 const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, getSelectedId }) => {
   const { t } = useTranslation();
   const analyticContext = useContext(AnalyticContext);
   const { dispatchApi } = useMyApi();
   const { executeAction } = useMyActionFunctions();
   const { config } = useContext(ApiConfigContext);
+  const pluginStore = usePluginStore();
 
   const [id, setId] = useState<string>(null);
 
@@ -49,14 +60,14 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
   const [clickLocation, setClickLocation] = useState<[number, number]>([-1, -1]);
   const [actions, setActions] = useState<Action[]>([]);
 
-  const [showAction, setShowAction] = useState(false);
-  const [showAssess, setShowAssess] = useState(false);
-  const [showVote, setShowVote] = useState(false);
-  const [showManage, setShowManage] = useState(false);
+  const [show, setShow] = useState<{ [index: string]: boolean }>({});
 
-  const { availableTransitions, canVote, canAssess, manage, assess, vote, selectedVote } = useHitActions(
-    selectedHits.some(_hit => _hit.howler.id === hit?.howler.id) ? selectedHits : [hit]
+  const hits = useMemo(
+    () => (selectedHits.some(_hit => _hit.howler.id === hit?.howler.id) ? selectedHits : [hit]),
+    [hit, selectedHits]
   );
+
+  const { availableTransitions, canVote, canAssess, assess, vote } = useHitActions(hits);
 
   const onContextMenu: MouseEventHandler<HTMLDivElement> = useCallback(
     async event => {
@@ -85,6 +96,53 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
     [anchorEl, dispatchApi, getSelectedId]
   );
 
+  const rowStatus = useMemo(
+    () => ({
+      assessment: canAssess,
+      vote: canVote
+    }),
+    [canAssess, canVote]
+  );
+
+  const pluginActions = howlerPluginStore.plugins.flatMap(plugin =>
+    pluginStore.executeFunction(`${plugin}.actions`, hits)
+  );
+
+  const entries = useMemo<[string, ActionButton[]][]>(() => {
+    let _actions: ActionButton[] = [...availableTransitions, ...pluginActions];
+
+    if (canVote) {
+      _actions = [
+        ..._actions,
+        ...VOTE_OPTIONS.map(
+          option => ({ ...option, actionFunction: () => vote(option.name.toLowerCase()) }) as ActionButton
+        )
+      ];
+    }
+
+    if (config.lookups?.['howler.assessment'] && canAssess) {
+      _actions = [
+        ..._actions,
+        ...config.lookups['howler.assessment']
+          .filter(_assessment =>
+            analytic?.triage_settings?.valid_assessments
+              ? analytic.triage_settings?.valid_assessments.includes(_assessment)
+              : true
+          )
+          .sort((a, b) => +TOP_ROW.includes(b) - +TOP_ROW.includes(a))
+          .map<ActionButton>(assessment => ({
+            type: 'assessment',
+            name: assessment,
+            actionFunction: async () => {
+              await assess(assessment, analytic?.triage_settings?.skip_rationale);
+            }
+          }))
+      ];
+    }
+
+    return Object.entries(groupBy(_actions, 'type')).sort(([a], [b]) => ORDER.indexOf(a) - ORDER.indexOf(b));
+  }, [analytic, assess, availableTransitions, canAssess, canVote, config.lookups, vote, pluginActions]);
+
   useEffect(() => {
     if (!hit) {
       return;
@@ -98,10 +156,7 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
   useEffect(() => {
     if (!anchorEl) {
       setClickLocation([-1, -1]);
-      setShowAction(false);
-      setShowAssess(false);
-      setShowVote(false);
-      setShowManage(false);
+      setShow({});
       setAnalytic(null);
     }
   }, [anchorEl]);
@@ -139,93 +194,39 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
           <ListItemText>{t('hit.panel.analytic.open')}</ListItemText>
         </MenuItem>
         <Divider />
+        {entries.map(([type, items]) => (
+          <MenuItem
+            key={type}
+            sx={{ position: 'relative' }}
+            onMouseEnter={() => setShow(_show => ({ ..._show, [type]: true }))}
+            onMouseLeave={() => setShow(_show => ({ ..._show, [type]: false }))}
+            disabled={rowStatus[type] === false}
+          >
+            <ListItemIcon>{ICON_MAP[type] ?? <Terminal />}</ListItemIcon>
+            <ListItemText sx={{ flex: 1 }}>{t(`hit.details.actions.${type}`)}</ListItemText>
+            {rowStatus[type] !== false && (
+              <KeyboardArrowRight fontSize="small" sx={{ color: 'text.secondary', mr: -1 }} />
+            )}
+            <Fade in={show[type]} unmountOnExit>
+              <Paper
+                sx={{ position: 'absolute', top: 0, left: '100%', maxHeight: '300px', overflow: 'auto' }}
+                elevation={8}
+              >
+                <MenuList sx={{ p: 0, borderTopLeftRadius: 0 }} dense>
+                  {items.map(a => (
+                    <MenuItem value={a.name} onClick={a.actionFunction} key={a.name}>
+                      {a.i18nKey ? t(a.i18nKey) : capitalize(a.name)}
+                    </MenuItem>
+                  ))}
+                </MenuList>
+              </Paper>
+            </Fade>
+          </MenuItem>
+        ))}
         <MenuItem
           sx={{ position: 'relative' }}
-          onMouseEnter={() => setShowAssess(true)}
-          onMouseLeave={() => setShowAssess(false)}
-          disabled={!canAssess}
-        >
-          <ListItemIcon>
-            <Assignment />
-          </ListItemIcon>
-          <ListItemText sx={{ flex: 1 }}>{t('hit.details.actions.assess')}</ListItemText>
-          {canAssess && <KeyboardArrowRight fontSize="small" sx={{ color: 'text.secondary', mr: -1 }} />}
-          <Fade in={showAssess} unmountOnExit>
-            <Paper
-              sx={{ position: 'absolute', top: 0, left: '100%', maxHeight: '300px', overflow: 'auto' }}
-              elevation={8}
-            >
-              <MenuList sx={{ p: 0, borderTopLeftRadius: 0 }} dense>
-                {config.lookups['howler.assessment'].map(a => (
-                  <MenuItem value={a} onClick={() => assess(a, analytic?.triage_settings.skip_rationale)} key={a}>
-                    {a.replace(/^[a-z]/, val => val.toUpperCase())}
-                  </MenuItem>
-                ))}
-              </MenuList>
-            </Paper>
-          </Fade>
-        </MenuItem>
-        <MenuItem
-          sx={{ position: 'relative' }}
-          onMouseEnter={() => setShowVote(true)}
-          onMouseLeave={() => setShowVote(false)}
-          disabled={!canVote}
-        >
-          <ListItemIcon>
-            <HowToVote />
-          </ListItemIcon>
-          <ListItemText sx={{ flex: 1 }}>{t('hit.details.actions.vote')}</ListItemText>
-          {canVote && <KeyboardArrowRight fontSize="small" sx={{ color: 'text.secondary', mr: -1 }} />}
-          <Fade in={showVote} unmountOnExit>
-            <Paper
-              sx={{ position: 'absolute', top: 0, left: '100%', maxHeight: '300px', overflow: 'auto' }}
-              elevation={8}
-            >
-              <MenuList sx={{ p: 0, borderTopLeftRadius: 0, minWidth: '150px' }} dense>
-                {VOTE_OPTIONS.map(v => (
-                  <MenuItem value={v.name} onClick={() => vote(v.name.toLowerCase())} key={v.name}>
-                    <ListItemText>{v.name}</ListItemText>
-                    {selectedVote === v.name.toLowerCase() && <Check fontSize="small" />}
-                  </MenuItem>
-                ))}
-              </MenuList>
-            </Paper>
-          </Fade>
-        </MenuItem>
-        <MenuItem
-          sx={{ position: 'relative' }}
-          onMouseEnter={() => setShowManage(true)}
-          onMouseLeave={() => setShowManage(false)}
-        >
-          <ListItemIcon>
-            <Edit />
-          </ListItemIcon>
-          <ListItemText sx={{ flex: 1 }}>{t('hit.details.actions.transition')}</ListItemText>
-          <KeyboardArrowRight fontSize="small" sx={{ color: 'text.secondary', mr: -1 }} />
-          <Fade in={showManage} unmountOnExit>
-            <Paper
-              sx={{ position: 'absolute', top: 0, left: '100%', maxHeight: '300px', overflow: 'auto' }}
-              elevation={8}
-            >
-              <MenuList sx={{ p: 0, borderTopLeftRadius: 0, minWidth: '150px' }} dense>
-                {availableTransitions.map(transition => (
-                  <MenuItem
-                    value={transition.name}
-                    onClick={() => manage(transition.name.toLowerCase())}
-                    key={transition.name}
-                  >
-                    <ListItemText>{t(`hit.details.actions.transition.${transition.name}`)}</ListItemText>
-                    {selectedVote === transition.name.toLowerCase() && <Check fontSize="small" />}
-                  </MenuItem>
-                ))}
-              </MenuList>
-            </Paper>
-          </Fade>
-        </MenuItem>
-        <MenuItem
-          sx={{ position: 'relative' }}
-          onMouseEnter={() => setShowAction(true)}
-          onMouseLeave={() => setShowAction(false)}
+          onMouseEnter={() => setShow(_show => ({ ..._show, actions: true }))}
+          onMouseLeave={() => setShow(_show => ({ ..._show, actions: false }))}
           disabled={actions.length < 1}
         >
           <ListItemIcon>
@@ -233,7 +234,7 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
           </ListItemIcon>
           <ListItemText sx={{ flex: 1 }}>{t('route.actions.change')}</ListItemText>
           {actions.length > 0 && <KeyboardArrowRight fontSize="small" sx={{ color: 'text.secondary', mr: -1 }} />}
-          <Fade in={showAction} unmountOnExit>
+          <Fade in={show.actions} unmountOnExit>
             <Paper
               sx={{ position: 'absolute', top: 0, left: '100%', maxHeight: '300px', overflow: 'auto' }}
               elevation={8}

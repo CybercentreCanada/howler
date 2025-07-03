@@ -15,34 +15,23 @@ import type { FC } from 'react';
 import { useContext, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ActionButton } from './SharedComponents';
-import { ASSESSMENT_KEYBINDS, TOP_ROW, VOTE_OPTIONS } from './SharedComponents';
 
 interface DropdownActionProps {
-  availableTransitions: ActionButton[];
-  canAssess: boolean;
-  canVote: boolean;
+  actions: ActionButton[];
   currentAssessment: string;
   currentStatus: string;
-  customActions: { [index: string]: () => void };
+  currentVote: string;
   loading: boolean;
   orientation: 'horizontal' | 'vertical';
-  selectedVote: ActionButton['name'];
-  validAssessments: string[];
-  vote: (v: string) => void;
 }
 
 const DropdownActions: FC<DropdownActionProps> = ({
-  availableTransitions,
-  canAssess,
-  canVote,
+  actions,
   currentAssessment,
   currentStatus,
-  customActions,
+  currentVote,
   loading,
-  orientation,
-  validAssessments,
-  selectedVote,
-  vote
+  orientation
 }) => {
   const { t } = useTranslation();
   const config = useContext(ApiConfigContext);
@@ -75,36 +64,38 @@ const DropdownActions: FC<DropdownActionProps> = ({
       <Grid item sm={!isHorizontal ? true : 'auto'} xs={12}>
         <FormControl disabled={loading} fullWidth>
           <InputLabel id="transition-label" htmlFor="transition">
-            {t('hit.details.actions.transition')}
+            {t('hit.details.actions.action')}
           </InputLabel>
           <Select
             labelId="transition-label"
             id="transition"
             size={isHorizontal ? 'small' : 'medium'}
-            label={t('hit.details.actions.transition')}
+            label={t('hit.details.actions.action')}
             value={currentStatus}
           >
             <MenuItem value={currentStatus} sx={{ display: 'none' }}>
               {currentStatus.replace(/-/g, ' ').replace(/^[a-z]/, val => val.toUpperCase())}
             </MenuItem>
-            {availableTransitions.map(option => (
-              <MenuItem key={option.name} value={option.name} onClick={customActions[option.key]}>
-                {t(`hit.details.actions.transition.${option.name}`)}
-              </MenuItem>
-            ))}
+            {actions
+              .filter(_action => _action.type === 'action')
+              .map(_action => (
+                <MenuItem key={_action.name} value={_action.name} onClick={_action.actionFunction}>
+                  {_action.i18nKey ? t(_action.i18nKey) : _action.name}
+                </MenuItem>
+              ))}
           </Select>
         </FormControl>
       </Grid>
       <Grid item sm={!isHorizontal ? true : 'auto'} xs={12}>
-        <FormControl disabled={loading || !canAssess} fullWidth>
+        <FormControl disabled={loading || !actions.some(action => action.type === 'assessment')} fullWidth>
           <InputLabel id="assess-label" htmlFor="assess">
-            {t('hit.details.actions.assess')}
+            {t('hit.details.actions.assessment')}
           </InputLabel>
           <Select
             labelId="assess-label"
             id="assess"
             size={isHorizontal ? 'small' : 'medium'}
-            label={t('hit.details.actions.assess')}
+            label={t('hit.details.actions.assessment')}
             value={currentAssessment ?? 'no-assessment'}
             MenuProps={{
               anchorOrigin: { horizontal: 'left', vertical: 'bottom' },
@@ -112,22 +103,21 @@ const DropdownActions: FC<DropdownActionProps> = ({
             }}
           >
             <MenuItem value="no-assessment" sx={{ display: 'none' }}>
-              {t('hit.details.actions.assess.noassessment')}
+              {t('hit.details.actions.assessment.noassessment')}
             </MenuItem>
-            {config.config.lookups['howler.assessment']
-              .filter(_assessment => (validAssessments ? validAssessments.includes(_assessment) : true))
-              .sort((a, b) => +TOP_ROW.includes(b) - +TOP_ROW.includes(a))
-              .map((a, index) => (
-                <MenuItem value={a} onClick={customActions[ASSESSMENT_KEYBINDS[index]]} key={a}>
+            {actions
+              .filter(action => action.type === 'assessment')
+              .map(a => (
+                <MenuItem value={a.name} onClick={a.actionFunction} key={a.name}>
                   <Stack direction="column">
                     <span>
-                      {a
+                      {a.name
                         .split(/[ -]/)
                         .map(part => capitalize(part))
                         .join(' ')}
                     </span>
                     <Typography variant="caption" color="text.secondary" maxWidth="250px" sx={{ whiteSpace: 'wrap' }}>
-                      {t(`hit.details.asessments.${a}.description`)}
+                      {t(`hit.details.asessments.${a.name}.description`)}
                     </Typography>
                   </Stack>
                 </MenuItem>
@@ -136,7 +126,7 @@ const DropdownActions: FC<DropdownActionProps> = ({
         </FormControl>
       </Grid>
       <Grid item sm={!isHorizontal ? true : 'auto'} xs={12}>
-        <FormControl disabled={loading || !canVote} fullWidth>
+        <FormControl disabled={loading || !actions.some(action => action.type === 'vote')} fullWidth>
           <InputLabel id="vote-label" htmlFor="vote">
             {t('hit.details.actions.vote')}
           </InputLabel>
@@ -145,17 +135,18 @@ const DropdownActions: FC<DropdownActionProps> = ({
             id="vote"
             size={isHorizontal ? 'small' : 'medium'}
             label={t('hit.details.actions.vote')}
-            value={selectedVote || 'no-vote'}
-            onChange={e => vote(e.target.value)}
+            value={currentVote || 'no-vote'}
           >
             <MenuItem value="no-vote" sx={{ display: 'none' }}>
               {t('hit.details.actions.vote.novote')}
             </MenuItem>
-            {VOTE_OPTIONS.map(action => (
-              <MenuItem key={action.key} value={action.name.toLowerCase()}>
-                {action.name}
-              </MenuItem>
-            ))}
+            {actions
+              .filter(action => action.type === 'vote')
+              .map(action => (
+                <MenuItem key={action.name} value={action.name.toLowerCase()} onClick={action.actionFunction}>
+                  {action.i18nKey ? t(action.i18nKey) : action.name}
+                </MenuItem>
+              ))}
           </Select>
         </FormControl>
       </Grid>

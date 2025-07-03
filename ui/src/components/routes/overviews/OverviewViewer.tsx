@@ -22,14 +22,14 @@ import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
 import { OverviewContext } from 'components/app/providers/OverviewProvider';
 import HitOverview from 'components/elements/hit/HitOverview';
 import useMyApi from 'components/hooks/useMyApi';
-import hitsData from 'data/index.json';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Overview } from 'models/entities/generated/Overview';
 import { useSearchParams } from 'react-router-dom';
+import hitsData from 'utils/hit.json';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
 import OverviewEditor from './OverviewEditor';
-import { STARTING_TEMPLATE } from './startingTemplate';
+import { startingTemplate } from './startingTemplate';
 
 const OverviewViewer = () => {
   const theme = useTheme();
@@ -346,7 +346,7 @@ const OverviewViewer = () => {
                 '& > div > :first-child': { mt: 0 }
               }}
             >
-              <HitOverview content={content || STARTING_TEMPLATE} hit={exampleHit} />
+              <HitOverview content={content || startingTemplate()} hit={exampleHit} />
             </Box>
           </Stack>
         )}

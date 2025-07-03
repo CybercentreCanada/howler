@@ -1,6 +1,6 @@
 # Schéma du hit
 
-Un hit howler peut contenir un grand nombre de champs uniques, chacun avec une définition particulière, afin de rendre les hits mutuellement intelligibles d'une analyse à l'autre. Vous trouverez ci-dessous un tableau contenant tous les champs de résultats donnés, ainsi que leur type et une brève description de leur utilisation. Alors que la grande majorité des champs sont basés sur le schéma commun Elastic (voir [ici](https://www.elastic.co/guide/en/ecs/8.5/index.html) pour la documentation), il existe également des champs personnalisés pour Howler.
+Un hit howler peut contenir un grand nombre de champs uniques, chacun avec une définition particulière, afin de rendre les hits mutuellement intelligibles d'une analyse à l'autre. Vous trouverez ci-dessous un tableau contenant tous les champs de résultats donnés, ainsi que leur type et une brève description de leur utilisation. Alors que la grande majorité des champs sont basés sur le schéma commun Elastic (voir [ici](https://www.elastic.co/guide/en/ecs/8.5/index.html) pour la documentation), il existe également des champs personnalisés pour Howler, et aussi des champs supplémentaires configurés par divers plugins Howler.
 
 ## Champs Howler - Bonnes pratiques
 

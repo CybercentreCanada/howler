@@ -61,7 +61,7 @@ howler.bundle.create_from_map("example-test", bundle_hit, map, [{"score": 0}])
 
 ## Visualiser les groupes sur l'interface utilisateur de Howler
 
-Afin de visualiser les groupes créés sur l'interface utilisateur de Howler, vous pouvez utiliser la requête `howler.is_bundle:true`. Cela fournira une liste de groupes créés que vous pourrez consulter. Pour un exemple, vous pouvez consulter l'instance de développement de Howler ([lien](https://howler.dev.analysis.cyber.gc.ca/hits?query=howler.is_bundle%3Atrue)).
+Afin de visualiser les groupes créés sur l'interface utilisateur de Howler, vous pouvez utiliser la requête `howler.is_bundle:true`. Cela fournira une liste de groupes créés que vous pourrez consulter.
 
 En cliquant sur un groupe, vous ouvrirez une interface de recherche légèrement différente de l'interface normale. Dans ce cas, nous filtrons automatiquement les résultats de la recherche pour n'inclure que les résultats inclus dans le groupe. Pour que cela soit évident, l'en-tête représentant le groupe apparaît au-dessus de la barre de recherche.
 

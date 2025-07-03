@@ -6,6 +6,6 @@ export const uri = (id: string) => {
   return joinAllUri(parentUri(), id, 'overwrite');
 };
 
-export const put = (id: string, body: Partial<Hit>): Promise<Hit> => {
+export const put = <T extends Hit = Hit>(id: string, body: Partial<T>): Promise<T> => {
   return hput(uri(id), body);
 };

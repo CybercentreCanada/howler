@@ -77,14 +77,12 @@ export interface APIConfiguration {
     };
   };
   ui: {
-    apps: { alt: string; name: string; img_d: string; img_l: string; route: string; classification: string }[];
+    apps: { alt: string; name: string; img_d: string; img_l: string; route: string; classification: string; }[]
   };
   features: {
     borealis: boolean;
     notebook: boolean;
-  };
-  borealis: {
-    status_checks: string[];
+    [feature: string]: boolean;
   };
 }
 

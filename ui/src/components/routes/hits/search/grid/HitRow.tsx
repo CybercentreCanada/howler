@@ -14,6 +14,7 @@ import { memo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
+import EnhancedCell from './EnchancedCell';
 
 const HitRow: FC<{
   hit: Hit;
@@ -100,13 +101,12 @@ const HitRow: FC<{
           </Stack>
         </TableCell>
         {columns.map(col => (
-          <TableCell
+          <EnhancedCell
             className={`col-${col.replaceAll('.', '-')}`}
             key={col}
+            value={get(hit, col) ?? t('none')}
             sx={columnWidths[col] ? { width: columnWidths[col] } : { width: '150px', maxWidth: '300px' }}
-          >
-            {get(hit, col) ?? t('none')}
-          </TableCell>
+          />
         ))}
         <TableCell style={{ borderBottom: 'none' }} />
       </TableRow>

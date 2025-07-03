@@ -5,6 +5,7 @@ import useMyUserFunctions from 'components/hooks/useMyUserFunctions';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import { useCallback, useMemo, type FC } from 'react';
 import { StorageKey } from 'utils/constants';
+import AdminSection from './AdminSection';
 import LocalSection from './LocalSection';
 import ProfileSection from './ProfileSection';
 import SecuritySection from './SecuritySection';
@@ -42,6 +43,7 @@ const Settings: FC = () => {
         editQuota={currentUser.is_admin && currentUserWrapper(editQuota)}
       />
       <LocalSection />
+      {currentUser.roles.includes('admin') && <AdminSection />}
     </UserPageWrapper>
   );
 };

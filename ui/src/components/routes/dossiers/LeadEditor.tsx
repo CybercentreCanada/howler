@@ -2,23 +2,36 @@ import { Icon, iconExists } from '@iconify/react/dist/iconify.js';
 import { useMonaco } from '@monaco-editor/react';
 import { Delete, OpenInNew } from '@mui/icons-material';
 import { Autocomplete, Button, IconButton, Stack, TextField, Typography, useTheme } from '@mui/material';
-import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import ThemedEditor from 'components/elements/ThemedEditor';
+import { merge } from 'lodash-es';
 import type { Lead } from 'models/entities/generated/Lead';
-import { useContext, useEffect, useMemo, type FC } from 'react';
+import howlerPluginStore from 'plugins/store';
+import { useCallback, useEffect, useMemo, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { usePluginStore } from 'react-pluggable';
 
-// todo: figure out a way to make this list of formats dynamic
-const FORMATS = ['markdown', 'borealis'];
+export interface LeadFormProps {
+  lead?: Lead;
+  metadata?: any;
+  update: (lead: Partial<Lead>) => void;
+  updateMetadata: (data: any) => void;
+}
 
 const LeadEditor: FC<{ lead?: Lead; update: (lead: Partial<Lead>) => void }> = ({ lead, update }) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const monaco = useMonaco();
-  const { config } = useContext(ApiConfigContext);
+  const pluginStore = usePluginStore();
 
   const icon = useMemo(() => lead?.icon ?? 'material-symbols:find-in-page', [lead?.icon]);
-  // const metadata = useMemo(() => JSON.parse(lead?.metadata ?? '{}'), [lead?.metadata]);
+  const metadata = useMemo(() => JSON.parse(lead?.metadata ?? '{}'), [lead?.metadata]);
+
+  const updateMetadata = useCallback(
+    _metadata => {
+      update({ metadata: JSON.stringify(merge({}, metadata, _metadata)) });
+    },
+    [metadata, update]
+  );
 
   useEffect(() => {
     if (!monaco) {
@@ -78,20 +91,30 @@ const LeadEditor: FC<{ lead?: Lead; update: (lead: Partial<Lead>) => void }> = (
       </Stack>
       <Autocomplete
         disabled={!lead}
-        options={FORMATS.filter(value => value !== 'borealis' || config?.configuration?.features?.borealis)}
+        options={['markdown', ...howlerPluginStore.leadFormats]}
         renderInput={params => <TextField {...params} size="small" label={t('route.dossiers.manager.format')} />}
         value={lead?.format ?? ''}
         onChange={(_ev, format) => update({ format, metadata: '{}', content: '' })}
       />
-      <ThemedEditor
-        height="100%"
-        width="100%"
-        language={lead?.format === 'markdown' ? 'markdown' : 'text'}
-        theme={theme.palette.mode === 'light' ? 'howler' : 'howler-dark'}
-        value={lead?.content ?? ''}
-        onChange={content => update({ content })}
-        options={{}}
-      />
+      {!!lead?.format &&
+        (lead.format === 'markdown' ? (
+          <ThemedEditor
+            height="100%"
+            width="100%"
+            language="markdown"
+            theme={theme.palette.mode === 'light' ? 'howler' : 'howler-dark'}
+            value={lead?.content ?? ''}
+            onChange={content => update({ content })}
+            options={{}}
+          />
+        ) : (
+          pluginStore.executeFunction(`lead.${lead.format}.form`, {
+            lead,
+            metadata,
+            update,
+            updateMetadata
+          } as LeadFormProps)
+        ))}
     </Stack>
   );
 };

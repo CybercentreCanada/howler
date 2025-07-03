@@ -72,7 +72,8 @@ export const language = <languages.IMonarchLanguage>{
     'join',
     'fetch',
     'upper',
-    'lower'
+    'lower',
+    'borealis'
   ],
   // CCCS MODIFICATION END
 
@@ -220,7 +221,7 @@ export const language = <languages.IMonarchLanguage>{
 
     comment: [
       [/[^<\-]+/, 'comment.content'],
-      [/--!?>/, 'comment', '@pop'],
+      [/-->/, 'comment', '@pop'],
       [/<!--/, 'comment.content.invalid'],
       [/[<\-]/, 'comment.content']
     ],

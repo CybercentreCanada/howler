@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import Throttler from 'utils/Throttler';
 import { hashCode } from 'utils/utils';
 import Markdown, { type MarkdownProps } from '../display/Markdown';
-import { HELPERS } from './handlebars/helpers';
+import { helpers } from './handlebars/helpers';
 
 type HandlebarsInstance = typeof Handlebars;
 
@@ -48,7 +48,7 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
   }, []);
 
   useEffect(() => {
-    HELPERS.forEach(helper => {
+    helpers().forEach(helper => {
       if (handlebars.helpers[helper.keyword] && !helper.componentCallback) {
         return;
       }
@@ -59,7 +59,13 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
         if (helper.componentCallback) {
           const id = hashCode(JSON.stringify([helper.keyword, ...args])).toString();
           if (!mdComponents[id]) {
-            setMdComponents(_components => ({ ..._components, [id]: helper.componentCallback(...args) }));
+            const result = helper.componentCallback(...args);
+
+            if (result instanceof Promise) {
+              result.then(_result => setMdComponents(_components => ({ ..._components, [id]: _result })));
+            } else {
+              setMdComponents(_components => ({ ..._components, [id]: result }));
+            }
           }
           return new Handlebars.SafeString(`\`${id}\``);
         }

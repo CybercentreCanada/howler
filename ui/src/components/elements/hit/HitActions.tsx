@@ -25,17 +25,19 @@ import { useMyLocalStorageProvider } from 'components/hooks/useMyLocalStorage';
 import json2mq from 'json2mq';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Hit } from 'models/entities/generated/Hit';
+import howlerPluginStore from 'plugins/store';
 import type { FC } from 'react';
 import { memo, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { isMobile } from 'react-device-detect';
 import { Trans } from 'react-i18next';
+import { usePluginStore } from 'react-pluggable';
 import { useContextSelector } from 'use-context-selector';
 import Throttler from 'utils/Throttler';
 import { StorageKey } from 'utils/constants';
 import { HitShortcuts } from './HitShortcuts';
 import ButtonActions from './actions/ButtonActions';
 import DropdownActions from './actions/DropdownActions';
-import type { Keybinds } from './actions/SharedComponents';
+import type { ActionButton } from './actions/SharedComponents';
 import { ASSESSMENT_KEYBINDS, TOP_ROW, VOTE_OPTIONS } from './actions/SharedComponents';
 
 const THROTTLER = new Throttler(250);
@@ -43,8 +45,9 @@ const HitActions: FC<{
   hit: Hit;
   orientation?: 'horizontal' | 'vertical';
 }> = ({ hit, orientation = 'horizontal' }) => {
-  const config = useContext(ApiConfigContext);
+  const { config } = useContext(ApiConfigContext);
   const { values, set } = useMyLocalStorageProvider();
+  const pluginStore = usePluginStore();
 
   const { getAnalyticFromName } = useContext(AnalyticContext);
 
@@ -61,9 +64,7 @@ const HitActions: FC<{
     return ctx.response.items[(ctx.response.items.findIndex(_hit => _hit.howler.id === selected) ?? -1) + 1] ?? null;
   });
 
-  const { availableTransitions, canVote, canAssess, loading, manage, assess, vote, selectedVote } = useHitActions([
-    hit
-  ]);
+  const { availableTransitions, canVote, canAssess, loading, assess, vote, selectedVote } = useHitActions([hit]);
 
   const [openSetting, setOpenSetting] = useState<null | HTMLElement>(null);
   const [analytic, setAnalytic] = useState<Analytic>(null);
@@ -78,69 +79,66 @@ const HitActions: FC<{
 
   const forceDropdown = useMemo(() => (values[StorageKey.FORCE_DROPDOWN] as boolean) ?? false, [values]);
 
-  const customActions = useMemo<Keybinds>(
-    () => ({
-      ...(canVote &&
-        VOTE_OPTIONS.reduce(
-          (obj, option) => ({ ...obj, [option.key]: () => vote(option.name.toLowerCase()) }),
-          {} as Keybinds
-        )),
-      ...(canAssess &&
-        config.config.lookups?.['howler.assessment']
+  const pluginActions = howlerPluginStore.plugins.flatMap(plugin =>
+    pluginStore.executeFunction(`${plugin}.actions`, [hit])
+  );
+
+  const actions = useMemo<ActionButton[]>(() => {
+    let _actions = [...availableTransitions, ...pluginActions];
+
+    if (canVote) {
+      _actions = [
+        ..._actions,
+        ...VOTE_OPTIONS.map(
+          option => ({ ...option, actionFunction: () => vote(option.name.toLowerCase()) }) as ActionButton
+        )
+      ];
+    }
+
+    if (config.lookups?.['howler.assessment'] && canAssess) {
+      _actions = [
+        ..._actions,
+        ...config.lookups['howler.assessment']
           .filter(_assessment =>
             analytic?.triage_settings?.valid_assessments
               ? analytic.triage_settings?.valid_assessments.includes(_assessment)
               : true
           )
-          ?.sort((a, b) => +TOP_ROW.includes(b) - +TOP_ROW.includes(a))
-          .reduce(
-            (obj, assessment, index) => ({
-              ...obj,
-              [ASSESSMENT_KEYBINDS[index]]: async () => {
-                if (!loading) {
-                  await assess(assessment, analytic?.triage_settings?.skip_rationale);
+          .sort((a, b) => +TOP_ROW.includes(b) - +TOP_ROW.includes(a))
+          .map<ActionButton>((assessment, index) => ({
+            type: 'assessment',
+            name: assessment,
+            actionFunction: async () => {
+              if (!loading) {
+                await assess(assessment, analytic?.triage_settings?.skip_rationale);
 
-                  if (getCurrentView()?.settings?.advance_on_triage && nextHit) {
-                    clearSelectedHits(nextHit.howler.id);
-                    setSelected?.(nextHit.howler.id);
-                  }
+                if (getCurrentView()?.settings?.advance_on_triage && nextHit) {
+                  clearSelectedHits(nextHit.howler.id);
+                  setSelected?.(nextHit.howler.id);
                 }
               }
-            }),
-            {} as Keybinds
-          )),
-      ...availableTransitions.reduce((obj, option) => {
-        if (
-          config.config.lookups.transitions[
-            hit?.howler.status as 'in-progress' | 'on-hold' | 'open' | 'resolved'
-          ].includes(option.name.toLowerCase())
-        ) {
-          obj[option.key] = () => {
-            if (!loading) {
-              manage(option.name.toLowerCase());
-            }
-          };
-        }
-        return obj;
-      }, {} as Keybinds)
-    }),
-    [
-      analytic?.triage_settings,
-      assess,
-      availableTransitions,
-      canAssess,
-      canVote,
-      clearSelectedHits,
-      config.config.lookups,
-      getCurrentView,
-      hit?.howler.status,
-      loading,
-      manage,
-      nextHit,
-      setSelected,
-      vote
-    ]
-  );
+            },
+            key: ASSESSMENT_KEYBINDS[index]
+          }))
+      ];
+    }
+
+    return _actions;
+  }, [
+    analytic,
+    assess,
+    availableTransitions,
+    canAssess,
+    canVote,
+    clearSelectedHits,
+    config.lookups,
+    getCurrentView,
+    loading,
+    nextHit,
+    setSelected,
+    vote,
+    pluginActions
+  ]);
 
   const keyboardDownHandler = useCallback(
     (event: KeyboardEvent) => {
@@ -148,15 +146,15 @@ const HitActions: FC<{
         const currentElement = document.activeElement.tagName;
         if (
           shortcuts !== HitShortcuts.NO_SHORTCUTS &&
-          event.key.toUpperCase() in customActions &&
+          event.key.toUpperCase() in actions &&
           !event.ctrlKey &&
           currentElement !== 'INPUT'
         ) {
-          customActions[event.key.toUpperCase()]();
+          actions[event.key.toUpperCase()]();
         }
       });
     },
-    [customActions, shortcuts]
+    [actions, shortcuts]
   );
 
   useEffect(() => {
@@ -191,39 +189,26 @@ const HitActions: FC<{
 
   const showDropdown = isMobile || !showButton;
 
-  const actions =
-    showDropdown || forceDropdown ? (
-      <DropdownActions
-        availableTransitions={availableTransitions}
-        canAssess={canAssess}
-        canVote={canVote}
-        currentAssessment={hit?.howler.assessment}
-        currentStatus={hit?.howler.status}
-        customActions={customActions}
-        loading={loading}
-        orientation={orientation}
-        selectedVote={selectedVote}
-        validAssessments={analytic?.triage_settings?.valid_assessments}
-        vote={vote}
-      />
-    ) : (
-      <ButtonActions
-        availableTransitions={availableTransitions}
-        canAssess={canAssess}
-        canVote={canVote}
-        customActions={customActions}
-        loading={loading}
-        orientation={orientation}
-        selectedVote={selectedVote}
-        shortcuts={shortcuts}
-        validAssessments={analytic?.triage_settings?.valid_assessments}
-        vote={vote}
-      />
-    );
-
   return (
     <Stack direction="row" alignItems="stretch">
-      {actions}
+      {showDropdown || forceDropdown ? (
+        <DropdownActions
+          currentAssessment={hit?.howler.assessment}
+          currentStatus={hit?.howler.status}
+          currentVote={selectedVote}
+          actions={actions}
+          loading={loading}
+          orientation={orientation}
+        />
+      ) : (
+        <ButtonActions
+          currentVote={selectedVote}
+          actions={actions}
+          loading={loading}
+          orientation={orientation}
+          shortcuts={shortcuts}
+        />
+      )}
       {(!showDropdown || !isMobile) && (
         <Box
           sx={[
@@ -263,12 +248,14 @@ const HitActions: FC<{
             onClose={handleCloseSetting}
             transformOrigin={{ horizontal: 'right', vertical: 'top' }}
             anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-            PaperProps={{
-              sx: {
-                '& ul': {
-                  p: 2,
-                  display: 'flex',
-                  flexDirection: 'column'
+            slotProps={{
+              paper: {
+                sx: {
+                  '& ul': {
+                    p: 2,
+                    display: 'flex',
+                    flexDirection: 'column'
+                  }
                 }
               }
             }}

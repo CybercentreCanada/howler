@@ -14,7 +14,7 @@ const NotebookDocumentation: FC = () => {
     .replaceAll(
       '$NBGALLERY_URL',
       window.location.host.startsWith('localhost')
-        ? 'https://nbgallery.example.com'
+        ? 'https://nbgallery.dev.analysis.cyber.gc.ca'
         : window.location.origin.replace(/howler(-stg)/, 'nbgallery')
     )
     .replaceAll('$CURRENT_URL', window.location.origin);

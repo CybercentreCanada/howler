@@ -27,10 +27,10 @@ hit = {
 
 Notez que l'icône peut être soit :
 
-1. Un nom identifiant une application interne, pour utiliser son icône
+1. Un nom identifiant une application liée (à partir du sélecteur d'applications), afin d'utiliser son icône.
 2. Une URL externe
 
-Si vous souhaitez utiliser une application interne, les valeurs suivantes sont actuellement prises en charge :
+Si vous souhaitez utiliser une application liée, les valeurs suivantes sont actuellement prises en charge :
 
 $APP_LIST
 

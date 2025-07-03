@@ -16,16 +16,16 @@ import { useContextSelector } from 'use-context-selector';
 import useMyApi from './useMyApi';
 import useMySnackbar from './useMySnackbar';
 
-export const MANAGE_OPTIONS: ActionButton[] = [
-  { name: 'release', key: 'R' },
-  { name: 'assign_to_other', key: 'T' },
-  { name: 'start', key: 'Y' },
-  { name: 'pause', key: 'U' },
-  { name: 'resume', key: 'I' },
-  { name: 'assign_to_me', key: 'O' },
-  { name: 're_evaluate', key: 'P' },
-  { name: 'demote', key: '-' },
-  { name: 'promote', key: '+' }
+export const MANAGE_OPTIONS: Partial<ActionButton>[] = [
+  { type: 'action', name: 'release', key: 'R', i18nKey: `hit.details.actions.action.release` },
+  { type: 'action', name: 'assign_to_other', key: 'T', i18nKey: `hit.details.actions.action.assign_to_other` },
+  { type: 'action', name: 'start', key: 'Y', i18nKey: `hit.details.actions.action.start` },
+  { type: 'action', name: 'pause', key: 'U', i18nKey: `hit.details.actions.action.pause` },
+  { type: 'action', name: 'resume', key: 'I', i18nKey: `hit.details.actions.action.resume` },
+  { type: 'action', name: 'assign_to_me', key: 'O', i18nKey: `hit.details.actions.action.assign_to_me` },
+  { type: 'action', name: 're_evaluate', key: 'P', i18nKey: `hit.details.actions.action.re_evaluate` },
+  { type: 'action', name: 'demote', key: '-', i18nKey: `hit.details.actions.action.demote` },
+  { type: 'action', name: 'promote', key: '+', i18nKey: `hit.details.actions.action.promote` }
 ];
 
 type TransitionStates = 'in-progress' | 'on-hold' | 'open' | 'resolved';
@@ -44,29 +44,6 @@ const useHitActions = (_hits: Hit | Hit[]) => {
   const [loading, setLoading] = useState(false);
 
   const hits = useMemo(() => (Array.isArray(_hits) ? _hits : [_hits]).filter(_hit => !!_hit), [_hits]);
-
-  const availableTransitions = useMemo(
-    () =>
-      MANAGE_OPTIONS.filter(option => {
-        const name = option.name.toLowerCase();
-
-        // Is this option one that is valid for the current state?
-        return hits.every(
-          hit =>
-            config.config.lookups?.transitions[hit?.howler.status as TransitionStates]?.includes(name) &&
-            // If we are assigning or voting, the hit can't be assigned to the current user
-            ((name !== 'assign_to_me' && name !== 'vote') || hit?.howler.assignment !== user.username) &&
-            // If we are running any of these actions, the current user must be assigned the hit
-            ((name !== 'release' && name !== 'start' && name !== 'resume' && name !== 'pause') ||
-              hit?.howler.assignment === user.username) &&
-            // If we're promoting, it has to be a hit
-            (name !== 'promote' || hit?.howler.escalation === 'hit') &&
-            // If we're demoting, it has to be an alert
-            (name !== 'demote' || hit?.howler.escalation === 'alert')
-        );
-      }),
-    [config.config.lookups?.transitions, hits, user.username]
-  );
 
   const canVote = useMemo(
     () => hits.every(hit => hit?.howler.assignment !== user.username || hit?.howler.status === 'in-progress'),
@@ -249,6 +226,39 @@ const useHitActions = (_hits: Hit | Hit[]) => {
       }
     },
     [dispatchApi, hits, onAssign, showWarningMessage, t, updateHit]
+  );
+
+  const availableTransitions = useMemo(
+    () =>
+      MANAGE_OPTIONS.filter(option => {
+        const name = option.name.toLowerCase();
+
+        // Is this option one that is valid for the current state?
+        return hits.every(
+          hit =>
+            config.config.lookups?.transitions[hit?.howler.status as TransitionStates]?.includes(name) &&
+            // If we are assigning or voting, the hit can't be assigned to the current user
+            ((name !== 'assign_to_me' && name !== 'vote') || hit?.howler.assignment !== user.username) &&
+            // If we are running any of these actions, the current user must be assigned the hit
+            ((name !== 'release' && name !== 'start' && name !== 'resume' && name !== 'pause') ||
+              hit?.howler.assignment === user.username) &&
+            // If we're promoting, it has to be a hit
+            (name !== 'promote' || hit?.howler.escalation === 'hit') &&
+            // If we're demoting, it has to be an alert
+            (name !== 'demote' || hit?.howler.escalation === 'alert')
+        );
+      }).map<ActionButton>(
+        option =>
+          ({
+            ...option,
+            actionFunction: () => {
+              if (!loading) {
+                manage(option.name.toLowerCase());
+              }
+            }
+          }) as ActionButton
+      ),
+    [config.config.lookups?.transitions, hits, loading, manage, user.username]
   );
 
   return {

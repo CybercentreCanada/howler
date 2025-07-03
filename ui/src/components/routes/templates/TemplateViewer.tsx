@@ -23,13 +23,13 @@ import { TemplateContext } from 'components/app/providers/TemplateProvider';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import HitOutline, { DEFAULT_FIELDS } from 'components/elements/hit/HitOutline';
 import useMyApi from 'components/hooks/useMyApi';
-import hitsData from 'data/index.json';
 import isEqual from 'lodash-es/isEqual';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Template } from 'models/entities/generated/Template';
 import { useSearchParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
+import hitsData from 'utils/hit.json';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
 
 const CUSTOM_OUTLINES = ['cmt.aws.sigma.rules', 'assemblyline', '6tailphish'];

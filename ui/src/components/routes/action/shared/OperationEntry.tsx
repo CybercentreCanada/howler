@@ -63,7 +63,7 @@ const OperationEntry: FC<{
                   .map(_operation => (
                     <MenuItem key={_operation?.id} value={_operation?.id}>
                       <ListItemText
-                        primary={t(_operation.i18nKey) ?? _operation.title}
+                        primary={_operation.i18nKey ? t(_operation.i18nKey) : _operation.title}
                         secondary={_operation.description?.short}
                       />
                     </MenuItem>

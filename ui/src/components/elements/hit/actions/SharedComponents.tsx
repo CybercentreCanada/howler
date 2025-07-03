@@ -3,9 +3,11 @@ import { blueGrey } from '@mui/material/colors';
 import type { ReactNode } from 'react';
 
 export type ActionButton = {
+  type: 'assessment' | 'action' | 'vote';
   name: string;
-  actionFunction?: () => void;
+  actionFunction: () => void;
   key?: string;
+  i18nKey?: string;
   icon?: ReactNode;
 };
 
@@ -17,10 +19,10 @@ export const TOP_ROW = ['legitimate', 'false-positive', 'ambiguous', 'developmen
 
 export const ASSESSMENT_KEYBINDS = ['A', 'S', 'D', 'F', 'G', 'Z', 'X', 'C', 'V', 'B'];
 
-export const VOTE_OPTIONS: ActionButton[] = [
-  { name: 'Benign', key: 'Q' },
-  { name: 'Obscure', key: 'W' },
-  { name: 'Malicious', key: 'E' }
+export const VOTE_OPTIONS: Partial<ActionButton>[] = [
+  { name: 'Benign', key: 'Q', type: 'vote' },
+  { name: 'Obscure', key: 'W', type: 'vote' },
+  { name: 'Malicious', key: 'E', type: 'vote' }
 ];
 
 export const StyledBadge = styled(Badge)({

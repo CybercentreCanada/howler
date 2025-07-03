@@ -19,6 +19,7 @@ import isNull from 'lodash-es/isNull';
 import merge from 'lodash-es/merge';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Pivot } from 'models/entities/generated/Pivot';
+import howlerPluginStore from 'plugins/store';
 import {
   Fragment,
   useCallback,
@@ -30,9 +31,111 @@ import {
   type SetStateAction
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { usePluginStore } from 'react-pluggable';
 
-// todo: figure out a way to make this list of formats dynamic
-const FORMATS = ['link', 'borealis'];
+export interface PivotFormProps {
+  pivot: Pivot;
+  update: (pivot: Partial<Pivot>) => void;
+}
+
+const LinkForm: FC<PivotFormProps> = ({ pivot, update }) => {
+  const { t } = useTranslation();
+
+  const { config } = useContext(ApiConfigContext);
+
+  return (
+    <>
+      <TextField
+        size="small"
+        label={t('route.dossiers.manager.pivot.value')}
+        disabled={!pivot}
+        value={pivot?.value ?? ''}
+        fullWidth
+        onChange={ev => update({ value: ev.target.value })}
+      />
+      <Divider flexItem />
+      <Typography>{t('route.dossiers.manager.pivot.mappings')}</Typography>
+      {pivot?.mappings?.map((_mapping, index) => (
+        // eslint-disable-next-line react/no-array-index-key
+        <Fragment key={index}>
+          <Stack direction="row" spacing={1}>
+            <TextField
+              size="small"
+              label={t('route.dossiers.manager.pivot.mapping.key')}
+              disabled={!pivot}
+              value={_mapping?.key ?? ''}
+              onChange={ev =>
+                update({
+                  mappings: pivot.mappings.map((_m, _index) =>
+                    index === _index ? { ..._m, key: ev.target.value } : _m
+                  )
+                })
+              }
+            />
+            <Autocomplete
+              fullWidth
+              disabled={!pivot}
+              options={['custom', ...Object.keys(config.indexes.hit)]}
+              renderInput={params => (
+                <TextField
+                  {...params}
+                  size="small"
+                  fullWidth
+                  label={t('route.dossiers.manager.pivot.mapping.field')}
+                  sx={{ minWidth: '150px' }}
+                />
+              )}
+              getOptionLabel={opt => t(opt)}
+              value={_mapping.field ?? ''}
+              onChange={(_ev, field) =>
+                update({
+                  mappings: pivot.mappings.map((_m, _index) => (index === _index ? { ..._m, field } : _m))
+                })
+              }
+            />
+            <IconButton
+              onClick={() =>
+                update({
+                  mappings: pivot.mappings.filter((_m, _index) => index !== _index)
+                })
+              }
+            >
+              <Remove />
+            </IconButton>
+          </Stack>
+          {_mapping.field === 'custom' && (
+            <TextField
+              size="small"
+              label={t('route.dossiers.manager.pivot.mapping.custom')}
+              disabled={!pivot}
+              value={_mapping?.custom_value ?? ''}
+              onChange={ev =>
+                update({
+                  mappings: pivot.mappings.map((_m, _index) =>
+                    index === _index ? { ..._m, custom_value: ev.target.value } : _m
+                  )
+                })
+              }
+            />
+          )}
+        </Fragment>
+      ))}
+      <Button
+        disabled={!pivot}
+        sx={{ ml: 'auto', alignSelf: 'end', minWidth: '0 !important' }}
+        size="small"
+        variant="contained"
+        onClick={() => {
+          update({
+            mappings: [...(pivot.mappings ?? []), { key: 'key' }]
+          });
+        }}
+      >
+        <Add />
+      </Button>
+    </>
+  );
+};
 
 const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Partial<Dossier>>>; loading: boolean }> = ({
   dossier,
@@ -41,7 +144,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
 }) => {
   const theme = useTheme();
   const { t, i18n } = useTranslation();
-  const { config } = useContext(ApiConfigContext);
+  const pluginStore = usePluginStore();
 
   const [tab, setTab] = useState(0);
 
@@ -59,7 +162,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
               return null;
             }
 
-            const merged = merge(pivot, data);
+            const merged = merge({}, pivot, data);
 
             if (data.mappings) {
               merged.mappings = data.mappings;
@@ -186,109 +289,19 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
           </Stack>
           <Autocomplete
             disabled={!pivot}
-            options={FORMATS.filter(value => value !== 'borealis' || config?.configuration?.features?.borealis)}
+            options={['link', ...howlerPluginStore.pivotFormats]}
             renderInput={params => (
               <TextField {...params} size="small" label={t('route.dossiers.manager.pivot.format')} />
             )}
             value={pivot?.format ?? ''}
             onChange={(_ev, format) => update({ format, value: '', mappings: [] })}
           />
-          <TextField
-            size="small"
-            label={t('route.dossiers.manager.pivot.value')}
-            disabled={!pivot}
-            value={pivot?.value ?? ''}
-            fullWidth
-            onChange={ev => update({ value: ev.target.value })}
-          />
-          <Divider flexItem />
-          <Typography>{t('route.dossiers.manager.pivot.mappings')}</Typography>
-          {pivot?.mappings?.map((_mapping, index) => (
-            // eslint-disable-next-line react/no-array-index-key
-            <Fragment key={index}>
-              <Stack direction="row" spacing={1}>
-                <TextField
-                  size="small"
-                  label={t('route.dossiers.manager.pivot.mapping.key')}
-                  disabled={!pivot}
-                  value={_mapping?.key ?? ''}
-                  onChange={ev =>
-                    update({
-                      mappings: pivot.mappings.map((_m, _index) =>
-                        index === _index ? { ..._m, key: ev.target.value } : _m
-                      )
-                    })
-                  }
-                />
-                <Autocomplete
-                  fullWidth
-                  disabled={!pivot}
-                  options={[
-                    'custom',
-                    ...(pivot?.format === 'borealis' ? ['unset'] : []),
-                    ...Object.keys(config.indexes.hit)
-                  ]}
-                  renderInput={params => (
-                    <TextField
-                      {...params}
-                      size="small"
-                      fullWidth
-                      label={t('route.dossiers.manager.pivot.mapping.field')}
-                      sx={{ minWidth: '150px' }}
-                    />
-                  )}
-                  getOptionLabel={opt => t(opt)}
-                  value={_mapping.field ?? ''}
-                  onChange={(_ev, field) =>
-                    update({
-                      mappings: pivot.mappings.map((_m, _index) => (index === _index ? { ..._m, field } : _m))
-                    })
-                  }
-                />
-                {pivot?.format !== 'borealis' && (
-                  <IconButton
-                    onClick={() =>
-                      update({
-                        mappings: pivot.mappings.filter((_m, _index) => index !== _index)
-                      })
-                    }
-                  >
-                    <Remove />
-                  </IconButton>
-                )}
-              </Stack>
-              {_mapping.field === 'custom' && (
-                <TextField
-                  size="small"
-                  label={t('route.dossiers.manager.pivot.mapping.custom')}
-                  disabled={!pivot}
-                  value={_mapping?.custom_value ?? ''}
-                  onChange={ev =>
-                    update({
-                      mappings: pivot.mappings.map((_m, _index) =>
-                        index === _index ? { ..._m, custom_value: ev.target.value } : _m
-                      )
-                    })
-                  }
-                />
-              )}
-            </Fragment>
-          ))}
-          {pivot?.format !== 'borealis' && (
-            <Button
-              disabled={!pivot}
-              sx={{ ml: 'auto', alignSelf: 'end', minWidth: '0 !important' }}
-              size="small"
-              variant="contained"
-              onClick={() => {
-                update({
-                  mappings: [...(pivot.mappings ?? []), { key: 'key' }]
-                });
-              }}
-            >
-              <Add />
-            </Button>
-          )}
+          {!!pivot?.format &&
+            (pivot.format === 'link' ? (
+              <LinkForm pivot={pivot} update={update} />
+            ) : (
+              pluginStore.executeFunction(`pivot.${pivot.format}.form`, { pivot, update })
+            ))}
         </Stack>
       </Stack>
     </Paper>

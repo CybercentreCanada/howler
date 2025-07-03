@@ -35,6 +35,8 @@ import { memo, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Throttler from 'utils/Throttler';
 
+import PluginTypography from '../PluginTypography';
+
 const ListRenderer: FC<{
   objKey?: string;
   maxKeyLength?: number;
@@ -100,8 +102,6 @@ const ListRenderer: FC<{
             );
           }
 
-          let entryElement = <span style={{ maxWidth: '100%' }}>{entry}</span>;
-
           return (
             <Grid
               item
@@ -112,7 +112,14 @@ const ListRenderer: FC<{
               display="flex"
               flexDirection="row"
             >
-              {entryElement}
+              <PluginTypography
+                context="details"
+                component="code"
+                style={{ maxWidth: '100%', font: 'inherit' }}
+                value={entry}
+              >
+                {entry}
+              </PluginTypography>
               {/* eslint-disable-next-line react/jsx-no-literals */}
               {allPrimitives && index < uniqueEntries.length - 1 && <span>,</span>}
             </Grid>
@@ -189,7 +196,16 @@ const ObjectRenderer: FC<{ parentKey?: string; showParentKey?: boolean; data: an
                   >
                     <code style={{ maxWidth: '100%' }}>{key}</code>
                   </Box>
-                  <span style={{ maxWidth: '100%' }}>{val}</span>
+                  <Box display="flex" alignItems="start">
+                    <PluginTypography
+                      context="details"
+                      component="code"
+                      style={{ maxWidth: '100%', font: 'inherit' }}
+                      value={val}
+                    >
+                      {val}
+                    </PluginTypography>
+                  </Box>
                 </code>
               );
             })}

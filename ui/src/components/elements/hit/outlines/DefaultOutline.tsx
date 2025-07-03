@@ -1,6 +1,7 @@
 import { Info, Language, Lock, Person } from '@mui/icons-material';
 import { Box, IconButton, Tooltip, Typography } from '@mui/material';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
+import PluginTypography from 'components/elements/PluginTypography';
 import { get, isObject } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Template } from 'models/entities/generated/Template';
@@ -71,7 +72,7 @@ const DefaultOutline: FC<{
       {(fields ?? [])
         .map<[string, string]>(field => [field, get(hit, field)])
         .map(([field, data]) => {
-          let displayedData: React.ReactNode = (
+          const displayedData: string = (
             Array.isArray(data) ? data.join(', ') : isObject(data) ? JSON.stringify(data) : data
           )?.toString();
 
@@ -79,27 +80,23 @@ const DefaultOutline: FC<{
             return null;
           }
 
-          displayedData = (
-            <Typography
-              variant={layout !== HitLayout.COMFY ? 'caption' : 'body1'}
-              whiteSpace="normal"
-              sx={{ width: '100%', wordBreak: 'break-all' }}
-            >
-              {displayedData}
-            </Typography>
-          );
-
           return (
-            displayedData && (
-              <React.Fragment key={field}>
-                <Tooltip title={(config.indexes.hit[field]?.description ?? t('none')).split('\n')[0]}>
-                  <Typography variant={layout !== HitLayout.COMFY ? 'caption' : 'body1'} fontWeight="bold">
-                    {field}:
-                  </Typography>
-                </Tooltip>
+            <React.Fragment key={field}>
+              <Tooltip title={(config.indexes.hit[field]?.description ?? t('none')).split('\n')[0]}>
+                <Typography variant={layout !== HitLayout.COMFY ? 'caption' : 'body1'} fontWeight="bold">
+                  {field}:
+                </Typography>
+              </Tooltip>
+              <PluginTypography
+                context="outline"
+                variant={layout !== HitLayout.COMFY ? 'caption' : 'body1'}
+                whiteSpace="normal"
+                sx={{ width: '100%', wordBreak: 'break-all' }}
+                value={displayedData}
+              >
                 {displayedData}
-              </React.Fragment>
-            )
+              </PluginTypography>
+            </React.Fragment>
           );
         })}
     </Box>

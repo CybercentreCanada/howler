@@ -5,6 +5,7 @@ import * as configs from 'api/configs';
 import * as dossier from 'api/dossier';
 import * as help from 'api/help';
 import * as hit from 'api/hit';
+import * as notebook from 'api/notebook';
 import * as overview from 'api/overview';
 import * as search from 'api/search';
 import * as template from 'api/template';
@@ -44,6 +45,7 @@ const api = {
   template,
   user,
   view,
+  notebook
 };
 
 /**

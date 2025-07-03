@@ -18,6 +18,7 @@ import type { Chart, ChartDataset, ChartOptions } from 'chart.js';
 import 'chartjs-adapter-moment';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { HitContext } from 'components/app/providers/HitProvider';
+import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import useMyApi from 'components/hooks/useMyApi';
 import useMyChart from 'components/hooks/useMyChart';
@@ -28,7 +29,7 @@ import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'r
 import { Scatter } from 'react-chartjs-2';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
-import { stringToColor } from 'utils/utils';
+import { convertCustomDateRangeToLucene, convertDateToLucene, stringToColor } from 'utils/utils';
 
 const MAX_ROWS = 2500;
 const OVERRIDE_ROWS = 10000;
@@ -41,7 +42,7 @@ const FILTER_FIELDS = [
   'howler.detection'
 ];
 
-const HitGraph: FC<{ query: string; execute?: boolean }> = ({ query, execute = true }) => {
+const HitGraph: FC<{ query: string }> = ({ query }) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const { dispatchApi } = useMyApi();
@@ -50,10 +51,17 @@ const HitGraph: FC<{ query: string; execute?: boolean }> = ({ query, execute = t
 
   const setSelected = useContextSelector(ParameterContext, ctx => ctx.setSelected);
   const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
+  const span = useContextSelector(ParameterContext, ctx => ctx.span);
+  const startDate = useContextSelector(ParameterContext, ctx => ctx.startDate);
+  const endDate = useContextSelector(ParameterContext, ctx => ctx.endDate);
 
   const selectedHits = useContextSelector(HitContext, ctx => ctx.selectedHits);
   const addHitToSelection = useContextSelector(HitContext, ctx => ctx.addHitToSelection);
   const removeHitFromSelection = useContextSelector(HitContext, ctx => ctx.removeHitFromSelection);
+
+  const viewId = useContextSelector(HitSearchContext, ctx => ctx.viewId);
+  const searching = useContextSelector(HitSearchContext, ctx => ctx.searching);
+  const error = useContextSelector(HitSearchContext, ctx => ctx.error);
 
   const chartRef = useRef<Chart<'scatter'>>();
 
@@ -72,10 +80,18 @@ const HitGraph: FC<{ query: string; execute?: boolean }> = ({ query, execute = t
     setSearchTotal(0);
 
     try {
+      const filters: string[] = [];
+      if (span && !span.endsWith('custom')) {
+        filters.push(`event.created:${convertDateToLucene(span)}`);
+      } else if (startDate && endDate) {
+        filters.push(`event.created:${convertCustomDateRangeToLucene(startDate, endDate)}`);
+      }
+
       const total = (
         await dispatchApi(
           api.search.count.hit.post({
-            query
+            query,
+            filters
           })
         )
       ).count;
@@ -105,7 +121,8 @@ const HitGraph: FC<{ query: string; execute?: boolean }> = ({ query, execute = t
           sort: 'howler.hash desc',
           group_sort: 'howler.hash desc',
           limit: override ? OVERRIDE_ROWS : MAX_ROWS,
-          rows: override ? OVERRIDE_ROWS : MAX_ROWS
+          rows: override ? OVERRIDE_ROWS : MAX_ROWS,
+          filters
         })
       );
 
@@ -135,15 +152,16 @@ const HitGraph: FC<{ query: string; execute?: boolean }> = ({ query, execute = t
     } finally {
       setLoading(false);
     }
-  }, [dispatchApi, escalationFilter, filterField, override, query]);
+  }, [dispatchApi, endDate, escalationFilter, filterField, override, query, span, startDate]);
 
   useEffect(() => {
-    if (!query || !execute) {
+    if ((!query && !viewId) || searching || error) {
       return;
     }
 
     performQuery();
-  }, [execute, performQuery, query]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, viewId, searching, error]);
 
   const options: ChartOptions<'scatter'> = useMemo(() => {
     const parentOptions = scatter('hit.summary.title', 'hit.summary.subtitle');
