@@ -127,13 +127,16 @@ jobs:
       - name: Build UI
         run: |
           pnpm run build-all
+          cp package.json dist
+          cp -r public dist
         env:
           VITE_BRANCH: ${{ github.ref }}
           VITE_COMMIT_HASH: ${{ github.sha }}
           NODE_OPTIONS: --max-old-space-size=16384
-      - name: Publish UI
+      - name: Prep Pa
         run: |
           pnpm publish --provenance --access public
+        working-directory: ./ui/dist
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Log in to Docker Hub
