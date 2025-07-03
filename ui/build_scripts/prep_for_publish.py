@@ -45,9 +45,29 @@ for path in (ui_path / "src").rglob("**"):
 
     exports.append(path.relative_to(ui_path / "src"))
 
+    if (
+        index := next(
+            (
+                path / _index
+                for _index in ["index.ts", "index.tsx"]
+                if (path / _index).exists()
+            ),
+            None,
+        )
+    ) is not None:
+        exports.append(index)
+
+
 print(f"\t Writing {len(exports)} entries to exports")
 
-package_json["exports"] = {f"./{path}/*": f"./{path}/*.js" for path in exports}
+package_json["exports"] = {}
+for path in exports:
+    if "." in path.name:
+        package_json["exports"][f"./{path.parent.relative_to(ui_path / "src")}"] = (
+            f"./{path.parent.relative_to(ui_path / "src")}/index.js"
+        )
+    else:
+        package_json["exports"][f"./{path}/*"] = f"./{path}/*.js"
 
 (ui_path / "dist" / "package.json").write_text(json.dumps(package_json, indent=2))
 
