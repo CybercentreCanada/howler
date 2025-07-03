@@ -82,6 +82,11 @@ for js_file in (ui_path / "dist").rglob("**/*.js"):
     print("-" * 80)
     print("Transforming", js_file)
 
+    if "'i18n'" in current_content:
+        current_content = current_content.replace(
+            "'i18n'", "'@cccsaurora/howler-ui/i18n'"
+        )
+
     for path in exports:
         if f"'{path}" not in current_content:
             continue
