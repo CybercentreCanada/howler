@@ -130,6 +130,7 @@ jobs:
           cp package.json dist
           cp -r public dist
           cp .npmrc dist
+          python build_scripts/prep_for_publish.py
         env:
           VITE_BRANCH: ${{ github.ref }}
           VITE_COMMIT_HASH: ${{ github.sha }}
