@@ -1,4 +1,5 @@
 import json
+import os
 import shutil
 from pathlib import Path
 
@@ -21,6 +22,13 @@ if not (ui_path / "dist" / "package.json").exists():
 if not (ui_path / "dist" / "public").exists():
     print("\tRecursively copying public path")
     shutil.copytree(ui_path / "public", ui_path / "dist" / "public")
+
+print("\tCopying Markdown")
+for markdown in (ui_path / "src").rglob("**/*.md"):
+    if not (ui_path / "dist" / markdown.relative_to(ui_path / "src").parent).exists():
+        os.makedirs(ui_path / "dist" / markdown.relative_to(ui_path / "src").parent)
+
+    shutil.copy(markdown, ui_path / "dist" / markdown.relative_to(ui_path / "src"))
 
 print("Step 2: Prepare package.json")
 
@@ -70,6 +78,12 @@ for path in exports:
         package_json["exports"][f"./{path.parent.relative_to(ui_path / "src")}"] = (
             f"./{path.parent.relative_to(ui_path / "src")}/index.js"
         )
+    elif str(path).startswith("locales"):
+        package_json["exports"][f"./{path}/*"] = f"./{path}/*.json"
+    elif "markdown" in str(path):
+        package_json["exports"][f"./{path}/*"] = f"./{path}/*.md"
+    elif str(path).startswith("utils"):
+        package_json["exports"][f"./{path}/*"] = [f"./{path}/*.js", f"./{path}/*.json"]
     else:
         package_json["exports"][f"./{path}/*"] = f"./{path}/*.js"
 
@@ -78,9 +92,6 @@ for path in exports:
 print("Step 3: Rewiring imports")
 for js_file in (ui_path / "dist").rglob("**/*.js"):
     current_content = js_file.read_text()
-
-    print("-" * 80)
-    print("Transforming", js_file)
 
     if "'i18n'" in current_content:
         current_content = current_content.replace(
@@ -91,8 +102,6 @@ for js_file in (ui_path / "dist").rglob("**/*.js"):
         if f"'{path}" not in current_content:
             continue
 
-        print("\tFixing import", path)
-
         current_content = current_content.replace(
             f"'{path}", f"'@cccsaurora/howler-ui/{path}"
         )
@@ -101,9 +110,6 @@ for js_file in (ui_path / "dist").rglob("**/*.js"):
 
 for js_file in (ui_path / "dist").rglob("**/*.ts"):
     current_content = js_file.read_text()
-
-    print("-" * 80)
-    print("Transforming", js_file)
 
     if "'i18n'" in current_content:
         current_content = current_content.replace(
