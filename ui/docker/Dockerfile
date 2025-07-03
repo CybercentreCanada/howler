@@ -8,7 +8,7 @@ RUN groupadd -g 1001 howler-ui && useradd -u 1001 -g howler-ui -s /bin/sh howler
 WORKDIR /howler-ui
 
 # Copying the webpacked project into the working directory
-COPY  --chown=howler-ui:howler-ui ./dist /howler-ui/dist
+COPY  --chown=howler-ui:howler-ui ./build /howler-ui/build
 
 RUN npm install serve -g
 
@@ -19,4 +19,4 @@ RUN apt update && apt install vim htop procps -y
 USER howler-ui:howler-ui
 
 # start app
-CMD ["serve", "-s", "dist"]
+CMD ["serve", "-s", "build"]
