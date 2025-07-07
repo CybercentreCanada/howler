@@ -2,14 +2,13 @@ import ReactJson, { type CollapsedFieldProps } from '@microlink/react-json-view'
 import { Clear } from '@mui/icons-material';
 import { IconButton, Skeleton, Stack } from '@mui/material';
 import { useAppTheme } from 'commons/components/app/hooks';
+import Phrase from 'components/elements/addons/search/phrase/Phrase';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import { useCallback, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StorageKey } from 'utils/constants';
 import Throttler from 'utils/Throttler';
-import Phrase from '../../addons/search/phrase/Phrase';
-// eslint-disable-next-line import/no-unresolved
-import JSONWorker from './worker?worker';
+import { removeEmpty, searchObject } from 'utils/utils';
 
 const THROTTLER = new Throttler(150);
 
@@ -22,19 +21,15 @@ const JSONViewer: FC<{ data: object; collapse?: boolean }> = ({ data, collapse =
   const [query, setQuery] = useState('');
   const [result, setResult] = useState<any>(null);
 
-  const jsonWorker = useMemo(() => new JSONWorker(), []);
-
   useEffect(() => {
     THROTTLER.debounce(() => {
-      jsonWorker.postMessage([data, compact, query, flat]);
+      const filteredData = removeEmpty(data, compact);
 
-      jsonWorker.onmessage = (e: MessageEvent<[any]>) => {
-        setResult(e.data[0]);
-      };
+      const searchedData = searchObject(filteredData, query, flat);
+
+      setResult(searchedData);
     });
-
-    return () => (jsonWorker.onmessage = null);
-  }, [compact, data, flat, jsonWorker, query]);
+  }, [compact, data, flat, query]);
 
   const hasError = useMemo(() => {
     try {
