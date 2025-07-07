@@ -107,7 +107,7 @@ const HitRow: FC<{
       <TableRow onClick={ev => onClick(ev, hit)}>
         <TableCell colSpan={columns.length + 2} style={{ paddingBottom: 0, paddingTop: 0 }}>
           <Collapse in={expandRow} unmountOnExit>
-            <Box width="100%" maxWidth="1200px" margin={1} onClick={ev => onClick(ev, hit)}>
+            <Box width="100%" maxWidth="1200px" margin={1}>
               <HitCard id={hit.howler.id} layout={HitLayout.NORMAL} />
             </Box>
           </Collapse>
