@@ -79,11 +79,12 @@ for path in exports:
             f"./{path.parent.relative_to(ui_path / "src")}/index.js"
         )
     elif str(path).startswith("locales"):
-        package_json["exports"][f"./{path}/*"] = f"./{path}/*.json"
+        package_json["exports"][f"./{path}/*.json"] = f"./{path}/*.json"
     elif "markdown" in str(path):
         package_json["exports"][f"./{path}/*"] = f"./{path}/*.md"
     elif str(path).startswith("utils"):
-        package_json["exports"][f"./{path}/*"] = [f"./{path}/*.js", f"./{path}/*.json"]
+        package_json["exports"][f"./{path}/*"] = f"./{path}/*.js"
+        package_json["exports"][f"./{path}/*.json"] = f"./{path}/*.json"
     else:
         package_json["exports"][f"./{path}/*"] = f"./{path}/*.js"
 
