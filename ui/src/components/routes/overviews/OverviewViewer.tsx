@@ -29,7 +29,7 @@ import { useSearchParams } from 'react-router-dom';
 import hitsData from 'utils/hit.json';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
 import OverviewEditor from './OverviewEditor';
-import { startingTemplate } from './startingTemplate';
+import { useStartingTemplate } from './startingTemplate';
 
 const OverviewViewer = () => {
   const theme = useTheme();
@@ -55,6 +55,8 @@ const OverviewViewer = () => {
   const analyticContext = useContext(AnalyticContext);
 
   const wrapper = useRef<HTMLDivElement>();
+
+  const startingTemplate = useStartingTemplate();
 
   useEffect(() => {
     (async () => {
@@ -346,7 +348,7 @@ const OverviewViewer = () => {
                 '& > div > :first-child': { mt: 0 }
               }}
             >
-              <HitOverview content={content || startingTemplate()} hit={exampleHit} />
+              <HitOverview content={content || startingTemplate} hit={exampleHit} />
             </Box>
           </Stack>
         )}

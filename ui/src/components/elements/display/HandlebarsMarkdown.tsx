@@ -74,7 +74,7 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
         return helper.callback(...args);
       });
     });
-  }, [handlebars, mdComponents]);
+  }, [handlebars, helpers, mdComponents]);
 
   useEffect(() => {
     THROTTLER.debounce(async () => {
