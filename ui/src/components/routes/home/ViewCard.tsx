@@ -1,4 +1,4 @@
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import OpenInNewIcon from '@mui/icons-material/esm/OpenInNew';
 import { Card, CardContent, IconButton, Skeleton, Stack, Typography } from '@mui/material';
 import api from 'api';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
