@@ -14,7 +14,7 @@ export class HitEvent extends Event {
 }
 
 class HowlerPluginStore {
-  pluginStore = createPluginStore();
+  private _pluginStore = createPluginStore();
 
   plugins: string[] = [];
 
@@ -70,6 +70,10 @@ class HowlerPluginStore {
 
   public get operations() {
     return this._operations;
+  }
+
+  public get pluginStore() {
+    return this._pluginStore;
   }
 }
 

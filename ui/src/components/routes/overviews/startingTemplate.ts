@@ -1,19 +1,27 @@
-import { helpers } from 'components/elements/display/handlebars/helpers';
+import { useHelpers } from 'components/elements/display/handlebars/helpers';
+import { useMemo } from 'react';
 
-export const startingTemplate = () => {
-  const helperText = helpers()
-    .map(helper =>
-      `
+export const useStartingTemplate = () => {
+  const helpers = useHelpers();
+
+  const helperText = useMemo(
+    () =>
+      helpers
+        .map(helper =>
+          `
 ### \`${helper.keyword}\`
 
 ${helper.documentation}
 
 ---
 `.trim()
-    )
-    .join('\n');
+        )
+        .join('\n'),
+    [helpers]
+  );
 
-  return `
+  return useMemo(
+    () => `
 # Creating an Overview
 
 Overviews can be used to modify the way data is presented on alerts that match the overview's settings. Overviews are, by design, easy to create and quite flexible.
@@ -181,5 +189,7 @@ You can also make basic fetch requests for, and parse, JSON data from external s
 ## Full Helper List
 
 ${helperText}
-`;
+`,
+    [helperText]
+  );
 };

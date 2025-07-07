@@ -1,14 +1,14 @@
 import PageCenter from 'commons/components/pages/PageCenter';
 import HandlebarsMarkdown from 'components/elements/display/HandlebarsMarkdown';
 import { useScrollRestoration } from 'components/hooks/useScrollRestoration';
-import { useMemo, type FC } from 'react';
+import { type FC } from 'react';
 import ErrorBoundary from '../ErrorBoundary';
-import { startingTemplate } from '../overviews/startingTemplate';
+import { useStartingTemplate } from '../overviews/startingTemplate';
 
 const OverviewDocumentation: FC = () => {
   useScrollRestoration();
 
-  const template = useMemo(() => startingTemplate(), []);
+  const template = useStartingTemplate();
 
   return (
     <PageCenter margin={4} width="100%" textAlign="left">
