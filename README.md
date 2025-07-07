@@ -27,13 +27,3 @@ For documentation, see <https://cybercentrecanada.github.io/howler-docs/>
 ### Development
 
 If you'd like to contribute to Howler, follow the [developer's guide](https://cybercentrecanada.github.io/howler-docs/developer/getting_started/), create a branch and get coding!
-
-### Issue reporting
-
-If you'd like to report an issue, we will be tracking issues for each component in their respective repositories:
-
-- [Howler UI](https://github.com/CybercentreCanada/howler-ui/issues/new)
-- [Howler API](https://github.com/CybercentreCanada/howler-api/issues/new)
-- [Howler Client](https://github.com/CybercentreCanada/howler-client/issues/new)
-
-Please do not create issues in this repository - it is expressly used as a landing page for those interested in Howler's codebases.
