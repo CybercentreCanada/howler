@@ -260,7 +260,7 @@ where borealis_table_cells is an array with properties:
 
                         return (
                           <TableCell key={col + cell?.value}>
-                            {enableBorealisActions && typeof cell.borealis_entity && cell.borealis_entity === true ? (
+                            {enableBorealisActions && cell.borealis_entity === true ? (
                               <BorealisCheckbox value={cell.action_value ?? cell.value} />
                             ) : null}
                             {typeof cell.borealis_type === 'string' ? (
