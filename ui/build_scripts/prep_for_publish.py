@@ -28,7 +28,12 @@ for markdown in (ui_path / "src").rglob("**/*.md"):
     if not (ui_path / "dist" / markdown.relative_to(ui_path / "src").parent).exists():
         os.makedirs(ui_path / "dist" / markdown.relative_to(ui_path / "src").parent)
 
-    shutil.copy(markdown, ui_path / "dist" / markdown.relative_to(ui_path / "src"))
+    write_file = Path(
+        os.path.splitext(ui_path / "dist" / markdown.relative_to(ui_path / "src"))[0]
+        + ".md.js"
+    )
+
+    write_file.write_text(f"export default {json.dumps(markdown.read_text())}")
 
 print("Step 2: Prepare package.json")
 
@@ -81,7 +86,7 @@ for path in exports:
     elif str(path).startswith("locales"):
         package_json["exports"][f"./{path}/*.json"] = f"./{path}/*.json"
     elif "markdown" in str(path):
-        package_json["exports"][f"./{path}/*"] = f"./{path}/*.md"
+        package_json["exports"][f"./{path}/*.md"] = f"./{path}/*.md.js"
     elif str(path).startswith("utils"):
         package_json["exports"][f"./{path}/*"] = f"./{path}/*.js"
         package_json["exports"][f"./{path}/*.json"] = f"./{path}/*.json"
