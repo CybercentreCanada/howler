@@ -12,7 +12,7 @@ import { memo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
-import EnhancedCell from './EnchancedCell';
+import EnhancedCell from './EnhancedCell';
 
 const HitRow: FC<{
   hit: Hit;
