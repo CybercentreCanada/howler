@@ -65,7 +65,8 @@ export enum StorageKey {
   SEARCH_PANE_WIDTH = 'search_pane_width',
   GRID_COLLAPSE_COLUMN = 'grid_collapse_column',
   QUERY_HISTORY = 'query_history',
-  LOGIN_NONCE = 'login_nonce'
+  LOGIN_NONCE = 'login_nonce',
+  DISPLAY_TYPE = 'display_type'
 }
 
 export const MOCK_SEARCH_QUERY_STORE = `${MY_LOCAL_STORAGE_PREFIX}.${StorageKey.MOCK_SEARCH_QUERY_STORE}`;

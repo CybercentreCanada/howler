@@ -128,7 +128,7 @@ const SearchPane: FC = () => {
   const error = useContextSelector(HitSearchContext, ctx => ctx.error);
   const viewId = useContextSelector(HitSearchContext, ctx => ctx.viewId);
 
-  const { onClick } = useHitSelection(response);
+  const { onClick } = useHitSelection();
 
   const getHit = useContextSelector(HitContext, ctx => ctx.getHit);
   const clearSelectedHits = useContextSelector(HitContext, ctx => ctx.clearSelectedHits);

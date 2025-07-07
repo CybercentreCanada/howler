@@ -1,7 +1,7 @@
-import type { HowlerSearchResponse } from 'api/search';
 import type { AppSiteMapRoute } from 'commons/components/app/AppConfigs';
 import { useAppBreadcrumbs } from 'commons/components/app/hooks';
 import { HitContext } from 'components/app/providers/HitProvider';
+import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import useMySitemap from 'components/hooks/useMySitemap';
 import type { Hit } from 'models/entities/generated/Hit';
@@ -10,12 +10,13 @@ import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 
-const useHitSelection = (response?: HowlerSearchResponse<Hit>) => {
+const useHitSelection = () => {
   const navigate = useNavigate();
 
   const { setItems } = useAppBreadcrumbs();
   const { routes } = useMySitemap();
 
+  const response = useContextSelector(HitSearchContext, ctx => ctx.response);
   const selectedHits = useContextSelector(HitContext, ctx => ctx.selectedHits);
   const addHitToSelection = useContextSelector(HitContext, ctx => ctx.addHitToSelection);
   const removeHitFromSelection = useContextSelector(HitContext, ctx => ctx.removeHitFromSelection);
@@ -87,11 +88,10 @@ const useHitSelection = (response?: HowlerSearchResponse<Hit>) => {
       lastSelected,
       navigate,
       removeHitFromSelection,
-      response?.items,
+      response,
       routes,
       selectedHits,
       setItems,
-      setLastSelected,
       setSelected
     ]
   );

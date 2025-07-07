@@ -1,5 +1,5 @@
 /* eslint-disable react/jsx-no-literals */
-import { ViewComfy, ViewCompact, ViewModule } from '@mui/icons-material';
+import { List, TableChart, ViewComfy, ViewCompact, ViewModule } from '@mui/icons-material';
 import {
   MenuItem,
   Select,
@@ -30,6 +30,7 @@ const LocalSection: FC = () => {
   const [flattenJson, setFlattenJson] = useMyLocalStorageItem(StorageKey.FLATTEN_JSON, false);
   const [forceDrawer, setForceDrawer] = useMyLocalStorageItem(StorageKey.FORCE_DRAWER, false);
   const [hitLayout, setHitLayout] = useMyLocalStorageItem(StorageKey.HIT_LAYOUT, false);
+  const [displayType, setDisplayType] = useMyLocalStorageItem(StorageKey.DISPLAY_TYPE, 'list');
   const [pageCount, setPageCount] = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25);
   const [searchWidth, setSearchWidth] = useMyLocalStorageItem(StorageKey.SEARCH_PANE_WIDTH, null);
 
@@ -97,6 +98,34 @@ const LocalSection: FC = () => {
         <TableCell colSpan={3} sx={{ paddingTop: '0 !important' }}>
           <Typography variant="caption" color="text.secondary">
             {t('page.settings.local.hits.layout.description')}
+          </Typography>
+        </TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell sx={CELL_SX} style={{ whiteSpace: 'nowrap' }}>
+          {t('page.settings.local.hits.display_type')}
+        </TableCell>
+        <TableCell sx={CELL_SX} colSpan={2} align="right">
+          <ToggleButtonGroup size="small" value={displayType} exclusive onChange={(_, value) => setDisplayType(value)}>
+            <ToggleButton value="list">
+              <Stack direction="row" spacing={0.5}>
+                <List />
+                <span>{t('page.settings.local.hits.display_type.list')}</span>
+              </Stack>
+            </ToggleButton>
+            <ToggleButton value="grid">
+              <Stack direction="row" spacing={0.5}>
+                <TableChart />
+                <span>{t('page.settings.local.hits.display_type.grid')}</span>
+              </Stack>
+            </ToggleButton>
+          </ToggleButtonGroup>
+        </TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell colSpan={3} sx={{ paddingTop: '0 !important' }}>
+          <Typography variant="caption" color="text.secondary">
+            {t('page.settings.local.hits.display_type.description')}
           </Typography>
         </TableCell>
       </TableRow>
