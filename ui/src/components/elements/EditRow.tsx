@@ -1,5 +1,4 @@
-import { Delete } from '@mui/icons-material';
-import { Check, Close, Edit } from '@mui/icons-material/Edit';
+import { Check, Close, Delete, Edit } from '@mui/icons-material';
 import {
   Box,
   Checkbox,
