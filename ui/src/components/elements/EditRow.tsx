@@ -1,7 +1,5 @@
 import { Delete } from '@mui/icons-material';
-import CheckIcon from '@mui/icons-material/Check';
-import CloseIcon from '@mui/icons-material/Close';
-import EditIcon from '@mui/icons-material/Edit';
+import { Check, Close, Edit } from '@mui/icons-material/Edit';
 import {
   Box,
   Checkbox,
@@ -219,10 +217,10 @@ const EditRow = <T extends string | number | boolean>({
                 )}
               </Box>
               <IconButton onClick={onSubmit} disabled={loading}>
-                <CheckIcon fontSize="small" />
+                <Check fontSize="small" />
               </IconButton>
               <IconButton onClick={() => setEditing(false)} disabled={loading}>
-                <CloseIcon fontSize="small" />
+                <Close fontSize="small" />
               </IconButton>
               {optional && (
                 <IconButton
@@ -250,7 +248,7 @@ const EditRow = <T extends string | number | boolean>({
         {onEdit && !editing && type !== 'checkbox' && (
           <TableCell sx={cellSx} align="right">
             <IconButton onClick={() => setEditing(true)}>
-              <EditIcon fontSize="small" />
+              <Edit fontSize="small" />
             </IconButton>
           </TableCell>
         )}

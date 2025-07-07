@@ -8,11 +8,11 @@ import {
   FireTruck,
   FormatQuote,
   Mood,
+  MoreHoriz,
   RocketLaunch,
   ThumbDown,
   ThumbUp
 } from '@mui/icons-material';
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import {
   CardActions,
   CardContent,
@@ -199,7 +199,7 @@ const Comment: FC<{
                   aria-expanded={anchorEl ? 'true' : undefined}
                   onClick={handleOpen}
                 >
-                  <MoreHorizIcon fontSize="small" />
+                  <MoreHoriz fontSize="small" />
                 </IconButton>
               </Fade>
             )}

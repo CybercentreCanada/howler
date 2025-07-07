@@ -1,4 +1,4 @@
-import AddIcon from '@mui/icons-material/Add';
+import { Add } from '@mui/icons-material';
 import { Chip, Grid, IconButton, TableCell, TableRow } from '@mui/material';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import useMyLocalStorage from 'components/hooks/useMyLocalStorage';
@@ -73,7 +73,7 @@ const SecuritySection: FC<{
           <TableCell align="right">
             {addApiKey && (
               <IconButton onClick={addApiKey}>
-                <AddIcon fontSize="small" />
+                <Add fontSize="small" />
               </IconButton>
             )}
           </TableCell>

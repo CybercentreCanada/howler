@@ -6,6 +6,7 @@ import {
   Dashboard,
   Description,
   Edit,
+  ExitToApp,
   FormatListBulleted,
   Help,
   HelpCenter,
@@ -14,6 +15,7 @@ import {
   QueryStats,
   SavedSearch,
   Search,
+  Settings,
   SettingsSuggest,
   Shield,
   Storage,
@@ -21,8 +23,6 @@ import {
   Terminal,
   Topic
 } from '@mui/icons-material';
-import ExitToAppIcon from '@mui/icons-material/ExitToApp';
-import SettingsIcon from '@mui/icons-material/Settings';
 import { AppBrand } from 'branding/AppBrand';
 import type { AppLeftNavElement, AppPreferenceConfigs } from 'commons/components/app/AppConfigs';
 import Classification from 'components/elements/display/Classification';
@@ -231,12 +231,12 @@ const useMyPreferences = (): AppPreferenceConfigs => {
       {
         i18nKey: 'usermenu.settings',
         route: '/settings',
-        icon: <SettingsIcon />
+        icon: <Settings />
       },
       {
         i18nKey: 'usermenu.logout',
         route: '/logout',
-        icon: <ExitToAppIcon />
+        icon: <ExitToApp />
       }
     ],
     []

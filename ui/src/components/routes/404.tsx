@@ -1,4 +1,4 @@
-import LinkOffIcon from '@mui/icons-material/LinkOff';
+import { LinkOff } from '@mui/icons-material';
 import { Box, Typography } from '@mui/material';
 import PageCenter from 'commons/components/pages/PageCenter';
 import type { FC } from 'react';
@@ -9,7 +9,7 @@ const NotFoundPage: FC = () => {
   return (
     <PageCenter width="75%">
       <Box pt={6} textAlign="center" fontSize={200}>
-        <LinkOffIcon color="secondary" fontSize="inherit" />
+        <LinkOff color="secondary" fontSize="inherit" />
       </Box>
       <Box pb={2}>
         <Typography variant="h2">{t('page.404.title')}</Typography>

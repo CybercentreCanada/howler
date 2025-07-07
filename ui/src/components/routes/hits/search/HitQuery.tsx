@@ -1,12 +1,11 @@
 import { useMonaco } from '@monaco-editor/react';
-import { Height, Search } from '@mui/icons-material';
+import { Height, History, Search } from '@mui/icons-material';
 import { Badge, Box, Card, Skeleton, Tooltip, alpha, useTheme } from '@mui/material';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import TuiIconButton from 'components/elements/addons/buttons/CustomIconButton';
 import QueryEditor from 'components/routes/advanced/QueryEditor';
 import type { IDisposable, editor } from 'monaco-editor';
 
-import HistoryIcon from '@mui/icons-material/History';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import type { FC } from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -200,7 +199,7 @@ const HitQuery: FC<HitQueryProps> = ({
       />
       {fzfSearch && (
         <Tooltip title={t('route.history')}>
-          <HistoryIcon />
+          <History />
         </Tooltip>
       )}
       <TuiIconButton
