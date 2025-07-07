@@ -166,7 +166,7 @@ const HELPERS = [
 
   {
     keyword: 'borealis_group',
-    documentation: 'Intializes a borealis group',
+    documentation: 'Initializes a borealis group',
     componentCallback: (values: any, ...args: any[]) => {
       const options = args.pop() as Handlebars.HelperOptions;
       const props = options?.hash ?? {};
