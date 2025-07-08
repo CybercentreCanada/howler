@@ -32,6 +32,7 @@ import { useContextSelector } from 'use-context-selector';
 
 interface HitContextMenuProps {
   getSelectedId: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => string;
+  Component?: React.ElementType;
 }
 
 const ORDER = ['assessment', 'vote', 'action'];
@@ -41,7 +42,7 @@ const ICON_MAP = {
   action: <Edit />
 };
 
-const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, getSelectedId }) => {
+const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, getSelectedId, Component = Box }) => {
   const { t } = useTranslation();
   const analyticContext = useContext(AnalyticContext);
   const { dispatchApi } = useMyApi();
@@ -162,7 +163,7 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
   }, [anchorEl]);
 
   return (
-    <Box id="contextMenu" onContextMenu={onContextMenu}>
+    <Component id="contextMenu" onContextMenu={onContextMenu}>
       {children}
       <Menu
         id="hit-menu"
@@ -253,7 +254,7 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
           </Fade>
         </MenuItem>
       </Menu>
-    </Box>
+    </Component>
   );
 };
 

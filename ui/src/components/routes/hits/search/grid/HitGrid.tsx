@@ -1,15 +1,15 @@
 import {
-  Add,
-  FormatIndentDecrease,
-  FormatIndentIncrease,
-  Info,
-  List,
-  Remove,
-  Search,
-  TableChart
-} from '@mui/icons-material';
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  pointerWithin,
+  useSensor,
+  useSensors,
+  type DragEndEvent
+} from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { Add, FormatIndentDecrease, FormatIndentIncrease, Info, List, Search, TableChart } from '@mui/icons-material';
 import {
-  Box,
   IconButton,
   LinearProgress,
   Paper,
@@ -21,12 +21,10 @@ import {
   TableRow,
   ToggleButton,
   ToggleButtonGroup,
-  Tooltip,
   Typography,
   useTheme
 } from '@mui/material';
 import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
-import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { HitContext } from 'components/app/providers/HitProvider';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
@@ -35,25 +33,32 @@ import FlexOne from 'components/elements/addons/layout/FlexOne';
 import SearchTotal from 'components/elements/addons/search/SearchTotal';
 import DevelopmentBanner from 'components/elements/display/features/DevelopmentBanner';
 import DevelopmentIcon from 'components/elements/display/features/DevelopmentIcon';
+import useHitSelection from 'components/hooks/useHitSelection';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
+import HitContextMenu from '../HitContextMenu';
 import HitQuery from '../HitQuery';
 import QuerySettings from '../shared/QuerySettings';
 import ViewLink from '../ViewLink';
 import AddColumnModal from './AddColumnModal';
+import ColumnHeader from './ColumnHeader';
 import HitRow from './HitRow';
 
 const HitGrid: FC = () => {
   const { t } = useTranslation();
-  const { config } = useContext(ApiConfigContext);
   const { getIdFromName } = useContext(AnalyticContext);
   const routeParams = useParams();
   const location = useLocation();
   const theme = useTheme();
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+  const { onClick } = useHitSelection();
 
   const search = useContextSelector(HitSearchContext, ctx => ctx.search);
   const displayType = useContextSelector(HitSearchContext, ctx => ctx.displayType);
@@ -144,6 +149,9 @@ const HitGrid: FC = () => {
 
   const onMouseDown = useCallback(
     (col: string, event: React.MouseEvent<HTMLElement, MouseEvent>) => {
+      event.stopPropagation();
+      event.preventDefault();
+
       resizingCol.current = [col, (event.target as HTMLElement).parentElement];
 
       window.addEventListener('mousemove', onMouseMove);
@@ -162,6 +170,31 @@ const HitGrid: FC = () => {
     },
     [query, search]
   );
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+
+      if (active.id !== over.id) {
+        const oldIndex = (columns ?? []).findIndex(entry => entry === active.id);
+        const newIndex = (columns ?? []).findIndex(entry => entry === over.id);
+
+        setColumns(arrayMove(columns, oldIndex, newIndex));
+      }
+    },
+    [columns]
+  );
+
+  const getSelectedId = useCallback((event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    const target = event.target as HTMLElement;
+    const selectedElement = target.closest('[id]') as HTMLElement;
+
+    if (!selectedElement) {
+      return;
+    }
+
+    return selectedElement.id;
+  }, []);
 
   return (
     <Stack
@@ -208,7 +241,15 @@ const HitGrid: FC = () => {
       </Stack>
       <Stack direction="row" spacing={1} width="100%" sx={{ '& > *': { flex: 1 } }}>
         <QuerySettings />
-        {response && <SearchTotal offset={response.offset} pageLength={response.rows} total={response.total} />}
+        {response && (
+          <SearchTotal
+            sx={{ alignSelf: 'center' }}
+            color="text.secondary"
+            offset={response.offset}
+            pageLength={response.rows}
+            total={response.total}
+          />
+        )}
         <Stack direction="row">
           <FlexOne />
           <IconButton ref={columnModalRef} onClick={() => setShowAddColumn(true)}>
@@ -248,61 +289,23 @@ const HitGrid: FC = () => {
                   )}
                 </IconButton>
               </TableCell>
-              {columns.map(col => (
-                <TableCell
-                  key={col}
-                  sx={{
-                    borderRight: 'thin solid',
-                    borderRightColor: 'divider',
-                    py: 0.5,
-                    position: 'relative'
-                  }}
-                >
-                  <Stack
-                    className={`col-${col.replaceAll('.', '-')}`}
-                    direction="row"
-                    spacing={1}
-                    alignItems="center"
-                    sx={[
-                      { minWidth: '150px' },
-                      !!columnWidths[col]
-                        ? { width: columnWidths[col], maxWidth: columnWidths[col] }
-                        : { maxWidth: '300px' }
-                    ]}
-                  >
-                    <Tooltip title={config.indexes.hit[col].description}>
-                      <span>{col}</span>
-                    </Tooltip>
-                    <FlexOne />
-                    <IconButton
-                      size="small"
-                      sx={{ fontSize: '1rem' }}
-                      onClick={() => setColumns(_columns => _columns.filter(_col => _col !== col))}
-                    >
-                      <Remove fontSize="inherit" />
-                    </IconButton>
-
-                    <Box
-                      sx={{
-                        position: 'absolute',
-                        top: theme.spacing(0.75),
-                        bottom: theme.spacing(0.75),
-                        right: -3,
-                        width: '5px',
-                        borderRight: 'thin solid',
-                        borderLeft: 'thin solid',
-                        borderColor: 'divider',
-                        cursor: 'col-resize'
-                      }}
-                      onMouseDown={e => onMouseDown(col, e)}
+              <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragEnd={handleDragEnd}>
+                <SortableContext items={columns}>
+                  {columns.map(col => (
+                    <ColumnHeader
+                      key={col}
+                      col={col}
+                      width={columnWidths[col]}
+                      onMouseDown={onMouseDown}
+                      setColumns={setColumns}
                     />
-                  </Stack>
-                </TableCell>
-              ))}
+                  ))}
+                </SortableContext>
+              </DndContext>
               <TableCell sx={{ width: '100%' }} />
             </TableRow>
           </TableHead>
-          <TableBody>
+          <HitContextMenu Component={TableBody} getSelectedId={getSelectedId}>
             {response?.items.map(hit => (
               <HitRow
                 key={hit.howler.id}
@@ -311,6 +314,7 @@ const HitGrid: FC = () => {
                 columns={columns}
                 columnWidths={columnWidths}
                 collapseMainColumn={collapseMainColumn}
+                onClick={onClick}
               />
             ))}
             <TableRow>
@@ -322,7 +326,7 @@ const HitGrid: FC = () => {
                 </Stack>
               </TableCell>
             </TableRow>
-          </TableBody>
+          </HitContextMenu>
         </Table>
 
         {(response?.total ?? 0) < 1 && (

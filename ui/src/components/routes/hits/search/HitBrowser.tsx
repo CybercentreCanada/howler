@@ -180,7 +180,7 @@ const HitBrowser: FC = () => {
     <Stack direction="row" flex={1} sx={{ overflow: 'hidden' }}>
       <Box
         position="relative"
-        flex={1}
+        flex={1.15}
         height="100%"
         display="flex"
         sx={[{ overflow: 'auto' }, displayType === 'list' && !isNull(searchPaneWidth) && { maxWidth: searchPaneWidth }]}

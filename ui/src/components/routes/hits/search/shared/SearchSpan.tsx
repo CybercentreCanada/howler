@@ -50,7 +50,7 @@ const SearchSpan: FC<{
   return (
     <Autocomplete
       fullWidth
-      sx={{ minWidth: '150px', flex: 1 }}
+      sx={{ minWidth: '200px', flex: 1 }}
       size={size ?? 'small'}
       value={span}
       options={omitCustom ? DATE_RANGES.slice(0, DATE_RANGES.length - 1) : DATE_RANGES}

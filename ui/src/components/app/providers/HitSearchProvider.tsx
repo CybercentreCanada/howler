@@ -21,6 +21,7 @@ import { isMobile } from 'react-device-detect';
 import { useLocation, useParams } from 'react-router-dom';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
+import { getStored } from 'utils/localStorage';
 import Throttler from 'utils/Throttler';
 import { convertCustomDateRangeToLucene, convertDateToLucene } from 'utils/utils';
 import { HitContext } from './HitProvider';
@@ -75,7 +76,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
 
   const loadHits = useContextSelector(HitContext, ctx => ctx.loadHits);
 
-  const [displayType, setDisplayType] = useState<'list' | 'grid'>('list');
+  const [displayType, setDisplayType] = useState<'list' | 'grid'>(getStored(StorageKey.DISPLAY_TYPE) ?? 'list');
   const [searching, setSearching] = useState<boolean>(false);
   const [error, setError] = useState<string>(null);
   const [response, setResponse] = useState<HowlerSearchResponse<Hit>>();

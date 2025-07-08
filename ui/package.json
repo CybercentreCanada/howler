@@ -141,13 +141,10 @@
     "internal-slot": "1.0.7"
   },
   "scripts": {
-    "build": "vite build",
-    "build-all": "tsc && vite build",
+    "build": "tsc && vite build",
     "dev": "vite -l info",
     "preinstall": "npx only-allow pnpm",
-    "prepare": "npx husky",
     "serve": "vite preview",
-    "server": "node server/index.js",
     "start": "vite -l info"
   },
   "type": "module",
