@@ -4,7 +4,7 @@ import useMyApi from 'components/hooks/useMyApi';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import { useCallback, useEffect, useState, type FC, type PropsWithChildren } from 'react';
-import { createContext } from 'use-context-selector';
+import { createContext, useContextSelector } from 'use-context-selector';
 
 export interface DossierContextType {
   ready: boolean;
@@ -126,6 +126,10 @@ const DossierProvider: FC<PropsWithChildren> = ({ children }) => {
       {children}
     </DossierContext.Provider>
   );
+};
+
+export const useDossierContextSelector = <Selected,>(selector: (value: DossierContextType) => Selected): Selected => {
+  return useContextSelector<DossierContextType, Selected>(DossierContext, selector);
 };
 
 export default DossierProvider;

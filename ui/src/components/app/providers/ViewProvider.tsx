@@ -6,7 +6,7 @@ import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { View } from 'models/entities/generated/View';
 import { useCallback, useEffect, useState, type FC, type PropsWithChildren } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
-import { createContext } from 'use-context-selector';
+import { createContext, useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
 
 export interface ViewContextType {
@@ -168,6 +168,10 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
       {children}
     </ViewContext.Provider>
   );
+};
+
+export const useViewContextSelector = <Selected,>(selector: (value: ViewContextType) => Selected): Selected => {
+  return useContextSelector<ViewContextType, Selected>(ViewContext, selector);
 };
 
 export default ViewProvider;

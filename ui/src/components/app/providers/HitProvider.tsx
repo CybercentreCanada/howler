@@ -5,7 +5,7 @@ import type { Hit } from 'models/entities/generated/Hit';
 import type { HitUpdate } from 'models/socket/HitUpdate';
 import type { FC, PropsWithChildren } from 'react';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { createContext } from 'use-context-selector';
+import { createContext, useContextSelector } from 'use-context-selector';
 import { SocketContext, type RecievedDataType } from './SocketProvider';
 
 interface HitProviderType {
@@ -147,6 +147,10 @@ const HitProvider: FC<PropsWithChildren> = ({ children }) => {
       {children}
     </HitContext.Provider>
   );
+};
+
+export const useHitContextSelector = <Selected,>(selector: (value: HitProviderType) => Selected): Selected => {
+  return useContextSelector<HitProviderType, Selected>(HitContext, selector);
 };
 
 export default HitProvider;

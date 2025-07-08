@@ -4,7 +4,7 @@ import type { Hit } from 'models/entities/generated/Hit';
 import type { Template } from 'models/entities/generated/Template';
 import type { FC, PropsWithChildren } from 'react';
 import { useCallback, useRef, useState } from 'react';
-import { createContext } from 'use-context-selector';
+import { createContext, useContextSelector } from 'use-context-selector';
 
 interface TemplateContextType {
   templates: Template[];
@@ -129,6 +129,10 @@ const TemplateProvider: FC<PropsWithChildren> = ({ children }) => {
       {children}
     </TemplateContext.Provider>
   );
+};
+
+export const useTemplateContextSelector = <Selected,>(selector: (value: TemplateContextType) => Selected): Selected => {
+  return useContextSelector<TemplateContextType, Selected>(TemplateContext, selector);
 };
 
 export default TemplateProvider;
