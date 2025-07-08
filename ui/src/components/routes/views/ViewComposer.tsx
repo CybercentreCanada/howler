@@ -171,26 +171,26 @@ const ViewComposer: FC = () => {
     (async () => {
       const viewToEdit = await getCurrentView();
 
-    if (!viewToEdit) {
-      setError('route.views.missing');
-      return;
-    } else {
-      setError(null);
-    }
+      if (!viewToEdit) {
+        setError('route.views.missing');
+        return;
+      } else {
+        setError(null);
+      }
 
-    setTitle(viewToEdit.title);
-    setAdvanceOnTriage(viewToEdit.settings?.advance_on_triage ?? false);
-    setQuery(viewToEdit.query);
+      setTitle(viewToEdit.title);
+      setAdvanceOnTriage(viewToEdit.settings?.advance_on_triage ?? false);
+      setQuery(viewToEdit.query);
 
-    if (viewToEdit.sort) {
-      setSort(viewToEdit.sort);
-    }
+      if (viewToEdit.sort) {
+        setSort(viewToEdit.sort);
+      }
 
-    if (viewToEdit.span) {
-      setSpan(viewToEdit.span);
-    }
+      if (viewToEdit.span) {
+        setSpan(viewToEdit.span);
+      }
     })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeParams.id, getCurrentView]);
 
   return (

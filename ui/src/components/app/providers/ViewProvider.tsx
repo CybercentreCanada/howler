@@ -42,7 +42,7 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
   const [views, setViews] = useState<{ [viewId: string]: View }>({});
 
   const fetchViews: ViewContextType['fetchViews'] = useCallback(
-    async (ids: string[]) => {
+    async (ids?: string[]) => {
       if (!ids) {
         const newViews = (await dispatchApi(api.view.get(), { throwError: false })) ?? [];
 
