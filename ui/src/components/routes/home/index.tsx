@@ -111,7 +111,7 @@ const Home: FC = () => {
     api.search.hit
       .post({
         query: updateQuery,
-        rows: 5
+        rows: 0
       })
       .then(result => setUpdatedHitTotal(result.total));
   }, [updateQuery]);

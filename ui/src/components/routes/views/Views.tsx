@@ -24,6 +24,7 @@ import ItemManager from 'components/elements/display/ItemManager';
 import { ViewTitle } from 'components/elements/view/ViewTitle';
 import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
+import { isNull, omitBy, size } from 'lodash-es';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { View } from 'models/entities/generated/View';
 import React, { useCallback, useContext, useEffect, useState, type FC } from 'react';
@@ -41,8 +42,8 @@ const ViewsBase: FC = () => {
   const navigate = useNavigate();
   const { dispatchApi } = useMyApi();
 
-  const addFavourite = useContextSelector(ViewContext, ctx => ctx.addFavourite);
   const fetchViews = useContextSelector(ViewContext, ctx => ctx.fetchViews);
+  const addFavourite = useContextSelector(ViewContext, ctx => ctx.addFavourite);
   const removeFavourite = useContextSelector(ViewContext, ctx => ctx.removeFavourite);
   const removeView = useContextSelector(ViewContext, ctx => ctx.removeView);
   const views = useContextSelector(ViewContext, ctx => ctx.views);
@@ -60,6 +61,8 @@ const ViewsBase: FC = () => {
   const [hasError, setHasError] = useState(false);
   const [searching, setSearching] = useState(false);
   const [favouritesOnly, setFavouritesOnly] = useState(false);
+  const [defaultViewOpen, setDefaultViewOpen] = useState(false);
+  const [defaultViewLoading, setDefaultViewLoading] = useState(false);
 
   const onSearch = useCallback(async () => {
     try {
@@ -72,8 +75,6 @@ const ViewsBase: FC = () => {
         searchParams.delete('phrase');
       }
       setSearchParams(searchParams, { replace: true });
-
-      fetchViews(true);
 
       const searchTerm = phrase ? `*${sanitizeLuceneQuery(phrase)}*` : '*';
       const phraseQuery = FIELDS_TO_SEARCH.map(_field => `${_field}:${searchTerm}`).join(' OR ');
@@ -101,7 +102,6 @@ const ViewsBase: FC = () => {
     phrase,
     setSearchParams,
     searchParams,
-    fetchViews,
     user.username,
     user.favourite_views,
     types,
@@ -143,11 +143,11 @@ const ViewsBase: FC = () => {
       event.preventDefault();
       event.stopPropagation();
 
-      await dispatchApi(removeView(id));
+      await removeView(id);
 
       onSearch();
     },
-    [dispatchApi, onSearch, removeView]
+    [onSearch, removeView]
   );
 
   const onFavourite = useCallback(
@@ -155,26 +155,34 @@ const ViewsBase: FC = () => {
       event.preventDefault();
 
       if (user.favourite_views?.includes(id)) {
-        await dispatchApi(removeFavourite(id));
+        await removeFavourite(id);
         if (user.favourite_views?.length < 2) {
           setFavouritesOnly(false);
         }
       } else {
-        await dispatchApi(addFavourite(id));
+        await addFavourite(id);
       }
     },
-    [addFavourite, dispatchApi, removeFavourite, user.favourite_views]
+    [addFavourite, removeFavourite, user.favourite_views]
   );
 
-  useEffect(() => {
-    onSearch();
+  const onDefaultViewOpen = useCallback(async () => {
+    setDefaultViewOpen(true);
+    setDefaultViewLoading(true);
 
+    try {
+      await fetchViews();
+    } finally {
+      setDefaultViewLoading(false);
+    }
+  }, [fetchViews]);
+
+  useEffect(() => {
     if (!searchParams.has('offset')) {
       searchParams.set('offset', '0');
       setSearchParams(searchParams, { replace: true });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dispatchApi, types]);
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (response?.total <= offset) {
@@ -189,7 +197,7 @@ const ViewsBase: FC = () => {
       onSearch();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offset, favouritesOnly]);
+  }, [offset, favouritesOnly, types]);
 
   return (
     <ItemManager
@@ -229,11 +237,15 @@ const ViewsBase: FC = () => {
         </Typography>
       }
       afterSearch={
-        views?.length > 0 ? (
+        size(views) > 0 ? (
           <Autocomplete
-            options={views}
-            renderOption={(props, o) => (
-              <li {...props}>
+            open={defaultViewOpen}
+            loading={defaultViewLoading}
+            onOpen={onDefaultViewOpen}
+            onClose={() => setDefaultViewOpen(false)}
+            options={Object.values(omitBy(views, isNull))}
+            renderOption={({ key, ...props }, o) => (
+              <li {...props} key={key}>
                 <Stack>
                   <Typography variant="body1">{t(o.title)}</Typography>
                   <Typography variant="caption">
@@ -254,7 +266,7 @@ const ViewsBase: FC = () => {
             }
             getOptionLabel={(v: View) => t(v.title)}
             isOptionEqualToValue={(view, value) => view.view_id === value.view_id}
-            value={views?.find(v => v.view_id === defaultView) ?? null}
+            value={views[defaultView] ?? null}
             onChange={(_, option: View) => setDefaultView(option?.view_id)}
           />
         ) : (

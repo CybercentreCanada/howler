@@ -10,7 +10,7 @@ import SearchSpan from './SearchSpan';
 
 const QuerySettings: FC<{ verticalSorters?: boolean; boxSx?: SxProps }> = ({ verticalSorters = false, boxSx }) => {
   const viewId = useContextSelector(HitSearchContext, ctx => ctx.viewId);
-  const selectedView = useContextSelector(ViewContext, ctx => ctx.views?.find(val => val.view_id === viewId));
+  const selectedView = useContextSelector(ViewContext, ctx => ctx.views[viewId]);
 
   return (
     <Box sx={boxSx ?? { position: 'relative', maxWidth: '1200px' }}>

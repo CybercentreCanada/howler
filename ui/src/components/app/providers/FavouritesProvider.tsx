@@ -1,7 +1,7 @@
 import { QueryStats, SavedSearch } from '@mui/icons-material';
 import type { AppLeftNavElement, AppLeftNavGroup } from 'commons/components/app/AppConfigs';
 import { useAppLeftNav, useAppUser } from 'commons/components/app/hooks';
-import { uniqBy } from 'lodash-es';
+import { uniq } from 'lodash-es';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import { createContext, useCallback, useContext, useEffect, type FC, type PropsWithChildren } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -17,12 +17,11 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
   const appUser = useAppUser<HowlerUser>();
   const analytics = useContext(AnalyticContext);
 
-  const views = useContextSelector(ViewContext, ctx => ctx.views);
-  const viewsReady = useContextSelector(ViewContext, ctx => ctx.ready);
+  const fetchViews = useContextSelector(ViewContext, ctx => ctx.fetchViews);
 
-  const processViewElement = useCallback((): AppLeftNavElement => {
+  const processViewElement = useCallback(async (): Promise<AppLeftNavElement> => {
     const viewElement = leftNav.elements.find(el => el.element?.id === 'views');
-    const favourites = appUser.user?.favourite_views || [];
+    const favourites = uniq(appUser.user?.favourite_views || []);
 
     // There are no favourites and no nav elements - return
     if (favourites.length < 1 && !viewElement) {
@@ -39,22 +38,16 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
       return viewElement;
     }
 
-    const items = uniqBy(
-      favourites
-        .map(view_id => {
-          const view = views?.find(v => v.view_id === view_id);
-          return view
-            ? {
-                id: view.view_id,
-                text: t(view.title),
-                route: `/views/${view.view_id}`,
-                nested: true
-              }
-            : null;
-        })
-        .filter(v => !!v),
-      val => val.id
-    );
+    const savedViews = await fetchViews(favourites);
+
+    const items = savedViews
+      .filter(view => !!view)
+      .map(view => ({
+        id: view.view_id,
+        text: t(view.title),
+        route: `/views/${view.view_id}`,
+        nested: true
+      }));
 
     if (viewElement) {
       const newViewElement = {
@@ -77,7 +70,7 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
         }
       };
     }
-  }, [appUser.user?.favourite_views, leftNav, t, views]);
+  }, [appUser.user?.favourite_views, fetchViews, leftNav.elements, t]);
 
   const processAnalyticElement = useCallback((): AppLeftNavElement => {
     const analyticElement = leftNav.elements.find(el => el.element?.id === 'analytics');
@@ -134,7 +127,7 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
   }, [analytics.analytics, appUser.user?.favourite_analytics, leftNav, t]);
 
   useEffect(() => {
-    if (!appUser.isReady() || !viewsReady || !analytics.ready) {
+    if (!appUser.isReady() || !analytics.ready) {
       return;
     }
 
@@ -142,19 +135,21 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
       .filter(el => !['views', 'analytics'].includes(el.element?.id as any))
       .filter(el => !!el);
 
-    const analyticElement = processAnalyticElement();
-    if (analyticElement) {
-      newElements.splice(1, 0, analyticElement);
-    }
+    (async () => {
+      const analyticElement = processAnalyticElement();
+      if (analyticElement) {
+        newElements.splice(1, 0, analyticElement);
+      }
 
-    const viewElement = processViewElement();
-    if (viewElement) {
-      newElements.splice(1, 0, viewElement);
-    }
+      const viewElement = await processViewElement();
+      if (viewElement) {
+        newElements.splice(1, 0, viewElement);
+      }
 
-    leftNav.setElements(newElements);
+      leftNav.setElements(newElements);
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [analytics.ready, appUser, viewsReady]);
+  }, [analytics.ready, appUser]);
 
   return <FavouriteContext.Provider value={{}}>{children}</FavouriteContext.Provider>;
 };

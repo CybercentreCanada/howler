@@ -3,6 +3,7 @@ import { Alert, IconButton, Stack, Tooltip, Typography } from '@mui/material';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
+import { has } from 'lodash-es';
 import { memo, useMemo, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -17,8 +18,8 @@ const ViewLink: FC = () => {
 
   const viewId = useContextSelector(HitSearchContext, ctx => ctx.viewId);
 
-  const viewsReady = useContextSelector(ViewContext, ctx => ctx.ready);
-  const selectedView = useContextSelector(ViewContext, ctx => ctx.views?.find(val => val.view_id === viewId));
+  const viewsReady = useContextSelector(ViewContext, ctx => has(ctx.views, viewId));
+  const selectedView = useContextSelector(ViewContext, ctx => ctx.views[viewId]);
 
   const viewUrl = useMemo(() => {
     if (viewId) {

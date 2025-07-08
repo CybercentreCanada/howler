@@ -112,7 +112,7 @@ const HitActions: FC<{
               if (!loading) {
                 await assess(assessment, analytic?.triage_settings?.skip_rationale);
 
-                if (getCurrentView()?.settings?.advance_on_triage && nextHit) {
+                if ((await getCurrentView())?.settings?.advance_on_triage && nextHit) {
                   clearSelectedHits(nextHit.howler.id);
                   setSelected?.(nextHit.howler.id);
                 }

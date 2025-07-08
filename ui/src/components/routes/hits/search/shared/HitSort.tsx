@@ -4,7 +4,7 @@ import { ViewContext } from 'components/app/providers/ViewProvider';
 import type { FC } from 'react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useParams } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import CustomSort from '../CustomSort';
 
@@ -24,8 +24,7 @@ const ACCEPTED_SORTS = [
 const HitSort: FC<{ size?: 'small' | 'medium' }> = ({ size = 'small' }) => {
   const { t } = useTranslation();
   const location = useLocation();
-  const routeParams = useParams();
-  const views = useContextSelector(ViewContext, ctx => ctx.views);
+  const getCurrentView = useContextSelector(ViewContext, ctx => ctx.getCurrentView);
 
   const savedSort = useContextSelector(ParameterContext, ctx => ctx.sort);
   const setSavedSort = useContextSelector(ParameterContext, ctx => ctx.setSort);
@@ -52,11 +51,6 @@ const HitSort: FC<{ size?: 'small' | 'medium' }> = ({ size = 'small' }) => {
     sortEntries.length > 1 || (sortEntries.length > 0 && !ACCEPTED_SORTS.includes(sortEntries[0]?.split(' ')[0]))
   );
 
-  const viewId = useMemo(
-    () => (location.pathname.startsWith('/views') ? routeParams.id : null),
-    [location.pathname, routeParams.id]
-  );
-
   /**
    * This handles changing the sort if the basic sorter is used, OR enables the custom sorting.
    */
@@ -72,15 +66,19 @@ const HitSort: FC<{ size?: 'small' | 'medium' }> = ({ size = 'small' }) => {
   );
 
   useEffect(() => {
-    if (viewId) {
-      const selectedView = views.find(_view => _view.view_id === viewId);
+    if (location.search.includes('sort')) {
+      return;
+    }
+
+    (async () => {
+      const selectedView = await getCurrentView(true);
 
       if (selectedView?.sort && !location.search.includes('sort')) {
         setSavedSort(selectedView.sort);
       }
-    }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [views, viewId]);
+  }, [getCurrentView]);
 
   return !showCustomSort ? (
     <Stack direction="row" spacing={1} sx={{ flex: 1.5 }}>

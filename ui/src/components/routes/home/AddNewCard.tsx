@@ -36,10 +36,13 @@ const VISUALIZATIONS = ['assessment', 'created', 'escalation', 'status', 'detect
 const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard) => void }> = ({ dashboard, addCard }) => {
   const { t } = useTranslation();
   const views = useContextSelector(ViewContext, ctx => ctx.views ?? []);
+  const fetchViews = useContextSelector(ViewContext, ctx => ctx.fetchViews);
 
   const [selectedType, setSelectedType] = useState<'' | 'view' | 'analytic'>('');
   const [analytics, setAnalytics] = useState<Analytic[]>([]);
   const [config, _setConfig] = useState<{ [index: string]: any }>({});
+  const [viewOpen, setViewOpen] = useState(false);
+  const [viewLoading, setViewLoading] = useState(false);
 
   const setConfig = useCallback((key: string, value: any) => _setConfig(_config => ({ ..._config, [key]: value })), []);
 
@@ -68,6 +71,17 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard) =>
       _setConfig({});
     }
   }, [selectedType]);
+
+  const onViewOpen = useCallback(async () => {
+    setViewOpen(true);
+    setViewLoading(true);
+
+    try {
+      await fetchViews();
+    } finally {
+      setViewLoading(false);
+    }
+  }, [fetchViews]);
 
   return (
     <Grid item xs={12} md={6}>
@@ -158,7 +172,11 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard) =>
                 <Autocomplete
                   sx={{ pt: 1 }}
                   onChange={(__, opt) => setConfig('viewId', opt.view_id)}
-                  options={views}
+                  onOpen={onViewOpen}
+                  onClose={() => setViewOpen(false)}
+                  open={viewOpen}
+                  loading={viewLoading}
+                  options={Object.values(views)}
                   filterOptions={(options, state) =>
                     options.filter(
                       opt =>

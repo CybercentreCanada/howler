@@ -38,7 +38,6 @@ import DevelopmentIcon from 'components/elements/display/features/DevelopmentIco
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
 import HitQuery from '../HitQuery';
@@ -51,8 +50,6 @@ const HitGrid: FC = () => {
   const { t } = useTranslation();
   const { config } = useContext(ApiConfigContext);
   const { getIdFromName } = useContext(AnalyticContext);
-  const routeParams = useParams();
-  const location = useLocation();
   const theme = useTheme();
 
   const search = useContextSelector(HitSearchContext, ctx => ctx.search);
@@ -60,15 +57,14 @@ const HitGrid: FC = () => {
   const setDisplayType = useContextSelector(HitSearchContext, ctx => ctx.setDisplayType);
   const response = useContextSelector(HitSearchContext, ctx => ctx.response);
   const searching = useContextSelector(HitSearchContext, ctx => ctx.searching);
+  const viewId = useContextSelector(HitSearchContext, ctx => ctx.viewId);
 
   const selectedHits = useContextSelector(HitContext, ctx => ctx.selectedHits);
-  const query = useContextSelector(ParameterContext, ctx => ctx.query);
 
-  const viewId = useMemo(
-    () => (location.pathname.startsWith('/views') ? routeParams.id : null),
-    [location.pathname, routeParams.id]
-  );
-  const selectedView = useContextSelector(ViewContext, ctx => ctx.views?.find(val => val.view_id === viewId));
+  const query = useContextSelector(ParameterContext, ctx => ctx.query);
+  const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
+
+  const selectedView = useContextSelector(ViewContext, ctx => ctx.views[viewId]);
 
   const [collapseMainColumn, setCollapseMainColumn] = useMyLocalStorageItem(StorageKey.GRID_COLLAPSE_COLUMN, false);
   const [analyticIds, setAnalyticIds] = useState<Record<string, string>>({});
@@ -92,12 +88,12 @@ const HitGrid: FC = () => {
       return true;
     }
 
-    if (selectedHits.length === 1 && selectedHits[0]?.howler.id !== routeParams.id) {
+    if (selectedHits.length === 1 && selected && selectedHits[0]?.howler.id !== selected) {
       return true;
     }
 
     return false;
-  }, [routeParams.id, selectedHits]);
+  }, [selected, selectedHits]);
 
   useEffect(() => {
     response?.items.forEach(hit => {
