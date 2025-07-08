@@ -126,7 +126,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build UI
         run: |
-          pnpm run build-all
+          pnpm build
           python build_scripts/prep_for_publish.py
         env:
           VITE_BRANCH: ${{ github.ref }}
