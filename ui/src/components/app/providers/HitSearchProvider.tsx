@@ -241,7 +241,6 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   );
 };
 
-
 export const useHitSearchContextSelector = <Selected,>(
   selector: (value: HitSearchProviderType) => Selected
 ): Selected => {
