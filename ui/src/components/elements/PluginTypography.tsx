@@ -24,7 +24,7 @@ const PluginTypography: FC<PluginTypographyProps> = ({ children, value, context,
     }
   }
 
-  return <Typography {...props}>{children}</Typography>;
+  return <Typography {...props}>{children ?? value}</Typography>;
 };
 
 export default PluginTypography;
