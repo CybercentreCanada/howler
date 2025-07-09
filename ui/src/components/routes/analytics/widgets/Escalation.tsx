@@ -31,10 +31,11 @@ const Escalation = forwardRef<any, { analytic: Analytic; maxWidth?: string }>(({
     setLoading(true);
 
     api.search.facet.hit
-      .post('howler.escalation', {
-        query: `howler.analytic:("${analytic.name}")`
+      .post({
+        query: `howler.analytic:("${analytic.name}")`,
+        fields: ['howler.escalation']
       })
-      .then(data => setEscalationData(data))
+      .then(data => setEscalationData(data['howler.escalation']))
       .finally(() => setLoading(false));
   }, [analytic]);
 

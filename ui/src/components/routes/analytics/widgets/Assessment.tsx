@@ -24,10 +24,11 @@ const Assessment = forwardRef<any, { analytic: Analytic }>(({ analytic }, ref) =
     setLoading(true);
 
     api.search.facet.hit
-      .post('howler.assessment', {
+      .post({
+        fields: ['howler.assessment'],
         query: `howler.analytic:("${analytic.name}")`
       })
-      .then(data => setAssessmentData(data))
+      .then(data => setAssessmentData(data['howler.assessment']))
       .finally(() => setLoading(false));
   }, [analytic]);
 

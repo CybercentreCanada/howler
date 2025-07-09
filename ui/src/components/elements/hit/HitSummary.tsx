@@ -125,11 +125,11 @@ const HitSummary: FC<{
         (a, b) => (_keyCounts[b]?.count ?? 0) - (_keyCounts[a]?.count ?? 0)
       );
 
-      setLoading(true);
-      // Facet each field
-      for (const key of sortedKeys) {
+      if (sortedKeys.length > 0) {
+        setLoading(true);
         const result = await dispatchApi(
-          api.search.facet.hit.post(key, {
+          api.search.facet.hit.post({
+            fields: sortedKeys,
             query,
             rows: pageCount,
             filters
@@ -144,7 +144,7 @@ const HitSummary: FC<{
         if (result) {
           setAggregateResults(_results => ({
             ..._results,
-            [key]: result
+            ...result
           }));
         }
       }
