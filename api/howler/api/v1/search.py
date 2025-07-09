@@ -457,7 +457,7 @@ def count(index, **kwargs):
 @search_api.route("/facet/<index>", methods=["GET", "POST"])
 @api_login(required_priv=["R"])
 def facet(index, **kwargs):
-    """Perform field analysis on the selected field. (Also known as facetting in lucene).
+    """Perform field analysis on the selected fields. (Also known as facetting in lucene).
 
     This essentially counts the number of instances a field is seen with each specific
     values where the documents matches the specified queries.
