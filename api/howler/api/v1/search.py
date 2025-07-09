@@ -14,6 +14,7 @@ from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import SearchException
 from howler.helper.search import get_collection, get_default_sort, has_access_control, list_all_fields
 from howler.security import api_login
+from howler.services import hit_service
 
 SUB_API = "search"
 search_api = make_subapi_blueprint(SUB_API, api_version=1)
@@ -73,16 +74,18 @@ def search(index, **kwargs):
     timeout             =>   Maximum execution time (ms)
     use_archive         =>   Allow access to the datastore achive (Default: False)
     track_total_hits    =>   Track the total number of query matches, instead of stopping at 10000 (Default: False)
+    metadata            =>   A list of additional features to be added to the result alongside the raw results
 
     Data Block:
     # Note that the data block is for POST requests only!
-    {"query": "query",     # Query to search for
-     "offset": 0,          # Offset in the results
-     "rows": 100,          # Max number of results
-     "sort": "field asc",  # How to sort the results
-     "fl": "id,score",     # List of fields to return
-     "timeout": 1000,      # Maximum execution time (ms)
-     "filters": ['fq']}    # List of additional filter queries limit the data
+    {"query": "query",          # Query to search for
+     "offset": 0,               # Offset in the results
+     "rows": 100,               # Max number of results
+     "sort": "field asc",       # How to sort the results
+     "fl": "id,score",          # List of fields to return
+     "timeout": 1000,           # Maximum execution time (ms)
+     "filters": ['fq'],         # List of additional filter queries limit the data
+     "metadata": ["dossiers"]}  # List of additional features to add to the search
 
 
     Result Example:
@@ -108,7 +111,7 @@ def search(index, **kwargs):
         "deep_paging_id",
         "track_total_hits",
     ]
-    multi_fields = ["filters"]
+    multi_fields = ["filters", "metadata"]
     boolean_fields = ["use_archive"]
 
     params, req_data = generate_params(request, fields, multi_fields)
@@ -132,7 +135,13 @@ def search(index, **kwargs):
         return bad_request(err="There was no search query.")
 
     try:
-        return ok(collection().search(query, **params))
+        metadata = params.pop("metadata")
+        result = collection().search(query, **params)
+
+        if index == "hit" and len(metadata) > 0:
+            hit_service.augment_metadata(result, metadata, user)
+
+        return ok(result)
     except (SearchException, BadRequestError) as e:
         return bad_request(err=f"SearchException: {e}")
 

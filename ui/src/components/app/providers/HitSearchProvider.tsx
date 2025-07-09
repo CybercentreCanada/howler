@@ -148,7 +148,8 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
               query: fullQuery,
               sort,
               filters,
-              track_total_hits: trackTotalHits
+              track_total_hits: trackTotalHits,
+              metadata: ['template']
             }),
             { showError: false, throwError: true }
           );
