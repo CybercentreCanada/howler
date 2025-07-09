@@ -135,7 +135,7 @@ def search(index, **kwargs):
         return bad_request(err="There was no search query.")
 
     try:
-        metadata = params.pop("metadata")
+        metadata = params.pop("metadata", [])
         result = collection().search(query, **params)
 
         if index == "hit" and len(metadata) > 0:
