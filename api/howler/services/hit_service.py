@@ -1,3 +1,4 @@
+import functools
 import json
 import re
 import typing
@@ -646,3 +647,66 @@ def search(
         track_total_hits=track_total_hits,
         as_obj=as_obj,
     )
+
+
+TYPE_PRIORITY = {"personal": 2, "readonly": 1, "global": 0}
+
+
+def __compare_templates(template_a: dict[str, Any], template_b: dict[str, Any]) -> int:
+    # Sort priority:
+    # 1. personal > readonly > global
+    # 2. detection > !detection
+
+    if template_a["type"] != template_b["type"]:
+        return TYPE_PRIORITY[template_b["type"]] - TYPE_PRIORITY[template_a["type"]]
+
+    if template_a.get("detection", None) and not template_b.get("detection", None):
+        return -1
+
+    if not template_a.get("detection", None) and template_b.get("detection", None):
+        return 1
+
+    return 0
+
+
+def __match_templates(templates: list[dict[str, Any]], hit: dict[str, Any]) -> Optional[dict[str, Any]]:
+    matching_templates: list[dict[str, Any]] = []
+
+    for template in templates:
+        if template["analytic"].lower() != hit["howler"]["analytic"].lower():
+            continue
+
+        if not template.get("detection", None):
+            matching_templates.append(template)
+            continue
+
+        if not hit["howler"].get("detection", None):
+            continue
+
+        if hit["howler"]["detection"].lower() != template["detection"].lower():
+            continue
+
+        matching_templates.append(template)
+
+    if len(matching_templates) < 1:
+        return None
+
+    return sorted(matching_templates, key=functools.cmp_to_key(__compare_templates))[0]
+
+
+def augment_metadata(search_result: dict[str, Any], metadata: list[str], user: dict[str, Any]):
+    "Mutate results from a hit search to include additional metadata"
+    hits: list[dict[str, Any]] = search_result["items"]
+
+    if "template" in metadata:
+        analytics: set[str] = set()
+        for hit in hits:
+            analytics.add(f'"{hit["howler"]["analytic"]}"')
+
+        template_candidates = datastore().template.search(
+            f"analytic:({' OR '.join(analytics)}) AND (type:global OR owner:{user['uname']})",
+            as_obj=False,
+        )["items"]
+
+        for hit in hits:
+            hit["__template"] = __match_templates(template_candidates, hit)
