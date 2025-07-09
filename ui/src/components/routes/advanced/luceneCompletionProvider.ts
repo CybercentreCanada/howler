@@ -57,7 +57,7 @@ const useLuceneCompletionProvider = (): languages.CompletionItemProvider => {
           const _position = model.getWordUntilPosition(position);
 
           return {
-            suggestions: Object.keys(options[key]).map(_value => ({
+            suggestions: Object.keys(options[key] || {}).map(_value => ({
               label: _value,
               kind: monaco.languages.CompletionItemKind.Constant,
               insertText: `"${_value}"`,
