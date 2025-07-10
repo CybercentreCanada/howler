@@ -8,33 +8,31 @@ on:
         type: choice
         required: true
         description: What type of release should be made
+        default: minor
         options:
           - major
           - minor
           - patch
-      branch:
-        required: true
-        description: Provide a branch (or tag) to build this release from.
       include-ui:
         type: boolean
         default: true
-        description: Include the Howler UI?
+        description: Include Howler UI
       include-api:
         type: boolean
         default: true
-        description: Include the Howler API?
+        description: Include Howler API
       include-client:
         type: boolean
         default: false
-        description: Include the Howler Client?
+        description: Include Howler Client
       include-evidence:
         type: boolean
         default: true
-        description: Include the Howler Evidence Plugin?
+        description: Include Howler Evidence Plugin
       include-sentinel:
         type: boolean
         default: true
-        description: Include the Howler Sentinel Plugin?
+        description: Include Howler Sentinel Plugin
 
 permissions:
   contents: write
