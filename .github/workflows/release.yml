@@ -1,4 +1,4 @@
-name: "Create Release"
+name: "Build Release"
 
 on:
   # Allows this workflow to be run manually from the Actions tab
@@ -66,24 +66,22 @@ jobs:
 
       # Read the current version from VERSION file
       - name: Read current versions
-        id: versions
         run: |
-          python -c "import json;print('ui-version='+json.load(open('ui/package.json', 'r'))['version'])" >> $GITHUB_OUTPUT
+          echo -n "UI Version: "
+          python -c "import json;print(json.load(open('ui/package.json', 'r'))['version'])"
+          echo -n "API Version: "
           cd api
-          echo "api-version=$(poetry version -s)" >> $GITHUB_OUTPUT
-          cd ../plugins/evidence
-          echo "evidence-version=$(poetry version -s)" >> $GITHUB_OUTPUT
-          cd ../sentinel
-          echo "sentinel-version=$(poetry version -s)" >> $GITHUB_OUTPUT
-          cd ../../client
-          echo "client-version=$(poetry version -s)" >> $GITHUB_OUTPUT
+          poetry version -s
 
-      # Create a new tag and GitHub release from the current version
-      - name: Print Existing Versions
-        run: |
-          echo "UI Version: ${{steps.versions.outputs.ui-version}}"
-          echo "API Version: ${{steps.versions.outputs.api-version}}"
-          echo "Client Version: ${{steps.versions.outputs.client-version}}"
-          echo "--------------------------------"
-          echo "Evidence Plugin Version: ${{steps.versions.outputs.evidence-version}}"
-          echo "Sentinel Plugin Version: ${{steps.versions.outputs.sentinel-version}}"
+          cd ../client
+          echo -n "Client Version: "
+          poetry version -s
+
+          echo -n "Evidence Plugin Version: "
+          cd ../plugins/evidence
+          poetry version -s
+
+
+          echo -n "Sentinel Plugin Version: "
+          cd ../sentinel
+          poetry version -s
