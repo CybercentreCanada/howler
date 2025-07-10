@@ -27,11 +27,11 @@ on:
         description: Include Howler Client
       include-evidence:
         type: boolean
-        default: true
+        default: false
         description: Include Howler Evidence Plugin
       include-sentinel:
         type: boolean
-        default: true
+        default: false
         description: Include Howler Sentinel Plugin
 
 permissions:
