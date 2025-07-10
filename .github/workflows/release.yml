@@ -70,13 +70,13 @@ jobs:
         run: |
           python -c "import json;print('ui-version='+json.load(open('ui/package.json', 'r'))['version'])" >> $GITHUB_OUTPUT
           cd api
-          echo "api-version=$(poetry version -s)"
+          echo "api-version=$(poetry version -s)" >> $GITHUB_OUTPUT
           cd ../plugins/evidence
-          echo "evidence-version=$(poetry version -s)"
+          echo "evidence-version=$(poetry version -s)" >> $GITHUB_OUTPUT
           cd ../sentinel
-          echo "sentinel-version=$(poetry version -s)"
+          echo "sentinel-version=$(poetry version -s)" >> $GITHUB_OUTPUT
           cd ../../client
-          echo "client-version=$(poetry version -s)"
+          echo "client-version=$(poetry version -s)" >> $GITHUB_OUTPUT
 
       # Create a new tag and GitHub release from the current version
       - name: Print Existing Versions
