@@ -45,16 +45,14 @@ export const ViewTitle: FC<ViewTitleProps> = ({ title, type, query, sort, span }
       </Typography>
       {(sort || span) && (
         <Stack direction="row" sx={{ mt: 1 }} spacing={1}>
-          {sort
-            ?.split(',')
-            .map(_sort => (
-              <Chip
-                key={_sort.split(' ')[0]}
-                size="small"
-                label={_sort.split(' ')[0]}
-                icon={_sort.endsWith('desc') ? <ArrowDownward /> : <ArrowUpward />}
-              />
-            ))}
+          {sort?.split(',').map(_sort => (
+            <Chip
+              key={_sort.split(' ')[0]}
+              size="small"
+              label={_sort.split(' ')[0]}
+              icon={_sort.endsWith('desc') ? <ArrowDownward /> : <ArrowUpward />}
+            />
+          ))}
           {spanLabel && <Chip size="small" label={spanLabel} />}
         </Stack>
       )}

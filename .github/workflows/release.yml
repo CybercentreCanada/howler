@@ -144,8 +144,8 @@ jobs:
           done
 
           gh api graphql \
-            -F githubRepository=${GIT_REPOSITORY} \
-            -F branchName=${PUBLISH_BRANCH} \
+            -F githubRepository=${{ github.repository }} \
+            -F branchName=${{ github.ref }} \
             -F expectedHeadOid=$(git rev-parse HEAD) \
             -F commitMessage="chore: version bumps" \
             -F "query=@.github/api/commit.gql" \
