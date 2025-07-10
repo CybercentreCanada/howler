@@ -77,6 +77,8 @@ jobs:
           echo -n "Client Version: "
           poetry version -s
 
+          echo "================================"
+
           echo -n "Evidence Plugin Version: "
           cd ../plugins/evidence
           poetry version -s
@@ -85,3 +87,37 @@ jobs:
           echo -n "Sentinel Plugin Version: "
           cd ../sentinel
           poetry version -s
+
+      - name: Update Howler UI
+        if: inputs.include-ui
+        working-directory: ui
+        run: |
+          pnpm version ${{inputs.type}}
+
+      - name: Update Howler API
+        if: inputs.include-api
+        working-directory: api
+        run: |
+          poetry version ${{inputs.type}}
+
+      - name: Update Howler Client
+        if: inputs.include-client
+        working-directory: client
+        run: |
+          poetry version ${{inputs.type}}
+
+      - name: Update Howler Evidence Plugin
+        if: inputs.include-evidence
+        working-directory: plugins/evidence
+        run: |
+          poetry version ${{inputs.type}}
+
+      - name: Update Howler Sentinel Plugin
+        if: inputs.include-sentinel
+        working-directory: plugins/sentinel
+        run: |
+          poetry version ${{inputs.type}}
+
+      - name: Show Diff
+        run: |
+          git diff -U1
