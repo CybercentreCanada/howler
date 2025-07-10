@@ -81,6 +81,6 @@ jobs:
           echo "UI Version: ${{steps.versions.outputs.ui-version}}"
           echo "API Version: ${{steps.versions.outputs.api-version}}"
           echo "Client Version: ${{steps.versions.outputs.client-version}}"
-          echo ""
+          echo "--------------------------------"
           echo "Evidence Plugin Version: ${{steps.versions.outputs.evidence-version}}"
           echo "Sentinel Plugin Version: ${{steps.versions.outputs.sentinel-version}}"
