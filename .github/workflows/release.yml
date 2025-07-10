@@ -133,9 +133,10 @@ jobs:
         run: |
           git diff -U1
 
-      - name: Commit and push new VERSION and chart version
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git commit -m "chore: bump versions for components"
-          git push
+      # - name: Commit and push new VERSION and chart version
+      #   env:
+      #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   run: |
+      #     git add api/pyproject.toml plugins/evidence/pyproject.toml plugins/sentinel/pyproject.toml
+      #     git commit -m "chore: bump versions for components"
+      #     git push
