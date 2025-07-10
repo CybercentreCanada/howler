@@ -65,7 +65,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          registry-url: 'https://registry.npmjs.org'
+          registry-url: "https://registry.npmjs.org"
 
       # Configure Git so we can commit and push tags/changes
       - name: Configure Git and Github CLI
@@ -137,8 +137,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git add api/pyproject.toml client/pyproject.toml
-          git add ui/package.json
-          git add plugins/evidence/pyproject.toml plugins/sentinel/pyproject.toml
-          git commit -m "chore: version bumps"
-          git push
+          CHANGED=($(git diff --name-only | xargs))
+
+          for value in "${CHANGED[@]}"; do
+            FILES="${FILES} -F files[][path]=$value -F files[][contents]=$(base64 -w0 $value)"
+          done
+
+          gh api graphql \
+            -F githubRepository=${GIT_REPOSITORY} \
+            -F branchName=${PUBLISH_BRANCH} \
+            -F expectedHeadOid=$(git rev-parse HEAD) \
+            -F commitMessage="chore: version bumps" \
+            -F "query=@.github/api/createCommitOnBranch.gql" \
+            ${FILES}
