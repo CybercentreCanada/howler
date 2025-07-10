@@ -1,0 +1,86 @@
+name: "Create Release"
+
+on:
+  # Allows this workflow to be run manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      type:
+        type: choice
+        required: true
+        description: What type of release should be made
+        options:
+          - major
+          - minor
+          - patch
+      branch:
+        required: true
+        description: Provide a branch (or tag) to build this release from.
+      include-ui:
+        type: boolean
+        default: true
+        description: Include the Howler UI?
+      include-api:
+        type: boolean
+        default: true
+        description: Include the Howler API?
+      include-client:
+        type: boolean
+        default: false
+        description: Include the Howler Client?
+      include-evidence:
+        type: boolean
+        default: true
+        description: Include the Howler Evidence Plugin?
+      include-sentinel:
+        type: boolean
+        default: true
+        description: Include the Howler Sentinel Plugin?
+
+permissions:
+  contents: write
+
+jobs:
+  create-and-bump-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # needed to push commits and tags
+      # You might also need 'actions: write' in some setups
+
+    steps:
+      # Check out the repository
+      - name: Check out code
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.branch }}
+
+      # Configure Git so we can commit and push tags/changes
+      - name: Configure Git and Github CLI
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          sudo apt-get update
+          sudo apt-get install -y gh
+
+      # Read the current version from VERSION file
+      - name: Read current versions
+        id: versions
+        run: |
+          python -c "import json;print('ui-version='+json.load(open('ui/package.json', 'r'))['version'])" >> $GITHUB_OUTPUT
+          cd api
+          echo "api-version=$(poetry version -s)"
+          cd ../plugins/evidence
+          echo "evidence-version=$(poetry version -s)"
+          cd ../plugins/sentinel
+          echo "sentinel-version=$(poetry version -s)"
+          cd ../client
+          echo "client-version=$(poetry version -s)"
+
+      # Create a new tag and GitHub release from the current version
+      - name: Print Existing Versions
+        run: |
+          echo "UI Version: ${{steps.versions.outputs.ui-version}}"
+          echo "API Version: ${{steps.versions.outputs.api-version}}"
+          echo "Client Version: ${{steps.versions.outputs.client-version}}"
+          echo ""
+          echo "Evidence Plugin Version: ${{steps.versions.outputs.evidence-version}}"
+          echo "Sentinel Plugin Version: ${{steps.versions.outputs.sentinel-version}}"
