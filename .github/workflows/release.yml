@@ -73,9 +73,9 @@ jobs:
           echo "api-version=$(poetry version -s)"
           cd ../plugins/evidence
           echo "evidence-version=$(poetry version -s)"
-          cd ../plugins/sentinel
+          cd ../sentinel
           echo "sentinel-version=$(poetry version -s)"
-          cd ../client
+          cd ../../client
           echo "client-version=$(poetry version -s)"
 
       # Create a new tag and GitHub release from the current version
