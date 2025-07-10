@@ -53,6 +53,13 @@ jobs:
         with:
           ref: ${{ inputs.branch }}
 
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Poetry
+        uses: abatilo/actions-poetry@v4
+
       # Configure Git so we can commit and push tags/changes
       - name: Configure Git and Github CLI
         run: |
