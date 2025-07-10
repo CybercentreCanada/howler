@@ -139,7 +139,7 @@ def search(index, **kwargs):
         result = collection().search(query, **params)
 
         if index == "hit" and len(metadata) > 0:
-            hit_service.augment_metadata(result, metadata, user)
+            hit_service.augment_metadata(result["items"], metadata, user)
 
         return ok(result)
     except (SearchException, BadRequestError) as e:

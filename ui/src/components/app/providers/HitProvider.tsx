@@ -3,6 +3,7 @@ import useMyApi from 'components/hooks/useMyApi';
 import { uniq } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { HitUpdate } from 'models/socket/HitUpdate';
+import type { WithMetadata } from 'models/WithMetadata';
 import type { FC, PropsWithChildren } from 'react';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
@@ -16,7 +17,7 @@ interface HitProviderType {
   clearSelectedHits: (except?: string) => void;
   loadHits: (hits: Hit[]) => void;
   updateHit: (newHit: Hit) => void;
-  getHit: (id: string, force?: boolean) => Promise<Hit>;
+  getHit: (id: string, force?: boolean) => Promise<WithMetadata<Hit>>;
 }
 
 export const HitContext = createContext<HitProviderType>(null);
@@ -71,7 +72,7 @@ const HitProvider: FC<PropsWithChildren> = ({ children }) => {
   const getHit = useCallback(
     async (id: string, force = false) => {
       if (!hitRequests.current[id] || force) {
-        hitRequests.current[id] = dispatchApi(api.hit.get(id));
+        hitRequests.current[id] = dispatchApi(api.hit.get(id, ['template', 'dossiers', 'analytic', 'overview']));
         const newHit = await hitRequests.current[id];
         setHits(_hits => ({ ..._hits, [id]: newHit }));
       }

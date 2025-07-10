@@ -1,6 +1,5 @@
 import { CardContent, Skeleton } from '@mui/material';
 import { HitContext } from 'components/app/providers/HitProvider';
-import { TemplateContext } from 'components/app/providers/TemplateProvider';
 import type { FC } from 'react';
 import { memo, useEffect } from 'react';
 import { useContextSelector } from 'use-context-selector';
@@ -11,14 +10,8 @@ import { HitLayout } from './HitLayout';
 import HitOutline from './HitOutline';
 
 const HitCard: FC<{ id?: string; layout: HitLayout; readOnly?: boolean }> = ({ id, layout, readOnly = true }) => {
-  const refresh = useContextSelector(TemplateContext, ctx => ctx.refresh);
-
   const getHit = useContextSelector(HitContext, ctx => ctx.getHit);
   const hit = useContextSelector(HitContext, ctx => ctx.hits[id]);
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
 
   useEffect(() => {
     if (!hit) {

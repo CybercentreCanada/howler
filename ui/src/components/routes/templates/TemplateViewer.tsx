@@ -17,27 +17,21 @@ import TemplateEditor from 'components/routes/templates/TemplateEditor';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { Check, Delete, Remove, SsidChart } from '@mui/icons-material';
+import { Check, Delete, SsidChart } from '@mui/icons-material';
 import AppInfoPanel from 'commons/components/display/AppInfoPanel';
-import { TemplateContext } from 'components/app/providers/TemplateProvider';
-import { HitLayout } from 'components/elements/hit/HitLayout';
-import HitOutline, { DEFAULT_FIELDS } from 'components/elements/hit/HitOutline';
+import { DEFAULT_FIELDS } from 'components/elements/hit/HitOutline';
 import useMyApi from 'components/hooks/useMyApi';
 import isEqual from 'lodash-es/isEqual';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Template } from 'models/entities/generated/Template';
 import { useSearchParams } from 'react-router-dom';
-import { useContextSelector } from 'use-context-selector';
 import hitsData from 'utils/hit.json';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
-
-const CUSTOM_OUTLINES = ['cmt.aws.sigma.rules', 'assemblyline', '6tailphish'];
 
 const TemplateViewer = () => {
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
-  const getTemplates = useContextSelector(TemplateContext, ctx => ctx.getTemplates);
   const { dispatchApi } = useMyApi();
 
   const [templateList, setTemplateList] = useState<Template[]>([]);
@@ -71,7 +65,7 @@ const TemplateViewer = () => {
         setAnalytics(_analytics);
       });
 
-    getTemplates(true).then(setTemplateList);
+    dispatchApi(api.template.get()).then(setTemplateList);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analytic, dispatchApi]);
 
@@ -93,7 +87,7 @@ const TemplateViewer = () => {
         .finally(() => setLoading(false))
         .then(result => result.items.map(i => i.value))
         .then(_detections => {
-          if (_detections.length < 1 || (type === 'global' && CUSTOM_OUTLINES.includes(analytic.toLowerCase()))) {
+          if (_detections.length < 1) {
             setDetection('ANY');
           }
 
@@ -196,7 +190,6 @@ const TemplateViewer = () => {
     }
   }, [analytic, detection, dispatchApi, displayFields, selectedTemplate, templateList, type]);
 
-  const isCustomOutline = useMemo(() => CUSTOM_OUTLINES.includes(analytic.toLowerCase()), [analytic]);
   const analyticOrDetectionMissing = useMemo(() => !analytic || !detection, [analytic, detection]);
   const noFieldChange = useMemo(
     () => displayFields.length < 1 || isEqual(selectedTemplate?.keys ?? DEFAULT_FIELDS, displayFields),
@@ -221,15 +214,12 @@ const TemplateViewer = () => {
             />
           </FormControl>
           {!(detections?.length < 2 && detections[0]?.toLowerCase() === 'rule') ? (
-            <FormControl
-              sx={{ flex: 1, maxWidth: '300px' }}
-              disabled={!analytic || (isCustomOutline && type === 'global')}
-            >
+            <FormControl sx={{ flex: 1, maxWidth: '300px' }} disabled={!analytic}>
               <Autocomplete
                 id="detection"
                 options={['ANY', ...detections.sort()]}
                 getOptionLabel={option => option}
-                value={isCustomOutline && type === 'global' ? 'any' : (detection ?? '')}
+                value={detection ?? ''}
                 onChange={(__, newValue) => setDetection(newValue)}
                 renderInput={autocompleteDetectionParams => (
                   <TextField {...autocompleteDetectionParams} label={t('route.templates.detection')} size="small" />
@@ -267,30 +257,14 @@ const TemplateViewer = () => {
           )}
           <Button
             variant="outlined"
-            disabled={analyticOrDetectionMissing || (isCustomOutline && type === 'global') || noFieldChange}
-            startIcon={
-              templateLoading ? (
-                <CircularProgress size={16} />
-              ) : isCustomOutline && type === 'global' ? (
-                <Remove />
-              ) : (
-                <Check />
-              )
-            }
+            disabled={analyticOrDetectionMissing || noFieldChange}
+            startIcon={templateLoading ? <CircularProgress size={16} /> : <Check />}
             onClick={onSave}
           >
-            {t(
-              isCustomOutline && type === 'global'
-                ? 'button.readonly'
-                : !analyticOrDetectionMissing && !noFieldChange
-                  ? 'button.save'
-                  : 'button.saved'
-            )}
+            {t(!analyticOrDetectionMissing && !noFieldChange ? 'button.save' : 'button.saved')}
           </Button>
         </Stack>
-        {isCustomOutline && type === 'global' ? (
-          <HitOutline hit={exampleHit} layout={HitLayout.COMFY} type="global" />
-        ) : analyticOrDetectionMissing ? (
+        {analyticOrDetectionMissing ? (
           <AppInfoPanel i18nKey="route.templates.select" sx={{ width: '100%', alignSelf: 'start' }} />
         ) : (
           <TemplateEditor
