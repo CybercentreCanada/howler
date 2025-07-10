@@ -76,7 +76,6 @@ import ModalProvider from './providers/ModalProvider';
 import OverviewProvider from './providers/OverviewProvider';
 import ParameterProvider from './providers/ParameterProvider';
 import SocketProvider from './providers/SocketProvider';
-import TemplateProvider from './providers/TemplateProvider';
 import UserListProvider from './providers/UserListProvider';
 import ViewProvider from './providers/ViewProvider';
 
@@ -176,15 +175,13 @@ const MyAppProvider: FC<PropsWithChildren> = ({ children }) => {
                         <LocalStorageProvider>
                           <SocketProvider>
                             <HitProvider>
-                              <TemplateProvider>
-                                <OverviewProvider>
-                                  <AnalyticProvider>
-                                    <FavouriteProvider>
-                                      <UserListProvider>{children}</UserListProvider>
-                                    </FavouriteProvider>
-                                  </AnalyticProvider>
-                                </OverviewProvider>
-                              </TemplateProvider>
+                              <OverviewProvider>
+                                <AnalyticProvider>
+                                  <FavouriteProvider>
+                                    <UserListProvider>{children}</UserListProvider>
+                                  </FavouriteProvider>
+                                </AnalyticProvider>
+                              </OverviewProvider>
                             </HitProvider>
                           </SocketProvider>
                         </LocalStorageProvider>

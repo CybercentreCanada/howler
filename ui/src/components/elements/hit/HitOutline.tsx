@@ -1,12 +1,11 @@
-import { Box, Divider, Skeleton, Typography } from '@mui/material';
-import { TemplateContext } from 'components/app/providers/TemplateProvider';
-import { has } from 'lodash-es';
+import { Box, Divider, Typography } from '@mui/material';
+import useMatchers from 'components/app/hooks/useMatchers';
 import type { Hit } from 'models/entities/generated/Hit';
+import type { Template } from 'models/entities/generated/Template';
 import type { WithMetadata } from 'models/WithMetadata';
 import type { FC } from 'react';
-import { createElement, memo, useMemo } from 'react';
+import { createElement, memo, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useContextSelector } from 'use-context-selector';
 import { HitLayout } from './HitLayout';
 import DefaultOutline from './outlines/DefaultOutline';
 
@@ -19,11 +18,14 @@ const HitOutline: FC<{ hit: WithMetadata<Hit>; layout: HitLayout; type?: 'global
 }) => {
   const { t } = useTranslation();
 
-  const loaded = useContextSelector(TemplateContext, ctx => ctx.loaded);
-  const getMatchingTemplate = useContextSelector(TemplateContext, ctx => ctx.getMatchingTemplate);
+  const { getMatchingTemplate } = useMatchers();
 
-  const template = useMemo(
-    () => (has(hit, '__template') ? hit.__template : getMatchingTemplate(hit)),
+  const [template, setTemplate] = useState<Template>(null);
+
+  useEffect(
+    () => {
+      getMatchingTemplate(hit).then(setTemplate);
+    },
     [getMatchingTemplate, hit]
   );
 
@@ -35,8 +37,6 @@ const HitOutline: FC<{ hit: WithMetadata<Hit>; layout: HitLayout; type?: 'global
         template,
         fields: template.keys
       });
-    } else if (!loaded) {
-      return <Skeleton variant="rounded" height="50px" />;
     } else if (template) {
       return createElement(DefaultOutline, {
         hit,
@@ -52,7 +52,7 @@ const HitOutline: FC<{ hit: WithMetadata<Hit>; layout: HitLayout; type?: 'global
         fields: DEFAULT_FIELDS
       });
     }
-  }, [hit, layout, loaded, template, type]);
+  }, [hit, layout, template, type]);
 
   return (
     <Box sx={{ py: 1, width: '100%', pr: 2 }}>

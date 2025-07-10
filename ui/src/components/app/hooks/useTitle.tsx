@@ -1,10 +1,11 @@
-import api from 'api';
 import useMySitemap from 'components/hooks/useMySitemap';
 import { capitalize } from 'lodash-es';
 import { useCallback, useContext, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { useContextSelector } from 'use-context-selector';
 import { AnalyticContext } from '../providers/AnalyticProvider';
+import { HitContext } from '../providers/HitProvider';
 
 const useTitle = () => {
   const { t } = useTranslation();
@@ -12,7 +13,10 @@ const useTitle = () => {
   const params = useParams();
   const searchParams = useSearchParams()[0];
   const sitemap = useMySitemap();
+
   const { getAnalyticFromId } = useContext(AnalyticContext);
+
+  const hits = useContextSelector(HitContext, ctx => ctx.hits);
 
   const setTitle = useCallback((title: string) => {
     document.querySelector('title').innerHTML = title;
@@ -34,9 +38,7 @@ const useTitle = () => {
         setTitle(`Howler - ${t('route.analytics')}`);
       }
     } else if (searchType === 'hit' && params.id) {
-      const result = await api.search.hit.post({ query: `howler.id:${params.id}`, rows: 1 });
-
-      const hit = result.items[0];
+      const hit = hits[params.id];
 
       let newTitle = `${capitalize(hit.howler.escalation)} - ${hit.howler.analytic}`;
       if (hit.howler.detection) {
@@ -65,7 +67,8 @@ const useTitle = () => {
         setTitle(`Howler - ${t(matchingRoute.title)}`);
       }
     }
-  }, [getAnalyticFromId, location.pathname, params.id, searchParams, setTitle, sitemap.routes, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getAnalyticFromId, location.pathname, params.id, searchParams, hits, setTitle, sitemap.routes, t]);
 
   useEffect(() => {
     runChecks();

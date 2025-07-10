@@ -6,7 +6,7 @@ from flask import Response, request
 from howler.api import not_modified
 
 
-def add_etag(getter, check_if_match=False):
+def add_etag(getter, check_if_match=True):
     """Decorator to add etag handling to a flask response"""
 
     def wrapper(f):
@@ -17,11 +17,13 @@ def add_etag(getter, check_if_match=False):
                 as_odm=True,
                 version=True,
             )
+
             if (
-                not check_if_match
+                check_if_match
                 and "If-Match" in request.headers
                 and request.headers["If-Match"] == version
                 and request.method == "GET"
+                and "metadata" not in request.args
             ):
                 return not_modified()
 
