@@ -66,6 +66,7 @@ jobs:
         with:
           node-version: 20
           registry-url: 'https://registry.npmjs.org'
+          cache-dependency-path: ui/pnpm-lock.yaml
           cache: 'pnpm'
 
       # Configure Git so we can commit and push tags/changes
