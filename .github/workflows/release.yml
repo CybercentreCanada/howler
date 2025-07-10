@@ -133,7 +133,7 @@ jobs:
         run: |
           git diff -U1
 
-      - name: Commit and push new VERSION and chart version
+      - name: Commit changed versions
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -148,5 +148,5 @@ jobs:
             -F branchName=${PUBLISH_BRANCH} \
             -F expectedHeadOid=$(git rev-parse HEAD) \
             -F commitMessage="chore: version bumps" \
-            -F "query=@.github/api/createCommitOnBranch.gql" \
+            -F "query=@.github/api/commit.gql" \
             ${FILES}
