@@ -146,3 +146,6 @@ $RECYCLE.BIN/
 DevProfile/
 chrome_profile/
 firefox_profile/
+
+# vite
+.vite
