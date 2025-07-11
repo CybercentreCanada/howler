@@ -14,8 +14,6 @@ const useMatchers = () => {
         return hit.__template;
       }
 
-      console.log('miss', hit.howler.id);
-
       // This is a fallback in case metadata is not included. In most cases templates are shown, the template metadata
       // should also exist
       return (await getHit(hit.howler.id, true)).__template;
@@ -36,7 +34,21 @@ const useMatchers = () => {
     [getHit]
   );
 
+  const getMatchingDossiers = useCallback(
+    async (hit: WithMetadata<Hit>) => {
+      if (has(hit, '__dossiers')) {
+        return hit.__dossiers;
+      }
+
+      // This is a fallback in case metadata is not included. In most cases templates are shown, the template metadata
+      // should also exist
+      return (await getHit(hit.howler.id, true)).__dossiers;
+    },
+    [getHit]
+  );
+
   return {
+    getMatchingDossiers,
     getMatchingOverview,
     getMatchingTemplate
   };

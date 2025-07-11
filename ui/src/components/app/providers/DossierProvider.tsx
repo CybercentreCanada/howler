@@ -14,7 +14,6 @@ export interface DossierContextType {
   editDossier: (dossier: Dossier) => Promise<Dossier>;
   removeDossier: (id: string) => Promise<void>;
   getCurrentDossiers: () => Dossier[];
-  getMatchingDossiers: (id: string) => Promise<Dossier[]>;
 }
 
 export const DossierContext = createContext<DossierContextType>(null);
@@ -26,7 +25,6 @@ const DossierProvider: FC<PropsWithChildren> = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
   const [dossiers, setDossiers] = useState<Dossier[]>([]);
-  const [idToDossiers, setIdToDossiers] = useState<Record<string, Dossier[]>>({});
 
   const fetchDossiers = useCallback(
     async (force = false) => {
@@ -88,28 +86,6 @@ const DossierProvider: FC<PropsWithChildren> = ({ children }) => {
     return result;
   }, []);
 
-  const getMatchingDossiers = useCallback(
-    async (id: string) => {
-      if (idToDossiers[id]) {
-        return idToDossiers[id];
-      }
-
-      const result = await dispatchApi(api.dossier.hit.get(id), { throwError: false });
-
-      if (result) {
-        setIdToDossiers(_dossiers => ({
-          ..._dossiers,
-          [id]: result
-        }));
-
-        return result;
-      }
-
-      return [];
-    },
-    [dispatchApi, idToDossiers]
-  );
-
   return (
     <DossierContext.Provider
       value={{
@@ -119,8 +95,7 @@ const DossierProvider: FC<PropsWithChildren> = ({ children }) => {
         addDossier,
         editDossier,
         removeDossier,
-        getCurrentDossiers,
-        getMatchingDossiers
+        getCurrentDossiers
       }}
     >
       {children}
