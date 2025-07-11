@@ -67,7 +67,6 @@ import AnalyticProvider from './providers/AnalyticProvider';
 import ApiConfigProvider, { ApiConfigContext } from './providers/ApiConfigProvider';
 import AvatarProvider from './providers/AvatarProvider';
 import CustomPluginProvider from './providers/CustomPluginProvider';
-import DossierProvider from './providers/DossierProvider';
 import FavouriteProvider from './providers/FavouritesProvider';
 import FieldProvider from './providers/FieldProvider';
 import HitProvider from './providers/HitProvider';
@@ -167,29 +166,27 @@ const MyAppProvider: FC<PropsWithChildren> = ({ children }) => {
         <CustomPluginProvider>
           <ErrorBoundary>
             <ErrorBoundary>
-              <DossierProvider>
-                <ViewProvider>
-                  <AvatarProvider>
-                    <ModalProvider>
-                      <FieldProvider>
-                        <LocalStorageProvider>
-                          <SocketProvider>
-                            <HitProvider>
-                              <OverviewProvider>
-                                <AnalyticProvider>
-                                  <FavouriteProvider>
-                                    <UserListProvider>{children}</UserListProvider>
-                                  </FavouriteProvider>
-                                </AnalyticProvider>
-                              </OverviewProvider>
-                            </HitProvider>
-                          </SocketProvider>
-                        </LocalStorageProvider>
-                      </FieldProvider>
-                    </ModalProvider>
-                  </AvatarProvider>
-                </ViewProvider>
-              </DossierProvider>
+              <ViewProvider>
+                <AvatarProvider>
+                  <ModalProvider>
+                    <FieldProvider>
+                      <LocalStorageProvider>
+                        <SocketProvider>
+                          <HitProvider>
+                            <OverviewProvider>
+                              <AnalyticProvider>
+                                <FavouriteProvider>
+                                  <UserListProvider>{children}</UserListProvider>
+                                </FavouriteProvider>
+                              </AnalyticProvider>
+                            </OverviewProvider>
+                          </HitProvider>
+                        </SocketProvider>
+                      </LocalStorageProvider>
+                    </FieldProvider>
+                  </ModalProvider>
+                </AvatarProvider>
+              </ViewProvider>
             </ErrorBoundary>
           </ErrorBoundary>
         </CustomPluginProvider>
