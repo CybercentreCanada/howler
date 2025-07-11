@@ -55,9 +55,15 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false }) => {
     );
   }
 
-  const pluginPivot = pluginStore.executeFunction(`pivot.${pivot.format}`, { pivot, hit, compact });
-  if (pluginPivot) {
-    return pluginPivot;
+  try {
+    const pluginPivot = pluginStore.executeFunction(`pivot.${pivot.format}`, { pivot, hit, compact });
+    if (pluginPivot) {
+      return pluginPivot;
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn(`Pivot plugin for format ${pivot.format} does not exist, not rendering`);
+    return null;
   }
 
   return <Skeleton variant="rounded" />;

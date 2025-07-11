@@ -53,7 +53,14 @@ const HitProvider: FC<PropsWithChildren> = ({ children }) => {
         // eslint-disable-next-line no-console
         console.debug('Received websocket update for hit', data.hit.howler.id);
         hitRequests.current[data.hit.howler.id] = Promise.resolve(data.hit);
-        setHits(_hits => ({ ..._hits, [data.hit.howler.id]: data.hit }));
+
+        setHits(_hits => ({
+          ..._hits,
+          [data.hit.howler.id]: {
+            ..._hits[data.hit.howler.id],
+            ...data.hit
+          }
+        }));
       }
     },
     []

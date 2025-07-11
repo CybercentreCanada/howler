@@ -70,34 +70,36 @@ const TemplateViewer = () => {
   }, [analytic, dispatchApi]);
 
   useEffect(() => {
-    if (analytic) {
-      setLoading(true);
-
-      dispatchApi(
-        api.search.grouped.hit.post('howler.detection', {
-          limit: 0,
-          query: `howler.analytic:"${sanitizeLuceneQuery(analytic)}"`
-        }),
-        {
-          logError: false,
-          showError: true,
-          throwError: true
-        }
-      )
-        .finally(() => setLoading(false))
-        .then(result => result.items.map(i => i.value))
-        .then(_detections => {
-          if (_detections.length < 1) {
-            setDetection('ANY');
-          }
-
-          if (detection && !_detections.includes(detection)) {
-            setDetection('ANY');
-          }
-
-          setDetections(_detections);
-        });
+    if (!analytic) {
+      return;
     }
+
+    setLoading(true);
+
+    dispatchApi(
+      api.search.grouped.hit.post('howler.detection', {
+        limit: 0,
+        query: `howler.analytic:"${sanitizeLuceneQuery(analytic)}"`
+      }),
+      {
+        logError: false,
+        showError: true,
+        throwError: true
+      }
+    )
+      .finally(() => setLoading(false))
+      .then(result => result.items.map(i => i.value))
+      .then(_detections => {
+        if (_detections.length < 1) {
+          setDetection('ANY');
+        }
+
+        if (detection && !_detections.includes(detection)) {
+          setDetection('ANY');
+        }
+
+        setDetections(_detections);
+      });
   }, [analytic, detection, dispatchApi, params, setParams, type]);
 
   useEffect(() => {

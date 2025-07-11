@@ -79,28 +79,23 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
       return;
     }
 
-    (async () => {
-      if (selected && !hit) {
-        setLoading(true);
-        try {
-          await getHit(selected, true);
-        } finally {
-          setLoading(false);
-          return;
-        }
-      } else if (!hit?.howler.data) {
-        getHit(selected, true);
-      }
+    if (!hit?.howler.data) {
+      setLoading(true);
+      getHit(selected, true).finally(() => setLoading(false));
+      return;
+    }
 
-      setUserIds(getUserList(hit));
-      setAnalytic(await getAnalyticFromName(hit.howler.analytic));
+    setUserIds(getUserList(hit));
+    getAnalyticFromName(hit.howler.analytic).then(setAnalytic);
 
-      if (tab === 'hit_aggregate' && !hit.howler.is_bundle) {
-        setTab('overview');
-      }
-    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getAnalyticFromName, getHit, selected, tab]);
+  }, [getAnalyticFromName, getHit, selected]);
+
+  useEffect(() => {
+    if (tab === 'hit_aggregate' && !hit?.howler.is_bundle) {
+      setTab('overview');
+    }
+  }, [hit?.howler.is_bundle, tab]);
 
   const matchingOverview = useMemo(() => getMatchingOverview(hit), [getMatchingOverview, hit]);
 
