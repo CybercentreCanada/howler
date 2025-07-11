@@ -8,6 +8,7 @@ from howler.common.logging import get_logger
 from howler.datastore.exceptions import SearchException
 from howler.odm.models.dossier import Dossier
 from howler.odm.models.user import User
+from howler.services import lucene_service
 
 logger = get_logger(__file__)
 
@@ -117,3 +118,23 @@ def update_dossier(dossier_id: str, dossier_data: dict[str, Any], user: User) ->
     except (HowlerException, TypeError) as e:
         logger.exception("Error when updating dossier.")
         raise InvalidDataException("We were unable to update the dossier.", cause=e) from e
+
+
+def get_matching_dossiers(hit: dict[str, Any]):
+    "Get a list of matching dossiers based on a specific alert."
+    results: list[dict[str, Any]] = datastore().dossier.search(
+        "dossier_id:*",
+        as_obj=False,
+        rows=1000,
+    )["items"]
+
+    matching_dossiers: list[dict[str, Any]] = []
+    for dossier in results:
+        if "query" not in dossier or dossier["query"] is None:
+            matching_dossiers.append(dossier)
+            continue
+
+        if lucene_service.match(dossier["query"], hit):
+            matching_dossiers.append(dossier)
+
+    return matching_dossiers

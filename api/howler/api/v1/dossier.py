@@ -1,15 +1,6 @@
 from flask import request
 
-from howler.api import (
-    bad_request,
-    created,
-    forbidden,
-    internal_error,
-    make_subapi_blueprint,
-    no_content,
-    not_found,
-    ok,
-)
+from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
 from howler.common.exceptions import ForbiddenException, HowlerException, InvalidDataException, NotFoundException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -17,7 +8,7 @@ from howler.common.swagger import generate_swagger_docs
 from howler.odm.models.dossier import Dossier
 from howler.odm.models.user import User
 from howler.security import api_login
-from howler.services import dossier_service, lucene_service
+from howler.services import dossier_service
 
 SUB_API = "dossier"
 dossier_api = make_subapi_blueprint(SUB_API, api_version=1)
@@ -141,29 +132,14 @@ def get_dossier_for_hit(id: str, user: User, **kwargs):
     """
     storage = datastore()
     try:
-        response = storage.hit.search(f"howler.id:{id}", rows=1)
+        response = storage.hit.search(f"howler.id:{id}", rows=1, as_obj=False)
 
         if response["total"] < 1:
             return not_found(err="Hit does not exist.")
 
         hit = response["items"][0]
 
-        results: list[Dossier] = storage.dossier.search(
-            "dossier_id:*",
-            as_obj=True,
-            rows=1000,
-        )["items"]
-
-        matching_dossiers: list[Dossier] = []
-        for dossier in results:
-            if dossier.query is None:
-                matching_dossiers.append(dossier)
-                continue
-
-            if lucene_service.match(dossier.query, hit.as_primitives()):
-                matching_dossiers.append(dossier)
-
-        return ok(matching_dossiers)
+        return ok(dossier_service.get_matching_dossiers(hit))
     except ValueError as e:
         return bad_request(err=str(e))
 

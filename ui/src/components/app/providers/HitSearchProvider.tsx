@@ -150,7 +150,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
               sort,
               filters,
               track_total_hits: trackTotalHits,
-              metadata: ['template', 'overview', 'dossiers', 'analytic']
+              metadata: ['template', 'overview', 'analytic']
             }),
             { showError: false, throwError: true }
           );

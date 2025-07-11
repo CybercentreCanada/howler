@@ -3,10 +3,9 @@ import { Badge, Box, Divider, Skeleton, Stack, Tab, Tabs, Tooltip, useTheme } fr
 import TuiIconButton from 'components/elements/addons/buttons/CustomIconButton';
 
 import { Icon } from '@iconify/react/dist/iconify.js';
+import useMatchers from 'components/app/hooks/useMatchers';
 import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
-import { DossierContext } from 'components/app/providers/DossierProvider';
 import { HitContext } from 'components/app/providers/HitProvider';
-import { OverviewContext } from 'components/app/providers/OverviewProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { SocketContext } from 'components/app/providers/SocketProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
@@ -35,6 +34,7 @@ import ErrorBoundary from 'components/routes/ErrorBoundary';
 import { uniqBy } from 'lodash-es';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Dossier } from 'models/entities/generated/Dossier';
+import type { Overview } from 'models/entities/generated/Overview';
 import howlerPluginStore from 'plugins/store';
 import type { FC } from 'react';
 import { useContext, useEffect, useMemo, useState } from 'react';
@@ -52,16 +52,15 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
   const location = useLocation();
   const { emit, isOpen } = useContext(SocketContext);
   const { getAnalyticFromName } = useContext(AnalyticContext);
-  const { getMatchingOverview, refresh } = useContext(OverviewContext);
+  const { getMatchingOverview, getMatchingDossiers } = useMatchers();
   const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
   const pluginStore = usePluginStore();
-
-  const getMatchingDossiers = useContextSelector(DossierContext, ctx => ctx.getMatchingDossiers);
 
   const getHit = useContextSelector(HitContext, ctx => ctx.getHit);
 
   const [userIds, setUserIds] = useState<Set<string>>(new Set());
   const [analytic, setAnalytic] = useState<Analytic>();
+  const [overview, setOverview] = useState<Overview>();
   const [tab, setTab] = useState<string>('overview');
   const [loading, setLoading] = useState<boolean>(false);
   const [dossiers, setDossiers] = useState<Dossier[]>([]);
@@ -87,6 +86,8 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
 
     setUserIds(getUserList(hit));
     getAnalyticFromName(hit.howler.analytic).then(setAnalytic);
+    getMatchingOverview(hit).then(setOverview);
+    getMatchingDossiers(hit).then(setDossiers);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getAnalyticFromName, getHit, selected]);
@@ -96,8 +97,6 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
       setTab('overview');
     }
   }, [hit?.howler.is_bundle, tab]);
-
-  const matchingOverview = useMemo(() => getMatchingOverview(hit), [getMatchingOverview, hit]);
 
   useEffect(() => {
     if (selected && isOpen()) {
@@ -117,17 +116,13 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
   }, [emit, selected, isOpen]);
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
-
-  useEffect(() => {
-    if (matchingOverview && tab === 'details') {
+    if (overview && tab === 'details') {
       setTab('overview');
-    } else if (!matchingOverview && tab === 'overview') {
+    } else if (!overview && tab === 'overview') {
       setTab('details');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matchingOverview]);
+  }, [overview]);
 
   /**
    * What to show as the header? If loading a skeleton, then it depends on bundle or not. Bundles don't
@@ -172,14 +167,6 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
       )
     }[tab]?.();
   }, [dossiers, hit, loading, tab, users]);
-
-  useEffect(() => {
-    if (!hit) {
-      return;
-    }
-
-    getMatchingDossiers(hit.howler.id).then(setDossiers);
-  }, [getMatchingDossiers, hit]);
 
   return (
     <VSBox top={10} sx={{ height: '100%', flex: 1 }}>
@@ -252,7 +239,7 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
         )}
         <VSBoxHeader ml={-1} mr={-1} pb={1} sx={{ top: '0px' }}>
           <Tabs
-            value={tab === 'overview' && !matchingOverview ? 'details' : tab}
+            value={tab === 'overview' && !overview ? 'details' : tab}
             sx={{
               display: 'flex',
               flexDirection: 'row',
@@ -303,9 +290,7 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
             {hit?.howler?.is_bundle && (
               <Tab label={t('hit.viewer.aggregate')} value="hit_aggregate" onClick={() => setTab('hit_aggregate')} />
             )}
-            {matchingOverview && (
-              <Tab label={t('hit.viewer.overview')} value="overview" onClick={() => setTab('overview')} />
-            )}
+            {overview && <Tab label={t('hit.viewer.overview')} value="overview" onClick={() => setTab('overview')} />}
             <Tab label={t('hit.viewer.details')} value="details" onClick={() => setTab('details')} />
             {hit?.howler.dossier?.map((lead, index) => (
               <Tab

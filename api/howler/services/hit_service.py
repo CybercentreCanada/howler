@@ -30,7 +30,7 @@ from howler.odm.models.ecs.event import Event
 from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import HitOperationType, HitStatus, HitStatusTransition, Log
 from howler.odm.models.user import User
-from howler.services import action_service
+from howler.services import action_service, dossier_service
 from howler.utils.dict_utils import extra_keys, flatten
 from howler.utils.uid import get_random_id
 
@@ -723,3 +723,7 @@ def augment_metadata(data: list[dict[str, Any]] | dict[str, Any], metadata: list
 
         for hit in hits:
             hit["__overview"] = __match_metadata(overview_candidates, hit)
+
+    if "dossiers" in metadata:
+        for hit in hits:
+            hit["__dossiers"] = dossier_service.get_matching_dossiers(hit)
