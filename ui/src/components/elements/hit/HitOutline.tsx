@@ -11,33 +11,19 @@ import DefaultOutline from './outlines/DefaultOutline';
 
 export const DEFAULT_FIELDS = ['howler.hash'];
 
-const HitOutline: FC<{ hit: WithMetadata<Hit>; layout: HitLayout; type?: 'global' | 'personal' }> = ({
-  hit,
-  layout,
-  type
-}) => {
+const HitOutline: FC<{ hit: WithMetadata<Hit>; layout: HitLayout }> = ({ hit, layout }) => {
   const { t } = useTranslation();
 
   const { getMatchingTemplate } = useMatchers();
 
   const [template, setTemplate] = useState<Template>(null);
 
-  useEffect(
-    () => {
-      getMatchingTemplate(hit).then(setTemplate);
-    },
-    [getMatchingTemplate, hit]
-  );
+  useEffect(() => {
+    getMatchingTemplate(hit).then(setTemplate);
+  }, [getMatchingTemplate, hit]);
 
   const outline = useMemo(() => {
-    if (template && template.type === type) {
-      return createElement(DefaultOutline, {
-        hit,
-        layout,
-        template,
-        fields: template.keys
-      });
-    } else if (template) {
+    if (template) {
       return createElement(DefaultOutline, {
         hit,
         layout,
@@ -52,7 +38,7 @@ const HitOutline: FC<{ hit: WithMetadata<Hit>; layout: HitLayout; type?: 'global
         fields: DEFAULT_FIELDS
       });
     }
-  }, [hit, layout, template, type]);
+  }, [hit, layout, template]);
 
   return (
     <Box sx={{ py: 1, width: '100%', pr: 2 }}>
