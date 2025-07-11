@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Any, Union
 
 from elasticsearch import BadRequestError
 from flask import request
@@ -12,12 +12,7 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import SearchException
-from howler.helper.search import (
-    get_collection,
-    get_default_sort,
-    has_access_control,
-    list_all_fields,
-)
+from howler.helper.search import get_collection, get_default_sort, has_access_control, list_all_fields
 from howler.security import api_login
 
 SUB_API = "search"
@@ -459,9 +454,75 @@ def count(index, **kwargs):
 
 
 @generate_swagger_docs()
+@search_api.route("/facet/<index>", methods=["GET", "POST"])
+@api_login(required_priv=["R"])
+def facet(index, **kwargs):
+    """Perform field analysis on the selected fields. (Also known as facetting in lucene).
+
+    This essentially counts the number of instances a field is seen with each specific
+    values where the documents matches the specified queries.
+
+    Variables:
+    index       =>   Index to search in (hit, user,...)
+
+    Optional Arguments:
+    query       =>   Query to search for
+    mincount    =>   Minimum item count for the fieldvalue to be returned
+    rows        => The max number of fieldvalues to return
+    filters     =>   Additional query to limit to output
+    fields        =>   Field to analyse
+
+    Data Block:
+    # Note that the data block is for POST requests only!
+    {"fields": ["howler.id", ...]
+     "query": "id:*",
+     "mincount": "10",
+     "rows": "10",
+     "filters": ['fq']}
+
+    Result Example:
+    {
+        "howler.id": {                 # Facetting results
+            "value_0": 2,
+            ...
+            "value_N": 19,
+        },
+        ...
+    }
+    """
+    user = kwargs["user"]
+    collection = get_collection(index, user)
+    if collection is None:
+        return bad_request(err=f"Not a valid index to search in: {index}")
+
+    fields = ["query", "mincount", "rows"]
+    multi_fields = ["filters", "fields"]
+
+    params = generate_params(request, fields, multi_fields)[0]
+
+    if has_access_control(index):
+        params.update({"access_control": user["access_control"]})
+
+    try:
+        fields = params.pop("fields")
+        facet_result: dict[str, dict[str, Any]] = {}
+        for field in fields:
+            if field not in collection().fields():
+                logger.warning("Invalid field %s requested for faceting, skipping", field)
+                continue
+
+            facet_result[field] = collection().facet(field, **params)
+
+        return ok(facet_result)
+    except (SearchException, BadRequestError) as e:
+        logger.error("SearchException: %s", str(e), exc_info=True)
+        return bad_request(err=f"SearchException: {e}")
+
+
+@generate_swagger_docs()
 @search_api.route("/facet/<index>/<field>", methods=["GET", "POST"])
 @api_login(required_priv=["R"])
-def facet(index, field, **kwargs):
+def facet_field(index, field, **kwargs):
     """Perform field analysis on the selected field. (Also known as facetting in lucene).
 
     This essentially counts the number of instances a field is seen with each specific

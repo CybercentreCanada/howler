@@ -1,3 +1,4 @@
+import json
 from typing import cast
 
 import pytest
@@ -30,7 +31,6 @@ def datastore(datastore_connection):
         create_users(ds)
 
 
-# noinspection PyUnusedLocal
 def test_deep_search(datastore, login_session):
     session, host = login_session
 
@@ -47,7 +47,6 @@ def test_deep_search(datastore, login_session):
         assert len(res) >= TEST_SIZE
 
 
-# noinspection PyUnusedLocal
 def test_facet_search(datastore, login_session):
     session, host = login_session
 
@@ -57,8 +56,15 @@ def test_facet_search(datastore, login_session):
         for v in resp.values():
             assert isinstance(v, int)
 
+        resp = get_api_data(
+            session, f"{host}/api/v1/search/facet/{collection}", method="POST", data=json.dumps({"fields": ["name"]})
+        )
+        assert len(resp) == 1
+        assert len(resp["name"]) == TEST_SIZE
+        for v in resp["name"].values():
+            assert isinstance(v, int)
 
-# noinspection PyUnusedLocal
+
 def test_grouped_search(datastore, login_session):
     session, host = login_session
 
@@ -69,7 +75,6 @@ def test_grouped_search(datastore, login_session):
             assert v["total"] == 1 and "value" in v
 
 
-# noinspection PyUnusedLocal
 def test_histogram_search(datastore, login_session):
     session, host = login_session
 
@@ -105,7 +110,6 @@ def test_search(datastore, login_session):
         assert TEST_SIZE <= resp["total"] >= len(resp["items"])
 
 
-# noinspection PyUnusedLocal
 def test_get_fields(datastore, login_session):
     session, host = login_session
 
@@ -128,7 +132,6 @@ def test_get_fields(datastore, login_session):
             )
 
 
-# noinspection PyUnusedLocal
 def test_count(datastore, login_session):
     session, host = login_session
 
@@ -142,7 +145,6 @@ def test_count(datastore, login_session):
         assert search_resp["total"] == count_resp["count"]
 
 
-# noinspection PyUnusedLocal
 def test_stats_search(datastore, login_session):
     session, host = login_session
 

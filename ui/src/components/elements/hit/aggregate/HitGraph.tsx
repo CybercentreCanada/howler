@@ -60,7 +60,6 @@ const HitGraph: FC<{ query: string }> = ({ query }) => {
   const removeHitFromSelection = useContextSelector(HitContext, ctx => ctx.removeHitFromSelection);
 
   const viewId = useContextSelector(HitSearchContext, ctx => ctx.viewId);
-  const searching = useContextSelector(HitSearchContext, ctx => ctx.searching);
   const error = useContextSelector(HitSearchContext, ctx => ctx.error);
 
   const chartRef = useRef<Chart<'scatter'>>();
@@ -87,6 +86,10 @@ const HitGraph: FC<{ query: string }> = ({ query }) => {
         filters.push(`event.created:${convertCustomDateRangeToLucene(startDate, endDate)}`);
       }
 
+      if (escalationFilter) {
+        filters.push(`howler.escalation:${escalationFilter}`);
+      }
+
       const total = (
         await dispatchApi(
           api.search.count.hit.post({
@@ -104,17 +107,9 @@ const HitGraph: FC<{ query: string }> = ({ query }) => {
         setDisabled(false);
       }
 
-      const subQueries = [query || 'howler.id:*'];
-
-      if (escalationFilter) {
-        subQueries.push(`howler.escalation:${escalationFilter}`);
-      }
-
-      const graphQuery = subQueries.map(_query => `(${_query})`).join(' AND ');
-
       const _data = await dispatchApi(
         api.search.grouped.hit.post(filterField, {
-          query: graphQuery,
+          query: query || 'howler.id:*',
           fl: 'event.created,howler.assessment,howler.analytic,howler.detection,howler.outline.threat,howler.outline.target,howler.outline.summary,howler.id',
           // We want a generally random sample across all date ranges, so we use hash.
           // If we used event.created instead, when 1 million hits/hour are created, you'd only see hits from this past minute
@@ -155,13 +150,13 @@ const HitGraph: FC<{ query: string }> = ({ query }) => {
   }, [dispatchApi, endDate, escalationFilter, filterField, override, query, span, startDate]);
 
   useEffect(() => {
-    if ((!query && !viewId) || searching || error) {
+    if ((!query && !viewId) || error) {
       return;
     }
 
     performQuery();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, viewId, searching, error]);
+  }, [query, viewId, error, span]);
 
   const options: ChartOptions<'scatter'> = useMemo(() => {
     const parentOptions = scatter('hit.summary.title', 'hit.summary.subtitle');
