@@ -7,7 +7,6 @@ Un hit howler peut contenir un grand nombre de champs uniques, chacun avec une d
 Afin d'assurer une certaine cohérence entre les différents analytiques, il existe un certain nombre de champs dont le style est recommandé (mais pas obligatoire). Il s'agit notamment des champs suivants:
 
 - `howler.analytic` : Indique l'analyse globale qui a généré le résultat. Par exemple, si le nom de votre analyse est Bad Guy Finder, vous pouvez définir ce champ à Bad Guy Finder. Exemples d'utilisation :
-
   - Bad Guy Finder (correct)
   - BadGuyFinder (acceptable, mais les espaces sont préférables)
   - bad.guy.finder (incorrect, ne pas utiliser de points)
