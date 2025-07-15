@@ -22,7 +22,7 @@ const LeadRenderer: FC<{ lead: Lead; hit?: Hit }> = ({ lead, hit }) => {
     );
   }
 
-  const pluginLead = pluginStore.executeFunction(`lead.${lead.format}`, lead.content, lead.metadata);
+  const pluginLead = pluginStore.executeFunction(`lead.${lead.format}`, lead.content, lead.metadata, hit);
 
   if (pluginLead) {
     return pluginLead;

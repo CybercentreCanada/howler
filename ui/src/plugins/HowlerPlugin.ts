@@ -69,7 +69,7 @@ abstract class HowlerPlugin implements IPlugin {
   addLead(
     format: string,
     form: (props: LeadFormProps) => React.ReactNode,
-    renderer: (content: string, metadata: any) => React.ReactNode
+    renderer: (content: string, metadata: any, hit?: Hit) => React.ReactNode
   ) {
     if (!howlerPluginStore.addLead(format)) {
       // eslint-disable-next-line no-console

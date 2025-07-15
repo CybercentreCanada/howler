@@ -87,7 +87,7 @@ const DossierEditor: FC = () => {
     }
 
     if (
-      !dossier.pivots?.every(
+      !(dossier.pivots ?? []).every(
         pivot => pivot.icon && iconExists(pivot.icon) && pivot.label && pivot.label.en && pivot.label.fr && pivot.format
       )
     ) {
