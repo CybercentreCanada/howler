@@ -143,8 +143,9 @@ def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[User], p
     hit.howler.labels.mitigation = []
     hit.howler.labels.operation = []
     hit.howler.labels.threat = []
+    hit.howler.labels.tuning = []
 
-    label_type = ceil(rand_seed * 6)
+    label_type = ceil(rand_seed * 7)
     if label_type == 1:
         hit.howler.labels.campaign = ["Bad event 2023-07"]
     elif label_type == 2:
@@ -155,6 +156,8 @@ def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[User], p
         hit.howler.labels.mitigation = ["Blocked: google.com"]
     elif label_type == 5:
         hit.howler.labels.operation = ["OP_HOWLER"]
+    elif label_type == 6:
+        hit.howler.labels.tuning = ["Tune example"]
     else:
         hit.howler.labels.threat = ["Bad Mojo"]
 
