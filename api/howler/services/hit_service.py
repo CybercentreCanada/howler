@@ -779,18 +779,18 @@ def search(
 TYPE_PRIORITY = {"personal": 2, "readonly": 1, "global": 0}
 
 
-def __compare_metadata(template_a: dict[str, Any], template_b: dict[str, Any]) -> int:
+def __compare_metadata(object_a: dict[str, Any], object_b: dict[str, Any]) -> int:
     # Sort priority:
     # 1. personal > readonly > global
     # 2. detection > !detection
 
-    if template_a["type"] != template_b["type"]:
-        return TYPE_PRIORITY[template_b["type"]] - TYPE_PRIORITY[template_a["type"]]
+    if object_a["type"] != object_b["type"]:
+        return TYPE_PRIORITY[object_b["type"]] - TYPE_PRIORITY[object_a["type"]]
 
-    if template_a.get("detection", None) and not template_b.get("detection", None):
+    if object_a.get("detection", None) and not object_b.get("detection", None):
         return -1
 
-    if not template_a.get("detection", None) and template_b.get("detection", None):
+    if not object_a.get("detection", None) and object_b.get("detection", None):
         return 1
 
     return 0

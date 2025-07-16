@@ -550,3 +550,76 @@ def test_augment_metadata_single_hit_as_dict():
 
             # Verify the hit was processed (metadata field added)
             assert "__template" in test_hit
+
+
+def test__compare_metadata_priority():
+    # personal > readonly > global
+    personal = {"type": "personal"}
+    readonly = {"type": "readonly"}
+    _global = {"type": "global"}
+    # a > b > c
+    assert hit_service.__compare_metadata(personal, readonly) < 0
+    assert hit_service.__compare_metadata(readonly, _global) < 0
+    assert hit_service.__compare_metadata(personal, _global) < 0
+    assert hit_service.__compare_metadata(readonly, personal) > 0
+    assert hit_service.__compare_metadata(_global, readonly) > 0
+    assert hit_service.__compare_metadata(_global, personal) > 0
+    # Same type, detection present
+    global_detection = {"type": "global", "detection": "foo"}
+    assert hit_service.__compare_metadata(global_detection, _global) < 0
+    assert hit_service.__compare_metadata(_global, global_detection) > 0
+    # Same type, both have detection
+    f = {"type": "global", "detection": "foo"}
+    g = {"type": "global", "detection": "bar"}
+    assert hit_service.__compare_metadata(f, g) == 0
+
+
+def test__match_metadata_basic():
+    hit = {"howler": {"analytic": "A", "detection": "D"}}
+    candidates = [
+        {"analytic": "A", "detection": "D", "type": "global"},
+        {"analytic": "A", "detection": "X", "type": "readonly"},
+        {"analytic": "B", "detection": "D", "type": "personal"},
+    ]
+    result = hit_service.__match_metadata(candidates, hit)
+    assert result == {"analytic": "A", "detection": "D", "type": "global"}
+
+
+def test__match_metadata_case_insensitive():
+    hit = {"howler": {"analytic": "aNALYTIC", "detection": "dEtEctION"}}
+    candidates = [
+        {"analytic": "analytic", "detection": "detection", "type": "global"},
+        {"analytic": "analytic", "detection": "other", "type": "readonly"},
+    ]
+    result = hit_service.__match_metadata(candidates, hit)
+    assert result == {"analytic": "analytic", "detection": "detection", "type": "global"}
+
+
+def test__match_metadata_no_detection_in_candidate():
+    hit = {"howler": {"analytic": "A", "detection": "D"}}
+    candidates = [
+        {"analytic": "A", "type": "global"},
+        {"analytic": "A", "detection": "D", "type": "readonly"},
+    ]
+    result = hit_service.__match_metadata(candidates, hit)
+    assert result == {"analytic": "A", "detection": "D", "type": "readonly"}
+
+
+def test__match_metadata_no_detection_in_hit():
+    hit = {"howler": {"analytic": "A"}}
+    candidates = [
+        {"analytic": "A", "detection": "D", "type": "global"},
+        {"analytic": "A", "type": "readonly"},
+    ]
+    result = hit_service.__match_metadata(candidates, hit)
+    assert result == {"analytic": "A", "type": "readonly"}
+
+
+def test__match_metadata_no_match():
+    hit = {"howler": {"analytic": "A", "detection": "D"}}
+    candidates = [
+        {"analytic": "B", "detection": "D", "type": "global"},
+        {"analytic": "A", "detection": "X", "type": "readonly"},
+    ]
+    result = hit_service.__match_metadata(candidates, hit)
+    assert result is None
