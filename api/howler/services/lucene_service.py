@@ -4,7 +4,6 @@ import re
 import sys
 from datetime import datetime, timedelta
 from hashlib import sha256
-from ipaddress import ip_address
 from typing import Any, Literal, Union, cast
 
 from elasticsearch._sync.client.indices import IndicesClient
@@ -19,7 +18,7 @@ from howler.common.loader import datastore
 from howler.config import redis
 from howler.remote.datatypes.hash import Hash
 from howler.utils.dict_utils import flatten_deep
-from howler.utils.lucene import coerce, normalize_phrase, try_parse_date, try_parse_ip
+from howler.utils.lucene import coerce, normalize_phrase, try_parse_date, try_parse_ip, try_parse_number
 
 logger = get_logger(__file__)
 
@@ -86,6 +85,13 @@ class LuceneProcessor(TreeVisitor):
 
             return low_datetime_result, datetime_result, high_datetime_result
 
+        if number_result := coerce(value, try_parse_number):
+            low_number_result = coerce(low, try_parse_number)
+            high_number_result = coerce(high, try_parse_number)
+
+            if low_number_result is not None and high_number_result is not None:
+                return low_number_result, number_result, high_number_result
+
         try:
             # Check if the value is a simple integer
             return int(low), coerce(value, int), int(high)
@@ -93,10 +99,11 @@ class LuceneProcessor(TreeVisitor):
             pass
 
         if ip_result := coerce(value, try_parse_ip):
-            low_ip_result = ip_address(low)
-            high_ip_result = ip_address(high)
+            low_ip_result = coerce(low, try_parse_ip)
+            high_ip_result = coerce(high, try_parse_ip)
 
-            return low_ip_result, ip_result, high_ip_result
+            if low_ip_result is not None and high_ip_result is not None:
+                return low_ip_result, ip_result, high_ip_result
 
         try:
             # Check if the value is a float
@@ -108,7 +115,7 @@ class LuceneProcessor(TreeVisitor):
 
     def visit_range(self, node: Range, context: dict[str, Any]):
         "Handle range queries"
-        low, value, high = self.__parse_range(node.high.value, context["hit"].get(context["field"]), node.low.value)
+        low, value, high = self.__parse_range(node.low.value, context["hit"].get(context["field"]), node.high.value)
 
         if isinstance(value, list):
             values = value
