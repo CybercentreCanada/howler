@@ -53,7 +53,7 @@ const ViewComposer: FC = () => {
 
   const addView = useContextSelector(ViewContext, ctx => ctx.addView);
   const editView = useContextSelector(ViewContext, ctx => ctx.editView);
-  const views = useContextSelector(ViewContext, ctx => ctx.views);
+  const getCurrentView = useContextSelector(ViewContext, ctx => ctx.getCurrentView);
 
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
@@ -164,32 +164,34 @@ const ViewComposer: FC = () => {
   }, [sort, span]);
 
   useEffect(() => {
-    if (routeParams.id) {
-      const viewToEdit = views?.find(_view => _view.view_id === routeParams.id);
+    if (!routeParams.id) {
+      return;
+    }
 
-      if (!viewToEdit && views?.length > 0) {
+    (async () => {
+      const viewToEdit = await getCurrentView();
+
+      if (!viewToEdit) {
         setError('route.views.missing');
         return;
       } else {
         setError(null);
       }
 
-      if (viewToEdit) {
-        setTitle(viewToEdit.title);
-        setAdvanceOnTriage(viewToEdit.settings?.advance_on_triage ?? false);
-        setQuery(viewToEdit.query);
+      setTitle(viewToEdit.title);
+      setAdvanceOnTriage(viewToEdit.settings?.advance_on_triage ?? false);
+      setQuery(viewToEdit.query);
 
-        if (viewToEdit.sort) {
-          setSort(viewToEdit.sort);
-        }
-
-        if (viewToEdit.span) {
-          setSpan(viewToEdit.span);
-        }
+      if (viewToEdit.sort) {
+        setSort(viewToEdit.sort);
       }
-    }
+
+      if (viewToEdit.span) {
+        setSpan(viewToEdit.span);
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routeParams.id, views]);
+  }, [routeParams.id, getCurrentView]);
 
   return (
     <FlexPort>

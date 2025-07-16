@@ -60,8 +60,8 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const { dispatchApi } = useMyApi();
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
-  const viewsReady = useContextSelector(ViewContext, ctx => ctx.ready);
-  const views = useContextSelector(ViewContext, ctx => ctx.views);
+  const getCurrentView = useContextSelector(ViewContext, ctx => ctx.getCurrentView);
+  const defaultView = useContextSelector(ViewContext, ctx => ctx.defaultView);
 
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
@@ -86,8 +86,8 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const [fzfSearch, setFzfSearch] = useState<boolean>(false);
 
   const viewId = useMemo(
-    () => (location.pathname.startsWith('/views') ? routeParams.id : null),
-    [location.pathname, routeParams.id]
+    () => (location.pathname.startsWith('/views') ? routeParams.id : defaultView) ?? null,
+    [defaultView, location.pathname, routeParams.id]
   );
 
   const bundleId = useMemo(
@@ -138,7 +138,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
           if (bundle) {
             fullQuery = `(howler.bundles:${bundle}) AND (${fullQuery})`;
           } else if (viewId) {
-            fullQuery = `(${views.find(_view => _view.view_id === viewId)?.query || 'howler.id:*'}) AND (${fullQuery})`;
+            fullQuery = `(${(await getCurrentView())?.query || 'howler.id:*'}) AND (${fullQuery})`;
           }
 
           const _response = await dispatchApi(
@@ -194,18 +194,14 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
       pageCount,
       trackTotalHits,
       loadHits,
-      views,
+      getCurrentView,
+      defaultView,
       setOffset
     ]
   );
 
   // We only run this when ancillary properties (i.e. filters, sorting) change
   useEffect(() => {
-    // We're being asked to present a view, but we don't currently have the views loaded
-    if (viewId && !viewsReady) {
-      return;
-    }
-
     if (span.endsWith('custom') && (!startDate || !endDate)) {
       return;
     }
@@ -215,8 +211,9 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
     } else {
       setResponse(null);
     }
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, offset, pageCount, sort, span, bundleId, location.pathname, viewsReady, startDate, endDate]);
+  }, [filter, offset, pageCount, sort, span, bundleId, location.pathname, startDate, endDate]);
 
   return (
     <HitSearchContext.Provider

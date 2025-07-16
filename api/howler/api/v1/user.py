@@ -327,7 +327,7 @@ def get_user_avatar(username, **_):
         resp.headers["ETag"] = sha256(avatar.encode("utf-8")).hexdigest()
         return resp
     else:
-        return not_found(err="No avatar for specified user")
+        return no_content()
 
 
 @generate_swagger_docs()

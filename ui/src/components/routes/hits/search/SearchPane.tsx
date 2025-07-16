@@ -140,7 +140,7 @@ const SearchPane: FC = () => {
 
   const verticalSorters = useMediaQuery('(max-width: 1919px)') || (searchPaneWidth ?? Number.MAX_SAFE_INTEGER) < 900;
 
-  const selectedView = useContextSelector(ViewContext, ctx => ctx.views?.find(val => val.view_id === viewId));
+  const selectedView = useContextSelector(ViewContext, ctx => ctx.views[viewId]);
 
   const getSelectedId = useCallback((event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     const target = event.target as HTMLElement;
