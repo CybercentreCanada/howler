@@ -145,7 +145,7 @@ def add_user_account(username, **_):
 @generate_swagger_docs()
 @user_api.route("/<username>", methods=["GET"])
 @api_login(audit=False, required_priv=["R"])
-@add_etag(getter=user_service.get_user, check_if_match=False)
+@add_etag(getter=user_service.get_user, check_if_match=True)
 def get_user_account(username: str, server_version: Optional[str] = None, **kwargs):
     """Load the user account information.
 
