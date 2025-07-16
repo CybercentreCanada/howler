@@ -1,3 +1,6 @@
+from typing import Any
+from unittest.mock import MagicMock, patch
+
 import pytest
 from mergedeep.mergedeep import merge
 
@@ -107,3 +110,277 @@ def test_pivot_with_duplicates(datastore: HowlerDatastore):
 
     with pytest.raises(InvalidDataException):
         dossier_service.create_dossier(dossier, username="admin")
+
+
+def test_get_matching_dossiers_with_provided_dossiers(datastore: HowlerDatastore):
+    """Test get_matching_dossiers when dossiers are explicitly provided."""
+    # Create test hit data
+    test_hit = {
+        "howler": {"analytic": "test_analytic", "detection": "test_detection", "id": "test_hit_123"},
+        "event": {"action": "network_connection", "dataset": "security_logs"},
+    }
+
+    # Create test dossiers with different query scenarios
+    test_dossiers: list[dict[str, Any]] = [
+        {
+            "dossier_id": "dossier_1",
+            "title": "Catch-all Dossier",
+            "query": None,  # Should match all hits
+            "type": "global",
+        },
+        {
+            "dossier_id": "dossier_2",
+            "title": "Specific Analytic Dossier",
+            "query": "howler.analytic:test_analytic",  # Should match our test hit
+            "type": "personal",
+        },
+        {
+            "dossier_id": "dossier_3",
+            "title": "Different Analytic Dossier",
+            "query": "howler.analytic:different_analytic",  # Should NOT match
+            "type": "global",
+        },
+        {
+            "dossier_id": "dossier_4",
+            "title": "Network Events Dossier",
+            "query": "event.action:network_connection",  # Should match our test hit
+            "type": "personal",
+        },
+        {
+            "dossier_id": "dossier_5",
+            "title": "Missing Query Dossier",
+            # No query field - should match all hits
+            "type": "global",
+        },
+    ]
+
+    # Test the function
+    matching_dossiers = dossier_service.get_matching_dossiers(test_hit, test_dossiers)
+
+    # Verify results
+    assert len(matching_dossiers) == 4  # Should match dossiers 1, 2, 4, and 5
+
+    matching_ids = [d["dossier_id"] for d in matching_dossiers]
+    assert "dossier_1" in matching_ids  # Catch-all (None query)
+    assert "dossier_2" in matching_ids  # Matching analytic query
+    assert "dossier_3" not in matching_ids  # Non-matching query
+    assert "dossier_4" in matching_ids  # Matching event action query
+    assert "dossier_5" in matching_ids  # Missing query field
+
+
+def test_get_matching_dossiers_without_provided_dossiers(datastore: HowlerDatastore):
+    """Test get_matching_dossiers when no dossiers are provided (fetches from datastore)."""
+    # Create test hit data
+    test_hit = {"howler": {"analytic": "existing_analytic", "detection": "existing_detection", "id": "test_hit_456"}}
+
+    # Test without providing dossiers - should fetch from datastore
+    matching_dossiers = dossier_service.get_matching_dossiers(test_hit)
+
+    # Verify it returns a list (exact content depends on datastore state)
+    assert isinstance(matching_dossiers, list)
+
+    # All returned items should be dictionaries with expected structure
+    for dossier in matching_dossiers:
+        assert isinstance(dossier, dict)
+        assert "dossier_id" in dossier
+
+
+def test_get_matching_dossiers_empty_dossier_list(datastore: HowlerDatastore):
+    """Test get_matching_dossiers with an empty dossier list."""
+    test_hit = {"howler": {"analytic": "test_analytic", "id": "test_hit_789"}}
+
+    # Test with empty dossier list
+    matching_dossiers = dossier_service.get_matching_dossiers(test_hit, [])
+
+    # Should return empty list
+    assert matching_dossiers == []
+
+
+def test_get_matching_dossiers_complex_queries(datastore: HowlerDatastore):
+    """Test get_matching_dossiers with complex Lucene queries."""
+    # Create test hit with multiple fields
+    test_hit = {
+        "howler": {"analytic": "malware_detection", "detection": "trojan_horse", "id": "complex_hit_001", "score": 85},
+        "event": {"action": "file_creation", "outcome": "success", "category": ["malware"]},
+        "source": {"ip": "192.168.1.100"},
+    }
+
+    # Test dossiers with complex queries
+    complex_dossiers = [
+        {
+            "dossier_id": "complex_1",
+            "title": "High Score Malware",
+            "query": "howler.analytic:malware_detection AND howler.score:[80 TO *]",
+            "type": "global",
+        },
+        {
+            "dossier_id": "complex_2",
+            "title": "File Operations",
+            "query": "event.action:file_* AND event.outcome:success",
+            "type": "personal",
+        },
+        {
+            "dossier_id": "complex_3",
+            "title": "Internal Network",
+            "query": "source.ip:[192.168.0.0 TO 192.168.255.255]",
+            "type": "global",
+        },
+        {
+            "dossier_id": "complex_4",
+            "title": "Non-matching Query",
+            "query": "howler.analytic:phishing AND event.action:email_send",
+            "type": "personal",
+        },
+    ]
+
+    matching_dossiers = dossier_service.get_matching_dossiers(test_hit, complex_dossiers)
+
+    # Verify complex query matching
+    matching_ids = [d["dossier_id"] for d in matching_dossiers]
+    assert "complex_1" in matching_ids  # Should match high score malware query
+    assert "complex_2" in matching_ids  # Should match file operations query
+    assert "complex_3" in matching_ids  # Should match internal network query
+    assert "complex_4" not in matching_ids  # Should not match phishing query
+
+
+def test_get_matching_dossiers_with_malformed_data(datastore: HowlerDatastore):
+    """Test get_matching_dossiers with edge cases and malformed data."""
+    # Test hit with minimal data
+    minimal_hit = {"howler": {"id": "minimal_hit"}}
+
+    # Test dossiers with various edge cases
+    edge_case_dossiers: list[dict[str, Any]] = [
+        {"dossier_id": "edge_1", "title": "Null Query Dossier", "query": None, "type": "global"},
+        {"dossier_id": "edge_2", "title": "Empty String Query", "query": "", "type": "personal"},
+        {
+            "dossier_id": "edge_3",
+            "title": "Missing Query Field",
+            "type": "global",
+            # No query field at all
+        },
+        {"dossier_id": "edge_4", "title": "Whitespace Query", "query": "   ", "type": "personal"},
+    ]
+
+    matching_dossiers = dossier_service.get_matching_dossiers(minimal_hit, edge_case_dossiers)
+
+    # Dossiers with None, missing, or empty queries should match
+    matching_ids = [d["dossier_id"] for d in matching_dossiers]
+    assert "edge_1" in matching_ids  # None query should match
+    assert "edge_3" in matching_ids  # Missing query should match
+
+    # The behavior for empty string and whitespace queries depends on lucene_service.match implementation
+    # These should be tested based on the actual implementation behavior
+
+
+def test_get_matching_dossiers_query_validation_scenarios(datastore: HowlerDatastore):
+    """Test various query validation scenarios with get_matching_dossiers."""
+    test_hit = {
+        "howler": {"analytic": "test_validation", "detection": "test_rule", "id": "validation_hit"},
+        "tags": ["suspicious", "network"],
+    }
+
+    validation_dossiers = [
+        {
+            "dossier_id": "valid_1",
+            "title": "Simple Field Match",
+            "query": "howler.analytic:test_validation",
+            "type": "global",
+        },
+        {"dossier_id": "valid_2", "title": "Wildcard Query", "query": "howler.analytic:test_*", "type": "personal"},
+        {"dossier_id": "valid_3", "title": "Array Field Query", "query": "tags:suspicious", "type": "global"},
+        {
+            "dossier_id": "valid_4",
+            "title": "Boolean AND Query",
+            "query": "howler.analytic:test_validation AND tags:network",
+            "type": "personal",
+        },
+        {"dossier_id": "valid_5", "title": "Non-existent Field", "query": "nonexistent.field:value", "type": "global"},
+    ]
+
+    matching_dossiers = dossier_service.get_matching_dossiers(test_hit, validation_dossiers)
+
+    # Verify that valid queries are processed correctly
+    matching_ids = [d["dossier_id"] for d in matching_dossiers]
+    assert "valid_1" in matching_ids  # Exact field match
+    assert "valid_2" in matching_ids  # Wildcard match
+    assert "valid_3" in matching_ids  # Array field match
+    assert "valid_4" in matching_ids  # Boolean AND match
+
+    # Non-existent field behavior depends on lucene_service implementation
+    # Should be tested based on actual behavior
+
+
+def test_get_matching_dossiers_with_lucene_service_mock(datastore: HowlerDatastore):
+    """Test get_matching_dossiers with mocked lucene_service for controlled testing."""
+    test_hit = {"howler": {"analytic": "mock_test_analytic", "id": "mock_test_hit"}}
+
+    test_dossiers: list[dict[str, Any]] = [
+        {"dossier_id": "mock_1", "title": "Always Match Dossier", "query": "always_match_query", "type": "global"},
+        {"dossier_id": "mock_2", "title": "Never Match Dossier", "query": "never_match_query", "type": "personal"},
+        {"dossier_id": "mock_3", "title": "No Query Dossier", "query": None, "type": "global"},
+    ]
+
+    # Mock the lucene_service.match function to control return values
+    with patch("howler.services.dossier_service.lucene_service.match") as mock_match:
+        # Configure mock to return True for "always_match_query" and False for "never_match_query"
+        def mock_match_side_effect(query, hit):
+            if query == "always_match_query":
+                return True
+            elif query == "never_match_query":
+                return False
+            else:
+                return False
+
+        mock_match.side_effect = mock_match_side_effect
+
+        # Test the function
+        matching_dossiers = dossier_service.get_matching_dossiers(test_hit, test_dossiers)
+
+        # Verify results
+        matching_ids = [d["dossier_id"] for d in matching_dossiers]
+        assert "mock_1" in matching_ids  # Should match due to mocked True return
+        assert "mock_2" not in matching_ids  # Should not match due to mocked False return
+        assert "mock_3" in matching_ids  # Should match due to None query
+
+        # Verify that lucene_service.match was called correctly
+        assert mock_match.call_count == 2  # Should be called for mock_1 and mock_2
+        mock_match.assert_any_call("always_match_query", test_hit)
+        mock_match.assert_any_call("never_match_query", test_hit)
+
+
+@patch("howler.services.dossier_service.datastore")
+def test_get_matching_dossiers_datastore_integration(mock_datastore, datastore: HowlerDatastore):
+    """Test get_matching_dossiers when it fetches dossiers from datastore."""
+    test_hit = {"howler": {"analytic": "datastore_test", "id": "datastore_hit"}}
+
+    # Mock datastore response
+    mock_dossier_collection = MagicMock()
+    mock_datastore.return_value.dossier = mock_dossier_collection
+
+    # Configure mock search response
+    mock_search_response = {
+        "items": [
+            {"dossier_id": "ds_1", "title": "Datastore Dossier 1", "query": None, "type": "global"},
+            {
+                "dossier_id": "ds_2",
+                "title": "Datastore Dossier 2",
+                "query": "howler.analytic:datastore_test",
+                "type": "personal",
+            },
+        ]
+    }
+    mock_dossier_collection.search.return_value = mock_search_response
+
+    # Mock lucene_service.match to return True for our test query
+    with patch("howler.services.dossier_service.lucene_service.match", return_value=True):
+        # Test the function with no dossiers provided (should fetch from datastore)
+        matching_dossiers = dossier_service.get_matching_dossiers(test_hit)
+
+        # Verify datastore was called correctly
+        mock_dossier_collection.search.assert_called_once_with("dossier_id:*", as_obj=False, rows=1000)
+
+        # Verify results
+        assert len(matching_dossiers) == 2
+        matching_ids = [d["dossier_id"] for d in matching_dossiers]
+        assert "ds_1" in matching_ids
+        assert "ds_2" in matching_ids

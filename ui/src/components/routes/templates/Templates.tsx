@@ -1,19 +1,8 @@
-import { Article, KeyboardArrowDown } from '@mui/icons-material';
-import {
-  Box,
-  Card,
-  Collapse,
-  IconButton,
-  Stack,
-  ToggleButton,
-  ToggleButtonGroup,
-  Tooltip,
-  Typography
-} from '@mui/material';
+import { Article } from '@mui/icons-material';
+import { Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
 import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
 import { useAppUser } from 'commons/components/app/hooks';
-import { TemplateContext } from 'components/app/providers/TemplateProvider';
 import { TuiListProvider, type TuiListItem, type TuiListItemProps } from 'components/elements/addons/lists';
 import { TuiListMethodContext, type TuiListMethodsState } from 'components/elements/addons/lists/TuiListProvider';
 import ItemManager from 'components/elements/display/ItemManager';
@@ -21,10 +10,9 @@ import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Template } from 'models/entities/generated/Template';
-import { useCallback, useContext, useEffect, useMemo, useState, type FC } from 'react';
+import { useCallback, useContext, useEffect, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
 import TemplateCard from './TemplateCard';
 
@@ -35,12 +23,10 @@ const TemplatesBase: FC = () => {
   const { dispatchApi } = useMyApi();
   const [searchParams, setSearchParams] = useSearchParams();
   const { load } = useContext<TuiListMethodsState<Template>>(TuiListMethodContext);
-  const templates = useContextSelector(TemplateContext, ctx => ctx.templates);
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
   const [phrase, setPhrase] = useState<string>('');
   const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
-  const [showBuiltins, setShowBuiltins] = useState(true);
   const [response, setResponse] = useState<HowlerSearchResponse<Template>>(null);
   const [types, setTypes] = useState<('personal' | 'global')[]>([]);
   const [hasError, setHasError] = useState(false);
@@ -131,8 +117,6 @@ const TemplatesBase: FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offset]);
 
-  const builtInTemplates = useMemo(() => templates.filter(template => template.type === 'readonly'), [templates]);
-
   const renderer = useCallback(
     (item: Template, className?: string) => <TemplateCard template={item} className={className} />,
     []
@@ -174,31 +158,6 @@ const TemplatesBase: FC = () => {
         >
           {t('route.templates.search.prompt')}
         </Typography>
-      }
-      belowSearch={
-        types.length !== 1 &&
-        offset < 1 &&
-        builtInTemplates.length > 0 && (
-          <Card sx={{ p: 1, mb: 1 }}>
-            <Stack>
-              <Stack direction="row" alignItems="center" spacing={1}>
-                <Typography>{t('route.templates.builtin.show')}</Typography>
-                <Tooltip title={t(`route.templates.builtin.${showBuiltins ? 'hide' : 'show'}`)}>
-                  <IconButton size="small" onClick={() => setShowBuiltins(!showBuiltins)}>
-                    <KeyboardArrowDown
-                      fontSize="small"
-                      sx={{ transition: 'rotate 250ms', rotate: showBuiltins ? '180deg' : '0deg' }}
-                    />
-                  </IconButton>
-                </Tooltip>
-              </Stack>
-              <Collapse in={showBuiltins}>
-                <Box sx={{ mt: 1 }} />
-                {builtInTemplates.map(template => renderer(template))}
-              </Collapse>
-            </Stack>
-          </Card>
-        )
       }
       renderer={({ item }: TuiListItemProps<Template>, classRenderer) => renderer(item.item, classRenderer())}
       response={response}

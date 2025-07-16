@@ -17,7 +17,6 @@ import PageCenter from 'commons/components/pages/PageCenter';
 import { HitContext } from 'components/app/providers/HitProvider';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
-import { TemplateContext } from 'components/app/providers/TemplateProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import FlexPort from 'components/elements/addons/layout/FlexPort';
@@ -113,7 +112,6 @@ const SearchPane: FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const routeParams = useParams();
-  const refresh = useContextSelector(TemplateContext, ctx => ctx.refresh);
 
   const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
   const setSelected = useContextSelector(ParameterContext, ctx => ctx.setSelected);
@@ -152,11 +150,6 @@ const SearchPane: FC = () => {
 
     return selectedElement.id;
   }, []);
-
-  // Load the index field for a hit in order to provide autocomplete suggestions.
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
 
   useEffect(() => {
     if (location.pathname.startsWith('/bundles')) {

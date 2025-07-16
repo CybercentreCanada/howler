@@ -1219,3 +1219,73 @@ def test_hit_warnings(datastore: HowlerDatastore, login_session):
     )
 
     assert len(result["warnings"]) == 0
+
+
+def test_get_hit_with_metadata(datastore: HowlerDatastore, login_session):
+    """Test that /api/v1/hit/<id>/?metadata=... returns hit data augmented with metadata."""
+    session, host = login_session
+
+    # Use the first hit from our test data
+    test_hit = valid_hit_data[0]
+    hit_id = test_hit["howler"]["id"]
+
+    # Test 1: Get hit without metadata (baseline)
+    response_without_metadata = get_api_data(
+        session,
+        f"{host}/api/v1/hit/{hit_id}/",
+    )
+
+    # Verify no metadata fields are present
+    assert "__template" not in response_without_metadata
+    assert "__overview" not in response_without_metadata
+    assert "__dossiers" not in response_without_metadata
+
+    # Test 2: Get hit with individual metadata types
+    for metadata_type in ["template", "overview", "dossiers"]:
+        response_with_metadata = get_api_data(
+            session, f"{host}/api/v1/hit/{hit_id}/", params={"metadata": metadata_type}
+        )
+
+        # Should have the same base data
+        assert response_with_metadata["howler"]["id"] == hit_id
+        assert response_with_metadata["howler"]["analytic"] == test_hit["howler"]["analytic"]
+
+        # The metadata field should be present (might be None if no matches found)
+        metadata_field = f"__{metadata_type}"
+        assert metadata_field in response_with_metadata
+
+    # Test 3: Get hit with multiple metadata types
+    response_with_all_metadata = get_api_data(
+        session, f"{host}/api/v1/hit/{hit_id}/", params={"metadata": "template,overview,dossiers"}
+    )
+
+    # Should have the same base data
+    assert response_with_all_metadata["howler"]["id"] == hit_id
+    assert response_with_all_metadata["howler"]["analytic"] == test_hit["howler"]["analytic"]
+
+    # All metadata fields should be present
+    assert "__template" in response_with_all_metadata
+    assert "__overview" in response_with_all_metadata
+    assert "__dossiers" in response_with_all_metadata
+
+    # Test 4: Get hit with empty metadata parameter (should behave like no metadata)
+    response_empty_metadata = get_api_data(session, f"{host}/api/v1/hit/{hit_id}/", params={"metadata": ""})
+
+    # Should not have metadata fields when empty string is provided
+    assert "__template" not in response_empty_metadata
+    assert "__overview" not in response_empty_metadata
+    assert "__dossiers" not in response_empty_metadata
+
+    # Test 5: Verify core hit data is unchanged by metadata augmentation
+    # Compare essential fields between original and metadata-augmented responses
+    essential_fields = ["howler.id", "howler.analytic", "howler.hash", "howler.assignment"]
+    for field_path in essential_fields:
+        # Navigate nested field paths
+        original_value = response_without_metadata
+        augmented_value = response_with_all_metadata
+
+        for field_part in field_path.split("."):
+            original_value = original_value.get(field_part, {})
+            augmented_value = augmented_value.get(field_part, {})
+
+        assert original_value == augmented_value, f"Field {field_path} was modified by metadata augmentation"
