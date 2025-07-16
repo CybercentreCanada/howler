@@ -725,5 +725,12 @@ def augment_metadata(data: list[dict[str, Any]] | dict[str, Any], metadata: list
             hit["__overview"] = __match_metadata(overview_candidates, hit)
 
     if "dossiers" in metadata:
+        dossiers: list[dict[str, Any]] = datastore().dossier.search(
+            "dossier_id:*",
+            as_obj=False,
+            # TODO: Eventually implement caching here
+            rows=1000,
+        )["items"]
+
         for hit in hits:
-            hit["__dossiers"] = dossier_service.get_matching_dossiers(hit)
+            hit["__dossiers"] = dossier_service.get_matching_dossiers(hit, dossiers)

@@ -24,7 +24,7 @@ interface Cell {
   value: string;
 }
 
-const FETCH_RESULTS: { [url: string]: any } = {};
+const FETCH_RESULTS: { [url: string]: Promise<any> } = {};
 
 export const useHelpers = (): HowlerHelper[] => {
   const pluginStore = usePluginStore();
@@ -75,11 +75,10 @@ export const useHelpers = (): HowlerHelper[] => {
         callback: async (url, key) => {
           try {
             if (!FETCH_RESULTS[url]) {
-              const response = await fetch(url);
-              FETCH_RESULTS[url] = response.json();
+              FETCH_RESULTS[url] = fetch(url).then(res => res.json());
             }
 
-            const json = FETCH_RESULTS[url];
+            const json = await FETCH_RESULTS[url];
 
             return flatten(json)[key];
           } catch (e) {

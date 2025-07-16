@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from mergedeep.mergedeep import merge
 
@@ -120,16 +120,18 @@ def update_dossier(dossier_id: str, dossier_data: dict[str, Any], user: User) ->
         raise InvalidDataException("We were unable to update the dossier.", cause=e) from e
 
 
-def get_matching_dossiers(hit: dict[str, Any]):
+def get_matching_dossiers(hit: dict[str, Any], dossiers: Optional[list[dict[str, Any]]] = None):
     "Get a list of matching dossiers based on a specific alert."
-    results: list[dict[str, Any]] = datastore().dossier.search(
-        "dossier_id:*",
-        as_obj=False,
-        rows=1000,
-    )["items"]
+    if dossiers is None:
+        dossiers: list[dict[str, Any]] = datastore().dossier.search(
+            "dossier_id:*",
+            as_obj=False,
+            # TODO: Eventually implement caching here
+            rows=1000,
+        )["items"]
 
     matching_dossiers: list[dict[str, Any]] = []
-    for dossier in results:
+    for dossier in cast(list[dict[str, Any]], dossiers):
         if "query" not in dossier or dossier["query"] is None:
             matching_dossiers.append(dossier)
             continue
