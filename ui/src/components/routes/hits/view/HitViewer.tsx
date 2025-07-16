@@ -17,7 +17,6 @@ import {
 import PageCenter from 'commons/components/pages/PageCenter';
 import useMatchers from 'components/app/hooks/useMatchers';
 import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
-import { DossierContext } from 'components/app/providers/DossierProvider';
 import { HitContext } from 'components/app/providers/HitProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import HowlerCard from 'components/elements/display/HowlerCard';
@@ -65,8 +64,7 @@ const HitViewer: FC = () => {
   const isUnderLg = useMediaQuery(theme.breakpoints.down('lg'));
   const [orientation, setOrientation] = useMyLocalStorageItem(StorageKey.VIEWER_ORIENTATION, Orientation.VERTICAL);
   const { getAnalyticFromName } = useContext(AnalyticContext);
-  const { getMatchingOverview } = useMatchers();
-  const getMatchingDossiers = useContextSelector(DossierContext, ctx => ctx.getMatchingDossiers);
+  const { getMatchingOverview, getMatchingDossiers } = useMatchers();
 
   const getHit = useContextSelector(HitContext, ctx => ctx.getHit);
   const hit = useContextSelector(HitContext, ctx => ctx.hits[params.id]);
@@ -155,7 +153,7 @@ const HitViewer: FC = () => {
       return;
     }
 
-    getMatchingDossiers(hit.howler.id).then(setDossiers);
+    getMatchingDossiers(hit).then(setDossiers);
   }, [getMatchingDossiers, hit]);
 
   if (!hit) {
