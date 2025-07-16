@@ -212,3 +212,75 @@ def test_hit_detection_search(datastore: HowlerDatastore, login_session):
 
     case_insensitive_total_2 = datastore.hit.search(f'howler.detection:"{silly_detection}"')["total"]
     assert case_sensitive_total == case_insensitive_total_2
+
+
+def test_hit_search_with_metadata(datastore: HowlerDatastore, login_session):
+    session, host = login_session
+
+    # Test search without metadata first
+    resp_without_metadata = get_api_data(session, f"{host}/api/v1/search/hit/", params={"query": "id:*", "rows": 5})
+
+    # Ensure we have some hits to work with
+    assert resp_without_metadata["total"] > 0
+    assert len(resp_without_metadata["items"]) > 0
+
+    # Verify no metadata fields are present initially
+    for item in resp_without_metadata["items"]:
+        assert "__template" not in item
+        assert "__overview" not in item
+        assert "__dossiers" not in item
+
+    # Test search with metadata using GET request
+    resp_with_metadata_get = get_api_data(
+        session,
+        f"{host}/api/v1/search/hit/",
+        params={"query": "id:*", "rows": 5, "metadata": ["template", "overview", "dossiers"]},
+    )
+
+    # Should have same number of results
+    assert resp_with_metadata_get["total"] == resp_without_metadata["total"]
+    assert len(resp_with_metadata_get["items"]) == len(resp_without_metadata["items"])
+
+    # Verify metadata fields are present
+    for item in resp_with_metadata_get["items"]:
+        assert "__template" in item
+        assert "__overview" in item
+        assert "__dossiers" in item
+
+        if item["howler"]["analytic"] in ["Password Checker", "Bad Guy Finder"]:
+            assert item["__template"]["analytic"] == item["howler"]["analytic"]
+            assert item["__overview"]["analytic"] == item["howler"]["analytic"]
+
+        assert isinstance(item["__dossiers"], list)
+
+    # Test search with metadata using POST request
+    resp_with_metadata_post = get_api_data(
+        session,
+        f"{host}/api/v1/search/hit/",
+        method="POST",
+        data=json.dumps({"query": "id:*", "rows": 5, "metadata": ["template", "overview"]}),
+    )
+
+    # Should have same number of results as other requests
+    assert resp_with_metadata_post["total"] == resp_without_metadata["total"]
+    assert len(resp_with_metadata_post["items"]) == len(resp_without_metadata["items"])
+
+    # Verify metadata fields are present
+    for item in resp_with_metadata_post["items"]:
+        assert "__template" in item
+        assert "__overview" in item
+        assert "__dossiers" not in item
+
+    # Test that metadata is only added for hit index
+    # First ensure user collection works normally without metadata
+    resp_user = get_api_data(
+        session, f"{host}/api/v1/search/user/", params={"query": "id:*", "rows": 5, "metadata": ["template"]}
+    )
+
+    # User search should work but metadata should be ignored (no error)
+    assert resp_user["total"] >= 0
+    if resp_user["items"]:
+        for item in resp_user["items"]:
+            assert "__template" not in item
+            assert "__overview" not in item
+            assert "__dossiers" not in item
