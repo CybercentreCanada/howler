@@ -6,7 +6,16 @@ from conftest import APIError, get_api_data
 
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.models.hit import Hit
-from howler.odm.random_data import create_hits, create_templates, create_users, wipe_hits, wipe_templates, wipe_users
+from howler.odm.random_data import (
+    create_hits,
+    create_overviews,
+    create_templates,
+    create_users,
+    wipe_hits,
+    wipe_overviews,
+    wipe_templates,
+    wipe_users,
+)
 
 TEST_SIZE = 10
 collections = ["user"]
@@ -24,12 +33,14 @@ def datastore(datastore_connection):
 
         create_hits(datastore_connection, hit_count=15)
         create_templates(datastore_connection)
+        create_overviews(datastore_connection)
 
         yield ds
     finally:
         wipe_hits(datastore_connection)
         wipe_users(ds)
         wipe_templates(ds)
+        wipe_overviews(ds)
         create_users(ds)
 
 
