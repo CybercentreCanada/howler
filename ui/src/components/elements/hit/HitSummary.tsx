@@ -237,7 +237,7 @@ const HitSummary: FC<{
                   </Typography>
                 ) : (
                   <Typography variant="caption" color="text.secondary">
-                    ({keyCounts[key]?.count} {t('references')})
+                    ({keyCounts[key]?.count ?? '?'} {t('references')})
                   </Typography>
                 )}
 
@@ -245,11 +245,11 @@ const HitSummary: FC<{
                   title={
                     <Stack>
                       <Typography variant="caption">{t('hit.summary.aggregate.sources')}</Typography>
-                      {keyCounts[key].sources.map(source => (
+                      {keyCounts[key]?.sources.map(source => (
                         <Typography key={source} variant="caption">
                           {source}
                         </Typography>
-                      ))}
+                      )) ?? '?'}
                     </Stack>
                   }
                 >
