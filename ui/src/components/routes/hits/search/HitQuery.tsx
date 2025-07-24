@@ -193,7 +193,7 @@ const HitQuery: FC<HitQueryProps> = ({
         query={preppedQuery}
         setQuery={setQuery}
         language="lucene"
-        height={multiline ? '100%' : '20px'}
+        height={multiline ? `${DEFAULT_MULTILINE_HEIGHT - 30}px` : '20px'}
         onMount={onMount}
         editorOptions={options}
       />
