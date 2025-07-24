@@ -8,6 +8,7 @@ const BorealisTypography: FC<PluginTypographyProps> = ({ children, value, contex
 
   const type = guessType(value);
 
+
   if (!type) {
     return <Typography {...props}>{children}</Typography>;
   }
