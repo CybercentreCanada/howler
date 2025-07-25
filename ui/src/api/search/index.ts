@@ -26,6 +26,7 @@ export type HowlerSearchRequest = {
   fl?: string;
   timeout?: number;
   filters?: string[];
+  metadata?: string[];
 };
 
 export type HowlerSearchResponse<T> = {
