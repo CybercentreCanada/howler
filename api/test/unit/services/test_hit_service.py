@@ -11,6 +11,7 @@ from howler.helper.hit import HitStatusTransition
 from howler.helper.workflow import Workflow
 from howler.odm.base import UTC_TZ
 from howler.odm.models.hit import Hit
+from howler.odm.models.howler_data import HitStatus
 from howler.odm.models.user import User
 from howler.odm.randomizer import random_model_obj
 from howler.services import hit_service
@@ -623,3 +624,80 @@ def test__match_metadata_no_match():
     ]
     result = hit_service.__match_metadata(candidates, hit)
     assert result is None
+
+
+@patch("howler.services.hit_service.get_hit_workflow")
+@patch("howler.services.hit_service.get_all_children")
+@patch("howler.services.hit_service._update_hit")
+def test_transition_hit_bundle_status_mismatch_skips_children(
+    mock_update_hit, mock_get_all_children, mock_get_workflow
+):
+    """Test that when transitioning a bundle, only child hits with the same status as the primary hit are
+    transitioned."""
+    # Create a mock user
+    test_user = User({"uname": "test_user", "name": "Test User", "password": "test_password"})
+
+    # Create a primary hit with OPEN status
+    primary_hit = {
+        "howler": {
+            "id": "primary_hit_id",
+            "status": HitStatus.OPEN,
+            "is_bundle": True,
+            "hits": ["child1", "child2", "child3"],
+        }
+    }
+
+    # Create child hits with different statuses
+    child_hit_1 = {
+        "howler": {
+            "id": "child1",
+            "status": HitStatus.OPEN,  # Same as primary - should be transitioned
+        }
+    }
+
+    child_hit_2 = {
+        "howler": {
+            "id": "child2",
+            "status": HitStatus.IN_PROGRESS,  # Different from primary - should be skipped
+        }
+    }
+
+    child_hit_3 = {
+        "howler": {
+            "id": "child3",
+            "status": HitStatus.OPEN,  # Same as primary - should be transitioned
+        }
+    }
+
+    # Mock get_all_children to return our test child hits
+    mock_get_all_children.return_value = [child_hit_1, child_hit_2, child_hit_3]
+
+    # Mock workflow and its transition method
+    mock_workflow = MagicMock()
+    mock_workflow.transition.return_value = [
+        OdmUpdateOperation(ESCollection.UPDATE_SET, "howler.assignment", "test_user")
+    ]
+    mock_get_workflow.return_value = mock_workflow
+
+    # Call the transition_hit function
+    hit_service.transition_hit("primary_hit_id", HitStatusTransition.ASSIGN_TO_ME, user=test_user, hit=primary_hit)
+
+    # Check that workflow.transition was called exactly 3 times (primary + 2 matching children)
+    assert mock_workflow.transition.call_count == 3
+
+    # Verify the specific calls made to workflow.transition
+    actual_calls = [(call.args[0], call.args[1]) for call in mock_workflow.transition.call_args_list]
+
+    assert actual_calls[0] == (HitStatus.OPEN, HitStatusTransition.ASSIGN_TO_ME)  # Primary hit
+    assert actual_calls[1] == (HitStatus.OPEN, HitStatusTransition.ASSIGN_TO_ME)  # Child hit 1
+    assert actual_calls[2] == (HitStatus.OPEN, HitStatusTransition.ASSIGN_TO_ME)  # Child hit 3
+
+    # Verify that _update_hit was called for primary hit and matching children only
+    assert mock_update_hit.call_count == 3
+
+    # Verify the hit IDs that were updated
+    updated_hit_ids = [call.args[0] for call in mock_update_hit.call_args_list]
+    assert "primary_hit_id" in updated_hit_ids
+    assert "child1" in updated_hit_ids  # Child with matching status
+    assert "child3" in updated_hit_ids  # Child with matching status
+    assert "child2" not in updated_hit_ids  # Child with different status should be skipped
