@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from typing import cast
 
 import pytest
 from flask import Flask, Response
@@ -6,6 +7,7 @@ from mock import MagicMock, patch
 
 from howler.common.loader import datastore
 from howler.config import config
+from howler.odm import Model
 from howler.odm.models.user import User
 from howler.odm.randomizer import random_model_obj
 
@@ -21,14 +23,20 @@ def request_context():
     return app
 
 
+def _build_user() -> User:
+    user_data: User = random_model_obj(cast(Model, User))
+    user_data.type = ["admin", "user"]
+
+    return user_data
+
+
 @patch("howler.api.v1.auth.jwt_service")
 @patch("howler.security.auth_service")
 def test_add_apikey(mock_auth_service, mock_jwt_service, request_context: Flask):
     mock_auth_service.bearer_auth = MagicMock()
     mock_jwt_service.decode = MagicMock(return_value={"exp": (datetime.now() + timedelta(minutes=5)).timestamp()})
 
-    user_data: User = random_model_obj(User)
-    user_data.type = ["admin", "user"]
+    user_data = _build_user()
 
     datastore().user.save(user_data.uname, user_data)
 
@@ -60,8 +68,7 @@ def test_add_apikey_no_extended(mock_auth_service, mock_jwt_service, request_con
     mock_auth_service.bearer_auth = MagicMock()
     mock_jwt_service.decode = MagicMock(return_value={"exp": (datetime.now() + timedelta(minutes=5)).timestamp()})
 
-    user_data: User = random_model_obj(User)
-    user_data.type = ["admin", "user"]
+    user_data = _build_user()
 
     datastore().user.save(user_data.uname, user_data)
 
@@ -93,8 +100,7 @@ def test_add_apikey_bad_date_format(mock_auth_service, mock_jwt_service, request
     mock_auth_service.basic_auth = MagicMock()
     mock_jwt_service.decode = MagicMock(return_value={"exp": (datetime.now() + timedelta(minutes=5)).timestamp()})
 
-    user_data: User = random_model_obj(User)
-    user_data.type = ["admin", "user"]
+    user_data = _build_user()
 
     datastore().user.save(user_data.uname, user_data)
     mock_auth_service.basic_auth.return_value = (
@@ -115,7 +121,10 @@ def test_add_apikey_bad_date_format(mock_auth_service, mock_jwt_service, request
         result: Response = add_apikey()
 
         assert result.status_code == 400
-        assert result.json["api_error_message"] == "Invalid expiry date format. Please use ISO format."
+        assert (
+            result.json is not None
+            and result.json["api_error_message"] == "Invalid expiry date format. Please use ISO format."
+        )
 
 
 @patch("howler.security.auth_service")
@@ -125,8 +134,7 @@ def test_add_apikey_bad_config(mock_auth_service, request_context: Flask):
 
     mock_auth_service.basic_auth = MagicMock()
 
-    user_data: User = random_model_obj(User)
-    user_data.type = ["admin", "user"]
+    user_data = _build_user()
 
     datastore().user.save(user_data.uname, user_data)
     mock_auth_service.basic_auth.return_value = (
@@ -147,7 +155,7 @@ def test_add_apikey_bad_config(mock_auth_service, request_context: Flask):
         result: Response = add_apikey()
 
         assert result.status_code == 400
-        assert result.json["api_error_message"].startswith("Expiry date must be before")
+        assert result.json is not None and result.json["api_error_message"].startswith("Expiry date must be before")
 
 
 @patch("howler.security.auth_service")
@@ -157,8 +165,7 @@ def test_add_apikey_no_exp(mock_auth_service, request_context: Flask):
 
     mock_auth_service.basic_auth = MagicMock()
 
-    user_data: User = random_model_obj(User)
-    user_data.type = ["admin", "user"]
+    user_data = _build_user()
 
     datastore().user.save(user_data.uname, user_data)
     mock_auth_service.basic_auth.return_value = (
@@ -178,4 +185,4 @@ def test_add_apikey_no_exp(mock_auth_service, request_context: Flask):
         result: Response = add_apikey()
 
         assert result.status_code == 400
-        assert result.json["api_error_message"] == "API keys must have an expiry date."
+        assert result.json is not None and result.json["api_error_message"] == "API keys must have an expiry date."
