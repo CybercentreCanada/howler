@@ -839,31 +839,28 @@ def augment_metadata(data: list[dict[str, Any]] | dict[str, Any], metadata: list
     """
     hits = data if isinstance(data, list) else [data]
 
-    if "template" in metadata:
-        analytics: set[str] = set()
-        for hit in hits:
-            analytics.add(f'"{hit["howler"]["analytic"]}"')
+    analytics: set[str] = set()
+    for hit in hits:
+        analytics.add(f'"{hit["howler"]["analytic"]}"')
 
-        template_candidates = datastore().template.search(
-            f"analytic:({' OR '.join(analytics)}) AND (type:global OR owner:{user['uname']})",
-            as_obj=False,
-        )["items"]
+    if len(analytics) > 0:
+        if "template" in metadata:
+            template_candidates = datastore().template.search(
+                f"analytic:({' OR '.join(analytics)}) AND (type:global OR owner:{user['uname']})",
+                as_obj=False,
+            )["items"]
 
-        for hit in hits:
-            hit["__template"] = __match_metadata(template_candidates, hit)
+            for hit in hits:
+                hit["__template"] = __match_metadata(template_candidates, hit)
 
-    if "overview" in metadata:
-        analytics: set[str] = set()
-        for hit in hits:
-            analytics.add(f'"{hit["howler"]["analytic"]}"')
+        if "overview" in metadata:
+            overview_candidates = datastore().overview.search(
+                f"analytic:({' OR '.join(analytics)})",
+                as_obj=False,
+            )["items"]
 
-        overview_candidates = datastore().overview.search(
-            f"analytic:({' OR '.join(analytics)})",
-            as_obj=False,
-        )["items"]
-
-        for hit in hits:
-            hit["__overview"] = __match_metadata(overview_candidates, hit)
+            for hit in hits:
+                hit["__overview"] = __match_metadata(overview_candidates, hit)
 
     if "dossiers" in metadata:
         dossiers: list[dict[str, Any]] = datastore().dossier.search(
