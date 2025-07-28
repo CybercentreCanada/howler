@@ -170,7 +170,7 @@
   "hit.details.actions.vote.novote": "Pas de vote",
 
   "hit.details.asessments.ambiguous.description": "La nature du hit n'a pas pu être déterminée avec succès sur la base des données disponibles.",
-  "hit.details.asessments.attempt.description": "Le hit faisait partie d'une tentative de compromis qui a échoué.",
+  "hit.details.asessments.attempt.description": "Le hit représente une activité malveillante visant à compromettre des systèmes ou des données.",
   "hit.details.asessments.compromise.description": "Le hit fait partie d'un compromis réussi.",
   "hit.details.asessments.development.description": "Le hit est liée à une activité de développement et doit être ignorée.",
   "hit.details.asessments.false-positive.description": "Le hit n'est pas lié à la détection qui l'a créé.",

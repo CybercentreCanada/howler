@@ -169,7 +169,7 @@
   "hit.details.actions.vote": "Vote",
   "hit.details.actions.vote.novote": "No Vote",
   "hit.details.asessments.ambiguous.description": "The nature of the hit was not successfully determined based on available data.",
-  "hit.details.asessments.attempt.description": "The hit was part of a failed attempt to compromise.",
+  "hit.details.asessments.attempt.description": "The hit represents malicious activity attempting to compromise systems or data.",
   "hit.details.asessments.compromise.description": "The hit was part of a successful compromise.",
   "hit.details.asessments.development.description": "The hit is related to development activity and should be ignored.",
   "hit.details.asessments.false-positive.description": "The hit is not related to the detection that created it.",
