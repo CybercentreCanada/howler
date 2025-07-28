@@ -67,7 +67,6 @@ const useTitle = () => {
         setTitle(`Howler - ${t(matchingRoute.title)}`);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getAnalyticFromId, location.pathname, params.id, searchParams, hits, setTitle, sitemap.routes, t]);
 
   useEffect(() => {
