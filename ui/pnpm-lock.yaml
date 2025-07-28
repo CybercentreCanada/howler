@@ -64,7 +64,7 @@ importers:
         version: 3.9.1
       borealis-ui:
         specifier: 0.11.0
-        version: 0.11.0(548872ef4786548101796c7e66ed3288)
+        version: 0.11.0(eh7vro4rdugcukwgzsrrqfraki)
       chart.js:
         specifier: ^4.5.0
         version: 4.5.0
@@ -5101,7 +5101,7 @@ snapshots:
       ajv-formats: 2.1.1(ajv@8.17.1)
       lodash: 4.17.21
 
-  '@jsonforms/material-renderers@3.6.0(159f3b3ebe465b080ad325568ef14a33)':
+  '@jsonforms/material-renderers@3.6.0(d3iyyivibbnzitcbpsc4cv63xy)':
     dependencies:
       '@date-io/dayjs': 3.2.0(dayjs@1.10.7)
       '@emotion/react': 11.14.0(@types/react@18.3.23)(react@18.3.1)
@@ -5970,12 +5970,12 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  borealis-ui@0.11.0(548872ef4786548101796c7e66ed3288):
+  borealis-ui@0.11.0(eh7vro4rdugcukwgzsrrqfraki):
     dependencies:
       '@emotion/react': 11.14.0(@types/react@18.3.23)(react@18.3.1)
       '@emotion/styled': 11.14.1(@emotion/react@11.14.0(@types/react@18.3.23)(react@18.3.1))(@types/react@18.3.23)(react@18.3.1)
       '@jsonforms/core': 3.6.0
-      '@jsonforms/material-renderers': 3.6.0(159f3b3ebe465b080ad325568ef14a33)
+      '@jsonforms/material-renderers': 3.6.0(d3iyyivibbnzitcbpsc4cv63xy)
       '@jsonforms/react': 3.6.0(@jsonforms/core@3.6.0)(react@18.3.1)
       '@microlink/react-json-view': 1.26.2(@types/react@18.3.23)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@mui/lab': 5.0.0-alpha.176(@emotion/react@11.14.0(@types/react@18.3.23)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.23)(react@18.3.1))(@types/react@18.3.23)(react@18.3.1))(@mui/material@5.18.0(@emotion/react@11.14.0(@types/react@18.3.23)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.23)(react@18.3.1))(@types/react@18.3.23)(react@18.3.1))(@types/react@18.3.23)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/react@18.3.23)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
