@@ -70,8 +70,8 @@ def normalize_phrase(value: str, type: Union[Literal["phrase"], Literal["word"]]
         return [value, value.lower()]
 
     if type == "word":
-        value = re.sub(r"[^a-z0-9.,@_:/;()]", "", value.lower())
+        value = re.sub(r"[^a-z0-9.,@_:/;()\-]", "", value.lower())
     else:
-        value = re.sub(r"[^a-z0-9.,@_:/;() ]", "", value, flags=re.IGNORECASE)
+        value = re.sub(r"[^a-z0-9.,@_:/;()\- ]", "", value, flags=re.IGNORECASE)
 
     return [value]
