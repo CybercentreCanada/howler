@@ -208,11 +208,13 @@ class ESCollection(Generic[ModelType]):
     IGNORE_ENSURE_COLLECTION = False
 
     def __init__(self, datastore: ESStore, name, model_class=None, validate=True, max_attempts=10):
-        self.replicas = environ.get(
-            f"ELASTIC_{name.upper()}_REPLICAS",
-            environ.get("ELASTIC_DEFAULT_REPLICAS", 0),
+        self.replicas = int(
+            environ.get(
+                f"ELASTIC_{name.upper()}_REPLICAS",
+                environ.get("ELASTIC_DEFAULT_REPLICAS", 0),
+            )
         )
-        self.shards = environ.get(f"ELASTIC_{name.upper()}_SHARDS", environ.get("ELASTIC_DEFAULT_SHARDS", 1))
+        self.shards = int(environ.get(f"ELASTIC_{name.upper()}_SHARDS", environ.get("ELASTIC_DEFAULT_SHARDS", 1)))
         self._index_list: list[str] = []
 
         self.datastore = datastore
@@ -440,6 +442,7 @@ class ESCollection(Generic[ModelType]):
                 iter(self.with_retries(self.datastore.client.indices.get_alias, index=index)),
                 None,
             )
+
         return None
 
     def _wait_for_status(self, index, min_status="yellow"):

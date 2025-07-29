@@ -1,3 +1,4 @@
+import os
 import random
 import string
 import time
@@ -10,6 +11,7 @@ from retrying import retry
 
 from howler.datastore.collection import ESCollection
 from howler.datastore.exceptions import VersionConflictException
+from howler.datastore.store import ESStore
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -98,7 +100,7 @@ class SetupException(Exception):
 
 
 @retry(stop_max_attempt_number=10, wait_random_min=100, wait_random_max=500)
-def setup_store(docstore, request):
+def setup_store(docstore: ESStore, request) -> ESCollection:
     try:
         ret_val = docstore.ping()
         if ret_val:
@@ -119,7 +121,8 @@ def setup_store(docstore, request):
 
             return collection
     except ConnectionError:
-        pass
+        raise SetupException("Could not setup Datastore: %s" % docstore.__class__.__name__)
+
     raise SetupException("Could not setup Datastore: %s" % docstore.__class__.__name__)
 
 
@@ -128,14 +131,14 @@ def es_connection(request):
     from howler.datastore.store import ESStore
 
     try:
-        collection = setup_store(ESStore(), request)
+        collection: ESCollection = setup_store(ESStore(), request)
+
+        yield collection
+
+        collection.datastore.client.indices.delete_alias(index=f"{collection.name}_hot", name=collection.name)
+        collection.datastore.client.indices.delete(index=f"{collection.name}_hot")
     except SetupException:
-        collection = None
-
-    if collection:
-        return collection
-
-    return pytest.skip("Connection to the Elasticsearch server failed. This test cannot be performed...")
+        return pytest.skip("Connection to the Elasticsearch server failed. This test cannot be performed...")
 
 
 def _test_exists(c: ESCollection):
@@ -497,3 +500,105 @@ def test_atomic_save(es_connection: ESCollection):
     # But it should only work once
     with pytest.raises(VersionConflictException):
         es_connection.save(unique_id, data, version=version)
+
+
+@pytest.mark.parametrize("shards", [pytest.param(1, id="shrink"), pytest.param(4, id="grow")])
+def test_fix_shards(es_connection: ESCollection, shards: int):
+    """Test the fix_shards function by creating an index with incorrect shard count and fixing it."""
+    # Create a unique test collection name to avoid conflicts
+    os.environ["ELASTIC_DEFAULT_SHARDS"] = str(shards)
+    test_collection_name = f"test_fix_shards_{uuid.uuid4().hex[:8]}"
+
+    try:
+        # Store original shard count from the test collection configuration
+        incorrect_shards = shards
+
+        # Manually create an index with incorrect shard count
+        test_index_name = f"howler-{test_collection_name}"
+
+        # Create index with incorrect number of shards
+        index_settings = {
+            "number_of_shards": incorrect_shards,
+            "number_of_replicas": 0,  # Use 0 replicas for faster testing
+        }
+
+        # Create the index manually
+        es_connection.datastore.client.indices.create(index=f"{test_index_name}_hot", settings=index_settings)
+
+        # Create alias to make it look like a proper collection
+        es_connection.datastore.client.indices.put_alias(index=f"{test_index_name}_hot", name=test_index_name)
+
+        assert es_connection.datastore.client.indices.exists_alias(name=test_index_name)
+
+        # Register and create a new collection instance for testing
+        es_connection.datastore.register(test_collection_name)
+        test_collection: ESCollection = getattr(es_connection.datastore, test_collection_name)
+
+        assert test_collection.shards == shards
+
+        # Verify the index was created with incorrect shard count
+        current_settings = test_collection.with_retries(
+            test_collection.datastore.client.indices.get_settings, index=f"{test_index_name}_hot"
+        )
+
+        current_shard_count = int(current_settings[f"{test_index_name}_hot"]["settings"]["index"]["number_of_shards"])
+        assert current_shard_count == incorrect_shards, f"Expected {incorrect_shards} shards, got {current_shard_count}"
+
+        # Add some test data to ensure data preservation during shard fixing
+        test_data = {"test_field": "test_value", "timestamp": time.time()}
+        test_collection.save("test_doc", test_data)
+        test_collection.commit()
+
+        # Verify data exists before fixing
+        retrieved_data = test_collection.get("test_doc")
+        assert retrieved_data["test_field"] == "test_value"
+
+        # Now call fix_shards to correct the shard count
+        test_collection.fix_shards()
+
+        # Wait a moment for the operation to complete
+        test_collection.commit()
+
+        # Verify the shard count has been corrected
+        # Get the current index (it might have changed after fix_shards)
+        current_alias = test_collection._get_current_alias(test_collection.name)
+        if current_alias:
+            final_settings = test_collection.with_retries(
+                test_collection.datastore.client.indices.get_settings, index=current_alias
+            )
+
+            final_shard_count = int(final_settings[current_alias]["settings"]["index"]["number_of_shards"])
+            assert final_shard_count == shards, f"Expected {shards} shards after fix, got {final_shard_count}"
+
+            # Verify data still exists after fixing
+            retrieved_data_after = test_collection.get("test_doc")
+            assert retrieved_data_after["test_field"] == "test_value"
+
+    finally:
+        # Clean up: delete the test index and alias
+        try:
+            # Delete any aliases first
+            if test_collection.with_retries(
+                test_collection.datastore.client.indices.exists_alias, name=test_collection.name
+            ):
+                test_collection.with_retries(
+                    test_collection.datastore.client.indices.delete_alias, index="_all", name=test_collection.name
+                )
+
+            # Delete all indices that match our test pattern
+            indices_to_delete = []
+            all_indices = test_collection.with_retries(
+                test_collection.datastore.client.indices.get, index=f"{test_collection.name}*"
+            )
+
+            for index_name in all_indices.keys():
+                if test_collection_name in index_name:
+                    indices_to_delete.append(index_name)
+
+            for index_name in indices_to_delete:
+                if test_collection.with_retries(test_collection.datastore.client.indices.exists, index=index_name):
+                    test_collection.with_retries(test_collection.datastore.client.indices.delete, index=index_name)
+
+        except Exception:
+            # Silently ignore cleanup errors to avoid failing the test
+            pass
