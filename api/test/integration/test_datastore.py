@@ -4,6 +4,7 @@ import string
 import time
 import uuid
 import warnings
+from typing import Any
 
 import pytest
 from datemath import dm
@@ -100,20 +101,26 @@ class SetupException(Exception):
     pass
 
 
+# Retry setup up to 10 times with random wait between attempts
 @retry(stop_max_attempt_number=10, wait_random_min=100, wait_random_max=500)
 def setup_store(docstore: ESStore, request) -> ESCollection:
+    """
+    Set up a test ESCollection with test data. Cleans up after the test.
+    """
     try:
         ret_val = docstore.ping()
         if ret_val:
+            # Generate a random collection name
             collection_name = "".join(random.choices(string.ascii_lowercase, k=10))
             docstore.register(collection_name)
             collection = docstore.__getattr__(collection_name)
             request.addfinalizer(collection.wipe)
 
-            # cleanup
+            # Remove any existing test data
             for k in test_map.keys():
                 collection.delete(k)
 
+            # Add all test data
             for k, v in test_map.items():
                 collection.save(k, v)
 
@@ -129,6 +136,10 @@ def setup_store(docstore: ESStore, request) -> ESCollection:
 
 @pytest.fixture(scope="module")
 def es_connection(request):
+    """
+    Pytest fixture to provide a test ESCollection with test data.
+    Cleans up indices and aliases after the test.
+    """
     from howler.datastore.store import ESStore
 
     try:
@@ -136,6 +147,7 @@ def es_connection(request):
 
         yield collection
 
+        # Cleanup: delete alias and index after test
         collection.datastore.client.indices.delete_alias(index=f"{collection.name}_hot", name=collection.name)
         collection.datastore.client.indices.delete(index=f"{collection.name}_hot")
     except SetupException:
@@ -143,7 +155,12 @@ def es_connection(request):
 
 
 def _test_exists(c: ESCollection):
-    # Test GET
+    """
+    Test that all expected keys exist in the collection.
+
+    Verifies the exists() method correctly identifies documents that are present
+    in the collection by checking each key from the test_map.
+    """
     assert c.exists("test1")
     assert c.exists("test2")
     assert c.exists("test3")
@@ -154,7 +171,12 @@ def _test_exists(c: ESCollection):
 
 
 def _test_get(c: ESCollection):
-    # Test GET
+    """
+    Test that all expected keys return the correct value.
+
+    Validates the get() method retrieves documents correctly and returns
+    data that matches what was originally stored in the test_map.
+    """
     assert test_map.get("test1") == c.get("test1")
     assert test_map.get("test2") == c.get("test2")
     assert test_map.get("test3") == c.get("test3")
@@ -165,6 +187,13 @@ def _test_get(c: ESCollection):
 
 
 def _test_require(c: ESCollection):
+    """
+    Test the require() method for all expected keys.
+
+    The require() method should behave similarly to get() but may have
+    different error handling for missing documents. Validates that it
+    returns the same data as stored in test_map.
+    """
     # Test GET
     assert test_map.get("test1") == c.require("test1")
     assert test_map.get("test2") == c.require("test2")
@@ -176,6 +205,13 @@ def _test_require(c: ESCollection):
 
 
 def _test_get_if_exists(c: ESCollection):
+    """
+    Test the get_if_exists() method for all expected keys.
+
+    This method should return documents if they exist, or None if they don't.
+    Since all test documents should exist, validates that the method returns
+    the correct data matching test_map.
+    """
     # Test GET
     assert test_map.get("test1") == c.get_if_exists("test1")
     assert test_map.get("test2") == c.get_if_exists("test2")
@@ -187,6 +223,13 @@ def _test_get_if_exists(c: ESCollection):
 
 
 def _test_multiget(c: ESCollection):
+    """
+    Test multi-get functionality for both list and dictionary return types.
+
+    The multiget() method should efficiently retrieve multiple documents at once.
+    Tests both as_dictionary=False (returns list) and as_dictionary=True (returns dict)
+    modes, and validates that empty key lists return empty results.
+    """
     # TEST Multi-get
     raw = [test_map.get("test1"), test_map.get("int"), test_map.get("test2")]
     ds_raw = c.multiget(["test1", "int", "test2"], as_dictionary=False)
@@ -201,6 +244,13 @@ def _test_multiget(c: ESCollection):
 
 
 def _test_keys(c: ESCollection):
+    """
+    Test that all keys in the collection match the expected test_map keys.
+
+    The keys() method should return all document IDs in the collection.
+    Validates that the collection contains exactly the keys from test_map
+    and no extra or missing keys.
+    """
     # Test KEYS
     test_keys = list(test_map.keys())
     for k in c.keys():
@@ -209,6 +259,17 @@ def _test_keys(c: ESCollection):
 
 
 def _test_update(c: ESCollection):
+    """
+    Test update operations including set, increment, decrement, append, remove, and delete.
+
+    Tests the update() method with various operation types:
+    - SET: Set field values
+    - INC/DEC: Increment/decrement numeric values
+    - APPEND: Add items to lists
+    - APPEND_IF_MISSING: Add items only if not already present
+    - REMOVE: Remove items from lists
+    - DELETE: Remove entire fields from documents
+    """
     # Test Update
     expected = {
         "counters": {"lvl_i": 666, "inc_i": 50, "dec_i": 50},
@@ -231,6 +292,14 @@ def _test_update(c: ESCollection):
 
 
 def _test_update_fails(c: ESCollection):
+    """
+    Test that update fails for non-existent keys, invalid operations, and version conflicts.
+
+    Validates error handling in the update() method:
+    - Updates to non-existent documents should fail
+    - Updates with invalid field names should fail
+    - Updates with incorrect version numbers should raise VersionConflictException
+    """
     assert not c.update("to_update_doesnt_exist", [(c.UPDATE_SET, "map.b", 99)])
     assert not c.update(
         "to_update",
@@ -243,6 +312,13 @@ def _test_update_fails(c: ESCollection):
 
 
 def _test_update_by_query(c: ESCollection):
+    """
+    Test update_by_query for bulk updates and ensure correct filtering logic.
+
+    The update_by_query() method should update multiple documents that match
+    a query. Tests both successful bulk updates and failed updates when
+    filters don't match any documents.
+    """
     # Test update_by_query
     expected = {
         "bulk_b": True,
@@ -270,6 +346,14 @@ def _test_update_by_query(c: ESCollection):
 
 
 def _test_delete_by_query(c: ESCollection):
+    """
+    Test delete_by_query to ensure matching documents are deleted and count is correct.
+
+    The delete_by_query() method should remove all documents matching a query.
+    Tests that exactly 4 documents with delete_b:true are removed and that
+    the final document count is correct. Includes retry logic for eventually
+    consistent databases.
+    """
     # Test Delete Matching
     key_len = len(list(c.keys()))
     c.delete_by_query("delete_b:true")
@@ -286,10 +370,24 @@ def _test_delete_by_query(c: ESCollection):
 
 
 def _test_fields(c: ESCollection):
+    """
+    Test that fields() method returns a non-empty field mapping.
+
+    The fields() method should return the field schema/mapping for the collection,
+    which is used to understand the structure and types of indexed fields.
+    """
     assert c.fields() != {}
 
 
 def _test_search(c: ESCollection):
+    """
+    Test search functionality with sorting, filtering, and field limiting.
+
+    Tests the search() method with various parameters:
+    - Basic wildcard search with sorting
+    - Search with offset, row limits, filters, and field selection
+    Validates that search results contain expected document IDs and fields.
+    """
     for item in c.search("*:*", sort="id asc")["items"]:
         assert item["id"][0] in test_map
     for item in c.search(
@@ -305,6 +403,13 @@ def _test_search(c: ESCollection):
 
 
 def _test_group_search(c: ESCollection):
+    """
+    Test grouped_search for correct grouping, offset, row count, and total logic.
+
+    The grouped_search() method groups search results by a field value.
+    Tests both simple and complex grouped searches with different parameters
+    to ensure proper grouping, pagination, and result structure.
+    """
     gs_simple = c.grouped_search("lvl_i", fl="classification_s")
     assert gs_simple["offset"] == 0
     assert gs_simple["rows"] == 25
@@ -339,6 +444,13 @@ def _test_group_search(c: ESCollection):
 
 
 def _test_deepsearch(c: ESCollection):
+    """
+    Test deep paging search to ensure all items are retrieved and match expected keys.
+
+    Deep paging allows iterating through large result sets without traditional offset/limit
+    pagination. Tests that all documents can be retrieved using deep paging and that
+    the total count matches regular search results.
+    """
     res = []
     deep_paging_id = "*"
     while True:
@@ -354,6 +466,13 @@ def _test_deepsearch(c: ESCollection):
 
 
 def _test_streamsearch(c: ESCollection):
+    """
+    Test stream_search for correct filtering and field selection.
+
+    Stream search provides an iterator interface for search results, useful for
+    processing large result sets efficiently. Tests that the stream returns
+    expected documents with proper filtering and field selection.
+    """
     items = list(c.stream_search("classification_s:*", filters="lvl_i:400", fl="id,classification_s"))
     assert len(items) > 0
     for item in items:
@@ -362,6 +481,13 @@ def _test_streamsearch(c: ESCollection):
 
 
 def _test_histogram(c: ESCollection):
+    """
+    Test histogram aggregation for integer and date fields, checking value types and counts.
+
+    Histogram aggregation groups data into buckets for analysis. Tests both
+    numeric histograms (for integer fields) and date histograms (for datetime fields)
+    to ensure proper bucketing and count aggregation.
+    """
     h_int = c.histogram("lvl_i", 0, 1000, 100, mincount=2)
     assert len(h_int) > 0
     for k, v in h_int.items():
@@ -386,6 +512,13 @@ def _test_histogram(c: ESCollection):
 
 
 def _test_facet(c: ESCollection):
+    """
+    Test facet aggregation for classification_s field, ensuring correct keys and counts.
+
+    Facet aggregation counts the occurrences of different values in a field.
+    Tests that the facet operation returns expected classification values
+    (U, C, TS) with positive counts.
+    """
     facets = c.facet("classification_s")
     assert len(facets) > 0
     for k, v in facets.items():
@@ -395,6 +528,12 @@ def _test_facet(c: ESCollection):
 
 
 def _test_stats(c: ESCollection):
+    """
+    Test stats aggregation for lvl_i field, checking all expected statistics are present and valid.
+
+    Stats aggregation computes statistical measures (count, min, max, avg, sum) for numeric fields.
+    Tests that all expected statistics are returned with positive values for the lvl_i field.
+    """
     stats = c.stats("lvl_i")
     assert len(stats) > 0
     for k, v in stats.items():
@@ -425,9 +564,10 @@ TEST_FUNCTIONS = [
 ]
 
 
-# noinspection PyShadowingNames
+# Parametrize test_es to run all test functions in TEST_FUNCTIONS
 @pytest.mark.parametrize("function", [f[0] for f in TEST_FUNCTIONS], ids=[f[1] for f in TEST_FUNCTIONS])
 def test_es(es_connection: ESCollection, function):
+    # Only run the test if the connection is available
     if es_connection:
         function(es_connection)
 
@@ -435,36 +575,38 @@ def test_es(es_connection: ESCollection, function):
 @pytest.fixture
 def reduced_scroll_cursors(es_connection: ESCollection):
     """
-    Doing the following scroll cursor tests on a desktop are reasonably fast, but CI servers
-    can't do them in a reasonable amount of time. So we bring down the limit we were hitting
-    in that error to make it easier to cause, and faster to test that we aren't causing it anymore.
+    Reduce the max_open_scroll_context setting to make scroll cursor exhaustion tests faster.
+    This helps trigger and test scroll cursor limits more quickly, especially on CI servers.
     """
     settings = es_connection.datastore.client.cluster.get_settings()
 
     old_value = 500
+    # Ensure the transient search settings exist
     if "search" not in settings["transient"]:
         settings["transient"]["search"] = {}
     else:
         old_value = settings["transient"]["search"].get("max_open_scroll_context", old_value)
+    # Set a low limit for open scroll contexts
     settings["transient"]["search"]["max_open_scroll_context"] = 5
 
     try:
         es_connection.datastore.client.cluster.put_settings(**settings)
         yield
     finally:
+        # Restore the original scroll context limit after the test
         settings["transient"]["search"]["max_open_scroll_context"] = old_value
         es_connection.datastore.client.cluster.put_settings(**settings)
 
 
 def test_empty_cursor_exhaustion(es_connection: ESCollection, reduced_scroll_cursors):
-    """Test for a bug where short or empty searches with paging active would leak scroll cursors."""
+    """Test that repeated empty searches with deep paging do not leak scroll cursors."""
     for _ in range(20):
         result = es_connection.search('id: "TEST STRING THAT IS NOT AN ID"', deep_paging_id="*")
         assert result["total"] == 0
 
 
 def test_short_cursor_exhaustion(es_connection: ESCollection, reduced_scroll_cursors):
-    """Test for a bug where short or empty searches with paging active would leak scroll cursors."""
+    """Test that repeated short searches with deep paging do not leak scroll cursors."""
     result = es_connection.search("*:*")
     doc = result["items"][0]["id"][0]
     query = f"id: {doc}"
@@ -738,7 +880,7 @@ def test_reindex(es_connection: ESCollection):
     test_collection: ESCollection = getattr(es_connection.datastore, test_collection_name)
 
     # Add two documents using Test1 model
-    test_data = Test1({"field_1": "example", "field_2": "example", "field_3": "example"})
+    test_data: Any = Test1({"field_1": "example", "field_2": "example", "field_3": "example"})
     test_collection.save("example", test_data)
     test_data = Test1({"field_1": "example2", "field_2": "example2"})
     test_collection.save("example2", test_data)
