@@ -445,11 +445,11 @@ def reduced_scroll_cursors(es_connection: ESCollection):
     settings["transient"]["search"]["max_open_scroll_context"] = 5
 
     try:
-        es_connection.datastore.client.cluster.put_settings(body=settings)
+        es_connection.datastore.client.cluster.put_settings(**settings)
         yield
     finally:
         settings["transient"]["search"]["max_open_scroll_context"] = old_value
-        es_connection.datastore.client.cluster.put_settings(body=settings)
+        es_connection.datastore.client.cluster.put_settings(**settings)
 
 
 def test_empty_cursor_exhaustion(es_connection: ESCollection, reduced_scroll_cursors):
