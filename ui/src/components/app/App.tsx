@@ -104,7 +104,6 @@ const MyApp: FC = () => {
   const { get, set, remove } = useMyLocalStorage();
   const pluginStore = usePluginStore();
 
-  console.log(apiConfig.config?.configuration?.mapping);
 
   // Simulate app loading time...
   // e.g. fetching initial app data, etc.
