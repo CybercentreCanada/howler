@@ -9,6 +9,7 @@ import pytest
 from datemath import dm
 from retrying import retry
 
+from howler import odm
 from howler.datastore.collection import ESCollection
 from howler.datastore.exceptions import VersionConflictException
 from howler.datastore.store import ESStore
@@ -502,7 +503,9 @@ def test_atomic_save(es_connection: ESCollection):
         es_connection.save(unique_id, data, version=version)
 
 
-@pytest.mark.parametrize("shards", [pytest.param(1, id="shrink"), pytest.param(4, id="grow")])
+@pytest.mark.parametrize(
+    "shards", [pytest.param(1, id="shrink"), pytest.param(2, id="match"), pytest.param(4, id="grow")]
+)
 def test_fix_shards(es_connection: ESCollection, shards: int):
     """Test the fix_shards function by creating an index with incorrect shard count and fixing it."""
     # Create a unique test collection name to avoid conflicts
@@ -605,3 +608,152 @@ def test_fix_shards(es_connection: ESCollection, shards: int):
         except Exception:
             # Silently ignore cleanup errors to avoid failing the test
             pass
+
+
+@pytest.mark.parametrize("replicas", [pytest.param(0, id="under"), pytest.param(2, id="over")])
+def test_fix_replicas(es_connection: ESCollection, replicas: int):
+    """Test the fix_replicas function by creating an index with incorrect replica count and fixing it."""
+    # Create a unique test collection name to avoid conflicts
+    os.environ["ELASTIC_DEFAULT_REPLICAS"] = str(replicas)
+    test_collection_name = f"test_fix_replicas_{uuid.uuid4().hex[:8]}"
+
+    try:
+        # Store original replica count from the test collection configuration
+        incorrect_replicas = 1 if replicas != 1 else 2  # Make sure it's different from target
+
+        # Manually create an index with incorrect replica count
+        test_index_name = f"howler-{test_collection_name}"
+
+        # Create index with incorrect number of replicas
+        index_settings = {
+            "number_of_shards": 1,  # Keep shards simple for this test
+            "number_of_replicas": incorrect_replicas,
+        }
+
+        # Create the index manually
+        es_connection.datastore.client.indices.create(index=f"{test_index_name}_hot", settings=index_settings)
+
+        # Create alias to make it look like a proper collection
+        es_connection.datastore.client.indices.put_alias(index=f"{test_index_name}_hot", name=test_index_name)
+
+        assert es_connection.datastore.client.indices.exists_alias(name=test_index_name)
+
+        # Register and create a new collection instance for testing
+        es_connection.datastore.register(test_collection_name)
+        test_collection: ESCollection = getattr(es_connection.datastore, test_collection_name)
+
+        assert test_collection.replicas == replicas
+
+        # Verify the index was created with incorrect replica count
+        current_settings = test_collection.with_retries(
+            test_collection.datastore.client.indices.get_settings, index=f"{test_index_name}_hot"
+        )
+
+        current_replica_count = int(
+            current_settings[f"{test_index_name}_hot"]["settings"]["index"]["number_of_replicas"]
+        )
+        assert (
+            current_replica_count == incorrect_replicas
+        ), f"Expected {incorrect_replicas} replicas, got {current_replica_count}"
+
+        # Add some test data to ensure data preservation during replica fixing
+        test_data = {"test_field": "test_value", "timestamp": time.time()}
+        test_collection.save("test_doc", test_data)
+        test_collection.commit()
+
+        # Verify data exists before fixing
+        retrieved_data = test_collection.get("test_doc")
+        assert retrieved_data["test_field"] == "test_value"
+
+        # Now call fix_replicas to correct the replica count
+        result = test_collection.fix_replicas()
+        assert result is True, "fix_replicas should return True on success"
+
+        # Wait a moment for the operation to complete
+        test_collection.commit()
+
+        # Verify the replica count has been corrected
+        final_settings = test_collection.with_retries(
+            test_collection.datastore.client.indices.get_settings, index=test_collection.index_name
+        )
+
+        final_replica_count = int(final_settings[test_collection.index_name]["settings"]["index"]["number_of_replicas"])
+        assert final_replica_count == replicas, f"Expected {replicas} replicas after fix, got {final_replica_count}"
+
+        # Verify data still exists after fixing
+        retrieved_data_after = test_collection.get("test_doc")
+        assert retrieved_data_after["test_field"] == "test_value"
+
+    except Exception:
+        raise
+    finally:
+        # Clean up: delete the test index and alias
+        try:
+            # Delete any aliases first
+            if test_collection.with_retries(
+                test_collection.datastore.client.indices.exists_alias, name=test_collection.name
+            ):
+                test_collection.with_retries(
+                    test_collection.datastore.client.indices.delete_alias, index="_all", name=test_collection.name
+                )
+
+            # Delete all indices that match our test pattern
+            indices_to_delete = []
+            all_indices = test_collection.with_retries(
+                test_collection.datastore.client.indices.get, index=f"{test_collection.name}*"
+            )
+
+            for index_name in all_indices.keys():
+                if test_collection_name in index_name:
+                    indices_to_delete.append(index_name)
+
+            for index_name in indices_to_delete:
+                if test_collection.with_retries(test_collection.datastore.client.indices.exists, index=index_name):
+                    test_collection.with_retries(test_collection.datastore.client.indices.delete, index=index_name)
+
+        except Exception:
+            # Silently ignore cleanup errors to avoid failing the test
+            pass
+
+
+@odm.model(index=True)
+class Test1(odm.Model):
+    field_1 = odm.Keyword(default="default")
+    field_2 = odm.Keyword()
+
+
+@odm.model(index=True)
+class Test2(odm.Model):
+    field_2 = odm.Keyword()
+    field_3 = odm.Keyword(default="default")
+
+
+def test_reindex(es_connection: ESCollection):
+    test_collection_name = f"test_fix_replicas_{uuid.uuid4().hex[:8]}"
+
+    # Register and create a new collection instance for testing
+    es_connection.datastore.register(test_collection_name, Test1)
+    test_collection: ESCollection = getattr(es_connection.datastore, test_collection_name)
+
+    # Add some test data to ensure data preservation during replica fixing
+    test_data = Test1({"field_1": "example", "field_2": "example"})
+    test_collection.save("example", test_data)
+    test_collection.commit()
+
+    es_connection.datastore._collections.pop(test_collection_name)
+
+    es_connection.datastore.register(test_collection_name, Test2)
+    test_collection: ESCollection = getattr(es_connection.datastore, test_collection_name)
+
+    test_collection.reindex()
+
+    assert test_collection.get("example", as_obj=False)["field_1"] == "example"
+
+    result = test_collection.get("example")
+
+    assert isinstance(result, Test2)
+
+    assert result.field_3 == "default"
+
+    with pytest.raises(Exception):
+        result.field_1
