@@ -582,7 +582,7 @@ class ESCollection(Generic[ModelType]):
             else:
                 method = self.datastore.client.indices.split
         else:
-            logger.debug(
+            logger.info(
                 f"Current shards ({cur_shards}) is equal to the target shards ({target_shards}), "
                 "only house keeping operations will be performed."
             )

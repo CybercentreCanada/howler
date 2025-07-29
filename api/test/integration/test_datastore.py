@@ -511,7 +511,7 @@ def test_fix_shards(es_connection: ESCollection, shards: int):
 
     try:
         # Store original shard count from the test collection configuration
-        incorrect_shards = shards
+        incorrect_shards = 2
 
         # Manually create an index with incorrect shard count
         test_index_name = f"howler-{test_collection_name}"
@@ -562,18 +562,21 @@ def test_fix_shards(es_connection: ESCollection, shards: int):
         # Verify the shard count has been corrected
         # Get the current index (it might have changed after fix_shards)
         current_alias = test_collection._get_current_alias(test_collection.name)
-        if current_alias:
-            final_settings = test_collection.with_retries(
-                test_collection.datastore.client.indices.get_settings, index=current_alias
-            )
+        assert current_alias
 
-            final_shard_count = int(final_settings[current_alias]["settings"]["index"]["number_of_shards"])
-            assert final_shard_count == shards, f"Expected {shards} shards after fix, got {final_shard_count}"
+        final_settings = test_collection.with_retries(
+            test_collection.datastore.client.indices.get_settings, index=current_alias
+        )
 
-            # Verify data still exists after fixing
-            retrieved_data_after = test_collection.get("test_doc")
-            assert retrieved_data_after["test_field"] == "test_value"
+        final_shard_count = int(final_settings[current_alias]["settings"]["index"]["number_of_shards"])
+        assert final_shard_count == shards, f"Expected {shards} shards after fix, got {final_shard_count}"
 
+        # Verify data still exists after fixing
+        retrieved_data_after = test_collection.get("test_doc")
+        assert retrieved_data_after["test_field"] == "test_value"
+
+    except Exception:
+        raise
     finally:
         # Clean up: delete the test index and alias
         try:
