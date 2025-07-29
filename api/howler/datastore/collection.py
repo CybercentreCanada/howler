@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import sys
 import time
 import typing
 import warnings
@@ -226,7 +227,7 @@ class ESCollection(Generic[ModelType]):
 
         if not ESCollection.IGNORE_ENSURE_COLLECTION:
             self._ensure_collection()
-        else:
+        elif "pytest" not in sys.modules:
             logger.warning("Skipping ensure collection! This is dangerous. Waiting five seconds before continuing.")
             time.sleep(5)
 

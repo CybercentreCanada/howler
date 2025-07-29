@@ -720,40 +720,76 @@ def test_fix_replicas(es_connection: ESCollection, replicas: int):
 class Test1(odm.Model):
     field_1 = odm.Keyword(default="default")
     field_2 = odm.Keyword()
+    field_3 = odm.Keyword(optional=True)
 
 
 @odm.model(index=True)
 class Test2(odm.Model):
     field_2 = odm.Keyword()
-    field_3 = odm.Keyword(default="default")
+    field_3 = odm.Integer(default=1)
 
 
 def test_reindex(es_connection: ESCollection):
+    # Create a unique test collection name to avoid conflicts
     test_collection_name = f"test_fix_replicas_{uuid.uuid4().hex[:8]}"
 
-    # Register and create a new collection instance for testing
+    # Register and create a new collection instance using Test1 model
     es_connection.datastore.register(test_collection_name, Test1)
     test_collection: ESCollection = getattr(es_connection.datastore, test_collection_name)
 
-    # Add some test data to ensure data preservation during replica fixing
-    test_data = Test1({"field_1": "example", "field_2": "example"})
+    # Add two documents using Test1 model
+    test_data = Test1({"field_1": "example", "field_2": "example", "field_3": "example"})
     test_collection.save("example", test_data)
+    test_data = Test1({"field_1": "example2", "field_2": "example2"})
+    test_collection.save("example2", test_data)
     test_collection.commit()
 
+    # Ensure both documents are present
+    assert test_collection.search("field_2:*")["total"] == 2
+
+    # Remove the collection from the registry to simulate a model change
     es_connection.datastore._collections.pop(test_collection_name)
 
+    # Register the same collection name with a new model (Test2)
     es_connection.datastore.register(test_collection_name, Test2)
+    ESCollection.IGNORE_ENSURE_COLLECTION = True  # Temporarily ignore collection checks
     test_collection: ESCollection = getattr(es_connection.datastore, test_collection_name)
 
+    # Reindex the collection to migrate data to the new model
     test_collection.reindex()
+    test_collection._ensure_collection()
+    ESCollection.IGNORE_ENSURE_COLLECTION = False  # Restore collection checks
 
-    assert test_collection.get("example", as_obj=False)["field_1"] == "example"
+    # Add a new document using Test2 model
+    test_data = Test2({"field_2": "example3", "field_3": 2})
+    test_collection.save("example3", test_data)
+    test_collection.commit()
 
-    result = test_collection.get("example")
+    # Only two documents should remain after reindex (old model docs may be dropped)
+    assert test_collection.search("field_2:*")["total"] == 2
 
-    assert isinstance(result, Test2)
+    # The first document ("example") should be gone, "example2" should remain
+    assert test_collection.get("example", as_obj=False) is None
+    assert test_collection.get("example2", as_obj=False) is not None
 
-    assert result.field_3 == "default"
+    # "example2" should still have field_1 (from old model), "example3" should not (new model)
+    assert "field_1" in test_collection.get("example2", as_obj=False)
+    assert "field_1" not in test_collection.get("example3", as_obj=False)
 
+    # Check field values for "example2" and "example3"
+    assert test_collection.get("example2", as_obj=False)["field_2"] == "example2"
+    assert test_collection.get("example2")["field_3"] == 1  # default value from Test2
+
+    assert test_collection.get("example3", as_obj=False)["field_2"] == "example3"
+    assert test_collection.get("example3", as_obj=False)["field_3"] == 2
+
+    # "example1" should not exist
+    assert test_collection.get("example1") is None
+
+    # Returned objects should be instances of Test2
+    assert isinstance(test_collection.get("example2"), Test2)
+    assert isinstance(test_collection.get("example3"), Test2)
+
+    # Accessing field_1 on Test2 model should raise, since it's not defined
     with pytest.raises(Exception):
-        result.field_1
+        test_collection.get("example2").field_1
