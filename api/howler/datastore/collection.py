@@ -2304,8 +2304,7 @@ class ESCollection(Generic[ModelType]):
             self.with_retries(
                 self.datastore.client.indices.put_template,
                 name=self.name,
-                **current_template,
-                mappings=recursive_update(current_template.get("mappings", {}), {"properties": properties}),
+                **recursive_update(current_template, {"mappings": {"properties": properties}}),
             )
 
     def wipe(self):
