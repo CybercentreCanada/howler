@@ -24,6 +24,8 @@ interface Cell {
   value: string;
 }
 
+const FETCH_RESULTS: { [url: string]: Promise<any> } = {};
+
 export const useHelpers = (): HowlerHelper[] => {
   const pluginStore = usePluginStore();
 
@@ -72,8 +74,11 @@ export const useHelpers = (): HowlerHelper[] => {
           'Fetches the url provided and returns the given (flattened) key from the returned JSON object. Note that the result must be JSON!',
         callback: async (url, key) => {
           try {
-            const response = await fetch(url);
-            const json = await response.json();
+            if (!FETCH_RESULTS[url]) {
+              FETCH_RESULTS[url] = fetch(url).then(res => res.json());
+            }
+
+            const json = await FETCH_RESULTS[url];
 
             return flatten(json)[key];
           } catch (e) {

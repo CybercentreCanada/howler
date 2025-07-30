@@ -1,17 +1,22 @@
 import { InsertLink } from '@mui/icons-material';
 import { Box, IconButton, Skeleton } from '@mui/material';
-import { OverviewContext } from 'components/app/providers/OverviewProvider';
+import useMatchers from 'components/app/hooks/useMatchers';
 import ErrorBoundary from 'components/routes/ErrorBoundary';
 import type { Hit } from 'models/entities/generated/Hit';
+import type { Overview } from 'models/entities/generated/Overview';
 import type { FC } from 'react';
-import { memo, useContext, useMemo } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import HandlebarsMarkdown from '../display/HandlebarsMarkdown';
 
 const HitOverview: FC<{ content?: string; hit: Hit }> = ({ content, hit }) => {
-  const { getMatchingOverview } = useContext(OverviewContext);
+  const { getMatchingOverview } = useMatchers();
 
-  const matchingOverview = useMemo(() => (hit ? getMatchingOverview(hit) : null), [getMatchingOverview, hit]);
+  const [matchingOverview, setMatchingOverview] = useState<Overview>(null);
+
+  useEffect(() => {
+    getMatchingOverview(hit).then(setMatchingOverview);
+  }, [getMatchingOverview, hit]);
 
   const link = useMemo(
     () =>

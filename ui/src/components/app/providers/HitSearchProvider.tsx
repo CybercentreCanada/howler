@@ -7,6 +7,7 @@ import i18n from 'i18n';
 import isNull from 'lodash-es/isNull';
 import isUndefined from 'lodash-es/isUndefined';
 import type { Hit } from 'models/entities/generated/Hit';
+import type { WithMetadata } from 'models/WithMetadata';
 import {
   useCallback,
   useEffect,
@@ -37,7 +38,7 @@ interface HitSearchProviderType {
   displayType: 'list' | 'grid';
   searching: boolean;
   error: string | null;
-  response: HowlerSearchResponse<Hit> | null;
+  response: HowlerSearchResponse<WithMetadata<Hit>> | null;
   viewId: string | null;
   bundleId: string | null;
   queryHistory: QueryEntry;
@@ -79,7 +80,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const [displayType, setDisplayType] = useState<'list' | 'grid'>(getStored(StorageKey.DISPLAY_TYPE) ?? 'list');
   const [searching, setSearching] = useState<boolean>(false);
   const [error, setError] = useState<string>(null);
-  const [response, setResponse] = useState<HowlerSearchResponse<Hit>>();
+  const [response, setResponse] = useState<HowlerSearchResponse<WithMetadata<Hit>>>();
   const [queryHistory, setQueryHistory] = useState<QueryEntry>(
     JSON.parse(get(StorageKey.QUERY_HISTORY)) || { 'howler.id: *': new Date().toISOString() }
   );
@@ -148,7 +149,8 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
               query: fullQuery,
               sort,
               filters,
-              track_total_hits: trackTotalHits
+              track_total_hits: trackTotalHits,
+              metadata: ['template', 'overview', 'analytic']
             }),
             { showError: false, throwError: true }
           );

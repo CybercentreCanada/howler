@@ -188,7 +188,7 @@ const SocketProvider: React.FC<PropsWithChildren> = ({ children }) => {
     // Here we go!
     setStatus(Status.CONNECTING);
 
-    const host = window.location.host;
+    const host = window.location.host.includes('localhost') ? 'localhost:5000' : window.location.host;
     const protocol = window.location.protocol.startsWith('http:') ? 'ws' : 'wss';
     const ws = new WebSocket(`${protocol}://${host}/socket/v1/connect`);
 
