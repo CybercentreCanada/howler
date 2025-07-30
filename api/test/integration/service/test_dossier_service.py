@@ -268,8 +268,8 @@ def test_get_matching_dossiers_with_malformed_data(datastore: HowlerDatastore):
     assert "edge_1" in matching_ids  # None query should match
     assert "edge_3" in matching_ids  # Missing query should match
 
-    # The behavior for empty string and whitespace queries depends on lucene_service.match implementation
-    # These should be tested based on the actual implementation behavior
+    assert "edge_2" not in matching_ids  # Empty string query should not match
+    assert "edge_4" not in matching_ids  # Whitespace query should not match
 
 
 def test_get_matching_dossiers_query_validation_scenarios(datastore: HowlerDatastore):
@@ -306,8 +306,7 @@ def test_get_matching_dossiers_query_validation_scenarios(datastore: HowlerDatas
     assert "valid_3" in matching_ids  # Array field match
     assert "valid_4" in matching_ids  # Boolean AND match
 
-    # Non-existent field behavior depends on lucene_service implementation
-    # Should be tested based on actual behavior
+    assert "valid_5" not in matching_ids  # Invalid field query
 
 
 def test_get_matching_dossiers_with_lucene_service_mock(datastore: HowlerDatastore):
