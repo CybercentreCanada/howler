@@ -17,6 +17,7 @@ def test_builtin_config():
 
     assert config.auth
 
+
 def test_builtin_config_mapping():
     from howler.config import config
 
@@ -30,6 +31,7 @@ def test_custom_config():
     config = Config.model_validate(_conf)
 
     assert config.auth.oauth.enabled
+
 
 def test_custom_config_mapping():
     with yml_config_good_mapping.open() as _yaml:
@@ -48,6 +50,7 @@ def test_custom_bad_config():
         Config.model_validate(_conf)
 
     assert "random-key" in str(err)
+
 
 def test_custom_bad_config_mapping():
     with pytest.raises(ValidationError) as err:
