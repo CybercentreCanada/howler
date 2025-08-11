@@ -1,6 +1,7 @@
 import react from '@vitejs/plugin-react-swc';
 import { defineConfig, loadEnv, ProxyOptions } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
+import { configDefaults } from 'vitest/config';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -74,6 +75,49 @@ export default defineConfig(({ mode }) => {
     preview: {
       port: 3000,
       proxy
+    },
+    test: {
+      globals: true,
+      environment: 'jsdom',
+      environmentOptions: {
+        jsdom: {
+          resources: 'usable'
+        }
+      },
+      setupFiles: ['./src/setupTests.ts'],
+      exclude: [...configDefaults.exclude, 'dist/**', 'src/commons/**'],
+      testTimeout: 30000,
+      reporters: ['junit', 'json', 'default'],
+      outputFile: {
+        junit: './target/junit-report.xml',
+        json: './target/json-report.json'
+      },
+      coverage: {
+        enabled: true,
+        provider: 'v8',
+        reporter: ['json-summary', 'json', 'html'],
+        reportsDirectory: './target/coverage',
+        exclude: [
+          'vite*config.ts',
+          '**/dist/**',
+          '**/*.js.map',
+          '**/node_modules/**',
+          '**/**.test.*',
+          '**/**.test.*',
+          '**/**.d.ts',
+          'src/commons/**',
+          'src/tests'
+        ],
+        reportOnFailure: true
+      },
+      sequence: { hooks: 'list' },
+      pool: 'threads',
+      poolOptions: {
+        threads: {
+          maxThreads: 8,
+          minThreads: 6
+        }
+      }
     }
   };
 });

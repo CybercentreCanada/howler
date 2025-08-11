@@ -149,3 +149,6 @@ firefox_profile/
 
 # vite
 .vite
+
+target/coverage
+target/*-report.*

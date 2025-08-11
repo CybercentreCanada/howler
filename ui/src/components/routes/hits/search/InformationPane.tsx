@@ -34,7 +34,6 @@ import ErrorBoundary from 'components/routes/ErrorBoundary';
 import { uniqBy } from 'lodash-es';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Dossier } from 'models/entities/generated/Dossier';
-import type { Overview } from 'models/entities/generated/Overview';
 import howlerPluginStore from 'plugins/store';
 import type { FC } from 'react';
 import { useContext, useEffect, useMemo, useState } from 'react';
@@ -60,7 +59,7 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
 
   const [userIds, setUserIds] = useState<Set<string>>(new Set());
   const [analytic, setAnalytic] = useState<Analytic>();
-  const [overview, setOverview] = useState<Overview>();
+  const [hasOverview, setHasOverview] = useState(false);
   const [tab, setTab] = useState<string>('overview');
   const [loading, setLoading] = useState<boolean>(false);
   const [dossiers, setDossiers] = useState<Dossier[]>([]);
@@ -72,6 +71,10 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
   howlerPluginStore.plugins.forEach(plugin => {
     pluginStore.executeFunction(`${plugin}.on`, 'viewing');
   });
+
+  useEffect(() => {
+    getMatchingOverview(hit).then(_overview => setHasOverview(!!_overview));
+  }, [getMatchingOverview, hit]);
 
   useEffect(() => {
     if (!selected) {
@@ -86,7 +89,6 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
 
     setUserIds(getUserList(hit));
     getAnalyticFromName(hit.howler.analytic).then(setAnalytic);
-    getMatchingOverview(hit).then(setOverview);
     getMatchingDossiers(hit).then(setDossiers);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -116,13 +118,13 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
   }, [emit, selected, isOpen]);
 
   useEffect(() => {
-    if (overview && tab === 'details') {
+    if (hasOverview && tab === 'details') {
       setTab('overview');
-    } else if (!overview && tab === 'overview') {
+    } else if (!hasOverview && tab === 'overview') {
       setTab('details');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [overview]);
+  }, [hasOverview]);
 
   /**
    * What to show as the header? If loading a skeleton, then it depends on bundle or not. Bundles don't
@@ -239,7 +241,7 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
         )}
         <VSBoxHeader ml={-1} mr={-1} pb={1} sx={{ top: '0px' }}>
           <Tabs
-            value={tab === 'overview' && !overview ? 'details' : tab}
+            value={tab === 'overview' && !hasOverview ? 'details' : tab}
             sx={{
               display: 'flex',
               flexDirection: 'row',
@@ -290,7 +292,9 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
             {hit?.howler?.is_bundle && (
               <Tab label={t('hit.viewer.aggregate')} value="hit_aggregate" onClick={() => setTab('hit_aggregate')} />
             )}
-            {overview && <Tab label={t('hit.viewer.overview')} value="overview" onClick={() => setTab('overview')} />}
+            {hasOverview && (
+              <Tab label={t('hit.viewer.overview')} value="overview" onClick={() => setTab('overview')} />
+            )}
             <Tab label={t('hit.viewer.details')} value="details" onClick={() => setTab('details')} />
             {hit?.howler.dossier?.map((lead, index) => (
               <Tab
