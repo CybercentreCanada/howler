@@ -103,7 +103,7 @@ export default defineConfig(({ mode }) => {
           '**/*.js.map',
           '**/node_modules/**',
           '**/**.test.*',
-          '**/**.test.*',
+          '**/**.spec.*',
           '**/**.d.ts',
           'src/commons/**',
           'src/tests'
