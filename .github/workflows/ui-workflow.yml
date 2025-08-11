@@ -78,6 +78,9 @@ jobs:
         # Only works if you set `reportOnFailure: true` in your vite config as specified above
         if: always()
         uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          json-summary-path: ui/target/coverage/coverage-summary.json
+          json-final-path: ui/target/coverage/coverage-final.json
 
 
   push_to_registry:
