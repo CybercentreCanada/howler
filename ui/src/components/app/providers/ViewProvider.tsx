@@ -18,14 +18,7 @@ export interface ViewContextType {
   removeFavourite: (id: string) => Promise<void>;
   fetchViews: (ids?: string[]) => Promise<View[]>;
   addView: (v: View) => Promise<View>;
-  editView: (
-    id: string,
-    title: string,
-    query: string,
-    sort: string,
-    span: string,
-    advanceOnTriage: boolean
-  ) => Promise<View>;
+  editView: (id: string, newView: Partial<Omit<View, 'view_id' | 'owner'>>) => Promise<View>;
   removeView: (id: string) => Promise<void>;
   getCurrentView: (lazy?: boolean) => Promise<View>;
 }
@@ -118,12 +111,12 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
   );
 
   const editView: ViewContextType['editView'] = useCallback(
-    async (id: string, title: string, query: string, sort: string, span: string, advanceOnTriage: boolean) => {
-      const result = await dispatchApi(api.view.put(id, title, query, sort, span, advanceOnTriage));
+    async (id, partialView) => {
+      const result = await dispatchApi(api.view.put(id, partialView));
 
       setViews(_views => ({
         ..._views,
-        [id]: { ...(_views[id] ?? {}), title, query, sort, span, settings: { advance_on_triage: advanceOnTriage } }
+        [id]: { ...partialView }
       }));
 
       return result;

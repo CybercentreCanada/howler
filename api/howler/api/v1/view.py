@@ -1,15 +1,7 @@
 from flask import request
 from mergedeep.mergedeep import merge
 
-from howler.api import (
-    bad_request,
-    created,
-    forbidden,
-    make_subapi_blueprint,
-    no_content,
-    not_found,
-    ok,
-)
+from howler.api import bad_request, created, forbidden, make_subapi_blueprint, no_content, not_found, ok
 from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -185,8 +177,8 @@ def update_view(id: str, user: User, **kwargs):
     if not isinstance(new_data, dict):
         return bad_request(err="Invalid data format")
 
-    if set(new_data.keys()) - {"title", "query", "span", "sort", "settings"}:
-        return bad_request(err="Only title, query, span and sort can be updated.")
+    if set(new_data.keys()) & {"view_id", "owner"}:
+        return bad_request(err="You cannot change the owner or id of a view.")
 
     existing_view: View = storage.view.get_if_exists(id)
     if not existing_view:

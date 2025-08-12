@@ -110,6 +110,7 @@
     "http-proxy-middleware": "^2.0.9",
     "husky": "^9.1.7",
     "lint-staged": "^15.5.2",
+    "msw": "^2.10.4",
     "prettier": "^3.6.2",
     "prettier-plugin-organize-imports": "^3.2.4",
     "react-icons": "^5.5.0",
@@ -136,7 +137,8 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "esbuild"
+      "esbuild",
+      "msw"
     ]
   },
   "repository": {

@@ -133,6 +133,23 @@ def test_set_view(datastore: HowlerDatastore, login_session):
     assert updated_view.title == "new title thing"
 
 
+def test_set_view_error(datastore: HowlerDatastore, login_session):
+    session, host = login_session
+
+    id = datastore.view.search("owner:admin AND type:(-readonly)")["items"][0]["view_id"]
+
+    with pytest.raises(APIError):
+        get_api_data(
+            session,
+            f"{host}/api/v1/view/{id}/",
+            method="PUT",
+            data=json.dumps({"owner": "someoneelse"}),
+        )
+
+    updated_view = datastore.view.get(id, as_obj=True)
+    assert updated_view.owner != "someoneelse"
+
+
 def test_favourite(datastore: HowlerDatastore, login_session):
     session, host = login_session
 

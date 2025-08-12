@@ -14,15 +14,8 @@ export const post = (newData: Partial<View>): Promise<View> => {
   return hpost(uri(), newData);
 };
 
-export const put = (
-  id: string,
-  title: string,
-  query: string,
-  sort: string,
-  span: string,
-  advanceOnTriage: boolean
-): Promise<View> => {
-  return hput(uri(id), { title, query, sort, span, settings: { advance_on_triage: advanceOnTriage } } as View);
+export const put = (id: string, partialView: Partial<Omit<View, 'view_id'>>): Promise<View> => {
+  return hput(uri(id), partialView);
 };
 
 export const del = (id: string): Promise<void> => {
