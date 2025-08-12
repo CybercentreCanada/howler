@@ -57,7 +57,7 @@ const ViewsBase: FC = () => {
   const [phrase, setPhrase] = useState<string>('');
   const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
   const [response, setResponse] = useState<HowlerSearchResponse<View>>(null);
-  const [types, setTypes] = useState<('personal' | 'global')[]>([]);
+  const [type, setType] = useState<'personal' | 'global'>((searchParams.get('type') as 'personal' | 'global') || null);
   const [hasError, setHasError] = useState(false);
   const [searching, setSearching] = useState(false);
   const [favouritesOnly, setFavouritesOnly] = useState(false);
@@ -78,8 +78,8 @@ const ViewsBase: FC = () => {
 
       const searchTerm = phrase ? `*${sanitizeLuceneQuery(phrase)}*` : '*';
       const phraseQuery = FIELDS_TO_SEARCH.map(_field => `${_field}:${searchTerm}`).join(' OR ');
-      const typeQuery = `(type:global OR owner:(${user.username} OR none)) AND type:(${types.join(' OR ') || '*'}${
-        types.includes('personal') ? ' OR readonly' : ''
+      const typeQuery = `(type:global OR owner:(${user.username} OR none)) AND type:(${type ?? '*'}${
+        type.includes('personal') ? ' OR readonly' : ''
       })`;
       const favouritesQuery =
         favouritesOnly && user.favourite_views.length > 0 ? ` AND view_id:(${user.favourite_views.join(' OR ')})` : '';
@@ -104,7 +104,7 @@ const ViewsBase: FC = () => {
     searchParams,
     user.username,
     user.favourite_views,
-    types,
+    type,
     favouritesOnly,
     dispatchApi,
     pageCount,
@@ -177,9 +177,35 @@ const ViewsBase: FC = () => {
     }
   }, [fetchViews]);
 
+  const onTypeChange = useCallback(
+    async (_type: 'personal' | 'global' | null) => {
+      setType(_type);
+
+      if (_type) {
+        searchParams.delete('type');
+        searchParams.set('type', _type);
+        setSearchParams(searchParams, { replace: true });
+      } else if (searchParams.has('type')) {
+        searchParams.delete('type');
+        setSearchParams(searchParams, { replace: true });
+      }
+    },
+    [searchParams, setSearchParams]
+  );
+
   useEffect(() => {
+    let changed = false;
     if (!searchParams.has('offset')) {
       searchParams.set('offset', '0');
+      changed = true;
+    }
+
+    if (searchParams.has('type') && !['personal', 'global'].includes(searchParams.get('type'))) {
+      searchParams.delete('type');
+      changed = true;
+    }
+
+    if (changed) {
       setSearchParams(searchParams, { replace: true });
     }
   }, [searchParams, setSearchParams]);
@@ -197,7 +223,7 @@ const ViewsBase: FC = () => {
       onSearch();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offset, favouritesOnly, types]);
+  }, [offset, favouritesOnly, type]);
 
   return (
     <ItemManager
@@ -212,12 +238,9 @@ const ViewsBase: FC = () => {
           <ToggleButtonGroup
             sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}
             size="small"
-            value={types}
-            onChange={(__, _types) => {
-              if (_types) {
-                setTypes(_types.length < 2 ? _types : []);
-              }
-            }}
+            value={type}
+            exclusive
+            onChange={(__, _type) => onTypeChange(_type)}
           >
             <ToggleButton value="personal" aria-label="personal">
               {t('route.views.manager.personal')}
