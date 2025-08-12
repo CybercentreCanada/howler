@@ -13,32 +13,6 @@ export const MOCK_RESPONSES: { [path: string]: any } = {
     type: 'personal',
     span: 'date.range.1.month'
   },
-  '/api/v1/view': [
-    {
-      owner: 'user',
-      settings: {
-        advance_on_triage: false
-      },
-      view_id: 'example_view_id',
-      query: 'howler.id:*',
-      sort: 'event.created desc',
-      title: 'Example View',
-      type: 'personal',
-      span: 'date.range.1.month'
-    },
-    {
-      owner: 'user',
-      settings: {
-        advance_on_triage: true
-      },
-      view_id: 'another_view_id',
-      query: 'howler.status:open',
-      sort: 'event.created asc',
-      title: 'Another View',
-      type: 'global',
-      span: 'date.range.1.week'
-    }
-  ],
   '/api/v1/search/view': {
     items: [
       {
@@ -69,13 +43,71 @@ export const MOCK_RESPONSES: { [path: string]: any } = {
     type: 'personal',
     span: 'date.range.1.month'
   },
-  '/api/v1/view/favourite/example_view_id': { success: true },
-  '/api/v1/view/favourite/': { success: true }
+  '/api/v1/view/:view_id/favourite': { success: true }
 };
 
 const handlers = [
   ...Object.entries(MOCK_RESPONSES).map(([path, data]) =>
     http.all(path, async () => HttpResponse.json({ api_response: data }))
+  ),
+  http.post('/api/v1/view', async () =>
+    HttpResponse.json(
+      {
+        api_response: {
+          owner: 'user',
+          settings: {
+            advance_on_triage: false
+          },
+          view_id: 'example_created_view',
+          query: 'howler.id:*',
+          sort: 'event.created desc',
+          title: 'Example View',
+          type: 'personal',
+          span: 'date.range.1.month'
+        }
+      },
+      { status: 201 }
+    )
+  ),
+  http.delete('/api/v1/view/:view_id', async () =>
+    HttpResponse.json(
+      {
+        api_response: {
+          success: true
+        }
+      },
+      { status: 204 }
+    )
+  ),
+  http.get('/api/v1/view', async () =>
+    HttpResponse.json({
+      api_response: [
+        {
+          owner: 'user',
+          settings: {
+            advance_on_triage: false
+          },
+          view_id: 'example_view_id',
+          query: 'howler.id:*',
+          sort: 'event.created desc',
+          title: 'Example View',
+          type: 'personal',
+          span: 'date.range.1.month'
+        },
+        {
+          owner: 'user',
+          settings: {
+            advance_on_triage: true
+          },
+          view_id: 'another_view_id',
+          query: 'howler.status:open',
+          sort: 'event.created asc',
+          title: 'Another View',
+          type: 'global',
+          span: 'date.range.1.week'
+        }
+      ]
+    })
   )
 ];
 
