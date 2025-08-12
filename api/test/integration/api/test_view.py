@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 import pytest
 from conftest import APIError, get_api_data
@@ -23,7 +24,7 @@ def datastore(datastore_connection):
 def test_add_view(datastore: HowlerDatastore, login_session):
     session, host = login_session
 
-    view_data = {}
+    view_data: dict[str, Any] = {}
 
     with pytest.raises(APIError) as err:
         get_api_data(
