@@ -116,7 +116,7 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
 
       setViews(_views => ({
         ..._views,
-        [id]: { ...partialView }
+        [id]: { ...(_views[id] ?? {}), ...partialView }
       }));
 
       return result;
