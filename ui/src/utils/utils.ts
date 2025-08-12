@@ -91,7 +91,7 @@ export const delay = (ms: number, rejectOnCancel = false) => {
   }
 
   return new TimedPromise((resolve, reject) => {
-    timerId = setTimeout(resolve, ms);
+    timerId = setTimeout(resolve, ms) as unknown as number;
     onCancel = reject;
   });
 };
