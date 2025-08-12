@@ -79,7 +79,7 @@ const ViewsBase: FC = () => {
       const searchTerm = phrase ? `*${sanitizeLuceneQuery(phrase)}*` : '*';
       const phraseQuery = FIELDS_TO_SEARCH.map(_field => `${_field}:${searchTerm}`).join(' OR ');
       const typeQuery = `(type:global OR owner:(${user.username} OR none)) AND type:(${type ?? '*'}${
-        type.includes('personal') ? ' OR readonly' : ''
+        type === 'personal' ? ' OR readonly' : ''
       })`;
       const favouritesQuery =
         favouritesOnly && user.favourite_views.length > 0 ? ` AND view_id:(${user.favourite_views.join(' OR ')})` : '';
