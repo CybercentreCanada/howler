@@ -77,6 +77,9 @@
     "@iconify/icons-logos": "^1.2.36",
     "@iconify/icons-simple-icons": "^1.2.74",
     "@iconify/react": "^4.1.1",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.6.4",
+    "@testing-library/react": "^16.3.0",
     "@types/json2mq": "^0.2.2",
     "@types/lodash-es": "^4.17.12",
     "@types/mdast": "^4.0.4",
@@ -90,6 +93,7 @@
     "@typescript-eslint/parser": "^7.18.0",
     "@vitejs/plugin-react": "^4.7.0",
     "@vitejs/plugin-react-swc": "^3.11.0",
+    "@vitest/coverage-v8": "^3.2.4",
     "eslint": "^8.57.1",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-config-airbnb-typescript": "^18.0.0",
@@ -111,7 +115,8 @@
     "react-icons": "^5.5.0",
     "typescript": "^5.8.3",
     "vite": "^6.3.5",
-    "vite-tsconfig-paths": "^4.3.2"
+    "vite-tsconfig-paths": "^4.3.2",
+    "vitest": "^3.2.4"
   },
   "jest": {
     "transformIgnorePatterns": [
@@ -145,7 +150,9 @@
     "dev": "vite -l info",
     "preinstall": "npx only-allow pnpm",
     "serve": "vite preview",
-    "start": "vite -l info"
+    "start": "vite -l info",
+    "test": "vitest run --coverage",
+    "test-ui": "vitest --ui --coverage"
   },
   "type": "module",
   "version": "2.13.0"

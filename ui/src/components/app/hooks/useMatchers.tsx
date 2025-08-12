@@ -10,6 +10,10 @@ const useMatchers = () => {
 
   const getMatchingTemplate = useCallback(
     async (hit: WithMetadata<Hit>) => {
+      if (!hit) {
+        return null;
+      }
+
       if (has(hit, '__template')) {
         return hit.__template;
       }
@@ -23,6 +27,10 @@ const useMatchers = () => {
 
   const getMatchingOverview = useCallback(
     async (hit: WithMetadata<Hit>) => {
+      if (!hit) {
+        return null;
+      }
+
       if (has(hit, '__overview')) {
         return hit.__overview;
       }
@@ -36,6 +44,10 @@ const useMatchers = () => {
 
   const getMatchingDossiers = useCallback(
     async (hit: WithMetadata<Hit>) => {
+      if (!hit) {
+        return null;
+      }
+
       if (has(hit, '__dossiers')) {
         return hit.__dossiers;
       }
