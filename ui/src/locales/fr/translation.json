@@ -727,6 +727,7 @@
   "route.views.manager.readonly": "Intégré",
   "route.views.manager.search": "Rechercher les vues",
   "route.views.manager": "Gérer vue",
+  "route.views.save": "Enregistrer cette requête comme vue",
   "route.views.saved": "Vues épinglées",
   "route.views.show": "Voir les vues",
   "route.views": "Vues",

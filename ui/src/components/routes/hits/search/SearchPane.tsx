@@ -1,4 +1,4 @@
-import { Close, ErrorOutline, List, TableChart, Terminal } from '@mui/icons-material';
+import { Close, ErrorOutline, List, SavedSearch, TableChart, Terminal } from '@mui/icons-material';
 import {
   Box,
   IconButton,
@@ -208,6 +208,11 @@ const SearchPane: FC = () => {
                   </IconButton>
                 </Tooltip>
               )}
+              <Tooltip title={t('route.views.save')}>
+                <IconButton component={Link} disabled={!query} to={`/views/create?query=${query}`}>
+                  <SavedSearch />
+                </IconButton>
+              </Tooltip>
               <Tooltip title={t('route.actions.save')}>
                 <IconButton component={Link} disabled={!query} to={`/action/execute?query=${query}`}>
                   <Terminal />

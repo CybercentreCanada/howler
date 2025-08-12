@@ -731,6 +731,7 @@
   "route.views.manager.search": "Search Views",
   "route.views.manager.default": "Default View",
   "route.views.name": "View Name",
+  "route.views.save": "Save Query as View",
   "route.views.saved": "Pinned Views",
   "route.views.search.prompt": "Search by name, query, or owner.",
 
