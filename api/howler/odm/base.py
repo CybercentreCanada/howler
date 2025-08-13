@@ -644,12 +644,12 @@ class Integer(_Field):
 
 
 class Long(_Field):
-    """A field storing a long value. Equivalent to Integer in python, but sets the ES datatype to long."""
     """
     A field storing a long value. Equivalent to Integer in python, but sets the ES datatype to long.
 
     In Elasticsearch, Integer supports values from -2^31 to 2^31-1, while Long supports values from -2^63 to 2^63-1.
     """
+
     def check(self, value, context=[], **kwargs):
         if self.optional and value is None:
             return None
