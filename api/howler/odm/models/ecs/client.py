@@ -117,7 +117,7 @@ class Client(odm.Model):
             description="Collection of connected Internal Protocol routing prefixes",
         )
     )
-    bytes: Optional[int] = odm.Optional(odm.Integer(description="Bytes sent from the client to the server."))
+    bytes: Optional[int] = odm.Optional(odm.Long(description="Bytes sent from the client to the server."))
     domain: Optional[str] = odm.Optional(odm.Keyword(description="The domain name of the client system."))
     geo: Geo = odm.Optional(
         odm.Compound(
