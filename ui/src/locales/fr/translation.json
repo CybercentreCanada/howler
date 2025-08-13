@@ -675,7 +675,8 @@
   "route.overviews.manager.search": "Rechercher les vues d'ensemble",
   "route.overviews.manager.delete": "Supprimer la vue d'ensemble",
   "route.overviews.manager.delete.success": "Vue d'ensemble Supprimée.",
-  "route.overviews.rule.explanation": "Il s'agit d'une analyse Howler. Il n'y a qu'une seule détection, qui a été présélectionnée.",
+  "route.overviews.theme.light": "Prévoyez en mode clair",
+  "route.overviews.theme.dark": "Prévoyez en mode sombre",
 
   "route.dossiers": "Dossiers",
   "route.dossiers.default": "Défaut",

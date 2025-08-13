@@ -677,6 +677,8 @@
   "route.overviews.manager.search": "Search Overviews",
   "route.overviews.manager.delete": "Delete Overview",
   "route.overviews.manager.delete.success": "Overview Removed.",
+  "route.overviews.theme.light": "Preview in Light Mode",
+  "route.overviews.theme.dark": "Preview in Dark Mode",
 
   "route.dossiers": "Dossiers",
   "route.dossiers.default": "Default",
