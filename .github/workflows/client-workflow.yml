@@ -107,13 +107,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Check for valid merge base
-        run: |
-          git status
-          git diff $BASE_SHA..$HEAD_SHA
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       - name: Pull Dependent Docker Images
         run: |
           docker pull cccsaurora/howler-api:develop
@@ -160,8 +153,8 @@ jobs:
       - name: Coverage Results
         if: steps.tests.outcome == 'success'
         run: |
-          git diff --name-only $BASE_SHA..$HEAD_SHA
-          git diff $BASE_SHA..$HEAD_SHA > diff.txt
+          git diff --name-only $(git merge-base $BASE_SHA $HEAD_SHA)..$HEAD_SHA
+          git diff $(git merge-base $BASE_SHA $HEAD_SHA)..$HEAD_SHA > diff.txt
           poetry run coverage_report
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
