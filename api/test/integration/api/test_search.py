@@ -242,12 +242,13 @@ def test_hit_search_with_metadata(datastore: HowlerDatastore, login_session):
         assert "__template" not in item
         assert "__overview" not in item
         assert "__dossiers" not in item
+        assert "__analytic" not in item
 
     # Test search with metadata using GET request
     resp_with_metadata_get = get_api_data(
         session,
         f"{host}/api/v1/search/hit/",
-        params={"query": "id:*", "rows": 5, "metadata": ["template", "overview", "dossiers"]},
+        params={"query": "id:*", "rows": 5, "metadata": ["template", "overview", "dossiers", "analytic"]},
     )
 
     # Should have same number of results
@@ -259,6 +260,7 @@ def test_hit_search_with_metadata(datastore: HowlerDatastore, login_session):
         assert "__template" in item
         assert "__overview" in item
         assert "__dossiers" in item
+        assert "__analytic" in item
 
         if item["howler"]["analytic"] in ["Password Checker", "Bad Guy Finder"]:
             assert item["__template"]["analytic"] == item["howler"]["analytic"]
@@ -266,12 +268,20 @@ def test_hit_search_with_metadata(datastore: HowlerDatastore, login_session):
 
         assert isinstance(item["__dossiers"], list)
 
+        # Verify analytic metadata structure
+        if item["__analytic"]:
+            assert isinstance(item["__analytic"], dict)
+            assert "name" in item["__analytic"]
+            assert item["__analytic"]["name"] == item["howler"]["analytic"]
+            assert "analytic_id" in item["__analytic"]
+        # __analytic can be None if no matching analytic record exists
+
     # Test search with metadata using POST request
     resp_with_metadata_post = get_api_data(
         session,
         f"{host}/api/v1/search/hit/",
         method="POST",
-        data=json.dumps({"query": "id:*", "rows": 5, "metadata": ["template", "overview"]}),
+        data=json.dumps({"query": "id:*", "rows": 5, "metadata": ["template", "overview", "analytic"]}),
     )
 
     # Should have same number of results as other requests
@@ -282,7 +292,14 @@ def test_hit_search_with_metadata(datastore: HowlerDatastore, login_session):
     for item in resp_with_metadata_post["items"]:
         assert "__template" in item
         assert "__overview" in item
+        assert "__analytic" in item
         assert "__dossiers" not in item
+
+        # Verify analytic metadata structure for POST request
+        if item["__analytic"]:
+            assert isinstance(item["__analytic"], dict)
+            assert "name" in item["__analytic"]
+            assert item["__analytic"]["name"] == item["howler"]["analytic"]
 
     # Test that metadata is only added for hit index
     # First ensure user collection works normally without metadata
@@ -297,3 +314,4 @@ def test_hit_search_with_metadata(datastore: HowlerDatastore, login_session):
             assert "__template" not in item
             assert "__overview" not in item
             assert "__dossiers" not in item
+            assert "__analytic" not in item

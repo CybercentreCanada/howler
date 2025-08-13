@@ -30,7 +30,7 @@ from howler.odm.models.ecs.event import Event
 from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import HitOperationType, HitStatus, HitStatusTransition, Log
 from howler.odm.models.user import User
-from howler.services import action_service, dossier_service
+from howler.services import action_service, analytic_service, dossier_service
 from howler.utils.dict_utils import extra_keys, flatten
 from howler.utils.uid import get_random_id
 
@@ -821,7 +821,7 @@ def __match_metadata(candidates: list[dict[str, Any]], hit: dict[str, Any]) -> O
     return sorted(matching_candidates, key=functools.cmp_to_key(__compare_metadata))[0]
 
 
-def augment_metadata(data: list[dict[str, Any]] | dict[str, Any], metadata: list[str], user: dict[str, Any]):
+def augment_metadata(data: list[dict[str, Any]] | dict[str, Any], metadata: list[str], user: dict[str, Any]):  # noqa: C901
     """Augment hit search results with additional metadata.
 
     This function enriches hit data by adding related information such as templates,
@@ -861,6 +861,21 @@ def augment_metadata(data: list[dict[str, Any]] | dict[str, Any], metadata: list
 
             for hit in hits:
                 hit["__overview"] = __match_metadata(overview_candidates, hit)
+
+    if "analytic" in metadata:
+        matched_analytics = analytic_service.get_matching_analytics(hits)
+
+        for hit in hits:
+            matched_analytic = next(
+                (
+                    analytic
+                    for analytic in matched_analytics
+                    if analytic.name.lower() == hit["howler"]["analytic"].lower()
+                ),
+                None,
+            )
+
+            hit["__analytic"] = matched_analytic.as_primitives() if matched_analytic else None
 
     if "dossiers" in metadata:
         dossiers: list[dict[str, Any]] = datastore().dossier.search(

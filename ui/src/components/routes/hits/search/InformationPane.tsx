@@ -4,7 +4,6 @@ import TuiIconButton from 'components/elements/addons/buttons/CustomIconButton';
 
 import { Icon } from '@iconify/react/dist/iconify.js';
 import useMatchers from 'components/app/hooks/useMatchers';
-import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
 import { HitContext } from 'components/app/providers/HitProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { SocketContext } from 'components/app/providers/SocketProvider';
@@ -50,8 +49,7 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
   const theme = useTheme();
   const location = useLocation();
   const { emit, isOpen } = useContext(SocketContext);
-  const { getAnalyticFromName } = useContext(AnalyticContext);
-  const { getMatchingOverview, getMatchingDossiers } = useMatchers();
+  const { getMatchingOverview, getMatchingDossiers, getMatchingAnalytic } = useMatchers();
   const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
   const pluginStore = usePluginStore();
 
@@ -88,11 +86,11 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
     }
 
     setUserIds(getUserList(hit));
-    getAnalyticFromName(hit.howler.analytic).then(setAnalytic);
+    getMatchingAnalytic(hit).then(setAnalytic);
     getMatchingDossiers(hit).then(setDossiers);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getAnalyticFromName, getHit, selected]);
+  }, [getHit, selected]);
 
   useEffect(() => {
     if (tab === 'hit_aggregate' && !hit?.howler.is_bundle) {

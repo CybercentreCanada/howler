@@ -1,3 +1,5 @@
+from typing import Any, Union
+
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.datastore.operations import OdmUpdateOperation
@@ -34,6 +36,21 @@ def update_analytic(
     result = storage.analytic.update(analytic_id, operations)
 
     return result
+
+
+def get_matching_analytics(hits: Union[list[Hit], list[dict[str, Any]]]) -> list[Analytic]:
+    "Get a list of matching analytics for the given list of hits"
+    storage = datastore()
+
+    analytic_names: list[str] = []
+    for hit in hits:
+        analytic_names.append(f'"{sanitize_lucene_query(hit["howler"]["analytic"])}"')
+
+    existing_analytics: list[Analytic] = storage.analytic.search(f'name:({" OR ".join(analytic_names)})', as_obj=True)[
+        "items"
+    ]
+
+    return existing_analytics
 
 
 def save_from_hit(hit: Hit, user: User):

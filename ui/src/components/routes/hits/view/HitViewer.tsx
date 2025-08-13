@@ -16,7 +16,6 @@ import {
 } from '@mui/material';
 import PageCenter from 'commons/components/pages/PageCenter';
 import useMatchers from 'components/app/hooks/useMatchers';
-import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
 import { HitContext } from 'components/app/providers/HitProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import HowlerCard from 'components/elements/display/HowlerCard';
@@ -42,7 +41,7 @@ import uniqBy from 'lodash-es/uniqBy';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import type { FC } from 'react';
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
@@ -63,8 +62,7 @@ const HitViewer: FC = () => {
   const theme = useTheme();
   const isUnderLg = useMediaQuery(theme.breakpoints.down('lg'));
   const [orientation, setOrientation] = useMyLocalStorageItem(StorageKey.VIEWER_ORIENTATION, Orientation.VERTICAL);
-  const { getAnalyticFromName } = useContext(AnalyticContext);
-  const { getMatchingOverview, getMatchingDossiers } = useMatchers();
+  const { getMatchingOverview, getMatchingDossiers, getMatchingAnalytic } = useMatchers();
 
   const getHit = useContextSelector(HitContext, ctx => ctx.getHit);
   const hit = useContextSelector(HitContext, ctx => ctx.hits[params.id]);
@@ -85,13 +83,13 @@ const HitViewer: FC = () => {
 
       setUserIds(getUserList(hit));
 
-      setAnalytic(await getAnalyticFromName(hit.howler.analytic));
+      setAnalytic(await getMatchingAnalytic(hit));
     } catch (err) {
       if (err.cause?.api_status_code === 404) {
         navigate('/404');
       }
     }
-  }, [hit, getAnalyticFromName, getHit, params.id, navigate]);
+  }, [hit, getMatchingAnalytic, getHit, params.id, navigate]);
 
   useEffect(() => {
     if (isUnderLg) {

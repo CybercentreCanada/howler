@@ -24,7 +24,7 @@ import {
   Typography,
   useTheme
 } from '@mui/material';
-import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
+import useMatchers from 'components/app/hooks/useMatchers';
 import { HitContext } from 'components/app/providers/HitProvider';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
@@ -35,7 +35,7 @@ import DevelopmentBanner from 'components/elements/display/features/DevelopmentB
 import DevelopmentIcon from 'components/elements/display/features/DevelopmentIcon';
 import useHitSelection from 'components/hooks/useHitSelection';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
-import { useCallback, useContext, useEffect, useMemo, useRef, useState, type FC } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
@@ -49,13 +49,13 @@ import HitRow from './HitRow';
 
 const HitGrid: FC = () => {
   const { t } = useTranslation();
-  const { getIdFromName } = useContext(AnalyticContext);
   const theme = useTheme();
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
   const { onClick } = useHitSelection();
+  const { getMatchingAnalytic } = useMatchers();
 
   const search = useContextSelector(HitSearchContext, ctx => ctx.search);
   const displayType = useContextSelector(HitSearchContext, ctx => ctx.displayType);
@@ -103,12 +103,13 @@ const HitGrid: FC = () => {
   useEffect(() => {
     response?.items.forEach(hit => {
       if (!analyticIds[hit.howler.analytic]) {
-        getIdFromName(hit.howler.analytic).then(_analyticId =>
-          setAnalyticIds(_analyticIds => ({ ..._analyticIds, [hit.howler.analytic]: _analyticId }))
+        getMatchingAnalytic(hit).then(_analytic =>
+          setAnalyticIds(_analyticIds => ({ ..._analyticIds, [hit.howler.analytic]: _analytic.analytic_id }))
         );
       }
     });
-  }, [analyticIds, getIdFromName, response]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analyticIds, response]);
 
   const onMouseMove = useCallback((event: MouseEvent) => {
     event.stopPropagation();
