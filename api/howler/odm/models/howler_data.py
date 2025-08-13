@@ -118,7 +118,8 @@ class Link(odm.Model):
         description=(
             "The icon to show. Either an ID corresponding to an "
             "analytical platform application, or an external link."
-        )
+        ),
+        optional=True,
     )
 
 
