@@ -167,7 +167,7 @@ jobs:
       - name: Coverage Results
         if: steps.tests.outcome == 'success'
         run: |
-          git diff --name-only $BASE_SHA..$HEAD_SHA
+          git diff --name-only $(git merge-base $BASE_SHA $HEAD_SHA)..$HEAD_SHA
           git diff $(git merge-base $BASE_SHA $HEAD_SHA)..$HEAD_SHA > diff.txt
           poetry run coverage_report
         env:
