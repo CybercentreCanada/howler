@@ -32,6 +32,7 @@ from howler.odm import (
     Json,
     Keyword,
     List,
+    Long,
     LowerKeyword,
     Mapping,
     Model,
@@ -490,6 +491,8 @@ def random_data_for_field(field: _Field, name: str, minimal: bool = False) -> _A
         return get_random_iso_date()
     elif isinstance(field, Integer):
         return random.randint(128, 4096)
+    elif isinstance(field, Long):
+        return random.randint(1, 223372036854775807)
     elif isinstance(field, Float):
         return random.randint(12800, 409600) / 100.0
     elif isinstance(field, MD5):
