@@ -49,7 +49,7 @@ const HitActions: FC<{
   const { values, set } = useMyLocalStorageProvider();
   const pluginStore = usePluginStore();
 
-  const {getMatchingAnalytic} = useMatchers();
+  const { getMatchingAnalytic } = useMatchers();
 
   const getCurrentView = useContextSelector(ViewContext, ctx => ctx.getCurrentView);
 

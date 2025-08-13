@@ -48,7 +48,7 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
   const { executeAction } = useMyActionFunctions();
   const { config } = useContext(ApiConfigContext);
   const pluginStore = usePluginStore();
-  const {getMatchingAnalytic} = useMatchers();
+  const { getMatchingAnalytic } = useMatchers();
 
   const [id, setId] = useState<string>(null);
 
@@ -150,7 +150,7 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
     }
 
     getMatchingAnalytic(hit).then(setAnalytic);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hit?.howler.analytic]);
 
   useEffect(() => {

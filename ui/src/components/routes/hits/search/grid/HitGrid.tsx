@@ -108,7 +108,7 @@ const HitGrid: FC = () => {
         );
       }
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analyticIds, response]);
 
   const onMouseMove = useCallback((event: MouseEvent) => {
