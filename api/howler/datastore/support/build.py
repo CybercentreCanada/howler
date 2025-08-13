@@ -15,6 +15,7 @@ from howler.odm import (
     Json,
     Keyword,
     List,
+    Long,
     Mapping,
     Optional,
     Text,
@@ -57,7 +58,7 @@ def build_mapping(field_data, prefix=None, allow_refuse_implicit=True):
                     }
                 )
 
-        elif isinstance(field, (Boolean, Integer, Float, Text)):
+        elif isinstance(field, (Boolean, Integer, Float, Text, Long)):
             mappings[name.strip(".")] = set_mapping(field, {"type": TYPE_MAPPING[field.__class__.__name__]})
 
         elif field.__class__ in ANALYZER_MAPPING:
