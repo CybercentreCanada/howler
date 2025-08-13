@@ -14,7 +14,8 @@ const ApiConfigProvider: FC<PropsWithChildren> = ({ children }) => {
     indexes: null,
     lookups: null,
     configuration: null,
-    c12nDef: null
+    c12nDef: null,
+    mapping: null
   });
 
   const context = useMemo(
