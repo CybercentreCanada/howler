@@ -23,6 +23,7 @@ const RelatedIcon: FC<{ icon?: string; title?: string; href?: string; compact?: 
 
   const app = config.configuration.ui.apps.find(a => a.name.toLowerCase() === icon?.toLowerCase());
   if (app) {
+    // use the image link for the configured related application instead
     icon = app[`img_${isDark ? 'd' : 'l'}`];
   }
 
