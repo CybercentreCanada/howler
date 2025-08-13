@@ -225,6 +225,7 @@ export interface APIC12Ndef {
   UNRESTRICTED: string;
   RESTRICTED: string;
 }
+
 export interface APIMappings {
   mapping: { [index: string]: string };
 }

@@ -2,20 +2,14 @@ import { Typography } from '@mui/material';
 import { EnrichedTypography, useBorealisEnrichSelector, type EnrichedTypographyProps } from 'borealis-ui';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import type { PluginTypographyProps } from 'components/elements/PluginTypography';
-import { memo, useContext, useState, type FC } from 'react';
+import { memo, useContext, type FC } from 'react';
 
 const BorealisTypography: FC<PluginTypographyProps> = ({ children, value, context, ...props }) => {
   const guessType = useBorealisEnrichSelector(ctx => ctx.guessType);
 
-  const [type, setType] = useState<string>('');
-
   const { config } = useContext(ApiConfigContext);
 
-  if (config.configuration?.mapping[value]) {
-    setType(config.configuration?.mapping[value]);
-  } else {
-    setType(guessType(value));
-  }
+  const type = config?.configuration?.mapping?.[value] ?? guessType(value);
 
   if (!type) {
     return <Typography {...props}>{children}</Typography>;
