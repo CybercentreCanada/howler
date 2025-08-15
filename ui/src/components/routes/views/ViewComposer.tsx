@@ -96,7 +96,14 @@ const ViewComposer: FC = () => {
 
         navigate(`/views/${newView.view_id}`);
       } else {
-        await editView(routeParams.id, title, query, sort || null, span || null, advanceOnTriage);
+        await editView(routeParams.id, {
+          title,
+          type,
+          query,
+          sort,
+          span,
+          settings: { advance_on_triage: advanceOnTriage }
+        });
       }
 
       showSuccessMessage(t(routeParams.id ? 'route.views.update.success' : 'route.views.create.success'));
