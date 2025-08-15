@@ -1,5 +1,5 @@
 # Base image
-FROM node:latest
+FROM node:alpine
 
 # Creating howler-ui user (and using gid and uid 1001, since gid and uid 1000 are used by the node:node user in the base node image)
 RUN groupadd -g 1001 howler-ui && useradd -u 1001 -g howler-ui -s /bin/sh howler-ui
