@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react/dist/iconify.js';
 import { Skeleton } from '@mui/material';
 import Handlebars from 'handlebars';
 import { isEmpty } from 'lodash-es';
@@ -48,11 +47,7 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false }) => {
   }, [flatHit, pivot]);
 
   if (href) {
-    return (
-      <RelatedLink title={pivot.label[i18n.language]} href={href} compact={compact}>
-        <Icon fontSize="1.5rem" icon={pivot.icon} />
-      </RelatedLink>
-    );
+    return <RelatedLink title={pivot.label[i18n.language]} href={href} compact={compact} icon={pivot.icon} />;
   }
 
   try {
