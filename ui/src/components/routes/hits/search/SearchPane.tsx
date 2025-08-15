@@ -69,7 +69,7 @@ const Item: FC<{
   return (
     <Box
       id={hit.howler.id}
-      onMouseUp={e => checkMiddleClick(e, hit.howler.id)}
+      onAuxClick={e => checkMiddleClick(e, hit.howler.id)}
       onClick={ev => onClick(ev, hit)}
       sx={[
         {

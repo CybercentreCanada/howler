@@ -226,7 +226,15 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
           sx={{ alignSelf: 'start', '& a': { color: 'text.primary' } }}
         >
           {analyticId ? (
-            <Link to={`/analytics/${analyticId}`} onClick={e => e.stopPropagation()}>
+            <Link
+              to={`/analytics/${analyticId}`}
+              onAuxClick={e => {
+                e.stopPropagation();
+              }}
+              onClick={e => {
+                e.stopPropagation();
+              }}
+            >
               {hit.howler.analytic}
             </Link>
           ) : (
