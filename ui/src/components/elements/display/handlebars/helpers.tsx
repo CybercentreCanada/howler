@@ -9,6 +9,7 @@ import { capitalize, get, groupBy, isObject } from 'lodash-es';
 import howlerPluginStore from 'plugins/store';
 import { useMemo, type ReactElement } from 'react';
 import { usePluginStore } from 'react-pluggable';
+import ActionButton from '../ActionButton';
 import JSONViewer from '../json/JSONViewer';
 
 export interface HowlerHelper {
@@ -190,6 +191,20 @@ export const useHelpers = (): HowlerHelper[] => {
               </Table>
             </Paper>
           );
+        }
+      },
+
+      {
+        keyword: 'action',
+        documentation:
+          'Execute a howler action given a specific action ID (from the URL when viewing the action, i.e. yaIKVqiKhWpyCsWdqsE4D)',
+        componentCallback: (actionId: string, hitId: string, context) => {
+          if (!actionId || !hitId) {
+            console.warn('Missing parameters for the action button.');
+            return null;
+          }
+
+          return <ActionButton actionId={actionId} hitId={hitId} {...(context.hash ?? {})} />;
         }
       },
 
