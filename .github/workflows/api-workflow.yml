@@ -193,6 +193,56 @@ jobs:
         if: steps.tests.outcome == 'failure'
         run: |
           exit 1
+
+  test_docker_build:
+    if: github.event_name == 'pull_request'
+
+    runs-on: ubuntu-latest
+
+    name: Test Howler API Docker Image Build
+
+    needs:
+      - formatting
+      - test
+
+    defaults:
+      run:
+        working-directory: ./api
+
+    steps:
+      - name: Checkout current ref
+        uses: actions/checkout@v4
+      - name: Install Poetry
+        uses: abatilo/actions-poetry@v4
+      - uses: actions/cache@v3
+        name: Define a cache for the virtual environment based on the dependencies lock file
+        with:
+          path: ./api/.venv
+          key: venv-${{ hashFiles('api/poetry.lock') }}
+      - name: Install Dependencies and Build
+        run: |
+          poetry install
+          poetry build
+      - name: Extract Howler API version
+        id: version
+        run: |
+          echo "version=$(poetry version -s)" >> $GITHUB_OUTPUT
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Test build API Docker image (no push)
+        uses: docker/build-push-action@v3
+        with:
+          context: api
+          file: api/docker/Dockerfile
+          push: false
+          tags: howler-api:test
+          build-args: |
+            version=${{ steps.version.outputs.version }}
+            branch=${{ github.ref }}
+            commit=${{ github.sha }}
+
   push_to_pypi:
     if: github.event_name != 'pull_request'
 
