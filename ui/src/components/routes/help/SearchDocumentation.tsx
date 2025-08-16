@@ -234,6 +234,57 @@ const SearchDocumentation: FC = () => {
             </div>
           </Paragraph>
 
+          <Paragraph id="fileds.compare">
+            <Typography variant="h5">Text vs Keywords</Typography>
+            <>Keywords vs Text</>
+            <Typography variant="subtitle2" className="padded">
+              The keyword family includes the following field types:
+            </Typography>
+            <ul className="multipleEx">
+              <li>
+                <Card variant="outlined" className="pre">
+                  keyword
+                </Card>
+                Used for structured content such as IDs, email addresses, hostnames, status codes, zip codes, or tags.
+              </li>
+              <li>
+                <Card variant="outlined" className="pre">
+                  constant_keyword
+                </Card>
+                For keyword fields that always contain the same value.
+              </li>
+              <li>
+                <Card variant="outlined" className="pre">
+                  wildcard
+                </Card>
+                For unstructured machine-generated content. The wildcard type is optimized for fields with large values
+                or high cardinality.
+              </li>
+            </ul>
+
+            <Typography variant="subtitle2" className="padded">
+              The Text family includes the following field types:
+            </Typography>
+            <ul className="multipleEx">
+              <li>
+                <Card variant="outlined" className="pre">
+                  text
+                </Card>
+                Traditional field type for full-text content such as the body of an email or the description of a
+                product.
+              </li>
+              <li>
+                <Card variant="outlined" className="pre">
+                  match_only_text
+                </Card>
+                A space-optimized variant of text that disables scoring and performs slower on queries that need
+                positions. It is best suited for indexing log messages.
+              </li>
+            </ul>
+
+            <div></div>
+          </Paragraph>
+
           <Paragraph id="fields.legend">
             <Typography variant="h6">{t('fields.legend')}</Typography>
             <>{t('fields.legend.text')}</>
