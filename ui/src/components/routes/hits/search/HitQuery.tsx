@@ -6,6 +6,7 @@ import TuiIconButton from 'components/elements/addons/buttons/CustomIconButton';
 import QueryEditor from 'components/routes/advanced/QueryEditor';
 import type { IDisposable, editor } from 'monaco-editor';
 
+import ClearIcon from '@mui/icons-material/Clear';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import type { FC } from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -202,6 +203,19 @@ const HitQuery: FC<HitQueryProps> = ({
           <History />
         </Tooltip>
       )}
+      <TuiIconButton
+        disabled={searching || disabled}
+        onClick={() => setQuery('')}
+        sx={{ ml: 1, alignSelf: 'start', flexShrink: 0 }}
+        size={compact ? 'small' : 'medium'}
+      >
+        <Tooltip title={t('route.search')}>
+          <Badge invisible={!isDirty} color="warning" variant="dot">
+            <ClearIcon sx={{ fontSize: '20px' }} />
+          </Badge>
+        </Tooltip>
+      </TuiIconButton>
+
       <TuiIconButton
         disabled={searching || disabled}
         onClick={search}
