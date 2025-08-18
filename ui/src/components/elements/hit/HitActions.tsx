@@ -14,7 +14,7 @@ import {
   Switch,
   useMediaQuery
 } from '@mui/material';
-import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
+import useMatchers from 'components/app/hooks/useMatchers';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { HitContext } from 'components/app/providers/HitProvider';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
@@ -49,7 +49,7 @@ const HitActions: FC<{
   const { values, set } = useMyLocalStorageProvider();
   const pluginStore = usePluginStore();
 
-  const { getAnalyticFromName } = useContext(AnalyticContext);
+  const { getMatchingAnalytic } = useMatchers();
 
   const getCurrentView = useContextSelector(ViewContext, ctx => ctx.getCurrentView);
 
@@ -166,11 +166,9 @@ const HitActions: FC<{
   }, [keyboardDownHandler]);
 
   useEffect(() => {
-    (async () => {
-      setAnalytic(await getAnalyticFromName(hit.howler.analytic));
-    })();
+    getMatchingAnalytic(hit).then(setAnalytic);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hit.howler.analytic]);
+  }, [hit?.howler.analytic]);
 
   const handleOpenSetting = useCallback((e: React.MouseEvent<HTMLElement>) => setOpenSetting(e.currentTarget), []);
   const handleCloseSetting = useCallback(() => setOpenSetting(null), []);

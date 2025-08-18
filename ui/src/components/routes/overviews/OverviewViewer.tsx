@@ -23,7 +23,6 @@ import { Check, DarkMode, Delete, SsidChart, WbSunny } from '@mui/icons-material
 import { useApp } from 'commons/components/app/hooks';
 import AppInfoPanel from 'commons/components/display/AppInfoPanel';
 import useThemeBuilder from 'commons/components/utils/hooks/useThemeBuilder';
-import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
 import { OverviewContext } from 'components/app/providers/OverviewProvider';
 import HitOverview from 'components/elements/hit/HitOverview';
 import useMyApi from 'components/hooks/useMyApi';
@@ -61,8 +60,6 @@ const OverviewViewer = () => {
   const [exampleHit, setExampleHit] = useState<Hit>(null);
   const [x, setX] = useState(0);
 
-  const analyticContext = useContext(AnalyticContext);
-
   const wrapper = useRef<HTMLDivElement>();
 
   const startingTemplate = useStartingTemplate();
@@ -96,20 +93,17 @@ const OverviewViewer = () => {
   }, [analytic, dispatchApi]);
 
   useEffect(() => {
-    if (analytic) {
-      setLoading(true);
+    if (analytic && analytics) {
+      const _detections =
+        analytics.find(_analytic => _analytic.name.toLowerCase() === analytic.toLowerCase())?.detections ?? [];
 
-      analyticContext
-        .getAnalyticFromName(analytic)
-        .then(foundAnalytic => {
-          setDetections(foundAnalytic.detections);
-        })
-        .catch(() => {
-          setDetection('ANY');
-        })
-        .finally(() => setLoading(false));
+      setDetections(_detections);
+
+      if (detection && !_detections.map(_detection => _detection.toLowerCase()).includes(detection.toLowerCase())) {
+        setDetection('ANY');
+      }
     }
-  }, [analytic, analyticContext, detection, dispatchApi, params, setParams]);
+  }, [analytic, analytics, detection]);
 
   useEffect(() => {
     (async () => {

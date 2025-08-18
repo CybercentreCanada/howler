@@ -10,7 +10,7 @@ import {
 } from '@mui/icons-material';
 import { Box, Divider, Fade, ListItemIcon, ListItemText, Menu, MenuItem, MenuList, Paper } from '@mui/material';
 import api from 'api';
-import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
+import useMatchers from 'components/app/hooks/useMatchers';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { HitContext } from 'components/app/providers/HitProvider';
 import { TOP_ROW, VOTE_OPTIONS, type ActionButton } from 'components/elements/hit/actions/SharedComponents';
@@ -44,11 +44,11 @@ const ICON_MAP = {
 
 const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, getSelectedId, Component = Box }) => {
   const { t } = useTranslation();
-  const analyticContext = useContext(AnalyticContext);
   const { dispatchApi } = useMyApi();
   const { executeAction } = useMyActionFunctions();
   const { config } = useContext(ApiConfigContext);
   const pluginStore = usePluginStore();
+  const { getMatchingAnalytic } = useMatchers();
 
   const [id, setId] = useState<string>(null);
 
@@ -145,14 +145,13 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
   }, [analytic, assess, availableTransitions, canAssess, canVote, config.lookups, vote, pluginActions]);
 
   useEffect(() => {
-    if (!hit) {
+    if (!hit?.howler.analytic) {
       return;
     }
 
-    (async () => {
-      setAnalytic(await analyticContext.getAnalyticFromName(hit.howler.analytic));
-    })();
-  }, [analyticContext, hit]);
+    getMatchingAnalytic(hit).then(setAnalytic);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hit?.howler.analytic]);
 
   useEffect(() => {
     if (!anchorEl) {

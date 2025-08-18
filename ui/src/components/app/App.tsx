@@ -63,7 +63,6 @@ import { createBrowserRouter, Outlet, RouterProvider, useLocation, useNavigate }
 import { StorageKey } from 'utils/constants';
 import useMySearch from '../hooks/useMySearch';
 import AppContainer from './AppContainer';
-import AnalyticProvider from './providers/AnalyticProvider';
 import ApiConfigProvider, { ApiConfigContext } from './providers/ApiConfigProvider';
 import AvatarProvider from './providers/AvatarProvider';
 import CustomPluginProvider from './providers/CustomPluginProvider';
@@ -174,11 +173,9 @@ const MyAppProvider: FC<PropsWithChildren> = ({ children }) => {
                         <SocketProvider>
                           <HitProvider>
                             <OverviewProvider>
-                              <AnalyticProvider>
-                                <FavouriteProvider>
-                                  <UserListProvider>{children}</UserListProvider>
-                                </FavouriteProvider>
-                              </AnalyticProvider>
+                              <FavouriteProvider>
+                                <UserListProvider>{children}</UserListProvider>
+                              </FavouriteProvider>
                             </OverviewProvider>
                           </HitProvider>
                         </SocketProvider>

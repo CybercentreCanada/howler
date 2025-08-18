@@ -150,6 +150,7 @@
   "scripts": {
     "build": "tsc && vite build",
     "dev": "vite -l info",
+    "lint": "prettier -w --config .prettierrc src",
     "preinstall": "npx only-allow pnpm",
     "serve": "vite preview",
     "start": "vite -l info",

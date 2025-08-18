@@ -59,10 +59,27 @@ const useMatchers = () => {
     [getHit]
   );
 
+  const getMatchingAnalytic = useCallback(
+    async (hit: WithMetadata<Hit>) => {
+      if (!hit) {
+        return null;
+      }
+
+      if (has(hit, '__analytic')) {
+        return hit.__analytic;
+      }
+
+      // This is a fallback in case metadata is not included.
+      return (await getHit(hit.howler.id, true)).__analytic;
+    },
+    [getHit]
+  );
+
   return {
     getMatchingDossiers,
     getMatchingOverview,
-    getMatchingTemplate
+    getMatchingTemplate,
+    getMatchingAnalytic
   };
 };
 
