@@ -83,6 +83,7 @@ const TOC_CONFIGS: AppTocItem[] = [
     id: 'fields',
     subItems: [{ id: 'fields.legend' }, { id: 'fields.idx_hit' }, { id: 'fields.idx_user', is_admin: true }]
   },
+  { id: 'text vs keywords' },
   { id: 'wildcard' },
   {
     id: 'regex',
@@ -234,7 +235,7 @@ const SearchDocumentation: FC = () => {
             </div>
           </Paragraph>
 
-          <Paragraph id="fileds.compare">
+          <Paragraph id="text vs keywords">
             <Typography variant="h5">Text vs Keywords</Typography>
             <>Keywords vs Text</>
             <Typography variant="subtitle2" className="padded">
