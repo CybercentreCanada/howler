@@ -48,7 +48,7 @@ def get_matching_analytics(hits: Union[list[Hit], list[dict[str, Any]]]) -> list
     """
     storage = datastore()
 
-    analytic_names: set[str] = []
+    analytic_names: set[str] = set()
     for hit in hits:
         analytic_names.add(f'"{sanitize_lucene_query(hit["howler"]["analytic"])}"')
 
