@@ -42,9 +42,9 @@ def get_matching_analytics(hits: Union[list[Hit], list[dict[str, Any]]]) -> list
     "Get a list of matching analytics for the given list of hits"
     storage = datastore()
 
-    analytic_names: list[str] = []
+    analytic_names: set[str] = []
     for hit in hits:
-        analytic_names.append(f'"{sanitize_lucene_query(hit["howler"]["analytic"])}"')
+        analytic_names.add(f'"{sanitize_lucene_query(hit["howler"]["analytic"])}"')
 
     existing_analytics: list[Analytic] = storage.analytic.search(f'name:({" OR ".join(analytic_names)})', as_obj=True)[
         "items"
