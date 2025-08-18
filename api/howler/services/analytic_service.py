@@ -39,7 +39,13 @@ def update_analytic(
 
 
 def get_matching_analytics(hits: Union[list[Hit], list[dict[str, Any]]]) -> list[Analytic]:
-    "Get a list of matching analytics for the given list of hits"
+    """Get a list of matching analytics for the given list of hits.
+
+    Args:
+        hits (Union[list[Hit], list[dict[str, Any]]]): A list of Hit objects or dictionaries representing hits.
+    Returns:
+        list[Analytic]: A list of Analytic objects that match the analytics referenced in the hits.
+    """
     storage = datastore()
 
     analytic_names: set[str] = []
