@@ -209,7 +209,7 @@ const HitQuery: FC<HitQueryProps> = ({
         sx={{ ml: 1, alignSelf: 'start', flexShrink: 0 }}
         size={compact ? 'small' : 'medium'}
       >
-        <Tooltip title={t('route.search')}>
+        <Tooltip title={t('route.clear')}>
           <Badge invisible={!isDirty} color="warning" variant="dot">
             <ClearIcon sx={{ fontSize: '20px' }} />
           </Badge>
