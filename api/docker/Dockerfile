@@ -1,10 +1,10 @@
-FROM python:3.12-slim-bookworm AS base
+FROM python:3.12-alpine AS base
 
 # Make sure root account is locked so 'su' commands fail all the time
 RUN passwd -l root
 
 # Add howler user
-RUN useradd -b /var/lib -U -m howler
+RUN addgroup -S howler && adduser -S -G howler -h /var/lib/howler howler
 
 # Must pass the branch and commit as parameter
 ARG branch
@@ -43,14 +43,14 @@ RUN chmod 770 /var/log/howler
 RUN chown howler:howler /var/log/howler
 
 # Install common dependancies
-RUN apt-get update && apt-get install -yy libsasl2-2 zip vim nano && rm -rf /var/lib/apt/lists/*
+RUN apk update && apk add --no-cache libsasl cyrus-sasl-dev zip vim nano && rm -rf /var/cache/apk/*
 
 # Create a temporary image to compile dependencies
 FROM base AS builder
 ARG version=*
 
-# Get required apt packages
-RUN apt-get update && apt-get install -yy build-essential && rm -rf /var/lib/apt/lists/*
+# Get required apk packages
+RUN apk update && apk add --no-cache build-base gcc musl-dev libffi-dev openssl-dev && rm -rf /var/cache/apk/*
 
 # Upgrade pip
 RUN pip install --no-cache-dir --no-warn-script-location --upgrade pip && rm -rf ~/.cache/pip
