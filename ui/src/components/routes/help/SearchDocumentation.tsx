@@ -261,7 +261,25 @@ const SearchDocumentation: FC = () => {
                 For unstructured machine-generated content. The wildcard type is optimized for fields with large values
                 or high cardinality.
               </li>
+              <li>
+                The keyword field is best for structured content such as email addresses, hostnames, status codes, or
+                tags.
+              </li>
+              <li>
+                When defining a keyword field and making a search query on the field, you have to insert the whole value
+                so it gives an exact match.
+              </li>
             </ul>
+
+            <Typography variant="subtitle2" className="padded">
+              For more information regarding the Keyword field please checkout the official Elasticsearch documentation:{' '}
+              <a
+                href="https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/keyword"
+                style={{ color: 'info', textDecoration: 'underline' }}
+              >
+                https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/keyword
+              </a>
+            </Typography>
 
             <Typography variant="subtitle2" className="padded">
               The Text family includes the following field types:
@@ -281,7 +299,32 @@ const SearchDocumentation: FC = () => {
                 A space-optimized variant of text that disables scoring and performs slower on queries that need
                 positions. It is best suited for indexing log messages.
               </li>
+              <li>The text fields are best suited for unstructured but human-readable content.</li>
+              <li>
+                When defining a text field and making a search query on the field, it is analyzed and you can search
+                using tokens from the field value.
+              </li>
             </ul>
+
+            <Typography variant="subtitle2" className="padded">
+              For more information regarding the Text field please checkout the official Elasticsearch documentation:{' '}
+              <a
+                href="https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/text"
+                style={{ color: 'info', textDecoration: 'underline' }}
+              >
+                https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/text
+              </a>
+            </Typography>
+
+            <Typography variant="subtitle2" className="padded">
+              To get a full list of the different use cases for both Keyword and Text fields, please checkout:{' '}
+              <a
+                href="https://www.elastic.co/blog/strings-are-dead-long-live-strings"
+                style={{ color: 'info', textDecoration: 'underline' }}
+              >
+                https://www.elastic.co/blog/strings-are-dead-long-live-strings
+              </a>
+            </Typography>
 
             <div></div>
           </Paragraph>
