@@ -205,14 +205,12 @@ const HitQuery: FC<HitQueryProps> = ({
       )}
       <TuiIconButton
         disabled={searching || disabled}
-        onClick={() => setQuery('')}
+        onClick={() => setQuery('howler.id:*')}
         sx={{ ml: 1, alignSelf: 'start', flexShrink: 0 }}
         size={compact ? 'small' : 'medium'}
       >
         <Tooltip title={t('route.clear')}>
-          <Badge invisible={!isDirty} color="warning" variant="dot">
-            <ClearIcon sx={{ fontSize: '20px' }} />
-          </Badge>
+          <ClearIcon sx={{ fontSize: '20px' }} />
         </Tooltip>
       </TuiIconButton>
 
