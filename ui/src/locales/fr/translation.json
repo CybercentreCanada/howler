@@ -639,6 +639,7 @@
   "route.home": "Tableau de bord utilisateur",
 
   "route.history": "Mode historique : Voir toutes les requêtes précédentes",
+  "route.clear": "Effacer la requête",
   "route.help.hit.banner": "Documentation sur en-tête de hit",
   "route.login.button.oauth": "Se connecter avec",
 

@@ -641,6 +641,7 @@
   "route.login.button.oauth": "Sign in with",
 
   "route.search": "Search",
+  "route.clear": "Clear query",
   "route.history": "History mode: See all previous queries",
 
   "route.templates": "Templates",
