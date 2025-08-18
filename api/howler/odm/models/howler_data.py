@@ -161,10 +161,10 @@ class Log(odm.Model):
 
 @odm.model(index=True, store=True, description="Hit outline header.")
 class Header(odm.Model):
-    threat: Optional[str] = odm.Optional(odm.Text(description="The IP of the threat."))
-    target: Optional[str] = odm.Optional(odm.Text(description="The target of the hit."))
-    indicators: list[str] = odm.List(odm.Text(description="Indicators of the hit."), default=[])
-    summary: Optional[str] = odm.Optional(odm.Text(description="Summary of the hit."))
+    threat: Optional[str] = odm.Optional(odm.Keyword(description="The IP of the threat."))
+    target: Optional[str] = odm.Optional(odm.Keyword(description="The target of the hit."))
+    indicators: list[str] = odm.List(odm.Keyword(description="Indicators of the hit."), default=[])
+    summary: Optional[str] = odm.Optional(odm.Keyword(description="Summary of the hit."))
 
 
 @odm.model(index=True, store=True, description="Fields describing the location where this alert has been retained.")
@@ -176,15 +176,15 @@ class Incident(odm.Model):
 
 @odm.model(index=True, store=True, description="Labels for the hit")
 class Label(odm.Model):
-    assignments = odm.List(odm.Text(description="List of assignments for the hit."), default=[])
-    generic = odm.List(odm.Text(description="List of generic labels for the hit."), default=[])
-    insight = odm.List(odm.Text(description="List of insight labels for the hit."), default=[])
-    mitigation = odm.List(odm.Text(description="List of mitigation labels for the hit."), default=[])
-    victim = odm.List(odm.Text(description="List of victim labels for the hit."), default=[])
-    campaign = odm.List(odm.Text(description="List of campaign labels for the hit."), default=[])
-    threat = odm.List(odm.Text(description="List of threat labels for the hit."), default=[])
-    tuning = odm.List(odm.Text(description="List of tuning labels for the hit."), default=[])
-    operation = odm.List(odm.Text(description="List of operation labels for the hit."), default=[])
+    assignments = odm.List(odm.Keyword(description="List of assignments for the hit."), default=[])
+    generic = odm.List(odm.Keyword(description="List of generic labels for the hit."), default=[])
+    insight = odm.List(odm.Keyword(description="List of insight labels for the hit."), default=[])
+    mitigation = odm.List(odm.Keyword(description="List of mitigation labels for the hit."), default=[])
+    victim = odm.List(odm.Keyword(description="List of victim labels for the hit."), default=[])
+    campaign = odm.List(odm.Keyword(description="List of campaign labels for the hit."), default=[])
+    threat = odm.List(odm.Keyword(description="List of threat labels for the hit."), default=[])
+    tuning = odm.List(odm.Keyword(description="List of tuning labels for the hit."), default=[])
+    operation = odm.List(odm.Keyword(description="List of operation labels for the hit."), default=[])
 
 
 @odm.model(index=True, store=True, description="Votes for the hit")

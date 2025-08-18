@@ -207,6 +207,7 @@ class ESCollection(Generic[ModelType]):
         "script_fields": [],
     }
     IGNORE_ENSURE_COLLECTION = False
+    ENSURE_COLLECTION_WARNED = False
 
     def __init__(self, datastore: ESStore, name, model_class=None, validate=True, max_attempts=10):
         self.replicas = int(
@@ -227,9 +228,10 @@ class ESCollection(Generic[ModelType]):
 
         if not ESCollection.IGNORE_ENSURE_COLLECTION:
             self._ensure_collection()
-        elif "pytest" not in sys.modules:
+        elif "pytest" not in sys.modules and not ESCollection.ENSURE_COLLECTION_WARNED:
             logger.warning("Skipping ensure collection! This is dangerous. Waiting five seconds before continuing.")
             time.sleep(5)
+            ESCollection.ENSURE_COLLECTION_WARNED = True
 
         self.stored_fields = {}
         if model_class:

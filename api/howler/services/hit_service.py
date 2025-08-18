@@ -821,7 +821,7 @@ def __match_metadata(candidates: list[dict[str, Any]], hit: dict[str, Any]) -> O
     return sorted(matching_candidates, key=functools.cmp_to_key(__compare_metadata))[0]
 
 
-def augment_metadata(data: list[dict[str, Any]] | dict[str, Any], metadata: list[str], user: dict[str, Any]):
+def augment_metadata(data: Union[list[dict[str, Any]], dict[str, Any]], metadata: list[str], user: dict[str, Any]):
     """Augment hit search results with additional metadata.
 
     This function enriches hit data by adding related information such as templates,
