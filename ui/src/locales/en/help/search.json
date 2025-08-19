@@ -45,7 +45,6 @@
   "fields.textvskeywords.matchonlytext.description": "A space-optimized variant of text that disables scoring and performs slower on queries that need positions. It is best suited for indexing log messages.",
   "fields.textvskeywords.text.more.info": "For more information regarding the Text field please checkout the official Elasticsearch documentation:",
   "fields.textvskeywords.text.keyword.compare": "To get a full list of the different use cases for both Keyword and Text fields, please checkout:",
-
   "fields.legend": "Legend",
   "fields.legend.default": "Queried when no fields are specified",
   "fields.legend.ip_field": "Can be queried using CIDR notation",
