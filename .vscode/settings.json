@@ -91,5 +91,6 @@
   "eslint.workingDirectories": [
     { "directory": "./ui", "changeProcessCWD": true }
   ],
-  "flake8.args": ["--max-line-length=120"]
+  "flake8.args": ["--max-line-length=120"],
+  "prettier.configPath": "ui/.prettierrc"
 }
