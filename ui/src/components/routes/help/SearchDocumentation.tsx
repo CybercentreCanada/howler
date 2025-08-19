@@ -236,91 +236,78 @@ const SearchDocumentation: FC = () => {
           </Paragraph>
 
           <Paragraph id="text vs keywords">
-            <Typography variant="h5">Text vs Keywords</Typography>
-            <>Keywords vs Text</>
+            <Typography variant="h5">{t('fields.textvskeywords')}</Typography>
+            <>{t('fields.textvskeywords.description')}</>
             <Typography variant="subtitle2" className="padded">
-              The keyword family includes the following field types:
+              {t('fields.textvskeywords.keywordfamily')}
             </Typography>
             <ul className="multipleEx">
               <li>
                 <Card variant="outlined" className="pre">
-                  keyword
+                  {t('fields.textvskeywords.wildcard')}
                 </Card>
-                Used for structured content such as IDs, email addresses, hostnames, status codes, zip codes, or tags.
+                {t('fields.textvskeywords.wildcard.description')}
               </li>
               <li>
                 <Card variant="outlined" className="pre">
-                  constant_keyword
+                  {t('fields.textvskeywords.keyword')}
                 </Card>
-                For keyword fields that always contain the same value.
+                {t('fields.textvskeywords.keyword.description')}
               </li>
               <li>
                 <Card variant="outlined" className="pre">
-                  wildcard
+                  {t('fields.textvskeywords.constantkeyword')}
                 </Card>
-                For unstructured machine-generated content. The wildcard type is optimized for fields with large values
-                or high cardinality.
-              </li>
-              <li>
-                The keyword field is best for structured content such as email addresses, hostnames, status codes, or
-                tags.
-              </li>
-              <li>
-                When defining a keyword field and making a search query on the field, you have to insert the whole value
-                so it gives an exact match.
+                {t('fields.textvskeywords.constantkeyword.description')}
               </li>
             </ul>
 
             <Typography variant="subtitle2" className="padded">
-              For more information regarding the Keyword field please checkout the official Elasticsearch documentation:{' '}
+              {t('fields.textvskeywords.keyword.more.info')}{' '}
               <a
                 href="https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/keyword"
                 style={{ color: 'info', textDecoration: 'underline' }}
+                // eslint-disable-next-line react/jsx-no-literals
               >
                 https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/keyword
               </a>
             </Typography>
 
             <Typography variant="subtitle2" className="padded">
-              The Text family includes the following field types:
+              {t('fields.textvskeywords.textfamily')}
             </Typography>
             <ul className="multipleEx">
               <li>
                 <Card variant="outlined" className="pre">
-                  text
+                  {t('fields.textvskeywords.text')}
                 </Card>
-                Traditional field type for full-text content such as the body of an email or the description of a
-                product.
+                {t('fields.textvskeywords.text.description')}
               </li>
               <li>
                 <Card variant="outlined" className="pre">
-                  match_only_text
+                  {t('fields.textvskeywords.matchonlytext')}
                 </Card>
-                A space-optimized variant of text that disables scoring and performs slower on queries that need
-                positions. It is best suited for indexing log messages.
-              </li>
-              <li>The text fields are best suited for unstructured but human-readable content.</li>
-              <li>
-                When defining a text field and making a search query on the field, it is analyzed and you can search
-                using tokens from the field value.
+                {t('fields.textvskeywords.matchonlytext.description')}
               </li>
             </ul>
 
             <Typography variant="subtitle2" className="padded">
-              For more information regarding the Text field please checkout the official Elasticsearch documentation:{' '}
+              {t('fields.textvskeywords.text.more.info')}{' '}
               <a
                 href="https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/text"
                 style={{ color: 'info', textDecoration: 'underline' }}
+                // eslint-disable-next-line react/jsx-no-literals
               >
                 https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/text
               </a>
             </Typography>
 
             <Typography variant="subtitle2" className="padded">
-              To get a full list of the different use cases for both Keyword and Text fields, please checkout:{' '}
+              {t('fields.textvskeywords.text.keyword.compare')}{' '}
               <a
                 href="https://www.elastic.co/blog/strings-are-dead-long-live-strings"
                 style={{ color: 'info', textDecoration: 'underline' }}
+                // eslint-disable-next-line react/jsx-no-literals
               >
                 https://www.elastic.co/blog/strings-are-dead-long-live-strings
               </a>
