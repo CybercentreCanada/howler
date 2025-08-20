@@ -1,5 +1,5 @@
 import { Clear, Code, Comment, DataObject, History, LinkSharp, OpenInNew, QueryStats } from '@mui/icons-material';
-import { Badge, Box, Divider, Skeleton, Stack, Tab, Tabs, Tooltip, useTheme } from '@mui/material';
+import { Badge, Box, Divider, IconButton, Skeleton, Stack, Tab, Tabs, Tooltip, useTheme } from '@mui/material';
 import TuiIconButton from 'components/elements/addons/buttons/CustomIconButton';
 
 import { Icon } from '@iconify/react/dist/iconify.js';
@@ -11,6 +11,7 @@ import FlexOne from 'components/elements/addons/layout/FlexOne';
 import VSBox from 'components/elements/addons/layout/vsbox/VSBox';
 import VSBoxContent from 'components/elements/addons/layout/vsbox/VSBoxContent';
 import VSBoxHeader from 'components/elements/addons/layout/vsbox/VSBoxHeader';
+import Phrase from 'components/elements/addons/search/phrase/Phrase';
 import BundleButton from 'components/elements/display/icons/BundleButton';
 import SocketBadge from 'components/elements/display/icons/SocketBadge';
 import JSONViewer from 'components/elements/display/json/JSONViewer';
@@ -61,6 +62,7 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
   const [tab, setTab] = useState<string>('overview');
   const [loading, setLoading] = useState<boolean>(false);
   const [dossiers, setDossiers] = useState<Dossier[]>([]);
+  const [filter, setFilter] = useState('');
 
   const users = useMyUserList(userIds);
 
@@ -147,9 +149,14 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
       overview: () => <HitOverview hit={hit} />,
       details: () => <HitDetails hit={hit} />,
       hit_comments: () => <HitComments hit={hit} users={users} />,
-      hit_raw: () => <JSONViewer data={!loading && hit} />,
+      hit_raw: () => <JSONViewer data={!loading && hit} hideSearch filter={filter} />,
       hit_data: () => (
-        <JSONViewer data={!loading && hit?.howler?.data?.map(entry => tryParse(entry))} collapse={false} />
+        <JSONViewer
+          data={!loading && hit?.howler?.data?.map(entry => tryParse(entry))}
+          collapse={false}
+          hideSearch
+          filter={filter}
+        />
       ),
       hit_worklog: () => <HitWorklog hit={!loading && hit} users={users} />,
       hit_aggregate: () => <HitSummary query={`howler.bundles:(${hit?.howler?.id})`} />,
@@ -166,7 +173,17 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
         )
       )
     }[tab]?.();
-  }, [dossiers, hit, loading, tab, users]);
+  }, [dossiers, filter, hit, loading, tab, users]);
+
+  const hasError = useMemo(() => {
+    try {
+      new RegExp(filter);
+
+      return false;
+    } catch (e) {
+      return true;
+    }
+  }, [filter]);
 
   return (
     <VSBox top={10} sx={{ height: '100%', flex: 1 }}>
@@ -367,6 +384,21 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
               onClick={() => setTab('hit_related')}
             />
           </Tabs>
+          {['hit_raw', 'hit_data'].includes(tab) && (
+            <Phrase
+              sx={{ mt: 1, pr: 1 }}
+              value={filter}
+              onChange={setFilter}
+              error={hasError}
+              label={t('json.viewer.search.label')}
+              placeholder={t('json.viewer.search.prompt')}
+              endAdornment={
+                <IconButton onClick={() => setFilter('')}>
+                  <Clear />
+                </IconButton>
+              }
+            />
+          )}
         </VSBoxHeader>
         <ErrorBoundary>
           <VSBoxContent mr={-1} ml={-1} height="100%">
