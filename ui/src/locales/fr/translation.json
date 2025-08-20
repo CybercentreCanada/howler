@@ -511,7 +511,7 @@
   "route.advanced.query.yaml": "Règle Sigma",
   "route.advanced.query.yaml.description": "Sigma est un format de signature générique et ouvert qui vous permet de décrire des événements de journal pertinents de manière directe. Le format de règle est très flexible, facile à écrire et applicable à tout type de fichier journal.",
   "route.advanced.result.title": "Recherche avancée de howler",
-  "route.advanced.result.description": "Excecutez une requête pour afficher les résultats ici.",
+  "route.advanced.result.description": "Exécutez une requête pour afficher les résultats ici.",
   "route.advanced.rule.type": "Type de règle",
   "route.advanced.pivot.field": "Champ à regrouper par",
   "route.advanced.query.type": "Type de requête",
