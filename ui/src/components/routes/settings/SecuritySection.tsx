@@ -2,8 +2,8 @@ import { Add } from '@mui/icons-material';
 import { Chip, Grid, IconButton, TableCell, TableRow } from '@mui/material';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import useMyLocalStorage from 'components/hooks/useMyLocalStorage';
+import dayjs from 'dayjs';
 import type { HowlerUser } from 'models/entities/HowlerUser';
-import moment from 'moment';
 import howlerPluginStore from 'plugins/store';
 import type { FC } from 'react';
 import { useContext, useMemo } from 'react';
@@ -58,7 +58,7 @@ const SecuritySection: FC<{
                         ? ` (${apiKey[1].map(permission => t(APIKEY_LABELS[permission])).join(', ')})`
                         : '')
                     }
-                    style={{ backgroundColor: moment.utc(apiKey[2]).isBefore(moment().utc()) ? 'orange' : 'default' }}
+                    style={{ backgroundColor: dayjs.utc(apiKey[2]).isBefore(dayjs().utc()) ? 'orange' : 'default' }}
                     onDelete={removeApiKey ? () => removeApiKey(apiKey) : null}
                   />
                 </Grid>

@@ -1,6 +1,6 @@
 import { Skeleton } from '@mui/material';
 import api from 'api';
-import 'chartjs-adapter-moment';
+import 'chartjs-adapter-dayjs';
 import useMyChart from 'components/hooks/useMyChart';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import { forwardRef, useEffect, useState } from 'react';

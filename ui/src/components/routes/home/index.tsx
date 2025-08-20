@@ -17,9 +17,9 @@ import PageCenter from 'commons/components/pages/PageCenter';
 import CustomButton from 'components/elements/addons/buttons/CustomButton';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useMyUserFunctions from 'components/hooks/useMyUserFunctions';
+import dayjs from 'dayjs';
 import isEqual from 'lodash-es/isEqual';
 import type { HowlerUser } from 'models/entities/HowlerUser';
-import moment from 'moment';
 import { useCallback, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -42,7 +42,7 @@ const Home: FC = () => {
 
   const [lastViewed, setLastViewed] = useMyLocalStorageItem(
     StorageKey.LAST_VIEW,
-    moment().utc().format(LUCENE_DATE_FMT)
+    dayjs().utc().format(LUCENE_DATE_FMT)
   );
 
   const [loading, setLoading] = useState(false);
@@ -146,14 +146,14 @@ const Home: FC = () => {
                   color="info"
                   component={Link}
                   to={`/hits?query=${encodeURIComponent(updateQuery)}`}
-                  onClick={() => setLastViewed(moment().utc().format(LUCENE_DATE_FMT))}
+                  onClick={() => setLastViewed(dayjs().utc().format(LUCENE_DATE_FMT))}
                 >
                   <OpenInNew />
                 </IconButton>
                 <IconButton
                   color="info"
                   onClick={() => {
-                    setLastViewed(moment().utc().format(LUCENE_DATE_FMT));
+                    setLastViewed(dayjs().utc().format(LUCENE_DATE_FMT));
                     setUpdatedHitTotal(0);
                   }}
                 >
