@@ -97,7 +97,7 @@ level: informational
 `
 };
 
-const LUCENE_QUERY_OPTIONS = ['default', 'facet', 'groupby'];
+const LUCENE_QUERY_OPTIONS: ('default' | 'facet' | 'groupby')[] = ['default', 'facet', 'groupby'];
 
 type SearchResponse<T> =
   | HowlerSearchResponse<T>
