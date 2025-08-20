@@ -123,7 +123,7 @@ const QueryBuilder: FC = () => {
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState(DEFAULT_VALUES.lucene);
   const [queryType, setQueryType] = useState(LUCENE_QUERY_OPTIONS[0]);
-  const [groupByField, setGroupByField] = useState(null);
+  const [groupByField, setGroupByField] = useState<string>(null);
   const [allFields, setAllFields] = useState(true);
   const [fields, setFields] = useState<string[]>(['howler.id']);
   const [response, setResponse] = useState<SearchResponse<Hit>>(null);
