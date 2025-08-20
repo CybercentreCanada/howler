@@ -1,7 +1,9 @@
 import { useHelpers } from 'components/elements/display/handlebars/helpers';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export const useStartingTemplate = () => {
+  const { i18n } = useTranslation();
   const helpers = useHelpers();
 
   const helperText = useMemo(
@@ -11,13 +13,13 @@ export const useStartingTemplate = () => {
           `
 ### \`${helper.keyword}\`
 
-${helper.documentation}
+${helper.documentation[i18n.language]}
 
 ---
 `.trim()
         )
         .join('\n'),
-    [helpers]
+    [helpers, i18n.language]
   );
 
   return useMemo(
