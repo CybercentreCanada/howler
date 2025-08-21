@@ -198,9 +198,6 @@ def setup_store(docstore, request):
             for k, v in test_map.items():
                 collection.save(k, v)
 
-            # Commit saved data
-            collection.commit()
-
             return collection
     except ConnectionError:
         pass

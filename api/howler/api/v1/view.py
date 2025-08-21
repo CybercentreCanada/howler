@@ -143,8 +143,6 @@ def delete_view(id: str, user: User, **kwargs):
 
     success = storage.view.delete(id)
 
-    storage.view.commit()
-
     return no_content({"success": success})
 
 
@@ -196,8 +194,6 @@ def update_view(id: str, user: User, **kwargs):
     new_view = View(merge({}, existing_view.as_primitives(), new_data))
 
     storage.view.save(new_view.view_id, new_view)
-
-    storage.view.commit()
 
     try:
         if "query" in new_data:

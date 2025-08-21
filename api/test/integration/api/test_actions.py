@@ -29,9 +29,6 @@ def datastore(datastore_connection):
         create_hits(ds, hit_count=10)
         create_actions(ds)
 
-        ds.hit.commit()
-        ds.action.commit()
-
         time.sleep(1)
 
         yield ds
@@ -271,7 +268,6 @@ def test_valid_action_on_triage(datastore: HowlerDatastore, login_session):
     )
 
     datastore.action.save(action_demote.action_id, action_demote)
-    datastore.action.commit()
     assert datastore.action.exists(action_demote.action_id)
 
     # Create actions
@@ -291,7 +287,6 @@ def test_valid_action_on_triage(datastore: HowlerDatastore, login_session):
     )
 
     datastore.action.save(action_promote.action_id, action_promote)
-    datastore.action.commit()
     assert datastore.action.exists(action_promote.action_id)
 
     get_api_data(

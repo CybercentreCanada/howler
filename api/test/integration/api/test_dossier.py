@@ -93,7 +93,6 @@ def test_get_dossiers(datastore, login_session):
 def test_remove_dossier(datastore: HowlerDatastore, login_session):
     session, host = login_session
 
-    datastore.dossier.commit()
     total = datastore.dossier.search("dossier_id:*")["total"]
 
     create_res = get_api_data(
@@ -103,12 +102,10 @@ def test_remove_dossier(datastore: HowlerDatastore, login_session):
         data=json.dumps({"title": "testremove", "type": "global", "query": "howler.hash:*", "leads": []}),
     )
 
-    datastore.dossier.commit()
     assert total + 1 == datastore.dossier.search("dossier_id:*")["total"]
 
     res = get_api_data(session, f"{host}/api/v1/dossier/{create_res['dossier_id']}/", method="DELETE")
 
-    datastore.dossier.commit()
     assert res is None
     assert total == datastore.dossier.search("dossier_id:*")["total"]
 
@@ -126,8 +123,6 @@ def test_set_dossier(datastore: HowlerDatastore, login_session):
         data=json.dumps({"title": "new title thing"}),
     )
     assert resp["title"] == "new title thing"
-
-    datastore.dossier.commit()
 
     updated_dossier = datastore.dossier.get(dossier_id, as_obj=True)
     assert updated_dossier.title == "new title thing"
@@ -160,7 +155,6 @@ def test_get_dossier_for_hit(datastore: HowlerDatastore, login_session):
 
     # Save the hit to the datastore
     datastore.hit.save(test_hit_id, hit_data)
-    datastore.hit.commit()
 
     # Create a dossier that matches this hit (query matches the hit's howler.id)
     dossier_data = {
@@ -178,7 +172,6 @@ def test_get_dossier_for_hit(datastore: HowlerDatastore, login_session):
     )
 
     created_dossier_id = create_res["dossier_id"]
-    datastore.dossier.commit()
 
     try:
         # Test the get_dossier_for_hit endpoint
@@ -205,7 +198,5 @@ def test_get_dossier_for_hit(datastore: HowlerDatastore, login_session):
     finally:
         # Clean up - delete the hit and dossier from the database
         datastore.hit.delete(test_hit_id)
-        datastore.hit.commit()
 
         datastore.dossier.delete(created_dossier_id)
-        datastore.dossier.commit()

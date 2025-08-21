@@ -167,8 +167,6 @@ def create_executor(rule: Analytic):  # noqa: C901
                         ],
                     )
 
-                    datastore().hit.commit()
-
                     child_hits: list[Hit] = datastore().hit.search(
                         f"howler.bundles:{bundle.howler.id}", rows=1000, fl="howler.id"
                     )["items"]

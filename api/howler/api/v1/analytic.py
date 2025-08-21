@@ -3,14 +3,7 @@ from typing import Any, Optional
 
 from flask import Response, request
 
-from howler.api import (
-    bad_request,
-    forbidden,
-    make_subapi_blueprint,
-    no_content,
-    not_found,
-    ok,
-)
+from howler.api import bad_request, forbidden, make_subapi_blueprint, no_content, not_found, ok
 from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -216,8 +209,6 @@ def create_rule(user: User, **kwargs):
 
     try:
         storage.analytic.save(new_analytic.analytic_id, new_analytic)
-        # Have to commit so the analytic is available during registration
-        storage.analytic.commit()
         register_rules(new_analytic)
 
         storage.template.save(new_template.template_id, new_template)
@@ -554,7 +545,6 @@ def set_analytic_owner(id: str, user: dict[str, Any], **kwargs):
 
     ds = datastore()
     ds.analytic.save(analytic.analytic_id, analytic)
-    ds.analytic.commit()
 
     return ok(analytic)
 

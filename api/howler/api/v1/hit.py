@@ -121,8 +121,6 @@ def create_hits(user: User, **kwargs):
                 hit_service.create_hit(odm.howler.id, odm, user=user["uname"])
                 analytic_service.save_from_hit(odm, user)
 
-            datastore().hit.commit()
-
             action_service.bulk_execute_on_query(f"howler.id:({' OR '.join(odm.howler.id for odm in odms)})", user=user)
 
         response_body["warnings"] = warnings
@@ -546,8 +544,6 @@ def add_label(id, label_set, user, **kwargs):
         user["uname"],
     )
 
-    datastore().hit.commit()
-
     action_service.bulk_execute_on_query(
         f"howler.id:{id}",
         trigger="add_label",
@@ -603,8 +599,6 @@ def remove_labels(id, label_set, user, **kwargs):
         [hit_helper.list_remove(f"howler.labels.{label_set}", label) for label in labels],
         user["uname"],
     )
-
-    datastore().hit.commit()
 
     action_service.bulk_execute_on_query(
         f"howler.id:{id}",

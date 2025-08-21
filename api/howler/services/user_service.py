@@ -184,7 +184,6 @@ def parse_user_data(  # noqa: C901
                     current_user["avatar"] = avatar
 
                 storage.user.save(username, current_user)
-                storage.user.commit()
 
             if not skip_setup:
                 if avatar:
@@ -218,7 +217,6 @@ def parse_user_data(  # noqa: C901
 
                     storage.view.save(new_assigned_view.view_id, new_assigned_view)
                     storage.user.save(username, current_user)
-                    storage.user.commit()
 
         if not current_user:
             raise AccessDeniedException("User auto-creation is disabled")

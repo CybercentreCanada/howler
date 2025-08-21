@@ -90,7 +90,6 @@ def test_comments(datastore: HowlerDatastore, login_session):
 
     analytic.comment = new_comments
     datastore.analytic.save(analytic.analytic_id, analytic)
-    datastore.analytic.commit()
 
     resp = get_api_data(
         session,
@@ -136,8 +135,6 @@ def test_favourite(datastore: HowlerDatastore, login_session):
         data={},
     )
 
-    datastore.user.commit()
-
     assert analytic.analytic_id in datastore.user.search(f"uname:{uname}")["items"][0]["favourite_analytics"]
 
     get_api_data(
@@ -145,8 +142,6 @@ def test_favourite(datastore: HowlerDatastore, login_session):
         f"{host}/api/v1/analytic/{analytic.analytic_id}/favourite",
         method="DELETE",
     )
-
-    datastore.user.commit()
 
     assert analytic.analytic_id not in datastore.user.search(f"uname:{uname}")["items"][0]["favourite_analytics"]
 
@@ -161,7 +156,5 @@ def test_delete(datastore: HowlerDatastore, login_session):
         f"{host}/api/v1/analytic/{analytic.analytic_id}",
         method="DELETE",
     )
-
-    datastore.analytic.commit()
 
     assert not datastore.analytic.exists(analytic.analytic_id)

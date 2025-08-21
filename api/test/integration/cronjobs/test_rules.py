@@ -1,11 +1,6 @@
 import textwrap
 
-from howler.cronjobs.rules import (
-    create_correlated_bundle,
-    create_executor,
-    register_rules,
-    setup_job,
-)
+from howler.cronjobs.rules import create_correlated_bundle, create_executor, register_rules, setup_job
 from howler.odm.models.analytic import Analytic
 from howler.odm.models.hit import Hit
 from howler.odm.random_data import create_analytics, create_hits
@@ -21,8 +16,6 @@ def test_correlated_bundle(datastore_connection):
     child_hits = [random_model_obj(Hit), random_model_obj(Hit)]
 
     correlated_bundle = create_correlated_bundle(rule, rule.rule, child_hits)
-
-    datastore_connection.hit.commit()
 
     correlated_bundle_2 = create_correlated_bundle(rule, rule.rule, child_hits)
 
@@ -66,8 +59,6 @@ def test_registration(datastore_connection):
 
 def test_executor(datastore_connection):
     create_hits(datastore_connection, hit_count=10)
-
-    datastore_connection.hit.commit()
 
     lucene_rule: Analytic = random_model_obj(Analytic)
     lucene_rule.rule = "howler.id:*"

@@ -4,7 +4,6 @@ from flask import request
 
 from howler.api import bad_request, created, make_subapi_blueprint
 from howler.common.exceptions import HowlerException
-from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.operations import OdmHelper
@@ -175,8 +174,6 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
             hit_service.create_hit(bundle_hit.howler.id, bundle_hit, user=user["uname"])
 
             analytic_service.save_from_hit(bundle_hit, user)
-
-        datastore().hit.commit()
 
         action_service.bulk_execute_on_query(f"howler.id:({' OR '.join(entry['id'] for entry in out)})", user=user)
 

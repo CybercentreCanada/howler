@@ -85,7 +85,6 @@ def add_action(user: User, **_) -> Response:
 
         ds = datastore()
         ds.action.save(action_obj.action_id, action_obj)
-        ds.action.commit()
     except HowlerException as e:
         return bad_request(err=str(e))
 
@@ -155,7 +154,6 @@ def update_action(id: str, user: User, **_) -> Response:
         action_obj.action_id = id
 
         ds.action.save(action_obj.action_id, action_obj)
-        ds.action.commit()
     except HowlerException as e:
         return bad_request(err=str(e))
 
@@ -191,7 +189,6 @@ def delete_action(id: str, user: User, **kwargs) -> Response:
 
     try:
         ds.action.delete(id)
-        ds.action.commit()
 
         return no_content()
     except HowlerException as e:

@@ -26,8 +26,6 @@ def datastore(datastore_connection):
             ds.user_avatar.save(u.uname, AVATAR)
             user_list.append(u.uname)
 
-        ds.user.commit()
-
         yield ds
     finally:
         wipe_users(ds)
@@ -49,7 +47,6 @@ def test_add_user(datastore, login_session):
     )
     assert resp["success"]
 
-    datastore.user.commit()
     new_user = datastore.user.get(u.uname)
     assert new_user == u
 
@@ -98,8 +95,6 @@ def test_set_user(datastore, login_session):
     resp = get_api_data(session, f"{host}/api/v1/user/{username}/", method="PUT", data=json.dumps(u))
     assert resp["success"]
 
-    datastore.user.commit()
-
     new_user = datastore.user.get(username, as_obj=False)
     for k in ["apikeys", "password"]:
         u.pop(k)
@@ -118,5 +113,4 @@ def test_set_user_avatar(datastore, login_session):
     resp = get_api_data(session, f"{host}/api/v1/user/avatar/admin/", method="POST", data=new_avatar)
     assert resp["success"]
 
-    datastore.user_avatar.commit()
     assert new_avatar == datastore.user_avatar.get("admin")

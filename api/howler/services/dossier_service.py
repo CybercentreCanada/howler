@@ -119,9 +119,6 @@ def create_dossier(dossier_data: Optional[Any], username: str) -> Dossier:  # no
         # Save the dossier to the datastore
         storage.dossier.save(dossier.dossier_id, dossier)
 
-        # Commit the transaction to persist changes
-        storage.dossier.commit()
-
         return dossier
     except SearchException:
         # Handle invalid Lucene query syntax
@@ -192,9 +189,6 @@ def update_dossier(dossier_id: str, dossier_data: dict[str, Any], user: User) ->
         new_data = Dossier(merge({}, existing_dossier.as_primitives(), dossier_data))
 
         storage.dossier.save(dossier_id, new_data)
-
-        # Commit the transaction to persist changes
-        storage.dossier.commit()
 
         return new_data
     except SearchException:

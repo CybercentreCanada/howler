@@ -69,8 +69,6 @@ def test_execute_action(datastore_connection: HowlerDatastore, caplog):
 
     datastore_connection.action.save(action_promote.action_id, action_promote)
 
-    datastore_connection.action.commit()
-
     assert datastore_connection.action.exists(action_demote.action_id)
     assert datastore_connection.action.exists(action_promote.action_id)
 
@@ -95,8 +93,6 @@ def test_execute_action(datastore_connection: HowlerDatastore, caplog):
     assert f"Running action {action_promote.action_id} on bulk query"
 
     caplog.clear()
-
-    datastore_connection.hit.commit()
 
     assert "demoted" in datastore_connection.hit.get(test_hit_demote.howler.id).howler.labels.generic
     assert "promoted" in datastore_connection.hit.get(test_hit_promote.howler.id).howler.labels.generic
@@ -135,7 +131,6 @@ def test_execute_action_no_results(datastore_connection: HowlerDatastore, caplog
     )
 
     datastore_connection.action.save(test_action.action_id, test_action)
-    datastore_connection.action.commit()
     assert datastore_connection.action.exists(test_action.action_id)
 
     with caplog.at_level(logging.DEBUG):

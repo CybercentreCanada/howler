@@ -32,9 +32,6 @@ def datastore(datastore_connection: HowlerDatastore):
         # Create hits for get_hit test
         datastore_connection.hit.save("transition_test", transition_test_hit)
 
-        # Commit changes to DataStore
-        datastore_connection.hit.commit()
-
         yield datastore_connection
     finally:
         wipe_hits(datastore_connection)

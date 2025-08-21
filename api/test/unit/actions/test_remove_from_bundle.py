@@ -13,7 +13,6 @@ from howler.odm.random_data import wipe_hits
 def setup_datastore(datastore_connection: HowlerDatastore):
     try:
         wipe_hits(datastore_connection)
-        datastore_connection.hit.commit()
 
         yield datastore_connection
     finally:
@@ -51,8 +50,6 @@ def test_execute():
             hit.howler.bundles = []
         datastore().hit.save(hit.howler.id, hit)
 
-    datastore().hit.commit()
-
     result = execute("howler.analytic:TestingRemoveFromBundle", bundle.howler.id)
 
     assert len(result) == 2
@@ -84,8 +81,6 @@ def test_execute_failed():
             hit.howler.bundles = [bundle.howler.id]
             bundle.howler.hits.append(hit.howler.id)
         datastore().hit.save(hit.howler.id, hit)
-
-    datastore().hit.commit()
 
     result = execute("howler.analytic:T^R&*H%^J&G%^E", bundle.howler.id)
 

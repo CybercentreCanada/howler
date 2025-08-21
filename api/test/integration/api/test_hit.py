@@ -209,9 +209,6 @@ def datastore(datastore_connection: HowlerDatastore):
 
         create_hits(datastore_connection, hit_count=15)
 
-        # Commit changes to DataStore
-        datastore_connection.hit.commit()
-
         yield datastore_connection
     finally:
         wipe_hits(datastore_connection)
@@ -851,7 +848,6 @@ def test_overwrite_hit(datastore: HowlerDatastore, login_session):
 
     hit_to_update: Hit = random_model_obj(cast(Model, Hit))
     datastore.hit.save(hit_to_update.howler.id, hit_to_update)
-    datastore.hit.commit()
 
     result = get_api_data(
         session=session,
@@ -879,7 +875,6 @@ def test_update_hit(datastore: HowlerDatastore, login_session):
 
     hit_to_update: Hit = random_model_obj(cast(Model, Hit))
     datastore.hit.save(hit_to_update.howler.id, hit_to_update)
-    datastore.hit.commit()
 
     result = get_api_data(
         session=session,
@@ -927,7 +922,6 @@ def test_update_by_query(datastore: HowlerDatastore, login_session):
 
     hit_to_check: Hit = random_model_obj(cast(Model, Hit))
     datastore.hit.save(hit_to_check.howler.id, hit_to_check)
-    datastore.hit.commit()
 
     get_api_data(
         session=session,
@@ -946,8 +940,6 @@ def test_update_by_query(datastore: HowlerDatastore, login_session):
         ),
         method="PUT",
     )
-
-    datastore.hit.commit()
 
     hit_to_check_after: Hit = datastore.hit.get(hit_to_check.howler.id)
 

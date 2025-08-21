@@ -71,7 +71,6 @@ def test_get_overviews(datastore, login_session):
 def test_remove_overview(datastore: HowlerDatastore, login_session):
     session, host = login_session
 
-    datastore.overview.commit()
     total = datastore.overview.search("overview_id:*")["total"]
 
     create_res = get_api_data(
@@ -81,12 +80,10 @@ def test_remove_overview(datastore: HowlerDatastore, login_session):
         data=json.dumps({"analytic": "testremove", "owner": "admin", "content": "# Test"}),
     )
 
-    datastore.overview.commit()
     assert total + 1 == datastore.overview.search("overview_id:*")["total"]
 
     res = get_api_data(session, f"{host}/api/v1/overview/{create_res['overview_id']}/", method="DELETE")
 
-    datastore.overview.commit()
     assert res is None
     assert total == datastore.overview.search("overview_id:*")["total"]
 
@@ -100,8 +97,6 @@ def test_overview_conflict(datastore: HowlerDatastore, login_session):
         method="POST",
         data=json.dumps({"analytic": "test-conflict", "owner": "admin", "content": "# Test"}),
     )
-
-    datastore.overview.commit()
 
     with pytest.raises(APIError) as err:
         get_api_data(
@@ -126,8 +121,6 @@ def test_set_overview(datastore: HowlerDatastore, login_session):
         data=json.dumps({"content": "Potato"}),
     )
     assert resp["content"] == "Potato"
-
-    datastore.overview.commit()
 
     updated_overview = datastore.overview.get(id, as_obj=True)
     assert updated_overview.content == "Potato"
