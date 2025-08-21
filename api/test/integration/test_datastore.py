@@ -142,6 +142,8 @@ def es_connection(request):
     try:
         collection: ESCollection = setup_store(ESStore(), request)
 
+        collection.commit()
+
         yield collection
 
         # Cleanup: delete alias and index after test
@@ -872,6 +874,9 @@ def test_reindex(es_connection: ESCollection):
     test_data = Test1({"field_1": "example2", "field_2": "example2"})
     test_collection.save("example2", test_data)
 
+    # Commit new records to the index
+    test_collection.commit()
+
     # Ensure both documents are present
     assert test_collection.search("field_2:*")["total"] == 2
 
@@ -891,6 +896,9 @@ def test_reindex(es_connection: ESCollection):
     # Add a new document using Test2 model
     test_data = Test2({"field_2": "example3", "field_3": 2})
     test_collection.save("example3", test_data)
+
+    # Commit new records to the index
+    test_collection.commit()
 
     # Only two documents should remain after reindex (old model docs may be dropped)
     assert test_collection.search("field_2:*")["total"] == 2

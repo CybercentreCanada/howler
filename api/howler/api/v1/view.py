@@ -245,7 +245,7 @@ def set_as_favourite(id: str, **kwargs):
 
         storage.user.save(current_user["uname"], current_user)
 
-        return ok()
+        return ok(current_user)
     except ValueError as e:
         return bad_request(err=str(e))
 
@@ -279,6 +279,6 @@ def remove_as_favourite(id, **kwargs):
 
         storage.user.save(current_user["uname"], current_user)
 
-        return no_content()
+        return ok(current_user)
     except ValueError as e:
         return bad_request(err=str(e))
