@@ -510,8 +510,14 @@
   "route.advanced.query.yaml": "Sigma Rule",
   "route.advanced.query.yaml.description": "Sigma is a generic and open signature format that allows you to describe relevant log events in a straightforward manner. The rule format is very flexible, easy to write and applicable to any type of log file.",
   "route.advanced.result.title": "Howler Advanced Search",
-  "route.advanced.result.description": "Excecute a query to show results here.",
-  "route.advanced.type": "Rule Type",
+  "route.advanced.result.description": "Execute a query to show results here.",
+  "route.advanced.rule.type": "Rule Type",
+  "route.advanced.pivot.field": "Group By Field",
+  "route.advanced.query.type": "Query Type",
+  "route.advanced.query.type.default": "Default",
+  "route.advanced.query.type.facet": "Facet",
+  "route.advanced.query.type.groupby": "Group By",
+
 
   "route.analytics": "Analytics",
   "route.analytics.deleted": "Deleted Rule!",
