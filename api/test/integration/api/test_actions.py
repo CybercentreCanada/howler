@@ -29,7 +29,8 @@ def datastore(datastore_connection):
         create_hits(ds, hit_count=10)
         create_actions(ds)
 
-        time.sleep(1)
+        ds.hit.commit()
+        ds.action.commit()
 
         yield ds
     finally:
@@ -251,6 +252,8 @@ def test_valid_action_on_triage(datastore: HowlerDatastore, login_session):
     test_hit_demote.howler.analytic = "test_triage_assess_demote"
     datastore.hit.save(test_hit_demote.howler.id, test_hit_demote)
 
+    datastore.hit.commit()
+
     # Create actions
     action_demote = Action(
         {
@@ -288,6 +291,9 @@ def test_valid_action_on_triage(datastore: HowlerDatastore, login_session):
 
     datastore.action.save(action_promote.action_id, action_promote)
     assert datastore.action.exists(action_promote.action_id)
+
+    # We need to ensure these actions are properly indexed for the searching/querying on transition
+    datastore.action.commit()
 
     get_api_data(
         session=session,
@@ -527,6 +533,9 @@ def test_execute_transition_multiple(datastore: HowlerDatastore, login_session):
             method="POST",
             data=json.dumps(req),
         )
+
+        # Due to the long-running nature of the actions, we flush all changes before testing
+        datastore.hit.commit()
 
         for report in resp.values():
             for entry in report:

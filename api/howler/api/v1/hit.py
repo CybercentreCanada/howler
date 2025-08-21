@@ -646,7 +646,7 @@ def transition(id: str, user: User, **kwargs):
     if "If-Match" in request.headers:
         version = request.headers["If-Match"]
     else:
-        logger.warning("User is mising version - no If-Match header in request.")
+        logger.warning("User is missing version - no If-Match header in request.")
         version = None
 
     try:
