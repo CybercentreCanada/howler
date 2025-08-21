@@ -42,6 +42,7 @@ import { usePluginStore } from 'react-pluggable';
 import { useLocation } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { getUserList } from 'utils/hitFunctions';
+import { validateRegex } from 'utils/stringUtils';
 import { tryParse } from 'utils/utils';
 import LeadRenderer from '../view/LeadRenderer';
 
@@ -175,15 +176,7 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
     }[tab]?.();
   }, [dossiers, filter, hit, loading, tab, users]);
 
-  const hasError = useMemo(() => {
-    try {
-      new RegExp(filter);
-
-      return false;
-    } catch (e) {
-      return true;
-    }
-  }, [filter]);
+  const hasError = useMemo(() => validateRegex(filter), [filter]);
 
   return (
     <VSBox top={10} sx={{ height: '100%', flex: 1 }}>

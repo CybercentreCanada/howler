@@ -45,3 +45,13 @@ export const safeStringPropertyCompare = (propertyPath: string) => {
 export const sanitizeMultilineLucene = (query: string) => {
   return query.replace(/#.+/g, '').replace(/\n{2,}/, '\n');
 };
+
+export const validateRegex = (regex: string) => {
+  try {
+    new RegExp(regex);
+
+    return false;
+  } catch (e) {
+    return true;
+  }
+};

@@ -7,6 +7,7 @@ import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import { useCallback, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StorageKey } from 'utils/constants';
+import { validateRegex } from 'utils/stringUtils';
 import Throttler from 'utils/Throttler';
 import { removeEmpty, searchObject } from 'utils/utils';
 
@@ -36,15 +37,7 @@ const JSONViewer: FC<{ data: object; collapse?: boolean; hideSearch?: boolean; f
     });
   }, [compact, data, filter, flat, query]);
 
-  const hasError = useMemo(() => {
-    try {
-      new RegExp(query);
-
-      return false;
-    } catch (e) {
-      return true;
-    }
-  }, [query]);
+  const hasError = useMemo(() => validateRegex(filter ?? query), [query, filter]);
 
   const shouldCollapse = useCallback((field: CollapsedFieldProps) => {
     return (field.name !== 'root' && field.type !== 'object') || field.namespace.length > 3;
