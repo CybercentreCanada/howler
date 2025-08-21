@@ -923,6 +923,9 @@ def test_update_by_query(datastore: HowlerDatastore, login_session):
     hit_to_check: Hit = random_model_obj(cast(Model, Hit))
     datastore.hit.save(hit_to_check.howler.id, hit_to_check)
 
+    # Ensure the hit is indexed for the upcoming query
+    datastore.hit.commit()
+
     get_api_data(
         session=session,
         url=f"{host}/api/v1/hit/update",
