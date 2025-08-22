@@ -48,6 +48,8 @@ def datastore(datastore_connection, hit):
 
     ds.hit.save(hit.howler.id, hit)
 
+    ds.hit.commit()
+
     yield ds
 
 
