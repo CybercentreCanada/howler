@@ -23,6 +23,7 @@
 - **Analytics Provider**: Fixed missing AnalyticsProvider issue
 - **Query Editor Height**: Fixed height issues for multiline queries
 - **Timeout Issues**: Fixed various timeout-related problems
+- **JSON Viewer Search**: Fixed JSON search bar not being visible on scroll
 
 ### UI/UX Improvements
 
