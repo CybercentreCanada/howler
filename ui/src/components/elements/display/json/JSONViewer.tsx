@@ -7,12 +7,18 @@ import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import { useCallback, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StorageKey } from 'utils/constants';
+import { validateRegex } from 'utils/stringUtils';
 import Throttler from 'utils/Throttler';
 import { removeEmpty, searchObject } from 'utils/utils';
 
 const THROTTLER = new Throttler(150);
 
-const JSONViewer: FC<{ data: object; collapse?: boolean }> = ({ data, collapse = true }) => {
+const JSONViewer: FC<{ data: object; collapse?: boolean; hideSearch?: boolean; filter?: string }> = ({
+  data,
+  collapse = true,
+  hideSearch = false,
+  filter
+}) => {
   const { t } = useTranslation();
   const { isDark } = useAppTheme();
   const [compact] = useMyLocalStorageItem<boolean>(StorageKey.COMPACT_JSON, true);
@@ -25,21 +31,13 @@ const JSONViewer: FC<{ data: object; collapse?: boolean }> = ({ data, collapse =
     THROTTLER.debounce(() => {
       const filteredData = removeEmpty(data, compact);
 
-      const searchedData = searchObject(filteredData, query, flat);
+      const searchedData = searchObject(filteredData, filter ?? query, flat);
 
       setResult(searchedData);
     });
-  }, [compact, data, flat, query]);
+  }, [compact, data, filter, flat, query]);
 
-  const hasError = useMemo(() => {
-    try {
-      new RegExp(query);
-
-      return false;
-    } catch (e) {
-      return true;
-    }
-  }, [query]);
+  const hasError = useMemo(() => !validateRegex(filter ?? query), [query, filter]);
 
   const shouldCollapse = useCallback((field: CollapsedFieldProps) => {
     return (field.name !== 'root' && field.type !== 'object') || field.namespace.length > 3;
@@ -75,19 +73,21 @@ const JSONViewer: FC<{ data: object; collapse?: boolean }> = ({ data, collapse =
 
   return data ? (
     <Stack direction="column" spacing={1} sx={{ '& > div:first-of-type': { mt: 1, mr: 0.5 } }}>
-      <Phrase
-        value={query}
-        onChange={setQuery}
-        error={hasError}
-        label={t('json.viewer.search.label')}
-        placeholder={t('json.viewer.search.prompt')}
-        disabled={!result}
-        endAdornment={
-          <IconButton onClick={() => setQuery('')}>
-            <Clear />
-          </IconButton>
-        }
-      />
+      {!hideSearch && (
+        <Phrase
+          value={query}
+          onChange={setQuery}
+          error={hasError}
+          label={t('json.viewer.search.label')}
+          placeholder={t('json.viewer.search.prompt')}
+          disabled={!result}
+          endAdornment={
+            <IconButton onClick={() => setQuery('')}>
+              <Clear />
+            </IconButton>
+          }
+        />
+      )}
       {renderer}
     </Stack>
   ) : (
