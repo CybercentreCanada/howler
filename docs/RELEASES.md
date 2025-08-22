@@ -76,4 +76,3 @@
 - **Collection Management**: Improved collection handling with better shard management
 - **Reindexing**: Added robust reindexing functionality with better error handling
 - **Data Models**: Enhanced Link model with optional parameters for better flexibility
-
