@@ -40,6 +40,7 @@ import OverviewDocumentation from 'components/routes/help/OverviewDocumentation'
 import RetentionDocumentation from 'components/routes/help/RetentionDocumentation';
 import SearchDocumentation from 'components/routes/help/SearchDocumentation';
 import TemplateDocumentation from 'components/routes/help/TemplateDocumentation';
+import TriageDocumentation from 'components/routes/help/TriageDocumentation';
 import ViewDocumentation from 'components/routes/help/ViewDocumentation';
 import HitBrowser from 'components/routes/hits/search/HitBrowser';
 import HitViewer from 'components/routes/hits/view/HitViewer';
@@ -326,6 +327,10 @@ const router = createBrowserRouter([
       {
         path: 'help/search',
         element: <SearchDocumentation />
+      },
+      {
+        path: 'help/triage',
+        element: <TriageDocumentation />
       },
       {
         path: 'help/api',

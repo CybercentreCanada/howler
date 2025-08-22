@@ -174,6 +174,13 @@ const useMyPreferences = (): AppPreferenceConfigs => {
             { id: 'help.hit', i18nKey: 'route.help.hit', route: '/help/hit', nested: true, icon: <Shield /> },
             { id: 'help.search', i18nKey: 'route.help.search', route: '/help/search', nested: true, icon: <Search /> },
             {
+              id: 'help.search',
+              i18nKey: 'Triage Documentation',
+              route: '/help/triage',
+              nested: true,
+              icon: <Search />
+            },
+            {
               id: 'help.views',
               i18nKey: 'route.help.views',
               route: '/help/views',
