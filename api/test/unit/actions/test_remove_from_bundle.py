@@ -50,6 +50,9 @@ def test_execute():
             hit.howler.bundles = []
         datastore().hit.save(hit.howler.id, hit)
 
+    # Ensure the new alerts can be queried
+    datastore().hit.commit()
+
     result = execute("howler.analytic:TestingRemoveFromBundle", bundle.howler.id)
 
     assert len(result) == 2

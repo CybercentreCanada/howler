@@ -224,6 +224,8 @@ def es_connection(es_store, request):
         collection = None
 
     if collection:
+        collection.commit()
+
         return collection
 
     return pytest.skip("Connection to the Elasticsearch server failed. This test cannot be performed.")
