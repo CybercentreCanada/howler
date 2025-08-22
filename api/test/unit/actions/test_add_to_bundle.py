@@ -115,6 +115,8 @@ def test_get_bundle_size():
     bundle_1.howler.bundle_size = 1
     datastore().hit.save(bundle_1.howler.id, bundle_1)
 
+    datastore().hit.commit()
+
     execute("howler.analytic:TestingBundleSize", bundle_1.howler.id)
 
     bundle_hit = hit_service.get_hit(bundle_1.howler.id, as_odm=True)
