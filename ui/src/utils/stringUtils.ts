@@ -50,8 +50,8 @@ export const validateRegex = (regex: string) => {
   try {
     new RegExp(regex);
 
-    return false;
-  } catch (e) {
     return true;
+  } catch {
+    return false;
   }
 };

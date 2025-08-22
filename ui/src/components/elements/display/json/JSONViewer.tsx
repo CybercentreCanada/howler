@@ -37,7 +37,7 @@ const JSONViewer: FC<{ data: object; collapse?: boolean; hideSearch?: boolean; f
     });
   }, [compact, data, filter, flat, query]);
 
-  const hasError = useMemo(() => validateRegex(filter ?? query), [query, filter]);
+  const hasError = useMemo(() => !validateRegex(filter ?? query), [query, filter]);
 
   const shouldCollapse = useCallback((field: CollapsedFieldProps) => {
     return (field.name !== 'root' && field.type !== 'object') || field.namespace.length > 3;

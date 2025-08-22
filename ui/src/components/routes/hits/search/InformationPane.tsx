@@ -176,7 +176,7 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
     }[tab]?.();
   }, [dossiers, filter, hit, loading, tab, users]);
 
-  const hasError = useMemo(() => validateRegex(filter), [filter]);
+  const hasError = useMemo(() => !validateRegex(filter), [filter]);
 
   return (
     <VSBox top={10} sx={{ height: '100%', flex: 1 }}>
