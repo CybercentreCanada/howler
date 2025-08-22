@@ -102,11 +102,18 @@ def test_remove_dossier(datastore: HowlerDatastore, login_session):
         data=json.dumps({"title": "testremove", "type": "global", "query": "howler.hash:*", "leads": []}),
     )
 
+    # Ensure the new dossier is indexed
+    datastore.dossier.commit()
+
     assert total + 1 == datastore.dossier.search("dossier_id:*")["total"]
 
     res = get_api_data(session, f"{host}/api/v1/dossier/{create_res['dossier_id']}/", method="DELETE")
 
     assert res is None
+
+    # Ensure the new dossier is removed
+    datastore.dossier.commit()
+
     assert total == datastore.dossier.search("dossier_id:*")["total"]
 
 
@@ -155,6 +162,7 @@ def test_get_dossier_for_hit(datastore: HowlerDatastore, login_session):
 
     # Save the hit to the datastore
     datastore.hit.save(test_hit_id, hit_data)
+    datastore.hit.commit()
 
     # Create a dossier that matches this hit (query matches the hit's howler.id)
     dossier_data = {
@@ -172,6 +180,9 @@ def test_get_dossier_for_hit(datastore: HowlerDatastore, login_session):
     )
 
     created_dossier_id = create_res["dossier_id"]
+
+    # Ensure the new dossier is indexed
+    datastore.dossier.commit()
 
     try:
         # Test the get_dossier_for_hit endpoint
