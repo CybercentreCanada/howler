@@ -1,15 +1,6 @@
 from flask import request
 
-from howler.api import (
-    bad_request,
-    conflict,
-    created,
-    forbidden,
-    make_subapi_blueprint,
-    no_content,
-    not_found,
-    ok,
-)
+from howler.api import bad_request, conflict, created, forbidden, make_subapi_blueprint, no_content, not_found, ok
 from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -104,6 +95,7 @@ def create_overview(**kwargs):
             return conflict(err="An overview covering this case already exists.")
 
         storage.overview.save(overview.overview_id, overview)
+
         return created(overview)
     except HowlerException as e:
         return bad_request(err=str(e))
