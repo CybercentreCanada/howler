@@ -80,9 +80,15 @@ def test_remove_overview(datastore: HowlerDatastore, login_session):
         data=json.dumps({"analytic": "testremove", "owner": "admin", "content": "# Test"}),
     )
 
+    # Ensure the new overview is indexed
+    datastore.overview.commit()
+
     assert total + 1 == datastore.overview.search("overview_id:*")["total"]
 
     res = get_api_data(session, f"{host}/api/v1/overview/{create_res['overview_id']}/", method="DELETE")
+
+    # Ensure the new overview is removed
+    datastore.overview.commit()
 
     assert res is None
     assert total == datastore.overview.search("overview_id:*")["total"]
@@ -97,6 +103,8 @@ def test_overview_conflict(datastore: HowlerDatastore, login_session):
         method="POST",
         data=json.dumps({"analytic": "test-conflict", "owner": "admin", "content": "# Test"}),
     )
+
+    datastore.overview.commit()
 
     with pytest.raises(APIError) as err:
         get_api_data(
