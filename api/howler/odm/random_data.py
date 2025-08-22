@@ -516,6 +516,7 @@ def create_views(ds: HowlerDatastore):
 def wipe_views(ds):
     """Wipe the views index"""
     ds.view.wipe()
+    ds.view.commit()
 
 
 def create_hits(ds: HowlerDatastore, hit_count: int = 200):
@@ -551,10 +552,10 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
                 ],
             )
 
-        ds.hit.commit()
-
         if hit_idx % 25 == 0 and "pytest" not in sys.modules:
             logger.info("\tCreated %s/%s", hit_idx, hit_count)
+
+    ds.hit.commit()
 
     if "pytest" not in sys.modules:
         logger.info("\tCreated %s/%s", hit_idx + 1, hit_count)
@@ -595,6 +596,7 @@ def create_bundles(ds: HowlerDatastore):
 def wipe_hits(ds):
     """Wipe the hits index"""
     ds.hit.wipe()
+    ds.hit.commit()
 
 
 def random_escalations() -> list[Escalation]:
@@ -735,6 +737,7 @@ def create_analytics(ds: HowlerDatastore, num_analytics: int = 10):
 def wipe_analytics(ds):
     """Wipe the analytics index"""
     ds.analytic.wipe()
+    ds.analytic.commit()
 
 
 def create_actions(ds: HowlerDatastore, num_actions: int = 30):
@@ -816,6 +819,7 @@ def create_dossiers(ds: HowlerDatastore, num_dossiers: int = 5):
 def wipe_dossiers(ds: HowlerDatastore):
     """Wipe the dossiers index"""
     ds.dossier.wipe()
+    ds.dossier.commit()
 
 
 def setup_hits(ds):

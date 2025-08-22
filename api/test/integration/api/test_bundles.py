@@ -18,9 +18,6 @@ def datastore(datastore_connection: HowlerDatastore):
         create_hits(datastore_connection, hit_count=20)
         create_bundles(datastore_connection)
 
-        # Commit changes to DataStore
-        datastore_connection.hit.commit()
-
         yield datastore_connection
     finally:
         wipe_hits(datastore_connection)
@@ -198,8 +195,6 @@ def test_update_bundle(datastore: HowlerDatastore, login_session):
     session, host = login_session
 
     existing_bundle: Hit = datastore.hit.search("howler.is_bundle:true")["items"][0]
-
-    datastore.hit.commit()
 
     new_child_hits = datastore.hit.search(
         f"howler.id:(NOT ({' OR '.join(existing_bundle.howler.hits)})) AND howler.is_bundle:false",

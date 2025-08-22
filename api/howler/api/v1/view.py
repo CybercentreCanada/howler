@@ -143,8 +143,6 @@ def delete_view(id: str, user: User, **kwargs):
 
     success = storage.view.delete(id)
 
-    storage.view.commit()
-
     return no_content({"success": success})
 
 
@@ -197,8 +195,6 @@ def update_view(id: str, user: User, **kwargs):
 
     storage.view.save(new_view.view_id, new_view)
 
-    storage.view.commit()
-
     try:
         if "query" in new_data:
             # Make sure the query is valid
@@ -249,7 +245,7 @@ def set_as_favourite(id: str, **kwargs):
 
         storage.user.save(current_user["uname"], current_user)
 
-        return ok()
+        return ok(current_user)
     except ValueError as e:
         return bad_request(err=str(e))
 
@@ -283,6 +279,6 @@ def remove_as_favourite(id, **kwargs):
 
         storage.user.save(current_user["uname"], current_user)
 
-        return no_content()
+        return ok(current_user)
     except ValueError as e:
         return bad_request(err=str(e))

@@ -6,12 +6,7 @@ from conftest import get_api_data
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.models.analytic import Analytic
 from howler.odm.models.hit import Hit
-from howler.odm.random_data import (
-    create_hits,
-    create_templates,
-    wipe_hits,
-    wipe_templates,
-)
+from howler.odm.random_data import create_hits, create_templates, wipe_hits, wipe_templates
 
 
 @pytest.fixture(scope="module")
@@ -41,7 +36,6 @@ def test_comments_analytic(datastore: HowlerDatastore, login_session):
 
     analytic.comment = new_comments
     datastore.analytic.save(analytic.analytic_id, analytic)
-    datastore.analytic.commit()
 
     resp = get_api_data(
         session,
@@ -85,7 +79,6 @@ def test_reactions_analytic(datastore: HowlerDatastore, login_session):
 
     analytic.comment = new_comments
     datastore.analytic.save(analytic.analytic_id, analytic)
-    datastore.analytic.commit()
 
     resp = get_api_data(
         session,
@@ -127,7 +120,6 @@ def test_comments_hit(datastore: HowlerDatastore, login_session):
 
     hit.howler.comment = new_comments
     datastore.hit.save(hit.howler.id, hit)
-    datastore.hit.commit()
 
     resp = get_api_data(
         session,
@@ -171,7 +163,6 @@ def test_reactions_hit(datastore: HowlerDatastore, login_session):
 
     hit.howler.comment = new_comments
     datastore.hit.save(hit.howler.id, hit)
-    datastore.hit.commit()
 
     resp = get_api_data(
         session,
