@@ -69,6 +69,8 @@ def test_execute_action(datastore_connection: HowlerDatastore, caplog):
 
     datastore_connection.action.save(action_promote.action_id, action_promote)
 
+    datastore_connection.action.commit()
+
     assert datastore_connection.action.exists(action_demote.action_id)
     assert datastore_connection.action.exists(action_promote.action_id)
 
