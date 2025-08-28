@@ -1,7 +1,7 @@
 import { Article } from '@mui/icons-material';
 import { Box, Fab, Skeleton, Stack, Typography, useMediaQuery } from '@mui/material';
 import api from 'api';
-import 'chartjs-adapter-moment';
+import 'chartjs-adapter-dayjs';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
 import useMyApi from 'components/hooks/useMyApi';
 import type { Analytic } from 'models/entities/generated/Analytic';

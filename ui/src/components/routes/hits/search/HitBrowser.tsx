@@ -22,8 +22,8 @@ import FlexPort from 'components/elements/addons/layout/FlexPort';
 import HitSummary from 'components/elements/hit/HitSummary';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import ErrorBoundary from 'components/routes/ErrorBoundary';
+import dayjs from 'dayjs';
 import { has, isNull } from 'lodash-es';
-import moment from 'moment';
 import type { FC, ReactNode } from 'react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
@@ -138,7 +138,7 @@ const HitBrowser: FC = () => {
   useEffect(() => {
     // On load check to filter out any queries older than one month
     setQueryHistory(_queryHistory => {
-      const filterQueryTime = moment().subtract(1, 'month').toISOString();
+      const filterQueryTime = dayjs().subtract(1, 'month').toISOString();
 
       return Object.fromEntries(Object.entries(_queryHistory).filter(([_, value]) => value > filterQueryTime));
     });

@@ -15,15 +15,15 @@ import {
 } from '@mui/material';
 import api from 'api';
 import type { Chart, ChartDataset, ChartOptions } from 'chart.js';
-import 'chartjs-adapter-moment';
+import 'chartjs-adapter-dayjs';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { HitContext } from 'components/app/providers/HitProvider';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import useMyApi from 'components/hooks/useMyApi';
 import useMyChart from 'components/hooks/useMyChart';
+import dayjs from 'dayjs';
 import { capitalize } from 'lodash-es';
-import moment from 'moment';
 import type { FC } from 'react';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Scatter } from 'react-chartjs-2';
@@ -131,11 +131,11 @@ const HitGraph: FC<{ query: string }> = ({ query }) => {
         return {
           label: `${label} (${category.total})`,
           data: category.items.map(hit => {
-            const createdMoment = moment(hit.event?.created ?? hit.timestamp);
+            const createdDate = dayjs(hit.event?.created ?? hit.timestamp);
 
             return {
-              x: createdMoment.clone().hour(0).minute(0).second(0).toISOString(),
-              y: createdMoment.hour() + createdMoment.minute() / 60 + createdMoment.second() / 3600,
+              x: createdDate.clone().hour(0).minute(0).second(0).toISOString(),
+              y: createdDate.hour() + createdDate.minute() / 60 + createdDate.second() / 3600,
               hit,
               label
             };
@@ -197,7 +197,7 @@ const HitGraph: FC<{ query: string }> = ({ query }) => {
           callbacks: {
             title: entries => `${entries.length} ${t('hits')}`,
             label: entry =>
-              `${(entry.raw as any).hit.howler.analytic}: ${(entry.raw as any).hit.howler.detection} (${moment(
+              `${(entry.raw as any).hit.howler.analytic}: ${(entry.raw as any).hit.howler.detection} (${dayjs(
                 (entry.raw as any).hit.event.created
               ).format('MMM D HH:mm:ss')})`,
             afterLabel: entry =>
@@ -227,7 +227,7 @@ const HitGraph: FC<{ query: string }> = ({ query }) => {
             callback: (value: number) => {
               const [hour, minute] = [Math.floor(value), Math.floor((value - Math.floor(value)) * 60)];
 
-              return moment().hour(hour).minute(minute).format('HH:mm');
+              return dayjs().hour(hour).minute(minute).format('HH:mm');
             }
           }
         }

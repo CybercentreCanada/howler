@@ -1,5 +1,5 @@
 import { useTheme } from '@mui/material';
-import 'chartjs-adapter-moment';
+import 'chartjs-adapter-dayjs';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import { forwardRef } from 'react';
 import { STATUS_COLORS } from 'utils/constants';

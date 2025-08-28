@@ -34,8 +34,8 @@ import CustomButton from 'components/elements/addons/buttons/CustomButton';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import JSONViewer from 'components/elements/display/json/JSONViewer';
 import useMySnackbar from 'components/hooks/useMySnackbar';
+import dayjs from 'dayjs';
 import type { Hit } from 'models/entities/generated/Hit';
-import moment from 'moment';
 import {
   useCallback,
   useContext,
@@ -75,8 +75,8 @@ description: A basic example of using sigma rule notation to query howler
 references:
     - https://github.com/SigmaHQ/sigma
 author: You
-date: ${moment().format('YYYY/MM/DD')}
-modified: ${moment().format('YYYY/MM/DD')}
+date: ${dayjs().format('YYYY/MM/DD')}
+modified: ${dayjs().format('YYYY/MM/DD')}
 tags:
     - attack.command_and_control
 logsource:

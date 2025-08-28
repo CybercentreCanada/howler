@@ -1,6 +1,6 @@
 import { LocalPolice, MoodBad, NewReleases, PsychologyAlt, Star, Timeline } from '@mui/icons-material';
 import { blue, grey, indigo, orange, pink, red, teal, yellow } from '@mui/material/colors';
-import moment from 'moment';
+import dayjs from 'dayjs';
 import type { ReactElement } from 'react';
 
 export const HOWLER_API = import.meta.env.VITE_API;
@@ -74,7 +74,7 @@ export const MOCK_FAVOURITES_STORE = `${MY_LOCAL_STORAGE_PREFIX}.${StorageKey.MO
 
 export const VALID_ACTION_TRIGGERS = ['create', 'promote', 'demote'];
 
-const CURRENT_TIME = moment();
+const CURRENT_TIME = dayjs();
 
 export const minutes = [CURRENT_TIME.get('minute'), CURRENT_TIME.add(30, 'minute').get('minute')].sort();
 export const hours = [

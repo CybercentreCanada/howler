@@ -16,7 +16,7 @@ import {
   useTheme
 } from '@mui/material';
 import api from 'api';
-import 'chartjs-adapter-moment';
+import 'chartjs-adapter-dayjs';
 import Markdown from 'components/elements/display/Markdown';
 import useMyApi from 'components/hooks/useMyApi';
 import useMySnackbar from 'components/hooks/useMySnackbar';
