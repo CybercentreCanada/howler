@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { has } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { WithMetadata } from 'models/WithMetadata';
@@ -20,7 +21,12 @@ const useMatchers = () => {
 
       // This is a fallback in case metadata is not included. In most cases templates are shown, the template metadata
       // should also exist
-      return (await getHit(hit.howler.id, true)).__template;
+      try {
+        return (await getHit(hit.howler.id, true)).__template;
+      } catch (e) {
+        console.warn(e);
+        return null;
+      }
     },
     [getHit]
   );
@@ -37,7 +43,12 @@ const useMatchers = () => {
 
       // This is a fallback in case metadata is not included. In most cases templates are shown, the template metadata
       // should also exist
-      return (await getHit(hit.howler.id, true)).__overview;
+      try {
+        return (await getHit(hit.howler.id, true)).__overview;
+      } catch (e) {
+        console.warn(e);
+        return null;
+      }
     },
     [getHit]
   );
@@ -54,7 +65,12 @@ const useMatchers = () => {
 
       // This is a fallback in case metadata is not included. In most cases templates are shown, the template metadata
       // should also exist
-      return (await getHit(hit.howler.id, true)).__dossiers;
+      try {
+        return (await getHit(hit.howler.id, true)).__dossiers ?? [];
+      } catch (e) {
+        console.warn(e);
+        return [];
+      }
     },
     [getHit]
   );
@@ -70,7 +86,12 @@ const useMatchers = () => {
       }
 
       // This is a fallback in case metadata is not included.
-      return (await getHit(hit.howler.id, true)).__analytic;
+      try {
+        return (await getHit(hit.howler.id, true)).__analytic;
+      } catch (e) {
+        console.warn(e);
+        return null;
+      }
     },
     [getHit]
   );

@@ -62,8 +62,11 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
   const [hasOverview, setHasOverview] = useState(false);
   const [tab, setTab] = useState<string>('overview');
   const [loading, setLoading] = useState<boolean>(false);
-  const [dossiers, setDossiers] = useState<Dossier[]>([]);
   const [filter, setFilter] = useState('');
+
+  // In order to properly check for dossiers, we split dossiers into two
+  const [_dossiers, setDossiers] = useState<Dossier[] | null>(null);
+  const dossiers: Dossier[] = useMemo(() => _dossiers ?? [], [_dossiers]);
 
   const users = useMyUserList(userIds);
 
@@ -72,10 +75,6 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
   howlerPluginStore.plugins.forEach(plugin => {
     pluginStore.executeFunction(`${plugin}.on`, 'viewing');
   });
-
-  useEffect(() => {
-    getMatchingOverview(hit).then(_overview => setHasOverview(!!_overview));
-  }, [getMatchingOverview, hit]);
 
   useEffect(() => {
     if (!selected) {
@@ -89,11 +88,25 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
     }
 
     setUserIds(getUserList(hit));
-    getMatchingAnalytic(hit).then(setAnalytic);
-    getMatchingDossiers(hit).then(setDossiers);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getHit, selected]);
+
+  useEffect(() => {
+    if (hit && !analytic) {
+      getMatchingAnalytic(hit).then(setAnalytic);
+    }
+  }, [analytic, getMatchingAnalytic, hit]);
+
+  useEffect(() => {
+    if (hit && !_dossiers) {
+      getMatchingDossiers(hit).then(setDossiers);
+    }
+  }, [_dossiers, getMatchingDossiers, hit]);
+
+  useEffect(() => {
+    getMatchingOverview(hit).then(_overview => setHasOverview(!!_overview));
+  }, [getMatchingOverview, hit]);
 
   useEffect(() => {
     if (tab === 'hit_aggregate' && !hit?.howler.is_bundle) {
