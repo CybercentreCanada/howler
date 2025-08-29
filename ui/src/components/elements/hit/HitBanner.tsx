@@ -11,7 +11,7 @@ import {
   useTheme,
   type TypographyProps
 } from '@mui/material';
-import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
+import useMatchers from 'components/app/hooks/useMatchers';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { uniq } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
@@ -44,9 +44,9 @@ export interface StatusProps<T extends Hit = Hit> {
 const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAssigned = true }) => {
   const { t } = useTranslation();
   const { config } = useContext(ApiConfigContext);
-  const { getIdFromName } = useContext(AnalyticContext);
   const theme = useTheme();
   const pluginStore = usePluginStore();
+  const { getMatchingAnalytic } = useMatchers();
 
   const [analyticId, setAnalyticId] = useState<string>();
 
@@ -54,8 +54,13 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
   const textVariant = useMemo(() => (layout === HitLayout.COMFY ? 'body1' : 'caption'), [layout]);
 
   useEffect(() => {
-    getIdFromName(hit?.howler.analytic).then(setAnalyticId);
-  }, [getIdFromName, hit]);
+    if (!hit?.howler.analytic) {
+      return;
+    }
+
+    getMatchingAnalytic(hit).then(analytic => setAnalyticId(analytic.analytic_id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hit?.howler.analytic]);
 
   const providerColor = useMemo(
     () => PROVIDER_COLORS[hit.event?.provider ?? 'unknown'] ?? stringToColor(hit.event.provider),
@@ -226,7 +231,15 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
           sx={{ alignSelf: 'start', '& a': { color: 'text.primary' } }}
         >
           {analyticId ? (
-            <Link to={`/analytics/${analyticId}`} onClick={e => e.stopPropagation()}>
+            <Link
+              to={`/analytics/${analyticId}`}
+              onAuxClick={e => {
+                e.stopPropagation();
+              }}
+              onClick={e => {
+                e.stopPropagation();
+              }}
+            >
               {hit.howler.analytic}
             </Link>
           ) : (

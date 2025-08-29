@@ -18,7 +18,6 @@ import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
 import { useAppUser } from 'commons/components/app/hooks';
 import useLocalStorageItem from 'commons/components/utils/hooks/useLocalStorageItem';
-import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import { TuiListProvider, type TuiListItemProps } from 'components/elements/addons/lists';
 import { TuiListMethodContext, type TuiListMethodsState } from 'components/elements/addons/lists/TuiListProvider';
@@ -45,7 +44,6 @@ const AnalyticSearchBase: FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
   const appUser = useAppUser<HowlerUser>();
-  const { addFavourite, removeFavourite } = useContext(AnalyticContext);
 
   const [onlyRules, setOnlyRules] = useLocalStorageItem<RuleTypes>(StorageKey.ONLY_RULES, 0);
   const [searching, setSearching] = useState<boolean>(false);
@@ -53,6 +51,30 @@ const AnalyticSearchBase: FC = () => {
   const [phrase, setPhrase] = useState(searchParams.get('phrase') || '');
   const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
   const [response, setResponse] = useState<HowlerSearchResponse<Analytic>>(null);
+
+  const addFavourite = useCallback(
+    async (analytic: Analytic) => {
+      await dispatchApi(api.analytic.favourite.post(analytic.analytic_id));
+
+      appUser.setUser({
+        ...appUser.user,
+        favourite_analytics: [...appUser.user.favourite_analytics, analytic.analytic_id]
+      });
+    },
+    [appUser, dispatchApi]
+  );
+
+  const removeFavourite = useCallback(
+    async (analytic: Analytic) => {
+      await dispatchApi(api.analytic.favourite.del(analytic.analytic_id));
+
+      appUser.setUser({
+        ...appUser.user,
+        favourite_analytics: appUser.user.favourite_analytics.filter(v => v !== analytic.analytic_id)
+      });
+    },
+    [appUser, dispatchApi]
+  );
 
   // Search Handler.
   const onSearch = useCallback(async () => {

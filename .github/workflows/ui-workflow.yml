@@ -67,10 +67,18 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Run prettier formatting checks
         run: |
-          npx prettier@^3.2.5 -c src
+          pnpm run lint
       - name: Run eslint linter checks
         run: |
           npx eslint@8 src
+      - name: Run Unit Tests
+        run: pnpm test
+      - name: Report Coverage
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          json-summary-path: ui/target/coverage/coverage-summary.json
+          json-final-path: ui/target/coverage/coverage-final.json
+
 
   push_to_registry:
     if: github.event_name != 'pull_request'

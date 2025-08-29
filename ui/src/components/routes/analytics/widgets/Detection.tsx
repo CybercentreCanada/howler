@@ -1,4 +1,4 @@
-import 'chartjs-adapter-moment';
+import 'chartjs-adapter-dayjs';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import { forwardRef } from 'react';
 import { stringToColor } from 'utils/utils';

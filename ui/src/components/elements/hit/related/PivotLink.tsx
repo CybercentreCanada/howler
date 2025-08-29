@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react/dist/iconify.js';
 import { Skeleton } from '@mui/material';
 import Handlebars from 'handlebars';
 import { isEmpty } from 'lodash-es';
@@ -48,16 +47,18 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false }) => {
   }, [flatHit, pivot]);
 
   if (href) {
-    return (
-      <RelatedLink title={pivot.label[i18n.language]} href={href} compact={compact}>
-        <Icon fontSize="1.5rem" icon={pivot.icon} />
-      </RelatedLink>
-    );
+    return <RelatedLink title={pivot.label[i18n.language]} href={href} compact={compact} icon={pivot.icon} />;
   }
 
-  const pluginPivot = pluginStore.executeFunction(`pivot.${pivot.format}`, { pivot, hit, compact });
-  if (pluginPivot) {
-    return pluginPivot;
+  try {
+    const pluginPivot = pluginStore.executeFunction(`pivot.${pivot.format}`, { pivot, hit, compact });
+    if (pluginPivot) {
+      return pluginPivot;
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn(`Pivot plugin for format ${pivot.format} does not exist, not rendering`);
+    return null;
   }
 
   return <Skeleton variant="rounded" />;

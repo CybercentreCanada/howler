@@ -77,8 +77,9 @@ export interface APIConfiguration {
     };
   };
   ui: {
-    apps: { alt: string; name: string; img_d: string; img_l: string; route: string; classification: string; }[]
+    apps: { alt: string; name: string; img_d: string; img_l: string; route: string; classification: string }[];
   };
+  mapping: APIMappings;
   features: {
     borealis: boolean;
     notebook: boolean;
@@ -225,9 +226,14 @@ export interface APIC12Ndef {
   RESTRICTED: string;
 }
 
+export interface APIMappings {
+  mapping: { [index: string]: string };
+}
+
 export interface ApiType {
   indexes: APIIndexes;
   lookups: APILookups;
   configuration: APIConfiguration;
   c12nDef: APIC12Ndef;
+  mapping: APIMappings;
 }

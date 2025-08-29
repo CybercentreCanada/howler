@@ -1,7 +1,7 @@
 import { Skeleton, useTheme } from '@mui/material';
 import api from 'api';
 import type { HowlerFacetSearchResponse } from 'api/search/facet';
-import 'chartjs-adapter-moment';
+import 'chartjs-adapter-dayjs';
 import useMyChart from 'components/hooks/useMyChart';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import { forwardRef, useEffect, useMemo, useState } from 'react';
@@ -31,10 +31,11 @@ const Escalation = forwardRef<any, { analytic: Analytic; maxWidth?: string }>(({
     setLoading(true);
 
     api.search.facet.hit
-      .post('howler.escalation', {
-        query: `howler.analytic:("${analytic.name}")`
+      .post({
+        query: `howler.analytic:("${analytic.name}")`,
+        fields: ['howler.escalation']
       })
-      .then(data => setEscalationData(data))
+      .then(data => setEscalationData(data['howler.escalation']))
       .finally(() => setLoading(false));
   }, [analytic]);
 

@@ -4,7 +4,7 @@ import Markdown from 'components/elements/display/Markdown';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import DefaultOutline from 'components/elements/hit/outlines/DefaultOutline';
 import { useScrollRestoration } from 'components/hooks/useScrollRestoration';
-import moment from 'moment';
+import dayjs from 'dayjs';
 import type { FC } from 'react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -16,8 +16,8 @@ const ALERTS = [
   {
     howler: { id: 'hit1', analytic: 'Cat Checker', detection: 'Listening for Meows' },
     event: {
-      start: moment().subtract(4, 'hour').toString(),
-      end: moment().subtract(3, 'hour').toString(),
+      start: dayjs().subtract(4, 'hour').toString(),
+      end: dayjs().subtract(3, 'hour').toString(),
       kind: 'Loud meow',
       outcome: 'Food provided'
     }
@@ -25,8 +25,8 @@ const ALERTS = [
   {
     howler: { id: 'hit2', analytic: 'Cat Checker', detection: 'Looking for paw prints' },
     event: {
-      start: moment().subtract(6, 'hour').toString(),
-      end: moment().subtract(5, 'hour').toString(),
+      start: dayjs().subtract(6, 'hour').toString(),
+      end: dayjs().subtract(5, 'hour').toString(),
       provider: "The neighbour's cat (probably)",
       reason: 'There was some fish we forgot to put away in the kitchen'
     }

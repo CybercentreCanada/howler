@@ -2,6 +2,7 @@ import api from 'api';
 import { useAppUser } from 'commons/components/app/hooks';
 import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
+import { has, omit } from 'lodash-es';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { View } from 'models/entities/generated/View';
 import { useCallback, useEffect, useState, type FC, type PropsWithChildren } from 'react';
@@ -10,24 +11,16 @@ import { createContext, useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
 
 export interface ViewContextType {
-  ready: boolean;
   defaultView: string;
   setDefaultView: (viewId: string) => void;
-  views: View[];
+  views: { [viewId: string]: View };
   addFavourite: (id: string) => Promise<void>;
   removeFavourite: (id: string) => Promise<void>;
-  fetchViews: (force?: boolean) => Promise<void>;
+  fetchViews: (ids?: string[]) => Promise<View[]>;
   addView: (v: View) => Promise<View>;
-  editView: (
-    id: string,
-    title: string,
-    query: string,
-    sort: string,
-    span: string,
-    advanceOnTriage: boolean
-  ) => Promise<View>;
+  editView: (id: string, newView: Partial<Omit<View, 'view_id' | 'owner'>>) => Promise<View>;
   removeView: (id: string) => Promise<void>;
-  getCurrentView: () => View;
+  getCurrentView: (lazy?: boolean) => Promise<View>;
 }
 
 export const ViewContext = createContext<ViewContextType>(null);
@@ -39,82 +32,115 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
   const location = useLocation();
   const routeParams = useParams();
 
-  const [loading, setLoading] = useState(false);
-  const [views, setViews] = useState<{ ready: boolean; views: View[] }>({ ready: false, views: [] });
+  const [views, setViews] = useState<{ [viewId: string]: View }>({});
 
-  const fetchViews = useCallback(
-    async (force = false) => {
-      if (views.ready && !force) {
-        return;
+  const fetchViews: ViewContextType['fetchViews'] = useCallback(
+    async (ids?: string[]) => {
+      if (!ids) {
+        const newViews = (await dispatchApi(api.view.get(), { throwError: false })) ?? [];
+
+        setViews(_views => ({
+          ..._views,
+          ...Object.fromEntries(newViews.map(_view => [_view.view_id, _view]))
+        }));
+
+        return newViews;
       }
 
-      if (!appUser.isReady()) {
-        return;
+      const missingIds = ids.filter(_id => !views[_id]);
+
+      if (missingIds.length < 1) {
+        return ids.map(id => views[id]);
       }
 
-      setLoading(true);
       try {
-        setViews({ ready: true, views: await api.view.get() });
-      } finally {
-        setLoading(false);
+        const response = await dispatchApi(
+          api.search.view.post({
+            query: `view_id:(${missingIds.join(' OR ')})`,
+            rows: missingIds.length
+          })
+        );
+
+        const newViews = Object.fromEntries(response.items.map(_view => [_view.view_id, _view]));
+
+        setViews(_views => ({
+          ..._views,
+          ...Object.fromEntries(missingIds.map(_view_id => [_view_id, null])),
+          ...newViews
+        }));
+
+        return ids.map(id => views[id] ?? newViews[id]);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn(e);
+
+        return [];
       }
     },
-    [appUser, views.ready]
+    [dispatchApi, views]
   );
 
   useEffect(() => {
-    if (!views.ready && !loading) {
-      fetchViews();
-    }
-  }, [fetchViews, views.ready, appUser, loading]);
-
-  useEffect(() => {
-    if (defaultView && views.views?.length > 0 && !views.views?.find(v => v.view_id === defaultView)) {
-      setDefaultView(undefined);
-    }
-  });
-
-  const getCurrentView = useCallback(() => {
-    if (!location.pathname.startsWith('/views')) {
-      return null;
+    if (!defaultView || has(views, defaultView)) {
+      return;
     }
 
-    return views.views.find(_view => _view.view_id === routeParams.id);
-  }, [location.pathname, routeParams.id, views.views]);
+    (async () => {
+      const result = await fetchViews([defaultView]);
 
-  const editView = useCallback(
-    async (id: string, title: string, query: string, sort: string, span: string, advanceOnTriage: boolean) => {
-      const result = await api.view.put(id, title, query, sort, span, advanceOnTriage);
+      if (!result.length) {
+        setDefaultView(undefined);
+      }
+    })();
+  }, [defaultView, fetchViews, setDefaultView, views]);
+
+  const getCurrentView: ViewContextType['getCurrentView'] = useCallback(
+    async (lazy = false) => {
+      const id = location.pathname.startsWith('/views') ? routeParams.id : defaultView;
+      if (!id) {
+        return null;
+      }
+
+      if (!has(views, id) && !lazy) {
+        return (await fetchViews([id]))[0];
+      }
+
+      return views[id];
+    },
+    [defaultView, fetchViews, location.pathname, routeParams.id, views]
+  );
+
+  const editView: ViewContextType['editView'] = useCallback(
+    async (id, partialView) => {
+      const result = await dispatchApi(api.view.put(id, partialView));
 
       setViews(_views => ({
         ..._views,
-        views: _views.views.map(v =>
-          v.view_id === id ? { ...v, title, query, sort, span, settings: { advance_on_triage: advanceOnTriage } } : v
-        )
+        [id]: { ...(_views[id] ?? {}), ...partialView }
       }));
 
       return result;
     },
-    []
+    [dispatchApi]
   );
 
-  const addFavourite = useCallback(
+  const addFavourite: ViewContextType['addFavourite'] = useCallback(
     async (id: string) => {
-      await api.view.favourite.post(id);
+      await dispatchApi(api.view.favourite.post(id));
 
       appUser.setUser({
         ...appUser.user,
         favourite_views: [...appUser.user.favourite_views, id]
       });
     },
-    [appUser]
+    [appUser, dispatchApi]
   );
 
-  const addView = useCallback(
+  const addView: ViewContextType['addView'] = useCallback(
     async (view: View) => {
       const newView = await dispatchApi(api.view.post(view));
 
-      setViews(_views => ({ ..._views, views: [..._views.views, newView] }));
+      setViews(_views => ({ ..._views, [newView.view_id]: newView }));
 
       addFavourite(newView.view_id);
 
@@ -123,23 +149,23 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
     [addFavourite, dispatchApi]
   );
 
-  const removeFavourite = useCallback(
+  const removeFavourite: ViewContextType['removeFavourite'] = useCallback(
     async (id: string) => {
-      await api.view.favourite.del(id);
+      await dispatchApi(api.view.favourite.del(id));
 
       appUser.setUser({
         ...appUser.user,
         favourite_views: appUser.user.favourite_views.filter(v => v !== id)
       });
     },
-    [appUser]
+    [appUser, dispatchApi]
   );
 
-  const removeView = useCallback(
+  const removeView: ViewContextType['removeView'] = useCallback(
     async (id: string) => {
-      const result = await api.view.del(id);
+      const result = await dispatchApi(api.view.del(id));
 
-      setViews(_views => ({ ..._views, views: _views.views.filter(v => v.view_id !== id) }));
+      setViews(_views => omit(_views, id));
 
       if (appUser.user?.favourite_views.includes(id)) {
         removeFavourite(id);
@@ -147,13 +173,13 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
 
       return result;
     },
-    [appUser.user?.favourite_views, removeFavourite]
+    [appUser.user?.favourite_views, dispatchApi, removeFavourite]
   );
 
   return (
     <ViewContext.Provider
       value={{
-        ...views,
+        views,
         addFavourite,
         removeFavourite,
         fetchViews,

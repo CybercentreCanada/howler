@@ -1,7 +1,7 @@
 import * as colors from '@mui/material/colors';
+import dayjs from 'dayjs';
 import { flatten, unflatten } from 'flat';
 import { isArray, isEmpty, isNil, isObject, isPlainObject } from 'lodash-es';
-import moment from 'moment';
 
 export const bytesToSize = (bytes: number | null) => {
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -45,7 +45,7 @@ export const formatDate = (date: number | string | Date): string => {
     return '?';
   }
 
-  return moment(date).utc().format(DATE_FORMAT);
+  return dayjs(date).utc().format(DATE_FORMAT);
 };
 
 export const compareTimestamp = (a: string, b: string): number => {
@@ -57,7 +57,7 @@ export const twitterShort = (date: string | Date | number): string => {
     return '?';
   }
 
-  return moment(date).fromNow();
+  return dayjs(date).fromNow();
 };
 
 export const hashCode = (s: string): number => s.split('').reduce((a, b) => ((a << 5) - a + b.charCodeAt(0)) | 0, 0);
@@ -91,7 +91,7 @@ export const delay = (ms: number, rejectOnCancel = false) => {
   }
 
   return new TimedPromise((resolve, reject) => {
-    timerId = setTimeout(resolve, ms);
+    timerId = setTimeout(resolve, ms) as unknown as number;
     onCancel = reject;
   });
 };

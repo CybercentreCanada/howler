@@ -1,11 +1,11 @@
-import { hpost, joinAllUri } from 'api';
+import { hpost, joinUri } from 'api';
 import type { HowlerFacetSearchRequest, HowlerFacetSearchResponse } from 'api/search/facet';
 import { uri as parentUri } from 'api/search/facet';
 
-export const uri = (field: string) => {
-  return joinAllUri(parentUri(), 'hit', field);
+export const uri = () => {
+  return joinUri(parentUri(), 'hit');
 };
 
-export const post = (field: string, request?: HowlerFacetSearchRequest): Promise<HowlerFacetSearchResponse> => {
-  return hpost(uri(field), { ...(request || {}), query: request?.query || 'howler.id:*' });
+export const post = (request?: HowlerFacetSearchRequest): Promise<{ [index: string]: HowlerFacetSearchResponse }> => {
+  return hpost(uri(), { ...(request || {}), query: request?.query || 'howler.id:*' });
 };

@@ -27,8 +27,14 @@ export const uri = (id?: string): string => {
   return id ? joinAllUri(parentUri(), 'hit', id) : joinUri(parentUri(), 'hit');
 };
 
-export const get = (id: string): Promise<Hit> => {
-  return hget(uri(id));
+export const get = <T extends Hit>(id: string, metadata?: string[]): Promise<T> => {
+  const params = new URLSearchParams();
+
+  if (metadata) {
+    params.append('metadata', metadata.join(','));
+  }
+
+  return hget(uri(id), params);
 };
 
 interface PostResponse {

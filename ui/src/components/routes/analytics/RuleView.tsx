@@ -1,7 +1,7 @@
 import { Check, Edit } from '@mui/icons-material';
 import { Box, CircularProgress, IconButton, Stack, Typography, useTheme } from '@mui/material';
 import api from 'api';
-import 'chartjs-adapter-moment';
+import 'chartjs-adapter-dayjs';
 import useMyApi from 'components/hooks/useMyApi';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import type { Analytic } from 'models/entities/generated/Analytic';

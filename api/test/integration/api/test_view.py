@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 import pytest
 from conftest import APIError, get_api_data
@@ -23,7 +24,7 @@ def datastore(datastore_connection):
 def test_add_view(datastore: HowlerDatastore, login_session):
     session, host = login_session
 
-    view_data = {}
+    view_data: dict[str, Any] = {}
 
     with pytest.raises(APIError) as err:
         get_api_data(
@@ -131,6 +132,23 @@ def test_set_view(datastore: HowlerDatastore, login_session):
 
     updated_view = datastore.view.get(id, as_obj=True)
     assert updated_view.title == "new title thing"
+
+
+def test_set_view_error(datastore: HowlerDatastore, login_session):
+    session, host = login_session
+
+    id = datastore.view.search("owner:admin AND type:(-readonly)")["items"][0]["view_id"]
+
+    with pytest.raises(APIError):
+        get_api_data(
+            session,
+            f"{host}/api/v1/view/{id}/",
+            method="PUT",
+            data=json.dumps({"owner": "someoneelse"}),
+        )
+
+    updated_view = datastore.view.get(id, as_obj=True)
+    assert updated_view.owner != "someoneelse"
 
 
 def test_favourite(datastore: HowlerDatastore, login_session):

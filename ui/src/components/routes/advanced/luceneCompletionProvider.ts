@@ -50,12 +50,14 @@ const useLuceneCompletionProvider = (): languages.CompletionItemProvider => {
             }))
           };
         } else {
-          const options = await api.search.facet.hit.post(key, { query: 'howler.id:*', rows: 250 }).catch(() => ({}));
+          const options = await api.search.facet.hit
+            .post({ query: 'howler.id:*', rows: 250, fields: [key] })
+            .catch(() => ({}));
 
           const _position = model.getWordUntilPosition(position);
 
           return {
-            suggestions: Object.keys(options).map(_value => ({
+            suggestions: Object.keys(options[key] || {}).map(_value => ({
               label: _value,
               kind: monaco.languages.CompletionItemKind.Constant,
               insertText: `"${_value}"`,

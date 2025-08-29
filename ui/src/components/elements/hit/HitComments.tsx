@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import api from 'api';
 import { useAppUser } from 'commons/components/app/hooks';
-import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
+import useMatchers from 'components/app/hooks/useMatchers';
 import { SocketContext, type RecievedDataType } from 'components/app/providers/SocketProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import useMyApi from 'components/hooks/useMyApi';
@@ -50,8 +50,8 @@ const HitComments: FC<HitCommentsProps> = ({ hit, users }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { dispatchApi } = useMyApi();
-  const { getAnalyticFromName } = useContext(AnalyticContext);
   const { addListener, removeListener, emit } = useContext(SocketContext);
+  const { getMatchingAnalytic } = useMatchers();
 
   const [typers, setTypers] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -91,12 +91,13 @@ const HitComments: FC<HitCommentsProps> = ({ hit, users }) => {
 
   useEffect(() => {
     if (hit?.howler?.analytic) {
-      getAnalyticFromName(hit?.howler?.analytic).then(analytic => {
+      getMatchingAnalytic(hit).then(analytic => {
         setAnalyticId(analytic?.analytic_id);
         setAnalyticComments(sortByTimestamp(analytic?.comment ?? []));
       });
     }
-  }, [getAnalyticFromName, hit?.howler?.analytic]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getMatchingAnalytic, hit?.howler?.analytic]);
 
   const onSubmit = useCallback(async () => {
     if (!input.current?.value || !hit || input.current.value.length > MAX_LENGTH) return;

@@ -15,7 +15,7 @@ import {
 } from '@mui/material';
 import api from 'api';
 import type { EditOptions } from 'api/analytic';
-import 'chartjs-adapter-moment';
+import 'chartjs-adapter-dayjs';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import EditRow from 'components/elements/EditRow';
 import useMyApi from 'components/hooks/useMyApi';

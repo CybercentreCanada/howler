@@ -26,7 +26,12 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit }) => {
   const [hits, setHits] = useState<Hit[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const view = useContextSelector(ViewContext, ctx => ctx.views?.find(_view => _view.view_id === viewId));
+  const view = useContextSelector(ViewContext, ctx => ctx.views[viewId]);
+  const fetchViews = useContextSelector(ViewContext, ctx => ctx.fetchViews);
+
+  useEffect(() => {
+    fetchViews([viewId]);
+  }, [fetchViews, viewId]);
 
   useEffect(() => {
     if (!view?.query) {

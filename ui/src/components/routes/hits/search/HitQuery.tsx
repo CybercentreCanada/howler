@@ -6,6 +6,7 @@ import TuiIconButton from 'components/elements/addons/buttons/CustomIconButton';
 import QueryEditor from 'components/routes/advanced/QueryEditor';
 import type { IDisposable, editor } from 'monaco-editor';
 
+import ClearIcon from '@mui/icons-material/Clear';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import type { FC } from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -193,7 +194,7 @@ const HitQuery: FC<HitQueryProps> = ({
         query={preppedQuery}
         setQuery={setQuery}
         language="lucene"
-        height={multiline ? '100%' : '20px'}
+        height={multiline ? `${DEFAULT_MULTILINE_HEIGHT - 30}px` : '20px'}
         onMount={onMount}
         editorOptions={options}
       />
@@ -202,6 +203,17 @@ const HitQuery: FC<HitQueryProps> = ({
           <History />
         </Tooltip>
       )}
+      <TuiIconButton
+        disabled={searching || disabled}
+        onClick={() => setQuery('howler.id:*')}
+        sx={{ ml: 1, alignSelf: 'start', flexShrink: 0 }}
+        size={compact ? 'small' : 'medium'}
+      >
+        <Tooltip title={t('route.clear')}>
+          <ClearIcon sx={{ fontSize: '20px' }} />
+        </Tooltip>
+      </TuiIconButton>
+
       <TuiIconButton
         disabled={searching || disabled}
         onClick={search}

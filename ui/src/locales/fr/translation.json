@@ -170,7 +170,7 @@
   "hit.details.actions.vote.novote": "Pas de vote",
 
   "hit.details.asessments.ambiguous.description": "La nature du hit n'a pas pu être déterminée avec succès sur la base des données disponibles.",
-  "hit.details.asessments.attempt.description": "Le hit faisait partie d'une tentative de compromis qui a échoué.",
+  "hit.details.asessments.attempt.description": "Le hit représente une activité malveillante visant à compromettre des systèmes ou des données.",
   "hit.details.asessments.compromise.description": "Le hit fait partie d'un compromis réussi.",
   "hit.details.asessments.development.description": "Le hit est liée à une activité de développement et doit être ignorée.",
   "hit.details.asessments.false-positive.description": "Le hit n'est pas lié à la détection qui l'a créé.",
@@ -511,8 +511,13 @@
   "route.advanced.query.yaml": "Règle Sigma",
   "route.advanced.query.yaml.description": "Sigma est un format de signature générique et ouvert qui vous permet de décrire des événements de journal pertinents de manière directe. Le format de règle est très flexible, facile à écrire et applicable à tout type de fichier journal.",
   "route.advanced.result.title": "Recherche avancée de howler",
-  "route.advanced.result.description": "Excecutez une requête pour afficher les résultats ici.",
-  "route.advanced.type": "Type de règle",
+  "route.advanced.result.description": "Exécutez une requête pour afficher les résultats ici.",
+  "route.advanced.rule.type": "Type de règle",
+  "route.advanced.pivot.field": "Champ à regrouper par",
+  "route.advanced.query.type": "Type de requête",
+  "route.advanced.query.type.default": "Défaut",
+  "route.advanced.query.type.facet": "Facette",
+  "route.advanced.query.type.groupby": "Regrouper",
 
   "route.analytics": "Analyses",
   "route.analytics.deleted": "Règle supprimée!",
@@ -639,6 +644,7 @@
   "route.home": "Tableau de bord utilisateur",
 
   "route.history": "Mode historique : Voir toutes les requêtes précédentes",
+  "route.clear": "Effacer la requête",
   "route.help.hit.banner": "Documentation sur en-tête de hit",
   "route.login.button.oauth": "Se connecter avec",
 
@@ -675,7 +681,8 @@
   "route.overviews.manager.search": "Rechercher les vues d'ensemble",
   "route.overviews.manager.delete": "Supprimer la vue d'ensemble",
   "route.overviews.manager.delete.success": "Vue d'ensemble Supprimée.",
-  "route.overviews.rule.explanation": "Il s'agit d'une analyse Howler. Il n'y a qu'une seule détection, qui a été présélectionnée.",
+  "route.overviews.theme.light": "Prévoyez en mode clair",
+  "route.overviews.theme.dark": "Prévoyez en mode sombre",
 
   "route.dossiers": "Dossiers",
   "route.dossiers.default": "Défaut",
@@ -727,6 +734,7 @@
   "route.views.manager.readonly": "Intégré",
   "route.views.manager.search": "Rechercher les vues",
   "route.views.manager": "Gérer vue",
+  "route.views.save": "Enregistrer cette requête comme vue",
   "route.views.saved": "Vues épinglées",
   "route.views.show": "Voir les vues",
   "route.views": "Vues",

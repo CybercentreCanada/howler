@@ -8,6 +8,9 @@ import {
   LinearProgress,
   Stack,
   TextField,
+  ThemeProvider,
+  ToggleButton,
+  ToggleButtonGroup,
   Tooltip,
   useTheme
 } from '@mui/material';
@@ -16,12 +19,14 @@ import PageCenter from 'commons/components/pages/PageCenter';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { Check, Delete, SsidChart } from '@mui/icons-material';
+import { Check, DarkMode, Delete, SsidChart, WbSunny } from '@mui/icons-material';
+import { useApp } from 'commons/components/app/hooks';
 import AppInfoPanel from 'commons/components/display/AppInfoPanel';
-import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
+import useThemeBuilder from 'commons/components/utils/hooks/useThemeBuilder';
 import { OverviewContext } from 'components/app/providers/OverviewProvider';
 import HitOverview from 'components/elements/hit/HitOverview';
 import useMyApi from 'components/hooks/useMyApi';
+import useMyTheme from 'components/hooks/useMyTheme';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Overview } from 'models/entities/generated/Overview';
@@ -33,6 +38,8 @@ import { useStartingTemplate } from './startingTemplate';
 
 const OverviewViewer = () => {
   const theme = useTheme();
+  const app = useApp();
+  const { lightTheme, darkTheme } = useThemeBuilder(useMyTheme());
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
   const { getOverviews } = useContext(OverviewContext);
@@ -41,6 +48,7 @@ const OverviewViewer = () => {
   const [overviewList, setOverviewList] = useState<Overview[]>([]);
   const [selectedOverview, setSelectedOverview] = useState<Overview>(null);
   const [content, setContent] = useState<string>('');
+  const [chosenTheme, setChosenTheme] = useState(app.theme);
 
   const [analytics, setAnalytics] = useState<Analytic[]>([]);
   const [detections, setDetections] = useState<string[]>([]);
@@ -51,8 +59,6 @@ const OverviewViewer = () => {
   const [overviewLoading, setOverviewLoading] = useState(false);
   const [exampleHit, setExampleHit] = useState<Hit>(null);
   const [x, setX] = useState(0);
-
-  const analyticContext = useContext(AnalyticContext);
 
   const wrapper = useRef<HTMLDivElement>();
 
@@ -87,20 +93,17 @@ const OverviewViewer = () => {
   }, [analytic, dispatchApi]);
 
   useEffect(() => {
-    if (analytic) {
-      setLoading(true);
+    if (analytic && analytics) {
+      const _detections =
+        analytics.find(_analytic => _analytic.name.toLowerCase() === analytic.toLowerCase())?.detections ?? [];
 
-      analyticContext
-        .getAnalyticFromName(analytic)
-        .then(foundAnalytic => {
-          setDetections(foundAnalytic.detections);
-        })
-        .catch(() => {
-          setDetection('ANY');
-        })
-        .finally(() => setLoading(false));
+      setDetections(_detections);
+
+      if (detection && !_detections.map(_detection => _detection.toLowerCase()).includes(detection.toLowerCase())) {
+        setDetection('ANY');
+      }
     }
-  }, [analytic, analyticContext, detection, dispatchApi, params, setParams]);
+  }, [analytic, analytics, detection]);
 
   useEffect(() => {
     (async () => {
@@ -231,6 +234,8 @@ const OverviewViewer = () => {
   const analyticOrDetectionMissing = useMemo(() => !analytic || !detection, [analytic, detection]);
   const noChange = useMemo(() => selectedOverview?.content === content, [content, selectedOverview?.content]);
 
+  const activeTheme = chosenTheme === 'light' ? lightTheme : darkTheme;
+
   return (
     <PageCenter maxWidth="100%" width="100%" textAlign="left" height="100%">
       <LinearProgress sx={{ mb: 1, opacity: +loading }} />
@@ -279,6 +284,24 @@ const OverviewViewer = () => {
           >
             {t(!analyticOrDetectionMissing && !noChange ? 'button.save' : 'button.saved')}
           </Button>
+          <div style={{ flex: 1 }} />
+          <ToggleButtonGroup
+            exclusive
+            value={chosenTheme}
+            onChange={(_event, value) => setChosenTheme(value)}
+            sx={{ maxHeight: '40px' }}
+          >
+            <Tooltip title={t('route.overviews.theme.light')}>
+              <ToggleButton value="light">
+                <WbSunny />
+              </ToggleButton>
+            </Tooltip>
+            <Tooltip title={t('route.overviews.theme.dark')}>
+              <ToggleButton value="dark">
+                <DarkMode />
+              </ToggleButton>
+            </Tooltip>
+          </ToggleButtonGroup>
         </Stack>
         {analyticOrDetectionMissing ? (
           <AppInfoPanel i18nKey="route.overviews.select" sx={{ width: '100%', alignSelf: 'start' }} />
@@ -329,27 +352,31 @@ const OverviewViewer = () => {
               }}
               onMouseDown={onMouseDown}
             />
-            <Box
-              flex={1}
-              px={2}
-              sx={{
-                position: 'absolute',
-                top: 0,
-                left: `calc(50% + 7px + ${x}px)`,
-                bottom: 0,
-                right: 0,
-                display: 'flex',
-                alignItems: 'stretch',
-                justifyContent: 'stretch',
-                px: 1,
-                pt: 1,
-                mt: -1,
-                '& > *': { width: '100%' },
-                '& > div > :first-child': { mt: 0 }
-              }}
-            >
-              <HitOverview content={content || startingTemplate} hit={exampleHit} />
-            </Box>
+            <ThemeProvider theme={activeTheme}>
+              <Box
+                flex={1}
+                px={2}
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  left: `calc(50% + 7px + ${x}px)`,
+                  bottom: 0,
+                  right: 0,
+                  display: 'flex',
+                  alignItems: 'stretch',
+                  justifyContent: 'stretch',
+                  px: 1,
+                  pt: 1,
+                  mt: -1,
+                  '& > *': { width: '100%' },
+                  '& > div > :first-child': { mt: 0 },
+                  backgroundColor: activeTheme.palette.background.default,
+                  color: activeTheme.palette.text.primary
+                }}
+              >
+                <HitOverview content={content || startingTemplate} hit={exampleHit} />
+              </Box>
+            </ThemeProvider>
           </Stack>
         )}
       </Stack>

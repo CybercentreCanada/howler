@@ -1,0 +1,7 @@
+{
+  "route.dossiers.manager.borealis": "Borealis Fetcher ID",
+  "route.dossiers.manager.borealis.type": "Selector Type",
+  "route.dossiers.manager.borealis.value": "Selector Value",
+  "route.dossiers.manager.borealis.value.custom": "Custom Selector Value",
+  "route.dossiers.manager.borealis.value.description": "You can use handlebars notation to insert fields from the corresponding alert (i.e. {{howler.id}})."
+}

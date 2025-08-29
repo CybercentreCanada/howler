@@ -9,6 +9,7 @@ import { capitalize, get, groupBy, isObject } from 'lodash-es';
 import howlerPluginStore from 'plugins/store';
 import { useMemo, type ReactElement } from 'react';
 import { usePluginStore } from 'react-pluggable';
+import ActionButton from '../ActionButton';
 import JSONViewer from '../json/JSONViewer';
 
 export interface HowlerHelper {
@@ -23,6 +24,8 @@ interface Cell {
   row: string;
   value: string;
 }
+
+const FETCH_RESULTS: { [url: string]: Promise<any> } = {};
 
 export const useHelpers = (): HowlerHelper[] => {
   const pluginStore = usePluginStore();
@@ -72,8 +75,11 @@ export const useHelpers = (): HowlerHelper[] => {
           'Fetches the url provided and returns the given (flattened) key from the returned JSON object. Note that the result must be JSON!',
         callback: async (url, key) => {
           try {
-            const response = await fetch(url);
-            const json = await response.json();
+            if (!FETCH_RESULTS[url]) {
+              FETCH_RESULTS[url] = fetch(url).then(res => res.json());
+            }
+
+            const json = await FETCH_RESULTS[url];
 
             return flatten(json)[key];
           } catch (e) {
@@ -185,6 +191,20 @@ export const useHelpers = (): HowlerHelper[] => {
               </Table>
             </Paper>
           );
+        }
+      },
+
+      {
+        keyword: 'action',
+        documentation:
+          'Execute a howler action given a specific action ID (from the URL when viewing the action, i.e. yaIKVqiKhWpyCsWdqsE4D)',
+        componentCallback: (actionId: string, hitId: string, context) => {
+          if (!actionId || !hitId) {
+            console.warn('Missing parameters for the action button.');
+            return null;
+          }
+
+          return <ActionButton actionId={actionId} hitId={hitId} {...(context.hash ?? {})} />;
         }
       },
 

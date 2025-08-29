@@ -1,4 +1,5 @@
 import ipaddress
+import math
 import re
 import sys
 from datetime import datetime
@@ -17,6 +18,25 @@ def try_parse_date(date: str) -> Optional[datetime]:
             return datetime.fromisoformat(date)
     except (ValueError, TypeError):
         return None
+
+
+def try_parse_number(number: str | int | float) -> Optional[Union[int, float]]:
+    "Try and parse a number string into an integer or float type, or infinity. Returns None if string is invalid."
+    if isinstance(number, (int, float)):
+        return number
+
+    if number.lower() == "infinity":
+        return math.inf
+
+    try:
+        # Check if the value is an integer
+        return int(number)
+    except ValueError:
+        try:
+            # Check if the value is a float
+            return float(number)
+        except ValueError:
+            return None
 
 
 def try_parse_ip(ip: str) -> Optional[Union[ipaddress.IPv4Address, ipaddress.IPv6Address]]:
@@ -50,8 +70,8 @@ def normalize_phrase(value: str, type: Union[Literal["phrase"], Literal["word"]]
         return [value, value.lower()]
 
     if type == "word":
-        value = re.sub(r"[^a-z0-9.,@_:/;()]", "", value.lower())
+        value = re.sub(r"[^a-z0-9.,@_:/;()\-]", "", value.lower())
     else:
-        value = re.sub(r"[^a-z0-9.,@_:/;() ]", "", value, flags=re.IGNORECASE)
+        value = re.sub(r"[^a-z0-9.,@_:/;()\- ]", "", value, flags=re.IGNORECASE)
 
     return [value]

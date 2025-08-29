@@ -17,11 +17,7 @@ from howler.api import (
     ok,
 )
 from howler.api.v1.utils.etag import add_etag
-from howler.common.exceptions import (
-    HowlerException,
-    HowlerValueError,
-    InvalidDataException,
-)
+from howler.common.exceptions import HowlerException, HowlerValueError, InvalidDataException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
@@ -252,7 +248,7 @@ def validate_hits(**kwargs):
 @generate_swagger_docs()
 @hit_api.route("/<id>", methods=["GET"])
 @api_login(audit=False, required_priv=["R"])
-@add_etag(getter=hit_service.get_hit, check_if_match=False)
+@add_etag(getter=hit_service.get_hit)
 def get_hit(id: str, server_version: str, **kwargs):
     """Get a hit.
 
@@ -265,10 +261,18 @@ def get_hit(id: str, server_version: str, **kwargs):
     Result Example:
     https://github.com/CybercentreCanada/howler-api/blob/main/howler/odm/models/hit.py
     """
-    hit = cast(Optional[Hit], kwargs.get("cached_hit"))
+    hit = cast(Optional[Any], kwargs.get("cached_hit"))
 
     if not hit:
         return not_found(err="Hit %s does not exist" % id)
+
+    if "metadata" in request.args:
+        metadata = (request.args.get("metadata", type=str) or "").split(",")
+
+        hit = hit.as_primitives()
+
+        if len(metadata) > 0:
+            hit_service.augment_metadata(hit, metadata, kwargs["user"])
 
     return ok(hit), server_version
 

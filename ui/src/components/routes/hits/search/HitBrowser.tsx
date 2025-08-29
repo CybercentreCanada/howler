@@ -22,8 +22,8 @@ import FlexPort from 'components/elements/addons/layout/FlexPort';
 import HitSummary from 'components/elements/hit/HitSummary';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import ErrorBoundary from 'components/routes/ErrorBoundary';
-import { isNull } from 'lodash-es';
-import moment from 'moment';
+import dayjs from 'dayjs';
+import { has, isNull } from 'lodash-es';
 import type { FC, ReactNode } from 'react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
@@ -61,7 +61,6 @@ const HitBrowser: FC = () => {
   const theme = useTheme();
 
   const views = useContextSelector(ViewContext, ctx => ctx.views);
-  const viewsReady = useContextSelector(ViewContext, ctx => ctx.ready);
   const fetchViews = useContextSelector(ViewContext, ctx => ctx.fetchViews);
 
   const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
@@ -104,7 +103,7 @@ const HitBrowser: FC = () => {
     if (bundle) {
       _fullQuery = `(howler.bundles:${bundle}) AND (${_fullQuery})`;
     } else if (viewId) {
-      _fullQuery = `(${views.find(_view => _view.view_id === viewId)?.query || 'howler.id:*'}) AND (${_fullQuery})`;
+      _fullQuery = `(${views[viewId]?.query || 'howler.id:*'}) AND (${_fullQuery})`;
     }
 
     return _fullQuery;
@@ -115,12 +114,12 @@ const HitBrowser: FC = () => {
       return true;
     }
 
-    if (selectedHits.length === 1 && selectedHits[0]?.howler.id !== routeParams.id) {
+    if (selectedHits.length === 1 && selected && selectedHits[0]?.howler.id !== selected) {
       return true;
     }
 
     return false;
-  }, [routeParams.id, selectedHits]);
+  }, [selected, selectedHits]);
 
   useEffect(() => {
     const newQuery = searchParams.get('query');
@@ -139,18 +138,20 @@ const HitBrowser: FC = () => {
   useEffect(() => {
     // On load check to filter out any queries older than one month
     setQueryHistory(_queryHistory => {
-      const filterQueryTime = moment().subtract(1, 'month').toISOString();
+      const filterQueryTime = dayjs().subtract(1, 'month').toISOString();
 
       return Object.fromEntries(Object.entries(_queryHistory).filter(([_, value]) => value > filterQueryTime));
     });
   }, [setQueryHistory]);
 
   useEffect(() => {
-    if (location.pathname.startsWith('/views') && !viewsReady) {
-      fetchViews(true);
+    if (!location.pathname.startsWith('/views') || has(views, viewId)) {
+      return;
     }
+
+    fetchViews([viewId]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, viewsReady]);
+  }, [location.pathname, viewId]);
 
   const onClose = useCallback(() => {
     setSelected(null);

@@ -1,3 +1,4 @@
+import json
 from typing import cast
 
 import pytest
@@ -5,7 +6,16 @@ from conftest import APIError, get_api_data
 
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.models.hit import Hit
-from howler.odm.random_data import create_hits, create_users, wipe_hits, wipe_users
+from howler.odm.random_data import (
+    create_hits,
+    create_overviews,
+    create_templates,
+    create_users,
+    wipe_hits,
+    wipe_overviews,
+    wipe_templates,
+    wipe_users,
+)
 
 TEST_SIZE = 10
 collections = ["user"]
@@ -22,15 +32,18 @@ def datastore(datastore_connection):
         ds.user.commit()
 
         create_hits(datastore_connection, hit_count=15)
+        create_templates(datastore_connection)
+        create_overviews(datastore_connection)
 
         yield ds
     finally:
         wipe_hits(datastore_connection)
         wipe_users(ds)
+        wipe_templates(ds)
+        wipe_overviews(ds)
         create_users(ds)
 
 
-# noinspection PyUnusedLocal
 def test_deep_search(datastore, login_session):
     session, host = login_session
 
@@ -47,7 +60,6 @@ def test_deep_search(datastore, login_session):
         assert len(res) >= TEST_SIZE
 
 
-# noinspection PyUnusedLocal
 def test_facet_search(datastore, login_session):
     session, host = login_session
 
@@ -57,8 +69,15 @@ def test_facet_search(datastore, login_session):
         for v in resp.values():
             assert isinstance(v, int)
 
+        resp = get_api_data(
+            session, f"{host}/api/v1/search/facet/{collection}", method="POST", data=json.dumps({"fields": ["name"]})
+        )
+        assert len(resp) == 1
+        assert len(resp["name"]) == TEST_SIZE
+        for v in resp["name"].values():
+            assert isinstance(v, int)
 
-# noinspection PyUnusedLocal
+
 def test_grouped_search(datastore, login_session):
     session, host = login_session
 
@@ -69,7 +88,6 @@ def test_grouped_search(datastore, login_session):
             assert v["total"] == 1 and "value" in v
 
 
-# noinspection PyUnusedLocal
 def test_histogram_search(datastore, login_session):
     session, host = login_session
 
@@ -105,7 +123,6 @@ def test_search(datastore, login_session):
         assert TEST_SIZE <= resp["total"] >= len(resp["items"])
 
 
-# noinspection PyUnusedLocal
 def test_get_fields(datastore, login_session):
     session, host = login_session
 
@@ -128,7 +145,6 @@ def test_get_fields(datastore, login_session):
             )
 
 
-# noinspection PyUnusedLocal
 def test_count(datastore, login_session):
     session, host = login_session
 
@@ -142,7 +158,6 @@ def test_count(datastore, login_session):
         assert search_resp["total"] == count_resp["count"]
 
 
-# noinspection PyUnusedLocal
 def test_stats_search(datastore, login_session):
     session, host = login_session
 
@@ -210,3 +225,93 @@ def test_hit_detection_search(datastore: HowlerDatastore, login_session):
 
     case_insensitive_total_2 = datastore.hit.search(f'howler.detection:"{silly_detection}"')["total"]
     assert case_sensitive_total == case_insensitive_total_2
+
+
+def test_hit_search_with_metadata(datastore: HowlerDatastore, login_session):
+    session, host = login_session
+
+    # Test search without metadata first
+    resp_without_metadata = get_api_data(session, f"{host}/api/v1/search/hit/", params={"query": "id:*", "rows": 5})
+
+    # Ensure we have some hits to work with
+    assert resp_without_metadata["total"] > 0
+    assert len(resp_without_metadata["items"]) > 0
+
+    # Verify no metadata fields are present initially
+    for item in resp_without_metadata["items"]:
+        assert "__template" not in item
+        assert "__overview" not in item
+        assert "__dossiers" not in item
+        assert "__analytic" not in item
+
+    # Test search with metadata using GET request
+    resp_with_metadata_get = get_api_data(
+        session,
+        f"{host}/api/v1/search/hit/",
+        params={"query": "id:*", "rows": 5, "metadata": ["template", "overview", "dossiers", "analytic"]},
+    )
+
+    # Should have same number of results
+    assert resp_with_metadata_get["total"] == resp_without_metadata["total"]
+    assert len(resp_with_metadata_get["items"]) == len(resp_without_metadata["items"])
+
+    # Verify metadata fields are present
+    for item in resp_with_metadata_get["items"]:
+        assert "__template" in item
+        assert "__overview" in item
+        assert "__dossiers" in item
+        assert "__analytic" in item
+
+        if item["howler"]["analytic"] in ["Password Checker", "Bad Guy Finder"]:
+            assert item["__template"]["analytic"] == item["howler"]["analytic"]
+            assert item["__overview"]["analytic"] == item["howler"]["analytic"]
+
+        assert isinstance(item["__dossiers"], list)
+
+        # Verify analytic metadata structure
+        if item["__analytic"]:
+            assert isinstance(item["__analytic"], dict)
+            assert "name" in item["__analytic"]
+            assert item["__analytic"]["name"] == item["howler"]["analytic"]
+            assert "analytic_id" in item["__analytic"]
+        # __analytic can be None if no matching analytic record exists
+
+    # Test search with metadata using POST request
+    resp_with_metadata_post = get_api_data(
+        session,
+        f"{host}/api/v1/search/hit/",
+        method="POST",
+        data=json.dumps({"query": "id:*", "rows": 5, "metadata": ["template", "overview", "analytic"]}),
+    )
+
+    # Should have same number of results as other requests
+    assert resp_with_metadata_post["total"] == resp_without_metadata["total"]
+    assert len(resp_with_metadata_post["items"]) == len(resp_without_metadata["items"])
+
+    # Verify metadata fields are present
+    for item in resp_with_metadata_post["items"]:
+        assert "__template" in item
+        assert "__overview" in item
+        assert "__analytic" in item
+        assert "__dossiers" not in item
+
+        # Verify analytic metadata structure for POST request
+        if item["__analytic"]:
+            assert isinstance(item["__analytic"], dict)
+            assert "name" in item["__analytic"]
+            assert item["__analytic"]["name"] == item["howler"]["analytic"]
+
+    # Test that metadata is only added for hit index
+    # First ensure user collection works normally without metadata
+    resp_user = get_api_data(
+        session, f"{host}/api/v1/search/user/", params={"query": "id:*", "rows": 5, "metadata": ["template"]}
+    )
+
+    # User search should work but metadata should be ignored (no error)
+    assert resp_user["total"] >= 0
+    if resp_user["items"]:
+        for item in resp_user["items"]:
+            assert "__template" not in item
+            assert "__overview" not in item
+            assert "__dossiers" not in item
+            assert "__analytic" not in item
