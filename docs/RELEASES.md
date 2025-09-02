@@ -1,5 +1,11 @@
 # Howler Releases
 
+## Howler UI `v2.13.1`
+
+### Bug Fixes
+
+- **Fixed Chart.js Adapter**: Updated to use the correct dayjs adapter for the chart.js charts.
+
 ## Howler UI `v2.13.0`
 
 ### New Features

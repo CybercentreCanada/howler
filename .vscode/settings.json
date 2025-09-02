@@ -99,5 +99,8 @@
     "**/*.code-search": true,
     "ui/target": true,
     "ui/pnpm-lock.yaml": true
+  },
+  "markdownlint.config": {
+    "MD024": false
   }
 }
