@@ -1,7 +1,7 @@
 import { Box, Skeleton, Typography } from '@mui/material';
 import api from 'api';
 import type { HowlerFacetSearchResponse } from 'api/search/facet';
-import 'chartjs-adapter-dayjs';
+import 'chartjs-adapter-dayjs-4';
 import useMyChart from 'components/hooks/useMyChart';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import { forwardRef, useEffect, useState } from 'react';

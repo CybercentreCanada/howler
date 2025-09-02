@@ -558,13 +558,22 @@ def test__compare_metadata_priority():
     personal = {"type": "personal"}
     readonly = {"type": "readonly"}
     _global = {"type": "global"}
-    # a > b > c
+    _none = {}
+    # personal > readonly > global == None
     assert hit_service.__compare_metadata(personal, readonly) < 0
     assert hit_service.__compare_metadata(readonly, _global) < 0
     assert hit_service.__compare_metadata(personal, _global) < 0
     assert hit_service.__compare_metadata(readonly, personal) > 0
     assert hit_service.__compare_metadata(_global, readonly) > 0
     assert hit_service.__compare_metadata(_global, personal) > 0
+
+    assert hit_service.__compare_metadata(readonly, _none) < 0
+    assert hit_service.__compare_metadata(personal, _none) < 0
+    assert hit_service.__compare_metadata(_none, readonly) > 0
+    assert hit_service.__compare_metadata(_none, personal) > 0
+    assert hit_service.__compare_metadata(_none, _global) == 0
+    assert hit_service.__compare_metadata(_global, _none) == 0
+
     # Same type, detection present
     global_detection = {"type": "global", "detection": "foo"}
     assert hit_service.__compare_metadata(global_detection, _global) < 0

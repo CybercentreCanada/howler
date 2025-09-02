@@ -1,7 +1,7 @@
 import { Skeleton } from '@mui/material';
 import api from 'api';
 import type { ChartDataset, ChartOptions } from 'chart.js';
-import 'chartjs-adapter-dayjs';
+import 'chartjs-adapter-dayjs-4';
 import useMyChart from 'components/hooks/useMyChart';
 import sum from 'lodash-es/sum';
 import type { Analytic } from 'models/entities/generated/Analytic';

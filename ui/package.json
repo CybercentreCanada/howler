@@ -31,7 +31,7 @@
     "axios-retry": "^3.9.1",
     "borealis-ui": "0.11.0",
     "chart.js": "^4.5.0",
-    "chartjs-adapter-dayjs": "^1.0.0",
+    "chartjs-adapter-dayjs-4": "^1.0.4",
     "chartjs-plugin-zoom": "^2.2.0",
     "clsx": "^2.1.1",
     "csstype": "^3.1.3",

@@ -15,7 +15,7 @@ import {
 } from '@mui/material';
 import api from 'api';
 import type { Chart, ChartDataset, ChartOptions } from 'chart.js';
-import 'chartjs-adapter-dayjs';
+import 'chartjs-adapter-dayjs-4';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { HitContext } from 'components/app/providers/HitProvider';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
