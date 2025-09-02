@@ -776,7 +776,7 @@ def search(
     )
 
 
-TYPE_PRIORITY = {"personal": 2, "readonly": 1, "global": 0}
+TYPE_PRIORITY = {"personal": 2, "readonly": 1, "global": 0, None: 0}
 
 
 def __compare_metadata(object_a: dict[str, Any], object_b: dict[str, Any]) -> int:
@@ -784,8 +784,8 @@ def __compare_metadata(object_a: dict[str, Any], object_b: dict[str, Any]) -> in
     # 1. personal > readonly > global
     # 2. detection > !detection
 
-    if object_a["type"] != object_b["type"]:
-        return TYPE_PRIORITY[object_b["type"]] - TYPE_PRIORITY[object_a["type"]]
+    if object_a.get("type", None) != object_b.get("type", None):
+        return TYPE_PRIORITY[object_b.get("type", None)] - TYPE_PRIORITY[object_a.get("type", None)]
 
     if object_a.get("detection", None) and not object_b.get("detection", None):
         return -1

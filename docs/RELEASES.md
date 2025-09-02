@@ -1,5 +1,11 @@
 # Howler Releases
 
+## Howler UI `v2.11.1`
+
+### Bug Fixes
+
+- **Fixed Compare Metadata Functionality**: Added case for when type of an overview/template is `None`.
+
 ## Howler UI `v2.13.1`
 
 ### Bug Fixes
