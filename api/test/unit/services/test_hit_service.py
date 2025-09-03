@@ -262,7 +262,7 @@ def test_update_hit_modifies_status(datastore_connection):
         )
 
 
-@patch("howler.services.hit_service.datastore")
+@patch("howler.services.template_service.datastore")
 @patch("howler.services.hit_service.__match_metadata")
 def test_augment_metadata_single_hit_with_template(mock_match_metadata, mock_datastore):
     """Test augment_metadata with a single hit and template metadata."""
@@ -298,7 +298,7 @@ def test_augment_metadata_single_hit_with_template(mock_match_metadata, mock_dat
     mock_match_metadata.assert_called_once()
 
 
-@patch("howler.services.hit_service.datastore")
+@patch("howler.services.overview_service.datastore")
 @patch("howler.services.hit_service.__match_metadata")
 def test_augment_metadata_multiple_hits_with_overview(mock_match_metadata, mock_datastore):
     """Test augment_metadata with multiple hits and overview metadata."""
@@ -386,10 +386,18 @@ def test_augment_metadata_with_dossiers(mock_get_matching_dossiers, mock_datasto
     mock_get_matching_dossiers.assert_called_once()
 
 
+@patch("howler.services.overview_service.datastore")
+@patch("howler.services.template_service.datastore")
 @patch("howler.services.hit_service.datastore")
 @patch("howler.services.hit_service.__match_metadata")
 @patch("howler.services.hit_service.dossier_service.get_matching_dossiers")
-def test_augment_metadata_all_metadata_types(mock_get_matching_dossiers, mock_match_metadata, mock_datastore):
+def test_augment_metadata_all_metadata_types(
+    mock_get_matching_dossiers,
+    mock_match_metadata,
+    mock_hit_datastore,
+    mock_template_datastore,
+    mock_overview_datastore,
+):
     """Test augment_metadata with all metadata types: template, overview, and dossiers."""
     # Setup test data
     test_hit = {
@@ -407,9 +415,17 @@ def test_augment_metadata_all_metadata_types(mock_get_matching_dossiers, mock_ma
     mock_overview_collection = MagicMock()
     mock_dossier_collection = MagicMock()
 
-    mock_datastore.return_value.template = mock_template_collection
-    mock_datastore.return_value.overview = mock_overview_collection
-    mock_datastore.return_value.dossier = mock_dossier_collection
+    mock_hit_datastore.return_value.template = mock_template_collection
+    mock_hit_datastore.return_value.overview = mock_overview_collection
+    mock_hit_datastore.return_value.dossier = mock_dossier_collection
+
+    mock_template_datastore.return_value.template = mock_template_collection
+    mock_template_datastore.return_value.overview = mock_overview_collection
+    mock_template_datastore.return_value.dossier = mock_dossier_collection
+
+    mock_overview_datastore.return_value.template = mock_template_collection
+    mock_overview_datastore.return_value.overview = mock_overview_collection
+    mock_overview_datastore.return_value.dossier = mock_dossier_collection
 
     # Mock search responses
     mock_template_collection.search.return_value = {"items": [{"type": "global"}]}
@@ -460,7 +476,7 @@ def test_augment_metadata_empty_metadata_list():
     assert "__dossiers" not in test_hit
 
 
-@patch("howler.services.hit_service.datastore")
+@patch("howler.services.template_service.datastore")
 @patch("howler.services.hit_service.__match_metadata")
 def test_augment_metadata_no_matching_templates(mock_match_metadata, mock_datastore):
     """Test augment_metadata when no templates match."""
@@ -484,7 +500,7 @@ def test_augment_metadata_no_matching_templates(mock_match_metadata, mock_datast
     assert test_hit["__template"] is None
 
 
-@patch("howler.services.hit_service.datastore")
+@patch("howler.services.template_service.datastore")
 @patch("howler.services.hit_service.__match_metadata")
 def test_augment_metadata_duplicate_analytics(mock_match_metadata, mock_datastore):
     """Test augment_metadata with multiple hits having the same analytic."""
@@ -514,7 +530,7 @@ def test_augment_metadata_duplicate_analytics(mock_match_metadata, mock_datastor
     assert test_hits[0]["__template"] == test_hits[1]["__template"]
 
 
-@patch("howler.services.hit_service.datastore")
+@patch("howler.services.template_service.datastore")
 def test_augment_metadata_user_permission_filtering(mock_datastore):
     """Test that template search includes proper user permission filtering."""
     test_hit = {"howler": {"analytic": "permission_test_analytic", "id": "permission_hit"}}
@@ -710,3 +726,57 @@ def test_transition_hit_bundle_status_mismatch_skips_children(
     assert "child1" in updated_hit_ids  # Child with matching status
     assert "child3" in updated_hit_ids  # Child with matching status
     assert "child2" not in updated_hit_ids  # Child with different status should be skipped
+
+
+@patch("howler.services.hit_service.datastore")
+def test_augment_metadata_empty_hit_list(mock_datastore):
+    """Test augment_metadata with an empty list of hits."""
+    test_user = {"uname": "test_user"}
+
+    # Mock datastore collections to ensure they're not called
+    mock_template_collection = MagicMock()
+    mock_overview_collection = MagicMock()
+    mock_dossier_collection = MagicMock()
+
+    mock_datastore.return_value.template = mock_template_collection
+    mock_datastore.return_value.overview = mock_overview_collection
+    mock_datastore.return_value.dossier = mock_dossier_collection
+
+    # Test with empty list
+    empty_hits = []
+    hit_service.augment_metadata(empty_hits, ["template", "overview", "dossiers"], test_user)
+
+    # Verify no datastore operations were performed
+    mock_template_collection.search.assert_not_called()
+    mock_overview_collection.search.assert_not_called()
+    mock_dossier_collection.search.assert_not_called()
+
+    # Verify the list remains empty
+    assert empty_hits == []
+
+
+@patch("howler.services.hit_service.datastore")
+def test_augment_metadata_none_hit(mock_datastore):
+    """Test augment_metadata with a None hit value."""
+    test_user = {"uname": "test_user"}
+
+    # Mock datastore collections to ensure they're not called
+    mock_template_collection = MagicMock()
+    mock_overview_collection = MagicMock()
+    mock_dossier_collection = MagicMock()
+
+    mock_datastore.return_value.template = mock_template_collection
+    mock_datastore.return_value.overview = mock_overview_collection
+    mock_datastore.return_value.dossier = mock_dossier_collection
+
+    # Test with None hit
+    none_hit = None
+    hit_service.augment_metadata(none_hit, ["template", "overview", "dossiers"], test_user)
+
+    # Verify no datastore operations were performed
+    mock_template_collection.search.assert_not_called()
+    mock_overview_collection.search.assert_not_called()
+    mock_dossier_collection.search.assert_not_called()
+
+    # Verify the hit remains None
+    assert none_hit is None

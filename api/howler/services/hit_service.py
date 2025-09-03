@@ -30,7 +30,7 @@ from howler.odm.models.ecs.event import Event
 from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import HitOperationType, HitStatus, HitStatusTransition, Log
 from howler.odm.models.user import User
-from howler.services import action_service, analytic_service, dossier_service
+from howler.services import action_service, analytic_service, dossier_service, overview_service, template_service
 from howler.utils.dict_utils import extra_keys, flatten
 from howler.utils.uid import get_random_id
 
@@ -837,30 +837,27 @@ def augment_metadata(data: list[dict[str, Any]] | dict[str, Any], metadata: list
         This function modifies the input data in-place, adding metadata fields.
         Templates are filtered based on user permissions (global or owned by user).
     """
-    hits = data if isinstance(data, list) else [data]
+    if isinstance(data, list):
+        hits = data
+    elif data is not None:
+        hits = [data]
+    else:
+        hits = []
 
-    analytics: set[str] = set()
-    for hit in hits:
-        analytics.add(f'"{hit["howler"]["analytic"]}"')
+    if len(hits) < 1:
+        return
 
-    if len(analytics) > 0:
-        if "template" in metadata:
-            template_candidates = datastore().template.search(
-                f"analytic:({' OR '.join(analytics)}) AND (type:global OR owner:{user['uname']})",
-                as_obj=False,
-            )["items"]
+    if "template" in metadata:
+        template_candidates = template_service.get_matching_templates(hits, user["uname"], as_odm=False)
 
-            for hit in hits:
-                hit["__template"] = __match_metadata(template_candidates, hit)
+        for hit in hits:
+            hit["__template"] = __match_metadata(cast(list[dict[str, Any]], template_candidates), hit)
 
-        if "overview" in metadata:
-            overview_candidates = datastore().overview.search(
-                f"analytic:({' OR '.join(analytics)})",
-                as_obj=False,
-            )["items"]
+    if "overview" in metadata:
+        overview_candidates = overview_service.get_matching_overviews(hits, as_odm=False)
 
-            for hit in hits:
-                hit["__overview"] = __match_metadata(overview_candidates, hit)
+        for hit in hits:
+            hit["__overview"] = __match_metadata(cast(list[dict[str, Any]], overview_candidates), hit)
 
     if "analytic" in metadata:
         matched_analytics = analytic_service.get_matching_analytics(hits)
