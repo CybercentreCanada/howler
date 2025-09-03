@@ -95,7 +95,7 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
   }, [defaultView, fetchViews, setDefaultView, views]);
 
   const getCurrentView: ViewContextType['getCurrentView'] = useCallback(
-    async ({ viewId, lazy = false }) => {
+    async ({ viewId, lazy = false } = {}) => {
       if (!viewId) {
         viewId = location.pathname.startsWith('/views') ? routeParams.id : defaultView;
       }

@@ -182,7 +182,7 @@ describe('ViewContext', () => {
 
   describe('getCurrentView', () => {
     let hook: RenderHookResult<ViewContextType['getCurrentView'], any>;
-    beforeAll(async () => {
+    beforeEach(async () => {
       hook = await act(async () => {
         return renderHook(() => useContextSelector(ViewContext, ctx => ctx.getCurrentView), { wrapper: Wrapper });
       });
@@ -190,9 +190,18 @@ describe('ViewContext', () => {
 
     it('should allow the user to fetch their current view based on the location', async () => {
       // lazy load should return nothing
-      await expect(hook.result.current(true)).resolves.toBeFalsy();
+      await expect(hook.result.current({ lazy: true })).resolves.toBeFalsy();
 
       const result = await act(async () => hook.result.current());
+
+      expect(result).toEqual(MOCK_RESPONSES['/api/v1/search/view'].items[0]);
+    });
+
+    it('should allow the user to fetch their current view based on the view ID', async () => {
+      // lazy load should return nothing
+      await expect(hook.result.current({ lazy: true })).resolves.toBeFalsy();
+
+      const result = await act(async () => hook.result.current({ viewId: 'searched_view_id' }));
 
       expect(result).toEqual(MOCK_RESPONSES['/api/v1/search/view'].items[0]);
     });
