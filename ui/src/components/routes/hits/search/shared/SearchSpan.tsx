@@ -35,7 +35,7 @@ const SearchSpan: FC<{
     }
 
     (async () => {
-      const viewSpan = (await getCurrentView(true))?.span;
+      const viewSpan = (await getCurrentView({ lazy: true }))?.span;
 
       if (!viewSpan) {
         return;
