@@ -13,7 +13,15 @@ logger = get_logger(__file__)
 def get_matching_overviews(
     hits: Union[list[Hit], list[dict[str, Any]]], as_odm: bool = False
 ) -> Union[list[dict[str, Any]], list[Overview]]:
-    "Generate a list of overviews matching a given list of analytic names, and optionally a user"
+    """Generate a list of overviews matching a given list of analytic names from the provided hits.
+
+    Args:
+        hits (list[Hit] | list[dict[str, Any]]): A list of Hit objects or dictionaries containing analytic information.
+        as_odm (bool, optional): If True, return Overview objects; otherwise, return dictionaries. Defaults to False.
+
+    Returns:
+        list[dict[str, Any]] | list[Overview]: A list of matching overviews, either as dictionaries or Overview objects.
+    """
     if len(hits) < 1:
         return []
 

@@ -13,7 +13,16 @@ logger = get_logger(__file__)
 def get_matching_templates(
     hits: Union[list[Hit], list[dict[str, Any]]], uname: Optional[str] = None, as_odm: bool = False
 ) -> Union[list[dict[str, Any]], list[Analytic]]:
-    "Generate a list of templates matching a given list of analytic names, and optionally a user"
+    """Generate a list of templates matching a given list of analytic names, and optionally a user.
+
+    Args:
+        hits (list[Hit] | list[dict[str, Any]]]: List of hits, each containing analytic information.
+        uname (Optional[str], optional): Username to filter templates by owner. Defaults to None.
+        as_odm (bool, optional): If True, return results as ODM objects. If False, return as dicts. Defaults to False.
+
+    Returns:
+        list[dict[str, Any]] | list[Analytic]: List of matching templates, either as dicts or Analytic ODM objects.
+    """
     if len(hits) < 1:
         return []
 
