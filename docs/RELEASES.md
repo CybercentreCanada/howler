@@ -2,6 +2,8 @@
 
 ## Howler API `v2.11.2`
 
+- **Fixed Compare Metadata Functionality** *(bugfix)*: Added check to not run matching when no hits are provided
+
 ## Howler API `v2.11.1`
 
 - **Fixed Compare Metadata Functionality** *(bugfix)*: Added case for when type of an overview/template is `None`.
