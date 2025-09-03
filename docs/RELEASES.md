@@ -2,8 +2,9 @@
 
 ## Howler UI `v2.13.2`
 
-- **Fixed View Panel Configuration** *(bugfix)*: Fixed bug that stopped users from configuring new view panels on the dashboard
+- **Fixed View Panel Configuration** *(bugfix)*: Fixed bug that stopped users from configuring new view panels on the dashboard.
 - **Fixed Dossier Presentation Error** *(bugfix)*: Fixed bug that crashed the hit viewer if a dossier with no led was configured.
+- **Fixed View Selection Error** *(bugfix)*: Fixed bug that caused views to not use the correct query when first navigating to the search page.
 
 ## Howler API `v2.11.2`
 
