@@ -137,7 +137,7 @@ const HitViewer: FC = () => {
       ),
       ...Object.fromEntries(
         dossiers.flatMap((_dossier, dossierIndex) =>
-          _dossier.leads?.map((_lead, leadIndex) => [
+          (_dossier.leads ?? []).map((_lead, leadIndex) => [
             `external-lead:${dossierIndex}:${leadIndex}`,
             () => <LeadRenderer lead={_lead} hit={hit} />
           ])

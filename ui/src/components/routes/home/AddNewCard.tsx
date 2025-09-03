@@ -35,7 +35,7 @@ const VISUALIZATIONS = ['assessment', 'created', 'escalation', 'status', 'detect
 
 const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard) => void }> = ({ dashboard, addCard }) => {
   const { t } = useTranslation();
-  const views = useContextSelector(ViewContext, ctx => ctx.views ?? []);
+  const views = useContextSelector(ViewContext, ctx => ctx.views ?? {});
   const fetchViews = useContextSelector(ViewContext, ctx => ctx.fetchViews);
 
   const [selectedType, setSelectedType] = useState<'' | 'view' | 'analytic'>('');
@@ -180,6 +180,7 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard) =>
                   filterOptions={(options, state) =>
                     options.filter(
                       opt =>
+                        !!opt &&
                         !dashboard?.find(
                           entry => entry.type === 'view' && JSON.parse(entry.config).viewId === opt.view_id
                         ) &&

@@ -139,7 +139,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
           if (bundle) {
             fullQuery = `(howler.bundles:${bundle}) AND (${fullQuery})`;
           } else if (viewId) {
-            fullQuery = `(${(await getCurrentView())?.query || 'howler.id:*'}) AND (${fullQuery})`;
+            fullQuery = `(${(await getCurrentView({ viewId }))?.query || 'howler.id:*'}) AND (${fullQuery})`;
           }
 
           const _response = await dispatchApi(
@@ -197,7 +197,6 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
       trackTotalHits,
       loadHits,
       getCurrentView,
-      defaultView,
       setOffset
     ]
   );
@@ -215,7 +214,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, offset, pageCount, sort, span, bundleId, location.pathname, startDate, endDate]);
+  }, [filter, offset, pageCount, sort, span, bundleId, location.pathname, startDate, endDate, viewId]);
 
   return (
     <HitSearchContext.Provider

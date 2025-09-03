@@ -1,5 +1,10 @@
 # Howler Releases
 
+## Howler UI `v2.13.2`
+
+- **Fixed View Panel Configuration** *(bugfix)*: Fixed bug that stopped users from configuring new view panels on the dashboard
+- **Fixed Dossier Presentation Error** *(bugfix)*: Fixed bug that crashed the hit viewer if a dossier with no led was configured.
+
 ## Howler API `v2.11.2`
 
 - **Fixed Compare Metadata Functionality** *(bugfix)*: Added check to not run matching when no hits are provided
