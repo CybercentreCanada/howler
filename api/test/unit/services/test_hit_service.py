@@ -415,17 +415,11 @@ def test_augment_metadata_all_metadata_types(
     mock_overview_collection = MagicMock()
     mock_dossier_collection = MagicMock()
 
-    mock_hit_datastore.return_value.template = mock_template_collection
-    mock_hit_datastore.return_value.overview = mock_overview_collection
     mock_hit_datastore.return_value.dossier = mock_dossier_collection
 
     mock_template_datastore.return_value.template = mock_template_collection
-    mock_template_datastore.return_value.overview = mock_overview_collection
-    mock_template_datastore.return_value.dossier = mock_dossier_collection
 
-    mock_overview_datastore.return_value.template = mock_template_collection
     mock_overview_datastore.return_value.overview = mock_overview_collection
-    mock_overview_datastore.return_value.dossier = mock_dossier_collection
 
     # Mock search responses
     mock_template_collection.search.return_value = {"items": [{"type": "global"}]}
