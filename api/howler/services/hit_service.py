@@ -30,11 +30,11 @@ from howler.odm.models.ecs.event import Event
 from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import HitOperationType, HitStatus, HitStatusTransition, Log
 from howler.odm.models.user import User
-from howler.services import action_service, analytic_service, dossier_service
+from howler.services import action_service, analytic_service, dossier_service, overview_service, template_service
 from howler.utils.dict_utils import extra_keys, flatten
 from howler.utils.uid import get_random_id
 
-log = get_logger(__file__)
+logger = get_logger(__file__)
 
 odm_helper = OdmHelper(Hit)
 
@@ -535,7 +535,7 @@ def _update_hit(
         else:
             operation_type = HitOperationType.SET
 
-        log.debug("%s - %s - %s -> %s", hit_id, operation.key, previous_value, operation.value)
+        logger.debug("%s - %s - %s -> %s", hit_id, operation.key, previous_value, operation.value)
         final_operations.append(operation)
 
         if not operation.silent:
@@ -640,7 +640,7 @@ def transition_hit(
 
     # Log all hits that will be transitioned
     all_hit_ids = [h["howler"]["id"] for h in ([primary_hit] + [ch for ch in child_hits if ch])]
-    log.debug("Transitioning (%s)", ", ".join(all_hit_ids))
+    logger.debug("Transitioning (%s)", ", ".join(all_hit_ids))
 
     # Process each hit (primary + children) with the workflow transition
     for current_hit in [primary_hit] + [ch for ch in child_hits if ch]:
@@ -650,7 +650,7 @@ def transition_hit(
         # Skip hits that don't match the primary hit's status
         # This ensures consistent state transitions across bundles
         if current_hit_status != primary_hit_status:
-            log.debug("Skipping %s (status mismatch)", current_hit_id)
+            logger.debug("Skipping %s (status mismatch)", current_hit_id)
             continue
 
         # Apply the workflow transition to get required updates
@@ -837,33 +837,37 @@ def augment_metadata(data: list[dict[str, Any]] | dict[str, Any], metadata: list
         This function modifies the input data in-place, adding metadata fields.
         Templates are filtered based on user permissions (global or owned by user).
     """
-    hits = data if isinstance(data, list) else [data]
+    if isinstance(data, list):
+        hits = data
+    elif data is not None:
+        hits = [data]
+    else:
+        hits = []
 
-    analytics: set[str] = set()
-    for hit in hits:
-        analytics.add(f'"{hit["howler"]["analytic"]}"')
+    if len(hits) < 1:
+        return
 
-    if len(analytics) > 0:
-        if "template" in metadata:
-            template_candidates = datastore().template.search(
-                f"analytic:({' OR '.join(analytics)}) AND (type:global OR owner:{user['uname']})",
-                as_obj=False,
-            )["items"]
+    logger.debug("Augmenting %s hits with %s", len(hits), ",".join(metadata))
 
-            for hit in hits:
-                hit["__template"] = __match_metadata(template_candidates, hit)
+    if "template" in metadata:
+        template_candidates = template_service.get_matching_templates(hits, user["uname"], as_odm=False)
 
-        if "overview" in metadata:
-            overview_candidates = datastore().overview.search(
-                f"analytic:({' OR '.join(analytics)})",
-                as_obj=False,
-            )["items"]
+        logger.debug("\tRetrieved %s matching templates", len(template_candidates))
 
-            for hit in hits:
-                hit["__overview"] = __match_metadata(overview_candidates, hit)
+        for hit in hits:
+            hit["__template"] = __match_metadata(cast(list[dict[str, Any]], template_candidates), hit)
+
+    if "overview" in metadata:
+        overview_candidates = overview_service.get_matching_overviews(hits, as_odm=False)
+
+        logger.debug("\tRetrieved %s matching overviews", len(overview_candidates))
+
+        for hit in hits:
+            hit["__overview"] = __match_metadata(cast(list[dict[str, Any]], overview_candidates), hit)
 
     if "analytic" in metadata:
         matched_analytics = analytic_service.get_matching_analytics(hits)
+        logger.debug("\tRetrieved %s matching analytics", len(matched_analytics))
 
         for hit in hits:
             matched_analytic = next(
