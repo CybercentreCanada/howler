@@ -7,20 +7,15 @@ from pathlib import Path
 
 BANNED_STRINGS = [
     (
-        "@mui/icons-material",
-        "Using @mui/icons-material in exported components leads to issues when importing and using clue in other "
-        "applications: https://stackoverflow.com/questions/78815858/mui-icons-material-vitest-es-module-issue",
-    ),
-    (
-        "@mui/material/colors",
-        "Using @mui/material/colors in exported components leads to issues when importing and using clue in other "
-        "applications.",
-    ),
+        "@mui/icons-material/",
+        "Using @mui/icons-material in exported components leads to issues when extending howler's functionality: "
+        "https://stackoverflow.com/questions/78815858/mui-icons-material-vitest-es-module-issue",
+    )
 ]
 
 root = Path(__file__).parent.parent
 
-lib_dir = root / "src" / "lib"
+lib_dir = root / "src"
 
 print("Ensuring no banned imports are used in the lib directory: ", end="")
 
