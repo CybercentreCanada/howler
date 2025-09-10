@@ -31,7 +31,7 @@ ${helper.documentation[i18n.language]}
 
   return useMemo(
     () => `
-${TEMPLATES[i18n.language]}
+${TEMPLATES[i18n.language] ?? TEMPLATES.en}
 
 ${helperText}
 `,

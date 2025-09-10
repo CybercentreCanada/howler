@@ -87,7 +87,7 @@ export const useHelpers = (): HowlerHelper[] => {
       {
         keyword: 'upper',
         documentation: {
-          en: 'Returns the uppercase representation of a string argment.',
+          en: 'Returns the uppercase representation of a string argument.',
           fr: "Retourne la représentation en majuscules d'un argument de chaîne."
         },
         callback: (val: string) => val.toLocaleUpperCase()
@@ -95,7 +95,7 @@ export const useHelpers = (): HowlerHelper[] => {
       {
         keyword: 'lower',
         documentation: {
-          en: 'Returns the lowercase representation of a string argment.',
+          en: 'Returns the lowercase representation of a string argument.',
           fr: "Retourne la représentation en minuscules d'un argument de chaîne."
         },
         callback: (val: string) => val.toLocaleLowerCase()
@@ -175,7 +175,7 @@ export const useHelpers = (): HowlerHelper[] => {
       {
         keyword: 'parse_json',
         documentation: {
-          en: 'Convert JSON string into an object.',
+          en: 'Convert a JSON string into an object.',
           fr: 'Convertit une chaîne JSON en objet.'
         },
         callback: str => {

@@ -54,7 +54,7 @@ For more information on handlebars, check out:
 - [What is Handlebars?](https://handlebarsjs.com/guide/#what-is-handlebars)
 - [Handlebars Expressions](https://handlebarsjs.com/guide/expressions.html)
 
-## Combining Markdown the Handlebars
+## Combining Markdown and Handlebars
 
 You can use handlebars for template replacement throughout your markdown. Below is an example table using handlebars and markdown:
 
