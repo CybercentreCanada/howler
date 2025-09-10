@@ -27,9 +27,11 @@ for filename in glob.glob(str(lib_dir / "**/*.ts*"), recursive=True):
         if banned_string in data:
             print("failed")
 
+            wrapped_explanation = textwrap.wrap(explanation, width=120)
+
             print(f"ERROR: {_file.relative_to(root)} contains a banned string:")
             print(
-                f"> {banned_string}: {('\n' + (len(banned_string) + 4) * ' ').join(textwrap.wrap(explanation, width=120))}"
+                f"> {banned_string}: {('\n' + (len(banned_string) + 4) * ' ').join(wrapped_explanation)}"
             )
             sys.exit(1)
 
