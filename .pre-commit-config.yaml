@@ -40,3 +40,9 @@ repos:
         language: script
         stages: [pre-commit]
         files: ^ui/.*
+      - id: bad-ui-imports
+        name: bad-ui-imports
+        entry: ui/build_scripts/find_bad_imports.py
+        language: python
+        stages: [pre-commit]
+        files: ^ui/.*

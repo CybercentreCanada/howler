@@ -1,12 +1,11 @@
 import { useMonaco } from '@monaco-editor/react';
-import { Height, History, Search } from '@mui/icons-material';
+import { Clear, Height, History, Search } from '@mui/icons-material';
 import { Badge, Box, Card, Skeleton, Tooltip, alpha, useTheme } from '@mui/material';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import TuiIconButton from 'components/elements/addons/buttons/CustomIconButton';
 import QueryEditor from 'components/routes/advanced/QueryEditor';
 import type { IDisposable, editor } from 'monaco-editor';
 
-import ClearIcon from '@mui/icons-material/Clear';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import type { FC } from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -210,7 +209,7 @@ const HitQuery: FC<HitQueryProps> = ({
         size={compact ? 'small' : 'medium'}
       >
         <Tooltip title={t('route.clear')}>
-          <ClearIcon sx={{ fontSize: '20px' }} />
+          <Clear sx={{ fontSize: '20px' }} />
         </Tooltip>
       </TuiIconButton>
 
