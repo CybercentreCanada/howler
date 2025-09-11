@@ -13,7 +13,7 @@ Nous allons rapidement expliquer ces éléments.
 
 ### Markdown
 
-Citant de l'excellent [markdownguide.org](https://www.markdownguide.org/getting-started/) :
+Citation de l'excellent [markdownguide.org](https://www.markdownguide.org/getting-started/) :
 
 > Markdown est un langage de balisage léger que vous pouvez utiliser pour ajouter des éléments de formatage aux documents texte en texte brut. Créé par [John Gruber](https://daringfireball.net/projects/markdown/) en 2004, Markdown est maintenant l'un des langages de balisage les plus populaires au monde.
 >
