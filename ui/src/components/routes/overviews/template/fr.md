@@ -25,7 +25,7 @@ Citation de l'excellent [markdownguide.org](https://www.markdownguide.org/gettin
 
 ### Handlebars
 
-Citant de [handlebarsjs.com](https://handlebarsjs.com/guide/) :
+Citation de [handlebarsjs.com](https://handlebarsjs.com/guide/) :
 
 > Handlebars est un langage de template simple.
 >
