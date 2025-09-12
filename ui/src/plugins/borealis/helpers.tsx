@@ -19,6 +19,7 @@ import {
   useBorealisEnrichSelector
 } from 'borealis-ui';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
+import type { HowlerHelper } from 'components/elements/display/handlebars/helpers';
 import i18nInstance from 'i18n';
 import { capitalize, groupBy, uniq } from 'lodash-es';
 import { type FC, type PropsWithChildren, useState } from 'react';
@@ -106,10 +107,13 @@ const BorealisCheckbox: FC<{ value: string }> = ({ value }) => {
   );
 };
 
-const HELPERS = [
+const HELPERS: HowlerHelper[] = [
   {
     keyword: 'borealis',
-    documentation: 'Given a selector, this helper enriches the selector through borealis.',
+    documentation: {
+      en: 'Given a selector, this helper enriches the selector through borealis.',
+      fr: 'Étant donné un sélecteur, cet assistant enrichit le sélecteur via borealis.'
+    },
     componentCallback: (type, value) => {
       if (typeof type !== 'string' || typeof value !== 'string') {
         return (
@@ -134,7 +138,10 @@ const HELPERS = [
 
   {
     keyword: 'fetcher',
-    documentation: 'Given a selector, this helper fetches data for the selector through borealis.',
+    documentation: {
+      en: 'Given a selector, this helper fetches data for the selector through borealis.',
+      fr: 'Étant donné un sélecteur, cet assistant récupère les données pour le sélecteur via borealis.'
+    },
     componentCallback: (...args: any[]) => {
       const options = args.pop() as Handlebars.HelperOptions;
       const props = options?.hash ?? {};
@@ -166,7 +173,10 @@ const HELPERS = [
 
   {
     keyword: 'borealis_group',
-    documentation: 'Initializes a borealis group',
+    documentation: {
+      en: 'Initializes a borealis group',
+      fr: 'Initialise un groupe borealis'
+    },
     componentCallback: (values: any, ...args: any[]) => {
       const options = args.pop() as Handlebars.HelperOptions;
       const props = options?.hash ?? {};
@@ -204,7 +214,8 @@ const HELPERS = [
   },
   {
     keyword: 'borealis_table',
-    documentation: `Render a table with optional Borealis enrichments and actions.
+    documentation: {
+      en: `Render a table with optional Borealis enrichments and actions.
 
 Borealis enrichments are performed for cells with a borealis_type.
 
@@ -225,6 +236,28 @@ where borealis_table_cells is an array with properties:
   action_value (optional): string;
 \`\`\`
     `,
+      fr: `Affiche un tableau avec des enrichissements et actions Borealis optionnels.
+
+Les enrichissements Borealis sont effectués pour les cellules avec un borealis_type.
+
+Les actions Borealis sont activées en spécifiant un type d'action borealis en utilisant le paramètre optionnel borealis_action_type. Si activé, les cellules avec borealis_entity==true seront sélectionnables pour utilisation avec les enrichissements et actions Borealis, avec une valeur de action_value si présente, sinon la valeur.
+
+Exemple :
+\`\`\`markdown
+{{curly 'borealis_table borealis_table_cells borealis_action_type="ip"'}}
+\`\`\`
+où borealis_table_cells est un tableau avec les propriétés :
+
+\`\`\`
+  column: string;
+  row: string;
+  value: string;
+  borealis_type (optionnel): string;
+  borealis_entity (optionnel): boolean;
+  action_value (optionnel): string;
+\`\`\`
+    `
+    },
     componentCallback: (cells: BorealisCell[], ...args: any[]) => {
       const options = args.pop() as Handlebars.HelperOptions;
       const props = options?.hash ?? {};
