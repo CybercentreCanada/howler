@@ -21,9 +21,9 @@ import type { AppBarUserMenuElement } from 'commons/components//app/AppConfigs';
 import { useAppConfigs, useAppUser } from 'commons/components/app/hooks';
 import AppAvatar, { type AppAvatarProps } from 'commons/components/display/AppAvatar';
 import ThemeSelection from 'commons/components/topnav/ThemeSelection';
-import { memo, useCallback, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 export const AppUserAvatar: StyledComponent<AppAvatarProps> = styled(AppAvatar)(({ theme }) => ({
   width: theme.spacing(5),
@@ -42,9 +42,13 @@ const UserProfile = () => {
   const configs = useAppConfigs();
   const { user } = useAppUser();
   const anchorRef = useRef();
+  const location = useLocation();
+
   const [open, setOpen] = useState<boolean>(false);
+
   const onProfileClick = useCallback(() => setOpen(_open => !_open), []);
   const onClickAway = useCallback(() => setOpen(false), []);
+
   const renderThemeSelection = useCallback(
     enabled => {
       if (
@@ -89,25 +93,36 @@ const UserProfile = () => {
     [t]
   );
 
+  useEffect(() => {
+    // This effect checks to see if the result of pressing a button was a navigation
+    // if so, close the settings bar.
+    if (open) {
+      setOpen(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
   return (
     <ClickAwayListener onClickAway={onClickAway}>
-      <IconButton
-        ref={anchorRef}
-        edge="end"
-        sx={{
-          padding: 0,
-          marginLeft: theme.spacing(1),
-          marginRight: theme.spacing(1)
-        }}
-        onClick={onProfileClick}
-        size="large"
-      >
-        <AppUserAvatar alt={user.name} url={user.avatar} email={user.email}>
-          {user.name
-            .split(' ', 2)
-            .map(n => n[0].toUpperCase())
-            .join('')}
-        </AppUserAvatar>
+      <div>
+        <IconButton
+          ref={anchorRef}
+          edge="end"
+          sx={{
+            padding: 0,
+            marginLeft: theme.spacing(1),
+            marginRight: theme.spacing(1)
+          }}
+          onClick={onProfileClick}
+          size="large"
+        >
+          <AppUserAvatar alt={user.name} url={user.avatar} email={user.email}>
+            {user.name
+              .split(' ', 2)
+              .map(n => n[0].toUpperCase())
+              .join('')}
+          </AppUserAvatar>
+        </IconButton>
         <Popper
           sx={{ zIndex: theme.zIndex.appBar + 200, minWidth: '280px' }}
           open={open}
@@ -170,7 +185,7 @@ const UserProfile = () => {
             </Fade>
           )}
         </Popper>
-      </IconButton>
+      </div>
     </ClickAwayListener>
   );
 };
