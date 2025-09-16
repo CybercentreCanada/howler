@@ -64,18 +64,18 @@ Before merging, update `docs/RELEASES.md` with your changes. Follow this format:
 1. **Merge the PR**: Use the GitHub UI to squash and merge the PR into a single commit
 2. **Create the release tag**:
 
-```bash
-# Return to main and pull the merged changes
-git checkout main
-git pull
+    ```bash
+    # Return to main and pull the merged changes
+    git checkout main
+    git pull
 
-# Create and push the version tag
-git tag "v$(poetry version -s)-api"
-git push
-git push --tags
-```
+    # Create and push the version tag
+    git tag "v$(poetry version -s)-api"
+    git push
+    git push --tags
+    ```
 
-1. **Create GitHub Release**:
+3. **Create GitHub Release**:
    - Go to <https://github.com/CybercentreCanada/howler/releases/new>
    - Name: "Howler API v2.11.3"
    - Generate release notes and add a link to the `docs/RELEASES.md` section
@@ -139,21 +139,22 @@ Before merging, update `docs/RELEASES.md` with your changes. Follow this format:
 1. **Merge the PR**: Use the GitHub UI to squash and merge the PR into a single commit
 2. **Create the release tag**:
 
-```bash
-# Return to main and pull the merged changes
-git checkout main
-git pull
+    ```bash
+    # Return to main and pull the merged changes
+    git checkout main
+    git pull
 
-# Create and push the version tag
-git tag "v$(python -c "import json;print(json.load(open('package.json', 'r'))['version'])")-ui"
-git push
-git push --tags
-```
+    # Create and push the version tag
+    git tag "v$(python -c "import json;print(json.load(open('package.json', 'r'))['version'])")-ui"
+    git push
+    git push --tags
+    ```
 
-1. **Create GitHub Release**:
-   - Go to <https://github.com/CybercentreCanada/howler/releases/new>
-   - Name: "Howler UI v2.13.3"
-   - Generate release notes and add a link to the `docs/RELEASES.md` section
+3. **Create GitHub Release**:
+
+- Go to <https://github.com/CybercentreCanada/howler/releases/new>
+- Name: "Howler UI v2.13.3"
+- Generate release notes and add a link to the `docs/RELEASES.md` section
 
 ### 6. Verify Deployment
 
