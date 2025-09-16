@@ -49,7 +49,7 @@ pipx install poetry
 ### Create your virtualenv
 
 ```bash
-cd ~/repos/howler-api
+cd ~/repos/howler/api
 poetry install --with test,dev,types
 poetry shell
 ```
@@ -73,19 +73,15 @@ poetry shell
 
 ## Running development environment (VS Code)
 
-Now that the installation instructions are completed, you can now load your `howler-api` folder. We strongly advise installing the recommended extensions when prompted or typing '@recommended' in the Extensions tab.
+Now that the installation instructions are completed, you can now load your `howler/api` folder. We strongly advise installing the recommended extensions when prompted or typing '@recommended' in the Extensions tab.
 
 ### Launch dependency containers
 
 You can run the dependency containers either manually in a shell:
 
 ```bash
-(cd ~/repos/howler-api/dev && docker-compose up)
+(cd ~/repos/howler/api/dev && docker-compose up)
 ```
-
-Or directly in VSCode using the tasks in Task Explorer
-
-![Task explorer](tasks.png)
 
 ### Launch the API
 
@@ -94,7 +90,7 @@ Once the dependencies are launched, you can start the API Server. The API server
 To launch the API server manually you can use this command:
 
 ```bash
-cd ~/repos/howler-api
+cd ~/repos/howler/api
 poetry run server
 ```
 
