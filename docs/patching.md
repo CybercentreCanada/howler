@@ -2,6 +2,8 @@
 
 This guide provides step-by-step instructions for creating and releasing patches for both the Howler API and UI components.
 
+We will assume your patch version is `1.0.1`.
+
 ## Prerequisites
 
 - Git access to the Howler repository
@@ -53,7 +55,7 @@ Open a pull request at: <https://github.com/CybercentreCanada/howler/compare>
 Before merging, update `docs/RELEASES.md` with your changes. Follow this format:
 
 ```markdown
-## Howler API `v2.11.3`
+## Howler API `v1.0.1`
 
 - **Fixed Compare Metadata Functionality** *(bugfix)*: Added check to not run matching when no hits are provided
 - **Enhanced Error Handling** *(bugfix)*: Improved error handling for edge cases in metadata comparison
@@ -77,7 +79,7 @@ Before merging, update `docs/RELEASES.md` with your changes. Follow this format:
 
 3. **Create GitHub Release**:
    - Go to <https://github.com/CybercentreCanada/howler/releases/new>
-   - Name: "Howler API v2.11.3"
+   - Name: "Howler API v1.0.1" (But use the actual version number)
    - Generate release notes and add a link to the `docs/RELEASES.md` section
 
 ### 6. Verify Deployment
@@ -128,7 +130,7 @@ Open a pull request at: <https://github.com/CybercentreCanada/howler/compare>
 Before merging, update `docs/RELEASES.md` with your changes. Follow this format:
 
 ```markdown
-## Howler UI `v2.13.3`
+## Howler UI `v1.0.1`
 
 - **Fixed View Panel Configuration** *(bugfix)*: Fixed bug that stopped users from configuring new view panels on the dashboard
 - **Improved Error Messages** *(UI/UX improvement)*: Enhanced error messaging for better user experience
@@ -153,7 +155,7 @@ Before merging, update `docs/RELEASES.md` with your changes. Follow this format:
 3. **Create GitHub Release**:
 
 - Go to <https://github.com/CybercentreCanada/howler/releases/new>
-- Name: "Howler UI v2.13.3"
+- Name: "Howler UI v1.0.1" (But use the actual version number)
 - Generate release notes and add a link to the `docs/RELEASES.md` section
 
 ### 6. Verify Deployment
