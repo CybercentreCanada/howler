@@ -34,10 +34,10 @@ for filename in glob.glob(str(lib_dir / "**/*.ts*"), recursive=True):
             for explanation in explanations:
                 wrapped_explanation += textwrap.wrap(explanation, width=120)
 
+            margin = "\n" + (len(banned_string) + 4) * " "
+
             print(f"ERROR: {_file.relative_to(root)} contains a banned string:")
-            print(
-                f"> {banned_string}: {('\n' + (len(banned_string) + 4) * ' ').join(wrapped_explanation)}"
-            )
+            print(f"> {banned_string}: {margin.join(wrapped_explanation)}")
             sys.exit(1)
 
 print("passed")

@@ -47,7 +47,7 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
         return newViews;
       }
 
-      const missingIds = ids.filter(_id => !views[_id]);
+      const missingIds = ids.filter(_id => !has(views, _id));
 
       if (missingIds.length < 1) {
         return ids.map(id => views[id]);
@@ -57,7 +57,8 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
         const response = await dispatchApi(
           api.search.view.post({
             query: `view_id:(${missingIds.join(' OR ')})`,
-            rows: missingIds.length
+            rows: missingIds.length,
+            sort: 'title asc'
           })
         );
 
