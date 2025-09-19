@@ -158,7 +158,11 @@ describe('ViewContext', () => {
       await act(async () => hook.result.current(['searched_view_id']));
 
       expect(hpost).toHaveBeenCalledOnce();
-      expect(hpost).toBeCalledWith('/api/v1/search/view', { query: 'view_id:(searched_view_id)', rows: 1 });
+      expect(hpost).toBeCalledWith('/api/v1/search/view', {
+        query: 'view_id:(searched_view_id)',
+        rows: 1,
+        sort: 'title asc'
+      });
 
       vi.mocked(hpost).mockClear();
       await act(async () => hook.result.current(['searched_view_id', 'searched_view_id_2']));
