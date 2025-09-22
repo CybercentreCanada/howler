@@ -38,9 +38,7 @@ def get_views(user: User, **kwargs):
     try:
         return ok(
             datastore().view.search(
-                f"type:global OR owner:({user['uname']} OR none)",
-                as_obj=False,
-                rows=1000,
+                f"type:global OR owner:({user['uname']} OR none)", as_obj=False, rows=1000, sort="title asc"
             )["items"]
         )
     except ValueError as e:

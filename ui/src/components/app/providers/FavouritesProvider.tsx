@@ -1,7 +1,7 @@
 import { QueryStats, SavedSearch } from '@mui/icons-material';
 import type { AppLeftNavElement, AppLeftNavGroup } from 'commons/components/app/AppConfigs';
 import { useAppLeftNav, useAppUser } from 'commons/components/app/hooks';
-import { uniq } from 'lodash-es';
+import { sortBy, uniq } from 'lodash-es';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import { createContext, useCallback, useContext, useEffect, type FC, type PropsWithChildren } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -40,7 +40,7 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
 
     const savedViews = await fetchViews(favourites);
 
-    const items = savedViews
+    const items = sortBy(savedViews, 'title')
       .filter(view => !!view)
       .map(view => ({
         id: view.view_id,
