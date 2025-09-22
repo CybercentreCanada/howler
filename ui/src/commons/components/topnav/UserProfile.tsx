@@ -103,26 +103,26 @@ const UserProfile = () => {
   }, [location.pathname]);
 
   return (
-    <ClickAwayListener onClickAway={onClickAway}>
-      <div>
-        <IconButton
-          ref={anchorRef}
-          edge="end"
-          sx={{
-            padding: 0,
-            marginLeft: theme.spacing(1),
-            marginRight: theme.spacing(1)
-          }}
-          onClick={onProfileClick}
-          size="large"
-        >
-          <AppUserAvatar alt={user.name} url={user.avatar} email={user.email}>
-            {user.name
-              .split(' ', 2)
-              .map(n => n[0].toUpperCase())
-              .join('')}
-          </AppUserAvatar>
-        </IconButton>
+    <>
+      <IconButton
+        ref={anchorRef}
+        edge="end"
+        sx={{
+          padding: 0,
+          marginLeft: theme.spacing(1),
+          marginRight: theme.spacing(1)
+        }}
+        onClick={onProfileClick}
+        size="large"
+      >
+        <AppUserAvatar alt={user.name} url={user.avatar} email={user.email}>
+          {user.name
+            .split(' ', 2)
+            .map(n => n[0].toUpperCase())
+            .join('')}
+        </AppUserAvatar>
+      </IconButton>
+      <ClickAwayListener onClickAway={onClickAway}>
         <Popper
           sx={{ zIndex: theme.zIndex.appBar + 200, minWidth: '280px' }}
           open={open}
@@ -185,8 +185,8 @@ const UserProfile = () => {
             </Fade>
           )}
         </Popper>
-      </div>
-    </ClickAwayListener>
+      </ClickAwayListener>
+    </>
   );
 };
 
