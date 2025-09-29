@@ -712,7 +712,7 @@
   "route.dossiers.manager.pivot.label.en": "English Title",
   "route.dossiers.manager.pivot.label.fr": "Titre français",
   "route.dossiers.manager.pivot.format": "Pivot format",
-  "route.dossiers.manager.pivot.value": "Pivot value (templatable url or borealis action ID)",
+  "route.dossiers.manager.pivot.value": "Pivot value",
   "route.dossiers.manager.pivot.mappings": "Pivot Mappings",
   "route.dossiers.manager.pivot.mapping.key": "Key",
   "route.dossiers.manager.pivot.mapping.field": "Hit Field",

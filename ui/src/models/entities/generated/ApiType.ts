@@ -81,7 +81,6 @@ export interface APIConfiguration {
   };
   mapping: APIMappings;
   features: {
-    borealis: boolean;
     notebook: boolean;
     [feature: string]: boolean;
   };
