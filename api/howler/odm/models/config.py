@@ -250,10 +250,26 @@ class Retention(BaseModel):
     )
 
 
+class ViewCleanup(BaseModel):
+    enabled: bool = Field(
+        default=True,
+        description=(
+            "Whether to enable the view cleanup. If enabled, views pinned "
+            "to the dashboard that no longer exist in the backend will be cleared."
+        ),
+    )
+    crontab: str = Field(
+        default="0 0 * * *",
+        description="The crontab that denotes how often to run the view_cleanup job",
+    )
+
+
 class System(BaseModel):
     type: Literal["production", "staging", "development"] = Field(default="development", description="Type of system")
     retention: Retention = Retention()
     "Retention Configuration"
+    view_cleanup: ViewCleanup = ViewCleanup()
+    "View Cleanup Configuration"
 
 
 class UI(BaseModel):
