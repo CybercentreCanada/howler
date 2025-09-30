@@ -16,8 +16,8 @@ plugin_name/
 │   │   └── *.py
 │   ├── routes/            # API routes (optional)
 │   │   └── *.py
-│   ├── odm/               # ODM modifications (optional)
-│   │   └── *.py
+│   └── odm/               # ODM modifications (optional)
+│       └── *.py
 ├── pyproject.toml         # Python package configuration
 ├── poetry.lock           # Dependency lock file
 ├── README.md
