@@ -360,6 +360,102 @@ modules:
     - ingest:sentinel_api
 ```
 
+### Configuring the Plugin
+
+Plugin-specific configuration is handled through separate YAML files in the `/etc/howler/conf/` directory. Each plugin has its own configuration file named `{plugin_name}.yml`.
+
+#### Configuration File Location
+
+When deploying howler, plugin configuration is defined in a config file as `/etc/howler/conf/your_plugin_name.yml` in the container:
+
+```yaml
+# In /etc/howler/conf/your_plugin_name.yml
+setting1: value1
+setting2: value2
+nested_config:
+    option_a: true
+    option_b: "example"
+```
+
+This configuration gets loaded when the plugin is initialized by howler.
+
+#### Example Plugin Configuration
+
+```yaml
+# /etc/howler/conf/cccs.yml
+scopes:
+  scope1: example_scope1
+  scope2: example_scope2
+  scope3: example_scope3
+urls:
+  url1: https://example.com
+```
+
+#### Plugin Configuration Class
+
+Your plugin's `config.py` should define the configuration structure that matches your YAML file:
+
+```python
+from howler.plugins.config import BasePluginConfig
+from pydantic import BaseModel
+from pydantic_settings import SettingsConfigDict
+
+class URLConfig(BaseModel):
+    """URL configuration for external services."""
+    url1: str
+
+class ScopeConfig(BaseModel):
+    """OAuth scope configuration."""
+    scope1: str
+    scope2: str
+    scope3: str
+
+class YourPluginConfig(BasePluginConfig):
+    """Your plugin configuration model."""
+
+    urls: URLConfig = URLConfig(
+        spellbook="http://localhost:8080/api",
+        vault="https://localhost"
+    )
+
+    scopes: ScopeConfig = ScopeConfig(
+        borealis="default",
+        notebook="default",
+        spellbook="default"
+    )
+
+    model_config = SettingsConfigDict(
+        yaml_file=config_locations,
+        yaml_file_encoding="utf-8",
+        strict=True,
+        env_nested_delimiter="__",
+        env_prefix=f"{PLUGIN_NAME.upper()}_",
+    )
+```
+
+#### Configuration Priority
+
+Plugin configuration is loaded in the following order (highest to lowest priority):
+
+1. Environment variables (prefixed with `{PLUGIN_NAME}_`)
+2. Plugin-specific YAML file (`/etc/howler/conf/{plugin_name}.yml`)
+3. Plugin manifest file (`manifest.yml`)
+4. Default values in the configuration class
+
+#### Environment Variable Override
+
+You can override any configuration value using environment variables:
+
+```bash
+# Override the spellbook URL
+export YOUR_PLUGIN_NAME_URLS__SPELLBOOK="http://different-server:8080/api"
+
+# Override a scope
+export YOUR_PLUGIN_NAME_SCOPES__BOREALIS="custom-scope-id"
+```
+
+Note the double underscore (`__`) used to separate nested configuration levels.
+
 ## Troubleshooting
 
 ### Plugin Not Loading
