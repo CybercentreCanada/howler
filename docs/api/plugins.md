@@ -18,10 +18,6 @@ plugin_name/
 │   │   └── *.py
 │   ├── odm/               # ODM modifications (optional)
 │   │   └── *.py
-│   ├── mapping/           # Data mapping utilities (optional)
-│   │   └── *.py
-│   └── utils/             # Utility functions (optional)
-│       └── *.py
 ├── pyproject.toml         # Python package configuration
 ├── poetry.lock           # Dependency lock file
 ├── README.md
