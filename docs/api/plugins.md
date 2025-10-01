@@ -96,9 +96,10 @@ modules:
 Actions are bulk operations that can be performed on hits. Each action file should contain an `execute` function:
 
 ```python
-from typing import Any
+from typing import Any, Optional
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
+from howler.odm.models.action import VALID_TRIGGERS
 from howler.odm.models.hit import Hit
 
 logger = get_logger(__file__)
@@ -110,7 +111,7 @@ def execute(query: str, **kwargs) -> list[dict[str, Any]]:
 
     Args:
         query (str): The query on which to apply this automation.
-        **kwargs: Additional parameters
+        **kwargs: Additional parameters (e.g., url, field, etc.)
 
     Returns:
         list[dict[str, Any]]: Report of the action results
@@ -120,29 +121,69 @@ def execute(query: str, **kwargs) -> list[dict[str, Any]]:
 
     hits: list[Hit] = ds.hit.search(query, as_obj=True)["items"]
 
+    if not hits:
+        return [{
+            "query": query,
+            "outcome": "error",
+            "title": "No alerts found",
+            "message": "No alerts exist in this query."
+        }]
+
     for hit in hits:
         try:
             # Perform your action logic here
-            result = perform_action_on_hit(hit)
+            result = perform_action_on_hit(hit, **kwargs)
 
             report.append({
-                "hit_id": hit.howler.id,
-                "status": "success",
-                "result": result
+                "query": f"howler.id:{hit.howler.id}",
+                "outcome": "success",
+                "title": "Action completed successfully",
+                "message": f"Action completed for alert {hit.howler.id}"
             })
         except Exception as e:
             logger.error(f"Failed to process hit {hit.howler.id}: {e}")
             report.append({
-                "hit_id": hit.howler.id,
-                "status": "error",
-                "error": str(e)
+                "query": f"howler.id:{hit.howler.id}",
+                "outcome": "error",
+                "title": "Action failed",
+                "message": f"Failed to process alert {hit.howler.id}: {str(e)}"
             })
 
     return report
 
-def perform_action_on_hit(hit: Hit):
+def perform_action_on_hit(hit: Hit, **kwargs):
     """Your custom logic here"""
-    pass
+    # Example: Extract a field value and process it
+    field_value = kwargs.get('field_value')
+    if field_value:
+        # Process the field value
+        pass
+    return True
+
+def specification():
+    """Specify various properties of the action, such as title, descriptions, permissions and input steps."""
+    return {
+        "id": OPERATION_ID,
+        "title": "Your Custom Action",
+        "priority": 50,  # Higher number = higher priority in UI
+        "description": {
+            "short": "Brief description of your action",
+            "long": execute.__doc__,
+        },
+        "roles": ["automation_basic"],  # Required roles to execute this action
+        "steps": [
+            {
+                "args": {"url": [], "field": []},  # Arguments the action accepts
+                "options": {  # Pre-populated options for UI dropdowns
+                    "field": [field for field in Hit.flat_fields().keys() if "hash" in field]
+                },
+                "validation": {  # Validation rules
+                    "warn": {"query": "-_exists_:$field"}  # Warn if field doesn't exist
+                },
+            }
+        ],
+        "triggers": VALID_TRIGGERS,  # When this action can be triggered
+    }
 ```
 
 ### 2. API Routes (`routes/`)
@@ -286,7 +327,6 @@ pip install -e /path/to/your/plugin
 # Or install from package
 pip install your-plugin-package
 ```
-
 
 ## Configuring the Plugin
 
