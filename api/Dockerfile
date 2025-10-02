@@ -52,25 +52,24 @@ ARG version=*
 # Get required apk packages
 RUN apk update && apk add --no-cache build-base gcc musl-dev libffi-dev openssl-dev && rm -rf /var/cache/apk/*
 
-# Upgrade pip
-RUN pip install --no-cache-dir --no-warn-script-location --upgrade pip && rm -rf ~/.cache/pip
-
 # Switch user to howler to get predicatable python packages creation
 USER howler
 
-# Create a snpshot file so we know what to copy
-RUN touch /tmp/before-pip
+# Upgrade pip
+RUN pip install --no-cache-dir --no-warn-script-location --upgrade pip && rm -rf ~/.cache/pip
+
+# Install poetry
+RUN pip install --no-cache-dir --no-warn-script-location poetry && rm -rf ~/.cache/pip
+ENV PATH=/var/lib/howler/.local/bin:$PATH
 
 # Install howler into local so it merges new and old packages
-COPY dist* dist/
+COPY . .
 
-RUN pip install --no-cache-dir --no-warn-script-location --user dist/howler_api-*-py3-none-any.whl && \
-    rm -rf ~/.cache/pip && \
-    python /var/lib/howler/.local/lib/python3.12/site-packages/howler/external/generate_mitre.py /etc/howler/lookups
+RUN poetry install --no-interaction
 
-# Remove files that existed before the pip install so that our copy command below doesn't take a snapshot of
-# files that already exist in the base image
-RUN find /var/lib/howler/.local -type f ! -newer /tmp/before-pip -delete
+RUN /var/lib/howler/.venv/bin/python /var/lib/howler/howler/external/generate_mitre.py /etc/howler/lookups
+
+RUN pip uninstall poetry -y && rm -rf ~/.cache/pip
 
 # Create a new image, without compile depedencies
 FROM base
@@ -78,15 +77,15 @@ ARG version=0.0.0.dev0
 ARG version_tag=${version}
 
 # Get the updated local dir from builder
-COPY --chown=howler:howler --from=builder /var/lib/howler/.local /var/lib/howler/.local
+COPY --chown=howler:howler --from=builder /var/lib/howler/ /var/lib/howler/
 COPY --chown=howler:howler --from=builder /etc/howler/lookups /etc/howler/lookups
 COPY --chown=howler:howler ./build_scripts/mappings.yml /etc/howler/conf/mappings.yml
 COPY --chown=howler:howler ./static /etc/howler/static/
 COPY --chown=howler:howler ./howler/common/classification.yml /var/lib/howler/.local/lib/python3.12/site-packages/howler/common/
 
 # Setup Environment
-ENV PATH=/var/lib/howler/.local/bin:$PATH
-ENV PYTHONPATH=/var/lib/howler/.local/lib/python3.12/site-packages:/etc/howler/plugins
+ENV PATH=/var/lib/howler/.local/bin:/var/lib/howler/.venv/bin:$PATH
+ENV PYTHONPATH=/var/lib/howler/.venv/lib/python3.12/site-packages:/etc/howler/plugins
 ENV APP_NAME=howler
 ENV APP_PREFIX=hwl
 ENV HOWLER_VERSION=${version}
