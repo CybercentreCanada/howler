@@ -218,11 +218,6 @@ jobs:
       - name: Install poetry
         shell: bash
         run: python3 -m pip install poetry
-      - uses: actions/cache@v3
-        name: Define a cache for the virtual environment based on the dependencies lock file
-        with:
-          path: ./api/.venv
-          key: venv-${{ hashFiles('api/poetry.lock') }}
       - name: Extract Howler API version
         id: version
         run: |
@@ -323,11 +318,6 @@ jobs:
       - name: Install poetry
         shell: bash
         run: python3 -m pip install poetry
-      - uses: actions/cache@v3
-        name: Define a cache for the virtual environment based on the dependencies lock file
-        with:
-          path: ./api/.venv
-          key: venv-${{ hashFiles('api/poetry.lock') }}
       - name: Extract Howler API version
         id: version
         run: |
