@@ -129,8 +129,7 @@ jobs:
           up-flags: "--build"
       - name: Install poetry
         shell: bash
-        run: |
-          python3 -m pip install poetry
+        run: python3 -m pip install poetry
       - uses: actions/cache@v3
         name: Define a cache for the virtual environment based on the dependencies lock file
         with:

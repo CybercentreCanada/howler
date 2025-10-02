@@ -33,7 +33,7 @@ RUN chown howler:howler /var/cache/howler
 
 # Create howler home directory
 RUN mkdir -p /var/lib/howler
-RUN chmod 770 /var/lib/howler
+RUN chmod 750 /var/lib/howler
 RUN chown howler:howler /var/lib/howler
 # Set the setgid bit so files created in here inherit the group
 RUN chmod g+s /var/lib/howler
