@@ -203,13 +203,7 @@ const ObjectRenderer: FC<{ parentKey?: string; showParentKey?: boolean; data: an
                       component="code"
                       style={{ maxWidth: '100%', font: 'inherit' }}
                       value={val}
-                      field={(() => {
-                        if (!parentKey) {
-                          return key.replace(/\.[0-9]+/g, '');
-                        } else {
-                          return parentKey.replace(/\.[0-9]+/g, '').concat('.', key);
-                        }
-                      })()}
+                      field={(parentKey ? parentKey.concat('.', key) : key).replace(/\.[0-9]+/g, '')}
                     >
                       {val}
                     </PluginTypography>
