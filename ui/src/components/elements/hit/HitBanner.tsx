@@ -144,8 +144,8 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
   /**
    * The tooltips are necessary only when in the most compressed format
    */
-  const Wrapper: FC<{ i18nKey: string; value: string | string[] } & TypographyProps> = useCallback(
-    ({ i18nKey, value, ...typographyProps }) => {
+  const Wrapper: FC<{ i18nKey: string; value: string | string[]; field: string } & TypographyProps> = useCallback(
+    ({ i18nKey, value, field, ...typographyProps }) => {
       const _children = (
         <Stack direction="row" spacing={1} flex={1}>
           <Typography
@@ -170,6 +170,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
               textOverflow={compressed ? 'ellipsis' : 'wrap'}
               {...typographyProps}
               value={val}
+              field={field}
             />
           ))}
         </Stack>
@@ -263,12 +264,20 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
             <Grid container spacing={layout !== HitLayout.COMFY ? 1 : 2} sx={{ ml: `${theme.spacing(-1)} !important` }}>
               {hit.howler.outline.threat && (
                 <Grid item>
-                  <Wrapper i18nKey="hit.header.threat" value={hit.howler.outline.threat} />
+                  <Wrapper
+                    i18nKey="hit.header.threat"
+                    value={hit.howler.outline.threat}
+                    field="howler.outline.threat"
+                  />
                 </Grid>
               )}
               {hit.howler.outline.target && (
                 <Grid item>
-                  <Wrapper i18nKey="hit.header.target" value={hit.howler.outline.target} />
+                  <Wrapper
+                    i18nKey="hit.header.target"
+                    value={hit.howler.outline.target}
+                    field="howler.outline.target"
+                  />
                 </Grid>
               )}
             </Grid>
@@ -306,6 +315,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
                 paragraph
                 textOverflow="wrap"
                 sx={[compressed && { marginTop: `0 !important` }]}
+                field="howler.outline.summary"
               />
             )}
           </>

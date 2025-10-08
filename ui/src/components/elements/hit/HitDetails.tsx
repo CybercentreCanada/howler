@@ -89,7 +89,7 @@ const ListRenderer: FC<{
           if (Array.isArray(entry)) {
             return (
               <Grid item xs="auto" maxWidth="100%" key={index}>
-                <ListRenderer objKey={`${key}.${index}`.replace(/\./g, '_')} entries={entry} />
+                <ListRenderer objKey={`${key}.${index}`} entries={entry} />
               </Grid>
             );
           }
@@ -97,7 +97,7 @@ const ListRenderer: FC<{
           if (isPlainObject(entry)) {
             return (
               <Grid item xs={'auto'} maxWidth="100%" minWidth="350px" key={index}>
-                <ObjectRenderer parentKey={`${key}.${index}`.replace(/\./g, '_')} indent data={entry} />
+                <ObjectRenderer parentKey={`${key}.${index}`} indent data={entry} />
               </Grid>
             );
           }
@@ -117,6 +117,7 @@ const ListRenderer: FC<{
                 component="code"
                 style={{ maxWidth: '100%', font: 'inherit' }}
                 value={entry}
+                field={key.replace(/\.[0-9]+/g, '')}
               >
                 {entry}
               </PluginTypography>
@@ -202,6 +203,13 @@ const ObjectRenderer: FC<{ parentKey?: string; showParentKey?: boolean; data: an
                       component="code"
                       style={{ maxWidth: '100%', font: 'inherit' }}
                       value={val}
+                      field={(() => {
+                        if (!parentKey) {
+                          return key.replace(/\.[0-9]+/g, '');
+                        } else {
+                          return parentKey.replace(/\.[0-9]+/g, '').concat('.', key);
+                        }
+                      })()}
                     >
                       {val}
                     </PluginTypography>
