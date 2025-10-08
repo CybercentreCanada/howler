@@ -266,15 +266,16 @@ const HitSummary: FC<{
               {hitFields.find(f => f.key === key)?.type !== 'date' ? (
                 <Box sx={theme => ({ ml: `${theme.spacing(1)} !important`, alignSelf: 'start' })}>
                   <Grid container key={key + '-list'} sx={theme => ({ mr: 1, mt: theme.spacing(-1) })} spacing={1}>
-                    {Object.keys(aggregateResults[key]).map(_key => (
-                      <Grid key={_key} item xs="auto">
+                    {Object.keys(aggregateResults[key]).map(item => (
+                      <Grid key={item} item xs="auto">
                         <PluginChip
                           context="summary"
                           size="small"
                           variant="filled"
-                          value={_key}
-                          label={`${_key} (${aggregateResults[key][_key]})`}
-                          onClick={() => setSearch(key, `"${_key}"`)}
+                          value={item}
+                          label={`${item} (${aggregateResults[key][item]})`}
+                          onClick={() => setSearch(key, `"${item}"`)}
+                          field={key}
                         />
                       </Grid>
                     ))}

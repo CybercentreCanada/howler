@@ -4,10 +4,11 @@ import PluginTypography from 'components/elements/PluginTypography';
 import { memo, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 
-const EnhancedCell: FC<{ value: string; sx?: SxProps; className: string }> = ({
+const EnhancedCell: FC<{ value: string; sx?: SxProps; className: string; field: string }> = ({
   value: rawValue,
   sx = {},
-  className
+  className,
+  field
 }) => {
   const { t } = useTranslation();
 
@@ -36,6 +37,7 @@ const EnhancedCell: FC<{ value: string; sx?: SxProps; className: string }> = ({
             key={value + index}
             sx={{ fontSize: 'inherit', textOverflow: 'ellipsis' }}
             value={value}
+            field={field}
           >
             {value}
           </PluginTypography>
