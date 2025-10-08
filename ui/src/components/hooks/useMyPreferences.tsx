@@ -28,6 +28,7 @@ import type { AppLeftNavElement, AppPreferenceConfigs } from 'commons/components
 import Classification from 'components/elements/display/Classification';
 import DocumentationButton from 'components/elements/display/DocumentationButton';
 import { useMemo } from 'react';
+import howlerPluginStore from 'plugins/store';
 
 // This is your App Name that will be displayed in the left drawer and the top navbar
 const APP_NAME = 'howler';
@@ -226,8 +227,12 @@ const useMyPreferences = (): AppPreferenceConfigs => {
   );
 
   // This is the basic user menu, it is a menu that shows up in account avatar popover.
-  const USER_MENU_ITEMS = useMemo(
-    () => [
+  const USER_MENU_ITEMS = useMemo(() => {
+    // Load plugin menu items first as Settings/Logout generally
+    // appear at the end of user menus.
+    let results = howlerPluginStore.userMenuItems;
+
+    results.push(...[
       {
         i18nKey: 'usermenu.settings',
         route: '/settings',
@@ -238,21 +243,23 @@ const useMyPreferences = (): AppPreferenceConfigs => {
         route: '/logout',
         icon: <ExitToApp />
       }
-    ],
-    []
-  );
+    ]);
+
+    return results;
+  }, []);
 
   // This is the basic administrator menu, it is a menu that shows up under the user menu in the account avatar popover.
-  const ADMIN_MENU_ITEMS = useMemo(
-    () => [
+  const ADMIN_MENU_ITEMS = useMemo(() => {
+    const results = [
       {
         i18nKey: 'adminmenu.users',
         route: '/admin/users',
         icon: <SupervisorAccount />
       }
-    ],
-    []
-  );
+    ];
+    results.push(...howlerPluginStore.adminMenuItems);
+    return results;
+  }, []);
 
   // Return memoized config to prevent unnecessary re-renders.
   return useMemo(

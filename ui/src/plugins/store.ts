@@ -21,6 +21,8 @@ class HowlerPluginStore {
   private _leadFormats: string[] = [];
   private _pivotFormats: string[] = [];
   private _operations: string[] = [];
+  private _userMenuItems: {i18nKey: string, route: string, icon: JSX.Element}[] = [];
+  private _adminMenuItems: {i18nKey: string, route: string, icon: JSX.Element}[] = [];
 
   install(plugin: HowlerPlugin) {
     console.log(`Installing plugin ${plugin.getPluginName()} by ${plugin.author}`);
@@ -58,6 +60,26 @@ class HowlerPluginStore {
     this._operations.push(format);
 
     return true;
+  }
+
+    /**
+     * Adds a single menu item to the User Menu group under the Avatar Menu,
+     * items are added before the 'Settings' and 'Logout' menu items.
+     *
+     * @param menuItem Menu Item {i18nKey, route, icon}
+     */
+  addUserMenuItem(menuItem: {i18nKey: string, route: string, icon: JSX.Element}) {
+    this._userMenuItems.push(menuItem);
+  }
+
+    /**
+     * Adds a single menu item to the Admin Menu group under the Avatar Menu,
+     * items are added to the end of the existing Admin menu items.
+     *
+     * @param menuItem Menu Item {i18nKey, route, icon}
+     */
+  addAdminMenuItem(menuItem: {i18nKey: string, route: string, icon: JSX.Element}) {
+    this._adminMenuItems.push(menuItem);
   }
 
   public get leadFormats() {
