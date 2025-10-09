@@ -10,6 +10,8 @@ Howler UI plugins are built on the `react-pluggable` framework and provide a rob
 
 **Component Injection**: Plugins can inject custom React components into various parts of the UI, including status displays, action buttons, help sections, and administrative interfaces.
 
+**Menu Injection**: Plugins can inject User and Admin menu items to the Avatar popup menu
+
 **Custom Operations**: Add new operations that users can perform on hits via the action interface, with full form interfaces and documentation integration through the `addOperation` method.
 
 **Lead and Pivot Management**: Extend Howler's data relationship capabilities by adding custom lead formats with `addLead` and pivot formats with `addPivot`.
@@ -93,6 +95,22 @@ Adds a custom operation to the system.
 - **`format`**: String identifier for the operation
 - **`form`**: React component for the operation form
 - **`documentation`**: Documentation object with component and metadata
+
+#### `addUserMenuItem(i18nKey, route, icon)`
+
+Adds a custom menu item to the User Menu in the Avatar popup menu
+
+- **`i18nKey`**: Translation Key or Title
+- **`route`**: Route to navigate to, '/settings' for example
+- **`icon`**: JSX Icon element, <Settings/> for example
+
+#### `addAdminMenuItem(i18nKey, route, icon)`
+
+Adds a custom menu item to the Admin Menu in the Avatar popup menu
+
+- **`i18nKey`**: Translation Key or Title
+- **`route`**: Route to navigate to, '/settings' for example
+- **`icon`**: JSX Icon element, <Settings/> for example
 
 ### UI Hook Methods
 

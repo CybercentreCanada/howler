@@ -129,6 +129,38 @@ abstract class HowlerPlugin implements IPlugin {
     console.debug(`Operation ${format} enabled for plugin ${this.getPluginName()}`);
   }
 
+  /**
+   * Adds a single menu item to the User Menu group under the Avatar Menu,
+   * items are added before the 'Settings' and 'Logout' menu items.
+   *
+   * @param i18nKey Translation Key or Title
+   * @param route Route to navigate to, '/settings' for example
+   * @param icon JSX Icon element, <Settings/> for example
+   */
+  addUserMenuItem(i18nKey: string, route: string, icon: JSX.Element) {
+    howlerPluginStore.addUserMenuItem({
+      i18nKey: i18nKey,
+      route: route,
+      icon: icon
+    });
+  }
+
+  /**
+   * Adds a single menu item to the Admin Menu group under the Avatar Menu,
+   * items are added to the end of the existing Admin menu items.
+   *
+   * @param i18nKey Translation Key or Title
+   * @param route Route to navigate to, '/settings' for example
+   * @param icon JSX Icon element, <Settings/> for example
+   */
+  addAdminMenuItem(i18nKey: string, route: string, icon: JSX.Element) {
+    howlerPluginStore.addAdminMenuItem({
+      i18nKey: i18nKey,
+      route: route,
+      icon: icon
+    });
+  }
+
   on(_event: string, _hit: Hit) {
     return null;
   }
