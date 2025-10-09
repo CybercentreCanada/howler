@@ -97,6 +97,14 @@ class HowlerPluginStore {
   public get pluginStore() {
     return this._pluginStore;
   }
+
+  public get userMenuItems() {
+    return this._userMenuItems;
+  }
+
+  public get adminMenuItems() {
+    return this._adminMenuItems;
+  }
 }
 
 const howlerPluginStore = new HowlerPluginStore();
