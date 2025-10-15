@@ -40,6 +40,7 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard) =>
 
   const [selectedType, setSelectedType] = useState<'' | 'view' | 'analytic'>('');
   const [analytics, setAnalytics] = useState<Analytic[]>([]);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [config, _setConfig] = useState<{ [index: string]: any }>({});
   const [viewOpen, setViewOpen] = useState(false);
   const [viewLoading, setViewLoading] = useState(false);
@@ -58,8 +59,32 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard) =>
     });
   }, [addCard, config, selectedType]);
 
+  const fetchAllAnalytics = async () => {
+    setAnalyticsLoading(true);
+    const batchSize = 25;
+    let offset = 0;
+    let allAnalytics: Analytic[] = [];
+    let total = 0;
+
+    do {
+      const response = await api.search.analytic.post({
+        query: '*:*',
+        rows: batchSize,
+        offset
+      });
+
+      allAnalytics = [...allAnalytics, ...(response.items ?? [])];
+
+      total = response.total ?? 0;
+      offset += batchSize;
+    } while (offset < total);
+
+    setAnalytics(allAnalytics);
+    setAnalyticsLoading(false);
+  };
+
   useEffect(() => {
-    api.search.analytic.post({ query: '*:*' }).then(result => setAnalytics(result.items ?? []));
+    fetchAllAnalytics();
   }, []);
 
   useEffect(() => {
@@ -125,6 +150,7 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard) =>
                 <Autocomplete
                   sx={{ pt: 1 }}
                   onChange={(__, opt) => setConfig('analyticId', opt.analytic_id)}
+                  loading={analyticsLoading}
                   options={analytics}
                   filterOptions={(options, state) =>
                     options.filter(
