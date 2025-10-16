@@ -61,7 +61,7 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard) =>
 
   const fetchAllAnalytics = async () => {
     setAnalyticsLoading(true);
-    const batchSize = 25;
+    const batchSize = 150;
     let offset = 0;
     let allAnalytics: Analytic[] = [];
     let total = 0;
