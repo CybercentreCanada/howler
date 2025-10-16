@@ -635,6 +635,7 @@
   "route.home.add.visualization.escalation": "Escalade des hits créés",
   "route.home.add.visualization.status.description": "Quel est l'état des hits créés au cours des trois derniers mois ?",
   "route.home.add.visualization.status": "État cumulatif des hits créés",
+  "route.home.add.visualization.unavailable": "Aucune option de visualisation disponible.",
   "route.home.add.visualization": "Visualisation",
   "route.home.add": "Ajouter un nouveau panneau",
   "route.home.alert.updated.description": "Des mises à jour ont été apportées aux alertes auxquelles vous participez. Depuis votre dernière consultation, {{count}} alertes ont été mises à jour",
