@@ -828,7 +828,7 @@ def setup_hits(ds):
 
 def setup_users(ds):
     "Set up users index"
-    os.environ["ELASTIC_USER_REPLICAS"] = "1"
+    os.environ["ELASTIC_USER_REPLICAS"] = "12"
     os.environ["ELASTIC_USER_AVATAR_REPLICAS"] = "1"
     ds.user.fix_replicas()
     ds.user_avatar.fix_replicas()
@@ -884,6 +884,8 @@ if __name__ == "__main__":
             # Create functions
             for create_fn in operations[1]:
                 create_fn(ds)
+
+    logger.info("Done.")
 
     logger.info("Done.")
 
