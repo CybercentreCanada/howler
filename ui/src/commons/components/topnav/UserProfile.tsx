@@ -21,7 +21,7 @@ import type { AppBarUserMenuElement } from 'commons/components//app/AppConfigs';
 import { useAppConfigs, useAppUser } from 'commons/components/app/hooks';
 import AppAvatar, { type AppAvatarProps } from 'commons/components/display/AppAvatar';
 import ThemeSelection from 'commons/components/topnav/ThemeSelection';
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState, type MouseEventHandler } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -46,7 +46,10 @@ const UserProfile = () => {
 
   const [open, setOpen] = useState<boolean>(false);
 
-  const onProfileClick = useCallback(() => setOpen(_open => !_open), []);
+  const onProfileClick: MouseEventHandler<HTMLButtonElement> = useCallback(e => {
+    e.stopPropagation();
+    setOpen(_open => !_open);
+  }, []);
   const onClickAway = useCallback(() => setOpen(false), []);
 
   const renderThemeSelection = useCallback(
