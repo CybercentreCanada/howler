@@ -29,6 +29,18 @@
   "[typescriptreact]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
+  "[yaml]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2,
+    "editor.autoIndent": "keep",
+    "diffEditor.ignoreTrimWhitespace": false,
+    "editor.defaultColorDecorators": "never",
+    "editor.quickSuggestions": {
+      "strings": true,
+      "other": true,
+      "comments": false
+    }
+  },
   "git.enableCommitSigning": true,
   "editor.formatOnSave": true,
   "editor.rulers": [120],
