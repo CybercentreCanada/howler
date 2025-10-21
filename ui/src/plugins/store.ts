@@ -13,6 +13,13 @@ export class HitEvent extends Event {
   }
 }
 
+export enum MainMenuInsertOperation {
+  Insert = 'INSERT',
+  InsertAfter = 'AFTER',
+  InsertBefore = 'BEFORE',
+  InsertSubitem = 'SUBITEM'
+}
+
 class HowlerPluginStore {
   private _pluginStore = createPluginStore();
 
@@ -23,6 +30,18 @@ class HowlerPluginStore {
   private _operations: string[] = [];
   private _userMenuItems: { i18nKey: string; route: string; icon: JSX.Element }[] = [];
   private _adminMenuItems: { i18nKey: string; route: string; icon: JSX.Element }[] = [];
+  private _mainMenuOperations: { operation: string; targetId: string; item: {} }[] = [];
+  private _routes: { path: string; element: JSX.Element; children?: [] }[] = [];
+  private _sitemaps: {
+    path: string;
+    title: string;
+    icon?: JSX.Element;
+    isRoot?: boolean;
+    isLeaf?: boolean;
+    excluded?: boolean;
+    breadcrumbs?: string[];
+    textWidth?: number;
+  }[] = [];
 
   install(plugin: HowlerPlugin) {
     console.log(`Installing plugin ${plugin.getPluginName()} by ${plugin.author}`);
@@ -52,6 +71,35 @@ class HowlerPluginStore {
     return true;
   }
 
+  addUserMenuItem(menuItem: { i18nKey: string; route: string; icon: JSX.Element }) {
+    this._userMenuItems.push(menuItem);
+  }
+
+  addAdminMenuItem(menuItem: { i18nKey: string; route: string; icon: JSX.Element }) {
+    this._adminMenuItems.push(menuItem);
+  }
+
+  addMainMenuItem(menuItem: { operation: string; targetId: string; item: {} }) {
+    this._mainMenuOperations.push(menuItem);
+  }
+
+  addRoute(route: { path: string; element: JSX.Element; children?: [] }) {
+    this._routes.push(route);
+  }
+
+  addSitemap(sitemap: {
+    path: string;
+    title: string;
+    icon?: JSX.Element;
+    isRoot?: boolean;
+    isLeaf?: boolean;
+    excluded?: boolean;
+    breadcrumbs?: string[];
+    textWidth?: number;
+  }) {
+    this._sitemaps.push(sitemap);
+  }
+
   addOperation(format: string): boolean {
     if (this._operations.includes(format)) {
       return false;
@@ -60,26 +108,6 @@ class HowlerPluginStore {
     this._operations.push(format);
 
     return true;
-  }
-
-  /**
-   * Adds a single menu item to the User Menu group under the Avatar Menu,
-   * items are added before the 'Settings' and 'Logout' menu items.
-   *
-   * @param menuItem Menu Item {i18nKey, route, icon}
-   */
-  addUserMenuItem(menuItem: { i18nKey: string; route: string; icon: JSX.Element }) {
-    this._userMenuItems.push(menuItem);
-  }
-
-  /**
-   * Adds a single menu item to the Admin Menu group under the Avatar Menu,
-   * items are added to the end of the existing Admin menu items.
-   *
-   * @param menuItem Menu Item {i18nKey, route, icon}
-   */
-  addAdminMenuItem(menuItem: { i18nKey: string; route: string; icon: JSX.Element }) {
-    this._adminMenuItems.push(menuItem);
   }
 
   public get leadFormats() {
@@ -94,16 +122,28 @@ class HowlerPluginStore {
     return this._operations;
   }
 
-  public get pluginStore() {
-    return this._pluginStore;
-  }
-
   public get userMenuItems() {
     return this._userMenuItems;
   }
 
   public get adminMenuItems() {
     return this._adminMenuItems;
+  }
+
+  public get mainMenuOperations() {
+    return this._mainMenuOperations;
+  }
+
+  public get routes() {
+    return this._routes;
+  }
+
+  public get sitemaps() {
+    return this._sitemaps;
+  }
+
+  public get pluginStore() {
+    return this._pluginStore;
   }
 }
 
