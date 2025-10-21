@@ -1,4 +1,4 @@
-# Howler: Triage Optimized
+# Howler: Triage Optimized test
 
 Elevate your Security Operations Center's efficiency with Howler, the cutting-edge alert triage platform tailored for today's SOC demands.
 
