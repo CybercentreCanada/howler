@@ -2,6 +2,7 @@
 import type { Hit } from 'models/entities/generated/Hit';
 import { createPluginStore, Event } from 'react-pluggable';
 import type HowlerPlugin from './HowlerPlugin';
+import type { AppLeftNavElement } from '../commons/components/app/AppConfigs';
 
 export class HitEvent extends Event {
   public hit: Hit;
@@ -30,7 +31,7 @@ class HowlerPluginStore {
   private _operations: string[] = [];
   private _userMenuItems: { i18nKey: string; route: string; icon: JSX.Element }[] = [];
   private _adminMenuItems: { i18nKey: string; route: string; icon: JSX.Element }[] = [];
-  private _mainMenuOperations: { operation: string; targetId: string; item: {} }[] = [];
+  private _mainMenuOperations: { operation: string; targetId: string; item: AppLeftNavElement }[] = [];
   private _routes: { path: string; element: JSX.Element; children?: [] }[] = [];
   private _sitemaps: {
     path: string;
@@ -79,8 +80,8 @@ class HowlerPluginStore {
     this._adminMenuItems.push(menuItem);
   }
 
-  addMainMenuItem(menuItem: { operation: string; targetId: string; item: {} }) {
-    this._mainMenuOperations.push(menuItem);
+  addMainMenuItem(menuOperation: { operation: string; targetId: string; item: AppLeftNavElement }) {
+    this._mainMenuOperations.push(menuOperation);
   }
 
   addRoute(route: { path: string; element: JSX.Element; children?: [] }) {

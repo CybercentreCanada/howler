@@ -251,10 +251,13 @@ abstract class HowlerPlugin implements IPlugin {
       operation: operation,
       targetId: targetId,
       item: {
-        id: id,
-        i18nKey: i18nKey,
-        route: route,
-        icon: icon
+        type: 'item',
+        element: {
+          id: id,
+          i18nKey: i18nKey,
+          route: route,
+          icon: icon
+        }
       }
     });
   }

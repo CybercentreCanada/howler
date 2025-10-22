@@ -1,10 +1,11 @@
 import { MainMenuInsertOperation } from '../plugins/store';
+import type { AppLeftNavElement } from '../commons/components/app/AppConfigs';
 
 class AppMenuBuilder {
-  private items: {}[];
+  private items: AppLeftNavElement[];
   private indexMap: {};
 
-  constructor(defaultMenu: {}[]) {
+  constructor(defaultMenu: AppLeftNavElement[]) {
     this.items = defaultMenu;
     this.updateMenuMap();
   }
@@ -14,23 +15,20 @@ class AppMenuBuilder {
    *
    * @param operations Operations created by the plugin system
    */
-  applyOperations(operations: {}[]) {
+  applyOperations(operations: { operation: string; targetId: string; item: AppLeftNavElement }[]) {
     for (const operation of operations) {
-      switch (operation['operation']) {
+      switch (operation.operation) {
         case MainMenuInsertOperation.Insert:
           // Inserts at end or adds to sub-elements
-          this.insert(operation['targetId'], operation['item']);
+          this.insert(operation.targetId, operation.item);
           break;
         case MainMenuInsertOperation.InsertBefore:
           // Inserts before target element
-          this.insertBefore(operation['targetId'], operation['item']);
+          this.insertBefore(operation.targetId, operation.item);
           break;
         case MainMenuInsertOperation.InsertAfter:
           // Inserts after target element
-          this.insertAfter(operation['targetId'], operation['item']);
-          break;
-        case MainMenuInsertOperation.InsertSubitem:
-          // Inserts to subitem
+          this.insertAfter(operation.targetId, operation.item);
           break;
       }
       this.updateMenuMap();
@@ -57,45 +55,37 @@ class AppMenuBuilder {
    * @param targetId Identifier of menu to insert to
    * @param item Menu Item to insert
    */
-  insert(targetId: string, item: {}) {
-    const menuIndex = this.indexOfMenuId(targetId);
-    const targetMenu = this.menuFromIndex(menuIndex['index'], menuIndex['subIndex']);
+  insert(targetId: string, item: AppLeftNavElement) {
+    const menuLocation = this.indexOfMenuId(targetId);
+    const targetMenu = this.menuFromIndex(menuLocation.index, menuLocation.subIndex);
 
-    if ('type' in targetMenu && targetMenu['type'] === 'group') {
-      // This is a group, add to end of group
-      if ('type' in item) {
+    if (targetMenu.type === 'group') {
+      if (item.type == 'divider') {
         console.log(
           `Skipping DIVIDER Operation: INSERT on Target: ${targetId}, Dividers cannot be inserted to sub-menus`
         );
-      } else {
-        item['nested'] = true;
-        targetMenu['element']['items'].push(item);
+        return;
       }
+      // This is a group, add to end of group
+      item.element['nested'] = true;
+      targetMenu.element.items.push(item);
     } else {
       // Check if this is a root 'item'
-      if (menuIndex['index'] !== -1 && !menuIndex['subIndex']) {
-        if ('type' in item) {
+      if (menuLocation.index !== -1 && menuLocation.subIndex == null) {
+        if (item.type == 'divider') {
           console.log(
             `Skipping DIVIDER Operation: INSERT on Target: ${targetId}, Dividers cannot be inserted to sub-menus`
           );
-        } else {
-          // We are trying insert item into a non-group menu item,
-          // make it a group
-          targetMenu['type'] = 'group';
-          targetMenu['element']['items'] = [item];
-          delete targetMenu['element']['route'];
+          return;
         }
+        // We are trying insert item into a non-group menu item,
+        // make it a group
+        targetMenu.type = 'group';
+        targetMenu.element.items = [item.element];
+        delete targetMenu.element.route;
       } else {
         // Standard root menu item, push to array
-        if ('type' in item) {
-          // Divider item, added differently
-          targetMenu.push(item);
-        } else {
-          targetMenu.push({
-            type: 'item',
-            element: item
-          });
-        }
+        targetMenu.push(item.element);
       }
     }
   }
@@ -106,29 +96,25 @@ class AppMenuBuilder {
    * @param targetId Identifier of menu to insert to
    * @param item Menu Item to insert
    */
-  insertBefore(targetId: string, item: {}) {
-    const menuIndex = this.indexOfMenuId(targetId);
+  insertBefore(targetId: string, item: AppLeftNavElement) {
+    const menuLocation = this.indexOfMenuId(targetId);
 
-    if ('subIndex' in menuIndex) {
-      if ('type' in item) {
+    if (menuLocation.subIndex != null) {
+      if (item.type == 'divider') {
         console.log(
           `Skipping DIVIDER Operation: INSERTBEFORE on Target: ${targetId}, Dividers cannot be inserted to sub-menus`
         );
-      } else {
-        const targetMenu = this.menuFromIndex(menuIndex['index']);
-        item['nested'] = true;
-        targetMenu['element']['items'].splice(menuIndex['subIndex'], 0, item);
+        return;
       }
+
+      const targetMenu = this.menuFromIndex(menuLocation.index);
+      item.element['nested'] = true;
+      targetMenu.element['items'].splice(menuLocation.subIndex, 0, item.element);
     } else {
-      if (menuIndex['index'] < 0) {
-        menuIndex['index'] = 0;
+      if (menuLocation.index < 0) {
+        menuLocation.index = 0;
       }
-      if ('type' in item) {
-        // Divider, add different
-        this.items.splice(menuIndex['index'], 0, item);
-      } else {
-        this.items.splice(menuIndex['index'], 0, { type: 'item', element: item });
-      }
+      this.items.splice(menuLocation.index, 0, item);
     }
   }
 
@@ -138,29 +124,26 @@ class AppMenuBuilder {
    * @param targetId Identifier of menu to insert to
    * @param item Menu Item to insert
    */
-  insertAfter(targetId: string, item: {}) {
-    const menuIndex = this.indexOfMenuId(targetId);
+  insertAfter(targetId: string, item: AppLeftNavElement) {
+    const menuLocation = this.indexOfMenuId(targetId);
 
-    if ('subIndex' in menuIndex) {
-      if ('type' in item) {
+    if (menuLocation.subIndex != null) {
+      if (item.type == 'divider') {
         console.log(
           `Skipping DIVIDER Operation: INSERTAFTER on Target: ${targetId}, Dividers cannot be inserted to sub-menus`
         );
-      } else {
-        const targetMenu = this.menuFromIndex(menuIndex['index']);
-        item['nested'] = true;
-        targetMenu['element']['items'].splice(menuIndex['subIndex'] + 1, 0, item);
+        return;
       }
+
+      const targetMenu = this.menuFromIndex(menuLocation.index);
+      item.element['nested'] = true;
+      targetMenu.element['items'].splice(menuLocation.subIndex + 1, 0, item.element);
     } else {
-      if (menuIndex['index'] < 0) {
-        menuIndex['index'] = this.items.length;
+      if (menuLocation.index < 0) {
+        menuLocation.index = this.items.length;
       }
-      if ('type' in item) {
-        // Divider, add different
-        this.items.splice(menuIndex['index'] + 1, 0, item);
-      } else {
-        this.items.splice(menuIndex['index'] + 1, 0, { type: 'item', element: item });
-      }
+
+      this.items.splice(menuLocation.index + 1, 0, item);
     }
   }
 
