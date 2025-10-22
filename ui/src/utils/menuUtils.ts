@@ -67,7 +67,7 @@ class AppMenuBuilder {
         return;
       }
       // This is a group, add to end of group
-      item.element['nested'] = true;
+      item.element['nested'] = true; // eslint-disable-line @typescript-eslint/dot-notation
       targetMenu.element.items.push(item);
     } else {
       // Check if this is a root 'item'
@@ -108,8 +108,8 @@ class AppMenuBuilder {
       }
 
       const targetMenu = this.menuFromIndex(menuLocation.index);
-      item.element['nested'] = true;
-      targetMenu.element['items'].splice(menuLocation.subIndex, 0, item.element);
+      item.element['nested'] = true; // eslint-disable-line @typescript-eslint/dot-notation
+      targetMenu.element['items'].splice(menuLocation.subIndex, 0, item.element); // eslint-disable-line @typescript-eslint/dot-notation
     } else {
       if (menuLocation.index < 0) {
         menuLocation.index = 0;
@@ -136,8 +136,8 @@ class AppMenuBuilder {
       }
 
       const targetMenu = this.menuFromIndex(menuLocation.index);
-      item.element['nested'] = true;
-      targetMenu.element['items'].splice(menuLocation.subIndex + 1, 0, item.element);
+      item.element['nested'] = true; // eslint-disable-line @typescript-eslint/dot-notation
+      targetMenu.element['items'].splice(menuLocation.subIndex + 1, 0, item.element); // eslint-disable-line @typescript-eslint/dot-notation
     } else {
       if (menuLocation.index < 0) {
         menuLocation.index = this.items.length;
@@ -160,9 +160,9 @@ class AppMenuBuilder {
     } else if (id in this.indexMap) {
       // Item exists, check if it's a subitem
       if ('parent' in this.indexMap[id]) {
-        return { index: this.indexMap[id]['parent'], subIndex: this.indexMap[id]['index'] };
+        return { index: this.indexMap[id].parent, subIndex: this.indexMap[id].index };
       }
-      return { index: this.indexMap[id]['index'] };
+      return { index: this.indexMap[id].index };
     } else {
       throw new Error(`Menu element with id of '${id}' not found.`);
     }
@@ -183,7 +183,7 @@ class AppMenuBuilder {
       if (!subIndex) {
         return this.items[index];
       } else {
-        return this.items[index]['element']['items'][subIndex];
+        return this.items[index].element['items'][subIndex]; // eslint-disable-line @typescript-eslint/dot-notation
       }
     }
   }
@@ -199,14 +199,13 @@ class AppMenuBuilder {
 
     for (let index = 0; index < this.items.length; index++) {
       let menuItem = this.items[index];
-      if (menuItem['type'] != 'divider') {
-        indexMap[menuItem['element']['id']] = { index: index };
+      if (menuItem.type != 'divider') {
+        indexMap[menuItem.element.id] = { index: index };
 
-        if (menuItem['type'] == 'group') {
-          //indexMap[menuItem['element']['id']]['items'] = {}
-          for (let subIndex = 0; subIndex < menuItem['element']['items'].length; subIndex++) {
-            let subMenuItem = menuItem['element']['items'][subIndex];
-            indexMap[subMenuItem['id']] = { index: subIndex, parent: index };
+        if (menuItem.type == 'group') {
+          for (let subIndex = 0; subIndex < menuItem.element['items'].length; subIndex++) { // eslint-disable-line @typescript-eslint/dot-notation
+            let subMenuItem = menuItem.element['items'][subIndex]; // eslint-disable-line @typescript-eslint/dot-notation
+            indexMap[subMenuItem.id] = { index: subIndex, parent: index };
           }
         }
       }
