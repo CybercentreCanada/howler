@@ -2,7 +2,8 @@
 
 ## Introduction
 
-The Howler Python client (`howler-client`) is a library that provides a simple and intuitive interface for programmatically interacting with the Howler API. It allows developers to:
+The Howler Python client (`howler-client`) is a library that provides a simple and intuitive interface for
+programmatically interacting with the Howler API. It allows developers to:
 
 - Create and ingest hits from various data sources
 - Search and query hits with Lucene syntax
@@ -10,9 +11,11 @@ The Howler Python client (`howler-client`) is a library that provides a simple a
 - Manage hit comments and metadata
 - Integrate Howler into automated workflows and pipelines
 
-The client handles authentication, request formatting, and response parsing, making it easy to build tools and integrations with Howler.
+The client handles authentication, request formatting, and response parsing, making it easy to build tools and
+integrations with Howler.
 
-The package is published on [PyPI](https://pypi.org/project/howler-client/) and the source code is located in the `client/` folder of the [Howler monorepo](https://github.com/CybercentreCanada/howler).
+The package is published on [PyPI](https://pypi.org/project/howler-client/) and the source code is located in the
+`client/` folder of the [Howler monorepo](https://github.com/CybercentreCanada/howler).
 
 ## Installation
 
@@ -74,7 +77,9 @@ Now you can use the `client` object to interact with Howler!
 
 ## Creating Hits
 
-Creating hits is the primary use case for the Howler client. The client provides two main methods for ingesting data: `client.hit.create()` for data already in Howler's schema format, and `client.hit.create_from_map()` for custom data that needs to be mapped to Howler's schema.
+Creating hits is the primary use case for the Howler client. The client provides two main methods for ingesting data:
+`client.hit.create()` for data already in Howler's schema format, and `client.hit.create_from_map()` for custom
+data that needs to be mapped to Howler's schema.
 
 ### Using `client.hit.create()`
 
@@ -173,11 +178,12 @@ for hit in response['valid']:
 for result in response['invalid']:
     print(f"Failed to create hit: {result['error']}")
     print(f"Hit Data: {json.dumps(result['hit'], indent=2)}")
-````
+```
 
 ### Using `client.hit.create_from_map()`
 
-When you have data in a custom format, `create_from_map()` allows you to define a mapping from your data structure to Howler's schema. This is particularly useful for integrating with external systems or ingesting data from various sources.
+When you have data in a custom format, `create_from_map()` allows you to define a mapping from your data structure to
+Howler's schema. This is particularly useful for integrating with external systems or ingesting data from various sources.
 
 #### Basic Example
 
@@ -266,7 +272,8 @@ except ClientError as e:
 
 ### Duplicate Detection
 
-Howler automatically detects duplicate hits based on the `howler.hash` field. If you attempt to create a hit with the same hash as an existing hit, it will be skipped:
+Howler automatically detects duplicate hits based on the `howler.hash` field. If you attempt to create a hit with the
+same hash as an existing hit, it will be skipped:
 
 ```python
 from hashlib import sha256
@@ -334,7 +341,8 @@ The client provides multiple methods for updating hits, with `overwrite()` being
 
 #### Overwriting Hit Data (Recommended)
 
-The `client.hit.overwrite()` method is the easiest way to update a hit. Simply provide a partial hit object with the fields you want to change:
+The `client.hit.overwrite()` method is the easiest way to update a hit. Simply provide a partial hit object with the
+fields you want to change:
 
 ```python
 # Get a hit to update
