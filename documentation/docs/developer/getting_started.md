@@ -3,118 +3,138 @@
 In order to contribute to Howler, you will first need to prepare your development environment.
 
 ??? tip "Notes on Operating System"
-    Please note that these commands were written for use in ubuntu, either on Windows through WSL or a standalone ubuntu
+    Please note that these commands were written for use in Ubuntu, either on Windows through WSL or a standalone Ubuntu
     OS. You will need to adapt the OS-specific instructions to your personal operating system.
 
 ```shell
-# While not strictly necessary, it is suggested to keep all howler repositories in a single folder.
-# Several scripts communicate across repositories, and are more efficient when sharing a parent folder.
-mkdir ~/repos && cd ~/repos
-
-# Clone the howler repositories
-git clone git@github.com:CybercentreCanada/howler-ui.git
-git clone git@github.com:CybercentreCanada/howler-api.git
-git clone git@github.com:CybercentreCanada/howler-client.git
+# Clone the Howler monorepo
+mkdir -p ~/repos && cd ~/repos
+git clone git@github.com:CybercentreCanada/howler.git
+cd howler
 ```
 
-## Frontend dependencies
+## Frontend Dependencies
 
-### Node
+### Node.js
 
-Howler's UI is developed using [vite](https://vitejs.dev/), which requires node v20 or higher. We'll use
-[Node Version Manager](https://github.com/nvm-sh/nvm) to download and install node v20.
+Howler's UI is developed using [Vite](https://vitejs.dev/), which requires Node.js v20 or higher. We recommend using
+[Node Version Manager (nvm)](https://github.com/nvm-sh/nvm) to manage Node.js versions.
 
 ??? tip "Installing without NVM"
-    NVM isn't required - if you'd rather install node yourself, you can do so - just make sure the version you install
-    is compatible with vite.
+    NVM isn't required - if you'd rather install Node.js yourself, you can do so. Just make sure the version you
+    install is v20 or higher to be compatible with Vite.
 
 ```shell
 # Install nvm
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 
-# You can skip these commands if you restart your shell
+# Restart your shell or run:
 export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"                   # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion" # This loads nvm bash_completion
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
 
-# Install and use node version 20
+# Install and use Node.js v20 (as specified in ui/.nvmrc)
 nvm install v20
 nvm use v20
 
-# Optional if you have other projects depending on other versions of node
+# Optional: Set v20 as default
 nvm alias default v20
 ```
 
-### Yarn
+### pnpm
 
-Howler's UI uses [Yarn](https://yarnpkg.com/) for package management.
+Howler's UI uses [pnpm](https://pnpm.io/) for package management. The project enforces the use of pnpm through a
+preinstall script.
 
 ```shell
-npm install -g yarn
+# Install pnpm globally
+npm install -g pnpm
+
+# Verify installation
+pnpm --version
 ```
 
 ## Backend Dependencies
 
-Howler's backend depends on a number of docker containers in order to properly run. To this end, you must have docker
-and docker-compose installed. To that end, follow the installation steps outlined
-[here](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository), copied below for convenience:
+### Docker
 
-??? tip "Alternative Installation Methods"
-    Docker has a number of options for installation. This is the tested method, but other approaches should work without
-    issue.
+Howler's backend depends on Docker containers for services like databases, message queues, and other infrastructure
+components. You'll need Docker and Docker Compose installed.
+
+Follow the official Docker installation guide for your operating system:
+[Docker Engine Installation](https://docs.docker.com/engine/install/)
+
+For Ubuntu specifically, see: [Install Docker on Ubuntu](https://docs.docker.com/engine/install/ubuntu/)
+
+<!-- markdownlint-disable -->
+??? tip "Post-Installation Steps"
+    After installing Docker, you may want to add your user to the `docker` group to run Docker commands without `sudo`:
+
+    ```shell
+    # Add the docker group (may already exist)
+    sudo groupadd docker
+
+    # Add the current user to the docker group
+    sudo usermod -aG docker $USER
+
+    # Log out and back in for the group change to take effect
+    ```
+
+    Verify Docker is working:
+
+    ```shell
+    docker run hello-world
+    ```
+<!-- markdownlint-enable -->
+
+### Python
+
+Howler's backend requires Python 3.12. We recommend using [pyenv](https://github.com/pyenv/pyenv) to manage Python
+versions, as it allows you to install and switch between multiple Python versions easily.
+
+#### Installing pyenv
+
+For detailed installation instructions, see the [pyenv installation guide](https://github.com/pyenv/pyenv#installation).
+
+**Quick installation for Ubuntu/WSL:**
 
 ```shell
-# Add Docker's official GPG key:
-sudo apt-get update
-sudo apt-get install ca-certificates curl gnupg
-sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-sudo chmod a+r /etc/apt/keyrings/docker.gpg
-
-# Add the repository to Apt sources:
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-sudo apt-get update
-
-# Install the latest version
-sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
-# Verify it's working
-sudo docker run hello-world
-```
-
-If you'd rather not run `sudo` for every docker command:
-
-```shell
-# Add the docker group. If it fails, no problem
-sudo groupadd docker
-
-# Add the current user to the docker group
-sudo usermod -aG docker $USER
-```
-
-Next up, Python. Howler runs on Python 3.9, so we'll install that:
-
-```shell
-sudo apt install software-properties-common
-sudo add-apt-repository ppa:deadsnakes/ppa
+# Install build dependencies
 sudo apt update
-sudo apt install python3.9 python3.9-distutils python3.9-venv
+sudo apt install -y build-essential libssl-dev zlib1g-dev \
+libbz2-dev libreadline-dev libsqlite3-dev curl git \
+libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
 
-python3.9 --version
+# Install pyenv
+curl https://pyenv.run | bash
 
-# If you want to run python3.9 as default
-sudo update-alternatives --install /usr/bin/python python /usr/bin/python3.9 1
+# Add pyenv to your shell configuration
+echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bashrc
+echo 'command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc
+echo 'eval "$(pyenv init -)"' >> ~/.bashrc
 
-python --version
-
-# Install pip
-python -m ensurepip
-
-# If you want to run pip3.9 as default
-sudo update-alternatives --install $HOME/.local/bin/pip python $HOME/.local/bin/pip3.9 1
-
-pip --version
+# If using zsh instead of bash, replace ~/.bashrc with ~/.zshrc in the above commands
 ```
+
+Restart your shell or run:
+
+```shell
+exec "$SHELL"
+```
+
+#### Installing Python 3.12
+
+```shell
+# Install Python 3.12
+pyenv install 3.12
+
+# Set Python 3.12 as global default
+pyenv global 3.12
+
+# Verify installation
+python --version  # Should show Python 3.12.x
+```
+
+??? tip "Installing without pyenv"
+    If you prefer not to use pyenv, you can install Python 3.12 directly. Just ensure you have Python 3.12 or higher
+    available in your environment.
