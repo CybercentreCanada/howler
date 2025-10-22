@@ -203,7 +203,8 @@ class AppMenuBuilder {
         indexMap[menuItem.element.id] = { index: index };
 
         if (menuItem.type == 'group') {
-          for (let subIndex = 0; subIndex < menuItem.element['items'].length; subIndex++) { // eslint-disable-line @typescript-eslint/dot-notation
+          // eslint-disable-next-line @typescript-eslint/dot-notation
+          for (let subIndex = 0; subIndex < menuItem.element['items'].length; subIndex++) {
             let subMenuItem = menuItem.element['items'][subIndex]; // eslint-disable-line @typescript-eslint/dot-notation
             indexMap[subMenuItem.id] = { index: subIndex, parent: index };
           }
