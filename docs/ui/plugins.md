@@ -10,7 +10,9 @@ Howler UI plugins are built on the `react-pluggable` framework and provide a rob
 
 **Component Injection**: Plugins can inject custom React components into various parts of the UI, including status displays, action buttons, help sections, and administrative interfaces.
 
-**Menu Injection**: Plugins can inject User and Admin menu items to the Avatar popup menu
+**Menu Injection**: Plugins can inject menu items into the User Avatar dropdown menu and the main Application menu.
+
+**Custom Routes**: Plugins can create and add routes
 
 **Custom Operations**: Add new operations that users can perform on hits via the action interface, with full form interfaces and documentation integration through the `addOperation` method.
 
@@ -111,6 +113,63 @@ Adds a custom menu item to the Admin Menu in the Avatar popup menu
 - **`i18nKey`**: Translation Key or Title
 - **`route`**: Route to navigate to, '/settings' for example
 - **`icon`**: JSX Icon element, <Settings/> for example
+
+#### `addMainMenuItem(operation, targetId, id, i18nKey, route, icon)`
+
+Adds a custom menu item to the Application Menu.
+
+- **`operation`**: Insert operation to perform
+  - Insert: Inserts at end of Application Menu, inserts item as child of a Group menu, or creates a new Group menu if a non-group menu is targeted.
+  - InsertAfter: Inserts menu after a specific target menu
+  - InsertBefore: Inserts menu before a specific target menu
+- **`targetId`**: Reference/Target Menu Id.  (See useMyPreferences.tsx for menu ids)
+- **`id`**: Identifier for new menu entry
+- **`i18nKey`**: Translation key for new menu entry
+- **`route`**: Route for new menu entry
+- **`icon`**: Icon for new menu entry 
+
+#### `addMainMenuDivider(operation, targetId)`
+
+Adds a divider item to the Application Menu.
+
+**Note**: Dividers cannot be added to sub-menus 
+
+- **`operation`**: Insert operation to perform
+  - Insert: Inserts at end of Application Menu, inserts item as child of a Group menu, or creates a new Group menu if a non-group menu is targeted.
+  - InsertAfter: Inserts menu after a specific target menu
+  - InsertBefore: Inserts menu before a specific target menu
+- **`targetId`**: Reference/Target Menu Id.  (See useMyPreferences.tsx for menu ids)
+
+#### `addRouteAndSitemap(path, element, title, icon?, children?)`
+
+Adds a Route and the bare minimum required Sitemap entry for Breadcrumb display
+
+- **`path`**: Route path, should not start with /
+- **`element`**: Element the route directs to
+- **`children`**: Child routes if required
+- **`title`**: The title/label to display in breadcrumbs for this route
+- **`icon`**: The icon component to show beside the title/label
+
+#### `addRoute(path, element, children?)`
+
+Adds a new route
+
+- **`path`**: Route path, should not start with /
+- **`element`**: Element the route directs to
+- **`children`**: Child routes if required
+
+#### `addSitemap(path, title, icon?, isRoot?, isLeaf?, excluded?, breadcrumbs?, textWidth)`
+
+Adds Sitemap entry which is used in various places to provide breadcrumbs
+
+- **`path`**: The react router path to this route
+- **`title`**: The title/label to display in breadcrumbs for this route
+- **`icon`**: The icon component to show beside the title/label
+- **`isRoot`**: When true, indicates that the breadcrumbs will reset to this one path each time it is encountered
+- **`isLeaf`**: When true, indicates that this path does not aggregate in breadcrumbs, i.e. will be replaced by next path
+- **`excluded`**: When true, indicates to breadcrumbs component to not render this route
+- **`breadcrumbs`**: Static list of breadcrumb paths to be rendered for the given route
+- **`textWidth`**: The max width of the text when rendering the breadcrumb
 
 ### UI Hook Methods
 
