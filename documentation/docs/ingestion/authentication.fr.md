@@ -18,9 +18,12 @@ Nous allons maintenant présenter les cas d'utilisation de chaque type d'authent
 
 ### Authentification par nom d'utilisateur/mot de passe
 
-L'authentification par nom d'utilisateur et mot de passe est la méthode d'authentification la plus simple et la moins sûre. Il est peu probable qu'elle soit activée
-dans un environnement de production, elle permet aux utilisateurs de se connecter facilement à l'API Howler et d'effectuer des modifications en tant qu'utilisateur donné,
-sans avoir à se soucier de créer des clés API ou d'utiliser un fournisseur OAuth comme Keycloak ou Azure. Les utilisateurs peuvent se connecter
+L'authentification par nom d'utilisateur et mot de passe est la méthode d'authentification la plus simple et la moins
+sûre. Il est peu probable qu'elle soit activée
+dans un environnement de production, elle permet aux utilisateurs de se connecter facilement à l'API Howler et
+'effectuer des modifications en tant qu'utilisateur donné,
+sans avoir à se soucier de créer des clés API ou d'utiliser un fournisseur OAuth comme Keycloak ou Azure. Les
+utilisateurs peuvent se connecter
 en utilisant l'authentification par nom d'utilisateur et mot de passe de l'une des deux manières suivantes :
 
 #### Appel direct au point de terminaison requis (mot de passe)
