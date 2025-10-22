@@ -107,7 +107,6 @@
     "eslint-plugin-react-hooks": "^4.6.2",
     "eslint-plugin-react-refresh": "^0.4.20",
     "http-proxy-middleware": "^2.0.9",
-    "husky": "^9.1.7",
     "lint-staged": "^15.5.2",
     "msw": "^2.10.4",
     "prettier": "^3.6.2",
