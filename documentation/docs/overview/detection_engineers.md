@@ -238,8 +238,8 @@ the hits.
 
 ### Overview
 
-Here, you are encouraged to provide documentation of your analytic in Markdown. This should provide more details about how the analytic
-or detection works, what it's looking for and how to validate the hits.
+Here, you are encouraged to provide documentation of your analytic in Markdown. This should provide more details about
+how the analytic or detection works, what it's looking for and how to validate the hits.
 
 Metrics are automatically generated to give insights on the performance. A very high false-positive rate might be a
 sign that detection needs improvement. On the other hand, a high true-positive rate might warrant that hits be
