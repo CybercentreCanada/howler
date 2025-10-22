@@ -2,7 +2,7 @@
 
 ??? warning "System dependencies"
     Before running these steps, ensure you have completed the installation steps
-    [here](/howler-docs/developer/getting_started/#backend-dependencies).
+    [for backend dependencies](/howler-docs/developer/getting_started/#backend-dependencies).
 
 Running the howler server, once dependencies are installed, is fairly simple. First, we start up the dependencies. These
 include:
@@ -13,8 +13,8 @@ include:
 4. Keycloak (for OAuth authentication)
 
 ```shell
-cd ~/repos/howler/api
-cd dev && docker compose up
+cd ~/repos/howler/api/dev
+docker compose up
 ```
 
 Now we install the python packages Howler depends on using Poetry:

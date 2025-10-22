@@ -1,0 +1,6 @@
+config:
+  # MD013 - Line length
+  MD013:
+    line_length: 120
+    code_blocks: false
+    tables: false

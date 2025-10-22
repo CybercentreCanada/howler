@@ -8,6 +8,11 @@ repos:
         args: [--fix, --output-format=concise]
       # Run the formatter.
       - id: ruff-format
+  # - repo: https://github.com/DavidAnson/markdownlint-cli2
+  #   rev: v0.18.1
+  #   hooks:
+  #     - id: markdownlint-cli2
+  #       args: [--config, .markdownlint-cli2.yaml]
   - repo: local
     hooks:
       - id: poetry-check-api
