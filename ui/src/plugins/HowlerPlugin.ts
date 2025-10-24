@@ -189,7 +189,7 @@ abstract class HowlerPlugin implements IPlugin {
     breadcrumbs?: string[],
     textWidth?: number
   ) {
-    if ((!isRoot && !isLeaf) || (isRoot && isLeaf)) {
+    if (isRoot === isLeaf) {
       throw new Error(`Sitemap '${path}' must define either isRoot or isLeaf as true`);
     }
 

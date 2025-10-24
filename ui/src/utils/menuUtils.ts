@@ -1,5 +1,6 @@
 import type { AppLeftNavElement, AppLeftNavGroup, AppLeftNavItem } from '../commons/components/app/AppConfigs';
 import { MainMenuInsertOperation } from '../plugins/store';
+import { isNil } from 'lodash-es';
 
 class AppMenuBuilder {
   private items: AppLeftNavElement[];
@@ -9,7 +10,6 @@ class AppMenuBuilder {
     this.items = defaultMenu;
     this.updateMenuMap();
   }
-
 
   /**
    * Applies a collection of Menu Operation objects created by the plugin system
@@ -78,7 +78,7 @@ class AppMenuBuilder {
       return;
     }
 
-    if (menuLocation.index !== -1 && menuLocation.subIndex == null) {
+    if (menuLocation.index !== -1 && isNil(menuLocation.subIndex)) {
       if (item.type === 'divider') {
         console.warn(
           `Skipping DIVIDER Operation: INSERT on Target: ${targetId}, Dividers cannot be inserted to sub-menus`
@@ -92,7 +92,6 @@ class AppMenuBuilder {
 
       const header = target.element;
       const inserted: AppLeftNavItem = { ...(item.element as AppLeftNavItem), nested: true };
-
 
       const newGroup: AppLeftNavElement = {
         type: 'group',
@@ -121,7 +120,7 @@ class AppMenuBuilder {
   insertBefore(targetId: string, item: AppLeftNavElement) {
     const menuLocation = this.indexOfMenuId(targetId);
 
-    if (menuLocation.subIndex != null) {
+    if (!isNil(menuLocation.subIndex)) {
       if (item.type === 'divider') {
         console.warn(
           `Skipping DIVIDER Operation: INSERT on Target: ${targetId}, Dividers cannot be inserted to sub-menus`
@@ -145,11 +144,7 @@ class AppMenuBuilder {
     if (menuLocation.index < 0) {
       menuLocation.index = 0;
     }
-    this.items = [
-      ...this.items.slice(0, menuLocation.index),
-      item,
-      ...this.items.slice(menuLocation.index)
-    ];
+    this.items = [...this.items.slice(0, menuLocation.index), item, ...this.items.slice(menuLocation.index)];
   }
 
   /**
@@ -161,7 +156,7 @@ class AppMenuBuilder {
   insertAfter(targetId: string, item: AppLeftNavElement) {
     const menuLocation = this.indexOfMenuId(targetId);
 
-    if (menuLocation.subIndex != null) {
+    if (!isNil(menuLocation.subIndex)) {
       if (item.type === 'divider') {
         console.warn(
           `Skipping DIVIDER Operation: INSERT on Target: ${targetId}, Dividers cannot be inserted to sub-menus`
@@ -185,11 +180,7 @@ class AppMenuBuilder {
     if (menuLocation.index < 0) {
       menuLocation.index = this.items.length;
     }
-    this.items = [
-      ...this.items.slice(0, menuLocation.index + 1),
-      item,
-      ...this.items.slice(menuLocation.index + 1)
-    ];
+    this.items = [...this.items.slice(0, menuLocation.index + 1), item, ...this.items.slice(menuLocation.index + 1)];
   }
 
   /**
@@ -225,7 +216,7 @@ class AppMenuBuilder {
     if (index === -1) {
       return this.items;
     }
-    if (subIndex == null) {
+    if (isNil(subIndex)) {
       return this.items[index];
     }
     const menuItem = this.items[index];
