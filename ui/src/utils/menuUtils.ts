@@ -1,14 +1,15 @@
+import type { AppLeftNavElement, AppLeftNavGroup, AppLeftNavItem } from '../commons/components/app/AppConfigs';
 import { MainMenuInsertOperation } from '../plugins/store';
-import type { AppLeftNavElement } from '../commons/components/app/AppConfigs';
 
 class AppMenuBuilder {
   private items: AppLeftNavElement[];
-  private indexMap: {};
+  private indexMap: Record<string | number, { index: number; parent?: number }>;
 
   constructor(defaultMenu: AppLeftNavElement[]) {
     this.items = defaultMenu;
     this.updateMenuMap();
   }
+
 
   /**
    * Applies a collection of Menu Operation objects created by the plugin system
@@ -57,36 +58,51 @@ class AppMenuBuilder {
    */
   insert(targetId: string, item: AppLeftNavElement) {
     const menuLocation = this.indexOfMenuId(targetId);
-    const targetMenu = this.menuFromIndex(menuLocation.index, menuLocation.subIndex);
+    const target = this.menuFromIndex(menuLocation.index, menuLocation.subIndex);
 
-    if (targetMenu.type === 'group') {
-      if (item.type == 'divider') {
-        console.log(
-          `Skipping DIVIDER Operation: INSERT on Target: ${targetId}, Dividers cannot be inserted to sub-menus`
-        );
+    if (!Array.isArray(target) && this.isGroupElement(target)) {
+      if (item.type === 'divider') {
         return;
       }
-      // This is a group, add to end of group
-      item.element['nested'] = true; // eslint-disable-line @typescript-eslint/dot-notation
-      targetMenu.element.items.push(item);
-    } else {
-      // Check if this is a root 'item'
-      if (menuLocation.index !== -1 && menuLocation.subIndex == null) {
-        if (item.type == 'divider') {
-          console.log(
-            `Skipping DIVIDER Operation: INSERT on Target: ${targetId}, Dividers cannot be inserted to sub-menus`
-          );
-          return;
-        }
-        // We are trying insert item into a non-group menu item,
-        // make it a group
-        targetMenu.type = 'group';
-        targetMenu.element.items = [item.element];
-        delete targetMenu.element.route;
-      } else {
-        // Standard root menu item, push to array
-        targetMenu.push(item.element);
+      const group = target.element;
+      const newItem: AppLeftNavItem = { ...(item.element as AppLeftNavItem), nested: true };
+      group.items = [...group.items, newItem];
+      return;
+    }
+
+    if (Array.isArray(target)) {
+      target.push(item);
+      return;
+    }
+
+    if (menuLocation.index !== -1 && menuLocation.subIndex == null) {
+      if (item.type === 'divider') {
+        return;
       }
+
+      if (!this.isItemElement(target)) {
+        return;
+      }
+
+      const header = target.element;
+      const inserted: AppLeftNavItem = { ...(item.element as AppLeftNavItem), nested: true };
+
+
+      const newGroup: AppLeftNavElement = {
+        type: 'group',
+        element: {
+          id: header.id,
+          open: true,
+          i18nKey: header.i18nKey,
+          title: header.text,
+          userPropValidators: header.userPropValidators,
+          icon: header.icon as React.ReactElement<any>,
+          items: [inserted]
+        } as AppLeftNavGroup
+      };
+
+      this.items[menuLocation.index] = newGroup;
+      return;
     }
   }
 
@@ -100,22 +116,31 @@ class AppMenuBuilder {
     const menuLocation = this.indexOfMenuId(targetId);
 
     if (menuLocation.subIndex != null) {
-      if (item.type == 'divider') {
-        console.log(
-          `Skipping DIVIDER Operation: INSERTBEFORE on Target: ${targetId}, Dividers cannot be inserted to sub-menus`
-        );
+      if (item.type === 'divider') {
         return;
       }
-
-      const targetMenu = this.menuFromIndex(menuLocation.index);
-      item.element['nested'] = true; // eslint-disable-line @typescript-eslint/dot-notation
-      targetMenu.element['items'].splice(menuLocation.subIndex, 0, item.element); // eslint-disable-line @typescript-eslint/dot-notation
-    } else {
-      if (menuLocation.index < 0) {
-        menuLocation.index = 0;
+      const parentElement = this.menuFromIndex(menuLocation.index);
+      if (!Array.isArray(parentElement) && this.isGroupElement(parentElement)) {
+        const group = parentElement.element;
+        const newItem: AppLeftNavItem = { ...(item.element as AppLeftNavItem), nested: true };
+        group.items = [
+          ...group.items.slice(0, menuLocation.subIndex),
+          newItem,
+          ...group.items.slice(menuLocation.subIndex)
+        ];
       }
-      this.items.splice(menuLocation.index, 0, item);
+      return;
     }
+
+    // Root level insertion before target index
+    if (menuLocation.index < 0) {
+      menuLocation.index = 0;
+    }
+    this.items = [
+      ...this.items.slice(0, menuLocation.index),
+      item,
+      ...this.items.slice(menuLocation.index)
+    ];
   }
 
   /**
@@ -128,23 +153,31 @@ class AppMenuBuilder {
     const menuLocation = this.indexOfMenuId(targetId);
 
     if (menuLocation.subIndex != null) {
-      if (item.type == 'divider') {
-        console.log(
-          `Skipping DIVIDER Operation: INSERTAFTER on Target: ${targetId}, Dividers cannot be inserted to sub-menus`
-        );
+      if (item.type === 'divider') {
         return;
       }
-
-      const targetMenu = this.menuFromIndex(menuLocation.index);
-      item.element['nested'] = true; // eslint-disable-line @typescript-eslint/dot-notation
-      targetMenu.element['items'].splice(menuLocation.subIndex + 1, 0, item.element); // eslint-disable-line @typescript-eslint/dot-notation
-    } else {
-      if (menuLocation.index < 0) {
-        menuLocation.index = this.items.length;
+      const parentElement = this.menuFromIndex(menuLocation.index);
+      if (!Array.isArray(parentElement) && this.isGroupElement(parentElement)) {
+        const group = parentElement.element;
+        const newItem: AppLeftNavItem = { ...(item.element as AppLeftNavItem), nested: true };
+        group.items = [
+          ...group.items.slice(0, menuLocation.subIndex + 1),
+          newItem,
+          ...group.items.slice(menuLocation.subIndex + 1)
+        ];
       }
-
-      this.items.splice(menuLocation.index + 1, 0, item);
+      return;
     }
+
+    // Root level insertion after target index
+    if (menuLocation.index < 0) {
+      menuLocation.index = this.items.length;
+    }
+    this.items = [
+      ...this.items.slice(0, menuLocation.index + 1),
+      item,
+      ...this.items.slice(menuLocation.index + 1)
+    ];
   }
 
   /**
@@ -176,16 +209,26 @@ class AppMenuBuilder {
    * @param subIndex Second level index
    * @return {} Menu item
    */
-  menuFromIndex(index: number, subIndex?: number) {
+  menuFromIndex(index: number, subIndex?: number): AppLeftNavElement[] | AppLeftNavElement | AppLeftNavItem {
     if (index === -1) {
       return this.items;
-    } else {
-      if (!subIndex) {
-        return this.items[index];
-      } else {
-        return this.items[index].element['items'][subIndex]; // eslint-disable-line @typescript-eslint/dot-notation
-      }
     }
+    if (subIndex == null) {
+      return this.items[index];
+    }
+    const menuItem = this.items[index];
+    if (menuItem.type === 'group') {
+      return menuItem.element.items[subIndex];
+    }
+    throw new Error(`Menu item at index ${index} is not a group and does not have sub-items.`);
+  }
+
+  private isGroupElement(elem: unknown): elem is { type: 'group'; element: AppLeftNavGroup } {
+    return !!elem && typeof elem === 'object' && (elem as AppLeftNavElement).type === 'group';
+  }
+
+  private isItemElement(elem: unknown): elem is { type: 'item'; element: AppLeftNavItem } {
+    return !!elem && typeof elem === 'object' && (elem as AppLeftNavElement).type === 'item';
   }
 
   /**
@@ -195,23 +238,20 @@ class AppMenuBuilder {
    * @private
    */
   private updateMenuMap() {
-    let indexMap = {};
-
+    const indexMap: Record<string | number, { index: number; parent?: number }> = {};
     for (let index = 0; index < this.items.length; index++) {
-      let menuItem = this.items[index];
-      if (menuItem.type != 'divider') {
-        indexMap[menuItem.element.id] = { index: index };
-
-        if (menuItem.type == 'group') {
-          // eslint-disable-next-line @typescript-eslint/dot-notation
-          for (let subIndex = 0; subIndex < menuItem.element['items'].length; subIndex++) {
-            let subMenuItem = menuItem.element['items'][subIndex]; // eslint-disable-line @typescript-eslint/dot-notation
-            indexMap[subMenuItem.id] = { index: subIndex, parent: index };
-          }
+      const menuItem = this.items[index];
+      if (menuItem.type === 'divider') {
+        continue;
+      }
+      indexMap[menuItem.element.id] = { index };
+      if (menuItem.type === 'group') {
+        for (let subIndex = 0; subIndex < menuItem.element.items.length; subIndex++) {
+          const subMenuItem = menuItem.element.items[subIndex];
+          indexMap[subMenuItem.id] = { index: subIndex, parent: index };
         }
       }
     }
-
     this.indexMap = indexMap;
   }
 }
