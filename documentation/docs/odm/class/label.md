@@ -14,4 +14,7 @@
 | victim | List [Text] | None | :material-checkbox-marked-outline: Yes | `[]` |
 | campaign | List [Text] | None | :material-checkbox-marked-outline: Yes | `[]` |
 | threat | List [Text] | None | :material-checkbox-marked-outline: Yes | `[]` |
+| tuning | List [Text] | None | :material-checkbox-marked-outline: Yes | `[]` |
 | operation | List [Text] | None | :material-checkbox-marked-outline: Yes | `[]` |
+
+

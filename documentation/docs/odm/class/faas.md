@@ -13,3 +13,5 @@
 | name | Keyword | The name of a serverless function. | :material-minus-box-outline: Optional | `None` |
 | trigger | [Trigger](/howler-docs/odm/class/trigger) | Details about the function trigger. | :material-minus-box-outline: Optional | `None` |
 | version | Keyword | The version of a serverless function. | :material-minus-box-outline: Optional | `None` |
+
+

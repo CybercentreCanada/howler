@@ -23,3 +23,5 @@
 | to | [Address](/howler-docs/odm/class/address) | The email address of recipient. | :material-minus-box-outline: Optional | `None` |
 | x_mailer | Keyword | The name of the application that was used to draft and send the original email message. | :material-minus-box-outline: Optional | `None` |
 | parent | [ParentEmail](/howler-docs/odm/class/parentemail) | Metadata about the parent email. | :material-minus-box-outline: Optional | `None` |
+
+

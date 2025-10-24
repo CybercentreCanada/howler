@@ -11,6 +11,9 @@
 | hosts | List [Keyword] | All hostnames or other host identifiers seen on your event. Example identifiers include FQDNs, domain names, workstation names, or aliases. | :material-checkbox-marked-outline: Yes | `[]` |
 | ip | List [IP] | All of the IPs seen on your event. | :material-checkbox-marked-outline: Yes | `[]` |
 | user | List [Keyword] | All the user names or other user identifiers seen on the event. | :material-checkbox-marked-outline: Yes | `[]` |
+| ids | List [Keyword] | Any identifier that doesn't fit in other related fields like a GUID. | :material-checkbox-marked-outline: Yes | `[]` |
 | id | Keyword | The id related to the event. | :material-minus-box-outline: Optional | `None` |
 | uri | List [URI] | All of the URIs related to the event. | :material-minus-box-outline: Optional | `None` |
 | signature | List [Keyword] | All the signatures/rules that were triggered by the event. | :material-minus-box-outline: Optional | `None` |
+
+

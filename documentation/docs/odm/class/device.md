@@ -8,3 +8,5 @@
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
 | name | Keyword | Name of the device. | :material-minus-box-outline: Optional | `None` |
+
+

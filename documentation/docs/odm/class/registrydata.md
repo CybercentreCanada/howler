@@ -10,3 +10,5 @@
 | bytes | Keyword | Original bytes written with base64 encoding. | :material-minus-box-outline: Optional | `None` |
 | strings | List [Keyword] | Content when writing string types. | :material-minus-box-outline: Optional | `None` |
 | type | Keyword | Standard registry type for encoding contents. | :material-minus-box-outline: Optional | `None` |
+
+

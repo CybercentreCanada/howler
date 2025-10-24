@@ -9,3 +9,7 @@
 | :--- | :--- | :--- | :--- | :--- |
 | id | Keyword | Unique identifier of the user. | :material-minus-box-outline: Optional | `None` |
 | name | Keyword | Short name or login of the user. | :material-minus-box-outline: Optional | `None` |
+| domain | Keyword | Name of the directory the user is a member of. | :material-minus-box-outline: Optional | `None` |
+| email | Email | User email address. | :material-minus-box-outline: Optional | `None` |
+
+

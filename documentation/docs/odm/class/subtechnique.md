@@ -10,3 +10,5 @@
 | id | Keyword | The id of subtechnique used by this threat. | :material-minus-box-outline: Optional | `None` |
 | name | Keyword | Name of the type of subtechnique used by this threat. | :material-minus-box-outline: Optional | `None` |
 | reference | Keyword | The reference url of subtechnique used by this threat. | :material-minus-box-outline: Optional | `None` |
+
+

@@ -15,6 +15,8 @@
 | location | [GeoPoint](/howler-docs/odm/class/geopoint) | Longitude and latitude. | :material-minus-box-outline: Optional | `None` |
 | name | Keyword | User-defined description of a location, at the level of granularity they care about. | :material-minus-box-outline: Optional | `None` |
 | postal_code | Keyword | Postal code associated with the location. | :material-minus-box-outline: Optional | `None` |
-| region_iso_code | Keyword | City name. | :material-minus-box-outline: Optional | `None` |
+| region_iso_code | Keyword | Region ISO code. | :material-minus-box-outline: Optional | `None` |
 | region_name | Keyword | Region name. | :material-minus-box-outline: Optional | `None` |
 | timezone | Keyword | The time zone of the location, such as IANA time zone name. | :material-minus-box-outline: Optional | `None` |
+
+

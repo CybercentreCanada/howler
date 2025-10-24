@@ -1,8 +1,7 @@
 # Howler ODM Documentation
 
 ??? success "Auto-Generated Documentation"
-    This set of documentation is automatically generated from source, and will help ensure any change to functionality
-    will always be documented and available on release.
+    This set of documentation is automatically generated from source, and will help ensure any change to functionality will always be documented and available on release.
 
 This section of the site is useful for deciding what fields to place your raw data in when ingesting into Howler.
 
@@ -14,6 +13,7 @@ Here is a table of the basic types of fields in our data models and what they're
 |:---|:----------|
 | `Any` | A field that can hold any value whatsoever but which is stored as a |
 | `Boolean` | A field storing a boolean value. |
+| `CaseInsensitiveKeyword` | A field storing a string with a technical interpretation, but is case-insensitive when searching. |
 | `Classification` | A field storing access control classification. |
 | `ClassificationString` | A field storing the classification as a string only. |
 | `Date` | A field storing a datetime value. |
@@ -27,6 +27,7 @@ Here is a table of the basic types of fields in our data models and what they're
 | `Json` | A field storing serializeable structure with their JSON encoded representations. |
 | `Keyword` | A field storing a short string with a technical interpretation. |
 | `List` | A field storing a sequence of typed elements. |
+| `LowerKeyword` | A field storing a short lowercase string with a technical interpretation. |
 | `Mapping` | A field storing a sequence of typed elements. |
 | `Optional` | A wrapper field to allow simple types (int, float, bool) to take None values. |
 | `Text` | A field storing human readable text data. |

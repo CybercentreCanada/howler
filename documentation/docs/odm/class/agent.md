@@ -11,3 +11,5 @@
 | name | Keyword | Custom name of the agent. | :material-minus-box-outline: Optional | `None` |
 | type | Keyword | Type of the agent. | :material-minus-box-outline: Optional | `None` |
 | version | Keyword | Version of the agent. | :material-minus-box-outline: Optional | `None` |
+
+

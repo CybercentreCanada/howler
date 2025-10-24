@@ -13,3 +13,5 @@
 | method | Keyword | HTTP request method. | :material-minus-box-outline: Optional | `None` |
 | mime_type | Keyword | Mime type of the body of the request. | :material-minus-box-outline: Optional | `None` |
 | referrer | Keyword | Referrer for this HTTP request. | :material-minus-box-outline: Optional | `None` |
+
+

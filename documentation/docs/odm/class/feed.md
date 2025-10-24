@@ -11,3 +11,5 @@
 | description | Keyword | Description of the threat feed in a UI friendly format. | :material-minus-box-outline: Optional | `None` |
 | name | Keyword | The name of the threat feed in UI friendly format. | :material-minus-box-outline: Optional | `None` |
 | reference | Keyword | Reference information for the threat feed in a UI friendly format. | :material-minus-box-outline: Optional | `None` |
+
+

@@ -9,3 +9,5 @@
 | :--- | :--- | :--- | :--- | :--- |
 | lon | Float | Longitude | :material-checkbox-marked-outline: Yes | `None` |
 | lat | Float | Latitude | :material-checkbox-marked-outline: Yes | `None` |
+
+

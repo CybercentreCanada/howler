@@ -12,3 +12,5 @@
 | original | Keyword | Unparsed user_agent string. | :material-minus-box-outline: Optional | `None` |
 | os | [OS](/howler-docs/odm/class/os) | OS fields contain information about the operating system. | :material-minus-box-outline: Optional | `None` |
 | version | Keyword | Version of the user agent. | :material-minus-box-outline: Optional | `None` |
+
+

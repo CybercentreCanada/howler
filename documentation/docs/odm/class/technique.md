@@ -11,3 +11,5 @@
 | name | Keyword | Name of the type of technique used by this threat. | :material-minus-box-outline: Optional | `None` |
 | reference | Keyword | The reference url of technique used by this threat. | :material-minus-box-outline: Optional | `None` |
 | subtechnique | [SubTechnique](/howler-docs/odm/class/subtechnique) | Information about the subtechnique used by this threat. | :material-minus-box-outline: Optional | `None` |
+
+

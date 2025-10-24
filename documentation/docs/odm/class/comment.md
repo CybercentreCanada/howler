@@ -13,3 +13,5 @@
 | value | Text | The comment itself. | :material-checkbox-marked-outline: Yes | `None` |
 | user | Keyword | User ID who created the comment. | :material-checkbox-marked-outline: Yes | `None` |
 | reactions | Mapping [Keyword] | A list of reactions to the comment. | :material-checkbox-marked-outline: Yes | `{}` |
+
+

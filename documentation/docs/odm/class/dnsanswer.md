@@ -12,3 +12,5 @@
 | name | Keyword | The domain name to which this resource record pertains. | :material-minus-box-outline: Optional | `None` |
 | ttl | Integer | The time interval in seconds that this resource record may be cached before it should be discarded. | :material-minus-box-outline: Optional | `None` |
 | type | Keyword | The type of data contained in this resource record. | :material-minus-box-outline: Optional | `None` |
+
+

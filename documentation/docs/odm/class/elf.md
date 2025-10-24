@@ -18,3 +18,5 @@
 | segments | List [[Section](/howler-docs/odm/class/section)] | None | :material-minus-box-outline: Optional | `None` |
 | shared_libraries | List [Keyword] | List of shared libraries used by this ELF object. | :material-minus-box-outline: Optional | `None` |
 | telfhash | Keyword | telfhash symbol hash for ELF file. | :material-minus-box-outline: Optional | `None` |
+
+

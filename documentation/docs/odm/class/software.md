@@ -13,3 +13,5 @@
 | platform | List [Keyword] | The platforms of the software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK®. | :material-minus-box-outline: Optional | `None` |
 | reference | Keyword | The reference URL of the software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK®. | :material-minus-box-outline: Optional | `None` |
 | type | Keyword | The type of software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK®. | :material-minus-box-outline: Optional | `None` |
+
+

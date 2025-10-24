@@ -15,3 +15,5 @@
 | resolved_ip | List [IP] | Array containing all IPs seen in answers.data. | :material-minus-box-outline: Optional | `None` |
 | response_code | Keyword | The DNS response code. | :material-minus-box-outline: Optional | `None` |
 | type | Keyword | The type of DNS event captured, query or answer. | :material-minus-box-outline: Optional | `None` |
+
+

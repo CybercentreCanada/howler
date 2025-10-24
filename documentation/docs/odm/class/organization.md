@@ -9,3 +9,5 @@
 | :--- | :--- | :--- | :--- | :--- |
 | id | Keyword | Unique identifier for the organization. | :material-minus-box-outline: Optional | `None` |
 | name | Keyword | Organization name. | :material-checkbox-marked-outline: Yes | `None` |
+
+

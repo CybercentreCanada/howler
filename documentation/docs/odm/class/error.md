@@ -9,3 +9,5 @@
 | :--- | :--- | :--- | :--- | :--- |
 | code | Keyword | Identifier specific to the error. | :material-minus-box-outline: Optional | `None` |
 | message | Keyword | Error message provided. | :material-minus-box-outline: Optional | `None` |
+
+

@@ -12,3 +12,5 @@
 | key | Keyword | Hive-relative path of keys. | :material-minus-box-outline: Optional | `None` |
 | path | Keyword | Full path, including hive, key and value. | :material-minus-box-outline: Optional | `None` |
 | value | Keyword | Name of the value written. | :material-minus-box-outline: Optional | `None` |
+
+

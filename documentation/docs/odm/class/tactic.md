@@ -10,3 +10,5 @@
 | id | Keyword | The id of tactic used by this threat. | :material-minus-box-outline: Optional | `None` |
 | name | Keyword | Name of the type of tactic used by this threat. | :material-minus-box-outline: Optional | `None` |
 | reference | Keyword | The reference url of tactic used by this threat. | :material-minus-box-outline: Optional | `None` |
+
+

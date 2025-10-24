@@ -11,3 +11,5 @@
 | target | Text | The target of the hit. | :material-minus-box-outline: Optional | `None` |
 | indicators | List [Text] | None | :material-checkbox-marked-outline: Yes | `[]` |
 | summary | Text | Summary of the hit. | :material-minus-box-outline: Optional | `None` |
+
+

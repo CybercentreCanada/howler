@@ -10,6 +10,7 @@
 | action | Keyword | The action captured by the event. | :material-minus-box-outline: Optional | `None` |
 | category | List [Enum] | Represents the "big buckets" of ECS categories. For example, filtering on event.category:process yields all events relating to process activity. This field is closely related to event.type, which is used as a subcategory. | :material-minus-box-outline: Optional | `None` |
 | code | Keyword | Identification code for this event, if one exists. | :material-minus-box-outline: Optional | `None` |
+| count | Integer | Count of events | :material-minus-box-outline: Optional | `None` |
 | created | Date | Contains the date/time when the event was first read by an agent, or by your pipeline. | :material-minus-box-outline: Optional | `None` |
 | dataset | Keyword | Name of the dataset. | :material-minus-box-outline: Optional | `None` |
 | duration | Integer | Duration of the event in nanoseconds. | :material-minus-box-outline: Optional | `None` |
@@ -32,3 +33,5 @@
 | timezone | Keyword | This field should be populated when the event’s timestamp does not include timezone information already (e.g. default Syslog timestamps). | :material-minus-box-outline: Optional | `None` |
 | type | List [Enum] | Represents a categorization "sub-bucket" that, when used along with the event.category field values, enables filtering events down to a level appropriate for single visualization. | :material-minus-box-outline: Optional | `None` |
 | url | Keyword | URL linking to an external system to continue investigation of this event. | :material-minus-box-outline: Optional | `None` |
+
+

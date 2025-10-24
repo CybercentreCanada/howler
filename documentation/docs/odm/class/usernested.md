@@ -14,3 +14,5 @@
 | id | Keyword | Unique identifier of the user. | :material-minus-box-outline: Optional | `None` |
 | name | Keyword | Short name or login of the user. | :material-minus-box-outline: Optional | `None` |
 | roles | List [Keyword] | Array of user roles at the time of the event. | :material-minus-box-outline: Optional | `[]` |
+
+

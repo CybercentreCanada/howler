@@ -11,3 +11,5 @@
 | version_protocol | Keyword | Normalized lowercase protocol name parsed from original string. | :material-minus-box-outline: Optional | `None` |
 | client | [Client](/howler-docs/odm/class/client) | None | :material-minus-box-outline: Optional | `None` |
 | server | [Server](/howler-docs/odm/class/server) | None | :material-minus-box-outline: Optional | `None` |
+
+

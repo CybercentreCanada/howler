@@ -14,3 +14,5 @@
 | platform | Keyword | Operating system platform (such centos, ubuntu, windows). | :material-minus-box-outline: Optional | `None` |
 | type | Keyword | Use the os.type field to categorize the operating system into one of the broad commercial families. | :material-minus-box-outline: Optional | `None` |
 | version | Keyword | Operating system version as a raw string. | :material-minus-box-outline: Optional | `None` |
+
+

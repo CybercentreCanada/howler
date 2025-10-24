@@ -8,3 +8,5 @@
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
 | char_device | [CharDevice](/howler-docs/odm/class/chardevice) | Information about the char device. | :material-minus-box-outline: Optional | `None` |
+
+

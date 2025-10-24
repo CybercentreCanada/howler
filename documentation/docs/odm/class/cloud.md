@@ -16,3 +16,5 @@
 | region | Keyword | Region in which this host, resource, or service is located. | :material-minus-box-outline: Optional | `None` |
 | service | [Service](/howler-docs/odm/class/service) | Service information. | :material-minus-box-outline: Optional | `None` |
 | tenant_id | Keyword | The tenant id associated with this alert. | :material-minus-box-outline: Optional :material-alert-box-outline: Deprecated - Instead of using this more general field, use a platform-specific field. For more information, see [Disambiguated Cloud Ontology](https://confluence.devtools.cse-cst.gc.ca/display/DASI2/Disambiguated+Cloud+Ontology) | `None` |
+
+
