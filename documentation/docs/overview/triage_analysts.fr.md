@@ -94,7 +94,7 @@ Utilisez-le pour trouver d'autres résultats qui semblent provenir du même atta
 
 ##### Cible
 
-L'identifiant qui représente le mieux l'attaquant. Il peut s'agir d'une adresse IP, d'une adresse électronique, etc.
+L'identifiant qui représente le mieux la victime. Il peut s'agir d'une adresse IP, d'une adresse électronique, etc.
 Utilisez-le pour trouver d'autres hits qui semblent affecter la même victime. (`howler.outline.target`)
 
 ##### Indicateurs
