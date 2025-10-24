@@ -38,75 +38,41 @@ curl -sS https://webinstall.dev/k9s | bash
 source ~/.config/envman/PATH.env
 ```
 
-## Install Build Dependencies and Build Images
+## Install Python 3.12 (Optional)
 
-Since there are currently no public builds of the Howler docker image, you'll need to build them either ahead of time or on the machine.
-
-We will first install the build dependencies:
+If you need to work with the Howler source code or run custom scripts:
 
 ```shell
-# Install nvm
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-
-# You can skip these commands if you restart your shell
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"                   # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion" # This loads nvm bash_completion
-
-# Install and use node version 20
-nvm install v20
-nvm use v20
-
-# Install the build programs
-npm install -g yarn vite
-
-# Install Python 3.9
+# Install Python 3.12
 sudo apt install software-properties-common
 sudo add-apt-repository ppa:deadsnakes/ppa
 sudo apt update
-sudo apt install python3.9 python3.9-distutils python3.9-venv
-sudo update-alternatives --install /usr/bin/python python /usr/bin/python3.9 1
+sudo apt install python3.12 python3.12-distutils python3.12-venv
+sudo update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1
 python -m ensurepip
 python -m pip install wheel
-
 ```
 
-Now we can clone and build the images:
+## Configure and Deploy Minikube
+
+Howler uses published Docker images, so you don't need to build them locally.
 
 ```shell
-# Clone the howler repositories
-mkdir ~/repos && cd ~/repos
-git clone git@github.com:CybercentreCanada/howler-api.git
-git clone git@github.com:CybercentreCanada/howler-ui.git
-
-# Build howler-api docker image
-cd ~/repos/howler-api/docker
-./build_container.sh
-
-cd ~/repos/howler-ui/docker
-./build_container.sh
-```
-
-Now we can start and configure the minikube deployment:
-
-```shell
-# Upload the images to minikube (this takes a while)
-minikube image load cccs/howler-ui:latest
-minikube image load cccs/howler-api:latest
-
+# Start minikube
 minikube start
 
-# Input the yml below
-vim minio-credentials.yml
-kubectl apply -f minio-credentials.yml
-
 # Create the interpod secret
-kubectl create secret generic howler-interpod-comms-secret
+kubectl create secret generic howler-interpod-comms-secret \
   --from-literal=secret="<INTERPOD_COMMS_SECRET>"
 
-# Clone the howler repository, to get the helm chart
+# Clone the howler monorepo to get the helm chart
+mkdir -p ~/repos && cd ~/repos
 git clone git@github.com:CybercentreCanada/howler.git
 cd howler/howler-helm
+
+# Update values.yaml to use published images
+# Change pullPolicy from "Never" to "IfNotPresent" or "Always"
+sed -i 's/pullPolicy: "Never"/pullPolicy: "IfNotPresent"/' values.yaml
 
 # Install the howler helm chart
 helm install howler .
@@ -122,7 +88,7 @@ sudo apt install nginx
 sudo rm /etc/nginx/sites-enabled/default
 
 # Input the conf file below
-sudo vim /etc/nginx/site-enabled/howler
+sudo vim /etc/nginx/sites-enabled/howler
 
 sudo service nginx restart
 
@@ -133,20 +99,6 @@ curl localhost
 At this point, you should have an open port 80 on your machine serving a functional howler instance.
 
 ### Required Files
-
-minio-credentials.yml:
-
-```yml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: minio-credentials
-  annotations:
-    "helm.sh/resource-policy": "keep"
-data:
-  root-user: <SOME_USERNAME>
-  root-password: <SOME_PASSWORD>
-```
 
 nginx configuration:
 

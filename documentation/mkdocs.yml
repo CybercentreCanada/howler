@@ -54,12 +54,11 @@ nav:
   - ingestion/example.md
 - Developer's Guide:
   - developer/getting_started.md
-  - The Repositories:
-    - developer/frontend.md
-    - Backend Development:
-      - developer/backend.md
-      - developer/random_data.md
-    - developer/client.md
+  - developer/frontend.md
+  - Backend Development:
+    - developer/backend.md
+    - developer/random_data.md
+  - developer/client.md
 - Data Ontology:
   - Getting Started: odm/getting_started.md
   - Classes:
