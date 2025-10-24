@@ -29,7 +29,7 @@ import Classification from 'components/elements/display/Classification';
 import DocumentationButton from 'components/elements/display/DocumentationButton';
 import howlerPluginStore from 'plugins/store';
 import { useMemo } from 'react';
-import AppMenuBuilder from '../../utils/menuUtils';
+import AppMenuBuilder from 'utils/menuUtils';
 
 // This is your App Name that will be displayed in the left drawer and the top navbar
 const APP_NAME = 'howler';
@@ -249,7 +249,7 @@ const useMyPreferences = (): AppPreferenceConfigs => {
   const USER_MENU_ITEMS = useMemo(() => {
     // Load plugin menu items first as Settings/Logout generally
     // appear at the end of user menus.
-    let results = [
+    return [
       ...howlerPluginStore.userMenuItems,
       {
         i18nKey: 'usermenu.settings',
@@ -262,8 +262,6 @@ const useMyPreferences = (): AppPreferenceConfigs => {
         icon: <ExitToApp />
       }
     ];
-
-    return results;
   }, []);
 
   // This is the basic administrator menu, it is a menu that shows up under the user menu in the account avatar popover.

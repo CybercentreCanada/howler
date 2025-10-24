@@ -62,6 +62,9 @@ class AppMenuBuilder {
 
     if (!Array.isArray(target) && this.isGroupElement(target)) {
       if (item.type === 'divider') {
+        console.warn(
+          `Skipping DIVIDER Operation: INSERT on Target: ${targetId}, Dividers cannot be inserted to sub-menus`
+        );
         return;
       }
       const group = target.element;
@@ -77,6 +80,9 @@ class AppMenuBuilder {
 
     if (menuLocation.index !== -1 && menuLocation.subIndex == null) {
       if (item.type === 'divider') {
+        console.warn(
+          `Skipping DIVIDER Operation: INSERT on Target: ${targetId}, Dividers cannot be inserted to sub-menus`
+        );
         return;
       }
 
@@ -117,6 +123,9 @@ class AppMenuBuilder {
 
     if (menuLocation.subIndex != null) {
       if (item.type === 'divider') {
+        console.warn(
+          `Skipping DIVIDER Operation: INSERT on Target: ${targetId}, Dividers cannot be inserted to sub-menus`
+        );
         return;
       }
       const parentElement = this.menuFromIndex(menuLocation.index);
@@ -154,6 +163,9 @@ class AppMenuBuilder {
 
     if (menuLocation.subIndex != null) {
       if (item.type === 'divider') {
+        console.warn(
+          `Skipping DIVIDER Operation: INSERT on Target: ${targetId}, Dividers cannot be inserted to sub-menus`
+        );
         return;
       }
       const parentElement = this.menuFromIndex(menuLocation.index);
@@ -223,10 +235,22 @@ class AppMenuBuilder {
     throw new Error(`Menu item at index ${index} is not a group and does not have sub-items.`);
   }
 
+  /**
+   * Determine if provided element is a group element
+   *
+   * @param elem Element to check
+   * @private
+   */
   private isGroupElement(elem: unknown): elem is { type: 'group'; element: AppLeftNavGroup } {
     return !!elem && typeof elem === 'object' && (elem as AppLeftNavElement).type === 'group';
   }
 
+  /**
+   * Determine if provided element is an item element
+   *
+   * @param elem Element to check
+   * @private
+   */
   private isItemElement(elem: unknown): elem is { type: 'item'; element: AppLeftNavItem } {
     return !!elem && typeof elem === 'object' && (elem as AppLeftNavElement).type === 'item';
   }

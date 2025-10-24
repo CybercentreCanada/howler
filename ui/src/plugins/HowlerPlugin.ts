@@ -25,7 +25,16 @@ const INTERNAL_FUNCTIONS = [
   'init',
   'activate',
   'deactivate',
-  'addLead'
+  'addLead',
+  'addPivot',
+  'addUserMenuItem',
+  'addAdminMenuItem',
+  'addRoute',
+  'addSitemap',
+  'addRouteAndSitemap',
+  'addMainMenuItem',
+  'addMainMenuDivider',
+  'addOperation'
 ];
 
 abstract class HowlerPlugin implements IPlugin {
@@ -180,7 +189,17 @@ abstract class HowlerPlugin implements IPlugin {
     breadcrumbs?: string[],
     textWidth?: number
   ) {
-    // TODO: Add error checking, can't be false on both isRoot and isLeaf, and if isLeaf is true then breadcrumbs should be populated
+    if((!isRoot && !isLeaf) || (isRoot && isLeaf)) {
+      throw new Error(`Sitemap '${path}' must define either isRoot or isLeaf as true`);
+    }
+
+    if(isRoot) {
+      if(breadcrumbs != null) {
+        breadcrumbs = null;
+        console.warn(`Sitemap '${path}' with isRoot should not contain breadcrumbs and have been removed`);
+      }
+    }
+
     howlerPluginStore.addSitemap({
       path: path,
       title: title,
@@ -205,7 +224,7 @@ abstract class HowlerPlugin implements IPlugin {
   addRouteAndSitemap(path: string, element: JSX.Element, title: string, icon?: JSX.Element, children?: []) {
     this.addRoute(path, element, children);
 
-    const routeParts = 'path'.split('\\');
+    const routeParts = 'path'.split('/');
 
     let isRoot = true;
     let isLeaf = false;
@@ -218,7 +237,7 @@ abstract class HowlerPlugin implements IPlugin {
       // Attempt to auto build breadcrumbs
       breadcrumbs = [];
       for (let index = 0; index < routeParts.length - 1; index++) {
-        breadcrumbs.push(`\\${routeParts[index]}`);
+        breadcrumbs.push(`/${routeParts[index]}`);
       }
     }
 
