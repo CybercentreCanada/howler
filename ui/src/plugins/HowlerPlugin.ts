@@ -189,12 +189,12 @@ abstract class HowlerPlugin implements IPlugin {
     breadcrumbs?: string[],
     textWidth?: number
   ) {
-    if((!isRoot && !isLeaf) || (isRoot && isLeaf)) {
+    if ((!isRoot && !isLeaf) || (isRoot && isLeaf)) {
       throw new Error(`Sitemap '${path}' must define either isRoot or isLeaf as true`);
     }
 
-    if(isRoot) {
-      if(breadcrumbs != null) {
+    if (isRoot) {
+      if (breadcrumbs != null) {
         breadcrumbs = null;
         console.warn(`Sitemap '${path}' with isRoot should not contain breadcrumbs and have been removed`);
       }
@@ -224,7 +224,7 @@ abstract class HowlerPlugin implements IPlugin {
   addRouteAndSitemap(path: string, element: JSX.Element, title: string, icon?: JSX.Element, children?: []) {
     this.addRoute(path, element, children);
 
-    const routeParts = 'path'.split('/');
+    const routeParts = path.split('/');
 
     let isRoot = true;
     let isLeaf = false;

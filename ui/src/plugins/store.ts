@@ -17,8 +17,7 @@ export class HitEvent extends Event {
 export enum MainMenuInsertOperation {
   Insert = 'INSERT',
   InsertAfter = 'AFTER',
-  InsertBefore = 'BEFORE',
-  InsertSubitem = 'SUBITEM'
+  InsertBefore = 'BEFORE'
 }
 
 class HowlerPluginStore {
