@@ -65,6 +65,7 @@ nav:
     - odm/class/account.md
     - odm/class/address.md
     - odm/class/agent.md
+    - odm/class/as.md
     - odm/class/assemblyline.md
     - odm/class/attachment.md
     - odm/class/aws.md
@@ -82,8 +83,11 @@ nav:
     - odm/class/dnsanswer.md
     - odm/class/dnsquestion.md
     - odm/class/ecsversion.md
+    - odm/class/egress.md
     - odm/class/elf.md
     - odm/class/email.md
+    - odm/class/enrichments.md
+    - odm/class/entrymeta.md
     - odm/class/error.md
     - odm/class/event.md
     - odm/class/faas.md
@@ -101,16 +105,25 @@ nav:
     - odm/class/howlerdata.md
     - odm/class/http.md
     - odm/class/image.md
+    - odm/class/incident.md
     - odm/class/indicator.md
+    - odm/class/ingress.md
     - odm/class/instance.md
+    - odm/class/interface.md
     - odm/class/label.md
+    - odm/class/lead.md
     - odm/class/link.md
     - odm/class/log.md
     - odm/class/machine.md
+    - odm/class/matched.md
     - odm/class/nat.md
+    - odm/class/network.md
+    - odm/class/observer.md
     - odm/class/organization.md
+    - odm/class/originalclient.md
     - odm/class/os.md
     - odm/class/parentemail.md
+    - odm/class/parentparentprocess.md
     - odm/class/parentprocess.md
     - odm/class/pe.md
     - odm/class/previousprocess.md
