@@ -107,7 +107,7 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
 
     if (analyticElement) {
       return {
-        ...analyticElement,
+        type: 'group',
         element: {
           ...analyticElement.element,
           items
