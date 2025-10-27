@@ -121,16 +121,19 @@ export type AppBarUserMenuElement = {
 };
 
 // Specification interface describing the type of leftnav menu items to render.
-export type AppLeftNavElement = {
-  type: 'item';
-  element: AppLeftNavItem;
-} | {
-  type: 'group';
-  element: AppLeftNavGroup;
-} | {
-  type: 'divider';
-  element: null;
-};
+export type AppLeftNavElement =
+  | {
+      type: 'item';
+      element: AppLeftNavItem;
+    }
+  | {
+      type: 'group';
+      element: AppLeftNavGroup;
+    }
+  | {
+      type: 'divider';
+      element: null;
+    };
 
 // Specification interface of a single leftnav menu item.
 export type AppLeftNavItem = {
@@ -151,7 +154,7 @@ export type AppLeftNavGroup = {
   i18nKey?: string; // (RECOMMENDED over 'title') i18n key used to resolve item label/text. (Use this if you are dynamically updating the leftnav menu)
   title?: string; // The text/label to use when rendering the group header if not using i18nKey (for some reason).
   userPropValidators?: AppUserValidatedProp[]; // The list of user props to assert before rendering the item.
-  icon: React.ReactElement<any>; // The icon to render on the left of the group header's 'text'
+  icon?: React.ReactElement<any>; // The icon to render on the left of the group header's 'text'
   items: AppLeftNavItem[]; // A list of items to render for this group.
 };
 

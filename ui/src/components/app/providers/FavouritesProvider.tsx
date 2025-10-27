@@ -50,8 +50,8 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
       }));
 
     if (viewElement) {
-      const newViewElement = {
-        ...viewElement,
+      const newViewElement: AppLeftNavElement = {
+        type: 'group',
         element: {
           ...viewElement.element,
           items
