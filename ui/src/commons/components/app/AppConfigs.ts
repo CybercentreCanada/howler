@@ -122,8 +122,14 @@ export type AppBarUserMenuElement = {
 
 // Specification interface describing the type of leftnav menu items to render.
 export type AppLeftNavElement = {
-  type: 'item' | 'group' | 'divider';
-  element: AppLeftNavItem | AppLeftNavGroup | null;
+  type: 'item';
+  element: AppLeftNavItem;
+} | {
+  type: 'group';
+  element: AppLeftNavGroup;
+} | {
+  type: 'divider';
+  element: null;
 };
 
 // Specification interface of a single leftnav menu item.

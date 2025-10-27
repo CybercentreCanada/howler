@@ -418,6 +418,7 @@ const router = createBrowserRouter([
           }
         ]
       },
+      ...howlerPluginStore.routes,
       {
         path: '*',
         element: <NotFoundPage />
