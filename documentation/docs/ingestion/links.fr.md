@@ -2,11 +2,14 @@
 
 # Liens du hit
 
-Afin de faciliter l'ajout d'outils supplémentaires que l'on peut utiliser pour suivre un hit, Howler permet aux utilisateurs de spécifier un ensemble de liens, ainsi qu'un titre et une icône à afficher. Cette documentation vous expliquera comment utiliser ces liens.
+Afin de faciliter l'ajout d'outils supplémentaires que l'on peut utiliser pour suivre un hit, Howler permet aux
+utilisateurs de spécifier un ensemble de liens, ainsi qu'un titre et une icône à afficher. Cette documentation vous
+expliquera comment utiliser ces liens.
 
 ## Specification
 
-Afin d'ajouter des liens, vous pouvez utiliser le champ `howler.links`. Ce champ contient une liste d'objets avec trois clés :
+Afin d'ajouter des liens, vous pouvez utiliser le champ `howler.links`. Ce champ contient une liste d'objets avec
+trois clés :
 
 ```python
 hit = {
@@ -26,13 +29,3 @@ hit = {
   ]
 }
 ```
-
-Notez que l'icône peut être soit :
-1. Un nom identifiant une application interne, pour utiliser son icône
-2. Une URL externe
-
-Si vous souhaitez utiliser une application interne, les valeurs suivantes sont actuellement prises en charge :
-
-$APP_LIST
-
-L'utilisation de l'une de ces valeurs entraîne automatiquement l'utilisation de l'icône correspondante. Inutile d'héberger la vôtre !
