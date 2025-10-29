@@ -821,14 +821,14 @@ def wipe_dossiers(ds: HowlerDatastore):
 def setup_hits(ds):
     "Set up hits index"
     os.environ["ELASTIC_HIT_SHARDS"] = "1"
-    os.environ["ELASTIC_HIT_REPLICAS"] = "0"
+    os.environ["ELASTIC_HIT_REPLICAS"] = "1"
     ds.hit.fix_shards()
     ds.hit.fix_replicas()
 
 
 def setup_users(ds):
     "Set up users index"
-    os.environ["ELASTIC_USER_REPLICAS"] = "12"
+    os.environ["ELASTIC_USER_REPLICAS"] = "1"
     os.environ["ELASTIC_USER_AVATAR_REPLICAS"] = "1"
     ds.user.fix_replicas()
     ds.user_avatar.fix_replicas()

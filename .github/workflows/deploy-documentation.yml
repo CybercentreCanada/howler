@@ -1,0 +1,23 @@
+name: ci
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.x
+      - run: pip install mkdocs-material mkdocs-static-i18n mkdocs-glightbox
+      - run: mkdocs gh-deploy --force
+        working-directory: documentation

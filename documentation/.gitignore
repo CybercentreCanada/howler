@@ -1,0 +1,6 @@
+/.venv/
+/venv/
+/.env/
+/env/
+
+.pyvenv_venv_path

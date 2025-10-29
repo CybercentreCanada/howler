@@ -1,0 +1,351 @@
+{% extends "main.html" %} {% block tabs %} {{ super() }}
+<style>
+  /* .md-content {
+    display: none;
+  } */
+
+  .tx-container {
+    padding-top: 0rem;
+    background: linear-gradient(
+      to bottom,
+      var(--md-primary-fg-color),
+      var(--md-default-bg-color) 30%
+    );
+    padding-bottom: 100px;
+  }
+
+  .tx-hero {
+    margin: 32px 2.8rem;
+    color: var(--md-primary-bg-color);
+    justify-content: center;
+  }
+
+  .tx-hero h1 {
+    margin-bottom: 1rem;
+    color: currentColor;
+    font-weight: 700;
+  }
+
+  .tx-hero__content {
+    padding-bottom: 1rem;
+    margin: 0 auto;
+  }
+
+  .tx-hero__image {
+    width: 35rem;
+    order: 1;
+    padding-right: 2rem;
+  }
+
+  .tx-hero .md-button {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 0.5rem;
+    margin-right: 0.5rem;
+    color: var(--md-primary-bg-color);
+  }
+
+  .tx-hero .md-button--primary {
+    background-color: var(--md-primary-bg-color);
+    color: var(--md-primary-fg-color);
+    border-color: var(--md-primary-bg-color);
+  }
+
+  .tx-hero .md-button:focus,
+  .tx-hero .md-button:hover {
+    background-color: var(--md-accent-fg-color);
+    color: var(--md-default-bg-color);
+    border-color: var(--md-accent-fg-color);
+  }
+
+  @media screen and (max-width: 60em) {
+    .tx-hero__image {
+      width: 100%;
+    }
+  }
+
+  @media screen and (max-width: 30em) {
+    .tx-hero h1 {
+      font-size: 1.4rem;
+    }
+  }
+
+  @media screen and (min-width: 60em) {
+    .md-sidebar--secondary {
+      display: none;
+    }
+
+    .tx-hero {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .tx-hero__content {
+      max-width: 22rem;
+      margin-top: 3.5rem;
+      margin-bottom: 3.5rem;
+      margin-left: 1rem;
+      margin-right: 4rem;
+      align-items: center;
+    }
+  }
+
+  @media screen and (min-width: 76.25em) {
+    .md-sidebar--primary {
+      display: none;
+    }
+  }
+
+  .md-button-group {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .md-button.button-icon {
+    width: fit-content;
+    gap: 10px;
+    fill: var(--md-primary-bg-color);
+    transition: fill 125ms, background-color 125ms, border-color 125ms;
+  }
+
+  .md-button.button-icon:hover,
+  .md-button.button-icon:focus {
+    fill: var(--md-default-bg-color);
+  }
+
+  .icon {
+    display: grid;
+    text-align: center;
+    width: 24px;
+    font-size: 2rem;
+  }
+
+  .moreinfo {
+    display: flex;
+    flex-direction: column;
+    padding-top: 10rem;
+    margin: 0 auto;
+    max-width: 40rem;
+  }
+
+  .titlecard h1 {
+    font-weight: 600;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .titlecard .icon {
+    width: 48px;
+  }
+
+  .moreinfo .icon {
+    margin-right: 1rem;
+  }
+
+  .moreinfo .icon.grey svg {
+    fill: grey;
+  }
+
+  .moreinfo .icon.yellow svg {
+    fill: yellow;
+  }
+
+  .moreinfo .icon.pink svg {
+    fill: pink;
+  }
+
+  .moreinfo .icon.white svg {
+    fill: white;
+  }
+
+  .moreinfo .icon.teal svg {
+    fill: teal;
+  }
+
+  .moreinfo .icon svg {
+    fill: var(--md-accent-fg-color);
+  }
+
+  .features {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .features .entry {
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    column-gap: 1rem;
+    min-height: 3rem;
+    margin-bottom: 1rem;
+  }
+
+  .features .entry .icon {
+    width: 32px;
+  }
+
+  .entry .description {
+    grid-column: 2;
+  }
+</style>
+
+<!-- Main site Entry button descriptions -->
+<section class="tx-container">
+  <div class="md-grid md-typeset">
+    <div class="tx-hero">
+      <div class="tx-hero__image">
+        <img src="/howler-docs/images/splash.png" draggable="false" />
+      </div>
+      <div class="tx-hero__content">
+        <h1>
+          {%if 'fr/' in page.url %} Howler : Triage optimisé{%else%} Howler:
+          Triage Optimized{%endif%}
+        </h1>
+        <p>
+          {%if 'fr/' in page.url %} Améliorez l'efficacité de votre centre
+          d'opérations de sécurité avec Howler, la plateforme de triage des
+          alertes de pointe conçue pour répondre aux exigences actuelles des
+          centres d'opérations de sécurité. {%else%} Elevate your Security
+          Operations Center's efficiency with Howler, the cutting-edge alert
+          triage platform tailored for today's SOC demands.{%endif%}
+        </p>
+        <div class="md-button-group">
+          <a
+            href="overview/triage_analysts/"
+            title="{%if 'fr/' in page.url %}Comment ça fonctionne{%else%}How it works{%endif%}"
+            class="md-button md-button-primary"
+          >
+            {%if 'fr/' in page.url %}Comment ça fonctionne{%else%}How it
+            works{%endif%}
+          </a>
+          <a
+            href="https://github.com/CybercentreCanada/howler"
+            title="{%if 'fr/' in page.url %}Voir le code source{%else%}View source code{%endif%}"
+            class="md-button button-icon"
+            target="_blank"
+          >
+            <span>
+              {%if 'fr/' in page.url %}Voir le code source{%else%}View source
+              code{%endif%}
+            </span>
+            <span class="icon">
+              {% include ".icons/fontawesome/brands/github.svg" %}
+            </span>
+          </a>
+        </div>
+      </div>
+    </div>
+    <div class="moreinfo">
+      <div class="titlecard">
+        <h1>
+          <span class="icon"> 🚀 </span>
+          {%if 'fr/' in page.url %}Donnez du pouvoir à vos analystes{%else%}
+          Empower Your Analysts{%endif%}
+        </h1>
+        <p>
+          {%if 'fr/' in page.url %}Howler permet aux analystes de triage et aux
+          ingénieurs de détection d'en faire plus en affinant et en accélérant
+          la réponse aux incidents grâce à une multitude de fonctionnalités
+          modernes.{%else%} Howler allows triage analysts and detection
+          engineers to do more by refining and expediting incident response
+          through a host of modern features.{%endif%}
+        </p>
+      </div>
+
+      <div class="features">
+        <div class="entry">
+          <span class="icon white">
+            {% include ".icons/material/eye-check.svg" %}
+          </span>
+          <strong>
+            {%if 'fr/' in page.url %}Triage rationalisé des
+            alertes{%else%}Streamlined Alert Triage{%endif%}
+          </strong>
+          <span class="description">
+            {%if 'fr/' in page.url %} Utilisez des modèles de cartes d'alerte
+            personnalisables pour une évaluation rapide et cohérente. {%else%}
+            Utilize customizable alert card templates for quick and consistent
+            evaluation.{%endif%}
+          </span>
+        </div>
+        <div class="entry">
+          <span class="icon teal">
+            {% include ".icons/simple/elastic.svg" %}
+          </span>
+          <strong>
+            {%if 'fr/' in page.url %} Schéma normalisé {%else%} Standardized
+            Schema{%endif%}</strong
+          >
+          <span class="description"
+            >{%if 'fr/' in page.url %} Examinez les alertes conformes au Elastic
+            Common Schema pour une comparaison plus facile et des évaluations
+            plus précises. {%else%} Review alerts conforming to the Elastic
+            Common Schema for easier comparison and more accurate
+            assessments.{%endif%}
+          </span>
+        </div>
+        <div class="entry">
+          <span class="icon grey">
+            {% include ".icons/material/filter-cog.svg" %} </span
+          ><strong
+            >{%if 'fr/' in page.url %} Automatisation basée sur des filtres
+            {%else%} Filter-based automation{%endif%}</strong
+          >
+          <span class="description"
+            >{%if 'fr/' in page.url %} Mettez en œuvre une automatisation basée
+            sur des filtres pour éliminer les tâches de routine et vous
+            concentrer sur l'analyse stratégique. {%else%} Implement
+            filter-driven automation to eliminate routine tasks and focus on
+            strategic analysis.{%endif%}
+          </span>
+        </div>
+        <div class="entry">
+          <span class="icon yellow">
+            {% include ".icons/fontawesome/solid/ruler.svg" %} </span
+          ><strong
+            >{%if 'fr/' in page.url %} Automatisation basée sur des
+            règles{%else%} Rule-based automation{%endif%}</strong
+          >
+          <span class="description"
+            >{%if 'fr/' in page.url %} Utilisez Elastic Query Language ou les
+            formats de règles Sigma pour automatiser. {%else%} Use Elastic Query
+            Language or Sigma rule formats to automate.{%endif%}
+          </span>
+        </div>
+        <div class="entry">
+          <span class="icon pink">
+            {% include ".icons/fontawesome/solid/brain.svg" %} </span
+          ><strong
+            >{%if 'fr/' in page.url %} Regroupement intelligent des
+            alertes{%else%} Intelligent Alert Grouping{%endif%}</strong
+          >
+          <span class="description"
+            >{%if 'fr/' in page.url %} Gérez efficacement les menaces grâce à un
+            système de regroupement intuitif qui fournit un contexte et accélère
+            la résolution.{%else%} Efficiently manage threats with an intuitive
+            bundling system that provides context and speeds up
+            resolution.{%endif%}
+          </span>
+        </div>
+        <div class="entry">
+          <span class="icon white">
+            {% include ".icons/material/tools.svg" %} </span
+          ><strong
+            >{%if 'fr/' in page.url %} Intégration transparente des
+            outils{%else%} Seamless Tool Integration{%endif%}</strong
+          >
+          <span class="description"
+            >{%if 'fr/' in page.url %} Améliorez votre écosystème de sécurité
+            grâce à l'intégration sans effort d'outils externes
+            essentiels.{%else%} Enhance your security ecosystem with effortless
+            integration of essential external tools.{%endif%}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %} {% block content %}{% endblock %}
