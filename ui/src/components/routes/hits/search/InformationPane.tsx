@@ -176,7 +176,10 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
       hit_aggregate: () => <HitSummary query={`howler.bundles:(${hit?.howler?.id})`} />,
       hit_related: () => <HitRelated hit={hit} />,
       ...Object.fromEntries(
-        (hit?.howler.dossier ?? []).map((lead, index) => ['lead:' + index, () => <LeadRenderer lead={lead} />])
+        (hit?.howler.dossier ?? []).map((lead, index) => [
+          'lead:' + index,
+          () => <LeadRenderer lead={lead} hit={hit} />
+        ])
       ),
       ...Object.fromEntries(
         dossiers.flatMap((_dossier, dossierIndex) =>
