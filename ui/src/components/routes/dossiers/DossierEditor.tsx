@@ -58,7 +58,7 @@ const DossierEditor: FC = () => {
     }
 
     if (!dossier.title) {
-      return t('route.dossiers.manager.validation.error.missing', { field: 'Title/Titre' });
+      return t('route.dossiers.manager.validation.error.missing', { field: t('route.dossiers.manager.field.title') });
     }
 
     if (searchTotal < 0 || searchDirty) {
@@ -66,11 +66,11 @@ const DossierEditor: FC = () => {
     }
 
     if (!dossier.query) {
-      return t('route.dossiers.manager.validation.error.missing', { field: 'Query' });
+      return t('route.dossiers.manager.validation.error.missing', { field: t('route.dossiers.manager.field.query') });
     }
 
     if (!dossier.type) {
-      return t('route.dossiers.manager.validation.error.missing', { field: 'Type' });
+      return t('route.dossiers.manager.validation.error.missing', { field: t('route.dossiers.manager.field.type') });
     }
 
     if ((dossier.leads ?? []).length < 1 && (dossier.pivots ?? []).length < 1) {
