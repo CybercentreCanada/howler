@@ -719,6 +719,7 @@
   "route.dossiers.manager.pivot.mapping.field": "Hit Field",
   "route.dossiers.manager.pivot.mapping.custom": "Custom Value",
   "route.dossiers.manager.validation.error": "Dossier is Invalid.",
+  "route.dossiers.manager.validation.search": "You must search to validate your query before submitting.",
   "route.dossiers.manager.validation.error.missing": "{{field}} is invalid.",
   "route.dossiers.manager.validation.error.leads": "A lead is misconfigured.",
   "route.dossiers.manager.validation.error.pivots": "A pivot is misconfigured.",

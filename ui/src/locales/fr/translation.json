@@ -716,6 +716,7 @@
   "route.dossiers.manager.pivot.mapping.field": "Champs du hit",
   "route.dossiers.manager.pivot.mapping.custom": "Valeur personnalisée",
   "route.dossiers.manager.validation.error": "Dossier est invalide.",
+  "route.dossiers.manager.validation.search": "Vous devez effectuer une recherche pour valider votre requête avant de la soumettre.",
   "route.dossiers.manager.validation.error.missing": "{{field}} est invalide.",
   "route.dossiers.manager.validation.error.leads": "Une piste est mal configuré.",
   "route.dossiers.manager.validation.error.pivots": "Un pivot est mal configuré.",
