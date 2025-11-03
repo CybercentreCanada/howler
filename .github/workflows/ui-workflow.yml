@@ -79,8 +79,74 @@ jobs:
           json-summary-path: ui/target/coverage/coverage-summary.json
           json-final-path: ui/target/coverage/coverage-final.json
 
+  push_npm_package:
+    if: github.event_name != 'pull_request'
 
-  push_to_registry:
+    runs-on: ubuntu-latest
+
+    name: Publish Howler UI to NPM
+
+    needs:
+      - formatting
+
+    defaults:
+      run:
+        working-directory: ./ui
+
+    permissions:
+      id-token: write
+      contents: read
+      attestations: write
+
+    steps:
+      - name: Checkout current ref
+        uses: actions/checkout@v4
+      - name: Install Node v20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+      - name: Install pnpm v10
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Get pnpm store path
+        id: pnpm-cache-dir
+        run: echo "PNPM_CACHE_DIR=$(pnpm store path)" >> $GITHUB_OUTPUT
+      - uses: actions/cache@v3
+        name: Define a cache for node_modules
+        with:
+          path: |
+            ${{ steps.pnpm-cache-dir.outputs.PNPM_CACHE_DIR }}
+            ~/.pnpm-store # Fallback for older pnpm versions or specific configurations
+            ui/node_modules
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+      - name: Set Package Version
+        run: |
+          python build_scripts/set_version.py
+        env:
+          BRANCH: ${{ github.ref }}
+          BUILD_ID: ${{ github.run_number }}
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build UI
+        run: |
+          pnpm build-lib
+          python build_scripts/prep_for_publish.py
+        env:
+          VITE_BRANCH: ${{ github.ref }}
+          VITE_COMMIT_HASH: ${{ github.sha }}
+          NODE_OPTIONS: --max-old-space-size=16384
+      - name: Publish Built Package
+        run: |
+          pnpm publish --provenance --access public
+        working-directory: ./ui/dist
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  push_docker_image:
     if: github.event_name != 'pull_request'
 
     runs-on: ubuntu-latest
@@ -140,12 +206,6 @@ jobs:
           VITE_BRANCH: ${{ github.ref }}
           VITE_COMMIT_HASH: ${{ github.sha }}
           NODE_OPTIONS: --max-old-space-size=16384
-      - name: Publish Built Package
-        run: |
-          pnpm publish --provenance --access public
-        working-directory: ./ui/dist
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:

@@ -155,6 +155,7 @@
   },
   "scripts": {
     "build": "tsc && vite build",
+    "build-lib": "vite build --config vite.lib.config.ts",
     "dev": "vite -l info",
     "lint": "prettier -w --config .prettierrc src",
     "preinstall": "npx only-allow pnpm",
