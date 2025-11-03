@@ -1,4 +1,4 @@
-name: ci
+name: Deploy Howler Documentation
 
 permissions:
   contents: write
@@ -8,6 +8,9 @@ on:
     branches:
       - main
       - develop
+    paths:
+      - "documentation/**"
+      - "docs/**"
   workflow_dispatch: {}
 
 jobs:
