@@ -55,6 +55,7 @@ export default defineConfig(({ mode }) => {
       sourcemap: false,
       outDir: 'build',
       rollupOptions: {
+        external: [/@mui.*/, /@emotion.*/],
         plugins: [],
         output: {
           manualChunks(id) {
