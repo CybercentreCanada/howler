@@ -3,6 +3,7 @@ import { omit } from 'lodash-es';
 import { MemoryRouter } from 'react-router-dom';
 import MockLocalStorage from 'tests/MockLocalStorage';
 import { MY_LOCAL_STORAGE_PREFIX, StorageKey } from 'utils/constants';
+import { sanitizeLuceneQuery } from 'utils/stringUtils';
 import AnalyticHitComments from './AnalyticHitComments';
 
 // Mock the API
@@ -160,7 +161,7 @@ describe('AnalyticHitComments', () => {
 
       await waitFor(() => {
         expect(mockApiSearchHitPost).toHaveBeenCalledWith({
-          query: `howler.analytic:${mockAnalytic.name} AND _exists_:howler.comment`,
+          query: `howler.analytic:"${sanitizeLuceneQuery(mockAnalytic.name)}" AND _exists_:howler.comment`,
           rows: 25
         });
       });
@@ -178,7 +179,7 @@ describe('AnalyticHitComments', () => {
 
       await waitFor(() => {
         expect(mockApiSearchHitPost).toHaveBeenCalledWith({
-          query: `howler.analytic:${mockAnalytic.name} AND _exists_:howler.comment`,
+          query: `howler.analytic:"${sanitizeLuceneQuery(mockAnalytic.name)}" AND _exists_:howler.comment`,
           rows: 50
         });
       });
