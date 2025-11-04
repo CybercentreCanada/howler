@@ -9,8 +9,10 @@ ui_path = Path(__file__).parent.parent
 
 dist_path = ui_path / "dist"
 
-if not dist_path.exists():
-    dist_path.mkdir()
+if dist_path.exists():
+    shutil.rmtree(dist_path)
+
+dist_path.mkdir()
 
 if not (ui_path / "dist" / ".npmrc").exists():
     print("\tCopying .npmrc")
@@ -34,7 +36,12 @@ if not (ui_path / "dist" / "public").exists():
     shutil.copytree(ui_path / "public", ui_path / "dist" / "public")
 
 print("\tCopying source tree")
-shutil.copytree(ui_path / "src", ui_path / "dist", dirs_exist_ok=True)
+shutil.copytree(
+    ui_path / "src",
+    ui_path / "dist",
+    dirs_exist_ok=True,
+    ignore=shutil.ignore_patterns("test", "tests", "*.test.tsx", "*.test.ts"),
+)
 
 
 print("Step 2: Prepare package.json")
@@ -59,21 +66,75 @@ if "pnpm" in package_json:
 
 
 package_json["exports"] = dict()
-for path in (ui_path / "src").rglob("**/*"):
+for path in dist_path.rglob("**/*"):
     if path.is_dir():
         continue
 
+    if path.name in [
+        "vite-env.d.ts",
+        "setupTests.ts",
+        "README.md",
+        "README.fr.md",
+        ".npmrc",
+    ]:
+        continue
+
+    if path.suffix in [".md", ".css"]:
+        continue
+
+    if "public" in str(path):
+        continue
+
     if path.stem == "index" and path.suffix in [".ts", ".tsx"]:
-        package_json["exports"][str(path.relative_to(ui_path / "src").parent)] = (
-            "./" + str(path.relative_to(ui_path / "src"))
-        )
-    elif path.suffix in [".md", ".css"]:
-        package_json["exports"][str(path.relative_to(ui_path / "src"))] = "./" + str(
-            path.relative_to(ui_path / "src")
+        package_json["exports"][str(path.relative_to(dist_path).parent)] = "./" + str(
+            path.relative_to(dist_path)
         )
     else:
-        full_path = str(path.relative_to(ui_path / "src"))
+        full_path = str(path.relative_to(dist_path))
         package_json["exports"][re.sub(r"\..+$", "", full_path)] = "./" + full_path
 
+if "." in package_json["exports"]:
+    del package_json["exports"]["."]
 
-(ui_path / "dist" / "package.json").write_text(json.dumps(package_json, indent=2))
+
+(dist_path / "package.json").write_text(json.dumps(package_json, indent=2))
+root_dirs = [folder for folder in dist_path.glob("*")]
+
+
+def conditional_import_fix(match: re.Match) -> str:
+    import_string: str = match.group(1)
+    if import_string.startswith("."):
+        return match.group(0)
+
+    if import_string not in package_json["exports"]:
+        return match.group(0)
+
+    print(
+        "Rewriting import:",
+        import_string,
+        f"to @cccsaurora/howler-ui/{import_string}",
+    )
+    if "from" in match.group(0):
+        return f"from '@cccsaurora/howler-ui/{import_string}';"
+    else:
+        return f"import '@cccsaurora/howler-ui/{import_string}';"
+
+
+print("Step 3: Fixing imports")
+for path in dist_path.rglob("**/*"):
+    if path.suffix not in [".ts", ".tsx"]:
+        continue
+
+    file_text = path.read_text()
+    imports = [line for line in file_text.splitlines() if line.startswith("import")]
+
+    if not imports:
+        continue
+
+    path.write_text(
+        re.sub(
+            r"from '(.+)';",
+            conditional_import_fix,
+            re.sub(r"import '(.+)';", conditional_import_fix, file_text),
+        )
+    )
