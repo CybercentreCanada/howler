@@ -66,7 +66,7 @@ const AnalyticHitComments: FC<{ analytic: Analytic }> = ({ analytic }) => {
         <LinearProgress />
       ) : (
         comments
-          .filter(c => !searchParams.get('filter') || c.detection === searchParams.get('filter'))
+          .filter(c => !searchParams.has('filter') || c.detection === searchParams.get('filter'))
           .sort((a, b) => compareTimestamp(b.comment.timestamp, a.comment.timestamp))
           .map(c => (
             <Comment
