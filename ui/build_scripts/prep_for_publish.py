@@ -1,11 +1,16 @@
 import json
-import os
+import re
 import shutil
 from pathlib import Path
 
 print("Step 1: Copy Files")
 
 ui_path = Path(__file__).parent.parent
+
+dist_path = ui_path / "dist"
+
+if not dist_path.exists():
+    dist_path.mkdir()
 
 if not (ui_path / "dist" / ".npmrc").exists():
     print("\tCopying .npmrc")
@@ -28,17 +33,9 @@ if not (ui_path / "dist" / "public").exists():
     print("\tRecursively copying public path")
     shutil.copytree(ui_path / "public", ui_path / "dist" / "public")
 
-print("\tCopying Markdown")
-for markdown in (ui_path / "src").rglob("**/*.md"):
-    if not (ui_path / "dist" / markdown.relative_to(ui_path / "src").parent).exists():
-        os.makedirs(ui_path / "dist" / markdown.relative_to(ui_path / "src").parent)
+print("\tCopying source tree")
+shutil.copytree(ui_path / "src", ui_path / "dist", dirs_exist_ok=True)
 
-    write_file = Path(
-        os.path.splitext(ui_path / "dist" / markdown.relative_to(ui_path / "src"))[0]
-        + ".md.js"
-    )
-
-    write_file.write_text(f"export default {json.dumps(markdown.read_text())}")
 
 print("Step 2: Prepare package.json")
 
@@ -60,83 +57,23 @@ if "pnpm" in package_json:
     print("\tRemoving pnpm key")
     del package_json["pnpm"]
 
-exports: list[Path] = []
-for path in (ui_path / "src").rglob("**"):
-    if path == (ui_path / "src"):
+
+package_json["exports"] = dict()
+for path in (ui_path / "src").rglob("**/*"):
+    if path.is_dir():
         continue
 
-    exports.append(path.relative_to(ui_path / "src"))
-
-    if (
-        index := next(
-            (
-                path / _index
-                for _index in ["index.ts", "index.tsx"]
-                if (path / _index).exists()
-            ),
-            None,
+    if path.stem == "index" and path.suffix in [".ts", ".tsx"]:
+        package_json["exports"][str(path.relative_to(ui_path / "src").parent)] = (
+            "./" + str(path.relative_to(ui_path / "src"))
         )
-    ) is not None:
-        exports.append(index)
-
-
-print(f"\t Writing {len(exports)} entries to exports")
-
-package_json["exports"] = {"./i18n": "./i18n.js", "./index.css": "./index.css"}
-for path in exports:
-    if "." in path.name:
-        package_json["exports"][f"./{path.parent.relative_to(ui_path / "src")}"] = (
-            f"./{path.parent.relative_to(ui_path / "src")}/index.js"
+    elif path.suffix in [".md", ".css"]:
+        package_json["exports"][str(path.relative_to(ui_path / "src"))] = "./" + str(
+            path.relative_to(ui_path / "src")
         )
-    elif str(path).startswith("locales"):
-        package_json["exports"][f"./{path}/*.json"] = f"./{path}/*.json"
-    elif "markdown" in str(path):
-        package_json["exports"][f"./{path}/*.md"] = f"./{path}/*.md.js"
-    elif str(path).startswith("utils"):
-        package_json["exports"][f"./{path}/*"] = f"./{path}/*.js"
-        package_json["exports"][f"./{path}/*.json"] = f"./{path}/*.json"
     else:
-        package_json["exports"][f"./{path}/*"] = f"./{path}/*.js"
+        full_path = str(path.relative_to(ui_path / "src"))
+        package_json["exports"][re.sub(r"\..+$", "", full_path)] = "./" + full_path
+
 
 (ui_path / "dist" / "package.json").write_text(json.dumps(package_json, indent=2))
-
-print("Step 3: Rewiring imports")
-for ts_file in (ui_path / "dist").rglob("**/*.js"):
-    current_content = ts_file.read_text()
-
-    if "'i18n'" in current_content:
-        current_content = current_content.replace(
-            "'i18n'", "'@cccsaurora/howler-ui/i18n'"
-        )
-
-    for path in exports:
-        if f"'{path}" not in current_content:
-            continue
-
-        current_content = current_content.replace(
-            f"'{path}", f"'@cccsaurora/howler-ui/{path}"
-        )
-
-    ts_file.write_text(current_content)
-
-for ts_file in (ui_path / "dist").rglob("**/*.ts"):
-    current_content = ts_file.read_text()
-
-    if "'i18n'" in current_content:
-        current_content = current_content.replace(
-            "'i18n'", "'@cccsaurora/howler-ui/i18n'"
-        )
-
-    for path in exports:
-        if f"'{path}" not in current_content:
-            continue
-
-        print("\tFixing import", path)
-
-        current_content = current_content.replace(
-            f"'{path}", f"'@cccsaurora/howler-ui/{path}"
-        )
-
-    ts_file.write_text(current_content)
-
-print("-" * 80)

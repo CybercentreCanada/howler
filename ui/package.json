@@ -157,10 +157,10 @@
   },
   "scripts": {
     "build": "tsc && vite build",
-    "build-lib": "vite build --config vite.lib.config.ts",
     "dev": "vite -l info",
     "lint": "prettier -w --config .prettierrc src",
     "preinstall": "npx only-allow pnpm",
+    "prep-publish": "python build_scripts/prep_for_publish.py",
     "serve": "vite preview",
     "start": "vite -l info",
     "test": "vitest run --coverage",
