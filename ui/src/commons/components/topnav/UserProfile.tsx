@@ -17,7 +17,7 @@ import {
   Typography,
   useTheme
 } from '@mui/material';
-import type { AppBarUserMenuElement } from 'commons/components//app/AppConfigs';
+import type { AppBarUserMenuElement } from 'commons/components/app/AppConfigs';
 import { useAppConfigs, useAppUser } from 'commons/components/app/hooks';
 import AppAvatar, { type AppAvatarProps } from 'commons/components/display/AppAvatar';
 import ThemeSelection from 'commons/components/topnav/ThemeSelection';

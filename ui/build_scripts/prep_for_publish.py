@@ -86,12 +86,14 @@ for path in dist_path.rglob("**/*"):
         continue
 
     if path.stem == "index" and path.suffix in [".ts", ".tsx"]:
-        package_json["exports"][str(path.relative_to(dist_path).parent)] = "./" + str(
-            path.relative_to(dist_path)
+        package_json["exports"]["./" + str(path.relative_to(dist_path).parent)] = (
+            "./" + str(path.relative_to(dist_path))
         )
     else:
         full_path = str(path.relative_to(dist_path))
-        package_json["exports"][re.sub(r"\..+$", "", full_path)] = "./" + full_path
+        package_json["exports"]["./" + re.sub(r"\..+$", "", full_path)] = (
+            "./" + full_path
+        )
 
 if "." in package_json["exports"]:
     del package_json["exports"]["."]
@@ -106,7 +108,7 @@ def conditional_import_fix(match: re.Match) -> str:
     if import_string.startswith("."):
         return match.group(0)
 
-    if import_string not in package_json["exports"]:
+    if "./" + import_string not in package_json["exports"]:
         return match.group(0)
 
     print(
@@ -133,8 +135,8 @@ for path in dist_path.rglob("**/*"):
 
     path.write_text(
         re.sub(
-            r"from '(.+)';",
+            r"from '(.+?)';",
             conditional_import_fix,
-            re.sub(r"import '(.+)';", conditional_import_fix, file_text),
+            re.sub(r"import '(.+?)';", conditional_import_fix, file_text),
         )
     )

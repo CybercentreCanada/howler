@@ -1,4 +1,4 @@
-import PageContent from 'commons/components/pages//PageContent';
+import PageContent from 'commons/components/pages/PageContent';
 import { memo } from 'react';
 
 type PageFullWidthProps = {
