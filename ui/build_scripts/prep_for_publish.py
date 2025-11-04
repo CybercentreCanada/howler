@@ -19,6 +19,11 @@ if not (ui_path / "dist" / "package.json").exists():
     print("\tCopying package.json")
     shutil.copy(ui_path / "package.json", ui_path / "dist" / "package.json")
 
+if not (ui_path / "dist" / "README.md").exists():
+    print("\tCopying README.md")
+    shutil.copy(ui_path.parent / "README.md", ui_path / "dist" / "README.md")
+    shutil.copy(ui_path.parent / "README.fr.md", ui_path / "dist" / "README.fr.md")
+
 if not (ui_path / "dist" / "public").exists():
     print("\tRecursively copying public path")
     shutil.copytree(ui_path / "public", ui_path / "dist" / "public")
