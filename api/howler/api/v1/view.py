@@ -255,7 +255,7 @@ def set_as_favourite(id: str, **kwargs):
 @generate_swagger_docs()
 @view_api.route("/<id>/favourite", methods=["DELETE"])
 @api_login(required_priv=["R", "W"])
-def remove_as_favourite(id, **kwargs):
+def remove_as_favourite(view_id: str, **kwargs):
     """Remove a view from a list of the user's favourites
 
     Variables:
@@ -271,13 +271,15 @@ def remove_as_favourite(id, **kwargs):
     """
     storage = datastore()
 
-    if not storage.view.exists(id):
-        return not_found(err="This view does not exist")
-
     try:
         current_user = storage.user.get_if_exists(kwargs["user"]["uname"])
 
-        current_user["favourite_views"] = list(filter(lambda f: f != id, current_user.get("favourite_views", [])))
+        current_favourites: list[str] = current_user.get("favourite_views", [])
+
+        if view_id not in current_favourites:
+            return not_found(err="View is not favourited.")
+
+        current_user["favourite_views"] = [favourite for favourite in current_favourites if favourite != view_id]
 
         storage.user.save(current_user["uname"], current_user)
 

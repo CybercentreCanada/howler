@@ -141,7 +141,8 @@ const ViewComposer: FC = () => {
             rows: pageCount,
             query: _query,
             sort,
-            filters: span ? [`event.created:${convertDateToLucene(span)}`] : []
+            filters: span ? [`event.created:${convertDateToLucene(span)}`] : [],
+            metadata: ['template', 'analytic']
           }),
           { showError: false, throwError: true }
         );
