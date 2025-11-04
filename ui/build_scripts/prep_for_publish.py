@@ -79,20 +79,21 @@ for path in dist_path.rglob("**/*"):
     ]:
         continue
 
-    if path.suffix in [".md", ".css"]:
-        continue
-
     if "public" in str(path):
         continue
 
-    if path.stem == "index" and path.suffix in [".ts", ".tsx"]:
+    if path.stem == "index" and path.suffix in [".ts", ".tsx", ".js", ".jsx"]:
         package_json["exports"]["./" + str(path.relative_to(dist_path).parent)] = (
             "./" + str(path.relative_to(dist_path))
         )
-    else:
+    elif path.suffix in [".ts", ".tsx", ".js", ".jsx"]:
         full_path = str(path.relative_to(dist_path))
         package_json["exports"]["./" + re.sub(r"\..+$", "", full_path)] = (
             "./" + full_path
+        )
+    else:
+        package_json["exports"]["./" + str(path.relative_to(dist_path))] = "./" + str(
+            path.relative_to(dist_path)
         )
 
 if "." in package_json["exports"]:
