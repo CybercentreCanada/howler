@@ -101,8 +101,8 @@ for path in exports:
 (ui_path / "dist" / "package.json").write_text(json.dumps(package_json, indent=2))
 
 print("Step 3: Rewiring imports")
-for js_file in (ui_path / "dist").rglob("**/*.js"):
-    current_content = js_file.read_text()
+for ts_file in (ui_path / "dist").rglob("**/*.js"):
+    current_content = ts_file.read_text()
 
     if "'i18n'" in current_content:
         current_content = current_content.replace(
@@ -117,10 +117,10 @@ for js_file in (ui_path / "dist").rglob("**/*.js"):
             f"'{path}", f"'@cccsaurora/howler-ui/{path}"
         )
 
-    js_file.write_text(current_content)
+    ts_file.write_text(current_content)
 
-for js_file in (ui_path / "dist").rglob("**/*.ts"):
-    current_content = js_file.read_text()
+for ts_file in (ui_path / "dist").rglob("**/*.ts"):
+    current_content = ts_file.read_text()
 
     if "'i18n'" in current_content:
         current_content = current_content.replace(
@@ -137,6 +137,6 @@ for js_file in (ui_path / "dist").rglob("**/*.ts"):
             f"'{path}", f"'@cccsaurora/howler-ui/{path}"
         )
 
-    js_file.write_text(current_content)
+    ts_file.write_text(current_content)
 
 print("-" * 80)
