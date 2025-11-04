@@ -133,10 +133,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build UI
         run: |
-          pnpm prep-publish
+          pnpm build-lib
         env:
-          VITE_BRANCH: ${{ github.ref }}
-          VITE_COMMIT_HASH: ${{ github.sha }}
           NODE_OPTIONS: --max-old-space-size=16384
       - name: Publish Built Package
         run: |
