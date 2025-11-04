@@ -201,7 +201,6 @@ jobs:
       - name: Build UI
         run: |
           pnpm build
-          python build_scripts/prep_for_publish.py
         env:
           VITE_BRANCH: ${{ github.ref }}
           VITE_COMMIT_HASH: ${{ github.sha }}

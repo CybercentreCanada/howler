@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       sourcemap: false,
-      outDir: 'build',
+      outDir: 'dist',
       rollupOptions: {
         external: [/@mui.*/, /@emotion.*/],
         plugins: []
