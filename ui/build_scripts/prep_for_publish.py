@@ -123,15 +123,19 @@ def conditional_import_fix(match: re.Match) -> str:
         return f"import '@cccsaurora/howler-ui/{import_string}';"
 
 
-print("Step 3: Fixing imports")
+print("Step 3: Fixing imports/exports")
 for path in dist_path.rglob("**/*"):
     if path.suffix not in [".ts", ".tsx"]:
         continue
 
     file_text = path.read_text()
-    imports = [line for line in file_text.splitlines() if line.startswith("import")]
+    imports_exports = [
+        line
+        for line in file_text.splitlines()
+        if line.startswith("import") or line.startswith("export")
+    ]
 
-    if not imports:
+    if not imports_exports:
         continue
 
     path.write_text(

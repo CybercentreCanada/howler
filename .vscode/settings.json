@@ -56,7 +56,7 @@
     "**/.DS_Store": true,
     "**/Thumbs.db": true,
     "**/build": true,
-    "**/dist": true,
+    // "**/dist": true,
     "**/.pytest_cache": true,
     "**/.idea": true,
     "**/__pycache__": true,
