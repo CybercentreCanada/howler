@@ -38,9 +38,7 @@ def get_views(user: User, **kwargs):
     try:
         return ok(
             datastore().view.search(
-                f"type:global OR owner:({user['uname']} OR none)",
-                as_obj=False,
-                rows=1000,
+                f"type:global OR owner:({user['uname']} OR none)", as_obj=False, rows=1000, sort="title asc"
             )["items"]
         )
     except ValueError as e:
@@ -110,13 +108,13 @@ def create_view(**kwargs):
 
 
 @generate_swagger_docs()
-@view_api.route("/<id>", methods=["DELETE"])
+@view_api.route("/<view_id>", methods=["DELETE"])
 @api_login(required_priv=["W"])
-def delete_view(id: str, user: User, **kwargs):
+def delete_view(view_id: str, user: User, **kwargs):
     """Delete a view
 
     Variables:
-    id => The id of the view to delete
+    view_id => The id of the view to delete
 
     Optional Arguments:
     None
@@ -131,7 +129,7 @@ def delete_view(id: str, user: User, **kwargs):
     """
     storage = datastore()
 
-    existing_view: View = storage.view.get_if_exists(id)
+    existing_view: View = storage.view.get_if_exists(view_id)
     if not existing_view:
         return not_found(err="This view does not exist")
 
@@ -141,7 +139,7 @@ def delete_view(id: str, user: User, **kwargs):
     if existing_view.type == "readonly":
         return forbidden(err="You cannot delete built-in views.")
 
-    success = storage.view.delete(id)
+    success = storage.view.delete(view_id)
 
     storage.view.commit()
 
@@ -149,13 +147,13 @@ def delete_view(id: str, user: User, **kwargs):
 
 
 @generate_swagger_docs()
-@view_api.route("/<id>", methods=["PUT"])
+@view_api.route("/<view_id>", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
-def update_view(id: str, user: User, **kwargs):
+def update_view(view_id: str, user: User, **kwargs):
     """Update a view
 
     Variables:
-    id => The id of the view to modify
+    view_id => The view_id of the view to modify
 
     Optional Arguments:
     None
@@ -180,7 +178,7 @@ def update_view(id: str, user: User, **kwargs):
     if set(new_data.keys()) & {"view_id", "owner"}:
         return bad_request(err="You cannot change the owner or id of a view.")
 
-    existing_view: View = storage.view.get_if_exists(id)
+    existing_view: View = storage.view.get_if_exists(view_id)
     if not existing_view:
         return not_found(err="This view does not exist")
 
@@ -212,13 +210,13 @@ def update_view(id: str, user: User, **kwargs):
 
 
 @generate_swagger_docs()
-@view_api.route("/<id>/favourite", methods=["POST"])
+@view_api.route("/<view_id>/favourite", methods=["POST"])
 @api_login(required_priv=["R", "W"])
-def set_as_favourite(id: str, **kwargs):
+def set_as_favourite(view_id: str, **kwargs):
     """Add a view to a list of the user's favourites
 
     Variables:
-    id => The id of the view to add as a favourite
+    view_id => The id of the view to add as a favourite
 
     Optional Arguments:
     None
@@ -233,7 +231,7 @@ def set_as_favourite(id: str, **kwargs):
     """
     storage = datastore()
 
-    existing_view: View = storage.view.get_if_exists(id)
+    existing_view: View = storage.view.get_if_exists(view_id)
     if not existing_view:
         return not_found(err="This view does not exist")
 
@@ -245,7 +243,7 @@ def set_as_favourite(id: str, **kwargs):
     try:
         current_user = storage.user.get_if_exists(kwargs["user"]["uname"])
 
-        current_user["favourite_views"] = list(set(current_user.get("favourite_views", []) + [id]))
+        current_user["favourite_views"] = list(set(current_user.get("favourite_views", []) + [view_id]))
 
         storage.user.save(current_user["uname"], current_user)
 
@@ -255,9 +253,9 @@ def set_as_favourite(id: str, **kwargs):
 
 
 @generate_swagger_docs()
-@view_api.route("/<id>/favourite", methods=["DELETE"])
+@view_api.route("/<view_id>/favourite", methods=["DELETE"])
 @api_login(required_priv=["R", "W"])
-def remove_as_favourite(id, **kwargs):
+def remove_as_favourite(view_id: str, **kwargs):
     """Remove a view from a list of the user's favourites
 
     Variables:
@@ -273,13 +271,15 @@ def remove_as_favourite(id, **kwargs):
     """
     storage = datastore()
 
-    if not storage.view.exists(id):
-        return not_found(err="This view does not exist")
-
     try:
         current_user = storage.user.get_if_exists(kwargs["user"]["uname"])
 
-        current_user["favourite_views"] = list(filter(lambda f: f != id, current_user.get("favourite_views", [])))
+        current_favourites: list[str] = current_user.get("favourite_views", [])
+
+        if view_id not in current_favourites:
+            return not_found(err="View is not favourited.")
+
+        current_user["favourite_views"] = [favourite for favourite in current_favourites if favourite != view_id]
 
         storage.user.save(current_user["uname"], current_user)
 

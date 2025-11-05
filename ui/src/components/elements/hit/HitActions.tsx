@@ -22,7 +22,6 @@ import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import useHitActions from 'components/hooks/useHitActions';
 import { useMyLocalStorageProvider } from 'components/hooks/useMyLocalStorage';
-import json2mq from 'json2mq';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Hit } from 'models/entities/generated/Hit';
 import howlerPluginStore from 'plugins/store';
@@ -178,11 +177,7 @@ const HitActions: FC<{
   const showButton = useMediaQuery(
     // Only show the buttons when there's sufficient space
     // TODO: Could probably make this fancier and maybe remove the react device detect dependency, but this is fine for now
-    json2mq([
-      {
-        minWidth: 1800
-      }
-    ])
+    '(min-width: 1800px)'
   );
 
   const showDropdown = isMobile || !showButton;

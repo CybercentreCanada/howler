@@ -14,7 +14,10 @@ import JSONViewer from '../json/JSONViewer';
 
 export interface HowlerHelper {
   keyword: string;
-  documentation?: string;
+  documentation?: {
+    en: string;
+    fr: string;
+  };
   callback?: Handlebars.HelperDelegate;
   componentCallback?: (...args: any[]) => ReactElement | Promise<ReactElement>;
 }
@@ -31,48 +34,78 @@ export const useHelpers = (): HowlerHelper[] => {
   const pluginStore = usePluginStore();
 
   const allHelpers = useMemo(
-    () => [
+    (): HowlerHelper[] => [
       {
         keyword: 'equals',
-        documentation: 'Checks the equality of the string representation of the two arguments.',
+        documentation: {
+          en: 'Checks the equality of the string representation of the two arguments.',
+          fr: "Vérifie l'égalité de la représentation en chaîne de caractères des deux arguments."
+        },
         callback: (arg1, arg2) => arg1?.toString() === arg2.toString()
       },
       {
         keyword: 'and',
-        documentation: 'Runs the comparison `arg1 && arg2`, and returns the result.',
+        documentation: {
+          en: 'Runs the comparison `arg1 && arg2`, and returns the result.',
+          fr: 'Exécute la comparaison `arg1 && arg2`, et retourne le résultat.'
+        },
         callback: (arg1, arg2) => arg1 && arg2
       },
       {
         keyword: 'or',
-        documentation: 'Runs the comparison `arg1 || arg2`, and returns the result.',
+        documentation: {
+          en: 'Runs the comparison `arg1 || arg2`, and returns the result.',
+          fr: 'Exécute la comparaison `arg1 || arg2`, et retourne le résultat.'
+        },
         callback: (arg1, arg2) => arg1 || arg2
       },
-      { keyword: 'not', documentation: 'Runs the comparison `!arg`, and returns the result.', callback: arg => !arg },
+      {
+        keyword: 'not',
+        documentation: {
+          en: 'Runs the comparison `!arg`, and returns the result.',
+          fr: 'Exécute la comparaison `!arg`, et retourne le résultat.'
+        },
+        callback: arg => !arg
+      },
       {
         keyword: 'curly',
-        documentation: 'Wraps the given argument in curly braces.',
+        documentation: {
+          en: 'Wraps the given argument in curly braces.',
+          fr: "Entoure l'argument donné d'accolades."
+        },
         callback: arg1 => new Handlebars.SafeString(`{{${arg1}}}`)
       },
       {
         keyword: 'join',
-        documentation: 'Joins two string arguments with a given string `sep`, or the empty string as a default.',
+        documentation: {
+          en: 'Joins two string arguments with a given string `sep`, or the empty string as a default.',
+          fr: 'Joint deux arguments de chaîne avec une chaîne donnée `sep`, ou la chaîne vide par défaut.'
+        },
         callback: (arg1: string, arg2: string, context) =>
           [arg1?.toString() ?? '', arg2?.toString() ?? ''].join(context.hash?.sep ?? '')
       },
       {
         keyword: 'upper',
-        documentation: 'Returns the uppercase representation of a string argment.',
+        documentation: {
+          en: 'Returns the uppercase representation of a string argument.',
+          fr: "Retourne la représentation en majuscules d'un argument de chaîne."
+        },
         callback: (val: string) => val.toLocaleUpperCase()
       },
       {
         keyword: 'lower',
-        documentation: 'Returns the lowercase representation of a string argment.',
+        documentation: {
+          en: 'Returns the lowercase representation of a string argument.',
+          fr: "Retourne la représentation en minuscules d'un argument de chaîne."
+        },
         callback: (val: string) => val.toLocaleLowerCase()
       },
       {
         keyword: 'fetch',
-        documentation:
-          'Fetches the url provided and returns the given (flattened) key from the returned JSON object. Note that the result must be JSON!',
+        documentation: {
+          en: 'Fetches the url provided and returns the given (flattened) key from the returned JSON object. Note that the result must be JSON!',
+          fr: "Récupère l'URL fournie et retourne la clé donnée (aplatie) de l'objet JSON retourné. Notez que le résultat doit être du JSON !"
+        },
         callback: async (url, key) => {
           try {
             if (!FETCH_RESULTS[url]) {
@@ -89,7 +122,10 @@ export const useHelpers = (): HowlerHelper[] => {
       },
       {
         keyword: 'howler',
-        documentation: 'Given a howler hit ID, this helper renders a hit card for that ID.',
+        documentation: {
+          en: 'Given a howler hit ID, this helper renders a hit card for that ID.',
+          fr: 'Étant donné un ID de résultat howler, cet assistant affiche une carte de résultat pour cet ID.'
+        },
         componentCallback: id => {
           if (!id) {
             return <AppListEmpty />;
@@ -100,7 +136,10 @@ export const useHelpers = (): HowlerHelper[] => {
       },
       {
         keyword: 'entries',
-        documentation: 'Given a dict, return an array of {key, value} objects.',
+        documentation: {
+          en: 'Given a dict, return an array of {key, value} objects.',
+          fr: "Étant donné un dictionnaire, retourne un tableau d'objets {key, value}."
+        },
         callback: obj => {
           if (!isObject(obj)) {
             return new Handlebars.SafeString('Invalid Object.');
@@ -111,7 +150,10 @@ export const useHelpers = (): HowlerHelper[] => {
       },
       {
         keyword: 'render_json',
-        documentation: 'Given a howler hit ID, this helper renders a hit card for that ID.',
+        documentation: {
+          en: 'Given JSON data, this helper renders a JSON viewer component.',
+          fr: 'Étant donné des données JSON, cet assistant affiche un composant de visualisation JSON.'
+        },
         componentCallback: data => {
           if (!data) {
             return <AppListEmpty />;
@@ -122,21 +164,30 @@ export const useHelpers = (): HowlerHelper[] => {
       },
       {
         keyword: 'to_json',
-        documentation: 'Convert any object into a JSON string.',
+        documentation: {
+          en: 'Convert any object into a JSON string.',
+          fr: "Convertit n'importe quel objet en chaîne JSON."
+        },
         callback: obj => {
           return new Handlebars.SafeString(JSON.stringify(obj));
         }
       },
       {
         keyword: 'parse_json',
-        documentation: 'Convert JSON string into and object.',
+        documentation: {
+          en: 'Convert a JSON string into an object.',
+          fr: 'Convertit une chaîne JSON en objet.'
+        },
         callback: str => {
           return JSON.parse(str);
         }
       },
       {
         keyword: 'get',
-        documentation: 'Returns the given (flattened) key from the provided object.',
+        documentation: {
+          en: 'Returns the given (flattened) key from the provided object.',
+          fr: "Retourne la clé donnée (aplatie) de l'objet fourni."
+        },
         callback: async (data, key) => {
           try {
             return get(data, key);
@@ -147,7 +198,10 @@ export const useHelpers = (): HowlerHelper[] => {
       },
       {
         keyword: 'includes',
-        documentation: 'Checks if field is in string',
+        documentation: {
+          en: 'Checks if field is in string',
+          fr: 'Vérifie si le champ est dans la chaîne'
+        },
         callback: (arg1, arg2) => {
           return !!arg2 && !!arg1?.includes(arg2);
         }
@@ -155,7 +209,10 @@ export const useHelpers = (): HowlerHelper[] => {
 
       {
         keyword: 'table',
-        documentation: 'Render a table in markdown given an array of cells',
+        documentation: {
+          en: 'Render a table in markdown given an array of cells',
+          fr: "Affiche un tableau en markdown à partir d'un tableau de cellules"
+        },
         componentCallback: (cells: Cell[]) => {
           const columns = Object.keys(groupBy(cells, 'column'));
           const rows = groupBy(cells, 'row');
@@ -196,8 +253,10 @@ export const useHelpers = (): HowlerHelper[] => {
 
       {
         keyword: 'action',
-        documentation:
-          'Execute a howler action given a specific action ID (from the URL when viewing the action, i.e. yaIKVqiKhWpyCsWdqsE4D)',
+        documentation: {
+          en: 'Execute a howler action given a specific action ID (from the URL when viewing the action, i.e. yaIKVqiKhWpyCsWdqsE4D)',
+          fr: "Exécute une action howler à partir d'un ID d'action spécifique (de l'URL lors de la visualisation de l'action, par ex. yaIKVqiKhWpyCsWdqsE4D)"
+        },
         componentCallback: (actionId: string, hitId: string, context) => {
           if (!actionId || !hitId) {
             console.warn('Missing parameters for the action button.');

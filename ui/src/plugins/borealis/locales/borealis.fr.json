@@ -1,7 +1,0 @@
-{
-  "route.dossiers.manager.borealis": "ID du sélecteur Borealis",
-  "route.dossiers.manager.borealis.type": "Type de sélecteur",
-  "route.dossiers.manager.borealis.value": "Valeur du sélecteur",
-  "route.dossiers.manager.borealis.value.custom": "Valeur du sélecteur personnalisé",
-  "route.dossiers.manager.borealis.value.description": "Vous pouvez utiliser la notation « handlebars » pour insérer des champs à partir de l'alerte correspondante (c'est-à-dire {{howler.id}})."
-}

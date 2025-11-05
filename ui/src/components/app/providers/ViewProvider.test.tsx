@@ -149,7 +149,11 @@ describe('ViewContext', () => {
       const result = await act(async () => hook.result.current(['searched_view_id']));
 
       expect(hpost).toHaveBeenCalledOnce();
-      expect(hpost).toBeCalledWith('/api/v1/search/view', { query: 'view_id:(searched_view_id)', rows: 1 });
+      expect(hpost).toBeCalledWith('/api/v1/search/view', {
+        query: 'view_id:(searched_view_id)',
+        rows: 1,
+        sort: 'title asc'
+      });
 
       expect(result).toEqual(MOCK_RESPONSES['/api/v1/search/view'].items);
     });
@@ -158,13 +162,21 @@ describe('ViewContext', () => {
       await act(async () => hook.result.current(['searched_view_id']));
 
       expect(hpost).toHaveBeenCalledOnce();
-      expect(hpost).toBeCalledWith('/api/v1/search/view', { query: 'view_id:(searched_view_id)', rows: 1 });
+      expect(hpost).toBeCalledWith('/api/v1/search/view', {
+        query: 'view_id:(searched_view_id)',
+        rows: 1,
+        sort: 'title asc'
+      });
 
       vi.mocked(hpost).mockClear();
       await act(async () => hook.result.current(['searched_view_id', 'searched_view_id_2']));
 
       expect(hpost).toHaveBeenCalledOnce();
-      expect(hpost).toBeCalledWith('/api/v1/search/view', { query: 'view_id:(searched_view_id_2)', rows: 1 });
+      expect(hpost).toBeCalledWith('/api/v1/search/view', {
+        query: 'view_id:(searched_view_id_2)',
+        rows: 1,
+        sort: 'title asc'
+      });
     });
 
     it('Should provide cached instances as a response when the same views are requested', async () => {

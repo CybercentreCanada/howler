@@ -20,11 +20,24 @@ logger.addHandler(console)
 
 
 class RedisServer(BaseModel):
+    """Configuration for a single Redis server instance.
+
+    Defines the connection parameters for a Redis server, including
+    the hostname and port number.
+    """
+
     host: str = Field(description="Hostname of Redis instance")
     port: int = Field(description="Port of Redis instance")
 
 
 class Redis(BaseModel):
+    """Redis configuration for Howler.
+
+    Defines connections to both persistent and non-persistent Redis instances.
+    The non-persistent instance is used for volatile data like caches, while
+    the persistent instance is used for data that needs to survive restarts.
+    """
+
     nonpersistent: RedisServer = Field(
         default=RedisServer(host="127.0.0.1", port=6379), description="A volatile Redis instance"
     )
@@ -35,6 +48,14 @@ class Redis(BaseModel):
 
 
 class Host(BaseModel):
+    """Configuration for a remote host connection.
+
+    Defines connection parameters for external services, including authentication
+    credentials (username/password or API key) and connection details.
+    Environment variables can override username and password using the pattern
+    {NAME}_HOST_USERNAME and {NAME}_HOST_PASSWORD.
+    """
+
     name: str = Field(description="Name of the host")
     username: Optional[str] = Field(description="Username to login with", default=None)
     password: Optional[str] = Field(description="Password to login with", default=None)
@@ -64,6 +85,12 @@ class Host(BaseModel):
 
 
 class Datastore(BaseModel):
+    """Datastore configuration for Howler.
+
+    Defines the backend datastore used by Howler for storing hits and metadata.
+    Currently supports Elasticsearch as the datastore type.
+    """
+
     hosts: list[Host] = Field(
         default=[Host(name="elastic", username="elastic", password="devpass", scheme="http", host="localhost:9200")],  # noqa: S106
         description="List of hosts used for the datastore",
@@ -74,6 +101,13 @@ class Datastore(BaseModel):
 
 
 class Logging(BaseModel):
+    """Logging configuration for Howler.
+
+    Defines how and where Howler logs should be output, including console,
+    file, and syslog destinations. Also controls log level, format, and
+    metric export intervals.
+    """
+
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL", "DISABLED"] = Field(
         default="INFO",
         description="What level of logging should we have?",
@@ -94,6 +128,12 @@ class Logging(BaseModel):
 
 
 class PasswordRequirement(BaseModel):
+    """Password complexity requirements for internal authentication.
+
+    Defines the rules for password creation and validation, including
+    character type requirements and minimum length.
+    """
+
     lower: bool = Field(default=False, description="Password must contain lowercase letters")
     number: bool = Field(default=False, description="Password must contain numbers")
     special: bool = Field(default=False, description="Password must contain special characters")
@@ -102,6 +142,13 @@ class PasswordRequirement(BaseModel):
 
 
 class Internal(BaseModel):
+    """Internal authentication configuration.
+
+    Defines settings for Howler's built-in username/password authentication,
+    including password requirements and brute-force protection via login
+    failure tracking.
+    """
+
     enabled: bool = Field(default=True, description="Internal authentication allowed?")
     failure_ttl: int = Field(
         default=60, description="How long to wait after `max_failures` before re-attempting login?"
@@ -111,6 +158,13 @@ class Internal(BaseModel):
 
 
 class OAuthAutoProperty(BaseModel):
+    """Automatic property assignment based on OAuth attributes.
+
+    Defines rules for automatically assigning user properties (roles,
+    classifications, or access levels) based on pattern matching against
+    OAuth provider data.
+    """
+
     field: str = Field(description="Field to apply `pattern` to")
     pattern: str = Field(description="Regex pattern for auto-prop assignment")
     type: Literal["access", "classification", "role"] = Field(
@@ -120,6 +174,13 @@ class OAuthAutoProperty(BaseModel):
 
 
 class OAuthProvider(BaseModel):
+    """OAuth provider configuration.
+
+    Defines the connection and authentication settings for an OAuth 2.0 provider.
+    Includes user auto-creation, group mapping, JWT validation, and various
+    OAuth endpoints required for the authentication flow.
+    """
+
     auto_create: bool = Field(default=True, description="Auto-create users if they are missing")
     auto_sync: bool = Field(default=False, description="Should we automatically sync with OAuth provider?")
     auto_properties: list[OAuthAutoProperty] = Field(
@@ -191,6 +252,13 @@ class OAuthProvider(BaseModel):
 
 
 class OAuth(BaseModel):
+    """OAuth authentication configuration.
+
+    Top-level OAuth settings including enabling/disabling OAuth authentication,
+    Gravatar integration, and a dictionary of configured OAuth providers.
+    Also controls API key lifetime restrictions for OAuth-authenticated users.
+    """
+
     enabled: bool = Field(default=False, description="Enable use of OAuth?")
     gravatar_enabled: bool = Field(default=True, description="Enable gravatar?")
     providers: dict[str, OAuthProvider] = Field(
@@ -204,6 +272,13 @@ class OAuth(BaseModel):
 
 
 class Auth(BaseModel):
+    """Authentication configuration for Howler.
+
+    Configures all authentication methods supported by Howler, including
+    internal username/password authentication and OAuth providers. Also
+    controls API key settings and restrictions.
+    """
+
     allow_apikeys: bool = Field(default=True, description="Allow API keys?")
     allow_extended_apikeys: bool = Field(default=True, description="Allow extended API keys?")
     max_apikey_duration_amount: Optional[int] = Field(
@@ -218,17 +293,34 @@ class Auth(BaseModel):
 
 
 class APMServer(BaseModel):
-    "APM server configuration"
+    """Application Performance Monitoring (APM) server configuration.
+
+    Defines the connection details for an external APM server used to
+    collect and analyze application performance metrics.
+    """
 
     server_url: Optional[str] = Field(default=None, description="URL to API server")
     token: Optional[str] = Field(default=None, description="Authentication token for server")
 
 
 class Metrics(BaseModel):
+    """Metrics collection configuration.
+
+    Configures how Howler collects and exports application metrics,
+    including integration with external APM servers.
+    """
+
     apm_server: APMServer = APMServer()
 
 
 class Retention(BaseModel):
+    """Hit retention policy configuration.
+
+    Defines the automatic data retention policy for hits, including
+    the maximum age of hits before they are purged and the schedule
+    for running the retention cleanup job.
+    """
+
     enabled: bool = Field(
         default=True,
         description=(
@@ -250,13 +342,49 @@ class Retention(BaseModel):
     )
 
 
+class ViewCleanup(BaseModel):
+    """View cleanup job configuration.
+
+    Defines the schedule and behavior for cleaning up stale dashboard views
+    that reference non-existent backend data.
+    """
+
+    enabled: bool = Field(
+        default=True,
+        description=(
+            "Whether to enable the view cleanup. If enabled, views pinned "
+            "to the dashboard that no longer exist in the backend will be cleared."
+        ),
+    )
+    crontab: str = Field(
+        default="0 0 * * *",
+        description="The crontab that denotes how often to run the view_cleanup job",
+    )
+
+
 class System(BaseModel):
+    """System-level configuration for Howler.
+
+    Defines global system settings including deployment type (production,
+    staging, or development) and configuration for automated maintenance
+    jobs like data retention and view cleanup.
+    """
+
     type: Literal["production", "staging", "development"] = Field(default="development", description="Type of system")
     retention: Retention = Retention()
     "Retention Configuration"
+    view_cleanup: ViewCleanup = ViewCleanup()
+    "View Cleanup Configuration"
 
 
 class UI(BaseModel):
+    """User interface and web server configuration.
+
+    Defines settings for the Howler web UI including Flask configuration,
+    session validation, API auditing, static file locations, and WebSocket
+    integration for real-time updates.
+    """
+
     audit: bool = Field(description="Should API calls be audited and saved to a separate log file?", default=True)
     debug: bool = Field(default=False, description="Enable debugging?")
     static_folder: Optional[str] = Field(
@@ -282,6 +410,13 @@ class UI(BaseModel):
 
 
 class Borealis(BaseModel):
+    """Borealis enrichment service integration configuration.
+
+    Defines settings for integrating with Borealis, an external enrichment
+    service that can provide additional context and status information for
+    hits displayed in the Howler UI.
+    """
+
     enabled: bool = Field(default=False, description="Should borealis integration be enabled?")
 
     url: str = Field(
@@ -296,6 +431,13 @@ class Borealis(BaseModel):
 
 
 class Notebook(BaseModel):
+    """Jupyter notebook integration configuration.
+
+    Defines settings for integrating with nbgallery, a collaborative
+    Jupyter notebook platform, allowing users to access and share
+    notebooks related to their Howler analysis work.
+    """
+
     enabled: bool = Field(default=False, description="Should nbgallery notebook integration be enabled?")
 
     scope: Optional[str] = Field(default=None, description="The scope expected by nbgallery for JWTs")
@@ -306,6 +448,13 @@ class Notebook(BaseModel):
 
 
 class Core(BaseModel):
+    """Core application configuration for Howler.
+
+    Aggregates all core service configurations including Redis, metrics,
+    and external integrations like Borealis and nbgallery notebooks.
+    Also manages the loading of external plugins.
+    """
+
     plugins: set[str] = Field(description="A list of external plugins to load", default=set())
 
     metrics: Metrics = Metrics()
@@ -363,6 +512,17 @@ logger.info("Fetching configuration files from %s", ":".join(str(c) for c in con
 
 
 class Config(BaseSettings):
+    """Main Howler configuration model.
+
+    The root configuration object that aggregates all configuration sections
+    including authentication, datastore, logging, system settings, UI, and core
+    services. Configuration can be loaded from YAML files or environment variables
+    with the HWL_ prefix.
+
+    Environment variables use double underscores (__) for nested properties.
+    For example: HWL_DATASTORE__TYPE=elasticsearch
+    """
+
     auth: Auth = Auth()
     core: Core = Core()
     datastore: Datastore = Datastore()

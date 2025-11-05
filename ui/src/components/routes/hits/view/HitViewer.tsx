@@ -133,7 +133,7 @@ const HitViewer: FC = () => {
       hit_worklog: () => <HitWorklog hit={hit} users={users} />,
       hit_related: () => <HitRelated hit={hit} />,
       ...Object.fromEntries(
-        hit?.howler.dossier?.map((lead, index) => ['lead:' + index, () => <LeadRenderer lead={lead} />]) ?? []
+        hit?.howler.dossier?.map((lead, index) => ['lead:' + index, () => <LeadRenderer lead={lead} hit={hit} />]) ?? []
       ),
       ...Object.fromEntries(
         dossiers.flatMap((_dossier, dossierIndex) =>
@@ -274,7 +274,7 @@ const HitViewer: FC = () => {
             ))}
 
             {dossiers.flatMap((_dossier, dossierIndex) =>
-              _dossier.leads?.map((_lead, leadIndex) => (
+              (_dossier.leads ?? []).map((_lead, leadIndex) => (
                 <Tab
                   // eslint-disable-next-line react/no-array-index-key
                   key={`external-lead:${dossierIndex}:${leadIndex}`}

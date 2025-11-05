@@ -101,6 +101,7 @@ const HitRow: FC<{
             key={col}
             value={get(hit, col) ?? t('none')}
             sx={columnWidths[col] ? { width: columnWidths[col] } : { width: '220px', maxWidth: '300px' }}
+            field={col}
           />
         ))}
       </TableRow>

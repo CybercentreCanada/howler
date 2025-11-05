@@ -176,11 +176,14 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
       hit_aggregate: () => <HitSummary query={`howler.bundles:(${hit?.howler?.id})`} />,
       hit_related: () => <HitRelated hit={hit} />,
       ...Object.fromEntries(
-        hit?.howler.dossier?.map((lead, index) => ['lead:' + index, () => <LeadRenderer lead={lead} />]) ?? []
+        (hit?.howler.dossier ?? []).map((lead, index) => [
+          'lead:' + index,
+          () => <LeadRenderer lead={lead} hit={hit} />
+        ])
       ),
       ...Object.fromEntries(
         dossiers.flatMap((_dossier, dossierIndex) =>
-          _dossier.leads?.map((_lead, leadIndex) => [
+          (_dossier.leads ?? []).map((_lead, leadIndex) => [
             `external-lead:${dossierIndex}:${leadIndex}`,
             () => <LeadRenderer lead={_lead} hit={hit} />
           ])
@@ -332,7 +335,7 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
               />
             ))}
             {dossiers.flatMap((_dossier, dossierIndex) =>
-              _dossier.leads?.map((_lead, leadIndex) => (
+              (_dossier.leads ?? []).map((_lead, leadIndex) => (
                 <Tab
                   // eslint-disable-next-line react/no-array-index-key
                   key={`external-lead:${dossierIndex}:${leadIndex}`}

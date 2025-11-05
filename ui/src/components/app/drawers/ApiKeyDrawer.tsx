@@ -19,7 +19,7 @@ import type { Privileges } from 'api/auth/apikey';
 import useMyApi from 'components/hooks/useMyApi';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import dayjs from 'dayjs';
-import { type APIConfiguration } from 'models/entities/generated/ApiType';
+import type { APIConfiguration } from 'models/entities/generated/ApiType';
 import type { ChangeEvent, FC } from 'react';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
