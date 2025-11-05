@@ -886,7 +886,3 @@ if __name__ == "__main__":
                 create_fn(ds)
 
     logger.info("Done.")
-
-    logger.info("Done.")
-
-    logger.info("Done.")
