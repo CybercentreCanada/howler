@@ -294,7 +294,10 @@ const HitDetails: FC<{ hit: Hit }> = ({ hit }) => {
       groupBy(
         Object.entries(flatten(hit ?? {}, { safe: true })).filter(
           ([key, value]) =>
-            key.includes('.') && ['howler', 'labels'].every(prefix => !key.startsWith(prefix)) && !isEmpty(value)
+            !key.startsWith('__') &&
+            key.includes('.') &&
+            ['howler', 'labels'].every(prefix => !key.startsWith(prefix)) &&
+            !isEmpty(value)
         ),
         ([key]) => key.split('.')[0]
       ),
