@@ -13,6 +13,11 @@ if not (dist_path / ".npmrc").exists():
     print("\tCopying .npmrc")
     shutil.copy(ui_path / ".npmrc", dist_path / ".npmrc")
 
+if not (dist_path / "README.md").exists():
+    print("\tCopying .README.md")
+    shutil.copy(ui_path.parent / "README.md", dist_path / "README.md")
+    shutil.copy(ui_path.parent / "README.fr.md", dist_path / "README.fr.md")
+
 if not (dist_path / "index.css").exists():
     print("\tCopying index.css")
     shutil.copy(src_path / "index.css", dist_path / "index.css")
