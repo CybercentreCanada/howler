@@ -378,7 +378,7 @@ describe('AnalyticHitComments', () => {
       await waitFor(() => {
         expect(mockApiSearchHitPost).toHaveBeenCalledTimes(2);
         expect(mockApiSearchHitPost).toHaveBeenLastCalledWith({
-          query: `howler.analytic:${newAnalytic.name} AND _exists_:howler.comment`,
+          query: `howler.analytic:"${sanitizeLuceneQuery(newAnalytic.name)}" AND _exists_:howler.comment`,
           rows: 25
         });
       });
@@ -408,7 +408,7 @@ describe('AnalyticHitComments', () => {
       await waitFor(() => {
         expect(mockApiSearchHitPost).toHaveBeenCalledTimes(2);
         expect(mockApiSearchHitPost).toHaveBeenLastCalledWith({
-          query: `howler.analytic:${mockAnalytic.name} AND _exists_:howler.comment`,
+          query: `howler.analytic:"${sanitizeLuceneQuery(mockAnalytic.name)}" AND _exists_:howler.comment`,
           rows: 100
         });
       });
