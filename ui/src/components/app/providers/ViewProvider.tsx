@@ -167,13 +167,13 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
 
   const removeView: ViewContextType['removeView'] = useCallback(
     async (id: string) => {
+      if (appUser.user?.favourite_views.includes(id)) {
+        await removeFavourite(id);
+      }
+
       const result = await dispatchApi(api.view.del(id));
 
       setViews(_views => omit(_views, id));
-
-      if (appUser.user?.favourite_views.includes(id)) {
-        removeFavourite(id);
-      }
 
       return result;
     },
