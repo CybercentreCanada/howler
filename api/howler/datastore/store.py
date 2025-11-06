@@ -66,9 +66,9 @@ class ESStore(object):
                     os.environ[f"{host.name.upper()}_HOST_APIKEY_ID"],
                     os.environ[f"{host.name.upper()}_HOST_APIKEY_SECRET"],
                 )
-             elif os.getenv(f"{host.name.upper()}_HOST_USERNAME", None) is not None:
-                self._username = os.environ[f"{host.name.upper()}_HOST_USERNAME"]
-                self._password = os.environ[f"{host.name.upper()}_HOST_PASSWORD"]
+            elif os.getenv(f"{host.name.upper()}_HOST_USERNAME", None) is not None:
+               self._username = os.environ[f"{host.name.upper()}_HOST_USERNAME"]
+               self._password = os.environ[f"{host.name.upper()}_HOST_PASSWORD"]
 
 
         self._closed = False
