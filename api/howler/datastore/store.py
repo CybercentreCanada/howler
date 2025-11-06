@@ -55,8 +55,8 @@ class ESStore(object):
             config = _config
 
         self._apikey: Optional[tuple[str, str]] = None
-        self._username: typing.Optional[str] = None
-        self._password: typing.Optional[str] = None
+        self._username: Optional[str] = None
+        self._password: Optional[str] = None
         self._hosts = []
 
         for host in config.datastore.hosts:
