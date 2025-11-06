@@ -7,6 +7,7 @@ export const uri = () => {
 };
 
 export type HowlerFacetSearchRequest = {
+  fields?: string[];
   query?: string;
   mincount?: number;
   rows?: number;

@@ -22,7 +22,7 @@ import CustomButton from 'components/elements/addons/buttons/CustomButton';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { FC } from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 
@@ -35,11 +35,15 @@ const VISUALIZATIONS = ['assessment', 'created', 'escalation', 'status', 'detect
 
 const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard) => void }> = ({ dashboard, addCard }) => {
   const { t } = useTranslation();
-  const views = useContextSelector(ViewContext, ctx => ctx.views ?? []);
+  const views = useContextSelector(ViewContext, ctx => ctx.views ?? {});
+  const fetchViews = useContextSelector(ViewContext, ctx => ctx.fetchViews);
 
   const [selectedType, setSelectedType] = useState<'' | 'view' | 'analytic'>('');
   const [analytics, setAnalytics] = useState<Analytic[]>([]);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [config, _setConfig] = useState<{ [index: string]: any }>({});
+  const [viewOpen, setViewOpen] = useState(false);
+  const [viewLoading, setViewLoading] = useState(false);
 
   const setConfig = useCallback((key: string, value: any) => _setConfig(_config => ({ ..._config, [key]: value })), []);
 
@@ -53,11 +57,53 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard) =>
       type: selectedType,
       config: JSON.stringify(config)
     });
-  }, [addCard, config, selectedType]);
+
+    // Zero the config so we don't prep the user to add the same card
+    // We can leave the analyticId, because it is allowed to be duplicated across viz types
+    ['type', 'viewId'].forEach(key => {
+      if (key in config) {
+        setConfig(key, '');
+      }
+    });
+  }, [selectedType, addCard, config, setConfig]);
+
+  const fetchAllAnalytics = async () => {
+    setAnalyticsLoading(true);
+    const batchSize = 150;
+    let offset = 0;
+    let allAnalytics: Analytic[] = [];
+    let total = 0;
+
+    do {
+      const response = await api.search.analytic.post({
+        query: '*:*',
+        rows: batchSize,
+        offset
+      });
+
+      allAnalytics = [...allAnalytics, ...(response.items ?? [])];
+
+      total = response.total ?? 0;
+      offset += batchSize;
+    } while (offset < total);
+
+    setAnalytics(allAnalytics);
+    setAnalyticsLoading(false);
+  };
 
   useEffect(() => {
-    api.search.analytic.post({ query: '*:*' }).then(result => setAnalytics(result.items ?? []));
+    fetchAllAnalytics();
   }, []);
+
+  const filteredAnalyticVisualizations = useMemo(() => {
+    const existingAnalyticCards = dashboard.filter(_card => _card.type === "analytic");
+    return VISUALIZATIONS.filter(viz => {
+      return !existingAnalyticCards.some(_card => {
+        const parsedConfig = JSON.parse(_card.config);
+        return parsedConfig.analyticId === config.analyticId && parsedConfig.type === viz;
+      });
+    });
+  }, [dashboard, config.analyticId]);
 
   useEffect(() => {
     if (selectedType === 'view') {
@@ -68,6 +114,17 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard) =>
       _setConfig({});
     }
   }, [selectedType]);
+
+  const onViewOpen = useCallback(async () => {
+    setViewOpen(true);
+    setViewLoading(true);
+
+    try {
+      await fetchViews();
+    } finally {
+      setViewLoading(false);
+    }
+  }, [fetchViews]);
 
   return (
     <Grid item xs={12} md={6}>
@@ -111,6 +168,7 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard) =>
                 <Autocomplete
                   sx={{ pt: 1 }}
                   onChange={(__, opt) => setConfig('analyticId', opt.analytic_id)}
+                  loading={analyticsLoading}
                   options={analytics}
                   filterOptions={(options, state) =>
                     options.filter(
@@ -139,16 +197,24 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard) =>
                     onChange={event => setConfig('type', event.target.value as any)}
                     label={t('route.home.add.visualization')}
                   >
-                    {VISUALIZATIONS.map(viz => (
-                      <MenuItem key={viz} value={viz}>
-                        <Stack>
-                          <Typography variant="body1">{t(`route.home.add.visualization.${viz}`)}</Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {t(`route.home.add.visualization.${viz}.description`)}
-                          </Typography>
-                        </Stack>
+                    {filteredAnalyticVisualizations.length > 0 ? (
+                      filteredAnalyticVisualizations.map(viz => (
+                        <MenuItem key={viz} value={viz}>
+                          <Stack>
+                            <Typography variant="body1">{t(`route.home.add.visualization.${viz}`)}</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {t(`route.home.add.visualization.${viz}.description`)}
+                            </Typography>
+                          </Stack>
+                        </MenuItem>
+                      ))
+                    ) : (
+                      <MenuItem disabled>
+                        <Typography variant="body1" color="text.secondary">
+                          {t('route.home.add.visualization.unavailable')}
+                        </Typography>
                       </MenuItem>
-                    ))}
+                    )}
                   </Select>
                 </FormControl>
               </>
@@ -157,11 +223,17 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard) =>
               <>
                 <Autocomplete
                   sx={{ pt: 1 }}
+                  value={views[config.viewId] || null}
                   onChange={(__, opt) => setConfig('viewId', opt.view_id)}
-                  options={views}
+                  onOpen={onViewOpen}
+                  onClose={() => setViewOpen(false)}
+                  open={viewOpen}
+                  loading={viewLoading}
+                  options={Object.values(views)}
                   filterOptions={(options, state) =>
                     options.filter(
                       opt =>
+                        !!opt &&
                         !dashboard?.find(
                           entry => entry.type === 'view' && JSON.parse(entry.config).viewId === opt.view_id
                         ) &&

@@ -1,5 +1,8 @@
+from typing import Any, Union
+
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
+from howler.datastore.exceptions import SearchException
 from howler.datastore.operations import OdmUpdateOperation
 from howler.odm.models.analytic import Analytic
 from howler.odm.models.hit import Hit
@@ -34,6 +37,34 @@ def update_analytic(
     result = storage.analytic.update(analytic_id, operations)
 
     return result
+
+
+def get_matching_analytics(hits: Union[list[Hit], list[dict[str, Any]]]) -> list[Analytic]:
+    """Get a list of matching analytics for the given list of hits.
+
+    Args:
+        hits (Union[list[Hit], list[dict[str, Any]]]): A list of Hit objects or dictionaries representing hits.
+    Returns:
+        list[Analytic]: A list of Analytic objects that match the analytics referenced in the hits.
+    """
+    if len(hits) < 1:
+        return []
+
+    storage = datastore()
+
+    analytic_names: set[str] = set()
+    for hit in hits:
+        analytic_names.add(f'"{sanitize_lucene_query(hit["howler"]["analytic"])}"')
+
+    try:
+        existing_analytics: list[Analytic] = storage.analytic.search(
+            f'name:({" OR ".join(analytic_names)})', as_obj=True
+        )["items"]
+
+        return existing_analytics
+    except SearchException:
+        logger.exception("Exception on analytic matching")
+        return []
 
 
 def save_from_hit(hit: Hit, user: User):

@@ -1,18 +1,17 @@
 import { Clear, Code, Comment, DataObject, History, LinkSharp, OpenInNew, QueryStats } from '@mui/icons-material';
-import { Badge, Box, Divider, Skeleton, Stack, Tab, Tabs, Tooltip, useTheme } from '@mui/material';
+import { Badge, Box, Divider, IconButton, Skeleton, Stack, Tab, Tabs, Tooltip, useTheme } from '@mui/material';
 import TuiIconButton from 'components/elements/addons/buttons/CustomIconButton';
 
 import { Icon } from '@iconify/react/dist/iconify.js';
-import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
-import { DossierContext } from 'components/app/providers/DossierProvider';
+import useMatchers from 'components/app/hooks/useMatchers';
 import { HitContext } from 'components/app/providers/HitProvider';
-import { OverviewContext } from 'components/app/providers/OverviewProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { SocketContext } from 'components/app/providers/SocketProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import VSBox from 'components/elements/addons/layout/vsbox/VSBox';
 import VSBoxContent from 'components/elements/addons/layout/vsbox/VSBoxContent';
 import VSBoxHeader from 'components/elements/addons/layout/vsbox/VSBoxHeader';
+import Phrase from 'components/elements/addons/search/phrase/Phrase';
 import BundleButton from 'components/elements/display/icons/BundleButton';
 import SocketBadge from 'components/elements/display/icons/SocketBadge';
 import JSONViewer from 'components/elements/display/json/JSONViewer';
@@ -43,6 +42,7 @@ import { usePluginStore } from 'react-pluggable';
 import { useLocation } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { getUserList } from 'utils/hitFunctions';
+import { validateRegex } from 'utils/stringUtils';
 import { tryParse } from 'utils/utils';
 import LeadRenderer from '../view/LeadRenderer';
 
@@ -51,20 +51,22 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
   const theme = useTheme();
   const location = useLocation();
   const { emit, isOpen } = useContext(SocketContext);
-  const { getAnalyticFromName } = useContext(AnalyticContext);
-  const { getMatchingOverview, refresh } = useContext(OverviewContext);
+  const { getMatchingOverview, getMatchingDossiers, getMatchingAnalytic } = useMatchers();
   const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
   const pluginStore = usePluginStore();
-
-  const getMatchingDossiers = useContextSelector(DossierContext, ctx => ctx.getMatchingDossiers);
 
   const getHit = useContextSelector(HitContext, ctx => ctx.getHit);
 
   const [userIds, setUserIds] = useState<Set<string>>(new Set());
   const [analytic, setAnalytic] = useState<Analytic>();
+  const [hasOverview, setHasOverview] = useState(false);
   const [tab, setTab] = useState<string>('overview');
   const [loading, setLoading] = useState<boolean>(false);
-  const [dossiers, setDossiers] = useState<Dossier[]>([]);
+  const [filter, setFilter] = useState('');
+
+  // In order to properly check for dossiers, we split dossiers into two
+  const [_dossiers, setDossiers] = useState<Dossier[] | null>(null);
+  const dossiers: Dossier[] = useMemo(() => _dossiers ?? [], [_dossiers]);
 
   const users = useMyUserList(userIds);
 
@@ -79,30 +81,38 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
       return;
     }
 
-    (async () => {
-      if (selected && !hit) {
-        setLoading(true);
-        try {
-          await getHit(selected, true);
-        } finally {
-          setLoading(false);
-          return;
-        }
-      } else if (!hit?.howler.data) {
-        getHit(selected, true);
-      }
+    if (!hit?.howler.data) {
+      setLoading(true);
+      getHit(selected, true).finally(() => setLoading(false));
+      return;
+    }
 
-      setUserIds(getUserList(hit));
-      setAnalytic(await getAnalyticFromName(hit.howler.analytic));
+    setUserIds(getUserList(hit));
 
-      if (tab === 'hit_aggregate' && !hit.howler.is_bundle) {
-        setTab('overview');
-      }
-    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getAnalyticFromName, getHit, selected, tab]);
+  }, [getHit, selected]);
 
-  const matchingOverview = useMemo(() => getMatchingOverview(hit), [getMatchingOverview, hit]);
+  useEffect(() => {
+    if (hit && !analytic) {
+      getMatchingAnalytic(hit).then(setAnalytic);
+    }
+  }, [analytic, getMatchingAnalytic, hit]);
+
+  useEffect(() => {
+    if (hit && !_dossiers) {
+      getMatchingDossiers(hit).then(setDossiers);
+    }
+  }, [_dossiers, getMatchingDossiers, hit]);
+
+  useEffect(() => {
+    getMatchingOverview(hit).then(_overview => setHasOverview(!!_overview));
+  }, [getMatchingOverview, hit]);
+
+  useEffect(() => {
+    if (tab === 'hit_aggregate' && !hit?.howler.is_bundle) {
+      setTab('overview');
+    }
+  }, [hit?.howler.is_bundle, tab]);
 
   useEffect(() => {
     if (selected && isOpen()) {
@@ -122,17 +132,13 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
   }, [emit, selected, isOpen]);
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
-
-  useEffect(() => {
-    if (matchingOverview && tab === 'details') {
+    if (hasOverview && tab === 'details') {
       setTab('overview');
-    } else if (!matchingOverview && tab === 'overview') {
+    } else if (!hasOverview && tab === 'overview') {
       setTab('details');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matchingOverview]);
+  }, [hasOverview]);
 
   /**
    * What to show as the header? If loading a skeleton, then it depends on bundle or not. Bundles don't
@@ -157,34 +163,36 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
       overview: () => <HitOverview hit={hit} />,
       details: () => <HitDetails hit={hit} />,
       hit_comments: () => <HitComments hit={hit} users={users} />,
-      hit_raw: () => <JSONViewer data={!loading && hit} />,
+      hit_raw: () => <JSONViewer data={!loading && hit} hideSearch filter={filter} />,
       hit_data: () => (
-        <JSONViewer data={!loading && hit?.howler?.data?.map(entry => tryParse(entry))} collapse={false} />
+        <JSONViewer
+          data={!loading && hit?.howler?.data?.map(entry => tryParse(entry))}
+          collapse={false}
+          hideSearch
+          filter={filter}
+        />
       ),
       hit_worklog: () => <HitWorklog hit={!loading && hit} users={users} />,
       hit_aggregate: () => <HitSummary query={`howler.bundles:(${hit?.howler?.id})`} />,
       hit_related: () => <HitRelated hit={hit} />,
       ...Object.fromEntries(
-        hit?.howler.dossier?.map((lead, index) => ['lead:' + index, () => <LeadRenderer lead={lead} />]) ?? []
+        (hit?.howler.dossier ?? []).map((lead, index) => [
+          'lead:' + index,
+          () => <LeadRenderer lead={lead} hit={hit} />
+        ])
       ),
       ...Object.fromEntries(
         dossiers.flatMap((_dossier, dossierIndex) =>
-          _dossier.leads?.map((_lead, leadIndex) => [
+          (_dossier.leads ?? []).map((_lead, leadIndex) => [
             `external-lead:${dossierIndex}:${leadIndex}`,
             () => <LeadRenderer lead={_lead} hit={hit} />
           ])
         )
       )
     }[tab]?.();
-  }, [dossiers, hit, loading, tab, users]);
+  }, [dossiers, filter, hit, loading, tab, users]);
 
-  useEffect(() => {
-    if (!hit) {
-      return;
-    }
-
-    getMatchingDossiers(hit.howler.id).then(setDossiers);
-  }, [getMatchingDossiers, hit]);
+  const hasError = useMemo(() => !validateRegex(filter), [filter]);
 
   return (
     <VSBox top={10} sx={{ height: '100%', flex: 1 }}>
@@ -257,7 +265,7 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
         )}
         <VSBoxHeader ml={-1} mr={-1} pb={1} sx={{ top: '0px' }}>
           <Tabs
-            value={tab === 'overview' && !matchingOverview ? 'details' : tab}
+            value={tab === 'overview' && !hasOverview ? 'details' : tab}
             sx={{
               display: 'flex',
               flexDirection: 'row',
@@ -308,7 +316,7 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
             {hit?.howler?.is_bundle && (
               <Tab label={t('hit.viewer.aggregate')} value="hit_aggregate" onClick={() => setTab('hit_aggregate')} />
             )}
-            {matchingOverview && (
+            {hasOverview && (
               <Tab label={t('hit.viewer.overview')} value="overview" onClick={() => setTab('overview')} />
             )}
             <Tab label={t('hit.viewer.details')} value="details" onClick={() => setTab('details')} />
@@ -327,7 +335,7 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
               />
             ))}
             {dossiers.flatMap((_dossier, dossierIndex) =>
-              _dossier.leads?.map((_lead, leadIndex) => (
+              (_dossier.leads ?? []).map((_lead, leadIndex) => (
                 <Tab
                   // eslint-disable-next-line react/no-array-index-key
                   key={`external-lead:${dossierIndex}:${leadIndex}`}
@@ -385,6 +393,21 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
               onClick={() => setTab('hit_related')}
             />
           </Tabs>
+          {['hit_raw', 'hit_data'].includes(tab) && (
+            <Phrase
+              sx={{ mt: 1, pr: 1 }}
+              value={filter}
+              onChange={setFilter}
+              error={hasError}
+              label={t('json.viewer.search.label')}
+              placeholder={t('json.viewer.search.prompt')}
+              endAdornment={
+                <IconButton onClick={() => setFilter('')}>
+                  <Clear />
+                </IconButton>
+              }
+            />
+          )}
         </VSBoxHeader>
         <ErrorBoundary>
           <VSBoxContent mr={-1} ml={-1} height="100%">

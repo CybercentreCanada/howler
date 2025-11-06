@@ -1,4 +1,4 @@
-import ErrorIcon from '@mui/icons-material/Error';
+import { Error } from '@mui/icons-material';
 import { Button, Divider, Stack, Typography } from '@mui/material';
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -11,7 +11,7 @@ const LoginErrorModal: FC<{ error: Error }> = ({ error }) => {
       <img src="/images/doggie.png" alt="" />
       <Stack>
         <Stack direction="row" alignItems="center" spacing={1}>
-          <ErrorIcon color="error" />
+          <Error color="error" />
           <Typography variant="h5">{t('user.error.modal.header')}</Typography>
         </Stack>
         <Divider orientation="horizontal" sx={{ mt: 1, mb: 1 }} />

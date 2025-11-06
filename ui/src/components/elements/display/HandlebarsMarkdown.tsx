@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import Throttler from 'utils/Throttler';
 import { hashCode } from 'utils/utils';
 import Markdown, { type MarkdownProps } from '../display/Markdown';
-import { helpers } from './handlebars/helpers';
+import { useHelpers } from './handlebars/helpers';
 
 type HandlebarsInstance = typeof Handlebars;
 
@@ -20,6 +20,7 @@ const THROTTLER = new Throttler(500);
 
 const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disableLinks = false }) => {
   const { t } = useTranslation();
+  const helpers = useHelpers();
 
   const [rendered, setRendered] = useState('');
 
@@ -48,7 +49,7 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
   }, []);
 
   useEffect(() => {
-    helpers().forEach(helper => {
+    helpers.forEach(helper => {
       if (handlebars.helpers[helper.keyword] && !helper.componentCallback) {
         return;
       }
@@ -73,7 +74,7 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
         return helper.callback(...args);
       });
     });
-  }, [handlebars, mdComponents]);
+  }, [handlebars, helpers, mdComponents]);
 
   useEffect(() => {
     THROTTLER.debounce(async () => {

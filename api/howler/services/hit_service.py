@@ -1,3 +1,4 @@
+import functools
 import json
 import re
 import typing
@@ -29,11 +30,11 @@ from howler.odm.models.ecs.event import Event
 from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import HitOperationType, HitStatus, HitStatusTransition, Log
 from howler.odm.models.user import User
-from howler.services import action_service
+from howler.services import action_service, analytic_service, dossier_service, overview_service, template_service
 from howler.utils.dict_utils import extra_keys, flatten
 from howler.utils.uid import get_random_id
 
-log = get_logger(__file__)
+logger = get_logger(__file__)
 
 odm_helper = OdmHelper(Hit)
 
@@ -249,20 +250,34 @@ def validate_hit_ids(hit_ids: list[str]) -> bool:
 
 
 def convert_hit(data: dict[str, Any], unique: bool, ignore_extra_values: bool = False) -> tuple[Hit, list[str]]:  # noqa: C901
-    """Validate if the provided dict is a valid hit.
+    """Validate and convert a dictionary to a Hit ODM object.
+
+    This function performs comprehensive validation on input data to ensure it can be
+    safely converted to a Hit object. It handles hash generation, ID assignment,
+    data normalization, and validation warnings. The function also checks for
+    deprecated fields and enforces naming conventions for analytics and detections.
 
     Args:
-        data (dict[str, Any]): The dict to validate and convert to an ODM
-        unique (bool): Whether to check if the hit ID already exists in the database
-        ignore_extra_values (bool, optional): Whether to throw an exception for any invalid extra values, or simply
-            emit a warning. Defaults to False.
-
-    Raises:
-        HowlerValueError: Raised if a bundle is included when creating the hit.
-        ResourceExists: unique is True, and there already exists a hit with this hit ID in the database.
+        data: Dictionary containing hit data to validate and convert
+        unique: Whether to enforce uniqueness by checking if the hit ID already exists
+        ignore_extra_values: Whether to ignore invalid extra fields (True) or raise an exception (False)
 
     Returns:
-        Hit: The validated and converted ODM.
+        Tuple containing:
+        - Hit: The validated and converted ODM object
+        - list[str]: List of validation warnings (unused fields, deprecated fields, naming issues)
+
+    Raises:
+        HowlerValueError: If bundle is specified during creation, invalid parameters are provided,
+                         or naming conventions are violated
+        HowlerTypeError: If the data cannot be converted to a Hit ODM object
+        ResourceExists: If unique=True and a hit with the generated ID already exists
+
+    Note:
+        - Automatically generates a hash based on analytic, detection, and raw data
+        - Assigns a random ID if not provided
+        - Normalizes data fields to ensure consistent storage format
+        - Validates analytic and detection names against best practices (letters and spaces only)
     """
     data = flatten(data, odm=Hit)
 
@@ -340,7 +355,14 @@ def convert_hit(data: dict[str, Any], unique: bool, ignore_extra_values: bool = 
 
 
 def exists(id: str):
-    "Check if a hit exists"
+    """Check if a hit exists in the datastore.
+
+    Args:
+        id: The unique identifier of the hit to check
+
+    Returns:
+        bool: True if the hit exists, False otherwise
+    """
     return datastore().hit.exists(id)
 
 
@@ -349,7 +371,17 @@ def get_hit(
     as_odm: bool = False,
     version: bool = False,
 ):
-    """Return hit object as either an ODM or Dict"""
+    """Retrieve a hit from the datastore.
+
+    Args:
+        id: The unique identifier of the hit to retrieve
+        as_odm: Whether to return the hit as an ODM object (True) or dictionary (False)
+        version: Whether to include version information in the response
+
+    Returns:
+        Hit object (if as_odm=True) or dictionary representation of the hit.
+        Returns None if the hit doesn't exist.
+    """
     return datastore().hit.get_if_exists(key=id, as_obj=as_odm, version=version)
 
 
@@ -366,7 +398,23 @@ def create_hit(
     user: Optional[str] = None,
     overwrite: bool = False,
 ) -> bool:
-    """Create a hit in the database"""
+    """Create a new hit in the database.
+
+    This function saves a hit to the datastore, optionally adding a creation log entry
+    and updating metrics. It will prevent overwriting existing hits unless explicitly allowed.
+
+    Args:
+        id: The unique identifier for the hit
+        hit: The Hit ODM object to save
+        user: Optional username to record in the creation log
+        overwrite: Whether to allow overwriting an existing hit with the same ID
+
+    Returns:
+        bool: True if the hit was successfully created
+
+    Raises:
+        ResourceExists: If a hit with the same ID already exists and overwrite=False
+    """
     if not overwrite and does_hit_exist(id):
         raise ResourceExists("Hit %s already exists in datastore" % id)
 
@@ -383,7 +431,23 @@ def update_hit(
     user: Optional[str] = None,
     version: Optional[str] = None,
 ):
-    """Update one or more properties of a hit in the database."""
+    """Update one or more properties of a hit in the database.
+
+    This function applies a list of update operations to modify hit properties.
+    Note that hit status cannot be modified through this function - use transition_hit instead.
+
+    Args:
+        hit_id: The unique identifier of the hit to update
+        operations: List of ODM update operations to apply
+        user: Optional username to record in the update log
+        version: Optional version string for optimistic locking
+
+    Returns:
+        Tuple of (updated_hit_data, new_version)
+
+    Raises:
+        HowlerValueError: If attempting to modify hit status through this function
+    """
     # Status of a hit should only be updated through the transition function
     if _modifies_prop("howler.status", operations):
         raise HowlerValueError(
@@ -395,7 +459,18 @@ def update_hit(
 
 @typing.no_type_check
 def save_hit(hit: Hit, version: Optional[str] = None) -> tuple[Hit, str]:
-    "Save a hit to the datastore"
+    """Save a hit to the datastore and emit an event notification.
+
+    This function persists a hit object to the database and emits an event
+    to notify other systems of the change.
+
+    Args:
+        hit: The Hit ODM object to save
+        version: Optional version string for optimistic locking
+
+    Returns:
+        Tuple of (hit_data_dict, version_string)
+    """
     datastore().hit.save(hit.howler.id, hit, version=version)
     data, _version = datastore().hit.get(hit.howler.id, as_obj=False, version=True)
     event_service.emit("hits", {"hit": data, "version": _version})
@@ -409,7 +484,23 @@ def _update_hit(
     user: Optional[str] = None,
     version: Optional[str] = None,
 ) -> tuple[Hit, str]:
-    """Add the worklog operations to the operation list"""
+    """Internal function to update a hit with proper logging and event emission.
+
+    This function applies update operations to a hit, automatically adding worklog entries
+    for non-silent operations and emitting events to notify other systems of changes.
+
+    Args:
+        hit_id: The unique identifier of the hit to update
+        operations: List of ODM update operations to apply
+        user: Optional username to record in operation logs
+        version: Optional version string for optimistic locking
+
+    Returns:
+        Tuple of (updated_hit_data, new_version)
+
+    Raises:
+        HowlerValueError: If user parameter is provided but not a string
+    """
     final_operations = []
 
     if user and not isinstance(user, str):
@@ -444,7 +535,7 @@ def _update_hit(
         else:
             operation_type = HitOperationType.SET
 
-        log.debug("%s - %s - %s -> %s", hit_id, operation.key, previous_value, operation.value)
+        logger.debug("%s - %s - %s -> %s", hit_id, operation.key, previous_value, operation.value)
         final_operations.append(operation)
 
         if not operation.silent:
@@ -486,13 +577,26 @@ def get_transitions(status: HitStatus) -> list[str]:
 
 
 def get_all_children(hit: Hit):
-    "Get a list of all the children for a given hit"
+    """Get a list of all child hits for a given hit, including nested children.
+
+    This function recursively traverses bundle structures to find all child hits.
+    If a child hit is itself a bundle, it will recursively get its children too.
+
+    Args:
+        hit: The parent hit to get children for
+
+    Returns:
+        List of all child hits (may include None values for missing hits)
+    """
+    # Get immediate child hits from the hit's bundle
     child_hits = [get_hit(hit_id) for hit_id in hit["howler"].get("hits", [])]
 
+    # Recursively process child hits that are themselves bundles
     for entry in child_hits:
         if not entry:
             continue
 
+        # If this child is a bundle, get its children too
         if entry["howler"]["is_bundle"]:
             child_hits.extend(get_all_children(entry))
 
@@ -506,76 +610,96 @@ def transition_hit(
     version: Optional[str] = None,
     **kwargs,
 ):
-    """Transition a hit from one status to another while updating related properties
+    """Transition a hit from one status to another while updating related properties.
+
+    This function handles status transitions for both individual hits and bundles,
+    applying the same transition to all child hits in a bundle. For certain transitions
+    (PROMOTE, DEMOTE, ASSESS, RE_EVALUATE), it also executes bulk actions and emits events.
 
     Args:
-        id (str): The id of the hit to transition
-        transition (HitStatusTransition): The transition to execute
-        user (dict[str, Any]): The user running the transition
-        version (str): A version to validate against. The transition will not run if the version doesn't match.
+        id: The id of the hit to transition
+        transition: The transition to execute (e.g., ASSIGN_TO_ME, ASSESS, PROMOTE)
+        user: The user running the transition
+        version: Optional version to validate against. The transition will not run if the version doesn't match.
+        **kwargs: Additional arguments including potential 'hit' object and 'assessment' value
+
+    Raises:
+        NotFoundException: If the hit does not exist
     """
-    hit: Hit = get_hit(id, as_odm=False) if not kwargs.get("hit", None) else kwargs.pop("hit")
+    # Get the primary hit (either provided in kwargs or fetch from database)
+    primary_hit: Hit = kwargs.pop("hit", None) or get_hit(id, as_odm=False)
+
+    if not primary_hit:
+        raise NotFoundException("Hit does not exist")
 
     workflow: Workflow = get_hit_workflow()
 
-    if not hit:
-        raise NotFoundException("Hit does not exist")
+    # Get all child hits that need to be processed along with the primary hit
+    child_hits = get_all_children(primary_hit)
+    primary_hit_status = primary_hit["howler"]["status"]
 
-    child_hits = get_all_children(hit)
+    # Log all hits that will be transitioned
+    all_hit_ids = [h["howler"]["id"] for h in ([primary_hit] + [ch for ch in child_hits if ch])]
+    logger.debug("Transitioning (%s)", ", ".join(all_hit_ids))
 
-    log.debug(
-        "Transitioning (%s)",
-        ", ".join([h["howler"]["id"] for h in ([hit] + [ch for ch in child_hits if ch])]),
-    )
+    # Process each hit (primary + children) with the workflow transition
+    for current_hit in [primary_hit] + [ch for ch in child_hits if ch]:
+        current_hit_status = current_hit["howler"]["status"]
+        current_hit_id = current_hit["howler"]["id"]
 
-    for _hit in [hit] + [ch for ch in child_hits if ch]:
-        hit_status = _hit["howler"]["status"]
-        hit_id = _hit["howler"]["id"]
-
-        if hit_status != hit["howler"]["status"]:
-            log.debug("Skipping %s", hit_id)
+        # Skip hits that don't match the primary hit's status
+        # This ensures consistent state transitions across bundles
+        if current_hit_status != primary_hit_status:
+            logger.debug("Skipping %s (status mismatch)", current_hit_id)
             continue
 
-        updates = workflow.transition(hit_status, transition, user=user, hit=_hit, **kwargs)
+        # Apply the workflow transition to get required updates
+        updates = workflow.transition(current_hit_status, transition, user=user, hit=current_hit, **kwargs)
 
+        # Apply updates if any were generated by the workflow
         if updates:
-            _update_hit(
-                hit_id,
-                updates,
-                user["uname"],
-                version=(version if (hit_id == hit["howler"]["id"] and version) else None),
-            )
+            # Only apply version validation to the primary hit
+            hit_version = version if (current_hit_id == primary_hit["howler"]["id"] and version) else None
+            _update_hit(current_hit_id, updates, user["uname"], version=hit_version)
 
-    if transition in [
+    # Execute bulk actions for transitions that require them
+    # These transitions need additional processing beyond the workflow
+    transitions_requiring_bulk_actions = [
         HitStatusTransition.PROMOTE,
         HitStatusTransition.DEMOTE,
         HitStatusTransition.ASSESS,
         HitStatusTransition.RE_EVALUATE,
-    ]:
+    ]
+
+    if transition in transitions_requiring_bulk_actions:
+        # Determine the trigger action (promote/demote) based on transition type
         trigger: Union[Literal["promote"], Literal["demote"]]
 
         if transition == HitStatusTransition.ASSESS:
+            # For assessments, determine promotion/demotion based on escalation level
             new_escalation = AssessmentEscalationMap[kwargs["assessment"]]
-
-            if new_escalation == Escalation.EVIDENCE:
-                trigger = "promote"
-            else:
-                trigger = "demote"
+            trigger = "promote" if new_escalation == Escalation.EVIDENCE else "demote"
         elif transition == HitStatusTransition.RE_EVALUATE:
+            # Re-evaluation always promotes the hit
             trigger = "promote"
         else:
+            # For direct PROMOTE/DEMOTE transitions, use the transition name
             trigger = cast(Union[Literal["promote"], Literal["demote"]], transition)
 
+        # Commit database changes before executing bulk actions
         datastore().hit.commit()
-        action_service.bulk_execute_on_query(
-            f"howler.id:({' OR '.join(h['howler']['id'] for h in ([hit] + child_hits))})",
-            trigger=trigger,
-            user=user,
-        )
 
-        for _hit in [hit] + child_hits:
-            data, _version = datastore().hit.get(_hit["howler"]["id"], as_obj=False, version=True)
-            event_service.emit("hits", {"hit": data, "version": _version})
+        # Build query for all processed hits (primary + children)
+        all_processed_hits = [primary_hit] + child_hits
+        hit_query = f"howler.id:({' OR '.join(h['howler']['id'] for h in all_processed_hits)})"
+
+        # Execute bulk actions on all hits
+        action_service.bulk_execute_on_query(hit_query, trigger=trigger, user=user)
+
+        # Emit events for all processed hits to notify other systems
+        for processed_hit in all_processed_hits:
+            data, hit_version = datastore().hit.get(processed_hit["howler"]["id"], as_obj=False, version=True)
+            event_service.emit("hits", {"hit": data, "version": hit_version})
 
 
 DELETED_HITS = Counter(f"{APP_NAME.replace('-', '_')}_deleted_hits_total", "The number of deleted hits")
@@ -619,21 +743,25 @@ def search(
     track_total_hits: Optional[Any] = None,
     as_obj: bool = True,
 ) -> HitSearchResult:
-    """Search for a list of hits
+    """Search for hits in the datastore using a query.
+
+    This function provides a flexible search interface for finding hits based on
+    various criteria. It supports pagination, sorting, field limiting, and other
+    advanced search features.
 
     Args:
-        query (str): The query to execute
-        offset (int, optional): The offset (how many entries to skip). Defaults to 0.
-        rows (int, optional): How many rows to return. Defaults to None.
-        sort (any, optional): How to sorty the results. Defaults to None.
-        fl (any, optional): Defaults to None.
-        timeout (any, optional): Defaults to None.
-        deep_paging_id (any, optional): Defaults to None.
-        track_total_hits (any, optional): Defaults to None.
-        as_obj (bool, optional): Defaults to True.
+        query: The search query string (supports Lucene syntax)
+        offset: Number of results to skip (for pagination)
+        rows: Maximum number of results to return
+        sort: Sort criteria for the results
+        fl: Field list - which fields to include in results
+        timeout: Query timeout duration
+        deep_paging_id: Identifier for deep pagination
+        track_total_hits: Whether to track the total hit count
+        as_obj: Whether to return results as ODM objects (True) or dictionaries (False)
 
     Returns:
-        HitSearchResult: A list of matching hits
+        HitSearchResult containing the matching hits and metadata
     """
     return datastore().hit.search(
         query=query,
@@ -646,3 +774,120 @@ def search(
         track_total_hits=track_total_hits,
         as_obj=as_obj,
     )
+
+
+TYPE_PRIORITY = {"personal": 2, "readonly": 1, "global": 0, None: 0}
+
+
+def __compare_metadata(object_a: dict[str, Any], object_b: dict[str, Any]) -> int:
+    # Sort priority:
+    # 1. personal > readonly > global
+    # 2. detection > !detection
+
+    if object_a.get("type", None) != object_b.get("type", None):
+        return TYPE_PRIORITY[object_b.get("type", None)] - TYPE_PRIORITY[object_a.get("type", None)]
+
+    if object_a.get("detection", None) and not object_b.get("detection", None):
+        return -1
+
+    if not object_a.get("detection", None) and object_b.get("detection", None):
+        return 1
+
+    return 0
+
+
+def __match_metadata(candidates: list[dict[str, Any]], hit: dict[str, Any]) -> Optional[dict[str, Any]]:
+    matching_candidates: list[dict[str, Any]] = []
+
+    for candidate in candidates:
+        if candidate["analytic"].lower() != hit["howler"]["analytic"].lower():
+            continue
+
+        if not candidate.get("detection", None):
+            matching_candidates.append(candidate)
+            continue
+
+        if not hit["howler"].get("detection", None):
+            continue
+
+        if hit["howler"]["detection"].lower() != candidate["detection"].lower():
+            continue
+
+        matching_candidates.append(candidate)
+
+    if len(matching_candidates) < 1:
+        return None
+
+    return sorted(matching_candidates, key=functools.cmp_to_key(__compare_metadata))[0]
+
+
+def augment_metadata(data: list[dict[str, Any]] | dict[str, Any], metadata: list[str], user: dict[str, Any]):  # noqa: C901
+    """Augment hit search results with additional metadata.
+
+    This function enriches hit data by adding related information such as templates,
+    overviews, and matching dossiers. The metadata is added as special fields prefixed
+    with double underscores (e.g., __template, __overview, __dossiers).
+
+    Args:
+        data: Hit data - either a single hit dictionary or list of hit dictionaries
+        metadata: List of metadata types to include ('template', 'overview', 'dossiers')
+        user: User context for determining accessible templates and other user-specific data
+
+    Note:
+        This function modifies the input data in-place, adding metadata fields.
+        Templates are filtered based on user permissions (global or owned by user).
+    """
+    if isinstance(data, list):
+        hits = data
+    elif data is not None:
+        hits = [data]
+    else:
+        hits = []
+
+    if len(hits) < 1:
+        return
+
+    logger.debug("Augmenting %s hits with %s", len(hits), ",".join(metadata))
+
+    if "template" in metadata:
+        template_candidates = template_service.get_matching_templates(hits, user["uname"], as_odm=False)
+
+        logger.debug("\tRetrieved %s matching templates", len(template_candidates))
+
+        for hit in hits:
+            hit["__template"] = __match_metadata(cast(list[dict[str, Any]], template_candidates), hit)
+
+    if "overview" in metadata:
+        overview_candidates = overview_service.get_matching_overviews(hits, as_odm=False)
+
+        logger.debug("\tRetrieved %s matching overviews", len(overview_candidates))
+
+        for hit in hits:
+            hit["__overview"] = __match_metadata(cast(list[dict[str, Any]], overview_candidates), hit)
+
+    if "analytic" in metadata:
+        matched_analytics = analytic_service.get_matching_analytics(hits)
+        logger.debug("\tRetrieved %s matching analytics", len(matched_analytics))
+
+        for hit in hits:
+            matched_analytic = next(
+                (
+                    analytic
+                    for analytic in matched_analytics
+                    if analytic.name.lower() == hit["howler"]["analytic"].lower()
+                ),
+                None,
+            )
+
+            hit["__analytic"] = matched_analytic.as_primitives() if matched_analytic else None
+
+    if "dossiers" in metadata:
+        dossiers: list[dict[str, Any]] = datastore().dossier.search(
+            "dossier_id:*",
+            as_obj=False,
+            # TODO: Eventually implement caching here
+            rows=1000,
+        )["items"]
+
+        for hit in hits:
+            hit["__dossiers"] = dossier_service.get_matching_dossiers(hit, dossiers)

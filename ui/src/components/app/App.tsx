@@ -67,7 +67,6 @@ import AnalyticProvider from './providers/AnalyticProvider';
 import ApiConfigProvider, { ApiConfigContext } from './providers/ApiConfigProvider';
 import AvatarProvider from './providers/AvatarProvider';
 import CustomPluginProvider from './providers/CustomPluginProvider';
-import DossierProvider from './providers/DossierProvider';
 import FavouriteProvider from './providers/FavouritesProvider';
 import FieldProvider from './providers/FieldProvider';
 import HitProvider from './providers/HitProvider';
@@ -76,7 +75,6 @@ import ModalProvider from './providers/ModalProvider';
 import OverviewProvider from './providers/OverviewProvider';
 import ParameterProvider from './providers/ParameterProvider';
 import SocketProvider from './providers/SocketProvider';
-import TemplateProvider from './providers/TemplateProvider';
 import UserListProvider from './providers/UserListProvider';
 import ViewProvider from './providers/ViewProvider';
 
@@ -168,31 +166,27 @@ const MyAppProvider: FC<PropsWithChildren> = ({ children }) => {
         <CustomPluginProvider>
           <ErrorBoundary>
             <ErrorBoundary>
-              <DossierProvider>
-                <ViewProvider>
-                  <AvatarProvider>
-                    <ModalProvider>
-                      <FieldProvider>
-                        <LocalStorageProvider>
-                          <SocketProvider>
-                            <HitProvider>
-                              <TemplateProvider>
-                                <OverviewProvider>
-                                  <AnalyticProvider>
-                                    <FavouriteProvider>
-                                      <UserListProvider>{children}</UserListProvider>
-                                    </FavouriteProvider>
-                                  </AnalyticProvider>
-                                </OverviewProvider>
-                              </TemplateProvider>
-                            </HitProvider>
-                          </SocketProvider>
-                        </LocalStorageProvider>
-                      </FieldProvider>
-                    </ModalProvider>
-                  </AvatarProvider>
-                </ViewProvider>
-              </DossierProvider>
+              <ViewProvider>
+                <AvatarProvider>
+                  <ModalProvider>
+                    <FieldProvider>
+                      <LocalStorageProvider>
+                        <SocketProvider>
+                          <HitProvider>
+                            <OverviewProvider>
+                              <AnalyticProvider>
+                                <FavouriteProvider>
+                                  <UserListProvider>{children}</UserListProvider>
+                                </FavouriteProvider>
+                              </AnalyticProvider>
+                            </OverviewProvider>
+                          </HitProvider>
+                        </SocketProvider>
+                      </LocalStorageProvider>
+                    </FieldProvider>
+                  </ModalProvider>
+                </AvatarProvider>
+              </ViewProvider>
             </ErrorBoundary>
           </ErrorBoundary>
         </CustomPluginProvider>
@@ -424,6 +418,7 @@ const router = createBrowserRouter([
           }
         ]
       },
+      ...howlerPluginStore.routes,
       {
         path: '*',
         element: <NotFoundPage />

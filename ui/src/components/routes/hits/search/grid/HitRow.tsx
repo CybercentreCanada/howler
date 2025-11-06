@@ -1,20 +1,18 @@
 import { KeyboardArrowUp } from '@mui/icons-material';
 import { Box, Collapse, IconButton, lighten, Stack, TableCell, TableRow, Typography, useTheme } from '@mui/material';
 import { HitContext } from 'components/app/providers/HitProvider';
-import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import Assigned from 'components/elements/hit/elements/Assigned';
 import EscalationChip from 'components/elements/hit/elements/EscalationChip';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
-import useHitSelection from 'components/hooks/useHitSelection';
 import { get } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
 import { memo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
-import EnhancedCell from './EnchancedCell';
+import EnhancedCell from './EnhancedCell';
 
 const HitRow: FC<{
   hit: Hit;
@@ -22,17 +20,14 @@ const HitRow: FC<{
   columns: string[];
   columnWidths: Record<string, string>;
   collapseMainColumn: boolean;
-}> = ({ hit, analyticIds, columns, columnWidths, collapseMainColumn }) => {
+  onClick: (e: React.MouseEvent<HTMLDivElement>, hit: Hit) => void;
+}> = ({ hit, analyticIds, columns, columnWidths, collapseMainColumn, onClick }) => {
   const theme = useTheme();
   const { t } = useTranslation();
 
   const selectedHits = useContextSelector(HitContext, ctx => ctx.selectedHits);
 
-  const response = useContextSelector(HitSearchContext, ctx => ctx.response);
-
   const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
-
-  const { onClick } = useHitSelection(response);
 
   const [expandRow, setExpandRow] = useState(false);
 
@@ -105,15 +100,15 @@ const HitRow: FC<{
             className={`col-${col.replaceAll('.', '-')}`}
             key={col}
             value={get(hit, col) ?? t('none')}
-            sx={columnWidths[col] ? { width: columnWidths[col] } : { width: '150px', maxWidth: '300px' }}
+            sx={columnWidths[col] ? { width: columnWidths[col] } : { width: '220px', maxWidth: '300px' }}
+            field={col}
           />
         ))}
-        <TableCell style={{ borderBottom: 'none' }} />
       </TableRow>
-      <TableRow>
+      <TableRow onClick={ev => onClick(ev, hit)}>
         <TableCell colSpan={columns.length + 2} style={{ paddingBottom: 0, paddingTop: 0 }}>
           <Collapse in={expandRow} unmountOnExit>
-            <Box width="100%" maxWidth="1200px" margin={1} onClick={ev => onClick(ev, hit)}>
+            <Box width="100%" maxWidth="1200px" margin={1}>
               <HitCard id={hit.howler.id} layout={HitLayout.NORMAL} />
             </Box>
           </Collapse>

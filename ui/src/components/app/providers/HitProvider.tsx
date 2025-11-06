@@ -3,9 +3,10 @@ import useMyApi from 'components/hooks/useMyApi';
 import { uniq } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { HitUpdate } from 'models/socket/HitUpdate';
+import type { WithMetadata } from 'models/WithMetadata';
 import type { FC, PropsWithChildren } from 'react';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { createContext } from 'use-context-selector';
+import { createContext, useContextSelector } from 'use-context-selector';
 import { SocketContext, type RecievedDataType } from './SocketProvider';
 
 interface HitProviderType {
@@ -16,7 +17,7 @@ interface HitProviderType {
   clearSelectedHits: (except?: string) => void;
   loadHits: (hits: Hit[]) => void;
   updateHit: (newHit: Hit) => void;
-  getHit: (id: string, force?: boolean) => Promise<Hit>;
+  getHit: (id: string, force?: boolean) => Promise<WithMetadata<Hit>>;
 }
 
 export const HitContext = createContext<HitProviderType>(null);
@@ -52,7 +53,14 @@ const HitProvider: FC<PropsWithChildren> = ({ children }) => {
         // eslint-disable-next-line no-console
         console.debug('Received websocket update for hit', data.hit.howler.id);
         hitRequests.current[data.hit.howler.id] = Promise.resolve(data.hit);
-        setHits(_hits => ({ ..._hits, [data.hit.howler.id]: data.hit }));
+
+        setHits(_hits => ({
+          ..._hits,
+          [data.hit.howler.id]: {
+            ..._hits[data.hit.howler.id],
+            ...data.hit
+          }
+        }));
       }
     },
     []
@@ -71,7 +79,7 @@ const HitProvider: FC<PropsWithChildren> = ({ children }) => {
   const getHit = useCallback(
     async (id: string, force = false) => {
       if (!hitRequests.current[id] || force) {
-        hitRequests.current[id] = dispatchApi(api.hit.get(id));
+        hitRequests.current[id] = dispatchApi(api.hit.get(id, ['template', 'dossiers', 'analytic', 'overview']));
         const newHit = await hitRequests.current[id];
         setHits(_hits => ({ ..._hits, [id]: newHit }));
       }
@@ -147,6 +155,10 @@ const HitProvider: FC<PropsWithChildren> = ({ children }) => {
       {children}
     </HitContext.Provider>
   );
+};
+
+export const useHitContextSelector = <Selected,>(selector: (value: HitProviderType) => Selected): Selected => {
+  return useContextSelector<HitProviderType, Selected>(HitContext, selector);
 };
 
 export default HitProvider;

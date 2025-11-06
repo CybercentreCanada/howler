@@ -1,12 +1,11 @@
 import { useMonaco } from '@monaco-editor/react';
-import { Height, Search } from '@mui/icons-material';
+import { Clear, Height, History, Search } from '@mui/icons-material';
 import { Badge, Box, Card, Skeleton, Tooltip, alpha, useTheme } from '@mui/material';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import TuiIconButton from 'components/elements/addons/buttons/CustomIconButton';
 import QueryEditor from 'components/routes/advanced/QueryEditor';
 import type { IDisposable, editor } from 'monaco-editor';
 
-import HistoryIcon from '@mui/icons-material/History';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import type { FC } from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -194,15 +193,26 @@ const HitQuery: FC<HitQueryProps> = ({
         query={preppedQuery}
         setQuery={setQuery}
         language="lucene"
-        height={multiline ? '100%' : '20px'}
+        height={multiline ? `${DEFAULT_MULTILINE_HEIGHT - 30}px` : '20px'}
         onMount={onMount}
         editorOptions={options}
       />
       {fzfSearch && (
         <Tooltip title={t('route.history')}>
-          <HistoryIcon />
+          <History />
         </Tooltip>
       )}
+      <TuiIconButton
+        disabled={searching || disabled}
+        onClick={() => setQuery('howler.id:*')}
+        sx={{ ml: 1, alignSelf: 'start', flexShrink: 0 }}
+        size={compact ? 'small' : 'medium'}
+      >
+        <Tooltip title={t('route.clear')}>
+          <Clear sx={{ fontSize: '20px' }} />
+        </Tooltip>
+      </TuiIconButton>
+
       <TuiIconButton
         disabled={searching || disabled}
         onClick={search}

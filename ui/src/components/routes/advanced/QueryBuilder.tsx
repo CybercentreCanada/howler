@@ -21,8 +21,11 @@ import {
   useMediaQuery,
   useTheme
 } from '@mui/material';
+import Popper, { type PopperProps } from '@mui/material/Popper';
 import api from 'api';
 import type { HowlerEQLSearchResponse, HowlerSearchResponse } from 'api/search';
+import type { HowlerFacetSearchResponse } from 'api/search/facet';
+import type { HowlerGroupedSearchResponse } from 'api/search/grouped';
 import PageCenter from 'commons/components/pages/PageCenter';
 import { parseEvent } from 'commons/components/utils/keyboard';
 import { FieldContext } from 'components/app/providers/FieldProvider';
@@ -31,8 +34,8 @@ import CustomButton from 'components/elements/addons/buttons/CustomButton';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import JSONViewer from 'components/elements/display/json/JSONViewer';
 import useMySnackbar from 'components/hooks/useMySnackbar';
+import dayjs from 'dayjs';
 import type { Hit } from 'models/entities/generated/Hit';
-import moment from 'moment';
 import {
   useCallback,
   useContext,
@@ -72,8 +75,8 @@ description: A basic example of using sigma rule notation to query howler
 references:
     - https://github.com/SigmaHQ/sigma
 author: You
-date: ${moment().format('YYYY/MM/DD')}
-modified: ${moment().format('YYYY/MM/DD')}
+date: ${dayjs().format('YYYY/MM/DD')}
+modified: ${dayjs().format('YYYY/MM/DD')}
 tags:
     - attack.command_and_control
 logsource:
@@ -94,7 +97,17 @@ level: informational
 `
 };
 
-type SearchResponse<T> = HowlerSearchResponse<T> | HowlerEQLSearchResponse<T>;
+const LUCENE_QUERY_OPTIONS: ('default' | 'facet' | 'groupby')[] = ['default', 'facet', 'groupby'];
+
+type SearchResponse<T> =
+  | HowlerSearchResponse<T>
+  | HowlerEQLSearchResponse<T>
+  | { [index: string]: HowlerFacetSearchResponse }
+  | HowlerGroupedSearchResponse<T>;
+
+const CustomPopper = (props: PopperProps) => {
+  return <Popper {...props} style={{ width: 'fit-content' }} placement="bottom-start" />;
+};
 
 const QueryBuilder: FC = () => {
   const { t } = useTranslation();
@@ -109,6 +122,8 @@ const QueryBuilder: FC = () => {
   const [type, setType] = useState<'eql' | 'lucene' | 'yaml'>('lucene');
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState(DEFAULT_VALUES.lucene);
+  const [queryType, setQueryType] = useState(LUCENE_QUERY_OPTIONS[0]);
+  const [groupByField, setGroupByField] = useState<string>(null);
   const [allFields, setAllFields] = useState(true);
   const [fields, setFields] = useState<string[]>(['howler.id']);
   const [response, setResponse] = useState<SearchResponse<Hit>>(null);
@@ -131,10 +146,23 @@ const QueryBuilder: FC = () => {
 
       let result: SearchResponse<Hit>;
       if (type === 'lucene') {
-        result = await api.search.hit.post({
-          query: sanitizeMultilineLucene(query),
-          ...searchProperties
-        });
+        if (queryType === 'facet') {
+          result = await api.search.facet.hit.post({
+            query: sanitizeMultilineLucene(query),
+            rows: STEPS[rows],
+            fields
+          });
+        } else if (queryType === 'groupby') {
+          result = await api.search.grouped.hit.post(groupByField, {
+            query: sanitizeMultilineLucene(query),
+            ...searchProperties
+          });
+        } else {
+          result = await api.search.hit.post({
+            query: sanitizeMultilineLucene(query),
+            ...searchProperties
+          });
+        }
       } else if (type === 'eql') {
         result = await api.search.hit.eql.post({
           eql_query: sanitizeMultilineLucene(query),
@@ -154,7 +182,7 @@ const QueryBuilder: FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [allFields, fields, query, rows, type]);
+  }, [allFields, fields, groupByField, query, queryType, rows, type]);
 
   const onKeyDown: KeyboardEventHandler<HTMLDivElement> = useCallback(
     event => {
@@ -198,6 +226,17 @@ const QueryBuilder: FC = () => {
       })
     );
   }, [query, response, showModal, showWarningMessage, t, type]);
+
+  const searchDisabled = useMemo(
+    () => type === 'lucene' && queryType === 'groupby' && !groupByField,
+    [groupByField, queryType, type]
+  );
+
+  useEffect(() => {
+    if (type !== 'lucene' && queryType !== 'default') {
+      setQueryType('default');
+    }
+  }, [queryType, type]);
 
   useEffect(() => {
     if (!monaco) {
@@ -261,8 +300,18 @@ const QueryBuilder: FC = () => {
         >
           {smallButtons ? (
             <Tooltip title={t('route.actions.execute')}>
-              <IconButton size="small" sx={{ alignSelf: 'start' }} color="success" onClick={execute}>
-                {loading ? <CircularProgress size={18} color="success" /> : <PlayArrowOutlined color="success" />}
+              <IconButton
+                size="small"
+                sx={{ alignSelf: 'start' }}
+                color="success"
+                onClick={execute}
+                disabled={searchDisabled}
+              >
+                {loading ? (
+                  <CircularProgress size={18} color="success" />
+                ) : (
+                  <PlayArrowOutlined color={searchDisabled ? 'disabled' : 'success'} />
+                )}
               </IconButton>
             </Tooltip>
           ) : (
@@ -274,13 +323,14 @@ const QueryBuilder: FC = () => {
                   <CircularProgress size={18} color="success" />
                 ) : (
                   <PlayArrowOutlined
-                    color="success"
+                    color={searchDisabled ? 'disabled' : 'success'}
                     sx={{ '& path': { stroke: 'currentcolor', strokeWidth: '1px' } }}
                   />
                 )
               }
               color="success"
               onClick={execute}
+              disabled={searchDisabled}
             >
               {t('route.actions.execute')}
             </CustomButton>
@@ -330,9 +380,33 @@ const QueryBuilder: FC = () => {
               </Stack>
             </Card>
           </Stack>
-          {allFields ? (
+          {type === 'lucene' && (
+            <Autocomplete
+              size="small"
+              getOptionLabel={opt => t(`route.advanced.query.type.${opt}`)}
+              options={LUCENE_QUERY_OPTIONS}
+              value={queryType}
+              onChange={(_event, value) => setQueryType(value)}
+              renderInput={params => (
+                <TextField {...params} label={t('route.advanced.query.type')} sx={{ minWidth: '200px' }} />
+              )}
+            />
+          )}
+          {queryType === 'groupby' && (
+            <Autocomplete
+              size="small"
+              options={fieldOptions}
+              value={groupByField}
+              onChange={(__, value) => setGroupByField(value)}
+              renderInput={params => <TextField {...params} label={t('route.advanced.pivot.field')} />}
+              sx={{ minWidth: '200px', '& label': { zIndex: 1200 } }}
+              onKeyDown={onKeyDown}
+              PopperComponent={CustomPopper}
+            />
+          )}
+          {allFields && queryType !== 'facet' ? (
             <FormControlLabel
-              control={<Checkbox checked={allFields} onChange={(__, checked) => setAllFields(checked)} />}
+              control={<Checkbox size="small" checked={allFields} onChange={(__, checked) => setAllFields(checked)} />}
               label={t('route.advanced.fields.all')}
               sx={{ '& > span': { color: 'text.secondary' }, alignSelf: 'start' }}
             />
@@ -368,6 +442,7 @@ const QueryBuilder: FC = () => {
               renderInput={params => <TextField {...params} label={t('route.advanced.fields')} />}
               sx={{ maxWidth: '500px', width: '20vw', minWidth: '200px', '& label': { zIndex: 1200 } }}
               onKeyDown={onKeyDown}
+              PopperComponent={CustomPopper}
             />
           )}
           <FlexOne />
@@ -430,8 +505,18 @@ const QueryBuilder: FC = () => {
           height="calc(100vh - 112px)"
           sx={{ position: 'relative', overflow: 'hidden', borderTop: `thin solid ${theme.palette.divider}` }}
         >
-          <Box sx={{ position: 'absolute', top: 0, left: 0, bottom: 0, right: `calc(50% + 7px - ${x}px)`, pt: 1 }}>
-            <QueryEditor query={query} setQuery={setQuery} language={type} />
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              bottom: 0,
+              right: `calc(50% + 7px - ${x}px)`,
+              pt: 1,
+              display: 'flex'
+            }}
+          >
+            <QueryEditor query={query} setQuery={setQuery} language={type} height="100%" />
           </Box>
           <Box
             sx={{

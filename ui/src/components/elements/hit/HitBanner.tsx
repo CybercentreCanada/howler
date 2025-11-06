@@ -11,7 +11,7 @@ import {
   useTheme,
   type TypographyProps
 } from '@mui/material';
-import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
+import useMatchers from 'components/app/hooks/useMatchers';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { uniq } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
@@ -44,9 +44,9 @@ export interface StatusProps<T extends Hit = Hit> {
 const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAssigned = true }) => {
   const { t } = useTranslation();
   const { config } = useContext(ApiConfigContext);
-  const { getIdFromName } = useContext(AnalyticContext);
   const theme = useTheme();
   const pluginStore = usePluginStore();
+  const { getMatchingAnalytic } = useMatchers();
 
   const [analyticId, setAnalyticId] = useState<string>();
 
@@ -54,8 +54,13 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
   const textVariant = useMemo(() => (layout === HitLayout.COMFY ? 'body1' : 'caption'), [layout]);
 
   useEffect(() => {
-    getIdFromName(hit?.howler.analytic).then(setAnalyticId);
-  }, [getIdFromName, hit]);
+    if (!hit?.howler.analytic) {
+      return;
+    }
+
+    getMatchingAnalytic(hit).then(analytic => setAnalyticId(analytic?.analytic_id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hit?.howler.analytic]);
 
   const providerColor = useMemo(
     () => PROVIDER_COLORS[hit.event?.provider ?? 'unknown'] ?? stringToColor(hit.event.provider),
@@ -139,8 +144,8 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
   /**
    * The tooltips are necessary only when in the most compressed format
    */
-  const Wrapper: FC<{ i18nKey: string; value: string | string[] } & TypographyProps> = useCallback(
-    ({ i18nKey, value, ...typographyProps }) => {
+  const Wrapper: FC<{ i18nKey: string; value: string | string[]; field: string } & TypographyProps> = useCallback(
+    ({ i18nKey, value, field, ...typographyProps }) => {
       const _children = (
         <Stack direction="row" spacing={1} flex={1}>
           <Typography
@@ -165,6 +170,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
               textOverflow={compressed ? 'ellipsis' : 'wrap'}
               {...typographyProps}
               value={val}
+              field={field}
             />
           ))}
         </Stack>
@@ -226,7 +232,15 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
           sx={{ alignSelf: 'start', '& a': { color: 'text.primary' } }}
         >
           {analyticId ? (
-            <Link to={`/analytics/${analyticId}`} onClick={e => e.stopPropagation()}>
+            <Link
+              to={`/analytics/${analyticId}`}
+              onAuxClick={e => {
+                e.stopPropagation();
+              }}
+              onClick={e => {
+                e.stopPropagation();
+              }}
+            >
               {hit.howler.analytic}
             </Link>
           ) : (
@@ -250,12 +264,20 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
             <Grid container spacing={layout !== HitLayout.COMFY ? 1 : 2} sx={{ ml: `${theme.spacing(-1)} !important` }}>
               {hit.howler.outline.threat && (
                 <Grid item>
-                  <Wrapper i18nKey="hit.header.threat" value={hit.howler.outline.threat} />
+                  <Wrapper
+                    i18nKey="hit.header.threat"
+                    value={hit.howler.outline.threat}
+                    field="howler.outline.threat"
+                  />
                 </Grid>
               )}
               {hit.howler.outline.target && (
                 <Grid item>
-                  <Wrapper i18nKey="hit.header.target" value={hit.howler.outline.target} />
+                  <Wrapper
+                    i18nKey="hit.header.target"
+                    value={hit.howler.outline.target}
+                    field="howler.outline.target"
+                  />
                 </Grid>
               )}
             </Grid>
@@ -293,6 +315,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
                 paragraph
                 textOverflow="wrap"
                 sx={[compressed && { marginTop: `0 !important` }]}
+                field="howler.outline.summary"
               />
             )}
           </>

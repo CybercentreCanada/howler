@@ -27,7 +27,6 @@ export const get = (search: URLSearchParams): Promise<LoginResponse> => {
   const nonce = localStorage.getItem(`${MY_LOCAL_STORAGE_PREFIX}.${StorageKey.LOGIN_NONCE}`);
 
   if (nonce) {
-    console.log('Adding nonce');
     search.set('nonce', JSON.parse(nonce));
     localStorage.removeItem(`${MY_LOCAL_STORAGE_PREFIX}.${StorageKey.LOGIN_NONCE}`);
   }

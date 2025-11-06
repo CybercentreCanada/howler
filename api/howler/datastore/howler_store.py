@@ -1,8 +1,4 @@
-import time
 from typing import TYPE_CHECKING
-
-import elasticapm
-import elasticsearch
 
 from howler.common.exceptions import HowlerAttributeError
 from howler.datastore.collection import ESCollection, logger
@@ -107,44 +103,3 @@ class HowlerDatastore(object):
             return getattr(self, collection_name)
         else:
             raise HowlerAttributeError(f"Collection {collection_name} does not exist.")
-
-    @elasticapm.capture_span(span_type="datastore")
-    def multi_index_bulk(self, bulk_plans):
-        max_retry_backoff = 10
-        retries = 0
-        while True:
-            try:
-                plan = "\n".join([p.get_plan_data() for p in bulk_plans])
-                ret_val = self.ds.client.bulk(body=plan)  # type: ignore[call-arg]
-                return ret_val
-            except (
-                elasticsearch.exceptions.ConnectionError,
-                elasticsearch.exceptions.ConnectionTimeout,
-                elasticsearch.exceptions.AuthenticationException,
-            ):
-                logger.warning(
-                    f"No connection to Elasticsearch server(s): "
-                    f"{' | '.join(self.ds.get_hosts(safe=True))}"
-                    f", retrying..."
-                )
-                time.sleep(min(retries, max_retry_backoff))
-                self.ds.connection_reset()
-                retries += 1
-
-            except elasticsearch.exceptions.TransportError as e:
-                err_code, msg, cause = e.args
-                if err_code == 503 or err_code == "503":
-                    logger.warning("Looks like index is not ready yet, retrying...")
-                    time.sleep(min(retries, max_retry_backoff))
-                    self.ds.connection_reset()
-                    retries += 1
-                elif err_code == 429 or err_code == "429":
-                    logger.warning(
-                        "Elasticsearch is too busy to perform the requested task, " "we will wait a bit and retry..."
-                    )
-                    time.sleep(min(retries, max_retry_backoff))
-                    self.ds.connection_reset()
-                    retries += 1
-
-                else:
-                    raise

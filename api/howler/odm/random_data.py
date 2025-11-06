@@ -820,7 +820,7 @@ def wipe_dossiers(ds: HowlerDatastore):
 
 def setup_hits(ds):
     "Set up hits index"
-    os.environ["ELASTIC_HIT_SHARDS"] = "12"
+    os.environ["ELASTIC_HIT_SHARDS"] = "1"
     os.environ["ELASTIC_HIT_REPLICAS"] = "1"
     ds.hit.fix_shards()
     ds.hit.fix_replicas()

@@ -131,7 +131,7 @@ def add_apikey(**kwargs):  # noqa: C901
         key_name = apikey_data["name"] if "I" not in privs else f"impersonate_{apikey_data['name']}"
 
         new_key = {
-            "password": bcrypt.encrypt(random_pass),
+            "password": bcrypt.hash(random_pass),
             "agents": apikey_data.get("agents", []),
             "acl": privs,
         }

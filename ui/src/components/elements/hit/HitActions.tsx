@@ -14,7 +14,7 @@ import {
   Switch,
   useMediaQuery
 } from '@mui/material';
-import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
+import useMatchers from 'components/app/hooks/useMatchers';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { HitContext } from 'components/app/providers/HitProvider';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
@@ -22,7 +22,6 @@ import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import useHitActions from 'components/hooks/useHitActions';
 import { useMyLocalStorageProvider } from 'components/hooks/useMyLocalStorage';
-import json2mq from 'json2mq';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Hit } from 'models/entities/generated/Hit';
 import howlerPluginStore from 'plugins/store';
@@ -49,7 +48,7 @@ const HitActions: FC<{
   const { values, set } = useMyLocalStorageProvider();
   const pluginStore = usePluginStore();
 
-  const { getAnalyticFromName } = useContext(AnalyticContext);
+  const { getMatchingAnalytic } = useMatchers();
 
   const getCurrentView = useContextSelector(ViewContext, ctx => ctx.getCurrentView);
 
@@ -112,7 +111,7 @@ const HitActions: FC<{
               if (!loading) {
                 await assess(assessment, analytic?.triage_settings?.skip_rationale);
 
-                if (getCurrentView()?.settings?.advance_on_triage && nextHit) {
+                if ((await getCurrentView())?.settings?.advance_on_triage && nextHit) {
                   clearSelectedHits(nextHit.howler.id);
                   setSelected?.(nextHit.howler.id);
                 }
@@ -166,11 +165,9 @@ const HitActions: FC<{
   }, [keyboardDownHandler]);
 
   useEffect(() => {
-    (async () => {
-      setAnalytic(await getAnalyticFromName(hit.howler.analytic));
-    })();
+    getMatchingAnalytic(hit).then(setAnalytic);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hit.howler.analytic]);
+  }, [hit?.howler.analytic]);
 
   const handleOpenSetting = useCallback((e: React.MouseEvent<HTMLElement>) => setOpenSetting(e.currentTarget), []);
   const handleCloseSetting = useCallback(() => setOpenSetting(null), []);
@@ -180,11 +177,7 @@ const HitActions: FC<{
   const showButton = useMediaQuery(
     // Only show the buttons when there's sufficient space
     // TODO: Could probably make this fancier and maybe remove the react device detect dependency, but this is fine for now
-    json2mq([
-      {
-        minWidth: 1800
-      }
-    ])
+    '(min-width: 1800px)'
   );
 
   const showDropdown = isMobile || !showButton;

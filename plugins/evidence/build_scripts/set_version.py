@@ -27,6 +27,8 @@ if git_branch.startswith(("rc", "patch")):
 elif git_branch != "main":
     print("Current branch is not main, marking as a development release")
     new_version = f"{base_version}.dev{tag}"
+else:
+    print("Current branch is main, appending build number")
+    new_version = f"{base_version}.{tag}"
 
-if new_version:
-    subprocess.check_call(shlex.split(f"poetry version {new_version}"))
+subprocess.check_call(shlex.split(f"poetry version {new_version}"))

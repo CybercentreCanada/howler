@@ -29,6 +29,18 @@
   "[typescriptreact]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
+  "[yaml]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2,
+    "editor.autoIndent": "keep",
+    "diffEditor.ignoreTrimWhitespace": false,
+    "editor.defaultColorDecorators": "never",
+    "editor.quickSuggestions": {
+      "strings": true,
+      "other": true,
+      "comments": false
+    }
+  },
   "git.enableCommitSigning": true,
   "editor.formatOnSave": true,
   "editor.rulers": [120],
@@ -44,7 +56,7 @@
     "**/.DS_Store": true,
     "**/Thumbs.db": true,
     "**/build": true,
-    "**/dist": true,
+    // "**/dist": true,
     "**/.pytest_cache": true,
     "**/.idea": true,
     "**/__pycache__": true,
@@ -91,5 +103,22 @@
   "eslint.workingDirectories": [
     { "directory": "./ui", "changeProcessCWD": true }
   ],
-  "flake8.args": ["--max-line-length=120"]
+  "flake8.args": ["--max-line-length=120"],
+  "prettier.configPath": "ui/.prettierrc",
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/bower_components": true,
+    "**/*.code-search": true,
+    "ui/target": true,
+    "ui/pnpm-lock.yaml": true
+  },
+  "markdownlint.config": {
+    "MD024": false,
+    "MD013": {
+      "line_length": 120,
+      "code_blocks": false,
+      "tables": false
+    }
+
+  }
 }

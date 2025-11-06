@@ -72,8 +72,8 @@ export const language = <languages.IMonarchLanguage>{
     'join',
     'fetch',
     'upper',
-    'lower',
-    'borealis'
+    'lower'
+    // TODO: Handle plugin-based operators as well
   ],
   // CCCS MODIFICATION END
 

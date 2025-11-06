@@ -13,13 +13,13 @@ import {
   Typography
 } from '@mui/material';
 import { LocalizationProvider, StaticDateTimePicker } from '@mui/x-date-pickers';
-import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import api from 'api';
 import type { Privileges } from 'api/auth/apikey';
 import useMyApi from 'components/hooks/useMyApi';
 import useMySnackbar from 'components/hooks/useMySnackbar';
-import { type APIConfiguration } from 'models/entities/generated/ApiType';
-import moment from 'moment';
+import dayjs from 'dayjs';
+import type { APIConfiguration } from 'models/entities/generated/ApiType';
 import type { ChangeEvent, FC } from 'react';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
@@ -38,7 +38,7 @@ const ApiKeyDrawer: FC<ApiKeyDrawerProps> = ({ onCreated }) => {
   const [keyName, setKeyName] = useState('');
   const [privs, setPrivs] = useState<Privileges[]>([]);
   const [createdKey, setCreatedKey] = useState('');
-  const [expiryDate, setExpiryDate] = useState<moment.Moment>(null);
+  const [expiryDate, setExpiryDate] = useState<dayjs.Dayjs>(null);
 
   const [amount, unit] = useMemo<[number, APIConfiguration['auth']['max_apikey_duration_unit']]>(() => {
     if (!config) {
@@ -55,7 +55,7 @@ const ApiKeyDrawer: FC<ApiKeyDrawerProps> = ({ onCreated }) => {
       return null;
     }
 
-    return moment().add(amount, unit);
+    return dayjs().add(amount, unit);
   }, [amount, unit]);
 
   const updatePrivs = useCallback(
@@ -97,12 +97,12 @@ const ApiKeyDrawer: FC<ApiKeyDrawerProps> = ({ onCreated }) => {
   }, [maxDate]);
 
   return (
-    <LocalizationProvider dateAdapter={AdapterMoment}>
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Stack direction="column" spacing={2} sx={{ mt: 2 }}>
         <Typography sx={{ maxWidth: '500px' }}>
           <Trans i18nKey="app.drawer.user.apikey.description" />
         </Typography>
-        {amount && unit && moment.duration(amount, unit).asSeconds() < moment.duration(7, 'days').asSeconds() && (
+        {amount && unit && dayjs.duration(amount, unit).asSeconds() < dayjs.duration(7, 'days').asSeconds() && (
           <Alert severity="warning" variant="outlined" sx={{ maxWidth: '500px' }}>
             <AlertTitle>{t('app.drawer.user.apikey.limit.title')}</AlertTitle>
             {t('app.drawer.user.apikey.limit.description')} ({maxDate?.format('MMM D HH:mm:ss')})

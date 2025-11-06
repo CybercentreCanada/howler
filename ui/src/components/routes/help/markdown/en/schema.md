@@ -7,7 +7,6 @@ A howler hit can contain a large number of unique fields, each with a particular
 In order to allow for some consistency between various analytics, there are a number of fields with recommended (but not required) styles. These include:
 
 - `howler.analytic`: Denotes the overarching analytic that generated the hit. For example, if the name of your analytic is Bad Guy Finder, you can set this field to Bad Guy Finder. Examples of use:
-
   - Bad Guy Finder (correct)
   - BadGuyFinder (acceptable, but spaces are preferred)
   - bad.guy.finder (incorrect, don't use periods)

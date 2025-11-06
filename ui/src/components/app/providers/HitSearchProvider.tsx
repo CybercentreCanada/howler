@@ -7,6 +7,7 @@ import i18n from 'i18n';
 import isNull from 'lodash-es/isNull';
 import isUndefined from 'lodash-es/isUndefined';
 import type { Hit } from 'models/entities/generated/Hit';
+import type { WithMetadata } from 'models/WithMetadata';
 import {
   useCallback,
   useEffect,
@@ -21,6 +22,7 @@ import { isMobile } from 'react-device-detect';
 import { useLocation, useParams } from 'react-router-dom';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
+import { getStored } from 'utils/localStorage';
 import Throttler from 'utils/Throttler';
 import { convertCustomDateRangeToLucene, convertDateToLucene } from 'utils/utils';
 import { HitContext } from './HitProvider';
@@ -36,7 +38,7 @@ interface HitSearchProviderType {
   displayType: 'list' | 'grid';
   searching: boolean;
   error: string | null;
-  response: HowlerSearchResponse<Hit> | null;
+  response: HowlerSearchResponse<WithMetadata<Hit>> | null;
   viewId: string | null;
   bundleId: string | null;
   queryHistory: QueryEntry;
@@ -59,8 +61,8 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const { dispatchApi } = useMyApi();
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
-  const viewsReady = useContextSelector(ViewContext, ctx => ctx.ready);
-  const views = useContextSelector(ViewContext, ctx => ctx.views);
+  const getCurrentView = useContextSelector(ViewContext, ctx => ctx.getCurrentView);
+  const defaultView = useContextSelector(ViewContext, ctx => ctx.defaultView);
 
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
@@ -75,18 +77,18 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
 
   const loadHits = useContextSelector(HitContext, ctx => ctx.loadHits);
 
-  const [displayType, setDisplayType] = useState<'list' | 'grid'>('list');
+  const [displayType, setDisplayType] = useState<'list' | 'grid'>(getStored(StorageKey.DISPLAY_TYPE) ?? 'list');
   const [searching, setSearching] = useState<boolean>(false);
   const [error, setError] = useState<string>(null);
-  const [response, setResponse] = useState<HowlerSearchResponse<Hit>>();
+  const [response, setResponse] = useState<HowlerSearchResponse<WithMetadata<Hit>>>();
   const [queryHistory, setQueryHistory] = useState<QueryEntry>(
     JSON.parse(get(StorageKey.QUERY_HISTORY)) || { 'howler.id: *': new Date().toISOString() }
   );
   const [fzfSearch, setFzfSearch] = useState<boolean>(false);
 
   const viewId = useMemo(
-    () => (location.pathname.startsWith('/views') ? routeParams.id : null),
-    [location.pathname, routeParams.id]
+    () => (location.pathname.startsWith('/views') ? routeParams.id : defaultView) ?? null,
+    [defaultView, location.pathname, routeParams.id]
   );
 
   const bundleId = useMemo(
@@ -137,7 +139,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
           if (bundle) {
             fullQuery = `(howler.bundles:${bundle}) AND (${fullQuery})`;
           } else if (viewId) {
-            fullQuery = `(${views.find(_view => _view.view_id === viewId)?.query || 'howler.id:*'}) AND (${fullQuery})`;
+            fullQuery = `(${(await getCurrentView({ viewId }))?.query || 'howler.id:*'}) AND (${fullQuery})`;
           }
 
           const _response = await dispatchApi(
@@ -147,7 +149,8 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
               query: fullQuery,
               sort,
               filters,
-              track_total_hits: trackTotalHits
+              track_total_hits: trackTotalHits,
+              metadata: ['template', 'overview', 'analytic']
             }),
             { showError: false, throwError: true }
           );
@@ -193,18 +196,13 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
       pageCount,
       trackTotalHits,
       loadHits,
-      views,
+      getCurrentView,
       setOffset
     ]
   );
 
   // We only run this when ancillary properties (i.e. filters, sorting) change
   useEffect(() => {
-    // We're being asked to present a view, but we don't currently have the views loaded
-    if (viewId && !viewsReady) {
-      return;
-    }
-
     if (span.endsWith('custom') && (!startDate || !endDate)) {
       return;
     }
@@ -214,8 +212,9 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
     } else {
       setResponse(null);
     }
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, offset, pageCount, sort, span, bundleId, location.pathname, viewsReady, startDate, endDate]);
+  }, [filter, offset, pageCount, sort, span, bundleId, location.pathname, startDate, endDate, viewId]);
 
   return (
     <HitSearchContext.Provider
@@ -238,6 +237,12 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
       {children}
     </HitSearchContext.Provider>
   );
+};
+
+export const useHitSearchContextSelector = <Selected,>(
+  selector: (value: HitSearchProviderType) => Selected
+): Selected => {
+  return useContextSelector<HitSearchProviderType, Selected>(HitSearchContext, selector);
 };
 
 export default HitSearchProvider;

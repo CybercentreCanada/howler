@@ -1,6 +1,7 @@
 import react from '@vitejs/plugin-react-swc';
 import { defineConfig, loadEnv, ProxyOptions } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
+import { configDefaults } from 'vitest/config';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -15,16 +16,16 @@ export default defineConfig(({ mode }) => {
       ws: true,
       configure: (proxy, _options) => {
         proxy.on('error', (err, _req, _res) => {
-          if (_req.url?.includes('borealis')) {
-            console.error('[borealis]', err);
+          if (_req.url?.includes('borealis') || _req.url?.includes('clue')) {
+            console.error('[clue]', err);
           } else {
             console.error('[howler]', err);
           }
         });
 
         proxy.on('proxyRes', (proxyRes, req, _res) => {
-          if (req.url?.includes('borealis')) {
-            console.log('[borealis]', proxyRes.statusCode, req.url);
+          if (req.url?.includes('borealis') || req.url?.includes('clue')) {
+            console.log('[clue]', proxyRes.statusCode, req.url);
           } else {
             console.log('[howler]', proxyRes.statusCode, req.url);
           }
@@ -74,6 +75,49 @@ export default defineConfig(({ mode }) => {
     preview: {
       port: 3000,
       proxy
+    },
+    test: {
+      globals: true,
+      environment: 'jsdom',
+      environmentOptions: {
+        jsdom: {
+          resources: 'usable'
+        }
+      },
+      setupFiles: ['./src/setupTests.ts'],
+      exclude: [...configDefaults.exclude, 'dist/**', 'src/commons/**'],
+      testTimeout: 30000,
+      reporters: ['junit', 'json', 'default'],
+      outputFile: {
+        junit: './target/junit-report.xml',
+        json: './target/json-report.json'
+      },
+      coverage: {
+        enabled: true,
+        provider: 'v8',
+        reporter: ['json-summary', 'json', 'html'],
+        reportsDirectory: './target/coverage',
+        exclude: [
+          'vite*config.ts',
+          '**/dist/**',
+          '**/*.js.map',
+          '**/node_modules/**',
+          '**/**.test.*',
+          '**/**.spec.*',
+          '**/**.d.ts',
+          'src/commons/**',
+          'src/tests'
+        ],
+        reportOnFailure: true
+      },
+      sequence: { hooks: 'list' },
+      pool: 'threads',
+      poolOptions: {
+        threads: {
+          maxThreads: 8,
+          minThreads: 6
+        }
+      }
     }
   };
 });

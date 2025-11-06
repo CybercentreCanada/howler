@@ -1,4 +1,4 @@
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import { OpenInNew } from '@mui/icons-material';
 import { Card, CardContent, IconButton, Skeleton, Stack, Typography } from '@mui/material';
 import api from 'api';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
@@ -26,7 +26,12 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit }) => {
   const [hits, setHits] = useState<Hit[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const view = useContextSelector(ViewContext, ctx => ctx.views?.find(_view => _view.view_id === viewId));
+  const view = useContextSelector(ViewContext, ctx => ctx.views[viewId]);
+  const fetchViews = useContextSelector(ViewContext, ctx => ctx.fetchViews);
+
+  useEffect(() => {
+    fetchViews([viewId]);
+  }, [fetchViews, viewId]);
 
   useEffect(() => {
     if (!view?.query) {
@@ -58,7 +63,7 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit }) => {
             {t(view?.title) || <Skeleton variant="text" height="2em" width="100px" />}
           </Typography>
           <IconButton size="small" onClick={() => onClick(view.query)}>
-            <OpenInNewIcon fontSize="small" />
+            <OpenInNew fontSize="small" />
           </IconButton>
         </Stack>
         {loading ? (

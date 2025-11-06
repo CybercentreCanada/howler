@@ -15,7 +15,7 @@ export default class Throttler {
       fn();
       this.throttleId = setTimeout(() => {
         this.throttleId = null;
-      }, this.msec);
+      }, this.msec) as unknown as number;
     }
   }
 
@@ -23,7 +23,7 @@ export default class Throttler {
     if (this.delayId) {
       clearTimeout(this.delayId);
     }
-    this.delayId = setTimeout(fn, this.msec);
+    this.delayId = setTimeout(fn, this.msec) as unknown as number;
   }
 
   public delayAsync(fn: (...args: any[]) => Promise<any>, ...args: any[]): Promise<any> {
@@ -37,7 +37,7 @@ export default class Throttler {
         } catch (error) {
           reject(error);
         }
-      }, this.msec);
+      }, this.msec) as unknown as number;
     });
   }
 }

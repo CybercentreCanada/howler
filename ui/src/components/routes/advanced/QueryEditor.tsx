@@ -52,21 +52,6 @@ const QueryEditor: FC<QueryEditorProps> = ({
   }, []);
 
   useEffect(() => {
-    const handleKeyPress = event => {
-      if (setFzfSearch && event.ctrlKey && event.key == 'r') {
-        event.preventDefault();
-        setFzfSearch(!fzfSearch);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyPress);
-    };
-  }, [fzfSearch, setFzfSearch]);
-
-  useEffect(() => {
     if (!monaco) {
       return;
     }
@@ -133,8 +118,19 @@ const QueryEditor: FC<QueryEditorProps> = ({
     [setQuery, fontSize, editorOptions]
   );
 
+  const handleKeyPress = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (setFzfSearch && event.ctrlKey && event.key == 'r') {
+        event.preventDefault();
+        event.stopPropagation();
+        setFzfSearch(!fzfSearch);
+      }
+    },
+    [fzfSearch, setFzfSearch]
+  );
+
   return (
-    <Box sx={{ flex: 1 }}>
+    <Box sx={{ flex: 1 }} onKeyDownCapture={handleKeyPress}>
       <ThemedEditor
         height={height}
         width={width}

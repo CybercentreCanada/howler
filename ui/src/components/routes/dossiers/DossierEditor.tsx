@@ -42,7 +42,9 @@ const DossierEditor: FC = () => {
 
   const [originalDossier, setOriginalDossier] = useState<Dossier>();
   const [dossier, setDossier] = useState<Partial<Dossier>>({
-    type: 'global'
+    type: 'global',
+    leads: [],
+    pivots: []
   });
   const [tab, setTab] = useState<'leads' | 'pivots'>('leads');
   const [searchTotal, setSearchTotal] = useState(-1);
@@ -51,20 +53,24 @@ const DossierEditor: FC = () => {
 
   const dirty = useMemo(() => !isEqual(originalDossier, dossier), [dossier, originalDossier]);
   const validationError = useMemo(() => {
-    if (!dossier || !dossier.query || !dossier.type || !dossier.title) {
+    if (!dossier) {
       return t('route.dossiers.manager.validation.error');
     }
 
+    if (!dossier.title) {
+      return t('route.dossiers.manager.validation.error.missing', { field: t('route.dossiers.manager.field.title') });
+    }
+
+    if (searchTotal < 0 || searchDirty) {
+      return t('route.dossiers.manager.validation.search');
+    }
+
     if (!dossier.query) {
-      return t('route.dossiers.manager.validation.error.missing', { field: 'query' });
+      return t('route.dossiers.manager.validation.error.missing', { field: t('route.dossiers.manager.field.query') });
     }
 
     if (!dossier.type) {
-      return t('route.dossiers.manager.validation.error.missing', { field: 'type' });
-    }
-
-    if (!dossier.title) {
-      return t('route.dossiers.manager.validation.error.missing', { field: 'title' });
+      return t('route.dossiers.manager.validation.error.missing', { field: t('route.dossiers.manager.field.type') });
     }
 
     if ((dossier.leads ?? []).length < 1 && (dossier.pivots ?? []).length < 1) {
@@ -87,7 +93,7 @@ const DossierEditor: FC = () => {
     }
 
     if (
-      !dossier.pivots?.every(
+      !(dossier.pivots ?? []).every(
         pivot => pivot.icon && iconExists(pivot.icon) && pivot.label && pivot.label.en && pivot.label.fr && pivot.format
       )
     ) {
@@ -99,7 +105,7 @@ const DossierEditor: FC = () => {
     }
 
     return null;
-  }, [dossier, t]);
+  }, [dossier, searchDirty, searchTotal, t]);
 
   const save = useCallback(async () => {
     setLoading(true);
@@ -161,7 +167,7 @@ const DossierEditor: FC = () => {
               variant="extended"
               size="large"
               color="primary"
-              disabled={!dirty || searchDirty || !!validationError || loading}
+              disabled={!dirty || !!validationError || loading}
               sx={theme => ({
                 textTransform: 'none',
                 position: 'absolute',

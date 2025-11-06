@@ -1,3 +1,4 @@
+// eslint-disable-next-line import/no-cycle
 import { hdelete, hget, hpost, hput, joinAllUri, joinUri, uri as parentUri } from 'api';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import * as hit from './hit';

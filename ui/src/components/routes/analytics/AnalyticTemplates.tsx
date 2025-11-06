@@ -1,30 +1,32 @@
 import { Article } from '@mui/icons-material';
 import { Box, Fab, Skeleton, Stack, Typography, useMediaQuery } from '@mui/material';
-import 'chartjs-adapter-moment';
+import api from 'api';
+import 'chartjs-adapter-dayjs-4';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
-import { TemplateContext } from 'components/app/providers/TemplateProvider';
+import useMyApi from 'components/hooks/useMyApi';
 import type { Analytic } from 'models/entities/generated/Analytic';
+import type { Template } from 'models/entities/generated/Template';
 import { useEffect, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { useContextSelector } from 'use-context-selector';
 import TemplateCard from '../templates/TemplateCard';
 
 const AnalyticTemplates: FC<{ analytic: Analytic }> = ({ analytic }) => {
   const { t } = useTranslation();
   const isNarrow = useMediaQuery('(max-width: 1800px)');
+  const { dispatchApi } = useMyApi();
 
-  const getTemplates = useContextSelector(TemplateContext, ctx => ctx.getTemplates);
-  const templates = useContextSelector(TemplateContext, ctx =>
-    ctx.templates.filter(_template => _template.analytic === analytic?.name)
-  );
+  const [templates, setTemplates] = useState<Template[]>([]);
 
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setLoading(true);
-    getTemplates().finally(() => setLoading(false));
-  }, [getTemplates]);
+    dispatchApi(api.template.get())
+      .then(_templates => _templates.filter(_template => _template.analytic === analytic?.name))
+      .then(setTemplates)
+      .finally(() => setLoading(false));
+  }, [analytic?.name, dispatchApi]);
 
   if (!analytic) {
     return <Skeleton variant="rounded" width="100%" sx={{ minHeight: '300px', mt: 2 }} />;

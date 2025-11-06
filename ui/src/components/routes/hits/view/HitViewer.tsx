@@ -15,11 +15,8 @@ import {
   useTheme
 } from '@mui/material';
 import PageCenter from 'commons/components/pages/PageCenter';
-import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
-import { DossierContext } from 'components/app/providers/DossierProvider';
+import useMatchers from 'components/app/hooks/useMatchers';
 import { HitContext } from 'components/app/providers/HitProvider';
-import { OverviewContext } from 'components/app/providers/OverviewProvider';
-import { TemplateContext } from 'components/app/providers/TemplateProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import HowlerCard from 'components/elements/display/HowlerCard';
 import BundleButton from 'components/elements/display/icons/BundleButton';
@@ -44,7 +41,7 @@ import uniqBy from 'lodash-es/uniqBy';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import type { FC } from 'react';
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
@@ -65,10 +62,7 @@ const HitViewer: FC = () => {
   const theme = useTheme();
   const isUnderLg = useMediaQuery(theme.breakpoints.down('lg'));
   const [orientation, setOrientation] = useMyLocalStorageItem(StorageKey.VIEWER_ORIENTATION, Orientation.VERTICAL);
-  const refreshTemplates = useContextSelector(TemplateContext, ctx => ctx.refresh);
-  const { getAnalyticFromName } = useContext(AnalyticContext);
-  const { getMatchingOverview, refresh: refreshOverviews } = useContext(OverviewContext);
-  const getMatchingDossiers = useContextSelector(DossierContext, ctx => ctx.getMatchingDossiers);
+  const { getMatchingOverview, getMatchingDossiers, getMatchingAnalytic } = useMatchers();
 
   const getHit = useContextSelector(HitContext, ctx => ctx.getHit);
   const hit = useContextSelector(HitContext, ctx => ctx.hits[params.id]);
@@ -78,23 +72,24 @@ const HitViewer: FC = () => {
   const [tab, setTab] = useState<string>('details');
   const [analytic, setAnalytic] = useState<Analytic>();
   const [dossiers, setDossiers] = useState<Dossier[]>([]);
+  const [hasOverview, setHasOverview] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
-      let existingHit = hit;
-      if (!existingHit) {
-        existingHit = await getHit(params.id, true);
+      if (!hit) {
+        await getHit(params.id, true);
+        return;
       }
-      setUserIds(getUserList(existingHit));
 
-      setAnalytic(await getAnalyticFromName(existingHit.howler.analytic));
+      setUserIds(getUserList(hit));
+
+      setAnalytic(await getMatchingAnalytic(hit));
     } catch (err) {
       if (err.cause?.api_status_code === 404) {
         navigate('/404');
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getAnalyticFromName, getHit, params.id, navigate]);
+  }, [hit, getMatchingAnalytic, getHit, params.id, navigate]);
 
   useEffect(() => {
     if (isUnderLg) {
@@ -104,28 +99,25 @@ const HitViewer: FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, [params.id, fetchData]);
+  }, [params.id, fetchData, hit]);
 
   const onOrientationChange = useCallback(
     () => setOrientation(orientation === Orientation.VERTICAL ? Orientation.HORIZONTAL : Orientation.VERTICAL),
     [orientation, setOrientation]
   );
 
-  const matchingOverview = useMemo(() => getMatchingOverview(hit), [getMatchingOverview, hit]);
+  useEffect(() => {
+    getMatchingOverview(hit).then(_overview => setHasOverview(!!_overview));
+  }, [getMatchingOverview, hit]);
 
   useEffect(() => {
-    refreshTemplates();
-    refreshOverviews();
-  }, [refreshOverviews, refreshTemplates]);
-
-  useEffect(() => {
-    if (matchingOverview && tab === 'details') {
+    if (hasOverview && tab === 'details') {
       setTab('overview');
-    } else if (!matchingOverview && tab === 'overview') {
+    } else if (!hasOverview && tab === 'overview') {
       setTab('details');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matchingOverview]);
+  }, [hasOverview]);
 
   const tabContent = useMemo(() => {
     if (!tab || !hit) {
@@ -141,11 +133,11 @@ const HitViewer: FC = () => {
       hit_worklog: () => <HitWorklog hit={hit} users={users} />,
       hit_related: () => <HitRelated hit={hit} />,
       ...Object.fromEntries(
-        hit?.howler.dossier?.map((lead, index) => ['lead:' + index, () => <LeadRenderer lead={lead} />]) ?? []
+        hit?.howler.dossier?.map((lead, index) => ['lead:' + index, () => <LeadRenderer lead={lead} hit={hit} />]) ?? []
       ),
       ...Object.fromEntries(
         dossiers.flatMap((_dossier, dossierIndex) =>
-          _dossier.leads?.map((_lead, leadIndex) => [
+          (_dossier.leads ?? []).map((_lead, leadIndex) => [
             `external-lead:${dossierIndex}:${leadIndex}`,
             () => <LeadRenderer lead={_lead} hit={hit} />
           ])
@@ -159,7 +151,7 @@ const HitViewer: FC = () => {
       return;
     }
 
-    getMatchingDossiers(hit.howler.id).then(setDossiers);
+    getMatchingDossiers(hit).then(setDossiers);
   }, [getMatchingDossiers, hit]);
 
   if (!hit) {
@@ -256,13 +248,13 @@ const HitViewer: FC = () => {
         </HowlerCard>
         <Box sx={{ gridColumn: '1 / span 2', mb: 1 }}>
           <Tabs
-            value={tab === 'overview' && !matchingOverview ? 'details' : tab}
+            value={tab === 'overview' && !hasOverview ? 'details' : tab}
             sx={{ display: 'flex', flexDirection: 'row', pr: 2, alignItems: 'center' }}
           >
             {hit?.howler?.is_bundle && (
               <Tab label={t('hit.viewer.aggregate')} value="hit_aggregate" onClick={() => setTab('hit_aggregate')} />
             )}
-            {matchingOverview && (
+            {hasOverview && (
               <Tab label={t('hit.viewer.overview')} value="overview" onClick={() => setTab('overview')} />
             )}
             <Tab label={t('hit.viewer.details')} value="details" onClick={() => setTab('details')} />
@@ -282,7 +274,7 @@ const HitViewer: FC = () => {
             ))}
 
             {dossiers.flatMap((_dossier, dossierIndex) =>
-              _dossier.leads?.map((_lead, leadIndex) => (
+              (_dossier.leads ?? []).map((_lead, leadIndex) => (
                 <Tab
                   // eslint-disable-next-line react/no-array-index-key
                   key={`external-lead:${dossierIndex}:${leadIndex}`}

@@ -83,8 +83,6 @@ class MyDatastore(object):
 Once you've setup your own datastore object, you can start using the different functions that each collection offers. Here's a breakdown:
 
 - `archive(query)`: Send all meatching documents to the archive of the collection
-- `get_bulk_plan()`: Create a bulk plan to be executed later using the bulk function
-- `bulk(bulk_plan)`: Execute the bulk plan
 - `multiget(id_list)`: Get multiple documents for the id_list
 - `exists(id)`: Check if a document matching this id exists
 - `get(id)`: Get a document matching the id (retry twice if missing)

@@ -1,0 +1,152 @@
+name: "Build Release"
+
+on:
+  # Allows this workflow to be run manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      type:
+        type: choice
+        required: true
+        description: What type of release should be made
+        default: minor
+        options:
+          - major
+          - minor
+          - patch
+      include-ui:
+        type: boolean
+        default: true
+        description: Include Howler UI
+      include-api:
+        type: boolean
+        default: true
+        description: Include Howler API
+      include-client:
+        type: boolean
+        default: false
+        description: Include Howler Client
+      include-evidence:
+        type: boolean
+        default: false
+        description: Include Howler Evidence Plugin
+      include-sentinel:
+        type: boolean
+        default: false
+        description: Include Howler Sentinel Plugin
+
+permissions:
+  contents: write
+
+jobs:
+  create-and-bump-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # needed to push commits and tags
+      # You might also need 'actions: write' in some setups
+
+    steps:
+      # Check out the repository
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Poetry
+        uses: abatilo/actions-poetry@v4
+
+      - name: Install pnpm v10
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install Node v20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: "https://registry.npmjs.org"
+
+      # Configure Git so we can commit and push tags/changes
+      - name: Configure Git and Github CLI
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          sudo apt-get update
+          sudo apt-get install -y gh
+
+      # Read the current version from VERSION file
+      - name: Read current versions
+        run: |
+          echo -n "UI Version: "
+          python -c "import json;print(json.load(open('ui/package.json', 'r'))['version'])"
+          echo -n "API Version: "
+          cd api
+          poetry version -s
+
+          cd ../client
+          echo -n "Client Version: "
+          poetry version -s
+
+          echo "================================"
+
+          echo -n "Evidence Plugin Version: "
+          cd ../plugins/evidence
+          poetry version -s
+
+
+          echo -n "Sentinel Plugin Version: "
+          cd ../sentinel
+          poetry version -s
+
+      - name: Update Howler UI
+        if: inputs.include-ui
+        working-directory: ui
+        run: |
+          pnpm version ${{inputs.type}}
+
+      - name: Update Howler API
+        if: inputs.include-api
+        working-directory: api
+        run: |
+          poetry version ${{inputs.type}}
+
+      - name: Update Howler Client
+        if: inputs.include-client
+        working-directory: client
+        run: |
+          poetry version ${{inputs.type}}
+
+      - name: Update Howler Evidence Plugin
+        if: inputs.include-evidence
+        working-directory: plugins/evidence
+        run: |
+          poetry version ${{inputs.type}}
+
+      - name: Update Howler Sentinel Plugin
+        if: inputs.include-sentinel
+        working-directory: plugins/sentinel
+        run: |
+          poetry version ${{inputs.type}}
+
+      - name: Show Diff
+        run: |
+          git diff -U1
+
+      - name: Commit changed versions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CHANGED=($(git diff --name-only | xargs))
+
+          for value in "${CHANGED[@]}"; do
+            FILES="${FILES} -F files[][path]=$value -F files[][contents]=$(base64 -w0 $value)"
+          done
+
+          gh api graphql \
+            -F githubRepository=${{ github.repository }} \
+            -F branchName=${{ github.ref }} \
+            -F expectedHeadOid=$(git rev-parse HEAD) \
+            -F commitMessage="chore: version bumps" \
+            -F "query=@.github/api/commit.gql" \
+            ${FILES}

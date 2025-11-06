@@ -2,7 +2,7 @@ import { isEmpty, isNull, isUndefined, omitBy, pickBy } from 'lodash-es';
 import type { FC, PropsWithChildren } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useParams, useSearchParams } from 'react-router-dom';
-import { createContext } from 'use-context-selector';
+import { createContext, useContextSelector } from 'use-context-selector';
 import Throttler from 'utils/Throttler';
 
 interface ParameterProviderType {
@@ -259,6 +259,12 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
       {children}
     </ParameterContext.Provider>
   );
+};
+
+export const useParameterContextSelector = <Selected,>(
+  selector: (value: ParameterProviderType) => Selected
+): Selected => {
+  return useContextSelector<ParameterProviderType, Selected>(ParameterContext, selector);
 };
 
 export default ParameterProvider;

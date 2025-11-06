@@ -1,0 +1,230 @@
+extra:
+  alternate:
+  - lang: en
+    link: /
+    name: English
+  - lang: fr
+    link: /fr/
+    name: Français
+
+extra_css:
+- css/extra.css
+
+extra_javascript:
+- https://cdnjs.cloudflare.com/ajax/libs/tablesort/5.2.1/tablesort.min.js
+- js/tables.js
+
+markdown_extensions:
+- toc:
+    permalink: true
+- attr_list
+- pymdownx.tabbed:
+    alternate_style: true
+- pymdownx.details
+- pymdownx.highlight
+- pymdownx.superfences
+- admonition
+- def_list
+- pymdownx.tasklist:
+    custom_checkbox: true
+- pymdownx.emoji:
+    emoji_generator: !!python/name:material.extensions.emoji.to_svg
+    emoji_index: !!python/name:material.extensions.emoji.twemoji
+
+nav:
+- Home: index.md
+- Overview:
+  - How It Works:
+    - overview/triage_analysts.md
+    - overview/detection_engineers.md
+  # - overview/architecture.md
+- Installation:
+  - installation/deployment.md
+  - installation/deployment_minikube.md
+  - Configuring Howler:
+    - installation/default_configuration.md
+    - installation/configuration.md
+- Ingestion:
+  - ingestion/key_generation.md
+  - ingestion/client.md
+  - ingestion/user.md
+  - ingestion/authentication.md
+  - ingestion/bundles.md
+  - ingestion/links.md
+  - ingestion/example.md
+- Developer's Guide:
+  - developer/getting_started.md
+  - developer/frontend.md
+  - Backend Development:
+    - developer/backend.md
+    - developer/random_data.md
+  - developer/client.md
+- Data Ontology:
+  - Getting Started: odm/getting_started.md
+  - Classes:
+    - odm/class/account.md
+    - odm/class/address.md
+    - odm/class/agent.md
+    - odm/class/as.md
+    - odm/class/assemblyline.md
+    - odm/class/attachment.md
+    - odm/class/aws.md
+    - odm/class/azure.md
+    - odm/class/body.md
+    - odm/class/cbs.md
+    - odm/class/chardevice.md
+    - odm/class/client.md
+    - odm/class/cloud.md
+    - odm/class/codesignature.md
+    - odm/class/comment.md
+    - odm/class/container.md
+    - odm/class/device.md
+    - odm/class/dns.md
+    - odm/class/dnsanswer.md
+    - odm/class/dnsquestion.md
+    - odm/class/ecsversion.md
+    - odm/class/egress.md
+    - odm/class/elf.md
+    - odm/class/email.md
+    - odm/class/enrichments.md
+    - odm/class/entrymeta.md
+    - odm/class/error.md
+    - odm/class/event.md
+    - odm/class/faas.md
+    - odm/class/feed.md
+    - odm/class/file.md
+    - odm/class/gcp.md
+    - odm/class/geo.md
+    - odm/class/geopoint.md
+    - odm/class/group.md
+    - odm/class/hash.md
+    - odm/class/hashes.md
+    - odm/class/header.md
+    - odm/class/hit.md
+    - odm/class/host.md
+    - odm/class/howlerdata.md
+    - odm/class/http.md
+    - odm/class/image.md
+    - odm/class/incident.md
+    - odm/class/indicator.md
+    - odm/class/ingress.md
+    - odm/class/instance.md
+    - odm/class/interface.md
+    - odm/class/label.md
+    - odm/class/lead.md
+    - odm/class/link.md
+    - odm/class/log.md
+    - odm/class/machine.md
+    - odm/class/matched.md
+    - odm/class/nat.md
+    - odm/class/network.md
+    - odm/class/observer.md
+    - odm/class/organization.md
+    - odm/class/originalclient.md
+    - odm/class/os.md
+    - odm/class/parentemail.md
+    - odm/class/parentparentprocess.md
+    - odm/class/parentprocess.md
+    - odm/class/pe.md
+    - odm/class/previousprocess.md
+    - odm/class/process.md
+    - odm/class/project.md
+    - odm/class/registry.md
+    - odm/class/registrydata.md
+    - odm/class/related.md
+    - odm/class/request.md
+    - odm/class/response.md
+    - odm/class/rule.md
+    - odm/class/section.md
+    - odm/class/segment.md
+    - odm/class/server.md
+    - odm/class/service.md
+    - odm/class/sharepoint.md
+    - odm/class/sharepointdata.md
+    - odm/class/sharepointuser.md
+    - odm/class/shortgroup.md
+    - odm/class/shortuser.md
+    - odm/class/software.md
+    - odm/class/subtechnique.md
+    - odm/class/tactic.md
+    - odm/class/technique.md
+    - odm/class/thread.md
+    - odm/class/threat.md
+    - odm/class/tls.md
+    - odm/class/trigger.md
+    - odm/class/tty.md
+    - odm/class/url.md
+    - odm/class/user.md
+    - odm/class/useragent.md
+    - odm/class/usernested.md
+    - odm/class/votes.md
+    - odm/class/vulnerability.md
+
+plugins:
+- glightbox:
+    auto_caption: false
+    caption_position: bottom
+    draggable: false
+    effect: zoom
+    height: auto
+    loop: false
+    skip_classes:
+    - no-zoom
+    touchNavigation: true
+    width: 100%
+    zoomable: true
+- search
+- i18n:
+    fallback_to_default: true
+    languages:
+    - build: true
+      default: true
+      locale: en
+      name: English
+    - build: true
+      locale: fr
+      name: Français
+      nav_translations:
+        Data Ontology: Ontologie des données
+        Developer's guide: Guide du développeur
+        Home: Accueil
+        Overview: Aperçu
+        User's manual: Manuel d'utilisateur
+
+repo_url: https://github.com/CybercentreCanada/howler
+
+site_name: Howler
+
+site_url: https://cybercentrecanada.github.io/howler-docs/
+
+theme:
+  custom_dir: override
+  favicon: images/howler-icon.png
+  features:
+  - navigation.tabs
+  - navigation.expand
+  - navigation.top
+  icon:
+    repo: fontawesome/brands/github
+  language: en
+  logo: images/howler-icon.png
+  name: material
+  palette:
+  - media: '(prefers-color-scheme: dark)'
+    scheme: dark
+    primary: custom
+    toggle:
+      icon: material/toggle-switch-off-outline
+      name: Switch to light mode
+  - media: '(prefers-color-scheme: light)'
+    scheme: light
+    primary: custom
+    toggle:
+      icon: material/toggle-switch
+      name: Switch to dark mode
+  static_templates:
+  - 404.html
+
+validation:
+  absolute_links: ignore
+  unrecognized_links: ignore

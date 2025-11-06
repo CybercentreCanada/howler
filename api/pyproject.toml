@@ -38,7 +38,7 @@ exclude_also = [
     "if TYPE_CHECKING:",
     "@(abc\\.)?abstractmethod]",
     "if \"pytest\" in sys.modules:",
-    "from typing_extensions"
+    "from typing_extensions",
 ]
 
 #################
@@ -148,7 +148,7 @@ suppress-none-returning = true
 [tool.poetry]
 package-mode = true
 name = "howler-api"
-version = "2.10.0"
+version = "2.13.0"
 description = "Howler - API server"
 authors = [
     "Canadian Centre for Cyber Security <howler@cyber.gc.ca>",
@@ -203,7 +203,6 @@ flask = "2.2.5"
 flask-caching = "2.0.2"
 gevent = "23.9.1"
 gunicorn = "23.0.0"
-netifaces = "0.11.0"
 packaging = "<25.0"
 passlib = "1.7.4"
 prometheus-client = "0.17.1"

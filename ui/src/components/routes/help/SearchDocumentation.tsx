@@ -83,6 +83,7 @@ const TOC_CONFIGS: AppTocItem[] = [
     id: 'fields',
     subItems: [{ id: 'fields.legend' }, { id: 'fields.idx_hit' }, { id: 'fields.idx_user', is_admin: true }]
   },
+  { id: 'text vs keywords' },
   { id: 'wildcard' },
   {
     id: 'regex',
@@ -232,6 +233,87 @@ const SearchDocumentation: FC = () => {
               </b>
               {` ${t('fields.important.text')}`}
             </div>
+          </Paragraph>
+
+          <Paragraph id="text vs keywords">
+            <Typography variant="h5">{t('fields.textvskeywords')}</Typography>
+            <>{t('fields.textvskeywords.description')}</>
+            <Typography variant="subtitle2" className="padded">
+              {t('fields.textvskeywords.keywordfamily')}
+            </Typography>
+            <ul className="multipleEx">
+              <li>
+                <Card variant="outlined" className="pre">
+                  {t('fields.textvskeywords.wildcard')}
+                </Card>
+                {t('fields.textvskeywords.wildcard.description')}
+              </li>
+              <li>
+                <Card variant="outlined" className="pre">
+                  {t('fields.textvskeywords.keyword')}
+                </Card>
+                {t('fields.textvskeywords.keyword.description')}
+              </li>
+              <li>
+                <Card variant="outlined" className="pre">
+                  {t('fields.textvskeywords.constantkeyword')}
+                </Card>
+                {t('fields.textvskeywords.constantkeyword.description')}
+              </li>
+            </ul>
+
+            <Typography variant="subtitle2" className="padded">
+              {t('fields.textvskeywords.keyword.more.info')}{' '}
+              <a
+                href="https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/keyword"
+                style={{ color: 'info', textDecoration: 'underline' }}
+                // eslint-disable-next-line react/jsx-no-literals
+              >
+                https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/keyword
+              </a>
+            </Typography>
+
+            <Typography variant="subtitle2" className="padded">
+              {t('fields.textvskeywords.textfamily')}
+            </Typography>
+            <ul className="multipleEx">
+              <li>
+                <Card variant="outlined" className="pre">
+                  {t('fields.textvskeywords.text')}
+                </Card>
+                {t('fields.textvskeywords.text.description')}
+              </li>
+              <li>
+                <Card variant="outlined" className="pre">
+                  {t('fields.textvskeywords.matchonlytext')}
+                </Card>
+                {t('fields.textvskeywords.matchonlytext.description')}
+              </li>
+            </ul>
+
+            <Typography variant="subtitle2" className="padded">
+              {t('fields.textvskeywords.text.more.info')}{' '}
+              <a
+                href="https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/text"
+                style={{ color: 'info', textDecoration: 'underline' }}
+                // eslint-disable-next-line react/jsx-no-literals
+              >
+                https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/text
+              </a>
+            </Typography>
+
+            <Typography variant="subtitle2" className="padded">
+              {t('fields.textvskeywords.text.keyword.compare')}{' '}
+              <a
+                href="https://www.elastic.co/blog/strings-are-dead-long-live-strings"
+                style={{ color: 'info', textDecoration: 'underline' }}
+                // eslint-disable-next-line react/jsx-no-literals
+              >
+                https://www.elastic.co/blog/strings-are-dead-long-live-strings
+              </a>
+            </Typography>
+
+            <div></div>
           </Paragraph>
 
           <Paragraph id="fields.legend">

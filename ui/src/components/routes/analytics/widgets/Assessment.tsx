@@ -1,7 +1,7 @@
 import { Box, Skeleton, Typography } from '@mui/material';
 import api from 'api';
 import type { HowlerFacetSearchResponse } from 'api/search/facet';
-import 'chartjs-adapter-moment';
+import 'chartjs-adapter-dayjs-4';
 import useMyChart from 'components/hooks/useMyChart';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import { forwardRef, useEffect, useState } from 'react';
@@ -24,10 +24,11 @@ const Assessment = forwardRef<any, { analytic: Analytic }>(({ analytic }, ref) =
     setLoading(true);
 
     api.search.facet.hit
-      .post('howler.assessment', {
+      .post({
+        fields: ['howler.assessment'],
         query: `howler.analytic:("${analytic.name}")`
       })
-      .then(data => setAssessmentData(data))
+      .then(data => setAssessmentData(data['howler.assessment']))
       .finally(() => setLoading(false));
   }, [analytic]);
 

@@ -56,9 +56,9 @@ const HitFilter: FC<{ size?: 'small' | 'medium' }> = ({ size }) => {
       setSavedFilter(null);
 
       if (!config.lookups[_category]) {
-        const facets = await api.search.facet.hit.post(_category, { query: 'howler.id:*' });
+        const facets = await api.search.facet.hit.post({ query: 'howler.id:*', fields: [_category] });
 
-        setCustomLookups(Object.keys(facets));
+        setCustomLookups(Object.keys(facets[_category]));
       } else {
         setCustomLookups([]);
       }

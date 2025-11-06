@@ -1,7 +1,7 @@
 import { Skeleton } from '@mui/material';
 import api from 'api';
 import type { ChartDataset, ChartOptions } from 'chart.js';
-import 'chartjs-adapter-moment';
+import 'chartjs-adapter-dayjs-4';
 import useMyChart from 'components/hooks/useMyChart';
 import sum from 'lodash-es/sum';
 import type { Analytic } from 'models/entities/generated/Analytic';
@@ -25,11 +25,12 @@ const Stacked = forwardRef<
     try {
       setLoading(true);
 
-      const result = await api.search.facet.hit.post(field, {
-        query: `howler.analytic:("${analytic.name}")`
+      const result = await api.search.facet.hit.post({
+        query: `howler.analytic:("${analytic.name}")`,
+        fields: [field]
       });
 
-      const values = Object.entries(result)
+      const values = Object.entries(result[field])
         .sort(([__, valA], [___, valB]) => valB - valA)
         .map(([key]) => key);
 

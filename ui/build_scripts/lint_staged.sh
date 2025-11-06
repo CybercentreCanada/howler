@@ -1,3 +1,4 @@
 #!/bin/bash
 cd $(dirname $(dirname $0))
-npx lint-staged
+pwd
+npx lint-staged --no-stash

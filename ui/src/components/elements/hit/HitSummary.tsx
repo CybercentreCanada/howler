@@ -18,15 +18,16 @@ import {
 } from '@mui/material';
 import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
+import useMatchers from 'components/app/hooks/useMatchers';
 import { FieldContext } from 'components/app/providers/FieldProvider';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
-import { TemplateContext } from 'components/app/providers/TemplateProvider';
 import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import { isEmpty } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
+import type { WithMetadata } from 'models/WithMetadata';
 import type { FC } from 'react';
 import { memo, useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -38,17 +39,17 @@ import HitGraph from './aggregate/HitGraph';
 
 const HitSummary: FC<{
   query: string;
-  response?: HowlerSearchResponse<Hit>;
+  response?: HowlerSearchResponse<WithMetadata<Hit>>;
   execute?: boolean;
   onStart?: () => void;
   onComplete?: () => void;
 }> = ({ query, response, onStart, onComplete }) => {
   const { t } = useTranslation();
-  const getMatchingTemplate = useContextSelector(TemplateContext, ctx => ctx.getMatchingTemplate);
   const { dispatchApi } = useMyApi();
   const { hitFields } = useContext(FieldContext);
   const { showErrorMessage } = useMySnackbar();
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
+  const { getMatchingTemplate } = useMatchers();
 
   const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
   const viewId = useContextSelector(HitSearchContext, ctx => ctx.viewId);
@@ -80,9 +81,9 @@ const HitSummary: FC<{
 
     try {
       // Get a list of every key in every template of the hits we're searching
-      const _keyCounts = (response?.items ?? [])
-        .flatMap(h => {
-          const matchingTemplate = getMatchingTemplate(h);
+      const rawCounts = await Promise.all(
+        (response?.items ?? []).map(async h => {
+          const matchingTemplate = await getMatchingTemplate(h);
 
           return (matchingTemplate?.keys ?? [])
             .filter(key => !['howler.id', 'howler.hash'].includes(key))
@@ -91,6 +92,10 @@ const HitSummary: FC<{
               source: `${matchingTemplate.analytic}: ${matchingTemplate.detection ?? t('any')}`
             }));
         })
+      );
+
+      const _keyCounts = rawCounts
+        .flat()
         .concat(customKeys.map(key => ({ key, source: 'custom' })))
 
         // Take that array and reduce it to unique keys and the number of times we see it,
@@ -125,11 +130,11 @@ const HitSummary: FC<{
         (a, b) => (_keyCounts[b]?.count ?? 0) - (_keyCounts[a]?.count ?? 0)
       );
 
-      setLoading(true);
-      // Facet each field
-      for (const key of sortedKeys) {
+      if (sortedKeys.length > 0) {
+        setLoading(true);
         const result = await dispatchApi(
-          api.search.facet.hit.post(key, {
+          api.search.facet.hit.post({
+            fields: sortedKeys,
             query,
             rows: pageCount,
             filters
@@ -144,7 +149,7 @@ const HitSummary: FC<{
         if (result) {
           setAggregateResults(_results => ({
             ..._results,
-            [key]: result
+            ...result
           }));
         }
       }
@@ -237,7 +242,7 @@ const HitSummary: FC<{
                   </Typography>
                 ) : (
                   <Typography variant="caption" color="text.secondary">
-                    ({keyCounts[key]?.count} {t('references')})
+                    ({keyCounts[key]?.count ?? '?'} {t('references')})
                   </Typography>
                 )}
 
@@ -245,11 +250,11 @@ const HitSummary: FC<{
                   title={
                     <Stack>
                       <Typography variant="caption">{t('hit.summary.aggregate.sources')}</Typography>
-                      {keyCounts[key].sources.map(source => (
+                      {keyCounts[key]?.sources.map(source => (
                         <Typography key={source} variant="caption">
                           {source}
                         </Typography>
-                      ))}
+                      )) ?? '?'}
                     </Stack>
                   }
                 >
@@ -261,15 +266,16 @@ const HitSummary: FC<{
               {hitFields.find(f => f.key === key)?.type !== 'date' ? (
                 <Box sx={theme => ({ ml: `${theme.spacing(1)} !important`, alignSelf: 'start' })}>
                   <Grid container key={key + '-list'} sx={theme => ({ mr: 1, mt: theme.spacing(-1) })} spacing={1}>
-                    {Object.keys(aggregateResults[key]).map(_key => (
-                      <Grid key={_key} item xs="auto">
+                    {Object.keys(aggregateResults[key]).map(item => (
+                      <Grid key={item} item xs="auto">
                         <PluginChip
                           context="summary"
                           size="small"
                           variant="filled"
-                          value={_key}
-                          label={`${_key} (${aggregateResults[key][_key]})`}
-                          onClick={() => setSearch(key, `"${_key}"`)}
+                          value={item}
+                          label={`${item} (${aggregateResults[key][item]})`}
+                          onClick={() => setSearch(key, `"${item}"`)}
+                          field={key}
                         />
                       </Grid>
                     ))}

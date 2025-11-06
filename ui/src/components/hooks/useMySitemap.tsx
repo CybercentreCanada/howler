@@ -11,10 +11,12 @@ import {
   Help,
   Info,
   Key,
+  Person,
   PersonSearch,
   QueryStats,
   SavedSearch,
   Search,
+  Settings,
   SettingsSuggest,
   Shield,
   Storage,
@@ -22,9 +24,8 @@ import {
   Topic,
   Work
 } from '@mui/icons-material';
-import PersonIcon from '@mui/icons-material/Person';
-import SettingsIcon from '@mui/icons-material/Settings';
 import type { AppSiteMapConfigs } from 'commons/components/app/AppConfigs';
+import howlerPluginStore from 'plugins/store';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -57,7 +58,7 @@ const useMySitemap = (): AppSiteMapConfigs => {
           title: t('route.admin.user.details'),
           isLeaf: true,
           breadcrumbs: ['/admin/users'],
-          icon: <PersonIcon />
+          icon: <Person />
         },
         { path: '/help', title: t('route.help'), isRoot: true, icon: <Help /> },
         { path: '/help/api', title: t('route.help.api'), isLeaf: true, icon: <Storage />, breadcrumbs: ['/help'] },
@@ -235,8 +236,9 @@ const useMySitemap = (): AppSiteMapConfigs => {
           icon: <Info />
         },
         { path: '/home', title: t('route.home'), isRoot: true, icon: <Dashboard /> },
-        { path: '/settings', title: t('page.settings.sitemap'), isRoot: true, icon: <SettingsIcon /> },
-        { path: '/advanced', title: t('route.advanced'), isRoot: true, icon: <Code /> }
+        { path: '/settings', title: t('page.settings.sitemap'), isRoot: true, icon: <Settings /> },
+        { path: '/advanced', title: t('route.advanced'), isRoot: true, icon: <Code /> },
+        ...howlerPluginStore.sitemaps
       ]
     }),
     [t]

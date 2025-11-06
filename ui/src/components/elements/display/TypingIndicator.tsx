@@ -1,4 +1,4 @@
-import Circle from '@mui/icons-material/Circle';
+import { Circle } from '@mui/icons-material';
 import { alpha, Stack } from '@mui/material';
 
 const TypingIndicator = () => {

@@ -6,16 +6,17 @@ import { usePluginStore } from 'react-pluggable';
 export type PluginTypographyProps = TypographyProps & {
   value: string;
   context: string;
+  field?: string;
 };
 
-const PluginTypography: FC<PluginTypographyProps> = ({ children, value, context, ...props }) => {
+const PluginTypography: FC<PluginTypographyProps> = ({ children, value, context, field, ...props }) => {
   const pluginStore = usePluginStore();
-
   for (const plugin of howlerPluginStore.plugins) {
     const component = pluginStore.executeFunction(`${plugin}.typography`, {
       children,
       value,
       context,
+      field,
       ...props
     }) as ReactNode;
 
@@ -24,7 +25,7 @@ const PluginTypography: FC<PluginTypographyProps> = ({ children, value, context,
     }
   }
 
-  return <Typography {...props}>{children}</Typography>;
+  return <Typography {...props}>{children ?? value}</Typography>;
 };
 
 export default PluginTypography;

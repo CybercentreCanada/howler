@@ -4,15 +4,10 @@ import { useAppUser } from 'commons/components/app/hooks';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import { createContext, useCallback, useEffect, useState, type FC, type PropsWithChildren } from 'react';
-import { sanitizeLuceneQuery } from 'utils/stringUtils';
 
 interface AnalyticContextType {
   ready: boolean;
   analytics: Analytic[];
-  addFavourite: (analytic: Analytic) => Promise<void>;
-  removeFavourite: (analytic: Analytic) => Promise<void>;
-  getIdFromName: (name: string) => Promise<string>;
-  getAnalyticFromName: (name: string) => Promise<Analytic>;
   getAnalyticFromId: (id: string) => Promise<Analytic>;
 }
 
@@ -51,30 +46,6 @@ const AnalyticProvider: FC<PropsWithChildren> = ({ children }) => {
     }
   }, [ready, appUser, fetchAnalytics]);
 
-  const addFavourite = useCallback(
-    async (analytic: Analytic) => {
-      await api.analytic.favourite.post(analytic.analytic_id);
-
-      appUser.setUser({
-        ...appUser.user,
-        favourite_analytics: [...appUser.user.favourite_analytics, analytic.analytic_id]
-      });
-    },
-    [appUser]
-  );
-
-  const removeFavourite = useCallback(
-    async (analytic: Analytic) => {
-      await api.analytic.favourite.del(analytic.analytic_id);
-
-      appUser.setUser({
-        ...appUser.user,
-        favourite_analytics: appUser.user.favourite_analytics.filter(v => v !== analytic.analytic_id)
-      });
-    },
-    [appUser]
-  );
-
   const getAnalyticFromId = useCallback(
     async (id: string) => {
       const candidate = analytics?.find(_analytic => _analytic.analytic_id === id);
@@ -108,52 +79,8 @@ const AnalyticProvider: FC<PropsWithChildren> = ({ children }) => {
     [analytics]
   );
 
-  const getAnalyticFromName = useCallback(
-    async (name: string) => {
-      const candidate = analytics.find(_analytic => _analytic.name === name);
-      if (candidate) {
-        return candidate;
-      }
-
-      // We check to see if there's already a request in progress
-      if (!PROMISES[name]) {
-        PROMISES[name] = api.search.analytic.post({
-          query: `name:(${sanitizeLuceneQuery(name)})`
-        });
-      }
-
-      try {
-        const result = await PROMISES[name];
-
-        const analytic = result.items?.[0];
-
-        if (analytic) {
-          setAnalytics([...analytics, analytic]);
-          return analytic;
-        }
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.error(e);
-      }
-
-      return null;
-    },
-    [analytics]
-  );
-
-  const getIdFromName = useCallback(
-    async (name: string) => {
-      return (await getAnalyticFromName(name))?.analytic_id;
-    },
-    [getAnalyticFromName]
-  );
-
   return (
-    <AnalyticContext.Provider
-      value={{ analytics, ready, addFavourite, removeFavourite, getAnalyticFromName, getAnalyticFromId, getIdFromName }}
-    >
-      {children}
-    </AnalyticContext.Provider>
+    <AnalyticContext.Provider value={{ analytics, ready, getAnalyticFromId }}>{children}</AnalyticContext.Provider>
   );
 };
 

@@ -1,10 +1,10 @@
 import { Add, Check } from '@mui/icons-material';
-import { Autocomplete, Chip, Divider, Grid, Popover, Stack, TextField } from '@mui/material';
+import { Autocomplete, Chip, Divider, Grid, IconButton, Popover, Stack, TextField } from '@mui/material';
+import useMatchers from 'components/app/hooks/useMatchers';
 import { FieldContext } from 'components/app/providers/FieldProvider';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
-import { TemplateContext } from 'components/app/providers/TemplateProvider';
-import { sortBy, uniq } from 'lodash-es';
-import { memo, useContext, useMemo, type FC } from 'react';
+import { has, sortBy, uniq } from 'lodash-es';
+import { memo, useContext, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 
@@ -17,16 +17,30 @@ const AddColumnModal: FC<{
 }> = ({ open, onClose, anchorEl, addColumn, columns }) => {
   const { t } = useTranslation();
   const { hitFields } = useContext(FieldContext);
-
   const response = useContextSelector(HitSearchContext, ctx => ctx.response);
+  const { getMatchingTemplate } = useMatchers();
 
-  const getMatchingTemplate = useContextSelector(TemplateContext, ctx => ctx.getMatchingTemplate);
+  const [columnToAdd, setColumnToAdd] = useState<string>(null);
 
   const options = useMemo(() => hitFields.map(field => field.key), [hitFields]);
-  const suggestions = useMemo(
-    () => uniq((response?.items ?? []).flatMap(_hit => getMatchingTemplate(_hit)?.keys ?? [])),
-    [getMatchingTemplate, response?.items]
-  );
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      setSuggestions(
+        uniq(
+          (
+            await Promise.all(
+              (response?.items ?? []).map(
+                async _hit =>
+                  (has(_hit, '__template') ? _hit.__template?.keys : (await getMatchingTemplate(_hit))?.keys) ?? []
+              )
+            )
+          ).flat()
+        )
+      );
+    })();
+  }, [getMatchingTemplate, response?.items]);
 
   return (
     <Popover
@@ -36,10 +50,25 @@ const AddColumnModal: FC<{
       anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
     >
       <Stack spacing={1} p={1} width="500px">
-        <Autocomplete
-          options={options}
-          renderInput={params => <TextField fullWidth placeholder={t('hit.fields')} {...params} />}
-        />
+        <Stack direction="row" spacing={1}>
+          <Autocomplete
+            sx={{ flex: 1 }}
+            size="small"
+            options={options}
+            value={columnToAdd}
+            renderInput={params => <TextField fullWidth placeholder={t('hit.fields')} {...params} />}
+            onChange={(_ev, value) => setColumnToAdd(value)}
+          />
+          <IconButton
+            disabled={!columnToAdd}
+            onClick={() => {
+              addColumn(columnToAdd);
+              setColumnToAdd(null);
+            }}
+          >
+            <Add />
+          </IconButton>
+        </Stack>
         <Divider orientation="horizontal" />
         <Grid container spacing={1}>
           {sortBy(

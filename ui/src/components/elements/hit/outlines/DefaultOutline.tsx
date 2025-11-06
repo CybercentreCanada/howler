@@ -93,6 +93,7 @@ const DefaultOutline: FC<{
                 whiteSpace="normal"
                 sx={{ width: '100%', wordBreak: 'break-all' }}
                 value={displayedData}
+                field={field}
               >
                 {displayedData}
               </PluginTypography>

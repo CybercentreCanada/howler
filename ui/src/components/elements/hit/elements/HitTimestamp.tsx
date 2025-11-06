@@ -1,7 +1,7 @@
 import { Chip, Tooltip } from '@mui/material';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
+import dayjs from 'dayjs';
 import type { Hit } from 'models/entities/generated/Hit';
-import moment from 'moment';
 import type { FC } from 'react';
 import { useContext, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,9 +20,9 @@ const HitTimestamp: FC<{ hit: Hit; layout: HitLayout }> = ({ hit, layout }) => {
 
   const threshold = useMemo(
     () =>
-      moment().subtract(
+      dayjs().subtract(
         config.configuration.system.retention?.limit_amount ?? 350,
-        (config.configuration.system.retention?.limit_unit as moment.unitOfTime.DurationConstructor) ?? 'days'
+        (config.configuration.system.retention?.limit_unit as dayjs.ManipulateType) ?? 'days'
       ),
     [config.configuration.system.retention?.limit_amount, config.configuration.system.retention?.limit_unit]
   );
@@ -33,18 +33,18 @@ const HitTimestamp: FC<{ hit: Hit; layout: HitLayout }> = ({ hit, layout }) => {
     const earliestDate = validFieldValues
       .filter(entry => !!entry)
       .reduce((earliest, current) => {
-        return moment(earliest).isBefore(current) ? earliest : current;
+        return dayjs(earliest).isBefore(current) ? earliest : current;
       });
 
     return earliestDate;
   }, [hit]);
 
   const color = useMemo<'default' | 'warning' | 'error'>(() => {
-    if (moment(timestamp).isBefore(threshold.clone().add(2, 'weeks'))) {
+    if (dayjs(timestamp).isBefore(threshold.clone().add(2, 'weeks'))) {
       return 'error';
     }
 
-    if (moment(timestamp).isBefore(threshold.clone().add(1, 'months'))) {
+    if (dayjs(timestamp).isBefore(threshold.clone().add(1, 'months'))) {
       return 'warning';
     }
 
@@ -52,12 +52,12 @@ const HitTimestamp: FC<{ hit: Hit; layout: HitLayout }> = ({ hit, layout }) => {
   }, [threshold, timestamp]);
 
   const duration = useMemo(() => {
-    if (moment(timestamp).isBefore(threshold)) {
+    if (dayjs(timestamp).isBefore(threshold)) {
       return t('retention.imminent');
     }
 
-    const diff = moment(timestamp).diff(threshold, 'seconds');
-    const _duration = moment.duration(diff, 'seconds');
+    const diff = dayjs(timestamp).diff(threshold, 'seconds');
+    const _duration = dayjs.duration(diff, 'seconds');
 
     return _duration.humanize();
   }, [t, threshold, timestamp]);

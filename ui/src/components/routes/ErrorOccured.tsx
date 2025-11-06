@@ -1,4 +1,4 @@
-import ErrorIcon from '@mui/icons-material/Error';
+import { Error } from '@mui/icons-material';
 import { Box, Typography } from '@mui/material';
 import PageCenter from 'commons/components/pages/PageCenter';
 import howlerPluginStore from 'plugins/store';
@@ -12,7 +12,7 @@ const ErrorOccured: FC = () => {
   return (
     <PageCenter width="75%">
       <Box pt={6} textAlign="center" fontSize={200}>
-        <ErrorIcon fontSize="inherit" style={{ color: '#f44336' }} />
+        <Error fontSize="inherit" style={{ color: '#f44336' }} />
       </Box>
       <Box pb={2}>
         <Typography variant="h2">{t('page.error.title')}</Typography>
