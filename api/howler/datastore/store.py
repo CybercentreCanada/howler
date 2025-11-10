@@ -55,6 +55,8 @@ class ESStore(object):
             config = _config
 
         self._apikey: Optional[tuple[str, str]] = None
+        self._username: Optional[str] = None
+        self._password: Optional[str] = None
         self._hosts = []
 
         for host in config.datastore.hosts:
@@ -64,6 +66,9 @@ class ESStore(object):
                     os.environ[f"{host.name.upper()}_HOST_APIKEY_ID"],
                     os.environ[f"{host.name.upper()}_HOST_APIKEY_SECRET"],
                 )
+            elif os.getenv(f"{host.name.upper()}_HOST_USERNAME") is not None:
+                self._username = os.environ[f"{host.name.upper()}_HOST_USERNAME"]
+                self._password = os.environ[f"{host.name.upper()}_HOST_PASSWORD"]
 
         self._closed = False
         self._collections: dict[str, ESCollection] = {}
@@ -73,12 +78,26 @@ class ESStore(object):
         tracer = logging.getLogger("elasticsearch")
         tracer.setLevel(logging.CRITICAL)
 
-        self.client = elasticsearch.Elasticsearch(
-            hosts=self._hosts,  # type: ignore
-            api_key=self._apikey,
-            max_retries=0,
-            request_timeout=TRANSPORT_TIMEOUT,
-        )
+        if self._apikey is not None:
+            self.client = elasticsearch.Elasticsearch(
+                hosts=self._hosts,  # type: ignore
+                api_key=self._apikey,
+                max_retries=0,
+                request_timeout=TRANSPORT_TIMEOUT,
+            )
+        elif self._username is not None and self._password is not None:
+            self.client = elasticsearch.Elasticsearch(
+                hosts=self._hosts,  # type: ignore
+                basic_auth=(self._username, self._password),
+                max_retries=0,
+                request_timeout=TRANSPORT_TIMEOUT,
+            )
+        else:
+            self.client = elasticsearch.Elasticsearch(
+                hosts=self._hosts,  # type: ignore
+                max_retries=0,
+                request_timeout=TRANSPORT_TIMEOUT,
+            )
         self.eql = elasticsearch.client.EqlClient(self.client)
         self.archive_access = archive_access
         self.url_path = "elastic"
