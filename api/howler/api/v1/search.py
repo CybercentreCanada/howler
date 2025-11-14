@@ -153,24 +153,31 @@ def search(index, **kwargs):
 @search_api.route("/<index>/explain", methods=["GET", "POST"])
 @api_login(required_priv=["R"])
 def explain_query(index, **kwargs):
-    """Search through specified index for a given EQL query. Uses EQL search syntax for query.
+    """Search through specified index for a given Lucene query. Uses Lucene search syntax for query.
 
     Variables:
     index  =>   Index to explain against (hit, user,...)
 
     Arguments:
-    query   =>   EQL Query to search for
+    query   =>   Lucene Query to explain
 
     Data Block:
     # Note that the data block is for POST requests only!
     {
-        "query": "query", # Lucene Query to explain
+        "query": "id:*", # Lucene Query to explain
     }
 
 
     Result Example:
-
-    TODO: Fix result
+    {
+        'valid': True,
+        'explanations': [
+            {
+                'valid': True,
+                'explanation': 'ConstantScore(FieldExistsQuery [field=id])'
+            }
+        ]
+    }
     """
     user = kwargs["user"]
     collection = get_collection(index, user)
@@ -198,7 +205,7 @@ def explain_query(index, **kwargs):
         indices_client = IndicesClient(datastore().hit.datastore.client)
 
         result = deepcopy(
-            indices_client.validate_query(q=escaped_lucene, explain=True, index=datastore().hit.index_name).body
+            indices_client.validate_query(q=escaped_lucene, explain=True, index=collection().index_name).body
         )
 
         del result["_shards"]
