@@ -175,8 +175,6 @@ def delete_dossier(id: str, user: User, **kwargs):
 
     success = storage.dossier.delete(id)
 
-    storage.dossier.commit()
-
     return no_content({"success": success})
 
 

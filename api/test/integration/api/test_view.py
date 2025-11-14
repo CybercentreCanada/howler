@@ -15,6 +15,8 @@ def datastore(datastore_connection):
     try:
         create_views(ds)
 
+        ds.view.commit()
+
         yield ds
     finally:
         wipe_views(ds)
@@ -94,7 +96,6 @@ def test_get_views(datastore, login_session):
 def test_remove_view(datastore: HowlerDatastore, login_session):
     session, host = login_session
 
-    datastore.view.commit()
     total = datastore.view.search("view_id:*")["total"]
 
     create_res = get_api_data(
@@ -104,13 +105,17 @@ def test_remove_view(datastore: HowlerDatastore, login_session):
         data=json.dumps({"title": "testremove", "type": "global", "query": "howler.hash:*"}),
     )
 
+    # Ensure the new view is indexed
     datastore.view.commit()
+
     assert total + 1 == datastore.view.search("view_id:*")["total"]
 
     res = get_api_data(session, f"{host}/api/v1/view/{create_res['view_id']}/", method="DELETE")
-
-    datastore.view.commit()
     assert res is None
+
+    # Ensure the new view is no longer indexed
+    datastore.view.commit()
+
     assert total == datastore.view.search("view_id:*")["total"]
 
 
@@ -127,8 +132,6 @@ def test_set_view(datastore: HowlerDatastore, login_session):
         data=json.dumps({"title": "new title thing"}),
     )
     assert resp["title"] == "new title thing"
-
-    datastore.view.commit()
 
     updated_view = datastore.view.get(id, as_obj=True)
     assert updated_view.title == "new title thing"
@@ -158,23 +161,19 @@ def test_favourite(datastore: HowlerDatastore, login_session):
 
     view: View = datastore.view.search(f"type:global OR owner:{uname}")["items"][0]
 
-    get_api_data(
+    user = get_api_data(
         session,
         f"{host}/api/v1/view/{view.view_id}/favourite",
         method="POST",
         data={},
     )
 
-    datastore.user.commit()
+    assert view.view_id in user["favourite_views"]
 
-    assert view.view_id in datastore.user.search(f"uname:{uname}")["items"][0]["favourite_views"]
-
-    get_api_data(
+    user = get_api_data(
         session,
         f"{host}/api/v1/view/{view.view_id}/favourite",
         method="DELETE",
     )
 
-    datastore.user.commit()
-
-    assert view.view_id not in datastore.user.search(f"uname:{uname}")["items"][0]["favourite_views"]
+    assert view.view_id not in user["favourite_views"]
