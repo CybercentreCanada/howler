@@ -30,20 +30,20 @@ def mock_plugin():
 
 def test_auth_hooks(caplog):
     with app.test_request_context():
-        from howler.api.v1.borealis import get_token
+        from howler.api.v1.clue import get_token
 
         with caplog.at_level(logging.INFO):
             assert get_token("bad_token") == "bad_token"
 
-        assert "No custom borealis token logic provided, continuing with howler credentials" in caplog.text
+        assert "No custom clue token logic provided, continuing with howler credentials" in caplog.text
 
         caplog.clear()
 
         from howler.plugins import PLUGINS
 
-        cast(BasePluginConfig, PLUGINS["test-plugin"]).modules.token_functions["borealis"] = mock_get_token
+        cast(BasePluginConfig, PLUGINS["test-plugin"]).modules.token_functions["clue"] = mock_get_token
 
         with caplog.at_level(logging.INFO):
             assert get_token("bad_token") == "access_token"
 
-        assert "No custom borealis token logic provided, continuing with howler credentials" not in caplog.text
+        assert "No custom clue token logic provided, continuing with howler credentials" not in caplog.text

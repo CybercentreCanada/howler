@@ -117,11 +117,11 @@ def get_configuration(user: User, **kwargs):
             },
             "mapping": config.mapping,
             "features": {
-                "borealis": config.core.borealis.enabled,
+                "clue": config.core.clue.enabled,
                 "notebook": config.core.notebook.enabled,
                 **plugin_features,
             },
-            "borealis": {"status_checks": config.core.borealis.status_checks},
+            "clue": {"status_checks": config.core.clue.status_checks},
         },
         "c12nDef": classification_definition,
         "indexes": list_all_fields("admin" in user["type"] if user is not None else False),

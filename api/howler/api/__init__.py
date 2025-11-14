@@ -32,7 +32,7 @@ def _make_api_response(
 ) -> Response:
     quota_user = flsk_session.pop("quota_user", None)
     quota_set = flsk_session.pop("quota_set", False)
-    if quota_user and quota_set and not request.path.startswith("/api/v1/borealis"):
+    if quota_user and quota_set and not request.path.startswith("/api/v1/clue"):
         QUOTA_TRACKER.end(quota_user)
 
     if type(err) is Exception:  # pragma: no cover

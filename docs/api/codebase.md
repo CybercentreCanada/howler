@@ -46,7 +46,7 @@ This document outlines the overall structure of the Howler API codebase. The fir
     - **`action.py`** - Action management and execution
     - **`analytic.py`** - Analytics management and configuration
     - **`auth.py`** - Authentication and authorization endpoints
-    - **`borealis.py`** - Borealis integration endpoints
+    - **`clue.py`** - Clue integration endpoints
     - **`configs.py`** - Configuration management
     - **`dossier.py`** - Dossier (case) management
     - **`help.py`** - Help and documentation endpoints

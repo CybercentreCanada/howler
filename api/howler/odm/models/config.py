@@ -409,24 +409,24 @@ class UI(BaseModel):
     )
 
 
-class Borealis(BaseModel):
-    """Borealis enrichment service integration configuration.
+class Clue(BaseModel):
+    """Clue enrichment service integration configuration.
 
-    Defines settings for integrating with Borealis, an external enrichment
+    Defines settings for integrating with Clue, an external enrichment
     service that can provide additional context and status information for
     hits displayed in the Howler UI.
     """
 
-    enabled: bool = Field(default=False, description="Should borealis integration be enabled?")
+    enabled: bool = Field(default=False, description="Should clue integration be enabled?")
 
     url: str = Field(
         default="http://enrichment-rest.enrichment.svc.cluster.local:5000",
-        description="What url should Howler connect to to interact with Borealis?",
+        description="What url should Howler connect to to interact with Clue?",
     )
 
     status_checks: list[str] = Field(
         default=[],
-        description="A list of borealis fetchers that return status results given a Howler ID to show in the UI.",
+        description="A list of clue fetchers that return status results given a Howler ID to show in the UI.",
     )
 
 
@@ -451,7 +451,7 @@ class Core(BaseModel):
     """Core application configuration for Howler.
 
     Aggregates all core service configurations including Redis, metrics,
-    and external integrations like Borealis and nbgallery notebooks.
+    and external integrations like Clue and nbgallery notebooks.
     Also manages the loading of external plugins.
     """
 
@@ -463,8 +463,8 @@ class Core(BaseModel):
     redis: Redis = Redis()
     "Configuration for Redis instances"
 
-    borealis: Borealis = Borealis()
-    "Configuration for Borealis Integration"
+    clue: Clue = Clue()
+    "Configuration for Clue Integration"
 
     notebook: Notebook = Notebook()
     "Configuration for Notebook Integration"
@@ -529,7 +529,7 @@ class Config(BaseSettings):
     logging: Logging = Logging()
     system: System = System()
     ui: UI = UI()
-    mapping: dict[str, str] = Field(description="Mapping of alert keys to borealis type", default={})
+    mapping: dict[str, str] = Field(description="Mapping of alert keys to clue types", default={})
 
     model_config = SettingsConfigDict(
         yaml_file=config_locations,
