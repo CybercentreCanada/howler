@@ -123,7 +123,6 @@ This is a **layered architecture** for a security alert triage system:
 ### Other Folders
 
 - **`cronjobs`** - Scheduled tasks (retention, rules processing)
-- **`filestore`** - File storage abstraction (not used currently)
 - **`plugins`** - Plugin system configuration
 - **`remote`** - Remote system integrations
 - **`security`** - Security and authentication utilities
