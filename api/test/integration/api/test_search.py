@@ -473,8 +473,6 @@ def test_explain_query_multiple_indexes(datastore, login_session):
     assert "valid" in resp_user
     assert resp_user["valid"] is True
 
-    # TODO: Add tests for other indexes like template, overview once they're available in test data
-
 
 def test_explain_query_lucene_phrase_escaping(datastore, login_session):
     """Test that Lucene phrase escaping works correctly in explain"""
@@ -507,12 +505,6 @@ def test_explain_query_response_structure(datastore, login_session):
     assert isinstance(resp, dict)
     assert "valid" in resp
 
-    # TODO: Add more specific validation based on Elasticsearch validate_query API response
-    # Common fields in Elasticsearch validation response:
-    # - valid: boolean indicating if query is valid
-    # - explanations: array of explanations (when explain=True)
-    # - error: error details if query is invalid
-
     # For now, just ensure it's a valid response structure
     if "explanations" in resp:
         assert isinstance(resp["explanations"], list)
@@ -542,10 +534,3 @@ def test_explain_query_edge_cases(datastore, login_session):
         session, f"{host}/api/v1/search/hit/explain", params={"query": "howler.timestamp:[2023-01-01 TO 2024-01-01]"}
     )
     assert resp_range["valid"] is True
-
-    # TODO: Add tests for:
-    # - Fuzzy queries (term~)
-    # - Proximity queries ("term1 term2"~10)
-    # - Boost queries (term^2)
-    # - Nested queries (when applicable)
-    # - Regular expression queries (/pattern/)
