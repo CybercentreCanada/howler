@@ -61,7 +61,7 @@ auth:
         user_get: null
     strict_apikeys: true
 core:
-  borealis:
+  clue:
     enabled: false
     status_checks: []
     url: http://enrichment-rest.enrichment.svc.cluster.local:5000
