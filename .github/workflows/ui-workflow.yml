@@ -1,5 +1,10 @@
 name: Howler UI
 
+# Trigger this workflow on:
+# - Push to main/develop/rc/patch branches when UI files change
+# - Pull requests targeting those branches with UI changes
+# - Manual workflow dispatch
+# - Version tags (v*)
 on:
   push:
     branches:
@@ -8,12 +13,13 @@ on:
       - rc/*
       - patch/*
     paths:
+      # Only run when UI-related files change
       - "ui/**"
-      - "!ui/LICENSE"
-      - "!ui/README.md"
-      - .github/workflows/ui-workflow.yml
+      - "!ui/LICENSE"          # Ignore license changes
+      - "!ui/README.md"        # Ignore readme changes
+      - .github/workflows/ui-workflow.yml  # Run when this workflow changes
     tags:
-      - v*
+      - v*  # Run on version tags
   pull_request:
     branches:
       - main
@@ -21,38 +27,46 @@ on:
       - rc/*
       - patch/*
     paths:
+      # Same path filters as push events
       - "ui/**"
       - "!ui/LICENSE"
       - "!ui/README.md"
       - .github/workflows/ui-workflow.yml
-  workflow_dispatch: {}
+  workflow_dispatch: {}  # Allow manual triggering
 
+# Required permissions for the workflow
 permissions:
-  contents: read
-  pull-requests: write
+  contents: read           # Read repository contents
+  pull-requests: write     # Write coverage reports to PRs
 
 jobs:
+  # Job 1: Code Quality Validation
+  # Runs linting, type checking, formatting checks, and unit tests
   formatting:
     name: Validate Howler UI Code Quality
 
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ui
+        working-directory: ui  # All commands run in the ui/ directory
     steps:
       - name: Checkout current ref
         uses: actions/checkout@v4
+
       - name: Install Node v20
         uses: actions/setup-node@v4
         with:
           node-version: 20
+
       - name: Install pnpm v10
         uses: pnpm/action-setup@v4
         with:
           version: 10
+
       - name: Get pnpm store path
         id: pnpm-cache-dir
         run: echo "PNPM_CACHE_DIR=$(pnpm store path)" >> $GITHUB_OUTPUT
+
       - uses: actions/cache@v3
         name: Define a cache for node_modules
         with:
@@ -63,56 +77,69 @@ jobs:
           key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Run type checking
+        run: pnpm tsc --noEmit
+
       - name: Run prettier formatting checks
-        run: |
-          pnpm run lint
+        run: pnpm run lint
+
       - name: Run eslint linter checks
-        run: |
-          npx eslint@8 src
+        run: pnpm eslint src
+
       - name: Run Unit Tests
         run: pnpm test
+
       - name: Report Coverage
         uses: davelosert/vitest-coverage-report-action@v2
         with:
           json-summary-path: ui/target/coverage/coverage-summary.json
           json-final-path: ui/target/coverage/coverage-final.json
 
+  # Job 2: NPM Package Publishing
+  # Builds and publishes the UI library to NPM registry
+  # Only runs on push events (not PRs) and after code quality validation passes
   push_npm_package:
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request'  # Skip for pull requests
 
     runs-on: ubuntu-latest
 
     name: Publish Howler UI to NPM
 
     needs:
-      - formatting
+      - formatting  # Wait for code quality job to complete successfully
 
     defaults:
       run:
         working-directory: ./ui
 
     permissions:
-      id-token: write
-      contents: read
-      attestations: write
+      id-token: write       # Required for NPM provenance
+      contents: read        # Read repository contents
+      attestations: write   # Write build attestations
 
     steps:
       - name: Checkout current ref
         uses: actions/checkout@v4
+
       - name: Install Node v20
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          registry-url: 'https://registry.npmjs.org'
+          registry-url: 'https://registry.npmjs.org'  # Configure for NPM publishing
+
       - name: Install pnpm v10
         uses: pnpm/action-setup@v4
         with:
           version: 10
+
       - name: Get pnpm store path
         id: pnpm-cache-dir
         run: echo "PNPM_CACHE_DIR=$(pnpm store path)" >> $GITHUB_OUTPUT
+
       - uses: actions/cache@v3
         name: Define a cache for node_modules
         with:
@@ -123,60 +150,69 @@ jobs:
           key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
+
       - name: Set Package Version
         run: |
           python build_scripts/set_version.py
         env:
           BRANCH: ${{ github.ref }}
           BUILD_ID: ${{ github.run_number }}
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
       - name: Build UI
-        run: |
-          pnpm build-lib
+        run: pnpm build-lib
         env:
-          NODE_OPTIONS: --max-old-space-size=16384
+          NODE_OPTIONS: --max-old-space-size=16384  # Increase memory for large builds
+
       - name: Publish Built Package
-        run: |
-          pnpm publish --provenance --access public
-        working-directory: ./ui/dist
+        run: pnpm publish --provenance --access public
+        working-directory: ui/dist  # Publish from the built dist directory
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+  # Job 3: Docker Image Build and Push
+  # Builds the UI application and creates a Docker image for deployment
+  # Only runs on push events (not PRs) and after code quality validation passes
   push_docker_image:
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request'  # Skip for pull requests
 
     runs-on: ubuntu-latest
 
     name: Build Howler UI Docker Image
 
     needs:
-      - formatting
+      - formatting  # Wait for code quality job to complete successfully
 
     defaults:
       run:
         working-directory: ./ui
 
     permissions:
-      id-token: write
-      contents: read
-      attestations: write
+      id-token: write       # Required for build attestations
+      contents: read        # Read repository contents
+      attestations: write   # Write build provenance attestations
 
     steps:
       - name: Checkout current ref
         uses: actions/checkout@v4
+
       - name: Install Node v20
         uses: actions/setup-node@v4
         with:
           node-version: 20
           registry-url: 'https://registry.npmjs.org'
+
       - name: Install pnpm v10
         uses: pnpm/action-setup@v4
         with:
           version: 10
+
       - name: Get pnpm store path
         id: pnpm-cache-dir
         run: echo "PNPM_CACHE_DIR=$(pnpm store path)" >> $GITHUB_OUTPUT
+
       - uses: actions/cache@v3
         name: Define a cache for node_modules
         with:
@@ -187,30 +223,35 @@ jobs:
           key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
+
       - name: Set Package Version
         run: |
           python build_scripts/set_version.py
         env:
           BRANCH: ${{ github.ref }}
           BUILD_ID: ${{ github.run_number }}
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
       - name: Build UI
         run: |
           pnpm build
         env:
-          VITE_BRANCH: ${{ github.ref }}
-          VITE_COMMIT_HASH: ${{ github.sha }}
-          NODE_OPTIONS: --max-old-space-size=16384
+          VITE_BRANCH: ${{ github.ref }}           # Embed branch info in build
+          VITE_COMMIT_HASH: ${{ github.sha }}      # Embed commit hash in build
+          NODE_OPTIONS: --max-old-space-size=16384 # Increase memory for large builds
+
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Extract Howler UI version
         id: version
-        run: |
-          python -c "import json;print('version='+json.load(open('package.json', 'r'))['version'])" >> $GITHUB_OUTPUT
+        run: python -c "import json;print('version='+json.load(open('package.json', 'r'))['version'])" >> $GITHUB_OUTPUT
+
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v3
@@ -222,23 +263,27 @@ jobs:
             type=semver,pattern={{version}}
             type=raw,value=${{steps.version.outputs.version}}_{{branch}}
             type=raw,value=${{steps.version.outputs.version}}_{{branch}}_{{sha}}
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
       - name: Build and push UI Docker image
         id: push
         uses: docker/build-push-action@v3
         with:
-          context: ui
-          file: ui/Dockerfile
-          push: true
+          context: ui              # Build context is the ui/ directory
+          file: ui/Dockerfile      # Dockerfile location
+          push: true               # Push to registry after building
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             version=${{ steps.meta.outputs.version }}
             branch=${{ github.ref }}
             commit=${{ github.sha }}
+
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
         with:
