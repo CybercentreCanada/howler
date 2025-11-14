@@ -1147,7 +1147,7 @@ class Model:
         toc_depth=1,
         include_autogen_note=True,
         defaults=None,
-        url_prefix="/howler-docs/odm/class/",
+        url_prefix="/howler/odm/class/",
     ) -> Union[str, Dict]:
         markdown_content = (
             (
