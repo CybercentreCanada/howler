@@ -1,6 +1,9 @@
+import re
+from copy import deepcopy
 from typing import Any, Union
 
 from elasticsearch import BadRequestError
+from elasticsearch._sync.client.indices import IndicesClient
 from flask import request
 from sigma.backends.elasticsearch import LuceneBackend
 from sigma.rule import SigmaRule
@@ -14,7 +17,7 @@ from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import SearchException
 from howler.helper.search import get_collection, get_default_sort, has_access_control, list_all_fields
 from howler.security import api_login
-from howler.services import hit_service
+from howler.services import hit_service, lucene_service
 
 SUB_API = "search"
 search_api = make_subapi_blueprint(SUB_API, api_version=1)
@@ -144,6 +147,69 @@ def search(index, **kwargs):
         return ok(result)
     except (SearchException, BadRequestError) as e:
         return bad_request(err=f"SearchException: {e}")
+
+
+@generate_swagger_docs()
+@search_api.route("/<index>/explain", methods=["GET", "POST"])
+@api_login(required_priv=["R"])
+def explain_query(index, **kwargs):
+    """Search through specified index for a given EQL query. Uses EQL search syntax for query.
+
+    Variables:
+    index  =>   Index to explain against (hit, user,...)
+
+    Arguments:
+    query   =>   EQL Query to search for
+
+    Data Block:
+    # Note that the data block is for POST requests only!
+    {
+        "query": "query", # Lucene Query to explain
+    }
+
+
+    Result Example:
+
+    TODO: Fix result
+    """
+    user = kwargs["user"]
+    collection = get_collection(index, user)
+
+    if collection is None:
+        return bad_request(err=f"Not a valid index to explain: {index}")
+
+    fields = ["query"]
+    multi_fields: list[str] = []
+
+    params, req_data = generate_params(request, fields, multi_fields)
+
+    params["as_obj"] = False
+
+    query = req_data.get("query", None)
+    if not query:
+        return bad_request(err="There was no query.")
+
+    # This regex checks for lucene phrases (i.e. the "Example Analytic" part of howler.analytic:"Example Analytic")
+    # And then escapes them.
+    # https://regex101.com/r/8u5F6a/1
+    escaped_lucene = re.sub(r'((:\()?(".+?")(\)?))', lucene_service.replace_lucene_phrase, query)
+
+    try:
+        indices_client = IndicesClient(datastore().hit.datastore.client)
+
+        result = deepcopy(
+            indices_client.validate_query(q=escaped_lucene, explain=True, index=datastore().hit.index_name).body
+        )
+
+        del result["_shards"]
+
+        for explanation in result["explanations"]:
+            del explanation["index"]
+
+        return ok(result)
+    except Exception as e:
+        logger.exception("Exception on query explanation")
+        return bad_request(err=f"Exception: {e}")
 
 
 @generate_swagger_docs()
