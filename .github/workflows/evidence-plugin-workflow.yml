@@ -108,13 +108,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Check for valid merge base
-        run: |
-          git status
-          git diff $BASE_SHA..$HEAD_SHA
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       - name: Install Poetry
         uses: abatilo/actions-poetry@v4
       - uses: actions/cache@v3
@@ -143,8 +136,8 @@ jobs:
           poetry run pytest --cov=evidence --cov-branch -rP -vv
       - name: Coverage Results
         run: |
-          git diff --name-only $BASE_SHA..$HEAD_SHA
-          git diff $BASE_SHA..$HEAD_SHA > diff.txt
+          git diff --name-only $(git merge-base $BASE_SHA $HEAD_SHA)..$HEAD_SHA
+          git diff $(git merge-base $BASE_SHA $HEAD_SHA)..$HEAD_SHA > diff.txt
           poetry run coverage_report
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
