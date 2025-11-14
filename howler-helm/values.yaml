@@ -11,14 +11,6 @@ howlerRest:
   datastore:
     hosts: []
 
-  filestore:
-    storage:
-      - name: minio
-        secret:
-          name: minio-credentials
-          usernameKey: root-user
-          passwordKey: root-password
-
   service:
     type: ""
 
@@ -118,12 +110,6 @@ config:
         username: elastic
         password: devpass
         host: "elasticsearch.default.svc.cluster.local:30200"
-
-  filestore:
-    storage:
-      - name: minio
-        scheme: s3
-        host: "howler-minio.default.svc.cluster.local:9000?s3_bucket=hwl-store&use_ssl=False"
 
   logging:
     log_level: DEBUG

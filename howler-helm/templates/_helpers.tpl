@@ -85,18 +85,6 @@ sharedEnv
       name: {{ .secret.name }}
       key: {{ .secret.secretKey }}
 {{- end }}
-{{- range .Values.howlerRest.filestore.storage }}
-- name: {{ upper .name }}_HOST_USERNAME
-  valueFrom:
-    secretKeyRef:
-      name: {{ .secret.name }}
-      key: {{ .secret.usernameKey }}
-- name: {{ upper .name }}_HOST_PASSWORD
-  valueFrom:
-    secretKeyRef:
-      name: {{ .secret.name }}
-      key: {{ .secret.passwordKey }}
-{{- end }}
 {{- if (and .Values.apm.enabled .Values.apm.tokenSecret) }}
 - name: ELASTIC_APM_SECRET_TOKEN
   valueFrom:
