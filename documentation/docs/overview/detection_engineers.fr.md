@@ -51,11 +51,11 @@ Howler utilise des niveaux d'escalade (`howler.escalation`) pour catégoriser le
 
 Vous pouvez promouvoir certains hits en alertes immédiates au moment de la création si l'on s'attend à ce que tous les hits méritent d'être triés.
 
-Une fois l'objet JSON complété, utilisez le [client Howler](/howler-docs/developer/client/) pour créer un nouveau hit. Ce hit sera immédiatement disponible pour les analystes de triage à partir de l'interface utilisateur de Howler.
+Une fois l'objet JSON complété, utilisez le [client Howler](/howler/developer/client/) pour créer un nouveau hit. Ce hit sera immédiatement disponible pour les analystes de triage à partir de l'interface utilisateur de Howler.
 
 ## Exemple : Créer un hit
 
-Tout d'abord, assurez-vous d'avoir installé le client Howler et un moyen de vous authentifier auprès de Howler (voir [Authentification et connexion](/howler-docs/developer/client/#authentication--connection) pour plus de détails).
+Tout d'abord, assurez-vous d'avoir installé le client Howler et un moyen de vous authentifier auprès de Howler (voir [Authentification et connexion](/howler/developer/client/#authentication--connection) pour plus de détails).
 
 ```python
 from howler_client import get_client
@@ -88,7 +88,7 @@ response = client.hit.create(hit)
 print(f"Hit créé : {response['valid'][0]['id']}")
 ```
 
-Pour plus d'exemples et une utilisation détaillée, consultez le [Guide de développement client](/howler-docs/developer/client/#creating-hits).
+Pour plus d'exemples et une utilisation détaillée, consultez le [Guide de développement client](/howler/developer/client/#creating-hits).
 
 ## Bundles
 
@@ -272,7 +272,7 @@ sont triés.
 
 ## Documentation connexe
 
-- **[Guide de développement client](/howler-docs/developer/client/)** - Guide complet sur l'utilisation du client
+- **[Guide de développement client](/howler/developer/client/)** - Guide complet sur l'utilisation du client
   Python Howler, y compris l'installation, l'authentification et les opérations avancées sur les hits
 - **[Elastic Common Schema (ECS)](https://www.elastic.co/guide/en/ecs/current/index.html)** - Documentation officielle
   Elastic pour la référence des champs ECS et les directives

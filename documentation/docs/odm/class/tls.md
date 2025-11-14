@@ -9,7 +9,5 @@
 | :--- | :--- | :--- | :--- | :--- |
 | version | Keyword | Numeric part of the version parsed from the original string. | :material-minus-box-outline: Optional | `None` |
 | version_protocol | Keyword | Normalized lowercase protocol name parsed from original string. | :material-minus-box-outline: Optional | `None` |
-| client | [Client](/howler-docs/odm/class/client) | None | :material-minus-box-outline: Optional | `None` |
-| server | [Server](/howler-docs/odm/class/server) | None | :material-minus-box-outline: Optional | `None` |
-
-
+| client | [Client](/howler/odm/class/client) | None | :material-minus-box-outline: Optional | `None` |
+| server | [Server](/howler/odm/class/server) | None | :material-minus-box-outline: Optional | `None` |

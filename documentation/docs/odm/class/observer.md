@@ -7,10 +7,10 @@
 
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
-| egress | [Egress](/howler-docs/odm/class/egress) | Holds information like interface number, name, vlan, and zone to classify ingress traffic | :material-minus-box-outline: Optional | `None` |
+| egress | [Egress](/howler/odm/class/egress) | Holds information like interface number, name, vlan, and zone to classify ingress traffic | :material-minus-box-outline: Optional | `None` |
 | hostname | Keyword | Hostname of the observer | :material-minus-box-outline: Optional | `None` |
-| ingress | [Ingress](/howler-docs/odm/class/ingress) | Holds information like interface number, name, vlan, and zone to classify ingress traffic | :material-minus-box-outline: Optional | `None` |
-| interface | [Interface](/howler-docs/odm/class/interface) | Interface being observed | :material-minus-box-outline: Optional | `None` |
+| ingress | [Ingress](/howler/odm/class/ingress) | Holds information like interface number, name, vlan, and zone to classify ingress traffic | :material-minus-box-outline: Optional | `None` |
+| interface | [Interface](/howler/odm/class/interface) | Interface being observed | :material-minus-box-outline: Optional | `None` |
 | ip | List [IP] | None | :material-checkbox-marked-outline: Yes | `[]` |
 | mac | List [Keyword] | None | :material-checkbox-marked-outline: Yes | `[]` |
 | name | Keyword | Custom name of the observer | :material-minus-box-outline: Optional | `None` |
@@ -19,5 +19,3 @@
 | type | Keyword | Type of the observer the data is coming from | :material-minus-box-outline: Optional | `None` |
 | vendor | Keyword | Vendor name of the observer | :material-minus-box-outline: Optional | `None` |
 | version | Keyword | Observer version | :material-minus-box-outline: Optional | `None` |
-
-

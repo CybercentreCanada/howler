@@ -2,7 +2,7 @@
 
 ??? warning "Dépendances système"
     Avant d'exécuter ces étapes, assurez-vous d'avoir complété les étapes d'installation
-    [pour les dépendances backend](/howler-docs/developer/getting_started/#backend-dependencies).
+    [pour les dépendances backend](/howler/developer/getting_started/#backend-dependencies).
 
 L'exécution du serveur Howler, une fois les dépendances installées, est assez simple. Tout d'abord, nous démarrons les
 dépendances. Celles-ci incluent :

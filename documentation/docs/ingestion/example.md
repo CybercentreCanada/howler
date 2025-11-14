@@ -97,7 +97,7 @@ else:
 
 ```
 
-For information on creating an API Key, see [Generating an API Key](/howler-docs/ingestion/key_generation/). The API key
+For information on creating an API Key, see [Generating an API Key](/howler/ingestion/key_generation/). The API key
 should have Read and Write permissions.
 
 ## Building and Running the Docker Container

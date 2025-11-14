@@ -2,7 +2,7 @@
 
 ??? warning "System dependencies"
     Before running these steps, ensure you have completed the installation steps
-    [for backend dependencies](/howler-docs/developer/getting_started/#backend-dependencies).
+    [for backend dependencies](/howler/developer/getting_started/#backend-dependencies).
 
 Running the howler server, once dependencies are installed, is fairly simple. First, we start up the dependencies. These
 include:

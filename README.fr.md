@@ -20,13 +20,13 @@ Howler permet aux analystes de triage et aux ingénieurs de détection d'en fair
 
 ## Documentation
 
-Pour la documentation, voir <https://cybercentrecanada.github.io/howler-docs/fr>
+Pour la documentation, voir <https://cybercentrecanada.github.io/howler/fr>
 
 ## Contribution
 
 ### Développement
 
-Si vous souhaitez contribuer à Howler, suivez le [guide du développeur] (<https://cybercentrecanada.github.io/howler-docs/developer/getting_started/>), créez une branche et commencez à coder !
+Si vous souhaitez contribuer à Howler, suivez le [guide du développeur] (<https://cybercentrecanada.github.io/howler/developer/getting_started/>), créez une branche et commencez à coder !
 
 ### Signalement de problèmes
 

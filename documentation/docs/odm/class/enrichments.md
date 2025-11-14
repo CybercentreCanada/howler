@@ -7,7 +7,5 @@
 
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
-| indicator | [Indicator](/howler-docs/odm/class/indicator) | None | :material-minus-box-outline: Optional | `None` |
-| matched | [Matched](/howler-docs/odm/class/matched) | None | :material-minus-box-outline: Optional | `None` |
-
-
+| indicator | [Indicator](/howler/odm/class/indicator) | None | :material-minus-box-outline: Optional | `None` |
+| matched | [Matched](/howler/odm/class/matched) | None | :material-minus-box-outline: Optional | `None` |

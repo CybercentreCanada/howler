@@ -118,8 +118,8 @@ keywords = [
     "cccs",
 ]
 packages = [{ include = "howler_client" }]
-documentation = "https://cybercentrecanada.github.io/howler-docs/developer/client/"
-homepage = "https://cybercentrecanada.github.io/howler-docs/"
+documentation = "https://cybercentrecanada.github.io/howler/developer/client/"
+homepage = "https://cybercentrecanada.github.io/howler/"
 repository = "https://github.com/CybercentreCanada/howler-client"
 
 [tool.poetry.dependencies]

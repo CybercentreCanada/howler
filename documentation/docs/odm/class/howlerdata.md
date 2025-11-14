@@ -12,7 +12,7 @@
 | assignment | Keyword | Unique identifier of the assigned user. | :material-checkbox-marked-outline: Yes | `unassigned` |
 | bundles | List [Keyword] | None | :material-checkbox-marked-outline: Yes | `[]` |
 | data | List [Keyword] | None | :material-checkbox-marked-outline: Yes | `[]` |
-| links | List [[Link](/howler-docs/odm/class/link)] | A list of links associated with this hit. | :material-checkbox-marked-outline: Yes | `[]` |
+| links | List [[Link](/howler/odm/class/link)] | A list of links associated with this hit. | :material-checkbox-marked-outline: Yes | `[]` |
 | detection | CaseInsensitiveKeyword | The detection that produced this hit. | :material-minus-box-outline: Optional | `None` |
 | hash | HowlerHash | A hash of the event used for deduplicating hits. Supports any hexadecimal string between 1 and 64 characters long. | :material-checkbox-marked-outline: Yes | `None` |
 | hits | List [Keyword] | None | :material-checkbox-marked-outline: Yes | `[]` |
@@ -30,16 +30,14 @@
 | expiry | Date | User selected time for hit expiry | :material-minus-box-outline: Optional | `None` |
 | assessment | Enum | Assessment of the hit.<br>Values:<br>`"ambiguous", "attempt", "compromise", "development", "false-positive", "legitimate", "mitigated", "recon", "security", "trivial"` | :material-minus-box-outline: Optional | `None` |
 | rationale | Text | The rationale behind the hit assessment. Allows it to be understood and verified by other analysts. | :material-minus-box-outline: Optional | `None` |
-| comment | List [[Comment](/howler-docs/odm/class/comment)] | A list of comments with timestamps and attribution. | :material-checkbox-marked-outline: Yes | `[]` |
-| log | List [[Log](/howler-docs/odm/class/log)] | A list of changes to the hit with timestamps and attribution. | :material-checkbox-marked-outline: Yes | `[]` |
+| comment | List [[Comment](/howler/odm/class/comment)] | A list of comments with timestamps and attribution. | :material-checkbox-marked-outline: Yes | `[]` |
+| log | List [[Log](/howler/odm/class/log)] | A list of changes to the hit with timestamps and attribution. | :material-checkbox-marked-outline: Yes | `[]` |
 | monitored | Keyword | Link to the incident monitoring dashboard. | :material-minus-box-outline: Optional | `None` |
 | reported | Keyword | Link to the incident report. | :material-minus-box-outline: Optional | `None` |
 | mitigated | Keyword | Link to the mitigation record (tool dependent). | :material-minus-box-outline: Optional | `None` |
-| outline | [Header](/howler-docs/odm/class/header) | The user specified header of the hit | :material-minus-box-outline: Optional | `None` |
-| incidents | List [[Incident](/howler-docs/odm/class/incident)] | Fields describing an incident associated with this alert. | :material-checkbox-marked-outline: Yes | `[]` |
-| labels | [Label](/howler-docs/odm/class/label) | List of labels relating to the hit | :material-minus-box-outline: Optional | See [Label](/howler-docs/odm/class/label) for more details. |
-| votes | [Votes](/howler-docs/odm/class/votes) | Votes relating to the hit | :material-minus-box-outline: Optional | See [Votes](/howler-docs/odm/class/votes) for more details. |
-| dossier | List [[Lead](/howler-docs/odm/class/lead)] | A list of leads forming the dossier associated with this hit | :material-checkbox-marked-outline: Yes | `[]` |
+| outline | [Header](/howler/odm/class/header) | The user specified header of the hit | :material-minus-box-outline: Optional | `None` |
+| incidents | List [[Incident](/howler/odm/class/incident)] | Fields describing an incident associated with this alert. | :material-checkbox-marked-outline: Yes | `[]` |
+| labels | [Label](/howler/odm/class/label) | List of labels relating to the hit | :material-minus-box-outline: Optional | See [Label](/howler/odm/class/label) for more details. |
+| votes | [Votes](/howler/odm/class/votes) | Votes relating to the hit | :material-minus-box-outline: Optional | See [Votes](/howler/odm/class/votes) for more details. |
+| dossier | List [[Lead](/howler/odm/class/lead)] | A list of leads forming the dossier associated with this hit | :material-checkbox-marked-outline: Yes | `[]` |
 | viewers | List [Keyword] | None | :material-checkbox-marked-outline: Yes | `[]` |
-
-

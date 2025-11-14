@@ -176,7 +176,7 @@ class DocsConfig(Config):
     will always be documented and available on release.
 
 Below is the default configuration for Howler when unit tests are run. You can use it as a starting point for your
-installation. For more information, see [Configuration](/howler-docs/installation/configuration).
+installation. For more information, see [Configuration](/howler/installation/configuration).
 
 ```yaml
 {yaml.safe_dump(DocsConfig().model_dump(mode="json")).strip()}

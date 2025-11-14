@@ -7,8 +7,6 @@
 
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
-| request | [Request](/howler-docs/odm/class/request) | Request data. | :material-minus-box-outline: Optional | `None` |
-| response | [Response](/howler-docs/odm/class/response) | Response data. | :material-minus-box-outline: Optional | `None` |
+| request | [Request](/howler/odm/class/request) | Request data. | :material-minus-box-outline: Optional | `None` |
+| response | [Response](/howler/odm/class/response) | Response data. | :material-minus-box-outline: Optional | `None` |
 | version | Keyword | HTTP version. | :material-minus-box-outline: Optional | `None` |
-
-

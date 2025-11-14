@@ -7,6 +7,4 @@
 
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
-| sharepoint | [Sharepoint](/howler-docs/odm/class/sharepoint) | Sharepoint metadata | :material-minus-box-outline: Optional | `None` |
-
-
+| sharepoint | [Sharepoint](/howler/odm/class/sharepoint) | Sharepoint metadata | :material-minus-box-outline: Optional | `None` |

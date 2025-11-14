@@ -7,6 +7,4 @@
 
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
-| file | [File](/howler-docs/odm/class/file) | Information about the file sent. | :material-minus-box-outline: Optional | `None` |
-
-
+| file | [File](/howler/odm/class/file) | Information about the file sent. | :material-minus-box-outline: Optional | `None` |

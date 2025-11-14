@@ -8,6 +8,4 @@
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
 | zone | Keyword | Network zone of incoming traffic as reported by observer | :material-minus-box-outline: Optional | `None` |
-| interface | [Interface](/howler-docs/odm/class/interface) | Ingress Interface | :material-minus-box-outline: Optional | `None` |
-
-
+| interface | [Interface](/howler/odm/class/interface) | Ingress Interface | :material-minus-box-outline: Optional | `None` |

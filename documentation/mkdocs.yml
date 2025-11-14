@@ -195,7 +195,7 @@ repo_url: https://github.com/CybercentreCanada/howler
 
 site_name: Howler
 
-site_url: https://cybercentrecanada.github.io/howler-docs/
+site_url: https://cybercentrecanada.github.io/howler/
 
 theme:
   custom_dir: override

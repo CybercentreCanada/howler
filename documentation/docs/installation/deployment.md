@@ -3,7 +3,7 @@
 Internally at the Cyber Centre, we use a helm chart to deploy howler to a kubernetes cluster. An open source version
 of this chart is available on [GitHub](https://github.com/CybercentreCanada/howler/tree/main/howler-helm). This
 article consists of a general discussion of dependencies. For an example of this helm chart in use, see
-[Installing Howler on a New Ubuntu VM](/howler-docs/installation/deployment_minikube).
+[Installing Howler on a New Ubuntu VM](/howler/installation/deployment_minikube).
 
 ## Prerequisites
 
@@ -25,15 +25,15 @@ And the following permissions on the cluster:
 ### Architecture Overview
 
 For a comprehensive understanding of how Howler's components interact, see the
-[System Architecture](/howler-docs/overview/architecture/) documentation. This will help you understand the
+[System Architecture](/howler/overview/architecture/) documentation. This will help you understand the
 relationships between Howler's services and its dependencies.
 
 ## Dependencies
 
 Howler has dependencies on a number of other applications for its functionality:
 
-1. Elasticsearch 8 ([Configuration](/howler-docs/installation/configuration/#datastore))
-1. Two redis instances ([Configuration](/howler-docs/installation/configuration/#redis))
+1. Elasticsearch 8 ([Configuration](/howler/installation/configuration/#datastore))
+1. Two redis instances ([Configuration](/howler/installation/configuration/#redis))
     1. A persistent instance
     1. A non-persistent instance
 1. (Optional) An OAuth provider Google, Microsoft, Keycloak, etc.
@@ -134,7 +134,7 @@ howlerUi:
 <!-- markdownlint-disable -->
 ??? tip "Building Images from Source"
     If you need to build custom images or want to contribute to Howler development, see the
-    [Developer Getting Started Guide](/howler-docs/developer/getting_started/) for instructions on setting up your
+    [Developer Getting Started Guide](/howler/developer/getting_started/) for instructions on setting up your
     development environment and building images locally.
 
     The guide covers:

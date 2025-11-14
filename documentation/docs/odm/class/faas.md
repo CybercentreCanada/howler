@@ -11,7 +11,5 @@
 | execution | Keyword | The execution ID of the current function execution. | :material-minus-box-outline: Optional | `None` |
 | id | Keyword | The unique identifier of a serverless function. | :material-minus-box-outline: Optional | `None` |
 | name | Keyword | The name of a serverless function. | :material-minus-box-outline: Optional | `None` |
-| trigger | [Trigger](/howler-docs/odm/class/trigger) | Details about the function trigger. | :material-minus-box-outline: Optional | `None` |
+| trigger | [Trigger](/howler/odm/class/trigger) | Details about the function trigger. | :material-minus-box-outline: Optional | `None` |
 | version | Keyword | The version of a serverless function. | :material-minus-box-outline: Optional | `None` |
-
-

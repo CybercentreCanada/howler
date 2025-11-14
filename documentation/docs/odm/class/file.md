@@ -29,9 +29,7 @@
 | target_path | Keyword | Target path for symlinks. | :material-minus-box-outline: Optional | `None` |
 | type | Enum | File type (file, dir, or symlink).<br>Values:<br>`"dir", "file", "symlink"` | :material-minus-box-outline: Optional | `None` |
 | uid | Keyword | The user ID (UID) or security identifier (SID) of the file owner. | :material-minus-box-outline: Optional | `None` |
-| code_signature | [CodeSignature](/howler-docs/odm/class/codesignature) | These fields contain information about binary code signatures. | :material-minus-box-outline: Optional | `None` |
-| elf | [ELF](/howler-docs/odm/class/elf) | These fields contain Linux Executable Linkable Format (ELF) metadata. | :material-minus-box-outline: Optional | `None` |
-| hash | [Hashes](/howler-docs/odm/class/hashes) | These fields contain Windows Portable Executable (PE) metadata. | :material-minus-box-outline: Optional | `None` |
-| pe | [PE](/howler-docs/odm/class/pe) | Hashes, usually file hashes. | :material-minus-box-outline: Optional | `None` |
-
-
+| code_signature | [CodeSignature](/howler/odm/class/codesignature) | These fields contain information about binary code signatures. | :material-minus-box-outline: Optional | `None` |
+| elf | [ELF](/howler/odm/class/elf) | These fields contain Linux Executable Linkable Format (ELF) metadata. | :material-minus-box-outline: Optional | `None` |
+| hash | [Hashes](/howler/odm/class/hashes) | These fields contain Windows Portable Executable (PE) metadata. | :material-minus-box-outline: Optional | `None` |
+| pe | [PE](/howler/odm/class/pe) | Hashes, usually file hashes. | :material-minus-box-outline: Optional | `None` |

@@ -55,13 +55,13 @@ Howler uses escalation levels (`howler.escalation`) to categorise hits:
 
 You may promote some hits to alert immediately at creation time if the expectation is that all hits will be worth triaging.
 
-Once you have completed the JSON object, use the [Howler client](/howler-docs/developer/client/) to create a new hit.
+Once you have completed the JSON object, use the [Howler client](/howler/developer/client/) to create a new hit.
 That hit will be immediately available to triage analysts from the Howler UI.
 
 ## Example: Creating a Hit
 
 First, ensure you have the Howler client installed and some way to authenticate with Howler (see
-[Authentication & Connection](/howler-docs/developer/client/#authentication--connection) for details).
+[Authentication & Connection](/howler/developer/client/#authentication--connection) for details).
 
 ```python
 from howler_client import get_client
@@ -94,7 +94,7 @@ response = client.hit.create(hit)
 print(f"Created hit: {response['valid'][0]['id']}")
 ```
 
-For more examples and detailed usage, see the [Client Development Guide](/howler-docs/developer/client/#creating-hits).
+For more examples and detailed usage, see the [Client Development Guide](/howler/developer/client/#creating-hits).
 
 ## Bundles
 
@@ -272,7 +272,7 @@ This helps guide analysts toward appropriate assessments and maintains consisten
 
 ## Related Documentation
 
-- **[Client Development Guide](/howler-docs/developer/client/)** - Comprehensive guide on using the Howler Python
+- **[Client Development Guide](/howler/developer/client/)** - Comprehensive guide on using the Howler Python
   client, including installation, authentication, and advanced hit operations
 - **[Elastic Common Schema (ECS)](https://www.elastic.co/guide/en/ecs/current/index.html)** - Official Elastic
   documentation for the ECS field reference and guidelines

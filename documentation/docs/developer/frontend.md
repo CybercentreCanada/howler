@@ -2,7 +2,7 @@
 
 ??? warning "System dependencies"
     Before running these steps, ensure you have
-    [completed the installation steps here](/howler-docs/developer/getting_started/#frontend-dependencies).
+    [completed the installation steps here](/howler/developer/getting_started/#frontend-dependencies).
 
 ## Running the Development Server
 

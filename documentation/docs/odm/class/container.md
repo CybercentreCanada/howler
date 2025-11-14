@@ -8,9 +8,7 @@
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
 | id | Keyword | Unique container id. | :material-minus-box-outline: Optional | `None` |
-| image | [Image](/howler-docs/odm/class/image) | Cloud account information. | :material-minus-box-outline: Optional | `None` |
+| image | [Image](/howler/odm/class/image) | Cloud account information. | :material-minus-box-outline: Optional | `None` |
 | labels | Mapping [Keyword] | Image labels. | :material-minus-box-outline: Optional | `None` |
 | name | Keyword | Container name. | :material-minus-box-outline: Optional | `None` |
 | runtime | Keyword | Runtime managing this container. | :material-minus-box-outline: Optional | `None` |
-
-

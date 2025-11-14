@@ -7,7 +7,5 @@
 
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
-| account | [Account](/howler-docs/odm/class/account) | AWS account information. | :material-minus-box-outline: Optional | `None` |
-| organization | [Organization](/howler-docs/odm/class/organization) | Organization information. | :material-minus-box-outline: Optional | `None` |
-
-
+| account | [Account](/howler/odm/class/account) | AWS account information. | :material-minus-box-outline: Optional | `None` |
+| organization | [Organization](/howler/odm/class/organization) | Organization information. | :material-minus-box-outline: Optional | `None` |

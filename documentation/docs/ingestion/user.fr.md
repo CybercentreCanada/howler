@@ -4,7 +4,7 @@ Howler ne dispose pas actuellement d'une interface graphique pour la création d
 suggérée de créer des utilisateurs est de connecter Howler à un fournisseur OAuth 2.0 (azure, google, etc.) et de créer
 un utilisateur basé sur le jeton d'authentification JWT renvoyé. Ceci est déjà géré dans Howler, et nécessite
 juste la mise en place d'un fournisseur OAuth externe (voir
-[ici](/howler-docs/installation/configuration/#oauthprovider) pour les informations de configuration).
+[ici](/howler/installation/configuration/#oauthprovider) pour les informations de configuration).
 
 Si vous souhaitez créer un utilisateur directement, sans passer par la création d'OAuth, vous pouvez utiliser le script
 suivant, sur la même machine que celle sur laquelle Howler est hébergé :

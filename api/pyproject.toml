@@ -186,8 +186,8 @@ include = [
     ] },
 ]
 packages = [{ include = "howler" }]
-documentation = "https://cybercentrecanada.github.io/howler-docs/developer/backend/"
-homepage = "https://cybercentrecanada.github.io/howler-docs/"
+documentation = "https://cybercentrecanada.github.io/howler/developer/backend/"
+homepage = "https://cybercentrecanada.github.io/howler/"
 repository = "https://github.com/CybercentreCanada/howler-api"
 
 [tool.poetry.dependencies]
