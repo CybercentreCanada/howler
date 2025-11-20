@@ -117,6 +117,7 @@
   "date.search.range": "Plage de dates de recherche",
 
   "deprecated": "Obsolète",
+  "description": "Description",
   "divider": "OU",
   "direction": "Direction",
 
@@ -301,6 +302,7 @@
   "hit.viewer.data": "Données brutes",
   "hit.viewer.details": "Détails",
   "hit.viewer.json": "JSON",
+  "hit.viewer.overview": "Vue d'ensemble",
   "hit.view.overview": "Vue d'ensemble",
   "hit.viewer.worklog": "Journal de Bord",
   "hit.viewer.related": "Liens connexes",
@@ -504,6 +506,7 @@
   "route.advanced.rows": "Nombre de lignes à renvoyer",
   "route.advanced.create.rule": "Créer une règle",
   "route.advanced.create.rule.disabled": "Vous devez d'abord lancer votre recherche pour vous assurer qu'elle est valide",
+  "route.advanced.execute.query": "Exécuter la requête",
   "route.advanced.query.lucene": "Requête Lucene",
   "route.advanced.query.lucene.description": "Apache Lucence est une syntaxe de recherche utilisée par elasticsearch, Howler et apache lucene. Voir notre documentation pour plus d'informations à ce sujet.",
   "route.advanced.query.eql": "Requête EQL",
@@ -516,8 +519,15 @@
   "route.advanced.pivot.field": "Champ à regrouper par",
   "route.advanced.query.type": "Type de requête",
   "route.advanced.query.type.default": "Défaut",
+  "route.advanced.query.type.default.description": "Exécuter une requête de recherche Howler normale en syntaxe Lucene.",
   "route.advanced.query.type.facet": "Facette",
+  "route.advanced.query.type.facet.description": "Fournit les comptages de chaque valeur pour un champ. Lors du facettage sur un champ de tableau, chaque valeur unique sera incluse dans la réponse. Chaque valeur n'est comptée qu'une seule fois.",
   "route.advanced.query.type.groupby": "Regrouper",
+  "route.advanced.query.type.groupby.description": "Résultats groupés basés sur des champs partagés.",
+  "route.advanced.query.type.explain": "Expliquer",
+  "route.advanced.query.type.explain.description": "Obtenir l'explication elasticsearch (c'est-à-dire la requête brute exécutée contre le cluster) d'une requête lucene donnée. Utile pour déboguer des requêtes lucene défectueuses.",
+  "route.advanced.query.lucene.type": "Méthode de requête",
+
 
   "route.analytics": "Analyses",
   "route.analytics.deleted": "Règle supprimée!",

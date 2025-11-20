@@ -60,4 +60,13 @@ export type HowlerSigmaSearchRequest = {
   filters?: string[];
 };
 
+export type HowlerExplainSearchRequest = {
+  query: string;
+};
+
+export type HowlerExplainSearchResponse = {
+  valid: boolean;
+  explanations: { valid: boolean; explanation: string }[];
+};
+
 export { action, analytic, count, dossier, facet, fields, grouped, histogram, hit, overview, template, user, view };

@@ -515,8 +515,14 @@
   "route.advanced.pivot.field": "Group By Field",
   "route.advanced.query.type": "Query Type",
   "route.advanced.query.type.default": "Default",
+  "route.advanced.query.type.default.description": "Exceute a regular Howler search query in Lucene Syntax.",
   "route.advanced.query.type.facet": "Facet",
+  "route.advanced.query.type.facet.description": "Provides the counts of each value for a field. When faceting on an array field, each unique value will be included in the response. Each value is only counted once.",
   "route.advanced.query.type.groupby": "Group By",
+  "route.advanced.query.type.groupby.description": "Grouped results based on shared fields.",
+  "route.advanced.query.type.explain": "Explain",
+  "route.advanced.query.type.explain.description": "Get the elasticsearch explanation (i.e. the raw query executed against the cluster) of a given lucene query. Useful for debugging buggy lucene queries.",
+  "route.advanced.query.lucene.type": "Query Method",
 
 
   "route.analytics": "Analytics",
