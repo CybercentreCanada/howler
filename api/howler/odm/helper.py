@@ -259,13 +259,13 @@ def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[User], p
         ),
     ]
 
-    if config.core.borealis.enabled:
+    if config.core.clue.enabled:
         hit.howler.dossier.append(
             Lead(
                 {
                     "icon": "material-symbols:image",
-                    "label": {"en": "Borealis", "fr": "Borealis"},
-                    "format": "borealis",
+                    "label": {"en": "Clue", "fr": "Clue"},
+                    "format": "clue",
                     "content": "test-plugin.image",
                     "metadata": {"type": "ip", "value": "127.0.01", "classification": "TLP:CLEAR"},
                 }
@@ -276,8 +276,8 @@ def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[User], p
             Lead(
                 {
                     "icon": "material-symbols:code-rounded",
-                    "label": {"en": "Borealis", "fr": "Borealis"},
-                    "format": "borealis",
+                    "label": {"en": "Clue", "fr": "Clue"},
+                    "format": "clue",
                     "content": "test-plugin.json",
                     "metadata": {"type": "ip", "value": "127.0.01", "classification": "TLP:CLEAR"},
                 }

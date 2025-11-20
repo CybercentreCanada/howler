@@ -31,7 +31,7 @@ class Pivot(odm.Model):
         description="An optional icon to use in the tab display for this dossier.", optional=True
     )
     label: LocalizedLabel = odm.Compound(LocalizedLabel, description="Labels for the pivot in the UI.")
-    value: str = odm.Keyword(description="The link/borealis id to pivot on.")
+    value: str = odm.Keyword(description="The link/plugin information to pivot on.")
     format: str = odm.Keyword(description="The format of the pivot.")
     mappings: list[Mapping] = odm.List(
         odm.Compound(Mapping),

@@ -138,11 +138,11 @@ if HWL_USE_REST_API or DEBUG:
         logger.debug("Enabled Notebook Integration")
         app.register_blueprint(notebook_api)
 
-    if config.core.borealis.enabled:
-        from howler.api.v1.borealis import borealis_api
+    if config.core.clue.enabled:
+        from howler.api.v1.clue import clue_api
 
-        logger.debug("Enabled Borealis Integration")
-        app.register_blueprint(borealis_api)
+        logger.debug("Enabled Clue Integration")
+        app.register_blueprint(clue_api)
 
     logger.info("Checking plugins for additional routes")
     for plugin in get_plugins():
