@@ -20,7 +20,7 @@ def try_parse_date(date: str) -> Optional[datetime]:
         return None
 
 
-def try_parse_number(number: str | int | float) -> Optional[Union[int, float]]:
+def try_parse_number(number: Union[str, int, float]) -> Optional[Union[int, float]]:
     "Try and parse a number string into an integer or float type, or infinity. Returns None if string is invalid."
     if isinstance(number, (int, float)):
         return number
