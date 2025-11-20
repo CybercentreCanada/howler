@@ -23,7 +23,7 @@ import {
 } from '@mui/material';
 import Popper, { type PopperProps } from '@mui/material/Popper';
 import api from 'api';
-import type { HowlerEQLSearchResponse, HowlerSearchResponse } from 'api/search';
+import type { HowlerEQLSearchResponse, HowlerExplainSearchResponse, HowlerSearchResponse } from 'api/search';
 import type { HowlerFacetSearchResponse } from 'api/search/facet';
 import type { HowlerGroupedSearchResponse } from 'api/search/grouped';
 import PageCenter from 'commons/components/pages/PageCenter';
@@ -97,7 +97,12 @@ level: informational
 `
 };
 
-const LUCENE_QUERY_OPTIONS: ('default' | 'facet' | 'groupby')[] = ['default', 'facet', 'groupby'];
+const LUCENE_QUERY_OPTIONS: ('default' | 'facet' | 'groupby' | 'explain')[] = [
+  'default',
+  'facet',
+  'groupby',
+  'explain'
+];
 
 type SearchResponse<T> =
   | HowlerSearchResponse<T>
@@ -126,7 +131,7 @@ const QueryBuilder: FC = () => {
   const [groupByField, setGroupByField] = useState<string>(null);
   const [allFields, setAllFields] = useState(true);
   const [fields, setFields] = useState<string[]>(['howler.id']);
-  const [response, setResponse] = useState<SearchResponse<Hit>>(null);
+  const [response, setResponse] = useState<SearchResponse<Hit> | HowlerExplainSearchResponse>(null);
   const [error, setError] = useState<string>(null);
   const [rows, setRows] = useState(1);
   const [x, setX] = useState(0);
@@ -144,7 +149,7 @@ const QueryBuilder: FC = () => {
         rows: STEPS[rows]
       };
 
-      let result: SearchResponse<Hit>;
+      let result: SearchResponse<Hit> | HowlerExplainSearchResponse;
       if (type === 'lucene') {
         if (queryType === 'facet') {
           result = await api.search.facet.hit.post({
@@ -156,6 +161,10 @@ const QueryBuilder: FC = () => {
           result = await api.search.grouped.hit.post(groupByField, {
             query: sanitizeMultilineLucene(query),
             ...searchProperties
+          });
+        } else if (queryType === 'explain') {
+          result = await api.search.hit.explain.post({
+            query: sanitizeMultilineLucene(query)
           });
         } else {
           result = await api.search.hit.post({
@@ -350,7 +359,7 @@ const QueryBuilder: FC = () => {
                 />
               )}
               renderInput={params => (
-                <TextField {...params} size="small" label={t('route.advanced.type')} sx={{ minWidth: '250px' }} />
+                <TextField {...params} size="small" label={t('route.advanced.query.type')} sx={{ minWidth: '250px' }} />
               )}
               sx={[
                 !compactLayout && {
@@ -388,7 +397,15 @@ const QueryBuilder: FC = () => {
               value={queryType}
               onChange={(_event, value) => setQueryType(value)}
               renderInput={params => (
-                <TextField {...params} label={t('route.advanced.query.type')} sx={{ minWidth: '200px' }} />
+                <TextField {...params} label={t('route.advanced.query.lucene.type')} sx={{ minWidth: '230px' }} />
+              )}
+              renderOption={(props, option) => (
+                <ListItemText
+                  {...(props as any)}
+                  sx={{ flexDirection: 'column', alignItems: 'start !important' }}
+                  primary={t(`route.advanced.query.type.${option}`)}
+                  secondary={t(`route.advanced.query.type.${option}.description`)}
+                />
               )}
             />
           )}

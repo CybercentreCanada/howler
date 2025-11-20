@@ -4,6 +4,7 @@ import { uri as parentUri } from 'api/search';
 import type { Hit } from 'models/entities/generated/Hit';
 
 import * as eql from 'api/search/eql/hit';
+import * as explain from 'api/search/explain/hit';
 import * as sigma from 'api/search/sigma/hit';
 
 export const uri = () => {
@@ -14,4 +15,4 @@ export const post = (request?: HowlerSearchRequest): Promise<HowlerSearchRespons
   return hpost(uri(), { ...(request || {}), query: request?.query || 'howler.id:*' });
 };
 
-export { eql, sigma };
+export { eql, explain, sigma };
