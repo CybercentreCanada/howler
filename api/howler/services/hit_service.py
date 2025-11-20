@@ -686,9 +686,6 @@ def transition_hit(
             # For direct PROMOTE/DEMOTE transitions, use the transition name
             trigger = cast(Union[Literal["promote"], Literal["demote"]], transition)
 
-        # Commit database changes before executing bulk actions
-        datastore().hit.commit()
-
         # Build query for all processed hits (primary + children)
         all_processed_hits = [primary_hit] + child_hits
         hit_query = f"howler.id:({' OR '.join(h['howler']['id'] for h in all_processed_hits)})"
@@ -726,8 +723,6 @@ def delete_hits(hit_ids: list[str]) -> bool:
         DELETED_HITS.inc()
 
     ds.hit.update_by_query("howler.is_bundle:true", operations)
-
-    ds.hit.commit()
 
     return result
 

@@ -15,7 +15,6 @@ from howler.services import hit_service
 def setup_datastore(datastore_connection: HowlerDatastore):
     try:
         wipe_hits(datastore_connection)
-        datastore_connection.hit.commit()
 
         yield datastore_connection
     finally:
@@ -55,6 +54,7 @@ def test_execute():
             hit.howler.bundles = []
         datastore().hit.save(hit.howler.id, hit)
 
+    # Ensure the new alerts can be queried
     datastore().hit.commit()
 
     result = execute("howler.analytic:TestingAddToBundle", bundle.howler.id)
@@ -117,6 +117,7 @@ def test_get_bundle_size():
     bundle_1.howler.hits = [hit_1.howler.id]
     bundle_1.howler.bundle_size = 1
     datastore().hit.save(bundle_1.howler.id, bundle_1)
+
     datastore().hit.commit()
 
     execute("howler.analytic:TestingBundleSize", bundle_1.howler.id)

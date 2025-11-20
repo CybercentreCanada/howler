@@ -103,8 +103,6 @@ def save_from_hit(hit: Hit, user: User):
             logger.warning("Duplicate analytics detected! Removing duplicates...")
             for duplicate in existing_analytics[1:]:
                 storage.analytic.delete(duplicate.analytic_id)
-
-            storage.analytic.commit()
     else:
         save = True
         analytic = Analytic(
@@ -123,6 +121,3 @@ def save_from_hit(hit: Hit, user: User):
 
     if save:
         storage.analytic.save(analytic.analytic_id, analytic)
-
-        # This is necessary as we often save over the analytic multiple times in quick succession when saving from hits
-        storage.analytic.commit()
