@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import Handlebars from 'handlebars';
+import Handlebars, { type Exception } from 'handlebars';
 import asyncHelpers from 'handlebars-async-helpers';
 import type { FC, ReactElement } from 'react';
 import { memo, useEffect, useMemo, useState } from 'react';
@@ -78,11 +78,24 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
 
   useEffect(() => {
     THROTTLER.debounce(async () => {
+      const compiled = handlebars.compile(md || '');
       try {
-        const compiled = handlebars.compile(md || '');
-
         setRendered(await compiled(object));
       } catch (err) {
+        if ((err as Exception).message?.startsWith('Missing helper')) {
+          const missingHelper = (err as Exception).message.replace(/.+"(.+)"/, '$1');
+          handlebars.registerHelper(
+            missingHelper,
+            () =>
+              new Handlebars.SafeString(
+                `\n\n<span style="color: red; font-weight: bold; font-family: monospace;">Missing helper ${missingHelper}</span>`
+              )
+          );
+
+          setRendered(await compiled(object));
+          return;
+        }
+
         // eslint-disable-next-line no-console
         console.error(err);
 
