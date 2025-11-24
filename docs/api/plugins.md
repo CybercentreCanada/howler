@@ -387,9 +387,9 @@ class YourPluginConfig(BasePluginConfig):
     )
 
     scopes: ScopeConfig = ScopeConfig(
-        borealis="default",
-        notebook="default",
-        spellbook="default"
+        scope1="default",
+        scope2="default",
+        scope3="default"
     )
 
     model_config = SettingsConfigDict(
@@ -419,7 +419,7 @@ You can override any configuration value using environment variables:
 export YOUR_PLUGIN_NAME_URLS__SPELLBOOK="http://different-server:8080/api"
 
 # Override a scope
-export YOUR_PLUGIN_NAME_SCOPES__BOREALIS="custom-scope-id"
+export YOUR_PLUGIN_NAME_SCOPES__CLUE="custom-scope-id"
 ```
 
 Note the double underscore (`__`) used to separate nested configuration levels.

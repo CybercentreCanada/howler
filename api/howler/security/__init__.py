@@ -220,8 +220,8 @@ class api_login(object):  # noqa: D101, N801
                     user_id=user.get("uname", None),
                 )
 
-            if request.path.startswith("/api/v1/borealis"):
-                logger.debug("Bypassing quota limits for borealis enrichment")
+            if request.path.startswith("/api/v1/clue"):
+                logger.debug("Bypassing quota limits for clue enrichment")
             elif self.enforce_quota:
                 # Check current user quota
                 flsk_session["quota_user"] = user["uname"]

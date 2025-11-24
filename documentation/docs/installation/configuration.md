@@ -17,13 +17,12 @@ For example: HWL_DATASTORE__TYPE=elasticsearch
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
 | `auth` | [`Auth`](#auth) | Authentication configuration for Howler.      Configures all authentication methods supported by Howler, including     internal username/password authentication and OAuth providers. Also     controls API key settings and restrictions.      | :material-checkbox-marked-outline: Yes | See [Auth](#auth) for details. |
-| `core` | [`Core`](#core) | Core application configuration for Howler.      Aggregates all core service configurations including Redis, metrics,     and external integrations like Borealis and nbgallery notebooks.     Also manages the loading of external plugins.      | :material-checkbox-marked-outline: Yes | See [Core](#core) for details. |
+| `core` | [`Core`](#core) | Core application configuration for Howler.      Aggregates all core service configurations including Redis, metrics,     and external integrations like Clue and nbgallery notebooks.     Also manages the loading of external plugins.      | :material-checkbox-marked-outline: Yes | See [Core](#core) for details. |
 | `datastore` | [`Datastore`](#datastore) | Datastore configuration for Howler.      Defines the backend datastore used by Howler for storing hits and metadata.     Currently supports Elasticsearch as the datastore type.      | :material-checkbox-marked-outline: Yes | See [Datastore](#datastore) for details. |
 | `logging` | [`Logging`](#logging) | Logging configuration for Howler.      Defines how and where Howler logs should be output, including console,     file, and syslog destinations. Also controls log level, format, and     metric export intervals.      | :material-checkbox-marked-outline: Yes | See [Logging](#logging) for details. |
 | `system` | [`System`](#system) | System-level configuration for Howler.      Defines global system settings including deployment type (production,     staging, or development) and configuration for automated maintenance     jobs like data retention and view cleanup.      | :material-checkbox-marked-outline: Yes | See [System](#system) for details. |
 | `ui` | [`UI`](#ui) | User interface and web server configuration.      Defines settings for the Howler web UI including Flask configuration,     session validation, API auditing, static file locations, and WebSocket     integration for real-time updates.      | :material-checkbox-marked-outline: Yes | See [UI](#ui) for details. |
-| `mapping` | `dict[str, str]` | Mapping of alert keys to borealis type | :material-checkbox-marked-outline: Yes | `{}`
-
+| `mapping` | `dict[str, str]` | Mapping of alert keys to clue type | :material-checkbox-marked-outline: Yes | `{}`
 
 # Auth
 
@@ -42,7 +41,6 @@ controls API key settings and restrictions.
 | `internal` | [`Internal`](#internal) | Internal authentication configuration.      Defines settings for Howler's built-in username/password authentication,     including password requirements and brute-force protection via login     failure tracking.      | :material-checkbox-marked-outline: Yes | See [Internal](#internal) for details. |
 | `oauth` | [`OAuth`](#oauth) | OAuth authentication configuration.      Top-level OAuth settings including enabling/disabling OAuth authentication,     Gravatar integration, and a dictionary of configured OAuth providers.     Also controls API key lifetime restrictions for OAuth-authenticated users.      | :material-checkbox-marked-outline: Yes | See [OAuth](#oauth) for details. |
 
-
 # Internal
 
 Internal authentication configuration.
@@ -57,7 +55,6 @@ failure tracking.
 | `failure_ttl` | `int` | How long to wait after `max_failures` before re-attempting login? | :material-checkbox-marked-outline: Yes | `60`
 | `max_failures` | `int` | Maximum number of fails allowed before timeout | :material-checkbox-marked-outline: Yes | `5`
 | `password_requirements` | [`PasswordRequirement`](#passwordrequirement) | Password complexity requirements for internal authentication.      Defines the rules for password creation and validation, including     character type requirements and minimum length.      | :material-checkbox-marked-outline: Yes | See [PasswordRequirement](#passwordrequirement) for details. |
-
 
 # PasswordRequirement
 
@@ -74,7 +71,6 @@ character type requirements and minimum length.
 | `upper` | `bool` | Password must contain uppercase letters | :material-checkbox-marked-outline: Yes | `False`
 | `min_length` | `int` | Minimum password length | :material-checkbox-marked-outline: Yes | `12`
 
-
 # OAuth
 
 OAuth authentication configuration.
@@ -89,7 +85,6 @@ Also controls API key lifetime restrictions for OAuth-authenticated users.
 | `gravatar_enabled` | `bool` | Enable gravatar? | :material-checkbox-marked-outline: Yes | `True`
 | `providers` | `dict[str, OAuthProvider]` | OAuth provider configuration | :material-checkbox-marked-outline: Yes | `{}`
 | `strict_apikeys` | `bool` | Only allow apikeys that last as long as the access token used to log in | :material-checkbox-marked-outline: Yes | `False`
-
 
 # OAuthProvider
 
@@ -129,7 +124,6 @@ OAuth endpoints required for the authentication flow.
 | `jwks_uri` | `str` | URL used to verify if a returned JWKS token is valid | :material-checkbox-marked-outline: Yes | `PydanticUndefined`
 | `user_get` | `str` | Path from the base_url to fetch the user info | :material-minus-box-outline: Optional | `None`
 
-
 # OAuthAutoProperty
 
 Automatic property assignment based on OAuth attributes.
@@ -145,13 +139,12 @@ OAuth provider data.
 | `type` | `Literal[access, classification, role]` | Type of property assignment on pattern match | :material-checkbox-marked-outline: Yes | `PydanticUndefined`
 | `value` | `str` | Assigned property value | :material-checkbox-marked-outline: Yes | `PydanticUndefined`
 
-
 # Core
 
 Core application configuration for Howler.
 
 Aggregates all core service configurations including Redis, metrics,
-and external integrations like Borealis and nbgallery notebooks.
+and external integrations like Clue and nbgallery notebooks.
 Also manages the loading of external plugins.
 
 | Field | Type | Description | Required | Default |
@@ -159,9 +152,8 @@ Also manages the loading of external plugins.
 | `plugins` | `set[str]` | A list of external plugins to load | :material-checkbox-marked-outline: Yes | `set()`
 | `metrics` | [`Metrics`](#metrics) | Metrics collection configuration.      Configures how Howler collects and exports application metrics,     including integration with external APM servers.      | :material-checkbox-marked-outline: Yes | See [Metrics](#metrics) for details. |
 | `redis` | [`Redis`](#redis) | Redis configuration for Howler.      Defines connections to both persistent and non-persistent Redis instances.     The non-persistent instance is used for volatile data like caches, while     the persistent instance is used for data that needs to survive restarts.      | :material-checkbox-marked-outline: Yes | See [Redis](#redis) for details. |
-| `borealis` | [`Borealis`](#borealis) | Borealis enrichment service integration configuration.      Defines settings for integrating with Borealis, an external enrichment     service that can provide additional context and status information for     hits displayed in the Howler UI.      | :material-checkbox-marked-outline: Yes | See [Borealis](#borealis) for details. |
+| `clue` | [`Clue`](#clue) | Clue enrichment service integration configuration.      Defines settings for integrating with Clue, an external enrichment     service that can provide additional context and status information for     hits displayed in the Howler UI.      | :material-checkbox-marked-outline: Yes | See [Clue](#clue) for details. |
 | `notebook` | [`Notebook`](#notebook) | Jupyter notebook integration configuration.      Defines settings for integrating with nbgallery, a collaborative     Jupyter notebook platform, allowing users to access and share     notebooks related to their Howler analysis work.      | :material-checkbox-marked-outline: Yes | See [Notebook](#notebook) for details. |
-
 
 # Metrics
 
@@ -174,7 +166,6 @@ including integration with external APM servers.
 | :--- | :--- | :--- | :--- | :--- |
 | `apm_server` | [`APMServer`](#apmserver) | Application Performance Monitoring (APM) server configuration.      Defines the connection details for an external APM server used to     collect and analyze application performance metrics.      | :material-checkbox-marked-outline: Yes | See [APMServer](#apmserver) for details. |
 
-
 # APMServer
 
 Application Performance Monitoring (APM) server configuration.
@@ -186,7 +177,6 @@ collect and analyze application performance metrics.
 | :--- | :--- | :--- | :--- | :--- |
 | `server_url` | `str` | URL to API server | :material-minus-box-outline: Optional | `None`
 | `token` | `str` | Authentication token for server | :material-minus-box-outline: Optional | `None`
-
 
 # Redis
 
@@ -201,6 +191,17 @@ the persistent instance is used for data that needs to survive restarts.
 | `nonpersistent` | [`RedisServer`](#redisserver) | Configuration for a single Redis server instance.      Defines the connection parameters for a Redis server, including     the hostname and port number.      | :material-checkbox-marked-outline: Yes | See [RedisServer](#redisserver) for details. |
 | `persistent` | [`RedisServer`](#redisserver) | Configuration for a single Redis server instance.      Defines the connection parameters for a Redis server, including     the hostname and port number.      | :material-checkbox-marked-outline: Yes | See [RedisServer](#redisserver) for details. |
 
+# RedisServer
+
+Configuration for a single Redis server instance.
+
+Defines the connection parameters for a Redis server, including
+the hostname and port number.
+
+| Field | Type | Description | Required | Default |
+| :--- | :--- | :--- | :--- | :--- |
+| `host` | `str` | Hostname of Redis instance | :material-checkbox-marked-outline: Yes | `PydanticUndefined`
+| `port` | `int` | Port of Redis instance | :material-checkbox-marked-outline: Yes | `PydanticUndefined`
 
 # RedisServer
 
@@ -214,34 +215,19 @@ the hostname and port number.
 | `host` | `str` | Hostname of Redis instance | :material-checkbox-marked-outline: Yes | `PydanticUndefined`
 | `port` | `int` | Port of Redis instance | :material-checkbox-marked-outline: Yes | `PydanticUndefined`
 
+# Clue
 
-# RedisServer
+Clue enrichment service integration configuration.
 
-Configuration for a single Redis server instance.
-
-Defines the connection parameters for a Redis server, including
-the hostname and port number.
-
-| Field | Type | Description | Required | Default |
-| :--- | :--- | :--- | :--- | :--- |
-| `host` | `str` | Hostname of Redis instance | :material-checkbox-marked-outline: Yes | `PydanticUndefined`
-| `port` | `int` | Port of Redis instance | :material-checkbox-marked-outline: Yes | `PydanticUndefined`
-
-
-# Borealis
-
-Borealis enrichment service integration configuration.
-
-Defines settings for integrating with Borealis, an external enrichment
+Defines settings for integrating with Clue, an external enrichment
 service that can provide additional context and status information for
 hits displayed in the Howler UI.
 
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
-| `enabled` | `bool` | Should borealis integration be enabled? | :material-checkbox-marked-outline: Yes | `False`
-| `url` | `str` | What url should Howler connect to to interact with Borealis? | :material-checkbox-marked-outline: Yes | `http://enrichment-rest.enrichment.svc.cluster.local:5000`
-| `status_checks` | `list[str]` | A list of borealis fetchers that return status results given a Howler ID to show in the UI. | :material-checkbox-marked-outline: Yes | `[]`
-
+| `enabled` | `bool` | Should clue integration be enabled? | :material-checkbox-marked-outline: Yes | `False`
+| `url` | `str` | What url should Howler connect to to interact with Clue? | :material-checkbox-marked-outline: Yes | `http://enrichment-rest.enrichment.svc.cluster.local:5000`
+| `status_checks` | `list[str]` | A list of clue fetchers that return status results given a Howler ID to show in the UI. | :material-checkbox-marked-outline: Yes | `[]`
 
 # Notebook
 
@@ -257,7 +243,6 @@ notebooks related to their Howler analysis work.
 | `scope` | `str` | The scope expected by nbgallery for JWTs | :material-minus-box-outline: Optional | `None`
 | `url` | `str` | The url to connect to nbgallery at | :material-checkbox-marked-outline: Yes | `http://nbgallery.nbgallery.svc.cluster.local:3000`
 
-
 # Datastore
 
 Datastore configuration for Howler.
@@ -269,7 +254,6 @@ Currently supports Elasticsearch as the datastore type.
 | :--- | :--- | :--- | :--- | :--- |
 | `hosts` | `list[Host]` | List of hosts used for the datastore | :material-checkbox-marked-outline: Yes | `[http://elastic:devpass@localhost:9200]`
 | `type` | `Literal[elasticsearch]` | Type of application used for the datastore | :material-checkbox-marked-outline: Yes | `elasticsearch`
-
 
 # Host
 
@@ -289,7 +273,6 @@ Environment variables can override username and password using the pattern
 | `apikey_secret` | `str` | Secret data of the API Key to use when connecting | :material-minus-box-outline: Optional | `None`
 | `scheme` | `str` | Scheme to use when connecting | :material-minus-box-outline: Optional | `http`
 | `host` | `str` | URL to connect to | :material-checkbox-marked-outline: Yes | `PydanticUndefined`
-
 
 # Logging
 
@@ -311,7 +294,6 @@ metric export intervals.
 | `export_interval` | `int` | How often, in seconds, should counters log their values? | :material-checkbox-marked-outline: Yes | `5`
 | `log_as_json` | `bool` | Log in JSON format? | :material-checkbox-marked-outline: Yes | `True`
 
-
 # System
 
 System-level configuration for Howler.
@@ -325,7 +307,6 @@ jobs like data retention and view cleanup.
 | `type` | `Literal[production, staging, development]` | Type of system | :material-checkbox-marked-outline: Yes | `development`
 | `retention` | [`Retention`](#retention) | Hit retention policy configuration.      Defines the automatic data retention policy for hits, including     the maximum age of hits before they are purged and the schedule     for running the retention cleanup job.      | :material-checkbox-marked-outline: Yes | See [Retention](#retention) for details. |
 | `view_cleanup` | [`ViewCleanup`](#viewcleanup) | View cleanup job configuration.      Defines the schedule and behavior for cleaning up stale dashboard views     that reference non-existent backend data.      | :material-checkbox-marked-outline: Yes | See [ViewCleanup](#viewcleanup) for details. |
-
 
 # Retention
 
@@ -342,7 +323,6 @@ for running the retention cleanup job.
 | `limit_amount` | `int` | The number of limit_units to use when computing the retention limit | :material-checkbox-marked-outline: Yes | `350`
 | `crontab` | `str` | The crontab that denotes how often to run the retention job | :material-checkbox-marked-outline: Yes | `0 0 * * *`
 
-
 # ViewCleanup
 
 View cleanup job configuration.
@@ -354,7 +334,6 @@ that reference non-existent backend data.
 | :--- | :--- | :--- | :--- | :--- |
 | `enabled` | `bool` | Whether to enable the view cleanup. If enabled, views pinned to the dashboard that no longer exist in the backend will be cleared. | :material-checkbox-marked-outline: Yes | `True`
 | `crontab` | `str` | The crontab that denotes how often to run the view_cleanup job | :material-checkbox-marked-outline: Yes | `0 0 * * *`
-
 
 # UI
 
@@ -375,4 +354,3 @@ integration for real-time updates.
 | `validate_session_ip` | `bool` | Validate if the session IP matches the IP the session was created from | :material-checkbox-marked-outline: Yes | `True`
 | `validate_session_useragent` | `bool` | Validate if the session useragent matches the useragent the session was created with | :material-checkbox-marked-outline: Yes | `True`
 | `websocket_url` | `str` | The url to hit when emitting websocket events on the cluster | :material-minus-box-outline: Optional | `None`
-
