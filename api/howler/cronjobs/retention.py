@@ -26,8 +26,6 @@ def execute():
 
     ds.hit.delete_by_query(f"event.created:{{* TO {cutoff}}} OR howler.expiry:{{* TO now}}")
 
-    ds.hit.commit()
-
     logger.debug("Deletion complete")
 
 

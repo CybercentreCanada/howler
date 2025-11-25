@@ -124,9 +124,6 @@ def setup_store(docstore: ESStore, request) -> ESCollection:
             for k, v in test_map.items():
                 collection.save(k, v)
 
-            # Commit saved data
-            collection.commit()
-
             return collection
     except ConnectionError:
         raise SetupException("Could not setup Datastore: %s" % docstore.__class__.__name__)
@@ -144,6 +141,8 @@ def es_connection(request):
 
     try:
         collection: ESCollection = setup_store(ESStore(), request)
+
+        collection.commit()
 
         yield collection
 
@@ -357,7 +356,6 @@ def _test_delete_by_query(c: ESCollection):
     # Test Delete Matching
     key_len = len(list(c.keys()))
     c.delete_by_query("delete_b:true")
-    c.commit()
     retry_count = 0
     # Leave time for eventually consistent DBs to be in sync
     while key_len - 4 != len(list(c.keys())):
@@ -365,7 +363,6 @@ def _test_delete_by_query(c: ESCollection):
             break
         retry_count += 1
         time.sleep(0.5 * retry_count)
-        c.commit()
     assert key_len - 4 == len(list(c.keys()))
 
 
@@ -692,7 +689,6 @@ def test_fix_shards(es_connection: ESCollection, shards: int):
         # Add some test data to ensure data preservation during shard fixing
         test_data = {"test_field": "test_value", "timestamp": time.time()}
         test_collection.save("test_doc", test_data)
-        test_collection.commit()
 
         # Verify data exists before fixing
         retrieved_data = test_collection.get("test_doc")
@@ -700,9 +696,6 @@ def test_fix_shards(es_connection: ESCollection, shards: int):
 
         # Now call fix_shards to correct the shard count
         test_collection.fix_shards()
-
-        # Wait a moment for the operation to complete
-        test_collection.commit()
 
         # Verify the shard count has been corrected
         # Get the current index (it might have changed after fix_shards)
@@ -801,7 +794,6 @@ def test_fix_replicas(es_connection: ESCollection, replicas: int):
         # Add some test data to ensure data preservation during replica fixing
         test_data = {"test_field": "test_value", "timestamp": time.time()}
         test_collection.save("test_doc", test_data)
-        test_collection.commit()
 
         # Verify data exists before fixing
         retrieved_data = test_collection.get("test_doc")
@@ -810,9 +802,6 @@ def test_fix_replicas(es_connection: ESCollection, replicas: int):
         # Now call fix_replicas to correct the replica count
         result = test_collection.fix_replicas()
         assert result is True, "fix_replicas should return True on success"
-
-        # Wait a moment for the operation to complete
-        test_collection.commit()
 
         # Verify the replica count has been corrected
         final_settings = test_collection.with_retries(
@@ -884,6 +873,8 @@ def test_reindex(es_connection: ESCollection):
     test_collection.save("example", test_data)
     test_data = Test1({"field_1": "example2", "field_2": "example2"})
     test_collection.save("example2", test_data)
+
+    # Commit new records to the index
     test_collection.commit()
 
     # Ensure both documents are present
@@ -905,6 +896,8 @@ def test_reindex(es_connection: ESCollection):
     # Add a new document using Test2 model
     test_data = Test2({"field_2": "example3", "field_3": 2})
     test_collection.save("example3", test_data)
+
+    # Commit new records to the index
     test_collection.commit()
 
     # Only two documents should remain after reindex (old model docs may be dropped)
