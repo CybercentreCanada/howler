@@ -51,6 +51,10 @@ import TemplateViewer from 'components/routes/templates/TemplateViewer';
 import Templates from 'components/routes/templates/Templates';
 import ViewComposer from 'components/routes/views/ViewComposer';
 import Views from 'components/routes/views/Views';
+import dayjs from 'dayjs';
+import duration from 'dayjs/plugin/duration';
+import relativeTime from 'dayjs/plugin/relativeTime';
+import utc from 'dayjs/plugin/utc';
 import i18n from 'i18n';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Hit } from 'models/entities/generated/Hit';
@@ -77,6 +81,10 @@ import ParameterProvider from './providers/ParameterProvider';
 import SocketProvider from './providers/SocketProvider';
 import UserListProvider from './providers/UserListProvider';
 import ViewProvider from './providers/ViewProvider';
+
+dayjs.extend(utc);
+dayjs.extend(duration);
+dayjs.extend(relativeTime);
 
 loader.config({ monaco });
 
