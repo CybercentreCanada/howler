@@ -115,7 +115,7 @@ for js_file in (dist_path).rglob("**/*.js"):
             continue
 
         current_content = current_content.replace(
-            f"'{path}", f"'@cccsaurora/howler-ui/{path}"
+            f"from '{path}", f"from '@cccsaurora/howler-ui/{path}"
         )
 
     js_file.write_text(current_content)
