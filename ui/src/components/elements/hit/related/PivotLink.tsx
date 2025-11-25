@@ -1,4 +1,5 @@
-import { Skeleton } from '@mui/material';
+import { ErrorOutline } from '@mui/icons-material';
+import { Card, Tooltip } from '@mui/material';
 import Handlebars from 'handlebars';
 import { isEmpty } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
@@ -50,18 +51,46 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false }) => {
     return <RelatedLink title={pivot.label[i18n.language]} href={href} compact={compact} icon={pivot.icon} />;
   }
 
-  try {
-    const pluginPivot = pluginStore.executeFunction(`pivot.${pivot.format}`, { pivot, hit, compact });
-    if (pluginPivot) {
-      return pluginPivot;
-    }
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.warn(`Pivot plugin for format ${pivot.format} does not exist, not rendering`);
-    return null;
-  }
+  // Hide a relatively useless console error, we'll show a UI component instead
+  // eslint-disable-next-line no-console
+  const oldError = console.error;
 
-  return <Skeleton variant="rounded" />;
+  // eslint-disable-next-line no-console
+  console.error = () => {};
+  const pluginPivot = pluginStore.executeFunction(`pivot.${pivot.format}`, { pivot, hit, compact });
+
+  // eslint-disable-next-line no-console
+  console.error = oldError;
+
+  if (pluginPivot) {
+    return pluginPivot;
+  } else {
+    return (
+      <Card variant="outlined" sx={{ display: 'flex', alignItems: 'center', px: 1 }}>
+        <Tooltip
+          title={
+            <>
+              <span>{`Missing Pivot Implementation ${pivot.format}`}</span>
+              <code>
+                <pre>{JSON.stringify(pivot, null, 4)}</pre>
+              </code>
+            </>
+          }
+          slotProps={{
+            popper: {
+              sx: {
+                '& > .MuiTooltip-tooltip': {
+                  maxWidth: '900vw !important'
+                }
+              }
+            }
+          }}
+        >
+          <ErrorOutline color="error" />
+        </Tooltip>
+      </Card>
+    );
+  }
 };
 
 export default PivotLink;
