@@ -80,7 +80,7 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false }) => {
             popper: {
               sx: {
                 '& > .MuiTooltip-tooltip': {
-                  maxWidth: '900vw !important'
+                  maxWidth: '90vw !important'
                 }
               }
             }
