@@ -64,33 +64,33 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false }) => {
 
   if (pluginPivot) {
     return pluginPivot;
-  } else {
-    return (
-      <Card variant="outlined" sx={{ display: 'flex', alignItems: 'center', px: 1 }}>
-        <Tooltip
-          title={
-            <>
-              <span>{`Missing Pivot Implementation ${pivot.format}`}</span>
-              <code>
-                <pre>{JSON.stringify(pivot, null, 4)}</pre>
-              </code>
-            </>
-          }
-          slotProps={{
-            popper: {
-              sx: {
-                '& > .MuiTooltip-tooltip': {
-                  maxWidth: '90vw !important'
-                }
+  }
+
+  return (
+    <Card variant="outlined" sx={{ display: 'flex', alignItems: 'center', px: 1 }}>
+      <Tooltip
+        title={
+          <>
+            <span>{`Missing Pivot Implementation ${pivot.format}`}</span>
+            <code>
+              <pre>{JSON.stringify(pivot, null, 4)}</pre>
+            </code>
+          </>
+        }
+        slotProps={{
+          popper: {
+            sx: {
+              '& > .MuiTooltip-tooltip': {
+                maxWidth: '90vw !important'
               }
             }
-          }}
-        >
-          <ErrorOutline color="error" />
-        </Tooltip>
-      </Card>
-    );
-  }
+          }
+        }}
+      >
+        <ErrorOutline color="error" />
+      </Tooltip>
+    </Card>
+  );
 };
 
 export default PivotLink;
