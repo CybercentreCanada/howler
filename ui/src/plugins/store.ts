@@ -1,8 +1,8 @@
 /* eslint-disable no-console */
 import type { Hit } from 'models/entities/generated/Hit';
 import { createPluginStore, Event } from 'react-pluggable';
-import type HowlerPlugin from './HowlerPlugin';
 import type { AppLeftNavElement } from '../commons/components/app/AppConfigs';
+import type HowlerPlugin from './HowlerPlugin';
 
 export class HitEvent extends Event {
   public hit: Hit;
