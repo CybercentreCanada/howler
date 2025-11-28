@@ -4,7 +4,7 @@ import Handlebars from 'handlebars';
 import { isEmpty } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Pivot } from 'models/entities/generated/Pivot';
-import { useMemo, type FC } from 'react';
+import React, { useMemo, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
 import { flattenDeep } from 'utils/utils';
@@ -55,12 +55,16 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false }) => {
   // eslint-disable-next-line no-console
   const oldError = console.error;
 
-  // eslint-disable-next-line no-console
-  console.error = () => {};
-  const pluginPivot = pluginStore.executeFunction(`pivot.${pivot.format}`, { pivot, hit, compact });
+  let pluginPivot: React.ReactElement = null;
+  try {
+    // eslint-disable-next-line no-console
+    console.error = () => {};
 
-  // eslint-disable-next-line no-console
-  console.error = oldError;
+    pluginPivot = pluginStore.executeFunction(`pivot.${pivot.format}`, { pivot, hit, compact });
+  } finally {
+    // eslint-disable-next-line no-console
+    console.error = oldError;
+  }
 
   if (pluginPivot) {
     return pluginPivot;
