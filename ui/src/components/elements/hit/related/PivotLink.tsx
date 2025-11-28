@@ -1,9 +1,10 @@
-import { Skeleton } from '@mui/material';
+import { ErrorOutline } from '@mui/icons-material';
+import { Card, Tooltip } from '@mui/material';
 import Handlebars from 'handlebars';
 import { isEmpty } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Pivot } from 'models/entities/generated/Pivot';
-import { useMemo, type FC } from 'react';
+import React, { useMemo, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
 import { flattenDeep } from 'utils/utils';
@@ -50,18 +51,50 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false }) => {
     return <RelatedLink title={pivot.label[i18n.language]} href={href} compact={compact} icon={pivot.icon} />;
   }
 
+  // Hide a relatively useless console error, we'll show a UI component instead
+  // eslint-disable-next-line no-console
+  const oldError = console.error;
+
+  let pluginPivot: React.ReactElement = null;
   try {
-    const pluginPivot = pluginStore.executeFunction(`pivot.${pivot.format}`, { pivot, hit, compact });
-    if (pluginPivot) {
-      return pluginPivot;
-    }
-  } catch (e) {
     // eslint-disable-next-line no-console
-    console.warn(`Pivot plugin for format ${pivot.format} does not exist, not rendering`);
-    return null;
+    console.error = () => {};
+
+    pluginPivot = pluginStore.executeFunction(`pivot.${pivot.format}`, { pivot, hit, compact });
+  } finally {
+    // eslint-disable-next-line no-console
+    console.error = oldError;
   }
 
-  return <Skeleton variant="rounded" />;
+  if (pluginPivot) {
+    return pluginPivot;
+  }
+
+  return (
+    <Card variant="outlined" sx={{ display: 'flex', alignItems: 'center', px: 1 }}>
+      <Tooltip
+        title={
+          <>
+            <span>{`Missing Pivot Implementation ${pivot.format}`}</span>
+            <code>
+              <pre>{JSON.stringify(pivot, null, 4)}</pre>
+            </code>
+          </>
+        }
+        slotProps={{
+          popper: {
+            sx: {
+              '& > .MuiTooltip-tooltip': {
+                maxWidth: '90vw !important'
+              }
+            }
+          }
+        }}
+      >
+        <ErrorOutline color="error" />
+      </Tooltip>
+    </Card>
+  );
 };
 
 export default PivotLink;

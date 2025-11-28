@@ -93,6 +93,14 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
   }, [getHit, selected]);
 
   useEffect(() => {
+    if (selected) {
+      setAnalytic(null);
+      setDossiers(null);
+      setHasOverview(false);
+    }
+  }, [selected]);
+
+  useEffect(() => {
     if (hit && !analytic) {
       getMatchingAnalytic(hit).then(setAnalytic);
     }
