@@ -9,14 +9,17 @@ export type ApiConfigContextType = {
 
 export const ApiConfigContext = createContext<ApiConfigContextType>(null);
 
-const ApiConfigProvider: FC<PropsWithChildren> = ({ children }) => {
-  const [config, setConfig] = useState<ApiType>({
+const ApiConfigProvider: FC<PropsWithChildren<{ defaultConfig?: ApiType }>> = ({
+  children,
+  defaultConfig = {
     indexes: null,
     lookups: null,
     configuration: null,
     c12nDef: null,
     mapping: null
-  });
+  }
+}) => {
+  const [config, setConfig] = useState<ApiType>(defaultConfig);
 
   const context = useMemo(
     () => ({

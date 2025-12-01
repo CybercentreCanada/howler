@@ -121,6 +121,7 @@ const LinkForm: FC<PivotFormProps> = ({ pivot, update }) => {
         </Fragment>
       ))}
       <Button
+        id="add-pivot"
         disabled={!pivot}
         sx={{ ml: 'auto', alignSelf: 'end', minWidth: '0 !important' }}
         size="small"
@@ -179,7 +180,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
   const icon = useMemo(() => pivot?.icon ?? 'material-symbols:find-in-page', [pivot?.icon]);
 
   return (
-    <Paper sx={{ p: 1, display: 'flex', flexDirection: 'column', flex: 1 }}>
+    <Paper sx={{ p: 1, display: 'flex', flexDirection: 'column', flex: 1 }} id="pivot-form">
       <Stack spacing={2}>
         <Stack direction="row">
           {!dossier?.pivots || dossier.pivots.length < 1 ? (

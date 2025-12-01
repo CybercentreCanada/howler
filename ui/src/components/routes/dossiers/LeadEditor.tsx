@@ -42,7 +42,7 @@ const LeadEditor: FC<{ lead?: Lead; update: (lead: Partial<Lead>) => void }> = (
   }, [monaco]);
 
   return (
-    <Stack spacing={2} pt={2} sx={{ flex: 1 }}>
+    <Stack spacing={2} pt={2} sx={{ flex: 1 }} id="lead-editor">
       <Stack direction="row" alignItems="center" position="relative">
         <TextField
           size="small"
@@ -92,13 +92,15 @@ const LeadEditor: FC<{ lead?: Lead; update: (lead: Partial<Lead>) => void }> = (
       <Autocomplete
         disabled={!lead}
         options={['markdown', ...howlerPluginStore.leadFormats]}
+        id="lead-format"
         renderInput={params => <TextField {...params} size="small" label={t('route.dossiers.manager.format')} />}
-        value={lead?.format ?? ''}
+        value={lead?.format ?? null}
         onChange={(_ev, format) => update({ format, metadata: '{}', content: '' })}
       />
       {!!lead?.format &&
         (lead.format === 'markdown' ? (
           <ThemedEditor
+            id="lead-markdown"
             height="100%"
             width="100%"
             language="markdown"

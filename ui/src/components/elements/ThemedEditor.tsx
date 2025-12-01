@@ -7,7 +7,7 @@ import useMyTheme from 'components/hooks/useMyTheme';
 import type { editor } from 'monaco-editor';
 import { memo, useCallback, useEffect, useMemo, type FC } from 'react';
 
-const ThemedEditor: FC<EditorProps> = ({ beforeMount, options = {}, ...otherProps }) => {
+const ThemedEditor: FC<EditorProps & { id?: string }> = ({ beforeMount, options = {}, id, ...otherProps }) => {
   const myTheme: AppThemeConfigs = useMyTheme();
   const themeBuilder = useThemeBuilder(myTheme);
   const theme = useTheme();
@@ -120,6 +120,7 @@ const ThemedEditor: FC<EditorProps> = ({ beforeMount, options = {}, ...otherProp
   return (
     <Editor
       {...otherProps}
+      wrapperProps={{ id }}
       theme={theme.palette.mode === 'light' ? 'howler' : 'howler-dark'}
       beforeMount={_beforeMount}
       options={_options}
