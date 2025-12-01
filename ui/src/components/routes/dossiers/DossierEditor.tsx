@@ -191,9 +191,7 @@ const DossierEditor: FC = () => {
         setOriginalDossier(_dossier);
         setDossier(_dossier);
       })
-      .finally(() => {
-        setLoading(false);
-      });
+      .finally(() => setLoading(false));
   }, [dispatchApi, params.id]);
 
   useEffect(() => {
