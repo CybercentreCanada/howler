@@ -137,7 +137,7 @@ const DossierEditor: FC = () => {
 
       if (!pivot.icon || !iconExists(pivot.icon)) {
         // You are missing an icon, or the specified icon does not exist for pivot with label <label>
-        return t('route.dossiers.manager.validation.error.leads.icon', { label: pivot.label[i18n.language] });
+        return t('route.dossiers.manager.validation.error.pivots.icon', { label: pivot.label[i18n.language] });
       }
 
       if (!pivot.mappings || pivot.mappings.length < 1) {
