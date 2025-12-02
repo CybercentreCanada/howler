@@ -72,7 +72,7 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
           /*
             We add two newlines because:
 
-            ## Hello,World
+            ## Hello, World
             `123123123`
 
             does not parse as a code object.
