@@ -190,6 +190,7 @@ const HitQuery: FC<HitQueryProps> = ({
         <Height sx={{ fontSize: '20px' }} />
       </TuiIconButton>
       <QueryEditor
+        id="hit-query"
         query={preppedQuery}
         setQuery={setQuery}
         language="lucene"

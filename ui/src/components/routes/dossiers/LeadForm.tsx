@@ -18,10 +18,11 @@ const LeadForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Parti
   const [tab, setTab] = useState(0);
 
   return (
-    <Paper sx={{ p: 1, display: 'flex', flexDirection: 'column', flex: 1 }}>
+    <Paper sx={{ p: 1, display: 'flex', flexDirection: 'column', flex: 1 }} id="lead-form">
       <Stack direction="row">
         {!dossier?.leads || dossier.leads.length < 1 ? (
           <Alert
+            id="create-lead-alert"
             variant="outlined"
             severity="warning"
             sx={{
@@ -48,7 +49,7 @@ const LeadForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Parti
               <Tab
                 disabled={!dossier || loading}
                 sx={{ py: 1, minHeight: '0 !important' }}
-                key={lead.content}
+                key={lead.label?.en + lead.content}
                 label={
                   <Stack direction="row" spacing={0.5}>
                     {lead.icon && <Icon icon={lead.icon} />}
@@ -61,6 +62,7 @@ const LeadForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Parti
           </Tabs>
         )}
         <Button
+          id="add-lead"
           sx={{ ml: 'auto', alignSelf: 'end', minWidth: '0 !important' }}
           size="small"
           variant="contained"

@@ -23,6 +23,7 @@ interface QueryEditorProps {
   height?: string;
   width?: string;
   editorOptions?: editor.IStandaloneEditorConstructionOptions;
+  id?: string;
 }
 
 const QueryEditor: FC<QueryEditorProps> = ({
@@ -33,7 +34,8 @@ const QueryEditor: FC<QueryEditorProps> = ({
   fontSize = 16,
   height = '100%',
   width = '100%',
-  editorOptions = {}
+  editorOptions = {},
+  id
 }) => {
   const theme = useTheme();
   const monaco = useMonaco();
@@ -140,6 +142,7 @@ const QueryEditor: FC<QueryEditorProps> = ({
         beforeMount={beforeEditorMount}
         onMount={onMount}
         options={options}
+        wrapperProps={{ id }}
       />
     </Box>
   );
