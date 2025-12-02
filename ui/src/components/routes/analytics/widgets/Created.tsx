@@ -1,9 +1,10 @@
 import { Skeleton } from '@mui/material';
 import api from 'api';
+import type { HowlerHistogramSearchResponse } from 'api/search/histogram';
 import 'chartjs-adapter-dayjs-4';
 import useMyChart from 'components/hooks/useMyChart';
 import type { Analytic } from 'models/entities/generated/Analytic';
-import { forwardRef, useEffect, useState } from 'react';
+import { forwardRef, useEffect, useRef, useState } from 'react';
 import { Line } from 'react-chartjs-2';
 import { stringToColor } from 'utils/utils';
 
@@ -13,6 +14,8 @@ const Created = forwardRef<any, { analytic: Analytic }>(({ analytic }, ref) => {
   const [loading, setLoading] = useState(false);
   const [ingestionData, setIngestionData] = useState<{ [timestamp: string]: number }>({});
 
+  const queryRef = useRef<Promise<HowlerHistogramSearchResponse>>();
+
   useEffect(() => {
     if (!analytic) {
       return;
@@ -20,14 +23,20 @@ const Created = forwardRef<any, { analytic: Analytic }>(({ analytic }, ref) => {
 
     setLoading(true);
 
-    api.search.histogram.hit
-      .post('timestamp', {
+    if (!queryRef.current) {
+      queryRef.current = api.search.histogram.hit.post('timestamp', {
         query: `howler.analytic:("${analytic.name}")`,
         start: 'now-3M',
         gap: '1d',
         mincount: 0
+      });
+    }
+
+    queryRef.current
+      .then(result => {
+        setIngestionData(result);
+        queryRef.current = null;
       })
-      .then(setIngestionData)
       .finally(() => setLoading(false));
   }, [analytic]);
 

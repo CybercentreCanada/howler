@@ -43,7 +43,8 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit }) => {
     dispatchApi(
       api.search.hit.post({
         query: view.query,
-        rows: limit
+        rows: limit,
+        metadata: ['analytic']
       })
     )
       .then(res => setHits(res.items ?? []))

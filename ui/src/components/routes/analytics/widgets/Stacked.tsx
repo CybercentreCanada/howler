@@ -22,6 +22,10 @@ const Stacked = forwardRef<
   const [datasets, setDatasets] = useState<ChartDataset<'line'>[]>([]);
 
   const fetchData = useCallback(async () => {
+    if (loading) {
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -62,6 +66,7 @@ const Stacked = forwardRef<
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analytic?.name, color, field]);
 
   useEffect(() => {
