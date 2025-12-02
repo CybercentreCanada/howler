@@ -68,7 +68,16 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
               setMdComponents(_components => ({ ..._components, [id]: result }));
             }
           }
-          return new Handlebars.SafeString(`\`${id}\``);
+
+          /*
+            We add two newlines because:
+
+            ## Hello, World
+            `123123123`
+
+            does not parse as a code object.
+            */
+          return new Handlebars.SafeString(`\n\n\`${id}\``);
         }
 
         return helper.callback(...args);
