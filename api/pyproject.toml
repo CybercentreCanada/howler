@@ -191,7 +191,7 @@ homepage = "https://cybercentrecanada.github.io/howler/"
 repository = "https://github.com/CybercentreCanada/howler-api"
 
 [tool.poetry.dependencies]
-python = "^3.9.17"
+python = "^3.10"
 apscheduler = "3.10.4"
 authlib = "^1.6.0"
 azure-identity = "1.16.1"

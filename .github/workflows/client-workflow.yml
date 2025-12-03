@@ -90,7 +90,7 @@ jobs:
         working-directory: client
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12"]
     steps:
       - name: Get base depth of PR
         if: github.event_name == 'pull_request'

@@ -1,11 +1,11 @@
 [project]
 name = "howler-evidence-plugin"
-version = "0.1.0"
+version = "1.0.0"
 description = "A howler plugin to add additional nested ECS fields to the Howler ODM"
 authors = [{ name = "CCCS", email = "analysis-development@cyber.gc.ca" }]
 license = { text = "MIT" }
 readme = "README.md"
-requires-python = ">=3.9.17, <4.0"
+requires-python = ">=3.10, <4.0"
 
 ######################
 # autoflake settings #

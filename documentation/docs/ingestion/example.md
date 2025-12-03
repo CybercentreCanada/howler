@@ -7,7 +7,7 @@ Binary padding of a malicious file
 ## Preparing a Docker Container
 
 In order to run Atomic Red Team and detect the resulting files, we'll need to slightly modify the docker file, to
-install python 3.9. First, create a new folder to include the Dockerfile and dependent files in:
+install python 3.10. First, create a new folder to include the Dockerfile and dependent files in:
 
 ```shell
 mkdir -p ~/atomic-red-team-custom
@@ -28,12 +28,12 @@ RUN add-apt-repository ppa:deadsnakes/ppa && \
     apt-get update
 
 RUN bash -c "DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get -y install tzdata" && \
-    apt-get install -y python3.9 python3.9-distutils python3.9-venv
+    apt-get install -y python3.10 python3.10-distutils python3.10-venv
 
 
-RUN python3.9 -m ensurepip
+RUN python3.10 -m ensurepip
 
-RUN python3.9 -m pip install howler-client==1.6.0.dev16137
+RUN python3.10 -m pip install howler-client==1.6.0.dev16137
 
 COPY detection.py /root/detection.py
 COPY test.txt /root/test.txt
@@ -122,7 +122,7 @@ PS />
 If you run the detection file:
 
 ```text
-PS /root> python3.9 ./detection.py
+PS /root> python3.10 ./detection.py
 Control hash value: d9014c4624844aa5bac314773d6b689ad467fa4e1d1a50a1b8a99d5a95f72ff5
 Padded hash value: d9014c4624844aa5bac314773d6b689ad467fa4e1d1a50a1b8a99d5a95f72ff5
 Binary padding not detected

@@ -18,7 +18,7 @@ dossier `client/` du [monorepo Howler](https://github.com/CybercentreCanada/howl
 
 ## Installation
 
-Le client Howler nécessite Python 3.9 ou supérieur. Installez-le avec pip :
+Le client Howler nécessite Python 3.10 ou supérieur. Installez-le avec pip :
 
 ```bash
 pip install howler-client
