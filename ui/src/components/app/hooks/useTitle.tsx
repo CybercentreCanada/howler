@@ -17,6 +17,7 @@ const useTitle = () => {
   const { getAnalyticFromId } = useContext(AnalyticContext);
 
   const hits = useContextSelector(HitContext, ctx => ctx.hits);
+  const getHit = useContextSelector(HitContext, ctx => ctx.getHit);
 
   const setTitle = useCallback((title: string) => {
     document.querySelector('title').innerHTML = title;
@@ -38,7 +39,10 @@ const useTitle = () => {
         setTitle(`Howler - ${t('route.analytics')}`);
       }
     } else if (searchType === 'hit' && params.id) {
-      const hit = hits[params.id];
+      const hit = hits[params.id] ?? (await getHit(params.id));
+      if (!hit) {
+        return;
+      }
 
       let newTitle = `${capitalize(hit.howler.escalation)} - ${hit.howler.analytic}`;
       if (hit.howler.detection) {
@@ -67,7 +71,7 @@ const useTitle = () => {
         setTitle(`Howler - ${t(matchingRoute.title)}`);
       }
     }
-  }, [getAnalyticFromId, location.pathname, params.id, searchParams, hits, setTitle, sitemap.routes, t]);
+  }, [location.pathname, params.id, searchParams, getAnalyticFromId, setTitle, t, hits, getHit, sitemap.routes]);
 
   useEffect(() => {
     runChecks();
