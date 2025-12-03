@@ -49,8 +49,8 @@ class Notebook(odm.Model):
         description="The detection the notebook applies to, if it applies to a particular detection",
         optional=True,
     )
-    value = odm.Text(description="The link to the notebook")
-    name = odm.Text(description="Name for the analytic")
+    value = odm.Keyword(description="The link to the notebook")
+    name = odm.Keyword(description="Name for the analytic")
     user = odm.Keyword(description="User ID who added the notebook.")
 
 

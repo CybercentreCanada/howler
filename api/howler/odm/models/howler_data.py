@@ -113,7 +113,7 @@ class AssessmentEscalationMap(str, HowlerEnum):
 @odm.model(index=True, store=True, description="Howler Link definition.")
 class Link(odm.Model):
     href = odm.Keyword(description="Timestamp at which the comment was last edited.")
-    title = odm.Text(description="The title to use for the link.", optional=True)
+    title = odm.Keyword(description="The title to use for the link.", optional=True)
     icon = odm.Keyword(
         description=(
             "The icon to show. Either an ID corresponding to an "
@@ -286,7 +286,7 @@ class HowlerData(odm.Model):
     )
     assessment: Optional[str] = odm.Optional(odm.Enum(values=Assessment, description="Assessment of the hit."))
     rationale: Optional[str] = odm.Optional(
-        odm.Text(
+        odm.Keyword(
             description=(
                 "The rationale behind the hit assessment. Allows it to be understood and" " verified by other analysts."
             )
