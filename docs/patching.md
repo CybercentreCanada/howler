@@ -85,7 +85,7 @@ Before merging, update `docs/RELEASES.md` with your changes. Follow this format:
 ### 6. Verify Deployment
 
 Confirm the Docker image was published successfully:
-<https://hub.docker.com/r/cccsaurora/howler-api/tags>
+<https://hub.docker.com/r/cccs/howler-api/tags>
 
 ## UI Patching Process
 
@@ -162,7 +162,7 @@ Before merging, update `docs/RELEASES.md` with your changes. Follow this format:
 
 Confirm both the Docker image and NPM package were published successfully:
 
-- Docker: <https://hub.docker.com/r/cccsaurora/howler-ui/tags>
+- Docker: <https://hub.docker.com/r/cccs/howler-ui/tags>
 - NPM: <https://www.npmjs.com/package/@cccsaurora/howler-ui?activeTab=versions>
 
 ## Best Practices

@@ -100,19 +100,19 @@ howlerRest:
 
 Howler provides official Docker images for both the API and UI components, available on Docker Hub:
 
-- **API Image**: [cccsaurora/howler-api](https://hub.docker.com/r/cccsaurora/howler-api)
-- **UI Image**: [cccsaurora/howler-ui](https://hub.docker.com/r/cccsaurora/howler-ui)
+- **API Image**: [cccs/howler-api](https://hub.docker.com/r/cccs/howler-api)
+- **UI Image**: [cccs/howler-ui](https://hub.docker.com/r/cccs/howler-ui)
 
 These images are regularly updated with new releases. You can pull specific versions using tags:
 
 ```shell
 # Pull latest versions
-docker pull cccsaurora/howler-api:latest
-docker pull cccsaurora/howler-ui:latest
+docker pull cccs/howler-api:latest
+docker pull cccs/howler-ui:latest
 
 # Pull a specific version (e.g., 2.5.0)
-docker pull cccsaurora/howler-api:2.5.0
-docker pull cccsaurora/howler-ui:2.5.0
+docker pull cccs/howler-api:2.5.0
+docker pull cccs/howler-ui:2.5.0
 ```
 
 When using the Howler Helm chart, you can specify which images to use in your `values.yaml`:
@@ -120,13 +120,13 @@ When using the Howler Helm chart, you can specify which images to use in your `v
 ```yaml
 howlerRest:
   image:
-    repository: cccsaurora/howler-api
+    repository: cccs/howler-api
     tag: latest
     pullPolicy: IfNotPresent
 
 howlerUi:
   image:
-    repository: cccsaurora/howler-ui
+    repository: cccs/howler-ui
     tag: latest
     pullPolicy: IfNotPresent
 ```

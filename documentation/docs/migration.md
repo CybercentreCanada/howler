@@ -213,7 +213,7 @@ If you need to revert to Howler v2.12.0 after migration:
 
    ```bash
    # Docker method
-   docker pull cccsaurora/howler-api:2.12.0
+   docker pull cccs/howler-api:2.12.0
    # Update docker-compose.yml or deployment manifests
    ```
 

@@ -109,7 +109,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Pull Dependent Docker Images
         run: |
-          docker pull cccsaurora/howler-api:develop
+          docker pull cccs/howler-api:develop
           docker pull docker.elastic.co/elasticsearch/elasticsearch:8.3.3
           docker pull redis
       - name: Spin up test dependencies

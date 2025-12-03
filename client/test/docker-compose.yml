@@ -2,7 +2,7 @@ name: howler-client-test-dependencies
 
 services:
   howler-api:
-    image: cccsaurora/howler-api:develop
+    image: cccs/howler-api:develop
     environment:
       WORKERS: 1
       THREADS: 1
