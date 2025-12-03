@@ -62,7 +62,7 @@ class Analytic(odm.Model):
         default=[],
         description="A list of useful notebooks for the analytic",
     )
-    name: str = odm.Keyword(description="The name of the analytic.")
+    name: str = odm.CaseInsensitiveKeyword(description="The name of the analytic.")
     owner: Optional[str] = odm.Keyword(description="The username of the user who owns this analytic.", optional=True)
     contributors: list[str] = odm.List(
         odm.Keyword(),
@@ -71,7 +71,7 @@ class Analytic(odm.Model):
     )
     description: Optional[str] = odm.Text(description="A markdown description of the analytic", optional=True)
     detections: list[str] = odm.List(
-        odm.Keyword(),
+        odm.CaseInsensitiveKeyword(),
         description="The detections which this analytic contains.",
         default=[],
     )
