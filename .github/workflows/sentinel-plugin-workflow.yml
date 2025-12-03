@@ -133,7 +133,7 @@ jobs:
         working-directory: api
       - name: Install Dependencies
         run: |
-          poetry install --verbose --with dev
+          poetry install --verbose --with types,dev
           poetry run mitre /etc/howler/lookups
           poetry run sigma
       - name: Run tests
