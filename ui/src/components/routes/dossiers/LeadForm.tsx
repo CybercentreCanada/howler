@@ -4,8 +4,9 @@ import { Alert, Button, Paper, Stack, Tab, Tabs } from '@mui/material';
 import isNull from 'lodash-es/isNull';
 import merge from 'lodash-es/merge';
 import type { Dossier } from 'models/entities/generated/Dossier';
-import { useState, type Dispatch, type FC, type SetStateAction } from 'react';
+import { useEffect, useState, type Dispatch, type FC, type SetStateAction } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import LeadEditor from './LeadEditor';
 
 const LeadForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Partial<Dossier>>>; loading: boolean }> = ({
@@ -14,8 +15,18 @@ const LeadForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Parti
   loading
 }) => {
   const { t, i18n } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [tab, setTab] = useState(0);
+  const [tab, setTab] = useState(parseInt(searchParams.get('lead') ?? '0'));
+
+  useEffect(() => {
+    searchParams.delete('pivot');
+    if (searchParams.get('lead') !== tab.toString()) {
+      searchParams.set('lead', tab.toString());
+    }
+
+    setSearchParams(searchParams, { replace: true });
+  }, [searchParams, setSearchParams, tab]);
 
   return (
     <Paper sx={{ p: 1, display: 'flex', flexDirection: 'column', flex: 1 }} id="lead-form">
@@ -76,6 +87,7 @@ const LeadForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Parti
               ]
             }));
           }}
+          disabled={!dossier || loading}
         >
           <Add />
         </Button>

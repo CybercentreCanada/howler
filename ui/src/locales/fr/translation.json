@@ -721,6 +721,7 @@
   "route.dossiers.manager.format": "Format de la piste",
   "route.dossiers.manager.tabs.leads": "Pistes",
   "route.dossiers.manager.tabs.pivots": "Pivots",
+  "route.dossiers.manager.openinsearch": "Ouvrir en recherche",
   "route.dossiers.manager.pivot.create": "Vous n'avez actuellement aucun pivot configuré. Appuyez sur le bouton Ajouter à droite pour en créer un nouveau.",
   "route.dossiers.manager.pivot.icon": "Icône du pivot",
   "route.dossiers.manager.pivot.label.en": "English Title",
