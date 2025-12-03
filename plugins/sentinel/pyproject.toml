@@ -1,11 +1,11 @@
 [project]
 name = "howler-sentinel-plugin"
-version = "1.0.0"
+version = "0.2.0"
 description = "A howler plugin for integration with Microsoft's Sentinel API"
 authors = [{ name = "CCCS", email = "analysis-development@cyber.gc.ca" }]
 license = { text = "MIT" }
 readme = "README.md"
-requires-python = ">=3.10, <4.0"
+requires-python = ">=3.9.17, <4.0"
 
 ######################
 # autoflake settings #
