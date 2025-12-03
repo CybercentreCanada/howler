@@ -133,6 +133,7 @@ suppress-none-returning = true
 "howler/external/*.py" = ["T20"]
 "howler/odm/helper.py" = ["S311"]
 "howler/common/classification.py" = ["D", "ANN", "C901", "TRY"]
+"howler/common/iprange.py" = ["D", "ANN", "C901"]
 "howler/common/random_user.py" = ["S311"]
 "howler/helper/ws.py" = ["C901", "D101", "D102"]
 "howler/odm/base.py" = ["D", "ANN", "C901"]
@@ -190,7 +191,7 @@ homepage = "https://cybercentrecanada.github.io/howler/"
 repository = "https://github.com/CybercentreCanada/howler-api"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.9.17"
 apscheduler = "3.10.4"
 authlib = "^1.6.0"
 azure-identity = "1.16.1"
