@@ -61,7 +61,7 @@ def parse_profile(profile: dict[str, Any], provider_config: OAuthProvider) -> di
         uname = profile.get("uname", profile.get("preferred_username", email_adr))
 
         # Did we default to email?
-        if uname is not None and uname.lower() == email_adr.lower():
+        if email_adr is not None and uname is not None and uname.lower() == email_adr.lower():
             # 1. Use provided regex matcher
             if provider_config.uid_regex:
                 match = re.match(provider_config.uid_regex, uname)

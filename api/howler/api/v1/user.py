@@ -1,6 +1,6 @@
 import re
 from hashlib import sha256
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from flask import request
 
@@ -128,7 +128,9 @@ def add_user_account(username, **_):
         data["name"] = data["uname"]
 
     # Add dynamic classification group
-    data["classification"] = user_service.get_dynamic_classification(data.get("classification", None), data["email"])
+    data["classification"] = user_service.get_dynamic_classification(
+        cast(str | None, data.get("classification", None)), data["email"]
+    )
 
     # Clear non user account data
     avatar = data.pop("avatar", None)

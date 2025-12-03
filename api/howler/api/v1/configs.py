@@ -1,8 +1,11 @@
+from typing import cast
+
 from flask import request
 
 import howler.services.config_service as config_service
 from howler.api import make_subapi_blueprint, ok
 from howler.common.swagger import generate_swagger_docs
+from howler.odm.models.user import User
 from howler.security.utils import get_disco_url
 
 SUB_API = "configs"
@@ -49,7 +52,7 @@ def configs(**kwargs):
     """
     return ok(
         config_service.get_configuration(
-            user=kwargs.get("user", None),
+            user=cast(User | None, kwargs.get("user", None)),
             discovery_url=get_disco_url(request.environ.get("HTTP_REFERER")),
         )
     )

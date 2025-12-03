@@ -1072,7 +1072,7 @@ def update_bundle(id, **kwargs):
         ...hit      # The updated bundle
     }
     """
-    bundle_hit: Hit = kwargs.get("cached_hit", None)
+    bundle_hit: Hit = cast(Hit, kwargs.get("cached_hit", None))
     if not bundle_hit:
         return not_found(err="This bundle does not exist.")
 

@@ -61,7 +61,7 @@ def _get_apikey_max_duration():
         return amount, unit
 
 
-def get_configuration(user: User, **kwargs):
+def get_configuration(user: User | None, **kwargs):
     """Get system configration data for the Howler API
 
     Args:

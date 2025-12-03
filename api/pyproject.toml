@@ -133,7 +133,6 @@ suppress-none-returning = true
 "howler/external/*.py" = ["T20"]
 "howler/odm/helper.py" = ["S311"]
 "howler/common/classification.py" = ["D", "ANN", "C901", "TRY"]
-"howler/common/iprange.py" = ["D", "ANN", "C901"]
 "howler/common/random_user.py" = ["S311"]
 "howler/helper/ws.py" = ["C901", "D101", "D102"]
 "howler/odm/base.py" = ["D", "ANN", "C901"]
