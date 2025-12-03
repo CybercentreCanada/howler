@@ -359,6 +359,8 @@
   "modal.rationale.title": "Add Rationale",
   "modal.rationale.description": "Provide a rationale that succinctly explains to other analysts why you are confident in this assessment.",
   "modal.rationale.label": "Rationale",
+  "modal.rationale.type.analytic": "This rationale was used when assessing alerts with the same analytic name.",
+  "modal.rationale.type.assignment": "This is a rationale you have recently used when assessing an alert.",
 
   "none": "None",
 
