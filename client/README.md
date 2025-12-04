@@ -4,7 +4,7 @@ The Howler client library facilitates issuing requests to Howler.
 
 ## Requirements
 
-1. Python 3.9 and up
+1. Python 3.10 and up
 
 ## Running the Tests
 

@@ -74,7 +74,7 @@ def __sanitize_report(report: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def execute(
     operation_id: str,
     query: str,
-    user: User,
+    user: User | None,
     request_id: Optional[str] = None,
     **kwargs,
 ) -> list[dict[str, Any]]:
@@ -117,7 +117,8 @@ def execute(
             }
         ]
 
-    missing_roles = set(operation.specification()["roles"]) - set(user["type"])
+    user_roles: set[str] = set(user["type"] if user else [])
+    missing_roles = set(operation.specification()["roles"]) - user_roles
     if missing_roles:
         return [
             {

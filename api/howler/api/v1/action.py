@@ -237,7 +237,7 @@ def execute_action(id: str, **kwargs) -> Response:
         return not_found(err="The specified action does not exist")
 
     reports: dict[str, list[dict]] = {}
-    current_user = kwargs.get("user", None)
+    current_user: User | None = kwargs.get("user", None)
 
     for operation in action.operations:
         op_data = json.loads(operation["data_json"])
@@ -333,7 +333,7 @@ def execute_operations(**kwargs) -> Response:
         return bad_request(err="Incorrect data structure!")
 
     reports: dict[str, list[dict]] = {}
-    current_user = kwargs.get("user", None)
+    current_user: User | None = kwargs.get("user", None)
     operations = execute_req["operations"]
 
     operation_ids = [o["operation_id"] for o in operations]

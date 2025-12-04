@@ -302,7 +302,7 @@ Ensure your plugin's dependencies are compatible with Howler's requirements:
 ```toml
 # pyproject.toml
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.10"
 howler-api = {path = "../../api", develop = true}
 # Add other dependencies
 ```

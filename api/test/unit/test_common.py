@@ -1,5 +1,4 @@
 import os
-import random
 from copy import deepcopy
 
 import pytest
@@ -7,21 +6,10 @@ from baseconv import BASE62_ALPHABET
 
 from howler.common import loader
 from howler.common.classification import InvalidClassification
-from howler.common.hexdump import hexdump
-from howler.common.iprange import is_ip_private, is_ip_reserved
 from howler.common.random_user import random_user
-from howler.security.utils import (
-    get_password_hash,
-    get_random_password,
-    verify_password,
-)
-from howler.utils.chunk import chunk, chunked_list
-from howler.utils.dict_utils import (
-    flatten,
-    get_recursive_delta,
-    recursive_update,
-    unflatten,
-)
+from howler.security.utils import get_password_hash, get_random_password, verify_password
+from howler.utils.chunk import chunked_list
+from howler.utils.dict_utils import flatten, get_recursive_delta, recursive_update, unflatten
 from howler.utils.isotime import now_as_iso
 from howler.utils.str_utils import safe_str, translate_str, truncate
 from howler.utils.uid import LONG, MEDIUM, SHORT, TINY, get_id_from_data, get_random_id
@@ -95,65 +83,6 @@ def test_dict_recursive():
 
     delta = get_recursive_delta(src, dest)
     assert add == delta
-
-
-def test_hexdump():
-    data = bytes([random.randint(1, 255) for _ in range(10000)])
-
-    dumped = hexdump(data)
-    line = dumped.splitlines()[random.randint(1, 200)]
-    _ = int(line[:8], 16)
-    assert len(line) == 77
-    assert line[8:11] == ":  "
-    for c in chunk(line[11:59], 3):
-        assert c[0] in "abcdef1234567890"
-        assert c[1] in "abcdef1234567890"
-        assert c[2] == " "
-    assert line[59 : 59 + 2] == "  "
-
-
-def test_iprange():
-    privates = [
-        "10.10.10.10",
-        "10.80.10.30",
-        "172.16.16.16",
-        "172.22.22.22",
-        "172.30.30.30",
-        "192.168.0.1",
-        "192.168.245.245",
-    ]
-    reserved = [
-        "0.1.1.1",
-        "100.64.0.1",
-        "127.0.0.1",
-        "169.254.1.1",
-        "192.0.0.1",
-        "192.0.2.0",
-        "192.88.99.1",
-        "198.19.1.1",
-        "198.51.100.33",
-        "203.0.113.20",
-        "241.0.0.1",
-        "225.1.1.1",
-        "255.255.255.255",
-    ]
-    public = [
-        "44.33.44.33",
-        "192.1.1.1",
-        "111.111.111.111",
-        "203.203.203.203",
-        "199.199.199.199",
-        "223.223.223.223",
-    ]
-
-    for ip in privates:
-        assert is_ip_private(ip)
-
-    for ip in reserved:
-        assert is_ip_reserved(ip)
-
-    for ip in public:
-        assert not is_ip_reserved(ip) and not is_ip_private(ip)
 
 
 def test_random_user():

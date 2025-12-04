@@ -90,7 +90,7 @@ jobs:
         working-directory: client
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12"]
     steps:
       - name: Get base depth of PR
         if: github.event_name == 'pull_request'
@@ -109,7 +109,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Pull Dependent Docker Images
         run: |
-          docker pull cccs/howler-api:develop
+          docker pull cccs/howler-api:nightly
           docker pull docker.elastic.co/elasticsearch/elasticsearch:8.3.3
           docker pull redis
       - name: Spin up test dependencies
@@ -129,7 +129,7 @@ jobs:
       - name: Generate random data, user accounts
         run: |
           docker ps
-          docker exec $(docker ps -aqf "name=howler-api") python /var/lib/howler/.local/lib/python3.12/site-packages/howler/odm/random_data.py
+          docker exec $(docker ps -aqf "name=howler-api") python -m howler.odm.random_data
           docker logs $(docker ps -aqf "name=howler-api")
 
           curl --fail-with-body http://localhost:5000/api/apispec_v1.json

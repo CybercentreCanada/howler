@@ -314,7 +314,7 @@ def save_user_account(username: str, data: dict[str, Any], user: dict[str, Any])
     return storage.user.save(username, data)
 
 
-def get_dynamic_classification(current_c12n: str, email: str) -> str:
+def get_dynamic_classification(current_c12n: str | None, email: str) -> str | None:
     """Get the classification of the user
 
     Args:
@@ -327,4 +327,5 @@ def get_dynamic_classification(current_c12n: str, email: str) -> str:
     if CLASSIFICATION.dynamic_groups and email:
         dyn_group = email.upper().split("@")[1]
         return CLASSIFICATION.build_user_classification(current_c12n, f"{CLASSIFICATION.UNRESTRICTED}//{dyn_group}")
+
     return current_c12n

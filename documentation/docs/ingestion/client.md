@@ -18,7 +18,7 @@ The package is published on [PyPI](https://pypi.org/project/howler-client/) and 
 
 ## Installation
 
-The Howler client requires Python 3.9 or higher. Install it using pip:
+The Howler client requires Python 3.10 or higher. Install it using pip:
 
 ```bash
 pip install howler-client
