@@ -65,7 +65,6 @@ This document outlines the overall structure of the Howler API codebase. The fir
   - **`classification.py`** - Security classification handling
   - **`loader.py`** - Configuration and lookup data loading
   - **`net.py`**, **`net_static.py`** - Network utilities
-  - **`hexdump.py`**, **`iprange.py`** - Data formatting and IP utilities
   - **`swagger.py`** - API documentation generation
   - **`logging`** - Logging infrastructure
 
