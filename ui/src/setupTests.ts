@@ -4,6 +4,8 @@ import '@testing-library/jest-dom/vitest';
 import { configure } from '@testing-library/react';
 import { server } from 'tests/server';
 
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+
 // Extend vitest with the dom matchers from jest-dom.
 expect.extend(matchers);
 
