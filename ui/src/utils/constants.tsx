@@ -129,3 +129,5 @@ export const LABEL_TYPES: Record<string, LabelData> = {
   assignments: {},
   tuning: {}
 };
+
+export const DEFAULT_QUERY = 'howler.id:*';

@@ -30,7 +30,7 @@ import { TOP_ROW, VOTE_OPTIONS, type ActionButton } from 'components/elements/hi
 import useHitActions from 'components/hooks/useHitActions';
 import useMyApi from 'components/hooks/useMyApi';
 import useMyActionFunctions from 'components/routes/action/useMyActionFunctions';
-import { capitalize, get, groupBy, isEmpty } from 'lodash-es';
+import { capitalize, get, groupBy, isEmpty, toString } from 'lodash-es';
 import type { Action } from 'models/entities/generated/Action';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Template } from 'models/entities/generated/Template';
@@ -41,6 +41,7 @@ import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
 import { Link } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
+import { DEFAULT_QUERY } from 'utils/constants';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
 
 /**
@@ -356,7 +357,7 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
                     {template?.keys.map(key => {
                       // Build exclusion query based on current query and field value
                       let newQuery = '';
-                      if (query !== 'howler.id:*') {
+                      if (query !== DEFAULT_QUERY) {
                         newQuery = `(${query}) AND `;
                       }
 
@@ -377,7 +378,7 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
                         newQuery += `-${key}:(${sanitizedValues.join(' OR ')})`;
                       } else {
                         // Handle single value
-                        newQuery += `-${key}:"${value.toString()}"`;
+                        newQuery += `-${key}:"${sanitizeLuceneQuery(value.toString())}"`;
                       }
 
                       return (

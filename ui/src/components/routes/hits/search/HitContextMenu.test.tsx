@@ -143,6 +143,7 @@ import i18n from 'i18n';
 import type { Hit } from 'models/entities/generated/Hit';
 import { I18nextProvider } from 'react-i18next';
 import { createMockAction, createMockAnalytic, createMockHit, createMockTemplate } from 'tests/utils';
+import { DEFAULT_QUERY } from 'utils/constants';
 import HitContextMenu from './HitContextMenu';
 
 const mockGetSelectedId = vi.fn(() => 'test-hit-1');
@@ -159,7 +160,7 @@ const mockHitContext = {
   },
   selectedHits: [] as Hit[]
 };
-const mockParameterContext = { query: 'howler.id:*', setQuery: vi.fn() };
+const mockParameterContext = { query: DEFAULT_QUERY, setQuery: vi.fn() };
 
 // Test wrapper
 const Wrapper = ({ children }: PropsWithChildren) => {

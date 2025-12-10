@@ -2,6 +2,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import omit from 'lodash-es/omit';
+import { DEFAULT_QUERY } from 'utils/constants';
 
 // Mock the API
 const mockApiSearchHitPost = vi.fn();
@@ -118,7 +119,7 @@ vi.mock('../hits/search/HitQuery', () => ({
             }
           }}
         />
-        <button id="trigger-search" onClick={() => triggerSearch('howler.id:*')}>
+        <button id="trigger-search" onClick={() => triggerSearch(DEFAULT_QUERY)}>
           {'search'}
         </button>
       </div>
@@ -142,7 +143,7 @@ const mockDossier = {
   id: 'test-dossier-1',
   title: 'Test Dossier',
   type: 'global' as const,
-  query: 'howler.id:*',
+  query: DEFAULT_QUERY,
   leads: [
     {
       label: { en: 'Lead 1', fr: 'Piste 1' },

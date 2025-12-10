@@ -29,7 +29,7 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
-import { StorageKey } from 'utils/constants';
+import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
 import InformationPane from './InformationPane';
 import SearchPane from './SearchPane';
 import HitGrid from './grid/HitGrid';
@@ -103,7 +103,7 @@ const HitBrowser: FC = () => {
     if (bundle) {
       _fullQuery = `(howler.bundles:${bundle}) AND (${_fullQuery})`;
     } else if (viewId) {
-      _fullQuery = `(${views[viewId]?.query || 'howler.id:*'}) AND (${_fullQuery})`;
+      _fullQuery = `(${views[viewId]?.query || DEFAULT_QUERY}) AND (${_fullQuery})`;
     }
 
     return _fullQuery;
