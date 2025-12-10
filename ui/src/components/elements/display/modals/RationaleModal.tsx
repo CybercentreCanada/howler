@@ -65,7 +65,7 @@ const RationaleModal: FC<{ hits: Hit[]; onSubmit: (rationale: string) => void }>
   useEffect(() => {
     (async () => {
       setLoading(true);
-      // TOOD: Eventually switch a a facet call once the elasticsearch refactor is complete
+      // TODO: Eventually switch a a facet call once the elasticsearch refactor is complete
       const results = flatten(
         await Promise.all(
           queries.map(async ({ query, type }) => {
@@ -95,6 +95,8 @@ const RationaleModal: FC<{ hits: Hit[]; onSubmit: (rationale: string) => void }>
         loading={loading}
         loadingText={t('loading')}
         freeSolo
+        value={rationale}
+        onChange={(_, newValue) => setRationale(isString(newValue) ? newValue : (newValue?.rationale ?? ''))}
         options={suggestedRationales}
         getOptionLabel={suggestion => (isString(suggestion) ? suggestion : suggestion.rationale)}
         isOptionEqualToValue={(option, value) =>
