@@ -127,8 +127,6 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
       const _id = getSelectedId(event);
       setId(_id);
 
-      console.log(event.clientX, event.clientY);
-
       if (window.innerHeight - event.clientY < 300) {
         setTransformProps({
           position: 'fixed',
