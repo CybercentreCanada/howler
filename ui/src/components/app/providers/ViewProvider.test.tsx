@@ -4,7 +4,7 @@ import { hget, hpost, hput } from 'api';
 import MockLocalStorage from 'tests/MockLocalStorage';
 import { MOCK_RESPONSES } from 'tests/server-handlers';
 import { useContextSelector } from 'use-context-selector';
-import { MY_LOCAL_STORAGE_PREFIX, StorageKey } from 'utils/constants';
+import { DEFAULT_QUERY, MY_LOCAL_STORAGE_PREFIX, StorageKey } from 'utils/constants';
 import ViewProvider, { ViewContext, type ViewContextType } from './ViewProvider';
 
 let mockUser = {
@@ -107,7 +107,7 @@ describe('ViewContext', () => {
           advance_on_triage: false
         },
         view_id: 'example_created_view',
-        query: 'howler.id:*',
+        query: DEFAULT_QUERY,
         sort: 'event.created desc',
         title: 'Example View',
         type: 'personal',
@@ -233,10 +233,10 @@ describe('ViewContext', () => {
     });
 
     it('should allow users to edit views', async () => {
-      const result = await act(async () => hook.result.current('example_view_id', { query: 'howler.id:*' }));
+      const result = await act(async () => hook.result.current('example_view_id', { query: DEFAULT_QUERY }));
 
       expect(hput).toHaveBeenCalledOnce();
-      expect(hput).toBeCalledWith('/api/v1/view/example_view_id', { query: 'howler.id:*' });
+      expect(hput).toBeCalledWith('/api/v1/view/example_view_id', { query: DEFAULT_QUERY });
 
       expect(result).toEqual(MOCK_RESPONSES['/api/v1/view/example_view_id']);
     });

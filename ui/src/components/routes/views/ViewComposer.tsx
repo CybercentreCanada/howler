@@ -37,7 +37,7 @@ import useMySnackbar from 'components/hooks/useMySnackbar';
 import type { Hit } from 'models/entities/generated/Hit';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
-import { StorageKey } from 'utils/constants';
+import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
 import { convertDateToLucene } from 'utils/utils';
 import ErrorBoundary from '../ErrorBoundary';
 import HitQuery from '../hits/search/HitQuery';
@@ -159,7 +159,7 @@ const ViewComposer: FC = () => {
   );
 
   useEffect(() => {
-    search(query || 'howler.id:*');
+    search(query || DEFAULT_QUERY);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -29,6 +29,7 @@ import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'r
 import { Scatter } from 'react-chartjs-2';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
+import { DEFAULT_QUERY } from 'utils/constants';
 import { convertCustomDateRangeToLucene, convertDateToLucene, stringToColor } from 'utils/utils';
 
 const MAX_ROWS = 2500;
@@ -110,7 +111,7 @@ const HitGraph: FC<{ query: string }> = ({ query }) => {
 
       const _data = await dispatchApi(
         api.search.grouped.hit.post(filterField, {
-          query: query || 'howler.id:*',
+          query: query || DEFAULT_QUERY,
           fl: 'event.created,howler.assessment,howler.analytic,howler.detection,howler.outline.threat,howler.outline.target,howler.outline.summary,howler.id',
           // We want a generally random sample across all date ranges, so we use hash.
           // If we used event.created instead, when 1 million hits/hour are created, you'd only see hits from this past minute

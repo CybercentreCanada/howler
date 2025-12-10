@@ -3,6 +3,7 @@ import type { FC, PropsWithChildren } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { createContext, useContextSelector } from 'use-context-selector';
+import { DEFAULT_QUERY } from 'utils/constants';
 import Throttler from 'utils/Throttler';
 
 interface ParameterProviderType {
@@ -40,7 +41,7 @@ interface SearchValues {
 export const ParameterContext = createContext<ParameterProviderType>(null);
 
 const DEFAULT_VALUES = {
-  query: 'howler.id:*',
+  query: DEFAULT_QUERY,
   sort: 'event.created desc',
   span: 'date.range.1.month'
 };

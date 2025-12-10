@@ -5,6 +5,7 @@ import { FieldContext } from 'components/app/providers/FieldProvider';
 import Fuse from 'fuse.js';
 import type { languages } from 'monaco-editor';
 import { useContext, useEffect, useMemo } from 'react';
+import { DEFAULT_QUERY } from 'utils/constants';
 
 const useLuceneCompletionProvider = (): languages.CompletionItemProvider => {
   const { config } = useContext(ApiConfigContext);
@@ -51,7 +52,7 @@ const useLuceneCompletionProvider = (): languages.CompletionItemProvider => {
           };
         } else {
           const options = await api.search.facet.hit
-            .post({ query: 'howler.id:*', rows: 250, fields: [key] })
+            .post({ query: DEFAULT_QUERY, rows: 250, fields: [key] })
             .catch(() => ({}));
 
           const _position = model.getWordUntilPosition(position);

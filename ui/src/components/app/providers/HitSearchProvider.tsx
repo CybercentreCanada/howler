@@ -21,7 +21,7 @@ import {
 import { isMobile } from 'react-device-detect';
 import { useLocation, useParams } from 'react-router-dom';
 import { createContext, useContextSelector } from 'use-context-selector';
-import { StorageKey } from 'utils/constants';
+import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
 import { getStored } from 'utils/localStorage';
 import Throttler from 'utils/Throttler';
 import { convertCustomDateRangeToLucene, convertDateToLucene } from 'utils/utils';
@@ -135,11 +135,11 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
         try {
           const bundle = location.pathname.startsWith('/bundles') && routeParams.id;
 
-          let fullQuery = _query || 'howler.id:*';
+          let fullQuery = _query || DEFAULT_QUERY;
           if (bundle) {
             fullQuery = `(howler.bundles:${bundle}) AND (${fullQuery})`;
           } else if (viewId) {
-            fullQuery = `(${(await getCurrentView({ viewId }))?.query || 'howler.id:*'}) AND (${fullQuery})`;
+            fullQuery = `(${(await getCurrentView({ viewId }))?.query || DEFAULT_QUERY}) AND (${fullQuery})`;
           }
 
           const _response = await dispatchApi(
@@ -207,7 +207,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
       return;
     }
 
-    if (viewId || bundleId || (query && query !== 'howler.id:*') || offset > 0) {
+    if (viewId || bundleId || (query && query !== DEFAULT_QUERY) || offset > 0) {
       search(query);
     } else {
       setResponse(null);

@@ -210,6 +210,7 @@
   "hit.panel.open": "Ouvrir hit",
   "hit.panel.close": "Fermer",
   "hit.panel.hit.noselection": "Aucun résultat n'a été sélectionné",
+  "hit.panel.exclude": "Exclure par",
 
   "hit.panel.details.cluster": "Taille de la grappe",
   "hit.panel.details.cluster.description": "Taille de la grappe",

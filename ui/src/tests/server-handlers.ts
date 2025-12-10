@@ -1,4 +1,5 @@
 import { http, HttpResponse } from 'msw';
+import { createMockAction } from './utils';
 
 export const MOCK_RESPONSES: { [path: string]: any } = {
   '/api/v1/view/example_view_id': {
@@ -43,7 +44,12 @@ export const MOCK_RESPONSES: { [path: string]: any } = {
     type: 'personal',
     span: 'date.range.1.month'
   },
-  '/api/v1/view/:view_id/favourite': { success: true }
+  '/api/v1/view/:view_id/favourite': { success: true },
+  '/api/v1/search/action': {
+    items: [createMockAction()],
+    total: 1,
+    rows: 1
+  }
 };
 
 const handlers = [
