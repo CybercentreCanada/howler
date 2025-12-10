@@ -145,7 +145,7 @@ const HitBrowser: FC = () => {
   }, [setQueryHistory]);
 
   useEffect(() => {
-    if (!location.pathname.startsWith('/views') || has(views, viewId)) {
+    if (!location.pathname.startsWith('/views') || !viewId || has(views, viewId)) {
       return;
     }
 

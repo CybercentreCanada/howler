@@ -47,7 +47,7 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
         return newViews;
       }
 
-      const missingIds = ids.filter(_id => !has(views, _id));
+      const missingIds = ids.filter(_id => !!_id && !has(views, _id));
 
       if (missingIds.length < 1) {
         return ids.map(id => views[id]);
