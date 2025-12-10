@@ -147,6 +147,7 @@ const useHitActions = (_hits: Hit | Hit[]) => {
         : await new Promise<string>(res => {
             showModal(
               <RationaleModal
+                hits={hits}
                 onSubmit={_rationale => {
                   res(_rationale);
                 }}

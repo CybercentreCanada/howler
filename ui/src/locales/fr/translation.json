@@ -362,6 +362,8 @@
   "modal.rationale.title": "Ajouter une justification",
   "modal.rationale.description": "Fournissez une justification qui explique succinctement aux autres analystes les raisons pour lesquelles vous êtes confiant dans cette évaluation.",
   "modal.rationale.label": "Justification",
+  "modal.rationale.type.analytic": "Cette justification a été utilisée lors de l'évaluation des alertes avec le même nom d'analyse.",
+  "modal.rationale.type.assignment": "Il s'agit d'une justification que vous avez récemment utilisée lors de l'évaluation d'une alerte.",
 
   "none": "Rien",
 
