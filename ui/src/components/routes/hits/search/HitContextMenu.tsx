@@ -64,6 +64,13 @@ interface HitContextMenuProps {
 const ORDER = ['assessment', 'vote', 'action'];
 
 /**
+ * The margin at the bottom of the screen by which the context menu should be inverted.
+ * That is, if right clicking within this many pixels of the bottom, render the context menu to the top right
+ * of the pointer instead of the bottom right.
+ */
+const CONTEXTMENU_MARGIN = 350;
+
+/**
  * Icon mapping for different action types
  */
 const ICON_MAP = {
@@ -216,7 +223,7 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
 
     const parentBounds = parent.getBoundingClientRect();
 
-    if (window.innerHeight - parentBounds.y < 350) {
+    if (window.innerHeight - parentBounds.y < CONTEXTMENU_MARGIN) {
       return { ...baseStyles, bottom: 0, left: '100%' };
     }
 
@@ -358,11 +365,16 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
                         return null;
                       } else if (Array.isArray(value)) {
                         // Handle array values by excluding all items
-                        newQuery += `-${key}:(${value
+                        const sanitizedValues = value
                           .map(toString)
                           .filter(val => !!val)
-                          .map(val => `"${sanitizeLuceneQuery(val)}"`)
-                          .join(' OR ')})`;
+                          .map(val => `"${sanitizeLuceneQuery(val)}"`);
+
+                        if (sanitizedValues.length < 1) {
+                          return null;
+                        }
+
+                        newQuery += `-${key}:(${sanitizedValues.join(' OR ')})`;
                       } else {
                         // Handle single value
                         newQuery += `-${key}:"${value.toString()}"`;
