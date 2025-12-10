@@ -30,10 +30,7 @@ import { TOP_ROW, VOTE_OPTIONS, type ActionButton } from 'components/elements/hi
 import useHitActions from 'components/hooks/useHitActions';
 import useMyApi from 'components/hooks/useMyApi';
 import useMyActionFunctions from 'components/routes/action/useMyActionFunctions';
-import { get, toString } from 'lodash-es';
-import capitalize from 'lodash-es/capitalize';
-import groupBy from 'lodash-es/groupBy';
-import isEmpty from 'lodash-es/isEmpty';
+import { capitalize, get, groupBy, isEmpty } from 'lodash-es';
 import type { Action } from 'models/entities/generated/Action';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Template } from 'models/entities/generated/Template';
