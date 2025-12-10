@@ -9,7 +9,18 @@ import {
   SettingsSuggest,
   Terminal
 } from '@mui/icons-material';
-import { Box, Divider, Fade, ListItemIcon, ListItemText, Menu, MenuItem, MenuList, Paper } from '@mui/material';
+import {
+  Box,
+  Divider,
+  Fade,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
+  MenuList,
+  Paper,
+  type SxProps
+} from '@mui/material';
 import api from 'api';
 import useMatchers from 'components/app/hooks/useMatchers';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
@@ -28,7 +39,7 @@ import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Template } from 'models/entities/generated/Template';
 import howlerPluginStore from 'plugins/store';
 import type { FC, MouseEventHandler, PropsWithChildren } from 'react';
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
 import { Link } from 'react-router-dom';
@@ -88,7 +99,7 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
   const [template, setTemplate] = useState<Template>(null);
 
   const [anchorEl, setAnchorEl] = useState<HTMLElement>();
-  const [clickLocation, setClickLocation] = useState<[number, number]>([-1, -1]);
+  const [transformProps, setTransformProps] = useState<SxProps>({});
   const [actions, setActions] = useState<Action[]>([]);
 
   const [show, setShow] = useState<{ [index: string]: EventTarget & HTMLElement }>({});
@@ -116,8 +127,22 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
       const _id = getSelectedId(event);
       setId(_id);
 
-      const clientRect = (event.target as HTMLElement).getBoundingClientRect();
-      setClickLocation([event.clientX - clientRect.x, event.clientY - clientRect.y]);
+      console.log(event.clientX, event.clientY);
+
+      if (window.innerHeight - event.clientY < 300) {
+        setTransformProps({
+          position: 'fixed',
+          bottom: `${window.innerHeight - event.clientY}px !important`,
+          top: 'unset !important',
+          left: `${event.clientX}px !important`
+        });
+      } else {
+        setTransformProps({
+          position: 'fixed',
+          top: `${event.clientY}px !important`,
+          left: `${event.clientX}px !important`
+        });
+      }
 
       setAnchorEl(event.target as HTMLElement);
 
@@ -217,7 +242,6 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
   // Reset menu state when context menu is closed
   useEffect(() => {
     if (!anchorEl) {
-      setClickLocation([-1, -1]);
       setShow({});
       setAnalytic(null);
     }
@@ -234,7 +258,7 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
         slotProps={{
           paper: {
             sx: {
-              transform: `translate(${clickLocation[0]}px, ${clickLocation[1]}px) !important`,
+              ...transformProps,
               overflow: 'visible !important'
             }
           }
