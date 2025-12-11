@@ -418,8 +418,11 @@ class ESCollection(Generic[ModelType]):
         #   - update_by_query
         #   - delete_by_query
         #   - reindex ...
+        attempt = 0
         res = None
         while res is None:
+            attempt = attempt + 1
+            logger.warning("Checking status of task %s (Attempt %s)", task["task"], attempt)
             try:
                 res = self.with_retries(
                     self.datastore.client.tasks.get,
@@ -435,9 +438,14 @@ class ESCollection(Generic[ModelType]):
                 ]:
                     pass
                 else:
+                    logger.exception("Unexpected error on task check")
                     raise
 
-        return res.get("response", res["task"]["status"])
+        result = res.get("response", res["task"]["status"])
+
+        logger.info("Task result:\n%s", str(result))
+
+        return result
 
     def _get_current_alias(self, index: str) -> typing.Optional[str]:
         if self.with_retries(self.datastore.client.indices.exists_alias, name=index):
@@ -679,6 +687,7 @@ class ESCollection(Generic[ModelType]):
 
         :return: Should return True of the commit was successful on all hosts
         """
+        logger.warning("Beginning Reindex")
         for index in self.index_list:
             new_name = f"{index}__reindex"
             index_data = None
@@ -689,6 +698,7 @@ class ESCollection(Generic[ModelType]):
                 index_data = self.with_retries(self.datastore.client.indices.get, index=index)[index]
 
                 # Create reindex target
+                logger.warning("Creating new index with name %s", new_name)
                 self.with_retries(
                     self.datastore.client.indices.create,
                     index=new_name,
@@ -719,36 +729,39 @@ class ESCollection(Generic[ModelType]):
                     else:
                         alias_actions = [{"add": {"index": new_name, "alias": alias}}]
 
+                    logger.warning("Updating alias %s", alias)
                     self.with_retries(self.datastore.client.indices.update_aliases, actions=alias_actions)
 
                 # Reindex data into target
+                logger.warning("Beginning reindex from %s to %s", index, new_name)
                 r_task = self.with_retries(
                     self.datastore.client.reindex,
                     source={"index": index},
                     dest={"index": new_name},
                     wait_for_completion=False,
                 )
+                logger.warning("Reindex taskId: %s", r_task["task"])
                 self._get_task_results(r_task)
 
             if self.with_retries(self.datastore.client.indices.exists, index=new_name):
                 if index_data is None:
                     index_data = self.with_retries(self.datastore.client.indices.get, index=index)[index]
 
-                # Commit reindexed data
+                logger.warning("Committing reindexed data in index %s", new_name)
                 self.with_retries(self.datastore.client.indices.refresh, index=new_name)
                 self.with_retries(self.datastore.client.indices.clear_cache, index=new_name)
 
-                # Delete old index
+                logger.warning("Deleting old index %s", index)
                 if self.with_retries(self.datastore.client.indices.exists, index=index):
                     self.with_retries(self.datastore.client.indices.delete, index=index)
 
-                # Block write to the index
+                logger.warning("Block write to index")
                 self.with_retries(
                     self.datastore.client.indices.put_settings,
                     settings=write_block_settings,
                 )
 
-                # Rename reindexed index
+                logger.warning("Renaming reindexed index from %s to %s", new_name, index)
                 try:
                     self._safe_index_copy(
                         self.datastore.client.indices.clone,
@@ -776,11 +789,11 @@ class ESCollection(Generic[ModelType]):
                                 actions=alias_actions,
                             )
 
-                    # Delete the reindex target if it still exists
                     if self.with_retries(self.datastore.client.indices.exists, index=new_name):
+                        logger.warning("Deleting reindex target %s", new_name)
                         self.with_retries(self.datastore.client.indices.delete, index=new_name)
                 finally:
-                    # Unblock write to the index
+                    logger.warning("Unblock write to the index")
                     self.with_retries(
                         self.datastore.client.indices.put_settings,
                         settings=write_unblock_settings,
