@@ -1,3 +1,4 @@
+import json
 import sys
 import time
 from typing import Callable
@@ -45,7 +46,10 @@ if __name__ == "__main__":
         print("Invalid index provided, stopping.")
         sys.exit(1)
 
-    print("You will be reindexing the following indexes:")
+    print("Index schema:")
+    print(json.dumps(ds.hit._get_index_mappings(), indent=2))
+
+    print("\nYou will be reindexing the following indexes:")
     print("\n".join(indexes[index_answer][0]))
 
     answer = input(("\nAre you sure you want to reindex these indexes? [yes/NO]\n"))
