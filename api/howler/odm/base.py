@@ -1112,6 +1112,16 @@ class Model:
             recursive_set_name(field_data, name)
             field_data.apply_defaults(index=index, store=store)
 
+    @classmethod
+    def remove_namespace(cls, namespace: str):
+        if hasattr(cls, "_odm_field_cache_skip"):
+            del cls._odm_field_cache_skip[namespace.rstrip("_")]
+
+        if hasattr(cls, "_odm_field_cache"):
+            del cls._odm_field_cache[namespace.rstrip("_")]
+
+        delattr(cls, namespace)
+
     @staticmethod
     def _recurse_fields(name, field, show_compound, skip_mappings, multivalued=False):
         name = name.rstrip("_")

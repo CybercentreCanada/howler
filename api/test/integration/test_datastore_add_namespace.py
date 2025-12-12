@@ -36,6 +36,7 @@ def datastore(datastore_connection: HowlerDatastore):
 
         yield ds
     finally:
+        ds.hit.model_class.remove_namespace("example")
         wipe_hits(ds)
 
 
