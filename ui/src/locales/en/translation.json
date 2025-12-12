@@ -803,7 +803,7 @@
   "usermenu.settings": "Settings",
 
   "view.assigned_to_me": "Assigned to Me",
-  "view.notfound": "This view is not availiable to you, or does not exist.",
+  "view.notfound": "This view is not available to you, or does not exist.",
   "view.open": "Open View Query",
   "view.refresh": "Refresh View",
   "view.settings.advance_on_triage": "Advance to next hit on triage",
