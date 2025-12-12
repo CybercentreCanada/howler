@@ -9,10 +9,6 @@ DELAY = 5
 if __name__ == "__main__":
     print("This script will allow you to reindex all indexes in elasticsearch.")
     print("For obvious reasons, be EXTREMELY CAREFUL running this code.")
-
-    for i in range(DELAY):
-        print(f"Continuing in {str(DELAY - i)}...", end="\r")
-        time.sleep(1)
     print()
     answer = input("Are you sure you want to reindex data for an index in this cluster? [yes/NO]\n")
 
@@ -28,15 +24,15 @@ if __name__ == "__main__":
 
     ds = loader.datastore(archive_access=False)
 
-    indexes: dict[str, tuple[list[str], Callable]] = {
-        "analytic": (ds.analytic.index_list_full, ds.analytic.reindex),
-        "hit": (ds.hit.index_list_full, ds.hit.reindex),
-        "view": (ds.view.index_list_full, ds.view.reindex),
-        "template": (ds.template.index_list_full, ds.template.reindex),
-        "overview": (ds.overview.index_list_full, ds.overview.reindex),
-        "action": (ds.action.index_list_full, ds.action.reindex),
-        "user": (ds.user.index_list_full, ds.user.reindex),
-        "dossier": (ds.dossier.index_list_full, ds.dossier.reindex),
+    indexes: dict[str, tuple[ESCollection, Callable]] = {
+        "analytic": (ds.analytic, ds.analytic.reindex),
+        "hit": (ds.hit, ds.hit.reindex),
+        "view": (ds.view, ds.view.reindex),
+        "template": (ds.template, ds.template.reindex),
+        "overview": (ds.overview, ds.overview.reindex),
+        "action": (ds.action, ds.action.reindex),
+        "user": (ds.user, ds.user.reindex),
+        "dossier": (ds.dossier, ds.dossier.reindex),
     }
 
     print("Which index will you reindex?")
@@ -47,10 +43,10 @@ if __name__ == "__main__":
         sys.exit(1)
 
     print("Index schema:")
-    print(json.dumps(ds.hit._get_index_mappings(), indent=2))
+    print(json.dumps(indexes[index_answer][0]._get_index_mappings(), indent=2))
 
     print("\nYou will be reindexing the following indexes:")
-    print("\n".join(indexes[index_answer][0]))
+    print("\n".join(indexes[index_answer][0].index_list_full))
 
     answer = input(("\nAre you sure you want to reindex these indexes? [yes/NO]\n"))
     print()

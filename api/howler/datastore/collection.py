@@ -430,7 +430,7 @@ class ESCollection(Generic[ModelType]):
                     wait_for_completion=True,
                     timeout="10s",
                 )
-            except elasticsearch.exceptions.TransportError as e:
+            except (elasticsearch.exceptions.TransportError, elasticsearch.exceptions.ApiError) as e:
                 err_code, msg, _ = e.args
                 if (err_code == 500 or err_code == "500") and msg in [
                     "timeout_exception",
