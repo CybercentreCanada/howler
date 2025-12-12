@@ -1093,8 +1093,8 @@ class Model:
         return out
 
     @classmethod
-    def add_namespace(cls, namespace: str, field: _Field):
-        field.name = namespace
+    def add_namespace(cls, namespace: str, field: _Field, index=None, store=None, description=None):
+        recursive_set_name(field, namespace)
 
         if hasattr(cls, "_odm_field_cache_skip"):
             cls._odm_field_cache_skip[namespace.rstrip("_")] = field
@@ -1102,7 +1102,15 @@ class Model:
         if hasattr(cls, "_odm_field_cache"):
             cls._odm_field_cache[namespace.rstrip("_")] = field
 
-        return setattr(cls, namespace, field)
+        setattr(cls, namespace, field)
+
+        field._Model__description = description
+        for name, field_data in field.fields().items():
+            if not FIELD_SANITIZER.match(name) or name in BANNED_FIELDS:
+                raise HowlerValueError(f"Illegal variable name: {name}")
+
+            recursive_set_name(field_data, name)
+            field_data.apply_defaults(index=index, store=store)
 
     @staticmethod
     def _recurse_fields(name, field, show_compound, skip_mappings, multivalued=False):
