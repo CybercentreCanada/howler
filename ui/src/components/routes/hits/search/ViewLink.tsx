@@ -1,4 +1,4 @@
-import { Close, Edit, SavedSearch } from '@mui/icons-material';
+import { Close, Edit, OpenInNew, Refresh, SavedSearch } from '@mui/icons-material';
 import { Alert, IconButton, Stack, Tooltip, Typography } from '@mui/material';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
@@ -17,6 +17,7 @@ const ViewLink: FC = () => {
   const span = useContextSelector(ParameterContext, ctx => ctx.span);
 
   const viewId = useContextSelector(HitSearchContext, ctx => ctx.viewId);
+  const search = useContextSelector(HitSearchContext, ctx => ctx.search);
 
   const viewsReady = useContextSelector(ViewContext, ctx => has(ctx.views, viewId));
   const selectedView = useContextSelector(ViewContext, ctx => ctx.views[viewId]);
@@ -75,6 +76,20 @@ const ViewLink: FC = () => {
         </Typography>
       </Tooltip>
       {viewButton}
+      {viewId && (
+        <IconButton size="small" onClick={() => search(query)}>
+          <Tooltip title={t('view.refresh')}>
+            <Refresh fontSize="small" />
+          </Tooltip>
+        </IconButton>
+      )}
+      {viewId && (
+        <IconButton size="small" component={Link} to={`/search?query=${selectedView.query}`}>
+          <Tooltip title={t('view.open')}>
+            <OpenInNew fontSize="small" />
+          </Tooltip>
+        </IconButton>
+      )}
     </Stack>
   ) : (
     viewsReady && (
