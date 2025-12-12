@@ -84,11 +84,11 @@ const ViewLink: FC = () => {
         </Tooltip>
       )}
       {viewId && (
-        <IconButton size="small" component={Link} to={`/search?query=${selectedView.query}`}>
-          <Tooltip title={t('view.open')}>
+        <Tooltip title={t('view.open')}>
+          <IconButton size="small" component={Link} to={`/search?query=${selectedView.query}`}>
             <OpenInNew fontSize="small" />
-          </Tooltip>
-        </IconButton>
+          </IconButton>
+        </Tooltip>
       )}
     </Stack>
   ) : (
