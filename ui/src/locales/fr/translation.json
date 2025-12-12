@@ -803,6 +803,8 @@
 
   "view.assigned_to_me": "Assigné à moi",
   "view.notfound": "Cette vue n'est pas disponible pour vous, ou n'existe pas.",
+  "view.open": "Ouvrir requête de la vue",
+  "view.refresh": "Rafraîchir la vue",
   "view.settings.advance_on_triage": "Passer à la hit suivant lors du triage",
   "view.settings.advance_on_triage.description": "Si cette option est activée, le triage d'une hit sur cette vue passera automatiquement à la hit suivant, ce qui facilitera le triage rapide des résultats.",
 

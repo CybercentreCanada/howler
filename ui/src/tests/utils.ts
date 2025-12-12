@@ -2,6 +2,7 @@ import type { Action } from 'models/entities/generated/Action';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Template } from 'models/entities/generated/Template';
+import type { View } from 'models/entities/generated/View';
 
 type RecursivePartial<T> = {
   [P in keyof T]?: T[P] extends (infer U)[]
@@ -54,5 +55,19 @@ export const createMockAction = (overrides?: Partial<Action>): Action => ({
       operation_id: 'transition'
     }
   ],
+  ...overrides
+});
+
+export const createMockView = (overrides?: Partial<View>): View => ({
+  view_id: 'test-view-id',
+  title: 'Test View',
+  query: 'howler.status:open',
+  sort: 'event.created desc',
+  span: 'date.range.1.month',
+  type: 'personal',
+  owner: 'testuser',
+  settings: {
+    advance_on_triage: false
+  },
   ...overrides
 });
