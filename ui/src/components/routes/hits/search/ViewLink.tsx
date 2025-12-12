@@ -77,11 +77,11 @@ const ViewLink: FC = () => {
       </Tooltip>
       {viewButton}
       {viewId && (
-        <IconButton size="small" onClick={() => search(query)}>
-          <Tooltip title={t('view.refresh')}>
+        <Tooltip title={t('view.refresh')}>
+          <IconButton size="small" onClick={() => search(query)}>
             <Refresh fontSize="small" />
-          </Tooltip>
-        </IconButton>
+          </IconButton>
+        </Tooltip>
       )}
       {viewId && (
         <IconButton size="small" component={Link} to={`/search?query=${selectedView.query}`}>
