@@ -92,7 +92,6 @@ def test_get_templates(datastore, login_session):
 def test_remove_template(datastore: HowlerDatastore, login_session):
     session, host = login_session
 
-    datastore.template.commit()
     total = datastore.template.search("template_id:*")["total"]
 
     create_res = get_api_data(
@@ -102,12 +101,16 @@ def test_remove_template(datastore: HowlerDatastore, login_session):
         data=json.dumps({"analytic": "testremove", "type": "global", "keys": ["howler.hash"]}),
     )
 
+    # Ensure the new template is indexed
     datastore.template.commit()
+
     assert total + 1 == datastore.template.search("template_id:*")["total"]
 
     res = get_api_data(session, f"{host}/api/v1/template/{create_res['template_id']}/", method="DELETE")
 
+    # Ensure the new template is removed
     datastore.template.commit()
+
     assert res is None
     assert total == datastore.template.search("template_id:*")["total"]
 
@@ -122,6 +125,7 @@ def test_template_conflict(datastore: HowlerDatastore, login_session):
         data=json.dumps({"analytic": "test-conflict", "type": "global", "keys": ["howler.hash"]}),
     )
 
+    # Ensure the new template is indexed
     datastore.template.commit()
 
     with pytest.raises(APIError) as err:
@@ -147,8 +151,6 @@ def test_set_template(datastore: HowlerDatastore, login_session):
         data=json.dumps(["event.id"]),
     )
     assert resp["keys"] == ["event.id"]
-
-    datastore.template.commit()
 
     updated_template = datastore.template.get(id, as_obj=True)
     assert updated_template.keys == ["event.id"]

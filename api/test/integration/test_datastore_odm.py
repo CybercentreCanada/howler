@@ -198,9 +198,6 @@ def setup_store(docstore, request):
             for k, v in test_map.items():
                 collection.save(k, v)
 
-            # Commit saved data
-            collection.commit()
-
             return collection
     except ConnectionError:
         pass
@@ -227,6 +224,8 @@ def es_connection(es_store, request):
         collection = None
 
     if collection:
+        collection.commit()
+
         return collection
 
     return pytest.skip("Connection to the Elasticsearch server failed. This test cannot be performed.")

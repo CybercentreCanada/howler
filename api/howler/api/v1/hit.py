@@ -121,8 +121,6 @@ def create_hits(user: User, **kwargs):
                 hit_service.create_hit(odm.howler.id, odm, user=user["uname"])
                 analytic_service.save_from_hit(odm, user)
 
-            datastore().hit.commit()
-
             action_service.bulk_execute_on_query(f"howler.id:({' OR '.join(odm.howler.id for odm in odms)})", user=user)
 
         response_body["warnings"] = warnings
@@ -546,8 +544,6 @@ def add_label(id, label_set, user, **kwargs):
         user["uname"],
     )
 
-    datastore().hit.commit()
-
     action_service.bulk_execute_on_query(
         f"howler.id:{id}",
         trigger="add_label",
@@ -604,8 +600,6 @@ def remove_labels(id, label_set, user, **kwargs):
         user["uname"],
     )
 
-    datastore().hit.commit()
-
     action_service.bulk_execute_on_query(
         f"howler.id:{id}",
         trigger="remove_label",
@@ -652,7 +646,7 @@ def transition(id: str, user: User, **kwargs):
     if "If-Match" in request.headers:
         version = request.headers["If-Match"]
     else:
-        logger.warning("User is mising version - no If-Match header in request.")
+        logger.warning("User is missing version - no If-Match header in request.")
         version = None
 
     try:

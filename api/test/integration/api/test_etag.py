@@ -25,9 +25,6 @@ def datastore(datastore_connection: HowlerDatastore):
 
         datastore_connection.hit.save(hit["howler"]["id"], hit)
 
-        # Commit changes to DataStore
-        datastore_connection.hit.commit()
-
         yield datastore_connection
     finally:
         wipe_hits(datastore_connection)
