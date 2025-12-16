@@ -5,11 +5,26 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { AvatarContext } from 'components/app/providers/AvatarProvider';
 import i18n from 'i18n';
-import { act } from 'react';
+import React, { act } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { createMockDossier } from 'tests/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import DossierCard from './DossierCard';
+
+// Mock react-router-dom
+const mockNavigate = vi.hoisted(() => vi.fn());
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+    Link: React.forwardRef<any, any>(({ to, children, ...props }, ref) => (
+      <a ref={ref} data-to={to} {...props}>
+        {children}
+      </a>
+    ))
+  };
+});
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -178,6 +193,27 @@ describe('DossierCard', () => {
         expect(screen.getByLabelText(/delete/i)).toBeInTheDocument();
       });
     });
+
+    it('should display "Open in Search" button', async () => {
+      const dossier = createMockDossier();
+
+      render(<DossierCard dossier={dossier} />, { wrapper: Wrapper });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/open in search/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should have correct href for "Open in Search" button', async () => {
+      const dossier = createMockDossier({ query: 'howler.status:open' });
+
+      render(<DossierCard dossier={dossier} />, { wrapper: Wrapper });
+
+      await waitFor(() => {
+        const openButton = screen.getByLabelText(/open in search/i);
+        expect(openButton).toHaveAttribute('data-to', '/search?query=howler.status:open');
+      });
+    });
   });
 
   describe('Button States & Interactions', () => {
@@ -234,6 +270,79 @@ describe('DossierCard', () => {
 
       await waitFor(() => {
         expect(mockOnDelete).toHaveBeenCalledTimes(3);
+      });
+    });
+
+    it('should stop event propagation when Open in Search button is clicked', async () => {
+      const dossier = createMockDossier();
+      const mockParentClick = vi.fn();
+
+      render(
+        <div onClick={mockParentClick}>
+          <DossierCard dossier={dossier} />
+        </div>,
+        { wrapper: Wrapper }
+      );
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/open in search/i)).toBeInTheDocument();
+      });
+
+      const openButton = screen.getByLabelText(/open in search/i);
+      await user.click(openButton);
+
+      await waitFor(() => {
+        expect(mockParentClick).not.toHaveBeenCalled();
+      });
+    });
+
+    it('should stop event propagation when lead chip is clicked', async () => {
+      const dossier = createMockDossier({
+        leads: [{ format: 'lead1', label: { en: 'Lead 1', fr: 'Piste 1' } }]
+      });
+      const mockParentClick = vi.fn();
+
+      render(
+        <div onClick={mockParentClick}>
+          <DossierCard dossier={dossier} />
+        </div>,
+        { wrapper: Wrapper }
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText(/Lead 1/)).toBeInTheDocument();
+      });
+
+      const chip = screen.getByText(/Lead 1/);
+      await user.click(chip);
+
+      await waitFor(() => {
+        expect(mockParentClick).not.toHaveBeenCalled();
+      });
+    });
+
+    it('should stop event propagation when pivot chip is clicked', async () => {
+      const dossier = createMockDossier({
+        pivots: [{ format: 'pivot1', label: { en: 'Pivot 1', fr: 'Pivot 1' } }]
+      });
+      const mockParentClick = vi.fn();
+
+      render(
+        <div onClick={mockParentClick}>
+          <DossierCard dossier={dossier} />
+        </div>,
+        { wrapper: Wrapper }
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText(/Pivot 1/)).toBeInTheDocument();
+      });
+
+      const chip = screen.getByText(/Pivot 1/);
+      await user.click(chip);
+
+      await waitFor(() => {
+        expect(mockParentClick).not.toHaveBeenCalled();
       });
     });
   });
@@ -323,6 +432,144 @@ describe('DossierCard', () => {
     });
   });
 
+  describe('Leads and Pivots Display', () => {
+    it('should display lead chips when leads are present', async () => {
+      const dossier = createMockDossier({
+        leads: [
+          { format: 'lead1', label: { en: 'Lead 1', fr: 'Piste 1' } },
+          { format: 'lead2', label: { en: 'Lead 2', fr: 'Piste 2' } }
+        ]
+      });
+
+      render(<DossierCard dossier={dossier} />, { wrapper: Wrapper });
+
+      await waitFor(() => {
+        expect(screen.getByText(/Lead 1/)).toBeInTheDocument();
+        expect(screen.getByText(/Lead 2/)).toBeInTheDocument();
+      });
+    });
+
+    it('should display pivot chips when pivots are present', async () => {
+      const dossier = createMockDossier({
+        pivots: [
+          { format: 'pivot1', label: { en: 'Pivot 1', fr: 'Pivot 1' } },
+          { format: 'pivot2', label: { en: 'Pivot 2', fr: 'Pivot 2' } }
+        ]
+      });
+
+      render(<DossierCard dossier={dossier} />, { wrapper: Wrapper });
+
+      await waitFor(() => {
+        expect(screen.getByText(/Pivot 1/)).toBeInTheDocument();
+        expect(screen.getByText(/Pivot 2/)).toBeInTheDocument();
+      });
+    });
+
+    it('should not display chips when leads and pivots are empty', async () => {
+      const dossier = createMockDossier({
+        leads: [],
+        pivots: []
+      });
+
+      const { container } = render(<DossierCard dossier={dossier} />, { wrapper: Wrapper });
+
+      await waitFor(() => {
+        expect(container.querySelectorAll('.MuiChip-root')).toHaveLength(0);
+      });
+    });
+
+    it('should display divider when both leads and pivots are present', async () => {
+      const dossier = createMockDossier({
+        leads: [{ format: 'lead1', label: { en: 'Lead 1', fr: 'Piste 1' } }],
+        pivots: [{ format: 'pivot1', label: { en: 'Pivot 1', fr: 'Pivot 1' } }]
+      });
+
+      const { container } = render(<DossierCard dossier={dossier} />, { wrapper: Wrapper });
+
+      await waitFor(() => {
+        expect(container.querySelector('.MuiDivider-root')).toBeInTheDocument();
+      });
+    });
+
+    it('should not display divider when only leads are present', async () => {
+      const dossier = createMockDossier({
+        leads: [{ format: 'lead1', label: { en: 'Lead 1', fr: 'Piste 1' } }],
+        pivots: []
+      });
+
+      const { container } = render(<DossierCard dossier={dossier} />, { wrapper: Wrapper });
+
+      await waitFor(() => {
+        expect(container.querySelector('.MuiDivider-root')).not.toBeInTheDocument();
+      });
+    });
+
+    it('should not display divider when only pivots are present', async () => {
+      const dossier = createMockDossier({
+        leads: [],
+        pivots: [{ format: 'pivot1', label: { en: 'Pivot 1', fr: 'Pivot 1' } }]
+      });
+
+      const { container } = render(<DossierCard dossier={dossier} />, { wrapper: Wrapper });
+
+      await waitFor(() => {
+        expect(container.querySelector('.MuiDivider-root')).not.toBeInTheDocument();
+      });
+    });
+
+    it('should have correct link for lead chips', async () => {
+      const dossier = createMockDossier({
+        dossier_id: 'dossier-123',
+        leads: [{ format: 'lead1', label: { en: 'Lead 1', fr: 'Piste 1' } }]
+      });
+
+      render(<DossierCard dossier={dossier} />, { wrapper: Wrapper });
+
+      await waitFor(() => {
+        const chip = screen.getByText(/Lead 1/).closest('a');
+        expect(chip).toHaveAttribute('data-to', '/dossiers/dossier-123/edit?tab=leads&lead=0');
+      });
+    });
+
+    it('should have correct link for pivot chips', async () => {
+      const dossier = createMockDossier({
+        dossier_id: 'dossier-456',
+        pivots: [{ format: 'pivot1', label: { en: 'Pivot 1', fr: 'Pivot 1' } }]
+      });
+
+      render(<DossierCard dossier={dossier} />, { wrapper: Wrapper });
+
+      await waitFor(() => {
+        const chip = screen.getByText(/Pivot 1/).closest('a');
+        expect(chip).toHaveAttribute('data-to', '/dossiers/dossier-456/edit?tab=pivots&pivot=0');
+      });
+    });
+
+    it('should display lead format in chip label', async () => {
+      const dossier = createMockDossier({
+        leads: [{ format: 'custom-format', label: { en: 'Custom Lead', fr: 'Piste personnalisée' } }]
+      });
+
+      render(<DossierCard dossier={dossier} />, { wrapper: Wrapper });
+
+      await waitFor(() => {
+        expect(screen.getByText(/Custom Lead \(custom-format\)/)).toBeInTheDocument();
+      });
+    });
+
+    it('should display pivot format in chip label', async () => {
+      const dossier = createMockDossier({
+        pivots: [{ format: 'custom-pivot', label: { en: 'Custom Pivot', fr: 'Pivot personnalisé' } }]
+      });
+
+      render(<DossierCard dossier={dossier} />, { wrapper: Wrapper });
+
+      await waitFor(() => {
+        expect(screen.getByText(/Custom Pivot \(custom-pivot\)/)).toBeInTheDocument();
+      });
+    });
+  });
+
   describe('Dossier Types', () => {
     it('should render correctly for personal type', async () => {
       const dossier = createMockDossier({ type: 'personal' });
@@ -368,7 +615,9 @@ describe('DossierCard', () => {
         title: 'Complete Dossier',
         query: 'howler.status:open AND howler.assigned:me',
         type: 'personal',
-        owner: 'admin'
+        owner: 'admin',
+        leads: [{ format: 'lead1', label: { en: 'Lead 1', fr: 'Piste 1' } }],
+        pivots: [{ format: 'pivot1', label: { en: 'Pivot 1', fr: 'Pivot 1' } }]
       });
 
       render(<DossierCard dossier={dossier} className="test-class" onDelete={mockOnDelete} />, {
@@ -382,6 +631,9 @@ describe('DossierCard', () => {
         expect(screen.getByLabelText(/personal/i)).toBeInTheDocument();
         expect(screen.getByLabelText('admin')).toBeInTheDocument();
         expect(screen.getByRole('button')).toBeInTheDocument();
+        expect(screen.getByText(/Lead 1/)).toBeInTheDocument();
+        expect(screen.getByText(/Pivot 1/)).toBeInTheDocument();
+        expect(screen.getByLabelText(/open in search/i)).toBeInTheDocument();
       });
     });
 
@@ -447,6 +699,9 @@ describe('DossierCard', () => {
 
         // Delete button tooltip
         expect(screen.getByLabelText(/delete/i)).toBeInTheDocument();
+
+        // Open in Search button tooltip
+        expect(screen.getByLabelText(/open in search/i)).toBeInTheDocument();
       });
     });
 
