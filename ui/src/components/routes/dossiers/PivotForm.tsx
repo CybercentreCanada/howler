@@ -189,7 +189,8 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
     }
 
     setSearchParams(searchParams, { replace: true });
-  }, [searchParams, setSearchParams, tab]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setSearchParams, tab]);
 
   return (
     <Paper sx={{ p: 1, display: 'flex', flexDirection: 'column', flex: 1 }} id="pivot-form">

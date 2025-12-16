@@ -34,7 +34,7 @@ const DossierCard: FC<{
               <Chip
                 key={lead.format + lead.label?.en}
                 clickable
-                label={`${lead.label[i18n.language]} (${lead.format})`}
+                label={`${lead.label?.[i18n.language] ?? t('unknown')} (${lead.format})`}
                 size="small"
                 component={Link}
                 to={`/dossiers/${dossier.dossier_id}/edit?tab=leads&lead=${index}`}
@@ -46,7 +46,7 @@ const DossierCard: FC<{
               <Chip
                 key={pivot.format + pivot.label?.en}
                 clickable
-                label={`${pivot.label[i18n.language]} (${pivot.format})`}
+                label={`${pivot.label?.[i18n.language] ?? t('unknown')} (${pivot.format})`}
                 size="small"
                 component={Link}
                 to={`/dossiers/${dossier.dossier_id}/edit?tab=pivots&pivot=${index}`}

@@ -221,7 +221,8 @@ const DossierEditor: FC = () => {
     }
 
     setSearchParams(searchParams, { replace: true });
-  }, [searchParams, setSearchParams, tab]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setSearchParams, tab]);
 
   return (
     <PageCenter maxWidth="1000px" width="100%" textAlign="left" height="97%">
