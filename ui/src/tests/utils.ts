@@ -1,5 +1,6 @@
 import type { Action } from 'models/entities/generated/Action';
 import type { Analytic } from 'models/entities/generated/Analytic';
+import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Template } from 'models/entities/generated/Template';
 import type { View } from 'models/entities/generated/View';
@@ -69,5 +70,15 @@ export const createMockView = (overrides?: Partial<View>): View => ({
   settings: {
     advance_on_triage: false
   },
+  ...overrides
+});
+
+// Helper function to create mock dossiers
+export const createMockDossier = (overrides?: Partial<Dossier>): Dossier => ({
+  dossier_id: 'test-dossier-id',
+  title: 'Test Dossier',
+  query: 'howler.status:open',
+  type: 'personal',
+  owner: 'test-user',
   ...overrides
 });
