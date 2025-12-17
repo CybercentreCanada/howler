@@ -720,6 +720,7 @@
   "route.dossiers.manager.format": "Lead Format",
   "route.dossiers.manager.tabs.leads": "Leads",
   "route.dossiers.manager.tabs.pivots": "Pivots",
+  "route.dossiers.manager.openinsearch": "Open in Search",
   "route.dossiers.manager.pivot.create": "You currently have no pivots configured. Press the add button to the right to create a new one.",
   "route.dossiers.manager.pivot.icon": "Pivot Icon",
   "route.dossiers.manager.pivot.label.en": "English Title",

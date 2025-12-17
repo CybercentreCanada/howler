@@ -23,7 +23,7 @@ import { isEqual, omit, uniqBy } from 'lodash-es';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import { memo, useCallback, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import QueryResultText from '../../elements/display/QueryResultText';
 import HitQuery from '../hits/search/HitQuery';
@@ -35,6 +35,7 @@ const DossierEditor: FC = () => {
   const params = useParams();
   const { dispatchApi } = useMyApi();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
 
@@ -46,7 +47,7 @@ const DossierEditor: FC = () => {
     leads: [],
     pivots: []
   });
-  const [tab, setTab] = useState<'leads' | 'pivots'>('leads');
+  const [tab, setTab] = useState<'leads' | 'pivots'>((searchParams.get('tab') as 'leads' | 'pivots') ?? 'leads');
   const [searchTotal, setSearchTotal] = useState(-1);
   const [searchDirty, setSearchDirty] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -213,6 +214,15 @@ const DossierEditor: FC = () => {
       }
     })();
   }, [dispatchApi, dossier.query, setQuery]);
+
+  useEffect(() => {
+    if (searchParams.get('tab') !== tab) {
+      searchParams.set('tab', tab);
+    }
+
+    setSearchParams(searchParams, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setSearchParams, tab]);
 
   return (
     <PageCenter maxWidth="1000px" width="100%" textAlign="left" height="97%">

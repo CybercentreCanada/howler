@@ -24,6 +24,7 @@ import {
   Fragment,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type Dispatch,
@@ -32,6 +33,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
+import { useSearchParams } from 'react-router-dom';
 
 export interface PivotFormProps {
   pivot: Pivot;
@@ -146,8 +148,9 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
   const theme = useTheme();
   const { t, i18n } = useTranslation();
   const pluginStore = usePluginStore();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [tab, setTab] = useState(0);
+  const [tab, setTab] = useState(parseInt(searchParams.get('pivot') ?? '0'));
 
   const update = useCallback(
     (data: Partial<Pivot>) =>
@@ -178,6 +181,16 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
 
   const pivot: Pivot = useMemo(() => dossier.pivots?.[tab] ?? null, [dossier.pivots, tab]);
   const icon = useMemo(() => pivot?.icon ?? 'material-symbols:find-in-page', [pivot?.icon]);
+
+  useEffect(() => {
+    searchParams.delete('lead');
+    if (searchParams.get('pivot') !== tab.toString()) {
+      searchParams.set('pivot', tab.toString());
+    }
+
+    setSearchParams(searchParams, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setSearchParams, tab]);
 
   return (
     <Paper sx={{ p: 1, display: 'flex', flexDirection: 'column', flex: 1 }} id="pivot-form">
@@ -237,6 +250,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
                 ]
               }));
             }}
+            disabled={!dossier || loading}
           >
             <Add />
           </Button>
@@ -294,7 +308,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
             renderInput={params => (
               <TextField {...params} size="small" label={t('route.dossiers.manager.pivot.format')} />
             )}
-            value={pivot?.format ?? ''}
+            value={pivot?.format ?? null}
             onChange={(_ev, format) => update({ format, value: '', mappings: [] })}
           />
           {!!pivot?.format &&
