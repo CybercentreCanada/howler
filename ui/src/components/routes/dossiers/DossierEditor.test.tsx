@@ -30,6 +30,7 @@ vi.mock('react-router-dom', async () => {
   return {
     ...actual,
     useParams: vi.fn(),
+    useSearchParams: vi.fn(() => [new URLSearchParams(), () => {}]),
     useNavigate: () => vi.fn()
   };
 });
@@ -130,10 +131,11 @@ vi.mock('../hits/search/HitQuery', () => ({
 import ApiConfigProvider from 'components/app/providers/ApiConfigProvider';
 import i18n from 'i18n';
 import { I18nextProvider } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import DossierEditor from './DossierEditor';
 
 const mockUseParams = vi.mocked(useParams);
+const mockUseSearchParams = vi.mocked(useSearchParams);
 // eslint-disable-next-line react-hooks/rules-of-hooks
 const mockNavigate = vi.mocked(useNavigate());
 
@@ -558,6 +560,185 @@ describe('DossierEditor', () => {
 
         const saveButton = screen.getByRole('button', { name: /save/i });
         expect(saveButton).toBeDisabled();
+      });
+    });
+
+    describe('URL parameter synchronization', () => {
+      it('should initialize tab from URL search params', async () => {
+        const searchParams = new URLSearchParams('tab=pivots');
+        const mockSetSearchParams = vi.fn();
+        mockUseSearchParams.mockReturnValue([searchParams, mockSetSearchParams]);
+        mockUseParams.mockReturnValue({ id: null });
+
+        render(
+          <Wrapper>
+            <DossierEditor />
+          </Wrapper>
+        );
+
+        await waitFor(() => {
+          const pivotsTab = screen.getByRole('tab', { name: /pivots/i });
+          expect(pivotsTab).toHaveAttribute('aria-selected', 'true');
+        });
+      });
+
+      it('should default to leads tab when no tab param in URL', async () => {
+        const searchParams = new URLSearchParams();
+        const mockSetSearchParams = vi.fn();
+        mockUseSearchParams.mockReturnValue([searchParams, mockSetSearchParams]);
+        mockUseParams.mockReturnValue({ id: null });
+
+        render(
+          <Wrapper>
+            <DossierEditor />
+          </Wrapper>
+        );
+
+        await waitFor(() => {
+          const leadsTab = screen.getByRole('tab', { name: /leads/i });
+          expect(leadsTab).toHaveAttribute('aria-selected', 'true');
+        });
+      });
+
+      it('should update URL params when tab is changed', async () => {
+        const user = userEvent.setup();
+        const searchParams = new URLSearchParams();
+        const mockSetSearchParams = vi.fn();
+        mockUseSearchParams.mockReturnValue([searchParams, mockSetSearchParams]);
+        mockUseParams.mockReturnValue({ id: null });
+
+        render(
+          <Wrapper>
+            <DossierEditor />
+          </Wrapper>
+        );
+
+        await waitFor(() => {
+          expect(screen.getByRole('tab', { name: /pivots/i })).toBeInTheDocument();
+        });
+
+        const pivotsTab = screen.getByRole('tab', { name: /pivots/i });
+        await user.click(pivotsTab);
+
+        await waitFor(() => {
+          expect(mockSetSearchParams).toHaveBeenCalled();
+          const callArgs = mockSetSearchParams.mock.calls[mockSetSearchParams.mock.calls.length - 1];
+          const updatedParams = callArgs[0];
+          expect(updatedParams.get('tab')).toBe('pivots');
+        });
+      });
+
+      it('should update search params with replace option', async () => {
+        const user = userEvent.setup();
+        const searchParams = new URLSearchParams();
+        const mockSetSearchParams = vi.fn();
+        mockUseSearchParams.mockReturnValue([searchParams, mockSetSearchParams]);
+        mockUseParams.mockReturnValue({ id: null });
+
+        render(
+          <Wrapper>
+            <DossierEditor />
+          </Wrapper>
+        );
+
+        await waitFor(() => {
+          expect(screen.getByRole('tab', { name: /pivots/i })).toBeInTheDocument();
+        });
+
+        const pivotsTab = screen.getByRole('tab', { name: /pivots/i });
+        await user.click(pivotsTab);
+
+        await waitFor(() => {
+          expect(mockSetSearchParams).toHaveBeenCalled();
+          const callArgs = mockSetSearchParams.mock.calls[mockSetSearchParams.mock.calls.length - 1];
+          const options = callArgs[1];
+          expect(options).toEqual({ replace: true });
+        });
+      });
+
+      it('should set tab param when switching from leads to pivots', async () => {
+        const user = userEvent.setup();
+        const searchParams = new URLSearchParams('tab=leads');
+        const mockSetSearchParams = vi.fn();
+        mockUseSearchParams.mockReturnValue([searchParams, mockSetSearchParams]);
+        mockUseParams.mockReturnValue({ id: null });
+
+        render(
+          <Wrapper>
+            <DossierEditor />
+          </Wrapper>
+        );
+
+        await waitFor(() => {
+          expect(screen.getByRole('tab', { name: /leads/i })).toHaveAttribute('aria-selected', 'true');
+        });
+
+        const pivotsTab = screen.getByRole('tab', { name: /pivots/i });
+        await user.click(pivotsTab);
+
+        await waitFor(() => {
+          expect(mockSetSearchParams).toHaveBeenCalled();
+          const callArgs = mockSetSearchParams.mock.calls[mockSetSearchParams.mock.calls.length - 1];
+          const updatedParams = callArgs[0];
+          expect(updatedParams.get('tab')).toBe('pivots');
+        });
+      });
+
+      it('should set tab param when switching from pivots to leads', async () => {
+        const user = userEvent.setup();
+        const searchParams = new URLSearchParams('tab=pivots');
+        const mockSetSearchParams = vi.fn();
+        mockUseSearchParams.mockReturnValue([searchParams, mockSetSearchParams]);
+        mockUseParams.mockReturnValue({ id: null });
+
+        render(
+          <Wrapper>
+            <DossierEditor />
+          </Wrapper>
+        );
+
+        await waitFor(() => {
+          expect(screen.getByRole('tab', { name: /pivots/i })).toHaveAttribute('aria-selected', 'true');
+        });
+
+        const leadsTab = screen.getByRole('tab', { name: /leads/i });
+        await user.click(leadsTab);
+
+        await waitFor(() => {
+          expect(mockSetSearchParams).toHaveBeenCalled();
+          const callArgs = mockSetSearchParams.mock.calls[mockSetSearchParams.mock.calls.length - 1];
+          const updatedParams = callArgs[0];
+          expect(updatedParams.get('tab')).toBe('leads');
+        });
+      });
+
+      it('should preserve existing URL params when changing tabs', async () => {
+        const user = userEvent.setup();
+        const searchParams = new URLSearchParams('tab=leads&other=value');
+        const mockSetSearchParams = vi.fn();
+        mockUseSearchParams.mockReturnValue([searchParams, mockSetSearchParams]);
+        mockUseParams.mockReturnValue({ id: null });
+
+        render(
+          <Wrapper>
+            <DossierEditor />
+          </Wrapper>
+        );
+
+        await waitFor(() => {
+          expect(screen.getByRole('tab', { name: /pivots/i })).toBeInTheDocument();
+        });
+
+        const pivotsTab = screen.getByRole('tab', { name: /pivots/i });
+        await user.click(pivotsTab);
+
+        await waitFor(() => {
+          expect(mockSetSearchParams).toHaveBeenCalled();
+          const callArgs = mockSetSearchParams.mock.calls[mockSetSearchParams.mock.calls.length - 1];
+          const updatedParams = callArgs[0];
+          expect(updatedParams.get('tab')).toBe('pivots');
+          expect(updatedParams.get('other')).toBe('value');
+        });
       });
     });
   });

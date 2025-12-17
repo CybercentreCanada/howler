@@ -308,7 +308,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
             renderInput={params => (
               <TextField {...params} size="small" label={t('route.dossiers.manager.pivot.format')} />
             )}
-            value={pivot?.format ?? ''}
+            value={pivot?.format ?? null}
             onChange={(_ev, format) => update({ format, value: '', mappings: [] })}
           />
           {!!pivot?.format &&
