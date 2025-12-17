@@ -2,6 +2,10 @@
 
 ## Howler UI `v2.15.0`
 
+- **Dossier Page URL State Persistence** *(new feature)*: Added URL parameter synchronization for dossier editor tabs
+    and indices to maintain UI state across page refreshes and navigation
+- **Dossier Card Navigation Enhancements** *(UI/UX improvement)*: Enhanced dossier cards with clickable lead and pivot
+    chips for direct navigation, and added "Open in Search" button for quick query execution
 - **View Link Enhancements** *(new feature)*: Added additional functionality to ViewLink component for improved
     navigation and interaction
 - **Previous Rationales Display** *(new feature)*: Added ability to view previous rationales in the rationale modal for
@@ -18,7 +22,8 @@
 - **Borealis to Clue Refactor** *(technical update)*: Completed refactoring from borealis to clue for improved maintainability
 - **Dependencies** *(technical update)*: Updated glob to v11.1.0, vite to v6.4.1, axios to v1.12.0
 - **Build System** *(technical update)*: Improved UI publishing workflow with better pnpm package handling and type checking
-- **Translation Updates** *(technical update)*: Added French translations for new features and starting markdown templates
+- **Translation Updates** *(technical update)*: Added French translations for new features including dossier "Open in
+    Search" functionality and starting markdown templates
 
 ## Howler API `v3.0.0`
 
