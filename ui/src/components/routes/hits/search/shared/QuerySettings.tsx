@@ -1,4 +1,5 @@
-import { Box, Stack, type SxProps } from '@mui/material';
+import { Add } from '@mui/icons-material';
+import { Box, Chip, chipClasses, Stack, type SxProps } from '@mui/material';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import { memo, type FC } from 'react';
@@ -25,8 +26,14 @@ const QuerySettings: FC<{ verticalSorters?: boolean; boxSx?: SxProps }> = ({ box
         ]}
       >
         <HitSort />
-        <HitFilter />
         <SearchSpan />
+        <HitFilter />
+        <Chip
+          variant="outlined"
+          deleteIcon={<Add fontSize="small" />}
+          onDelete={() => console.log('add')}
+          sx={{ [`& > .${chipClasses.label}`]: { paddingRight: 0 } }}
+        />
       </Stack>
     </Box>
   );

@@ -7,7 +7,6 @@ import {
   Alert,
   Checkbox,
   CircularProgress,
-  Divider,
   LinearProgress,
   Stack,
   TextField,
@@ -264,14 +263,10 @@ const ViewComposer: FC = () => {
                   searching={searching}
                   onChange={(_query, isDirty) => setIsSearchDirty(isDirty)}
                 />
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  sx={{ '& > :not(.MuiDivider-root)': { flex: 1 } }}
-                  divider={<Divider flexItem orientation="vertical" />}
-                >
+                <Stack direction="row" spacing={1}>
                   <HitSort />
                   <SearchSpan omitCustom />
+                  <div style={{ flex: 1 }} />
                   <Stack
                     spacing={1}
                     direction="row"
