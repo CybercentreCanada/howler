@@ -1,16 +1,96 @@
-# Howler API Codebase Structure
+# Backend Installation and Structure
 
-This document outlines the overall structure of the Howler API codebase. The first section denotes development infrastructure - the scripts and files used to test, validate and build the Howler API, before examining the codebase itself.
+## Installation Procedure
 
-## Development Infrastructure
+??? warning "System dependencies"
+    Before running these steps, ensure you have completed the installation steps
+    [for backend dependencies](/howler/developer/getting_started/#backend-dependencies).
+
+Running the howler server, once dependencies are installed, is fairly simple. First, we start up the dependencies. These
+include:
+
+1. Elasticsearch 8
+2. A redis instance
+3. A minio instance
+4. Keycloak (for OAuth authentication)
+
+```shell
+cd ~/repos/howler/api/dev
+docker compose up
+```
+
+Now we install the python packages Howler depends on using Poetry:
+
+```shell
+cd ~/repos/howler/api
+
+# Install poetry if you don't have it
+python3 -m pip install poetry
+
+# Configure poetry to create virtualenv in project directory
+poetry config virtualenvs.in-project true
+
+# Install dependencies (including test dependencies)
+poetry install --with test
+```
+
+We need to setup a few folders on the system howler will use:
+
+```shell
+sudo mkdir -p /etc/howler/conf
+sudo mkdir -p /etc/howler/lookups
+sudo mkdir -p /var/log/howler
+
+sudo chown -R $USER /etc/howler
+sudo chown -R $USER /var/log/howler
+```
+
+And then we initialize the configurations:
+
+```shell
+# Copy configuration files
+cp build_scripts/classification.yml /etc/howler/conf/classification.yml
+cp build_scripts/mappings.yml /etc/howler/conf/mappings.yml
+cp test/unit/config.yml /etc/howler/conf/config.yml
+
+# Generate MITRE ATT&CK lookups
+poetry run mitre /etc/howler/lookups
+
+# Generate Sigma rules
+poetry run sigma
+```
+
+Create default users for testing:
+
+```shell
+poetry run python howler/odm/random_data.py users
+```
+
+Finally, we can run howler!
+
+```shell
+poetry run server
+# Or alternatively: poetry run python howler/app.py
+```
+
+The API server will start on `http://localhost:5000` by default.
+
+## Codebase Structure
+
+This document outlines the overall structure of the Howler API codebase. The first section denotes development
+infrastructure - the scripts and files used to test, validate and build the Howler API, before examining the codebase itself.
+
+### Development Infrastructure
 
 - `build_scripts` - scripts used during the development and build phases
   - `check_poetry.sh` - helper script to ensure poetry lockfile and dependency list match
   - `classification.yml` - basic classification file for Howler
   - `coverage_reports.py` - used for printing the code coverage across the codebase during pull requests
-  - `generate_classes.py` and `generate_md_docs.py` - used to create generated code and documentation based on the API endpoints and ODMs
+  - `generate_classes.py` and `generate_md_docs.py` - used to create generated code and documentation based on the API
+        endpoints and ODMs
   - `keycloak_health.py` - utility script to poll for keycloak in a healthy state during build process
-  - `run_tests.py` and `run_wrapped.py` - utility scripts to run tests and other scripts, wrapping the result in a markdown output for the build process
+  - `run_tests.py` and `run_wrapped.py` - utility scripts to run tests and other scripts, wrapping the result in a
+        markdown output for the build process
   - `set_version.py` - set the version dynamically for development builds (Why dev builds have an extra tag on them)
   - `type_check.py` - run static type checking on the codebase
 - `dev` - contains development docker images
@@ -19,7 +99,7 @@ This document outlines the overall structure of the Howler API codebase. The fir
   - `keycloak` - used to test OAuth authentication in Howler
 - `test` - all of the unit and integration tests for the Howler API codebase
 
-## Top-Level Files
+### Top-Level Files
 
 - **`__init__.py`** - Package initialization
 - **`app.py`** - Main Flask application setup and configuration
@@ -29,7 +109,7 @@ This document outlines the overall structure of the Howler API codebase. The fir
 - **`healthz.py`** - Health check endpoints
 - **`patched.py`** - Monkey patching for external libraries via gevent
 
-## Core Folders
+### Core Folders
 
 - `actions` - contains action plugins for bulk operations on hits:
   - **`add_label.py`**, **`remove_label.py`** - Label management
@@ -109,7 +189,7 @@ This document outlines the overall structure of the Howler API codebase. The fir
   - **`isotime.py`**, **`uid.py`** - Time and ID utilities
   - **`socket_utils.py`** - Socket communication utilities
 
-## Overall Architecture Summary
+### Overall Architecture Summary
 
 This is a **layered architecture** for a security alert triage system:
 
@@ -119,7 +199,7 @@ This is a **layered architecture** for a security alert triage system:
 4. **Data Layer** (`odm/`, `datastore/`) - Data models and persistence
 5. **Utility Layer** (`utils/`, `common/`) - Cross-cutting concerns
 
-### Other Folders
+#### Other Folders
 
 - **`cronjobs`** - Scheduled tasks (retention, rules processing)
 - **`plugins`** - Plugin system configuration

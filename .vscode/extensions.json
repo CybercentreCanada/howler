@@ -1,9 +1,7 @@
 {
   "recommendations": [
     "ms-python.python",
-    "richie5um2.vscode-sort-json",
     "ms-azuretools.vscode-docker",
-    "ms-python.black-formatter",
     "ms-python.mypy-type-checker",
     "ms-python.vscode-pylance",
     "charliermarsh.ruff",
