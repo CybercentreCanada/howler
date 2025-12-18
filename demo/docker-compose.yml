@@ -1,0 +1,119 @@
+version: '3.8'
+
+name: howler-demo
+
+services:
+  # Dependencies copied from api/dev/docker-compose.yml
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.19.9
+    environment:
+      - xpack.security.enabled=false
+      - discovery.type=single-node
+      - logger.level=WARN
+      - ES_JAVA_OPTS=-Xms1024m -Xmx1024m -XX:-UseContainerSupport
+      - http.cors.allow-origin=http://localhost:8080 # This will be handled by nginx
+      - http.cors.enabled=true
+      - http.cors.allow-headers=X-Requested-With,X-Auth-Token,Content-Type,Content-Length,Authorization
+      - http.cors.allow-credentials=true
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - howler-demo-network
+
+  redis:
+    image: redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - howler-demo-network
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.3.3
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - XPACK_SECURITY_ENABLED=false
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - howler-demo-network
+
+  # Howler Data Seeder
+  howler-data-seeder:
+    image: cccs/howler-api:nightly
+    command: python -m howler.odm.random_data all
+    environment:
+      # Database
+      - 'HWL_DATASTORE__HOSTS=[{"name": "elastic", "scheme": "http", "host": "elasticsearch:9200"}]'
+      - HWL_CORE__REDIS__NONPERSISTENT__HOST=redis
+      - HWL_CORE__REDIS__NONPERSISTENT__PORT=6379
+      - HWL_CORE__REDIS__PERSISTENT__HOST=redis
+      - HWL_CORE__REDIS__PERSISTENT__PORT=6379
+      # Auth
+      - HWL_OAUTH_ENABLED=false
+      - HWL_AUTH_INTERNAL_ENABLED=true
+      # Seeder credentials
+      - DEV_ADMIN_PASS=admin
+      - DEV_USER_PASS=user
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - howler-demo-network
+    restart: on-failure # Only restart if it fails, otherwise it will run once and exit
+
+  # Howler API
+  howler-api:
+    image: cccs/howler-api:nightly
+    environment:
+      # Database
+      - 'HWL_DATASTORE__HOSTS=[{"name": "elastic", "scheme": "http", "host": "elasticsearch:9200"}]'
+      - HWL_CORE__REDIS__NONPERSISTENT__HOST=redis
+      - HWL_CORE__REDIS__NONPERSISTENT__PORT=6379
+      - HWL_CORE__REDIS__PERSISTENT__HOST=redis
+      - HWL_CORE__REDIS__PERSISTENT__PORT=6379
+      # Auth
+      - HWL_OAUTH_ENABLED=false
+      - HWL_AUTH_INTERNAL_ENABLED=true
+    depends_on:
+      howler-data-seeder:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    networks:
+      - howler-demo-network
+
+  # Howler UI
+  howler-ui:
+    image: cccs/howler-ui:2.15.0-dev.339_develop_cddadfd
+    depends_on:
+      howler-api:
+        condition: service_started
+    restart: on-failure
+    networks:
+      - howler-demo-network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:latest
+    ports:
+      - "8080:80" # Expose Nginx on port 8080 of the host
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      howler-ui:
+        condition: service_started
+      howler-api:
+        condition: service_started
+    networks:
+      - howler-demo-network
+
+networks:
+  howler-demo-network:
+    driver: bridge
