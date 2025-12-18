@@ -9,7 +9,7 @@ services:
     environment:
       - xpack.security.enabled=false
       - discovery.type=single-node
-      - logger.level=WARN
+      - logger.level=ERROR
       - ES_JAVA_OPTS=-Xms1024m -Xmx1024m -XX:-UseContainerSupport
       - http.cors.allow-origin=http://localhost:8080 # This will be handled by nginx
       - http.cors.enabled=true
@@ -58,6 +58,8 @@ services:
       # Auth
       - HWL_OAUTH_ENABLED=false
       - HWL_AUTH_INTERNAL_ENABLED=true
+      # Logging
+      - HWL_LOGGING__LOG_AS_JSON=false
       # Seeder credentials
       - DEV_ADMIN_PASS=admin
       - DEV_USER_PASS=user
@@ -81,6 +83,8 @@ services:
       # Auth
       - HWL_OAUTH_ENABLED=false
       - HWL_AUTH_INTERNAL_ENABLED=true
+      # Logging
+      - HWL_LOGGING__LOG_AS_JSON=false
     depends_on:
       howler-data-seeder:
         condition: service_completed_successfully
