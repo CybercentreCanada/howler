@@ -1,8 +1,20 @@
-import { Autocomplete, MenuItem, Select, Stack, TextField } from '@mui/material';
+import { Settings, Sort } from '@mui/icons-material';
+import {
+  Autocomplete,
+  Chip,
+  ClickAwayListener,
+  Collapse,
+  MenuItem,
+  Paper,
+  Popper,
+  Select,
+  Stack,
+  TextField
+} from '@mui/material';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import type { FC } from 'react';
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
@@ -28,6 +40,9 @@ const HitSort: FC<{ size?: 'small' | 'medium' }> = ({ size = 'small' }) => {
 
   const savedSort = useContextSelector(ParameterContext, ctx => ctx.sort);
   const setSavedSort = useContextSelector(ParameterContext, ctx => ctx.setSort);
+
+  const [show, setShow] = useState(false);
+  const anchorEl = useRef<HTMLDivElement>(null);
 
   const sortEntries = useMemo(() => savedSort.split(',').filter(part => !!part), [savedSort]);
 
@@ -80,31 +95,67 @@ const HitSort: FC<{ size?: 'small' | 'medium' }> = ({ size = 'small' }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getCurrentView]);
 
-  return !showCustomSort ? (
-    <Stack direction="row" spacing={1} sx={{ flex: 1.5 }}>
-      <Autocomplete
-        fullWidth
-        sx={{ minWidth: '175px' }}
-        size={size}
-        value={field}
-        options={ACCEPTED_SORTS}
-        getOptionLabel={option => (option === CUSTOM ? t('hit.search.custom') : option)}
-        isOptionEqualToValue={(option, value) => option === value || (!value && option === ACCEPTED_SORTS[0])}
-        renderInput={_params => <TextField {..._params} label={t('hit.search.sort.fields')} />}
-        onChange={(_, value) => handleChange(value)}
+  return (
+    <>
+      <Chip
+        icon={<Sort fontSize="small" />}
+        label={savedSort}
+        deleteIcon={<Settings fontSize="small" sx={{ color: 'white !important' }} />}
+        onClick={!show && (() => setSavedSort(`${field} ${sort === 'asc' ? 'desc' : 'asc'}`))}
+        onDelete={() => setShow(_show => !_show)}
+        ref={anchorEl}
+        sx={[
+          theme => ({
+            position: 'relative',
+            zIndex: 1,
+            transition: theme.transitions.create(['border-bottom-left-radius', 'border-bottom-right-radius'])
+          }),
+          show && { borderBottomLeftRadius: '0', borderBottomRightRadius: '0' }
+        ]}
       />
-      <Select
-        size={size}
-        sx={{ minWidth: '150px' }}
-        value={sort}
-        onChange={e => setSavedSort(`${field} ${e.target.value as 'asc' | 'desc'}`)}
+      <Popper
+        placement="bottom-start"
+        anchorEl={anchorEl.current}
+        disablePortal
+        open
+        sx={{ minWidth: anchorEl.current?.clientWidth }}
       >
-        <MenuItem value="asc">{t('asc')}</MenuItem>
-        <MenuItem value="desc">{t('desc')}</MenuItem>
-      </Select>
-    </Stack>
-  ) : (
-    <CustomSort />
+        <Collapse in={show}>
+          <ClickAwayListener onClickAway={() => setShow(false)}>
+            <Paper sx={{ borderTopLeftRadius: 0, borderTopRightRadius: 0, px: 1, py: 2 }}>
+              {!showCustomSort ? (
+                <Stack spacing={1} sx={{ flex: 1.5, px: 1, py: 2 }}>
+                  <Autocomplete
+                    fullWidth
+                    sx={{ minWidth: '275px' }}
+                    size={size}
+                    value={field}
+                    options={ACCEPTED_SORTS}
+                    getOptionLabel={option => (option === CUSTOM ? t('hit.search.custom') : option)}
+                    isOptionEqualToValue={(option, value) =>
+                      option === value || (!value && option === ACCEPTED_SORTS[0])
+                    }
+                    renderInput={_params => <TextField {..._params} label={t('hit.search.sort.fields')} />}
+                    onChange={(_, value) => handleChange(value)}
+                  />
+                  <Select
+                    size={size}
+                    sx={{ minWidth: '150px' }}
+                    value={sort}
+                    onChange={e => setSavedSort(`${field} ${e.target.value as 'asc' | 'desc'}`)}
+                  >
+                    <MenuItem value="asc">{t('asc')}</MenuItem>
+                    <MenuItem value="desc">{t('desc')}</MenuItem>
+                  </Select>
+                </Stack>
+              ) : (
+                <CustomSort />
+              )}
+            </Paper>
+          </ClickAwayListener>
+        </Collapse>
+      </Popper>
+    </>
   );
 };
 

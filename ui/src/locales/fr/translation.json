@@ -21,6 +21,7 @@
   "asc": "Ascendant",
   "close": "Fermer",
   "desc": "Descendant",
+  "to": "à",
 
   "actions.running": "Action \"{{action}}\" s'exécute.",
   "actions.succeeded": "Action \"{{action}}\" achevé avec succès.",

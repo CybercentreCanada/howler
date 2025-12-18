@@ -9,6 +9,7 @@
   "asc": "Ascending",
   "close": "Close",
   "desc": "Descending",
+  "to": "to",
 
   "actions.running": "Action \"{{action}}\" is executing.",
   "actions.succeeded": "Action \"{{action}}\" completed successfully.",

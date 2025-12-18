@@ -234,7 +234,7 @@ const SearchPane: FC = () => {
             </Stack>
           </Stack>
 
-          <VSBoxHeader ml={-3} mr={-3} px={2} pb={1} sx={{ zIndex: 999 }}>
+          <VSBoxHeader ml={-3} mr={-3} px={2} pb={1} sx={{ zIndex: 989 }}>
             <Stack sx={{ pt: 1 }}>
               <Stack sx={{ position: 'relative', flex: 1 }}>
                 <HitQuery disabled={viewId && !selectedView} searching={searching} triggerSearch={triggerSearch} />

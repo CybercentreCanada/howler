@@ -1,10 +1,21 @@
+import { FilterList } from '@mui/icons-material';
 import type { UseAutocompleteProps } from '@mui/material';
-import { Autocomplete, Stack, TextField } from '@mui/material';
+import {
+  Autocomplete,
+  Chip,
+  ClickAwayListener,
+  Collapse,
+  Paper,
+  Popper,
+  Stack,
+  TextField,
+  Typography
+} from '@mui/material';
 import api from 'api';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import type { FC } from 'react';
-import { memo, useCallback, useContext, useEffect, useState } from 'react';
+import { memo, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
@@ -27,6 +38,9 @@ const HitFilter: FC<{ size?: 'small' | 'medium' }> = ({ size }) => {
 
   const [category, setCategory] = useState(ACCEPTED_LOOKUPS[0]);
   const [filter, setFilter] = useState('');
+
+  const [show, setShow] = useState(false);
+  const anchorEl = useRef<HTMLDivElement>(null);
 
   const [customLookups, setCustomLookups] = useState<string[]>([]);
 
@@ -80,30 +94,64 @@ const HitFilter: FC<{ size?: 'small' | 'medium' }> = ({ size }) => {
     [category, setSavedFilter]
   );
 
+  const filterValue = filter?.replaceAll('"', '').replaceAll('\\-', '-') || '';
+
   return (
-    <Stack direction="row" spacing={1} sx={{ flex: 1.75 }}>
-      <Autocomplete
-        fullWidth
-        sx={{ minWidth: '200px' }}
-        size={size ?? 'small'}
-        value={category}
-        options={ACCEPTED_LOOKUPS}
-        renderInput={_params => <TextField {..._params} label={t('hit.search.filter.fields')} />}
-        onChange={onCategoryChange}
+    <>
+      <Chip
+        icon={<FilterList fontSize="small" />}
+        label={category && filterValue && <Typography variant="body2">{`${category}:${filterValue}`}</Typography>}
+        onClick={e => {
+          e.stopPropagation();
+          setShow(_show => !_show);
+        }}
+        ref={anchorEl}
+        sx={[
+          theme => ({
+            isolation: 'isolate',
+            position: 'relative',
+            zIndex: 1,
+            transition: theme.transitions.create(['border-bottom-left-radius', 'border-bottom-right-radius'])
+          }),
+          show && { borderBottomLeftRadius: '0', borderBottomRightRadius: '0' }
+        ]}
       />
-      <Autocomplete
-        fullWidth
-        freeSolo
-        sx={{ minWidth: '150px' }}
-        disabled={!category}
-        size={size ?? 'small'}
-        value={filter?.replaceAll('"', '').replaceAll('\\-', '-') || ''}
-        options={config.lookups[category] ? config.lookups[category] : customLookups}
-        renderInput={_params => <TextField {..._params} label={t('hit.search.filter.values')} />}
-        getOptionLabel={option => t(option)}
-        onChange={onValueChange}
-      />
-    </Stack>
+      <Popper
+        placement="bottom-start"
+        anchorEl={anchorEl.current}
+        disablePortal
+        open
+        sx={{ minWidth: anchorEl.current?.clientWidth }}
+      >
+        <Collapse in={show}>
+          <ClickAwayListener onClickAway={() => setShow(false)}>
+            <Paper sx={{ borderTopLeftRadius: 0, borderTopRightRadius: 0, px: 1, py: 2 }}>
+              <Stack spacing={1} sx={{ minWidth: '225px' }}>
+                <Autocomplete
+                  fullWidth
+                  size={size ?? 'small'}
+                  value={category}
+                  options={ACCEPTED_LOOKUPS}
+                  renderInput={_params => <TextField {..._params} label={t('hit.search.filter.fields')} />}
+                  onChange={onCategoryChange}
+                />
+                <Autocomplete
+                  fullWidth
+                  freeSolo
+                  disabled={!category}
+                  size={size ?? 'small'}
+                  value={filter?.replaceAll('"', '').replaceAll('\\-', '-') || ''}
+                  options={config.lookups[category] ? config.lookups[category] : customLookups}
+                  renderInput={_params => <TextField {..._params} label={t('hit.search.filter.values')} />}
+                  getOptionLabel={option => t(option)}
+                  onChange={onValueChange}
+                />
+              </Stack>
+            </Paper>
+          </ClickAwayListener>
+        </Collapse>
+      </Popper>
+    </>
   );
 };
 
