@@ -41,8 +41,7 @@ import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
 import HitContextMenu from '../HitContextMenu';
 import HitQuery from '../HitQuery';
-import QuerySettings from '../shared/QuerySettings';
-import ViewLink from '../ViewLink';
+import QuerySettings from '../QuerySettings';
 import AddColumnModal from './AddColumnModal';
 import ColumnHeader from './ColumnHeader';
 import HitRow from './HitRow';
@@ -201,7 +200,6 @@ const HitGrid: FC = () => {
       sx={{ overflow: 'hidden', height: `calc(100vh - ${theme.spacing(showSelectBar ? 13 : 8)})` }}
     >
       <DevelopmentBanner />
-      <ViewLink />
       <Stack direction="row" justifyContent="space-between" alignItems="center">
         <Typography
           sx={{ color: 'text.secondary', fontSize: '0.9em', fontStyle: 'italic', mb: 0.5, textAlign: 'left' }}

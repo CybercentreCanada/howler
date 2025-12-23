@@ -42,8 +42,7 @@ import BundleParentMenu from './BundleParentMenu';
 import { BundleScroller } from './BundleScroller';
 import HitContextMenu from './HitContextMenu';
 import HitQuery from './HitQuery';
-import ViewLink from './ViewLink';
-import QuerySettings from './shared/QuerySettings';
+import QuerySettings from './QuerySettings';
 
 const Item: FC<{
   hit: Hit;
@@ -163,8 +162,6 @@ const SearchPane: FC = () => {
       <PageCenter textAlign="left" mt={0} mb={6} ml={0} mr={0} maxWidth="1500px">
         <VSBox top={0}>
           <Stack ml={-1} mr={-1} sx={{ '& .overflowingContentWidgets > *': { zIndex: '2000 !important' } }} spacing={1}>
-            <ViewLink />
-
             {bundleHit && (
               <BundleScroller>
                 <HitContextMenu getSelectedId={() => bundleHit.howler.id}>

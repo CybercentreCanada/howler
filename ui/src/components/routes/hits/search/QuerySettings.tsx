@@ -4,9 +4,10 @@ import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import { memo, type FC } from 'react';
 import { useContextSelector } from 'use-context-selector';
-import HitFilter from './HitFilter';
-import HitSort from './HitSort';
-import SearchSpan from './SearchSpan';
+import HitFilter from './shared/HitFilter';
+import HitSort from './shared/HitSort';
+import SearchSpan from './shared/SearchSpan';
+import ViewLink from './ViewLink';
 
 const QuerySettings: FC<{ verticalSorters?: boolean; boxSx?: SxProps }> = ({ boxSx }) => {
   const viewId = useContextSelector(HitSearchContext, ctx => ctx.viewId);
@@ -27,6 +28,7 @@ const QuerySettings: FC<{ verticalSorters?: boolean; boxSx?: SxProps }> = ({ box
       >
         <HitSort />
         <SearchSpan />
+        <ViewLink />
         <HitFilter />
         <Chip
           variant="outlined"
