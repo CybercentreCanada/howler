@@ -6,12 +6,7 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.helper.workflow import Workflow, WorkflowException
 from howler.odm.models.action import VALID_TRIGGERS
-from howler.odm.models.howler_data import (
-    Assessment,
-    HitStatus,
-    HitStatusTransition,
-    Vote,
-)
+from howler.odm.models.howler_data import Assessment, HitStatus, HitStatusTransition, Vote
 from howler.odm.models.user import User
 from howler.services import event_service, hit_service
 from howler.utils.list_utils import flatten_list
@@ -159,8 +154,6 @@ def execute(
                 "message": f"The transition {transition} successfully executed on {len(success_ids)} hits.",
             }
         )
-
-    datastore().hit.commit()
 
     return report
 

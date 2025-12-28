@@ -77,6 +77,8 @@ def create_correlated_bundle(rule: Analytic, query: str, correlated_hits: list[H
 
     datastore().hit.save(correlated_bundle.howler.id, correlated_bundle)
 
+    datastore().hit.commit()
+
     if len(child_ids) > 0:
         datastore().hit.update_by_query(
             f"howler.id:({' OR '.join(child_ids)})",
@@ -166,8 +168,6 @@ def create_executor(rule: Analytic):  # noqa: C901
                             ),
                         ],
                     )
-
-                    datastore().hit.commit()
 
                     child_hits: list[Hit] = datastore().hit.search(
                         f"howler.bundles:{bundle.howler.id}", rows=1000, fl="howler.id"

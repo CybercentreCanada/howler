@@ -29,7 +29,6 @@ def datastore(datastore_connection):
         for x in range(TEST_SIZE - 2):
             u.name = f"TEST_{x}"
             ds.user.save(u.name, u)
-        ds.user.commit()
 
         create_hits(datastore_connection, hit_count=15)
         create_templates(datastore_connection)
