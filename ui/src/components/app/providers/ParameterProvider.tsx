@@ -24,6 +24,7 @@ interface ParameterProviderType {
   setSpan: (span: string) => void;
   addFilter: (filter: string) => void;
   removeFilter: (filter: string) => void;
+  setFilter: (index: number, filter: string) => void;
   clearFilters: () => void;
   setCustomSpan: (startDate: string, endDate: string) => void;
 }
@@ -174,6 +175,21 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
       return {
         ..._current,
         filters: _current.filters.filter((_, i) => i !== index)
+      };
+    });
+  }, []);
+
+  const setFilter: ParameterProviderType['setFilter'] = useCallback((index, filter) => {
+    _setValues(_current => {
+      // Validate index
+      if (index < 0 || index >= _current.filters.length) {
+        return _current;
+      }
+      const newFilters = [..._current.filters];
+      newFilters[index] = filter;
+      return {
+        ..._current,
+        filters: newFilters
       };
     });
   }, []);
@@ -335,6 +351,7 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
         setCustomSpan,
         addFilter,
         removeFilter,
+        setFilter,
         clearFilters,
 
         setSelected: useMemo(() => set('selected'), [set]),

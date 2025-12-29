@@ -83,7 +83,7 @@ const HitSort: FC<{ size?: 'small' | 'medium' }> = ({ size = 'small' }) => {
   }, [getCurrentView]);
 
   return (
-    <ChipPopper icon={<Sort fontSize="small" />} label={savedSort}>
+    <ChipPopper icon={<Sort fontSize="small" />} label={savedSort} slotProps={{ chip: { size: 'small' } }}>
       {!showCustomSort ? (
         <Stack spacing={1}>
           <Autocomplete

@@ -68,6 +68,7 @@ const SearchSpan: FC<{
         </Typography>
       }
       minWidth="225px"
+      slotProps={{ chip: { size: 'small' } }}
     >
       <Stack spacing={1}>
         <Autocomplete

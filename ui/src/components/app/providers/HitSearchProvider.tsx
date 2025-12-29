@@ -4,6 +4,7 @@ import { HitLayout } from 'components/elements/hit/HitLayout';
 import useMyApi from 'components/hooks/useMyApi';
 import useMyLocalStorage, { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import i18n from 'i18n';
+import { cloneDeep } from 'lodash-es';
 import isNull from 'lodash-es/isNull';
 import isUndefined from 'lodash-es/isUndefined';
 import type { Hit } from 'models/entities/generated/Hit';
@@ -71,7 +72,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const trackTotalHits = useContextSelector(ParameterContext, ctx => ctx.trackTotalHits);
   const sort = useContextSelector(ParameterContext, ctx => ctx.sort);
   const span = useContextSelector(ParameterContext, ctx => ctx.span);
-  const filter = useContextSelector(ParameterContext, ctx => ctx.filter);
+  const filters = useContextSelector(ParameterContext, ctx => ctx.filters);
   const startDate = useContextSelector(ParameterContext, ctx => ctx.startDate);
   const endDate = useContextSelector(ParameterContext, ctx => ctx.endDate);
 
@@ -120,16 +121,12 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
         setSearching(true);
         setError(null);
 
-        const filters: string[] = [];
+        const _filters: string[] = cloneDeep(filters);
 
         if (span && !span.endsWith('custom')) {
-          filters.push(`event.created:${convertDateToLucene(span)}`);
+          _filters.push(`event.created:${convertDateToLucene(span)}`);
         } else if (startDate && endDate) {
-          filters.push(`event.created:${convertCustomDateRangeToLucene(startDate, endDate)}`);
-        }
-
-        if (filter) {
-          filters.push(filter);
+          _filters.push(`event.created:${convertCustomDateRangeToLucene(startDate, endDate)}`);
         }
 
         try {
@@ -148,7 +145,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
               rows: pageCount,
               query: fullQuery,
               sort,
-              filters,
+              filters: _filters,
               track_total_hits: trackTotalHits,
               metadata: ['template', 'overview', 'analytic']
             }),
@@ -186,7 +183,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
       query,
       startDate,
       endDate,
-      filter,
+      filters,
       setQuery,
       location.pathname,
       routeParams.id,
@@ -214,7 +211,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, offset, pageCount, sort, span, bundleId, location.pathname, startDate, endDate, viewId]);
+  }, [filters, offset, pageCount, sort, span, bundleId, location.pathname, startDate, endDate, viewId]);
 
   return (
     <HitSearchContext.Provider

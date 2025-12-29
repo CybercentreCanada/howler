@@ -5,6 +5,7 @@ import { memo, useRef, useState } from 'react';
 
 interface ChipPopperProps {
   icon: ReactElement;
+  deleteIcon?: ReactElement;
   label: ReactNode;
   children: ReactNode;
   slotProps?: {
@@ -15,15 +16,18 @@ interface ChipPopperProps {
   minWidth?: string | number;
   placement?: 'bottom-start' | 'bottom-end' | 'bottom';
   onToggle?: (show: boolean) => void;
+  onDelete?: (event?: any) => void;
 }
 
 const ChipPopper: FC<ChipPopperProps> = ({
   icon,
+  deleteIcon,
   label,
   children,
   minWidth,
   placement = 'bottom-start',
   onToggle,
+  onDelete,
   slotProps = {}
 }) => {
   const [show, setShow] = useState(false);
@@ -38,11 +42,13 @@ const ChipPopper: FC<ChipPopperProps> = ({
     <>
       <Chip
         icon={icon}
+        deleteIcon={deleteIcon}
         label={label}
         onClick={e => {
           e.stopPropagation();
           handleToggle(!show);
         }}
+        onDelete={onDelete}
         ref={anchorEl}
         sx={[
           theme => ({
