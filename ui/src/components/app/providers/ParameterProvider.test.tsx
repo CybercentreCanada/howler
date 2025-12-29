@@ -71,7 +71,7 @@ describe('ParameterContext', () => {
             span: ctx.span,
             offset: ctx.offset,
             selected: ctx.selected,
-            filter: ctx.filter,
+            filters: ctx.filters,
             trackTotalHits: ctx.trackTotalHits
           })),
         { wrapper: Wrapper }
@@ -83,7 +83,7 @@ describe('ParameterContext', () => {
     expect(hook.result.current.span).toBe('date.range.1.week');
     expect(hook.result.current.offset).toBe(25);
     expect(hook.result.current.selected).toBe('test_id');
-    expect(hook.result.current.filter).toBe('status:open');
+    expect(hook.result.current.filters).toEqual(['status:open']);
     expect(hook.result.current.trackTotalHits).toBe(true);
   });
 
@@ -234,25 +234,366 @@ describe('ParameterContext', () => {
     });
   });
 
-  describe('setFilter', () => {
-    it('should update the filter value', async () => {
+  describe('filters (multi-filter support)', () => {
+    it('should initialize with empty array when no filter params present', async () => {
       const hook = await act(async () =>
-        renderHook(
-          () =>
-            useContextSelector(ParameterContext, ctx => ({
-              filter: ctx.filter,
-              setFilter: ctx.setFilter
-            })),
-          { wrapper: Wrapper }
-        )
+        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.filters), { wrapper: Wrapper })
       );
 
-      await act(async () => {
-        hook.result.current.setFilter('status:open');
+      expect(hook.result.current).toEqual([]);
+    });
+
+    it('should initialize with single filter from URL', async () => {
+      mockSearchParams = new URLSearchParams({ filter: 'status:open' });
+
+      const hook = await act(async () =>
+        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.filters), { wrapper: Wrapper })
+      );
+
+      expect(hook.result.current).toEqual(['status:open']);
+    });
+
+    it('should initialize with multiple filters from URL', async () => {
+      mockSearchParams = new URLSearchParams();
+      mockSearchParams.append('filter', 'howler.escalation:hit');
+      mockSearchParams.append('filter', 'howler.assignment:someuser');
+
+      const hook = await act(async () =>
+        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.filters), { wrapper: Wrapper })
+      );
+
+      expect(hook.result.current).toEqual(['howler.escalation:hit', 'howler.assignment:someuser']);
+    });
+
+    it('should preserve filter order from URL', async () => {
+      mockSearchParams = new URLSearchParams();
+      mockSearchParams.append('filter', 'c');
+      mockSearchParams.append('filter', 'a');
+      mockSearchParams.append('filter', 'b');
+
+      const hook = await act(async () =>
+        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.filters), { wrapper: Wrapper })
+      );
+
+      expect(hook.result.current).toEqual(['c', 'a', 'b']);
+    });
+
+    describe('addFilter', () => {
+      it('should add a filter to empty array', async () => {
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                filters: ctx.filters,
+                addFilter: ctx.addFilter
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.addFilter('status:open');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.filters).toEqual(['status:open']);
+        });
       });
 
-      await waitFor(() => {
-        expect(hook.result.current.filter).toBe('status:open');
+      it('should append filter to existing filters', async () => {
+        mockSearchParams = new URLSearchParams({ filter: 'existing:filter' });
+
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                filters: ctx.filters,
+                addFilter: ctx.addFilter
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.addFilter('new:filter');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.filters).toEqual(['existing:filter', 'new:filter']);
+        });
+      });
+
+      it('should allow duplicate filters', async () => {
+        mockSearchParams = new URLSearchParams({ filter: 'status:open' });
+
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                filters: ctx.filters,
+                addFilter: ctx.addFilter
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.addFilter('status:open');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.filters).toEqual(['status:open', 'status:open']);
+        });
+      });
+    });
+
+    describe('removeFilter', () => {
+      it('should remove first matching filter', async () => {
+        mockSearchParams = new URLSearchParams();
+        mockSearchParams.append('filter', 'filter1');
+        mockSearchParams.append('filter', 'filter2');
+        mockSearchParams.append('filter', 'filter3');
+
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                filters: ctx.filters,
+                removeFilter: ctx.removeFilter
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.removeFilter('filter2');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.filters).toEqual(['filter1', 'filter3']);
+        });
+      });
+
+      it('should remove only first occurrence of duplicate filters', async () => {
+        mockSearchParams = new URLSearchParams();
+        mockSearchParams.append('filter', 'dup');
+        mockSearchParams.append('filter', 'dup');
+        mockSearchParams.append('filter', 'other');
+
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                filters: ctx.filters,
+                removeFilter: ctx.removeFilter
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.removeFilter('dup');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.filters).toEqual(['dup', 'other']);
+        });
+      });
+
+      it('should do nothing when removing nonexistent filter', async () => {
+        mockSearchParams = new URLSearchParams({ filter: 'existing' });
+
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                filters: ctx.filters,
+                removeFilter: ctx.removeFilter
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.removeFilter('nonexistent');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.filters).toEqual(['existing']);
+        });
+      });
+
+      it('should handle removing from empty array', async () => {
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                filters: ctx.filters,
+                removeFilter: ctx.removeFilter
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.removeFilter('anything');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.filters).toEqual([]);
+        });
+      });
+    });
+
+    describe('clearFilters', () => {
+      it('should clear all filters', async () => {
+        mockSearchParams = new URLSearchParams();
+        mockSearchParams.append('filter', 'filter1');
+        mockSearchParams.append('filter', 'filter2');
+
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                filters: ctx.filters,
+                clearFilters: ctx.clearFilters
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.clearFilters();
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.filters).toEqual([]);
+        });
+      });
+
+      it('should be no-op when already empty', async () => {
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                filters: ctx.filters,
+                clearFilters: ctx.clearFilters
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.clearFilters();
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.filters).toEqual([]);
+        });
+      });
+    });
+
+    describe('URL synchronization', () => {
+      it('should sync single filter to URL as filter param', async () => {
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                addFilter: ctx.addFilter
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.addFilter('test:filter');
+        });
+
+        await waitFor(() => {
+          expect(mockSetParams).toHaveBeenCalled();
+          const call = mockSetParams.mock.calls[mockSetParams.mock.calls.length - 1];
+          const urlParams = typeof call[0] === 'function' ? call[0](mockSearchParams) : call[0];
+          expect(urlParams.getAll('filter')).toEqual(['test:filter']);
+        });
+      });
+
+      it('should sync multiple filters to URL as multiple filter params', async () => {
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                addFilter: ctx.addFilter
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.addFilter('filter1');
+        });
+
+        await act(async () => {
+          hook.result.current.addFilter('filter2');
+        });
+
+        await waitFor(() => {
+          expect(mockSetParams).toHaveBeenCalled();
+          const call = mockSetParams.mock.calls[mockSetParams.mock.calls.length - 1];
+          const urlParams = typeof call[0] === 'function' ? call[0](mockSearchParams) : call[0];
+          expect(urlParams.getAll('filter')).toEqual(['filter1', 'filter2']);
+        });
+      });
+
+      it('should remove all filter params when filters is empty', async () => {
+        mockSearchParams = new URLSearchParams();
+        mockSearchParams.append('filter', 'filter1');
+        mockSearchParams.append('filter', 'filter2');
+
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                clearFilters: ctx.clearFilters
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.clearFilters();
+        });
+
+        await waitFor(() => {
+          expect(mockSetParams).toHaveBeenCalled();
+          const call = mockSetParams.mock.calls[mockSetParams.mock.calls.length - 1];
+          const urlParams = typeof call[0] === 'function' ? call[0](mockSearchParams) : call[0];
+          expect(urlParams.getAll('filter')).toEqual([]);
+        });
+      });
+
+      it('should preserve filter order when syncing to URL', async () => {
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                addFilter: ctx.addFilter
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.addFilter('z');
+          hook.result.current.addFilter('a');
+          hook.result.current.addFilter('m');
+        });
+
+        await waitFor(() => {
+          expect(mockSetParams).toHaveBeenCalled();
+          const call = mockSetParams.mock.calls[mockSetParams.mock.calls.length - 1];
+          const urlParams = typeof call[0] === 'function' ? call[0](mockSearchParams) : call[0];
+          expect(urlParams.getAll('filter')).toEqual(['z', 'a', 'm']);
+        });
       });
     });
   });
@@ -532,7 +873,7 @@ describe('ParameterContext', () => {
           () =>
             useContextSelector(ParameterContext, ctx => ({
               selected: ctx.selected,
-              filter: ctx.filter,
+              filters: ctx.filters,
               startDate: ctx.startDate,
               endDate: ctx.endDate
             })),
@@ -540,9 +881,9 @@ describe('ParameterContext', () => {
         )
       );
 
-      // These should be null/undefined when not set
+      // These should be null/undefined/empty when not set
       expect(hook.result.current.selected).toBeNull();
-      expect(hook.result.current.filter).toBeNull();
+      expect(hook.result.current.filters).toEqual([]);
       expect(hook.result.current.startDate).toBeNull();
       expect(hook.result.current.endDate).toBeNull();
     });
@@ -592,11 +933,11 @@ describe('ParameterContext', () => {
               query: ctx.query,
               sort: ctx.sort,
               span: ctx.span,
-              filter: ctx.filter,
+              filters: ctx.filters,
               setQuery: ctx.setQuery,
               setSort: ctx.setSort,
               setSpan: ctx.setSpan,
-              setFilter: ctx.setFilter
+              addFilter: ctx.addFilter
             })),
           { wrapper: Wrapper }
         )
@@ -606,14 +947,14 @@ describe('ParameterContext', () => {
         hook.result.current.setQuery('multi query');
         hook.result.current.setSort('multi.sort desc');
         hook.result.current.setSpan('date.range.1.week');
-        hook.result.current.setFilter('status:resolved');
+        hook.result.current.addFilter('status:resolved');
       });
 
       await waitFor(() => {
         expect(hook.result.current.query).toBe('multi query');
         expect(hook.result.current.sort).toBe('multi.sort desc');
         expect(hook.result.current.span).toBe('date.range.1.week');
-        expect(hook.result.current.filter).toBe('status:resolved');
+        expect(hook.result.current.filters).toEqual(['status:resolved']);
       });
     });
 
