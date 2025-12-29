@@ -1,4 +1,4 @@
-import { isEmpty, isEqual, isUndefined, omitBy } from 'lodash-es';
+import { isEmpty, isEqual, isUndefined, omitBy, uniq } from 'lodash-es';
 import type { FC, PropsWithChildren } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useParams, useSearchParams } from 'react-router-dom';
@@ -162,7 +162,7 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
   const addFilter: ParameterProviderType['addFilter'] = useCallback(filter => {
     _setValues(_current => ({
       ..._current,
-      filters: [..._current.filters, filter]
+      filters: uniq([..._current.filters, filter])
     }));
   }, []);
 

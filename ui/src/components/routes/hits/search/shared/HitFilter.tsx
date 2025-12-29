@@ -29,8 +29,8 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
   const setSavedFilter = useContextSelector(ParameterContext, ctx => ctx.setFilter);
   const removeSavedFilter = useContextSelector(ParameterContext, ctx => ctx.removeFilter);
 
-  const [category, setCategory] = useState(ACCEPTED_LOOKUPS[0]);
-  const [filter, setFilter] = useState(null);
+  const [category, setCategory] = useState(value?.split(':')[0] ?? ACCEPTED_LOOKUPS[0]);
+  const [filter, setFilter] = useState(value?.split(':')[1] ?? null);
   const [loading, setLoading] = useState(false);
 
   const [customLookups, setCustomLookups] = useState<string[]>([]);

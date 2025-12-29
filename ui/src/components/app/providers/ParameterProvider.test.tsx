@@ -323,7 +323,7 @@ describe('ParameterContext', () => {
         });
       });
 
-      it('should allow duplicate filters', async () => {
+      it('should not add duplicate filters', async () => {
         mockSearchParams = new URLSearchParams({ filter: 'status:open' });
 
         const hook = await act(async () =>
@@ -342,7 +342,8 @@ describe('ParameterContext', () => {
         });
 
         await waitFor(() => {
-          expect(hook.result.current.filters).toEqual(['status:open', 'status:open']);
+          // Should still have only one filter, not two
+          expect(hook.result.current.filters).toEqual(['status:open']);
         });
       });
     });
