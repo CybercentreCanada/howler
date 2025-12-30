@@ -226,7 +226,7 @@ describe('QuerySettings', () => {
       const addButton = screen.getByLabelText(i18n.t('hit.search.filter.add'));
       await user.click(addButton);
 
-      expect(mockAddFilter).toHaveBeenCalledWith('howler.id:*');
+      expect(mockAddFilter).toHaveBeenCalledWith('howler.assessment:*');
       expect(mockAddFilter).toHaveBeenCalledTimes(1);
     });
 
@@ -258,7 +258,7 @@ describe('QuerySettings', () => {
       });
 
       expect(mockAddFilter).toHaveBeenCalledTimes(3);
-      expect(mockAddFilter).toHaveBeenCalledWith('howler.id:*');
+      expect(mockAddFilter).toHaveBeenCalledWith('howler.assessment:*');
     });
   });
 
@@ -465,7 +465,7 @@ describe('QuerySettings', () => {
 
       await user.keyboard('{Enter}');
 
-      expect(mockAddFilter).toHaveBeenCalledWith('howler.id:*');
+      expect(mockAddFilter).toHaveBeenCalledWith('howler.assessment:*');
     });
 
     it('should maintain focus when filters are added', async () => {

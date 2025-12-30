@@ -1,7 +1,8 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { hpost } from 'api';
-import { createContext, useContext } from 'react';
+import { cloneDeep } from 'lodash-es';
 import MockLocalStorage from 'tests/MockLocalStorage';
+import { setupContextSelectorMock, setupReactRouterMock } from 'tests/mocks';
 import { useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY, MY_LOCAL_STORAGE_PREFIX, StorageKey } from 'utils/constants';
 import { HitContext, type HitContextType } from './HitProvider';
@@ -9,28 +10,11 @@ import HitSearchProvider, { HitSearchContext } from './HitSearchProvider';
 import { ParameterContext, type ParameterContextType } from './ParameterProvider';
 import { ViewContext, type ViewContextType } from './ViewProvider';
 
-const mockLocation = { pathname: '/hits', search: '' };
-const mockParams = { id: undefined };
-let mockSearchParams = new URLSearchParams();
-const mockSetParams = vi.fn();
-
 vi.mock('api', { spy: true });
-vi.mock('react-router-dom', () => ({
-  useLocation: vi.fn(() => mockLocation),
-  useParams: vi.fn(() => mockParams),
-  useSearchParams: vi.fn(() => [mockSearchParams, mockSetParams])
-}));
 
-vi.mock('use-context-selector', async () => {
-  const actual = await vi.importActual('use-context-selector');
-  return {
-    ...actual,
-    createContext,
-    useContextSelector: (_context: any, selector: any) => {
-      return selector(useContext(_context));
-    }
-  };
-});
+const { mockLocation, mockParams, mockSetParams } = setupReactRouterMock();
+
+setupContextSelectorMock();
 
 const mockLocalStorage: Storage = new MockLocalStorage() as any;
 Object.defineProperty(window, 'localStorage', {
@@ -41,14 +25,19 @@ Object.defineProperty(window, 'localStorage', {
 const mockViewContext: Partial<ViewContextType> = {
   getCurrentView: ({ viewId }) => Promise.resolve({ view_id: viewId, query: 'howler.id:*' })
 };
-const mockParameterContext: Partial<ParameterContextType> = {
+let mockParameterContext: Partial<ParameterContextType> = {
   filters: [],
-  span: 'span',
-  sort: 'sort',
-  query: 'howler.id:*',
+  span: 'date.range.1.week',
+  sort: 'event.created desc',
+  query: 'howler.analytic:*',
   setQuery: query => (mockParameterContext.query = query),
-  offset: 0
+  offset: 0,
+  setOffset: offset => {
+    mockParameterContext.offset = parseInt(offset as any);
+  }
 };
+const originalMockParameterContext = cloneDeep(mockParameterContext);
+
 const mockHitContext: Partial<HitContextType> = {
   hits: {},
   loadHits: hits => {
@@ -72,12 +61,17 @@ const Wrapper = ({ children }) => {
 };
 
 beforeEach(() => {
+  mockParameterContext = cloneDeep(originalMockParameterContext);
+
   mockLocalStorage.clear();
-  mockSearchParams = new URLSearchParams();
+
   mockSetParams.mockClear();
+
   mockLocation.pathname = '/hits';
   mockLocation.search = '';
+
   mockParams.id = undefined;
+
   vi.mocked(hpost).mockClear();
 });
 
@@ -399,12 +393,6 @@ describe('HitSearchContext', () => {
     });
 
     it('should apply date range filter from span', async () => {
-      mockSearchParams = new URLSearchParams({
-        query: DEFAULT_QUERY,
-        sort: 'event.created desc',
-        span: 'date.range.1.week'
-      });
-
       const hook = await act(async () =>
         renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.search), { wrapper: Wrapper })
       );
@@ -427,13 +415,9 @@ describe('HitSearchContext', () => {
     });
 
     it('should apply custom date range when span is custom', async () => {
-      mockSearchParams = new URLSearchParams({
-        query: DEFAULT_QUERY,
-        sort: 'event.created desc',
-        span: 'date.range.custom',
-        start_date: '2025-01-01',
-        end_date: '2025-12-31'
-      });
+      mockParameterContext.span = 'date.range.custom';
+      mockParameterContext.startDate = '2025-01-01';
+      mockParameterContext.endDate = '2025-12-31';
 
       const hook = await act(async () =>
         renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.search), { wrapper: Wrapper })
@@ -457,13 +441,7 @@ describe('HitSearchContext', () => {
     });
 
     it('should exclude filters ending with * from search', async () => {
-      mockSearchParams = new URLSearchParams({
-        query: DEFAULT_QUERY,
-        sort: 'event.created desc',
-        span: 'date.range.1.month'
-      });
-      mockSearchParams.append('filter', 'status:open');
-      mockSearchParams.append('filter', 'howler.escalation:*');
+      mockParameterContext.filters = ['status:open', 'howler.escalation:*'];
 
       const hook = await act(async () =>
         renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.search), { wrapper: Wrapper })
@@ -487,12 +465,7 @@ describe('HitSearchContext', () => {
     });
 
     it('should reset offset if response total is less than current offset', async () => {
-      mockSearchParams = new URLSearchParams({
-        query: DEFAULT_QUERY,
-        sort: 'event.created desc',
-        span: 'date.range.1.month',
-        offset: '100'
-      });
+      mockParameterContext.offset = 100;
 
       vi.mocked(hpost).mockResolvedValueOnce({
         items: [],
@@ -511,17 +484,15 @@ describe('HitSearchContext', () => {
         )
       );
 
-      const parameterHook = await act(async () =>
-        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.offset), { wrapper: Wrapper })
-      );
-
       await act(async () => {
         hook.result.current.search('test query');
       });
 
+      hook.rerender();
+
       await waitFor(
         () => {
-          expect(parameterHook.result.current).toBe(0);
+          expect(mockParameterContext.offset).toBe(0);
         },
         { timeout: 2000 }
       );
@@ -541,9 +512,8 @@ describe('HitSearchContext', () => {
     });
 
     it('should not search when sort or span is null', async () => {
-      mockSearchParams = new URLSearchParams({
-        query: DEFAULT_QUERY
-      });
+      mockParameterContext.sort = null;
+      mockParameterContext.span = null;
 
       const hook = await act(async () =>
         renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.search), { wrapper: Wrapper })
@@ -562,12 +532,6 @@ describe('HitSearchContext', () => {
 
   describe('automatic search on parameter changes', () => {
     it('should trigger search when filters change', async () => {
-      mockSearchParams = new URLSearchParams({
-        query: 'initial query',
-        sort: 'event.created desc',
-        span: 'date.range.1.month'
-      });
-
       const hook = await act(async () =>
         renderHook(
           () =>
@@ -601,11 +565,7 @@ describe('HitSearchContext', () => {
     });
 
     it('should not trigger search when query is DEFAULT_QUERY and no viewId or bundleId', async () => {
-      mockSearchParams = new URLSearchParams({
-        query: DEFAULT_QUERY,
-        sort: 'event.created desc',
-        span: 'date.range.1.month'
-      });
+      mockParameterContext.query = DEFAULT_QUERY;
 
       await act(async () =>
         renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.response), { wrapper: Wrapper })
@@ -619,11 +579,6 @@ describe('HitSearchContext', () => {
     it('should trigger search when viewId is present', async () => {
       mockLocation.pathname = '/views/test_view_id';
       mockParams.id = 'test_view_id';
-      mockSearchParams = new URLSearchParams({
-        query: DEFAULT_QUERY,
-        sort: 'event.created desc',
-        span: 'date.range.1.month'
-      });
 
       await act(async () =>
         renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.response), { wrapper: Wrapper })
@@ -638,12 +593,6 @@ describe('HitSearchContext', () => {
     });
 
     it('should not trigger search when span is custom but dates are missing', async () => {
-      mockSearchParams = new URLSearchParams({
-        query: 'test query',
-        sort: 'event.created desc',
-        span: 'date.range.custom'
-      });
-
       await act(async () =>
         renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.response), { wrapper: Wrapper })
       );
@@ -674,12 +623,6 @@ describe('HitSearchContext', () => {
 
   describe('edge cases', () => {
     it('should handle concurrent search calls with throttling', async () => {
-      mockSearchParams = new URLSearchParams({
-        query: DEFAULT_QUERY,
-        sort: 'event.created desc',
-        span: 'date.range.1.month'
-      });
-
       const hook = await act(async () =>
         renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.search), { wrapper: Wrapper })
       );
@@ -701,12 +644,6 @@ describe('HitSearchContext', () => {
     });
 
     it('should clear response when query becomes DEFAULT_QUERY without viewId or bundleId', async () => {
-      mockSearchParams = new URLSearchParams({
-        query: 'specific query',
-        sort: 'event.created desc',
-        span: 'date.range.1.month'
-      });
-
       const hook = await act(async () =>
         renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.response), { wrapper: Wrapper })
       );
@@ -719,12 +656,7 @@ describe('HitSearchContext', () => {
       );
 
       // Change to default query
-      mockSearchParams = new URLSearchParams({
-        query: DEFAULT_QUERY,
-        sort: 'event.created desc',
-        span: 'date.range.1.month'
-      });
-      mockLocation.search = `?query=${DEFAULT_QUERY}&sort=event.created%20desc&span=date.range.1.month`;
+      mockParameterContext.query = DEFAULT_QUERY;
 
       hook.rerender();
 

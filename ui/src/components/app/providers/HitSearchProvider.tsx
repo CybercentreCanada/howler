@@ -193,7 +193,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
 
   // We only run this when ancillary properties (i.e. filters, sorting) change
   useEffect(() => {
-    if (span.endsWith('custom') && (!startDate || !endDate)) {
+    if (span?.endsWith('custom') && (!startDate || !endDate)) {
       return;
     }
 
