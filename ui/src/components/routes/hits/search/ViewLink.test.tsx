@@ -189,12 +189,14 @@ describe('ViewLink', () => {
       expect(screen.getByText(/assigned/i)).toBeInTheDocument();
     });
 
-    it('should display edit icon when viewId exists', () => {
+    it('should display edit icon when viewId exists', async () => {
       render(
         <Wrapper>
           <ViewLink />
         </Wrapper>
       );
+
+      await user.click(screen.getByLabelText(i18n.t(`route.views.manager.personal`)));
 
       // Edit icon should be present (MUI Edit icon)
       const editButton = screen.getByRole('link', { name: /edit /i });
@@ -212,12 +214,14 @@ describe('ViewLink', () => {
       expect(refreshButton).toBeInTheDocument();
     });
 
-    it('should display open button when viewId exists', () => {
+    it('should display open button when viewId exists', async () => {
       render(
         <Wrapper>
           <ViewLink />
         </Wrapper>
       );
+
+      await user.click(screen.getByLabelText(i18n.t(`route.views.manager.personal`)));
 
       const openLink = screen.getByRole('link', { name: /open /i });
       expect(openLink).toBeInTheDocument();
@@ -257,18 +261,20 @@ describe('ViewLink', () => {
         </Wrapper>
       );
 
-      const refreshButton = screen.getByRole('button');
+      const refreshButton = screen.getByLabelText(i18n.t(`view.refresh`));
       await user.click(refreshButton);
 
       expect(mockSearch).toHaveBeenCalledWith('howler.id:*');
     });
 
-    it('should navigate to search when open button is clicked', () => {
+    it('should navigate to search when open button is clicked', async () => {
       render(
         <Wrapper>
           <ViewLink />
         </Wrapper>
       );
+
+      await user.click(screen.getByLabelText(i18n.t(`route.views.manager.personal`)));
 
       const openLink = screen.getByRole('link', { name: /open /i });
       expect(openLink).toHaveAttribute('href', '/search?query=howler.status:open');
@@ -294,23 +300,27 @@ describe('ViewLink', () => {
       expect(closeButton).toHaveAttribute('href', '/search');
     });
 
-    it('should have correct tooltip on refresh button', () => {
+    it('should have correct tooltip on refresh button', async () => {
       render(
         <Wrapper>
           <ViewLink />
         </Wrapper>
       );
 
-      const tooltip = screen.getByRole('button');
+      await user.click(screen.getByLabelText(i18n.t(`route.views.manager.personal`)));
+
+      const tooltip = screen.getByLabelText(i18n.t(`view.refresh`));
       expect(tooltip).toHaveAttribute('aria-label', expect.stringContaining('Refresh'));
     });
 
-    it('should have correct tooltip on open button', () => {
+    it('should have correct tooltip on open button', async () => {
       render(
         <Wrapper>
           <ViewLink />
         </Wrapper>
       );
+
+      await user.click(screen.getByLabelText(i18n.t(`route.views.manager.personal`)));
 
       const openLink = screen.getByRole('link', { name: /open /i });
       expect(openLink).toHaveAttribute('aria-label', expect.stringContaining('Open'));
@@ -318,19 +328,23 @@ describe('ViewLink', () => {
   });
 
   describe('URL Generation (viewUrl)', () => {
-    it('should generate edit URL when viewId exists', () => {
+    it('should generate edit URL when viewId exists', async () => {
       render(<ViewLink />, { wrapper: Wrapper });
+
+      await user.click(screen.getByLabelText(i18n.t(`route.views.manager.personal`)));
 
       const editButton = screen.getByRole('link', { name: /edit/i });
       expect(editButton).toHaveAttribute('href', '/views/test-view-id/edit');
     });
 
-    it('should have edit tooltip when viewId exists', () => {
+    it('should have edit tooltip when viewId exists', async () => {
       render(
         <Wrapper>
           <ViewLink />
         </Wrapper>
       );
+
+      await user.click(screen.getByLabelText(i18n.t(`route.views.manager.personal`)));
 
       const editButton = screen.getByRole('link', { name: /edit/i });
       expect(editButton).toHaveAttribute('aria-label', expect.stringContaining('Edit'));
@@ -403,7 +417,7 @@ describe('ViewLink', () => {
       expect(screen.getByText('Test View')).toBeInTheDocument();
     });
 
-    it('should handle undefined query in parameter context', () => {
+    it('should handle undefined query in parameter context', async () => {
       mockParameterContext.query = undefined;
 
       render(
@@ -412,7 +426,9 @@ describe('ViewLink', () => {
         </Wrapper>
       );
 
-      const refreshButton = screen.getByRole('button');
+      await user.click(screen.getByLabelText(i18n.t(`route.views.manager.personal`)));
+
+      const refreshButton = screen.getByLabelText(i18n.t(`view.refresh`));
       fireEvent.click(refreshButton);
 
       expect(mockSearch).toHaveBeenCalledWith(undefined);
@@ -472,15 +488,17 @@ describe('ViewLink', () => {
   });
 
   describe('Integration Tests', () => {
-    it('should work with all three contexts simultaneously', () => {
+    it('should work with all three contexts simultaneously', async () => {
       render(
         <Wrapper>
           <ViewLink />
         </Wrapper>
       );
 
+      await user.click(screen.getByLabelText(i18n.t(`route.views.manager.personal`)));
+
       // Should use values from ParameterContext
-      const refreshButton = screen.getByRole('button');
+      const refreshButton = screen.getByLabelText(i18n.t(`view.refresh`));
       fireEvent.click(refreshButton);
       expect(mockSearch).toHaveBeenCalledWith('howler.id:*');
 
@@ -542,15 +560,17 @@ describe('ViewLink', () => {
   });
 
   describe('Accessibility', () => {
-    it('should have tooltips for all icon buttons', () => {
+    it('should have tooltips for all icon buttons', async () => {
       render(
         <Wrapper>
           <ViewLink />
         </Wrapper>
       );
 
+      await user.click(screen.getByLabelText(i18n.t(`route.views.manager.personal`)));
+
       const editButton = screen.getByRole('link', { name: /edit /i });
-      const refreshButton = screen.getByRole('button');
+      const refreshButton = screen.getByLabelText(i18n.t(`view.refresh`));
       const openButton = screen.getByRole('link', { name: /open /i });
 
       expect(editButton).toHaveAttribute('aria-label');
@@ -623,14 +643,16 @@ describe('ViewLink', () => {
       expect(screen.getByText('Another View')).toBeInTheDocument();
     });
 
-    it('should update when query changes', () => {
+    it('should update when query changes', async () => {
       const { rerender } = render(
         <Wrapper>
           <ViewLink />
         </Wrapper>
       );
 
-      const refreshButton = screen.getByRole('button');
+      await user.click(screen.getByLabelText(i18n.t(`route.views.manager.personal`)));
+
+      const refreshButton = screen.getByLabelText(i18n.t(`view.refresh`));
       fireEvent.click(refreshButton);
 
       expect(mockSearch).toHaveBeenCalledWith('howler.id:*');

@@ -410,10 +410,10 @@ describe('QuerySettings', () => {
       const addButton = screen.getByLabelText(i18n.t('hit.search.filter.add'));
       await user.click(addButton);
 
-      expect(mockAddFilter).toHaveBeenCalledWith('howler.id:*');
+      expect(mockAddFilter).toHaveBeenCalledWith('howler.assessment:*');
 
       // Simulate the filter being added to the array
-      mockParameterContext = { ...mockParameterContext, filters: ['howler.id:*'] };
+      mockParameterContext = { ...mockParameterContext, filters: ['howler.assessment:*'] };
       rerender(<QuerySettings />);
 
       expect(screen.getByTestId('hit-filter-0')).toBeInTheDocument();

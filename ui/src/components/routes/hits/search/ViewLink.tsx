@@ -50,6 +50,7 @@ const ViewLink: FC = () => {
 
   return selectedView ? (
     <ChipPopper
+      slotProps={{ chip: { size: 'small' } }}
       icon={
         <Tooltip title={t(`route.views.manager.${selectedView.type}`)}>
           {
