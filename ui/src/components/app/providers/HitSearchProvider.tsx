@@ -1,6 +1,5 @@
 import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
-import { HitLayout } from 'components/elements/hit/HitLayout';
 import useMyApi from 'components/hooks/useMyApi';
 import useMyLocalStorage, { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import i18n from 'i18n';
@@ -19,11 +18,9 @@ import {
   type PropsWithChildren,
   type SetStateAction
 } from 'react';
-import { isMobile } from 'react-device-detect';
 import { useLocation, useParams } from 'react-router-dom';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
-import { getStored } from 'utils/localStorage';
 import Throttler from 'utils/Throttler';
 import { convertCustomDateRangeToLucene, convertDateToLucene } from 'utils/utils';
 import { HitContext } from './HitProvider';
@@ -35,7 +32,6 @@ export interface QueryEntry {
 }
 
 interface HitSearchProviderType {
-  layout: HitLayout;
   displayType: 'list' | 'grid';
   searching: boolean;
   error: string | null;
@@ -78,12 +74,12 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
 
   const loadHits = useContextSelector(HitContext, ctx => ctx.loadHits);
 
-  const [displayType, setDisplayType] = useState<'list' | 'grid'>(getStored(StorageKey.DISPLAY_TYPE) ?? 'list');
+  const [displayType, setDisplayType] = useState<'list' | 'grid'>(get(StorageKey.DISPLAY_TYPE) ?? 'list');
   const [searching, setSearching] = useState<boolean>(false);
   const [error, setError] = useState<string>(null);
-  const [response, setResponse] = useState<HowlerSearchResponse<WithMetadata<Hit>>>();
+  const [response, setResponse] = useState<HowlerSearchResponse<WithMetadata<Hit>>>(null);
   const [queryHistory, setQueryHistory] = useState<QueryEntry>(
-    JSON.parse(get(StorageKey.QUERY_HISTORY)) || { 'howler.id: *': new Date().toISOString() }
+    get(StorageKey.QUERY_HISTORY) || { 'howler.id: *': new Date().toISOString() }
   );
   const [fzfSearch, setFzfSearch] = useState<boolean>(false);
 
@@ -95,11 +91,6 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const bundleId = useMemo(
     () => (location.pathname.startsWith('/bundles') ? routeParams.id : null),
     [location.pathname, routeParams.id]
-  );
-
-  const layout: HitLayout = useMemo(
-    () => (isMobile ? HitLayout.COMFY : (get(StorageKey.HIT_LAYOUT) ?? HitLayout.NORMAL)),
-    [get]
   );
 
   const filters = useMemo(() => allFilters.filter(filter => !filter.endsWith('*')), [allFilters]);
@@ -143,7 +134,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
 
           const _response = await dispatchApi(
             api.search.hit.post({
-              offset: appendResults ? response.rows : offset,
+              offset: appendResults && response ? response.rows : offset,
               rows: pageCount,
               query: fullQuery,
               sort,
@@ -218,7 +209,6 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   return (
     <HitSearchContext.Provider
       value={{
-        layout,
         displayType,
         setDisplayType,
         search,

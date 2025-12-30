@@ -14,6 +14,17 @@ export const MOCK_RESPONSES: { [path: string]: any } = {
     type: 'personal',
     span: 'date.range.1.month'
   },
+  '/api/v1/search/hit': {
+    items: [
+      {
+        howler: {
+          id: 'howler.id'
+        }
+      }
+    ],
+    total: 1,
+    rows: 1
+  },
   '/api/v1/search/view': {
     items: [
       {

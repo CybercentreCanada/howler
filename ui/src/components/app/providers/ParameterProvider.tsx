@@ -6,7 +6,7 @@ import { createContext, useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY } from 'utils/constants';
 import Throttler from 'utils/Throttler';
 
-interface ParameterProviderType {
+export interface ParameterContextType {
   selected?: string;
   query?: string;
   offset: number;
@@ -41,7 +41,7 @@ interface SearchValues {
   trackTotalHits: boolean;
 }
 
-export const ParameterContext = createContext<ParameterProviderType>(null);
+export const ParameterContext = createContext<ParameterContextType>(null);
 
 const DEFAULT_VALUES: Partial<SearchValues> = {
   query: DEFAULT_QUERY,
@@ -146,12 +146,12 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
       [location.pathname, routeParams.id, values, params]
     );
 
-  const setOffset: ParameterProviderType['setOffset'] = useCallback(
+  const setOffset: ParameterContextType['setOffset'] = useCallback(
     _offset => _setValues(_current => ({ ..._current, offset: parseOffset(_offset) })),
     []
   );
 
-  const setCustomSpan: ParameterProviderType['setCustomSpan'] = useCallback((startDate, endDate) => {
+  const setCustomSpan: ParameterContextType['setCustomSpan'] = useCallback((startDate, endDate) => {
     _setValues(_values => ({
       ..._values,
       startDate,
@@ -159,14 +159,14 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
     }));
   }, []);
 
-  const addFilter: ParameterProviderType['addFilter'] = useCallback(filter => {
+  const addFilter: ParameterContextType['addFilter'] = useCallback(filter => {
     _setValues(_current => ({
       ..._current,
       filters: uniq([..._current.filters, filter])
     }));
   }, []);
 
-  const removeFilter: ParameterProviderType['removeFilter'] = useCallback(filter => {
+  const removeFilter: ParameterContextType['removeFilter'] = useCallback(filter => {
     _setValues(_current => {
       const index = _current.filters.indexOf(filter);
       if (index === -1) {
@@ -179,7 +179,7 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
     });
   }, []);
 
-  const setFilter: ParameterProviderType['setFilter'] = useCallback((index, filter) => {
+  const setFilter: ParameterContextType['setFilter'] = useCallback((index, filter) => {
     _setValues(_current => {
       // Validate index
       if (index < 0 || index >= _current.filters.length) {
@@ -194,7 +194,7 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
     });
   }, []);
 
-  const clearFilters: ParameterProviderType['clearFilters'] = useCallback(() => {
+  const clearFilters: ParameterContextType['clearFilters'] = useCallback(() => {
     _setValues(_current => ({
       ..._current,
       filters: []
@@ -366,9 +366,9 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
 };
 
 export const useParameterContextSelector = <Selected,>(
-  selector: (value: ParameterProviderType) => Selected
+  selector: (value: ParameterContextType) => Selected
 ): Selected => {
-  return useContextSelector<ParameterProviderType, Selected>(ParameterContext, selector);
+  return useContextSelector<ParameterContextType, Selected>(ParameterContext, selector);
 };
 
 export default ParameterProvider;

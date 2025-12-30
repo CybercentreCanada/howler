@@ -30,10 +30,11 @@ import HitBanner from 'components/elements/hit/HitBanner';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import useHitSelection from 'components/hooks/useHitSelection';
-import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
+import useMyLocalStorage, { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { FC } from 'react';
-import React, { memo, useCallback, useEffect } from 'react';
+import React, { memo, useCallback, useEffect, useMemo } from 'react';
+import { isMobile } from 'react-device-detect';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
@@ -49,12 +50,11 @@ const Item: FC<{
   onClick: (event: React.MouseEvent<HTMLDivElement>, hit: Hit) => void;
 }> = memo(({ hit, onClick }) => {
   const theme = useTheme();
+  const { get } = useMyLocalStorage();
 
   const selectedHits = useContextSelector(HitContext, ctx => ctx.selectedHits);
 
   const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
-
-  const layout = useContextSelector(HitSearchContext, ctx => ctx.layout);
 
   const checkMiddleClick = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>, id: string | number) => {
     if (e.button === 1) {
@@ -63,6 +63,11 @@ const Item: FC<{
       e.preventDefault();
     }
   }, []);
+
+  const layout: HitLayout = useMemo(
+    () => (isMobile ? HitLayout.COMFY : (get(StorageKey.HIT_LAYOUT) ?? HitLayout.NORMAL)),
+    [get]
+  );
 
   // Search result list item renderer.
   return (
