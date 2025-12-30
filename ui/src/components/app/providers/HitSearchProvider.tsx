@@ -18,7 +18,7 @@ import {
   type PropsWithChildren,
   type SetStateAction
 } from 'react';
-import { useLocation, useParams } from 'react-router-dom';
+import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
 import Throttler from 'utils/Throttler';
@@ -36,6 +36,8 @@ interface HitSearchProviderType {
   searching: boolean;
   error: string | null;
   response: HowlerSearchResponse<WithMetadata<Hit>> | null;
+  views: string[];
+  /** @deprecated Use views[0] instead. Maintained for backward compatibility */
   viewId?: string;
   bundleId: string | null;
   queryHistory: QueryEntry;
@@ -57,6 +59,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const location = useLocation();
   const { dispatchApi } = useMyApi();
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const getCurrentView = useContextSelector(ViewContext, ctx => ctx.getCurrentView);
   const defaultView = useContextSelector(ViewContext, ctx => ctx.defaultView);
@@ -83,10 +86,24 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   );
   const [fzfSearch, setFzfSearch] = useState<boolean>(false);
 
-  const viewId = useMemo(
-    () => (location.pathname.startsWith('/views') ? routeParams.id : defaultView) ?? null,
-    [defaultView, location.pathname, routeParams.id]
-  );
+  const views = useMemo(() => {
+    const viewsArray: string[] = [];
+
+    // Add route param view if on /views route
+    if (location.pathname.startsWith('/views') && routeParams.id) {
+      viewsArray.push(routeParams.id);
+    }
+
+    // Add all query param views
+    const queryViews = searchParams.getAll('view');
+    viewsArray.push(...queryViews);
+
+    return viewsArray;
+  }, [location.pathname, routeParams.id, searchParams.getAll('view').length]);
+
+  console.log(views);
+
+  const viewId = useMemo(() => views[0] ?? null, [views]);
 
   const bundleId = useMemo(
     () => (location.pathname.startsWith('/bundles') ? routeParams.id : null),
@@ -94,6 +111,15 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   );
 
   const filters = useMemo(() => allFilters.filter(filter => !filter.endsWith('*')), [allFilters]);
+
+  // Inject default view into URL when no views present and not on /views route
+  useEffect(() => {
+    if (views.length === 0 && !location.pathname.startsWith('/views') && defaultView) {
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set('view', defaultView);
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [views.length, location.pathname, defaultView, searchParams, setSearchParams]);
 
   const search = useCallback(
     async (_query?: string, appendResults?: boolean) => {
@@ -128,8 +154,18 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
           let fullQuery = _query || DEFAULT_QUERY;
           if (bundle) {
             fullQuery = `(howler.bundles:${bundle}) AND (${fullQuery})`;
-          } else if (viewId) {
-            fullQuery = `(${(await getCurrentView({ viewId }))?.query || DEFAULT_QUERY}) AND (${fullQuery})`;
+          } else if (views.length > 0) {
+            // Fetch all view queries
+            const viewObjects = await Promise.all(views.map(viewId => getCurrentView({ viewId })));
+
+            // Filter out null/undefined views and extract queries
+            const viewQueries = viewObjects.filter(view => view?.query).map(view => view.query);
+
+            // Combine view queries with AND logic
+            if (viewQueries.length > 0) {
+              const combinedViewQuery = viewQueries.map(q => `(${q})`).join(' AND ');
+              fullQuery = `(${combinedViewQuery}) AND (${fullQuery})`;
+            }
           }
 
           const _response = await dispatchApi(
@@ -180,7 +216,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
       setQuery,
       location.pathname,
       routeParams.id,
-      viewId,
+      views,
       dispatchApi,
       offset,
       pageCount,
@@ -197,14 +233,25 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
       return;
     }
 
-    if (viewId || bundleId || (query && query !== DEFAULT_QUERY) || offset > 0) {
+    if (views.length > 0 || bundleId || (query && query !== DEFAULT_QUERY) || offset > 0) {
       search(query);
     } else {
       setResponse(null);
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.join(''), offset, pageCount, sort, span, bundleId, location.pathname, startDate, endDate, viewId]);
+  }, [
+    offset,
+    pageCount,
+    sort,
+    span,
+    bundleId,
+    location.pathname,
+    startDate,
+    endDate,
+    filters.join(','),
+    views.join(',')
+  ]);
 
   return (
     <HitSearchContext.Provider
@@ -215,6 +262,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
         searching,
         error,
         response,
+        views,
         viewId,
         bundleId,
         setQueryHistory,
