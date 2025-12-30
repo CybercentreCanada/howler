@@ -3,20 +3,13 @@
 /// <reference types="vitest" />
 import { render, screen } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
-import { act, createContext, useContext, type PropsWithChildren } from 'react';
+import { act, type PropsWithChildren } from 'react';
+import { setupContextSelectorMock } from 'tests/mocks';
 import { vi } from 'vitest';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-// Mock use-context-selector
-vi.mock('use-context-selector', async () => {
-  return {
-    createContext,
-    useContextSelector: (context, selector) => {
-      return selector(useContext(context));
-    }
-  };
-});
+setupContextSelectorMock();
 
 // Mock child components
 vi.mock('./shared/HitFilter', () => ({

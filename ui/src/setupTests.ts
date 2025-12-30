@@ -14,6 +14,9 @@ configure({ testIdAttribute: 'id' });
 
 beforeAll(() => server.listen());
 
-afterEach(() => server.resetHandlers());
+afterEach(() => {
+  server.resetHandlers();
+  globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+});
 
 afterAll(() => server.close());

@@ -3,33 +3,11 @@
 /// <reference types="vitest" />
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
-import React, { createContext, useContext, type PropsWithChildren } from 'react';
+import { type PropsWithChildren } from 'react';
+import { setupReactRouterMock } from 'tests/mocks';
 import { vi } from 'vitest';
 
-globalThis.IS_REACT_ACT_ENVIRONMENT = true;
-
-// Mock use-context-selector
-vi.mock('use-context-selector', async () => {
-  return {
-    createContext,
-    useContextSelector: (context, selector) => {
-      return selector(useContext(context));
-    }
-  };
-});
-
-// Mock react-router-dom
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
-  return {
-    ...actual,
-    Link: React.forwardRef<any, any>(({ to, children, ...props }, ref) => (
-      <a ref={ref} href={to} {...props}>
-        {children}
-      </a>
-    ))
-  };
-});
+setupReactRouterMock();
 
 // Import component after mocks
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
