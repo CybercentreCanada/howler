@@ -66,7 +66,7 @@ const ChipPopper: FC<ChipPopperProps> = ({
         anchorEl={anchorEl.current}
         disablePortal
         open
-        sx={{ minWidth: minWidth ?? anchorEl.current?.clientWidth }}
+        sx={{ minWidth: minWidth ?? anchorEl.current?.clientWidth, width: anchorEl.current?.clientWidth, zIndex: 1 }}
       >
         <Collapse in={show}>
           <ClickAwayListener onClickAway={() => handleToggle(false)}>

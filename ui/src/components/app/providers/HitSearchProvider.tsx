@@ -72,7 +72,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const trackTotalHits = useContextSelector(ParameterContext, ctx => ctx.trackTotalHits);
   const sort = useContextSelector(ParameterContext, ctx => ctx.sort);
   const span = useContextSelector(ParameterContext, ctx => ctx.span);
-  const filters = useContextSelector(ParameterContext, ctx => ctx.filters);
+  const allFilters = useContextSelector(ParameterContext, ctx => ctx.filters);
   const startDate = useContextSelector(ParameterContext, ctx => ctx.startDate);
   const endDate = useContextSelector(ParameterContext, ctx => ctx.endDate);
 
@@ -101,6 +101,8 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
     () => (isMobile ? HitLayout.COMFY : (get(StorageKey.HIT_LAYOUT) ?? HitLayout.NORMAL)),
     [get]
   );
+
+  const filters = useMemo(() => allFilters.filter(filter => !filter.endsWith('*')), [allFilters]);
 
   const search = useCallback(
     async (_query?: string, appendResults?: boolean) => {
@@ -211,7 +213,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters, offset, pageCount, sort, span, bundleId, location.pathname, startDate, endDate, viewId]);
+  }, [filters.join(''), offset, pageCount, sort, span, bundleId, location.pathname, startDate, endDate, viewId]);
 
   return (
     <HitSearchContext.Provider

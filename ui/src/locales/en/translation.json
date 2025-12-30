@@ -5,6 +5,7 @@
 
   "add": "Add",
   "all": "All",
+  "*": "All values",
   "any": "Any",
   "asc": "Ascending",
   "close": "Close",
@@ -286,6 +287,7 @@
   "hit.search.filter.values": "Values",
   "hit.search.filter.button": "Use lookup filters with predefined values",
   "hit.search.filter.label": "Lookup Filters",
+  "hit.search.filter.add": "Add filter",
   "hit.search.save.button": "Save query as view",
   "hit.search.save.view": "Save View",
   "hit.search.sort.button": "Sort Results",

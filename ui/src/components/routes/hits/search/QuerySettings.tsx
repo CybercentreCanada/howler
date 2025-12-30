@@ -52,7 +52,7 @@ const QuerySettings: FC<{ verticalSorters?: boolean; boxSx?: SxProps }> = ({ box
               id="add-filter"
               aria-label={t('hit.search.filter.add')}
               size="small"
-              onClick={() => addFilter('howler.id:*')}
+              onClick={() => addFilter('howler.assessment:*')}
               sx={theme => ({
                 border: 'thin solid',
                 borderColor: theme.palette.divider,

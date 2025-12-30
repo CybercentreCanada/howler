@@ -80,7 +80,12 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
   const onValueChange: UseAutocompleteProps<string, false, false, false>['onChange'] = useCallback(
     (_, newValue) => {
       setFilter(newValue);
-      setSavedFilter(id, `${category}:${newValue ? `"${sanitizeLuceneQuery(newValue)}"` : '*'}`);
+
+      if (newValue && newValue !== '*') {
+        setSavedFilter(id, `${category}:"${sanitizeLuceneQuery(newValue)}"`);
+      } else {
+        setSavedFilter(id, `${category}:*`);
+      }
     },
     [category, setSavedFilter]
   );
@@ -92,7 +97,7 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
       icon={<FilterList fontSize="small" />}
       deleteIcon={<Clear fontSize="small" />}
       label={category && <Typography variant="body2">{`${category}:${filterValue || '*'}`}</Typography>}
-      minWidth="225px"
+      minWidth="250px"
       onDelete={() => removeSavedFilter(value)}
       slotProps={{ chip: { size: 'small' } }}
     >
@@ -112,7 +117,7 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
           loading={loading}
           size={size ?? 'small'}
           value={filter?.replaceAll('"', '').replaceAll('\\-', '-') || ''}
-          options={config.lookups[category] ? config.lookups[category] : customLookups}
+          options={[...(config.lookups[category] ? config.lookups[category] : customLookups), '*']}
           renderInput={_params => <TextField {..._params} label={t('hit.search.filter.values')} />}
           getOptionLabel={option => t(option)}
           onChange={onValueChange}
