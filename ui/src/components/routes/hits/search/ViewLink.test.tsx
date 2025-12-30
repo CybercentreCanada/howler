@@ -20,7 +20,6 @@ import { createMockView } from 'tests/utils';
 import ViewLink from './ViewLink';
 
 // Mock contexts
-const mockSearch = vi.fn();
 let mockParameterContext = {
   query: 'howler.id:*',
   sort: 'event.created desc',
@@ -32,7 +31,7 @@ let mockParameterContext = {
 
 let mockHitSearchContext = {
   viewId: 'test-view-id',
-  search: mockSearch
+  search: vi.fn()
 };
 
 let mockViewContext = {
@@ -242,7 +241,7 @@ describe('ViewLink', () => {
       const refreshButton = screen.getByLabelText(i18n.t(`view.refresh`));
       await user.click(refreshButton);
 
-      expect(mockSearch).toHaveBeenCalledWith('howler.id:*');
+      expect(mockHitSearchContext.search).toHaveBeenCalledWith('howler.id:*');
     });
 
     it('should navigate to search when open button is clicked', async () => {
@@ -409,7 +408,7 @@ describe('ViewLink', () => {
       const refreshButton = screen.getByLabelText(i18n.t(`view.refresh`));
       fireEvent.click(refreshButton);
 
-      expect(mockSearch).toHaveBeenCalledWith(undefined);
+      expect(mockHitSearchContext.search).toHaveBeenCalledWith(undefined);
     });
 
     it('should handle null sort in parameter context', () => {
@@ -478,7 +477,7 @@ describe('ViewLink', () => {
       // Should use values from ParameterContext
       const refreshButton = screen.getByLabelText(i18n.t(`view.refresh`));
       fireEvent.click(refreshButton);
-      expect(mockSearch).toHaveBeenCalledWith('howler.id:*');
+      expect(mockHitSearchContext.search).toHaveBeenCalledWith('howler.id:*');
 
       // Should use values from ViewContext
       expect(screen.getByText('Test View')).toBeInTheDocument();
@@ -633,7 +632,7 @@ describe('ViewLink', () => {
       const refreshButton = screen.getByLabelText(i18n.t(`view.refresh`));
       fireEvent.click(refreshButton);
 
-      expect(mockSearch).toHaveBeenCalledWith('howler.id:*');
+      expect(mockHitSearchContext.search).toHaveBeenCalledWith('howler.id:*');
 
       mockParameterContext = { ...mockParameterContext, query: 'howler.status:closed' };
 
@@ -645,7 +644,7 @@ describe('ViewLink', () => {
 
       fireEvent.click(refreshButton);
 
-      expect(mockSearch).toHaveBeenCalledWith('howler.status:closed');
+      expect(mockHitSearchContext.search).toHaveBeenCalledWith('howler.status:closed');
     });
   });
 });

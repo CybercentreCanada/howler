@@ -36,7 +36,7 @@ interface HitSearchProviderType {
   searching: boolean;
   error: string | null;
   response: HowlerSearchResponse<WithMetadata<Hit>> | null;
-  viewId: string | null;
+  viewId?: string;
   bundleId: string | null;
   queryHistory: QueryEntry;
   fzfSearch: boolean;

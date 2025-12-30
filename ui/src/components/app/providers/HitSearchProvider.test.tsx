@@ -12,9 +12,14 @@ import { ViewContext, type ViewContextType } from './ViewProvider';
 
 vi.mock('api', { spy: true });
 
-const { mockLocation, mockParams, mockSetParams } = setupReactRouterMock();
-
+setupReactRouterMock();
 setupContextSelectorMock();
+
+import { useLocation, useParams, useSearchParams } from 'react-router-dom';
+
+const mockParams = vi.mocked(useParams);
+const mockLocation = vi.mocked(useLocation());
+const [_, mockSetParams] = vi.mocked(useSearchParams());
 
 const mockLocalStorage: Storage = new MockLocalStorage() as any;
 Object.defineProperty(window, 'localStorage', {
@@ -70,7 +75,7 @@ beforeEach(() => {
   mockLocation.pathname = '/hits';
   mockLocation.search = '';
 
-  mockParams.id = undefined;
+  mockParams.mockReturnValue({ id: undefined });
 
   vi.mocked(hpost).mockClear();
 });
@@ -104,7 +109,7 @@ describe('HitSearchContext', () => {
 
   it('should set viewId when on views route', async () => {
     mockLocation.pathname = '/views/test_view_id';
-    mockParams.id = 'test_view_id';
+    mockParams.mockReturnValue({ id: 'test_view_id' });
 
     const hook = await act(async () =>
       renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.viewId), { wrapper: Wrapper })
@@ -115,7 +120,7 @@ describe('HitSearchContext', () => {
 
   it('should set bundleId when on bundles route', async () => {
     mockLocation.pathname = '/bundles/test_bundle_id';
-    mockParams.id = 'test_bundle_id';
+    mockParams.mockReturnValue({ id: 'test_bundle_id' });
 
     const hook = await act(async () =>
       renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.bundleId), { wrapper: Wrapper })
@@ -369,7 +374,7 @@ describe('HitSearchContext', () => {
 
     it('should include bundle filter when on bundles route', async () => {
       mockLocation.pathname = '/bundles/test_bundle_id';
-      mockParams.id = 'test_bundle_id';
+      mockParams.mockReturnValue({ id: 'test_bundle_id' });
 
       const hook = await act(async () =>
         renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.search), { wrapper: Wrapper })
@@ -578,7 +583,7 @@ describe('HitSearchContext', () => {
 
     it('should trigger search when viewId is present', async () => {
       mockLocation.pathname = '/views/test_view_id';
-      mockParams.id = 'test_view_id';
+      mockParams.mockReturnValue({ id: 'test_view_id' });
 
       await act(async () =>
         renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.response), { wrapper: Wrapper })

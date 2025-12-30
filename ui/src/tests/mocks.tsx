@@ -41,11 +41,10 @@ export const setupReactRouterMock = () => {
       )),
       useLocation: vi.fn(() => mockLocation),
       useParams: vi.fn(() => mockParams),
-      useSearchParams: vi.fn(() => [mockSearchParams, mockSetParams])
+      useSearchParams: vi.fn(() => [mockSearchParams, mockSetParams]),
+      useNavigate: () => vi.fn()
     }));
   });
 
   afterAll(() => vi.resetModules());
-
-  return { mockLocation, mockParams, mockSearchParams, mockSetParams };
 };
