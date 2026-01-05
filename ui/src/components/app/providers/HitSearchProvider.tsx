@@ -153,7 +153,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
           viewObjects
             .filter(view => view?.query)
             .map(view => view.query)
-            .forEach(_query => _filters.push(_query));
+            .forEach(viewQuery => _filters.push(viewQuery));
         }
 
         try {
