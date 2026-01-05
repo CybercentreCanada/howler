@@ -41,7 +41,9 @@ let mockParameterContext: Partial<ParameterContextType> = {
   offset: 0,
   setOffset: offset => {
     mockParameterContext.offset = parseInt(offset as any);
-  }
+  },
+  views: [],
+  addView: vi.fn()
 };
 const originalMockParameterContext = cloneDeep(mockParameterContext);
 
@@ -69,6 +71,7 @@ const Wrapper = ({ children }) => {
 
 beforeEach(() => {
   mockParameterContext = cloneDeep(originalMockParameterContext);
+  vi.mocked(originalMockParameterContext.addView).mockClear();
 
   mockLocalStorage.clear();
 
@@ -95,7 +98,6 @@ describe('HitSearchContext', () => {
             searching: ctx.searching,
             error: ctx.error,
             response: ctx.response,
-            views: ctx.views,
             viewId: ctx.viewId,
             bundleId: ctx.bundleId,
             fzfSearch: ctx.fzfSearch
@@ -108,15 +110,14 @@ describe('HitSearchContext', () => {
     expect(hook.result.current.searching).toBe(false);
     expect(hook.result.current.error).toBeNull();
     expect(hook.result.current.response).toBeNull();
-    expect(hook.result.current.views).toEqual([]);
     expect(hook.result.current.viewId).toBeNull();
     expect(hook.result.current.bundleId).toBeNull();
     expect(hook.result.current.fzfSearch).toBe(false);
   });
 
-  it('should set viewId when on views route', async () => {
-    mockLocation.pathname = '/views/test_view_id';
-    mockParams.mockReturnValue({ id: 'test_view_id' });
+  it('should set viewId when view is set', async () => {
+    mockLocation.pathname = '/search?view=test_view_id';
+    mockParameterContext.views = ['test_view_id'];
 
     const hook = await act(async () =>
       renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.viewId), { wrapper: Wrapper })
@@ -348,13 +349,10 @@ describe('HitSearchContext', () => {
         hook.result.current.search('test query');
       });
 
-      await waitFor(
-        () => {
-          expect(hook.result.current.response).toBeDefined();
-          expect(hook.result.current.response).not.toBeNull();
-        },
-        { timeout: 2000 }
-      );
+      await waitFor(() => {
+        expect(hook.result.current.response).toBeDefined();
+        expect(hook.result.current.response).not.toBeNull();
+      });
 
       // Mock second response
       vi.mocked(hpost).mockResolvedValueOnce({
@@ -371,12 +369,9 @@ describe('HitSearchContext', () => {
 
       hook.rerender();
 
-      await waitFor(
-        () => {
-          expect(hook.result.current.response?.items.length).toBe(2);
-        },
-        { timeout: 2000 }
-      );
+      await waitFor(() => {
+        expect(hook.result.current.response?.items.length).toBe(2);
+      });
     });
 
     it('should include bundle filter when on bundles route', async () => {
@@ -576,7 +571,7 @@ describe('HitSearchContext', () => {
       );
     });
 
-    it('should not trigger search when query is DEFAULT_QUERY and no viewId or bundleId', async () => {
+    it('should not trigger search when query is DEFAULT_QUERY and no bundleId', async () => {
       mockParameterContext.query = DEFAULT_QUERY;
 
       await act(async () =>
@@ -586,22 +581,6 @@ describe('HitSearchContext', () => {
       await waitFor(() => {
         expect(hpost).not.toHaveBeenCalled();
       });
-    });
-
-    it('should trigger search when viewId is present', async () => {
-      mockLocation.pathname = '/views/test_view_id';
-      mockParams.mockReturnValue({ id: 'test_view_id' });
-
-      await act(async () =>
-        renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.response), { wrapper: Wrapper })
-      );
-
-      await waitFor(
-        () => {
-          expect(hpost).toHaveBeenCalled();
-        },
-        { timeout: 2000 }
-      );
     });
 
     it('should not trigger search when span is custom but dates are missing', async () => {
@@ -679,71 +658,19 @@ describe('HitSearchContext', () => {
   });
 
   describe('multiple views support', () => {
-    describe('views array initialization', () => {
-      it('should initialize views as empty array when no views present', async () => {
-        const hook = await act(async () =>
-          renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.views), { wrapper: Wrapper })
-        );
+    describe('viewId backward compatibility', () => {
+      it('should return null for viewId when no views present', async () => {
+        mockParameterContext.views = [];
 
-        expect(hook.result.current).toEqual([]);
-      });
-
-      it('should return empty array for viewId when no views present', async () => {
         const hook = await act(async () =>
           renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.viewId), { wrapper: Wrapper })
         );
 
         expect(hook.result.current).toBeNull();
       });
-    });
-
-    describe('single view from route', () => {
-      it('should set views array with single view from /views/:id route', async () => {
-        mockLocation.pathname = '/views/test_view_id';
-        mockParams.mockReturnValue({ id: 'test_view_id' });
-
-        const hook = await act(async () =>
-          renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.views), { wrapper: Wrapper })
-        );
-
-        expect(hook.result.current).toEqual(['test_view_id']);
-      });
-
-      it('should maintain backward compatibility for viewId with single route view', async () => {
-        mockLocation.pathname = '/views/test_view_id';
-        mockParams.mockReturnValue({ id: 'test_view_id' });
-
-        const hook = await act(async () =>
-          renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.viewId), { wrapper: Wrapper })
-        );
-
-        expect(hook.result.current).toBe('test_view_id');
-      });
-    });
-
-    describe('multiple views from query params', () => {
-      it('should read multiple views from ?view query parameters', async () => {
-        const mockSearchParams = new URLSearchParams();
-        mockSearchParams.append('view', 'view_1');
-        mockSearchParams.append('view', 'view_2');
-        mockLocation.search = mockSearchParams.toString();
-
-        vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
-
-        const hook = await act(async () =>
-          renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.views), { wrapper: Wrapper })
-        );
-
-        expect(hook.result.current).toEqual(['view_1', 'view_2']);
-      });
 
       it('should return first view as viewId for backward compatibility', async () => {
-        const mockSearchParams = new URLSearchParams();
-        mockSearchParams.append('view', 'view_1');
-        mockSearchParams.append('view', 'view_2');
-        mockLocation.search = mockSearchParams.toString();
-
-        vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
+        mockParameterContext.views = ['view_1', 'view_2'];
 
         const hook = await act(async () =>
           renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.viewId), { wrapper: Wrapper })
@@ -753,56 +680,18 @@ describe('HitSearchContext', () => {
       });
     });
 
-    describe('combined route and query param views', () => {
-      it('should combine route view with query param views', async () => {
-        mockLocation.pathname = '/views/route_view';
-        mockParams.mockReturnValue({ id: 'route_view' });
-
-        const mockSearchParams = new URLSearchParams();
-        mockSearchParams.append('view', 'query_view_1');
-        mockSearchParams.append('view', 'query_view_2');
-        mockLocation.search = mockSearchParams.toString();
-
-        vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
-
-        const hook = await act(async () =>
-          renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.views), { wrapper: Wrapper })
-        );
-
-        expect(hook.result.current).toEqual(['route_view', 'query_view_1', 'query_view_2']);
-      });
-
-      it('should use route view as viewId when combined with query params', async () => {
-        mockLocation.pathname = '/views/route_view';
-        mockParams.mockReturnValue({ id: 'route_view' });
-
-        const mockSearchParams = new URLSearchParams();
-        mockSearchParams.append('view', 'query_view_1');
-        mockLocation.search = mockSearchParams.toString();
-
-        vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
-
-        const hook = await act(async () =>
-          renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.viewId), { wrapper: Wrapper })
-        );
-
-        expect(hook.result.current).toBe('route_view');
-      });
-    });
-
     describe('AND logic for multiple view queries', () => {
       it('should combine two view queries with AND logic', async () => {
-        const mockSearchParams = new URLSearchParams();
-        mockSearchParams.append('view', 'view_1');
-        mockSearchParams.append('view', 'view_2');
-        mockLocation.search = mockSearchParams.toString();
+        mockParameterContext.views = ['view_1', 'view_2'];
 
-        vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
-
-        mockViewContext.getCurrentView = vi.fn(({ viewId }) => {
-          if (viewId === 'view_1') return Promise.resolve({ view_id: 'view_1', query: 'howler.status:open' } as any);
-          if (viewId === 'view_2') return Promise.resolve({ view_id: 'view_2', query: 'howler.priority:high' } as any);
-          return Promise.resolve(null);
+        mockViewContext.fetchViews = vi.fn(viewIds => {
+          return Promise.resolve(
+            viewIds.map(id => {
+              if (id === 'view_1') return { view_id: 'view_1', query: 'howler.status:open' };
+              if (id === 'view_2') return { view_id: 'view_2', query: 'howler.priority:high' };
+              return null;
+            })
+          );
         });
 
         const hook = await act(async () =>
@@ -827,19 +716,17 @@ describe('HitSearchContext', () => {
       });
 
       it('should combine three view queries with AND logic', async () => {
-        const mockSearchParams = new URLSearchParams();
-        mockSearchParams.append('view', 'view_1');
-        mockSearchParams.append('view', 'view_2');
-        mockSearchParams.append('view', 'view_3');
-        mockLocation.search = mockSearchParams.toString();
+        mockParameterContext.views = ['view_1', 'view_2', 'view_3'];
 
-        vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
-
-        mockViewContext.getCurrentView = vi.fn(({ viewId }) => {
-          if (viewId === 'view_1') return Promise.resolve({ view_id: 'view_1', query: 'howler.status:open' } as any);
-          if (viewId === 'view_2') return Promise.resolve({ view_id: 'view_2', query: 'howler.priority:high' } as any);
-          if (viewId === 'view_3') return Promise.resolve({ view_id: 'view_3', query: 'howler.analytic:sigma' } as any);
-          return Promise.resolve(null);
+        mockViewContext.fetchViews = vi.fn(viewIds => {
+          return Promise.resolve(
+            viewIds.map(id => {
+              if (id === 'view_1') return { view_id: 'view_1', query: 'howler.status:open' };
+              if (id === 'view_2') return { view_id: 'view_2', query: 'howler.priority:high' };
+              if (id === 'view_3') return { view_id: 'view_3', query: 'howler.analytic:sigma' };
+              return null;
+            })
+          );
         });
 
         const hook = await act(async () =>
@@ -870,78 +757,48 @@ describe('HitSearchContext', () => {
       it('should inject default view into URL when no views and not on /views route', async () => {
         mockViewContext.defaultView = 'default_view_id';
         mockLocation.pathname = '/search';
+        mockParameterContext.views = [];
 
         const mockSearchParams = new URLSearchParams();
         vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
 
         await act(async () =>
-          renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.views), { wrapper: Wrapper })
-        );
-
-        await waitFor(
-          () => {
-            expect(mockSetParams).toHaveBeenCalledWith(expect.any(URLSearchParams), { replace: true });
-            const callArgs = mockSetParams.mock.calls[0];
-            const params = callArgs[0] as URLSearchParams;
-            expect(params.get('view')).toBe('default_view_id');
-          },
-          { timeout: 2000 }
-        );
-      });
-
-      it('should not inject default view when already on /views route', async () => {
-        mockViewContext.defaultView = 'default_view_id';
-        mockLocation.pathname = '/views/other_view';
-        mockParams.mockReturnValue({ id: 'other_view' });
-
-        const mockSearchParams = new URLSearchParams();
-        vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
-
-        await act(async () =>
-          renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.views), { wrapper: Wrapper })
+          renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.viewId), { wrapper: Wrapper })
         );
 
         await waitFor(() => {
-          // Should not call setSearchParams for default view injection
-          const injectionCalls = mockSetParams.mock.calls.filter(call => {
-            const params = call[0] as URLSearchParams;
-            return params.get('view') === 'default_view_id';
-          });
-          expect(injectionCalls.length).toBe(0);
+          expect(mockParameterContext.addView).toBeCalledWith('default_view_id');
         });
       });
 
-      it('should not inject default view when views already present in URL', async () => {
+      it('should not inject default view when views already present', async () => {
         mockViewContext.defaultView = 'default_view_id';
         mockLocation.pathname = '/search';
+        mockParameterContext.views = ['existing_view'];
 
         const mockSearchParams = new URLSearchParams();
         mockSearchParams.append('view', 'existing_view');
         vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
 
         await act(async () =>
-          renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.views), { wrapper: Wrapper })
+          renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.viewId), { wrapper: Wrapper })
         );
 
         await waitFor(() => {
-          // Should not call setSearchParams for default view injection
-          const injectionCalls = mockSetParams.mock.calls.filter(call => {
-            const params = call[0] as URLSearchParams;
-            return params.get('view') === 'default_view_id';
-          });
-          expect(injectionCalls.length).toBe(0);
+          expect(mockParameterContext.addView).not.toBeCalled();
         });
       });
 
       it('should not inject when no default view exists', async () => {
         mockViewContext.defaultView = null;
         mockLocation.pathname = '/search';
+        mockParameterContext.views = [];
 
         const mockSearchParams = new URLSearchParams();
         vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
 
         await act(async () =>
-          renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.views), { wrapper: Wrapper })
+          renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.viewId), { wrapper: Wrapper })
         );
 
         await waitFor(() => {
@@ -950,49 +807,11 @@ describe('HitSearchContext', () => {
       });
     });
 
-    describe('duplicate and ordering', () => {
-      it('should preserve duplicate view IDs in array', async () => {
-        const mockSearchParams = new URLSearchParams();
-        mockSearchParams.append('view', 'view_1');
-        mockSearchParams.append('view', 'view_1');
-        mockSearchParams.append('view', 'view_2');
-        mockLocation.search = mockSearchParams.toString();
-
-        vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
-
-        const hook = await act(async () =>
-          renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.views), { wrapper: Wrapper })
-        );
-
-        expect(hook.result.current).toEqual(['view_1', 'view_1', 'view_2']);
-      });
-
-      it('should preserve view order from URL', async () => {
-        const mockSearchParams = new URLSearchParams();
-        mockSearchParams.append('view', 'view_3');
-        mockSearchParams.append('view', 'view_1');
-        mockSearchParams.append('view', 'view_2');
-        mockLocation.search = mockSearchParams.toString();
-
-        vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
-
-        const hook = await act(async () =>
-          renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.views), { wrapper: Wrapper })
-        );
-
-        expect(hook.result.current).toEqual(['view_3', 'view_1', 'view_2']);
-      });
-    });
-
     describe('invalid view IDs', () => {
       it('should not break when view ID does not exist', async () => {
-        const mockSearchParams = new URLSearchParams();
-        mockSearchParams.append('view', 'non_existent_view');
-        mockLocation.search = mockSearchParams.toString();
+        mockParameterContext.views = ['non_existent_view'];
 
-        vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
-
-        mockViewContext.getCurrentView = vi.fn(() => Promise.resolve(null));
+        mockViewContext.fetchViews = vi.fn(() => Promise.resolve([null]));
 
         const hook = await act(async () =>
           renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.search), { wrapper: Wrapper })
@@ -1016,18 +835,16 @@ describe('HitSearchContext', () => {
       });
 
       it('should skip null views and combine valid ones', async () => {
-        const mockSearchParams = new URLSearchParams();
-        mockSearchParams.append('view', 'view_1');
-        mockSearchParams.append('view', 'invalid_view');
-        mockSearchParams.append('view', 'view_2');
-        mockLocation.search = mockSearchParams.toString();
+        mockParameterContext.views = ['view_1', 'invalid_view', 'view_2'];
 
-        vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
-
-        mockViewContext.getCurrentView = vi.fn(({ viewId }) => {
-          if (viewId === 'view_1') return Promise.resolve({ view_id: 'view_1', query: 'howler.status:open' } as any);
-          if (viewId === 'view_2') return Promise.resolve({ view_id: 'view_2', query: 'howler.priority:high' } as any);
-          return Promise.resolve(null);
+        mockViewContext.fetchViews = vi.fn(viewIds => {
+          return Promise.resolve(
+            viewIds.map(id => {
+              if (id === 'view_1') return { view_id: 'view_1', query: 'howler.status:open' };
+              if (id === 'view_2') return { view_id: 'view_2', query: 'howler.priority:high' };
+              return null;
+            })
+          );
         });
 
         const hook = await act(async () =>
@@ -1053,42 +870,9 @@ describe('HitSearchContext', () => {
     });
 
     describe('automatic search triggering', () => {
-      it('should trigger search when views array changes', async () => {
-        const mockSearchParams = new URLSearchParams();
-        mockSearchParams.append('view', 'view_1');
-        vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
-
-        const hook = await act(async () =>
-          renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.response), { wrapper: Wrapper })
-        );
-
-        await waitFor(
-          () => {
-            expect(hpost).toHaveBeenCalled();
-          },
-          { timeout: 2000 }
-        );
-
-        vi.mocked(hpost).mockClear();
-
-        // Add another view
-        mockSearchParams.append('view', 'view_2');
-
-        hook.rerender();
-
-        await waitFor(
-          () => {
-            expect(hpost).toHaveBeenCalled();
-          },
-          { timeout: 2000 }
-        );
-      });
-
       it('should not trigger search when views is empty and query is DEFAULT_QUERY', async () => {
         mockParameterContext.query = DEFAULT_QUERY;
-
-        const mockSearchParams = new URLSearchParams();
-        vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
+        mockParameterContext.views = [];
 
         await act(async () =>
           renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.response), { wrapper: Wrapper })
@@ -1101,48 +885,12 @@ describe('HitSearchContext', () => {
 
       it('should trigger search when views.length > 0 even with DEFAULT_QUERY', async () => {
         mockParameterContext.query = DEFAULT_QUERY;
-
-        const mockSearchParams = new URLSearchParams();
-        mockSearchParams.append('view', 'view_1');
-        mockLocation.search = mockSearchParams.toString();
-        vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
+        mockParameterContext.views = ['view_1'];
 
         await act(async () =>
           renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.response), { wrapper: Wrapper })
         );
 
-        await waitFor(
-          () => {
-            expect(hpost).toHaveBeenCalled();
-          },
-          { timeout: 2000 }
-        );
-      });
-    });
-
-    describe('rapid view changes', () => {
-      it('should handle rapid view array changes with throttling', async () => {
-        const mockSearchParams = new URLSearchParams();
-        vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
-
-        const hook = await act(async () =>
-          renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.search), { wrapper: Wrapper })
-        );
-
-        // Make multiple rapid calls with different view combinations
-        act(() => {
-          mockSearchParams.delete('view');
-          mockSearchParams.append('view', 'view_1');
-          hook.rerender();
-
-          mockSearchParams.append('view', 'view_2');
-          hook.rerender();
-
-          mockSearchParams.append('view', 'view_3');
-          hook.rerender();
-        });
-
-        // Should throttle the calls
         await waitFor(
           () => {
             expect(hpost).toHaveBeenCalled();

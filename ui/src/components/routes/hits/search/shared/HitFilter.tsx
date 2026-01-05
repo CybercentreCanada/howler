@@ -1,4 +1,4 @@
-import { Clear, FilterList } from '@mui/icons-material';
+import { FilterList } from '@mui/icons-material';
 import type { UseAutocompleteProps } from '@mui/material';
 import { Autocomplete, Stack, TextField, Typography } from '@mui/material';
 import api from 'api';
@@ -95,7 +95,6 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
   return (
     <ChipPopper
       icon={<FilterList fontSize="small" />}
-      deleteIcon={<Clear fontSize="small" />}
       label={category && <Typography variant="body2">{`${category}:${filterValue || '*'}`}</Typography>}
       minWidth="250px"
       onDelete={() => removeSavedFilter(value)}

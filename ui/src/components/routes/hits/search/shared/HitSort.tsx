@@ -1,5 +1,5 @@
 import { Sort } from '@mui/icons-material';
-import { Autocomplete, MenuItem, Select, Stack, TextField } from '@mui/material';
+import { Autocomplete, Stack, TextField } from '@mui/material';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import ChipPopper from 'components/elements/display/ChipPopper';
@@ -85,7 +85,13 @@ const HitSort: FC<{ size?: 'small' | 'medium' }> = ({ size = 'small' }) => {
   return (
     <ChipPopper icon={<Sort fontSize="small" />} label={savedSort} slotProps={{ chip: { size: 'small' } }}>
       {!showCustomSort ? (
-        <Stack spacing={1}>
+        <Stack
+          spacing={1}
+          onClick={e => {
+            e.stopPropagation();
+            e.preventDefault();
+          }}
+        >
           <Autocomplete
             fullWidth
             sx={{ minWidth: '275px' }}
@@ -97,15 +103,18 @@ const HitSort: FC<{ size?: 'small' | 'medium' }> = ({ size = 'small' }) => {
             renderInput={_params => <TextField {..._params} label={t('hit.search.sort.fields')} />}
             onChange={(_, value) => handleChange(value)}
           />
-          <Select
+          <Autocomplete
+            fullWidth
             size={size}
             sx={{ minWidth: '150px' }}
             value={sort}
-            onChange={e => setSavedSort(`${field} ${e.target.value as 'asc' | 'desc'}`)}
-          >
-            <MenuItem value="asc">{t('asc')}</MenuItem>
-            <MenuItem value="desc">{t('desc')}</MenuItem>
-          </Select>
+            onChange={(_e, value) => {
+              setSavedSort(`${field} ${value as 'asc' | 'desc'}`);
+            }}
+            options={['asc', 'desc']}
+            getOptionLabel={option => t(option)}
+            renderInput={_params => <TextField {..._params} />}
+          />
         </Stack>
       ) : (
         <CustomSort />

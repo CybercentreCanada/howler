@@ -56,8 +56,7 @@ describe('ChipPopper', () => {
       );
 
       // Content should not be visible initially
-      const content = screen.queryByTestId('popper-content');
-      expect(content).not.toBeVisible();
+      expect(screen.queryByTestId('popper-content')).toBeNull();
     });
   });
 
@@ -95,7 +94,7 @@ describe('ChipPopper', () => {
       // Close
       await user.click(chip);
       await waitFor(() => {
-        expect(screen.queryByTestId('popper-content')).not.toBeVisible();
+        expect(screen.queryByTestId('popper-content')).toBeNull();
       });
     });
 
@@ -160,7 +159,7 @@ describe('ChipPopper', () => {
       await user.click(outsideButton);
 
       await waitFor(() => {
-        expect(screen.queryByTestId('popper-content')).not.toBeVisible();
+        expect(screen.queryByTestId('popper-content')).toBeNull();
       });
     });
 

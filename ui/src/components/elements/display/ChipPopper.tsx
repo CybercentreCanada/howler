@@ -4,9 +4,9 @@ import type { FC, ReactElement, ReactNode } from 'react';
 import { memo, useRef, useState } from 'react';
 
 interface ChipPopperProps {
-  icon: ReactElement;
+  icon?: ReactElement;
   deleteIcon?: ReactElement;
-  label: ReactNode;
+  label?: ReactNode;
   children: ReactNode;
   slotProps?: {
     chip?: Partial<ChipProps>;
@@ -17,6 +17,7 @@ interface ChipPopperProps {
   placement?: 'bottom-start' | 'bottom-end' | 'bottom';
   onToggle?: (show: boolean) => void;
   onDelete?: (event?: any) => void;
+  toggleOnDelete?: boolean;
 }
 
 const ChipPopper: FC<ChipPopperProps> = ({
@@ -28,6 +29,7 @@ const ChipPopper: FC<ChipPopperProps> = ({
   placement = 'bottom-start',
   onToggle,
   onDelete,
+  toggleOnDelete,
   slotProps = {}
 }) => {
   const [show, setShow] = useState(false);
@@ -48,7 +50,7 @@ const ChipPopper: FC<ChipPopperProps> = ({
           e.stopPropagation();
           handleToggle(!show);
         }}
-        onDelete={onDelete}
+        onDelete={onDelete ?? (toggleOnDelete ? () => handleToggle(!show) : null)}
         ref={anchorEl}
         sx={[
           theme => ({
@@ -74,8 +76,8 @@ const ChipPopper: FC<ChipPopperProps> = ({
           zIndex: 1
         }}
       >
-        <Collapse in={show}>
-          <ClickAwayListener onClickAway={() => handleToggle(false)}>
+        <Collapse in={show} unmountOnExit>
+          <ClickAwayListener onClickAway={e => handleToggle(false)}>
             <Paper
               sx={[
                 { borderTopLeftRadius: 0, borderTopRightRadius: 0, px: 1, py: 2 },

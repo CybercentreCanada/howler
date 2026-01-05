@@ -2,6 +2,7 @@ import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
 import useMyApi from 'components/hooks/useMyApi';
 import useMyLocalStorage, { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
+import dayjs from 'dayjs';
 import i18n from 'i18n';
 import { cloneDeep } from 'lodash-es';
 import isNull from 'lodash-es/isNull';
@@ -36,17 +37,17 @@ interface HitSearchProviderType {
   searching: boolean;
   error: string | null;
   response: HowlerSearchResponse<WithMetadata<Hit>> | null;
-  views: string[];
   /** @deprecated Use views[0] instead. Maintained for backward compatibility */
   viewId?: string;
   bundleId: string | null;
-  queryHistory: QueryEntry;
   fzfSearch: boolean;
 
   setDisplayType: (type: 'list' | 'grid') => void;
-  setQueryHistory: Dispatch<SetStateAction<QueryEntry>>;
   setFzfSearch: Dispatch<SetStateAction<boolean>>;
   search: (query: string, appendResults?: boolean) => void;
+
+  queryHistory: QueryEntry;
+  setQueryHistory: ReturnType<typeof useMyLocalStorageItem>[1];
 }
 
 export const HitSearchContext = createContext<HitSearchProviderType>(null);
@@ -61,7 +62,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const getCurrentView = useContextSelector(ViewContext, ctx => ctx.getCurrentView);
+  const fetchViews = useContextSelector(ViewContext, ctx => ctx.fetchViews);
   const defaultView = useContextSelector(ViewContext, ctx => ctx.defaultView);
 
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
@@ -74,6 +75,8 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const allFilters = useContextSelector(ParameterContext, ctx => ctx.filters);
   const startDate = useContextSelector(ParameterContext, ctx => ctx.startDate);
   const endDate = useContextSelector(ParameterContext, ctx => ctx.endDate);
+  const views = useContextSelector(ParameterContext, ctx => ctx.views);
+  const addView = useContextSelector(ParameterContext, ctx => ctx.addView);
 
   const loadHits = useContextSelector(HitContext, ctx => ctx.loadHits);
 
@@ -81,27 +84,10 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const [searching, setSearching] = useState<boolean>(false);
   const [error, setError] = useState<string>(null);
   const [response, setResponse] = useState<HowlerSearchResponse<WithMetadata<Hit>>>(null);
-  const [queryHistory, setQueryHistory] = useState<QueryEntry>(
-    get(StorageKey.QUERY_HISTORY) || { 'howler.id: *': new Date().toISOString() }
-  );
+  const [queryHistory, setQueryHistory] = useMyLocalStorageItem<Record<string, string>>(StorageKey.QUERY_HISTORY, {
+    'howler.id: *': new Date().toISOString()
+  });
   const [fzfSearch, setFzfSearch] = useState<boolean>(false);
-
-  const views = useMemo(() => {
-    const viewsArray: string[] = [];
-
-    // Add route param view if on /views route
-    if (location.pathname.startsWith('/views') && routeParams.id) {
-      viewsArray.push(routeParams.id);
-    }
-
-    // Add all query param views
-    const queryViews = searchParams.getAll('view');
-    viewsArray.push(...queryViews);
-
-    return viewsArray;
-  }, [location.pathname, routeParams.id, searchParams.getAll('view').length]);
-
-  console.log(views);
 
   const viewId = useMemo(() => views[0] ?? null, [views]);
 
@@ -112,14 +98,19 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
 
   const filters = useMemo(() => allFilters.filter(filter => !filter.endsWith('*')), [allFilters]);
 
-  // Inject default view into URL when no views present and not on /views route
+  // On load check to filter out any queries older than one month
   useEffect(() => {
-    if (views.length === 0 && !location.pathname.startsWith('/views') && defaultView) {
-      const newParams = new URLSearchParams(searchParams);
-      newParams.set('view', defaultView);
-      setSearchParams(newParams, { replace: true });
+    const filterQueryTime = dayjs().subtract(1, 'month').toISOString();
+
+    setQueryHistory(Object.fromEntries(Object.entries(queryHistory).filter(([_, value]) => value > filterQueryTime)));
+  }, []);
+
+  // Inject default view into URL when no views present
+  useEffect(() => {
+    if (views.length === 0 && defaultView) {
+      addView(defaultView);
     }
-  }, [views.length, location.pathname, defaultView, searchParams, setSearchParams]);
+  }, [views.length, defaultView]);
 
   const search = useCallback(
     async (_query?: string, appendResults?: boolean) => {
@@ -135,6 +126,11 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
 
         if (!isNull(_query) && !isUndefined(_query) && _query !== query) {
           setQuery(_query);
+
+          setQueryHistory({
+            ...queryHistory,
+            [_query]: new Date().toISOString()
+          });
         }
 
         setSearching(true);
@@ -156,7 +152,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
             fullQuery = `(howler.bundles:${bundle}) AND (${fullQuery})`;
           } else if (views.length > 0) {
             // Fetch all view queries
-            const viewObjects = await Promise.all(views.map(viewId => getCurrentView({ viewId })));
+            const viewObjects = await fetchViews(views);
 
             // Filter out null/undefined views and extract queries
             const viewQueries = viewObjects.filter(view => view?.query).map(view => view.query);
@@ -222,7 +218,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
       pageCount,
       trackTotalHits,
       loadHits,
-      getCurrentView,
+      fetchViews,
       setOffset
     ]
   );
@@ -262,7 +258,6 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
         searching,
         error,
         response,
-        views,
         viewId,
         bundleId,
         setQueryHistory,

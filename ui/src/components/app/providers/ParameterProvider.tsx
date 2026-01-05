@@ -16,17 +16,24 @@ export interface ParameterContextType {
   filters?: string[];
   startDate?: string;
   endDate?: string;
+  views?: string[];
 
   setSelected: (id: string) => void;
   setQuery: (id: string) => void;
   setOffset: (offset: string | number) => void;
   setSort: (sort: string) => void;
   setSpan: (span: string) => void;
+  setCustomSpan: (startDate: string, endDate: string) => void;
+
   addFilter: (filter: string) => void;
   removeFilter: (filter: string) => void;
   setFilter: (index: number, filter: string) => void;
   clearFilters: () => void;
-  setCustomSpan: (startDate: string, endDate: string) => void;
+
+  addView: (view: string) => void;
+  removeView: (view: string) => void;
+  setView: (index: number, view: string) => void;
+  clearViews: () => void;
 }
 
 interface SearchValues {
@@ -35,6 +42,7 @@ interface SearchValues {
   sort: string;
   span: string;
   filters: string[];
+  views: string[];
   startDate: string;
   endDate: string;
   offset: number;
@@ -107,6 +115,7 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
     sort: params.get('sort') ?? DEFAULT_VALUES.sort,
     span: params.get('span') ?? DEFAULT_VALUES.span,
     filters: params.getAll('filter'),
+    views: params.getAll('view'),
     startDate: params.get('start_date'),
     endDate: params.get('end_date'),
     offset: parseOffset(params.get('offset')),
@@ -120,6 +129,11 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
       key => value => {
         if ((key as string) === 'filters') {
           console.error('Cannot use set() for filters. Use addFilter/removeFilter/clearFilters instead.');
+          return;
+        }
+
+        if ((key as string) === 'views') {
+          console.error('Cannot use set() for views. Use addView/removeView/clearViews instead.');
           return;
         }
 
@@ -159,6 +173,9 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
     }));
   }, []);
 
+  /**
+   * Filter manipulation
+   */
   const addFilter: ParameterContextType['addFilter'] = useCallback(filter => {
     _setValues(_current => ({
       ..._current,
@@ -202,6 +219,52 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
   }, []);
 
   /**
+   * View manipulation
+   */
+  const addView: ParameterContextType['addView'] = useCallback(view => {
+    _setValues(_current => ({
+      ..._current,
+      views: uniq([..._current.views, view])
+    }));
+  }, []);
+
+  const removeView: ParameterContextType['removeView'] = useCallback(view => {
+    _setValues(_current => {
+      const index = _current.views.indexOf(view);
+      if (index === -1) {
+        return _current;
+      }
+
+      return {
+        ..._current,
+        views: _current.views.filter((_, i) => i !== index)
+      };
+    });
+  }, []);
+
+  const setView: ParameterContextType['setView'] = useCallback((index, view) => {
+    _setValues(_current => {
+      // Validate index
+      if (index < 0 || index >= _current.views.length) {
+        return _current;
+      }
+      const newViews = [..._current.views];
+      newViews[index] = view;
+      return {
+        ..._current,
+        views: newViews
+      };
+    });
+  }, []);
+
+  const clearViews: ParameterContextType['clearViews'] = useCallback(() => {
+    _setValues(_current => ({
+      ..._current,
+      views: []
+    }));
+  }, []);
+
+  /**
    * Get URL parameter changes needed to sync internal state to the address bar.
    * Returns null values for params that should be removed from URL.
    */
@@ -229,6 +292,13 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
       (changes as any).filters = values.filters.length === 0 ? null : values.filters;
     }
 
+    // Handle views: compare arrays with isEqual
+    const urlViews = params.getAll('view');
+    if (!isEqual(values.views, urlViews)) {
+      // Coerce empty array to null for removal signal
+      (changes as any).views = values.views.length === 0 ? null : values.views;
+    }
+
     // Handle selected: remove if redundant in bundle context, otherwise set
     if (
       location.pathname.startsWith('/bundles') &&
@@ -245,11 +315,12 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
       changes.offset = values.offset || null;
     }
 
-    // Filter out values that already match the URL (skip 'filters' as it's handled above)
+    // Filter out values that already match the URL (skip 'filters', 'views' as they're handled above)
     return omitBy(changes, (val, key) => {
-      if (key === 'filters') {
-        return false; // Don't filter out filters, we already handled it
+      if (['filters', 'views'].includes(key)) {
+        return false;
       }
+
       return val == params.get(key);
     });
   }, [values, params, location.pathname]);
@@ -269,9 +340,15 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
     });
 
     // Handle filters: compare arrays with isEqual
-    const urlFilters = params.getAll('filter');
+    const urlFilters = uniq(params.getAll('filter'));
     if (!isEqual(urlFilters, values.filters)) {
       changes.filters = urlFilters;
+    }
+
+    // Handle filters: compare arrays with isEqual
+    const urlViews = uniq(params.getAll('view'));
+    if (!isEqual(urlViews, values.views)) {
+      changes.views = urlViews;
     }
 
     // Handle selected using helper
@@ -307,11 +384,13 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
 
         // Handle standard params
         Object.entries(changes).forEach(([key, value]) => {
-          if (key === 'filters') {
-            // Special handling for filters array
-            newParams.delete('filter');
+          if (['filters', 'views'].includes(key)) {
+            const multiFieldKey = key.replace(/s$/, '');
+
+            // Special handling for arrays
+            newParams.delete(multiFieldKey);
             if (Array.isArray(value)) {
-              value.forEach(filter => newParams.append('filter', filter));
+              value.forEach(val => newParams.append(multiFieldKey, val));
             }
             // null/undefined means remove (already deleted above)
           } else if (value === null || value === undefined) {
@@ -349,15 +428,21 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
 
         setOffset,
         setCustomSpan,
+
+        setSelected: useMemo(() => set('selected'), [set]),
+        setQuery: useMemo(() => set('query'), [set]),
+        setSort: useMemo(() => set('sort'), [set]),
+        setSpan: useMemo(() => set('span'), [set]),
+
         addFilter,
         removeFilter,
         setFilter,
         clearFilters,
 
-        setSelected: useMemo(() => set('selected'), [set]),
-        setQuery: useMemo(() => set('query'), [set]),
-        setSort: useMemo(() => set('sort'), [set]),
-        setSpan: useMemo(() => set('span'), [set])
+        addView,
+        removeView,
+        setView,
+        clearViews
       }}
     >
       {children}

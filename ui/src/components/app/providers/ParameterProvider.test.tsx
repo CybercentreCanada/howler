@@ -278,6 +278,19 @@ describe('ParameterContext', () => {
       expect(hook.result.current).toEqual(['c', 'a', 'b']);
     });
 
+    it('should deduplicate multiple empty filter params to single empty string', async () => {
+      mockSearchParams = new URLSearchParams();
+      mockSearchParams.append('filter', '');
+      mockSearchParams.append('filter', '');
+      mockSearchParams.append('filter', '');
+
+      const hook = await act(async () =>
+        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.filters), { wrapper: Wrapper })
+      );
+
+      expect(hook.result.current).toEqual(['']);
+    });
+
     describe('addFilter', () => {
       it('should add a filter to empty array', async () => {
         const hook = await act(async () =>
@@ -372,32 +385,6 @@ describe('ParameterContext', () => {
 
         await waitFor(() => {
           expect(hook.result.current.filters).toEqual(['filter1', 'filter3']);
-        });
-      });
-
-      it('should remove only first occurrence of duplicate filters', async () => {
-        mockSearchParams = new URLSearchParams();
-        mockSearchParams.append('filter', 'dup');
-        mockSearchParams.append('filter', 'dup');
-        mockSearchParams.append('filter', 'other');
-
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                filters: ctx.filters,
-                removeFilter: ctx.removeFilter
-              })),
-            { wrapper: Wrapper }
-          )
-        );
-
-        await act(async () => {
-          hook.result.current.removeFilter('dup');
-        });
-
-        await waitFor(() => {
-          expect(hook.result.current.filters).toEqual(['dup', 'other']);
         });
       });
 
@@ -1148,6 +1135,556 @@ describe('ParameterContext', () => {
 
       await waitFor(() => {
         expect(hook.result.current).toBe('bundle_456');
+      });
+    });
+  });
+
+  describe('views (multi-view support)', () => {
+    it('should initialize with empty array when no view params present', async () => {
+      const hook = await act(async () =>
+        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.views), { wrapper: Wrapper })
+      );
+
+      expect(hook.result.current).toEqual([]);
+    });
+
+    it('should initialize with single view from URL', async () => {
+      mockSearchParams = new URLSearchParams({ view: 'view_1' });
+
+      const hook = await act(async () =>
+        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.views), { wrapper: Wrapper })
+      );
+
+      expect(hook.result.current).toEqual(['view_1']);
+    });
+
+    it('should initialize with multiple views from URL', async () => {
+      mockSearchParams = new URLSearchParams();
+      mockSearchParams.append('view', 'view_1');
+      mockSearchParams.append('view', 'view_2');
+
+      const hook = await act(async () =>
+        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.views), { wrapper: Wrapper })
+      );
+
+      expect(hook.result.current).toEqual(['view_1', 'view_2']);
+    });
+
+    it('should preserve view order from URL', async () => {
+      mockSearchParams = new URLSearchParams();
+      mockSearchParams.append('view', 'view_c');
+      mockSearchParams.append('view', 'view_a');
+      mockSearchParams.append('view', 'view_b');
+
+      const hook = await act(async () =>
+        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.views), { wrapper: Wrapper })
+      );
+
+      expect(hook.result.current).toEqual(['view_c', 'view_a', 'view_b']);
+    });
+
+    it('should deduplicate multiple empty view params to single empty string', async () => {
+      mockSearchParams = new URLSearchParams();
+      mockSearchParams.append('view', '');
+      mockSearchParams.append('view', '');
+      mockSearchParams.append('view', '');
+
+      const hook = await act(async () =>
+        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.views), { wrapper: Wrapper })
+      );
+
+      expect(hook.result.current).toEqual(['']);
+    });
+
+    describe('addView', () => {
+      it('should add a view to empty array', async () => {
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                views: ctx.views,
+                addView: ctx.addView
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.addView('view_1');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.views).toEqual(['view_1']);
+        });
+      });
+
+      it('should append view to existing views', async () => {
+        mockSearchParams = new URLSearchParams({ view: 'existing_view' });
+
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                views: ctx.views,
+                addView: ctx.addView
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.addView('new_view');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.views).toEqual(['existing_view', 'new_view']);
+        });
+      });
+
+      it('should not add duplicate views', async () => {
+        mockSearchParams = new URLSearchParams({ view: 'view_1' });
+
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                views: ctx.views,
+                addView: ctx.addView
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.addView('view_1');
+        });
+
+        await waitFor(() => {
+          // Should still have only one view, not two
+          expect(hook.result.current.views).toEqual(['view_1']);
+        });
+      });
+    });
+
+    describe('removeView', () => {
+      it('should remove first matching view', async () => {
+        mockSearchParams = new URLSearchParams();
+        mockSearchParams.append('view', 'view_1');
+        mockSearchParams.append('view', 'view_2');
+        mockSearchParams.append('view', 'view_3');
+
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                views: ctx.views,
+                removeView: ctx.removeView
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.removeView('view_2');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.views).toEqual(['view_1', 'view_3']);
+        });
+      });
+
+      it('should remove only first occurrence of duplicate views', async () => {
+        mockSearchParams = new URLSearchParams();
+        mockSearchParams.append('view', 'dup');
+        mockSearchParams.append('view', 'dup');
+        mockSearchParams.append('view', 'other');
+
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                views: ctx.views,
+                removeView: ctx.removeView
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.removeView('dup');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.views).toEqual(['other']);
+        });
+      });
+
+      it('should do nothing when removing nonexistent view', async () => {
+        mockSearchParams = new URLSearchParams({ view: 'existing' });
+
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                views: ctx.views,
+                removeView: ctx.removeView
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.removeView('nonexistent');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.views).toEqual(['existing']);
+        });
+      });
+
+      it('should handle removing from empty array', async () => {
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                views: ctx.views,
+                removeView: ctx.removeView
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.removeView('anything');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.views).toEqual([]);
+        });
+      });
+    });
+
+    describe('clearViews', () => {
+      it('should clear all views', async () => {
+        mockSearchParams = new URLSearchParams();
+        mockSearchParams.append('view', 'view_1');
+        mockSearchParams.append('view', 'view_2');
+
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                views: ctx.views,
+                clearViews: ctx.clearViews
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.clearViews();
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.views).toEqual([]);
+        });
+      });
+
+      it('should be no-op when already empty', async () => {
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                views: ctx.views,
+                clearViews: ctx.clearViews
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.clearViews();
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.views).toEqual([]);
+        });
+      });
+    });
+
+    describe('setView', () => {
+      it('should update view at specified index', async () => {
+        mockSearchParams = new URLSearchParams();
+        mockSearchParams.append('view', 'view_1');
+        mockSearchParams.append('view', 'view_2');
+        mockSearchParams.append('view', 'view_3');
+
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                views: ctx.views,
+                setView: ctx.setView
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.setView(1, 'updated_view');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.views).toEqual(['view_1', 'updated_view', 'view_3']);
+        });
+      });
+
+      it('should update view at index 0', async () => {
+        mockSearchParams = new URLSearchParams();
+        mockSearchParams.append('view', 'old_view');
+        mockSearchParams.append('view', 'view_2');
+
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                views: ctx.views,
+                setView: ctx.setView
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.setView(0, 'new_view');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.views).toEqual(['new_view', 'view_2']);
+        });
+      });
+
+      it('should update view at last index', async () => {
+        mockSearchParams = new URLSearchParams();
+        mockSearchParams.append('view', 'view_1');
+        mockSearchParams.append('view', 'old_last');
+
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                views: ctx.views,
+                setView: ctx.setView
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.setView(1, 'new_last');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.views).toEqual(['view_1', 'new_last']);
+        });
+      });
+
+      it('should do nothing when index is out of bounds', async () => {
+        mockSearchParams = new URLSearchParams({ view: 'existing' });
+
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                views: ctx.views,
+                setView: ctx.setView
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.setView(5, 'new_view');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.views).toEqual(['existing']);
+        });
+      });
+
+      it('should do nothing when index is negative', async () => {
+        mockSearchParams = new URLSearchParams({ view: 'existing' });
+
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                views: ctx.views,
+                setView: ctx.setView
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.setView(-1, 'new_view');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.views).toEqual(['existing']);
+        });
+      });
+
+      it('should do nothing when array is empty', async () => {
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                views: ctx.views,
+                setView: ctx.setView
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.setView(0, 'new_view');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.views).toEqual([]);
+        });
+      });
+
+      it('should sync updated view to URL', async () => {
+        mockSearchParams = new URLSearchParams();
+        mockSearchParams.append('view', 'view_1');
+        mockSearchParams.append('view', 'view_2');
+
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                setView: ctx.setView
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.setView(0, 'updated_view');
+        });
+
+        await waitFor(() => {
+          expect(mockSetParams).toHaveBeenCalled();
+          const call = mockSetParams.mock.calls[mockSetParams.mock.calls.length - 1];
+          const urlParams = typeof call[0] === 'function' ? call[0](mockSearchParams) : call[0];
+          expect(urlParams.getAll('view')).toEqual(['updated_view', 'view_2']);
+        });
+      });
+    });
+
+    describe('URL synchronization', () => {
+      it('should sync single view to URL as view param', async () => {
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                addView: ctx.addView
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.addView('test_view');
+        });
+
+        await waitFor(() => {
+          expect(mockSetParams).toHaveBeenCalled();
+          const call = mockSetParams.mock.calls[mockSetParams.mock.calls.length - 1];
+          const urlParams = typeof call[0] === 'function' ? call[0](mockSearchParams) : call[0];
+          expect(urlParams.getAll('view')).toEqual(['test_view']);
+        });
+      });
+
+      it('should sync multiple views to URL as multiple view params', async () => {
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                addView: ctx.addView
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.addView('view_1');
+        });
+
+        await act(async () => {
+          hook.result.current.addView('view_2');
+        });
+
+        await waitFor(() => {
+          expect(mockSetParams).toHaveBeenCalled();
+          const call = mockSetParams.mock.calls[mockSetParams.mock.calls.length - 1];
+          const urlParams = typeof call[0] === 'function' ? call[0](mockSearchParams) : call[0];
+          expect(urlParams.getAll('view')).toEqual(['view_1', 'view_2']);
+        });
+      });
+
+      it('should remove all view params when views is empty', async () => {
+        mockSearchParams = new URLSearchParams();
+        mockSearchParams.append('view', 'view_1');
+        mockSearchParams.append('view', 'view_2');
+
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                clearViews: ctx.clearViews
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.clearViews();
+        });
+
+        await waitFor(() => {
+          expect(mockSetParams).toHaveBeenCalled();
+          const call = mockSetParams.mock.calls[mockSetParams.mock.calls.length - 1];
+          const urlParams = typeof call[0] === 'function' ? call[0](mockSearchParams) : call[0];
+          expect(urlParams.getAll('view')).toEqual([]);
+        });
+      });
+
+      it('should preserve view order when syncing to URL', async () => {
+        const hook = await act(async () =>
+          renderHook(
+            () =>
+              useContextSelector(ParameterContext, ctx => ({
+                addView: ctx.addView
+              })),
+            { wrapper: Wrapper }
+          )
+        );
+
+        await act(async () => {
+          hook.result.current.addView('z');
+          hook.result.current.addView('a');
+          hook.result.current.addView('m');
+        });
+
+        await waitFor(() => {
+          expect(mockSetParams).toHaveBeenCalled();
+          const call = mockSetParams.mock.calls[mockSetParams.mock.calls.length - 1];
+          const urlParams = typeof call[0] === 'function' ? call[0](mockSearchParams) : call[0];
+          expect(urlParams.getAll('view')).toEqual(['z', 'a', 'm']);
+        });
       });
     });
   });

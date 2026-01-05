@@ -22,12 +22,11 @@ import FlexPort from 'components/elements/addons/layout/FlexPort';
 import HitSummary from 'components/elements/hit/HitSummary';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import ErrorBoundary from 'components/routes/ErrorBoundary';
-import dayjs from 'dayjs';
 import { has, isNull } from 'lodash-es';
 import type { FC, ReactNode } from 'react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
 import InformationPane from './InformationPane';
@@ -81,14 +80,8 @@ const HitBrowser: FC = () => {
   const viewId = useContextSelector(HitSearchContext, ctx => ctx.viewId);
   const response = useContextSelector(HitSearchContext, ctx => ctx.response);
 
-  const queryHistory = useContextSelector(HitSearchContext, ctx => ctx?.queryHistory ?? {});
-  const setQueryHistory = useContextSelector(HitSearchContext, ctx => ctx?.setQueryHistory);
-
-  const setQueryList = useMyLocalStorageItem(StorageKey.QUERY_HISTORY, '')[1];
-
   const location = useLocation();
   const routeParams = useParams();
-  const [searchParams] = useSearchParams();
 
   const [show, setShow] = useState(!!selected);
   useEffect(() => setShow(!!selected), [selected]);
@@ -120,29 +113,6 @@ const HitBrowser: FC = () => {
 
     return false;
   }, [selected, selectedHits]);
-
-  useEffect(() => {
-    const newQuery = searchParams.get('query');
-    if (newQuery) {
-      setQueryHistory(_queryHistory => ({
-        ..._queryHistory,
-        [newQuery]: new Date().toISOString()
-      }));
-    }
-  }, [searchParams, setQueryHistory]);
-
-  useEffect(() => {
-    setQueryList(JSON.stringify(queryHistory));
-  }, [queryHistory, setQueryList]);
-
-  useEffect(() => {
-    // On load check to filter out any queries older than one month
-    setQueryHistory(_queryHistory => {
-      const filterQueryTime = dayjs().subtract(1, 'month').toISOString();
-
-      return Object.fromEntries(Object.entries(_queryHistory).filter(([_, value]) => value > filterQueryTime));
-    });
-  }, [setQueryHistory]);
 
   useEffect(() => {
     if (!location.pathname.startsWith('/views') || !viewId || has(views, viewId)) {

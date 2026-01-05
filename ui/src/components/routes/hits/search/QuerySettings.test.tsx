@@ -1,7 +1,7 @@
 /* eslint-disable react/jsx-no-literals */
 /* eslint-disable import/imports-first */
 /// <reference types="vitest" />
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { act, type PropsWithChildren } from 'react';
 import { setupContextSelectorMock } from 'tests/mocks';
@@ -29,11 +29,14 @@ vi.mock('./shared/SearchSpan', () => ({
 }));
 
 vi.mock('./ViewLink', () => ({
-  default: () => <div id="view-link">ViewLink</div>
+  default: ({ id, viewId }: { id: number; viewId: string }) => (
+    <div id={`view-link-${id}`} data-view-id={viewId}>
+      ViewLink {id}: {viewId}
+    </div>
+  )
 }));
 
 // Import component after mocks
-import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import i18n from 'i18n';
@@ -44,17 +47,18 @@ import QuerySettings from './QuerySettings';
 
 // Mock contexts
 const mockAddFilter = vi.fn();
+const mockAddView = vi.fn();
+const mockFetchViews = vi.fn();
 let mockParameterContext = {
   filters: [] as string[],
-  addFilter: mockAddFilter
-};
-
-let mockHitSearchContext = {
-  viewId: null as string | null
+  views: [] as string[],
+  addFilter: mockAddFilter,
+  addView: mockAddView
 };
 
 let mockViewContext = {
-  views: {} as Record<string, View>
+  views: {} as Record<string, View>,
+  fetchViews: mockFetchViews
 };
 
 // Test wrapper
@@ -62,9 +66,7 @@ const Wrapper = ({ children }: PropsWithChildren) => {
   return (
     <I18nextProvider i18n={i18n as any}>
       <ParameterContext.Provider value={mockParameterContext as any}>
-        <HitSearchContext.Provider value={mockHitSearchContext as any}>
-          <ViewContext.Provider value={mockViewContext as any}>{children}</ViewContext.Provider>
-        </HitSearchContext.Provider>
+        <ViewContext.Provider value={mockViewContext as any}>{children}</ViewContext.Provider>
       </ParameterContext.Provider>
     </I18nextProvider>
   );
@@ -79,18 +81,21 @@ describe('QuerySettings', () => {
 
     // Reset mock contexts to defaults
     mockParameterContext.filters = [];
+    mockParameterContext.views = [];
     mockParameterContext.addFilter = mockAddFilter;
-    mockHitSearchContext.viewId = null;
+    mockParameterContext.addView = mockAddView;
     mockViewContext.views = {};
+    mockViewContext.fetchViews = mockFetchViews;
+    mockFetchViews.mockResolvedValue(undefined);
   });
 
   describe('Rendering Conditions', () => {
-    it('should render all core components when no filters exist', () => {
+    it('should render all core components when no filters or views exist', () => {
       render(<QuerySettings />, { wrapper: Wrapper });
 
       expect(screen.getByTestId('hit-sort')).toBeInTheDocument();
       expect(screen.getByTestId('search-span')).toBeInTheDocument();
-      expect(screen.getByTestId('view-link')).toBeInTheDocument();
+      expect(screen.queryByTestId(/^view-link-/)).not.toBeInTheDocument();
     });
 
     it('should render with default boxSx when not provided', () => {
@@ -108,44 +113,77 @@ describe('QuerySettings', () => {
       expect(screen.getByTestId('hit-sort')).toBeInTheDocument();
     });
 
-    it('should render Add Filter button when no filters exist', () => {
+    it('should render Add buttons in ChipPopper', async () => {
       render(<QuerySettings />, { wrapper: Wrapper });
 
-      const addButton = screen.getByRole('button');
-      expect(addButton).toBeInTheDocument();
+      // Open the ChipPopper to see buttons
+      const chipButton = screen.getByRole('button');
+      await user.click(chipButton);
+
+      expect(screen.getByLabelText(i18n.t('hit.search.filter.add'))).toBeInTheDocument();
+      expect(screen.getByLabelText(i18n.t('hit.search.view.add'))).toBeInTheDocument();
     });
+  });
 
-    it('should render disabled state when viewId exists but selectedView is null', () => {
-      mockHitSearchContext.viewId = 'test-view-id';
-      mockViewContext.views = {
-        'test-view-id': null
-      };
-
-      const { container } = render(<QuerySettings />, { wrapper: Wrapper });
-
-      // Check for opacity styling on grid
-      const grid = container.querySelector('[class*="MuiGrid-container"]');
-      expect(grid).toBeInTheDocument();
-    });
-
-    it('should render normal state when viewId is null', () => {
-      mockHitSearchContext.viewId = null;
-
-      const { container } = render(<QuerySettings />, { wrapper: Wrapper });
-
-      const grid = container.querySelector('[class*="MuiGrid-container"]');
-      expect(grid).toBeInTheDocument();
-    });
-
-    it('should render normal state when viewId exists and selectedView exists', () => {
-      mockHitSearchContext.viewId = 'test-view-id';
-      mockViewContext.views = {
-        'test-view-id': createMockView()
-      };
+  describe('Views Display', () => {
+    it('should render no ViewLink components when views array is empty', () => {
+      mockParameterContext.views = [];
 
       render(<QuerySettings />, { wrapper: Wrapper });
 
-      expect(screen.getByTestId('hit-sort')).toBeInTheDocument();
+      expect(screen.queryByTestId(/^view-link-/)).not.toBeInTheDocument();
+    });
+
+    it('should render single ViewLink component when one view exists', () => {
+      mockParameterContext.views = ['view-1'];
+
+      render(<QuerySettings />, { wrapper: Wrapper });
+
+      expect(screen.getByTestId('view-link-0')).toBeInTheDocument();
+      expect(screen.getByTestId('view-link-0')).toHaveAttribute('data-view-id', 'view-1');
+    });
+
+    it('should render multiple ViewLink components when multiple views exist', () => {
+      mockParameterContext.views = ['view-1', 'view-2', 'view-3'];
+
+      render(<QuerySettings />, { wrapper: Wrapper });
+
+      expect(screen.getByTestId('view-link-0')).toBeInTheDocument();
+      expect(screen.getByTestId('view-link-1')).toBeInTheDocument();
+      expect(screen.getByTestId('view-link-2')).toBeInTheDocument();
+
+      expect(screen.getByTestId('view-link-0')).toHaveAttribute('data-view-id', 'view-1');
+      expect(screen.getByTestId('view-link-1')).toHaveAttribute('data-view-id', 'view-2');
+      expect(screen.getByTestId('view-link-2')).toHaveAttribute('data-view-id', 'view-3');
+    });
+
+    it('should maintain view order in display', () => {
+      mockParameterContext.views = ['view-z', 'view-a', 'view-m'];
+
+      render(<QuerySettings />, { wrapper: Wrapper });
+
+      expect(screen.getByTestId('view-link-0')).toHaveAttribute('data-view-id', 'view-z');
+      expect(screen.getByTestId('view-link-1')).toHaveAttribute('data-view-id', 'view-a');
+      expect(screen.getByTestId('view-link-2')).toHaveAttribute('data-view-id', 'view-m');
+    });
+
+    it('should pass correct id prop to each ViewLink', () => {
+      mockParameterContext.views = ['view1', 'view2', 'view3'];
+
+      render(<QuerySettings />, { wrapper: Wrapper });
+
+      expect(screen.getByText('ViewLink 0: view1')).toBeInTheDocument();
+      expect(screen.getByText('ViewLink 1: view2')).toBeInTheDocument();
+      expect(screen.getByText('ViewLink 2: view3')).toBeInTheDocument();
+    });
+
+    it('should handle empty string view (selection mode)', () => {
+      mockParameterContext.views = ['', 'valid-view'];
+
+      render(<QuerySettings />, { wrapper: Wrapper });
+
+      expect(screen.getByTestId('view-link-0')).toHaveAttribute('data-view-id', '');
+      expect(screen.getByTestId('view-link-1')).toHaveAttribute('data-view-id', 'valid-view');
     });
   });
 
@@ -202,52 +240,129 @@ describe('QuerySettings', () => {
     });
 
     it('should handle empty string filters', () => {
-      mockParameterContext.filters = ['', 'valid:filter', ''];
+      mockParameterContext.filters = ['', 'valid:filter'];
 
       render(<QuerySettings />, { wrapper: Wrapper });
 
       expect(screen.getByTestId('hit-filter-0')).toHaveAttribute('data-value', '');
       expect(screen.getByTestId('hit-filter-1')).toHaveAttribute('data-value', 'valid:filter');
-      expect(screen.getByTestId('hit-filter-2')).toHaveAttribute('data-value', '');
     });
   });
 
-  describe('Add Filter Button', () => {
-    it('should call addFilter with default filter when Add button clicked', async () => {
+  describe('Add Filter and View Buttons', () => {
+    it('should call addFilter when Add Filter button clicked', async () => {
       render(<QuerySettings />, { wrapper: Wrapper });
 
-      const addButton = screen.getByLabelText(i18n.t('hit.search.filter.add'));
-      await user.click(addButton);
+      const chipButton = screen.getByRole('button');
+      await user.click(chipButton);
+
+      const addFilterButton = screen.getByLabelText(i18n.t('hit.search.filter.add'));
+      await user.click(addFilterButton);
 
       expect(mockAddFilter).toHaveBeenCalledWith('howler.assessment:*');
       expect(mockAddFilter).toHaveBeenCalledTimes(1);
     });
 
-    it('should display Add icon on the button', () => {
+    it('should call fetchViews and addView when Add View button clicked', async () => {
+      mockViewContext.views = {
+        'view-1': createMockView({ view_id: 'view-1' })
+      };
+
       render(<QuerySettings />, { wrapper: Wrapper });
 
-      const addButton = screen.getByLabelText(i18n.t('hit.search.filter.add'));
-      expect(addButton).toBeInTheDocument();
+      const chipButton = screen.getByRole('button');
+      await user.click(chipButton);
+
+      const addViewButton = screen.getByLabelText(i18n.t('hit.search.view.add'));
+      await user.click(addViewButton);
+
+      expect(mockFetchViews).toHaveBeenCalledTimes(1);
+      await vi.waitFor(() => {
+        expect(mockAddView).toHaveBeenCalledWith('');
+      });
     });
 
-    it('should render Add button even when filters exist', () => {
-      mockParameterContext.filters = ['filter1', 'filter2'];
+    it('should disable Add View button when no available views', async () => {
+      mockViewContext.views = {};
 
       render(<QuerySettings />, { wrapper: Wrapper });
 
-      const addButton = screen.getByRole('button');
-      expect(addButton).toBeInTheDocument();
+      const chipButton = screen.getByRole('button');
+      await user.click(chipButton);
+
+      const addViewButton = screen.getByLabelText(i18n.t('hit.search.view.add'));
+      expect(addViewButton).toBeDisabled();
+    });
+
+    it('should disable Add View button when all views are in currentViews', async () => {
+      mockViewContext.views = {
+        'view-1': createMockView({ view_id: 'view-1' }),
+        'view-2': createMockView({ view_id: 'view-2' })
+      };
+      mockParameterContext.views = ['view-1', 'view-2'];
+
+      render(<QuerySettings />, { wrapper: Wrapper });
+
+      const chipButton = screen.getByRole('button');
+      await user.click(chipButton);
+
+      const addViewButton = screen.getByLabelText(i18n.t('hit.search.view.add'));
+      expect(addViewButton).toBeDisabled();
+    });
+
+    it('should disable Add View button when empty string already in currentViews', async () => {
+      mockViewContext.views = {
+        'view-1': createMockView({ view_id: 'view-1' })
+      };
+      mockParameterContext.views = [''];
+
+      render(<QuerySettings />, { wrapper: Wrapper });
+
+      const chipButton = screen.getByRole('button');
+      await user.click(chipButton);
+
+      const addViewButton = screen.getByLabelText(i18n.t('hit.search.view.add'));
+      expect(addViewButton).toBeDisabled();
+    });
+
+    it('should enable Add View button when available views exist', async () => {
+      mockViewContext.views = {
+        'view-1': createMockView({ view_id: 'view-1' }),
+        'view-2': createMockView({ view_id: 'view-2' })
+      };
+      mockParameterContext.views = ['view-1'];
+
+      render(<QuerySettings />, { wrapper: Wrapper });
+
+      const chipButton = screen.getByRole('button');
+      await user.click(chipButton);
+
+      const addViewButton = screen.getByLabelText(i18n.t('hit.search.view.add'));
+      expect(addViewButton).not.toBeDisabled();
+    });
+
+    it('should display both Add buttons in ChipPopper', async () => {
+      render(<QuerySettings />, { wrapper: Wrapper });
+
+      const chipButton = screen.getByRole('button');
+      await user.click(chipButton);
+
+      expect(screen.getByLabelText(i18n.t('hit.search.filter.add'))).toBeInTheDocument();
+      expect(screen.getByLabelText(i18n.t('hit.search.view.add'))).toBeInTheDocument();
     });
 
     it('should allow multiple clicks to add multiple filters', async () => {
       render(<QuerySettings />, { wrapper: Wrapper });
 
-      const addButton = screen.getByLabelText(i18n.t('hit.search.filter.add'));
+      const chipButton = screen.getByRole('button');
+      await user.click(chipButton);
+
+      const addFilterButton = screen.getByLabelText(i18n.t('hit.search.filter.add'));
 
       await act(async () => {
-        await user.click(addButton);
-        await user.click(addButton);
-        await user.click(addButton);
+        await user.click(addFilterButton);
+        await user.click(addFilterButton);
+        await user.click(addFilterButton);
       });
 
       expect(mockAddFilter).toHaveBeenCalledTimes(3);
@@ -265,46 +380,24 @@ describe('QuerySettings', () => {
 
     it('should render each component in separate Grid item', () => {
       mockParameterContext.filters = ['filter1', 'filter2'];
+      mockParameterContext.views = ['view-1'];
 
       const { container } = render(<QuerySettings />, { wrapper: Wrapper });
 
       const gridItems = container.querySelectorAll('[class*="MuiGrid-item"]');
-      // HitSort + SearchSpan + ViewLink + 2 filters + Add button = 6 items
+      // HitSort + SearchSpan + 1 view + 2 filters + ChipPopper = 6 items
       expect(gridItems.length).toBe(6);
     });
-  });
 
-  describe('ViewId State Effects', () => {
-    it('should apply disabled styling when viewId exists without matching view', () => {
-      mockHitSearchContext.viewId = 'non-existent-view';
-      mockViewContext.views = {};
+    it('should render correct number of items with multiple views', () => {
+      mockParameterContext.filters = ['filter1'];
+      mockParameterContext.views = ['view-1', 'view-2', 'view-3'];
 
       const { container } = render(<QuerySettings />, { wrapper: Wrapper });
 
-      const grid = container.querySelector('[class*="MuiGrid-container"]');
-      expect(grid).toBeInTheDocument();
-    });
-
-    it('should not apply disabled styling when viewId is null', () => {
-      mockHitSearchContext.viewId = null;
-      mockViewContext.views = {};
-
-      const { container } = render(<QuerySettings />, { wrapper: Wrapper });
-
-      const grid = container.querySelector('[class*="MuiGrid-container"]');
-      expect(grid).toBeInTheDocument();
-    });
-
-    it('should not apply disabled styling when viewId exists with matching view', () => {
-      mockHitSearchContext.viewId = 'test-view-id';
-      mockViewContext.views = {
-        'test-view-id': createMockView()
-      };
-
-      const { container } = render(<QuerySettings />, { wrapper: Wrapper });
-
-      const grid = container.querySelector('[class*="MuiGrid-container"]');
-      expect(grid).toBeInTheDocument();
+      const gridItems = container.querySelectorAll('[class*="MuiGrid-item"]');
+      // HitSort + SearchSpan + 3 views + 1 filter + ChipPopper = 7 items
+      expect(gridItems.length).toBe(7);
     });
   });
 
@@ -312,7 +405,7 @@ describe('QuerySettings', () => {
     it('should handle undefined filters gracefully', () => {
       mockParameterContext.filters = undefined as any;
 
-      expect(() => render(<QuerySettings />, { wrapper: Wrapper })).toThrow();
+      expect(() => render(<QuerySettings />, { wrapper: Wrapper })).not.toThrow();
     });
 
     it('should handle very long filter arrays', () => {
@@ -356,31 +449,23 @@ describe('QuerySettings', () => {
 
       expect(container).toBeInTheDocument();
     });
-
-    it('should handle duplicate filters in array', () => {
-      mockParameterContext.filters = ['duplicate', 'duplicate', 'unique'];
-
-      render(<QuerySettings />, { wrapper: Wrapper });
-
-      expect(screen.getByTestId('hit-filter-0')).toHaveAttribute('data-value', 'duplicate');
-      expect(screen.getByTestId('hit-filter-1')).toHaveAttribute('data-value', 'duplicate');
-      expect(screen.getByTestId('hit-filter-2')).toHaveAttribute('data-value', 'unique');
-    });
   });
 
   describe('Integration Tests', () => {
     it('should work with all contexts simultaneously', () => {
       mockParameterContext.filters = ['filter1', 'filter2'];
-      mockHitSearchContext.viewId = 'test-view-id';
+      mockParameterContext.views = ['view-1', 'view-2'];
       mockViewContext.views = {
-        'test-view-id': createMockView()
+        'view-1': createMockView({ view_id: 'view-1' }),
+        'view-2': createMockView({ view_id: 'view-2' })
       };
 
       render(<QuerySettings />, { wrapper: Wrapper });
 
       expect(screen.getByTestId('hit-sort')).toBeInTheDocument();
       expect(screen.getByTestId('search-span')).toBeInTheDocument();
-      expect(screen.getByTestId('view-link')).toBeInTheDocument();
+      expect(screen.getByTestId('view-link-0')).toBeInTheDocument();
+      expect(screen.getByTestId('view-link-1')).toBeInTheDocument();
       expect(screen.getByTestId('hit-filter-0')).toBeInTheDocument();
       expect(screen.getByTestId('hit-filter-1')).toBeInTheDocument();
       expect(screen.getByRole('button')).toBeInTheDocument();
@@ -397,11 +482,25 @@ describe('QuerySettings', () => {
       expect(screen.getByTestId('hit-filter-0')).toBeInTheDocument();
     });
 
+    it('should update views when context changes', () => {
+      const { rerender } = render(<QuerySettings />, { wrapper: Wrapper });
+
+      expect(screen.queryByTestId(/^view-link-/)).not.toBeInTheDocument();
+
+      mockParameterContext = { ...mockParameterContext, views: ['view-1'] };
+      rerender(<QuerySettings />);
+
+      expect(screen.getByTestId('view-link-0')).toBeInTheDocument();
+    });
+
     it('should handle adding filter and updating filters array', async () => {
       const { rerender } = render(<QuerySettings />, { wrapper: Wrapper });
 
-      const addButton = screen.getByLabelText(i18n.t('hit.search.filter.add'));
-      await user.click(addButton);
+      const chipButton = screen.getByRole('button');
+      await user.click(chipButton);
+
+      const addFilterButton = screen.getByLabelText(i18n.t('hit.search.filter.add'));
+      await user.click(addFilterButton);
 
       expect(mockAddFilter).toHaveBeenCalledWith('howler.assessment:*');
 
@@ -412,66 +511,102 @@ describe('QuerySettings', () => {
       expect(screen.getByTestId('hit-filter-0')).toBeInTheDocument();
     });
 
-    it('should handle switching between views', () => {
-      mockHitSearchContext.viewId = 'view1';
+    it('should handle adding view and updating views array', async () => {
       mockViewContext.views = {
-        view1: createMockView({ view_id: 'view1' }),
-        view2: createMockView({ view_id: 'view2' })
+        'view-1': createMockView({ view_id: 'view-1' })
       };
 
       const { rerender } = render(<QuerySettings />, { wrapper: Wrapper });
 
-      mockHitSearchContext = { ...mockHitSearchContext, viewId: 'view2' };
+      const chipButton = screen.getByRole('button');
+      await user.click(chipButton);
+
+      const addViewButton = screen.getByLabelText(i18n.t('hit.search.view.add'));
+      await user.click(addViewButton);
+
+      expect(mockFetchViews).toHaveBeenCalled();
+      await vi.waitFor(() => {
+        expect(mockAddView).toHaveBeenCalledWith('');
+      });
+
+      // Simulate the view being added to the array
+      mockParameterContext = { ...mockParameterContext, views: [''] };
       rerender(<QuerySettings />);
 
-      expect(screen.getByTestId('view-link')).toBeInTheDocument();
+      expect(screen.getByTestId('view-link-0')).toBeInTheDocument();
+    });
+
+    it('should handle multiple views and filters together', () => {
+      mockParameterContext.filters = ['filter1', 'filter2', 'filter3'];
+      mockParameterContext.views = ['view-1', 'view-2'];
+
+      render(<QuerySettings />, { wrapper: Wrapper });
+
+      expect(screen.getByTestId('view-link-0')).toBeInTheDocument();
+      expect(screen.getByTestId('view-link-1')).toBeInTheDocument();
+      expect(screen.getByTestId('hit-filter-0')).toBeInTheDocument();
+      expect(screen.getByTestId('hit-filter-1')).toBeInTheDocument();
+      expect(screen.getByTestId('hit-filter-2')).toBeInTheDocument();
     });
   });
 
   describe('Accessibility', () => {
-    it('should have accessible Add Filter button', () => {
+    it('should have accessible Add Filter and Add View buttons', async () => {
       render(<QuerySettings />, { wrapper: Wrapper });
 
-      const addButton = screen.getByRole('button');
-      expect(addButton).toBeInTheDocument();
+      const chipButton = screen.getByRole('button');
+      await user.click(chipButton);
+
+      expect(screen.getByLabelText(i18n.t('hit.search.filter.add'))).toBeInTheDocument();
+      expect(screen.getByLabelText(i18n.t('hit.search.view.add'))).toBeInTheDocument();
     });
 
     it('should maintain logical tab order', () => {
       mockParameterContext.filters = ['filter1', 'filter2'];
+      mockParameterContext.views = ['view-1'];
 
       render(<QuerySettings />, { wrapper: Wrapper });
 
       // All interactive elements should be in the document
       expect(screen.getByTestId('hit-sort')).toBeInTheDocument();
       expect(screen.getByTestId('search-span')).toBeInTheDocument();
-      expect(screen.getByTestId('view-link')).toBeInTheDocument();
+      expect(screen.getByTestId('view-link-0')).toBeInTheDocument();
       expect(screen.getByRole('button')).toBeInTheDocument();
     });
 
-    it('should be keyboard accessible for Add Filter button', async () => {
+    it('should be keyboard accessible for Add buttons', async () => {
       render(<QuerySettings />, { wrapper: Wrapper });
 
-      const addButton = screen.getByLabelText(i18n.t('hit.search.filter.add'));
+      const chipButton = screen.getByRole('button');
+      await user.click(chipButton);
 
-      addButton.focus();
-      expect(addButton).toHaveFocus();
+      await waitFor(() => expect(screen.findByLabelText(i18n.t('hit.search.filter.add'))));
+      const addFilterButton = screen.getByLabelText(i18n.t('hit.search.filter.add'));
+
+      act(() => {
+        addFilterButton.focus();
+      });
+      await waitFor(() => expect(addFilterButton).toHaveFocus());
 
       await user.keyboard('{Enter}');
 
-      expect(mockAddFilter).toHaveBeenCalledWith('howler.assessment:*');
+      await waitFor(() => expect(mockAddFilter).toHaveBeenCalledWith('howler.assessment:*'));
     });
 
     it('should maintain focus when filters are added', async () => {
       const { rerender } = render(<QuerySettings />, { wrapper: Wrapper });
 
-      const addButton = screen.getByRole('button');
-      await user.click(addButton);
+      const chipButton = screen.getByRole('button');
+      await user.click(chipButton);
+
+      const addFilterButton = screen.getByLabelText(i18n.t('hit.search.filter.add'));
+      await user.click(addFilterButton);
 
       mockParameterContext = { ...mockParameterContext, filters: ['howler.id:*'] };
       rerender(<QuerySettings />);
 
-      // Add button should still be in document
-      expect(screen.getByRole('button')).toBeInTheDocument();
+      // ChipPopper button should still be in document
+      expect(screen.queryByText(i18n.t('hit.search.filter.add'))).toBeInTheDocument();
     });
 
     it('should have semantic HTML structure', () => {
@@ -482,35 +617,26 @@ describe('QuerySettings', () => {
       expect(container.querySelector('[class*="MuiGrid-container"]')).toBeInTheDocument();
     });
 
-    it('should not have any accessibility violations with disabled state', () => {
-      mockHitSearchContext.viewId = 'missing-view';
-      mockViewContext.views = {};
-
-      render(<QuerySettings />, { wrapper: Wrapper });
-
-      // Components should still be accessible even when disabled visually
-      expect(screen.getByTestId('hit-sort')).toBeInTheDocument();
-    });
-
     it('should support screen reader navigation', () => {
       mockParameterContext.filters = ['filter1', 'filter2'];
+      mockParameterContext.views = ['view-1'];
 
       render(<QuerySettings />, { wrapper: Wrapper });
 
       // All major components should be identifiable
       const hitSort = screen.getByTestId('hit-sort');
       const searchSpan = screen.getByTestId('search-span');
-      const viewLink = screen.getByTestId('view-link');
+      const viewLink = screen.getByTestId('view-link-0');
       const filter1 = screen.getByTestId('hit-filter-0');
       const filter2 = screen.getByTestId('hit-filter-1');
-      const addButton = screen.getByRole('button');
+      const chipButton = screen.getByRole('button');
 
       expect(hitSort).toBeInTheDocument();
       expect(searchSpan).toBeInTheDocument();
       expect(viewLink).toBeInTheDocument();
       expect(filter1).toBeInTheDocument();
       expect(filter2).toBeInTheDocument();
-      expect(addButton).toBeInTheDocument();
+      expect(chipButton).toBeInTheDocument();
     });
   });
 
@@ -539,15 +665,15 @@ describe('QuerySettings', () => {
       expect(screen.getByTestId('hit-filter-0')).toBeInTheDocument();
     });
 
-    it('should update when viewId changes', () => {
-      mockHitSearchContext.viewId = 'view1';
-
+    it('should update when views change', () => {
       const { rerender } = render(<QuerySettings />, { wrapper: Wrapper });
 
-      mockHitSearchContext = { ...mockHitSearchContext, viewId: 'view2' };
+      expect(screen.queryByTestId(/^view-link-/)).not.toBeInTheDocument();
+
+      mockParameterContext = { ...mockParameterContext, views: ['view-1'] };
       rerender(<QuerySettings />);
 
-      expect(screen.getByTestId('view-link')).toBeInTheDocument();
+      expect(screen.getByTestId('view-link-0')).toBeInTheDocument();
     });
 
     it('should update when boxSx prop changes', () => {
@@ -559,22 +685,56 @@ describe('QuerySettings', () => {
 
       expect(screen.getByTestId('hit-sort')).toBeInTheDocument();
     });
+
+    it('should update allowAddViews when available views change', () => {
+      mockViewContext.views = {};
+
+      const { rerender } = render(<QuerySettings />, { wrapper: Wrapper });
+
+      // No available views initially
+      mockViewContext = {
+        ...mockViewContext,
+        views: {
+          'view-1': createMockView({ view_id: 'view-1' })
+        }
+      };
+
+      rerender(<QuerySettings />);
+
+      // Component should respond to view context changes
+      expect(screen.getByTestId('hit-sort')).toBeInTheDocument();
+    });
   });
 
   describe('Component Composition', () => {
     it('should render all child components in correct order', () => {
       mockParameterContext.filters = ['filter1'];
+      mockParameterContext.views = ['view-1'];
 
       const { container } = render(<QuerySettings />, { wrapper: Wrapper });
 
       const gridItems = container.querySelectorAll('[class*="MuiGrid-item"]');
 
-      // Order: HitSort, SearchSpan, ViewLink, HitFilter(s), Add button
+      // Order: HitSort, SearchSpan, ViewLink(s), HitFilter(s), ChipPopper
       expect(gridItems[0]).toContainElement(screen.getByTestId('hit-sort'));
       expect(gridItems[1]).toContainElement(screen.getByTestId('search-span'));
-      expect(gridItems[2]).toContainElement(screen.getByTestId('view-link'));
+      expect(gridItems[2]).toContainElement(screen.getByTestId('view-link-0'));
       expect(gridItems[3]).toContainElement(screen.getByTestId('hit-filter-0'));
       expect(gridItems[4]).toContainElement(screen.getByRole('button'));
+    });
+
+    it('should pass correct props to ViewLink components', () => {
+      mockParameterContext.views = ['view-1', 'view-2'];
+
+      render(<QuerySettings />, { wrapper: Wrapper });
+
+      const viewLink0 = screen.getByTestId('view-link-0');
+      expect(viewLink0).toHaveAttribute('data-view-id', 'view-1');
+      expect(viewLink0).toHaveTextContent('ViewLink 0: view-1');
+
+      const viewLink1 = screen.getByTestId('view-link-1');
+      expect(viewLink1).toHaveAttribute('data-view-id', 'view-2');
+      expect(viewLink1).toHaveTextContent('ViewLink 1: view-2');
     });
 
     it('should pass correct props to HitFilter components', () => {
@@ -593,7 +753,22 @@ describe('QuerySettings', () => {
       // Each component should render regardless of others
       expect(screen.getByTestId('hit-sort')).toBeInTheDocument();
       expect(screen.getByTestId('search-span')).toBeInTheDocument();
-      expect(screen.getByTestId('view-link')).toBeInTheDocument();
+    });
+
+    it('should render multiple views before filters', () => {
+      mockParameterContext.views = ['view-1', 'view-2'];
+      mockParameterContext.filters = ['filter1'];
+
+      const { container } = render(<QuerySettings />, { wrapper: Wrapper });
+
+      const gridItems = Array.from(container.querySelectorAll('[class*="MuiGrid-item"]'));
+      const viewLink0Index = gridItems.findIndex(item => item.querySelector('#view-link-0'));
+      const viewLink1Index = gridItems.findIndex(item => item.querySelector('#view-link-1'));
+      const filterIndex = gridItems.findIndex(item => item.querySelector('#hit-filter-0'));
+
+      // Views should come before filters
+      expect(viewLink0Index).toBeLessThan(filterIndex);
+      expect(viewLink1Index).toBeLessThan(filterIndex);
     });
   });
 });

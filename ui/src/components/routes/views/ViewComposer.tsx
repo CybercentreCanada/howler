@@ -38,6 +38,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
 import { convertDateToLucene } from 'utils/utils';
+import { buildViewUrl } from 'utils/viewUtils';
 import ErrorBoundary from '../ErrorBoundary';
 import HitQuery from '../hits/search/HitQuery';
 import HitSort from '../hits/search/shared/HitSort';
@@ -93,7 +94,7 @@ const ViewComposer: FC = () => {
           }
         });
 
-        navigate(`/views/${newView.view_id}`);
+        navigate(buildViewUrl(newView));
       } else {
         await editView(routeParams.id, {
           title,

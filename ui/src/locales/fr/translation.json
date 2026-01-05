@@ -298,8 +298,11 @@
   "hit.search.select.all": "Sélectionner tous les résultats de la page",
   "hit.search.select.clear": "Effacer la sélection",
   "hit.search.selected": "{{size}} sélectionné(s)",
+  "hit.search.view.add": "Ajouter une vue",
   "hit.search.view.current": "Vue courante",
   "hit.search.view.default": "(Défaut)",
+  "hit.search.view.select": "Sélectionner une vue",
+  "hit.search.view.remove": "Supprimer la vue",
 
   "hit.viewer.aggregate": "Sommaire",
   "hit.viewer.comments": "Commentaires",
