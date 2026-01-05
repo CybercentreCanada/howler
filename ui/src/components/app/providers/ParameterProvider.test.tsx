@@ -30,18 +30,16 @@ beforeEach(() => {
 
 describe('ParameterContext', () => {
   it('should initialize with default values when no URL params are present', async () => {
-    const hook = await act(async () =>
-      renderHook(
-        () =>
-          useContextSelector(ParameterContext, ctx => ({
-            query: ctx.query,
-            sort: ctx.sort,
-            span: ctx.span,
-            offset: ctx.offset,
-            trackTotalHits: ctx.trackTotalHits
-          })),
-        { wrapper: Wrapper }
-      )
+    const hook = renderHook(
+      () =>
+        useContextSelector(ParameterContext, ctx => ({
+          query: ctx.query,
+          sort: ctx.sort,
+          span: ctx.span,
+          offset: ctx.offset,
+          trackTotalHits: ctx.trackTotalHits
+        })),
+      { wrapper: Wrapper }
     );
 
     expect(hook.result.current.query).toBe(DEFAULT_QUERY);
@@ -62,20 +60,18 @@ describe('ParameterContext', () => {
       track_total_hits: 'true'
     });
 
-    const hook = await act(async () =>
-      renderHook(
-        () =>
-          useContextSelector(ParameterContext, ctx => ({
-            query: ctx.query,
-            sort: ctx.sort,
-            span: ctx.span,
-            offset: ctx.offset,
-            selected: ctx.selected,
-            filters: ctx.filters,
-            trackTotalHits: ctx.trackTotalHits
-          })),
-        { wrapper: Wrapper }
-      )
+    const hook = renderHook(
+      () =>
+        useContextSelector(ParameterContext, ctx => ({
+          query: ctx.query,
+          sort: ctx.sort,
+          span: ctx.span,
+          offset: ctx.offset,
+          selected: ctx.selected,
+          filters: ctx.filters,
+          trackTotalHits: ctx.trackTotalHits
+        })),
+      { wrapper: Wrapper }
     );
 
     expect(hook.result.current.query).toBe('test query');
@@ -94,16 +90,14 @@ describe('ParameterContext', () => {
       end_date: '2025-12-31'
     });
 
-    const hook = await act(async () =>
-      renderHook(
-        () =>
-          useContextSelector(ParameterContext, ctx => ({
-            span: ctx.span,
-            startDate: ctx.startDate,
-            endDate: ctx.endDate
-          })),
-        { wrapper: Wrapper }
-      )
+    const hook = renderHook(
+      () =>
+        useContextSelector(ParameterContext, ctx => ({
+          span: ctx.span,
+          startDate: ctx.startDate,
+          endDate: ctx.endDate
+        })),
+      { wrapper: Wrapper }
     );
 
     expect(hook.result.current.span).toBe('date.range.custom');
@@ -113,15 +107,13 @@ describe('ParameterContext', () => {
 
   describe('setQuery', () => {
     it('should update the query value', async () => {
-      const hook = await act(async () =>
-        renderHook(
-          () =>
-            useContextSelector(ParameterContext, ctx => ({
-              query: ctx.query,
-              setQuery: ctx.setQuery
-            })),
-          { wrapper: Wrapper }
-        )
+      const hook = renderHook(
+        () =>
+          useContextSelector(ParameterContext, ctx => ({
+            query: ctx.query,
+            setQuery: ctx.setQuery
+          })),
+        { wrapper: Wrapper }
       );
 
       await act(async () => {
@@ -136,15 +128,13 @@ describe('ParameterContext', () => {
     it('should not update if the value is the same', async () => {
       mockSearchParams = new URLSearchParams({ query: 'existing query' });
 
-      const hook = await act(async () =>
-        renderHook(
-          () =>
-            useContextSelector(ParameterContext, ctx => ({
-              query: ctx.query,
-              setQuery: ctx.setQuery
-            })),
-          { wrapper: Wrapper }
-        )
+      const hook = renderHook(
+        () =>
+          useContextSelector(ParameterContext, ctx => ({
+            query: ctx.query,
+            setQuery: ctx.setQuery
+          })),
+        { wrapper: Wrapper }
       );
 
       const initialQuery = hook.result.current.query;
@@ -159,15 +149,13 @@ describe('ParameterContext', () => {
 
   describe('setSort', () => {
     it('should update the sort value', async () => {
-      const hook = await act(async () =>
-        renderHook(
-          () =>
-            useContextSelector(ParameterContext, ctx => ({
-              sort: ctx.sort,
-              setSort: ctx.setSort
-            })),
-          { wrapper: Wrapper }
-        )
+      const hook = renderHook(
+        () =>
+          useContextSelector(ParameterContext, ctx => ({
+            sort: ctx.sort,
+            setSort: ctx.setSort
+          })),
+        { wrapper: Wrapper }
       );
 
       await act(async () => {
@@ -182,15 +170,13 @@ describe('ParameterContext', () => {
 
   describe('setSpan', () => {
     it('should update the span value', async () => {
-      const hook = await act(async () =>
-        renderHook(
-          () =>
-            useContextSelector(ParameterContext, ctx => ({
-              span: ctx.span,
-              setSpan: ctx.setSpan
-            })),
-          { wrapper: Wrapper }
-        )
+      const hook = renderHook(
+        () =>
+          useContextSelector(ParameterContext, ctx => ({
+            span: ctx.span,
+            setSpan: ctx.setSpan
+          })),
+        { wrapper: Wrapper }
       );
 
       await act(async () => {
@@ -209,17 +195,15 @@ describe('ParameterContext', () => {
         end_date: '2025-12-31'
       });
 
-      const hook = await act(async () =>
-        renderHook(
-          () =>
-            useContextSelector(ParameterContext, ctx => ({
-              span: ctx.span,
-              startDate: ctx.startDate,
-              endDate: ctx.endDate,
-              setSpan: ctx.setSpan
-            })),
-          { wrapper: Wrapper }
-        )
+      const hook = renderHook(
+        () =>
+          useContextSelector(ParameterContext, ctx => ({
+            span: ctx.span,
+            startDate: ctx.startDate,
+            endDate: ctx.endDate,
+            setSpan: ctx.setSpan
+          })),
+        { wrapper: Wrapper }
       );
 
       await act(async () => {
@@ -236,9 +220,7 @@ describe('ParameterContext', () => {
 
   describe('filters (multi-filter support)', () => {
     it('should initialize with empty array when no filter params present', async () => {
-      const hook = await act(async () =>
-        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.filters), { wrapper: Wrapper })
-      );
+      const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.filters), { wrapper: Wrapper });
 
       expect(hook.result.current).toEqual([]);
     });
@@ -246,9 +228,7 @@ describe('ParameterContext', () => {
     it('should initialize with single filter from URL', async () => {
       mockSearchParams = new URLSearchParams({ filter: 'status:open' });
 
-      const hook = await act(async () =>
-        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.filters), { wrapper: Wrapper })
-      );
+      const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.filters), { wrapper: Wrapper });
 
       expect(hook.result.current).toEqual(['status:open']);
     });
@@ -258,9 +238,7 @@ describe('ParameterContext', () => {
       mockSearchParams.append('filter', 'howler.escalation:hit');
       mockSearchParams.append('filter', 'howler.assignment:someuser');
 
-      const hook = await act(async () =>
-        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.filters), { wrapper: Wrapper })
-      );
+      const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.filters), { wrapper: Wrapper });
 
       expect(hook.result.current).toEqual(['howler.escalation:hit', 'howler.assignment:someuser']);
     });
@@ -271,9 +249,7 @@ describe('ParameterContext', () => {
       mockSearchParams.append('filter', 'a');
       mockSearchParams.append('filter', 'b');
 
-      const hook = await act(async () =>
-        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.filters), { wrapper: Wrapper })
-      );
+      const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.filters), { wrapper: Wrapper });
 
       expect(hook.result.current).toEqual(['c', 'a', 'b']);
     });
@@ -284,24 +260,20 @@ describe('ParameterContext', () => {
       mockSearchParams.append('filter', '');
       mockSearchParams.append('filter', '');
 
-      const hook = await act(async () =>
-        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.filters), { wrapper: Wrapper })
-      );
+      const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.filters), { wrapper: Wrapper });
 
       expect(hook.result.current).toEqual(['']);
     });
 
     describe('addFilter', () => {
       it('should add a filter to empty array', async () => {
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                filters: ctx.filters,
-                addFilter: ctx.addFilter
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              filters: ctx.filters,
+              addFilter: ctx.addFilter
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -316,15 +288,13 @@ describe('ParameterContext', () => {
       it('should append filter to existing filters', async () => {
         mockSearchParams = new URLSearchParams({ filter: 'existing:filter' });
 
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                filters: ctx.filters,
-                addFilter: ctx.addFilter
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              filters: ctx.filters,
+              addFilter: ctx.addFilter
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -339,15 +309,13 @@ describe('ParameterContext', () => {
       it('should not add duplicate filters', async () => {
         mockSearchParams = new URLSearchParams({ filter: 'status:open' });
 
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                filters: ctx.filters,
-                addFilter: ctx.addFilter
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              filters: ctx.filters,
+              addFilter: ctx.addFilter
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -368,15 +336,13 @@ describe('ParameterContext', () => {
         mockSearchParams.append('filter', 'filter2');
         mockSearchParams.append('filter', 'filter3');
 
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                filters: ctx.filters,
-                removeFilter: ctx.removeFilter
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              filters: ctx.filters,
+              removeFilter: ctx.removeFilter
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -391,15 +357,13 @@ describe('ParameterContext', () => {
       it('should do nothing when removing nonexistent filter', async () => {
         mockSearchParams = new URLSearchParams({ filter: 'existing' });
 
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                filters: ctx.filters,
-                removeFilter: ctx.removeFilter
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              filters: ctx.filters,
+              removeFilter: ctx.removeFilter
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -412,15 +376,13 @@ describe('ParameterContext', () => {
       });
 
       it('should handle removing from empty array', async () => {
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                filters: ctx.filters,
-                removeFilter: ctx.removeFilter
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              filters: ctx.filters,
+              removeFilter: ctx.removeFilter
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -439,15 +401,13 @@ describe('ParameterContext', () => {
         mockSearchParams.append('filter', 'filter1');
         mockSearchParams.append('filter', 'filter2');
 
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                filters: ctx.filters,
-                clearFilters: ctx.clearFilters
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              filters: ctx.filters,
+              clearFilters: ctx.clearFilters
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -460,15 +420,13 @@ describe('ParameterContext', () => {
       });
 
       it('should be no-op when already empty', async () => {
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                filters: ctx.filters,
-                clearFilters: ctx.clearFilters
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              filters: ctx.filters,
+              clearFilters: ctx.clearFilters
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -488,15 +446,13 @@ describe('ParameterContext', () => {
         mockSearchParams.append('filter', 'filter2');
         mockSearchParams.append('filter', 'filter3');
 
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                filters: ctx.filters,
-                setFilter: ctx.setFilter
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              filters: ctx.filters,
+              setFilter: ctx.setFilter
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -513,15 +469,13 @@ describe('ParameterContext', () => {
         mockSearchParams.append('filter', 'old:filter');
         mockSearchParams.append('filter', 'filter2');
 
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                filters: ctx.filters,
-                setFilter: ctx.setFilter
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              filters: ctx.filters,
+              setFilter: ctx.setFilter
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -538,15 +492,13 @@ describe('ParameterContext', () => {
         mockSearchParams.append('filter', 'filter1');
         mockSearchParams.append('filter', 'old:last');
 
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                filters: ctx.filters,
-                setFilter: ctx.setFilter
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              filters: ctx.filters,
+              setFilter: ctx.setFilter
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -561,15 +513,13 @@ describe('ParameterContext', () => {
       it('should do nothing when index is out of bounds', async () => {
         mockSearchParams = new URLSearchParams({ filter: 'existing' });
 
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                filters: ctx.filters,
-                setFilter: ctx.setFilter
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              filters: ctx.filters,
+              setFilter: ctx.setFilter
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -584,15 +534,13 @@ describe('ParameterContext', () => {
       it('should do nothing when index is negative', async () => {
         mockSearchParams = new URLSearchParams({ filter: 'existing' });
 
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                filters: ctx.filters,
-                setFilter: ctx.setFilter
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              filters: ctx.filters,
+              setFilter: ctx.setFilter
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -605,15 +553,13 @@ describe('ParameterContext', () => {
       });
 
       it('should do nothing when array is empty', async () => {
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                filters: ctx.filters,
-                setFilter: ctx.setFilter
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              filters: ctx.filters,
+              setFilter: ctx.setFilter
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -630,14 +576,12 @@ describe('ParameterContext', () => {
         mockSearchParams.append('filter', 'filter1');
         mockSearchParams.append('filter', 'filter2');
 
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                setFilter: ctx.setFilter
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              setFilter: ctx.setFilter
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -655,14 +599,12 @@ describe('ParameterContext', () => {
 
     describe('URL synchronization', () => {
       it('should sync single filter to URL as filter param', async () => {
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                addFilter: ctx.addFilter
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              addFilter: ctx.addFilter
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -678,14 +620,12 @@ describe('ParameterContext', () => {
       });
 
       it('should sync multiple filters to URL as multiple filter params', async () => {
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                addFilter: ctx.addFilter
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              addFilter: ctx.addFilter
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -709,14 +649,12 @@ describe('ParameterContext', () => {
         mockSearchParams.append('filter', 'filter1');
         mockSearchParams.append('filter', 'filter2');
 
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                clearFilters: ctx.clearFilters
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              clearFilters: ctx.clearFilters
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -732,14 +670,12 @@ describe('ParameterContext', () => {
       });
 
       it('should preserve filter order when syncing to URL', async () => {
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                addFilter: ctx.addFilter
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              addFilter: ctx.addFilter
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -760,15 +696,13 @@ describe('ParameterContext', () => {
 
   describe('setSelected', () => {
     it('should update the selected value', async () => {
-      const hook = await act(async () =>
-        renderHook(
-          () =>
-            useContextSelector(ParameterContext, ctx => ({
-              selected: ctx.selected,
-              setSelected: ctx.setSelected
-            })),
-          { wrapper: Wrapper }
-        )
+      const hook = renderHook(
+        () =>
+          useContextSelector(ParameterContext, ctx => ({
+            selected: ctx.selected,
+            setSelected: ctx.setSelected
+          })),
+        { wrapper: Wrapper }
       );
 
       await act(async () => {
@@ -784,15 +718,13 @@ describe('ParameterContext', () => {
       mockLocation.pathname = '/bundles/bundle_123';
       mockParams.id = 'bundle_123';
 
-      const hook = await act(async () =>
-        renderHook(
-          () =>
-            useContextSelector(ParameterContext, ctx => ({
-              selected: ctx.selected,
-              setSelected: ctx.setSelected
-            })),
-          { wrapper: Wrapper }
-        )
+      const hook = renderHook(
+        () =>
+          useContextSelector(ParameterContext, ctx => ({
+            selected: ctx.selected,
+            setSelected: ctx.setSelected
+          })),
+        { wrapper: Wrapper }
       );
 
       await act(async () => {
@@ -807,15 +739,13 @@ describe('ParameterContext', () => {
 
   describe('setOffset', () => {
     it('should update the offset with a number', async () => {
-      const hook = await act(async () =>
-        renderHook(
-          () =>
-            useContextSelector(ParameterContext, ctx => ({
-              offset: ctx.offset,
-              setOffset: ctx.setOffset
-            })),
-          { wrapper: Wrapper }
-        )
+      const hook = renderHook(
+        () =>
+          useContextSelector(ParameterContext, ctx => ({
+            offset: ctx.offset,
+            setOffset: ctx.setOffset
+          })),
+        { wrapper: Wrapper }
       );
 
       await act(async () => {
@@ -828,15 +758,13 @@ describe('ParameterContext', () => {
     });
 
     it('should update the offset with a string', async () => {
-      const hook = await act(async () =>
-        renderHook(
-          () =>
-            useContextSelector(ParameterContext, ctx => ({
-              offset: ctx.offset,
-              setOffset: ctx.setOffset
-            })),
-          { wrapper: Wrapper }
-        )
+      const hook = renderHook(
+        () =>
+          useContextSelector(ParameterContext, ctx => ({
+            offset: ctx.offset,
+            setOffset: ctx.setOffset
+          })),
+        { wrapper: Wrapper }
       );
 
       await act(async () => {
@@ -849,15 +777,13 @@ describe('ParameterContext', () => {
     });
 
     it('should handle invalid string offset by setting to 0', async () => {
-      const hook = await act(async () =>
-        renderHook(
-          () =>
-            useContextSelector(ParameterContext, ctx => ({
-              offset: ctx.offset,
-              setOffset: ctx.setOffset
-            })),
-          { wrapper: Wrapper }
-        )
+      const hook = renderHook(
+        () =>
+          useContextSelector(ParameterContext, ctx => ({
+            offset: ctx.offset,
+            setOffset: ctx.setOffset
+          })),
+        { wrapper: Wrapper }
       );
 
       await act(async () => {
@@ -872,16 +798,14 @@ describe('ParameterContext', () => {
 
   describe('setCustomSpan', () => {
     it('should update both startDate and endDate', async () => {
-      const hook = await act(async () =>
-        renderHook(
-          () =>
-            useContextSelector(ParameterContext, ctx => ({
-              startDate: ctx.startDate,
-              endDate: ctx.endDate,
-              setCustomSpan: ctx.setCustomSpan
-            })),
-          { wrapper: Wrapper }
-        )
+      const hook = renderHook(
+        () =>
+          useContextSelector(ParameterContext, ctx => ({
+            startDate: ctx.startDate,
+            endDate: ctx.endDate,
+            setCustomSpan: ctx.setCustomSpan
+          })),
+        { wrapper: Wrapper }
       );
 
       await act(async () => {
@@ -897,15 +821,13 @@ describe('ParameterContext', () => {
 
   describe('URL synchronization', () => {
     it('should synchronize state changes to URL params', async () => {
-      const hook = await act(async () =>
-        renderHook(
-          () =>
-            useContextSelector(ParameterContext, ctx => ({
-              setQuery: ctx.setQuery,
-              setSort: ctx.setSort
-            })),
-          { wrapper: Wrapper }
-        )
+      const hook = renderHook(
+        () =>
+          useContextSelector(ParameterContext, ctx => ({
+            setQuery: ctx.setQuery,
+            setSort: ctx.setSort
+          })),
+        { wrapper: Wrapper }
       );
 
       await act(async () => {
@@ -920,9 +842,7 @@ describe('ParameterContext', () => {
     it('should read changes from URL params', async () => {
       mockSearchParams = new URLSearchParams({ query: 'initial query' });
 
-      const hook = await act(async () =>
-        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.query), { wrapper: Wrapper })
-      );
+      const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.query), { wrapper: Wrapper });
 
       expect(hook.result.current).toBe('initial query');
 
@@ -941,9 +861,7 @@ describe('ParameterContext', () => {
       mockLocation.pathname = '/bundles/bundle_123';
       mockParams.id = 'bundle_123';
 
-      const hook = await act(async () =>
-        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.selected), { wrapper: Wrapper })
-      );
+      const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.selected), { wrapper: Wrapper });
 
       await waitFor(() => {
         expect(hook.result.current).toBe('bundle_123');
@@ -955,9 +873,7 @@ describe('ParameterContext', () => {
       mockParams.id = 'bundle_123';
       mockSearchParams = new URLSearchParams({ selected: 'bundle_123' });
 
-      const hook = await act(async () =>
-        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.selected), { wrapper: Wrapper })
-      );
+      const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.selected), { wrapper: Wrapper });
 
       expect(hook.result.current).toBe('bundle_123');
     });
@@ -967,9 +883,7 @@ describe('ParameterContext', () => {
       mockParams.id = 'bundle_123';
       mockSearchParams = new URLSearchParams({ selected: 'different_hit_id' });
 
-      const hook = await act(async () =>
-        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.selected), { wrapper: Wrapper })
-      );
+      const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.selected), { wrapper: Wrapper });
 
       expect(hook.result.current).toBe('different_hit_id');
     });
@@ -982,15 +896,13 @@ describe('ParameterContext', () => {
         sort: 'test.field asc'
       });
 
-      const hook = await act(async () =>
-        renderHook(
-          () =>
-            useContextSelector(ParameterContext, ctx => ({
-              query: ctx.query,
-              sort: ctx.sort
-            })),
-          { wrapper: Wrapper }
-        )
+      const hook = renderHook(
+        () =>
+          useContextSelector(ParameterContext, ctx => ({
+            query: ctx.query,
+            sort: ctx.sort
+          })),
+        { wrapper: Wrapper }
       );
 
       expect(hook.result.current.query).toBe('test query');
@@ -1002,9 +914,7 @@ describe('ParameterContext', () => {
     it('should handle offset of 0 in URL params', async () => {
       mockSearchParams = new URLSearchParams({ offset: '0' });
 
-      const hook = await act(async () =>
-        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.offset), { wrapper: Wrapper })
-      );
+      const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.offset), { wrapper: Wrapper });
 
       expect(hook.result.current).toBe(0);
     });
@@ -1012,33 +922,29 @@ describe('ParameterContext', () => {
     it('should handle trackTotalHits with various values', async () => {
       mockSearchParams = new URLSearchParams({ track_total_hits: 'false' });
 
-      let hook = await act(async () =>
-        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.trackTotalHits), { wrapper: Wrapper })
-      );
+      let hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.trackTotalHits), {
+        wrapper: Wrapper
+      });
 
       expect(hook.result.current).toBe(false);
 
       mockSearchParams = new URLSearchParams({ track_total_hits: 'true' });
 
-      hook = await act(async () =>
-        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.trackTotalHits), { wrapper: Wrapper })
-      );
+      hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.trackTotalHits), { wrapper: Wrapper });
 
       expect(hook.result.current).toBe(true);
     });
 
     it('should handle null and undefined values correctly', async () => {
-      const hook = await act(async () =>
-        renderHook(
-          () =>
-            useContextSelector(ParameterContext, ctx => ({
-              selected: ctx.selected,
-              filters: ctx.filters,
-              startDate: ctx.startDate,
-              endDate: ctx.endDate
-            })),
-          { wrapper: Wrapper }
-        )
+      const hook = renderHook(
+        () =>
+          useContextSelector(ParameterContext, ctx => ({
+            selected: ctx.selected,
+            filters: ctx.filters,
+            startDate: ctx.startDate,
+            endDate: ctx.endDate
+          })),
+        { wrapper: Wrapper }
       );
 
       // These should be null/undefined/empty when not set
@@ -1056,16 +962,14 @@ describe('ParameterContext', () => {
       });
       mockLocation.search = mockSearchParams.toString();
 
-      const hook = await act(async () =>
-        renderHook(
-          () =>
-            useContextSelector(ParameterContext, ctx => ({
-              query: ctx.query,
-              sort: ctx.sort,
-              span: ctx.span
-            })),
-          { wrapper: Wrapper }
-        )
+      const hook = renderHook(
+        () =>
+          useContextSelector(ParameterContext, ctx => ({
+            query: ctx.query,
+            sort: ctx.sort,
+            span: ctx.span
+          })),
+        { wrapper: Wrapper }
       );
 
       expect(hook.result.current.query).toBe('custom query');
@@ -1086,21 +990,19 @@ describe('ParameterContext', () => {
 
   describe('complex scenarios', () => {
     it('should handle multiple simultaneous parameter updates', async () => {
-      const hook = await act(async () =>
-        renderHook(
-          () =>
-            useContextSelector(ParameterContext, ctx => ({
-              query: ctx.query,
-              sort: ctx.sort,
-              span: ctx.span,
-              filters: ctx.filters,
-              setQuery: ctx.setQuery,
-              setSort: ctx.setSort,
-              setSpan: ctx.setSpan,
-              addFilter: ctx.addFilter
-            })),
-          { wrapper: Wrapper }
-        )
+      const hook = renderHook(
+        () =>
+          useContextSelector(ParameterContext, ctx => ({
+            query: ctx.query,
+            sort: ctx.sort,
+            span: ctx.span,
+            filters: ctx.filters,
+            setQuery: ctx.setQuery,
+            setSort: ctx.setSort,
+            setSpan: ctx.setSpan,
+            addFilter: ctx.addFilter
+          })),
+        { wrapper: Wrapper }
       );
 
       await act(async () => {
@@ -1121,9 +1023,7 @@ describe('ParameterContext', () => {
     it('should handle navigation between different contexts (hits to bundles)', async () => {
       mockLocation.pathname = '/hits';
 
-      const hook = await act(async () =>
-        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.selected), { wrapper: Wrapper })
-      );
+      const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.selected), { wrapper: Wrapper });
 
       expect(hook.result.current).toBeNull();
 
@@ -1141,9 +1041,7 @@ describe('ParameterContext', () => {
 
   describe('views (multi-view support)', () => {
     it('should initialize with empty array when no view params present', async () => {
-      const hook = await act(async () =>
-        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.views), { wrapper: Wrapper })
-      );
+      const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.views), { wrapper: Wrapper });
 
       expect(hook.result.current).toEqual([]);
     });
@@ -1151,9 +1049,7 @@ describe('ParameterContext', () => {
     it('should initialize with single view from URL', async () => {
       mockSearchParams = new URLSearchParams({ view: 'view_1' });
 
-      const hook = await act(async () =>
-        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.views), { wrapper: Wrapper })
-      );
+      const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.views), { wrapper: Wrapper });
 
       expect(hook.result.current).toEqual(['view_1']);
     });
@@ -1163,9 +1059,7 @@ describe('ParameterContext', () => {
       mockSearchParams.append('view', 'view_1');
       mockSearchParams.append('view', 'view_2');
 
-      const hook = await act(async () =>
-        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.views), { wrapper: Wrapper })
-      );
+      const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.views), { wrapper: Wrapper });
 
       expect(hook.result.current).toEqual(['view_1', 'view_2']);
     });
@@ -1176,9 +1070,7 @@ describe('ParameterContext', () => {
       mockSearchParams.append('view', 'view_a');
       mockSearchParams.append('view', 'view_b');
 
-      const hook = await act(async () =>
-        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.views), { wrapper: Wrapper })
-      );
+      const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.views), { wrapper: Wrapper });
 
       expect(hook.result.current).toEqual(['view_c', 'view_a', 'view_b']);
     });
@@ -1189,24 +1081,20 @@ describe('ParameterContext', () => {
       mockSearchParams.append('view', '');
       mockSearchParams.append('view', '');
 
-      const hook = await act(async () =>
-        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.views), { wrapper: Wrapper })
-      );
+      const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.views), { wrapper: Wrapper });
 
       expect(hook.result.current).toEqual(['']);
     });
 
     describe('addView', () => {
       it('should add a view to empty array', async () => {
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                views: ctx.views,
-                addView: ctx.addView
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              views: ctx.views,
+              addView: ctx.addView
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -1221,15 +1109,13 @@ describe('ParameterContext', () => {
       it('should append view to existing views', async () => {
         mockSearchParams = new URLSearchParams({ view: 'existing_view' });
 
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                views: ctx.views,
-                addView: ctx.addView
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              views: ctx.views,
+              addView: ctx.addView
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -1244,15 +1130,13 @@ describe('ParameterContext', () => {
       it('should not add duplicate views', async () => {
         mockSearchParams = new URLSearchParams({ view: 'view_1' });
 
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                views: ctx.views,
-                addView: ctx.addView
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              views: ctx.views,
+              addView: ctx.addView
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -1273,15 +1157,13 @@ describe('ParameterContext', () => {
         mockSearchParams.append('view', 'view_2');
         mockSearchParams.append('view', 'view_3');
 
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                views: ctx.views,
-                removeView: ctx.removeView
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              views: ctx.views,
+              removeView: ctx.removeView
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -1299,15 +1181,13 @@ describe('ParameterContext', () => {
         mockSearchParams.append('view', 'dup');
         mockSearchParams.append('view', 'other');
 
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                views: ctx.views,
-                removeView: ctx.removeView
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              views: ctx.views,
+              removeView: ctx.removeView
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -1322,15 +1202,13 @@ describe('ParameterContext', () => {
       it('should do nothing when removing nonexistent view', async () => {
         mockSearchParams = new URLSearchParams({ view: 'existing' });
 
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                views: ctx.views,
-                removeView: ctx.removeView
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              views: ctx.views,
+              removeView: ctx.removeView
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -1343,15 +1221,13 @@ describe('ParameterContext', () => {
       });
 
       it('should handle removing from empty array', async () => {
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                views: ctx.views,
-                removeView: ctx.removeView
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              views: ctx.views,
+              removeView: ctx.removeView
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -1370,15 +1246,13 @@ describe('ParameterContext', () => {
         mockSearchParams.append('view', 'view_1');
         mockSearchParams.append('view', 'view_2');
 
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                views: ctx.views,
-                clearViews: ctx.clearViews
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              views: ctx.views,
+              clearViews: ctx.clearViews
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -1391,15 +1265,13 @@ describe('ParameterContext', () => {
       });
 
       it('should be no-op when already empty', async () => {
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                views: ctx.views,
-                clearViews: ctx.clearViews
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              views: ctx.views,
+              clearViews: ctx.clearViews
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -1419,15 +1291,13 @@ describe('ParameterContext', () => {
         mockSearchParams.append('view', 'view_2');
         mockSearchParams.append('view', 'view_3');
 
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                views: ctx.views,
-                setView: ctx.setView
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              views: ctx.views,
+              setView: ctx.setView
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -1444,15 +1314,13 @@ describe('ParameterContext', () => {
         mockSearchParams.append('view', 'old_view');
         mockSearchParams.append('view', 'view_2');
 
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                views: ctx.views,
-                setView: ctx.setView
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              views: ctx.views,
+              setView: ctx.setView
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -1469,15 +1337,13 @@ describe('ParameterContext', () => {
         mockSearchParams.append('view', 'view_1');
         mockSearchParams.append('view', 'old_last');
 
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                views: ctx.views,
-                setView: ctx.setView
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              views: ctx.views,
+              setView: ctx.setView
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -1492,15 +1358,13 @@ describe('ParameterContext', () => {
       it('should do nothing when index is out of bounds', async () => {
         mockSearchParams = new URLSearchParams({ view: 'existing' });
 
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                views: ctx.views,
-                setView: ctx.setView
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              views: ctx.views,
+              setView: ctx.setView
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -1515,15 +1379,13 @@ describe('ParameterContext', () => {
       it('should do nothing when index is negative', async () => {
         mockSearchParams = new URLSearchParams({ view: 'existing' });
 
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                views: ctx.views,
-                setView: ctx.setView
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              views: ctx.views,
+              setView: ctx.setView
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -1536,15 +1398,13 @@ describe('ParameterContext', () => {
       });
 
       it('should do nothing when array is empty', async () => {
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                views: ctx.views,
-                setView: ctx.setView
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              views: ctx.views,
+              setView: ctx.setView
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -1561,14 +1421,12 @@ describe('ParameterContext', () => {
         mockSearchParams.append('view', 'view_1');
         mockSearchParams.append('view', 'view_2');
 
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                setView: ctx.setView
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              setView: ctx.setView
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -1586,14 +1444,12 @@ describe('ParameterContext', () => {
 
     describe('URL synchronization', () => {
       it('should sync single view to URL as view param', async () => {
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                addView: ctx.addView
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              addView: ctx.addView
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -1609,14 +1465,12 @@ describe('ParameterContext', () => {
       });
 
       it('should sync multiple views to URL as multiple view params', async () => {
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                addView: ctx.addView
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              addView: ctx.addView
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -1640,14 +1494,12 @@ describe('ParameterContext', () => {
         mockSearchParams.append('view', 'view_1');
         mockSearchParams.append('view', 'view_2');
 
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                clearViews: ctx.clearViews
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              clearViews: ctx.clearViews
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {
@@ -1663,14 +1515,12 @@ describe('ParameterContext', () => {
       });
 
       it('should preserve view order when syncing to URL', async () => {
-        const hook = await act(async () =>
-          renderHook(
-            () =>
-              useContextSelector(ParameterContext, ctx => ({
-                addView: ctx.addView
-              })),
-            { wrapper: Wrapper }
-          )
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              addView: ctx.addView
+            })),
+          { wrapper: Wrapper }
         );
 
         await act(async () => {

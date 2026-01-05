@@ -195,10 +195,8 @@ describe('HitContextMenu', () => {
 
   describe('Context Menu Initialization', () => {
     it('should open menu on right-click', async () => {
-      act(() => {
-        const contextMenuWrapper = screen.getByText('Test Content').parentElement;
-        fireEvent.contextMenu(contextMenuWrapper);
-      });
+      const contextMenuWrapper = screen.getByText('Test Content').parentElement;
+      await user.pointer({ keys: '[MouseRight]', target: contextMenuWrapper });
 
       await waitFor(() => {
         expect(screen.getByRole('menu')).toBeInTheDocument();
@@ -892,14 +890,11 @@ describe('HitContextMenu', () => {
       });
 
       const contextMenuWrapper = screen.getByText('Test Content').parentElement;
-      fireEvent.contextMenu(contextMenuWrapper);
-
-      await waitFor(() => {
-        expect(screen.getByRole('menu')).toBeInTheDocument();
-      });
+      await user.pointer({ keys: '[MouseRight]', target: contextMenuWrapper });
 
       // The component should use selectedHits for actions
       // We can verify this indirectly through the useHitActions hook receiving the right data
+      expect(screen.getByRole('menu')).toBeInTheDocument();
       expect(mockGetSelectedId).toHaveBeenCalled();
     });
 
@@ -911,7 +906,7 @@ describe('HitContextMenu', () => {
       });
 
       const contextMenuWrapper = screen.getByText('Test Content').parentElement;
-      fireEvent.contextMenu(contextMenuWrapper);
+      await user.pointer({ keys: '[MouseRight]', target: contextMenuWrapper });
 
       await waitFor(() => {
         expect(screen.getByRole('menu')).toBeInTheDocument();
@@ -923,9 +918,9 @@ describe('HitContextMenu', () => {
 
   describe('Dynamic Data Loading', () => {
     let contextMenuWrapper: HTMLElement;
-    beforeEach(() => {
+    beforeEach(async () => {
       contextMenuWrapper = screen.getByText('Test Content').parentElement;
-      fireEvent.contextMenu(contextMenuWrapper);
+      await user.pointer({ keys: '[MouseRight]', target: contextMenuWrapper });
     });
 
     it('should call getMatchingAnalytic when hit has analytic', async () => {
@@ -955,11 +950,7 @@ describe('HitContextMenu', () => {
         expect(screen.getByTestId('assessment-submenu')).toBeInTheDocument();
       });
 
-      await act(async () => {
-        // Close menu
-        const menu = screen.getByRole('menu');
-        await user.click(menu);
-      });
+      await user.click(screen.getByRole('menu'));
 
       await waitFor(() => {
         expect(screen.queryByRole('menu')).not.toBeInTheDocument();
