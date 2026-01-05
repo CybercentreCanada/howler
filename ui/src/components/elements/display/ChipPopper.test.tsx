@@ -1,5 +1,3 @@
-/* eslint-disable react/jsx-no-literals */
-/* eslint-disable import/imports-first */
 /// <reference types="vitest" />
 import { Info } from '@mui/icons-material';
 import { render, screen, waitFor } from '@testing-library/react';

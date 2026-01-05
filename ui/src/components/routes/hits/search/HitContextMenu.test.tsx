@@ -1,14 +1,9 @@
-/* eslint-disable react/jsx-no-literals */
-/* eslint-disable import/imports-first */
-/// <reference types="vitest" />
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { omit } from 'lodash-es';
 import { act, type PropsWithChildren } from 'react';
 import { setupContextSelectorMock } from 'tests/mocks';
 import { vi } from 'vitest';
-
-globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 // Mock API
 vi.mock('api', { spy: true });

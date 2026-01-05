@@ -98,14 +98,15 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
     const filterQueryTime = dayjs().subtract(1, 'month').toISOString();
 
     setQueryHistory(Object.fromEntries(Object.entries(queryHistory).filter(([_, value]) => value > filterQueryTime)));
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setQueryHistory]);
 
   // Inject default view into URL when no views present
   useEffect(() => {
     if (views.length === 0 && defaultView) {
       addView(defaultView);
     }
-  }, [views.length, defaultView]);
+  }, [views.length, defaultView, addView]);
 
   const search = useCallback(
     async (_query?: string, appendResults?: boolean) => {
@@ -152,7 +153,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
           viewObjects
             .filter(view => view?.query)
             .map(view => view.query)
-            .forEach(query => _filters.push(query));
+            .forEach(_query => _filters.push(_query));
         }
 
         try {
