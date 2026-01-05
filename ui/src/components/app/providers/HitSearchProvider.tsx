@@ -19,7 +19,7 @@ import {
   type PropsWithChildren,
   type SetStateAction
 } from 'react';
-import { useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
 import Throttler from 'utils/Throttler';
@@ -32,13 +32,11 @@ export interface QueryEntry {
   [query: string]: string;
 }
 
-interface HitSearchProviderType {
+export interface HitSearchContextType {
   displayType: 'list' | 'grid';
   searching: boolean;
   error: string | null;
   response: HowlerSearchResponse<WithMetadata<Hit>> | null;
-  /** @deprecated Use views[0] instead. Maintained for backward compatibility */
-  viewId?: string;
   bundleId: string | null;
   fzfSearch: boolean;
 
@@ -50,7 +48,7 @@ interface HitSearchProviderType {
   setQueryHistory: ReturnType<typeof useMyLocalStorageItem>[1];
 }
 
-export const HitSearchContext = createContext<HitSearchProviderType>(null);
+export const HitSearchContext = createContext<HitSearchContextType>(null);
 
 const THROTTLER = new Throttler(500);
 
@@ -60,7 +58,6 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const location = useLocation();
   const { dispatchApi } = useMyApi();
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
-  const [searchParams, setSearchParams] = useSearchParams();
 
   const fetchViews = useContextSelector(ViewContext, ctx => ctx.fetchViews);
   const defaultView = useContextSelector(ViewContext, ctx => ctx.defaultView);
@@ -88,8 +85,6 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
     'howler.id: *': new Date().toISOString()
   });
   const [fzfSearch, setFzfSearch] = useState<boolean>(false);
-
-  const viewId = useMemo(() => views[0] ?? null, [views]);
 
   const bundleId = useMemo(
     () => (location.pathname.startsWith('/bundles') ? routeParams.id : null),
@@ -258,7 +253,6 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
         searching,
         error,
         response,
-        viewId,
         bundleId,
         setQueryHistory,
         queryHistory,
@@ -272,9 +266,9 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
 };
 
 export const useHitSearchContextSelector = <Selected,>(
-  selector: (value: HitSearchProviderType) => Selected
+  selector: (value: HitSearchContextType) => Selected
 ): Selected => {
-  return useContextSelector<HitSearchProviderType, Selected>(HitSearchContext, selector);
+  return useContextSelector<HitSearchContextType, Selected>(HitSearchContext, selector);
 };
 
 export default HitSearchProvider;

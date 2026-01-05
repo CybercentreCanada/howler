@@ -51,11 +51,11 @@ const HitSummary: FC<{
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
   const { getMatchingTemplate } = useMatchers();
 
-  const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
-  const viewId = useContextSelector(HitSearchContext, ctx => ctx.viewId);
   const searching = useContextSelector(HitSearchContext, ctx => ctx.searching);
   const error = useContextSelector(HitSearchContext, ctx => ctx.error);
 
+  const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
+  const views = useContextSelector(ParameterContext, ctx => ctx.views);
   const span = useContextSelector(ParameterContext, ctx => ctx.span);
   const startDate = useContextSelector(ParameterContext, ctx => ctx.startDate);
   const endDate = useContextSelector(ParameterContext, ctx => ctx.endDate);
@@ -186,13 +186,13 @@ const HitSummary: FC<{
   );
 
   useEffect(() => {
-    if ((!query && !viewId) || searching || error) {
+    if ((!query && views?.length < 1) || searching || error) {
       return;
     }
 
     performAggregation();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, viewId, searching, error]);
+  }, [query, views, searching, error]);
 
   return (
     <Stack sx={{ mx: 2, height: '100%' }} spacing={1}>

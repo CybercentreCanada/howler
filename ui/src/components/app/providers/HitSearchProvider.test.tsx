@@ -1,8 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { hpost } from 'api';
 import { cloneDeep } from 'lodash-es';
-import MockLocalStorage from 'tests/MockLocalStorage';
-import { setupContextSelectorMock, setupReactRouterMock } from 'tests/mocks';
+import { setupContextSelectorMock, setupLocalStorageMock } from 'tests/mocks';
 import { useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY, MY_LOCAL_STORAGE_PREFIX, StorageKey } from 'utils/constants';
 import { HitContext, type HitContextType } from './HitProvider';
@@ -12,25 +11,17 @@ import { ViewContext, type ViewContextType } from './ViewProvider';
 
 vi.mock('api', { spy: true });
 
-setupReactRouterMock();
 setupContextSelectorMock();
+const mockLocalStorage = setupLocalStorageMock();
 
 import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 
+const mockSetParams = vi.fn();
 const mockParams = vi.mocked(useParams);
 const mockLocation = vi.mocked(useLocation());
-let mockSearchParams = new URLSearchParams();
-const mockSetParams = vi.fn();
-vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
-
-const mockLocalStorage: Storage = new MockLocalStorage() as any;
-Object.defineProperty(window, 'localStorage', {
-  value: mockLocalStorage,
-  writable: true
-});
 
 const mockViewContext: Partial<ViewContextType> = {
-  getCurrentView: ({ viewId }) => Promise.resolve({ view_id: viewId, query: 'howler.id:*' })
+  getCurrentViews: ({ viewId }) => Promise.resolve([{ view_id: viewId, query: 'howler.id:*' }])
 };
 let mockParameterContext: Partial<ParameterContextType> = {
   filters: [],
@@ -82,10 +73,10 @@ beforeEach(() => {
 
   mockParams.mockReturnValue({ id: undefined });
 
-  mockSearchParams = new URLSearchParams();
-  vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
-
   vi.mocked(hpost).mockClear();
+
+  let mockSearchParams = new URLSearchParams();
+  vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
 });
 
 describe('HitSearchContext', () => {
@@ -97,7 +88,6 @@ describe('HitSearchContext', () => {
           searching: ctx.searching,
           error: ctx.error,
           response: ctx.response,
-          viewId: ctx.viewId,
           bundleId: ctx.bundleId,
           fzfSearch: ctx.fzfSearch
         })),
@@ -108,18 +98,8 @@ describe('HitSearchContext', () => {
     expect(hook.result.current.searching).toBe(false);
     expect(hook.result.current.error).toBeNull();
     expect(hook.result.current.response).toBeNull();
-    expect(hook.result.current.viewId).toBeNull();
     expect(hook.result.current.bundleId).toBeNull();
     expect(hook.result.current.fzfSearch).toBe(false);
-  });
-
-  it('should set viewId when view is set', () => {
-    mockLocation.pathname = '/search?view=test_view_id';
-    mockParameterContext.views = ['test_view_id'];
-
-    const hook = renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.viewId), { wrapper: Wrapper });
-
-    expect(hook.result.current).toBe('test_view_id');
   });
 
   it('should set bundleId when on bundles route', () => {
@@ -587,24 +567,6 @@ describe('HitSearchContext', () => {
   });
 
   describe('multiple views support', () => {
-    describe('viewId backward compatibility', () => {
-      it('should return null for viewId when no views present', async () => {
-        mockParameterContext.views = [];
-
-        const hook = renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.viewId), { wrapper: Wrapper });
-
-        expect(hook.result.current).toBeNull();
-      });
-
-      it('should return first view as viewId for backward compatibility', async () => {
-        mockParameterContext.views = ['view_1', 'view_2'];
-
-        const hook = renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.viewId), { wrapper: Wrapper });
-
-        expect(hook.result.current).toBe('view_1');
-      });
-    });
-
     describe('AND logic for multiple view queries', () => {
       it('should combine two view queries with AND logic', async () => {
         mockParameterContext.views = ['view_1', 'view_2'];
@@ -677,7 +639,7 @@ describe('HitSearchContext', () => {
         const mockSearchParams = new URLSearchParams();
         vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
 
-        renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.viewId), { wrapper: Wrapper });
+        renderHook(() => useContextSelector(HitSearchContext, () => {}), { wrapper: Wrapper });
 
         await waitFor(() => {
           expect(mockParameterContext.addView).toBeCalledWith('default_view_id');
@@ -693,7 +655,7 @@ describe('HitSearchContext', () => {
         mockSearchParams.append('view', 'existing_view');
         vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
 
-        renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.viewId), { wrapper: Wrapper });
+        renderHook(() => useContextSelector(HitSearchContext, () => {}), { wrapper: Wrapper });
 
         await waitFor(() => {
           expect(mockParameterContext.addView).not.toBeCalled();
@@ -708,7 +670,7 @@ describe('HitSearchContext', () => {
         const mockSearchParams = new URLSearchParams();
         vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
 
-        renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.viewId), { wrapper: Wrapper });
+        renderHook(() => useContextSelector(HitSearchContext, () => {}), { wrapper: Wrapper });
 
         await waitFor(() => {
           expect(mockSetParams).not.toHaveBeenCalled();
@@ -792,12 +754,9 @@ describe('HitSearchContext', () => {
 
         renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.response), { wrapper: Wrapper });
 
-        await waitFor(
-          () => {
-            expect(hpost).toHaveBeenCalled();
-          },
-          { timeout: 2000 }
-        );
+        await waitFor(() => {
+          expect(hpost).toHaveBeenCalled();
+        });
       });
     });
   });

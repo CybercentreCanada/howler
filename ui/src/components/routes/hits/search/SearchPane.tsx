@@ -17,7 +17,6 @@ import PageCenter from 'commons/components/pages/PageCenter';
 import { HitContext } from 'components/app/providers/HitProvider';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
-import { ViewContext } from 'components/app/providers/ViewProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import FlexPort from 'components/elements/addons/layout/FlexPort';
 import VSBox from 'components/elements/addons/layout/vsbox/VSBox';
@@ -128,7 +127,6 @@ const SearchPane: FC = () => {
   const searching = useContextSelector(HitSearchContext, ctx => ctx.searching);
   const response = useContextSelector(HitSearchContext, ctx => ctx.response);
   const error = useContextSelector(HitSearchContext, ctx => ctx.error);
-  const viewId = useContextSelector(HitSearchContext, ctx => ctx.viewId);
 
   const { onClick } = useHitSelection();
 
@@ -141,8 +139,6 @@ const SearchPane: FC = () => {
   const searchPaneWidth = useMyLocalStorageItem(StorageKey.SEARCH_PANE_WIDTH, null)[0];
 
   const verticalSorters = useMediaQuery('(max-width: 1919px)') || (searchPaneWidth ?? Number.MAX_SAFE_INTEGER) < 900;
-
-  const selectedView = useContextSelector(ViewContext, ctx => ctx.views[viewId]);
 
   const getSelectedId = useCallback((event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     const target = event.target as HTMLElement;
@@ -239,7 +235,7 @@ const SearchPane: FC = () => {
           <VSBoxHeader ml={-3} mr={-3} px={2} pb={1} sx={{ zIndex: 989 }}>
             <Stack sx={{ pt: 1 }}>
               <Stack sx={{ position: 'relative', flex: 1 }}>
-                <HitQuery disabled={viewId && !selectedView} searching={searching} triggerSearch={triggerSearch} />
+                <HitQuery searching={searching} triggerSearch={triggerSearch} />
                 {searching && (
                   <LinearProgress
                     sx={theme => ({

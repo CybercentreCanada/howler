@@ -1,7 +1,7 @@
 import type { RenderHookResult } from '@testing-library/react';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { hget, hpost, hput } from 'api';
-import MockLocalStorage from 'tests/MockLocalStorage';
+import { setupLocalStorageMock, setupReactRouterMock } from 'tests/mocks';
 import { MOCK_RESPONSES } from 'tests/server-handlers';
 import { useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY, MY_LOCAL_STORAGE_PREFIX, StorageKey } from 'utils/constants';
@@ -11,25 +11,20 @@ let mockUser = {
   favourite_views: ['favourited_view_id']
 };
 
+setupReactRouterMock();
+const mockLocalStorage = setupLocalStorageMock();
+
+import { useLocation, useSearchParams } from 'react-router-dom';
+vi.mocked(useLocation).mockReturnValue({ pathname: '/search?view=searched_view_id' } as any);
+vi.mocked(useSearchParams).mockReturnValue([new URLSearchParams('?view=searched_view_id')] as any);
+
 vi.mock('api', { spy: true });
-vi.mock('react-router-dom', () => ({
-  useLocation: vi.fn(() => ({ pathname: '/views/searched_view_id' })),
-  useParams: vi.fn(() => ({ id: 'searched_view_id' }))
-}));
 vi.mock('commons/components/app/hooks', () => ({
   useAppUser: () => ({
     user: mockUser,
     setUser: _user => (mockUser = _user)
   })
 }));
-
-const mockLocalStorage: Storage = new MockLocalStorage() as any;
-
-// Replace localStorage in global scope
-Object.defineProperty(window, 'localStorage', {
-  value: mockLocalStorage,
-  writable: true
-});
 
 const Wrapper = ({ children }) => {
   return <ViewProvider>{children}</ViewProvider>;
@@ -192,30 +187,28 @@ describe('ViewContext', () => {
     });
   });
 
-  describe('getCurrentView', () => {
-    let hook: RenderHookResult<ViewContextType['getCurrentView'], any>;
+  describe('getCurrentViews', () => {
+    let hook: RenderHookResult<ViewContextType['getCurrentViews'], any>;
     beforeEach(async () => {
-      hook = await act(async () => {
-        return renderHook(() => useContextSelector(ViewContext, ctx => ctx.getCurrentView), { wrapper: Wrapper });
-      });
+      hook = renderHook(() => useContextSelector(ViewContext, ctx => ctx.getCurrentViews), { wrapper: Wrapper });
     });
 
     it('should allow the user to fetch their current view based on the location', async () => {
       // lazy load should return nothing
-      await expect(hook.result.current({ lazy: true })).resolves.toBeFalsy();
+      await expect(hook.result.current({ lazy: true })).resolves.toEqual([]);
 
       const result = await act(async () => hook.result.current());
 
-      expect(result).toEqual(MOCK_RESPONSES['/api/v1/search/view'].items[0]);
+      expect(result).toEqual([MOCK_RESPONSES['/api/v1/search/view'].items[0]]);
     });
 
     it('should allow the user to fetch their current view based on the view ID', async () => {
       // lazy load should return nothing
-      await expect(hook.result.current({ lazy: true })).resolves.toBeFalsy();
+      await expect(hook.result.current({ lazy: true })).resolves.toEqual([]);
 
       const result = await act(async () => hook.result.current({ viewId: 'searched_view_id' }));
 
-      expect(result).toEqual(MOCK_RESPONSES['/api/v1/search/view'].items[0]);
+      expect(result).toEqual([MOCK_RESPONSES['/api/v1/search/view'].items[0]]);
     });
   });
 

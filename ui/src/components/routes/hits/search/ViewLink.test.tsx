@@ -37,7 +37,7 @@ let mockHitSearchContext = {
 };
 
 let mockViewContext = {
-  getCurrentView: vi.fn(),
+  getCurrentViews: vi.fn(),
   views: {
     'test-view-id': createMockView(),
     'another-view-id': createMockView({ view_id: 'another-view-id', title: 'Another View' })
@@ -72,7 +72,7 @@ describe('ViewLink', () => {
     mockParameterContext.removeView = vi.fn();
     mockParameterContext.setView = vi.fn();
     mockHitSearchContext.search = vi.fn();
-    mockViewContext.getCurrentView = vi.fn().mockResolvedValue(createMockView());
+    mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([createMockView()]);
     mockViewContext.views = {
       'test-view-id': createMockView(),
       'another-view-id': createMockView({ view_id: 'another-view-id', title: 'Another View' })
@@ -81,7 +81,7 @@ describe('ViewLink', () => {
 
   describe('Loading State', () => {
     it('should show loading spinner while fetching view', () => {
-      mockViewContext.getCurrentView = vi.fn(() => new Promise(() => {})); // Never resolves
+      mockViewContext.getCurrentViews = vi.fn(() => new Promise(() => {})); // Never resolves
 
       render(<ViewLink id={0} viewId="test-view-id" />, { wrapper: Wrapper });
 
@@ -89,7 +89,7 @@ describe('ViewLink', () => {
     });
 
     it('should hide loading spinner after view is fetched', async () => {
-      mockViewContext.getCurrentView = vi.fn().mockResolvedValue(createMockView());
+      mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([createMockView()]);
 
       render(<ViewLink id={0} viewId="test-view-id" />, { wrapper: Wrapper });
 
@@ -173,7 +173,7 @@ describe('ViewLink', () => {
 
   describe('View Not Found', () => {
     it('should show error chip when view is not found', async () => {
-      mockViewContext.getCurrentView = vi.fn().mockResolvedValue(null);
+      mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([]);
 
       render(<ViewLink id={0} viewId="non-existent-view" />, { wrapper: Wrapper });
 
@@ -182,7 +182,7 @@ describe('ViewLink', () => {
     });
 
     it('should have proper accessibility attributes on error alert', async () => {
-      mockViewContext.getCurrentView = vi.fn().mockResolvedValue(null);
+      mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([]);
 
       render(<ViewLink id={0} viewId="non-existent-view" />, { wrapper: Wrapper });
 
@@ -192,7 +192,7 @@ describe('ViewLink', () => {
     });
 
     it('should call removeView when error chip is deleted', async () => {
-      mockViewContext.getCurrentView = vi.fn().mockResolvedValue(null);
+      mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([]);
 
       render(<ViewLink id={0} viewId="non-existent-view" />, { wrapper: Wrapper });
 
@@ -208,7 +208,7 @@ describe('ViewLink', () => {
 
   describe('Valid View Display', () => {
     it('should display view title as link', async () => {
-      mockViewContext.getCurrentView = vi.fn().mockResolvedValue(createMockView());
+      mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([createMockView()]);
 
       render(<ViewLink id={0} viewId="test-view-id" />, { wrapper: Wrapper });
 
@@ -217,7 +217,7 @@ describe('ViewLink', () => {
     });
 
     it('should display tooltip with view query on title', async () => {
-      mockViewContext.getCurrentView = vi.fn().mockResolvedValue(createMockView());
+      mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([createMockView()]);
 
       render(<ViewLink id={0} viewId="test-view-id" />, { wrapper: Wrapper });
 
@@ -226,11 +226,11 @@ describe('ViewLink', () => {
     });
 
     it('should display translated view title', async () => {
-      mockViewContext.getCurrentView = vi.fn().mockResolvedValue(
+      mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([
         createMockView({
           title: 'view.assigned_to_me'
         })
-      );
+      ]);
 
       render(<ViewLink id={0} viewId="test-view-id" />, { wrapper: Wrapper });
 
@@ -243,7 +243,7 @@ describe('ViewLink', () => {
 
       for (const type of viewTypes) {
         vi.clearAllMocks();
-        mockViewContext.getCurrentView = vi.fn().mockResolvedValue(createMockView({ type }));
+        mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([createMockView({ type })]);
 
         const { unmount } = render(<ViewLink id={0} viewId="test-view-id" />, { wrapper: Wrapper });
 
@@ -254,7 +254,7 @@ describe('ViewLink', () => {
     });
 
     it('should display delete button to remove view', async () => {
-      mockViewContext.getCurrentView = vi.fn().mockResolvedValue(createMockView());
+      mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([createMockView()]);
 
       render(<ViewLink id={0} viewId="test-view-id" />, { wrapper: Wrapper });
 
@@ -266,7 +266,7 @@ describe('ViewLink', () => {
     });
 
     it('should call removeView when delete button is clicked', async () => {
-      mockViewContext.getCurrentView = vi.fn().mockResolvedValue(createMockView());
+      mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([createMockView()]);
 
       render(<ViewLink id={0} viewId="test-view-id" />, { wrapper: Wrapper });
 
@@ -285,7 +285,7 @@ describe('ViewLink', () => {
 
   describe('Action Buttons', () => {
     beforeEach(async () => {
-      mockViewContext.getCurrentView = vi.fn().mockResolvedValue(createMockView());
+      mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([createMockView()]);
     });
 
     it('should display edit button', async () => {
@@ -353,7 +353,7 @@ describe('ViewLink', () => {
 
   describe('URL Generation', () => {
     it('should generate edit URL when view exists', async () => {
-      mockViewContext.getCurrentView = vi.fn().mockResolvedValue(createMockView());
+      mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([createMockView()]);
 
       render(<ViewLink id={0} viewId="test-view-id" />, { wrapper: Wrapper });
 
@@ -365,7 +365,7 @@ describe('ViewLink', () => {
     });
 
     it('should generate create URL with query params when view does not exist', async () => {
-      mockViewContext.getCurrentView = vi.fn().mockResolvedValue(null);
+      mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([]);
       mockParameterContext.query = 'test-query';
       mockParameterContext.sort = 'test-sort';
       mockParameterContext.span = 'test-span';
@@ -380,7 +380,7 @@ describe('ViewLink', () => {
     });
 
     it('should generate create URL without params when no query/sort/span', async () => {
-      mockViewContext.getCurrentView = vi.fn().mockResolvedValue(null);
+      mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([]);
       mockParameterContext.query = null;
       mockParameterContext.sort = null;
       mockParameterContext.span = null;
@@ -395,11 +395,11 @@ describe('ViewLink', () => {
 
   describe('Edge Cases', () => {
     it('should handle view with missing title', async () => {
-      mockViewContext.getCurrentView = vi.fn().mockResolvedValue(
+      mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([
         createMockView({
           title: undefined
         })
-      );
+      ]);
 
       const { container } = render(<ViewLink id={0} viewId="test-view-id" />, { wrapper: Wrapper });
 
@@ -408,11 +408,11 @@ describe('ViewLink', () => {
     });
 
     it('should handle view with missing query', async () => {
-      mockViewContext.getCurrentView = vi.fn().mockResolvedValue(
+      mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([
         createMockView({
           query: undefined
         })
-      );
+      ]);
 
       render(<ViewLink id={0} viewId="test-view-id" />, { wrapper: Wrapper });
 
@@ -422,7 +422,7 @@ describe('ViewLink', () => {
 
     it('should handle undefined query in parameter context', async () => {
       mockParameterContext.query = undefined;
-      mockViewContext.getCurrentView = vi.fn().mockResolvedValue(createMockView());
+      mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([createMockView()]);
 
       render(<ViewLink id={0} viewId="test-view-id" />, { wrapper: Wrapper });
 
@@ -437,7 +437,7 @@ describe('ViewLink', () => {
 
     it('should handle custom span correctly', async () => {
       mockParameterContext.span = 'date.range.custom';
-      mockViewContext.getCurrentView = vi.fn().mockResolvedValue(createMockView());
+      mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([createMockView()]);
 
       render(<ViewLink id={0} viewId="test-view-id" />, { wrapper: Wrapper });
 
@@ -451,7 +451,7 @@ describe('ViewLink', () => {
 
     it('should disable edit button when no query and no view', async () => {
       mockParameterContext.query = null;
-      mockViewContext.getCurrentView = vi.fn().mockResolvedValue(null);
+      mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([]);
 
       render(<ViewLink id={0} viewId="new-view" />, { wrapper: Wrapper });
 
@@ -466,12 +466,12 @@ describe('ViewLink', () => {
       expect(await screen.findByText('Test View')).toBeInTheDocument();
 
       // Change viewId
-      mockViewContext.getCurrentView = vi.fn().mockResolvedValue(
+      mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([
         createMockView({
           view_id: 'another-view-id',
           title: 'Another View'
         })
-      );
+      ]);
 
       rerender(<ViewLink id={0} viewId="another-view-id" />);
 
@@ -483,26 +483,26 @@ describe('ViewLink', () => {
 
       await screen.findByText('Test View');
 
-      expect(mockViewContext.getCurrentView).toHaveBeenCalledWith({ viewId: 'test-view-id' });
+      expect(mockViewContext.getCurrentViews).toHaveBeenCalledWith({ viewId: 'test-view-id' });
 
-      mockViewContext.getCurrentView = vi.fn().mockResolvedValue(
+      mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([
         createMockView({
           view_id: 'another-view-id',
           title: 'Another View'
         })
-      );
+      ]);
 
       rerender(<ViewLink id={0} viewId="another-view-id" />);
 
       await screen.findByText('Another View');
 
-      expect(mockViewContext.getCurrentView).toHaveBeenCalledWith({ viewId: 'another-view-id' });
+      expect(mockViewContext.getCurrentViews).toHaveBeenCalledWith({ viewId: 'another-view-id' });
     });
   });
 
   describe('Accessibility', () => {
     it('should have accessible link text for view title', async () => {
-      mockViewContext.getCurrentView = vi.fn().mockResolvedValue(createMockView());
+      mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([createMockView()]);
 
       render(<ViewLink id={0} viewId="test-view-id" />, { wrapper: Wrapper });
 
@@ -512,7 +512,7 @@ describe('ViewLink', () => {
     });
 
     it('should have tooltips for all action buttons', async () => {
-      mockViewContext.getCurrentView = vi.fn().mockResolvedValue(createMockView());
+      mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([createMockView()]);
 
       render(<ViewLink id={0} viewId="test-view-id" />, { wrapper: Wrapper });
 
@@ -529,7 +529,7 @@ describe('ViewLink', () => {
     });
 
     it('should have proper ARIA attributes on view type icon', async () => {
-      mockViewContext.getCurrentView = vi.fn().mockResolvedValue(createMockView());
+      mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([createMockView()]);
 
       render(<ViewLink id={0} viewId="test-view-id" />, { wrapper: Wrapper });
 
@@ -540,17 +540,17 @@ describe('ViewLink', () => {
 
   describe('Integration with Context', () => {
     it('should use getCurrentView from ViewContext', async () => {
-      mockViewContext.getCurrentView = vi.fn().mockResolvedValue(createMockView());
+      mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([createMockView()]);
 
       render(<ViewLink id={0} viewId="test-view-id" />, { wrapper: Wrapper });
 
       await screen.findByText('Test View');
 
-      expect(mockViewContext.getCurrentView).toHaveBeenCalledWith({ viewId: 'test-view-id' });
+      expect(mockViewContext.getCurrentViews).toHaveBeenCalledWith({ viewId: 'test-view-id' });
     });
 
     it('should use removeView from ParameterContext', async () => {
-      mockViewContext.getCurrentView = vi.fn().mockResolvedValue(createMockView());
+      mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([createMockView()]);
 
       render(<ViewLink id={0} viewId="test-view-id" />, { wrapper: Wrapper });
 
@@ -566,7 +566,7 @@ describe('ViewLink', () => {
     });
 
     it('should use search from HitSearchContext', async () => {
-      mockViewContext.getCurrentView = vi.fn().mockResolvedValue(createMockView());
+      mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([createMockView()]);
 
       render(<ViewLink id={0} viewId="test-view-id" />, { wrapper: Wrapper });
 

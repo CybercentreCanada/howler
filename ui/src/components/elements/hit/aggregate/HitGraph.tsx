@@ -55,12 +55,12 @@ const HitGraph: FC<{ query: string }> = ({ query }) => {
   const span = useContextSelector(ParameterContext, ctx => ctx.span);
   const startDate = useContextSelector(ParameterContext, ctx => ctx.startDate);
   const endDate = useContextSelector(ParameterContext, ctx => ctx.endDate);
+  const views = useContextSelector(ParameterContext, ctx => ctx.views);
 
   const selectedHits = useContextSelector(HitContext, ctx => ctx.selectedHits);
   const addHitToSelection = useContextSelector(HitContext, ctx => ctx.addHitToSelection);
   const removeHitFromSelection = useContextSelector(HitContext, ctx => ctx.removeHitFromSelection);
 
-  const viewId = useContextSelector(HitSearchContext, ctx => ctx.viewId);
   const error = useContextSelector(HitSearchContext, ctx => ctx.error);
   const response = useContextSelector(HitSearchContext, ctx => ctx.response);
 
@@ -152,13 +152,13 @@ const HitGraph: FC<{ query: string }> = ({ query }) => {
   }, [dispatchApi, endDate, escalationFilter, filterField, override, query, span, startDate]);
 
   useEffect(() => {
-    if ((!query && !viewId) || error || !response) {
+    if ((!query && views?.length < 1) || error || !response) {
       return;
     }
 
     performQuery();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, viewId, error, span, response]);
+  }, [query, views, error, span, response]);
 
   const options: ChartOptions<'scatter'> = useMemo(() => {
     const parentOptions = scatter('hit.summary.title', 'hit.summary.subtitle');

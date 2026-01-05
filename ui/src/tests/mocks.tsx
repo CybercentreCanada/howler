@@ -1,5 +1,6 @@
 import { createContext, forwardRef, useContext } from 'react';
 import { vi } from 'vitest';
+import MockLocalStorage from './MockLocalStorage';
 
 /**
  * Sets up a mock for use-context-selector that uses React's native context
@@ -47,4 +48,30 @@ export const setupReactRouterMock = () => {
   });
 
   afterAll(() => vi.resetModules());
+};
+
+/**
+ * Sets up a mock localStorage instance
+ */
+export const setupLocalStorageMock = () => {
+  const mockLocalStorage: Storage = new MockLocalStorage() as any;
+  Object.defineProperty(window, 'localStorage', {
+    value: mockLocalStorage,
+    writable: true
+  });
+
+  return mockLocalStorage;
+};
+
+/**
+ * Sets up a mock localStorage instance
+ */
+export const setupSessionStorageMock = () => {
+  const mockSessionStorage: Storage = new MockLocalStorage() as any;
+  Object.defineProperty(window, 'sessionStorage', {
+    value: mockSessionStorage,
+    writable: true
+  });
+
+  return mockSessionStorage;
 };

@@ -6,7 +6,7 @@ import { has, omit } from 'lodash-es';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { View } from 'models/entities/generated/View';
 import { useCallback, useEffect, useState, type FC, type PropsWithChildren } from 'react';
-import { useLocation, useParams } from 'react-router-dom';
+import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
 
@@ -20,7 +20,7 @@ export interface ViewContextType {
   addView: (v: View) => Promise<View>;
   editView: (id: string, newView: Partial<Omit<View, 'view_id' | 'owner'>>) => Promise<View>;
   removeView: (id: string) => Promise<void>;
-  getCurrentView: (config?: { viewId?: string; lazy?: boolean }) => Promise<View>;
+  getCurrentViews: (config?: { viewId?: string; lazy?: boolean }) => Promise<View[]>;
 }
 
 export const ViewContext = createContext<ViewContextType>(null);
@@ -31,6 +31,7 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
   const [defaultView, setDefaultView] = useMyLocalStorageItem<string>(StorageKey.DEFAULT_VIEW);
   const location = useLocation();
   const routeParams = useParams();
+  const [searchParams] = useSearchParams();
 
   const [views, setViews] = useState<{ [viewId: string]: View }>({});
 
@@ -95,21 +96,30 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
     })();
   }, [defaultView, fetchViews, setDefaultView, views]);
 
-  const getCurrentView: ViewContextType['getCurrentView'] = useCallback(
+  const getCurrentViews: ViewContextType['getCurrentViews'] = useCallback(
     async ({ viewId, lazy = false } = {}) => {
-      if (!viewId) {
-        viewId = location.pathname.startsWith('/views') ? routeParams.id : defaultView;
+      const views = searchParams.getAll('view');
+
+      if (viewId && !views.includes(viewId)) {
+        views.push(viewId);
       }
 
-      if (!viewId) {
-        return null;
+      if (views.length < 1) {
+        return [];
       }
 
-      if (!has(views, viewId) && !lazy) {
-        return (await fetchViews([viewId]))[0];
-      }
+      const results: View[] = [];
+      const missing: string[] = [];
 
-      return views[viewId];
+      views.forEach(_view => {
+        if (has(views, _view)) {
+          results.push(views[_view]);
+        } else if (!lazy) {
+          missing.push(_view);
+        }
+      });
+
+      return [...results, ...(await fetchViews(missing))];
     },
     [defaultView, fetchViews, location.pathname, routeParams.id, views]
   );
@@ -192,7 +202,7 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
         removeView,
         defaultView,
         setDefaultView,
-        getCurrentView
+        getCurrentViews
       }}
     >
       {children}

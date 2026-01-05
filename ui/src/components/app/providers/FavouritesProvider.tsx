@@ -43,14 +43,12 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
 
     const items = sortBy(savedViews, 'title')
       .filter(view => !!view)
-      .map(view => {
-        return {
-          id: view.view_id,
-          text: t(view.title),
-          route: buildViewUrl(view),
-          nested: true
-        };
-      });
+      .map(view => ({
+        id: view.view_id,
+        text: t(view.title),
+        route: buildViewUrl(view),
+        nested: true
+      }));
 
     if (viewElement) {
       const newViewElement: AppLeftNavElement = {

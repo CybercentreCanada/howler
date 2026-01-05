@@ -22,7 +22,7 @@ import FlexPort from 'components/elements/addons/layout/FlexPort';
 import HitSummary from 'components/elements/hit/HitSummary';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import ErrorBoundary from 'components/routes/ErrorBoundary';
-import { has, isNull } from 'lodash-es';
+import { isNull } from 'lodash-es';
 import type { FC, ReactNode } from 'react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
@@ -67,6 +67,7 @@ const HitBrowser: FC = () => {
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
   const setOffset = useContextSelector(ParameterContext, ctx => ctx.setOffset);
+  const selectedViews = useContextSelector(ParameterContext, ctx => ctx.views);
 
   const selectedHits = useContextSelector(HitContext, ctx => ctx.selectedHits);
   const addHitToSelection = useContextSelector(HitContext, ctx => ctx.addHitToSelection);
@@ -77,7 +78,6 @@ const HitBrowser: FC = () => {
   const forceDrawer = useMyLocalStorageItem(StorageKey.FORCE_DRAWER, false)[0];
 
   const displayType = useContextSelector(HitSearchContext, ctx => ctx.displayType);
-  const viewId = useContextSelector(HitSearchContext, ctx => ctx.viewId);
   const response = useContextSelector(HitSearchContext, ctx => ctx.response);
 
   const location = useLocation();
@@ -95,12 +95,17 @@ const HitBrowser: FC = () => {
     let _fullQuery = query;
     if (bundle) {
       _fullQuery = `(howler.bundles:${bundle}) AND (${_fullQuery})`;
-    } else if (viewId) {
-      _fullQuery = `(${views[viewId]?.query || DEFAULT_QUERY}) AND (${_fullQuery})`;
+    } else if (selectedViews.length > 0) {
+      const viewsQuery = selectedViews
+        .filter(_view => views[_view]?.query)
+        .map(_view => views[_view].query || DEFAULT_QUERY)
+        .join(' AND ');
+
+      _fullQuery = `(${viewsQuery}) AND (${_fullQuery})`;
     }
 
     return _fullQuery;
-  }, [location.pathname, query, routeParams.id, views, viewId]);
+  }, [location.pathname, query, routeParams.id, views]);
 
   const showSelectBar = useMemo(() => {
     if (selectedHits.length > 1) {
@@ -115,13 +120,9 @@ const HitBrowser: FC = () => {
   }, [selected, selectedHits]);
 
   useEffect(() => {
-    if (!location.pathname.startsWith('/views') || !viewId || has(views, viewId)) {
-      return;
-    }
-
-    fetchViews([viewId]);
+    fetchViews(selectedViews);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, viewId]);
+  }, [location.pathname, location.search]);
 
   const onClose = useCallback(() => {
     setSelected(null);

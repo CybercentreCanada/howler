@@ -53,7 +53,7 @@ const ViewComposer: FC = () => {
 
   const addView = useContextSelector(ViewContext, ctx => ctx.addView);
   const editView = useContextSelector(ViewContext, ctx => ctx.editView);
-  const getCurrentView = useContextSelector(ViewContext, ctx => ctx.getCurrentView);
+  const getCurrentViews = useContextSelector(ViewContext, ctx => ctx.getCurrentViews);
 
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
@@ -177,7 +177,7 @@ const ViewComposer: FC = () => {
     }
 
     (async () => {
-      const viewToEdit = await getCurrentView();
+      const viewToEdit = (await getCurrentViews({ viewId: routeParams.id }))[0];
 
       if (!viewToEdit) {
         setError('route.views.missing');
@@ -199,7 +199,7 @@ const ViewComposer: FC = () => {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routeParams.id, getCurrentView]);
+  }, [routeParams.id, getCurrentViews]);
 
   return (
     <FlexPort>
