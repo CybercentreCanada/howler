@@ -21,7 +21,7 @@ const mockParams = vi.mocked(useParams);
 const mockLocation = vi.mocked(useLocation());
 
 const mockViewContext: Partial<ViewContextType> = {
-  getCurrentViews: ({ viewId }) => Promise.resolve([{ view_id: viewId, query: 'howler.id:*' }])
+  getCurrentViews: ({ viewId } = {}) => Promise.resolve([{ view_id: viewId || 'test_view_id', query: 'howler.id:*' }])
 };
 let mockParameterContext: Partial<ParameterContextType> = {
   filters: [],
@@ -337,7 +337,8 @@ describe('HitSearchContext', () => {
         expect(hpost).toHaveBeenCalledWith(
           '/api/v1/search/hit',
           expect.objectContaining({
-            query: expect.stringContaining('howler.bundles:test_bundle_id')
+            query: 'test query',
+            filters: ['event.created:[now-1w TO now]', 'howler.bundles:test_bundle_id']
           })
         );
       });
@@ -350,17 +351,14 @@ describe('HitSearchContext', () => {
         hook.result.current('test query');
       });
 
-      await waitFor(
-        () => {
-          expect(hpost).toHaveBeenCalledWith(
-            '/api/v1/search/hit',
-            expect.objectContaining({
-              filters: expect.arrayContaining([expect.stringContaining('event.created:')])
-            })
-          );
-        },
-        { timeout: 2000 }
-      );
+      await waitFor(() => {
+        expect(hpost).toHaveBeenCalledWith(
+          '/api/v1/search/hit',
+          expect.objectContaining({
+            filters: expect.arrayContaining([expect.stringContaining('event.created:')])
+          })
+        );
+      });
     });
 
     it('should apply custom date range when span is custom', async () => {
@@ -374,17 +372,14 @@ describe('HitSearchContext', () => {
         hook.result.current('test query');
       });
 
-      await waitFor(
-        () => {
-          expect(hpost).toHaveBeenCalledWith(
-            '/api/v1/search/hit',
-            expect.objectContaining({
-              filters: expect.arrayContaining([expect.stringContaining('event.created:')])
-            })
-          );
-        },
-        { timeout: 2000 }
-      );
+      await waitFor(() => {
+        expect(hpost).toHaveBeenCalledWith(
+          '/api/v1/search/hit',
+          expect.objectContaining({
+            filters: expect.arrayContaining([expect.stringContaining('event.created:')])
+          })
+        );
+      });
     });
 
     it('should exclude filters ending with * from search', async () => {
@@ -396,17 +391,14 @@ describe('HitSearchContext', () => {
         hook.result.current('test query');
       });
 
-      await waitFor(
-        () => {
-          expect(hpost).toHaveBeenCalledWith(
-            '/api/v1/search/hit',
-            expect.objectContaining({
-              filters: expect.not.arrayContaining([expect.stringContaining('howler.escalation:*')])
-            })
-          );
-        },
-        { timeout: 2000 }
-      );
+      await waitFor(() => {
+        expect(hpost).toHaveBeenCalledWith(
+          '/api/v1/search/hit',
+          expect.objectContaining({
+            filters: expect.not.arrayContaining([expect.stringContaining('howler.escalation:*')])
+          })
+        );
+      });
     });
 
     it('should reset offset if response total is less than current offset', async () => {
@@ -433,12 +425,9 @@ describe('HitSearchContext', () => {
 
       hook.rerender();
 
-      await waitFor(
-        () => {
-          expect(mockParameterContext.offset).toBe(0);
-        },
-        { timeout: 2000 }
-      );
+      await waitFor(() => {
+        expect(mockParameterContext.offset).toBe(0);
+      });
     });
 
     it('should not search when sort or span is null', async () => {
@@ -468,12 +457,9 @@ describe('HitSearchContext', () => {
         { wrapper: Wrapper }
       );
 
-      await waitFor(
-        () => {
-          expect(hpost).toHaveBeenCalled();
-        },
-        { timeout: 2000 }
-      );
+      await waitFor(() => {
+        expect(hpost).toHaveBeenCalled();
+      });
 
       vi.mocked(hpost).mockClear();
 
@@ -571,15 +557,10 @@ describe('HitSearchContext', () => {
       it('should combine two view queries with AND logic', async () => {
         mockParameterContext.views = ['view_1', 'view_2'];
 
-        mockViewContext.fetchViews = vi.fn(viewIds => {
-          return Promise.resolve(
-            viewIds.map(id => {
-              if (id === 'view_1') return { view_id: 'view_1', query: 'howler.status:open' };
-              if (id === 'view_2') return { view_id: 'view_2', query: 'howler.priority:high' };
-              return null;
-            })
-          );
-        });
+        mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([
+          { view_id: 'view_1', query: 'howler.status:open' },
+          { view_id: 'view_2', query: 'howler.priority:high' }
+        ]);
 
         const hook = renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.search), { wrapper: Wrapper });
 
@@ -591,7 +572,8 @@ describe('HitSearchContext', () => {
           expect(hpost).toHaveBeenCalledWith(
             '/api/v1/search/hit',
             expect.objectContaining({
-              query: expect.stringMatching(/howler\.status:open.*AND.*howler\.priority:high.*AND.*test query/)
+              query: 'test query',
+              filters: expect.arrayContaining(['howler.status:open', 'howler.priority:high'])
             })
           );
         });
@@ -600,16 +582,11 @@ describe('HitSearchContext', () => {
       it('should combine three view queries with AND logic', async () => {
         mockParameterContext.views = ['view_1', 'view_2', 'view_3'];
 
-        mockViewContext.fetchViews = vi.fn(viewIds => {
-          return Promise.resolve(
-            viewIds.map(id => {
-              if (id === 'view_1') return { view_id: 'view_1', query: 'howler.status:open' };
-              if (id === 'view_2') return { view_id: 'view_2', query: 'howler.priority:high' };
-              if (id === 'view_3') return { view_id: 'view_3', query: 'howler.analytic:sigma' };
-              return null;
-            })
-          );
-        });
+        mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([
+          { view_id: 'view_1', query: 'howler.status:open' },
+          { view_id: 'view_2', query: 'howler.priority:high' },
+          { view_id: 'view_3', query: 'howler.analytic:sigma' }
+        ]);
 
         const hook = renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.search), { wrapper: Wrapper });
 
@@ -621,9 +598,13 @@ describe('HitSearchContext', () => {
           expect(hpost).toHaveBeenCalledWith(
             '/api/v1/search/hit',
             expect.objectContaining({
-              query: expect.stringMatching(
-                /howler\.status:open.*AND.*howler\.priority:high.*AND.*howler\.analytic:sigma.*AND.*test query/
-              )
+              query: 'test query',
+              filters: [
+                'event.created:[now-1w TO now]',
+                'howler.status:open',
+                'howler.priority:high',
+                'howler.analytic:sigma'
+              ]
             })
           );
         });
@@ -682,7 +663,7 @@ describe('HitSearchContext', () => {
       it('should not break when view ID does not exist', async () => {
         mockParameterContext.views = ['non_existent_view'];
 
-        mockViewContext.fetchViews = vi.fn(() => Promise.resolve([null]));
+        mockViewContext.getCurrentViews = vi.fn(() => Promise.resolve([null]));
 
         const hook = renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.search), { wrapper: Wrapper });
 
@@ -695,7 +676,8 @@ describe('HitSearchContext', () => {
             expect(hpost).toHaveBeenCalledWith(
               '/api/v1/search/hit',
               expect.objectContaining({
-                query: expect.stringContaining('test query')
+                query: expect.stringContaining('test query'),
+                filters: ['event.created:[now-1w TO now]']
               })
             );
           },
@@ -706,15 +688,10 @@ describe('HitSearchContext', () => {
       it('should skip null views and combine valid ones', async () => {
         mockParameterContext.views = ['view_1', 'invalid_view', 'view_2'];
 
-        mockViewContext.fetchViews = vi.fn(viewIds => {
-          return Promise.resolve(
-            viewIds.map(id => {
-              if (id === 'view_1') return { view_id: 'view_1', query: 'howler.status:open' };
-              if (id === 'view_2') return { view_id: 'view_2', query: 'howler.priority:high' };
-              return null;
-            })
-          );
-        });
+        mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([
+          { view_id: 'view_1', query: 'howler.status:open' },
+          { view_id: 'view_2', query: 'howler.priority:high' }
+        ]);
 
         const hook = renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.search), { wrapper: Wrapper });
 
@@ -722,17 +699,15 @@ describe('HitSearchContext', () => {
           hook.result.current('test query');
         });
 
-        await waitFor(
-          () => {
-            expect(hpost).toHaveBeenCalledWith(
-              '/api/v1/search/hit',
-              expect.objectContaining({
-                query: expect.stringMatching(/howler\.status:open.*AND.*howler\.priority:high.*AND.*test query/)
-              })
-            );
-          },
-          { timeout: 2000 }
-        );
+        await waitFor(() => {
+          expect(hpost).toHaveBeenCalledWith(
+            '/api/v1/search/hit',
+            expect.objectContaining({
+              query: 'test query',
+              filters: ['event.created:[now-1w TO now]', 'howler.status:open', 'howler.priority:high']
+            })
+          );
+        });
       });
     });
 

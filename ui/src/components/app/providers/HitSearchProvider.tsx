@@ -59,7 +59,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const { dispatchApi } = useMyApi();
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
-  const fetchViews = useContextSelector(ViewContext, ctx => ctx.fetchViews);
+  const getCurrentViews = useContextSelector(ViewContext, ctx => ctx.getCurrentViews);
   const defaultView = useContextSelector(ViewContext, ctx => ctx.defaultView);
 
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
@@ -139,31 +139,28 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
           _filters.push(`event.created:${convertCustomDateRangeToLucene(startDate, endDate)}`);
         }
 
+        const bundle = location.pathname.startsWith('/bundles') && routeParams.id;
+        if (bundle) {
+          _filters.push(`howler.bundles:${bundle}`);
+        }
+
+        if (views.length > 0) {
+          // Fetch all view queries
+          const viewObjects = await getCurrentViews();
+
+          // Filter out null/undefined views and extract queries
+          viewObjects
+            .filter(view => view?.query)
+            .map(view => view.query)
+            .forEach(query => _filters.push(query));
+        }
+
         try {
-          const bundle = location.pathname.startsWith('/bundles') && routeParams.id;
-
-          let fullQuery = _query || DEFAULT_QUERY;
-          if (bundle) {
-            fullQuery = `(howler.bundles:${bundle}) AND (${fullQuery})`;
-          } else if (views.length > 0) {
-            // Fetch all view queries
-            const viewObjects = await fetchViews(views);
-
-            // Filter out null/undefined views and extract queries
-            const viewQueries = viewObjects.filter(view => view?.query).map(view => view.query);
-
-            // Combine view queries with AND logic
-            if (viewQueries.length > 0) {
-              const combinedViewQuery = viewQueries.map(q => `(${q})`).join(' AND ');
-              fullQuery = `(${combinedViewQuery}) AND (${fullQuery})`;
-            }
-          }
-
           const _response = await dispatchApi(
             api.search.hit.post({
               offset: appendResults && response ? response.rows : offset,
               rows: pageCount,
-              query: fullQuery,
+              query: _query || DEFAULT_QUERY,
               sort,
               filters: _filters,
               track_total_hits: trackTotalHits,
@@ -213,7 +210,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
       pageCount,
       trackTotalHits,
       loadHits,
-      fetchViews,
+      getCurrentViews,
       setOffset
     ]
   );

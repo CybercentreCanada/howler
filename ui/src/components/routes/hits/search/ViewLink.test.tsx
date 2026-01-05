@@ -483,7 +483,7 @@ describe('ViewLink', () => {
 
       await screen.findByText('Test View');
 
-      expect(mockViewContext.getCurrentViews).toHaveBeenCalledWith({ viewId: 'test-view-id' });
+      expect(mockViewContext.getCurrentViews).toHaveBeenCalledWith({ viewId: 'test-view-id', ignoreParams: true });
 
       mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([
         createMockView({
@@ -496,7 +496,7 @@ describe('ViewLink', () => {
 
       await screen.findByText('Another View');
 
-      expect(mockViewContext.getCurrentViews).toHaveBeenCalledWith({ viewId: 'another-view-id' });
+      expect(mockViewContext.getCurrentViews).toHaveBeenCalledWith({ viewId: 'another-view-id', ignoreParams: true });
     });
   });
 
@@ -546,7 +546,7 @@ describe('ViewLink', () => {
 
       await screen.findByText('Test View');
 
-      expect(mockViewContext.getCurrentViews).toHaveBeenCalledWith({ viewId: 'test-view-id' });
+      expect(mockViewContext.getCurrentViews).toHaveBeenCalledWith({ viewId: 'test-view-id', ignoreParams: true });
     });
 
     it('should use removeView from ParameterContext', async () => {
