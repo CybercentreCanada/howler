@@ -77,7 +77,7 @@ const ChipPopper: FC<ChipPopperProps> = ({
         }}
       >
         <Collapse in={show} unmountOnExit>
-          <ClickAwayListener onClickAway={e => handleToggle(false)}>
+          <ClickAwayListener onClickAway={() => handleToggle(false)}>
             <Paper
               sx={[
                 { borderTopLeftRadius: 0, borderTopRightRadius: 0, px: 1, py: 2 },
