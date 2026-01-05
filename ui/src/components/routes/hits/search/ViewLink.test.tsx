@@ -478,7 +478,7 @@ describe('ViewLink', () => {
       expect(await screen.findByText('Another View')).toBeInTheDocument();
     });
 
-    it('should call getCurrentView when viewId changes', async () => {
+    it('should call getCurrentViews when viewId changes', async () => {
       const { rerender } = render(<ViewLink id={0} viewId="test-view-id" />, { wrapper: Wrapper });
 
       await screen.findByText('Test View');
@@ -539,7 +539,7 @@ describe('ViewLink', () => {
   });
 
   describe('Integration with Context', () => {
-    it('should use getCurrentView from ViewContext', async () => {
+    it('should use getCurrentViews from ViewContext', async () => {
       mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([createMockView()]);
 
       render(<ViewLink id={0} viewId="test-view-id" />, { wrapper: Wrapper });

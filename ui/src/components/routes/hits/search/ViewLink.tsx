@@ -24,7 +24,7 @@ import { useContextSelector } from 'use-context-selector';
 const ViewLink: FC<{ id: number; viewId: string }> = ({ id, viewId }) => {
   const { t } = useTranslation();
 
-  const getCurrentView = useContextSelector(ViewContext, ctx => ctx.getCurrentView);
+  const getCurrentViews = useContextSelector(ViewContext, ctx => ctx.getCurrentViews);
   const views = useContextSelector(ViewContext, ctx => ctx.views);
 
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
@@ -42,8 +42,8 @@ const ViewLink: FC<{ id: number; viewId: string }> = ({ id, viewId }) => {
 
   useEffect(() => {
     setLoading(true);
-    getCurrentView({ viewId })
-      .then(setView)
+    getCurrentViews({ viewId, ignoreParams: true })
+      .then(result => setView(result[0]))
       .finally(() => setLoading(false));
   }, [viewId]);
 

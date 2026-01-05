@@ -20,7 +20,7 @@ export interface ViewContextType {
   addView: (v: View) => Promise<View>;
   editView: (id: string, newView: Partial<Omit<View, 'view_id' | 'owner'>>) => Promise<View>;
   removeView: (id: string) => Promise<void>;
-  getCurrentViews: (config?: { viewId?: string; lazy?: boolean }) => Promise<View[]>;
+  getCurrentViews: (config?: { viewId?: string; lazy?: boolean; ignoreParams?: boolean }) => Promise<View[]>;
 }
 
 export const ViewContext = createContext<ViewContextType>(null);
@@ -97,8 +97,8 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
   }, [defaultView, fetchViews, setDefaultView, views]);
 
   const getCurrentViews: ViewContextType['getCurrentViews'] = useCallback(
-    async ({ viewId, lazy = false } = {}) => {
-      const views = searchParams.getAll('view');
+    async ({ viewId, lazy = false, ignoreParams = false } = {}) => {
+      const views = ignoreParams ? [] : searchParams.getAll('view');
 
       if (viewId && !views.includes(viewId)) {
         views.push(viewId);

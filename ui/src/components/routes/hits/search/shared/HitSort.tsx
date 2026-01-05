@@ -26,8 +26,9 @@ const ACCEPTED_SORTS = [
 const HitSort: FC<{ size?: 'small' | 'medium' }> = ({ size = 'small' }) => {
   const { t } = useTranslation();
   const location = useLocation();
-  const getCurrentView = useContextSelector(ViewContext, ctx => ctx.getCurrentView);
+  const getCurrentViews = useContextSelector(ViewContext, ctx => ctx.getCurrentViews);
 
+  const views = useContextSelector(ParameterContext, ctx => ctx.views);
   const savedSort = useContextSelector(ParameterContext, ctx => ctx.sort);
   const setSavedSort = useContextSelector(ParameterContext, ctx => ctx.setSort);
 
@@ -73,14 +74,14 @@ const HitSort: FC<{ size?: 'small' | 'medium' }> = ({ size = 'small' }) => {
     }
 
     (async () => {
-      const selectedView = await getCurrentView({ lazy: true });
+      const selectedViewSort = (await getCurrentViews({ lazy: true })).find(view => view?.sort)?.sort;
 
-      if (selectedView?.sort && !location.search.includes('sort')) {
-        setSavedSort(selectedView.sort);
+      if (selectedViewSort && !location.search.includes('sort')) {
+        setSavedSort(selectedViewSort);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getCurrentView]);
+  }, [getCurrentViews, views]);
 
   return (
     <ChipPopper icon={<Sort fontSize="small" />} label={savedSort} slotProps={{ chip: { size: 'small' } }}>

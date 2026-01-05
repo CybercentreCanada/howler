@@ -28,13 +28,14 @@ const SearchSpan: FC<{
   const { t } = useTranslation();
   const location = useLocation();
 
+  const views = useContextSelector(ParameterContext, ctx => ctx.views);
   const span = useContextSelector(ParameterContext, ctx => ctx.span);
   const setSpan = useContextSelector(ParameterContext, ctx => ctx.setSpan);
 
   const startDate = useContextSelector(ParameterContext, ctx => (ctx.startDate ? dayjs(ctx.startDate) : null));
   const endDate = useContextSelector(ParameterContext, ctx => (ctx.endDate ? dayjs(ctx.endDate) : null));
 
-  const getCurrentView = useContextSelector(ViewContext, ctx => ctx.getCurrentView);
+  const getCurrentViews = useContextSelector(ViewContext, ctx => ctx.getCurrentViews);
 
   useEffect(() => {
     if (location.search.includes('span')) {
@@ -42,20 +43,20 @@ const SearchSpan: FC<{
     }
 
     (async () => {
-      const viewSpan = (await getCurrentView({ lazy: true }))?.span;
+      const selectedViewSpan = (await getCurrentViews({ lazy: true })).find(view => view?.span)?.span;
 
-      if (!viewSpan) {
+      if (!selectedViewSpan) {
         return;
       }
 
-      if (viewSpan.includes(':')) {
-        setSpan(convertLuceneToDate(viewSpan));
+      if (selectedViewSpan.includes(':')) {
+        setSpan(convertLuceneToDate(selectedViewSpan));
       } else {
-        setSpan(viewSpan);
+        setSpan(selectedViewSpan);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getCurrentView]);
+  }, [getCurrentViews, views]);
 
   return (
     <ChipPopper
