@@ -57,6 +57,7 @@ const QuerySettings: FC<{ verticalSorters?: boolean; boxSx?: SxProps }> = ({ box
             icon={<Add />}
             deleteIcon={<ArrowDropDown />}
             toggleOnDelete
+            closeOnClick
             slotProps={{ chip: { size: 'small' } }}
           >
             <Stack spacing={1}>
@@ -65,6 +66,7 @@ const QuerySettings: FC<{ verticalSorters?: boolean; boxSx?: SxProps }> = ({ box
                 aria-label={t('hit.search.filter.add')}
                 variant="outlined"
                 onClick={() => addFilter('howler.assessment:*')}
+                disabled={filters.some(filter => filter.endsWith('*'))}
               >
                 <Add fontSize="small" />
                 <span>{t('hit.search.filter.add')}</span>

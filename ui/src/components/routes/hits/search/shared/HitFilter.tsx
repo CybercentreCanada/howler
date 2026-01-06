@@ -98,7 +98,7 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
       label={category && <Typography variant="body2">{`${category}:${filterValue || '*'}`}</Typography>}
       minWidth="250px"
       onDelete={() => removeSavedFilter(value)}
-      slotProps={{ chip: { size: 'small' } }}
+      slotProps={{ chip: { size: 'small', color: value?.endsWith('*') ? 'warning' : 'default' } }}
     >
       <Stack spacing={1} sx={{ minWidth: '225px' }}>
         <Autocomplete

@@ -18,6 +18,7 @@ interface ChipPopperProps {
   onToggle?: (show: boolean) => void;
   onDelete?: (event?: any) => void;
   toggleOnDelete?: boolean;
+  closeOnClick?: boolean;
 }
 
 const ChipPopper: FC<ChipPopperProps> = ({
@@ -29,7 +30,8 @@ const ChipPopper: FC<ChipPopperProps> = ({
   placement = 'bottom-start',
   onToggle,
   onDelete,
-  toggleOnDelete,
+  toggleOnDelete = false,
+  closeOnClick = false,
   slotProps = {}
 }) => {
   const [show, setShow] = useState(false);
@@ -47,7 +49,6 @@ const ChipPopper: FC<ChipPopperProps> = ({
         deleteIcon={deleteIcon}
         label={label}
         onClick={e => {
-          e.stopPropagation();
           handleToggle(!show);
         }}
         onDelete={onDelete ?? (toggleOnDelete ? () => handleToggle(!show) : null)}
@@ -76,7 +77,15 @@ const ChipPopper: FC<ChipPopperProps> = ({
           zIndex: 1
         }}
       >
-        <Collapse in={show} unmountOnExit>
+        <Collapse
+          in={show}
+          unmountOnExit
+          onClick={() => {
+            if (closeOnClick) {
+              setShow(false);
+            }
+          }}
+        >
           <ClickAwayListener onClickAway={() => handleToggle(false)}>
             <Paper
               sx={[
