@@ -63,7 +63,7 @@ const QuerySettings: FC<{ verticalSorters?: boolean; boxSx?: SxProps }> = ({ box
           deleteIcon={<ArrowDropDown />}
           toggleOnDelete
           closeOnClick
-          slotProps={{ chip: { size: 'small', color: 'primary' } }}
+          slotProps={{ chip: { size: 'small', color: 'primary' }, paper: { sx: { p: 1 } } }}
         >
           <Stack spacing={1}>
             <Button
