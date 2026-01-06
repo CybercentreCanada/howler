@@ -59,12 +59,10 @@ const HitBrowser: FC = () => {
   const { t } = useTranslation();
   const theme = useTheme();
 
-  const views = useContextSelector(ViewContext, ctx => ctx.views);
   const fetchViews = useContextSelector(ViewContext, ctx => ctx.fetchViews);
 
   const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
   const setSelected = useContextSelector(ParameterContext, ctx => ctx.setSelected);
-  const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
   const setOffset = useContextSelector(ParameterContext, ctx => ctx.setOffset);
   const selectedViews = useContextSelector(ParameterContext, ctx => ctx.views);
@@ -87,25 +85,6 @@ const HitBrowser: FC = () => {
   useEffect(() => setShow(!!selected), [selected]);
 
   const showDrawer = useMediaQuery(theme.breakpoints.down(1600)) || forceDrawer || displayType === 'grid';
-
-  // State that makes up the request
-  const summaryQuery = useMemo(() => {
-    const bundle = location.pathname.startsWith('/bundles') && routeParams.id;
-
-    let _fullQuery = query;
-    if (bundle) {
-      _fullQuery = `(howler.bundles:${bundle}) AND (${_fullQuery})`;
-    } else if (selectedViews.length > 0) {
-      const viewsQuery = selectedViews
-        .filter(_view => views[_view]?.query)
-        .map(_view => views[_view].query)
-        .join(' AND ');
-
-      _fullQuery = `(${viewsQuery}) AND (${_fullQuery})`;
-    }
-
-    return _fullQuery;
-  }, [location.pathname, query, routeParams.id, selectedViews, views]);
 
   const showSelectBar = useMemo(() => {
     if (selectedHits.length > 1) {
@@ -215,7 +194,7 @@ const HitBrowser: FC = () => {
         </Collapse>
       </Box>
       <Wrapper show={show} showDrawer={showDrawer} onClose={() => setShow(false)}>
-        <HitSummary query={summaryQuery} response={response} />
+        <HitSummary response={response} />
         <Card
           variant="outlined"
           sx={[

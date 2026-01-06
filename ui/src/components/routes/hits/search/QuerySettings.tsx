@@ -35,56 +35,60 @@ const QuerySettings: FC<{ verticalSorters?: boolean; boxSx?: SxProps }> = ({ box
 
   return (
     <Box sx={boxSx ?? { position: 'relative', maxWidth: '1200px' }}>
-      <Grid container spacing={1}>
-        <Grid item>
-          <HitSort />
-        </Grid>
-        <Grid item>
-          <SearchSpan />
-        </Grid>
-        {currentViews?.map((view, id) => (
-          <Grid item key={view}>
-            <ViewLink id={id} viewId={view} />
+      <Stack direction="row" spacing={1}>
+        <Grid
+          container
+          spacing={1}
+          sx={theme => ({ ml: `${theme.spacing(-1)} !important`, mt: `${theme.spacing(-1)} !important` })}
+        >
+          <Grid item>
+            <HitSort />
           </Grid>
-        ))}
-        {filters?.map((filter, id) => (
-          <Grid item key={filter}>
-            <HitFilter id={id} value={filter} />
+          <Grid item>
+            <SearchSpan />
           </Grid>
-        ))}
-        <Grid item>
-          <ChipPopper
-            icon={<Add />}
-            deleteIcon={<ArrowDropDown />}
-            toggleOnDelete
-            closeOnClick
-            slotProps={{ chip: { size: 'small' } }}
-          >
-            <Stack spacing={1}>
-              <Button
-                id="add-filter"
-                aria-label={t('hit.search.filter.add')}
-                variant="outlined"
-                onClick={() => addFilter('howler.assessment:*')}
-                disabled={filters.some(filter => filter.endsWith('*'))}
-              >
-                <Add fontSize="small" />
-                <span>{t('hit.search.filter.add')}</span>
-              </Button>
-              <Button
-                id="add-view"
-                aria-label={t('hit.search.view.add')}
-                variant="outlined"
-                onClick={onAddView}
-                disabled={!allowAddViews}
-              >
-                <Add fontSize="small" />
-                <span>{t('hit.search.view.add')}</span>
-              </Button>
-            </Stack>
-          </ChipPopper>
+          {currentViews?.map((view, id) => (
+            <Grid item key={view}>
+              <ViewLink id={id} viewId={view} />
+            </Grid>
+          ))}
+          {filters?.map((filter, id) => (
+            <Grid item key={filter}>
+              <HitFilter id={id} value={filter} />
+            </Grid>
+          ))}
         </Grid>
-      </Grid>
+        <ChipPopper
+          icon={<Add />}
+          deleteIcon={<ArrowDropDown />}
+          toggleOnDelete
+          closeOnClick
+          slotProps={{ chip: { size: 'small' } }}
+        >
+          <Stack spacing={1}>
+            <Button
+              id="add-filter"
+              aria-label={t('hit.search.filter.add')}
+              variant="outlined"
+              onClick={() => addFilter('howler.assessment:*')}
+              disabled={filters.some(filter => filter.endsWith('*'))}
+            >
+              <Add fontSize="small" />
+              <span>{t('hit.search.filter.add')}</span>
+            </Button>
+            <Button
+              id="add-view"
+              aria-label={t('hit.search.view.add')}
+              variant="outlined"
+              onClick={onAddView}
+              disabled={!allowAddViews}
+            >
+              <Add fontSize="small" />
+              <span>{t('hit.search.view.add')}</span>
+            </Button>
+          </Stack>
+        </ChipPopper>
+      </Stack>
     </Box>
   );
 };

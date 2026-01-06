@@ -48,7 +48,7 @@ const ChipPopper: FC<ChipPopperProps> = ({
         icon={icon}
         deleteIcon={deleteIcon}
         label={label}
-        onClick={e => {
+        onClick={() => {
           handleToggle(!show);
         }}
         onDelete={onDelete ?? (toggleOnDelete ? () => handleToggle(!show) : null)}

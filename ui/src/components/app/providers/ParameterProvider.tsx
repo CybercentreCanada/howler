@@ -279,7 +279,7 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
         // If the value matches the default, remove it from URL (null signals removal)
         if (params.has(urlKey) && stateValue === DEFAULT_VALUES[stateKey]) {
           (changes as any)[urlKey] = null;
-        } else {
+        } else if (stateValue !== DEFAULT_VALUES[stateKey]) {
           (changes as any)[urlKey] = stateValue;
         }
       }
