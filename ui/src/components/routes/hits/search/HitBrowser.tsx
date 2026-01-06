@@ -98,7 +98,7 @@ const HitBrowser: FC = () => {
     } else if (selectedViews.length > 0) {
       const viewsQuery = selectedViews
         .filter(_view => views[_view]?.query)
-        .map(_view => views[_view].query || DEFAULT_QUERY)
+        .map(_view => views[_view].query)
         .join(' AND ');
 
       _fullQuery = `(${viewsQuery}) AND (${_fullQuery})`;
