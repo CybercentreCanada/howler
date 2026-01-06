@@ -99,7 +99,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
 
     setQueryHistory(Object.fromEntries(Object.entries(queryHistory).filter(([_, value]) => value > filterQueryTime)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setQueryHistory]);
+  }, []);
 
   // Inject default view into URL when no views present
   useEffect(() => {

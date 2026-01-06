@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw';
-import { createMockAction } from './utils';
+import { createMockAction, createMockAnalytic, createMockHit, createMockView } from './utils';
 
 export const MOCK_RESPONSES: { [path: string]: any } = {
   '/api/v1/view/example_view_id': {
@@ -15,52 +15,23 @@ export const MOCK_RESPONSES: { [path: string]: any } = {
     span: 'date.range.1.month'
   },
   '/api/v1/search/hit': {
-    items: [
-      {
-        howler: {
-          id: 'howler.id'
-        }
-      }
-    ],
+    items: [createMockHit({ howler: { id: 'howler.id' } })],
     total: 1,
     rows: 1
   },
   '/api/v1/search/view': {
-    items: [
-      {
-        owner: 'user',
-        settings: {
-          advance_on_triage: false
-        },
-        view_id: 'searched_view_id',
-        query: 'howler.id:searched',
-        sort: 'event.created desc',
-        title: 'Searched View',
-        type: 'personal',
-        span: 'date.range.1.month'
-      }
-    ],
+    items: [createMockView({ view_id: 'searched_view_id', title: 'Searched View' })],
     total: 1,
     rows: 1
   },
-  '/api/v1/view/new_view_id': {
-    owner: 'user',
-    settings: {
-      advance_on_triage: false
-    },
-    view_id: 'new_view_id',
-    query: 'howler.id:new',
-    sort: 'event.created desc',
-    title: 'New View',
-    type: 'personal',
-    span: 'date.range.1.month'
-  },
+  '/api/v1/view/new_view_id': createMockView({ view_id: 'new_view_id' }),
   '/api/v1/view/:view_id/favourite': { success: true },
   '/api/v1/search/action': {
     items: [createMockAction()],
     total: 1,
     rows: 1
-  }
+  },
+  '/api/v1/analytic': [createMockAnalytic()]
 };
 
 const handlers = [

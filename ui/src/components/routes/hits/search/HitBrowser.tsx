@@ -105,7 +105,7 @@ const HitBrowser: FC = () => {
     }
 
     return _fullQuery;
-  }, [location.pathname, query, routeParams.id, views]);
+  }, [location.pathname, query, routeParams.id, selectedViews, views]);
 
   const showSelectBar = useMemo(() => {
     if (selectedHits.length > 1) {
