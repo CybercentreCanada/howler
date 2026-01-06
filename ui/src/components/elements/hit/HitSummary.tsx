@@ -187,7 +187,7 @@ const HitSummary: FC<{
     <Stack sx={{ mx: 2, height: '100%' }} spacing={1}>
       <Typography variant="h6">{t('hit.summary.aggregate.title')}</Typography>
       <Divider flexItem />
-      <HitGraph query={query} />
+      <HitGraph />
       <Divider flexItem />
       <Stack sx={{ overflow: 'auto', marginTop: '0 !important' }} pt={1} spacing={1}>
         <Stack direction="row" spacing={2} mb={2} alignItems="stretch">
