@@ -14,8 +14,8 @@ let mockUser = {
 setupReactRouterMock();
 const mockLocalStorage = setupLocalStorageMock();
 
-import { useLocation, useSearchParams } from 'react-router-dom';
-vi.mocked(useLocation).mockReturnValue({ pathname: '/search?view=searched_view_id' } as any);
+import { useSearchParams } from 'react-router-dom';
+
 vi.mocked(useSearchParams).mockReturnValue([new URLSearchParams('?view=searched_view_id')] as any);
 
 vi.mock('api', { spy: true });
@@ -41,9 +41,7 @@ describe('ViewContext', () => {
       JSON.stringify('searched_view_id')
     );
 
-    let hook = await act(async () =>
-      renderHook(() => useContextSelector(ViewContext, ctx => ctx.views), { wrapper: Wrapper })
-    );
+    const hook = renderHook(() => useContextSelector(ViewContext, ctx => ctx.views), { wrapper: Wrapper });
 
     await waitFor(() => expect(hook.result.current.searched_view_id).not.toBeFalsy());
 
@@ -114,7 +112,9 @@ describe('ViewContext', () => {
 
     expect(hook.result.current.views[result.view_id]).toEqual(result);
 
-    await act(async () => hook.result.current.removeView(result.view_id));
+    await act(async () => {
+      await hook.result.current.removeView(result.view_id);
+    });
 
     hook.rerender();
 
@@ -123,10 +123,8 @@ describe('ViewContext', () => {
 
   describe('fetchViews', () => {
     let hook: RenderHookResult<ViewContextType['fetchViews'], any>;
-    beforeEach(async () => {
-      hook = await act(async () => {
-        return renderHook(() => useContextSelector(ViewContext, ctx => ctx.fetchViews), { wrapper: Wrapper });
-      });
+    beforeEach(() => {
+      hook = renderHook(() => useContextSelector(ViewContext, ctx => ctx.fetchViews), { wrapper: Wrapper });
 
       vi.mocked(hpost).mockClear();
       vi.mocked(hget).mockClear();
@@ -214,10 +212,8 @@ describe('ViewContext', () => {
 
   describe('editView', () => {
     let hook: RenderHookResult<ViewContextType['editView'], any>;
-    beforeAll(async () => {
-      hook = await act(async () => {
-        return renderHook(() => useContextSelector(ViewContext, ctx => ctx.editView), { wrapper: Wrapper });
-      });
+    beforeAll(() => {
+      hook = renderHook(() => useContextSelector(ViewContext, ctx => ctx.editView), { wrapper: Wrapper });
     });
 
     beforeEach(() => {

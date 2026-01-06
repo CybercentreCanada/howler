@@ -6,7 +6,7 @@ import { has, omit } from 'lodash-es';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { View } from 'models/entities/generated/View';
 import { useCallback, useEffect, useState, type FC, type PropsWithChildren } from 'react';
-import { useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
 
@@ -29,8 +29,6 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
   const { dispatchApi } = useMyApi();
   const appUser = useAppUser<HowlerUser>();
   const [defaultView, setDefaultView] = useMyLocalStorageItem<string>(StorageKey.DEFAULT_VIEW);
-  const location = useLocation();
-  const routeParams = useParams();
   const [searchParams] = useSearchParams();
 
   const [views, setViews] = useState<{ [viewId: string]: View }>({});
@@ -98,20 +96,20 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
 
   const getCurrentViews: ViewContextType['getCurrentViews'] = useCallback(
     async ({ viewId, lazy = false, ignoreParams = false } = {}) => {
-      const views = ignoreParams ? [] : searchParams.getAll('view');
+      const currentViews = ignoreParams ? [] : searchParams.getAll('view');
 
-      if (viewId && !views.includes(viewId)) {
-        views.push(viewId);
+      if (viewId && !currentViews.includes(viewId)) {
+        currentViews.push(viewId);
       }
 
-      if (views.length < 1) {
+      if (currentViews.length < 1) {
         return [];
       }
 
       const results: View[] = [];
       const missing: string[] = [];
 
-      views.forEach(_view => {
+      currentViews.forEach(_view => {
         if (has(views, _view)) {
           results.push(views[_view]);
         } else if (!lazy) {
@@ -121,7 +119,7 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
 
       return [...results, ...(await fetchViews(missing))];
     },
-    [defaultView, fetchViews, location.pathname, routeParams.id, views]
+    [fetchViews, searchParams, views]
   );
 
   const editView: ViewContextType['editView'] = useCallback(
