@@ -28,7 +28,7 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useLocation, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
-import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
+import { StorageKey } from 'utils/constants';
 import InformationPane from './InformationPane';
 import SearchPane from './SearchPane';
 import HitGrid from './grid/HitGrid';

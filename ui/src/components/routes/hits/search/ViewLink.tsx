@@ -45,7 +45,7 @@ const ViewLink: FC<{ id: number; viewId: string }> = ({ id, viewId }) => {
     getCurrentViews({ viewId, ignoreParams: true })
       .then(result => setView(result[0]))
       .finally(() => setLoading(false));
-  }, [viewId]);
+  }, [getCurrentViews, viewId]);
 
   const viewUrl = useMemo(() => {
     if (view?.view_id) {
