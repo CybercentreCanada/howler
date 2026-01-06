@@ -382,8 +382,8 @@ describe('QuerySettings', () => {
       const { container } = render(<QuerySettings />, { wrapper: Wrapper });
 
       const gridItems = container.querySelectorAll('[class*="MuiGrid-item"]');
-      // HitSort + SearchSpan + 1 view + 2 filters + ChipPopper = 6 items
-      expect(gridItems.length).toBe(6);
+      // HitSort + SearchSpan + 1 view + 2 filters = 5 items
+      expect(gridItems.length).toBe(5);
     });
 
     it('should render correct number of items with multiple views', () => {
@@ -393,8 +393,8 @@ describe('QuerySettings', () => {
       const { container } = render(<QuerySettings />, { wrapper: Wrapper });
 
       const gridItems = container.querySelectorAll('[class*="MuiGrid-item"]');
-      // HitSort + SearchSpan + 3 views + 1 filter + ChipPopper = 7 items
-      expect(gridItems.length).toBe(7);
+      // HitSort + SearchSpan + 3 views + 1 filter = 6 items
+      expect(gridItems.length).toBe(6);
     });
   });
 
@@ -712,12 +712,11 @@ describe('QuerySettings', () => {
 
       const gridItems = container.querySelectorAll('[class*="MuiGrid-item"]');
 
-      // Order: HitSort, SearchSpan, ViewLink(s), HitFilter(s), ChipPopper
+      // Order: HitSort, SearchSpan, ViewLink(s), HitFilter(s)
       expect(gridItems[0]).toContainElement(screen.getByTestId('hit-sort'));
       expect(gridItems[1]).toContainElement(screen.getByTestId('search-span'));
       expect(gridItems[2]).toContainElement(screen.getByTestId('view-link-0'));
       expect(gridItems[3]).toContainElement(screen.getByTestId('hit-filter-0'));
-      expect(gridItems[4]).toContainElement(screen.getByRole('button'));
     });
 
     it('should pass correct props to ViewLink components', () => {

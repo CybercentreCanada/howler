@@ -71,7 +71,7 @@ const QuerySettings: FC<{ verticalSorters?: boolean; boxSx?: SxProps }> = ({ box
               aria-label={t('hit.search.filter.add')}
               variant="outlined"
               onClick={() => addFilter('howler.assessment:*')}
-              disabled={filters.some(filter => filter.endsWith('*'))}
+              disabled={filters?.some(filter => filter.endsWith('*'))}
               sx={{ display: 'flex', pl: 1 }}
             >
               <Add fontSize="small" sx={{ mr: 1 }} />
