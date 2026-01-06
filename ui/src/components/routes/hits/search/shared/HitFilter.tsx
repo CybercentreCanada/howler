@@ -74,7 +74,7 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
         setCustomLookups([]);
       }
     },
-    [config.lookups, setSavedFilter]
+    [config.lookups, dispatchApi]
   );
 
   const onValueChange: UseAutocompleteProps<string, false, false, false>['onChange'] = useCallback(
@@ -87,7 +87,7 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
         setSavedFilter(id, `${category}:*`);
       }
     },
-    [category, setSavedFilter]
+    [category, id, setSavedFilter]
   );
 
   const filterValue = filter?.replaceAll('"', '').replaceAll('\\-', '-') || '';

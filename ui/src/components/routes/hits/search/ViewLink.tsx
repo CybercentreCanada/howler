@@ -70,7 +70,7 @@ const ViewLink: FC<{ id: number; viewId: string }> = ({ id, viewId }) => {
 
   const options = useMemo(
     () => Object.values(views).filter(_view => !!_view && !currentViews?.includes(_view.view_id)),
-    []
+    [currentViews, views]
   );
 
   if (loading) {
