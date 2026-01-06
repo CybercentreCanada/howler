@@ -64,7 +64,7 @@ export const setupLocalStorageMock = () => {
 };
 
 /**
- * Sets up a mock localStorage instance
+ * Sets up a mock sessionStorage instance
  */
 export const setupSessionStorageMock = () => {
   const mockSessionStorage: Storage = new MockLocalStorage() as any;
