@@ -128,11 +128,13 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
     useCallback(
       key => value => {
         if ((key as string) === 'filters') {
+          // eslint-disable-next-line no-console
           console.error('Cannot use set() for filters. Use addFilter/removeFilter/clearFilters instead.');
           return;
         }
 
         if ((key as string) === 'views') {
+          // eslint-disable-next-line no-console
           console.error('Cannot use set() for views. Use addView/removeView/clearViews instead.');
           return;
         }

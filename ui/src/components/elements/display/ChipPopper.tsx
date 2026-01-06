@@ -48,8 +48,9 @@ const ChipPopper: FC<ChipPopperProps> = ({
         icon={icon}
         deleteIcon={deleteIcon}
         label={label}
-        onClick={() => {
+        onClick={e => {
           handleToggle(!show);
+          e.stopPropagation();
         }}
         onDelete={onDelete ?? (toggleOnDelete ? () => handleToggle(!show) : null)}
         ref={anchorEl}
@@ -82,11 +83,15 @@ const ChipPopper: FC<ChipPopperProps> = ({
           unmountOnExit
           onClick={() => {
             if (closeOnClick) {
-              setShow(false);
+              handleToggle(false);
             }
           }}
         >
-          <ClickAwayListener onClickAway={() => handleToggle(false)}>
+          <ClickAwayListener
+            onClickAway={() => {
+              handleToggle(false);
+            }}
+          >
             <Paper
               sx={[
                 { borderTopLeftRadius: 0, borderTopRightRadius: 0, px: 1, py: 2 },

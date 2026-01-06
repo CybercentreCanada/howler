@@ -63,7 +63,7 @@ const QuerySettings: FC<{ verticalSorters?: boolean; boxSx?: SxProps }> = ({ box
           deleteIcon={<ArrowDropDown />}
           toggleOnDelete
           closeOnClick
-          slotProps={{ chip: { size: 'small' } }}
+          slotProps={{ chip: { size: 'small', color: 'primary' } }}
         >
           <Stack spacing={1}>
             <Button
@@ -72,8 +72,10 @@ const QuerySettings: FC<{ verticalSorters?: boolean; boxSx?: SxProps }> = ({ box
               variant="outlined"
               onClick={() => addFilter('howler.assessment:*')}
               disabled={filters.some(filter => filter.endsWith('*'))}
+              sx={{ display: 'flex', pl: 1 }}
             >
-              <Add fontSize="small" />
+              <Add fontSize="small" sx={{ mr: 1 }} />
+              <div style={{ flex: 1 }} />
               <span>{t('hit.search.filter.add')}</span>
             </Button>
             <Button
@@ -82,8 +84,10 @@ const QuerySettings: FC<{ verticalSorters?: boolean; boxSx?: SxProps }> = ({ box
               variant="outlined"
               onClick={onAddView}
               disabled={!allowAddViews}
+              sx={{ display: 'flex', pl: 1 }}
             >
-              <Add fontSize="small" />
+              <Add fontSize="small" sx={{ mr: 1 }} />
+              <div style={{ flex: 1 }} />
               <span>{t('hit.search.view.add')}</span>
             </Button>
           </Stack>
