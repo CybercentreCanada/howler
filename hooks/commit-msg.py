@@ -57,7 +57,8 @@ if not commit.is_valid():
         sys.exit(1)
 
     console.print(
-        "Your commit message does not follow Conventional Commits formatting.",
+        "Your commit message does not follow Conventional Commits formatting. Allowing as branch is not main, develop, "
+        "patch/* or rc/*",
         style="yellow bold",
     )
 
