@@ -42,10 +42,9 @@ jobs:
             chore
 
           requireScope: false
-          subjectPattern: '^[a-z].*$'
+          subjectPattern: '^[a-zA-Z]+*$'
           subjectPatternError: |
-            The subject "{subject}" found in pull request title "{title}"
-            must start with a lowercase letter and not be empty.
+            The subject "{subject}" found in pull request title "{title}" must be lowercase and not be empty.
 
           # Ignore merge commits from release-please
           ignoreLabels: |

@@ -62,5 +62,14 @@ if not commit.is_valid():
         style="yellow bold",
     )
 
+subject = commit_msg.splitlines()[0]
+if subject != subject.lower():
+    console.print(
+        "Your summary should be lowercase, converting",
+        style="yellow bold",
+    )
+
+commit_msg = commit_msg.replace(subject, subject.lower())
+
 if commit_msg != commit_file.read_text():
     commit_file.write_text(commit_msg)
