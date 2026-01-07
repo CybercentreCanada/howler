@@ -42,7 +42,7 @@ jobs:
             chore
 
           requireScope: false
-          subjectPattern: '^[a-zA-Z]+*$'
+          subjectPattern: '^[a-z]+$'
           subjectPatternError: |
             The subject "{subject}" found in pull request title "{title}" must be lowercase and not be empty.
 
