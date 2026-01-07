@@ -256,6 +256,11 @@ websocket-client = "1.5.1"
 types-pytz = "^2024.1.0.20240417"
 types-mock = "^5.2.0.20250306"
 
+
+[tool.poetry.group.pre-commit.dependencies]
+rich = "^14.2.0"
+conventional-pre-commit = "^4.3.0"
+
 [tool.poetry.scripts]
 server = "howler.app:main"
 test = "build_scripts.run_tests:main"

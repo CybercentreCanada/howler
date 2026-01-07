@@ -9,14 +9,16 @@ repos:
     hooks:
       # Run the linter.
       - id: ruff
+        name: Ruff Linting
         args: [--fix, --output-format=concise]
       # Run the formatter.
       - id: ruff-format
-  - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v4.3.0
-    hooks:
-      - id: conventional-pre-commit
-        stages: [commit-msg]
+        name: Ruff Formatting
+  # - repo: https://github.com/compilerla/conventional-pre-commit
+  #   rev: v4.3.0
+  #   hooks:
+  #     - id: conventional-pre-commit
+  #       stages: [commit-msg]
   - repo: local
     hooks:
       - id: poetry-check-api
@@ -27,21 +29,21 @@ repos:
         stages: [pre-commit]
         files: ^api/.*\.(toml|lock)
       - id: poetry-check-client
-        name: poetry-check-client
+        name: Poetry Check (client)
         entry: hooks/check_poetry.sh
         args: [client]
         language: script
         stages: [pre-commit]
         files: ^client/.*\.(toml|lock)
       - id: poetry-check-evidence
-        name: poetry-check-evidence
+        name: Poetry Check (Evidence Plugin)
         entry: hooks/check_poetry.sh
         args: [plugins/evidence]
         language: script
         stages: [pre-commit]
         files: ^plugins/evidence/.*\.(toml|lock)
       - id: poetry-check-sentinel
-        name: poetry-check-sentinel
+        name: Poetry Check (Sentinel Plugin)
         entry: hooks/check_poetry.sh
         args: [plugins/sentinel]
         language: script
@@ -54,8 +56,15 @@ repos:
         stages: [pre-commit]
         files: ^ui/.*
       - id: bad-ui-imports
-        name: bad-ui-imports
+        name: Check for bad UI imports
         entry: ui/build_scripts/find_bad_imports.py
         language: python
         stages: [pre-commit]
         files: ^ui/.*
+      - id: check-commit-msg
+        name: Validate Commit Message
+        entry: hooks/commit-msg.py
+        language: python
+        stages: [commit-msg]
+        additional_dependencies: ["conventional-pre-commit", "rich"]
+        verbose: true
