@@ -41,7 +41,10 @@ if not issue:
         style="yellow bold",
     )
 if issue not in commit_msg:
-    commit_msg += f"\nRelated: {issue}\n"
+    if str.isdigit(issue):
+        commit_msg += f"\nRelated Issue: #{issue}\n"
+    else:
+        commit_msg += f"\nRelated Issue: {issue}\n"
 
 
 if not commit.is_valid():
