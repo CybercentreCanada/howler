@@ -23,7 +23,7 @@ class Comment(odm.Model):
     )
 
 
-DEFAULT_TRIAGE = {"skip_rationale": False, "valid_assessments": Assessment.list()}
+DEFAULT_TRIAGE = {"skip_rationale": False, "valid_assessments": Assessment.list(), "rationales": []}
 
 
 @odm.model(index=True, store=True, description="Settings for triaging this analytic.")
@@ -39,6 +39,11 @@ class TriageOptions(odm.Model):
     )
     dossiers: list[str] = odm.List(
         odm.Keyword(), description="A list of dossiers to present to the user when triaging alerts.", default=[]
+    )
+    rationales: list[str] = odm.List(
+        odm.Keyword(),
+        default=DEFAULT_TRIAGE["rationales"],
+        description="A provided list of rationales that will be suggested when triaging alerts.",
     )
 
 
