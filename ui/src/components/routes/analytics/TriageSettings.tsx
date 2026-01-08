@@ -1,7 +1,12 @@
+import { Check, Delete, Remove } from '@mui/icons-material';
 import {
-  Checkbox,
+  Card,
+  Chip,
   Divider,
   Grid,
+  IconButton,
+  InputAdornment,
+  LinearProgress,
   Paper,
   Stack,
   Table,
@@ -10,6 +15,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Tooltip,
   Typography
 } from '@mui/material';
@@ -19,10 +25,10 @@ import 'chartjs-adapter-dayjs-4';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import EditRow from 'components/elements/EditRow';
 import useMyApi from 'components/hooks/useMyApi';
-import { capitalize, uniq } from 'lodash-es';
+import { capitalize, uniq, without } from 'lodash-es';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { FC } from 'react';
-import { useCallback, useContext, useMemo, useState } from 'react';
+import { useCallback, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 const TriageSettings: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => void }> = ({ analytic, setAnalytic }) => {
@@ -31,6 +37,7 @@ const TriageSettings: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => voi
   const { config } = useContext(ApiConfigContext);
 
   const [loading, setLoading] = useState(false);
+  const [rationale, setRationale] = useState(null);
 
   const updateAnalytic = useCallback(
     async (changes: EditOptions) => {
@@ -50,10 +57,9 @@ const TriageSettings: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => voi
     [analytic?.analytic_id, dispatchApi, setAnalytic]
   );
 
-  const selectedAssessments: string[] = useMemo(
-    () => analytic?.triage_settings?.valid_assessments ?? config.lookups?.['howler.assessment'] ?? [],
-    [analytic?.triage_settings?.valid_assessments, config.lookups]
-  );
+  const selectedAssessments =
+    analytic?.triage_settings?.valid_assessments ?? config.lookups?.['howler.assessment'] ?? [];
+  const rationales = analytic?.triage_settings?.rationales ?? [];
 
   return (
     <Stack spacing={2} pt={1}>
@@ -93,47 +99,124 @@ const TriageSettings: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => voi
             </TableRow>
             <TableRow>
               <TableCell colSpan={3} sx={{ borderBottom: 0, paddingTop: '0 !important' }}>
-                <Typography variant="caption" color="text.secondary">
-                  {t('route.analytics.triage.assessments.description')}
-                </Typography>
+                <Stack spacing={1}>
+                  <Typography variant="caption" color="text.secondary">
+                    {t('route.analytics.triage.assessments.description')}
+                  </Typography>
+                  <Grid
+                    container
+                    spacing={1}
+                    sx={theme => ({ marginLeft: `${theme.spacing(-1)} !important`, marginTop: `0 !important` })}
+                  >
+                    {config.lookups?.['howler.assessment']?.map(assessment => {
+                      const checked = selectedAssessments.includes(assessment) ?? true;
+
+                      return (
+                        <Grid item key={assessment}>
+                          <Chip
+                            variant="outlined"
+                            icon={
+                              checked ? (
+                                <Check fontSize="small" color="success" />
+                              ) : (
+                                <Remove fontSize="small" color="error" />
+                              )
+                            }
+                            color={checked ? 'success' : 'error'}
+                            label={
+                              <Tooltip title={t(`hit.details.asessments.${assessment}.description`)}>
+                                <span>{assessment.split('-').map(capitalize).join(' ')}</span>
+                              </Tooltip>
+                            }
+                            onClick={() =>
+                              updateAnalytic({
+                                triage_settings: {
+                                  valid_assessments: checked
+                                    ? without(selectedAssessments, assessment)
+                                    : uniq([...selectedAssessments, assessment])
+                                }
+                              })
+                            }
+                            disabled={loading}
+                          />
+                        </Grid>
+                      );
+                    })}
+                  </Grid>
+                </Stack>
               </TableCell>
             </TableRow>
             <TableRow>
-              <TableCell colSpan={3}>
-                <Grid container spacing={1}>
-                  {config.lookups?.['howler.assessment']?.map(assessment => (
-                    <Grid item key={assessment}>
-                      <Stack
-                        direction="row"
-                        alignItems="center"
-                        spacing={1}
-                        sx={theme => ({
-                          border: 'thin solid',
-                          borderColor: 'divider',
-                          p: 1,
-                          borderRadius: theme.shape.borderRadius
-                        })}
-                      >
-                        <Tooltip title={t(`hit.details.asessments.${assessment}.description`)}>
-                          <Typography component="span">{assessment.split('-').map(capitalize).join(' ')}</Typography>
-                        </Tooltip>
-                        <Checkbox
-                          checked={selectedAssessments.includes(assessment) ?? true}
-                          onChange={(_event, checked) =>
+              <TableCell sx={{ width: '100%', borderBottom: 0, paddingBottom: '0 !important', whiteSpace: 'nowrap' }}>
+                {t('route.analytics.triage.rationales')}
+              </TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell colSpan={3} sx={{ borderBottom: 0, paddingTop: '0 !important' }}>
+                <Stack spacing={1}>
+                  <Typography variant="caption" color="text.secondary">
+                    {t('route.analytics.triage.rationales.description')}
+                  </Typography>
+                  {rationales.map(_rationale => (
+                    <Card variant="outlined" key={_rationale}>
+                      <Stack direction="row" spacing={1} alignItems="center" px={1}>
+                        <Typography flex={1}>{_rationale}</Typography>
+                        <IconButton
+                          onClick={() =>
                             updateAnalytic({
                               triage_settings: {
-                                valid_assessments: !checked
-                                  ? selectedAssessments.filter(_assessment => assessment !== _assessment)
-                                  : uniq([...selectedAssessments, assessment])
+                                rationales: without(rationales, _rationale)
                               }
                             })
                           }
-                          disabled={loading}
-                        />
+                        >
+                          <Delete />
+                        </IconButton>
                       </Stack>
-                    </Grid>
+                    </Card>
                   ))}
-                </Grid>
+                  <Card variant="outlined" sx={{ p: 1 }}>
+                    <TextField
+                      label={t('route.analytics.rationales.new')}
+                      value={rationale}
+                      onChange={e => setRationale(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          updateAnalytic({
+                            triage_settings: {
+                              rationales: uniq([...rationales, rationale])
+                            }
+                          });
+                        }
+                      }}
+                      fullWidth
+                      size="small"
+                      InputProps={{
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton
+                              size="small"
+                              onClick={() =>
+                                updateAnalytic({
+                                  triage_settings: {
+                                    rationales: uniq([...rationales, rationale])
+                                  }
+                                })
+                              }
+                            >
+                              <Check fontSize="small" />
+                            </IconButton>
+                          </InputAdornment>
+                        )
+                      }}
+                    />
+                  </Card>
+                </Stack>
+              </TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell sx={{ padding: '0 !important' }}>
+                <LinearProgress sx={{ opacity: loading ? 1 : 0 }} />
               </TableCell>
             </TableRow>
           </TableBody>

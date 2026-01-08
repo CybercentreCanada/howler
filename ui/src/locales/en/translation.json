@@ -573,6 +573,9 @@
   "route.analytics.triage.rationale.description": "When triaging alerts from this analytic, the rationale is not prompted, and is instead auto-generated.",
   "route.analytics.triage.assessments": "Permitted Assessment Outcomes",
   "route.analytics.triage.assessments.description": "When triaging alerts from this analytic, what assessments are valid?",
+  "route.analytics.triage.rationales": "Preset Rationales",
+  "route.analytics.triage.rationales.description": "Define preset rationales that will be available when triaging alerts from this analytic.",
+  "route.analytics.rationales.new": "New Rationale",
 
   "route.actions": "Actions",
   "route.actions.operation.add": "Add New Operation",
