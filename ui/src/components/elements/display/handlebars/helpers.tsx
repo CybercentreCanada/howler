@@ -258,11 +258,6 @@ export const useHelpers = (): HowlerHelper[] => {
           fr: "Exécute une action howler à partir d'un ID d'action spécifique (de l'URL lors de la visualisation de l'action, par ex. yaIKVqiKhWpyCsWdqsE4D)"
         },
         componentCallback: (actionId: string, hitId: string, context) => {
-          if (!actionId || !hitId) {
-            console.warn('Missing parameters for the action button.');
-            return null;
-          }
-
           return <ActionButton actionId={actionId} hitId={hitId} {...(context.hash ?? {})} />;
         }
       },
