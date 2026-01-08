@@ -1,4 +1,4 @@
-import { isEmpty, isNull, isUndefined, omitBy, pickBy } from 'lodash-es';
+import { isEmpty, isEqual, isUndefined, omitBy, uniq } from 'lodash-es';
 import type { FC, PropsWithChildren } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useParams, useSearchParams } from 'react-router-dom';
@@ -6,24 +6,34 @@ import { createContext, useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY } from 'utils/constants';
 import Throttler from 'utils/Throttler';
 
-interface ParameterProviderType {
+export interface ParameterContextType {
   selected?: string;
   query?: string;
   offset: number;
   trackTotalHits: boolean;
   sort?: string;
   span?: string;
-  filter?: string;
+  filters?: string[];
   startDate?: string;
   endDate?: string;
+  views?: string[];
 
   setSelected: (id: string) => void;
   setQuery: (id: string) => void;
   setOffset: (offset: string | number) => void;
   setSort: (sort: string) => void;
   setSpan: (span: string) => void;
-  setFilter: (filter: string) => void;
   setCustomSpan: (startDate: string, endDate: string) => void;
+
+  addFilter: (filter: string) => void;
+  removeFilter: (filter: string) => void;
+  setFilter: (index: number, filter: string) => void;
+  clearFilters: () => void;
+
+  addView: (view: string) => void;
+  removeView: (view: string) => void;
+  setView: (index: number, view: string) => void;
+  clearViews: () => void;
 }
 
 interface SearchValues {
@@ -31,20 +41,33 @@ interface SearchValues {
   query: string;
   sort: string;
   span: string;
-  filter: string;
+  filters: string[];
+  views: string[];
   startDate: string;
   endDate: string;
   offset: number;
   trackTotalHits: boolean;
 }
 
-export const ParameterContext = createContext<ParameterProviderType>(null);
+export const ParameterContext = createContext<ParameterContextType>(null);
 
-const DEFAULT_VALUES = {
+const DEFAULT_VALUES: Partial<SearchValues> = {
   query: DEFAULT_QUERY,
   sort: 'event.created desc',
   span: 'date.range.1.month'
 };
+
+/**
+ * Mapping of URL parameter keys to internal state keys
+ * Note: 'filters' is handled separately due to multi-value support
+ */
+const PARAM_MAPPINGS: [string, keyof SearchValues][] = [
+  ['query', 'query'],
+  ['sort', 'sort'],
+  ['span', 'span'],
+  ['start_date', 'startDate'],
+  ['end_date', 'endDate']
+];
 
 const WRITE_THROTTLER = new Throttler(100);
 
@@ -62,6 +85,21 @@ const parseOffset = (_offset: string | number) => {
 };
 
 /**
+ * Helper function to determine the selected value based on URL params and route context.
+ */
+const getSelectedValue = (params: URLSearchParams, pathname: string, bundleId?: string) => {
+  if (params.has('selected')) {
+    return params.get('selected');
+  }
+
+  if (pathname.startsWith('/bundles') && bundleId) {
+    return bundleId;
+  }
+
+  return null;
+};
+
+/**
  * Context responsible for tracking updates to query operations in hit and view search.
  */
 const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
@@ -72,11 +110,12 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
   const pendingChanges = useRef<Partial<SearchValues>>({});
 
   const [values, _setValues] = useState<SearchValues>({
-    selected: params.get('selected'),
+    selected: getSelectedValue(params, location.pathname, routeParams.id),
     query: params.get('query') ?? DEFAULT_VALUES.query,
     sort: params.get('sort') ?? DEFAULT_VALUES.sort,
     span: params.get('span') ?? DEFAULT_VALUES.span,
-    filter: params.get('filter'),
+    filters: params.getAll('filter'),
+    views: params.getAll('view'),
     startDate: params.get('start_date'),
     endDate: params.get('end_date'),
     offset: parseOffset(params.get('offset')),
@@ -85,37 +124,50 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
 
   // TODO: SELECTING A BUNDLE STILL CAUSES A FREAKOUT
 
-  const set = useCallback(
-    (key: keyof SearchValues) => value => {
-      if (value === values[key]) {
-        return;
-      }
+  const set: <K extends Exclude<keyof SearchValues, 'filters'>>(key: K) => (value: SearchValues[K]) => void =
+    useCallback(
+      key => value => {
+        if ((key as string) === 'filters') {
+          // eslint-disable-next-line no-console
+          console.error('Cannot use set() for filters. Use addFilter/removeFilter/clearFilters instead.');
+          return;
+        }
 
-      if (key === 'selected' && !value && location.pathname.startsWith('/bundles')) {
-        pendingChanges.current[key] = routeParams.id;
-      } else {
-        (pendingChanges.current as any)[key] = value ?? DEFAULT_VALUES[key] ?? null;
-      }
+        if ((key as string) === 'views') {
+          // eslint-disable-next-line no-console
+          console.error('Cannot use set() for views. Use addView/removeView/clearViews instead.');
+          return;
+        }
 
-      if (key === 'span' && !value.endsWith('custom')) {
-        pendingChanges.current.startDate = null;
-        pendingChanges.current.endDate = null;
-      }
+        if (value === values[key]) {
+          return;
+        }
 
-      WRITE_THROTTLER.debounce(() => {
-        _setValues(_current => ({ ..._current, ...pendingChanges.current }));
-        pendingChanges.current = {};
-      });
-    },
-    [location.pathname, routeParams.id, values]
-  );
+        if (key === 'selected' && !value) {
+          pendingChanges.current.selected = getSelectedValue(params, location.pathname, routeParams.id);
+        } else {
+          (pendingChanges.current as any)[key] = value ?? DEFAULT_VALUES[key] ?? null;
+        }
 
-  const setOffset: ParameterProviderType['setOffset'] = useCallback(
+        if (key === 'span' && typeof value === 'string' && !value.endsWith('custom')) {
+          pendingChanges.current.startDate = null;
+          pendingChanges.current.endDate = null;
+        }
+
+        WRITE_THROTTLER.debounce(() => {
+          _setValues(_current => ({ ..._current, ...pendingChanges.current }));
+          pendingChanges.current = {};
+        });
+      },
+      [location.pathname, routeParams.id, values, params]
+    );
+
+  const setOffset: ParameterContextType['setOffset'] = useCallback(
     _offset => _setValues(_current => ({ ..._current, offset: parseOffset(_offset) })),
     []
   );
 
-  const setCustomSpan: ParameterProviderType['setCustomSpan'] = useCallback((startDate, endDate) => {
+  const setCustomSpan: ParameterContextType['setCustomSpan'] = useCallback((startDate, endDate) => {
     _setValues(_values => ({
       ..._values,
       startDate,
@@ -123,122 +175,251 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
     }));
   }, []);
 
-  const getDiff = useCallback(
-    (operation: 'read' | 'write') => {
-      /**
-       * A record of changes necessary to synchronize the query string and the internal values store.
-       */
-      const changes: Partial<SearchValues> = {};
+  /**
+   * Filter manipulation
+   */
+  const addFilter: ParameterContextType['addFilter'] = useCallback(filter => {
+    _setValues(_current => ({
+      ..._current,
+      filters: uniq([..._current.filters, filter])
+    }));
+  }, []);
 
-      const standardKeys = [
-        ['query', values.query],
-        ['sort', values.sort],
-        ['span', values.span],
-        ['filter', values.filter],
-        ['start_date', values.startDate],
-        ['end_date', values.endDate]
-      ];
+  const removeFilter: ParameterContextType['removeFilter'] = useCallback(filter => {
+    _setValues(_current => {
+      const index = _current.filters.indexOf(filter);
+      if (index === -1) {
+        return _current;
+      }
+      return {
+        ..._current,
+        filters: _current.filters.filter((_, i) => i !== index)
+      };
+    });
+  }, []);
 
-      standardKeys.forEach(([key, value]) => {
-        // Get the value from the URL, using the default values as fallback (and set to undefined if neither is set)
-        const fromSearchWithFallback = params.has(key) ? params.get(key) : (DEFAULT_VALUES[key] ?? undefined);
+  const setFilter: ParameterContextType['setFilter'] = useCallback((index, filter) => {
+    _setValues(_current => {
+      // Validate index
+      if (index < 0 || index >= _current.filters.length) {
+        return _current;
+      }
+      const newFilters = [..._current.filters];
+      newFilters[index] = filter;
+      return {
+        ..._current,
+        filters: newFilters
+      };
+    });
+  }, []);
 
-        // If there's a difference between the search value and the value in the internal store, we append the key and new value to changes
-        // This is based on the operation
-        if (fromSearchWithFallback !== value) {
-          changes[key] = operation === 'write' ? value : fromSearchWithFallback;
-        }
+  const clearFilters: ParameterContextType['clearFilters'] = useCallback(() => {
+    _setValues(_current => ({
+      ..._current,
+      filters: []
+    }));
+  }, []);
 
-        // This is where things get a bit tricky. We use the fact that undefined and null are different concepts in Javascript here
-        // "undefined" is later filtered out, meaning "no change", while null means "remove this value"
-        if (operation === 'write') {
-          // If the change is to just set it to default in the query string, set it to null to just remove that entry altogether
-          // Due to the DEFAULT_VALUES check in fromSearchWithFallback above, this will use the defeault value.
-          // i.e., this has the same effect, but cleans up the query string
-          if (params.has(key) && !isUndefined(changes[key]) && changes[key] === DEFAULT_VALUES[key]) {
-            changes[key] = null;
-          }
-        }
-      });
+  /**
+   * View manipulation
+   */
+  const addView: ParameterContextType['addView'] = useCallback(view => {
+    _setValues(_current => ({
+      ..._current,
+      views: uniq([..._current.views, view])
+    }));
+  }, []);
 
-      // Logic for the selected key - this can vary depending on the context
-      if (operation === 'write') {
-        // Are we in a bundle, with a selected parameter?
-        // If so, does it match the bundle ID? If so, it's redundant and should be removed
-        if (
-          location.pathname.startsWith('/bundles') &&
-          (!params.has('selected') || values.selected === params.get('selected'))
-        ) {
-          changes.selected = null;
-        } else {
-          // We're either not in a bundle, or in a bundle and a hit different from the main bundle is selected
-          changes.selected = values.selected;
-        }
-      } else {
-        if (params.has('selected')) {
-          // If we have a selected hit, that's the selected value to use
-          changes.selected = params.get('selected');
-        } else if (location.pathname.startsWith('/bundles')) {
-          // If not, fallback to the bundle ID
-          changes.selected = routeParams.id;
-        } else {
-          // Otherwise nothing has been selected
-          changes.selected = null;
-        }
+  const removeView: ParameterContextType['removeView'] = useCallback(view => {
+    _setValues(_current => {
+      const index = _current.views.indexOf(view);
+      if (index === -1) {
+        return _current;
       }
 
-      if (parseOffset(params.get('offset')) !== values.offset) {
-        changes.offset = operation === 'write' ? values.offset : parseOffset(params.get('offset'));
+      return {
+        ..._current,
+        views: _current.views.filter((_, i) => i !== index)
+      };
+    });
+  }, []);
 
-        // Same deal - if offset is 0, just remove it entirely (it'll default to 0 offset)
-        if (operation === 'write' && !changes.offset) {
-          changes.offset = null;
+  const setView: ParameterContextType['setView'] = useCallback((index, view) => {
+    _setValues(_current => {
+      // Validate index
+      if (index < 0 || index >= _current.views.length) {
+        return _current;
+      }
+      const newViews = [..._current.views];
+      newViews[index] = view;
+      return {
+        ..._current,
+        views: newViews
+      };
+    });
+  }, []);
+
+  const clearViews: ParameterContextType['clearViews'] = useCallback(() => {
+    _setValues(_current => ({
+      ..._current,
+      views: []
+    }));
+  }, []);
+
+  /**
+   * Get URL parameter changes needed to sync internal state to the address bar.
+   * Returns null values for params that should be removed from URL.
+   */
+  const getUrlFromState = useCallback(() => {
+    const changes: Partial<SearchValues> = {};
+
+    PARAM_MAPPINGS.forEach(([urlKey, stateKey]) => {
+      const stateValue = values[stateKey];
+      const urlValue = params.get(urlKey);
+
+      if (stateValue !== urlValue) {
+        // If the value matches the default, remove it from URL (null signals removal)
+        if (params.has(urlKey) && stateValue === DEFAULT_VALUES[stateKey]) {
+          (changes as any)[urlKey] = null;
+        } else if (stateValue !== DEFAULT_VALUES[stateKey]) {
+          (changes as any)[urlKey] = stateValue;
         }
       }
+    });
 
-      // This is where we check for what has actually changed against the given store
-      // We first omit undefined keys (fromSearchWithFallback can introduce these)
-      // Then we omit any values that already match the store we're updating
-      // (query string or internal state).
-      return omitBy(omitBy(changes, isUndefined), (val, key) =>
-        operation === 'write' ? val == params.get(key) : val == values[key]
-      );
-    },
-    [values, params, location.pathname, routeParams.id]
-  );
+    // Handle filters: compare arrays with isEqual
+    const urlFilters = params.getAll('filter');
+    if (!isEqual(values.filters, urlFilters)) {
+      // Coerce empty array to null for removal signal
+      (changes as any).filters = values.filters.length === 0 ? null : values.filters;
+    }
+
+    // Handle views: compare arrays with isEqual
+    const urlViews = params.getAll('view');
+    if (!isEqual(values.views, urlViews)) {
+      // Coerce empty array to null for removal signal
+      (changes as any).views = values.views.length === 0 ? null : values.views;
+    }
+
+    // Handle selected: remove if redundant in bundle context, otherwise set
+    if (
+      location.pathname.startsWith('/bundles') &&
+      (!params.has('selected') || values.selected === params.get('selected'))
+    ) {
+      changes.selected = null;
+    } else if (values.selected !== params.get('selected')) {
+      changes.selected = values.selected;
+    }
+
+    // Handle offset: remove if 0, otherwise set
+    const urlOffset = parseOffset(params.get('offset'));
+    if (urlOffset !== values.offset) {
+      changes.offset = values.offset || null;
+    }
+
+    // Filter out values that already match the URL (skip 'filters', 'views' as they're handled above)
+    return omitBy(changes, (val, key) => {
+      if (['filters', 'views'].includes(key)) {
+        return false;
+      }
+
+      return val == params.get(key);
+    });
+  }, [values, params, location.pathname]);
+
+  /**
+   * Get state changes needed to sync URL parameters to internal state.
+   */
+  const getStateFromUrl = useCallback(() => {
+    const changes: Partial<SearchValues> = {};
+
+    PARAM_MAPPINGS.forEach(([urlKey, stateKey]) => {
+      const urlValue = params.has(urlKey) ? params.get(urlKey) : (DEFAULT_VALUES[stateKey] ?? undefined);
+
+      if (urlValue !== values[stateKey]) {
+        (changes as any)[stateKey] = urlValue;
+      }
+    });
+
+    // Handle filters: compare arrays with isEqual
+    const urlFilters = uniq(params.getAll('filter'));
+    if (!isEqual(urlFilters, values.filters)) {
+      changes.filters = urlFilters;
+    }
+
+    // Handle filters: compare arrays with isEqual
+    const urlViews = uniq(params.getAll('view'));
+    if (!isEqual(urlViews, values.views)) {
+      changes.views = urlViews;
+    }
+
+    // Handle selected using helper
+    const selectedValue = getSelectedValue(params, location.pathname, routeParams.id);
+    if (selectedValue !== values.selected) {
+      changes.selected = selectedValue;
+    }
+
+    // Handle offset
+    const urlOffset = parseOffset(params.get('offset'));
+    if (urlOffset !== values.offset) {
+      changes.offset = urlOffset;
+    }
+
+    // Filter out undefined values and values that already match state
+    return omitBy(omitBy(changes, isUndefined), (val, key) => val == values[key]);
+  }, [values, params, location.pathname, routeParams.id]);
 
   /**
    * Effect to synchronize the context's state with the address bar
    */
   useEffect(() => {
-    const changes = getDiff('write');
+    const changes = getUrlFromState();
 
-    if (!isEmpty(changes)) {
-      const existingParams = Object.fromEntries(params.entries());
-
-      setParams(
-        _params => {
-          const newParams = new URLSearchParams({ ...existingParams, ...(changes as Record<string, string>) });
-
-          Object.entries(pickBy(changes, isNull)).forEach(([key]) => newParams.delete(key));
-
-          return newParams;
-        },
-        { replace: !changes.query && !Object.keys(changes).includes('offset') }
-      );
+    if (isEmpty(changes)) {
+      return;
     }
+
+    setParams(
+      _params => {
+        // Build fresh URLSearchParams from existing params
+        const newParams = new URLSearchParams(_params);
+
+        // Handle standard params
+        Object.entries(changes).forEach(([key, value]) => {
+          if (['filters', 'views'].includes(key)) {
+            const multiFieldKey = key.replace(/s$/, '');
+
+            // Special handling for arrays
+            newParams.delete(multiFieldKey);
+            if (Array.isArray(value)) {
+              value.forEach(val => newParams.append(multiFieldKey, val));
+            }
+            // null/undefined means remove (already deleted above)
+          } else if (value === null || value === undefined) {
+            newParams.delete(key);
+          } else {
+            newParams.set(key, String(value));
+          }
+        });
+
+        return newParams;
+      },
+      { replace: !changes.query && !Object.keys(changes).includes('offset') }
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [values]);
 
   useEffect(() => {
-    const changes = getDiff('read');
+    const changes = getStateFromUrl();
 
-    if (!isEmpty(changes)) {
-      _setValues(_current => ({
-        ..._current,
-        ...changes
-      }));
+    if (isEmpty(changes)) {
+      return;
     }
+
+    _setValues(_current => ({
+      ..._current,
+      ...changes
+    }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search, location.pathname, routeParams.id]);
 
@@ -254,7 +435,16 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
         setQuery: useMemo(() => set('query'), [set]),
         setSort: useMemo(() => set('sort'), [set]),
         setSpan: useMemo(() => set('span'), [set]),
-        setFilter: useMemo(() => set('filter'), [set])
+
+        addFilter,
+        removeFilter,
+        setFilter,
+        clearFilters,
+
+        addView,
+        removeView,
+        setView,
+        clearViews
       }}
     >
       {children}
@@ -263,9 +453,9 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
 };
 
 export const useParameterContextSelector = <Selected,>(
-  selector: (value: ParameterProviderType) => Selected
+  selector: (value: ParameterContextType) => Selected
 ): Selected => {
-  return useContextSelector<ParameterProviderType, Selected>(ParameterContext, selector);
+  return useContextSelector<ParameterContextType, Selected>(ParameterContext, selector);
 };
 
 export default ParameterProvider;

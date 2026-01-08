@@ -9,7 +9,7 @@ import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'r
 import { createContext, useContextSelector } from 'use-context-selector';
 import { SocketContext, type RecievedDataType } from './SocketProvider';
 
-interface HitProviderType {
+export interface HitContextType {
   hits: { [index: string]: Hit };
   selectedHits: Hit[];
   addHitToSelection: (id: string) => void;
@@ -20,7 +20,7 @@ interface HitProviderType {
   getHit: (id: string, force?: boolean) => Promise<WithMetadata<Hit>>;
 }
 
-export const HitContext = createContext<HitProviderType>(null);
+export const HitContext = createContext<HitContextType>(null);
 
 /**
  * Central repository for storing individual hit data across the application. Allows efficient retrieval of hits across componenents.
@@ -111,15 +111,15 @@ const HitProvider: FC<PropsWithChildren> = ({ children }) => {
     setHits(_hits => ({ ..._hits, ...Object.fromEntries(mappedHits) }));
   }, []);
 
-  const addHitToSelection: HitProviderType['addHitToSelection'] = useCallback((id: string) => {
+  const addHitToSelection: HitContextType['addHitToSelection'] = useCallback((id: string) => {
     setSelectedHitIds(_selected => uniq([..._selected, id]));
   }, []);
 
-  const removeHitFromSelection: HitProviderType['removeHitFromSelection'] = useCallback((id: string) => {
+  const removeHitFromSelection: HitContextType['removeHitFromSelection'] = useCallback((id: string) => {
     setSelectedHitIds(_selected => _selected.filter(_id => _id !== id));
   }, []);
 
-  const clearSelectedHits: HitProviderType['clearSelectedHits'] = useCallback((except: string) => {
+  const clearSelectedHits: HitContextType['clearSelectedHits'] = useCallback((except: string) => {
     setSelectedHitIds(!!except ? [except] : []);
   }, []);
 
@@ -157,8 +157,8 @@ const HitProvider: FC<PropsWithChildren> = ({ children }) => {
   );
 };
 
-export const useHitContextSelector = <Selected,>(selector: (value: HitProviderType) => Selected): Selected => {
-  return useContextSelector<HitProviderType, Selected>(HitContext, selector);
+export const useHitContextSelector = <Selected,>(selector: (value: HitContextType) => Selected): Selected => {
+  return useContextSelector<HitContextType, Selected>(HitContext, selector);
 };
 
 export default HitProvider;

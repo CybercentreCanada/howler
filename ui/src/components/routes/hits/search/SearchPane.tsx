@@ -17,7 +17,6 @@ import PageCenter from 'commons/components/pages/PageCenter';
 import { HitContext } from 'components/app/providers/HitProvider';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
-import { ViewContext } from 'components/app/providers/ViewProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import FlexPort from 'components/elements/addons/layout/FlexPort';
 import VSBox from 'components/elements/addons/layout/vsbox/VSBox';
@@ -30,10 +29,11 @@ import HitBanner from 'components/elements/hit/HitBanner';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import useHitSelection from 'components/hooks/useHitSelection';
-import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
+import useMyLocalStorage, { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { FC } from 'react';
-import React, { memo, useCallback, useEffect } from 'react';
+import React, { memo, useCallback, useEffect, useMemo } from 'react';
+import { isMobile } from 'react-device-detect';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
@@ -42,20 +42,18 @@ import BundleParentMenu from './BundleParentMenu';
 import { BundleScroller } from './BundleScroller';
 import HitContextMenu from './HitContextMenu';
 import HitQuery from './HitQuery';
-import ViewLink from './ViewLink';
-import QuerySettings from './shared/QuerySettings';
+import QuerySettings from './QuerySettings';
 
 const Item: FC<{
   hit: Hit;
   onClick: (event: React.MouseEvent<HTMLDivElement>, hit: Hit) => void;
 }> = memo(({ hit, onClick }) => {
   const theme = useTheme();
+  const { get } = useMyLocalStorage();
 
   const selectedHits = useContextSelector(HitContext, ctx => ctx.selectedHits);
 
   const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
-
-  const layout = useContextSelector(HitSearchContext, ctx => ctx.layout);
 
   const checkMiddleClick = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>, id: string | number) => {
     if (e.button === 1) {
@@ -64,6 +62,11 @@ const Item: FC<{
       e.preventDefault();
     }
   }, []);
+
+  const layout: HitLayout = useMemo(
+    () => (isMobile ? HitLayout.COMFY : (get(StorageKey.HIT_LAYOUT) ?? HitLayout.NORMAL)),
+    [get]
+  );
 
   // Search result list item renderer.
   return (
@@ -124,7 +127,6 @@ const SearchPane: FC = () => {
   const searching = useContextSelector(HitSearchContext, ctx => ctx.searching);
   const response = useContextSelector(HitSearchContext, ctx => ctx.response);
   const error = useContextSelector(HitSearchContext, ctx => ctx.error);
-  const viewId = useContextSelector(HitSearchContext, ctx => ctx.viewId);
 
   const { onClick } = useHitSelection();
 
@@ -137,8 +139,6 @@ const SearchPane: FC = () => {
   const searchPaneWidth = useMyLocalStorageItem(StorageKey.SEARCH_PANE_WIDTH, null)[0];
 
   const verticalSorters = useMediaQuery('(max-width: 1919px)') || (searchPaneWidth ?? Number.MAX_SAFE_INTEGER) < 900;
-
-  const selectedView = useContextSelector(ViewContext, ctx => ctx.views[viewId]);
 
   const getSelectedId = useCallback((event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     const target = event.target as HTMLElement;
@@ -163,8 +163,6 @@ const SearchPane: FC = () => {
       <PageCenter textAlign="left" mt={0} mb={6} ml={0} mr={0} maxWidth="1500px">
         <VSBox top={0}>
           <Stack ml={-1} mr={-1} sx={{ '& .overflowingContentWidgets > *': { zIndex: '2000 !important' } }} spacing={1}>
-            <ViewLink />
-
             {bundleHit && (
               <BundleScroller>
                 <HitContextMenu getSelectedId={() => bundleHit.howler.id}>
@@ -234,10 +232,10 @@ const SearchPane: FC = () => {
             </Stack>
           </Stack>
 
-          <VSBoxHeader ml={-3} mr={-3} px={2} pb={1} sx={{ zIndex: 999 }}>
+          <VSBoxHeader ml={-3} mr={-3} px={2} pb={1} sx={{ zIndex: 989 }}>
             <Stack sx={{ pt: 1 }}>
               <Stack sx={{ position: 'relative', flex: 1 }}>
-                <HitQuery disabled={viewId && !selectedView} searching={searching} triggerSearch={triggerSearch} />
+                <HitQuery searching={searching} triggerSearch={triggerSearch} />
                 {searching && (
                   <LinearProgress
                     sx={theme => ({

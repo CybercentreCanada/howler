@@ -25,6 +25,11 @@
     {
       "files": ["src/models/entities/generated/**"],
       "rules": { "@typescript-eslint/ban-types": "off" }
+    },
+
+    {
+      "files": ["src/**/*.test.tsx"],
+      "rules": { "import/imports-first": "off", "react-hooks/rules-of-hooks": "off", "react/jsx-no-literals": "off" }
     }
   ],
   "rules": {

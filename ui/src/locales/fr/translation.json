@@ -17,10 +17,12 @@
 
   "add": "Ajouter",
   "all": "Tous",
+  "*": "Toutes les valeurs",
   "any": "Tous",
   "asc": "Ascendant",
   "close": "Fermer",
   "desc": "Descendant",
+  "to": "à",
 
   "actions.running": "Action \"{{action}}\" s'exécute.",
   "actions.succeeded": "Action \"{{action}}\" achevé avec succès.",
@@ -286,6 +288,7 @@
   "hit.search.filter.values": "Valeurs",
   "hit.search.filter.button": "Utiliser des filtres de recherche avec des valeurs prédéfinies",
   "hit.search.filter.label": "Filtres de recherche",
+  "hit.search.filter.add": "Ajouter un filtre",
   "hit.search.save.button": "Sauvegarder la requête en tant que vue",
   "hit.search.save.view": "Sauvegarder la vue",
   "hit.search.custom": "Triage personnalisé",
@@ -295,8 +298,11 @@
   "hit.search.select.all": "Sélectionner tous les résultats de la page",
   "hit.search.select.clear": "Effacer la sélection",
   "hit.search.selected": "{{size}} sélectionné(s)",
+  "hit.search.view.add": "Ajouter une vue",
   "hit.search.view.current": "Vue courante",
   "hit.search.view.default": "(Défaut)",
+  "hit.search.view.select": "Sélectionner une vue",
+  "hit.search.view.remove": "Supprimer la vue",
 
   "hit.viewer.aggregate": "Sommaire",
   "hit.viewer.comments": "Commentaires",

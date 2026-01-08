@@ -50,7 +50,7 @@ const HitActions: FC<{
 
   const { getMatchingAnalytic } = useMatchers();
 
-  const getCurrentView = useContextSelector(ViewContext, ctx => ctx.getCurrentView);
+  const getCurrentViews = useContextSelector(ViewContext, ctx => ctx.getCurrentViews);
 
   const selected = useContextSelector(ParameterContext, ctx => ctx?.selected);
   const setSelected = useContextSelector(ParameterContext, ctx => ctx?.setSelected);
@@ -111,7 +111,7 @@ const HitActions: FC<{
               if (!loading) {
                 await assess(assessment, analytic?.triage_settings?.skip_rationale);
 
-                if ((await getCurrentView())?.settings?.advance_on_triage && nextHit) {
+                if ((await getCurrentViews())[0]?.settings?.advance_on_triage && nextHit) {
                   clearSelectedHits(nextHit.howler.id);
                   setSelected?.(nextHit.howler.id);
                 }
@@ -131,7 +131,7 @@ const HitActions: FC<{
     canVote,
     clearSelectedHits,
     config.lookups,
-    getCurrentView,
+    getCurrentViews,
     loading,
     nextHit,
     setSelected,

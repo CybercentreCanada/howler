@@ -7,7 +7,6 @@ import {
   Alert,
   Checkbox,
   CircularProgress,
-  Divider,
   LinearProgress,
   Stack,
   TextField,
@@ -39,6 +38,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
 import { convertDateToLucene } from 'utils/utils';
+import { buildViewUrl } from 'utils/viewUtils';
 import ErrorBoundary from '../ErrorBoundary';
 import HitQuery from '../hits/search/HitQuery';
 import HitSort from '../hits/search/shared/HitSort';
@@ -53,7 +53,7 @@ const ViewComposer: FC = () => {
 
   const addView = useContextSelector(ViewContext, ctx => ctx.addView);
   const editView = useContextSelector(ViewContext, ctx => ctx.editView);
-  const getCurrentView = useContextSelector(ViewContext, ctx => ctx.getCurrentView);
+  const getCurrentViews = useContextSelector(ViewContext, ctx => ctx.getCurrentViews);
 
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
@@ -94,7 +94,7 @@ const ViewComposer: FC = () => {
           }
         });
 
-        navigate(`/views/${newView.view_id}`);
+        navigate(buildViewUrl(newView));
       } else {
         await editView(routeParams.id, {
           title,
@@ -177,7 +177,7 @@ const ViewComposer: FC = () => {
     }
 
     (async () => {
-      const viewToEdit = await getCurrentView();
+      const viewToEdit = (await getCurrentViews({ viewId: routeParams.id }))[0];
 
       if (!viewToEdit) {
         setError('route.views.missing');
@@ -199,7 +199,7 @@ const ViewComposer: FC = () => {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routeParams.id, getCurrentView]);
+  }, [routeParams.id, getCurrentViews]);
 
   return (
     <FlexPort>
@@ -264,14 +264,10 @@ const ViewComposer: FC = () => {
                   searching={searching}
                   onChange={(_query, isDirty) => setIsSearchDirty(isDirty)}
                 />
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  sx={{ '& > :not(.MuiDivider-root)': { flex: 1 } }}
-                  divider={<Divider flexItem orientation="vertical" />}
-                >
+                <Stack direction="row" spacing={1}>
                   <HitSort />
                   <SearchSpan omitCustom />
+                  <div style={{ flex: 1 }} />
                   <Stack
                     spacing={1}
                     direction="row"

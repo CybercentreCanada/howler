@@ -1,25 +1,14 @@
-/* eslint-disable react/jsx-no-literals */
-/* eslint-disable import/imports-first */
-/// <reference types="vitest" />
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { omit } from 'lodash-es';
-import { act, createContext, useContext, type PropsWithChildren } from 'react';
+import { act, type PropsWithChildren } from 'react';
+import { setupContextSelectorMock } from 'tests/mocks';
 import { vi } from 'vitest';
-
-globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 // Mock API
 vi.mock('api', { spy: true });
 
-vi.mock('use-context-selector', async () => {
-  return {
-    createContext,
-    useContextSelector: (context, selector) => {
-      return selector(useContext(context));
-    }
-  };
-});
+setupContextSelectorMock();
 
 // Mock react-router-dom
 const mockNavigate = vi.fn();
@@ -201,10 +190,8 @@ describe('HitContextMenu', () => {
 
   describe('Context Menu Initialization', () => {
     it('should open menu on right-click', async () => {
-      act(() => {
-        const contextMenuWrapper = screen.getByText('Test Content').parentElement;
-        fireEvent.contextMenu(contextMenuWrapper);
-      });
+      const contextMenuWrapper = screen.getByText('Test Content').parentElement;
+      await user.pointer({ keys: '[MouseRight]', target: contextMenuWrapper });
 
       await waitFor(() => {
         expect(screen.getByRole('menu')).toBeInTheDocument();
@@ -898,14 +885,11 @@ describe('HitContextMenu', () => {
       });
 
       const contextMenuWrapper = screen.getByText('Test Content').parentElement;
-      fireEvent.contextMenu(contextMenuWrapper);
-
-      await waitFor(() => {
-        expect(screen.getByRole('menu')).toBeInTheDocument();
-      });
+      await user.pointer({ keys: '[MouseRight]', target: contextMenuWrapper });
 
       // The component should use selectedHits for actions
       // We can verify this indirectly through the useHitActions hook receiving the right data
+      expect(screen.getByRole('menu')).toBeInTheDocument();
       expect(mockGetSelectedId).toHaveBeenCalled();
     });
 
@@ -917,7 +901,7 @@ describe('HitContextMenu', () => {
       });
 
       const contextMenuWrapper = screen.getByText('Test Content').parentElement;
-      fireEvent.contextMenu(contextMenuWrapper);
+      await user.pointer({ keys: '[MouseRight]', target: contextMenuWrapper });
 
       await waitFor(() => {
         expect(screen.getByRole('menu')).toBeInTheDocument();
@@ -929,9 +913,9 @@ describe('HitContextMenu', () => {
 
   describe('Dynamic Data Loading', () => {
     let contextMenuWrapper: HTMLElement;
-    beforeEach(() => {
+    beforeEach(async () => {
       contextMenuWrapper = screen.getByText('Test Content').parentElement;
-      fireEvent.contextMenu(contextMenuWrapper);
+      await user.pointer({ keys: '[MouseRight]', target: contextMenuWrapper });
     });
 
     it('should call getMatchingAnalytic when hit has analytic', async () => {
@@ -961,11 +945,7 @@ describe('HitContextMenu', () => {
         expect(screen.getByTestId('assessment-submenu')).toBeInTheDocument();
       });
 
-      await act(async () => {
-        // Close menu
-        const menu = screen.getByRole('menu');
-        await user.click(menu);
-      });
+      await user.click(screen.getByRole('menu'));
 
       await waitFor(() => {
         expect(screen.queryByRole('menu')).not.toBeInTheDocument();

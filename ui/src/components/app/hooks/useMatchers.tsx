@@ -24,7 +24,6 @@ const useMatchers = () => {
       try {
         return (await getHit(hit.howler.id, true)).__template;
       } catch (e) {
-        console.warn(e);
         return null;
       }
     },
@@ -46,7 +45,6 @@ const useMatchers = () => {
       try {
         return (await getHit(hit.howler.id, true)).__overview;
       } catch (e) {
-        console.warn(e);
         return null;
       }
     },
@@ -68,7 +66,6 @@ const useMatchers = () => {
       try {
         return (await getHit(hit.howler.id, true)).__dossiers ?? [];
       } catch (e) {
-        console.warn(e);
         return [];
       }
     },
@@ -89,7 +86,6 @@ const useMatchers = () => {
       try {
         return (await getHit(hit.howler.id, true)).__analytic;
       } catch (e) {
-        console.warn(e);
         return null;
       }
     },

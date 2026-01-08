@@ -1,9 +1,10 @@
 import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
-import { HitLayout } from 'components/elements/hit/HitLayout';
 import useMyApi from 'components/hooks/useMyApi';
 import useMyLocalStorage, { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
+import dayjs from 'dayjs';
 import i18n from 'i18n';
+import { cloneDeep } from 'lodash-es';
 import isNull from 'lodash-es/isNull';
 import isUndefined from 'lodash-es/isUndefined';
 import type { Hit } from 'models/entities/generated/Hit';
@@ -18,11 +19,9 @@ import {
   type PropsWithChildren,
   type SetStateAction
 } from 'react';
-import { isMobile } from 'react-device-detect';
 import { useLocation, useParams } from 'react-router-dom';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
-import { getStored } from 'utils/localStorage';
 import Throttler from 'utils/Throttler';
 import { convertCustomDateRangeToLucene, convertDateToLucene } from 'utils/utils';
 import { HitContext } from './HitProvider';
@@ -33,24 +32,24 @@ export interface QueryEntry {
   [query: string]: string;
 }
 
-interface HitSearchProviderType {
-  layout: HitLayout;
+export interface HitSearchContextType {
   displayType: 'list' | 'grid';
   searching: boolean;
   error: string | null;
   response: HowlerSearchResponse<WithMetadata<Hit>> | null;
-  viewId: string | null;
   bundleId: string | null;
-  queryHistory: QueryEntry;
   fzfSearch: boolean;
 
   setDisplayType: (type: 'list' | 'grid') => void;
-  setQueryHistory: Dispatch<SetStateAction<QueryEntry>>;
   setFzfSearch: Dispatch<SetStateAction<boolean>>;
   search: (query: string, appendResults?: boolean) => void;
+  getFilters: () => Promise<string[]>;
+
+  queryHistory: QueryEntry;
+  setQueryHistory: ReturnType<typeof useMyLocalStorageItem>[1];
 }
 
-export const HitSearchContext = createContext<HitSearchProviderType>(null);
+export const HitSearchContext = createContext<HitSearchContextType>(null);
 
 const THROTTLER = new Throttler(500);
 
@@ -61,7 +60,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const { dispatchApi } = useMyApi();
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
-  const getCurrentView = useContextSelector(ViewContext, ctx => ctx.getCurrentView);
+  const getCurrentViews = useContextSelector(ViewContext, ctx => ctx.getCurrentViews);
   const defaultView = useContextSelector(ViewContext, ctx => ctx.defaultView);
 
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
@@ -71,35 +70,75 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const trackTotalHits = useContextSelector(ParameterContext, ctx => ctx.trackTotalHits);
   const sort = useContextSelector(ParameterContext, ctx => ctx.sort);
   const span = useContextSelector(ParameterContext, ctx => ctx.span);
-  const filter = useContextSelector(ParameterContext, ctx => ctx.filter);
+  const allFilters = useContextSelector(ParameterContext, ctx => ctx.filters);
   const startDate = useContextSelector(ParameterContext, ctx => ctx.startDate);
   const endDate = useContextSelector(ParameterContext, ctx => ctx.endDate);
+  const views = useContextSelector(ParameterContext, ctx => ctx.views);
+  const addView = useContextSelector(ParameterContext, ctx => ctx.addView);
 
   const loadHits = useContextSelector(HitContext, ctx => ctx.loadHits);
 
-  const [displayType, setDisplayType] = useState<'list' | 'grid'>(getStored(StorageKey.DISPLAY_TYPE) ?? 'list');
+  const [displayType, setDisplayType] = useState<'list' | 'grid'>(get(StorageKey.DISPLAY_TYPE) ?? 'list');
   const [searching, setSearching] = useState<boolean>(false);
   const [error, setError] = useState<string>(null);
-  const [response, setResponse] = useState<HowlerSearchResponse<WithMetadata<Hit>>>();
-  const [queryHistory, setQueryHistory] = useState<QueryEntry>(
-    JSON.parse(get(StorageKey.QUERY_HISTORY)) || { 'howler.id: *': new Date().toISOString() }
-  );
+  const [response, setResponse] = useState<HowlerSearchResponse<WithMetadata<Hit>>>(null);
+  const [queryHistory, setQueryHistory] = useMyLocalStorageItem<Record<string, string>>(StorageKey.QUERY_HISTORY, {
+    'howler.id: *': new Date().toISOString()
+  });
   const [fzfSearch, setFzfSearch] = useState<boolean>(false);
-
-  const viewId = useMemo(
-    () => (location.pathname.startsWith('/views') ? routeParams.id : defaultView) ?? null,
-    [defaultView, location.pathname, routeParams.id]
-  );
 
   const bundleId = useMemo(
     () => (location.pathname.startsWith('/bundles') ? routeParams.id : null),
     [location.pathname, routeParams.id]
   );
 
-  const layout: HitLayout = useMemo(
-    () => (isMobile ? HitLayout.COMFY : (get(StorageKey.HIT_LAYOUT) ?? HitLayout.NORMAL)),
-    [get]
-  );
+  const filters = useMemo(() => allFilters.filter(filter => !filter.endsWith('*')), [allFilters]);
+
+  // On load check to filter out any queries older than one month
+  useEffect(() => {
+    const filterQueryTime = dayjs().subtract(1, 'month').toISOString();
+
+    setQueryHistory(Object.fromEntries(Object.entries(queryHistory).filter(([_, value]) => value > filterQueryTime)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Inject default view into URL when no views present
+  useEffect(() => {
+    if (views.length === 0 && defaultView) {
+      addView(defaultView);
+    }
+  }, [views.length, defaultView, addView]);
+
+  const getFilters = useCallback(async () => {
+    const _filters: string[] = cloneDeep(filters);
+
+    // Add span filter
+    if (span && !span.endsWith('custom')) {
+      _filters.push(`event.created:${convertDateToLucene(span)}`);
+    } else if (startDate && endDate) {
+      _filters.push(`event.created:${convertCustomDateRangeToLucene(startDate, endDate)}`);
+    }
+
+    // Add bundle filter
+    const bundle = location.pathname.startsWith('/bundles') && routeParams.id;
+    if (bundle) {
+      _filters.push(`howler.bundles:${bundle}`);
+    }
+
+    // Fetch all view queries
+    if (views.length > 0) {
+      const viewObjects = await getCurrentViews();
+
+      // Filter out null/undefined views and extract queries
+      viewObjects
+        .filter(view => view?.query)
+        .map(view => view.query)
+        .forEach(viewQuery => _filters.push(viewQuery));
+    }
+
+    return _filters;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [endDate, filters, getCurrentViews, location.pathname, routeParams.id, span, startDate, views]);
 
   const search = useCallback(
     async (_query?: string, appendResults?: boolean) => {
@@ -115,40 +154,24 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
 
         if (!isNull(_query) && !isUndefined(_query) && _query !== query) {
           setQuery(_query);
+
+          setQueryHistory({
+            ...queryHistory,
+            [_query]: new Date().toISOString()
+          });
         }
 
         setSearching(true);
         setError(null);
 
-        const filters: string[] = [];
-
-        if (span && !span.endsWith('custom')) {
-          filters.push(`event.created:${convertDateToLucene(span)}`);
-        } else if (startDate && endDate) {
-          filters.push(`event.created:${convertCustomDateRangeToLucene(startDate, endDate)}`);
-        }
-
-        if (filter) {
-          filters.push(filter);
-        }
-
         try {
-          const bundle = location.pathname.startsWith('/bundles') && routeParams.id;
-
-          let fullQuery = _query || DEFAULT_QUERY;
-          if (bundle) {
-            fullQuery = `(howler.bundles:${bundle}) AND (${fullQuery})`;
-          } else if (viewId) {
-            fullQuery = `(${(await getCurrentView({ viewId }))?.query || DEFAULT_QUERY}) AND (${fullQuery})`;
-          }
-
           const _response = await dispatchApi(
             api.search.hit.post({
-              offset: appendResults ? response.rows : offset,
+              offset: appendResults && response ? response.rows : offset,
               rows: pageCount,
-              query: fullQuery,
+              query: _query || DEFAULT_QUERY,
               sort,
-              filters,
+              filters: await getFilters(),
               track_total_hits: trackTotalHits,
               metadata: ['template', 'overview', 'analytic']
             }),
@@ -186,47 +209,46 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
       query,
       startDate,
       endDate,
-      filter,
+      filters,
       setQuery,
       location.pathname,
       routeParams.id,
-      viewId,
+      views,
       dispatchApi,
       offset,
       pageCount,
       trackTotalHits,
       loadHits,
-      getCurrentView,
+      getCurrentViews,
       setOffset
     ]
   );
 
   // We only run this when ancillary properties (i.e. filters, sorting) change
   useEffect(() => {
-    if (span.endsWith('custom') && (!startDate || !endDate)) {
+    if (span?.endsWith('custom') && (!startDate || !endDate)) {
       return;
     }
 
-    if (viewId || bundleId || (query && query !== DEFAULT_QUERY) || offset > 0) {
+    if (views.length > 0 || bundleId || (query && query !== DEFAULT_QUERY) || offset > 0 || filters.length > 0) {
       search(query);
     } else {
       setResponse(null);
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, offset, pageCount, sort, span, bundleId, location.pathname, startDate, endDate, viewId]);
+  }, [offset, pageCount, sort, span, bundleId, location.pathname, startDate, endDate, filters, query]);
 
   return (
     <HitSearchContext.Provider
       value={{
-        layout,
         displayType,
         setDisplayType,
         search,
         searching,
+        getFilters,
         error,
         response,
-        viewId,
         bundleId,
         setQueryHistory,
         queryHistory,
@@ -240,9 +262,9 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
 };
 
 export const useHitSearchContextSelector = <Selected,>(
-  selector: (value: HitSearchProviderType) => Selected
+  selector: (value: HitSearchContextType) => Selected
 ): Selected => {
-  return useContextSelector<HitSearchProviderType, Selected>(HitSearchContext, selector);
+  return useContextSelector<HitSearchContextType, Selected>(HitSearchContext, selector);
 };
 
 export default HitSearchProvider;
