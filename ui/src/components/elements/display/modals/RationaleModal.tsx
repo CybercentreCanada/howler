@@ -103,31 +103,34 @@ const RationaleModal: FC<{ hits: Hit[]; onSubmit: (rationale: string) => void }>
     (async () => {
       setLoading(true);
 
-      const options: RationaleOption[][] = await Promise.all([
-        fetchPresetRationales(),
-        // Rationales by other users for the current analytic
-        runFacet(
-          {
-            query: 'howler.rationale:*',
-            rows: 10,
-            fields: ['howler.rationale'],
-            filters: hits.map(hit => `howler.analytic:"${sanitizeLuceneQuery(hit.howler.analytic)}")`)
-          },
-          'analytic'
-        ),
-        // Rationales provided by this user
-        runFacet(
-          {
-            query: `howler.rationale:* AND howler.assignment:${user.username} AND timestamp:[now-14d TO now]`,
-            rows: 25,
-            fields: ['howler.rationale']
-          },
-          'assignment'
-        )
-      ]);
+      try {
+        const options: RationaleOption[][] = await Promise.all([
+          fetchPresetRationales(),
+          // Rationales by other users for the current analytic
+          runFacet(
+            {
+              query: 'howler.rationale:*',
+              rows: 10,
+              fields: ['howler.rationale'],
+              filters: hits.map(hit => `howler.analytic:"${sanitizeLuceneQuery(hit.howler.analytic)}")`)
+            },
+            'analytic'
+          ),
+          // Rationales provided by this user
+          runFacet(
+            {
+              query: `howler.rationale:* AND howler.assignment:${user.username} AND timestamp:[now-14d TO now]`,
+              rows: 25,
+              fields: ['howler.rationale']
+            },
+            'assignment'
+          )
+        ]);
 
-      setSuggestedRationales(options.flat());
-      setLoading(false);
+        setSuggestedRationales(options.flat());
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [dispatchApi, fetchPresetRationales, getMatchingAnalytic, hits, runFacet, user.username]);
 
@@ -160,15 +163,16 @@ const RationaleModal: FC<{ hits: Hit[]; onSubmit: (rationale: string) => void }>
               ...params.InputProps,
               endAdornment: (
                 <>
-                  {loading ? <CircularProgress color="inherit" size={20} /> : null}
+                  {loading ? <CircularProgress aria-label={t('loading')} color="inherit" size={20} /> : null}
                   {params.InputProps.endAdornment}
                 </>
               )
             }}
           />
         )}
-        renderOption={(props, option) => (
+        renderOption={({ key, ...props }, option) => (
           <ListItemText
+            key={key}
             {...(props as any)}
             sx={{ flexDirection: 'column', alignItems: 'start !important' }}
             primary={option.rationale}
