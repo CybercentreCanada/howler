@@ -258,8 +258,16 @@ const router = createBrowserRouter([
         element: <Templates />
       },
       {
-        path: 'templates/view',
+        path: 'templates/new',
         element: <TemplateViewer />
+      },
+      {
+        path: 'templates/:id',
+        element: (
+          <ParameterProvider>
+            <TemplateViewer />
+          </ParameterProvider>
+        )
       },
       {
         path: 'overviews',

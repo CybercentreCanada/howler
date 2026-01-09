@@ -5,7 +5,9 @@ export interface Template {
   analytic?: string;
   detection?: string;
   keys?: string[];
+  name?: string;
   owner?: string;
   template_id?: string;
   type?: string;
+  query?: string;
 }

@@ -16,7 +16,7 @@ Note that while both share some similar fields, they also differ. We want each o
 
 ===SPLIT===
 
-As we can see, by specifying a template for each of the detections, different data will be presented to the analyst. To do so, you can use the template creator [here]($CURRENT_URL/templates/view?type=personal).
+As we can see, by specifying a template for each of the detections, different data will be presented to the analyst. To do so, you can use the template creator [here]($CURRENT_URL/templates/new?type=personal).
 
 ```alert
 Note that you must have ingested some hits for the given analytic/detection pair for it to show as an option in the template creation UI!

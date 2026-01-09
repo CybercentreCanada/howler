@@ -36,7 +36,7 @@ const AnalyticTemplates: FC<{ analytic: Analytic }> = ({ analytic }) => {
     <Stack spacing={1} position="relative">
       <Fab
         component={Link}
-        to={`/templates/view?analytic=${analytic.name}`}
+        to={`/templates/new?query=howler.analytic:${analytic.name}`}
         variant="extended"
         size="large"
         color="primary"
@@ -56,7 +56,7 @@ const AnalyticTemplates: FC<{ analytic: Analytic }> = ({ analytic }) => {
       {templates.map(template => (
         <Box
           component={Link}
-          to={`/templates/view?analytic=${template.analytic}${template.detection ? '&template=' + template.detection : ''}&type=${template.type}`}
+          to={`/templates/${template.template_id}`}
           key={template.template_id}
           sx={theme => ({
             textDecoration: 'none',

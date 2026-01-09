@@ -161,14 +161,8 @@ const TemplatesBase: FC = () => {
       }
       renderer={({ item }: TuiListItemProps<Template>, classRenderer) => renderer(item.item, classRenderer())}
       response={response}
-      onSelect={(item: TuiListItem<Template>) =>
-        navigate(
-          `/templates/view?type=${item.item.type}&analytic=${item.item.analytic}${
-            item.item.detection ? '&detection=' + item.item.detection : ''
-          }`
-        )
-      }
-      onCreate={() => navigate('/templates/view')}
+      onSelect={(item: TuiListItem<Template>) => navigate(`/templates/${item.item.template_id}`)}
+      onCreate={() => navigate('/templates/new')}
       createPrompt="route.templates.create"
       searchPrompt="route.templates.manager.search"
       createIcon={<Article sx={{ mr: 1 }} />}

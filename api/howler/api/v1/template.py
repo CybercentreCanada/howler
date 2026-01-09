@@ -1,4 +1,5 @@
 from flask import request
+from mergedeep.mergedeep import merge
 
 from howler.api import (
     bad_request,
@@ -162,7 +163,7 @@ def delete_template(id: str, user: User, **kwargs):
 @generate_swagger_docs()
 @template_api.route("/<id>", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
-def update_template_fields(id: str, user: User, **kwargs):
+def update_template(id: str, user: User, **kwargs):
     """Update a template's keys
 
     Variables:
@@ -187,20 +188,25 @@ def update_template_fields(id: str, user: User, **kwargs):
     if not storage.template.exists(id):
         return not_found(err="This template does not exist")
 
-    new_fields = request.json
-    if not isinstance(new_fields, list) or not all(isinstance(f, str) for f in new_fields):
-        return bad_request(err="List of new fields must be a list of strings.")
+    new_data = request.json
+    if not isinstance(new_data, dict):
+        return bad_request(err="Invalid data format")
 
-    existing_template: Template = storage.template.get_if_exists(id)
+    existing_template: Template = storage.template.get(id)
 
     if existing_template.type == "personal" and existing_template.owner != user.uname:
         return forbidden(err="You cannot update a personal template that is not owned by you.")
 
-    existing_template.keys = new_fields
+    # This prevents unauthorized modification of sensitive fields
+    permitted_keys = {"name", "query", "type", "owner", "keys"}
+    if set(new_data.keys()) - permitted_keys:
+        raise forbidden(err=f"Only {', '.join(permitted_keys)} can be updated.")
 
-    storage.template.save(existing_template.template_id, existing_template)
+    new_template = Template(merge({}, existing_template.as_primitives(), new_data))
+
+    storage.template.save(existing_template.template_id, new_template)
 
     try:
-        return ok(storage.template.get_if_exists(existing_template.template_id, as_obj=False))
+        return ok(new_template)
     except HowlerException as e:
         return bad_request(err=str(e))

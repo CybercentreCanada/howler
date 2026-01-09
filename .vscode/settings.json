@@ -75,6 +75,8 @@
   "editor.codeActionsOnSave": {
     "source.organizeImports": "explicit",
     "source.fixAll": "explicit",
+    "source.fixAll.eslint": "explicit",
+    "source.fixAll.ts": "explicit",
     "source.unusedImports": "explicit"
   },
   "python.defaultInterpreterPath": "${workspaceFolder}/api/.venv/bin/python",
@@ -96,7 +98,7 @@
   ],
   // "flake8.cwd": "${workspaceFolder}/api",
   "flake8.cwd": "${fileDirname}",
-  "editor.formatOnSaveMode": "modificationsIfAvailable",
+  "editor.formatOnSaveMode": "file",
   "mypy-type-checker.cwd": "${nearestConfig}",
   "python.analysis.typeEvaluation.strictListInference": true,
   "python.analysis.typeEvaluation.strictDictionaryInference": true,
@@ -105,6 +107,7 @@
   ],
   "flake8.args": ["--max-line-length=120"],
   "prettier.configPath": "ui/.prettierrc",
+  "prettier.prettierPath": "ui/node_modules/prettier",
   "search.exclude": {
     "**/node_modules": true,
     "**/bower_components": true,

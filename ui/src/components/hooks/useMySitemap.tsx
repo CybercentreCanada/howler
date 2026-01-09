@@ -177,7 +177,7 @@ const useMySitemap = (): AppSiteMapConfigs => {
           icon: <Edit />
         },
         {
-          path: '/templates/view',
+          path: '/templates/:id',
           title: t('route.templates.view'),
           breadcrumbs: ['/templates'],
           isLeaf: true,

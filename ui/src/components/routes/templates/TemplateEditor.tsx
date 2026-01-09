@@ -5,7 +5,7 @@ import { Button, Stack, Typography } from '@mui/material';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { FieldContext } from 'components/app/providers/FieldProvider';
 import Phrase from 'components/elements/addons/search/phrase/Phrase';
-import { get, isObject } from 'lodash-es';
+import { get, isObject, without } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
 import { memo, useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -14,15 +14,11 @@ import TemplateDnD from './TemplateDnD';
 const TemplateEditor = ({
   hit,
   fields,
-  setFields,
-  onRemove,
-  onAdd
+  setFields
 }: {
   hit: Hit;
   fields: string[];
   setFields: (displayFields: string[]) => void;
-  onRemove: (field: string) => void;
-  onAdd: (field: string) => void;
 }) => {
   const { t } = useTranslation();
   const { config } = useContext(ApiConfigContext);
@@ -34,11 +30,11 @@ const TemplateEditor = ({
   const tryAddField = useCallback(() => {
     if (suggestions.includes(phrase)) {
       if (!fields.includes(phrase)) {
-        onAdd(phrase);
+        setFields([...fields, phrase]);
         setPhrase('');
       }
     }
-  }, [fields, onAdd, phrase, suggestions]);
+  }, [fields, setFields, phrase, suggestions]);
 
   const checkForActions = useCallback(
     (e: any) => {
@@ -83,7 +79,7 @@ const TemplateEditor = ({
               <TemplateDnD
                 field={field}
                 data={data}
-                onRemove={onRemove}
+                onRemove={() => setFields(without(fields, field))}
                 tooltipTitle={(config.indexes.hit[field].description ?? t('none')).split('\n')[0]}
                 key={field}
               />

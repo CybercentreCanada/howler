@@ -26,23 +26,13 @@ const DefaultOutline: FC<{
     (event: React.MouseEvent<HTMLButtonElement>) => {
       event.stopPropagation();
 
-      const params: { [index: string]: string } = {
-        analytic: hit.howler.analytic,
-        type: template?.type ?? 'personal'
-      };
-
-      if (template?.detection) {
-        params.detection = template.detection;
-      } else if (!template && hit.howler.detection) {
-        params.detection = hit.howler.detection;
+      if (template) {
+        navigate(`/templates/${template.template_id}`);
+      } else {
+        navigate(
+          `/templates/new?query=howler.analytic:${hit.howler.analytic} AND howler.detection:${hit.howler.detection || '*'}`
+        );
       }
-
-      navigate(
-        '/templates/view?' +
-          Object.entries(params)
-            .map(([key, val]) => `${key}=${val}`)
-            .join('&')
-      );
     },
     [hit.howler.analytic, hit.howler.detection, navigate, template]
   );

@@ -16,7 +16,7 @@ Notez que si les deux cartes partagent des champs similaires, elles diffèrent �
 
 ===SPLIT===
 
-Comme nous pouvons le voir, en spécifiant un modèle pour chacune des détections, des données différentes seront présentées à l'analyste.Pour ce faire, vous pouvez utiliser le créateur de modèles [ici]($CURRENT_URL/templates/view?type=personal).
+Comme nous pouvons le voir, en spécifiant un modèle pour chacune des détections, des données différentes seront présentées à l'analyste.Pour ce faire, vous pouvez utiliser le créateur de modèles [ici]($CURRENT_URL/templates/new?type=personal).
 
 ```alert
 Notez que vous devez avoir ingéré des hits pour la paire analyse/détection donnée pour qu'elle apparaisse en tant qu'option dans l'interface utilisateur de création de modèle !

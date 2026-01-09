@@ -10,7 +10,7 @@ const DocumentationButton: FC = () => {
   const location = useLocation();
 
   const [link, i18nKey] = useMemo(() => {
-    switch (location.pathname) {
+    switch (location.pathname.replace(/(\/[^/]+)\/?.*/, '$1')) {
       case '/action': {
         return ['/help/actions', 'documentation.open.actions'];
       }
@@ -18,12 +18,10 @@ const DocumentationButton: FC = () => {
       case '/advanced': {
         return ['/help/search', 'documentation.open.search'];
       }
-      case '/views':
-      case '/views/create': {
+      case '/views': {
         return ['/help/views', 'documentation.open.views'];
       }
-      case '/templates':
-      case '/templates/view': {
+      case '/templates': {
         return ['/help/templates', 'documentation.open.templates'];
       }
       default: {

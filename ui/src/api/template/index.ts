@@ -9,12 +9,12 @@ export const get = (): Promise<Template[]> => {
   return hget(uri());
 };
 
-export const post = (newData: Partial<Template>): Promise<Template> => {
+export const post = (newData: Template): Promise<Template> => {
   return hpost(uri(), newData);
 };
 
-export const put = (id: string, newFields: string[]): Promise<Template> => {
-  return hput(uri(id), newFields);
+export const put = (id: string, template: Partial<Template>): Promise<Template> => {
+  return hput(uri(id), template);
 };
 
 export const del = (id: string): Promise<void> => {

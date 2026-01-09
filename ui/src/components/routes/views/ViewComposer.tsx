@@ -293,7 +293,7 @@ const ViewComposer: FC = () => {
                     sx={theme => ({ color: theme.palette.text.secondary, fontSize: '0.9em', fontStyle: 'italic' })}
                   />
                 ) : null}
-                <LinearProgress sx={[!searching && { opacity: 0 }]} />
+                <LinearProgress sx={{ opacity: +searching }} />
               </Stack>
             </VSBoxHeader>
             <VSBoxContent>
