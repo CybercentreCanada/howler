@@ -37,7 +37,7 @@ const TriageSettings: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => voi
   const { config } = useContext(ApiConfigContext);
 
   const [loading, setLoading] = useState(false);
-  const [rationale, setRationale] = useState(null);
+  const [rationale, setRationale] = useState('');
 
   const updateAnalytic = useCallback(
     async (changes: EditOptions) => {
@@ -187,6 +187,7 @@ const TriageSettings: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => voi
                               rationales: uniq([...rationales, rationale])
                             }
                           });
+                          setRationale('');
                         }
                       }}
                       fullWidth
@@ -196,13 +197,15 @@ const TriageSettings: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => voi
                           <InputAdornment position="end">
                             <IconButton
                               size="small"
-                              onClick={() =>
+                              disabled={!rationale}
+                              onClick={() => {
                                 updateAnalytic({
                                   triage_settings: {
                                     rationales: uniq([...rationales, rationale])
                                   }
-                                })
-                              }
+                                });
+                                setRationale('');
+                              }}
                             >
                               <Check fontSize="small" />
                             </IconButton>
