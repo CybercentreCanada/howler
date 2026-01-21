@@ -69,15 +69,7 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
             }
           }
 
-          /*
-            We add two newlines because:
-
-            ## Hello, World
-            `123123123`
-
-            does not parse as a code object.
-            */
-          return new Handlebars.SafeString(`\n\n\`${id}\``);
+          return new Handlebars.SafeString(`\`${id}\``);
         }
 
         return helper.callback(...args);
@@ -97,7 +89,7 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
             missingHelper,
             () =>
               new Handlebars.SafeString(
-                `\n\n<span style="color: red; font-weight: bold; font-family: monospace;">Missing helper ${missingHelper}</span>`
+                `<span style="color: red; font-weight: bold; font-family: monospace;">Missing helper ${missingHelper}</span>`
               )
           );
 

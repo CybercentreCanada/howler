@@ -341,6 +341,7 @@
   "markdown.error": "An Error Has Occurred.",
   "markdown.json.invalid": "Invalid JSON Provided. Consider using the {{json <data>}} utility to convert objects into JSON strings.",
   "markdown.props.missing": "You are missing keyword arguments for this helper:",
+  "markdown.actionbutton.error": "You must provide two arguments: action id and hit id.",
 
   "modal.action.title": "Save Action",
   "modal.action.description": "Provide a name that allows other users to identify the purpose of this action.",

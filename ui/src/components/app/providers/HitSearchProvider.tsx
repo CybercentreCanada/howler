@@ -137,19 +137,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
     }
 
     return _filters;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    endDate,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    filters.join(','),
-    getCurrentViews,
-    location.pathname,
-    routeParams.id,
-    span,
-    startDate,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    views.join(',')
-  ]);
+  }, [endDate, filters, getCurrentViews, location.pathname, routeParams.id, span, startDate, views]);
 
   const search = useCallback(
     async (_query?: string, appendResults?: boolean) => {

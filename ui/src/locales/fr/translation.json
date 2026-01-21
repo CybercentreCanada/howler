@@ -344,6 +344,7 @@
   "markdown.error": "Une erreur s'est produite.",
   "markdown.json.invalid": "JSON non valide fourni. Pensez à utiliser l'utilitaire {{json <data>}} pour convertir les objets en chaînes JSON.",
   "markdown.props.missing": "Il manque des arguments de mots-clés pour cette aide:",
+  "markdown.actionbutton.error": "Vous devez fournir deux arguments : l'identifiant de l'action et l'identifiant du hit.",
 
   "modal.action.title": "Enregistrer l'action",
   "modal.action.description": "Donnez un nom qui permette aux autres utilisateurs d'identifier l'objectif de cette action.",
