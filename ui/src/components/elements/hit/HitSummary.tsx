@@ -33,17 +33,16 @@ import { memo, useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
-import { convertCustomDateRangeToLucene, convertDateToLucene, getTimeRange } from 'utils/utils';
+import { getTimeRange } from 'utils/utils';
 import PluginChip from '../PluginChip';
 import HitGraph from './aggregate/HitGraph';
 
 const HitSummary: FC<{
-  query: string;
   response?: HowlerSearchResponse<WithMetadata<Hit>>;
   execute?: boolean;
   onStart?: () => void;
   onComplete?: () => void;
-}> = ({ query, response, onStart, onComplete }) => {
+}> = ({ response, onStart, onComplete }) => {
   const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
   const { hitFields } = useContext(FieldContext);
@@ -51,14 +50,13 @@ const HitSummary: FC<{
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
   const { getMatchingTemplate } = useMatchers();
 
-  const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
-  const viewId = useContextSelector(HitSearchContext, ctx => ctx.viewId);
   const searching = useContextSelector(HitSearchContext, ctx => ctx.searching);
   const error = useContextSelector(HitSearchContext, ctx => ctx.error);
+  const getFilters = useContextSelector(HitSearchContext, ctx => ctx.getFilters);
 
-  const span = useContextSelector(ParameterContext, ctx => ctx.span);
-  const startDate = useContextSelector(ParameterContext, ctx => ctx.startDate);
-  const endDate = useContextSelector(ParameterContext, ctx => ctx.endDate);
+  const query = useContextSelector(ParameterContext, ctx => ctx.query);
+  const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
+  const views = useContextSelector(ParameterContext, ctx => ctx.views);
 
   const [loading, setLoading] = useState(false);
   const [customKeys, setCustomKeys] = useState<string[]>([]);
@@ -70,13 +68,6 @@ const HitSummary: FC<{
   const performAggregation = useCallback(async () => {
     if (onStart) {
       onStart();
-    }
-
-    const filters: string[] = [];
-    if (span && !span.endsWith('custom')) {
-      filters.push(`event.created:${convertDateToLucene(span)}`);
-    } else if (startDate && endDate) {
-      filters.push(`event.created:${convertCustomDateRangeToLucene(startDate, endDate)}`);
     }
 
     try {
@@ -137,7 +128,7 @@ const HitSummary: FC<{
             fields: sortedKeys,
             query,
             rows: pageCount,
-            filters
+            filters: await getFilters()
           }),
           {
             throwError: false,
@@ -165,7 +156,7 @@ const HitSummary: FC<{
   }, [
     customKeys,
     dispatchApi,
-    endDate,
+    getFilters,
     getMatchingTemplate,
     onComplete,
     onStart,
@@ -173,8 +164,6 @@ const HitSummary: FC<{
     query,
     response?.items,
     showErrorMessage,
-    span,
-    startDate,
     t
   ]);
 
@@ -186,19 +175,19 @@ const HitSummary: FC<{
   );
 
   useEffect(() => {
-    if ((!query && !viewId) || searching || error) {
+    if ((!query && views?.length < 1) || searching || error) {
       return;
     }
 
     performAggregation();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, viewId, searching, error]);
+  }, [query, views, searching, error]);
 
   return (
     <Stack sx={{ mx: 2, height: '100%' }} spacing={1}>
       <Typography variant="h6">{t('hit.summary.aggregate.title')}</Typography>
       <Divider flexItem />
-      <HitGraph query={query} />
+      <HitGraph />
       <Divider flexItem />
       <Stack sx={{ overflow: 'auto', marginTop: '0 !important' }} pt={1} spacing={1}>
         <Stack direction="row" spacing={2} mb={2} alignItems="stretch">

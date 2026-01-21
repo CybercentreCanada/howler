@@ -22,14 +22,13 @@ import FlexPort from 'components/elements/addons/layout/FlexPort';
 import HitSummary from 'components/elements/hit/HitSummary';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import ErrorBoundary from 'components/routes/ErrorBoundary';
-import dayjs from 'dayjs';
-import { has, isNull } from 'lodash-es';
+import { isNull } from 'lodash-es';
 import type { FC, ReactNode } from 'react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
-import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
+import { StorageKey } from 'utils/constants';
 import InformationPane from './InformationPane';
 import SearchPane from './SearchPane';
 import HitGrid from './grid/HitGrid';
@@ -60,14 +59,13 @@ const HitBrowser: FC = () => {
   const { t } = useTranslation();
   const theme = useTheme();
 
-  const views = useContextSelector(ViewContext, ctx => ctx.views);
   const fetchViews = useContextSelector(ViewContext, ctx => ctx.fetchViews);
 
   const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
   const setSelected = useContextSelector(ParameterContext, ctx => ctx.setSelected);
-  const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
   const setOffset = useContextSelector(ParameterContext, ctx => ctx.setOffset);
+  const selectedViews = useContextSelector(ParameterContext, ctx => ctx.views);
 
   const selectedHits = useContextSelector(HitContext, ctx => ctx.selectedHits);
   const addHitToSelection = useContextSelector(HitContext, ctx => ctx.addHitToSelection);
@@ -78,36 +76,15 @@ const HitBrowser: FC = () => {
   const forceDrawer = useMyLocalStorageItem(StorageKey.FORCE_DRAWER, false)[0];
 
   const displayType = useContextSelector(HitSearchContext, ctx => ctx.displayType);
-  const viewId = useContextSelector(HitSearchContext, ctx => ctx.viewId);
   const response = useContextSelector(HitSearchContext, ctx => ctx.response);
-
-  const queryHistory = useContextSelector(HitSearchContext, ctx => ctx?.queryHistory ?? {});
-  const setQueryHistory = useContextSelector(HitSearchContext, ctx => ctx?.setQueryHistory);
-
-  const setQueryList = useMyLocalStorageItem(StorageKey.QUERY_HISTORY, '')[1];
 
   const location = useLocation();
   const routeParams = useParams();
-  const [searchParams] = useSearchParams();
 
   const [show, setShow] = useState(!!selected);
   useEffect(() => setShow(!!selected), [selected]);
 
   const showDrawer = useMediaQuery(theme.breakpoints.down(1600)) || forceDrawer || displayType === 'grid';
-
-  // State that makes up the request
-  const summaryQuery = useMemo(() => {
-    const bundle = location.pathname.startsWith('/bundles') && routeParams.id;
-
-    let _fullQuery = query;
-    if (bundle) {
-      _fullQuery = `(howler.bundles:${bundle}) AND (${_fullQuery})`;
-    } else if (viewId) {
-      _fullQuery = `(${views[viewId]?.query || DEFAULT_QUERY}) AND (${_fullQuery})`;
-    }
-
-    return _fullQuery;
-  }, [location.pathname, query, routeParams.id, views, viewId]);
 
   const showSelectBar = useMemo(() => {
     if (selectedHits.length > 1) {
@@ -122,36 +99,9 @@ const HitBrowser: FC = () => {
   }, [selected, selectedHits]);
 
   useEffect(() => {
-    const newQuery = searchParams.get('query');
-    if (newQuery) {
-      setQueryHistory(_queryHistory => ({
-        ..._queryHistory,
-        [newQuery]: new Date().toISOString()
-      }));
-    }
-  }, [searchParams, setQueryHistory]);
-
-  useEffect(() => {
-    setQueryList(JSON.stringify(queryHistory));
-  }, [queryHistory, setQueryList]);
-
-  useEffect(() => {
-    // On load check to filter out any queries older than one month
-    setQueryHistory(_queryHistory => {
-      const filterQueryTime = dayjs().subtract(1, 'month').toISOString();
-
-      return Object.fromEntries(Object.entries(_queryHistory).filter(([_, value]) => value > filterQueryTime));
-    });
-  }, [setQueryHistory]);
-
-  useEffect(() => {
-    if (!location.pathname.startsWith('/views') || !viewId || has(views, viewId)) {
-      return;
-    }
-
-    fetchViews([viewId]);
+    fetchViews(selectedViews);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, viewId]);
+  }, [location.pathname, location.search]);
 
   const onClose = useCallback(() => {
     setSelected(null);
@@ -244,7 +194,7 @@ const HitBrowser: FC = () => {
         </Collapse>
       </Box>
       <Wrapper show={show} showDrawer={showDrawer} onClose={() => setShow(false)}>
-        <HitSummary query={summaryQuery} response={response} />
+        <HitSummary response={response} />
         <Card
           variant="outlined"
           sx={[

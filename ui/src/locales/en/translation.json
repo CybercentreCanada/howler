@@ -5,10 +5,12 @@
 
   "add": "Add",
   "all": "All",
+  "*": "All values",
   "any": "Any",
   "asc": "Ascending",
   "close": "Close",
   "desc": "Descending",
+  "to": "to",
 
   "actions.running": "Action \"{{action}}\" is executing.",
   "actions.succeeded": "Action \"{{action}}\" completed successfully.",
@@ -285,6 +287,7 @@
   "hit.search.filter.values": "Values",
   "hit.search.filter.button": "Use lookup filters with predefined values",
   "hit.search.filter.label": "Lookup Filters",
+  "hit.search.filter.add": "Add filter",
   "hit.search.save.button": "Save query as view",
   "hit.search.save.view": "Save View",
   "hit.search.sort.button": "Sort Results",
@@ -293,8 +296,11 @@
   "hit.search.select.all": "Select all hits on page",
   "hit.search.select.clear": "Clear Selection",
   "hit.search.selected": "{{size}} selected",
+  "hit.search.view.add": "Add view",
   "hit.search.view.current": "Current View",
   "hit.search.view.default": "(Default)",
+  "hit.search.view.select": "Select View",
+  "hit.search.view.remove": "Remove View",
 
   "hit.viewer.aggregate": "Summary",
   "hit.viewer.comments": "Comments",
