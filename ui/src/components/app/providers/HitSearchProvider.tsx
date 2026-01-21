@@ -137,7 +137,6 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
     }
 
     return _filters;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [endDate, filters, getCurrentViews, location.pathname, routeParams.id, span, startDate, views]);
 
   const search = useCallback(
