@@ -30,7 +30,7 @@ import { Scatter } from 'react-chartjs-2';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY } from 'utils/constants';
-import { convertCustomDateRangeToLucene, convertDateToLucene, stringToColor } from 'utils/utils';
+import { stringToColor } from 'utils/utils';
 
 const MAX_ROWS = 2500;
 const OVERRIDE_ROWS = 10000;
@@ -43,7 +43,7 @@ const FILTER_FIELDS = [
   'howler.detection'
 ];
 
-const HitGraph: FC<{ query: string }> = ({ query }) => {
+const HitGraph: FC = () => {
   const { t } = useTranslation();
   const theme = useTheme();
   const { dispatchApi } = useMyApi();
@@ -51,18 +51,18 @@ const HitGraph: FC<{ query: string }> = ({ query }) => {
   const { config } = useContext(ApiConfigContext);
 
   const setSelected = useContextSelector(ParameterContext, ctx => ctx.setSelected);
+  const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
   const span = useContextSelector(ParameterContext, ctx => ctx.span);
-  const startDate = useContextSelector(ParameterContext, ctx => ctx.startDate);
-  const endDate = useContextSelector(ParameterContext, ctx => ctx.endDate);
+  const views = useContextSelector(ParameterContext, ctx => ctx.views);
 
   const selectedHits = useContextSelector(HitContext, ctx => ctx.selectedHits);
   const addHitToSelection = useContextSelector(HitContext, ctx => ctx.addHitToSelection);
   const removeHitFromSelection = useContextSelector(HitContext, ctx => ctx.removeHitFromSelection);
 
-  const viewId = useContextSelector(HitSearchContext, ctx => ctx.viewId);
   const error = useContextSelector(HitSearchContext, ctx => ctx.error);
   const response = useContextSelector(HitSearchContext, ctx => ctx.response);
+  const getFilters = useContextSelector(HitSearchContext, ctx => ctx.getFilters);
 
   const chartRef = useRef<Chart<'scatter'>>();
 
@@ -81,12 +81,7 @@ const HitGraph: FC<{ query: string }> = ({ query }) => {
     setSearchTotal(0);
 
     try {
-      const filters: string[] = [];
-      if (span && !span.endsWith('custom')) {
-        filters.push(`event.created:${convertDateToLucene(span)}`);
-      } else if (startDate && endDate) {
-        filters.push(`event.created:${convertCustomDateRangeToLucene(startDate, endDate)}`);
-      }
+      const filters: string[] = await getFilters();
 
       if (escalationFilter) {
         filters.push(`howler.escalation:${escalationFilter}`);
@@ -149,16 +144,16 @@ const HitGraph: FC<{ query: string }> = ({ query }) => {
     } finally {
       setLoading(false);
     }
-  }, [dispatchApi, endDate, escalationFilter, filterField, override, query, span, startDate]);
+  }, [dispatchApi, escalationFilter, filterField, getFilters, override, query]);
 
   useEffect(() => {
-    if ((!query && !viewId) || error || !response) {
+    if ((!query && views?.length < 1) || error || !response) {
       return;
     }
 
     performQuery();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, viewId, error, span, response]);
+  }, [query, views, error, span, response, escalationFilter, filterField]);
 
   const options: ChartOptions<'scatter'> = useMemo(() => {
     const parentOptions = scatter('hit.summary.title', 'hit.summary.subtitle');

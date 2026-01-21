@@ -4,12 +4,12 @@ import useMyApi from 'components/hooks/useMyApi';
 import type { FC, PropsWithChildren } from 'react';
 import { createContext, useCallback, useState } from 'react';
 
-interface FieldProviderType {
+interface FieldContextType {
   hitFields: SearchField[];
   getHitFields: () => Promise<SearchField[]>;
 }
 
-export const FieldContext = createContext<FieldProviderType>(null);
+export const FieldContext = createContext<FieldContextType>(null);
 
 const FieldProvider: FC<PropsWithChildren> = ({ children }) => {
   const { dispatchApi } = useMyApi();

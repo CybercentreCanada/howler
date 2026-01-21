@@ -1,7 +1,8 @@
-/* eslint-disable import/imports-first */
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import omit from 'lodash-es/omit';
+import { act, type PropsWithChildren } from 'react';
+import { setupContextSelectorMock, setupReactRouterMock } from 'tests/mocks';
 import { DEFAULT_QUERY } from 'utils/constants';
 
 // Mock the API
@@ -24,29 +25,8 @@ vi.mock('api', () => ({
   }
 }));
 
-// Mock react-router-dom
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
-  return {
-    ...actual,
-    useParams: vi.fn(),
-    useSearchParams: vi.fn(() => [new URLSearchParams(), () => {}]),
-    useNavigate: () => vi.fn()
-  };
-});
-
-// Mock ParameterContext
-const mockSetQuery = vi.fn();
-vi.mock('use-context-selector', async () => {
-  const actual = await vi.importActual('use-context-selector');
-  return {
-    ...actual,
-    useContextSelector: (_context: any, selector: any) => {
-      const mockContext = { setQuery: mockSetQuery };
-      return selector(mockContext);
-    }
-  };
-});
+setupReactRouterMock();
+setupContextSelectorMock();
 
 vi.mock('components/elements/ThemedEditor', () => ({
   default: ({ value, onChange, id }) => {
@@ -129,6 +109,7 @@ vi.mock('../hits/search/HitQuery', () => ({
 }));
 
 import ApiConfigProvider from 'components/app/providers/ApiConfigProvider';
+import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import i18n from 'i18n';
 import { I18nextProvider } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -138,6 +119,12 @@ const mockUseParams = vi.mocked(useParams);
 const mockUseSearchParams = vi.mocked(useSearchParams);
 // eslint-disable-next-line react-hooks/rules-of-hooks
 const mockNavigate = vi.mocked(useNavigate());
+
+// Mock ParameterContext
+const mockSetQuery = vi.fn();
+let mockParameterContext = {
+  setQuery: mockSetQuery
+};
 
 // Mock data
 const mockDossier = {
@@ -165,7 +152,7 @@ const mockDossier = {
   ]
 };
 
-const Wrapper = ({ children }) => {
+const Wrapper = ({ children }: PropsWithChildren) => {
   return (
     <I18nextProvider i18n={i18n as any} defaultNS="translation">
       <ApiConfigProvider
@@ -179,7 +166,7 @@ const Wrapper = ({ children }) => {
           } as any
         }
       >
-        {children}
+        <ParameterContext.Provider value={mockParameterContext as any}>{children}</ParameterContext.Provider>
       </ApiConfigProvider>
     </I18nextProvider>
   );
@@ -193,6 +180,9 @@ describe('DossierEditor', () => {
     mockApiDossierPut.mockClear();
     mockNavigate.mockClear();
     mockSetQuery.mockClear();
+
+    // Reset mock context
+    mockParameterContext.setQuery = mockSetQuery;
 
     // Default mock implementations
     mockApiSearchHitPost.mockResolvedValue({ total: 42, items: [] });
@@ -464,9 +454,12 @@ describe('DossierEditor', () => {
       });
 
       it('should enable save button when all required fields are filled', async () => {
-        const user = userEvent.setup();
-
         mockUseParams.mockReturnValue({ id: null });
+        const searchParams = new URLSearchParams('tab=leads');
+        const mockSetSearchParams = vi.fn();
+        mockUseSearchParams.mockReturnValue([searchParams, mockSetSearchParams]);
+
+        const user = userEvent.setup();
 
         render(
           <Wrapper>
@@ -474,15 +467,17 @@ describe('DossierEditor', () => {
           </Wrapper>
         );
 
-        // Fill title
-        const titleInput = screen.getByTestId('dossier-title');
-        await user.type(titleInput, 'Test Title');
+        await act(async () => {
+          // Fill title
+          const titleInput = screen.getByTestId('dossier-title');
+          await user.type(titleInput, 'Test Title');
 
-        // Add query and trigger search
-        const queryInput = screen.getByTestId('query-input');
-        await user.click(queryInput);
-        await user.keyboard('test query');
-        await user.keyboard('{Enter}');
+          // Add query and trigger search
+          const queryInput = screen.getByTestId('query-input');
+          await user.click(queryInput);
+          await user.keyboard('test query');
+          await user.keyboard('{Enter}');
+        });
 
         await waitFor(() => {
           expect(screen.getByTestId('query-result-text')).toBeInTheDocument();
