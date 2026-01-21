@@ -578,6 +578,9 @@
   "route.analytics.triage.rationale.description": "Lors du triage des alertes provenant de cette analyse, la justification n'est pas demandée et est générée automatiquement.",
   "route.analytics.triage.assessments": "Résultats d'évaluation autorisés",
   "route.analytics.triage.assessments.description": "Lors du triage des alertes provenant de cette analyse, quelles sont les évaluations valides?",
+  "route.analytics.triage.rationales": "Justifications prédéfinies",
+  "route.analytics.triage.rationales.description": "Définir les justifications prédéfinies qui seront disponibles lors du triage des alertes de cette analyse.",
+  "route.analytics.rationales.new": "Nouvelle justification",
 
   "route.actions": "Actions",
   "route.actions.operation.add": "Ajouter une nouvelle opération",
