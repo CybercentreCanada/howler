@@ -11,12 +11,13 @@ import * as ReactDOM from 'react-dom/client';
 // howlerPluginStore.install(new ExamplePlugin());
 
 class DocumentationDummy extends HowlerPlugin {
-  name = 'CCCSPlugin';
+  name = 'DocumentationDummy';
   version = '0.0.1';
   author = 'Taha Shahid <taha.shahid@cse-cst.gc.ca>';
   description = 'This plugin enables CCCS-specific documentation functionality in Howler.';
 
   documentation(md: string): string {
+    // Ignore in PR: Only for specific route location
     return 'Hello world';
   }
 }

@@ -5,10 +5,13 @@ import { HitLayout } from 'components/elements/hit/HitLayout';
 import DefaultOutline from 'components/elements/hit/outlines/DefaultOutline';
 import { useScrollRestoration } from 'components/hooks/useScrollRestoration';
 import dayjs from 'dayjs';
+import howlerPluginStore from 'plugins/store';
 import type { FC } from 'react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { usePluginStore } from 'react-pluggable';
+import { modifyDocumentation } from 'utils/utils';
 import TEMPLATES_EN from './markdown/en/templates.md';
 import TEMPLATES_FR from './markdown/fr/templates.md';
 
@@ -35,6 +38,7 @@ const ALERTS = [
 
 const TemplateDocumentation: FC = () => {
   const { i18n } = useTranslation();
+  const pluginStore = usePluginStore();
   useScrollRestoration();
 
   const [md1, md2] = useMemo(() => {
@@ -46,8 +50,8 @@ const TemplateDocumentation: FC = () => {
       markdown = markdown.replace(`$ALERT_${index + 1}`, JSON.stringify(alert, null, 2));
     });
 
-    return markdown.split('\n===SPLIT===\n');
-  }, [i18n.language]);
+    return modifyDocumentation(markdown.split('\n===SPLIT===\n'), howlerPluginStore, pluginStore);
+  }, [i18n.language, pluginStore]);
 
   return (
     <PageCenter margin={4} width="100%" textAlign="left">
