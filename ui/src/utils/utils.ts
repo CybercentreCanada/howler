@@ -220,3 +220,10 @@ export const flattenDeep = (data: { [index: string]: any }): { [index: string]: 
 
   return final;
 };
+
+export const modifyDocumentation = (original: string, howlerPluginStore, pluginStore) => {
+  for (const plugin of howlerPluginStore.plugins) {
+    original = pluginStore.executeFunction(`${plugin}.documentation`, original) as string;
+  }
+  return original;
+};

@@ -370,6 +370,10 @@ abstract class HowlerPlugin implements IPlugin {
   integrations(): [string, () => React.ReactNode][] {
     return [];
   }
+
+  documentation(md: string): string {
+    return md;
+  }
 }
 
 export default HowlerPlugin;
