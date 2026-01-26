@@ -4,18 +4,28 @@ import logging
 import os
 import re
 from os import environ
+from pathlib import Path
 from typing import Any, Optional, cast
 from urllib.parse import urlparse
 
 import elasticsearch
 import elasticsearch.client
 
+from howler.common.logging.format import HWL_DATE_FORMAT, HWL_LOG_FORMAT
 from howler.datastore.collection import ESCollection
 from howler.datastore.exceptions import DataStoreException
 from howler.odm.models.config import Config
 from howler.odm.models.config import config as _config
 
 TRANSPORT_TIMEOUT = int(environ.get("HWL_DATASTORE_TRANSPORT_TIMEOUT", "10"))
+CERTS_PATH = Path(os.environ.get("HWL_CERT_DIRECTORY", "/etc/howler/certs"))
+
+logger = logging.getLogger("howler.datastore.store")
+logger.setLevel(logging.INFO)
+console = logging.StreamHandler()
+console.setLevel(logging.INFO)
+console.setFormatter(logging.Formatter(HWL_LOG_FORMAT, HWL_DATE_FORMAT))
+logger.addHandler(console)
 
 
 class ESStore(object):
@@ -58,9 +68,22 @@ class ESStore(object):
         self._username: Optional[str] = None
         self._password: Optional[str] = None
         self._hosts = []
+        self._cert: str | None = None
 
         for host in config.datastore.hosts:
             self._hosts.append(str(host))
+
+            cert = CERTS_PATH / f"{host.name}.crt"
+            if cert.exists():
+                if self._cert is None:
+                    self._cert = str(cert)
+                else:
+                    logger.error("Only a single certificate path is supported - ignoring additional paths.")
+                    logger.error(
+                        "If you have multiple certificates, bundle them into a single .pem file and specify "
+                        "it for the first host."
+                    )
+
             if os.getenv(f"{host.name.upper()}_HOST_APIKEY_ID", None) is not None:
                 self._apikey = (
                     os.environ[f"{host.name.upper()}_HOST_APIKEY_ID"],
@@ -81,6 +104,7 @@ class ESStore(object):
         if self._apikey is not None:
             self.client = elasticsearch.Elasticsearch(
                 hosts=self._hosts,  # type: ignore
+                ca_certs=self._cert,  # type: ignore
                 api_key=self._apikey,
                 max_retries=0,
                 request_timeout=TRANSPORT_TIMEOUT,
@@ -88,6 +112,7 @@ class ESStore(object):
         elif self._username is not None and self._password is not None:
             self.client = elasticsearch.Elasticsearch(
                 hosts=self._hosts,  # type: ignore
+                ca_certs=self._cert,  # type: ignore
                 basic_auth=(self._username, self._password),
                 max_retries=0,
                 request_timeout=TRANSPORT_TIMEOUT,
@@ -95,6 +120,7 @@ class ESStore(object):
         else:
             self.client = elasticsearch.Elasticsearch(
                 hosts=self._hosts,  # type: ignore
+                ca_certs=self._cert,  # type: ignore
                 max_retries=0,
                 request_timeout=TRANSPORT_TIMEOUT,
             )

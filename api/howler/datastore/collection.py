@@ -377,10 +377,10 @@ class ESCollection(Generic[ModelType]):
                 elasticsearch.exceptions.AuthenticationException,
             ) as e:
                 if not isinstance(e, SearchRetryException):
-                    logger.warning(
+                    logger.exception(
                         f"No connection to Elasticsearch server(s): "
                         f"{' | '.join(self.datastore.get_hosts(safe=True))}"
-                        f", because [{e}] retrying {func.__name__}..."
+                        f", because [{str(e)}] retrying {func.__name__}..."  # noqa: TRY401
                     )
 
                 time.sleep(min(retries, self.MAX_RETRY_BACKOFF))
