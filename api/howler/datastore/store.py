@@ -77,6 +77,7 @@ class ESStore(object):
             if cert.exists():
                 if self._cert is None:
                     self._cert = str(cert)
+                    logger.info("Using certificate %s for elasticsearch network traffic", self._cert)
                 else:
                     logger.error("Only a single certificate path is supported - ignoring additional paths.")
                     logger.error(
