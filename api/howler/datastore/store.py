@@ -69,6 +69,7 @@ class ESStore(object):
         self._password: Optional[str] = None
         self._hosts = []
         self._cert: str | None = None
+        self._fingerprint: str | None = None
 
         for host in config.datastore.hosts:
             self._hosts.append(str(host))
@@ -83,6 +84,15 @@ class ESStore(object):
                     logger.error(
                         "If you have multiple certificates, bundle them into a single .pem file and specify "
                         "it for the first host."
+                    )
+
+            if host.fingerprint:
+                if self._fingerprint is None:
+                    self._fingerprint = host.fingerprint
+                    logger.info("Using certificate fingerprint %s for elasticsearch network traffic", self._fingerprint)
+                else:
+                    logger.error(
+                        "Only a single certificate fingerprint is supported - ignoring additional fingerprints."
                     )
 
             if os.getenv(f"{host.name.upper()}_HOST_APIKEY_ID", None) is not None:
@@ -106,6 +116,7 @@ class ESStore(object):
             self.client = elasticsearch.Elasticsearch(
                 hosts=self._hosts,  # type: ignore
                 ca_certs=self._cert,  # type: ignore
+                ssl_assert_fingerprint=self._fingerprint,  # type: ignore
                 api_key=self._apikey,
                 max_retries=0,
                 request_timeout=TRANSPORT_TIMEOUT,
@@ -114,6 +125,7 @@ class ESStore(object):
             self.client = elasticsearch.Elasticsearch(
                 hosts=self._hosts,  # type: ignore
                 ca_certs=self._cert,  # type: ignore
+                ssl_assert_fingerprint=self._fingerprint,  # type: ignore
                 basic_auth=(self._username, self._password),
                 max_retries=0,
                 request_timeout=TRANSPORT_TIMEOUT,
@@ -122,6 +134,7 @@ class ESStore(object):
             self.client = elasticsearch.Elasticsearch(
                 hosts=self._hosts,  # type: ignore
                 ca_certs=self._cert,  # type: ignore
+                ssl_assert_fingerprint=self._fingerprint,  # type: ignore
                 max_retries=0,
                 request_timeout=TRANSPORT_TIMEOUT,
             )

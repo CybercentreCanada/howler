@@ -63,6 +63,9 @@ class Host(BaseModel):
     apikey_secret: Optional[str] = Field(description="Secret data of the API Key to use when connecting", default=None)
     scheme: Optional[str] = Field(description="Scheme to use when connecting", default="http")
     host: str = Field(description="URL to connect to")
+    fingerprint: str | None = Field(
+        description="Optional certificate fingerprint to validate against when connecting to datastore", default=None
+    )
 
     def __repr__(self):
         result = ""
