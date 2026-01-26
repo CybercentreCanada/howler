@@ -1,8 +1,11 @@
+import { FilterList } from '@mui/icons-material';
 import type { UseAutocompleteProps } from '@mui/material';
-import { Autocomplete, Stack, TextField } from '@mui/material';
+import { Autocomplete, Stack, TextField, Typography } from '@mui/material';
 import api from 'api';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
+import ChipPopper from 'components/elements/display/ChipPopper';
+import useMyApi from 'components/hooks/useMyApi';
 import type { FC } from 'react';
 import { memo, useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -18,92 +21,108 @@ const ACCEPTED_LOOKUPS = [
   'organization.name'
 ];
 
-const HitFilter: FC<{ size?: 'small' | 'medium' }> = ({ size }) => {
+const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = ({ size, id, value }) => {
   const { t } = useTranslation();
   const { config } = useContext(ApiConfigContext);
+  const { dispatchApi } = useMyApi();
 
-  const savedFilter = useContextSelector(ParameterContext, ctx => ctx.filter);
   const setSavedFilter = useContextSelector(ParameterContext, ctx => ctx.setFilter);
+  const removeSavedFilter = useContextSelector(ParameterContext, ctx => ctx.removeFilter);
 
-  const [category, setCategory] = useState(ACCEPTED_LOOKUPS[0]);
-  const [filter, setFilter] = useState('');
+  const [category, setCategory] = useState(value?.split(':')[0] ?? ACCEPTED_LOOKUPS[0]);
+  const [filter, setFilter] = useState(value?.split(':')[1] ?? null);
+  const [loading, setLoading] = useState(false);
 
   const [customLookups, setCustomLookups] = useState<string[]>([]);
 
   useEffect(() => {
-    if (savedFilter) {
-      const [_category, _filter] = (savedFilter || ':').split(':');
+    if (value) {
+      const [_category, _filter] = (value || ':').split(':');
 
       if (_category) {
         setCategory(_category);
       }
 
-      if (_filter) {
+      if (_filter && _filter !== '*') {
         setFilter(_filter);
       }
 
       if (_category && _filter) {
-        setSavedFilter(`${_category}:${_filter}`);
+        setSavedFilter(id, `${_category}:${_filter}`);
       }
     }
-  }, [setSavedFilter, savedFilter]);
+  }, [id, setSavedFilter, value]);
 
   const onCategoryChange: UseAutocompleteProps<string, false, false, false>['onChange'] = useCallback(
     async (_, _category) => {
       setCategory(_category);
-      setFilter('');
-
-      setSavedFilter(null);
+      setFilter(null);
 
       if (!config.lookups[_category]) {
-        const facets = await api.search.facet.hit.post({ query: 'howler.id:*', fields: [_category] });
+        setLoading(true);
 
-        setCustomLookups(Object.keys(facets[_category]));
+        const facets = await dispatchApi(
+          api.search.facet.hit.post({ query: 'howler.id:*', fields: [_category], rows: 100 }),
+          {
+            throwError: false
+          }
+        );
+
+        setCustomLookups(Object.keys((facets ?? {})[_category]));
+        setLoading(false);
       } else {
         setCustomLookups([]);
       }
     },
-    [config.lookups, setSavedFilter]
+    [config.lookups, dispatchApi]
   );
 
   const onValueChange: UseAutocompleteProps<string, false, false, false>['onChange'] = useCallback(
-    (_, value) => {
-      setFilter(value);
-      if (value) {
-        const newFilter = `${category}:"${sanitizeLuceneQuery(value)}"`;
+    (_, newValue) => {
+      setFilter(newValue);
 
-        setSavedFilter(newFilter);
+      if (newValue && newValue !== '*') {
+        setSavedFilter(id, `${category}:"${sanitizeLuceneQuery(newValue)}"`);
       } else {
-        setSavedFilter(null);
+        setSavedFilter(id, `${category}:*`);
       }
     },
-    [category, setSavedFilter]
+    [category, id, setSavedFilter]
   );
 
+  const filterValue = filter?.replaceAll('"', '').replaceAll('\\-', '-') || '';
+
   return (
-    <Stack direction="row" spacing={1} sx={{ flex: 1.75 }}>
-      <Autocomplete
-        fullWidth
-        sx={{ minWidth: '200px' }}
-        size={size ?? 'small'}
-        value={category}
-        options={ACCEPTED_LOOKUPS}
-        renderInput={_params => <TextField {..._params} label={t('hit.search.filter.fields')} />}
-        onChange={onCategoryChange}
-      />
-      <Autocomplete
-        fullWidth
-        freeSolo
-        sx={{ minWidth: '150px' }}
-        disabled={!category}
-        size={size ?? 'small'}
-        value={filter?.replaceAll('"', '').replaceAll('\\-', '-') || ''}
-        options={config.lookups[category] ? config.lookups[category] : customLookups}
-        renderInput={_params => <TextField {..._params} label={t('hit.search.filter.values')} />}
-        getOptionLabel={option => t(option)}
-        onChange={onValueChange}
-      />
-    </Stack>
+    <ChipPopper
+      icon={<FilterList fontSize="small" />}
+      label={category && <Typography variant="body2">{`${category}:${filterValue || '*'}`}</Typography>}
+      minWidth="250px"
+      onDelete={() => removeSavedFilter(value)}
+      slotProps={{ chip: { size: 'small', color: value?.endsWith('*') ? 'warning' : 'default' } }}
+    >
+      <Stack spacing={1} sx={{ minWidth: '225px' }}>
+        <Autocomplete
+          fullWidth
+          size={size ?? 'small'}
+          value={category}
+          options={ACCEPTED_LOOKUPS}
+          renderInput={_params => <TextField {..._params} label={t('hit.search.filter.fields')} />}
+          onChange={onCategoryChange}
+        />
+        <Autocomplete
+          fullWidth
+          freeSolo
+          disabled={!category}
+          loading={loading}
+          size={size ?? 'small'}
+          value={filter?.replaceAll('"', '').replaceAll('\\-', '-') || ''}
+          options={[...(config.lookups[category] ? config.lookups[category] : customLookups), '*']}
+          renderInput={_params => <TextField {..._params} label={t('hit.search.filter.values')} />}
+          getOptionLabel={option => t(option)}
+          onChange={onValueChange}
+        />
+      </Stack>
+    </ChipPopper>
   );
 };
 

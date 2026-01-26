@@ -181,7 +181,7 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
         />
       ),
       hit_worklog: () => <HitWorklog hit={!loading && hit} users={users} />,
-      hit_aggregate: () => <HitSummary query={`howler.bundles:(${hit?.howler?.id})`} />,
+      hit_aggregate: () => <HitSummary />,
       hit_related: () => <HitRelated hit={hit} />,
       ...Object.fromEntries(
         (hit?.howler.dossier ?? []).map((lead, index) => [

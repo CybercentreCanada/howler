@@ -28,7 +28,6 @@ import useMatchers from 'components/app/hooks/useMatchers';
 import { HitContext } from 'components/app/providers/HitProvider';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
-import { ViewContext } from 'components/app/providers/ViewProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import SearchTotal from 'components/elements/addons/search/SearchTotal';
 import DevelopmentBanner from 'components/elements/display/features/DevelopmentBanner';
@@ -41,8 +40,7 @@ import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
 import HitContextMenu from '../HitContextMenu';
 import HitQuery from '../HitQuery';
-import QuerySettings from '../shared/QuerySettings';
-import ViewLink from '../ViewLink';
+import QuerySettings from '../QuerySettings';
 import AddColumnModal from './AddColumnModal';
 import ColumnHeader from './ColumnHeader';
 import HitRow from './HitRow';
@@ -62,14 +60,11 @@ const HitGrid: FC = () => {
   const setDisplayType = useContextSelector(HitSearchContext, ctx => ctx.setDisplayType);
   const response = useContextSelector(HitSearchContext, ctx => ctx.response);
   const searching = useContextSelector(HitSearchContext, ctx => ctx.searching);
-  const viewId = useContextSelector(HitSearchContext, ctx => ctx.viewId);
 
   const selectedHits = useContextSelector(HitContext, ctx => ctx.selectedHits);
 
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
-
-  const selectedView = useContextSelector(ViewContext, ctx => ctx.views[viewId]);
 
   const [collapseMainColumn, setCollapseMainColumn] = useMyLocalStorageItem(StorageKey.GRID_COLLAPSE_COLUMN, false);
   const [analyticIds, setAnalyticIds] = useState<Record<string, string>>({});
@@ -201,7 +196,6 @@ const HitGrid: FC = () => {
       sx={{ overflow: 'hidden', height: `calc(100vh - ${theme.spacing(showSelectBar ? 13 : 8)})` }}
     >
       <DevelopmentBanner />
-      <ViewLink />
       <Stack direction="row" justifyContent="space-between" alignItems="center">
         <Typography
           sx={{ color: 'text.secondary', fontSize: '0.9em', fontStyle: 'italic', mb: 0.5, textAlign: 'left' }}
@@ -213,7 +207,7 @@ const HitGrid: FC = () => {
       </Stack>
       <Stack direction="row" spacing={1}>
         <Stack position="relative" flex={1}>
-          <HitQuery disabled={viewId && !selectedView} searching={searching} triggerSearch={search} compact />
+          <HitQuery searching={searching} triggerSearch={search} compact />
           {searching && (
             <LinearProgress
               sx={{

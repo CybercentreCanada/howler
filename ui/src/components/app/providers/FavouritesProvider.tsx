@@ -6,6 +6,7 @@ import type { HowlerUser } from 'models/entities/HowlerUser';
 import { createContext, useCallback, useContext, useEffect, type FC, type PropsWithChildren } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
+import { buildViewUrl } from 'utils/viewUtils';
 import { AnalyticContext } from './AnalyticProvider';
 import { ViewContext } from './ViewProvider';
 
@@ -45,7 +46,7 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
       .map(view => ({
         id: view.view_id,
         text: t(view.title),
-        route: `/views/${view.view_id}`,
+        route: buildViewUrl(view),
         nested: true
       }));
 
