@@ -18,7 +18,7 @@ class DocumentationDummy extends HowlerPlugin {
 
   documentation(md: string): string {
     // Ignore in PR: Only for specific route location
-    return 'Hello world';
+    return md;
   }
 }
 
