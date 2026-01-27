@@ -35,6 +35,7 @@
     "fuse.js": "^7.1.0",
     "handlebars": "^4.7.8",
     "handlebars-async-helpers": "^1.0.6",
+    "howler-ui=2.16.0-dev.389": "link:@cccsaurora/howler-ui=2.16.0-dev.389",
     "i18next": "^23.16.8",
     "i18next-browser-languagedetector": "^7.2.2",
     "lodash-es": "^4.17.21",

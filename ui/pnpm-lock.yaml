@@ -80,6 +80,9 @@ importers:
       handlebars-async-helpers:
         specifier: ^1.0.6
         version: 1.0.6(handlebars@4.7.8)
+      howler-ui=2.16.0-dev.389:
+        specifier: link:@cccsaurora/howler-ui=2.16.0-dev.389
+        version: link:@cccsaurora/howler-ui=2.16.0-dev.389
       i18next:
         specifier: ^23.16.8
         version: 23.16.8
