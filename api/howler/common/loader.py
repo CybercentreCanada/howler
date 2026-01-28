@@ -39,7 +39,9 @@ def get_classification(yml_config: Optional[str] = None):  # noqa: C901
     log = logging.getLogger(f"{APP_NAME}.common.loader")
 
     if not yml_config:
-        yml_config_path = Path("/etc") / APP_NAME.replace("-dev", "") / "conf" / "classification.yml"
+        root_path = Path("/etc") / APP_NAME.replace("-dev", "").replace("-stg", "") / "conf"
+        yml_config_path = Path(os.environ.get("HWL_CONF_FOLDER", root_path)) / "classification.yml"
+
         if yml_config_path.is_symlink():
             log.info("%s is a symbolic link!", yml_config_path)
             if str(yml_config_path.readlink()).startswith("..data"):
