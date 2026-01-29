@@ -44,6 +44,10 @@ class HowlerPluginStore {
   }[] = [];
 
   install(plugin: HowlerPlugin) {
+    if (this.plugins.includes(plugin.name)) {
+      return;
+    }
+
     console.log(`Installing plugin ${plugin.getPluginName()} by ${plugin.author}`);
 
     this.plugins.push(plugin.name);

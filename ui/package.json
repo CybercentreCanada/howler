@@ -41,6 +41,7 @@
     "handlebars-async-helpers": "^1.0.6",
     "i18next": "^23.16.8",
     "i18next-browser-languagedetector": "^7.2.2",
+    "json-schema": "^0.4.0",
     "lodash-es": "^4.17.23",
     "md5": "^2.3.0",
     "mermaid": "^11.12.2",
