@@ -60,6 +60,7 @@ import i18n from 'i18n';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Hit } from 'models/entities/generated/Hit';
 import * as monaco from 'monaco-editor';
+import CluePlugin from 'plugins/clue';
 import howlerPluginStore from 'plugins/store';
 import { useContext, useEffect, type FC, type PropsWithChildren } from 'react';
 import { I18nextProvider } from 'react-i18next';
@@ -122,6 +123,10 @@ const MyApp: FC = () => {
 
       if (data?.configuration?.ui?.apps) {
         setItems(data.configuration.ui.apps);
+      }
+
+      if (data?.configuration?.features?.clue) {
+        howlerPluginStore.install(new CluePlugin());
       }
     });
 

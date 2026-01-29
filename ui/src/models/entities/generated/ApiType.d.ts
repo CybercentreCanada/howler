@@ -82,6 +82,7 @@ export interface APIConfiguration {
   mapping: APIMappings;
   features: {
     notebook: boolean;
+    clue: boolean;
     [feature: string]: boolean;
   };
 }

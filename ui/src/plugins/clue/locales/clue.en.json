@@ -1,0 +1,7 @@
+{
+  "route.dossiers.manager.clue": "Clue Fetcher ID",
+  "route.dossiers.manager.clue.type": "Selector Type",
+  "route.dossiers.manager.clue.value": "Selector Value",
+  "route.dossiers.manager.clue.value.custom": "Custom Selector Value",
+  "route.dossiers.manager.clue.value.description": "You can use handlebars notation to insert fields from the corresponding alert (i.e. {{howler.id}})."
+}

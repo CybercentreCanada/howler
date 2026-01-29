@@ -1,0 +1,7 @@
+{
+  "route.dossiers.manager.clue": "ID du sélecteur Clue",
+  "route.dossiers.manager.clue.type": "Type de sélecteur",
+  "route.dossiers.manager.clue.value": "Valeur du sélecteur",
+  "route.dossiers.manager.clue.value.custom": "Valeur du sélecteur personnalisé",
+  "route.dossiers.manager.clue.value.description": "Vous pouvez utiliser la notation « handlebars » pour insérer des champs à partir de l'alerte correspondante (c'est-à-dire {{howler.id}})."
+}
