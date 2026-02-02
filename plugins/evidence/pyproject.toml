@@ -131,20 +131,20 @@ packages = [{ include = "evidence" }]
 
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.11.7"
-mypy = "^1.15.0"
-pre-commit = "^4.2.0"
+ruff = "^0.14.14"
+mypy = "^1.19.1"
+pre-commit = "^4.3.0"
 howler-api = { path = "../../api" }
-pytest = "^8.3.5"
+pytest = "^8.4.2"
 mock = "^5.2.0"
-pytest-cov = "^6.1.1"
+pytest-cov = "^7.0.0"
 coverage = { extras = ["toml"], version = "^7.8.0" }
-diff-cover = "^9.2.4"
-python-dotenv = "^1.1.0"
+diff-cover = "^10.0.0"
+python-dotenv = "^1.2.1"
 
 
 [tool.poetry.group.types.dependencies]
-types-mock = "^5.2.0.20250516"
+types-mock = "^5.2.0.20250924"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
