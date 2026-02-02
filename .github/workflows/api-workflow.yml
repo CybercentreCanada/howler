@@ -45,19 +45,19 @@ jobs:
         working-directory: api
     steps:
       - name: Checkout develop
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: develop
       - name: Checkout current ref
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Setup Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install poetry
         shell: bash
         run: python3 -m pip install poetry
-      - uses: actions/cache@v3
+      - uses: actions/cache@v5
         name: Define a cache for the virtual environment based on the dependencies lock file
         with:
           path: ./api/.venv
@@ -107,23 +107,23 @@ jobs:
         run: |
           echo "base-depth=$(expr ${{ github.event.pull_request.commits }} + 1)" >> $GITHUB_OUTPUT
       - name: Checkout current ref
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: ${{ steps.base-depth.outputs.base-depth }}
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
       - name: Spin up test dependencies
-        uses: hoverkraft-tech/compose-action@v2.2.0
+        uses: hoverkraft-tech/compose-action@v2.4.3
         with:
           compose-file: "api/dev/docker-compose.yml"
           up-flags: "--build"
       - name: Install poetry
         shell: bash
         run: python3 -m pip install poetry
-      - uses: actions/cache@v3
+      - uses: actions/cache@v5
         name: Define a cache for the virtual environment based on the dependencies lock file
         with:
           path: ./api/.venv
@@ -206,7 +206,7 @@ jobs:
 
     steps:
       - name: Checkout current ref
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install poetry
         shell: bash
         run: python3 -m pip install poetry
@@ -219,7 +219,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Test build API Docker image (no push)
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v6
         with:
           context: api
           file: api/Dockerfile
@@ -247,15 +247,15 @@ jobs:
 
     steps:
       - name: Checkout develop
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: develop
       - name: Checkout current ref
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install poetry
         shell: bash
         run: python3 -m pip install poetry
-      - uses: actions/cache@v3
+      - uses: actions/cache@v5
         name: Define a cache for the virtual environment based on the dependencies lock file
         with:
           path: ./api/.venv
@@ -302,11 +302,11 @@ jobs:
 
     steps:
       - name: Checkout develop
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: develop
       - name: Checkout current ref
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install poetry
         shell: bash
         run: python3 -m pip install poetry
@@ -321,7 +321,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@v3
+        uses: docker/metadata-action@v5
         with:
           images: cccs/howler-api
           tags: |
@@ -337,7 +337,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
       - name: Build and push API Docker image
         id: push
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v6
         with:
           context: api
           file: api/Dockerfile
@@ -349,7 +349,7 @@ jobs:
             branch=${{ github.ref }}
             commit=${{ github.sha }}
       - name: Generate artifact attestation
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v3
         with:
           subject-name: index.docker.io/cccs/howler-api
           subject-digest: ${{ steps.push.outputs.digest }}

@@ -47,10 +47,10 @@ jobs:
     steps:
       # Check out the repository
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: Setup Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install Poetry
@@ -62,7 +62,7 @@ jobs:
           version: 10
 
       - name: Install Node v20
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 20
           registry-url: "https://registry.npmjs.org"

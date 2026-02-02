@@ -51,10 +51,10 @@ jobs:
         working-directory: ui  # All commands run in the ui/ directory
     steps:
       - name: Checkout current ref
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Node v20
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 20
 
@@ -67,7 +67,7 @@ jobs:
         id: pnpm-cache-dir
         run: echo "PNPM_CACHE_DIR=$(pnpm store path)" >> $GITHUB_OUTPUT
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v5
         name: Define a cache for node_modules
         with:
           path: |
@@ -123,10 +123,10 @@ jobs:
 
     steps:
       - name: Checkout current ref
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Node v20
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 20
           registry-url: 'https://registry.npmjs.org'  # Configure for NPM publishing
@@ -140,7 +140,7 @@ jobs:
         id: pnpm-cache-dir
         run: echo "PNPM_CACHE_DIR=$(pnpm store path)" >> $GITHUB_OUTPUT
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v5
         name: Define a cache for node_modules
         with:
           path: |
@@ -196,10 +196,10 @@ jobs:
 
     steps:
       - name: Checkout current ref
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Node v20
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 20
           registry-url: 'https://registry.npmjs.org'
@@ -213,7 +213,7 @@ jobs:
         id: pnpm-cache-dir
         run: echo "PNPM_CACHE_DIR=$(pnpm store path)" >> $GITHUB_OUTPUT
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v5
         name: Define a cache for node_modules
         with:
           path: |
@@ -254,7 +254,7 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@v3
+        uses: docker/metadata-action@v5
         with:
           images: cccs/howler-ui
           tags: |
@@ -272,7 +272,7 @@ jobs:
 
       - name: Build and push UI Docker image
         id: push
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v6
         with:
           context: ui              # Build context is the ui/ directory
           file: ui/Dockerfile      # Dockerfile location
@@ -285,7 +285,7 @@ jobs:
             commit=${{ github.sha }}
 
       - name: Generate artifact attestation
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v3
         with:
           subject-name: index.docker.io/cccs/howler-ui
           subject-digest: ${{ steps.push.outputs.digest }}
