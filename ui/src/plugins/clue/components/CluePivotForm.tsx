@@ -253,7 +253,7 @@ const CluePivotForm: FC<PivotFormProps> = ({ pivot, update }) => {
         fullWidth
         disabled={!pivot || !ready}
         options={Object.entries(actions)
-          .filter(([_key, definition]) => !!definition && definition.format == 'pivot')
+          .filter(([_key, definition]) => !!definition && definition.format === 'pivot')
           .map(([key]) => key)}
         renderOption={({ key, ...optionProps }, actionId) => {
           const definition = actions[actionId];
