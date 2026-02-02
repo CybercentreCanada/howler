@@ -349,7 +349,7 @@ jobs:
             branch=${{ github.ref }}
             commit=${{ github.sha }}
       - name: Generate artifact attestation
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v3
         with:
           subject-name: index.docker.io/cccs/howler-api
           subject-digest: ${{ steps.push.outputs.digest }}
