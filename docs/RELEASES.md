@@ -1,5 +1,25 @@
 # Howler Releases
 
+## Howler UI `v2.16.0`
+
+- **Composable Views** *(new feature)*: Added support for composable views allowing users to combine and layer multiple views for more flexible data exploration
+- **Howler Score Sort Field** *(new feature)*: Added howler.score as a valid sort field for improved result ordering
+- **Documentation Editing Plugin** *(new feature)*: Added ability for plugins to modify some documentation pages
+- **Preset Rationale Configuration** *(new feature)*: Added ability to configure preset rationales for Howler analytics to streamline workflow
+- **Action Button Error Reporting** *(bugfix)*: Improved error reporting for Howler action buttons in markdown content
+- **Complex Component Rendering** *(bugfix)*: Removed extra newlines from rendering complex components
+- **Dependencies** *(technical update)*: Updated various npm packages
+
+## Howler API `v3.1.0`
+
+- **Configuration Folder Support** *(new feature)*: Added support for HWL_CONF_FOLDER environment variable to allow custom configuration locations while maintaining backward compatibility
+- **Elasticsearch Certificate Verification** *(new feature)*: Added ability to specify custom certificate and certificate fingerprint for Elasticsearch client connections for enhanced security when communicating in-cluster
+- **Preset Rationale Configuration** *(new feature)*: Added backend support for configuring preset rationales for Howler analytics
+- **Enhanced Logging** *(backend improvement)*: Added improved logging throughout the API for better debugging and monitoring
+- **Demo Docker Compose** *(infrastructure update)*: Added demo docker-compose configuration for easier project setup and testing
+- **Dependabot Configuration** *(infrastructure update)*: Added Dependabot configuration for automated dependency management
+- **Dependencies** *(infrastructure update)*: Updated various pip packages
+
 ## Howler UI `v2.15.0`
 
 - **Dossier Page URL State Persistence** *(new feature)*: Added URL parameter synchronization for dossier editor tabs
