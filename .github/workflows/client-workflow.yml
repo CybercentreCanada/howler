@@ -113,7 +113,7 @@ jobs:
           docker pull docker.elastic.co/elasticsearch/elasticsearch:8.3.3
           docker pull redis
       - name: Spin up test dependencies
-        uses: hoverkraft-tech/compose-action@v2.2.0
+        uses: hoverkraft-tech/compose-action@v2.4.3
         with:
           compose-file: "client/test/docker-compose.yml"
       - name: Install Poetry

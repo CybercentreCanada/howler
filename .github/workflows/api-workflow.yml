@@ -116,7 +116,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Spin up test dependencies
-        uses: hoverkraft-tech/compose-action@v2.2.0
+        uses: hoverkraft-tech/compose-action@v2.4.3
         with:
           compose-file: "api/dev/docker-compose.yml"
           up-flags: "--build"
