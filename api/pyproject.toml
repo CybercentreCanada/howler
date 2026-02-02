@@ -243,7 +243,7 @@ pytest-cov = "^4.1.0"
 mock = "^5.1.0"
 mypy-extensions = "^1.0.0"
 coverage = { extras = ["toml"], version = "^7.4.4" }
-ruff = "^0.8.0"
+ruff = ">=0.8,<0.15"
 
 [tool.poetry.group.types.dependencies]
 types-PyYAML = "6.0.12.12"
