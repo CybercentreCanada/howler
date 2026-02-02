@@ -236,14 +236,14 @@ toml = ["tomli ; python_full_version <= \"3.11.0a6\""]
 
 [[package]]
 name = "diff-cover"
-version = "9.3.2"
+version = "10.2.0"
 description = "Run coverage and linting reports on diffs"
 optional = false
-python-versions = ">=3.9"
+python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "diff_cover-9.3.2-py3-none-any.whl", hash = "sha256:d922e464056bfedc43d2372495be600c47d100499546853ea8eb0c5e3af28f9f"},
-    {file = "diff_cover-9.3.2.tar.gz", hash = "sha256:2a99239fb8968650da47968a834607b6b797143e5d0405e24c45a71be590755b"},
+    {file = "diff_cover-10.2.0-py3-none-any.whl", hash = "sha256:59c328595e0b8948617cc5269af9e484c86462e2844bfcafa3fb37f8fca0af87"},
+    {file = "diff_cover-10.2.0.tar.gz", hash = "sha256:61bf83025f10510c76ef6a5820680cf61b9b974e8f81de70c57ac926fa63872a"},
 ]
 
 [package.dependencies]
@@ -949,4 +949,4 @@ test = ["covdefaults (>=2.3)", "coverage (>=7.2.7)", "coverage-enable-subprocess
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "fb9acb01b12eff0d600803020270a714be4de6d00fd8a5e73291d55a763e9573"
+content-hash = "3eba3d6f3cd95942d0824b1a400344aa8c5b18fe7d0b60a3b6940c964540e729"
