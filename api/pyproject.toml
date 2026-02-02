@@ -229,7 +229,6 @@ luqum = "^1.0.0"
 pydash = "^8.0.5"
 
 [tool.poetry.group.dev.dependencies]
-flake8 = "^7.0.0"
 pre-commit = "^3.7.0"
 
 [tool.poetry.group.test.dependencies]
