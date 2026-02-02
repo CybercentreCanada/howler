@@ -1,4 +1,5 @@
 {
+  "markdown.helpers.clue.arguments": "Vous devez fournir au moins deux arguments : type et valeur.",
   "route.dossiers.manager.clue": "ID du sélecteur Clue",
   "route.dossiers.manager.clue.type": "Type de sélecteur",
   "route.dossiers.manager.clue.value": "Valeur du sélecteur",

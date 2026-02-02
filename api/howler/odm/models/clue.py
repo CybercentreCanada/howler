@@ -1,4 +1,3 @@
-# mypy: ignore-errors
 from howler import odm
 
 

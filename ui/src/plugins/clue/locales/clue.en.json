@@ -1,4 +1,5 @@
 {
+  "markdown.helpers.clue.arguments": "You must provide at least two arguments: type and value.",
   "route.dossiers.manager.clue": "Clue Fetcher ID",
   "route.dossiers.manager.clue.type": "Selector Type",
   "route.dossiers.manager.clue.value": "Selector Value",

@@ -121,7 +121,7 @@ const HELPERS: HowlerHelper[] = [
           <Stack spacing={1}>
             <strong style={{ color: 'red' }}>{i18nInstance.t('markdown.error')}</strong>
             {/* eslint-disable-next-line react/jsx-no-literals */}
-            <code style={{ fontSize: '0.8rem' }}>You must provide at least two arguments: type and value.</code>
+            <code style={{ fontSize: '0.8rem' }}>{i18nInstance.t('markdown.helpers.clue.arguments')}</code>
           </Stack>
         );
       }
