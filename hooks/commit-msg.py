@@ -17,7 +17,7 @@ commit = ConventionalCommit(
     commit_msg=commit_msg,
     types=ConventionalCommit.DEFAULT_TYPES,
     scope_optional=True,
-    scopes=["api", "client", "ui"],
+    scopes=["api", "client", "ui", "ci"],
 )
 
 
