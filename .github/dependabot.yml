@@ -9,6 +9,10 @@ updates:
       prefix: "chore"
       prefix-development: "chore"
       include: "scope"
+    groups:
+      npm:
+        patterns:
+          - "*"
 
   # Enable version updates for pip
   - package-ecosystem: "pip"
@@ -19,6 +23,10 @@ updates:
       prefix: "chore"
       prefix-development: "chore"
       include: "scope"
+    groups:
+      pip:
+        patterns:
+          - "*"
 
   # Enable version updates for pip (client)
   - package-ecosystem: "pip"
@@ -29,6 +37,38 @@ updates:
       prefix: "chore"
       prefix-development: "chore"
       include: "scope"
+    groups:
+      pip:
+        patterns:
+          - "*"
+
+  # Enable version updates for pip (plugins/evidence)
+  - package-ecosystem: "pip"
+    directory: "/plugins/evidence"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore"
+      prefix-development: "chore"
+      include: "scope"
+    groups:
+      pip:
+        patterns:
+          - "*"
+
+  # Enable version updates for pip (plugins/sentinel)
+  - package-ecosystem: "pip"
+    directory: "/plugins/sentinel"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore"
+      prefix-development: "chore"
+      include: "scope"
+    groups:
+      pip:
+        patterns:
+          - "*"
 
   # Enable version updates for GitHub Actions
   - package-ecosystem: "github-actions"
@@ -38,3 +78,7 @@ updates:
     commit-message:
       prefix: "ci"
       include: "scope"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
