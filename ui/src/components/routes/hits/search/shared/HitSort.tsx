@@ -20,6 +20,7 @@ const ACCEPTED_SORTS = [
   'howler.detection',
   'event.provider',
   'organization.name',
+  'howler.score',
   CUSTOM
 ];
 
