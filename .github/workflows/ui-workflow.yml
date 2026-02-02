@@ -272,7 +272,7 @@ jobs:
 
       - name: Build and push UI Docker image
         id: push
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v6
         with:
           context: ui              # Build context is the ui/ directory
           file: ui/Dockerfile      # Dockerfile location
