@@ -94,8 +94,6 @@
     "./plugins/sentinel",
     "./plugins/evidence"
   ],
-  // "flake8.cwd": "${workspaceFolder}/api",
-  "flake8.cwd": "${fileDirname}",
   "editor.formatOnSaveMode": "modificationsIfAvailable",
   "mypy-type-checker.cwd": "${nearestConfig}",
   "python.analysis.typeEvaluation.strictListInference": true,
@@ -103,7 +101,6 @@
   "eslint.workingDirectories": [
     { "directory": "./ui", "changeProcessCWD": true }
   ],
-  "flake8.args": ["--max-line-length=120"],
   "prettier.configPath": "ui/.prettierrc",
   "search.exclude": {
     "**/node_modules": true,
