@@ -1,4 +1,5 @@
 import {
+  AddCircleOutline,
   Assignment,
   Edit,
   HowToVote,
@@ -353,6 +354,58 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
               <KeyboardArrowRight fontSize="small" sx={{ color: 'text.secondary', mr: -1 }} />
               <Fade in={!!show.excludes} unmountOnExit>
                 <Paper id="excludes-submenu" sx={calculateSubMenuStyles(show.excludes)} elevation={8}>
+                  <MenuList sx={{ p: 0 }} dense role="group">
+                    {template?.keys.map(key => {
+                      // Build exclusion query based on current query and field value
+                      let newQuery = '';
+                      if (query !== DEFAULT_QUERY) {
+                        newQuery = `(${query}) AND `;
+                      }
+
+                      const value = get(hit, key);
+                      if (!value) {
+                        return null;
+                      } else if (Array.isArray(value)) {
+                        // Handle array values by excluding all items
+                        const sanitizedValues = value
+                          .map(toString)
+                          .filter(val => !!val)
+                          .map(val => `"${sanitizeLuceneQuery(val)}"`);
+
+                        if (sanitizedValues.length < 1) {
+                          return null;
+                        }
+
+                        newQuery += `-${key}:(${sanitizedValues.join(' OR ')})`;
+                      } else {
+                        // Handle single value
+                        newQuery += `-${key}:"${sanitizeLuceneQuery(value.toString())}"`;
+                      }
+
+                      return (
+                        <MenuItem key={key} onClick={() => setQuery(newQuery)}>
+                          <ListItemText>{key}</ListItemText>
+                        </MenuItem>
+                      );
+                    })}
+                  </MenuList>
+                </Paper>
+              </Fade>
+            </MenuItem>
+
+            <MenuItem
+              id="includes-menu-item"
+              sx={{ position: 'relative' }}
+              onMouseEnter={ev => setShow(_show => ({ ..._show, excludes: ev.target as EventTarget & HTMLLIElement }))}
+              onMouseLeave={() => setShow(_show => ({ ..._show, excludes: null }))}
+            >
+              <ListItemIcon>
+                <AddCircleOutline />
+              </ListItemIcon>
+              <ListItemText sx={{ flex: 1 }}>Include by</ListItemText>
+              <KeyboardArrowRight fontSize="small" sx={{ color: 'text.secondary', mr: -1 }} />
+              <Fade in={!!show.excludes} unmountOnExit>
+                <Paper id="includes-submenu" sx={calculateSubMenuStyles(show.excludes)} elevation={8}>
                   <MenuList sx={{ p: 0 }} dense role="group">
                     {template?.keys.map(key => {
                       // Build exclusion query based on current query and field value
