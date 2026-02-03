@@ -57,12 +57,6 @@ for root, dirs, files in os.walk(os.environ["HOME"]):
     # Remove any unnecessary child folders
     dirs[:] = [d for d in dirs if (not d.startswith(".") or d == ".git") and d not in exclude]
 
-    # Found the howler client! Remove child dirs and continue
-    if re.search(r"howler[-_]client[-_]java([-_]internal)?$", root) and ".git" in dirs:
-        howler_client_default_path = root
-        dirs[:] = []
-        continue
-
     # Found the howler ui! Remove child dirs and continue
     if re.search(r"howler[-_]ui([-_]internal)?$", root) and ".git" in dirs:
         howler_ui_default_path = root
@@ -74,22 +68,10 @@ for root, dirs, files in os.walk(os.environ["HOME"]):
         dirs[:] = []
         continue
 
-HOWLER_UI_PATH = Path(os.getenv("HOWLER_UI_PATH", howler_ui_default_path or ""))
-
-
 # Where should we place the generated classes?
+HOWLER_UI_PATH = (Path(__file__).parent.parent.parent / "ui").resolve()
+TS_GENERATED_PATH = HOWLER_UI_PATH / "src/models/entities/generated"
 
-if HOWLER_UI_PATH:
-    TS_GENERATED_PATH = HOWLER_UI_PATH / "src/models/entities/generated"
-
-
-if TS_GENERATED_PATH:
-    log.info("Found howler ui repo at: %s", HOWLER_UI_PATH)
-else:
-    log.fatal(
-        "Couldn't find howler ui repo! Please set environment variable HOWLER_UI_PATH to howler ui repo location."
-    )
-    sys.exit(1)
 
 REQUIRED_FIELDS = [
     "timestamp",
@@ -98,18 +80,6 @@ REQUIRED_FIELDS = [
     "howler.assignment",
     "howler.hash",
 ]
-
-# Since the odm types are returned and not the java types (obviously) we create a map between the two
-TYPE_JAVA_MAPPING = {
-    "keyword": "String",
-    "date": "String",
-    "integer": "Integer",
-    "float": "Double",
-    "ip": "String",
-    "boolean": "Boolean",
-    "text": "String",
-    "object": "Map<String, String>",
-}
 
 TYPE_TS_MAPPING = {
     "keyword": "string",
@@ -120,6 +90,7 @@ TYPE_TS_MAPPING = {
     "boolean": "boolean",
     "text": "string",
     "object": "{ [index: string]: string }",
+    "long": "number",
 }
 
 # This mapping mirrors the above - we use it for type validation on the dummy data.
@@ -131,67 +102,18 @@ TYPE_PYTHON_MAPPING = {
     "ip": str,
     "boolean": bool,
     "text": str,
+    "long": int,
 }
 
 PYTHON_TS_MAPPING = {"str": "string", "bool": "boolean"}
 
-# The template we base our generated classes on. If you need to import something, add it here
-BASE_JAVA_TEMPLATE = """package cccs.hogwarts.howler.models.generated;
-
-import cccs.hogwarts.howler.models.Field;
-import cccs.hogwarts.howler.models.GeneratedModel;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.Data;
-
-import java.util.List;
-import java.util.Map;
-
-/**
- * NOTE: This is an auto-generated file. Don't edit this manually.
- */
-@Data
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-@JsonInclude(JsonInclude.Include.NON_NULL)
-public class {name}Model implements GeneratedModel {{
-{members}
-
-  @Override
-  @JsonIgnore
-  public List<Field> getFields() {{
-    return List.of(
-{fields}
-    );
-  }}
-}}
-"""
-
-BASE_TS_TEMPLATE = """{imports}/**
+BASE_TS_TEMPLATE = """/**
  * NOTE: This is an auto-generated file. Don't edit this manually.
  */
 export interface {name} {{
 {members}
 }}
 """
-
-# There are three types of templates we use, and two corresponding entries in the generated class.
-
-# Generated Classes
-JAVA_MEMBER_CLASS_TEMPLATE = "  {}Model {};"
-JAVA_FIELD_CLASS_TEMPLATE = (
-    '      new Field("{name}", {variable} != null ?' + ' {variable}.getFields() : null, "{type}")'
-)
-
-# Lists of Generated Classes
-JAVA_MEMBER_CLASS_LIST_TEMPLATE = "  List<{}Model> {};"
-JAVA_FIELD_CLASS_LIST_TEMPLATE = '      new Field("{name}", {variable}, "List<{type}>")'
-
-# "Primitives" - This includes List<T> types!
-JAVA_MEMBER_PRIMITIVE_TEMPLATE = "  {} {};"
-JAVA_FIELD_PRIMITIVE_TEMPLATE = '      new Field("{}", {}, "{}")'
 
 # TypeScript Templates
 TS_MEMBER_TEMPLATE = "  {}?: {};"
@@ -297,6 +219,7 @@ def generate_structure():  # noqa: C901
             # of the parent nodes are list as well, as this will be set to true in that case too. So we'll need to
             # verify this using the validation object.
             is_list = index_data[key]["list"]
+            is_dict = False
             try:
                 if isinstance(current_validation, list):
                     current_value = current_validation[0].get(current_field)
@@ -323,10 +246,9 @@ def generate_structure():  # noqa: C901
                 if isinstance(current_value, dict):
                     is_dict = True
                     current_value = current_value.get("key_a", None)
-                else:
-                    is_dict = False
 
                 # Verify the claimed type in the specification matches the type of the validation object.
+                python_type: type = str
                 try:
                     python_type = TYPE_PYTHON_MAPPING[index_data[key]["type"]]
                 except KeyError:
@@ -340,7 +262,7 @@ def generate_structure():  # noqa: C901
                         python_type,
                     ), (
                         f"Type {key} does not match: {type(current_value)}, "
-                        f"{python_type} from %{index_data[key]['type']}"
+                        f"{python_type} from {index_data[key]['type']}"
                     )
             except KeyError as e:
                 # We have to special case dossier models, since they have up to five defined fields but often only the
@@ -348,26 +270,22 @@ def generate_structure():  # noqa: C901
                 if not current_field.startswith("key_"):
                     raise e
 
-            # Get the corresponding Java type, and make it of type List<T> if necessary
-            java_field_type = TYPE_JAVA_MAPPING[index_data[key]["type"]]
+            # Get the corresponding Typescript type, and make it an array if necessary
             ts_field_type = TYPE_TS_MAPPING[index_data[key]["type"]]
 
             if is_dict and index_data[key]["type"] != "object":
-                java_field_type = f"Map<String, {java_field_type}>"
                 ts_field_type = f"{{ [index: string]: {ts_field_type} }}"
 
             if is_list:
-                java_field_type = f"List<{java_field_type}>"
                 ts_field_type = f"{ts_field_type}[]"
 
             # We're done processing this leaf! Onto the next
             current[current_field] = {
                 **index_data[key],
-                "__java_field_type": java_field_type,
                 "__ts_field_type": ts_field_type,
                 "__required": key in REQUIRED_FIELDS,
             }
-            log.debug(f"{indent}{current_field}: java:{java_field_type} ts:{ts_field_type}")
+            log.debug(f"{indent}{current_field}: ts:{ts_field_type}")
 
     return structure
 
@@ -375,7 +293,7 @@ def generate_structure():  # noqa: C901
 def dedupe_objects(names, structure, existing_classes):
     """Step 2: Look for any duplicate classes and remove them, preserving the reference"""
     # This is a primitive type definition, we don't want to mess with this stuff
-    if len(names) > 0 and "__java_field_type" in structure:
+    if len(names) > 0 and "__ts_field_type" in structure:
         return None
 
     if len(names) > 0:
@@ -421,18 +339,6 @@ def generate_class_member_and_field(name, structure):
     if structure.get("__list", False) and structure_name.lower() not in ["antivirus"]:
         structure_name = re.sub(r"(.+)s$", r"\1", structure_name)
 
-    java_member_rendered = (
-        JAVA_MEMBER_CLASS_LIST_TEMPLATE if structure.get("__list", False) else JAVA_MEMBER_CLASS_TEMPLATE
-    ).format(to_pascal_case(structure_name), to_camel_case(name))
-
-    java_field_rendered = (
-        JAVA_FIELD_CLASS_LIST_TEMPLATE if structure.get("__list", False) else JAVA_FIELD_CLASS_TEMPLATE
-    ).format(
-        name=name,
-        variable=to_camel_case(name),
-        type="Class",
-    )
-
     ts_member_rendered = (
         (TS_MEMBER_LIST_TEMPLATE_NOTNULL if structure.get("__required", False) else TS_MEMBER_LIST_TEMPLATE)
         if structure.get("__list", False)
@@ -442,29 +348,17 @@ def generate_class_member_and_field(name, structure):
     ts_import_rendered = TS_IMPORT_TEMPLATE.format(name=to_pascal_case(structure_name))
 
     return (
-        java_member_rendered,
-        java_field_rendered,
         ts_member_rendered,
         ts_import_rendered,
     )
 
 
 def generate_primitive_member_and_field(name, structure):
-    java_member_rendered = JAVA_MEMBER_PRIMITIVE_TEMPLATE.format(structure["__java_field_type"], to_camel_case(name))
-
-    java_field_rendered = JAVA_FIELD_PRIMITIVE_TEMPLATE.format(
-        name, to_camel_case(name), structure["__java_field_type"]
-    )
-
     ts_member_rendered = (
         TS_MEMBER_TEMPLATE_NOTNULL if structure.get("__required", False) else TS_MEMBER_TEMPLATE
     ).format(name, structure["__ts_field_type"])
 
-    if to_camel_case(name) == "class":
-        java_member_rendered = '    @JsonProperty("class")\n' + java_member_rendered.replace("class", "klass")
-        java_field_rendered = java_field_rendered.replace("class,", "klass,")
-
-    return java_member_rendered, java_field_rendered, ts_member_rendered, None
+    return ts_member_rendered, None
 
 
 def generate_class(name, structure):
@@ -472,7 +366,7 @@ def generate_class(name, structure):
     if structure.get("__skip", False):
         return generate_class_member_and_field(name, structure)
 
-    if "__java_field_type" in structure:
+    if "__ts_field_type" in structure:
         return generate_primitive_member_and_field(name, structure)
     else:
         # Generate the references for this class
@@ -483,27 +377,24 @@ def generate_class(name, structure):
             structure_name = re.sub(r"(.+)s$", r"\1", structure_name)
 
         # Generate the file name
-        # file_name = "{}/{}Model.java".format(JAVA_GENERATED_PATH, to_pascal_case(structure_name))
-        ts_file_name = "{}/{}.ts".format(TS_GENERATED_PATH, to_pascal_case(structure_name))
-        # if not path.exists(file_name):
-        #     with open(
-        #         file_name,
-        #         "w",
-        #     ) as file:
-        #         # Write the templated file using the generated references!
-        #         file.write(
-        #             BASE_JAVA_TEMPLATE.format(
-        #                 name=to_pascal_case(structure_name),
-        #                 members="\n".join([x[0] for x in values]),
-        #                 fields=",\n".join([x[1] for x in values]),
-        #             )
-        #         )
+        file_name = "{}/{}.d.ts".format(TS_GENERATED_PATH, to_pascal_case(structure_name))
+        if not path.exists(file_name):
+            with open(
+                file_name,
+                "w",
+            ) as file:
+                file_contents = "\n".join(sorted([x[1] for x in values if x[1]]))
 
-        if not path.exists(ts_file_name):
-            imports = "\n".join(sorted([x[3] for x in values if x[3] is not None]))
+                if file_contents:
+                    file_contents += "\n\n"
 
-            if imports:
-                imports += "\n\n"
+                file_contents += BASE_TS_TEMPLATE.format(
+                    name=to_pascal_case(structure_name),
+                    members="\n".join([x[0] for x in values]),
+                )
+
+                # Write the templated file using the generated references!
+                file.write(file_contents)
 
         # Return the reference the parent generated class can use
         return generate_class_member_and_field(name, structure)
@@ -513,7 +404,7 @@ def generate_api_config_types():
     headers = {"Authorization": f"Basic {base64.b64encode(b'user:devkey:user').decode('utf-8')}"}
     config_req = requests.get(API_PATH + "configs", headers=headers).json()["api_response"]
 
-    ts_file_name = "{}/{}.ts".format(TS_GENERATED_PATH, "ApiType")
+    ts_file_name = TS_GENERATED_PATH / "ApiType.d.ts"
     with open(ts_file_name, "w") as file:
         # We handle each field slightly differently. First up is the indexes!
         # This is quite trivial as it is simply a dict of dicts of the same object, repeated.
@@ -710,18 +601,11 @@ def run():
     log.info("Step 3: Generate classes")
 
     # We don't want to keep any of the old files, they're in git anyway
-    # if path.exists(JAVA_GENERATED_PATH):
-    #     log.info("Step 3.1: Remove old files (Java)")
-    #     shutil.rmtree(JAVA_GENERATED_PATH)
-
-    if path.exists(TS_GENERATED_PATH):
-        log.info("Step 3.2: Remove old files (TypeScript)")
+    if TS_GENERATED_PATH and path.exists(TS_GENERATED_PATH):
+        log.info("Step 3.1: Remove old files")
         shutil.rmtree(TS_GENERATED_PATH)
 
-    # if not path.exists(JAVA_GENERATED_PATH):
-    #     os.mkdir(JAVA_GENERATED_PATH)
-
-    if not path.exists(TS_GENERATED_PATH):
+    if TS_GENERATED_PATH and not path.exists(TS_GENERATED_PATH):
         os.mkdir(TS_GENERATED_PATH)
 
     for root in structure.keys():

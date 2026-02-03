@@ -6,10 +6,14 @@ import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import type { PluginTypographyProps } from 'components/elements/PluginTypography';
 import { memo, useContext, type FC } from 'react';
 
-const ClueTypography: FC<PluginTypographyProps> = ({ children, value, context, field, ...props }) => {
+const ClueTypography: FC<PluginTypographyProps> = ({ children, value, context, field, hit, ...props }) => {
   const guessType = useClueEnrichSelector(ctx => ctx.guessType);
   const { config } = useContext(ApiConfigContext);
-  const type = config?.configuration?.mapping?.[field] || (value ? guessType(value.toString()) : null);
+
+  const type =
+    hit?.clue?.types?.find(mapping => mapping.field === field)?.type ||
+    config.configuration?.mapping?.[field] ||
+    (value ? guessType(value.toString()) : null);
 
   if (!type) {
     return <Typography {...props}>{children ?? value}</Typography>;

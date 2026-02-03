@@ -6,11 +6,14 @@ import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import type { PluginChipProps } from 'components/elements/PluginChip';
 import { memo, useContext, type FC } from 'react';
 
-const ClueChip: FC<PluginChipProps> = ({ children, value, context, field, ...props }) => {
+const ClueChip: FC<PluginChipProps> = ({ children, value, context, field, hit, ...props }) => {
   const guessType = useClueEnrichSelector(ctx => ctx.guessType);
   const { config } = useContext(ApiConfigContext);
 
-  const type = config.configuration?.mapping?.[field] || guessType(value);
+  const type =
+    hit?.clue?.types?.find(mapping => mapping.field === field)?.type ||
+    config.configuration?.mapping?.[field] ||
+    (value ? guessType(value.toString()) : null);
 
   if (!type) {
     return <Chip {...props}>{children}</Chip>;

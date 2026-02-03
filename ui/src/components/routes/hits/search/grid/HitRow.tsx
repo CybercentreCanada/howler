@@ -97,6 +97,7 @@ const HitRow: FC<{
         </TableCell>
         {columns.map(col => (
           <EnhancedCell
+            hit={hit}
             className={`col-${col.replaceAll('.', '-')}`}
             key={col}
             value={get(hit, col) ?? t('none')}
