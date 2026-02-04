@@ -403,13 +403,13 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
               <ListItemIcon>
                 <AddCircleOutline />
               </ListItemIcon>
-              <ListItemText sx={{ flex: 1 }}>Include by</ListItemText>
+              <ListItemText sx={{ flex: 1 }}>{t('hit.panel.include')}</ListItemText>
               <KeyboardArrowRight fontSize="small" sx={{ color: 'text.secondary', mr: -1 }} />
               <Fade in={!!show.includes} unmountOnExit>
                 <Paper id="includes-submenu" sx={calculateSubMenuStyles(show.includes)} elevation={8}>
                   <MenuList sx={{ p: 0 }} dense role="group">
                     {template?.keys.map(key => {
-                      // Build exclusion query based on current query and field value
+                      // Build inclusion query based on current query and field value. If default, we include default query
                       let newQuery = `(${query}) AND `;
 
                       const value = get(hit, key);
@@ -417,7 +417,7 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
                       if (!value) {
                         return null;
                       } else if (Array.isArray(value)) {
-                        // Handle array values by excluding all items
+                        // Handle array values by including all items
                         const sanitizedValues = value
                           .map(toString)
                           .filter(val => !!val)
