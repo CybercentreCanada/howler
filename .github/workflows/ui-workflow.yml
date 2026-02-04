@@ -172,7 +172,9 @@ jobs:
           audience: https://registry.npmjs.org
 
       - name: Publish Built Package
-        run: pnpm publish --no-git-checks --provenance --access public
+        run: |
+          npm install -g npm@latest
+          npm publish --access public
         working-directory: ui/dist  # Publish from the built dist directory
 
   # Job 3: Docker Image Build and Push
