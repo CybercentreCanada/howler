@@ -167,7 +167,7 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=16384  # Increase memory for large builds
 
       - name: Debug OIDC Claims
-        uses: github/actions-oidc-debugger@v1
+        uses: steve-todorov/oidc-debugger-action@v1
         with:
           audience: https://registry.npmjs.org
 
