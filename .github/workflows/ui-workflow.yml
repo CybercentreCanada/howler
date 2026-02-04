@@ -278,9 +278,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            version=${{ steps.meta.outputs.version }}  id_tokens:
-    NPM_ID_TOKEN:
-      aud: "npm:registry.npmjs.org"
+            version=${{ steps.meta.outputs.version }}
             branch=${{ github.ref }}
             commit=${{ github.sha }}
 
