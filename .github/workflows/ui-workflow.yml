@@ -166,6 +166,11 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=16384  # Increase memory for large builds
 
+      - name: Debug OIDC Claims
+        uses: github/actions-oidc-debugger@v1
+        with:
+          audience: https://registry.npmjs.org
+
       - name: Publish Built Package
         run: pnpm publish --no-git-checks --provenance --access public
         working-directory: ui/dist  # Publish from the built dist directory
