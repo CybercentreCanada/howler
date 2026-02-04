@@ -368,6 +368,7 @@
   "modal.rationale.label": "Rationale",
   "modal.rationale.type.analytic": "This rationale was used when assessing alerts with the same analytic name.",
   "modal.rationale.type.assignment": "This is a rationale you have recently used when assessing an alert.",
+  "modal.rationale.type.preset": "This is a preset rationale configured for the associated analytic.",
 
   "none": "None",
 
