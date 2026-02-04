@@ -236,7 +236,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offset, pageCount, sort, span, bundleId, location.pathname, startDate, endDate, filters, query]);
+  }, [offset, pageCount, sort, span, bundleId, location.pathname, startDate, endDate, filters, query, views]);
 
   return (
     <HitSearchContext.Provider
