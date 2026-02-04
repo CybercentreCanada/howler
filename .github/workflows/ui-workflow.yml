@@ -169,8 +169,6 @@ jobs:
       - name: Publish Built Package
         run: pnpm publish --provenance --access public
         working-directory: ui/dist  # Publish from the built dist directory
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   # Job 3: Docker Image Build and Push
   # Builds the UI application and creates a Docker image for deployment
@@ -280,7 +278,9 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            version=${{ steps.meta.outputs.version }}
+            version=${{ steps.meta.outputs.version }}  id_tokens:
+    NPM_ID_TOKEN:
+      aud: "npm:registry.npmjs.org"
             branch=${{ github.ref }}
             commit=${{ github.sha }}
 
