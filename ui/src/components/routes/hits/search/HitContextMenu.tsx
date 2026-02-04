@@ -358,6 +358,7 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
                     {template?.keys.map(key => {
                       // Build exclusion query based on current query and field value
                       let newQuery = '';
+
                       if (query !== DEFAULT_QUERY) {
                         newQuery = `(${query}) AND `;
                       }
@@ -396,25 +397,23 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
             <MenuItem
               id="includes-menu-item"
               sx={{ position: 'relative' }}
-              onMouseEnter={ev => setShow(_show => ({ ..._show, excludes: ev.target as EventTarget & HTMLLIElement }))}
-              onMouseLeave={() => setShow(_show => ({ ..._show, excludes: null }))}
+              onMouseEnter={ev => setShow(_show => ({ ..._show, includes: ev.target as EventTarget & HTMLLIElement }))}
+              onMouseLeave={() => setShow(_show => ({ ..._show, includes: null }))}
             >
               <ListItemIcon>
                 <AddCircleOutline />
               </ListItemIcon>
               <ListItemText sx={{ flex: 1 }}>Include by</ListItemText>
               <KeyboardArrowRight fontSize="small" sx={{ color: 'text.secondary', mr: -1 }} />
-              <Fade in={!!show.excludes} unmountOnExit>
-                <Paper id="includes-submenu" sx={calculateSubMenuStyles(show.excludes)} elevation={8}>
+              <Fade in={!!show.includes} unmountOnExit>
+                <Paper id="includes-submenu" sx={calculateSubMenuStyles(show.includes)} elevation={8}>
                   <MenuList sx={{ p: 0 }} dense role="group">
                     {template?.keys.map(key => {
                       // Build exclusion query based on current query and field value
-                      let newQuery = '';
-                      if (query !== DEFAULT_QUERY) {
-                        newQuery = `(${query}) AND `;
-                      }
+                      let newQuery = `(${query}) AND `;
 
                       const value = get(hit, key);
+
                       if (!value) {
                         return null;
                       } else if (Array.isArray(value)) {
@@ -428,10 +427,10 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
                           return null;
                         }
 
-                        newQuery += `-${key}:(${sanitizedValues.join(' OR ')})`;
+                        newQuery += `${key}:(${sanitizedValues.join(' OR ')})`;
                       } else {
                         // Handle single value
-                        newQuery += `-${key}:"${sanitizeLuceneQuery(value.toString())}"`;
+                        newQuery += `${key}:"${sanitizeLuceneQuery(value.toString())}"`;
                       }
 
                       return (
