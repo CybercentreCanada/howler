@@ -125,16 +125,16 @@ jobs:
       - name: Checkout current ref
         uses: actions/checkout@v4
 
+      - name: Install pnpm v10
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - name: Install Node v20
         uses: actions/setup-node@v4
         with:
           node-version: 20
           registry-url: 'https://registry.npmjs.org'  # Configure for NPM publishing
-
-      - name: Install pnpm v10
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - name: Get pnpm store path
         id: pnpm-cache-dir
@@ -167,7 +167,7 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=16384  # Increase memory for large builds
 
       - name: Publish Built Package
-        run: pnpm publish --provenance --access public
+        run: pnpm publish --no-git-checks --provenance --access public
         working-directory: ui/dist  # Publish from the built dist directory
 
   # Job 3: Docker Image Build and Push
