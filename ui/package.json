@@ -104,7 +104,7 @@
     "glob": "^11.1.0",
     "http-proxy-middleware": "^2.0.9",
     "lint-staged": "^15.5.2",
-    "msw": "^2.12.7",
+    "msw": "^2.12.8",
     "prettier": "^3.8.1",
     "prettier-plugin-organize-imports": "^3.2.4",
     "typescript": "^5.9.3",
