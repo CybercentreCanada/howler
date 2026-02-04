@@ -506,7 +506,7 @@ def _update_hit(
     if user and not isinstance(user, str):
         raise HowlerValueError("User must be of type string")
 
-    current_hit = get_hit(hit_id, as_odm=True)
+    current_hit = cast(Hit, get_hit(hit_id, as_odm=True))
 
     for operation in operations:
         if not operation:
