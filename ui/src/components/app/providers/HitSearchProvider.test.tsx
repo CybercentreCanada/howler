@@ -21,7 +21,7 @@ const mockParams = vi.mocked(useParams);
 const mockLocation = vi.mocked(useLocation());
 
 const mockViewContext: Partial<ViewContextType> = {
-  getCurrentViews: ({ viewId } = {}) => Promise.resolve([{ view_id: viewId || 'test_view_id', query: 'howler.id:*' }])
+  getCurrentViews: ({ views } = {}) => Promise.resolve([{ view_id: views[0] || 'test_view_id', query: 'howler.id:*' }])
 };
 let mockParameterContext: Partial<ParameterContextType> = {
   filters: [],
