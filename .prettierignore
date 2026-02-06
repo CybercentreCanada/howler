@@ -1,1 +1,2 @@
 ui/src/locales/**/*.json
+ui/src/plugins/clue/locales/*.json

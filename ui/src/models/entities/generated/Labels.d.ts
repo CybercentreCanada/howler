@@ -9,5 +9,6 @@ export interface Labels {
   mitigation?: string[];
   operation?: string[];
   threat?: string[];
+  tuning?: string[];
   victim?: string[];
 }

@@ -171,6 +171,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
               {...typographyProps}
               value={val}
               field={field}
+              hit={hit}
             />
           ))}
         </Stack>
@@ -198,7 +199,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
         _children
       );
     },
-    [compressed, t, textVariant]
+    [compressed, hit, t, textVariant]
   );
 
   return (

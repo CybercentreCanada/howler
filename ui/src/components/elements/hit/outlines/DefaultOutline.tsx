@@ -94,6 +94,7 @@ const DefaultOutline: FC<{
                 sx={{ width: '100%', wordBreak: 'break-all' }}
                 value={displayedData}
                 field={field}
+                hit={hit}
               >
                 {displayedData}
               </PluginTypography>
