@@ -171,10 +171,36 @@ jobs:
         with:
           audience: https://registry.npmjs.org
 
+      - name: Check Package Version Type
+        id: version-check
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION"
+
+          # Check for specific prerelease identifiers and set appropriate npm tag
+          if echo "$VERSION" | grep -qE '\-dev'; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            echo "npm_tag=development" >> $GITHUB_OUTPUT
+            echo "Detected development version: $VERSION (will publish with --tag development)"
+          elif echo "$VERSION" | grep -qE '\-rc'; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            echo "npm_tag=release-candidate" >> $GITHUB_OUTPUT
+            echo "Detected release candidate version: $VERSION (will publish with --tag release-candidate)"
+          elif echo "$VERSION" | grep -qE '\-patch'; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            echo "npm_tag=patch-prerelease" >> $GITHUB_OUTPUT
+            echo "Detected patch prerelease version: $VERSION (will publish with --tag patch-prerelease)"
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            echo "npm_tag=latest" >> $GITHUB_OUTPUT
+            echo "Detected standard release version: $VERSION (will publish with --tag latest)"
+          fi
+        working-directory: ui/dist
+
       - name: Publish Built Package
         run: |
           npm install -g npm@latest
-          npm publish --access public
+          npm publish --access public --tag ${{ steps.version-check.outputs.npm_tag }}
         working-directory: ui/dist  # Publish from the built dist directory
 
   # Job 3: Docker Image Build and Push
