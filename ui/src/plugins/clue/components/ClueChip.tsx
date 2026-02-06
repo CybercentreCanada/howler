@@ -1,19 +1,12 @@
 import EnrichedChip from '@cccsaurora/clue-ui/components/EnrichedChip';
-import { useClueEnrichSelector } from '@cccsaurora/clue-ui/hooks/selectors';
 import type EnrichmentProps from '@cccsaurora/clue-ui/types/EnrichmentProps';
 import { Chip, type ChipProps } from '@mui/material';
-import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import type { PluginChipProps } from 'components/elements/PluginChip';
-import { memo, useContext, type FC } from 'react';
+import { memo, type FC } from 'react';
+import { useType } from '../utils';
 
 const ClueChip: FC<PluginChipProps> = ({ children, value, context, field, hit, ...props }) => {
-  const guessType = useClueEnrichSelector(ctx => ctx.guessType);
-  const { config } = useContext(ApiConfigContext);
-
-  const type =
-    hit?.clue?.types?.find(mapping => mapping.field === field)?.type ||
-    config.configuration?.mapping?.[field] ||
-    (value ? guessType(value.toString()) : null);
+  const type = useType(hit, field, value);
 
   if (!type) {
     return <Chip {...props}>{children}</Chip>;

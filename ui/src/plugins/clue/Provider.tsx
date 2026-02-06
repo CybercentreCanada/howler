@@ -1,6 +1,5 @@
 import { ClueProvider } from '@cccsaurora/clue-ui/hooks/ClueProvider';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
-import has from 'lodash-es/has';
 import { useContext, type PropsWithChildren } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StorageKey } from 'utils/constants';
@@ -13,15 +12,11 @@ const Provider: React.FC<PropsWithChildren<{}>> = ({ children }) => {
 
   return (
     <ClueProvider
-      baseURL={location.origin + (has(features, 'clue') ? '/api/v1/clue' : '/api/v1/borealis')}
+      baseURL={location.origin + '/api/v1/clue'}
       getToken={() => getStored(StorageKey.APP_TOKEN)}
-      enabled={features.clue || features.borealis}
-      publicIconify={false}
-      customIconify={
-        location.origin.includes('localhost')
-          ? 'https://icons.dev.analysis.cyber.gc.ca'
-          : location.origin.replace(/howler(-stg)?/, 'icons')
-      }
+      enabled={features.clue}
+      publicIconify={location.origin.includes('localhost')}
+      customIconify={location.origin.replace(/howler(-stg)?/, 'icons')}
       defaultTimeout={5}
       i18next={useTranslation('clue')}
       chunkSize={50}

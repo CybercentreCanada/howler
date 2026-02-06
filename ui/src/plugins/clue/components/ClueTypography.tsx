@@ -1,19 +1,12 @@
 import type { EnrichedTypographyProps } from '@cccsaurora/clue-ui/components/EnrichedTypography';
 import EnrichedTypography from '@cccsaurora/clue-ui/components/EnrichedTypography';
-import { useClueEnrichSelector } from '@cccsaurora/clue-ui/hooks/selectors';
 import { Typography } from '@mui/material';
-import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import type { PluginTypographyProps } from 'components/elements/PluginTypography';
-import { memo, useContext, type FC } from 'react';
+import { memo, type FC } from 'react';
+import { useType } from '../utils';
 
 const ClueTypography: FC<PluginTypographyProps> = ({ children, value, context, field, hit, ...props }) => {
-  const guessType = useClueEnrichSelector(ctx => ctx.guessType);
-  const { config } = useContext(ApiConfigContext);
-
-  const type =
-    hit?.clue?.types?.find(mapping => mapping.field === field)?.type ||
-    config.configuration?.mapping?.[field] ||
-    (value ? guessType(value.toString()) : null);
+  const type = useType(hit, field, value);
 
   if (!type) {
     return <Typography {...props}>{children ?? value}</Typography>;
