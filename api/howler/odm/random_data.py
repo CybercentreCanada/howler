@@ -4,6 +4,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from howler.odm.models.clue import Clue
 from howler.plugins import get_plugins
 
 load_dotenv()
@@ -528,6 +529,18 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
         if hit_idx + 1 == hit_count:
             hit.howler.analytic = "SecretAnalytic"
             hit.howler.detection = None
+
+        if config.core.clue.enabled:
+            hit.clue = Clue(
+                {
+                    "types": [
+                        {"field": "destination.user.group.id", "type": "domain"},
+                        {"field": "dns.response_code", "type": "url"},
+                        {"field": "file.name", "type": "url"},
+                        {"field": "faas.name", "type": "domain"},
+                    ]
+                }
+            )
 
         ds.hit.save(hit.howler.id, hit)
         analytic_service.save_from_hit(hit, random.choice(users))

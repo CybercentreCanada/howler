@@ -1,0 +1,19 @@
+{
+    "exclude": [
+        "**/build",
+        "plugins/*/.venv",
+        "**/tests",
+        "**/test"
+    ],
+    "executionEnvironments": [
+        {
+            "reportArgumentType": "none",
+            "reportAssignmentType": "none",
+            "root": "api/howler/odm/models"
+        }
+    ],
+    "reportMissingImports": "error",
+    "reportOptionalMemberAccess": "error",
+    "strictDictionaryInference": true,
+    "strictListInference": true
+}
