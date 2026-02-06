@@ -199,7 +199,7 @@ const ViewComposer: FC = () => {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routeParams.id, getCurrentViews]);
+  }, [routeParams.id]);
 
   return (
     <FlexPort>
