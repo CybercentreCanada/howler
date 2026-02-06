@@ -196,6 +196,7 @@ abstract class HowlerPlugin implements IPlugin {
     if (isRoot) {
       if (breadcrumbs != null) {
         breadcrumbs = null;
+        // eslint-disable-next-line no-console
         console.warn(`Sitemap '${path}' with isRoot should not contain breadcrumbs and have been removed`);
       }
     }
