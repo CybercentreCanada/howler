@@ -66,8 +66,8 @@ def retry_call(func, *args, **kw):
 
 def get_client(host, port, private):
     """
-    Get Redis instance.  SSL settings for nonpersistent Redis config are loaded
-    automatically
+    Get Redis instance.
+
     Args:
         host: Redis host, defaults to nonpersistent host
         port: Redis port, defaults to nonpersistent port
