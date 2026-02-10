@@ -28,6 +28,12 @@ class RedisServer(BaseModel):
 
     host: str = Field(description="Hostname of Redis instance")
     port: int = Field(description="Port of Redis instance")
+    password: Optional[str] = Field(description="Password for Redis instance", default=None)
+    tls_enabled: bool = Field(default=False, description="Enable TLS for Redis connection")
+    tls_ca_cert: Optional[str] = Field(
+        description="Path to CA Certificate (PEM) to validate Redis instance certificate when using TLS", default=None
+    )
+    is_cluster: bool = Field(default=False, description="Is this Redis instance a cluster?")
 
 
 class Redis(BaseModel):

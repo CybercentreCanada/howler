@@ -4,7 +4,7 @@ import json
 import logging
 import time
 from datetime import datetime
-
+from pathlib import Path
 import redis
 from packaging.version import parse
 
@@ -65,26 +65,82 @@ def retry_call(func, *args, **kw):
 
 
 def get_client(host, port, private):
+    """
+    Get Redis instance.  SSL settings for nonpersistent Redis config are loaded
+    automatically
+    Args:
+        host: Redis host, defaults to nonpersistent host
+        port: Redis port, defaults to nonpersistent port
+        private: If true then use standard connection, otherwise use a Pool
+
+    Returns:
+        Redis instance
+    """
     # In case a structure is passed a client as host
-    if isinstance(host, (redis.Redis, redis.StrictRedis)):
+    if isinstance(host, (redis.Redis, redis.StrictRedis, redis.RedisCluster)):
         return host
 
     if not host or not port:
         host = host or config.core.redis.nonpersistent.host
         port = int(port or config.core.redis.nonpersistent.port)
 
-    if private:
-        return redis.StrictRedis(host=host, port=port)
+    extra_conn_config = {}
+    host_config = None
+
+    if host == config.core.redis.nonpersistent.host:
+        host_config = config.core.redis.nonpersistent
     else:
-        return redis.StrictRedis(connection_pool=get_pool(host, port))
+        host_config = config.core.redis.persistent
+
+    if host_config.password:
+        extra_conn_config["username"] = "default"
+        extra_conn_config["password"] = host_config.password
+
+    if host_config.tls_enabled:
+        extra_conn_config["ssl"] = True
+        extra_conn_config["ssl_cert_reqs"] = "required"
+
+        if host_config.tls_ca_cert:
+            if not Path(host_config.tls_ca_cert).exists():
+                raise FileNotFoundError("Redis TLS CA cert or Path not found.")
+
+            if Path(host_config.tls_ca_cert).is_file():
+                extra_conn_config["ssl_ca_certs"] = host_config.tls_ca_cert
+            else:
+                extra_conn_config["ssl_ca_path"] = host_config.tls_ca_cert
+
+    if host_config.is_cluster is True:
+        return redis.RedisCluster(host=host, port=port, **extra_conn_config)
+
+    if private:
+        return redis.StrictRedis(host=host, port=port, **extra_conn_config)
+    else:
+        return redis.StrictRedis(connection_pool=get_pool(host, port, **extra_conn_config))
 
 
-def get_pool(host, port):
-    key = (host, port)
+def get_pool(host, port, **kwargs):
+    """
+    Get Redis connection pool
+    Args:
+        host: Redis host
+        port: Redis port
+        **kwargs: Extra parameters to pass to pool connection class
 
+    Returns:
+        Redis BlockingConnectionPool
+    """
+    key = (host, str(port), kwargs.get("ssl", False))
     connection_pool = pool.get(key, None)
+
     if not connection_pool:
-        connection_pool = redis.BlockingConnectionPool(host=host, port=port, max_connections=200)
+        if "ssl" in kwargs and kwargs["ssl"]:
+            # SSLConnection class doesn't accept 'ssl' parameter as it implicitly uses SSL
+            kwargs.pop("ssl")
+            connection_pool = redis.BlockingConnectionPool(
+                host=host, port=port, max_connections=200, connection_class=redis.SSLConnection, **kwargs
+            )
+        else:
+            connection_pool = redis.BlockingConnectionPool(host=host, port=port, max_connections=200)
         pool[key] = connection_pool
 
     return connection_pool
