@@ -141,7 +141,7 @@ def get_pool(host, port, **kwargs):
                 host=host, port=port, max_connections=200, connection_class=redis.SSLConnection, **kwargs
             )
         else:
-            connection_pool = redis.BlockingConnectionPool(host=host, port=port, max_connections=200)
+            connection_pool = redis.BlockingConnectionPool(host=host, port=port, max_connections=200, **kwargs)
         pool[key] = connection_pool
 
     return connection_pool
