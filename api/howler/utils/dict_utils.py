@@ -74,23 +74,42 @@ def get_recursive_delta(
 
 
 def flatten(data: _Mapping, parent_key: Optional[str] = None, odm: Optional[type["Model"]] = None) -> dict[str, Any]:
-    "Flatten a nested dict"
-    items: list[tuple[str, Any]] = []
-    for k, v in data.items():
-        cur_key = f"{parent_key}.{k}" if parent_key is not None else k
+    """Flatten a nested dict.
 
-        if isinstance(v, dict):
-            if odm:
-                valid_keys = list(odm.flat_fields().keys())
-                if not next((key for key in valid_keys if key.startswith(f"{cur_key}.")), False):
-                    items.append((cur_key, v))
-                    continue
+    Args:
+        data: The mapping to flatten
+        parent_key: Optional parent key for nested flattening
+        odm: Optional ODM model for field validation
 
-            items.extend(flatten(v, cur_key, odm=odm).items())
-        else:
-            items.append((cur_key, v))
+    Returns:
+        Flattened dictionary with dot-notation keys
+    """
+    # Pre-compute ODM valid keys if provided
+    valid_keys_set: Optional[set[str]] = None
+    if odm:
+        valid_keys_set = set(odm.flat_fields().keys())
 
-    return dict(items)
+    def _flatten_recursive(mapping: _Mapping, prefix: str = "") -> dict[str, Any]:
+        """Inner recursive function for flattening."""
+        result = {}
+
+        for key, value in mapping.items():
+            current_key = f"{prefix}.{key}" if prefix else key
+
+            if isinstance(value, dict):
+                # ODM validation check
+                if valid_keys_set and not any(valid_key.startswith(f"{current_key}.") for valid_key in valid_keys_set):
+                    result[current_key] = value
+                else:
+                    # Recursively flatten and merge
+                    result.update(_flatten_recursive(value, current_key))
+            else:
+                result[current_key] = value
+
+        return result
+
+    flattened = _flatten_recursive(data, parent_key or "")
+    return flattened
 
 
 def flatten_deep(data: _Mapping):
