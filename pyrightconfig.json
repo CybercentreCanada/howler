@@ -1,15 +1,20 @@
 {
     "exclude": [
         "**/build",
-        "plugins/*/.venv",
         "**/tests",
-        "**/test"
+        "**/test",
+        "**/.venv"
     ],
     "executionEnvironments": [
         {
             "reportArgumentType": "none",
             "reportAssignmentType": "none",
             "root": "api/howler/odm/models"
+        },
+        {
+            "reportAttributeAccessIssue": "information",
+            "reportOptionalCall": "information",
+            "root": "api/howler/datastore"
         }
     ],
     "reportMissingImports": "error",

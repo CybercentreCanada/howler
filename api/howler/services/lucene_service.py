@@ -28,7 +28,7 @@ TRANSPORT_TIMEOUT = int(os.environ.get("HWL_DATASTORE_TRANSPORT_TIMEOUT", "10"))
 class LuceneProcessor(TreeVisitor):
     "Tree visitor that evaluates a query on a given object"
 
-    def visit(self, tree: Any, context: dict[str, Any]) -> bool:
+    def visit(self, tree: Any, context: dict[str, Any]) -> bool:  # pyright: ignore[reportIncompatibleMethodOverride]
         "Visit each node in a tree"
         return super().visit(tree, context)[0]
 

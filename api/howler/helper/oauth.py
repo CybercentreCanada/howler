@@ -5,6 +5,7 @@ from typing import Any, Optional
 
 import elasticapm
 import requests
+from authlib.integrations.flask_client import OAuth
 
 from howler.common.exceptions import HowlerException, HowlerValueError
 from howler.common.loader import USER_TYPES
@@ -156,7 +157,7 @@ def parse_profile(profile: dict[str, Any], provider_config: OAuthProvider) -> di
 
 
 def fetch_avatar(  # noqa: C901
-    url: str, provider: dict[str, Any], oauth_provider: str, access_token: Optional[str] = None
+    url: str, provider: OAuth, oauth_provider: str, access_token: Optional[str] = None
 ):
     """Fetch a user's avatar form the oauth provider"""
     provider_config = config.auth.oauth.providers[oauth_provider]
