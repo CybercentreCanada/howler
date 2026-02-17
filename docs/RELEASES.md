@@ -1,5 +1,10 @@
 # Howler Releases
 
+## Howler UI `v2.16.1`
+
+- **Rationale Modal Filter Query** *(bugfix)*: Fixed malformed Lucene query in rationale modal that had an extra closing parenthesis
+- **Translation Updates** *(technical update)*: Added English and French translations for preset rationale type
+
 ## Howler UI `v2.16.0`
 
 - **Composable Views** *(new feature)*: Added support for composable views allowing users to combine and layer multiple views for more flexible data exploration

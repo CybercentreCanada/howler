@@ -2,7 +2,7 @@ import api from 'api';
 import { useAppUser } from 'commons/components/app/hooks';
 import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
-import { has, omit } from 'lodash-es';
+import { has, omit, uniq } from 'lodash-es';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { View } from 'models/entities/generated/View';
 import { useCallback, useEffect, useState, type FC, type PropsWithChildren } from 'react';
@@ -20,7 +20,7 @@ export interface ViewContextType {
   addView: (v: View) => Promise<View>;
   editView: (id: string, newView: Partial<Omit<View, 'view_id' | 'owner'>>) => Promise<View>;
   removeView: (id: string) => Promise<void>;
-  getCurrentViews: (config?: { viewId?: string; lazy?: boolean; ignoreParams?: boolean }) => Promise<View[]>;
+  getCurrentViews: (config?: { views?: string[]; lazy?: boolean; ignoreParams?: boolean }) => Promise<View[]>;
 }
 
 export const ViewContext = createContext<ViewContextType>(null);
@@ -95,12 +95,8 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
   }, [defaultView, fetchViews, setDefaultView, views]);
 
   const getCurrentViews: ViewContextType['getCurrentViews'] = useCallback(
-    async ({ viewId, lazy = false, ignoreParams = false } = {}) => {
-      const currentViews = ignoreParams ? [] : searchParams.getAll('view');
-
-      if (viewId && !currentViews.includes(viewId)) {
-        currentViews.push(viewId);
-      }
+    async ({ views: _views, lazy = false, ignoreParams = false } = {}) => {
+      const currentViews = uniq([...(_views ?? []), ...(ignoreParams ? [] : searchParams.getAll('view'))]);
 
       if (currentViews.length < 1) {
         return [];

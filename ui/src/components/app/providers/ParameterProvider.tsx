@@ -143,8 +143,8 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
           return;
         }
 
-        if (key === 'selected' && !value) {
-          pendingChanges.current.selected = getSelectedValue(params, location.pathname, routeParams.id);
+        if (key === 'selected') {
+          pendingChanges.current.selected = value as string | null;
         } else {
           (pendingChanges.current as any)[key] = value ?? DEFAULT_VALUES[key] ?? null;
         }
@@ -159,7 +159,7 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
           pendingChanges.current = {};
         });
       },
-      [location.pathname, routeParams.id, values, params]
+      [values]
     );
 
   const setOffset: ParameterContextType['setOffset'] = useCallback(

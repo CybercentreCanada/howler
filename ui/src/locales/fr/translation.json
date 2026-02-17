@@ -371,6 +371,7 @@
   "modal.rationale.label": "Justification",
   "modal.rationale.type.analytic": "Cette justification a été utilisée lors de l'évaluation des alertes avec le même nom d'analyse.",
   "modal.rationale.type.assignment": "Il s'agit d'une justification que vous avez récemment utilisée lors de l'évaluation d'une alerte.",
+  "modal.rationale.type.preset": "Il s'agit d'un raisonnement prédéfini configuré pour l'analyse associée.",
 
   "none": "Rien",
 

@@ -1,9 +1,12 @@
 from typing import TYPE_CHECKING
 
 from howler.common.exceptions import HowlerAttributeError
+from howler.config import config
 from howler.datastore.collection import ESCollection, logger
+from howler.odm.base import Compound
 from howler.odm.models.action import Action
 from howler.odm.models.analytic import Analytic
+from howler.odm.models.clue import Clue
 from howler.odm.models.dossier import Dossier
 from howler.odm.models.hit import Hit
 from howler.odm.models.overview import Overview
@@ -40,6 +43,12 @@ class HowlerDatastore(object):
                 if modify_odm := plugin.modules.odm.modify_odm.get(_index):
                     logger.info("Modifying %s odm with function from plugin %s", _index, plugin.name)
                     modify_odm(_odm)
+
+        if config.core.clue.enabled:
+            Hit.add_namespace(
+                "clue",
+                Compound(Clue, description="Clue-specific overrides for this alert", default=None, optional=True),
+            )
 
         for _index, _odm in INDEXES:
             self.ds.register(_index, _odm)

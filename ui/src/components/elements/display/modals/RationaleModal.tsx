@@ -112,7 +112,7 @@ const RationaleModal: FC<{ hits: Hit[]; onSubmit: (rationale: string) => void }>
               query: 'howler.rationale:*',
               rows: 10,
               fields: ['howler.rationale'],
-              filters: hits.map(hit => `howler.analytic:"${sanitizeLuceneQuery(hit.howler.analytic)}")`)
+              filters: hits.map(hit => `howler.analytic:"${sanitizeLuceneQuery(hit.howler.analytic)}"`)
             },
             'analytic'
           ),

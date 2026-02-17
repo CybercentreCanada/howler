@@ -159,7 +159,7 @@ describe('RationaleModal', () => {
 
         expect(mockHpost).toHaveBeenCalledWith('/api/v1/search/facet/hit', {
           fields: ['howler.rationale'],
-          filters: ['howler.analytic:"test\\-analytic\\-1")'],
+          filters: ['howler.analytic:"test\\-analytic\\-1"'],
           query: 'howler.rationale:*',
           rows: 10
         });
