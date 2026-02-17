@@ -28,7 +28,7 @@
     "@monaco-editor/react": "^4.7.0",
     "ajv": "^8.17.1",
     "ajv-i18n": "^4.2.0",
-    "axios": "^1.13.4",
+    "axios": "^1.13.5",
     "axios-retry": "^3.9.1",
     "chart.js": "^4.5.1",
     "chartjs-adapter-dayjs-4": "^1.0.4",
