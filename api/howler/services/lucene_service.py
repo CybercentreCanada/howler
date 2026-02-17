@@ -252,6 +252,8 @@ def match(lucene: str, obj: dict[str, Any]):
         # which means the two are equivalent in elastic, but the second one is a lot less ambiguous to parse.
         normalized_query = cast(str, result["explanations"][0]["explanation"])
 
+        normalized_query = re.sub(r"IndexOrDocValuesQuery *\(indexQuery=(.+?), dvQuery=.+?\)", r"\1", normalized_query)
+
         # Elastic's explanation mangles exists queries. Since we will handle them the normal way, reset their changes
         normalized_query = re.sub(r"FieldExistsQuery *\[.*?field=(.+?)]", r"_exists_:\1", normalized_query)
         normalized_query = re.sub(r"ConstantScore", "", normalized_query)
