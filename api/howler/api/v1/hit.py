@@ -672,7 +672,7 @@ def transition(id: str, user: User, **kwargs):
     except HowlerException as e:
         return internal_error(err=str(e))
 
-    hit, version = hit_service.get_hit(id, version=True)
+    hit, version = hit_service.get_hit(id, as_odm=False, version=True)
     return ok(hit), version
 
 

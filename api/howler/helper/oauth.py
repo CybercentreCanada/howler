@@ -3,9 +3,9 @@ import hashlib
 import re
 from typing import Any, Optional
 
-import elasticapm
 import requests
 from authlib.integrations.flask_client import OAuth
+from elasticapm.traces import capture_span
 
 from howler.common.exceptions import HowlerException, HowlerValueError
 from howler.common.loader import USER_TYPES
@@ -30,7 +30,7 @@ def reorder_name(name: Optional[str]) -> Optional[str]:
     return " ".join(name.split(", ", 1)[::-1])
 
 
-@elasticapm.capture_span(span_type="authentication")
+@capture_span(span_type="authentication")
 def parse_profile(profile: dict[str, Any], provider_config: OAuthProvider) -> dict[str, Any]:  # noqa: C901
     """Parse a raw profile dict into a useful user data dict"""
     # Find email address and normalize it for further processing
@@ -169,6 +169,7 @@ def fetch_avatar(  # noqa: C901
         if url == provider_config.picture_url:
             headers = {}
 
+            token: str | None = None
             if oauth_provider == "azure":
                 if not access_token:
                     raise HowlerValueError("An azure access token is necessary to retrieve the profile picture")  # noqa: TRY301
@@ -186,7 +187,7 @@ def fetch_avatar(  # noqa: C901
                 return avatar
 
         # Url that is protected through OAuth
-        elif provider_config.api_base_url and url.startswith(provider_config.api_base_url):
+        elif provider_config.api_base_url and url.startswith(provider_config.api_base_url) and provider.get:
             resp = provider.get(url[len(provider_config.api_base_url) :])
             if resp.ok and resp.headers.get("content-type") is not None:
                 b64_img = base64.b64encode(resp.content).decode()

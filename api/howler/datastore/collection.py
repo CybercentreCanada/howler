@@ -11,7 +11,8 @@ from copy import deepcopy
 from datetime import datetime
 from os import environ
 from random import random
-from typing import Any, Dict, Generic, Literal, NotRequired, Optional, TypedDict, TypeVar, Union, overload
+from types import SearchResult
+from typing import Any, Dict, Generic, Literal, Optional, TypeVar, Union, overload
 
 import elasticsearch
 from datemath import dm
@@ -66,15 +67,6 @@ console.setFormatter(logging.Formatter(HWL_LOG_FORMAT, HWL_DATE_FORMAT))
 logger.addHandler(console)
 
 ModelType = TypeVar("ModelType", bound=Model)
-SearchResultType = TypeVar("SearchResultType")
-
-
-class SearchResult(TypedDict, Generic[SearchResultType]):
-    offset: int
-    rows: int
-    total: int
-    items: list[SearchResultType]
-    next_deep_paging_id: NotRequired[str | None]
 
 
 write_block_settings = {"index.blocks.write": True}
@@ -941,6 +933,27 @@ class ESCollection(Generic[ModelType]):
 
         return None
 
+    @overload
+    def get(self, key, as_obj: Literal[True], version: Literal[True]) -> tuple[ModelType, str]: ...
+
+    @overload
+    def get(self, key, as_obj: Literal[True], version: Literal[False]) -> ModelType: ...
+
+    @overload
+    def get(self, key, as_obj: Literal[True]) -> ModelType: ...
+
+    @overload
+    def get(self, key) -> ModelType: ...
+
+    @overload
+    def get(self, key, as_obj: Literal[False], version: Literal[True]) -> tuple[dict[str, Any], str]: ...
+
+    @overload
+    def get(self, key, as_obj: Literal[False], version: Literal[False]) -> dict[str, Any]: ...
+
+    @overload
+    def get(self, key, as_obj: Literal[False]) -> dict[str, Any]: ...
+
     def get(self, key, as_obj=True, version=False):
         """Get a document from the datastore, retry a few times if not found and normalize the
         document with the model provided with the collection.
@@ -1509,41 +1522,42 @@ class ESCollection(Generic[ModelType]):
     def search(
         self,
         query: str | None,
-        offset: int,
-        rows: int | None,
-        sort: typing.Any,
-        fl: str | None,
-        timeout: int | None,
-        filters: list[str] | str | None,
-        access_control: typing.Any,
-        deep_paging_id: str | None,
-        as_obj: Literal[True],
-        use_archive: bool,
-        track_total_hits: bool,
-        script_fields: list[str],
+        as_obj: Literal[True] = True,
+        offset: int = 0,
+        rows: int | None = None,
+        sort: typing.Any = None,
+        fl: str | None = None,
+        timeout: int | None = None,
+        filters: list[str] | str | None = None,
+        access_control: typing.Any = None,
+        deep_paging_id: str | None = None,
+        use_archive: bool = False,
+        track_total_hits: bool = False,
+        script_fields: list[str] = [],
     ) -> SearchResult[ModelType]: ...
 
     @overload
     def search(
         self,
         query: str | None,
-        offset: int,
-        rows: int | None,
-        sort: typing.Any,
-        fl: str | None,
-        timeout: int | None,
-        filters: list[str] | str | None,
-        access_control: typing.Any,
-        deep_paging_id: str | None,
         as_obj: Literal[False],
-        use_archive: bool,
-        track_total_hits: bool,
-        script_fields: list[str],
+        offset: int = 0,
+        rows: int | None = None,
+        sort: typing.Any = None,
+        fl: str | None = None,
+        timeout: int | None = None,
+        filters: list[str] | str | None = None,
+        access_control: typing.Any = None,
+        deep_paging_id: str | None = None,
+        use_archive: bool = False,
+        track_total_hits: bool = False,
+        script_fields: list[str] = [],
     ) -> SearchResult[dict[str, typing.Any]]: ...
 
     def search(
         self,
         query,
+        as_obj=True,
         offset=0,
         rows=None,
         sort=None,
@@ -1552,7 +1566,6 @@ class ESCollection(Generic[ModelType]):
         filters=None,
         access_control=None,
         deep_paging_id=None,
-        as_obj=True,
         use_archive=False,
         track_total_hits=None,
         script_fields=[],
