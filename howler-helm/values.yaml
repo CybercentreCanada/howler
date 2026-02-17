@@ -42,17 +42,6 @@ ingress:
     - name: logger.level
       value: "WARN"
 
-minio:
-  auth:
-    existingSecret: minio-credentials
-
-  service:
-    ports:
-      console: 40337
-
-  persistence:
-    enabled: false
-
 redis-persistent:
   architecture: standalone
 
