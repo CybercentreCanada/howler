@@ -26,11 +26,6 @@ dependencies:
     tags:
       - bitnami-common
     version: 2.x.x
-  - name: minio
-    repository: https://charts.bitnami.com/bitnami
-    tags:
-      - bitnami-common
-    version: 11.10.7
   - name: redis
     repository: https://charts.bitnami.com/bitnami
     tags:
