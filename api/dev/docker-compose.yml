@@ -8,12 +8,11 @@ services:
       - xpack.security.enabled=false
       - discovery.type=single-node
       - logger.level=WARN
-      - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
+      - ES_JAVA_OPTS=-Xms1024m -Xmx1024m -Dlog4j2.disable.jmx=true
       - http.cors.allow-origin=http://localhost:8080
       - http.cors.enabled=true
       - http.cors.allow-headers=X-Requested-With,X-Auth-Token,Content-Type,Content-Length,Authorization
       - http.cors.allow-credentials=true
-      - "log4j2.disable.jmx=true"
     ports:
       - "9200:9200"
     healthcheck:
