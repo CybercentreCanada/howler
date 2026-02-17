@@ -231,6 +231,7 @@ pydantic = "^2.11.4"
 pydantic-settings = { extras = ["yaml"], version = "^2.9.1" }
 luqum = "^1.0.0"
 pydash = "^8.0.5"
+pytz = "^2025.2"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.7.0"
