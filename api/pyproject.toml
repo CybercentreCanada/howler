@@ -211,8 +211,6 @@ packaging = "<25.0"
 passlib = "1.7.4"
 prometheus-client = "0.24.1"
 pyjwt = "2.11.0"
-pyroute2-core = "0.6.13"
-pysftp = "0.2.9"
 python-baseconv = "1.2.2"
 python-datemath = "3.0.3"
 pyyaml = "6.0.3"
@@ -232,6 +230,7 @@ pydantic-settings = { extras = ["yaml"], version = "^2.9.1" }
 luqum = "^1.0.0"
 pydash = "^8.0.5"
 pytz = "^2025.2"
+bcrypt = "4.3.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.7.0"
