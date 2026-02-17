@@ -144,9 +144,15 @@ jobs:
           poetry install --verbose --with test
           poetry run mitre /etc/howler/lookups
           poetry run sigma
-      - name: Ensure keycloak is healthy
+      - name: Ensure docker compose is healthy
         run: |
           poetry run python build_scripts/docker_health.py
+
+      - name: Docker compose log dump on failure
+        if: failure()
+        run: docker compose logs
+        working-directory: api/dev
+
       - name: Run tests
         id: tests
         continue-on-error: true
