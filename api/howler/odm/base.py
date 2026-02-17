@@ -202,7 +202,7 @@ class _Field:
 
     def check(self, value, **kwargs):
         raise HowlerNotImplementedError(
-            "This function is not defined in the default field. " "Each fields has to have their own definition"
+            "This function is not defined in the default field. Each fields has to have their own definition"
         )
 
     def __repr__(self) -> str:
@@ -469,7 +469,7 @@ class Email(Keyword):
         match = self.validation_regex.match(value)
         if not is_valid_domain(match.group(1)):
             raise HowlerValueError(
-                f"[{'.'.join(context) or self.name}] '{match.group(1)}' in email '{value}'" " is not a valid Domain."
+                f"[{'.'.join(context) or self.name}] '{match.group(1)}' in email '{value}' is not a valid Domain."
             )
 
         return value.lower()
@@ -487,14 +487,12 @@ class URI(Keyword):
         match = self.validation_regex.match(value)
         if not match:
             raise HowlerValueError(
-                f"[{'.'.join(context) or self.name}] '{value}' not match the "
-                f"validator: {self.validation_regex.pattern}"
+                f"[{'.'.join(context) or self.name}] '{value}' not match the validator: {self.validation_regex.pattern}"
             )
 
         if not is_valid_domain(match.group(2)) and not is_valid_ip(match.group(2)):
             raise HowlerValueError(
-                f"[{'.'.join(context) or self.name}] '{match.group(2)}' in URI '{value}'"
-                " is not a valid Domain or IP."
+                f"[{'.'.join(context) or self.name}] '{match.group(2)}' in URI '{value}' is not a valid Domain or IP."
             )
 
         return match.group(0).replace(match.group(1), match.group(1).lower())
@@ -1199,7 +1197,7 @@ class Model:
         )
 
         # Header
-        markdown_content += f"{'#'*toc_depth} {cls.__name__}\n\n> {cls.__description}\n\n"
+        markdown_content += f"{'#' * toc_depth} {cls.__name__}\n\n> {cls.__description}\n\n"
 
         # Table
         table = "| Field | Type | Description | Required | Default |\n| :--- | :--- | :--- | :--- | :--- |\n"
@@ -1251,7 +1249,7 @@ class Model:
 
                 values = [f'"{v}"' if v else str(v) for v in sorted(values)]
                 values.append("None") if none_value else None
-                description = f'{description}<br>Values:<br>`{", ".join(values)}`'
+                description = f"{description}<br>Values:<br>`{', '.join(values)}`"
 
             # Is this a required field?
             if info.__class__ != Optional and not info.optional:
@@ -1340,7 +1338,7 @@ class Model:
         extra_keys = set(extra_fields.keys()) - set(data.keys())
         if self.unused_keys and not ignore_extra_values:
             raise HowlerValueError(
-                f"[{'.'.join(context)}]: object was created with invalid parameters: " f"{', '.join(self.unused_keys)}"
+                f"[{'.'.join(context)}]: object was created with invalid parameters: {', '.join(self.unused_keys)}"
             )
 
         # Pass each value through it's respective validator, and store it

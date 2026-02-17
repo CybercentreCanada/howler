@@ -282,7 +282,7 @@ def add_access_control(user: dict[str, Any]):
     if req_query:
         req_query = f"-({req_query}) AND "
 
-    lvl_query = f'__access_lvl__:[0 TO {user["__access_lvl__"]}]'
+    lvl_query = f"__access_lvl__:[0 TO {user['__access_lvl__']}]"
 
     query = f"{gl2_query}{gl1_query}{req_query}{lvl_query}"
     user["access_control"] = safe_str(query)

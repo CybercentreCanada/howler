@@ -183,7 +183,7 @@ def fetch_avatar(  # noqa: C901
 
             if resp.ok and resp.headers.get("content-type") is not None:
                 b64_img = base64.b64encode(resp.content).decode()
-                avatar = f'data:{resp.headers.get("content-type")};base64,{b64_img}'
+                avatar = f"data:{resp.headers.get('content-type')};base64,{b64_img}"
                 return avatar
 
         # Url that is protected through OAuth
@@ -191,7 +191,7 @@ def fetch_avatar(  # noqa: C901
             resp = provider.get(url[len(provider_config.api_base_url) :])
             if resp.ok and resp.headers.get("content-type") is not None:
                 b64_img = base64.b64encode(resp.content).decode()
-                avatar = f'data:{resp.headers.get("content-type")};base64,{b64_img}'
+                avatar = f"data:{resp.headers.get('content-type')};base64,{b64_img}"
                 return avatar
 
         # Unprotected url
@@ -199,7 +199,7 @@ def fetch_avatar(  # noqa: C901
             resp = requests.get(url, timeout=10)
             if resp.ok and resp.headers.get("content-type") is not None:
                 b64_img = base64.b64encode(resp.content).decode()
-                avatar = f'data:{resp.headers.get("content-type")};base64,{b64_img}'
+                avatar = f"data:{resp.headers.get('content-type')};base64,{b64_img}"
                 return avatar
 
     # Quietly fail, it'll use gravatar instead

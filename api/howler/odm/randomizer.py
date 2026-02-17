@@ -379,7 +379,7 @@ def get_random_mapping(field: _Field) -> dict[str, _Any]:
 def get_random_phone() -> str:
     """Get a random phone"""
     return (
-        f'{random.choice(["", "+1 "])}{"-".join([str(random.randint(100, 999)) for _ in range(3)])}'
+        f"{random.choice(['', '+1 '])}{'-'.join([str(random.randint(100, 999)) for _ in range(3)])}"
         f"{str(random.randint(0, 9))}"
     )
 

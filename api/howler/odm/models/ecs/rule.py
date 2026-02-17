@@ -16,8 +16,7 @@ class Rule(odm.Model):
     )
     category = odm.Optional(
         odm.Keyword(
-            description="A categorization value keyword used by the entity using the "
-            "rule for detection of this event."
+            description="A categorization value keyword used by the entity using the rule for detection of this event."
         )
     )
     description = odm.Optional(odm.Keyword(description="The description of the rule generating the event."))
