@@ -103,7 +103,7 @@ class Classification(object):
                     self.NULL_CLASSIFICATION,
                 ]:
                     raise InvalidDefinition(
-                        "You cannot use reserved words NULL, INVALID or INV in your " "classification definition."
+                        "You cannot use reserved words NULL, INVALID or INV in your classification definition."
                     )
 
                 lvl = int(x["lvl"])
@@ -251,14 +251,14 @@ class Classification(object):
             return self.levels_map[self.levels_aliases[lvl]]
         else:
             raise InvalidClassification(
-                "Classification level '%s' was not found in " "your classification definition." % lvl
+                "Classification level '%s' was not found in your classification definition." % lvl
             )
 
     def _get_c12n_level_text(self, lvl_idx: int, long_format: bool = True) -> str:
         text = self.levels_map.get(str(lvl_idx), None)
         if not text:
             raise InvalidClassification(
-                "Classification level number '%s' was not " "found in your classification definition." % lvl_idx
+                "Classification level number '%s' was not found in your classification definition." % lvl_idx
             )
         if long_format:
             return self.levels_map_stl[text]

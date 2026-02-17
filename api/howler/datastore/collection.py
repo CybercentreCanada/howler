@@ -399,14 +399,14 @@ class ESCollection(Generic[ModelType]):
                     retries += 1
                 elif err_code == 429 or err_code == "429":
                     logger.warning(
-                        "Elasticsearch is too busy to perform the requested " f"task on index {self.name}, retrying..."
+                        f"Elasticsearch is too busy to perform the requested task on index {self.name}, retrying..."
                     )
                     time.sleep(min(retries, self.MAX_RETRY_BACKOFF))
                     self.datastore.connection_reset()
                     retries += 1
                 elif err_code == 403 or err_code == "403":
                     logger.warning(
-                        "Elasticsearch cluster is preventing writing operations " f"on index {self.name}, retrying..."
+                        f"Elasticsearch cluster is preventing writing operations on index {self.name}, retrying..."
                     )
                     time.sleep(min(retries, self.MAX_RETRY_BACKOFF))
                     self.datastore.connection_reset()
@@ -842,7 +842,7 @@ class ESCollection(Generic[ModelType]):
                     key_list.remove(row["_id"])
                     add_to_output(row["_source"], row["_id"])
                 except ValueError:
-                    logger.exception(f'MGet returned multiple documents for id: {row["_id"]}')
+                    logger.exception(f"MGet returned multiple documents for id: {row['_id']}")
 
         if key_list and error_on_missing:
             raise MultiKeyError(key_list, out)
@@ -2409,7 +2409,7 @@ class ESCollection(Generic[ModelType]):
         # simply raise an exception
         if no_fix:
             raise HowlerValueError(
-                f"Can't update database mapping for {self.name}, " f"couldn't safely amend mapping for {no_fix}"
+                f"Can't update database mapping for {self.name}, couldn't safely amend mapping for {no_fix}"
             )
 
         # If we got this far, the missing fields have been described in properties, upload them to the

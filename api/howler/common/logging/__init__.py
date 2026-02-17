@@ -228,8 +228,8 @@ def log_with_traceback(traceback, msg, is_exception=False, audit=False):
 
         try:
             message = (
-                f'{tb_user["uname"]} [{tb_user["classification"]}] :: {msg} - {tb_file}:{tb_function}:{tb_line_no}'
-                f'[{os.environ.get("HOWLER_VERSION", "0.0.0.dev0")}] ({request.path}{args})'
+                f"{tb_user['uname']} [{tb_user['classification']}] :: {msg} - {tb_file}:{tb_function}:{tb_line_no}"
+                f"[{os.environ.get('HOWLER_VERSION', '0.0.0.dev0')}] ({request.path}{args})"
             )
             if is_exception:
                 log.exception(message)

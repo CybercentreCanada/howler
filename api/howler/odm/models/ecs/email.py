@@ -36,7 +36,7 @@ class ParentEmail(odm.Model):
     from_ = odm.Optional(
         odm.Compound(
             Address,
-            description="The email address of the sender, typically " "from the RFC 5322 From: header field.",
+            description="The email address of the sender, typically from the RFC 5322 From: header field.",
         )
     )
     message_id = odm.Optional(
@@ -70,19 +70,19 @@ class Email(odm.Model):
     cc = odm.Optional(odm.Compound(Address, description="The email address of CC recipient."))
     content_type = odm.Optional(odm.Keyword(description="Information about how the message is to be displayed."))
     delivery_timestamp = odm.Optional(
-        odm.Date(description="The date and time when the email message " "was received by the service or client.")
+        odm.Date(description="The date and time when the email message was received by the service or client.")
     )
     direction = odm.Optional(
-        odm.Keyword(description="The direction of the message based on the " "sending and receiving domains.")
+        odm.Keyword(description="The direction of the message based on the sending and receiving domains.")
     )
     from_ = odm.Optional(
         odm.Compound(
             Address,
-            description="The email address of the sender, typically " "from the RFC 5322 From: header field.",
+            description="The email address of the sender, typically from the RFC 5322 From: header field.",
         )
     )
     local_id = odm.Optional(
-        odm.Keyword(description="Unique identifier given to the email by the source " "that created the event.")
+        odm.Keyword(description="Unique identifier given to the email by the source that created the event.")
     )
     message_id = odm.Optional(
         odm.Keyword(
@@ -101,15 +101,14 @@ class Email(odm.Model):
     sender = odm.Optional(
         odm.Compound(
             Address,
-            description="Per RFC 5322, specifies the address responsible for "
-            "the actual transmission of the message.",
+            description="Per RFC 5322, specifies the address responsible for the actual transmission of the message.",
         )
     )
     subject = odm.Optional(odm.Keyword(description="A brief summary of the topic of the message."))
     to = odm.Optional(odm.Compound(Address, description="The email address of recipient."))
     x_mailer = odm.Optional(
         odm.Keyword(
-            description="The name of the application that was used to draft " "and send the original email message."
+            description="The name of the application that was used to draft and send the original email message."
         )
     )
 

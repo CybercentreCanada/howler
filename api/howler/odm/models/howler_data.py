@@ -116,8 +116,7 @@ class Link(odm.Model):
     title = odm.Keyword(description="The title to use for the link.", optional=True)
     icon = odm.Keyword(
         description=(
-            "The icon to show. Either an ID corresponding to an "
-            "analytical platform application, or an external link."
+            "The icon to show. Either an ID corresponding to an analytical platform application, or an external link."
         ),
         optional=True,
     )
@@ -288,7 +287,7 @@ class HowlerData(odm.Model):
     rationale: Optional[str] = odm.Optional(
         odm.Keyword(
             description=(
-                "The rationale behind the hit assessment. Allows it to be understood and" " verified by other analysts."
+                "The rationale behind the hit assessment. Allows it to be understood and verified by other analysts."
             )
         )
     )
