@@ -46,7 +46,7 @@ def emit(event: str):
     return ok()
 
 
-@socket_api.route("/connect", websocket=True)
+@socket_api.route("/connect", websocket=True)  # type: ignore
 @websocket_auth(required_priv=["R"])
 def connect(ws: Server, *args: Any, ws_id: str, **kwargs):
     """Connect to the server to monitor for updates via websocket

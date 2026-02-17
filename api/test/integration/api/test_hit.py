@@ -4,8 +4,6 @@ import uuid
 from typing import Any, cast
 
 import pytest
-from conftest import APIError, get_api_data
-from utils.example_hashes import EXAMPLE_HASHES
 
 from howler.datastore.collection import ESCollection
 from howler.datastore.howler_store import HowlerDatastore
@@ -22,6 +20,8 @@ from howler.odm.randomizer import (
 )
 from howler.services import hit_service
 from howler.utils.dict_utils import flatten
+from test.conftest import APIError, get_api_data
+from test.utils.example_hashes import EXAMPLE_HASHES
 
 valid_hit_data = [
     {

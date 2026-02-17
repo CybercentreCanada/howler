@@ -2,12 +2,12 @@ import json
 from typing import Any, Optional
 
 import pytest
-from conftest import get_api_data
 
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.helper import create_users_with_username
 from howler.odm.models.howler_data import Assessment, HitStatus, HitStatusTransition
 from howler.odm.random_data import create_users, wipe_hits
+from test.conftest import get_api_data
 
 usernames = ["donald", "huey", "louie", "dewey"]
 HIT_ID = "transition_test"

@@ -1,9 +1,9 @@
 import pytest
-from conftest import get_api_data
 
 from howler.common.logging import get_logger
 from howler.cronjobs.view_cleanup import execute
 from howler.odm.random_data import create_users, create_views, wipe_users, wipe_views
+from test.conftest import get_api_data
 
 logger = get_logger(__file__)
 

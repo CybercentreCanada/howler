@@ -15,6 +15,7 @@ def prep_command(cmd: str):
 
 
 def main():
+    background_server = None
     try:
         print("Removing existing coverage files")
         subprocess.check_call(
@@ -99,8 +100,9 @@ def main():
     except subprocess.CalledProcessError as e:
         print("Error occurred while running script:", e)
         print("Shutting down background server")
-        background_server.send_signal(2)
-        background_server.wait()
+        if background_server:
+            background_server.send_signal(2)
+            background_server.wait()
         sys.exit(e.returncode)
 
 

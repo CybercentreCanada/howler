@@ -31,7 +31,7 @@ def handle_400(e):
 def handle_401(e):
     """Handle unauthorized errors"""
     if isinstance(e, Unauthorized):
-        msg = e.description
+        msg = e.description or ""
     else:
         msg = str(e)
 

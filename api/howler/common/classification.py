@@ -937,7 +937,7 @@ class Classification(object):
 
         return new_c12n
 
-    def build_user_classification(self, c12n_1: str, c12n_2: str, long_format: bool = True) -> str:
+    def build_user_classification(self, c12n_1: str | None, c12n_2: str | None, long_format: bool = True) -> str | None:
         """Mixes to classification and return the classification marking that would give access to the most data
 
         Args:
@@ -959,6 +959,7 @@ class Classification(object):
 
         if c12n_1 is None:
             return c12n_2
+
         if c12n_2 is None:
             return c12n_1
 
