@@ -34,6 +34,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
   kibana:
     image: docker.elastic.co/kibana/kibana:8.3.3
     environment:
