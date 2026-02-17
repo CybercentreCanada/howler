@@ -41,7 +41,7 @@ def __parse_workflow_actions(workflow: Workflow) -> dict[str, set[str]]:
         )
 
         for key in wf_args:
-            entry = f'transition:{str(wf["transition"])}'
+            entry = f"transition:{str(wf['transition'])}"
 
             if key in parsed_args:
                 parsed_args[key].add(entry)

@@ -86,7 +86,7 @@ def get_matching_analytics(hits: Union[list[Hit], list[dict[str, Any]]]) -> list
 
     try:
         existing_analytics: list[Analytic] = storage.analytic.search(
-            f'name:({" OR ".join(analytic_names)})', as_obj=True
+            f"name:({' OR '.join(analytic_names)})", as_obj=True
         )["items"]
 
         return existing_analytics

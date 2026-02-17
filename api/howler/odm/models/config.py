@@ -327,8 +327,7 @@ class Retention(BaseModel):
     enabled: bool = Field(
         default=True,
         description=(
-            "Whether to enable the hit retention limit. If enabled, hits will "
-            "be purged after the specified duration."
+            "Whether to enable the hit retention limit. If enabled, hits will be purged after the specified duration."
         ),
     )
     limit_unit: Literal["days", "seconds", "microseconds", "milliseconds", "minutes", "hours", "weeks"] = Field(

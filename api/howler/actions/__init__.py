@@ -51,9 +51,9 @@ def __sanitize_report(report: list[dict[str, Any]]) -> list[dict[str, Any]]:
         key = f"{entry['title']}==={entry['message']}==={entry['outcome']}"
 
         if key in by_message:
-            by_message[key].append(f'({entry["query"]})')
+            by_message[key].append(f"({entry['query']})")
         else:
-            by_message[key] = [f'({entry["query"]})']
+            by_message[key] = [f"({entry['query']})"]
 
     sanitized: list[dict[str, Any]] = []
     for key, queries in by_message.items():
