@@ -428,7 +428,7 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
                           return null;
                         }
 
-                        newQuery += `AND ${key}:(${sanitizedValues.join(' OR ')})`;
+                        newQuery += `${key}:(${sanitizedValues.join(' OR ')})`;
                       } else {
                         // Handle single value
                         newQuery += `${key}:"${sanitizeLuceneQuery(value.toString())}"`;

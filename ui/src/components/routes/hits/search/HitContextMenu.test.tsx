@@ -940,7 +940,9 @@ describe('HitContextMenu', () => {
       });
 
       await waitFor(() => {
-        expect(mockParameterContext.setQuery).toHaveBeenCalledWith('AND howler.detection:"Test Detection"');
+        expect(mockParameterContext.setQuery).toHaveBeenCalledWith(
+          '(howler.status:open) AND howler.detection:"Test Detection"'
+        );
       });
     });
 
@@ -979,7 +981,9 @@ describe('HitContextMenu', () => {
       });
 
       await waitFor(() => {
-        expect(mockParameterContext.setQuery).toHaveBeenCalledWith('howler.outline.indicators:("a" OR "b" OR "c")');
+        expect(mockParameterContext.setQuery).toHaveBeenCalledWith(
+          '(howler.status:open) AND howler.outline.indicators:("a" OR "b" OR "c")'
+        );
       });
     });
 
