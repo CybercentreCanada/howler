@@ -729,29 +729,6 @@ describe('HitContextMenu', () => {
       });
     });
 
-    it('should render inclusion submenu with template keys', async () => {
-      act(() => {
-        const contextMenuWrapper = screen.getByText('Test Content').parentElement;
-        fireEvent.contextMenu(contextMenuWrapper);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByRole('menu')).toBeInTheDocument();
-      });
-
-      act(() => {
-        const includesMenuItem = screen.getByText('Include By');
-        fireEvent.mouseEnter(includesMenuItem);
-      });
-
-      await waitFor(() => {
-        const submenu = screen.getByTestId('includes-submenu');
-        expect(submenu).toBeInTheDocument();
-        expect(submenu.textContent).toContain('howler.detection');
-        expect(submenu.textContent).toContain('event.id');
-      });
-    });
-
     it('should generate exclusion query for single value', async () => {
       act(() => {
         const contextMenuWrapper = screen.getByText('Test Content').parentElement;
@@ -778,35 +755,6 @@ describe('HitContextMenu', () => {
 
       await waitFor(() => {
         expect(mockParameterContext.setQuery).toHaveBeenCalledWith('-howler.detection:"Test Detection"');
-      });
-    });
-
-    it('should generate inclusion query for single value', async () => {
-      act(() => {
-        const contextMenuWrapper = screen.getByText('Test Content').parentElement;
-        fireEvent.contextMenu(contextMenuWrapper);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByRole('menu')).toBeInTheDocument();
-      });
-
-      act(() => {
-        const includesMenuItem = screen.getByText('Inclusion By');
-        fireEvent.mouseEnter(includesMenuItem);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId('includes-submenu')).toBeInTheDocument();
-      });
-
-      await act(async () => {
-        const detectionKey = screen.getByText('howler.detection');
-        await user.click(detectionKey);
-      });
-
-      await waitFor(() => {
-        expect(mockParameterContext.setQuery).toHaveBeenCalledWith('AND howler.detection:"Test Detection"');
       });
     });
 
@@ -849,6 +797,153 @@ describe('HitContextMenu', () => {
       });
     });
 
+    it('should preserve existing query when adding exclusion', async () => {
+      mockParameterContext.query = 'howler.status:open';
+
+      const contextMenuWrapper = screen.getByText('Test Content').parentElement;
+      fireEvent.contextMenu(contextMenuWrapper);
+
+      await waitFor(() => {
+        const excludesMenuItem = screen.getByText('Exclude By');
+        fireEvent.mouseEnter(excludesMenuItem);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('excludes-submenu')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        const detectionKey = screen.getByText('howler.detection');
+        await user.click(detectionKey);
+      });
+
+      await waitFor(() => {
+        expect(mockParameterContext.setQuery).toHaveBeenCalledWith(
+          '(howler.status:open) AND -howler.detection:"Test Detection"'
+        );
+      });
+    });
+
+    it('should not render exclusion menu when template has no keys', async () => {
+      mockGetMatchingTemplate.mockResolvedValue(
+        createMockTemplate({
+          keys: []
+        })
+      );
+
+      rerender(
+        <Wrapper>
+          <HitContextMenu getSelectedId={mockGetSelectedId}>
+            <div>Test Content</div>
+          </HitContextMenu>
+        </Wrapper>
+      );
+
+      act(() => {
+        const contextMenuWrapper = screen.getByText('Test Content').parentElement;
+        fireEvent.contextMenu(contextMenuWrapper);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByRole('menu')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText('Exclude By')).toBeNull();
+    });
+
+    it('should skip null field values in exclusion menu', async () => {
+      act(() => {
+        mockHitContext.hits['test-hit-1'].event = {};
+      });
+
+      act(() => {
+        const contextMenuWrapper = screen.getByText('Test Content').parentElement;
+        fireEvent.contextMenu(contextMenuWrapper);
+      });
+
+      await waitFor(() => {
+        const excludesMenuItem = screen.getByText('Exclude By');
+        fireEvent.mouseEnter(excludesMenuItem);
+      });
+
+      await waitFor(() => {
+        const submenu = screen.getByTestId('excludes-submenu');
+        expect(submenu).toBeInTheDocument();
+        expect(submenu.textContent).toContain('howler.detection');
+        expect(submenu.textContent).not.toContain('event.id');
+      });
+    });
+  });
+
+  describe('Inclusion Filter Functionality', () => {
+    beforeEach(() => {
+      mockGetMatchingTemplate.mockResolvedValue(
+        createMockTemplate({
+          keys: ['howler.detection', 'event.id']
+        })
+      );
+
+      rerender(
+        <Wrapper>
+          <HitContextMenu getSelectedId={mockGetSelectedId}>
+            <div>Test Content</div>
+          </HitContextMenu>
+        </Wrapper>
+      );
+    });
+
+    it('should render inclusion submenu with template keys', async () => {
+      act(() => {
+        const contextMenuWrapper = screen.getByText('Test Content').parentElement;
+        fireEvent.contextMenu(contextMenuWrapper);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByRole('menu')).toBeInTheDocument();
+      });
+
+      act(() => {
+        const includesMenuItem = screen.getByText('Include By');
+        fireEvent.mouseEnter(includesMenuItem);
+      });
+
+      await waitFor(() => {
+        const submenu = screen.getByTestId('includes-submenu');
+        expect(submenu).toBeInTheDocument();
+        expect(submenu.textContent).toContain('howler.detection');
+        expect(submenu.textContent).toContain('event.id');
+      });
+    });
+
+    it('should generate inclusion query for single value', async () => {
+      act(() => {
+        const contextMenuWrapper = screen.getByText('Test Content').parentElement;
+        fireEvent.contextMenu(contextMenuWrapper);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByRole('menu')).toBeInTheDocument();
+      });
+
+      act(() => {
+        const includesMenuItem = screen.getByText('Include By');
+        fireEvent.mouseEnter(includesMenuItem);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('includes-submenu')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        const detectionKey = screen.getByText('howler.detection');
+        await user.click(detectionKey);
+      });
+
+      await waitFor(() => {
+        expect(mockParameterContext.setQuery).toHaveBeenCalledWith('AND howler.detection:"Test Detection"');
+      });
+    });
+
     it('should generate inclusion query for array values', async () => {
       mockGetMatchingTemplate.mockResolvedValue(
         createMockTemplate({
@@ -884,34 +979,7 @@ describe('HitContextMenu', () => {
       });
 
       await waitFor(() => {
-        expect(mockParameterContext.setQuery).toHaveBeenCalledWith('AND howler.outline.indicators:("a" OR "b" OR "c")');
-      });
-    });
-
-    it('should preserve existing query when adding exclusion', async () => {
-      mockParameterContext.query = 'howler.status:open';
-
-      const contextMenuWrapper = screen.getByText('Test Content').parentElement;
-      fireEvent.contextMenu(contextMenuWrapper);
-
-      await waitFor(() => {
-        const excludesMenuItem = screen.getByText('Exclude By');
-        fireEvent.mouseEnter(excludesMenuItem);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId('excludes-submenu')).toBeInTheDocument();
-      });
-
-      await act(async () => {
-        const detectionKey = screen.getByText('howler.detection');
-        await user.click(detectionKey);
-      });
-
-      await waitFor(() => {
-        expect(mockParameterContext.setQuery).toHaveBeenCalledWith(
-          '(howler.status:open) AND -howler.detection:"Test Detection"'
-        );
+        expect(mockParameterContext.setQuery).toHaveBeenCalledWith('howler.outline.indicators:("a" OR "b" OR "c")');
       });
     });
 
@@ -942,33 +1010,6 @@ describe('HitContextMenu', () => {
       });
     });
 
-    it('should not render exclusion menu when template has no keys', async () => {
-      mockGetMatchingTemplate.mockResolvedValue(
-        createMockTemplate({
-          keys: []
-        })
-      );
-
-      rerender(
-        <Wrapper>
-          <HitContextMenu getSelectedId={mockGetSelectedId}>
-            <div>Test Content</div>
-          </HitContextMenu>
-        </Wrapper>
-      );
-
-      act(() => {
-        const contextMenuWrapper = screen.getByText('Test Content').parentElement;
-        fireEvent.contextMenu(contextMenuWrapper);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByRole('menu')).toBeInTheDocument();
-      });
-
-      expect(screen.queryByText('Exclude By')).toBeNull();
-    });
-
     it('should not render inclusion menu when template has no keys', async () => {
       mockGetMatchingTemplate.mockResolvedValue(
         createMockTemplate({
@@ -996,31 +1037,7 @@ describe('HitContextMenu', () => {
       expect(screen.queryByText('Include By')).toBeNull();
     });
 
-    it('should skip null field values in exclusion menu', async () => {
-      act(() => {
-        mockHitContext.hits['test-hit-1'].event = {};
-      });
-
-      act(() => {
-        const contextMenuWrapper = screen.getByText('Test Content').parentElement;
-        fireEvent.contextMenu(contextMenuWrapper);
-      });
-
-      await waitFor(() => {
-        const excludesMenuItem = screen.getByText('Exclude By');
-        fireEvent.mouseEnter(excludesMenuItem);
-      });
-
-      await waitFor(() => {
-        const submenu = screen.getByTestId('excludes-submenu');
-        expect(submenu).toBeInTheDocument();
-        expect(submenu.textContent).toContain('howler.detection');
-        expect(submenu.textContent).not.toContain('event.id');
-      });
-    });
-  });
-
-     it('should skip null field values in inclusion menu', async () => {
+    it('should skip null field values in inclusion menu', async () => {
       act(() => {
         mockHitContext.hits['test-hit-1'].event = {};
       });
