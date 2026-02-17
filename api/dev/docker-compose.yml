@@ -3,7 +3,7 @@ name: howler-api-dev-dependencies
 services:
   # Dependencies
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.3.3
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.19.11
     environment:
       - xpack.security.enabled=false
       - discovery.type=single-node
