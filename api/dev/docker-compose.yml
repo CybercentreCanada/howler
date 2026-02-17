@@ -13,7 +13,6 @@ services:
       - http.cors.enabled=true
       - http.cors.allow-headers=X-Requested-With,X-Auth-Token,Content-Type,Content-Length,Authorization
       - http.cors.allow-credentials=true
-      - "log4j2.disable.jmx=true"
     ports:
       - "9200:9200"
     healthcheck:
