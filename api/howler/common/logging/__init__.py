@@ -49,8 +49,8 @@ class JsonFormatter(logging.Formatter):
         return self._style.format(record)
 
     @override
-    def formatException(self, exc_info):
-        return "".join(format_exception(*exc_info))
+    def formatException(self, ei):
+        return "".join(format_exception(*ei))
 
 
 def init_log_to_file(logger: logging.Logger, log_level: int, name: str, config: "Config"):

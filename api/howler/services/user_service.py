@@ -1,7 +1,7 @@
-from typing import Any, Optional, Union
+from typing import Any, Literal, Optional, overload
 
-import elasticapm
 from authlib.integrations.flask_client import OAuth
+from elasticapm.traces import capture_span
 from flask import current_app, request
 
 from howler.common.exceptions import AccessDeniedException, HowlerValueError, InvalidDataException
@@ -18,11 +18,31 @@ ACCOUNT_USER_MODIFIABLE = ["name", "email", "avatar", "password", "dashboard"]
 logger = get_logger(__file__)
 
 
+@overload
+def get_user(id: str, as_odm: Literal[True], version: Literal[True]) -> tuple[User, str]: ...
+
+
+@overload
+def get_user(id: str, as_odm: Literal[True], version: Literal[False]) -> User: ...
+
+
+@overload
+def get_user(id: str, as_odm: Literal[False], version: Literal[True]) -> tuple[dict[str, Any], str]: ...
+
+
+@overload
+def get_user(id: str, as_odm: Literal[False], version: Literal[False]) -> dict[str, Any]: ...
+
+
+@overload
+def get_user(id: str) -> dict[str, Any]: ...
+
+
 def get_user(
     id: str,
     as_odm: bool = False,
     version: bool = False,
-) -> Union[User, dict[str, Any]]:
+):
     """Return hit object as either an ODM or Dict"""
     return datastore().user.get_if_exists(key=id, as_obj=as_odm, version=version)
 
@@ -68,7 +88,7 @@ def convert_user(user: User) -> dict[str, Any]:
     return user_data
 
 
-@elasticapm.capture_span(span_type="authentication")
+@capture_span(span_type="authentication")
 def parse_user_data(  # noqa: C901
     data: dict,
     oauth_provider: str,
@@ -102,14 +122,14 @@ def parse_user_data(  # noqa: C901
 
     provider: OAuth = oauth.create_client(oauth_provider)
 
-    if "id_token" in data:
+    if "id_token" in data and provider.parse_id_token:
         data = provider.parse_id_token(
             data, nonce=request.args.get("nonce", data.get("userinfo", {}).get("nonce", None))
         )
 
     oauth_provider_config = config.auth.oauth.providers[oauth_provider]
 
-    if not data and oauth_provider_config.user_get:
+    if not data and oauth_provider_config.user_get and provider.get:
         response = provider.get(oauth_provider_config.user_get)
         if response.ok:
             data = response.json()

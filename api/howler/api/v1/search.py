@@ -1,10 +1,10 @@
 import re
 from copy import deepcopy
-from typing import Any, Union
+from typing import Any
 
 from elasticsearch import BadRequestError
 from elasticsearch._sync.client.indices import IndicesClient
-from flask import request
+from flask import Request, request
 from sigma.backends.elasticsearch import LuceneBackend
 from sigma.rule import SigmaRule
 from werkzeug.exceptions import BadRequest
@@ -21,12 +21,12 @@ from howler.services import hit_service, lucene_service
 
 SUB_API = "search"
 search_api = make_subapi_blueprint(SUB_API, api_version=1)
-search_api._doc = "Perform search queries"
+search_api._doc = "Perform search queries"  # type: ignore
 
 logger = get_logger(__file__)
 
 
-def generate_params(request, fields, multi_fields, params=None):
+def generate_params(request: Request, fields: list[str], multi_fields: list[str], params: dict[str, Any] | None = None):
     """Generate a list of parameters, combining the request data and the query arguments"""
     # I hate you, python
     if params is None:
@@ -49,7 +49,7 @@ def generate_params(request, fields, multi_fields, params=None):
         params = {
             **params,
             **{k: req_data[k] for k in fields if k in req_data},
-            **{k: req_data.getlist(k, None) for k in multi_fields if k in req_data},
+            **{k: req_data.getlist(k) for k in multi_fields if k in req_data},
         }
 
     return params, req_data
@@ -130,7 +130,6 @@ def search(index, **kwargs):
     if has_access_control(index):
         params.update({"access_control": user["access_control"]})
 
-    params["as_obj"] = False
     params.update({"sort": (params.get("sort", None) or default_sort).split(",")})
 
     query = req_data.get("query", None)
@@ -139,7 +138,7 @@ def search(index, **kwargs):
 
     try:
         metadata = params.pop("metadata", [])
-        result = collection().search(query, **params)
+        result = collection().search(query, as_obj=False, **params)
 
         if index == "hit" and len(metadata) > 0:
             hit_service.augment_metadata(result["items"], metadata, user)
@@ -703,7 +702,7 @@ def histogram(index, field, **kwargs):
 
     # Get fields default values
     field_info = collection().fields().get(field, None)
-    params: dict[str, Union[str, int]] = {}
+    params: dict[str, Any] = {}
     if field_info is None:
         return bad_request(err=f"Field '{field}' is not a valid field in index: {index}")
     elif field_info["type"] == "integer":

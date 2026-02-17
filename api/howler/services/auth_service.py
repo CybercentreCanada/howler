@@ -3,7 +3,7 @@ import hashlib
 from datetime import datetime
 from typing import Optional, Union
 
-import elasticapm
+from elasticapm.traces import capture_span
 from flask import request
 
 import howler.services.jwt_service as jwt_service
@@ -124,7 +124,7 @@ def validate_token(username: str, token: str) -> Optional[list[str]]:
     return None
 
 
-@elasticapm.capture_span(span_type="authentication")
+@capture_span(span_type="authentication")
 def bearer_auth(
     data: str, skip_jwt: bool = False, skip_internal: bool = False
 ) -> tuple[Optional[User], Optional[list[str]]]:
@@ -168,7 +168,7 @@ def bearer_auth(
             raise InvalidDataException("Not a valid authentication type for this endpoint.")
 
 
-@elasticapm.capture_span(span_type="authentication")
+@capture_span(span_type="authentication")
 def validate_apikey(
     username: str, apikey: str, impersonator: Optional[User] = None
 ) -> tuple[Optional[User], Optional[list[str]]]:
@@ -267,10 +267,10 @@ def decode_b64(b64_str: str) -> str:
         raise InvalidDataException("Basic authentication data must be base64 encoded") from e
 
 
-@elasticapm.capture_span(span_type="authentication")
+@capture_span(span_type="authentication")
 def basic_auth(
     data: str, is_base64: bool = True, skip_apikey: bool = False, skip_password: bool = False
-) -> tuple[Optional[User], Optional[list[str]]]:
+) -> tuple[User | None, list[str] | None]:
     """This function handles Basic type Authorization headers.
 
     Args:
@@ -291,6 +291,7 @@ def basic_auth(
     [username, data] = key_pair.split(":", maxsplit=1)
 
     validated_user = None
+    priv = None
     if not skip_apikey:
         validated_user, priv = validate_apikey(username, data)
 

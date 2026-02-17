@@ -28,8 +28,15 @@ def make_subapi_blueprint(name, api_version=1):
 
 
 def _make_api_response(
-    data: Any, err: Union[str, Exception] = "", warnings: list[str] = [], status_code: int = 200, cookies: Any = None
+    data: Any,
+    err: Union[str, Exception] = "",
+    warnings: list[str] | None = None,
+    status_code: int = 200,
+    cookies: Any = None,
 ) -> Response:
+    if not warnings:
+        warnings = []
+
     quota_user = flsk_session.pop("quota_user", None)
     quota_set = flsk_session.pop("quota_set", False)
     if quota_user and quota_set and not request.path.startswith("/api/v1/clue"):
@@ -100,7 +107,7 @@ def not_modified(data=DEFAULT_DATA[True], cookies=None):
     return _make_api_response(data, status_code=304, cookies=cookies)
 
 
-def bad_request(data=DEFAULT_DATA[False], err="", cookies=None, warnings=None):
+def bad_request(data: Any = DEFAULT_DATA[False], err: str = "", cookies: Any = None, warnings: list[str] | None = None):
     """Returns response with status code ies"""
     return _make_api_response(data, err, status_code=400, cookies=cookies, warnings=warnings)
 

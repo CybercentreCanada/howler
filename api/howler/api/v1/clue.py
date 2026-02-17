@@ -2,8 +2,8 @@ import sys
 import time
 from typing import Callable, Optional
 
-import elasticapm
 import requests
+from elasticapm.traces import capture_span
 from flask import request
 
 from howler.api import bad_gateway, make_subapi_blueprint, ok
@@ -16,7 +16,7 @@ from howler.security import api_login
 
 SUB_API = "clue"
 clue_api = make_subapi_blueprint(SUB_API, api_version=1)
-clue_api._doc = "Proxy enrichment requests to clue"
+clue_api._doc = "Proxy enrichment requests to clue"  # type: ignore
 
 logger = get_logger(__file__)
 
@@ -74,7 +74,7 @@ def proxy_to_clue(path, **kwargs):
     clue_token = get_token(auth_token)
 
     start = time.perf_counter()
-    with elasticapm.capture_span("clue", span_type="http"):
+    with capture_span("clue", span_type="http"):
         if request.method.lower() == "get":
             response = requests.get(
                 f"{config.core.clue.url}/{path}",
