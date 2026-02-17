@@ -1,3 +1,4 @@
+import json
 import logging
 import sys
 import time
@@ -28,6 +29,10 @@ while not ready and retries < 10:
             data = keycloak.json()
             if data["status"] == "UP" and all(check["status"] == "UP" for check in data["checks"]):
                 keycloak_ready = True
+            else:
+                logging.warning("Elasticsearch - not up:\n%s", json.dumps(data, indent=2))
+        else:
+            logging.warning("Keycloak - failed to connect")
 
         elastic = requests.get("http://localhost:9200/_cluster/health")
 
@@ -35,7 +40,16 @@ while not ready and retries < 10:
             data = elastic.json()
             if data["status"] == "green" and data["active_shards_percent_as_number"] >= 99.9:
                 elastic_ready = True
+            else:
+                logging.warning("Elasticsearch - not green:\n%s", json.dumps(data, indent=2))
+        else:
+            logging.warning("Elasticsearch - failed to connect")
 
+        logging.info(
+            "Statuses: keycloak=%s, elasticsearch=%s",
+            "ready" if keycloak_ready else "unready",
+            "ready" if elastic_ready else "unready",
+        )
         if keycloak_ready and elastic_ready:
             ready = True
             break
