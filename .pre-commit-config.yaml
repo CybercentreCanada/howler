@@ -19,6 +19,10 @@ repos:
   #   hooks:
   #     - id: conventional-pre-commit
   #       stages: [commit-msg]
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.408
+    hooks:
+    - id: pyright
   - repo: local
     hooks:
       - id: poetry-check-api

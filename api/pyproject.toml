@@ -75,6 +75,10 @@ disable_error_code = "assignment"
 module = "requests"
 ignore_missing_imports = true
 
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+
 [tool.ruff]
 line-length = 120
 indent-width = 4
