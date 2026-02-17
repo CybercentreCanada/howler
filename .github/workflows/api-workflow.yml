@@ -150,7 +150,13 @@ jobs:
 
       - name: Docker compose log dump on failure
         if: failure()
-        run: docker compose logs
+        run: |
+          echo "Status:"
+          docker compose ls
+          docker compose ps
+
+          echo "Logs:"
+          docker compose logs
         working-directory: api/dev
 
       - name: Run tests
