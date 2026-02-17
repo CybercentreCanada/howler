@@ -1,7 +1,7 @@
 import re
 import warnings
 
-from conftest import get_api_data
+from test.conftest import get_api_data
 
 
 # noinspection PyUnusedLocal

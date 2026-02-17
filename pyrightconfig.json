@@ -1,9 +1,8 @@
 {
     "exclude": [
         "**/build",
-        "**/tests",
-        "**/test",
-        "**/.venv"
+        "**/.venv",
+        "ui"
     ],
     "executionEnvironments": [
         {
@@ -55,6 +54,31 @@
         {
             "reportArgumentType": "none",
             "root": "api/howler/common/classification.py"
+        },
+        {
+            "reportArgumentType": "none",
+            "reportAttributeAccessIssue": "none",
+            "reportCallIssue": "none",
+            "reportGeneralTypeIssues": "none",
+            "reportOperatorIssue": "none",
+            "reportOptionalIterable": "none",
+            "reportOptionalMemberAccess": "none",
+            "reportOptionalSubscript": "none",
+            "reportPossiblyUnboundVariable": "none",
+            "reportReturnType": "none",
+            "reportTypedDictNotRequiredAccess": "none",
+            "reportUnusedExpression": "none",
+            "root": "api/test"
+        },
+        {
+            "reportAssignmentType": "information",
+            "reportAttributeAccessIssue": "information",
+            "reportReturnType": "information",
+            "root": "plugins"
+        },
+        {
+            "reportArgumentType": "none",
+            "root": "plugins/sentinel/test"
         }
     ],
     "reportMissingImports": "error",

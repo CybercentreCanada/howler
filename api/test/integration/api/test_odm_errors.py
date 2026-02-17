@@ -1,9 +1,9 @@
 import json
 
 import pytest
-from conftest import APIError, get_api_data
 
 from howler.datastore.howler_store import HowlerDatastore
+from test.conftest import APIError, get_api_data
 
 invalid_hit = {
     "howler": {

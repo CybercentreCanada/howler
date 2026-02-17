@@ -1,8 +1,8 @@
 import pytest
-from conftest import get_api_data
 
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.random_data import create_users, wipe_hits
+from test.conftest import get_api_data
 
 hit = {
     "howler": {
@@ -39,6 +39,8 @@ def test_get_hit(datastore: HowlerDatastore, login_session):
 
     res = get_api_data(session, f"{host}/api/v1/hit/{hit['howler']['id']}/", raw=True)
 
+    assert res and "Etag" in res.headers
+
     res = get_api_data(
         session,
         f"{host}/api/v1/hit/{hit['howler']['id']}/",
@@ -49,7 +51,7 @@ def test_get_hit(datastore: HowlerDatastore, login_session):
         raw=True,
     )
 
-    assert res.status_code == 304
+    assert res and res.status_code == 304
 
 
 def test_get_user(datastore: HowlerDatastore, login_session):
@@ -57,6 +59,8 @@ def test_get_user(datastore: HowlerDatastore, login_session):
     session, host = login_session
 
     res = get_api_data(session, f"{host}/api/v1/user/user/", raw=True)
+
+    assert res and "Etag" in res.headers
 
     res = get_api_data(
         session,
@@ -68,4 +72,4 @@ def test_get_user(datastore: HowlerDatastore, login_session):
         raw=True,
     )
 
-    assert res.status_code == 304
+    assert res and res.status_code == 304

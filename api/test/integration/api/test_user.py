@@ -2,9 +2,9 @@ import json
 import random
 
 import pytest
-from conftest import get_api_data
 
 from howler.odm.random_data import create_users, wipe_users
+from test.conftest import get_api_data
 
 AVATAR = "AVATAR!"
 NUM_USERS = 5

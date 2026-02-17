@@ -2,11 +2,11 @@ import json
 from typing import Any
 
 import pytest
-from conftest import APIError, get_api_data
 
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.models.view import View
 from howler.odm.random_data import create_views, wipe_views
+from test.conftest import APIError, get_api_data
 
 
 @pytest.fixture(scope="module")

@@ -177,9 +177,9 @@ def get_user_account(username: str, server_version: Optional[str] = None, **kwar
 
     user_dict: dict[str, Any] = user.as_primitives()
     user_dict["apikeys"] = [(k, []) for k in user_dict.get("apikeys", {}).keys()]
-    user_dict["has_password"] = user.pop("password", "") != ""
-    user_dict["roles"] = user.pop("type", [])
-    user_dict["username"] = user["uname"]
+    user_dict["has_password"] = user_dict.pop("password", "") != ""
+    user_dict["roles"] = user_dict.pop("type", [])
+    user_dict["username"] = user_dict["uname"]
 
     if "load_avatar" in request.args:
         user_dict["avatar"] = datastore().user_avatar.get(username)
