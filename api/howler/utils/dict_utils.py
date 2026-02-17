@@ -85,7 +85,7 @@ def flatten(data: _Mapping, parent_key: Optional[str] = None, odm: Optional[type
         Flattened dictionary with dot-notation keys
     """
     # Pre-compute ODM valid keys if provided
-    valid_keys_set: Optional[set[str]] = None
+    valid_keys_set: set[str] | None = None
     if odm:
         valid_keys_set = set(odm.flat_fields().keys())
 
