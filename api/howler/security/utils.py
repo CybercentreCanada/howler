@@ -4,7 +4,7 @@ import re
 from typing import List, Optional
 from urllib.parse import urlparse
 
-import elasticapm
+from elasticapm.traces import capture_span
 from passlib.hash import bcrypt
 
 from howler.config import config
@@ -48,7 +48,7 @@ def get_password_hash(password: Optional[str]) -> Optional[str]:
     return bcrypt.hash(password)
 
 
-@elasticapm.capture_span(span_type="authentication")
+@capture_span(span_type="authentication")
 def verify_password(password: str, pw_hash: str):
     """Use bcrypt to verify a user's password against the hash"""
     try:

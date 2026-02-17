@@ -19,7 +19,7 @@ from datetime import datetime
 from enum import Enum as PyEnum
 from enum import EnumMeta
 from typing import Any as _Any
-from typing import Dict, Tuple, Union
+from typing import Dict, Union
 from venv import logger
 
 import arrow
@@ -560,7 +560,7 @@ class Enum(Keyword):
         elif isinstance(values, (list, tuple)):
             self.values = set(values)
         elif isinstance(values, (PyEnum, EnumMeta)):
-            self.values = set([e.value for e in values])
+            self.values = set([e.value for e in values])  # type: ignore
         else:
             raise HowlerTypeError(f"Type unsupported for Enum odm: {type(values)}")
 
@@ -1206,7 +1206,7 @@ class Model:
 
         # Determine the type of Field we're dealing with
         # if possible return the Model class if wrapped in Compound
-        def get_type(field_class: _Field) -> Tuple[str, Model]:
+        def get_type(field_class: _Field) -> tuple[str, Model | None]:
             if field_class.__class__ == Optional:
                 return get_type(field_class.child_type)
             elif field_class.__class__ == Compound:

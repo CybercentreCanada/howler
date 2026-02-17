@@ -36,7 +36,7 @@ MAX_COMMENT_LEN = 5000
 
 SUB_API = "hit"
 hit_api = make_subapi_blueprint(SUB_API, api_version=1)
-hit_api._doc = "Manage the different hits in the system"
+hit_api._doc = "Manage the different hits in the system"  # type: ignore
 
 FIELDS = Hit.flat_fields()
 
@@ -118,7 +118,7 @@ def create_hits(user: User, **kwargs):
                 # Ensure all ids are consistent
                 if odm.event is not None:
                     odm.event.id = odm.howler.id
-                hit_service.create_hit(odm.howler.id, odm, user=user["uname"])
+                hit_service.create_hit(odm.howler.id, odm, user=user.uname)
                 analytic_service.save_from_hit(odm, user)
 
             datastore().hit.commit()
@@ -311,12 +311,15 @@ def overwrite_hit(id: str, server_version: str, **kwargs):
         return bad_request(err="The JSON payload must be a subset of a valid Hit object.")
 
     try:
-        new_hit = merge(
-            hit_service.flatten(hit.as_primitives(), odm=Hit),
-            hit_service.flatten(new_fields),
-            strategy=Strategy.REPLACE
-            if bool(request.args.get("replace", False, type=lambda v: v.lower() == "true"))
-            else Strategy.ADDITIVE,
+        new_hit = cast(
+            dict[str, Any],
+            merge(
+                hit_service.flatten(hit.as_primitives(), odm=Hit),
+                hit_service.flatten(new_fields),
+                strategy=Strategy.REPLACE
+                if bool(request.args.get("replace", False, type=lambda v: v.lower() == "true"))
+                else Strategy.ADDITIVE,
+            ),
         )
 
         new_hit, new_version = hit_service.save_hit(Hit(new_hit), server_version)
@@ -486,9 +489,9 @@ def get_assigned_hits(user, **kwargs):
         deep_paging_id=request.args.get("deep_paging_id", None),
         offset=request.args.get("offset", 0, type=int),  # type: ignore[union-attr]
         rows=request.args.get("rows", None, type=int),  # type: ignore[union-attr]
-        sort=request.args.get("sort", None),
-        fl=request.args.get("fl", None),
-        timeout=request.args.get("timeout", None),
+        sort=request.args.get("sort", None, type=str),
+        fl=request.args.get("fl", None, type=str),
+        timeout=request.args.get("timeout", None, type=int),
         as_obj=False,
     )["items"]
 
@@ -554,7 +557,7 @@ def add_label(id, label_set, user, **kwargs):
         user=user,
     )
 
-    hit, version = hit_service.get_hit(id, version=True)
+    hit, version = hit_service.get_hit(id, as_odm=False, version=True)
 
     return ok(hit), version
 
@@ -612,7 +615,7 @@ def remove_labels(id, label_set, user, **kwargs):
         user=user,
     )
 
-    hit, version = hit_service.get_hit(id, version=True)
+    hit, version = hit_service.get_hit(id, as_odm=False, version=True)
 
     return ok(hit), version
 
@@ -759,7 +762,7 @@ def add_comment(id: str, user: dict[str, Any], **kwargs):
     except DataStoreException as e:
         return bad_request(err=str(e))
 
-    hit, version = hit_service.get_hit(id, version=True)
+    hit, version = hit_service.get_hit(id, as_odm=False, version=True)
 
     return ok(hit), version
 
@@ -822,7 +825,7 @@ def edit_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
         if line[:3] not in ("+++", "---", "@@ "):
             diff.append(line)
 
-    (hit, version) = hit_service.update_hit(
+    (new_hit, version) = hit_service.update_hit(
         id,
         [
             hit_helper.list_remove("howler.comment", comment, silent=True),
@@ -834,7 +837,8 @@ def edit_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
         ],
         user["uname"],
     )
-    return ok(hit), version
+
+    return ok(new_hit), version
 
 
 @generate_swagger_docs()
@@ -889,13 +893,14 @@ def delete_comments(id: str, user: User, **kwargs):
                 )
                 for comment in comments
             ],
-            user["uname"],
+            user.uname,
         )
 
     except DataStoreException as e:
         return bad_request(err=str(e))
-    hit, version = hit_service.get_hit(id, version=True)
-    return ok(hit), version
+
+    new_hit, version = hit_service.get_hit(id, as_odm=False, version=True)
+    return ok(new_hit), version
 
 
 @generate_swagger_docs()
@@ -1028,7 +1033,7 @@ def create_bundle(user: User, **kwargs):
             if hit_id not in odm.howler.hits:
                 odm.howler.hits.append(hit_id)
 
-        hit_service.create_hit(odm.howler.id, odm, user=user["uname"])
+        hit_service.create_hit(odm.howler.id, odm, user=user.uname)
         analytic_service.save_from_hit(odm, user)
 
         for hit_id in odm.howler.hits:
@@ -1039,9 +1044,7 @@ def create_bundle(user: User, **kwargs):
                     err=f"You cannot specify a bundle as a child of another bundle - {child_hit.howler.id} is a bundle."
                 )
 
-            new_bundle_list = child_hit.howler.get("bundles", [])
-            new_bundle_list.append(odm.howler.id)
-            child_hit.howler.bundles = new_bundle_list
+            child_hit.howler.bundles.append(odm.howler.id)
             datastore().hit.save(child_hit.howler.id, child_hit)
 
         return created(odm)
@@ -1165,12 +1168,10 @@ def remove_bundle_children(id, **kwargs):
         for hit_id in hit_ids:
             child_hit: Hit = hit_service.get_hit(hit_id, as_odm=True)
 
-            new_bundle_list = child_hit.howler.get("bundles", [])
             try:
-                new_bundle_list.remove(bundle_hit.howler.id)
+                child_hit.howler.bundles.remove(bundle_hit.howler.id)
             except ValueError:
                 logger.warning("Bundle isn't included in child %s!", bundle_hit.howler.id)
-            child_hit.howler.bundles = new_bundle_list
 
             datastore().hit.save(child_hit.howler.id, child_hit)
 

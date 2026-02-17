@@ -198,7 +198,7 @@ from howler.common.swagger import generate_swagger_docs
 
 SUB_API = "your_api_name"
 your_api = make_subapi_blueprint(SUB_API, api_version=1)
-your_api._doc = "Your custom API endpoints"
+your_api._doc = "Your custom API endpoints" # type: ignore
 
 logger = get_logger(__file__)
 

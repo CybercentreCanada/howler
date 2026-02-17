@@ -37,6 +37,7 @@ def main():
 
         print(report_result)
 
+        diff_report_result = ""
         if not develop and not rc_or_main:
             diff_report_result = subprocess.check_output(
                 shlex.split("diff-cover coverage.xml --diff-file=diff.txt --markdown-report diff-cover-report.md")
@@ -47,6 +48,10 @@ def main():
         total_percentage_int = int(total_percentage.replace("%", ""))
         total_color = get_color(total_percentage_int)
 
+        diff_result = ""
+        diff_percentage = "NA%"
+        diff_percentage_int = 0
+        diff_color = "grey"
         if not develop and not rc_or_main:
             try:
                 diff_percentage = (
@@ -54,8 +59,7 @@ def main():
                 )
                 diff_percentage_int = int(diff_percentage.replace("%", ""))
             except IndexError:
-                diff_percentage = "NA%"
-                diff_percentage_int = 0
+                pass
 
             diff_color = get_color(diff_percentage_int)
 

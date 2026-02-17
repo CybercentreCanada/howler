@@ -21,14 +21,14 @@ class ElasticBulkPlan(object):
 
     def add_insert_operation(self, doc_id, doc, index=None):
         if isinstance(doc, self.model):
-            saved_doc = doc.as_primitives(hidden_fields=True)
+            saved_doc = doc.as_primitives(hidden_fields=True)  # type: ignore
         elif self.model:
-            saved_doc = self.model(doc).as_primitives(hidden_fields=True)
+            saved_doc = self.model(doc).as_primitives(hidden_fields=True)  # type: ignore
         else:
             if not isinstance(doc, dict):
-                saved_doc = {"__non_doc_raw__": doc}
+                saved_doc = {"__non_doc_raw__": doc}  # type: ignore
             else:
-                saved_doc = deepcopy(doc)
+                saved_doc = deepcopy(doc)  # type: ignore
         saved_doc["id"] = doc_id
 
         self.operations.append(json.dumps({"create": {"_index": index or self.indexes[0], "_id": doc_id}}))
@@ -36,14 +36,14 @@ class ElasticBulkPlan(object):
 
     def add_upsert_operation(self, doc_id, doc, index=None):
         if isinstance(doc, self.model):
-            saved_doc = doc.as_primitives(hidden_fields=True)
+            saved_doc = doc.as_primitives(hidden_fields=True)  # type: ignore
         elif self.model:
-            saved_doc = self.model(doc).as_primitives(hidden_fields=True)
+            saved_doc = self.model(doc).as_primitives(hidden_fields=True)  # type: ignore
         else:
             if not isinstance(doc, dict):
-                saved_doc = {"__non_doc_raw__": doc}
+                saved_doc = {"__non_doc_raw__": doc}  # type: ignore
             else:
-                saved_doc = deepcopy(doc)
+                saved_doc = deepcopy(doc)  # type: ignore
         saved_doc["id"] = doc_id
 
         self.operations.append(json.dumps({"update": {"_index": index or self.indexes[0], "_id": doc_id}}))
@@ -51,14 +51,14 @@ class ElasticBulkPlan(object):
 
     def add_update_operation(self, doc_id, doc, index=None):
         if isinstance(doc, self.model):
-            saved_doc = doc.as_primitives(hidden_fields=True)
+            saved_doc = doc.as_primitives(hidden_fields=True)  # type: ignore
         elif self.model:
-            saved_doc = self.model(doc, mask=list(doc.keys())).as_primitives(hidden_fields=True)
+            saved_doc = self.model(doc, mask=list(doc.keys())).as_primitives(hidden_fields=True)  # type: ignore
         else:
             if not isinstance(doc, dict):
-                saved_doc = {"__non_doc_raw__": doc}
+                saved_doc = {"__non_doc_raw__": doc}  # type: ignore
             else:
-                saved_doc = deepcopy(doc)
+                saved_doc = deepcopy(doc)  # type: ignore
 
         if index:
             self.operations.append(json.dumps({"update": {"_index": index, "_id": doc_id}}))

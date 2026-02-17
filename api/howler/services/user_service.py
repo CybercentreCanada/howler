@@ -34,6 +34,10 @@ def get_user(id: str, as_odm: Literal[False], version: Literal[True]) -> tuple[d
 def get_user(id: str, as_odm: Literal[False], version: Literal[False]) -> dict[str, Any]: ...
 
 
+@overload
+def get_user(id: str) -> dict[str, Any]: ...
+
+
 def get_user(
     id: str,
     as_odm: bool = False,

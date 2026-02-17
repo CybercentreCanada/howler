@@ -691,7 +691,7 @@ def transition_hit(
         if updates:
             # Only apply version validation to the primary hit
             hit_version = version if (current_hit_id == primary_hit["howler"]["id"] and version) else None
-            _update_hit(current_hit_id, updates, cast(str, user["uname"]), version=hit_version)
+            _update_hit(current_hit_id, updates, user.uname, version=hit_version)
 
     # Execute bulk actions for transitions that require them
     # These transitions need additional processing beyond the workflow
@@ -880,7 +880,7 @@ def __match_metadata(candidates: list[dict[str, Any]], hit: dict[str, Any]) -> O
     return sorted(matching_candidates, key=functools.cmp_to_key(__compare_metadata))[0]
 
 
-def augment_metadata(data: list[dict[str, Any]] | dict[str, Any], metadata: list[str], user: dict[str, Any]):  # noqa: C901
+def augment_metadata(data: list[dict[str, Any]] | dict[str, Any] | None, metadata: list[str], user: dict[str, Any]):  # noqa: C901
     """Augment hit search results with additional metadata.
 
     This function enriches hit data by adding related information such as templates,
@@ -909,7 +909,7 @@ def augment_metadata(data: list[dict[str, Any]] | dict[str, Any], metadata: list
     logger.debug("Augmenting %s hits with %s", len(hits), ",".join(metadata))
 
     if "template" in metadata:
-        template_candidates = template_service.get_matching_templates(hits, user["uname"], as_odm=False)
+        template_candidates = template_service.get_matching_templates(hits, as_odm=False, uname=user["uname"])
 
         logger.debug("\tRetrieved %s matching templates", len(template_candidates))
 

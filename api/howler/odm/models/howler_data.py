@@ -125,11 +125,11 @@ class Link(odm.Model):
 
 @odm.model(index=True, store=True, description="Comment definition.")
 class Comment(odm.Model):
-    id = odm.UUID(description="A unique ID for the comment.")
+    id: str = odm.UUID(description="A unique ID for the comment.")
     timestamp = odm.Date(description="Timestamp at which the comment took place.", default="NOW")
     modified = odm.Date(description="Timestamp at which the comment was last edited.", default="NOW")
-    value = odm.Text(description="The comment itself.")
-    user = odm.Keyword(description="User ID who created the comment.")
+    value: str = odm.Text(description="The comment itself.")
+    user: str = odm.Keyword(description="User ID who created the comment.")
     reactions: dict[str, str] = odm.Mapping(
         odm.Keyword(),
         default={},

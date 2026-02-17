@@ -11,7 +11,6 @@ from copy import deepcopy
 from datetime import datetime
 from os import environ
 from random import random
-from types import SearchResult
 from typing import Any, Dict, Generic, Literal, Optional, TypeVar, Union, overload
 
 import elasticsearch
@@ -38,6 +37,7 @@ from howler.datastore.support.schemas import (
     default_index,
     default_mapping,
 )
+from howler.datastore.types import SearchResult
 from howler.odm.base import (
     BANNED_FIELDS,
     IP,
@@ -209,8 +209,8 @@ class ESCollection(Generic[ModelType]):
         "df": None,
         "script_fields": [],
     }
-    IGNORE_ENSURE_COLLECTION = False
-    ENSURE_COLLECTION_WARNED = False
+    IGNORE_ENSURE_COLLECTION: bool = False
+    ENSURE_COLLECTION_WARNED: bool = False
 
     def __init__(self, datastore: ESStore, name, model_class=None, validate=True, max_attempts=10):
         self.replicas = int(
