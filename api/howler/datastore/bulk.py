@@ -26,7 +26,7 @@ class ElasticBulkPlan(object):
             saved_doc = self.model(doc).as_primitives(hidden_fields=True)  # type: ignore
         else:
             if not isinstance(doc, dict):
-                saved_doc = {"__non_doc_raw__": doc}  # type: ignore
+                saved_doc = {"__non_doc_raw__": doc}
             else:
                 saved_doc = deepcopy(doc)  # type: ignore
         saved_doc["id"] = doc_id
