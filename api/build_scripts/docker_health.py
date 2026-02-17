@@ -30,7 +30,7 @@ while not ready and retries < 10:
             if data["status"] == "UP" and all(check["status"] == "UP" for check in data["checks"]):
                 keycloak_ready = True
             else:
-                logging.warning("Elasticsearch - not up:\n%s", json.dumps(data, indent=2))
+                logging.warning("Keycloak - not up:\n%s", json.dumps(data, indent=2))
         else:
             logging.warning("Keycloak - failed to connect")
 
