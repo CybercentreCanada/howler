@@ -124,6 +124,8 @@ def update_analytic(id: str, user: User, **kwargs):
             {**existing_triage_data, **new_data.get("triage_settings", {})}
         )
 
+        storage.analytic.save(existing_analytic.analytic_id, existing_analytic)
+
         return ok(existing_analytic)
     except HowlerException as e:
         return bad_request(err=str(e))
