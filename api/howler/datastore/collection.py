@@ -422,7 +422,6 @@ class ESCollection(Generic[ModelType]):
         res = None
         while res is None:
             attempt = attempt + 1
-            logger.warning("Checking status of task %s (Attempt %s)", task["task"], attempt)
             try:
                 res = self.with_retries(
                     self.datastore.client.tasks.get,
@@ -442,8 +441,6 @@ class ESCollection(Generic[ModelType]):
                     raise
 
         result = res.get("response", res["task"]["status"])
-
-        logger.info("Task result:\n%s", str(result))
 
         return result
 
