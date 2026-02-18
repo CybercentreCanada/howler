@@ -1,4 +1,4 @@
-from typing import Any, Literal, Optional, Union, cast, overload
+from typing import Any, Literal, cast, overload
 
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -12,24 +12,24 @@ logger = get_logger(__file__)
 
 @overload
 def get_matching_templates(
-    hits: Union[list[Hit], list[dict[str, Any]]], as_odm: Literal[False] = False, uname: Optional[str] = None
+    hits: list[Hit] | list[dict[str, Any]], as_odm: Literal[False] = False, uname: str | None = None
 ) -> list[dict[str, Any]]: ...
 
 
 @overload
 def get_matching_templates(
-    hits: Union[list[Hit], list[dict[str, Any]]], as_odm: Literal[True], uname: Optional[str] = None
+    hits: list[Hit] | list[dict[str, Any]], as_odm: Literal[True], uname: str | None = None
 ) -> list[Analytic]: ...
 
 
 def get_matching_templates(
-    hits: Union[list[Hit], list[dict[str, Any]]], as_odm: bool = False, uname: Optional[str] = None
+    hits: list[Hit] | list[dict[str, Any]], as_odm=False, uname: str | None = None
 ) -> list[dict[str, Any]] | list[Analytic]:
     """Generate a list of templates matching a given list of analytic names, and optionally a user.
 
     Args:
         hits (list[Hit] | list[dict[str, Any]]]: List of hits, each containing analytic information.
-        uname (Optional[str], optional): Username to filter templates by owner. Defaults to None.
+        uname (str | None, optional): Username to filter templates by owner. Defaults to None.
         as_odm (bool, optional): If True, return results as ODM objects. If False, return as dicts. Defaults to False.
 
     Returns:
