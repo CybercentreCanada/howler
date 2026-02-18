@@ -475,22 +475,6 @@ def create_views(ds: HowlerDatastore):
         view,
     )
 
-    view = View(
-        {
-            "title": "Howler Bundles",
-            "query": "howler.is_bundle:true",
-            "type": "readonly",
-            "owner": "none",
-        }
-    )
-
-    view = run_modifications("view", view)
-
-    ds.view.save(
-        view.view_id,
-        view,
-    )
-
     fields = Hit.flat_fields()
     key_list = [key for key in fields.keys() if isinstance(fields[key], Keyword)]
     for _ in range(10):
@@ -520,7 +504,27 @@ def wipe_views(ds):
 
 
 def create_hits(ds: HowlerDatastore, hit_count: int = 200):
-    """Create some random hits"""
+    """Create random hits in the datastore.
+
+    Args:
+        ds (HowlerDatastore): The datastore instance to save hits to.
+        hit_count (int, optional): Number of hits to create. Defaults to 200.
+    """
+    create_records(ds, "hit", hit_count=hit_count)
+
+
+def create_observables(ds: HowlerDatastore, hit_count: int = 200):
+    """Create random observables in the datastore.
+
+    Args:
+        ds (HowlerDatastore): The datastore instance to save observables to.
+        hit_count (int, optional): Number of observables to create. Defaults to 200.
+    """
+    create_records(ds, "observable", hit_count=hit_count)
+
+
+def create_records(ds: HowlerDatastore, index: str, hit_count: int = 200):
+    """Create some random records"""
     lookups = loader.get_lookups()
     users = ds.user.search("*:*")["items"]
     for hit_idx in range(hit_count):
@@ -542,13 +546,13 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
                 }
             )
 
-        ds.hit.save(hit.howler.id, hit)
+        ds[index].save(hit.howler.id, hit)
         analytic_service.save_from_hit(hit, random.choice(users))
         ds.analytic.commit()
 
         if choice([True, False, False, False]):
             user = choice(users)
-            ds.hit.update(
+            ds[index].update(
                 hit.howler.id,
                 [
                     *assess_hit(
@@ -564,7 +568,7 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
                 ],
             )
 
-        ds.hit.commit()
+        ds[index].commit()
 
         if hit_idx % 25 == 0 and "pytest" not in sys.modules:
             logger.info("\tCreated %s/%s", hit_idx, hit_count)
@@ -573,41 +577,18 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
         logger.info("\tCreated %s/%s", hit_idx + 1, hit_count)
 
     logger.info(
-        "%s total hits in datastore", ds.hit.search(query="howler.id:*", track_total_hits=True, rows=0)["total"]
+        "%s total hits in datastore", ds[index].search(query="howler.id:*", track_total_hits=True, rows=0)["total"]
     )
-
-
-def create_bundles(ds: HowlerDatastore):
-    """Create some random bundles"""
-    lookups = loader.get_lookups()
-    users = [user.uname for user in ds.user.search("*:*")["items"]]
-
-    hits = {}
-
-    for i in range(3):
-        bundle_hit: Hit = generate_useful_hit(lookups, users)
-        bundle_hit.howler.is_bundle = True
-
-        for hit in ds.hit.search("howler.is_bundle:false", rows=randint(3, 10), offset=(i * 2))["items"]:
-            if hit.howler.id not in hits:
-                hits[hit.howler.id] = hit
-
-            bundle_hit.howler.hits.append(hit.howler.id)
-            hits[hit.howler.id].howler.bundles.append(bundle_hit.howler.id)
-
-        analytic_service.save_from_hit(bundle_hit, random.choice(ds.user.search("*:*")["items"]))
-        bundle_hit.howler.bundle_size = len(bundle_hit.howler.hits)
-        ds.hit.save(bundle_hit.howler.id, bundle_hit)
-
-    for hit in hits.values():
-        ds.hit.save(hit.howler.id, hit)
-
-    ds.hit.commit()
 
 
 def wipe_hits(ds):
     """Wipe the hits index"""
     ds.hit.wipe()
+
+
+def wipe_observables(ds):
+    """Wipe the observables index"""
+    ds.observable.wipe()
 
 
 def random_escalations() -> list[Escalation]:
@@ -839,6 +820,14 @@ def setup_hits(ds):
     ds.hit.fix_replicas()
 
 
+def setup_observables(ds):
+    "Set up hits index"
+    os.environ["ELASTIC_HIT_SHARDS"] = "1"
+    os.environ["ELASTIC_HIT_REPLICAS"] = "1"
+    ds.observable.fix_shards()
+    ds.observable.fix_replicas()
+
+
 def setup_users(ds):
     "Set up users index"
     os.environ["ELASTIC_USER_REPLICAS"] = "1"
@@ -852,7 +841,8 @@ INDEXES: dict[str, tuple[Callable, list[Callable]]] = {
     "templates": (wipe_templates, [create_templates]),
     "overviews": (wipe_overviews, [create_overviews]),
     "views": (wipe_views, [create_views]),
-    "hits": (wipe_hits, [create_hits, create_bundles]),
+    "hits": (wipe_hits, [create_hits]),
+    "observables": (wipe_observables, [create_observables]),
     "analytics": (wipe_analytics, [create_analytics]),
     "actions": (wipe_actions, [create_actions]),
     "dossiers": (wipe_dossiers, [create_dossiers]),
@@ -886,6 +876,9 @@ if __name__ == "__main__":
     logger.info("Running setup steps.")
     if "hits" in args:
         setup_hits(ds)
+
+    if "observables" in args:
+        setup_observables(ds)
 
     if "users" in args:
         setup_users(ds)

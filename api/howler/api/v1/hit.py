@@ -522,7 +522,7 @@ def add_label(id, label_set, user, **kwargs):
         "success": True             # Adding the label succeeded
     }
     """
-    if not hit_service.does_hit_exist(id):
+    if not hit_service.exists(id):
         return not_found(err=f"Hit {id} does not exist")
 
     existing_hit: Hit = hit_service.get_hit(id, as_odm=True)
@@ -586,7 +586,7 @@ def remove_labels(id, label_set, user, **kwargs):
         "success": True             # Removing the labels succeeded
     }
     """
-    if not hit_service.does_hit_exist(id):
+    if not hit_service.exists(id):
         return not_found(err=f"Hit {id} does not exist")
 
     if f"howler.labels.{label_set}" not in hit_service.get_hit(id, as_odm=True).flat_fields():
@@ -803,7 +803,7 @@ def edit_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
     if len(comment_value) > MAX_COMMENT_LEN:
         return bad_request(err="Comment is too long.")
 
-    if not hit_service.does_hit_exist(id):
+    if not hit_service.exists(id):
         return not_found(err=f"Hit {id} does not exist")
 
     hit: Hit = kwargs["cached_hit"]
@@ -864,7 +864,7 @@ def delete_comments(id: str, user: User, **kwargs):
         ...hit            # The new data for the hit
     }
     """
-    if not hit_service.does_hit_exist(id):
+    if not hit_service.exists(id):
         return not_found(err=f"Hit {id} does not exist")
 
     comment_ids: list[str] = request.json or []
@@ -984,199 +984,3 @@ def remove_react_comment(id: str, comment_id: str, user: dict[str, Any], **kwarg
     new_hit, version = hit_service.save_hit(hit, version=kwargs.get("server_version"))
 
     return ok(new_hit), version
-
-
-@generate_swagger_docs()
-@hit_api.route("/bundle", methods=["POST"])
-@api_login(audit=False, required_priv=["W"])
-def create_bundle(user: User, **kwargs):
-    """Create a new bundle
-
-    Variables:
-    None
-
-    Arguments:
-    None
-
-    Data Block:
-    {
-        "bundle": {
-            ...hit          # A howler hit that will be used as a template for this new bundle
-        },
-        "hits": [...ids]    # A list of existing howler hits to add as children to the new bundle
-    }
-
-    Result Example:
-    {
-        ...hit      # The created bundle
-    }
-    """
-    data = request.json
-    if not isinstance(data, dict):
-        return bad_request(err="Invalid data format")
-
-    bundle_hit: Optional[dict[str, Any]] = data.get("bundle")
-
-    if bundle_hit is None:
-        return bad_request(err="You did not provide a bundle hit.")
-
-    try:
-        odm, _ = hit_service.convert_hit(bundle_hit, unique=True)
-        odm.howler.is_bundle = True
-
-        child_hits = data.get("hits", [])
-
-        if len(odm.howler.hits) < 1 and len(child_hits) < 1:
-            return bad_request(err="You did not provide any child hits.")
-
-        for hit_id in child_hits:
-            if hit_id not in odm.howler.hits:
-                odm.howler.hits.append(hit_id)
-
-        hit_service.create_hit(odm.howler.id, odm, user=user.uname)
-        analytic_service.save_from_hit(odm, user)
-
-        for hit_id in odm.howler.hits:
-            child_hit: Hit = hit_service.get_hit(hit_id, as_odm=True)
-
-            if child_hit.howler.is_bundle:
-                return bad_request(
-                    err=f"You cannot specify a bundle as a child of another bundle - {child_hit.howler.id} is a bundle."
-                )
-
-            child_hit.howler.bundles.append(odm.howler.id)
-            datastore().hit.save(child_hit.howler.id, child_hit)
-
-        return created(odm)
-    except HowlerException as e:
-        return bad_request(err=str(e))
-
-
-@generate_swagger_docs()
-@hit_api.route("/bundle/<id>", methods=["PUT"])
-@api_login(audit=False, required_priv=["W"])
-@add_etag(getter=hit_service.get_hit, check_if_match=False)
-def update_bundle(id, **kwargs):
-    """Update a hit's child hits. Can be used to convert an existing hit into a bundle, or to update an existing bundle.
-
-    Variables:
-    id  => The ID of the bundle to update
-
-    Arguments:
-    None
-
-    Data Block:
-    [
-        ...ids
-    ]
-
-    Result Example:
-    {
-        ...hit      # The updated bundle
-    }
-    """
-    bundle_hit: Hit = cast(Hit, kwargs.get("cached_hit", None))
-    if not bundle_hit:
-        return not_found(err="This bundle does not exist.")
-
-    hit_ids = request.json
-    if not isinstance(hit_ids, list):
-        return bad_request(err="Invalid data format")
-
-    new_hit_list = bundle_hit.howler.as_primitives().get("hits", [])
-    if bundle_hit.howler.is_bundle:
-        for hit_id in hit_ids:
-            if hit_id not in new_hit_list:
-                new_hit_list.append(hit_id)
-            else:
-                return conflict(err=f"The hit {hit_id} is already in the bundle {bundle_hit.howler.id}.")
-    else:
-        new_hit_list = hit_ids
-
-    bundle_hit.howler.hits = new_hit_list
-    bundle_hit.howler.is_bundle = True
-
-    try:
-        for hit_id in new_hit_list:
-            child_hit: Hit = hit_service.get_hit(hit_id, as_odm=True)
-
-            if child_hit.howler.is_bundle:
-                return bad_request(
-                    err=f"You cannot specify a bundle as a child of another bundle - {child_hit.howler.id} is a bundle."
-                )
-
-            new_bundle_list = child_hit.howler.as_primitives().get("bundles", [])
-            new_bundle_list.append(bundle_hit.howler.id)
-            child_hit.howler.bundles = new_bundle_list
-            datastore().hit.save(child_hit.howler.id, child_hit)
-
-        datastore().hit.save(bundle_hit.howler.id, bundle_hit)
-
-        return ok(bundle_hit)
-    except HowlerException as e:
-        return bad_request(err=str(e))
-
-
-@generate_swagger_docs()
-@hit_api.route("/bundle/<id>", methods=["DELETE"])
-@api_login(audit=False, required_priv=["W"])
-@add_etag(getter=hit_service.get_hit, check_if_match=False)
-def remove_bundle_children(id, **kwargs):
-    """Remove a bundle's child hits.
-
-    Can be used to convert an existing bundle back into a normal hit, or to remove a subset of
-    existing hits from the bundle.
-
-    Variables:
-    id  => The ID of the bundle to update
-
-    Arguments:
-    None
-
-    Data Block:
-    [
-        ...ids OR '*'   # A list of ids to remove, or a single '*' to remove all
-    ]
-
-    Result Example:
-    {
-        ...hit      # The updated hit
-    }
-    """
-    bundle_hit = kwargs.get("cached_hit", None)
-    if not bundle_hit:
-        return not_found(err="This bundle does not exist.")
-
-    hit_ids = request.json
-    if not isinstance(hit_ids, list):
-        return bad_request(err="Invalid data format")
-
-    new_hit_list = bundle_hit.howler.get("hits", [])
-    if bundle_hit.howler.is_bundle:
-        if hit_ids == ["*"]:
-            hit_ids = new_hit_list
-            new_hit_list = []
-        else:
-            new_hit_list = [_id for _id in new_hit_list if _id not in hit_ids]
-    else:
-        return bad_request(err="The specified hit must be a bundle.")
-
-    bundle_hit.howler.hits = new_hit_list
-    bundle_hit.howler.is_bundle = len(new_hit_list) > 0
-
-    try:
-        for hit_id in hit_ids:
-            child_hit: Hit = hit_service.get_hit(hit_id, as_odm=True)
-
-            try:
-                child_hit.howler.bundles.remove(bundle_hit.howler.id)
-            except ValueError:
-                logger.warning("Bundle isn't included in child %s!", bundle_hit.howler.id)
-
-            datastore().hit.save(child_hit.howler.id, child_hit)
-
-        datastore().hit.save(bundle_hit.howler.id, bundle_hit)
-
-        return ok(bundle_hit)
-    except HowlerException as e:
-        return bad_request(err=str(e))

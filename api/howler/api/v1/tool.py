@@ -94,7 +94,6 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
 
     out: list[dict[str, Any]] = []
     odms = []
-    bundle_hit: Optional[Hit] = None
     for hit in hits:
         cur_id = get_random_id()
         cur_time = now_as_iso()
@@ -138,12 +137,7 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
         try:
             odm, warns = hit_service.convert_hit(obj, unique=True, ignore_extra_values=ignore_extra_values)
 
-            if odm.howler.is_bundle and bundle_hit is None:
-                bundle_hit = odm
-            elif odm.howler.is_bundle:
-                return bad_request(err="You can only specify one bundle hit!")
-            else:
-                odms.append(odm)
+            odms.append(odm)
 
             out.append(
                 {
@@ -162,19 +156,8 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
         return bad_request(out, warnings=warnings, err="No valid hits were provided")
     else:
         for odm in odms:
-            if bundle_hit is not None:
-                bundle_hit.howler.hits.append(odm.howler.id)
-                bundle_hit.howler.bundle_size += 1
-                odm.howler.bundles.append(bundle_hit.howler.id)
-
             hit_service.create_hit(odm.howler.id, odm, user=user.uname)
-
             analytic_service.save_from_hit(odm, user)
-
-        if bundle_hit:
-            hit_service.create_hit(bundle_hit.howler.id, bundle_hit, user=user.uname)
-
-            analytic_service.save_from_hit(bundle_hit, user)
 
         datastore().hit.commit()
 

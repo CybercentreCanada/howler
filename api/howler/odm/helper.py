@@ -243,10 +243,6 @@ def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[str], pr
         pass
 
     hit.howler.viewers = []
-    hit.howler.hits = []
-    hit.howler.bundle_size = 0
-    hit.howler.bundles = []
-    hit.howler.is_bundle = False
 
     hit.howler.dossier = [
         Lead(

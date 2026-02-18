@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
 INDEXES = [
     ("hit", Hit),
+    ("observable", Hit),
     ("template", Template),
     ("overview", Overview),
     ("analytic", Analytic),
@@ -33,7 +34,7 @@ INDEXES = [
 
 class HowlerDatastore(object):
     def __init__(self, datastore_object: "ESStore"):
-        self.ds = datastore_object
+        self.ds: "ESStore" = datastore_object
 
         for plugin in get_plugins():
             for _index, _odm in INDEXES:
@@ -59,6 +60,9 @@ class HowlerDatastore(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.ds.close()
 
+    def __getitem__(self, key: str):
+        return self.ds[key]
+
     def stop_model_validation(self):
         self.ds.validate = False
 
@@ -74,6 +78,10 @@ class HowlerDatastore(object):
     @property
     def hit(self) -> ESCollection[Hit]:
         return self.ds.hit
+
+    @property
+    def observable(self) -> ESCollection[Hit]:
+        return self.ds.observable
 
     @property
     def template(self) -> ESCollection[Template]:

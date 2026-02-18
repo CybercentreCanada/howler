@@ -210,12 +210,6 @@ class HowlerData(odm.Model):
         description="Unique identifier of the assigned user.",
         default=DEFAULT_ASSIGNMENT,
     )
-    bundles: list[str] = odm.List(
-        odm.Keyword(
-            description="A list of bundle IDs this hit is a part of. Corresponds to the howler.id of the bundle."
-        ),
-        default=[],
-    )
     data: list[str] = odm.List(
         odm.Keyword(description="Raw telemetry records associated with this hit."),
         default=[],
@@ -235,21 +229,8 @@ class HowlerData(odm.Model):
             "and 64 characters long."
         )
     )
-    hits: list[str] = odm.List(
-        odm.Keyword(
-            description="A list of hit IDs this bundle represents. Corresponds to the howler.id of the child hit."
-        ),
-        default=[],
-    )
-    bundle_size: int = odm.Integer(
-        description="Number of hits in bundle",
-        default=0,
-    )
-    is_bundle: bool = odm.Boolean(description="Is this hit a bundle or a normal hit?", default=False)
     related: list[str] = odm.List(
-        odm.Keyword(
-            description="Related hits grouped by the enrichment that correlated them. Populated by enrichments."
-        ),
+        odm.Keyword(description="Related records."),
         default=[],
     )
     reliability: Optional[float] = odm.Optional(

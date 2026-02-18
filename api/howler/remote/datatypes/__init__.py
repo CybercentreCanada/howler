@@ -2,13 +2,13 @@
 
 import json
 import logging
+import os
 import time
 from datetime import datetime
 
 import redis
 from packaging.version import parse
 
-from howler.common import loader
 from howler.odm.models.config import config
 from howler.utils.uid import get_random_id
 
@@ -22,8 +22,9 @@ if parse(redis.__version__) <= parse("2.10.0"):
         " redis %s. You should upgrade." % (__name__, redis.__version__)
     )
 
+APP_NAME = os.environ.get("APP_NAME", "howler")
 
-log = logging.getLogger(f"{loader.APP_NAME}.queue")
+log = logging.getLogger(f"{APP_NAME}.queue")
 pool: dict[tuple[str, str], redis.BlockingConnectionPool] = {}
 
 

@@ -1,9 +1,4 @@
 {
-    "exclude": [
-        "**/build",
-        "**/.venv",
-        "ui"
-    ],
     "executionEnvironments": [
         {
             "reportArgumentType": "none",
@@ -80,6 +75,11 @@
             "reportArgumentType": "none",
             "root": "plugins/sentinel/test"
         }
+    ],
+    "ignore": [
+        "**/build",
+        "**/.venv",
+        "ui"
     ],
     "reportMissingImports": "error",
     "reportOptionalMemberAccess": "error",

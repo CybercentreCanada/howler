@@ -1099,12 +1099,11 @@ class ESCollection(Generic[ModelType]):
         except elasticsearch.NotFoundError:
             return False
 
-    def delete_by_query(self, query, workers=20, sort=None, max_docs=None):
+    def delete_by_query(self, query, sort=None, max_docs=None) -> bool:
         """This function should delete the underlying documents referenced by the query.
         It should return true if the documents were in fact properly deleted.
 
         :param query: Query of the documents to download
-        :param workers: Number of workers used for deletion if basic currency delete is used
         :return: True is delete successful
         """
         query = {"bool": {"must": {"query_string": {"query": query}}}}

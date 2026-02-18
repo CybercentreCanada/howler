@@ -225,31 +225,9 @@ def _modifies_prop(prop: str, operations: list[OdmUpdateOperation]) -> bool:
     return any(op for op in operations if op.key == prop)
 
 
-def does_hit_exist(hit_id: str) -> bool:
-    """Checks if the provided ID matches any entries in the database
-
-    Args:
-        hit_id (str): The ID to check for in the database
-
-    Returns:
-        bool: Does the ID match a document in the database?
-    """
-    return datastore().hit.exists(hit_id)
-
-
-def validate_hit_ids(hit_ids: list[str]) -> bool:
-    """Checks if all hit_ids are available
-
-    Args:
-        hit_ids (list[str]): A list of hit ids to validate
-
-    Returns:
-        bool: Whether all of the hit ids are free to use
-    """
-    return not any(does_hit_exist(hit_id) for hit_id in hit_ids)
-
-
-def convert_hit(data: dict[str, Any], unique: bool, ignore_extra_values: bool = False) -> tuple[Hit, list[str]]:  # noqa: C901
+def convert_hit(  # noqa: C901
+    data: dict[str, Any], unique: bool, ignore_extra_values: bool = False, index: str = "hit"
+) -> tuple[Hit, list[str]]:
     """Validate and convert a dictionary to a Hit ODM object.
 
     This function performs comprehensive validation on input data to ensure it can be
@@ -261,6 +239,7 @@ def convert_hit(data: dict[str, Any], unique: bool, ignore_extra_values: bool = 
         data: Dictionary containing hit data to validate and convert
         unique: Whether to enforce uniqueness by checking if the hit ID already exists
         ignore_extra_values: Whether to ignore invalid extra fields (True) or raise an exception (False)
+        index: The index to validate against
 
     Returns:
         Tuple containing:
@@ -294,9 +273,6 @@ def convert_hit(data: dict[str, Any], unique: bool, ignore_extra_values: bool = 
 
     data["howler.id"] = get_random_id()
 
-    if "howler.bundles" in data and len(data["howler.bundles"]) > 0:
-        raise HowlerValueError("You cannot specify a bundle when creating a hit.")
-
     if "howler.data" in data:
         parsed_data = []
         for entry in data["howler.data"]:
@@ -306,9 +282,6 @@ def convert_hit(data: dict[str, Any], unique: bool, ignore_extra_values: bool = 
                 parsed_data.append(json.dumps(entry))
 
         data["howler.data"] = parsed_data
-
-    if "bundle_size" not in data and "howler.hits" in data:
-        data["howler.bundle_size"] = len(data["howler.hits"])
 
     # TODO: This is a really strange double-validation check we should look to refactor
     try:
@@ -348,22 +321,27 @@ def convert_hit(data: dict[str, Any], unique: bool, ignore_extra_values: bool = 
     else:
         odm.event = Event({"created": "NOW", "id": odm.howler.id})
 
-    if unique and does_hit_exist(odm.howler.id):
+    if unique and exists(odm.howler.id, indexes=[index]):
         raise ResourceExists("Resource with id %s already exists" % odm.howler.id)
 
     return odm, warnings
 
 
-def exists(id: str):
+def exists(id: str, indexes: list[str] | None = None) -> str | None:
     """Check if a hit exists in the datastore.
 
     Args:
         id: The unique identifier of the hit to check
 
     Returns:
-        bool: True if the hit exists, False otherwise
+        str: The index the record exists in
     """
-    return datastore().hit.exists(id)
+    if not indexes:
+        indexes = ["hit"]
+
+    ds = datastore()
+
+    return next((index for index in indexes if ds[index].exists(id)), None)
 
 
 @overload
@@ -391,26 +369,35 @@ def get_hit(id: str, as_odm: Literal[False], version: Literal[False]) -> dict[st
 
 
 @overload
+def get_hit(id: str, as_odm: Literal[False], version: Literal[False], indexes: list[str] | None) -> dict[str, Any]: ...
+
+
+@overload
 def get_hit(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...
 
 
-def get_hit(
-    id: str,
-    as_odm: bool = False,
-    version: bool = False,
-):
+def get_hit(id: str, as_odm=False, version=False, indexes=None):
     """Retrieve a hit from the datastore.
 
     Args:
         id: The unique identifier of the hit to retrieve
         as_odm: Whether to return the hit as an ODM object (True) or dictionary (False)
         version: Whether to include version information in the response
+        indexes: List of indexes to attempt to retrieve the hit from
 
     Returns:
         Hit object (if as_odm=True) or dictionary representation of the hit.
         Returns None if the hit doesn't exist.
     """
-    return datastore().hit.get_if_exists(key=id, as_obj=as_odm, version=version)
+    if not indexes:
+        indexes = ["hit"]
+
+    ds = datastore()
+
+    return next(
+        (ds[index].get_if_exists(key=id, as_obj=as_odm, version=version) for index in indexes),
+        (None, None) if version else None,
+    )
 
 
 CREATED_HITS = Counter(
@@ -420,12 +407,7 @@ CREATED_HITS = Counter(
 )
 
 
-def create_hit(
-    id: str,
-    hit: Hit,
-    user: Optional[str] = None,
-    overwrite: bool = False,
-) -> bool:
+def create_hit(id: str, hit: Hit, user: Optional[str] = None, skip_exists: bool = False, index: str = "hit") -> bool:
     """Create a new hit in the database.
 
     This function saves a hit to the datastore, optionally adding a creation log entry
@@ -435,7 +417,8 @@ def create_hit(
         id: The unique identifier for the hit
         hit: The Hit ODM object to save
         user: Optional username to record in the creation log
-        overwrite: Whether to allow overwriting an existing hit with the same ID
+        skip_exists: Whether to check for an existing record
+        index: What index to save the record to
 
     Returns:
         bool: True if the hit was successfully created
@@ -443,14 +426,14 @@ def create_hit(
     Raises:
         ResourceExists: If a hit with the same ID already exists and overwrite=False
     """
-    if not overwrite and does_hit_exist(id):
-        raise ResourceExists("Hit %s already exists in datastore" % id)
+    if not skip_exists and exists(id):
+        raise ResourceExists(f"Hit {id} already exists in datastore")
 
     if user:
         hit.howler.log = [Log({"timestamp": "NOW", "explanation": "Created hit", "user": user})]
 
     CREATED_HITS.labels(hit.howler.analytic).inc()
-    return datastore().hit.save(id, hit)
+    return datastore()[index].save(id, hit)
 
 
 def update_hit(
@@ -605,33 +588,6 @@ def get_transitions(status: HitStatus) -> list[str]:
     return get_hit_workflow().get_transitions(status)
 
 
-def get_all_children(hit: dict[str, Any]) -> list[dict[str, Any]]:
-    """Get a list of all child hits for a given hit, including nested children.
-
-    This function recursively traverses bundle structures to find all child hits.
-    If a child hit is itself a bundle, it will recursively get its children too.
-
-    Args:
-        hit: The parent hit to get children for
-
-    Returns:
-        List of all child hits (may include None values for missing hits)
-    """
-    # Get immediate child hits from the hit's bundle
-    child_hits = [get_hit(hit_id, as_odm=False) for hit_id in hit["howler"].get("hits", [])]
-
-    # Recursively process child hits that are themselves bundles
-    for entry in child_hits:
-        if not entry:
-            continue
-
-        # If this child is a bundle, get its children too
-        if entry["howler"]["is_bundle"]:
-            child_hits.extend(get_all_children(entry))
-
-    return child_hits
-
-
 def transition_hit(
     id: str,
     transition: HitStatusTransition,
@@ -641,9 +597,7 @@ def transition_hit(
 ):
     """Transition a hit from one status to another while updating related properties.
 
-    This function handles status transitions for both individual hits and bundles,
-    applying the same transition to all child hits in a bundle. For certain transitions
-    (PROMOTE, DEMOTE, ASSESS, RE_EVALUATE), it also executes bulk actions and emits events.
+    For certain transitions (PROMOTE, DEMOTE, ASSESS, RE_EVALUATE), it also executes bulk actions and emits events.
 
     Args:
         id: The id of the hit to transition
@@ -656,42 +610,26 @@ def transition_hit(
         NotFoundException: If the hit does not exist
     """
     # Get the primary hit (either provided in kwargs or fetch from database)
-    primary_hit: dict[str, Any] | None = cast(dict[str, Any] | None, kwargs.pop("hit", None)) or get_hit(
-        id, as_odm=False
-    )
+    hit: dict[str, Any] | None = cast(dict[str, Any] | None, kwargs.pop("hit", None)) or get_hit(id, as_odm=False)
 
-    if not primary_hit:
+    if not hit:
         raise NotFoundException("Hit does not exist")
 
     workflow: Workflow = get_hit_workflow()
 
-    # Get all child hits that need to be processed along with the primary hit
-    child_hits = get_all_children(primary_hit)
-    primary_hit_status = primary_hit["howler"]["status"]
-
-    # Log all hits that will be transitioned
-    all_hit_ids = [h["howler"]["id"] for h in ([primary_hit] + [ch for ch in child_hits if ch])]
-    logger.debug("Transitioning (%s)", ", ".join(all_hit_ids))
+    # Log hit that will be transitioned
+    logger.debug("Transitioning (%s)", hit)
 
     # Process each hit (primary + children) with the workflow transition
-    for current_hit in [primary_hit] + [ch for ch in child_hits if ch]:
-        current_hit_status = current_hit["howler"]["status"]
-        current_hit_id = current_hit["howler"]["id"]
+    hit_status = hit["howler"]["status"]
+    hit_id = hit["howler"]["id"]
 
-        # Skip hits that don't match the primary hit's status
-        # This ensures consistent state transitions across bundles
-        if current_hit_status != primary_hit_status:
-            logger.debug("Skipping %s (status mismatch)", current_hit_id)
-            continue
+    # Apply the workflow transition to get required updates
+    updates = workflow.transition(hit_status, transition, user=user, hit=hit, **kwargs)
 
-        # Apply the workflow transition to get required updates
-        updates = workflow.transition(current_hit_status, transition, user=user, hit=current_hit, **kwargs)
-
-        # Apply updates if any were generated by the workflow
-        if updates:
-            # Only apply version validation to the primary hit
-            hit_version = version if (current_hit_id == primary_hit["howler"]["id"] and version) else None
-            _update_hit(current_hit_id, updates, user.uname, version=hit_version)
+    # Apply updates if any were generated by the workflow
+    if updates:
+        _update_hit(hit_id, updates, user.uname, version=version)
 
     # Execute bulk actions for transitions that require them
     # These transitions need additional processing beyond the workflow
@@ -721,22 +659,20 @@ def transition_hit(
         datastore().hit.commit()
 
         # Build query for all processed hits (primary + children)
-        all_processed_hits = [primary_hit] + child_hits
-        hit_query = f"howler.id:({' OR '.join(h['howler']['id'] for h in all_processed_hits)})"
+        hit_query = f"howler.id:({hit_id})"
 
         # Execute bulk actions on all hits
         action_service.bulk_execute_on_query(hit_query, trigger=trigger, user=user)
 
-        # Emit events for all processed hits to notify other systems
-        for processed_hit in all_processed_hits:
-            data, hit_version = datastore().hit.get(processed_hit["howler"]["id"], as_obj=False, version=True)
-            event_service.emit("hits", {"hit": data, "version": hit_version})
+        # Emit events for processed hit to notify other systems
+        data, hit_version = datastore().hit.get(hit_id, as_obj=False, version=True)
+        event_service.emit("hits", {"hit": data, "version": hit_version})
 
 
 DELETED_HITS = Counter(f"{APP_NAME.replace('-', '_')}_deleted_hits_total", "The number of deleted hits")
 
 
-def delete_hits(hit_ids: list[str]) -> bool:
+def delete_hits(hit_ids: list[str], indexes: list[str] | None = None) -> bool:
     """Delete a set of hits from the database
 
     Args:
@@ -747,20 +683,16 @@ def delete_hits(hit_ids: list[str]) -> bool:
     """
     ds = datastore()
 
-    operations = []
-    result = True
+    if not indexes:
+        indexes = ["hit"]
 
-    for hit_id in hit_ids:
-        operations.append(odm_helper.list_remove("howler.hits", hit_id, silent=True))
+    operations = [odm_helper.list_remove("howler.hits", hit_id, silent=True) for hit_id in hit_ids]
 
-        result = result and ds.hit.delete(hit_id)
-        DELETED_HITS.inc()
+    delete_result = all(ds[index].delete_by_query(f"howler.id:({' OR '.join(hit_ids)})") for index in indexes)
 
-    ds.hit.update_by_query("howler.is_bundle:true", operations)
-
-    ds.hit.commit()
-
-    return result
+    return delete_result and all(
+        ds[index].update_by_query(f"howler.related:({' OR '.join(hit_ids)})", operations) for index in indexes
+    )
 
 
 @overload
@@ -792,15 +724,15 @@ def search(
 
 
 def search(
-    query: str,
-    as_obj: bool = True,
-    offset: int = 0,
-    rows: int | None = None,
-    sort: Any | None = None,
-    fl: str | None = None,
-    timeout: int | None = None,
-    deep_paging_id: str | None = None,
-    track_total_hits: bool = False,
+    query,
+    as_obj=True,
+    offset=0,
+    rows=None,
+    sort=None,
+    fl=None,
+    timeout=None,
+    deep_paging_id=None,
+    track_total_hits=False,
 ):
     """Search for hits in the datastore using a query.
 
@@ -902,6 +834,8 @@ def augment_metadata(data: list[dict[str, Any]] | dict[str, Any] | None, metadat
         hits = [data]
     else:
         hits = []
+
+    hits = [hit for hit in hits if hit.get("type", "hit") in ["hit", "observable"]]
 
     if len(hits) < 1:
         return

@@ -4,9 +4,9 @@ from howler.api import ok
 from howler.security import api_login
 from howler.services import docs_service
 
-API_PREFIX = "/api/v1"
-apiv1 = Blueprint("apiv1", __name__, url_prefix=API_PREFIX)
-apiv1._doc = "Api Documentation Version 1"  # type: ignore[attr-defined] # type: ignore
+API_PREFIX = "/api/v2"
+apiv1 = Blueprint("apiv2", __name__, url_prefix=API_PREFIX)
+apiv1._doc = "Api Documentation Version 2"  # type: ignore[attr-defined] # type: ignore
 
 
 @apiv1.route("/")
