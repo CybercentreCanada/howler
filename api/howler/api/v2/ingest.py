@@ -240,6 +240,7 @@ def overwrite(index: str, id: str, server_version: str, **kwargs):
         return bad_request(err="The JSON payload must be a subset of a valid Hit object.")
 
     try:
+        # TODO: This is inefficient. We can use elastic's `update` command to just directly patch the document
         new_hit = cast(
             dict[str, Any],
             merge(

@@ -18,6 +18,31 @@ SCROLL_TIMEOUT = "5m"
 
 
 def _normalize_indexes(indexes: str | list[str]) -> str:
+    """Normalizes Elasticsearch index names into a comma-separated string.
+
+    Parses the input indexes and applies naming conventions. Special patterns like
+    wildcards, exclusions, and explicitly formatted indexes are preserved as-is.
+    Regular indexes are formatted with the APP_NAME prefix and '_hot' suffix.
+
+    Args:
+        indexes: A comma-separated string or list of index names to normalize.
+
+    Returns:
+        A comma-separated string of normalized index names ready for Elasticsearch queries.
+
+    Raises:
+        SearchException: If no valid indexes are provided after parsing and stripping whitespace.
+
+    Examples:
+        >>> _normalize_indexes("logs,metrics")
+        "howler-logs_hot,howler-metrics_hot"
+
+        >>> _normalize_indexes(["*", "custom-index"])
+        "*,custom-index"
+
+        >>> _normalize_indexes("alerts, events")
+        "howler-alerts_hot,howler-events_hot"
+    """
     if isinstance(indexes, str):
         parsed_indexes = [item.strip() for item in indexes.split(",") if item.strip()]
     else:
@@ -37,6 +62,18 @@ def _normalize_indexes(indexes: str | list[str]) -> str:
 
 
 def _format_items(hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Formats Elasticsearch search hits into a standardized item format.
+
+    Extracts the _source content from each hit and appends metadata fields
+    (_id, _index, _score) to create a flat dictionary structure for each item.
+
+    Args:
+        hits: A list of Elasticsearch hit dictionaries containing _source and metadata.
+
+    Returns:
+        A list of formatted item dictionaries with _source content merged with metadata
+        fields (_id, _index, _score).
+    """
     items: list[dict[str, Any]] = []
     for hit in hits:
         source = hit.get("_source")
