@@ -11,12 +11,13 @@ from howler.api import (
     not_found,
     ok,
 )
+from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import DataStoreException
 from howler.datastore.operations import OdmHelper
-from howler.odm.models.analytic import Analytic, Comment, Notebook
+from howler.odm.models.analytic import Analytic, Comment, Notebook, TriageOptions
 from howler.odm.models.user import User
 from howler.security import api_login
 from howler.services import analytic_service, user_service
@@ -99,7 +100,33 @@ def update_analytic(id: str, user: User, **kwargs):
         ...analytic     # The updated analytic data
     }
     """
-    raise NotImplementedError()
+    storage = datastore()
+
+    if not storage.analytic.exists(id):
+        return not_found(err="This analytic does not exist")
+
+    new_data = request.json
+
+    if not new_data:
+        return bad_request(err="You must provide updated data.")
+
+    try:
+        existing_analytic: Analytic = storage.analytic.get_if_exists(id)
+
+        existing_analytic.description = new_data.get("description", existing_analytic.description)
+
+        if existing_analytic.triage_settings is not None:
+            existing_triage_data = existing_analytic.triage_settings.as_primitives()
+        else:
+            existing_triage_data = {}
+
+        existing_analytic.triage_settings = TriageOptions(
+            {**existing_triage_data, **new_data.get("triage_settings", {})}
+        )
+
+        return ok(existing_analytic)
+    except HowlerException as e:
+        return bad_request(err=str(e))
 
 
 @generate_swagger_docs()
