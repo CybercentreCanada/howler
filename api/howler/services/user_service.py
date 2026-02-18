@@ -40,8 +40,8 @@ def get_user(id: str) -> dict[str, Any]: ...
 
 def get_user(
     id: str,
-    as_odm: bool = False,
-    version: bool = False,
+    as_odm=False,
+    version=False,
 ):
     """Return hit object as either an ODM or Dict"""
     return datastore().user.get_if_exists(key=id, as_obj=as_odm, version=version)
@@ -77,10 +77,10 @@ def convert_user(user: User) -> dict[str, Any]:
 
     user_data["apikeys"] = [
         (key, value["acl"], value["expiry_date"])
-        for key, value in datastore().user.get_if_exists(user["uname"]).apikeys.items()
+        for key, value in datastore().user.get_if_exists(user.uname).apikeys.items()
     ]
 
-    user_data["avatar"] = datastore().user_avatar.get_if_exists(user["uname"])
+    user_data["avatar"] = datastore().user_avatar.get_if_exists(user.uname)
     user_data["username"] = user_data.pop("uname")
     user_data["is_admin"] = "admin" in user_data["type"]
     user_data["roles"] = list(set(user_data.pop("type")))
