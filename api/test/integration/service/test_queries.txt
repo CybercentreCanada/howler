@@ -23,7 +23,7 @@ howler.outline.summary:("Not to be found guilty on account of any act or omissio
 # some actually realistic queries
 howler.analytic:"Bad Guy Finder" AND howler.escalation:alert AND NOT howler.labels.mitigation:(DISCARD OR RETAIN)
 howler.analytic:SIEM*
-+howler.escalation:hit AND AND +howler.labels.assignments:APA1B AND +howler.status:open
++howler.escalation:hit AND +howler.labels.assignments:APA1B AND +howler.status:open
 howler.labels.assignments:APA1B
 howler.analytic:ExampleAnalytic howler.analytic:ExampleAnalytic  (howler.analytic:ExampleAnalytic -howler.escalation:hit) (howler.analytic:"Password Sprayer" -howler.escalation:hit)
 howler.analytic:Bad* AND howler.labels.insight:"Assessed"
