@@ -208,8 +208,8 @@ def test_modifies_prop():
     assert hit_service._modifies_prop("howler.status", operations) is False
 
 
-@patch("howler.services.hit_service.does_hit_exist", return_value=False)
-def test_convert_hit_warnings(mock_does_hit_exist):
+@patch("howler.services.hit_service.exists", return_value=False)
+def test_convert_hit_warnings(mock_exists):
     """Test that convert_hit generates warnings for extra and deprecated fields."""
     data = {
         **SAMPLE_HIT_DATA,
@@ -244,8 +244,8 @@ def test_transition_hit_not_found(mock_get_hit):
         )
 
 
-@patch("howler.services.hit_service.does_hit_exist", return_value=True)
-def test_create_hit_already_exists(mock_does_hit_exist):
+@patch("howler.services.hit_service.exists", return_value=True)
+def test_create_hit_already_exists(mock_exists):
     """Test that create_hit raises ResourceExists if the hit exists and overwrite is False."""
     with pytest.raises(ResourceExists):
         hit_service.create_hit("some_id", Hit(SAMPLE_HIT_DATA), overwrite=False)
