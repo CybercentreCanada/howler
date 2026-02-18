@@ -48,8 +48,8 @@ def get_analytic(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...
 
 def get_analytic(
     id: str,
-    as_odm: bool = False,
-    version: bool = False,
+    as_odm=False,
+    version=False,
 ):
     """Return analytic object as either an ODM or Dict"""
     return datastore().analytic.get_if_exists(key=id, as_obj=as_odm, version=version)
