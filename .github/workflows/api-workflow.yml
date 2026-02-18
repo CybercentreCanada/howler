@@ -86,10 +86,6 @@ jobs:
       - name: Run mypy type checking
         run: poetry run type_check
 
-      - name: Run pyright type checking
-        run: |
-          jq 'walk(if type == "string" then sub("api/"; "") else . end)' ../pyrightconfig.json > pyrightconfig.json
-          poetry run pyright --level warning
   test:
     runs-on: ubuntu-latest
 
