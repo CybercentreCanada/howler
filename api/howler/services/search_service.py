@@ -64,28 +64,20 @@ def _normalize_indexes(indexes: str | list[str]) -> str:
 def _format_items(hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Formats Elasticsearch search hits into a standardized item format.
 
-    Extracts the _source content from each hit and appends metadata fields
-    (_id, _index, _score) to create a flat dictionary structure for each item.
+    Extracts the _source content from each hit.
 
     Args:
         hits: A list of Elasticsearch hit dictionaries containing _source and metadata.
 
     Returns:
-        A list of formatted item dictionaries with _source content merged with metadata
-        fields (_id, _index, _score).
+        A list of formatted item dictionaries.
     """
     items: list[dict[str, Any]] = []
     for hit in hits:
         source = hit.get("_source")
-        if isinstance(source, dict):
-            item = dict(source)
-        else:
-            item = {"_source": source}
 
-        item["id"] = hit.get("_id")
-        item["_index"] = hit.get("_index")
-        item["_score"] = hit.get("_score")
-        items.append(item)
+        if source:
+            items.append(source)
 
     return items
 
@@ -194,7 +186,7 @@ def search(  # noqa: C901
 
     response: SearchResult[dict[str, Any]] = {
         "offset": int(offset),
-        "rows": int(rows),
+        "rows": len(hits),
         "total": int(total),
         "items": _format_items(hits),
     }

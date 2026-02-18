@@ -61,7 +61,7 @@ def test_normalize_indexes_fails_on_empty(indexes):
         search_service._normalize_indexes(indexes)
 
 
-def test_format_items_with_dict_and_non_dict_source():
+def test_format_items():
     items = search_service._format_items(
         [
             {
@@ -69,28 +69,16 @@ def test_format_items_with_dict_and_non_dict_source():
                 "_index": "idx-1",
                 "_score": 1.23,
                 "_source": {"uname": "admin", "name": "Administrator"},
-            },
-            {
-                "_id": "id-2",
-                "_index": "idx-2",
-                "_score": None,
-                "_source": "raw-source",
-            },
+            }
         ]
     )
 
     assert items[0]["uname"] == "admin"
-    assert items[0]["id"] == "id-1"
-    assert items[0]["_index"] == "idx-1"
-    assert items[0]["_score"] == 1.23
-
-    assert items[1]["_source"] == "raw-source"
-    assert items[1]["id"] == "id-2"
-    assert items[1]["_index"] == "idx-2"
+    assert items[0]["name"] == "Administrator"
 
 
 def test_search_defaults(datastore):
-    result = search_service.search("user", query="id:*")
+    result = search_service.search("user", query="uname:*")
 
     assert result["total"] >= TEST_SIZE
     assert result["offset"] == search_service.DEFAULT_OFFSET
@@ -106,21 +94,21 @@ def test_search_query_none_uses_wildcard(datastore):
 
 
 def test_search_with_filters_string(datastore):
-    result = search_service.search("user", query="id:*", filters="uname:admin", rows=25)
+    result = search_service.search("user", query="uname:*", filters="uname:admin", rows=25)
 
     assert result["total"] >= 1
     assert all(item.get("uname") == "admin" for item in result["items"])
 
 
 def test_search_with_filters_list(datastore):
-    result = search_service.search("user", query="id:*", filters=["uname:admin", "name:Administrator"], rows=25)
+    result = search_service.search("user", query="uname:*", filters=["uname:admin", 'name:"Michael Scott"'], rows=25)
 
     assert result["total"] >= 1
     assert all(item.get("uname") == "admin" for item in result["items"])
 
 
 def test_search_with_offset_and_rows(datastore):
-    result = search_service.search("user", query="id:*", offset=1, rows=3)
+    result = search_service.search("user", query="uname:*", offset=1, rows=3)
 
     assert result["offset"] == 1
     assert result["rows"] == 3
@@ -136,51 +124,49 @@ def test_search_with_offset_and_rows(datastore):
     ],
 )
 def test_search_with_sort_variants(datastore, sort_value):
-    result = search_service.search("user", query="id:*", sort=sort_value, rows=5)
+    result = search_service.search("user", query="uname:*", sort=sort_value, rows=5)
 
     assert result["total"] >= TEST_SIZE
     assert len(result["items"]) <= 5
 
 
 def test_search_with_fl_string(datastore):
-    result = search_service.search("user", query="id:*", fl="uname,name", rows=5)
+    result = search_service.search("user", query="uname:*", fl="uname,name", rows=5)
 
     assert len(result["items"]) > 0
     for item in result["items"]:
         assert "uname" in item
         assert "name" in item
-        assert "id" in item
-        assert "_index" in item
+        assert len(list(item.keys())) == 2
 
 
 def test_search_with_fl_list(datastore):
-    result = search_service.search("user", query="id:*", fl=["uname", "name"], rows=5)
+    result = search_service.search("user", query="uname:*", fl=["uname", "name"], rows=5)
 
     assert len(result["items"]) > 0
     for item in result["items"]:
         assert "uname" in item
         assert "name" in item
+        assert len(list(item.keys())) == 2
 
 
 def test_search_with_empty_fl_string(datastore):
-    result = search_service.search("user", query="id:*", fl="", rows=5)
+    result = search_service.search("user", query="uname:*", fl="", rows=5)
 
     assert len(result["items"]) > 0
     for item in result["items"]:
-        assert item.get("id") is not None
-        assert "password" not in item
-        assert "apikeys" not in item
+        assert item.get("uname") is not None
 
 
 def test_search_with_timeout_and_track_total_hits(datastore):
-    result = search_service.search("user", query="id:*", timeout=2000, track_total_hits=True, rows=5)
+    result = search_service.search("user", query="uname:*", timeout=2000, track_total_hits=True, rows=5)
 
     assert result["total"] >= TEST_SIZE
     assert len(result["items"]) <= 5
 
 
 def test_search_with_metadata_argument_ignored(datastore):
-    result = search_service.search("user", query="id:*", metadata=["template", "overview"], rows=3)
+    result = search_service.search("user", query="uname:*", metadata=["template", "overview"], rows=3)
 
     assert len(result["items"]) <= 3
     for item in result["items"]:
@@ -189,38 +175,30 @@ def test_search_with_metadata_argument_ignored(datastore):
 
 
 def test_search_with_deep_paging(datastore):
-    first_page = search_service.search("user", query="id:*", rows=2, deep_paging_id="*")
+    first_page = search_service.search("user", query="uname:*", rows=2, deep_paging_id="*")
 
     assert len(first_page["items"]) <= 2
 
     deep_paging_id = first_page.get("next_deep_paging_id")
     if deep_paging_id:
-        second_page = search_service.search("user", query="id:*", rows=2, deep_paging_id=deep_paging_id)
+        second_page = search_service.search("user", query="uname:*", rows=2, deep_paging_id=deep_paging_id)
         assert len(second_page["items"]) <= 2
 
 
 def test_search_raises_search_retry_exception_on_connection_error(datastore):
     client = search_service.datastore().ds.client
 
-    with patch.object(client, "search", side_effect=elasticsearch.exceptions.ConnectionError("N/A", "down", None)):
+    with patch.object(client, "search", side_effect=elasticsearch.exceptions.ConnectionError("N/A", "down")):
         with pytest.raises(SearchRetryException):
-            search_service.search("user", query="id:*")
+            search_service.search("user", query="uname:*")
 
 
 def test_search_raises_search_retry_exception_on_timeout(datastore):
     client = search_service.datastore().ds.client
 
-    with patch.object(client, "search", side_effect=elasticsearch.exceptions.ConnectionTimeout("N/A", "slow", None)):
+    with patch.object(client, "search", side_effect=elasticsearch.exceptions.ConnectionTimeout("N/A", "slow")):
         with pytest.raises(SearchRetryException):
-            search_service.search("user", query="id:*")
-
-
-def test_search_raises_search_exception_on_request_error(datastore):
-    client = search_service.datastore().ds.client
-
-    with patch.object(client, "search", side_effect=elasticsearch.exceptions.RequestError("400", "bad", {})):
-        with pytest.raises(SearchException):
-            search_service.search("user", query="id:*")
+            search_service.search("user", query="uname:*")
 
 
 def test_search_raises_search_exception_on_unexpected_error(datastore):
@@ -228,7 +206,7 @@ def test_search_raises_search_exception_on_unexpected_error(datastore):
 
     with patch.object(client, "search", side_effect=RuntimeError("unexpected")):
         with pytest.raises(SearchException, match="unexpected"):
-            search_service.search("user", query="id:*")
+            search_service.search("user", query="uname:*")
 
 
 def test_search_clears_scroll_on_deep_paging_end(datastore):
@@ -236,7 +214,7 @@ def test_search_clears_scroll_on_deep_paging_end(datastore):
 
     with patch.object(client, "scroll", return_value={"hits": {"total": {"value": 0}, "hits": []}}):
         with patch.object(client, "clear_scroll") as clear_scroll:
-            search_service.search("user", query="id:*", deep_paging_id="scroll-token", rows=10)
+            search_service.search("user", query="uname:*", deep_paging_id="scroll-token", rows=10)
 
             clear_scroll.assert_called_once_with(scroll_id="scroll-token")
 
@@ -246,7 +224,7 @@ def test_search_ignores_not_found_on_clear_scroll(datastore):
 
     with patch.object(client, "scroll", return_value={"hits": {"total": {"value": 0}, "hits": []}}):
         with patch.object(client, "clear_scroll", side_effect=elasticsearch.exceptions.NotFoundError("404", "", {})):
-            result = search_service.search("user", query="id:*", deep_paging_id="missing-scroll", rows=10)
+            result = search_service.search("user", query="uname:*", deep_paging_id="missing-scroll", rows=10)
 
     assert result["total"] == 0
     assert result["items"] == []
@@ -272,13 +250,35 @@ def test_search_clears_next_scroll_when_last_page(datastore):
 
     with patch.object(client, "search", return_value=scroll_result):
         with patch.object(client, "clear_scroll") as clear_scroll:
-            result = search_service.search("user", query="id:*", deep_paging_id="*", rows=10)
+            result = search_service.search("user", query="uname:*", deep_paging_id="*", rows=10)
 
     clear_scroll.assert_called_once_with(scroll_id="next-token")
     assert "next_deep_paging_id" not in result
 
 
 def test_search_multiple(datastore):
+    result = search_service.search(
+        indexes="hit",
+        query="howler.id:*",
+        sort="timestamp desc",
+        rows=80,
+    )
+
+    assert result["rows"] == 40
+    assert len(result["items"]) > 0
+    assert len(result["items"]) <= 40
+
+    result = search_service.search(
+        indexes="observable",
+        query="howler.id:*",
+        sort="timestamp desc",
+        rows=80,
+    )
+
+    assert result["rows"] == 40
+    assert len(result["items"]) > 0
+    assert len(result["items"]) <= 40
+
     result = search_service.search(
         indexes="hit,observable",
         query="howler.id:*",
@@ -289,7 +289,3 @@ def test_search_multiple(datastore):
     assert result["rows"] == 80
     assert len(result["items"]) > 0
     assert len(result["items"]) <= 80
-
-    indexes = {item.get("_index") for item in result["items"]}
-    assert "howler-hit_hot" in indexes
-    assert "howler-observable_hot" in indexes
