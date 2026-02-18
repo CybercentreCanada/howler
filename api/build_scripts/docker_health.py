@@ -39,12 +39,12 @@ while not ready and retries < 10:
         RemoteDisconnected,
         requests.exceptions.ConnectionError,
     ):
-        logging.warning("Failed to connect to keycloak, retrying")
-    except Exception:
         if retries >= 9:
             logging.exception("Failed to connect to keycloak.")
         else:
             logging.warning("Failed to connect to keycloak, retrying")
+    except Exception:
+        logging.exception("Exception on network call")
 
     try:
         elastic = requests.get("http://localhost:9200/_cluster/health")
