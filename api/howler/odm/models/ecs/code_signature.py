@@ -21,7 +21,5 @@ class CodeSignature(odm.Model):
     timestamp = odm.Optional(odm.Date(description="Date and time when the code signature was generated and signed."))
     trusted = odm.Optional(odm.Boolean(description="Stores the trust status of the certificate chain."))
     valid = odm.Optional(
-        odm.Boolean(
-            description="Boolean to capture if the digital signature" " is verified against the binary content."
-        )
+        odm.Boolean(description="Boolean to capture if the digital signature is verified against the binary content.")
     )

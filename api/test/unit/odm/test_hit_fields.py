@@ -2,12 +2,12 @@ import json
 from hashlib import md5
 
 import pytest
-from utils.example_hashes import EXAMPLE_HASHES
 
 from howler.common.exceptions import HowlerValueError
 from howler.odm.models.hit import Hit
 from howler.odm.randomizer import get_random_hash
 from howler.services import hit_service
+from test.utils.example_hashes import EXAMPLE_HASHES
 
 
 def test_build_ecs_alert():

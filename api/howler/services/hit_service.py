@@ -3,7 +3,7 @@ import json
 import re
 import typing
 from hashlib import sha256
-from typing import Any, Literal, Optional, Union, cast
+from typing import Any, Literal, Optional, Union, cast, overload
 
 from prometheus_client import Counter
 
@@ -14,7 +14,7 @@ from howler.common.loader import APP_NAME, datastore
 from howler.common.logging import get_logger
 from howler.datastore.collection import ESCollection
 from howler.datastore.operations import OdmHelper, OdmUpdateOperation
-from howler.datastore.types import HitSearchResult
+from howler.datastore.types import SearchResult
 from howler.helper.hit import (
     AssessmentEscalationMap,
     assess_hit,
@@ -366,6 +366,34 @@ def exists(id: str):
     return datastore().hit.exists(id)
 
 
+@overload
+def get_hit(id: str, as_odm: Literal[True], version: Literal[True]) -> tuple[Hit, str]: ...
+
+
+@overload
+def get_hit(id: str, as_odm: Literal[True], version: Literal[False]) -> Hit: ...
+
+
+@overload
+def get_hit(id: str, as_odm: Literal[True]) -> Hit: ...
+
+
+@overload
+def get_hit(id: str) -> Hit: ...
+
+
+@overload
+def get_hit(id: str, as_odm: Literal[False], version: Literal[True]) -> tuple[dict[str, Any], str]: ...
+
+
+@overload
+def get_hit(id: str, as_odm: Literal[False], version: Literal[False]) -> dict[str, Any]: ...
+
+
+@overload
+def get_hit(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...
+
+
 def get_hit(
     id: str,
     as_odm: bool = False,
@@ -483,7 +511,7 @@ def _update_hit(
     operations: list[OdmUpdateOperation],
     user: Optional[str] = None,
     version: Optional[str] = None,
-) -> tuple[Hit, str]:
+) -> tuple[dict[str, Any] | None, str | None]:
     """Internal function to update a hit with proper logging and event emission.
 
     This function applies update operations to a hit, automatically adding worklog entries
@@ -558,8 +586,9 @@ def _update_hit(
 
     datastore().hit.update(hit_id, final_operations, version)
     # Need to fetch the new data of the hit for the event_service
-    data, _version = datastore().hit.get(hit_id, as_obj=False, version=True)
-    event_service.emit("hits", {"hit": data, "version": _version})
+    data, _version = datastore().hit.get(hit_id, as_obj=False, version=True) or (None, None)
+    if data and _version:
+        event_service.emit("hits", {"hit": data, "version": _version})
 
     return data, _version
 
@@ -576,7 +605,7 @@ def get_transitions(status: HitStatus) -> list[str]:
     return get_hit_workflow().get_transitions(status)
 
 
-def get_all_children(hit: Hit):
+def get_all_children(hit: dict[str, Any]) -> list[dict[str, Any]]:
     """Get a list of all child hits for a given hit, including nested children.
 
     This function recursively traverses bundle structures to find all child hits.
@@ -589,7 +618,7 @@ def get_all_children(hit: Hit):
         List of all child hits (may include None values for missing hits)
     """
     # Get immediate child hits from the hit's bundle
-    child_hits = [get_hit(hit_id) for hit_id in hit["howler"].get("hits", [])]
+    child_hits = [get_hit(hit_id, as_odm=False) for hit_id in hit["howler"].get("hits", [])]
 
     # Recursively process child hits that are themselves bundles
     for entry in child_hits:
@@ -627,7 +656,9 @@ def transition_hit(
         NotFoundException: If the hit does not exist
     """
     # Get the primary hit (either provided in kwargs or fetch from database)
-    primary_hit: Hit = kwargs.pop("hit", None) or get_hit(id, as_odm=False)
+    primary_hit: dict[str, Any] | None = cast(dict[str, Any] | None, kwargs.pop("hit", None)) or get_hit(
+        id, as_odm=False
+    )
 
     if not primary_hit:
         raise NotFoundException("Hit does not exist")
@@ -660,7 +691,7 @@ def transition_hit(
         if updates:
             # Only apply version validation to the primary hit
             hit_version = version if (current_hit_id == primary_hit["howler"]["id"] and version) else None
-            _update_hit(current_hit_id, updates, user["uname"], version=hit_version)
+            _update_hit(current_hit_id, updates, user.uname, version=hit_version)
 
     # Execute bulk actions for transitions that require them
     # These transitions need additional processing beyond the workflow
@@ -732,17 +763,45 @@ def delete_hits(hit_ids: list[str]) -> bool:
     return result
 
 
+@overload
 def search(
     query: str,
+    as_obj: Literal[True],
     offset: int = 0,
     rows: Optional[int] = None,
     sort: Optional[Any] = None,
-    fl: Optional[Any] = None,
-    timeout: Optional[Any] = None,
-    deep_paging_id: Optional[Any] = None,
-    track_total_hits: Optional[Any] = None,
+    fl: str | None = None,
+    timeout: int | None = None,
+    deep_paging_id: str | None = None,
+    track_total_hits: bool = False,
+) -> SearchResult[Hit]: ...
+
+
+@overload
+def search(
+    query: str,
+    as_obj: Literal[False],
+    offset: int = 0,
+    rows: Optional[int] = None,
+    sort: Optional[Any] = None,
+    fl: str | None = None,
+    timeout: int | None = None,
+    deep_paging_id: str | None = None,
+    track_total_hits: bool = False,
+) -> SearchResult[dict[str, Any]]: ...
+
+
+def search(
+    query: str,
     as_obj: bool = True,
-) -> HitSearchResult:
+    offset: int = 0,
+    rows: int | None = None,
+    sort: Any | None = None,
+    fl: str | None = None,
+    timeout: int | None = None,
+    deep_paging_id: str | None = None,
+    track_total_hits: bool = False,
+):
     """Search for hits in the datastore using a query.
 
     This function provides a flexible search interface for finding hits based on
@@ -821,7 +880,7 @@ def __match_metadata(candidates: list[dict[str, Any]], hit: dict[str, Any]) -> O
     return sorted(matching_candidates, key=functools.cmp_to_key(__compare_metadata))[0]
 
 
-def augment_metadata(data: list[dict[str, Any]] | dict[str, Any], metadata: list[str], user: dict[str, Any]):  # noqa: C901
+def augment_metadata(data: list[dict[str, Any]] | dict[str, Any] | None, metadata: list[str], user: dict[str, Any]):  # noqa: C901
     """Augment hit search results with additional metadata.
 
     This function enriches hit data by adding related information such as templates,
@@ -850,7 +909,7 @@ def augment_metadata(data: list[dict[str, Any]] | dict[str, Any], metadata: list
     logger.debug("Augmenting %s hits with %s", len(hits), ",".join(metadata))
 
     if "template" in metadata:
-        template_candidates = template_service.get_matching_templates(hits, user["uname"], as_odm=False)
+        template_candidates = template_service.get_matching_templates(hits, as_odm=False, uname=user["uname"])
 
         logger.debug("\tRetrieved %s matching templates", len(template_candidates))
 

@@ -116,8 +116,7 @@ class Link(odm.Model):
     title = odm.Keyword(description="The title to use for the link.", optional=True)
     icon = odm.Keyword(
         description=(
-            "The icon to show. Either an ID corresponding to an "
-            "analytical platform application, or an external link."
+            "The icon to show. Either an ID corresponding to an analytical platform application, or an external link."
         ),
         optional=True,
     )
@@ -125,11 +124,11 @@ class Link(odm.Model):
 
 @odm.model(index=True, store=True, description="Comment definition.")
 class Comment(odm.Model):
-    id = odm.UUID(description="A unique ID for the comment.")
+    id: str = odm.UUID(description="A unique ID for the comment.")
     timestamp = odm.Date(description="Timestamp at which the comment took place.", default="NOW")
     modified = odm.Date(description="Timestamp at which the comment was last edited.", default="NOW")
-    value = odm.Text(description="The comment itself.")
-    user = odm.Keyword(description="User ID who created the comment.")
+    value: str = odm.Text(description="The comment itself.")
+    user: str = odm.Keyword(description="User ID who created the comment.")
     reactions: dict[str, str] = odm.Mapping(
         odm.Keyword(),
         default={},
@@ -288,7 +287,7 @@ class HowlerData(odm.Model):
     rationale: Optional[str] = odm.Optional(
         odm.Keyword(
             description=(
-                "The rationale behind the hit assessment. Allows it to be understood and" " verified by other analysts."
+                "The rationale behind the hit assessment. Allows it to be understood and verified by other analysts."
             )
         )
     )

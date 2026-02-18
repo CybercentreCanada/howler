@@ -18,14 +18,16 @@ def execute():
 
     # Initialize datastore
     ds = datastore()
+
     # fetch the first result from user ds (needed to initialize total)
-    result = ds.user.search("*:*", rows=250, fl="*")
-    total_user_count = result["total"]
-    user_list: List[Any] = result["items"]
+    user_result = ds.user.search("*:*", rows=250, fl="*")
+    total_user_count = user_result["total"]
+    user_list: List[Any] = user_result["items"]
+
     # Do the same thing for the views
-    result = ds.view.search("*:*", rows=250)
-    total_view_count = result["total"]
-    view_list: List[Any] = result["items"]
+    view_result = ds.view.search("*:*", rows=250)
+    total_view_count = view_result["total"]
+    view_list: List[Any] = view_result["items"]
     view_ids: List[str] = []
 
     # Collect all views

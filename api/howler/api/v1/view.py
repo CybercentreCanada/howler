@@ -1,3 +1,5 @@
+from typing import cast
+
 from flask import request
 from mergedeep.mergedeep import merge
 
@@ -13,7 +15,7 @@ from howler.security import api_login
 
 SUB_API = "view"
 view_api = make_subapi_blueprint(SUB_API, api_version=1)
-view_api._doc = "Manage the different views created for filtering hits"
+view_api._doc = "Manage the different views created for filtering hits"  # type: ignore
 
 logger = get_logger(__file__)
 
@@ -95,7 +97,7 @@ def create_view(**kwargs):
         if view.type == "personal":
             current_user = storage.user.get_if_exists(kwargs["user"]["uname"])
 
-            current_user["favourite_views"] = current_user.get("favourite_views", []) + [view.view_id]
+            current_user.favourite_views.append(view.view_id)
 
             storage.user.save(current_user["uname"], current_user)
 
@@ -191,7 +193,7 @@ def update_view(view_id: str, user: User, **kwargs):
     if existing_view.type == "global" and existing_view.owner != user.uname and "admin" not in user.type:
         return forbidden(err="Only the owner of a view and administrators can edit a global view.")
 
-    new_view = View(merge({}, existing_view.as_primitives(), new_data))
+    new_view = View(cast(dict, merge({}, existing_view.as_primitives(), new_data)))
 
     storage.view.save(new_view.view_id, new_view)
 
@@ -243,7 +245,7 @@ def set_as_favourite(view_id: str, **kwargs):
     try:
         current_user = storage.user.get_if_exists(kwargs["user"]["uname"])
 
-        current_user["favourite_views"] = list(set(current_user.get("favourite_views", []) + [view_id]))
+        current_user["favourite_views"] = list(set(current_user.favourite_views + [view_id]))
 
         storage.user.save(current_user["uname"], current_user)
 
@@ -274,7 +276,7 @@ def remove_as_favourite(view_id: str, **kwargs):
     try:
         current_user = storage.user.get_if_exists(kwargs["user"]["uname"])
 
-        current_favourites: list[str] = current_user.get("favourite_views", [])
+        current_favourites: list[str] = current_user.favourite_views
 
         if view_id not in current_favourites:
             return not_found(err="View is not favourited.")

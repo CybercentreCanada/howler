@@ -2,10 +2,10 @@ import json
 from typing import Any
 
 import pytest
-from conftest import APIError, get_api_data
 
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.random_data import create_templates, wipe_templates
+from test.conftest import APIError, get_api_data
 
 
 @pytest.fixture(scope="module")

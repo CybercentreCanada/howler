@@ -1,4 +1,4 @@
-from typing import Any, Union
+from typing import Any, Literal, Union, overload
 
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -18,13 +18,41 @@ def does_analytic_exist(analytic_id: str) -> bool:
     return datastore().analytic.exists(analytic_id)
 
 
+@overload
+def get_analytic(id: str, as_odm: Literal[True], version: Literal[True]) -> tuple[Analytic, str]: ...
+
+
+@overload
+def get_analytic(id: str, as_odm: Literal[True], version: Literal[False]) -> Analytic: ...
+
+
+@overload
+def get_analytic(id: str, as_odm: Literal[True]) -> Analytic: ...
+
+
+@overload
+def get_analytic(id: str) -> Analytic: ...
+
+
+@overload
+def get_analytic(id: str, as_odm: Literal[False], version: Literal[True]) -> tuple[dict[str, Any], str]: ...
+
+
+@overload
+def get_analytic(id: str, as_odm: Literal[False], version: Literal[False]) -> dict[str, Any]: ...
+
+
+@overload
+def get_analytic(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...
+
+
 def get_analytic(
     id: str,
-    as_obj: bool = False,
-    version: bool = False,
+    as_odm=False,
+    version=False,
 ):
     """Return analytic object as either an ODM or Dict"""
-    return datastore().analytic.get_if_exists(key=id, as_obj=as_obj, version=version)
+    return datastore().analytic.get_if_exists(key=id, as_obj=as_odm, version=version)
 
 
 def update_analytic(
@@ -58,7 +86,7 @@ def get_matching_analytics(hits: Union[list[Hit], list[dict[str, Any]]]) -> list
 
     try:
         existing_analytics: list[Analytic] = storage.analytic.search(
-            f'name:({" OR ".join(analytic_names)})', as_obj=True
+            f"name:({' OR '.join(analytic_names)})", as_obj=True
         )["items"]
 
         return existing_analytics
@@ -84,10 +112,10 @@ def save_from_hit(hit: Hit, user: User):
 
         if not analytic.owner:
             save = True
-            analytic.owner = user["uname"]
+            analytic.owner = user.uname
 
         if user["uname"] not in analytic.contributors:
-            analytic.contributors.append(user["uname"])
+            analytic.contributors.append(user.uname)
 
         if hit.howler.detection:
             new_detections = [d for d in analytic.detections if d.lower() != (hit.howler.detection or "").lower()]

@@ -48,44 +48,48 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: develop
+
       - name: Checkout current ref
         uses: actions/checkout@v4
+
       - name: Setup Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
       - name: Install poetry
         shell: bash
         run: python3 -m pip install poetry
+
       - uses: actions/cache@v3
         name: Define a cache for the virtual environment based on the dependencies lock file
         with:
           path: ./api/.venv
           key: venv-${{ hashFiles('api/poetry.lock') }}
+
       - name: Check for poetry config integrity
         run: |
           poetry --version
           poetry env use 3.12
           poetry check
           poetry env info
+
       - name: Install Dependencies
-        run: |
-          poetry install --verbose --with test
+        run: poetry install --verbose --with test,dev
+
       - name: Run ruff formatting checks
-        run: |
-          poetry run ruff format howler --diff
+        run: poetry run ruff format howler --diff
+
       - name: Run ruff linter checks
+        run: poetry run ruff check howler --output-format=github
+
+      - name: Run mypy type checking
+        run: poetry run type_check
+
+      - name: Run pyright type checking
         run: |
-          poetry run ruff check howler --output-format=github
-      - name: Run type checking
-        run: |
-          poetry run type_check
-      - name: "Update poetry version"
-        run: |
-          poetry run python build_scripts/set_version.py
-        env:
-          BRANCH: ${{ github.ref }}
-          BUILD_ID: ${{ github.run_number }}
+          jq 'walk(if type == "string" then sub("api/"; "") else . end)' ../pyrightconfig.json > pyrightconfig.json
+          poetry run pyright --level warning
   test:
     runs-on: ubuntu-latest
 
@@ -104,30 +108,35 @@ jobs:
         if: github.event_name == 'pull_request'
         id: base-depth
         working-directory: .
-        run: |
-          echo "base-depth=$(expr ${{ github.event.pull_request.commits }} + 1)" >> $GITHUB_OUTPUT
+        run: echo "base-depth=$(expr ${{ github.event.pull_request.commits }} + 1)" >> $GITHUB_OUTPUT
+
       - name: Checkout current ref
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: ${{ steps.base-depth.outputs.base-depth }}
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+
       - name: Spin up test dependencies
-        uses: hoverkraft-tech/compose-action@v2.2.0
+        uses: hoverkraft-tech/compose-action@v2.5.0
         with:
           compose-file: "api/dev/docker-compose.yml"
           up-flags: "--build"
+
       - name: Install poetry
         shell: bash
         run: python3 -m pip install poetry
+
       - uses: actions/cache@v3
         name: Define a cache for the virtual environment based on the dependencies lock file
         with:
           path: ./api/.venv
           key: venv-${{ hashFiles('api/poetry.lock') }}
+
       - name: Setup Environment
         run: |
           sudo mkdir -p /etc/howler/conf/
@@ -139,19 +148,30 @@ jobs:
           cp build_scripts/classification.yml /etc/howler/conf/classification.yml
           cp build_scripts/mappings.yml /etc/howler/conf/mappings.yml
           cp test/unit/config.yml /etc/howler/conf/config.yml
+
       - name: Install Dependencies
         run: |
-          poetry install --verbose --with test
+          poetry install --verbose --with test,dev
           poetry run mitre /etc/howler/lookups
           poetry run sigma
-      - name: Ensure keycloak is healthy
+      - name: Ensure docker compose is healthy
+        run: poetry run python build_scripts/docker_health.py
+
+      - name: Docker compose log dump on failure
+        if: failure()
         run: |
-          poetry run python build_scripts/keycloak_health.py
+          echo "Status:"
+          docker compose ls
+          docker compose ps
+
+          echo "Logs:"
+          docker compose logs
+        working-directory: api/dev
+
       - name: Run tests
         id: tests
         continue-on-error: true
-        run: |
-          poetry run test
+        run: poetry run test
         env:
           WRITE_MARKDOWN: "true"
 
@@ -186,8 +206,7 @@ jobs:
 
       - name: Force Failure if Tests Failed
         if: steps.tests.outcome == 'failure'
-        run: |
-          exit 1
+        run: exit 1
 
   test_docker_build:
     if: github.event_name == 'pull_request'
@@ -207,17 +226,21 @@ jobs:
     steps:
       - name: Checkout current ref
         uses: actions/checkout@v4
+
       - name: Install poetry
         shell: bash
         run: python3 -m pip install poetry
+
       - name: Extract Howler API version
         id: version
-        run: |
-          echo "version=$(poetry version -s)" >> $GITHUB_OUTPUT
+        run: echo "version=$(poetry version -s)" >> $GITHUB_OUTPUT
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
       - name: Test build API Docker image (no push)
         uses: docker/build-push-action@v3
         with:
@@ -250,31 +273,37 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: develop
+
       - name: Checkout current ref
         uses: actions/checkout@v4
+
       - name: Install poetry
         shell: bash
         run: python3 -m pip install poetry
+
       - uses: actions/cache@v3
         name: Define a cache for the virtual environment based on the dependencies lock file
         with:
           path: ./api/.venv
           key: venv-${{ hashFiles('api/poetry.lock') }}
+
       - name: Install Dependencies
-        run: |
-          poetry install
+        run: poetry install
+
       - name: "Update poetry version"
-        run: |
-          poetry run python build_scripts/set_version.py
+        run: poetry run python build_scripts/set_version.py
         env:
           BRANCH: ${{ github.ref }}
           BUILD_ID: ${{ github.run_number }}
+
       - name: Build Package
         run: |
           poetry install
           poetry build
+
       - name: Configure Poetry for PyPI
         run: poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
+
       - name: Publish the package to PyPI
         if: github.event_name != 'pull_request'
         run: |
@@ -305,20 +334,25 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: develop
+
       - name: Checkout current ref
         uses: actions/checkout@v4
+
       - name: Install poetry
         shell: bash
         run: python3 -m pip install poetry
+
       - name: Extract Howler API version
         id: version
         run: |
           echo "version=$(poetry version -s)" >> $GITHUB_OUTPUT
+
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v3
@@ -331,10 +365,13 @@ jobs:
             type=semver,pattern={{version}}
             type=raw,value=${{steps.version.outputs.version}}_{{branch}}
             type=raw,value=${{steps.version.outputs.version}}_{{branch}}_{{sha}}
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
       - name: Build and push API Docker image
         id: push
         uses: docker/build-push-action@v3
@@ -348,6 +385,7 @@ jobs:
             version=${{ steps.meta.outputs.version }}
             branch=${{ github.ref }}
             commit=${{ github.sha }}
+
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
         with:

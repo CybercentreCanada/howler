@@ -166,11 +166,6 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=16384  # Increase memory for large builds
 
-      - name: Debug OIDC Claims
-        uses: steve-todorov/oidc-debugger-action@v1
-        with:
-          audience: https://registry.npmjs.org
-
       - name: Check Package Version Type
         id: version-check
         run: |

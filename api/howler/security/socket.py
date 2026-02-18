@@ -1,7 +1,7 @@
 import functools
 import json
 import uuid
-from typing import Optional
+from typing import Optional, cast
 
 from flask import request
 from jwt import InvalidTokenError
@@ -20,7 +20,7 @@ def ws_response(type, data={}, error=False, status=200, message=""):
     return json.dumps({"error": error, "status": status, "message": message, "type": type, **data})
 
 
-def websocket_auth(required_type: Optional[list[str]] = None, required_priv: Optional[list[str]] = None):
+def websocket_auth(required_type: Optional[list[str]] = None, required_priv: Optional[list[str]] = None):  # noqa: C901
     """Authentication for a new websocket connection.
 
     Args:
@@ -38,11 +38,12 @@ def websocket_auth(required_type: Optional[list[str]] = None, required_priv: Opt
     def wrapper(f):
         @functools.wraps(f)
         def auth(*args, **kwargs):
+            ws_id = str(uuid.uuid4())
+            ws = None
             try:
-                ws_id = str(uuid.uuid4())
                 ws = Server(request.environ, ping_interval=5)
 
-                auth_header = ws.receive()
+                auth_header = cast(str, ws.receive())
 
                 user, privs = auth_service.bearer_auth(auth_header)
 
@@ -83,23 +84,26 @@ def websocket_auth(required_type: Optional[list[str]] = None, required_priv: Opt
                 InvalidTokenError,
             ):
                 logger.warning(f"{ws_id}: Authentication header is invalid")
-                ws.close(
-                    1008,
-                    ws_response(
-                        "error",
-                        error=True,
-                        status=401,
-                        message="Authentication header is invalid.",
-                    ),
-                )
+                if ws:
+                    ws.close(
+                        1008,
+                        ws_response(
+                            "error",
+                            error=True,
+                            status=401,
+                            message="Authentication header is invalid.",
+                        ),
+                    )
+
                 return unauthorized()
             finally:
-                try:
-                    ws.close()
-                except Exception as e:
-                    logger.debug("Exception on WS close: %s", str(e))
-                finally:
-                    ws.connected = False
+                if ws:
+                    try:
+                        ws.close()
+                    except Exception as e:
+                        logger.debug("Exception on WS close: %s", str(e))
+                    finally:
+                        ws.connected = False
 
                 return ok()
 

@@ -45,15 +45,14 @@ class OriginalClient(odm.Model):
     bytes: Optional[int] = odm.Optional(
         odm.Integer(
             description=(
-                "The original client in a session that has changed clients. "
-                "Bytes sent from the client to the server."
+                "The original client in a session that has changed clients. Bytes sent from the client to the server."
             )
         )
     )
     domain: Optional[str] = odm.Optional(
         odm.Domain(
             description=(
-                "The original client in a session that has changed clients. " "The domain name of the client system."
+                "The original client in a session that has changed clients. The domain name of the client system."
             )
         )
     )
@@ -69,7 +68,7 @@ class OriginalClient(odm.Model):
     ip: Optional[str] = odm.Optional(
         odm.IP(
             description=(
-                "The original client in a session that has changed clients. IP address of the " "client (IPv4 or IPv6)."
+                "The original client in a session that has changed clients. IP address of the client (IPv4 or IPv6)."
             )
         )
     )
