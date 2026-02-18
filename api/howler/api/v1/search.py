@@ -10,7 +10,7 @@ from sigma.rule import SigmaRule
 from werkzeug.exceptions import BadRequest
 from yaml.scanner import ScannerError
 
-from howler.api import bad_request, make_subapi_blueprint, ok
+from howler.api import bad_request, forbidden, make_subapi_blueprint, ok
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
@@ -24,6 +24,8 @@ search_api = make_subapi_blueprint(SUB_API, api_version=1)
 search_api._doc = "Perform search queries"
 
 logger = get_logger(__file__)
+
+SENSITIVE_USER_FIELDS = ["password", "apikeys", "*"]
 
 
 def generate_params(request, fields, multi_fields, params=None):
@@ -136,6 +138,13 @@ def search(index, **kwargs):
     query = req_data.get("query", None)
     if not query:
         return bad_request(err="There was no search query.")
+
+    if (
+        "fl" in params
+        and index == "user"
+        and any(sensitive_field in params["fl"] for sensitive_field in SENSITIVE_USER_FIELDS)
+    ):
+        return forbidden(err="Invalid fields to retrieve.")
 
     try:
         metadata = params.pop("metadata", [])
@@ -277,6 +286,13 @@ def eql_search(index, **kwargs):
     if not eql_query:
         return bad_request(err="There was no EQL search query.")
 
+    if (
+        "fl" in params
+        and index == "user"
+        and any(sensitive_field in params["fl"] for sensitive_field in SENSITIVE_USER_FIELDS)
+    ):
+        return forbidden(err="Invalid fields to retrieve.")
+
     try:
         return ok(collection().raw_eql_search(**params))
     except (SearchException, BadRequestError) as e:
@@ -365,6 +381,13 @@ def sigma_search(index, **kwargs):
 
     lucene_queries = LuceneBackend(index_names=[es_collection.index_name]).convert_rule(rule)
 
+    if (
+        "fl" in params
+        and index == "user"
+        and any(sensitive_field in params["fl"] for sensitive_field in SENSITIVE_USER_FIELDS)
+    ):
+        return forbidden(err="Invalid fields to retrieve.")
+
     try:
         return ok(es_collection.search("*:*", **params, filters=[*params.get("filters", []), *lucene_queries]))
     except (SearchException, BadRequestError) as e:
@@ -432,6 +455,13 @@ def group_search(index, group_field, **kwargs):
 
     if not group_field:
         return bad_request(err="The field to group on was not specified.")
+
+    if (
+        "fl" in params
+        and index == "user"
+        and any(sensitive_field in params["fl"] for sensitive_field in SENSITIVE_USER_FIELDS)
+    ):
+        return forbidden(err="Invalid fields to retrieve.")
 
     try:
         return ok(collection().grouped_search(group_field, **params))
@@ -593,6 +623,9 @@ def facet(index, **kwargs):
                 logger.warning("Invalid field %s requested for faceting, skipping", field)
                 continue
 
+            if index == "user" and any(sensitive_field in field for sensitive_field in SENSITIVE_USER_FIELDS):
+                return forbidden(err="Invalid fields to facet on.")
+
             facet_result[field] = collection().facet(field, **params)
 
         return ok(facet_result)
@@ -642,6 +675,9 @@ def facet_field(index, field, **kwargs):
     field_info = collection().fields().get(field, None)
     if field_info is None:
         return bad_request(err=f"Field '{field}' is not a valid field in index: {index}")
+
+    if index == "user" and any(sensitive_field in field for sensitive_field in SENSITIVE_USER_FIELDS):
+        return forbidden(err="Invalid field to facet on.")
 
     fields = ["query", "mincount", "rows"]
     multi_fields = ["filters"]
