@@ -21,9 +21,9 @@ def migrate():
         return
 
     logger.info(f"We will delete {result['total']} hits. Continue?")
-    result = input("y/[n]")
+    prompt_result = input("y/[n]")
 
-    if result.lower() != "y":
+    if prompt_result.lower() != "y":
         logger.warning("Did not receive an OK, stopping")
         return
 
