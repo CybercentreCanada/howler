@@ -79,6 +79,42 @@ def _assert_no_facet_leak(facet_response: dict, stored_user: dict):
     assert set(facet_response.keys()).isdisjoint(expected_hashes)
 
 
+def _assert_user_search_no_leak_with_optional_fl(session, host, username: str, stored_user: dict, fl_value):
+    get_params = {
+        "query": f'uname:"{username}"',
+        "rows": 1000,
+    }
+    post_body = {
+        "query": f'uname:"{username}"',
+        "rows": 1000,
+    }
+
+    if fl_value is not None:
+        get_params["fl"] = fl_value
+        post_body["fl"] = fl_value
+
+    for method, payload in [("GET", get_params), ("POST", post_body)]:
+        try:
+            if method == "GET":
+                response = get_api_data(session, f"{host}/api/v1/search/user/", params=payload)
+            else:
+                response = get_api_data(
+                    session,
+                    f"{host}/api/v1/search/user/",
+                    method="POST",
+                    data=json.dumps(payload),
+                )
+        except APIError as error:
+            _assert_not_allowed_error(error)
+            continue
+
+        matching_users = [item for item in response.get("items", []) if item.get("uname") == username]
+        assert matching_users
+
+        for item in matching_users:
+            _assert_no_sensitive_user_leak(item, stored_user)
+
+
 @pytest.mark.parametrize("username", ["admin", "user", "huey", "goose", "shawn-h"])
 def test_sensitive_fields_not_exposed_in_user_search_get(datastore, login_session, username):
     session, host = login_session
@@ -130,6 +166,22 @@ def test_sensitive_fields_not_exposed_in_user_search_post(datastore, login_sessi
 
     for item in matching_users:
         _assert_no_sensitive_user_leak(item, stored_user)
+
+
+@pytest.mark.parametrize("username", ["admin", "user", "huey", "goose", "shawn-h"])
+def test_sensitive_fields_not_exposed_in_user_search_when_fl_missing(datastore, login_session, username):
+    session, host = login_session
+    stored_user = datastore.user.get(username, as_obj=False)
+
+    _assert_user_search_no_leak_with_optional_fl(session, host, username, stored_user, fl_value=None)
+
+
+@pytest.mark.parametrize("username", ["admin", "user", "huey", "goose", "shawn-h"])
+def test_sensitive_fields_not_exposed_in_user_search_when_fl_empty(datastore, login_session, username):
+    session, host = login_session
+    stored_user = datastore.user.get(username, as_obj=False)
+
+    _assert_user_search_no_leak_with_optional_fl(session, host, username, stored_user, fl_value="")
 
 
 @pytest.mark.parametrize("username", ["admin", "user", "huey", "goose", "shawn-h"])
