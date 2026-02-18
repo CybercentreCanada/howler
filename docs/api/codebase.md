@@ -33,7 +33,6 @@ This document outlines the overall structure of the Howler API codebase. The fir
 
 - `actions` - contains action plugins for bulk operations on hits:
   - **`add_label.py`**, **`remove_label.py`** - Label management
-  - **`add_to_bundle.py`**, **`remove_from_bundle.py`** - Bundle operations
   - **`promote.py`**, **`demote.py`** - Hit promotion/demotion
   - **`change_field.py`**, **`transition.py`** - Field modifications and state transitions
   - **`prioritization.py`** - Priority management

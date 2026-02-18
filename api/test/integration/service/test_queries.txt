@@ -23,8 +23,8 @@ howler.outline.summary:("Not to be found guilty on account of any act or omissio
 # some actually realistic queries
 howler.analytic:"Bad Guy Finder" AND howler.escalation:alert AND NOT howler.labels.mitigation:(DISCARD OR RETAIN)
 howler.analytic:SIEM*
-+howler.escalation:hit AND +howler.is_bundle:true AND +howler.labels.assignments:APA1B AND +howler.status:open
-howler.labels.assignments:APA1B AND howler.is_bundle:true
++howler.escalation:hit AND AND +howler.labels.assignments:APA1B AND +howler.status:open
+howler.labels.assignments:APA1B
 howler.analytic:ExampleAnalytic howler.analytic:ExampleAnalytic  (howler.analytic:ExampleAnalytic -howler.escalation:hit) (howler.analytic:"Password Sprayer" -howler.escalation:hit)
 howler.analytic:Bad* AND howler.labels.insight:"Assessed"
 +howler.labels.assignments:APA2B +howler.escalation:alert
@@ -38,7 +38,7 @@ howler.analytic:SIEM*
 howler.analytic:(Pass* OR FlooNET)
 howler.analytic:"Password Sprayer" -howler.escalation:hit
 howler.id:* AND howler.labels.insight:"Thing suggests RETAIN"
-+howler.escalation:alert AND +howler.is_bundle:true AND +howler.labels.assignments:APA2B AND +howler.status:open
++howler.escalation:alert AND +howler.labels.assignments:APA2B AND +howler.status:open
 howler.assignment:matthewrafuse
 howler.assignment:unassigned
 howler.id:*

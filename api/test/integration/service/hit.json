@@ -762,8 +762,6 @@
   "howler": {
     "analytic": "Exploit Patcher",
     "assignment": "unassigned",
-    "bundle_size": 0,
-    "bundles": [],
     "comment": [
       {
         "id": "44TTFx4jDcsh82I7uCVvCh",
@@ -820,7 +818,6 @@
         "url": "hello"
       }
     ],
-    "is_bundle": false,
     "labels": {
       "assignments": [
         "APA1B"

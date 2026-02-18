@@ -247,8 +247,7 @@ def convert_hit(  # noqa: C901
         - list[str]: List of validation warnings (unused fields, deprecated fields, naming issues)
 
     Raises:
-        HowlerValueError: If bundle is specified during creation, invalid parameters are provided,
-                         or naming conventions are violated
+        HowlerValueError: If invalid parameters are provided or naming conventions are violated
         HowlerTypeError: If the data cannot be converted to a Hit ODM object
         ResourceExists: If unique=True and a hit with the generated ID already exists
 
@@ -686,7 +685,7 @@ def delete_hits(hit_ids: list[str], indexes: list[str] | None = None) -> bool:
     if not indexes:
         indexes = ["hit"]
 
-    operations = [odm_helper.list_remove("howler.hits", hit_id, silent=True) for hit_id in hit_ids]
+    operations = [odm_helper.list_remove("howler.related", hit_id, silent=True) for hit_id in hit_ids]
 
     delete_result = all(ds[index].delete_by_query(f"howler.id:({' OR '.join(hit_ids)})") for index in indexes)
 

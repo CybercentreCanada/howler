@@ -352,12 +352,10 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
               color="primary"
             />
           )}
-          {hit.howler.is_bundle && (
-            <Chip
-              size={layout !== HitLayout.COMFY ? 'small' : 'medium'}
-              label={t('hit.header.bundlesize', { hits: hit.howler.hits.length })}
-            />
-          )}
+          <Chip
+            size={layout !== HitLayout.COMFY ? 'small' : 'medium'}
+            label={t('hit.header.bundlesize', { hits: hit.howler.related.length })}
+          />
         </Stack>
         {howlerPluginStore.plugins.flatMap(plugin => pluginStore.executeFunction(`${plugin}.status`, { hit, layout }))}
       </Stack>
