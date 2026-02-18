@@ -57,6 +57,7 @@ process.working_directory:"also/to/visit/edge"
 (file.elf.header.data:is AND process.working_directory:"also/to/visit/edge") AND related.ip:("199.62.243.193" OR "85.242.133.188")
 (howler.labels.operation:"OP_HOWLER" AND file.elf.header.data:("is" OR "testing") AND process.working_directory:("also/to/visit/edge" OR "us/technologies")) AND related.ip:("199.62.243.193" OR "85.242.133.188") AND source.user.roles:("edge" OR "order")
 user_agent.original:"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101 Firefox/102.0"
+container.name:("do_state.lnk" AND "government.xls") OR process.parent.interactive:(false OR true) AND process.parent.parent.code_signature.trusted:(false OR false)
 
 # List Issues
 howler.analytic:*Exploit* AND _exists_:howler.incidents
