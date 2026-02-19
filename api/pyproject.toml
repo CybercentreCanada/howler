@@ -203,7 +203,7 @@ elastic-apm = { extras = ["flask"], version = "^6.22.0" }
 elasticsearch = "8.19.3"
 flask = "2.3.3"
 flask-caching = "2.3.1"
-gevent = "23.9.1"
+gevent = "^25.9.1"
 gunicorn = "23.0.0"
 packaging = "<25.0"
 passlib = "1.7.4"
