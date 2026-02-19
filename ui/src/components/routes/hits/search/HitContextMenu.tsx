@@ -409,8 +409,8 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
                 <Paper id="includes-submenu" sx={calculateSubMenuStyles(show.includes)} elevation={8}>
                   <MenuList sx={{ p: 0 }} dense role="group">
                     {template?.keys.map(key => {
-                      // Build inclusion query based on current query and field vacccccbkrcudeecdukjjikjinhbknblnuhnbhvdjcrdhj
-                      // lue. If default, we include default query
+                      // Build inclusion query based on current query and field
+                      // If default, we include default query
                       let newQuery = `(${query}) AND `;
 
                       const value = get(hit, key);
