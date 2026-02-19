@@ -155,7 +155,7 @@ def generate_structure():  # noqa: C901
         validation_obj = next(
             obj
             for obj in validation_list
-            if index in ["user", "template", "overview", "analytic", "view", "action", "dossier"]
+            if index in ["user", "template", "overview", "analytic", "view", "action", "dossier", "case"]
             or obj.get("agent", {}).get("id", False)
         )
         log.debug("  Processing %s", index)

@@ -9,7 +9,7 @@ import type { ThreatTechnique } from './ThreatTechnique';
 /**
  * NOTE: This is an auto-generated file. Don't edit this manually.
  */
-export interface Threat {
+export interface ObservableThreat {
   enrichments?: ThreatEnrichment[];
   feed?: Feed;
   framework?: string;

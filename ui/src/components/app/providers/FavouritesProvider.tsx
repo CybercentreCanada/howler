@@ -139,12 +139,12 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
     (async () => {
       const analyticElement = processAnalyticElement();
       if (analyticElement) {
-        newElements.splice(1, 0, analyticElement);
+        newElements.splice(2, 0, analyticElement);
       }
 
       const viewElement = await processViewElement();
       if (viewElement) {
-        newElements.splice(1, 0, viewElement);
+        newElements.splice(2, 0, viewElement);
       }
 
       leftNav.setElements(newElements);

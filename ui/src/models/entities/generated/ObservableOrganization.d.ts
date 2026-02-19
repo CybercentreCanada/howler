@@ -1,7 +1,7 @@
 /**
  * NOTE: This is an auto-generated file. Don't edit this manually.
  */
-export interface Rule {
-  destination?: string;
-  query?: string;
+export interface ObservableOrganization {
+  id?: string;
+  name?: string;
 }

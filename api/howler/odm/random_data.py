@@ -21,6 +21,7 @@ import textwrap
 from datetime import datetime
 from random import choice, randint, sample
 from typing import Any, Callable, cast
+from uuid import uuid4
 
 import yaml
 
@@ -35,6 +36,7 @@ from howler.odm.base import Keyword
 from howler.odm.helper import generate_useful_dossier, generate_useful_hit
 from howler.odm.models.action import Action
 from howler.odm.models.analytic import Analytic, Comment, Notebook, TriageOptions
+from howler.odm.models.case import Case
 from howler.odm.models.ecs.event import EVENT_CATEGORIES
 from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import Assessment, Escalation, HitStatus, Scrutiny
@@ -591,6 +593,211 @@ def wipe_observables(ds):
     ds.observable.wipe()
 
 
+def create_cases(ds: HowlerDatastore, num_cases: int = 5):
+    """Create random cases using references to random alerts and observables."""
+    users = ds.user.search("uname:*", rows=200, as_obj=False)["items"]
+    hits = ds.hit.search("howler.id:*", rows=200, as_obj=False)["items"]
+    observables = ds.observable.search("howler.id:*", rows=200, as_obj=False)["items"]
+
+    case_titles = [
+        "Suspicious Domain Investigation",
+        "Credential Abuse Review",
+        "Potential Lateral Movement",
+        "Malware Activity Follow-up",
+        "Phishing Campaign Triage",
+        "Command-and-Control Infrastructure Review",
+        "Account Takeover Investigation",
+        "Data Exfiltration Assessment",
+        "Endpoint Persistence Hunt",
+        "Cloud Identity Abuse Case",
+        "Ransomware Precursor Analysis",
+        "Privileged Access Misuse Inquiry",
+        "Suspicious Authentication Wave",
+        "Infrastructure Reconnaissance Tracking",
+        "Incident Correlation Workup",
+        "Unusual Process Chain Investigation",
+        "Network Beaconing Validation",
+    ]
+    case_summaries = [
+        "Correlate alerts and observables tied to suspicious infrastructure.",
+        "Track and validate activity linked to potential credential misuse.",
+        "Review telemetry associated with suspicious movement indicators.",
+        "Aggregate related detections to determine likely attack progression.",
+        "Evaluate whether suspicious events represent coordinated malicious activity.",
+        "Document impacted entities and prioritize response and containment actions.",
+        "Identify high-confidence indicators and map likely attacker objectives.",
+        "Assess scope and confidence of signals before escalation decisions.",
+        "Compare observed behaviors with known threat tradecraft patterns.",
+        "Triangulate evidence from endpoint, network, and identity sources.",
+        "Validate detections and eliminate benign explanations where possible.",
+        "Build a concise evidence trail to support investigation handoff.",
+        "Track suspicious artifacts and define follow-up hunting pivots.",
+    ]
+    target_pool = [
+        "victim1",
+        "victim2",
+        "workstation-22",
+        "server-01",
+        "mail-gateway",
+        "domain-controller-01",
+        "vpn-gateway",
+        "finance-laptop-07",
+        "hr-workstation-03",
+        "prod-k8s-node-2",
+        "jump-host-1",
+        "db-cluster-primary",
+    ]
+    threat_pool = [
+        "evildomain.com",
+        "badc2.example",
+        "evilcomputer1",
+        "198.51.100.42",
+        "malicious-user",
+        "stealth-update.net",
+        "cdn-sync-check.com",
+        "45.77.11.90",
+        "dropbox-mirror.app",
+        "backup-telemetry.co",
+        "ntp-anomaly.host",
+        "88.198.22.17",
+    ]
+
+    def _parse_timestamp(value: str | None) -> datetime | None:
+        if not value:
+            return None
+
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+
+    for _ in range(num_cases):
+        case_id = f"case-{get_random_string(12).lower()}"
+
+        selected_hits = sample(hits, k=min(len(hits), randint(1, 3))) if hits else []
+        selected_observables = sample(observables, k=min(len(observables), randint(1, 3))) if observables else []
+
+        items: list[dict[str, str]] = []
+
+        for idx, hit in enumerate(selected_hits, start=1):
+            hit_id = hit.get("howler", {}).get("id")
+            if not hit_id:
+                continue
+
+            items.append(
+                {
+                    "path": f"alerts/alert{idx}",
+                    "type": "observable",
+                    "id": hit_id,
+                    "value": hit_id,
+                }
+            )
+
+        for idx, observable in enumerate(selected_observables, start=1):
+            observable_id = observable.get("howler", {}).get("id")
+            if not observable_id:
+                continue
+
+            items.append(
+                {
+                    "path": f"observable/observable{idx}",
+                    "type": "observable",
+                    "id": observable_id,
+                    "value": observable_id,
+                }
+            )
+
+        selected_targets = sample(target_pool, k=randint(1, min(3, len(target_pool))))
+        selected_threats = sample(threat_pool, k=randint(1, min(3, len(threat_pool))))
+        selected_participants = [
+            user.get("uname") for user in sample(users, k=min(len(users), randint(1, 3))) if user.get("uname")
+        ]
+
+        timeline_datetimes = [
+            parsed
+            for parsed in (
+                _parse_timestamp(record.get("timestamp")) for record in [*selected_hits, *selected_observables]
+            )
+            if parsed is not None
+        ]
+
+        case_start = min(timeline_datetimes).isoformat() if timeline_datetimes else None
+        case_end = max(timeline_datetimes).isoformat() if timeline_datetimes else None
+        case_created = case_start or datetime.now().isoformat()
+        case_updated = choice(
+            [
+                None,
+                datetime.now().isoformat(),
+                case_end,
+            ]
+        )
+
+        task_count = randint(3, 7)
+        tasks = []
+        for _ in range(task_count):
+            tasks.append(
+                {
+                    "id": str(uuid4()),
+                    "complete": choice([True, False]),
+                    "assignment": choice(selected_participants or ["admin"]),
+                    "summary": choice(
+                        [
+                            "Review related indicators and determine additional pivots.",
+                            "Validate observable context and identify correlations.",
+                            "Confirm scope and impacted entities for this thread.",
+                            "Assess whether this path supports active compromise.",
+                            "Collect supporting evidence and update confidence level.",
+                            "Compare this artifact against recent detection patterns.",
+                            "Identify additional systems requiring triage for this lead.",
+                            "Map this task output to containment or remediation actions.",
+                            "Verify timeline consistency with known suspicious activity.",
+                            "Check for related user and host activity across the same window.",
+                            "Validate whether this indicator appears in prior incidents.",
+                            "Document findings and propose next investigation pivots.",
+                        ]
+                    ),
+                    "path": choice([item["path"] for item in items]) if items else "alerts/alert1",
+                }
+            )
+
+        case_data = Case(
+            {
+                "case_id": case_id,
+                "title": choice(case_titles),
+                "summary": choice(case_summaries),
+                "overview": f"# {choice(case_titles)}\n\n{choice(case_summaries)}",
+                "created": case_created,
+                "updated": case_updated,
+                "start": case_start,
+                "end": case_end,
+                "targets": selected_targets,
+                "threats": selected_threats,
+                "indicators": list(set(selected_targets + selected_threats))[:5],
+                "participants": selected_participants,
+                "items": items,
+                "enrichments": [],
+                "rules": [
+                    {
+                        "destination": "alerts/{{howler.id}}",
+                        "query": f"destination.domain:{choice(threat_pool)}",
+                    }
+                ],
+                "tasks": tasks,
+            }
+        )
+
+        case_data = run_modifications("case", case_data)
+
+        ds.case.save(case_id, case_data)
+
+    ds.case.commit()
+
+
+def wipe_cases(ds):
+    """Wipe the cases index"""
+    ds.case.wipe()
+
+
 def random_escalations() -> list[Escalation]:
     """Return a list of random escalations"""
     return random.sample(Escalation.list(), k=random.randint(1, len(Escalation.list())))
@@ -843,6 +1050,7 @@ INDEXES: dict[str, tuple[Callable, list[Callable]]] = {
     "views": (wipe_views, [create_views]),
     "hits": (wipe_hits, [create_hits]),
     "observables": (wipe_observables, [create_observables]),
+    "cases": (wipe_cases, [create_cases]),
     "analytics": (wipe_analytics, [create_analytics]),
     "actions": (wipe_actions, [create_actions]),
     "dossiers": (wipe_dossiers, [create_dossiers]),

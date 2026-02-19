@@ -1,6 +1,7 @@
 import {
   Article,
   Book,
+  BookRounded,
   Code,
   CreateNewFolder,
   Dashboard,
@@ -52,6 +53,7 @@ const useMySitemap = (): AppSiteMapConfigs => {
     () => ({
       routes: [
         { path: '/', title: t('route.home'), isRoot: true, icon: <Dashboard /> },
+        { path: '/cases', title: t('route.cases'), isRoot: true, icon: <BookRounded /> },
         { path: '/admin/users', title: t('route.admin.user.search'), isRoot: true, icon: <PersonSearch /> },
         {
           path: '/admin/users/:id',
