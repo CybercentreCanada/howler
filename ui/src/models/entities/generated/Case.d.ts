@@ -11,6 +11,7 @@ export interface Case {
   created?: string;
   end?: string;
   enrichments?: Enrichments;
+  escalation?: string;
   indicators?: string[];
   items?: Item[];
   overview?: string;

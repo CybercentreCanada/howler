@@ -29,7 +29,7 @@ from howler.services import hit_service
 MAX_COMMENT_LEN = 5000
 
 SUB_API = "ingest"
-ingest_api = make_subapi_blueprint(SUB_API, api_version=1)
+ingest_api = make_subapi_blueprint(SUB_API, api_version=2)
 ingest_api._doc = "Manage the different records across indexes"  # type: ignore
 
 FIELDS = Hit.flat_fields()

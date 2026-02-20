@@ -2,7 +2,7 @@ from typing import Optional
 
 from howler import odm
 
-CASE_ITEM_TYPES = {"observable", "table", "case", "lead", "reference"}
+CASE_ITEM_TYPES = {"observable", "hit", "table", "case", "lead", "reference"}
 
 
 @odm.model(index=True, store=True, description="A path-scoped item included in a case.")
@@ -47,6 +47,7 @@ class Case(odm.Model):
     title: str = odm.Keyword(description="Case title.")
     summary: str = odm.Text(description="Short case summary.")
     overview: str = odm.Text(description="Markdown overview of the case.")
+    escalation: str = odm.Keyword(description="Escalation of the case.")
     created: str = odm.Date(default="NOW", description="Date/time when the case was created.")
     updated: Optional[str] = odm.Optional(
         odm.Date(description="Date/time when the case was last updated."),

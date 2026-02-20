@@ -44,7 +44,7 @@
   "git.enableCommitSigning": true,
   "editor.formatOnSave": true,
   "editor.rulers": [120],
-  "editor.tabSize": 4,
+  "editor.tabSize": 2,
   "files.insertFinalNewline": true,
   "files.trimFinalNewlines": true,
   "files.trimTrailingWhitespace": true,
@@ -107,5 +107,6 @@
       "code_blocks": false,
       "tables": false
     }
-  }
+  },
+  "editor.autoIndentOnPaste": true
 }

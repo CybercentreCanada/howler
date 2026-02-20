@@ -27,6 +27,7 @@ import UserSearchProvider from 'components/routes/admin/users/UserSearch';
 import QueryBuilder from 'components/routes/advanced/QueryBuilder';
 import AnalyticDetails from 'components/routes/analytics/AnalyticDetails';
 import AnalyticSearch from 'components/routes/analytics/AnalyticSearch';
+import CaseViewer from 'components/routes/cases/CaseViewer';
 import Cases from 'components/routes/cases/Cases';
 import DossierEditor from 'components/routes/dossiers/DossierEditor';
 import Dossiers from 'components/routes/dossiers/Dossiers';
@@ -257,6 +258,14 @@ const router = createBrowserRouter([
       {
         path: 'cases',
         element: <Cases />
+      },
+      {
+        path: 'cases/:id',
+        element: <CaseViewer />
+      },
+      {
+        path: 'cases/:id/*',
+        element: <CaseViewer />
       },
       {
         path: 'templates',

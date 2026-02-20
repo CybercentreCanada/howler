@@ -598,6 +598,8 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
     users = ds.user.search("uname:*", rows=200, as_obj=False)["items"]
     hits = ds.hit.search("howler.id:*", rows=200, as_obj=False)["items"]
     observables = ds.observable.search("howler.id:*", rows=200, as_obj=False)["items"]
+    existing_case_ids = [case.get("case_id") for case in ds.case.search("case_id:*", rows=200, as_obj=False)["items"]]
+    generated_case_ids: list[str] = []
 
     case_titles = [
         "Suspicious Domain Investigation",
@@ -661,6 +663,18 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
         "ntp-anomaly.host",
         "88.198.22.17",
     ]
+    reference_name_pool = [
+        "Initial Report",
+        "Incident Timeline",
+        "Executive Summary",
+        "Technical Notes",
+        "Containment Plan",
+        "External Advisory",
+        "Threat Brief",
+        "Stakeholder Update",
+        "Evidence Index",
+        "Detection Review",
+    ]
 
     def _parse_timestamp(value: str | None) -> datetime | None:
         if not value:
@@ -674,8 +688,8 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
     for _ in range(num_cases):
         case_id = f"case-{get_random_string(12).lower()}"
 
-        selected_hits = sample(hits, k=min(len(hits), randint(1, 3))) if hits else []
-        selected_observables = sample(observables, k=min(len(observables), randint(1, 3))) if observables else []
+        selected_hits = sample(hits, k=min(len(hits), randint(5, 15))) if hits else []
+        selected_observables = sample(observables, k=min(len(observables), randint(3, 9))) if observables else []
 
         items: list[dict[str, str]] = []
 
@@ -686,8 +700,8 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
 
             items.append(
                 {
-                    "path": f"alerts/alert{idx}",
-                    "type": "observable",
+                    "path": f"alerts/{hit['howler']['analytic']} ({hit['howler']['id']})",
+                    "type": "hit",
                     "id": hit_id,
                     "value": hit_id,
                 }
@@ -700,12 +714,73 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
 
             items.append(
                 {
-                    "path": f"observable/observable{idx}",
+                    "path": f"observable/{observable['howler']['analytic']} ({observable['howler']['id']})",
                     "type": "observable",
                     "id": observable_id,
                     "value": observable_id,
                 }
             )
+
+        # Add a few additional deeply nested paths for existing hits/observables
+        nested_hit_candidates = sample(selected_hits, k=min(len(selected_hits), randint(1, 3))) if selected_hits else []
+        for nested_hit in nested_hit_candidates:
+            nested_hit_id = nested_hit.get("howler", {}).get("id")
+            if not nested_hit_id:
+                continue
+
+            items.append(
+                {
+                    "path": f"alerts/{get_random_word()}/{get_random_word()}",
+                    "type": "hit",
+                    "id": nested_hit_id,
+                    "value": nested_hit_id,
+                }
+            )
+
+        nested_observable_candidates = (
+            sample(
+                selected_observables,
+                k=min(len(selected_observables), randint(1, 2)),
+            )
+            if selected_observables
+            else []
+        )
+        for nested_observable in nested_observable_candidates:
+            nested_observable_id = nested_observable.get("howler", {}).get("id")
+            if not nested_observable_id:
+                continue
+
+            items.append(
+                {
+                    "path": f"alerts/{get_random_word()}/{get_random_word()}/{get_random_word()}",
+                    "type": "observable",
+                    "id": nested_observable_id,
+                    "value": nested_observable_id,
+                }
+            )
+
+        available_related_case_ids = [
+            cid for cid in [*existing_case_ids, *generated_case_ids] if isinstance(cid, str) and cid != case_id
+        ]
+        selected_related_case_ids = (
+            sample(available_related_case_ids, k=min(len(available_related_case_ids), randint(0, 3)))
+            if available_related_case_ids
+            else []
+        )
+
+        for idx, related_case_id in enumerate(selected_related_case_ids, start=1):
+            items.append(
+                {
+                    "path": f"cases/Related Case {idx}",
+                    "type": "case",
+                    "id": related_case_id,
+                    "value": related_case_id,
+                }
+            )
+
+        selected_reference_names = sample(reference_name_pool, k=randint(1, 3))
+        for idx, reference_name in enumerate(selected_reference_names, start=1):
+            items.append({"path": f"references/{reference_name}", "type": "reference", "value": "https://example.com"})
 
         selected_targets = sample(target_pool, k=randint(1, min(3, len(target_pool))))
         selected_threats = sample(threat_pool, k=randint(1, min(3, len(threat_pool))))
@@ -764,6 +839,7 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
             {
                 "case_id": case_id,
                 "title": choice(case_titles),
+                "escalation": choice(["normal", "focus", "crisis"]),
                 "summary": choice(case_summaries),
                 "overview": f"# {choice(case_titles)}\n\n{choice(case_summaries)}",
                 "created": case_created,
@@ -789,6 +865,7 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
         case_data = run_modifications("case", case_data)
 
         ds.case.save(case_id, case_data)
+        generated_case_ids.append(case_id)
 
     ds.case.commit()
 

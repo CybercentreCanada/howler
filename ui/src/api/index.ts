@@ -10,6 +10,7 @@ import * as overview from 'api/overview';
 import * as search from 'api/search';
 import * as template from 'api/template';
 import * as user from 'api/user';
+import * as v2 from 'api/v2';
 import * as view from 'api/view';
 import AxiosClient from 'rest/AxiosClient';
 import urlJoin from 'url-join';
@@ -45,7 +46,8 @@ const api = {
   template,
   user,
   view,
-  notebook
+  notebook,
+  v2
 };
 
 /**
@@ -76,7 +78,7 @@ export const uri = () => {
  * @returns `string` - properly formatted howler uri.
  */
 const format = (_uri: string): string => {
-  return _uri.startsWith(uri()) ? _uri : `${uri()}/${_uri.replace(/\/$/, '')}`;
+  return _uri.startsWith('/api') ? _uri : `${uri()}/${_uri.replace(/\/$/, '')}`;
 };
 
 /**

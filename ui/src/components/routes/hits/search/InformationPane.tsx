@@ -46,13 +46,13 @@ import { validateRegex } from 'utils/stringUtils';
 import { tryParse } from 'utils/utils';
 import LeadRenderer from '../view/LeadRenderer';
 
-const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
+const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onClose, selected: _selected }) => {
   const { t, i18n } = useTranslation();
   const theme = useTheme();
   const location = useLocation();
   const { emit, isOpen } = useContext(SocketContext);
   const { getMatchingOverview, getMatchingDossiers, getMatchingAnalytic } = useMatchers();
-  const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
+  const selected = useContextSelector(ParameterContext, ctx => ctx?.selected) ?? _selected;
   const pluginStore = usePluginStore();
 
   const getHit = useContextSelector(HitContext, ctx => ctx.getHit);

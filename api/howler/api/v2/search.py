@@ -14,10 +14,10 @@ from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import SearchException
 from howler.helper.search import get_collection, has_access_control
 from howler.security import api_login
-from howler.services import lucene_service
+from howler.services import lucene_service, search_service
 
 SUB_API = "search"
-search_api = make_subapi_blueprint(SUB_API, api_version=1)
+search_api = make_subapi_blueprint(SUB_API, api_version=2)
 search_api._doc = "Perform search queries"  # type: ignore
 
 logger = get_logger(__file__)
@@ -124,11 +124,13 @@ def search(indexes, **kwargs):
     if has_access_control(index_list):
         params["access_control"] = user["access_control"]
 
-    params["sort"] = params.get("sort", "").split(",")
+    params["sort"] = [entry for entry in params.get("sort", "").split(",") if entry] or search_service.DEFAULT_SORT
 
     query = req_data.get("query", None)
     if not query:
         return bad_request(err="There was no search query.")
+
+    return ok(search_service.search(indexes, query, **params))
 
 
 @generate_swagger_docs()
