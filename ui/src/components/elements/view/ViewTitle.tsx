@@ -53,7 +53,7 @@ export const ViewTitle: FC<ViewTitleProps> = ({ title, type, query, sort, span }
               icon={_sort.endsWith('desc') ? <ArrowDownward /> : <ArrowUpward />}
             />
           ))}
-          {spanLabel && <Chip size="small" label={spanLabel} />}
+          {spanLabel && <Chip label={spanLabel} />}
         </Stack>
       )}
     </Stack>

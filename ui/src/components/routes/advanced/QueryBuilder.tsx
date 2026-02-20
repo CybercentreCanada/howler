@@ -434,7 +434,7 @@ const QueryBuilder: FC = () => {
                 values.length <= 3 ? (
                   <Stack direction="row" spacing={0.5}>
                     {values.map(_value => (
-                      <Chip size="small" key={_value} label={_value} />
+                      <Chip key={_value} label={_value} />
                     ))}
                   </Stack>
                 ) : (
@@ -447,7 +447,7 @@ const QueryBuilder: FC = () => {
                       </Stack>
                     }
                   >
-                    <Chip size="small" label={values.length} />
+                    <Chip label={values.length} />
                   </Tooltip>
                 )
               }

@@ -263,7 +263,8 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
             sx: {
               ...transformProps,
               overflow: 'visible !important'
-            }
+            },
+            elevation: 2
           }
         }}
         MenuListProps={{ dense: true, sx: { minWidth: '250px' } }}
@@ -298,7 +299,7 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
               <KeyboardArrowRight fontSize="small" sx={{ color: 'text.secondary', mr: -1 }} />
             )}
             <Fade in={!!show[type]} unmountOnExit>
-              <Paper id={`${type}-submenu`} sx={calculateSubMenuStyles(show[type])} elevation={8}>
+              <Paper id={`${type}-submenu`} sx={calculateSubMenuStyles(show[type])} elevation={2}>
                 <MenuList sx={{ p: 0, borderTopLeftRadius: 0 }} dense role="group">
                   {items.map(a => (
                     <MenuItem value={a.name} onClick={a.actionFunction} key={a.name}>
@@ -323,7 +324,7 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
           <ListItemText sx={{ flex: 1 }}>{t('route.actions.change')}</ListItemText>
           {actions.length > 0 && <KeyboardArrowRight fontSize="small" sx={{ color: 'text.secondary', mr: -1 }} />}
           <Fade in={!!show.actions} unmountOnExit>
-            <Paper id="actions-submenu" sx={calculateSubMenuStyles(show.actions)} elevation={8}>
+            <Paper id="actions-submenu" sx={calculateSubMenuStyles(show.actions)} elevation={2}>
               <MenuList sx={{ p: 0 }} dense role="group">
                 {actions.map(action => (
                   <MenuItem
@@ -352,7 +353,7 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
               <ListItemText sx={{ flex: 1 }}>{t('hit.panel.exclude')}</ListItemText>
               <KeyboardArrowRight fontSize="small" sx={{ color: 'text.secondary', mr: -1 }} />
               <Fade in={!!show.excludes} unmountOnExit>
-                <Paper id="excludes-submenu" sx={calculateSubMenuStyles(show.excludes)} elevation={8}>
+                <Paper id="excludes-submenu" sx={calculateSubMenuStyles(show.excludes)} elevation={2}>
                   <MenuList sx={{ p: 0 }} dense role="group">
                     {template?.keys.map(key => {
                       // Build exclusion query based on current query and field value

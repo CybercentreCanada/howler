@@ -188,7 +188,7 @@ const ActionSearch: FC = () => {
             <Grid container spacing={1}>
               {item.item.operations.map(d => (
                 <Grid item key={d.operation_id}>
-                  <Chip size="small" label={t(`operations.${d.operation_id}`)} />
+                  <Chip label={t(`operations.${d.operation_id}`)} />
                 </Grid>
               ))}
             </Grid>

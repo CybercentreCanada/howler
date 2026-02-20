@@ -157,14 +157,14 @@ const ApiDocumentation: FC = () => {
                           <code>{endpoint.path}</code>
                           <Stack direction="row" spacing={1}>
                             {endpoint.complete ? (
-                              <Chip size="small" label="Stable" color="success" />
+                              <Chip label="Stable" color="success" />
                             ) : (
-                              <Chip size="small" label="Unstable" color="error" />
+                              <Chip label="Unstable" color="error" />
                             )}
                             {endpoint.protected ? (
-                              <Chip size="small" label="Protected" color="warning" />
+                              <Chip label="Protected" color="warning" />
                             ) : (
-                              <Chip size="small" label="Unprotected" />
+                              <Chip label="Unprotected" />
                             )}
                           </Stack>
                           <Stack spacing={1} direction="row">
@@ -172,7 +172,7 @@ const ApiDocumentation: FC = () => {
                               <Chip key={m} size="small" label={m} />
                             ))}
                           </Stack>
-                          {endpoint.ui_only && <Chip size="small" label="UI Only" />}
+                          {endpoint.ui_only && <Chip label="UI Only" />}
                         </Stack>
                       </TableCell>
                       <TableCell>

@@ -96,7 +96,7 @@ const CaseCard: FC<{
 
             {_case.indicators?.map(indicator => (
               <Grid item key={indicator}>
-                <PluginChip size="small" variant="outlined" context="casecard" value={indicator} label={indicator} />
+                <PluginChip variant="outlined" context="casecard" value={indicator} label={indicator} />
               </Grid>
             ))}
 
@@ -137,7 +137,7 @@ const CaseCard: FC<{
                 {_case.tasks
                   .filter(task => !task.complete)
                   .map(task => (
-                    <Chip size="small" key={task.id} icon={<RadioButtonUnchecked />} label={task.summary} />
+                    <Chip key={task.id} icon={<RadioButtonUnchecked />} label={task.summary} />
                   ))}
               </Stack>
             </>

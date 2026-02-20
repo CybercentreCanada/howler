@@ -74,7 +74,7 @@ const ViewLink: FC<{ id: number; viewId: string }> = ({ id, viewId }) => {
   );
 
   if (loading) {
-    return <Chip size="small" icon={<CircularProgress size={12} />} />;
+    return <Chip icon={<CircularProgress size={12} />} />;
   }
 
   if (viewId === '') {

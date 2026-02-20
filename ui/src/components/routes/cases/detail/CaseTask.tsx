@@ -10,7 +10,7 @@ const CaseTask: FC<{ caseId: string; task: Task }> = ({ task }) => {
       <Stack direction="row" alignItems="center" spacing={1}>
         <Checkbox color="success" checked={task.complete} size="small" />
         <Typography sx={[task.complete && { textDecoration: 'line-through' }]}>{task.summary}</Typography>
-        {task.path && <Chip size="small" clickable component={Link} to={task.path} label={task.path} />}
+        {task.path && <Chip clickable component={Link} to={task.path} label={task.path} />}
         {task.assignment && <HowlerAvatar sx={{ height: 24, width: 24 }} userId={task.assignment} />}
       </Stack>
     </Card>

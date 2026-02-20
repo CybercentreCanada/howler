@@ -227,7 +227,7 @@ const AnalyticSearchBase: FC = () => {
               <Grid container spacing={0.5} sx={{ marginTop: `${theme.spacing(-0.5)} !important` }}>
                 {item.item.detections.slice(0, 5).map(d => (
                   <Grid item key={d}>
-                    <Chip size="small" variant="outlined" label={d} />
+                    <Chip variant="outlined" label={d} />
                   </Grid>
                 ))}
                 {item.item.detections.length > 5 && (
@@ -241,7 +241,7 @@ const AnalyticSearchBase: FC = () => {
                         </Stack>
                       }
                     >
-                      <Chip size="small" variant="outlined" label={`+ ${item.item.detections.length - 5}`} />
+                      <Chip variant="outlined" label={`+ ${item.item.detections.length - 5}`} />
                     </Tooltip>
                   </Grid>
                 )}
