@@ -1,19 +1,41 @@
 import { CheckCircleOutline, HourglassBottom, RadioButtonUnchecked, UpdateOutlined } from '@mui/icons-material';
-import { Card, Chip, Divider, Grid, Stack, Tooltip, Typography } from '@mui/material';
+import { Card, Chip, Divider, Grid, Skeleton, Stack, Tooltip, Typography } from '@mui/material';
+import api from 'api';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
 import PluginChip from 'components/elements/PluginChip';
+import useMyApi from 'components/hooks/useMyApi';
 import dayjs from 'dayjs';
 import { countBy } from 'lodash-es';
 import type { Case } from 'models/entities/generated/Case';
-import type { FC } from 'react';
+import { useEffect, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { twitterShort } from 'utils/utils';
 
 const CaseCard: FC<{
-  case: Case;
+  case?: Case;
+  caseId?: string;
   className?: string;
-}> = ({ case: _case, className }) => {
+}> = ({ case: providedCase, caseId, className }) => {
   const { t } = useTranslation();
+  const { dispatchApi } = useMyApi();
+
+  const [_case, setCase] = useState(providedCase);
+
+  useEffect(() => {
+    if (providedCase) {
+      setCase(providedCase);
+    }
+  }, [providedCase]);
+
+  useEffect(() => {
+    if (caseId) {
+      dispatchApi(api.v2.case.get(caseId), { throwError: false }).then(setCase);
+    }
+  }, [caseId, dispatchApi]);
+
+  if (!_case) {
+    return <Skeleton variant="rounded" height={250} sx={{ mb: 1 }} className={className} />;
+  }
 
   return (
     <Card key={_case.case_id} variant="outlined" sx={{ p: 1, mb: 1 }} className={className}>

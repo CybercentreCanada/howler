@@ -1,25 +1,15 @@
-import {
-  Box,
-  Card,
-  CardContent,
-  CardHeader,
-  Divider,
-  Grid,
-  Pagination,
-  Stack,
-  Typography,
-  useTheme
-} from '@mui/material';
+import { Card, CardContent, CardHeader, Divider, Grid, useTheme } from '@mui/material';
+import api from 'api';
 import Markdown from 'components/elements/display/Markdown';
-import HitCard from 'components/elements/hit/HitCard';
-import { HitLayout } from 'components/elements/hit/HitLayout';
+import useMyApi from 'components/hooks/useMyApi';
 import dayjs from 'dayjs';
-import { chunk, uniq } from 'lodash-es';
 import type { Case } from 'models/entities/generated/Case';
-import { useMemo, useState, type FC } from 'react';
+import { useEffect, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import AlertPanel from './AlertPanel';
 import CaseAggregate from './CaseAggregate';
+import RelatedCasePanel from './RelatedCasePanel';
+import TaskPanel from './TaskPanel';
 
 const getDuration = (case_: Case) => {
   if (case_?.start) {
@@ -27,18 +17,26 @@ const getDuration = (case_: Case) => {
   }
 };
 
-const CaseDashboard: FC<{ case: Case }> = ({ case: case_ }) => {
+const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, caseId }) => {
   const { t } = useTranslation();
+  const { dispatchApi } = useMyApi();
   const theme = useTheme();
 
-  const [alertPage, setAlertPage] = useState(1);
+  const [_case, setCase] = useState(providedCase);
 
-  const alertPages = useMemo(
-    () => chunk(uniq((case_?.items ?? []).filter(item => item.type === 'hit')), 5),
-    [case_?.items]
-  );
+  useEffect(() => {
+    if (providedCase) {
+      setCase(providedCase);
+    }
+  }, [providedCase]);
 
-  if (!case_) {
+  useEffect(() => {
+    if (caseId) {
+      dispatchApi(api.v2.case.get(caseId), { throwError: false }).then(setCase);
+    }
+  }, [caseId, dispatchApi]);
+
+  if (!_case) {
     return null;
   }
 
@@ -46,82 +44,56 @@ const CaseDashboard: FC<{ case: Case }> = ({ case: case_ }) => {
     <Grid container spacing={5} width="100%" px={3}>
       <Grid item xs={12}>
         <Card>
-          <CardHeader title={case_.title} subheader={case_.summary} />
+          <CardHeader title={_case.title} subheader={_case.summary} />
           <Divider />
           <CardContent>
-            <Markdown md={case_.overview} />
+            <Markdown md={_case.overview} />
           </CardContent>
         </Card>
       </Grid>
-      <Grid item xs={3}>
+      <Grid item xs={12} md={6} xl={3}>
         <CaseAggregate
           icon="material-symbols:warning-rounded"
           iconColor={theme.palette.warning.main}
           field="howler.outline.threat"
-          ids={case_.items.filter(item => ['hit', 'observable'].includes(item.type)).map(item => item.id)}
+          ids={_case.items.filter(item => ['hit', 'observable'].includes(item.type)).map(item => item.id)}
           subtitle={t('page.cases.dashboard.threat')}
         />
       </Grid>
-      <Grid item xs={3}>
+      <Grid item xs={12} md={6} xl={3}>
         <CaseAggregate
           icon="material-symbols:group"
           iconColor={theme.palette.primary.main}
           field="howler.outline.target"
-          ids={case_.items.filter(item => ['hit', 'observable'].includes(item.type)).map(item => item.id)}
+          ids={_case.items.filter(item => ['hit', 'observable'].includes(item.type)).map(item => item.id)}
           subtitle={t('page.cases.dashboard.target')}
         />
       </Grid>
-      <Grid item xs={3}>
+      <Grid item xs={12} md={6} xl={3}>
         <CaseAggregate
           icon="fluent:number-symbol-24-filled"
           field="howler.outline.indicators"
-          ids={case_.items.filter(item => ['hit', 'observable'].includes(item.type)).map(item => item.id)}
+          ids={_case.items.filter(item => ['hit', 'observable'].includes(item.type)).map(item => item.id)}
           subtitle={t('page.cases.dashboard.indicators')}
         />
       </Grid>
-      <Grid item xs={3}>
+      <Grid item xs={12} md={6} xl={3}>
         <CaseAggregate
           icon="mingcute:heartbeat-line"
           iconColor={theme.palette.error.light}
-          title={getDuration(case_).format('HH[h] mm[m]')}
-          ids={case_.items.filter(item => ['hit', 'observable'].includes(item.type)).map(item => item.id)}
+          title={getDuration(_case).format('HH[h] mm[m]')}
+          ids={_case.items.filter(item => ['hit', 'observable'].includes(item.type)).map(item => item.id)}
           subtitle={t('page.cases.dashboard.duration')}
         />
       </Grid>
       <Grid item xs={12}>
-        <Stack spacing={1}>
-          <Stack direction="row">
-            <Typography flex={1} variant="h4">
-              {t('page.cases.dashboard.alerts')}
-            </Typography>
-
-            <Pagination count={alertPages.length} page={alertPage} onChange={(_, page) => setAlertPage(page)} />
-          </Stack>
-          <Divider />
-          {alertPages[alertPage - 1].map(item => (
-            <Box key={item.id} position="relative">
-              <HitCard layout={HitLayout.DENSE} id={item.id} />
-              <Box
-                component={Link}
-                to={item.path}
-                sx={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  cursor: 'pointer',
-                  zIndex: 100,
-                  borderRadius: '4px',
-                  '&:hover': {
-                    background: theme.palette.divider,
-                    border: `thin solid ${theme.palette.primary.light}`
-                  }
-                }}
-              />
-            </Box>
-          ))}
-        </Stack>
+        <TaskPanel case={_case} />
+      </Grid>
+      <Grid item xs={12}>
+        <AlertPanel case={_case} />
+      </Grid>
+      <Grid item xs={12}>
+        <RelatedCasePanel case={_case} />
       </Grid>
     </Grid>
   );

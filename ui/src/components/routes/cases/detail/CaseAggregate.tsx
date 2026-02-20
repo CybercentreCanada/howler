@@ -52,25 +52,29 @@ const CaseAggregate: FC<{
   }, [dispatchApi, field, ids]);
 
   return (
-    <Card>
+    <Card sx={{ height: '100%' }}>
       <CardContent>
         <Stack alignItems="center" spacing={1}>
-          {icon && <Icon fontSize="96px" icon={icon} color={iconColor || theme.palette.grey[700]} />}
-          <NoMaxWidthTooltip
-            title={
-              <Stack spacing={0.5}>
-                {values.map(value => (
-                  <span key={value}>{value}</span>
-                ))}
-              </Stack>
-            }
-          >
-            <Typography variant="h3">
-              {values.length}
-              {!isEmpty(values) && !!title && ' - '}
-              {title}
-            </Typography>
-          </NoMaxWidthTooltip>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            {icon && <Icon fontSize="96px" icon={icon} color={iconColor || theme.palette.grey[700]} />}
+            <NoMaxWidthTooltip
+              title={
+                !isEmpty(values) && (
+                  <Stack spacing={0.5}>
+                    {values.map(value => (
+                      <span key={value}>{value}</span>
+                    ))}
+                  </Stack>
+                )
+              }
+            >
+              <Typography variant="h3">
+                {values.length}
+                {!isEmpty(values) && !!title && ' - '}
+                {title}
+              </Typography>
+            </NoMaxWidthTooltip>
+          </Stack>
           <Typography color="textSecondary">{subtitle}</Typography>
         </Stack>
       </CardContent>
