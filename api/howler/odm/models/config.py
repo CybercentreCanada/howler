@@ -170,7 +170,7 @@ class OAuthAutoProperty(BaseModel):
 
     field: str = Field(description="Field to apply `pattern` to")
     pattern: str = Field(description="Regex pattern for auto-prop assignment")
-    type: Literal["access", "classification", "role"] = Field(
+    type: Literal["access", "classification", "role", "group", "assignment"] = Field(
         description="Type of property assignment on pattern match",
     )
     value: str = Field(description="Assigned property value")

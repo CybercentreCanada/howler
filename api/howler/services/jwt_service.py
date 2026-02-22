@@ -2,7 +2,7 @@
 # https://stackoverflow.com/a/67943659
 
 
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
 import jwt
 import requests
@@ -18,7 +18,7 @@ logger = get_logger(__file__)
 def get_jwk(access_token: str) -> PyJWK:
     """Get the JSON Web Key associated with the given JWT"""
     # "kid" is the JSON Web Key's identifier. It tells us which key was used to validate the token.
-    kid = cast(str, jwt.get_unverified_header(access_token).get("kid"))
+    kid = jwt.get_unverified_header(access_token).get("kid")
     jwks, _ = get_jwks()
 
     try:
@@ -29,7 +29,7 @@ def get_jwk(access_token: str) -> PyJWK:
         cache.delete(key="get_jwks")
         try:
             jwks, _ = get_jwks()
-            key = PyJWK(jwks[kid])
+            key = jwks[kid]
         except KeyError:
             raise HowlerKeyError("Specified Key Set does not exist.")
 
@@ -49,7 +49,7 @@ def get_provider(access_token: str) -> str:
         str: The provider of the token
     """
     # "kid" is the JSON Web Key's identifier. It tells us which key was used to validate the token.
-    kid = cast(str, jwt.get_unverified_header(access_token).get("kid"))
+    kid = jwt.get_unverified_header(access_token).get("kid")
     _, providers = get_jwks()
 
     try:
@@ -112,7 +112,7 @@ def get_audience(oauth_provider: str) -> str:
     elif provider_data.client_id:
         audience = provider_data.client_id
 
-    if oauth_provider == "azure" and f"{audience}/.default" not in provider_data.scope:
+    if oauth_provider == "entraid" and f"{audience}/.default" not in provider_data.scope:
         raise HowlerValueError("Azure scope must contain the <client_id>/.default claim!")
 
     return audience
@@ -120,7 +120,7 @@ def get_audience(oauth_provider: str) -> str:
 
 def decode(
     access_token: str,
-    key: str | bytes | None = None,
+    key: Optional[str] = None,
     algorithms: Optional[list[str]] = None,
     audience: Optional[str] = None,
     validate_audience: bool = False,

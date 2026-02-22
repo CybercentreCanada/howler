@@ -20,7 +20,7 @@ def azure_obo(token: str) -> str:
     Returns:
         str: The new access token with updated privileges
     """
-    azure_provider_config = config.auth.oauth.providers["azure"]
+    azure_provider_config = config.auth.oauth.providers["entraid"]
 
     logger.debug("OBOing to MS Graph")
     # Azure is a special case here, as we need to OBO to MS Graph
