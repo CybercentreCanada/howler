@@ -18,7 +18,6 @@ import JSONViewer from 'components/elements/display/json/JSONViewer';
 import HitActions from 'components/elements/hit/HitActions';
 import HitBanner from 'components/elements/hit/HitBanner';
 import HitComments from 'components/elements/hit/HitComments';
-import HitDetails from 'components/elements/hit/HitDetails';
 import HitLabels from 'components/elements/hit/HitLabels';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import HitNotebooks from 'components/elements/hit/HitNotebooks';
@@ -29,6 +28,7 @@ import HitSummary from 'components/elements/hit/HitSummary';
 import HitWorklog from 'components/elements/hit/HitWorklog';
 import PivotLink from 'components/elements/hit/related/PivotLink';
 import RelatedLink from 'components/elements/hit/related/RelatedLink';
+import ObjectDetails from 'components/elements/ObjectDetails';
 import useMyUserList from 'components/hooks/useMyUserList';
 import ErrorBoundary from 'components/routes/ErrorBoundary';
 import { uniqBy } from 'lodash-es';
@@ -169,7 +169,7 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
 
     return {
       overview: () => <HitOverview hit={hit} />,
-      details: () => <HitDetails hit={hit} />,
+      details: () => <ObjectDetails obj={hit} />,
       hit_comments: () => <HitComments hit={hit} users={users} />,
       hit_raw: () => <JSONViewer data={!loading && hit} hideSearch filter={filter} />,
       hit_data: () => (

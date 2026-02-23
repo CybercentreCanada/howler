@@ -30,19 +30,19 @@ import {
   uniq
 } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
+import type { Observable } from 'models/entities/generated/Observable';
 import type { FC } from 'react';
 import { memo, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Throttler from 'utils/Throttler';
-
-import PluginTypography from '../PluginTypography';
+import PluginTypography from './PluginTypography';
 
 const ListRenderer: FC<{
-  hit?: Hit;
+  obj?: Hit | Observable;
   objKey?: string;
   maxKeyLength?: number;
   entries: any[];
-}> = memo(({ hit, objKey: key, entries, maxKeyLength }) => {
+}> = memo(({ obj, objKey: key, entries, maxKeyLength }) => {
   const theme = useTheme();
   const { t } = useTranslation();
 
@@ -90,7 +90,7 @@ const ListRenderer: FC<{
           if (Array.isArray(entry)) {
             return (
               <Grid item xs="auto" maxWidth="100%" key={index}>
-                <ListRenderer hit={hit} objKey={`${key}.${index}`} entries={entry} />
+                <ListRenderer obj={obj} objKey={`${key}.${index}`} entries={entry} />
               </Grid>
             );
           }
@@ -119,7 +119,7 @@ const ListRenderer: FC<{
                 style={{ maxWidth: '100%', font: 'inherit' }}
                 value={entry}
                 field={key.replace(/\.[0-9]+/g, '')}
-                hit={hit}
+                obj={obj}
               >
                 {entry}
               </PluginTypography>
@@ -140,87 +140,92 @@ const ListRenderer: FC<{
   );
 });
 
-const ObjectRenderer: FC<{ hit?: Hit; parentKey?: string; showParentKey?: boolean; data: any; indent?: boolean }> =
-  memo(({ hit, data, parentKey, indent = false }) => {
-    const theme = useTheme();
+const ObjectRenderer: FC<{
+  obj?: Hit | Observable;
+  parentKey?: string;
+  showParentKey?: boolean;
+  data: any;
+  indent?: boolean;
+}> = memo(({ obj: obj, data, parentKey, indent = false }) => {
+  const theme = useTheme();
 
-    const entries = useMemo(() => {
-      const unsorted = Object.entries(flatten(data, { safe: true })).map(([key, val]) => [key, val]);
+  const entries = useMemo(() => {
+    const unsorted = Object.entries(flatten(data, { safe: true })).map(([key, val]) => [key, val]);
 
-      const sortedAlphabetical = unsorted.map(([key]) => key).sort();
+    const sortedAlphabetical = unsorted.map(([key]) => key).sort();
 
-      return sortBy(
-        unsorted,
-        ([key, val]) =>
-          sortedAlphabetical.indexOf(key) -
-          // This pushes complex objects to the bottom of the list, so they are always rendered last.
-          // We check for if the value is a primitve, or if it's an array and every entry is a primitive.
-          (!isObject(val) || (isArray(val) && val.every(entry => !isObject(entry))) ? 10000 : 0)
-      );
-    }, [data]);
+    return sortBy(
+      unsorted,
+      ([key, val]) =>
+        sortedAlphabetical.indexOf(key) -
+        // This pushes complex objects to the bottom of the list, so they are always rendered last.
+        // We check for if the value is a primitve, or if it's an array and every entry is a primitive.
+        (!isObject(val) || (isArray(val) && val.every(entry => !isObject(entry))) ? 10000 : 0)
+    );
+  }, [data]);
 
-    const longestKey = useMemo(() => max(entries.map(([key]) => key.length)), [entries]);
+  const longestKey = useMemo(() => max(entries.map(([key]) => key.length)), [entries]);
 
-    return (
-      <Stack direction="row" overflow="hidden" maxWidth="100%">
-        {indent && <Divider orientation="vertical" flexItem sx={{ borderColor: 'primary.main', borderWidth: '2px' }} />}
-        <Stack flex={1} ml={1} maxWidth="100%">
-          {entries
-            .filter(([__, val]) => !isNull(val) && !isUndefined(val) && !isEmpty(val))
-            .map(([key, val]) => {
-              if (Array.isArray(val)) {
-                return <ListRenderer hit={hit} maxKeyLength={longestKey} key={key} objKey={key} entries={val} />;
-              }
+  return (
+    <Stack direction="row" overflow="hidden" maxWidth="100%">
+      {indent && <Divider orientation="vertical" flexItem sx={{ borderColor: 'primary.main', borderWidth: '2px' }} />}
+      <Stack flex={1} ml={1} maxWidth="100%">
+        {entries
+          .filter(([__, val]) => !isNull(val) && !isUndefined(val) && !isEmpty(val))
+          .map(([key, val]) => {
+            if (Array.isArray(val)) {
+              return <ListRenderer obj={obj} maxKeyLength={longestKey} key={key} objKey={key} entries={val} />;
+            }
 
-              return (
-                <code
-                  className={(parentKey ? `${parentKey}.${key}` : key).replace(/\./g, '_')}
-                  key={key}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '40% 60%',
-                    alignItems: 'start',
-                    maxWidth: '100%'
+            return (
+              <code
+                className={(parentKey ? `${parentKey}.${key}` : key).replace(/\./g, '_')}
+                key={key}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '40% 60%',
+                  alignItems: 'start',
+                  maxWidth: '100%'
+                }}
+              >
+                <Box
+                  display="flex"
+                  justifyContent="end"
+                  sx={{
+                    marginRight: theme.spacing(1),
+                    marginBottom: 0,
+                    marginTop: 0,
+                    borderRight: '1px solid',
+                    borderColor: theme.palette.divider,
+                    paddingRight: theme.spacing(1),
+                    height: '100%',
+                    wordWrap: 'break-word'
                   }}
                 >
-                  <Box
-                    display="flex"
-                    justifyContent="end"
-                    sx={{
-                      marginRight: theme.spacing(1),
-                      marginBottom: 0,
-                      marginTop: 0,
-                      borderRight: '1px solid',
-                      borderColor: theme.palette.divider,
-                      paddingRight: theme.spacing(1),
-                      height: '100%',
-                      wordWrap: 'break-word'
-                    }}
+                  <code style={{ maxWidth: '100%' }}>{key}</code>
+                </Box>
+                <Box display="flex" alignItems="start">
+                  <PluginTypography
+                    context="details"
+                    component="code"
+                    style={{ maxWidth: '100%', font: 'inherit' }}
+                    value={val}
+                    field={(parentKey ? parentKey.concat('.', key) : key).replace(/\.[0-9]+/g, '')}
+                    obj={obj}
                   >
-                    <code style={{ maxWidth: '100%' }}>{key}</code>
-                  </Box>
-                  <Box display="flex" alignItems="start">
-                    <PluginTypography
-                      context="details"
-                      component="code"
-                      style={{ maxWidth: '100%', font: 'inherit' }}
-                      value={val}
-                      field={(parentKey ? parentKey.concat('.', key) : key).replace(/\.[0-9]+/g, '')}
-                      hit={hit}
-                    >
-                      {val}
-                    </PluginTypography>
-                  </Box>
-                </code>
-              );
-            })}
-        </Stack>
+                    {val}
+                  </PluginTypography>
+                </Box>
+              </code>
+            );
+          })}
       </Stack>
-    );
-  });
+    </Stack>
+  );
+});
 
-const Collapsible: FC<{ hit: Hit; query: string; title: string; data: { [index: string]: any } }> = memo(
-  ({ hit, title, data, query }) => {
+const Collapsible: FC<{ obj: Hit | Observable; query: string; title: string; data: { [index: string]: any } }> = memo(
+  ({ obj, title, data, query }) => {
     const throttler = useMemo(() => new Throttler(400), []);
 
     const [scores, setScores] = useState<[string, number][]>([]);
@@ -273,12 +278,12 @@ const Collapsible: FC<{ hit: Hit; query: string; title: string; data: { [index: 
 
     return (
       <Accordion defaultExpanded>
-        <AccordionSummary expandIcon={<ArrowDropDown />}>
+        <AccordionSummary expandIcon={<ArrowDropDown />} sx={{ my: 0 }}>
           <Typography>{title}</Typography>
         </AccordionSummary>
         <AccordionDetails>
-          <Stack spacing={1} justifyContent="stretch" sx={styles}>
-            <ObjectRenderer hit={hit} showParentKey data={results} />
+          <Stack spacing={0.5} justifyContent="stretch" sx={styles}>
+            <ObjectRenderer obj={obj} showParentKey data={results} />
           </Stack>
         </AccordionDetails>
       </Accordion>
@@ -286,7 +291,7 @@ const Collapsible: FC<{ hit: Hit; query: string; title: string; data: { [index: 
   }
 );
 
-const HitDetails: FC<{ hit: Hit }> = ({ hit }) => {
+const ObjectDetails: FC<{ obj: Hit | Observable }> = ({ obj }) => {
   const { t } = useTranslation();
 
   const [query, setQuery] = useState('');
@@ -294,7 +299,7 @@ const HitDetails: FC<{ hit: Hit }> = ({ hit }) => {
   const groups = useMemo(
     () =>
       groupBy(
-        Object.entries(flatten(hit ?? {}, { safe: true })).filter(
+        Object.entries(flatten(obj ?? {}, { safe: true })).filter(
           ([key, value]) =>
             !key.startsWith('__') &&
             key.includes('.') &&
@@ -303,7 +308,7 @@ const HitDetails: FC<{ hit: Hit }> = ({ hit }) => {
         ),
         ([key]) => key.split('.')[0]
       ),
-    [hit]
+    [obj]
   );
 
   return (
@@ -312,7 +317,7 @@ const HitDetails: FC<{ hit: Hit }> = ({ hit }) => {
       {Object.entries(groups).map(([section, entries]) => {
         return (
           <Collapsible
-            hit={hit}
+            obj={obj}
             query={query}
             key={section}
             title={section
@@ -327,4 +332,4 @@ const HitDetails: FC<{ hit: Hit }> = ({ hit }) => {
   );
 };
 
-export default memo(HitDetails);
+export default memo(ObjectDetails);

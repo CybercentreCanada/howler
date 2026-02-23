@@ -8,7 +8,14 @@ export const uri = (indexes: string[]) => {
   return joinAllUri(parentUri(), 'search', indexes.join(','));
 };
 
-export const post = (indexes: string[], request?: HowlerSearchRequest): Promise<HowlerSearchResponse<Hit>> => {
+export const post = <T = Hit>(
+  indexes: string | string[],
+  request?: HowlerSearchRequest
+): Promise<HowlerSearchResponse<T>> => {
+  if (typeof indexes === 'string') {
+    indexes = indexes.split(',');
+  }
+
   if (indexes.some(index => !['hit', 'observable'].includes(index))) {
     // eslint-disable-next-line no-console
     console.error('Only hit and observable indexes should be used currently.');
