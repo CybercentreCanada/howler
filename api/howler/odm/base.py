@@ -1147,8 +1147,11 @@ class Model:
             else:
                 out[name] = sub_field
 
-        if isinstance(field, Compound) and show_compound:
-            out[name] = field
+        if show_compound:
+            if isinstance(field, Compound):
+                out[name] = field
+            elif isinstance(field, List) and isinstance(field.child_type, Compound):
+                out[name] = field.child_type
 
         return out
 

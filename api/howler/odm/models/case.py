@@ -1,8 +1,29 @@
 from typing import Optional
 
 from howler import odm
+from howler.common.exceptions import HowlerValueError
 
 CASE_ITEM_TYPES = {"observable", "hit", "table", "case", "lead", "reference"}
+
+
+@odm.model(index=True, store=True, description="Log definition.")
+class CaseLog(odm.Model):
+    timestamp = odm.Date(description="Timestamp at which the Log event took place.")
+    key = odm.Optional(odm.Keyword(description="The key whose value changed."))
+    previous_value = odm.Optional(odm.Keyword(description="The value the key is changing from."))
+    new_value = odm.Optional(odm.Keyword(description="The value the key is changing to."))
+    user = odm.Keyword(description="User ID who created the log event.")
+    explanation = odm.Optional(odm.Text(description="A manual description of the changes made."))
+
+    def __init__(self, data: dict = None, *args, **kwargs):
+        if "explanation" not in data:
+            required_keys = {"timestamp", "new_value", "user"}
+            if required_keys.intersection(set(data.keys())) != required_keys:
+                raise HowlerValueError(
+                    f"If no explanation provided, you must provide the following values: {','.join(required_keys)}"
+                )
+
+        super().__init__(data, *args, **kwargs)
 
 
 @odm.model(index=True, store=True, description="A path-scoped item included in a case.")
@@ -100,4 +121,9 @@ class Case(odm.Model):
         odm.Compound(CaseTask),
         default=[],
         description="Tasks associated with this case.",
+    )
+    log: list[CaseLog] = odm.List(
+        odm.Compound(CaseLog),
+        default=[],
+        description="A list of changes to the case with timestamps and attribution.",
     )
