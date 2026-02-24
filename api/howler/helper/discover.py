@@ -1,6 +1,5 @@
 import sys
-import typing
-from typing import Optional
+from typing import Any, Optional
 
 import requests
 
@@ -18,30 +17,35 @@ def get_apps_list(discovery_url: Optional[str]) -> list[dict[str, str]]:
         list[dict[str, str]]: A list of other apps
     """
     if discovery_url not in DISCO_CACHE:
-        apps = []
+        apps: list[dict[str, Any]] = []
 
         if "pytest" in sys.modules:
             logger.info("Skipping discovery, running in a test environment")
 
+        url = discovery_url or config.ui.discover_url
+        if not url:
+            return apps
+
         try:
             resp = requests.get(
-                typing.cast(str, discovery_url or config.ui.discover_url),
+                url,
                 headers={"accept": "application/json"},
                 timeout=5,
             )
+
             if resp.ok:
                 data = resp.json()
                 for app in data["applications"]["application"]:
                     try:
-                        url = app["instance"][0]["hostName"]
-                        if "howler" not in url:
+                        app_url = app["instance"][0]["hostName"]
+                        if "howler" not in app_url:
                             apps.append(
                                 {
                                     "alt": app["instance"][0]["metadata"]["alternateText"],
                                     "name": app["name"],
                                     "img_d": app["instance"][0]["metadata"]["imageDark"],
                                     "img_l": app["instance"][0]["metadata"]["imageLight"],
-                                    "route": url,
+                                    "route": app_url,
                                     "classification": app["instance"][0]["metadata"]["classification"],
                                 }
                             )

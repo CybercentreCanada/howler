@@ -33,7 +33,7 @@ from howler.datastore.operations import OdmHelper
 from howler.helper.hit import assess_hit
 from howler.helper.oauth import VALID_CHARS
 from howler.odm.base import Keyword
-from howler.odm.helper import generate_useful_dossier, generate_useful_hit
+from howler.odm.helper import generate_useful_dossier, generate_useful_hit, generate_useful_observable
 from howler.odm.models.action import Action
 from howler.odm.models.analytic import Analytic, Comment, Notebook, TriageOptions
 from howler.odm.models.case import Case
@@ -505,27 +505,29 @@ def wipe_views(ds):
     ds.view.wipe()
 
 
-def create_hits(ds: HowlerDatastore, hit_count: int = 200):
-    """Create random hits in the datastore.
-
-    Args:
-        ds (HowlerDatastore): The datastore instance to save hits to.
-        hit_count (int, optional): Number of hits to create. Defaults to 200.
-    """
-    create_records(ds, "hit", hit_count=hit_count)
-
-
-def create_observables(ds: HowlerDatastore, hit_count: int = 200):
+def create_observables(ds: HowlerDatastore, observable_count: int = 200):
     """Create random observables in the datastore.
 
     Args:
         ds (HowlerDatastore): The datastore instance to save observables to.
-        hit_count (int, optional): Number of observables to create. Defaults to 200.
+        observable_count (int, optional): Number of observables to create. Defaults to 200.
     """
-    create_records(ds, "observable", hit_count=hit_count)
+    lookups = loader.get_lookups()
+    users = ds.user.search("*:*")["items"]
+    for observable_index in range(observable_count):
+        observable = generate_useful_observable(lookups, [user.uname for user in users], prune=False)
+        ds.observable.save(observable.howler.id, observable)
+
+        if observable_index % 25 == 0 and "pytest" not in sys.modules:
+            logger.info("\tCreated %s/%s", observable_index, observable_count)
+
+    logger.info(
+        "%s total observables in datastore",
+        ds.observable.search(query="howler.id:*", track_total_hits=True, rows=0)["total"],
+    )
 
 
-def create_records(ds: HowlerDatastore, index: str, hit_count: int = 200):
+def create_hits(ds: HowlerDatastore, hit_count: int = 200):
     """Create some random records"""
     lookups = loader.get_lookups()
     users = ds.user.search("*:*")["items"]
@@ -548,13 +550,13 @@ def create_records(ds: HowlerDatastore, index: str, hit_count: int = 200):
                 }
             )
 
-        ds[index].save(hit.howler.id, hit)
+        ds.hit.save(hit.howler.id, hit)
         analytic_service.save_from_hit(hit, random.choice(users))
         ds.analytic.commit()
 
         if choice([True, False, False, False]):
             user = choice(users)
-            ds[index].update(
+            ds.hit.update(
                 hit.howler.id,
                 [
                     *assess_hit(
@@ -570,7 +572,7 @@ def create_records(ds: HowlerDatastore, index: str, hit_count: int = 200):
                 ],
             )
 
-        ds[index].commit()
+        ds.hit.commit()
 
         if hit_idx % 25 == 0 and "pytest" not in sys.modules:
             logger.info("\tCreated %s/%s", hit_idx, hit_count)
@@ -579,7 +581,7 @@ def create_records(ds: HowlerDatastore, index: str, hit_count: int = 200):
         logger.info("\tCreated %s/%s", hit_idx + 1, hit_count)
 
     logger.info(
-        "%s total hits in datastore", ds[index].search(query="howler.id:*", track_total_hits=True, rows=0)["total"]
+        "%s total hits in datastore", ds.hit.search(query="howler.id:*", track_total_hits=True, rows=0)["total"]
     )
 
 

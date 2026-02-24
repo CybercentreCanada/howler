@@ -4,7 +4,6 @@ from howler import odm
 from howler.common.exceptions import HowlerValueError
 from howler.common.logging import get_logger
 from howler.odm.howler_enum import HowlerEnum
-from howler.odm.models.howler_data import HowlerData
 from howler.odm.models.record import Record
 
 logger = get_logger(__file__)
@@ -115,8 +114,8 @@ class ObservableData(odm.Model):
 )
 class Observable(Record):
     # Howler extended fields. Deviates from ECS
-    howler: HowlerData = odm.Compound(
-        HowlerData,
+    howler: ObservableData = odm.Compound(
+        ObservableData,
         description="Howler specific definition of the observable",
     )
 
