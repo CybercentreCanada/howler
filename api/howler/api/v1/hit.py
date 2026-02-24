@@ -166,17 +166,11 @@ def delete_hits(user: User, **kwargs):
     if "admin" not in user["type"]:
         return forbidden(err="Cannot delete hit, only admin is allowed to delete")
 
+    hit_ids = set(hit_ids)
     non_existing_hit_ids = [hit_id for hit_id in hit_ids if not hit_service.exists(hit_id)]
 
-    if len(non_existing_hit_ids) == 1:
-        return not_found(err=f"Hit id {non_existing_hit_ids[0]} does not exist.")
-
-    if len(non_existing_hit_ids) > 1:
-        return not_found(err=f"Hit ids {', '.join(non_existing_hit_ids)} do not exist.")
-
-    for hit_id in hit_ids:
-        if not hit_service.exists(hit_id):
-            return not_found(err=f"Hit id {hit_id} does not exist.")
+    if non_existing_hit_ids:
+        return not_found(err=f"Hit id(s) {', '.join(non_existing_hit_ids)} do not exist.")
 
     hit_service.delete_hits(hit_ids)
 
@@ -247,7 +241,7 @@ def validate_hits(**kwargs):
 
 @generate_swagger_docs()
 @hit_api.route("/<id>", methods=["GET"])
-@api_login(audit=False, required_priv=["R"])
+@api_login(audit=True, required_priv=["R"])
 @add_etag(getter=hit_service.get_hit)
 def get_hit(id: str, server_version: str, **kwargs):
     """Get a hit.

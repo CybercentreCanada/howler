@@ -368,35 +368,22 @@ def get_hit(id: str, as_odm: Literal[False], version: Literal[False]) -> dict[st
 
 
 @overload
-def get_hit(id: str, as_odm: Literal[False], version: Literal[False], indexes: list[str] | None) -> dict[str, Any]: ...
-
-
-@overload
 def get_hit(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...
 
 
-def get_hit(id: str, as_odm=False, version=False, indexes=None):
+def get_hit(id: str, as_odm=False, version=False):
     """Retrieve a hit from the datastore.
 
     Args:
         id: The unique identifier of the hit to retrieve
         as_odm: Whether to return the hit as an ODM object (True) or dictionary (False)
         version: Whether to include version information in the response
-        indexes: List of indexes to attempt to retrieve the hit from
 
     Returns:
         Hit object (if as_odm=True) or dictionary representation of the hit.
         Returns None if the hit doesn't exist.
     """
-    if not indexes:
-        indexes = ["hit"]
-
-    ds = datastore()
-
-    return next(
-        (ds[index].get_if_exists(key=id, as_obj=as_odm, version=version) for index in indexes),
-        (None, None) if version else None,
-    )
+    return datastore().hit.get_if_exists(key=id, as_obj=as_odm, version=version)
 
 
 CREATED_HITS = Counter(
@@ -671,11 +658,11 @@ def transition_hit(
 DELETED_HITS = Counter(f"{APP_NAME.replace('-', '_')}_deleted_hits_total", "The number of deleted hits")
 
 
-def delete_hits(hit_ids: list[str], indexes: list[str] | None = None) -> bool:
+def delete_hits(hit_ids: set[str], indexes: list[str] | None = None) -> bool:
     """Delete a set of hits from the database
 
     Args:
-        hit_ids (list[str]): The IDs of the hits to delete
+        hit_ids (set[str]): The IDs of the hits to delete
 
     Returns:
         bool: Was the deletion successful?
