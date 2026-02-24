@@ -375,3 +375,142 @@ def delete_item(id: str, value: str, **kwargs):
         datastore()[backing_obj.__class__.__name__.lower()].save(backing_obj.howler.id, backing_obj)
 
     return ok()
+
+
+@generate_swagger_docs()
+@case_api.route("/<id>/items", methods=["POST"])
+@api_login(required_priv=["R", "W"])
+def append_item(id: str, user: User, **kwargs):
+    """Append to a case
+
+    Variables:
+    id => The id of the case to modify
+
+    Optional Arguments:
+    None
+
+    Data Block:
+    {
+        "type": "String type of item to append to case (observable, hit, table, case, lead, reference)"
+        "value": "Value for this item (id or url reference, depending on type)"
+    }
+
+    Result Example:
+    {
+        "success": true     # Did the deletion succeed?
+    }
+    """
+    try:
+        body = request.json
+    except UnsupportedMediaType:
+        return bad_request(err="Invalid JSON body")
+
+    if "value" not in body:
+        return bad_request(err="Case 'value' is required")
+
+    case: Case | None = datastore().case.get_if_exists(key=id, as_obj=True)
+
+    if case is None:
+        return not_found(err="Case not found")
+
+    if "type" not in body:
+        return bad_request(err="Case 'type' missing")
+
+    case_item_data = {}
+    backing_obj: Hit | Observable | None = None
+    index = str | None
+
+    match (body.get("type", "").lower()):
+        case "hit":
+            backing_obj: Hit = datastore().hit.get(body["value"]) or None
+            index = 'hit'
+
+            if backing_obj is None:
+                return not_found(err="Hit not found")
+
+            case_item_data = {
+                'path': f'alerts/{backing_obj.howler.analytic} ({backing_obj.howler.id})',
+                'type': 'hit',
+                'id': body["value"],
+                'value': body["value"],
+            }
+
+        case "observable":
+            backing_obj: Observable = datastore().observable.get(body["value"]) or None
+            index = 'observable'
+
+            if backing_obj is None:
+                return not_found(err="Observable not found")
+
+            case_item_data = {
+                'path': f'observables/{backing_obj.howler.analytic} ({backing_obj.howler.id})',
+                'type': 'hit',
+                'id': body["value"],
+                'value': body["value"],
+            }
+
+        case _:
+            return not_implemented(err="Case Item type not implemented")
+
+    if not case_item_data:
+        return bad_request(err="Unable to construct item to add to Case")
+
+    if any(body['value'] == item["value"] for item in case['items']):
+        return bad_request(err="Case item already exists")
+
+    case_item = CaseItem(case_item_data)
+    case['items'].append(case_item)
+
+    if not datastore().case.save(case.case_id, case):
+        return internal_error(err="Failed to save case with new item")
+
+    if any(case.case_id == related_id for related_id in backing_obj.related.cases):
+        return ok()
+
+    backing_obj.related.cases.append(case.case_id)
+    datastore()[backing_obj.__class__.__name__.lower()].save(backing_obj.id, backing_obj)
+
+    return ok()
+
+
+@generate_swagger_docs()
+@case_api.route("/<id>/items/<value>", methods=["DELETE"])
+@api_login(required_priv=["R", "W"])
+def delete_item(id: str, value: str, **kwargs):
+    """Delete an item from a case
+
+    Variables:
+    id => The id of the case to modify
+    value => The value of the item to delete
+
+    Optional Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result Example:
+    {
+        "success": true     # Did the deletion succeed?
+    }
+    """
+    if not id:
+        return bad_request(err="Case 'id' is required")
+
+    if not value:
+        return bad_request(err="Case item 'value' is required")
+
+    case: Case | None = datastore().case.get_if_exists(key=id, as_obj=True)
+
+    if case is None:
+        return not_found(err="Case not found")
+
+    case_item = item if (item := next((item for item in case.items if item["value"] == value), None)) else None
+
+    if case_item is None:
+        return not_found(err="Case item not found")
+
+    case.items.remove(case_item)
+    datastore().case.save(case.case_id, case)
+
+    return ok()
