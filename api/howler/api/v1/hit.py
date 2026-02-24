@@ -241,7 +241,7 @@ def validate_hits(**kwargs):
 
 @generate_swagger_docs()
 @hit_api.route("/<id>", methods=["GET"])
-@api_login(audit=False, required_priv=["R"])
+@api_login(audit=True, required_priv=["R"])
 @add_etag(getter=hit_service.get_hit)
 def get_hit(id: str, server_version: str, **kwargs):
     """Get a hit.
