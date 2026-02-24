@@ -40,7 +40,7 @@ const EnhancedCell: FC<{ hit: Hit; value: string; sx?: SxProps; className: strin
             sx={{ fontSize: 'inherit', textOverflow: 'ellipsis' }}
             value={value}
             field={field}
-            hit={hit}
+            obj={hit}
           >
             {value}
           </PluginTypography>

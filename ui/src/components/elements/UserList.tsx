@@ -11,7 +11,7 @@ const UserList: FC<{
   userId: string;
   onChange: (userId: string) => void;
   i18nLabel: string;
-  avatarHeight: number;
+  avatarHeight?: number;
 }> = ({ buttonSx = {}, userId, onChange, i18nLabel, avatarHeight = 32 }) => {
   const { t } = useTranslation();
 

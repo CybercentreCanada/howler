@@ -79,7 +79,7 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit }) => {
               variant="outlined"
               key={h.howler.id}
               sx={{ cursor: 'pointer' }}
-              onClick={() => navigate((h.howler.is_bundle ? '/bundles/' : '/hits/') + h.howler.id)}
+              onClick={() => navigate(`/hits/${h.howler.id}`)}
             >
               <CardContent>
                 <HitBanner layout={HitLayout.DENSE} hit={h} />

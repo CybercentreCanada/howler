@@ -35,7 +35,7 @@ import type { FC } from 'react';
 import React, { memo, useCallback, useEffect, useMemo } from 'react';
 import { isMobile } from 'react-device-detect';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
 import { BundleScroller } from './BundleScroller';
@@ -112,7 +112,6 @@ const Item: FC<{
 const SearchPane: FC = () => {
   const { t } = useTranslation();
   const location = useLocation();
-  const navigate = useNavigate();
   const routeParams = useParams();
 
   const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
