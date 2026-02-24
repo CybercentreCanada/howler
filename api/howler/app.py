@@ -48,6 +48,7 @@ from howler.api.v1.template import template_api
 from howler.api.v1.tool import tool_api
 from howler.api.v1.user import user_api
 from howler.api.v1.view import view_api
+from howler.api.v2 import apiv2
 from howler.api.v2.case import case_api
 from howler.api.v2.ingest import ingest_api
 from howler.api.v2.search import search_api as v2_search_api
@@ -136,6 +137,7 @@ if HWL_USE_REST_API or DEBUG:
     app.register_blueprint(dossier_api)
 
     # v2
+    app.register_blueprint(apiv2)
     app.register_blueprint(case_api)
     app.register_blueprint(ingest_api)
     app.register_blueprint(v2_search_api)

@@ -1152,7 +1152,7 @@ def test_delete_existing_and_non_existing_hits(datastore: HowlerDatastore, login
             method="DELETE",
         )
 
-    assert err.value.args[0].startswith("404: Hit ids")
+    assert err.value.args[0].startswith("404: Hit id(s)")
     assert err.value.args[0].endswith("not exist.")
 
 

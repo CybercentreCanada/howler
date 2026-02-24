@@ -27,7 +27,7 @@ def datastore(datastore_connection):
         wipe_hits(ds)
         wipe_observables(ds)
         create_hits(ds, hit_count=40)
-        create_observables(ds, hit_count=40)
+        create_observables(ds, observable_count=40)
 
         for index in range(TEST_SIZE - 5):
             user = ds.user.get("user")
