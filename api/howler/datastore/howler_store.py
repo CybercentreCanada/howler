@@ -83,7 +83,7 @@ class HowlerDatastore(object):
         return self.ds.hit
 
     @property
-    def observable(self) -> ESCollection[Hit]:
+    def observable(self) -> ESCollection[Observable]:
         return self.ds.observable
 
     @property
