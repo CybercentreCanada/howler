@@ -4,6 +4,7 @@ import useMyApi from 'components/hooks/useMyApi';
 import type { Case } from 'models/entities/generated/Case';
 import { memo, useEffect, useState, type FC } from 'react';
 import { useParams } from 'react-router-dom';
+import NotFoundPage from '../404';
 import CaseDashboard from './detail/CaseDashboard';
 import CaseSidebar from './detail/CaseSidebar';
 import ItemPage from './detail/ItemPage';
@@ -14,6 +15,7 @@ const CaseViewer: FC = () => {
 
   const [_case, setCase] = useState<Case>();
   const [loading, setLoading] = useState(false);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     if (!params.id) {
@@ -26,8 +28,13 @@ const CaseViewer: FC = () => {
       .then(_dossier => {
         setCase(_dossier);
       })
+      .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
   }, [dispatchApi, params.id]);
+
+  if (notFound) {
+    return <NotFoundPage />;
+  }
 
   return (
     <Stack direction="row" height="100%">

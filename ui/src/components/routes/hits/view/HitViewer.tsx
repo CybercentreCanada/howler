@@ -25,7 +25,6 @@ import JSONViewer from 'components/elements/display/json/JSONViewer';
 import HitActions from 'components/elements/hit/HitActions';
 import HitBanner from 'components/elements/hit/HitBanner';
 import HitComments from 'components/elements/hit/HitComments';
-import HitDetails from 'components/elements/hit/HitDetails';
 import HitLabels from 'components/elements/hit/HitLabels';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import HitNotebooks from 'components/elements/hit/HitNotebooks';
@@ -35,6 +34,7 @@ import HitRelated from 'components/elements/hit/HitRelated';
 import HitWorklog from 'components/elements/hit/HitWorklog';
 import PivotLink from 'components/elements/hit/related/PivotLink';
 import RelatedLink from 'components/elements/hit/related/RelatedLink';
+import ObjectDetails from 'components/elements/ObjectDetails';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useMyUserList from 'components/hooks/useMyUserList';
 import uniqBy from 'lodash-es/uniqBy';
@@ -126,7 +126,7 @@ const HitViewer: FC = () => {
 
     return {
       overview: () => <HitOverview hit={hit} />,
-      details: () => <HitDetails hit={hit} />,
+      details: () => <ObjectDetails obj={hit} />,
       hit_comments: () => <HitComments hit={hit} users={users} />,
       hit_raw: () => <JSONViewer data={hit} />,
       hit_data: () => <JSONViewer data={hit?.howler?.data?.map(entry => tryParse(entry))} collapse={false} />,

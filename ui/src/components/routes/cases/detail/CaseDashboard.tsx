@@ -4,7 +4,7 @@ import Markdown from 'components/elements/display/Markdown';
 import useMyApi from 'components/hooks/useMyApi';
 import dayjs from 'dayjs';
 import type { Case } from 'models/entities/generated/Case';
-import { useEffect, useState, type FC } from 'react';
+import { useCallback, useEffect, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import AlertPanel from './AlertPanel';
 import CaseAggregate from './CaseAggregate';
@@ -35,6 +35,21 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
       dispatchApi(api.v2.case.get(caseId), { throwError: false }).then(setCase);
     }
   }, [caseId, dispatchApi]);
+
+  const updateCase = useCallback(
+    async (_updatedCase: Partial<Case>) => {
+      if (!_case?.case_id) {
+        return;
+      }
+
+      try {
+        setCase(await dispatchApi(api.v2.case.put(_case.case_id, _updatedCase)));
+      } finally {
+        return;
+      }
+    },
+    [_case?.case_id, dispatchApi]
+  );
 
   if (!_case) {
     return null;
@@ -87,7 +102,7 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
         />
       </Grid>
       <Grid item xs={12}>
-        <TaskPanel case={_case} />
+        <TaskPanel case={_case} updateCase={updateCase} />
       </Grid>
       <Grid item xs={12}>
         <AlertPanel case={_case} />

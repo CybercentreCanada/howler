@@ -4,7 +4,10 @@ import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import CaseTask from './CaseTask';
 
-const TaskPanel: FC<{ case: Case }> = ({ case: _case }) => {
+const TaskPanel: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promise<void> }> = ({
+  case: _case,
+  updateCase
+}) => {
   const { t } = useTranslation();
 
   // TODO: Implement adding tasks, checking tasks off, etc.
@@ -16,7 +19,26 @@ const TaskPanel: FC<{ case: Case }> = ({ case: _case }) => {
       </Typography>
       <Divider />
       {_case.tasks.map(task => (
-        <CaseTask key={task.id} caseId={_case.case_id} task={task} />
+        <CaseTask
+          key={task.id}
+          task={task}
+          paths={_case.items.map(item => item.path)}
+          onEdit={newTask =>
+            updateCase({
+              tasks: _case.tasks.map(_task => {
+                if (_task.id !== task.id) {
+                  return _task;
+                }
+
+                return {
+                  ..._task,
+                  ...newTask
+                };
+              })
+            })
+          }
+          onDelete={() => updateCase({ tasks: _case.tasks.filter(_task => _task.id !== task.id) })}
+        />
       ))}
     </Stack>
   );
