@@ -1,19 +1,15 @@
-from typing import Any
-
-from flask import request
 from werkzeug.exceptions import UnsupportedMediaType
 
-from howler.api import bad_request, forbidden, make_subapi_blueprint, no_content, not_found, ok, not_implemented, \
-    internal_error
-from howler.common.exceptions import HowlerException, InvalidDataException, NotFoundException, ResourceExists
+from howler.api import bad_request, forbidden, make_subapi_blueprint, no_content, not_found, ok, not_implemented, internal_error
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
-from howler.odm.models.case import CaseItem, Case
 from howler.odm.models.hit import Hit
-from howler.odm.models.observable import Observable
 from howler.odm.models.user import User
+from howler.odm.models.case import CaseItem, Case
+from howler.odm.models.observable import Observable
 from howler.security import api_login
+from flask import request
 from howler.services import case_service
 from howler.utils.str_utils import sanitize_lucene_query
 
@@ -33,7 +29,7 @@ def create_cases(user: User, **kwargs):
     Variables:
     None
 
-    Arguments:
+    Optional Arguments:
     None
 
     Data Block:
