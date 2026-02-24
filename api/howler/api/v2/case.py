@@ -1,18 +1,18 @@
-from werkzeug.exceptions import UnsupportedMediaType
-
-from howler.api import bad_request, forbidden, make_subapi_blueprint, no_content, not_found, ok, not_implemented, internal_error
 from typing import Any
 
 from flask import request
+from werkzeug.exceptions import UnsupportedMediaType
 
+from howler.api import bad_request, forbidden, make_subapi_blueprint, no_content, not_found, ok, not_implemented, \
+    internal_error
 from howler.common.exceptions import HowlerException, InvalidDataException, NotFoundException, ResourceExists
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
-from howler.odm.models.hit import Hit
-from howler.odm.models.user import User
 from howler.odm.models.case import CaseItem, Case
+from howler.odm.models.hit import Hit
 from howler.odm.models.observable import Observable
+from howler.odm.models.user import User
 from howler.security import api_login
 from howler.services import case_service
 from howler.utils.str_utils import sanitize_lucene_query
@@ -210,6 +210,7 @@ def update_case(id: str, user: User, **kwargs):
     except InvalidDataException as e:
         return bad_request(err=str(e))
 
+
 @generate_swagger_docs()
 @case_api.route("/<id>/items", methods=["POST"])
 @api_login(required_priv=["R", "W"])
@@ -235,13 +236,13 @@ def append_item(id: str, user: User, **kwargs):
     """
     try:
         body = request.json
-    except UnsupportedMediaType :
+    except UnsupportedMediaType:
         return bad_request(err="Invalid JSON body")
 
     if "value" not in body:
         return bad_request(err="Case 'value' is required")
 
-    case: Case | None =  datastore().case.get_if_exists(key=id, as_obj=True)
+    case: Case | None = datastore().case.get_if_exists(key=id, as_obj=True)
 
     if case is None:
         return not_found(err="Case not found")
@@ -253,7 +254,7 @@ def append_item(id: str, user: User, **kwargs):
     backing_obj: Hit | Observable | None = None
     index = str | None
 
-    match(body.get("type", "").lower()):
+    match (body.get("type", "").lower()):
         case "hit":
             backing_obj: Hit = datastore().hit.get(body["value"]) or None
             index = 'hit'
@@ -282,6 +283,19 @@ def append_item(id: str, user: User, **kwargs):
                 'value': body["value"],
             }
 
+        case "case":
+            related_case: Case = datastore().case.get(body["value"]) or None
+
+            if related_case is None:
+                return not_found(err="Case not found")
+
+            case_item_data = {
+                'path': f'cases/{related_case.title} ({related_case.case_id})',
+                'type': 'case',
+                'id': body["value"],
+                'value': body["value"],
+            }
+
         case _:
             return not_implemented(err="Case Item type not implemented")
 
@@ -297,11 +311,12 @@ def append_item(id: str, user: User, **kwargs):
     if not datastore().case.save(case.case_id, case):
         return internal_error(err="Failed to save case with new item")
 
-    if any(case.case_id == related_id for related_id in backing_obj.related.cases):
-        return ok()
+    if backing_obj is not None:
+        if any(case.case_id == related_id for related_id in backing_obj.related.cases):
+            return ok()
 
-    backing_obj.related.cases.append(case.case_id)
-    datastore()[backing_obj.__class__.__name__.lower()].save(backing_obj.id, backing_obj)
+        backing_obj.related.cases.append(case.case_id)
+        datastore()[backing_obj.__class__.__name__.lower()].save(backing_obj.howler.id, backing_obj)
 
     return ok()
 
@@ -343,7 +358,20 @@ def delete_item(id: str, value: str, **kwargs):
     if case_item is None:
         return not_found(err="Case item not found")
 
+    backing_obj: Hit | Observable | None = None
+    match case_item.type:
+        case "hit":
+            backing_obj: Hit = datastore().hit.get(case_item.id) or None
+        case "observable":
+            backing_obj: Observable = datastore().observable.get(case_item.id) or None
+
     case.items.remove(case_item)
-    datastore().case.save(case.case_id, case)
+
+    if not datastore().case.save(case.case_id, case):
+        return internal_error(err="Failed to save case after item removal")
+
+    if backing_obj is not None and case.case_id in backing_obj.related.cases:
+        backing_obj.related.cases.remove(case.case_id)
+        datastore()[backing_obj.__class__.__name__.lower()].save(backing_obj.howler.id, backing_obj)
 
     return ok()
