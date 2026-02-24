@@ -16,8 +16,8 @@ export const post = (newData: Partial<Case>): Promise<Case> => {
   return hpost(uri(), newData);
 };
 
-export const put = (id: string, dossier: Partial<Case>): Promise<Case> => {
-  return hput(uri(id), dossier);
+export const put = (id: string, _case: Partial<Case>): Promise<Case> => {
+  return hput(uri(id), _case);
 };
 
 export const del = (id: string): Promise<void> => {

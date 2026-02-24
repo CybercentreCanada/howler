@@ -11,7 +11,8 @@ const UserList: FC<{
   userId: string;
   onChange: (userId: string) => void;
   i18nLabel: string;
-}> = ({ buttonSx = {}, userId, onChange, i18nLabel }) => {
+  avatarHeight: number;
+}> = ({ buttonSx = {}, userId, onChange, i18nLabel, avatarHeight = 32 }) => {
   const { t } = useTranslation();
 
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement>(null);
@@ -26,7 +27,7 @@ const UserList: FC<{
   return (
     <>
       <IconButton sx={buttonSx} onClick={e => setAnchorEl(e.currentTarget)}>
-        <HowlerAvatar userId={userId} />
+        <HowlerAvatar userId={userId} sx={{ height: avatarHeight, width: avatarHeight }} />
       </IconButton>
       <Popover
         open={!!anchorEl}
@@ -54,7 +55,7 @@ const UserList: FC<{
                     }}
                   >
                     <HowlerAvatar
-                      sx={{ gridArea: 'profile', alignSelf: 'center', height: '32px', width: '32px' }}
+                      sx={{ gridArea: 'profile', alignSelf: 'center', height: 32, width: 32 }}
                       userId={user.username}
                     />
                     <Typography sx={{ gridArea: 'name' }} variant="body1">
