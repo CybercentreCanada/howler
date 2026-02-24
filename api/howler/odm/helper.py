@@ -337,6 +337,7 @@ def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[str], pr
 
     return hit
 
+
 def generate_useful_observable(  # noqa: C901
     lookups: dict[str, dict[str, Any]], users: list[str], prune: bool = True
 ) -> Observable:
