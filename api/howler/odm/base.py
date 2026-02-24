@@ -19,7 +19,7 @@ from datetime import datetime
 from enum import Enum as PyEnum
 from enum import EnumMeta
 from typing import Any as _Any
-from typing import Dict, Union
+from typing import Callable
 from venv import logger
 
 import arrow
@@ -1063,7 +1063,7 @@ class Optional(_Field):
 
 class Model:
     @classmethod
-    def fields(cls, skip_mappings=False) -> dict[str, _Field]:
+    def fields(cls, skip_mappings=False, no_cache=False) -> dict[str, _Field]:
         """Describe the elements of the model.
 
         For compound fields return the field object.
@@ -1078,16 +1078,25 @@ class Model:
             return cls._odm_field_cache
 
         out = dict()
+        # Iterate through inherited classes. If any of them are odm.Model (e.g., they expose fields())
+        # then include their fields as well. This allows for class inheritance.
+        for base in cls.__bases__:
+            _fields: Callable[..., dict[str, _Field]] | None = getattr(base, "fields", None)
+            if _fields and callable(_fields):
+                out.update(_fields(skip_mappings=skip_mappings, no_cache=True))
+
         for name, field_data in cls.__dict__.items():
             if isinstance(field_data, _Field):
                 if skip_mappings and isinstance(field_data, Mapping):
                     continue
                 out[name.rstrip("_")] = field_data
 
-        if skip_mappings:
-            cls._odm_field_cache_skip = out
-        else:
-            cls._odm_field_cache = out
+        if not no_cache:
+            if skip_mappings:
+                cls._odm_field_cache_skip = out
+            else:
+                cls._odm_field_cache = out
+
         return out
 
     @classmethod
@@ -1163,6 +1172,11 @@ class Model:
             skip_mappings (bool): Skip over mappings where the real subfield names are unknown.
         """
         out = dict()
+        for base in cls.__bases__:
+            _flat_fields: Callable[..., dict[str, _Field]] | None = getattr(base, "flat_fields", None)
+            if _flat_fields and callable(_flat_fields):
+                out.update(_flat_fields(show_compound=show_compound, skip_mappings=skip_mappings))
+
         for name, field in cls.__dict__.items():
             if isinstance(field, _Field):
                 if skip_mappings and isinstance(field, Mapping):
@@ -1185,7 +1199,7 @@ class Model:
         include_autogen_note=True,
         defaults=None,
         url_prefix="/howler/odm/class/",
-    ) -> Union[str, Dict]:
+    ) -> dict | str:
         markdown_content = (
             (
                 '??? success "Auto-Generated Documentation"\n    '
@@ -1481,6 +1495,7 @@ def model(index=None, store=None, description=None):
 
     def _finish_model(cls):
         cls._Model__description = description
+
         for name, field_data in cls.fields().items():
             if not FIELD_SANITIZER.match(name) or name in BANNED_FIELDS:
                 raise HowlerValueError(f"Illegal variable name: {name}")

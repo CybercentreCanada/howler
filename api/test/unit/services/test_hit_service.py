@@ -246,9 +246,9 @@ def test_transition_hit_not_found(mock_get_hit):
 
 @patch("howler.services.hit_service.exists", return_value=True)
 def test_create_hit_already_exists(mock_exists):
-    """Test that create_hit raises ResourceExists if the hit exists and overwrite is False."""
+    """Test that create_hit raises ResourceExists if the hit exists and skip_exists is False."""
     with pytest.raises(ResourceExists):
-        hit_service.create_hit("some_id", Hit(SAMPLE_HIT_DATA), overwrite=False)
+        hit_service.create_hit("some_id", Hit(SAMPLE_HIT_DATA))
 
 
 @patch("howler.services.hit_service._update_hit", return_value=(random_model_obj(cast(Any, Hit)), "version number"))

@@ -10,6 +10,7 @@ from howler.odm.models.case import Case
 from howler.odm.models.clue import Clue
 from howler.odm.models.dossier import Dossier
 from howler.odm.models.hit import Hit
+from howler.odm.models.observable import Observable
 from howler.odm.models.overview import Overview
 from howler.odm.models.template import Template
 from howler.odm.models.user import User
@@ -21,7 +22,7 @@ if TYPE_CHECKING:
 
 INDEXES = [
     ("hit", Hit),
-    ("observable", Hit),
+    ("observable", Observable),
     ("case", Case),
     ("template", Template),
     ("overview", Overview),
