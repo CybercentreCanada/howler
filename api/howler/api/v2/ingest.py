@@ -229,10 +229,12 @@ def overwrite(index: str, id: str, server_version: str, **kwargs):
     if "," in index:
         return bad_request(err="You cannot overwrite across multiple indexes.")
 
-    hit = hit_service.get_hit(id, as_odm=False, version=False, indexes=[index])
+    ds = datastore()
 
-    if not hit:
+    if not ds[index].exists(id):
         return not_found(err="Hit %s does not exist" % id)
+
+    hit = ds[index].get(id, as_obj=False, version=False)
 
     new_fields = request.json
 
