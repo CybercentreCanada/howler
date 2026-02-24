@@ -31,6 +31,11 @@ class Related(odm.Model):
         description="Any identifier that doesn't fit in other related fields like a GUID.",
         default=[],
     )
+    cases: list[str] = odm.List(
+        odm.Keyword(),
+        description="Any cases that include this event. This can be used to pivot from an event to the cases that include it.",
+        default=[]
+    )
 
     # Extra fields not defined in ECS but added for outline purposes
     id = odm.Optional(odm.Keyword(description="The id related to the event."))
