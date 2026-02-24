@@ -108,7 +108,7 @@ def create_cases(user: User, **kwargs):
 
 @generate_swagger_docs()
 @case_api.route("/<id>", methods=["GET"])
-@api_login(audit=False, required_priv=["R"])
+@api_login(audit=True, required_priv=["R"])
 def get_case(id: str, **kwargs):
     """Get a case.
 
@@ -166,7 +166,7 @@ def delete_cases(user: User, **kwargs):
     if non_existing_case_ids:
         return not_found(err=f"Case id(s) {', '.join(non_existing_case_ids)} do not exist.")
 
-    case_service.delete_case(case_ids)
+    case_service.delete_cases(case_ids)
 
     return no_content()
 
@@ -200,7 +200,7 @@ def update_case(id: str, user: User, **kwargs):
 
     try:
         updated_case = case_service.update_case(id, case_data, user)
-        return ok(updated_case.as_primitives())
+        return ok(updated_case)
     except NotFoundException as e:
         return not_found(err=str(e))
     except InvalidDataException as e:

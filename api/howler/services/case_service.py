@@ -113,7 +113,7 @@ def create_case(case_id: str, case: Case, user: str, skip_exists: bool = False, 
     return datastore()[index].save(case_id, case)
 
 
-def delete_case(case_ids: set[str], index: str = "case") -> bool:
+def delete_cases(case_ids: set[str], index: str = "case") -> bool:
     """Delete a set of cases from the datastore.
 
     Also removes any CaseItem references to the deleted cases from other cases.
