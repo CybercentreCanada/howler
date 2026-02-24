@@ -11,14 +11,10 @@ from prometheus_client import Counter
 from howler.common.exceptions import InvalidDataException, NotFoundException, ResourceExists
 from howler.common.loader import APP_NAME, datastore
 from howler.common.logging import get_logger
-from howler.datastore.collection import ESCollection
-from howler.datastore.operations import OdmHelper, OdmUpdateOperation
 from howler.odm.models.case import Case, CaseLog
 from howler.odm.models.user import User
 
 logger = get_logger(__file__)
-
-odm_helper = OdmHelper(Case)
 
 
 def exists(case_id: str) -> bool:
@@ -140,13 +136,11 @@ def delete_cases(case_ids: set[str], index: str = "case") -> bool:
     return ds.case.delete_by_query(f"case_id:({' OR '.join(case_ids)})")
 
 
-def update_case(case_id: str, case_data: dict[str, Any], user: User) -> Case:  # noqa: C901
+def update_case(case_id: str, case_data: dict[str, Any], user: User) -> Case:
     """Update one or more properties of a case in the database.
 
-    This function validates the provided fields, builds update operations for each changed
-    property, appends a CaseLog entry, and persists the changes. Compound list fields
-    (items, enrichments, rules, tasks) are replaced via a full save, while
-    simple attribute fields use update operations.
+    This function validates the provided fields, applies changes to the case object,
+    appends a CaseLog entry for each changed property.
 
     Args:
         case_id: Unique identifier of the case to update
@@ -162,33 +156,29 @@ def update_case(case_id: str, case_data: dict[str, Any], user: User) -> Case:  #
     """
     ds = datastore()
 
-    old_case = ds.case.get_if_exists(case_id, as_obj=True)
-    if old_case is None:
+    case = ds.case.get_if_exists(case_id, as_obj=True)
+    if case is None:
         raise NotFoundException(f"Case {case_id} does not exist")
 
     immutable_fields = {"case_id", "created", "updated", "items"}
-
     compound_fields = {"items", "enrichments", "rules", "tasks"}
 
     immutable_violations = set(case_data.keys()) & immutable_fields
     if immutable_violations:
         raise InvalidDataException(f"Cannot modify immutable field(s): {', '.join(immutable_violations)}")
 
-    # Separate compound fields from simple fields
-    compound_updates = {k: v for k, v in case_data.items() if k in compound_fields}
-    simple_updates = {k: v for k, v in case_data.items() if k not in compound_fields}
-
-    if not simple_updates and not compound_updates:
+    updatable = {k: v for k, v in case_data.items() if k not in immutable_fields}
+    if not updatable:
         raise InvalidDataException("No valid fields provided for update")
 
-    operations: list[OdmUpdateOperation] = []
+    for key, new_value in updatable.items():
+        previous_value = getattr(case, key, None)
 
-    for key, new_value in simple_updates.items():
-        operations.append(odm_helper.update(key, new_value))
-
-        previous_value = getattr(old_case, key, None)
-
-        if isinstance(previous_value, list) and isinstance(new_value, list):
+        if key in compound_fields:
+            explanation = f"Updated {key}"
+            prev_str = None
+            new_str = None
+        elif isinstance(previous_value, list) and isinstance(new_value, list):
             prev_set = set(str(v) for v in previous_value)
             new_set = set(str(v) for v in new_value)
             added = sorted(new_set - prev_set)
@@ -208,49 +198,21 @@ def update_case(case_id: str, case_data: dict[str, Any], user: User) -> Case:  #
             prev_str = str(previous_value) if previous_value is not None else None
             new_str = str(new_value) if new_value is not None else None
 
-        log_entry = CaseLog(
-            {
-                "timestamp": "NOW",
-                "key": key,
-                "previous_value": prev_str,
-                "new_value": new_str,
-                "user": user.uname,
-                "explanation": explanation,
-            }
-        )
-        operations.append(
-            OdmUpdateOperation(
-                ESCollection.UPDATE_APPEND,
-                "log",
-                log_entry.as_primitives(),
-                silent=True,
+        case.log.append(
+            CaseLog(
+                {
+                    "timestamp": "NOW",
+                    "key": key,
+                    "previous_value": prev_str,
+                    "new_value": new_str,
+                    "user": user.uname,
+                    "explanation": explanation,
+                }
             )
         )
+        setattr(case, key, new_value)
 
-    operations.append(odm_helper.update("updated", "NOW"))
+    case.updated = "NOW"
+    ds.case.save(case_id, case)
 
-    if operations:
-        ds.case.update(case_id, operations)
-
-    if compound_updates:
-        case_obj = ds.case.get_if_exists(case_id, as_obj=True)
-        compound_logs: list[CaseLog] = []
-        for key, new_value in compound_updates.items():
-            previous_value = getattr(case_obj, key, None)
-            compound_logs.append(
-                CaseLog(
-                    {
-                        "timestamp": "NOW",
-                        "key": key,
-                        "previous_value": None,
-                        "new_value": None,
-                        "user": user.uname,
-                        "explanation": f"Updated {key}",
-                    }
-                )
-            )
-            setattr(case_obj, key, new_value)
-        case_obj.log.extend(compound_logs)
-        ds.case.save(case_id, case_obj)
-
-    return ds.case.get_if_exists(case_id, as_obj=True)
+    return case
