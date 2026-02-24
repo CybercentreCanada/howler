@@ -55,7 +55,7 @@ const UserList: FC<{
                     }}
                   >
                     <HowlerAvatar
-                      sx={{ gridArea: 'profile', alignSelf: 'center', height: 32, width: 32 }}
+                      sx={{ gridArea: 'profile', alignSelf: 'center', height: '32px', width: '32px' }}
                       userId={user.username}
                     />
                     <Typography sx={{ gridArea: 'name' }} variant="body1">

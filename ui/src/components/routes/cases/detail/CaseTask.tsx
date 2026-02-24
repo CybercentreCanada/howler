@@ -95,7 +95,7 @@ const CaseTask: FC<{
             </IconButton>
           </Tooltip>
         )}
-        <Tooltip title={t('route.cases.task.edit.cancel')}>
+        <Tooltip title={t(editing ? 'route.cases.task.edit.save' : 'route.cases.task.edit')}>
           <IconButton
             size="small"
             color={editing ? 'success' : 'default'}
