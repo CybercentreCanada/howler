@@ -12,11 +12,9 @@ import VSBox from 'components/elements/addons/layout/vsbox/VSBox';
 import VSBoxContent from 'components/elements/addons/layout/vsbox/VSBoxContent';
 import VSBoxHeader from 'components/elements/addons/layout/vsbox/VSBoxHeader';
 import Phrase from 'components/elements/addons/search/phrase/Phrase';
-import BundleButton from 'components/elements/display/icons/BundleButton';
 import SocketBadge from 'components/elements/display/icons/SocketBadge';
 import JSONViewer from 'components/elements/display/json/JSONViewer';
 import HitActions from 'components/elements/hit/HitActions';
-import HitBanner from 'components/elements/hit/HitBanner';
 import HitComments from 'components/elements/hit/HitComments';
 import HitLabels from 'components/elements/hit/HitLabels';
 import { HitLayout } from 'components/elements/hit/HitLayout';
@@ -117,12 +115,6 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
   }, [getMatchingOverview, hit]);
 
   useEffect(() => {
-    if (tab === 'hit_aggregate' && !hit?.howler.is_bundle) {
-      setTab('overview');
-    }
-  }, [hit?.howler.is_bundle, tab]);
-
-  useEffect(() => {
     if (selected && isOpen()) {
       emit({
         broadcast: false,
@@ -147,20 +139,6 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasOverview]);
-
-  /**
-   * What to show as the header? If loading a skeleton, then it depends on bundle or not. Bundles don't
-   * show anything while normal hits do
-   */
-  const header = useMemo(() => {
-    if (loading && !hit?.howler?.is_bundle) {
-      return <Skeleton variant="rounded" height={152} />;
-    } else if (!!hit && !hit.howler.is_bundle) {
-      return <HitBanner layout={HitLayout.DENSE} hit={hit} />;
-    } else {
-      return null;
-    }
-  }, [hit, loading]);
 
   const tabContent = useMemo(() => {
     if (!tab) {
@@ -205,14 +183,7 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
   return (
     <VSBox top={10} sx={{ height: '100%', flex: 1 }}>
       <Stack direction="column" flex={1} sx={{ overflowY: 'auto', flexGrow: 1 }} position="relative" spacing={1} ml={2}>
-        <Stack
-          direction="row"
-          alignItems="center"
-          spacing={0.5}
-          flexShrink={0}
-          pr={2}
-          sx={[hit?.howler?.is_bundle && { position: 'absolute', top: 1, right: 0, zIndex: 1100 }]}
-        >
+        <Stack direction="row" alignItems="center" spacing={0.5} flexShrink={0} pr={2}>
           <FlexOne />
           {onClose && !location.pathname.startsWith('/bundles') && (
             <TuiIconButton size="small" onClick={onClose} tooltip={t('hit.panel.details.exit')}>
@@ -230,8 +201,7 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
               <QueryStats />
             </TuiIconButton>
           )}
-          {hit?.howler.bundles?.length > 0 && <BundleButton ids={hit.howler.bundles} disabled={loading} />}
-          {!!hit && !hit.howler.is_bundle && (
+          {!!hit && (
             <TuiIconButton
               tooltip={t('hit.panel.open')}
               href={`/hits/${selected}`}
@@ -243,9 +213,7 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
             </TuiIconButton>
           )}
         </Stack>
-        <Box pr={2}>{header}</Box>
         {!!hit &&
-          !hit.howler.is_bundle &&
           (!loading ? (
             <>
               <HitOutline hit={hit} layout={HitLayout.DENSE} />
@@ -321,9 +289,6 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
               value="hit_comments"
               onClick={() => setTab('hit_comments')}
             />
-            {hit?.howler?.is_bundle && (
-              <Tab label={t('hit.viewer.aggregate')} value="hit_aggregate" onClick={() => setTab('hit_aggregate')} />
-            )}
             {hasOverview && (
               <Tab label={t('hit.viewer.overview')} value="overview" onClick={() => setTab('overview')} />
             )}

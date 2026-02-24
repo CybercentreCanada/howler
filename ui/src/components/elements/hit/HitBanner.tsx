@@ -91,55 +91,43 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
     return `/api/static/mitre/${mitreId}.svg`;
   }, [mitreId]);
 
-  const leftBox = useMemo(() => {
-    if (hit.howler.is_bundle) {
-      return (
+  const leftBox = useMemo(
+    () => (
+      <HitBannerTooltip hit={hit}>
         <Box
           sx={{
-            alignSelf: 'stretch',
+            gridColumn: { xs: 'span 3', sm: 'span 1' },
+            minWidth: '90px',
             backgroundColor: providerColor,
+            color: theme.palette.getContrastText(providerColor),
+            alignSelf: 'start',
             borderRadius: theme.shape.borderRadius,
-            minWidth: '15px'
+            p: compressed ? 0.5 : 1,
+            pt: 2,
+            pl: 1
           }}
-        />
-      );
-    } else {
-      return (
-        <HitBannerTooltip hit={hit}>
-          <Box
-            sx={{
-              gridColumn: { xs: 'span 3', sm: 'span 1' },
-              minWidth: '90px',
-              backgroundColor: providerColor,
-              color: theme.palette.getContrastText(providerColor),
-              alignSelf: 'start',
-              borderRadius: theme.shape.borderRadius,
-              p: compressed ? 0.5 : 1,
-              pt: 2,
-              pl: 1
-            }}
-            display="flex"
-            flexDirection="column"
-          >
-            <Typography variant={compressed ? 'caption' : 'body1'} style={{ wordBreak: 'break-all' }}>
-              {hit.organization?.name ?? <Trans i18nKey="unknown" />}
-            </Typography>
-            {iconUrl && (
-              <Box
-                sx={{
-                  width: '40px',
-                  height: '40px',
-                  mask: `url("${iconUrl}")`,
-                  maskSize: 'cover',
-                  background: theme.palette.getContrastText(providerColor)
-                }}
-              />
-            )}
-          </Box>
-        </HitBannerTooltip>
-      );
-    }
-  }, [compressed, hit, iconUrl, providerColor, theme.palette, theme.shape.borderRadius]);
+          display="flex"
+          flexDirection="column"
+        >
+          <Typography variant={compressed ? 'caption' : 'body1'} style={{ wordBreak: 'break-all' }}>
+            {hit.organization?.name ?? <Trans i18nKey="unknown" />}
+          </Typography>
+          {iconUrl && (
+            <Box
+              sx={{
+                width: '40px',
+                height: '40px',
+                mask: `url("${iconUrl}")`,
+                maskSize: 'cover',
+                background: theme.palette.getContrastText(providerColor)
+              }}
+            />
+          )}
+        </Box>
+      </HitBannerTooltip>
+    ),
+    [compressed, hit, iconUrl, providerColor, theme.palette, theme.shape.borderRadius]
+  );
 
   /**
    * The tooltips are necessary only when in the most compressed format
@@ -171,7 +159,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
               {...typographyProps}
               value={val}
               field={field}
-              hit={hit}
+              obj={hit}
             />
           ))}
         </Stack>
@@ -352,10 +340,10 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
               color="primary"
             />
           )}
-          {hit.howler.is_bundle && (
+          {hit.howler.related && (
             <Chip
               size={layout !== HitLayout.COMFY ? 'small' : 'medium'}
-              label={t('hit.header.bundlesize', { hits: hit.howler.hits.length })}
+              label={t('hit.header.related', { count: hit.howler.related.length })}
             />
           )}
         </Stack>

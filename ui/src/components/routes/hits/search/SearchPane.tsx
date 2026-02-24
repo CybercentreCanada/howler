@@ -1,4 +1,4 @@
-import { Close, ErrorOutline, List, SavedSearch, TableChart, Terminal } from '@mui/icons-material';
+import { ErrorOutline, List, SavedSearch, TableChart, Terminal } from '@mui/icons-material';
 import {
   Box,
   IconButton,
@@ -38,7 +38,6 @@ import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
-import BundleParentMenu from './BundleParentMenu';
 import { BundleScroller } from './BundleScroller';
 import HitContextMenu from './HitContextMenu';
 import HitQuery from './HitQuery';
@@ -198,14 +197,6 @@ const SearchPane: FC = () => {
                 </Tooltip>
               )}
               <FlexOne />
-              {bundleHit?.howler.bundles.length > 0 && <BundleParentMenu bundle={bundleHit} />}
-              {bundleHit && (
-                <Tooltip title={t('hit.bundle.close')}>
-                  <IconButton size="small" onClick={() => navigate('/search')}>
-                    <Close />
-                  </IconButton>
-                </Tooltip>
-              )}
               <Tooltip title={t('route.views.save')}>
                 <IconButton component={Link} disabled={!query} to={`/views/create?query=${query}`}>
                   <SavedSearch />

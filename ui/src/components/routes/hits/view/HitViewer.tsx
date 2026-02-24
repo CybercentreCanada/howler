@@ -19,7 +19,6 @@ import useMatchers from 'components/app/hooks/useMatchers';
 import { HitContext } from 'components/app/providers/HitProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import HowlerCard from 'components/elements/display/HowlerCard';
-import BundleButton from 'components/elements/display/icons/BundleButton';
 import SocketBadge from 'components/elements/display/icons/SocketBadge';
 import JSONViewer from 'components/elements/display/json/JSONViewer';
 import HitActions from 'components/elements/hit/HitActions';
@@ -237,7 +236,6 @@ const HitViewer: FC = () => {
                   </IconButton>
                 </Tooltip>
               )}
-              {hit?.howler.bundles?.length > 0 && <BundleButton ids={hit.howler.bundles} />}
             </Stack>
           )}
         </Box>
@@ -251,9 +249,6 @@ const HitViewer: FC = () => {
             value={tab === 'overview' && !hasOverview ? 'details' : tab}
             sx={{ display: 'flex', flexDirection: 'row', pr: 2, alignItems: 'center' }}
           >
-            {hit?.howler?.is_bundle && (
-              <Tab label={t('hit.viewer.aggregate')} value="hit_aggregate" onClick={() => setTab('hit_aggregate')} />
-            )}
             {hasOverview && (
               <Tab label={t('hit.viewer.overview')} value="overview" onClick={() => setTab('overview')} />
             )}
