@@ -1,12 +1,24 @@
-import { Article, BookRounded, ChevronRight, Folder as FolderIcon } from '@mui/icons-material';
+import {
+  Article,
+  BookRounded,
+  CheckCircle,
+  ChevronRight,
+  Folder as FolderIcon,
+  Lightbulb,
+  Link as LinkIcon,
+  TableChart,
+  Visibility
+} from '@mui/icons-material';
 import { Skeleton, Stack, Typography, useTheme } from '@mui/material';
 import api from 'api';
 import useMyApi from 'components/hooks/useMyApi';
 import { get, last, omit, set } from 'lodash-es';
 import type { Case } from 'models/entities/generated/Case';
+import type { Hit } from 'models/entities/generated/Hit';
 import type { Item } from 'models/entities/generated/Item';
-import { useMemo, useState, type FC } from 'react';
+import { useEffect, useMemo, useState, type FC } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { ESCALATION_COLORS, STATUS_COLORS } from 'utils/constants';
 import type { Tree } from './types';
 
 const buildTree = (items: Item[] = []): Tree => {
@@ -56,9 +68,47 @@ const CaseFolder: FC<{
   const [openCases, setOpenCases] = useState<Record<string, boolean>>({});
   const [loadingCases, setLoadingCases] = useState<Record<string, boolean>>({});
   const [nestedCases, setNestedCases] = useState<Record<string, Case>>({});
+  const [hitMetadata, setHitMetadata] = useState({});
 
   const tree = useMemo(() => folder || buildTree(_case?.items), [folder, _case?.items]);
   const currentRootCaseId = rootCaseId || _case?.case_id;
+
+  // Metadata for hit-type items
+  useEffect(() => {
+    tree.leaves
+      ?.filter(leaf => leaf.type?.toLowerCase() === 'hit')
+      .forEach(leaf => {
+        dispatchApi(api.hit.get<Hit>(leaf.id), { throwError: false }).then(hit => {
+          if (!hit) return;
+          setHitMetadata(prev => ({
+            ...prev,
+            [leaf.id]: {
+              status: hit.howler?.status,
+              escalation: hit.howler?.escalation,
+              assessment: hit.howler?.assessment
+            }
+          }));
+        });
+      });
+  }, [tree.leaves, dispatchApi]);
+
+  const getItemColor = (itemType: string | undefined, itemKey: string | undefined, leafId: string): string => {
+    if (itemType === 'hit' && leafId) {
+      const meta = hitMetadata[leafId];
+      if (meta?.status && STATUS_COLORS[meta.status]) {
+        return `${STATUS_COLORS[meta.status]}.main`;
+      }
+    }
+
+    if (itemType === 'case' && itemKey) {
+      const caseData = nestedCases[itemKey];
+      if (caseData?.escalation && ESCALATION_COLORS[caseData.escalation]) {
+        return `${ESCALATION_COLORS[caseData.escalation]}.main`;
+      }
+    }
+
+    return 'text.secondary';
+  };
 
   const toggleCase = (item: Item, itemKey?: string) => {
     // Use the fully-qualified path key when available so nested case toggles are unique.
@@ -152,6 +202,27 @@ const CaseFolder: FC<{
               ? `/cases/${currentRootCaseId}/${fullRelativePath}`
               : `/cases/${currentRootCaseId}`;
 
+            const getIconForType = (type: string) => {
+              switch (type) {
+                case 'case':
+                  return <BookRounded fontSize="small" />;
+                case 'observable':
+                  return <Visibility fontSize="small" />;
+                case 'hit':
+                  return <CheckCircle fontSize="small" />;
+                case 'table':
+                  return <TableChart fontSize="small" />;
+                case 'lead':
+                  return <Lightbulb fontSize="small" />;
+                case 'reference':
+                  return <LinkIcon fontSize="small" />;
+                default:
+                  return <Article fontSize="small" />;
+              }
+            };
+
+            const leafColor = getItemColor(itemType, itemKey, leaf.id);
+
             return (
               <Stack key={`${_case?.case_id}-${leaf.id}-${leaf.path}`}>
                 <Stack
@@ -189,11 +260,11 @@ const CaseFolder: FC<{
                     ]}
                   />
 
-                  {isCase ? <BookRounded fontSize="small" /> : <Article fontSize="small" />}
+                  {getIconForType(itemType)}
 
                   <Typography
                     variant="caption"
-                    color="textSecondary"
+                    color={leafColor}
                     sx={{ userSelect: 'none', pl: 0.5, textWrap: 'nowrap' }}
                   >
                     {last(leaf.path?.split('/') || [])}
@@ -221,6 +292,6 @@ const CaseFolder: FC<{
       )}
     </Stack>
   );
-};
+};;
 
 export default CaseFolder;
