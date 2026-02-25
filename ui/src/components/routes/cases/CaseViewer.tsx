@@ -1,4 +1,4 @@
-import { Box, Skeleton, Stack } from '@mui/material';
+import { Box, Stack } from '@mui/material';
 import api from 'api';
 import useMyApi from 'components/hooks/useMyApi';
 import type { Case } from 'models/entities/generated/Case';
@@ -46,7 +46,6 @@ const CaseViewer: FC = () => {
           overflow: 'auto'
         }}
       >
-        {loading && <Skeleton variant="rounded" height={240} />}
         {!_case || location.pathname.endsWith(_case.case_id) ? (
           <CaseDashboard case={_case} />
         ) : (

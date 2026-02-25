@@ -1,6 +1,5 @@
-import { Card, CardContent, CardHeader, Divider, Grid, useTheme } from '@mui/material';
+import { Grid, useTheme } from '@mui/material';
 import api from 'api';
-import Markdown from 'components/elements/display/Markdown';
 import useMyApi from 'components/hooks/useMyApi';
 import dayjs from 'dayjs';
 import type { Case } from 'models/entities/generated/Case';
@@ -8,6 +7,7 @@ import { useCallback, useEffect, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import AlertPanel from './AlertPanel';
 import CaseAggregate from './CaseAggregate';
+import CaseOverview from './CaseOverview';
 import RelatedCasePanel from './RelatedCasePanel';
 import TaskPanel from './TaskPanel';
 
@@ -58,13 +58,7 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
   return (
     <Grid container spacing={5} width="100%" px={3}>
       <Grid item xs={12}>
-        <Card>
-          <CardHeader title={_case.title} subheader={_case.summary} />
-          <Divider />
-          <CardContent>
-            <Markdown md={_case.overview} />
-          </CardContent>
-        </Card>
+        <CaseOverview case={_case} updateCase={updateCase} />
       </Grid>
       <Grid item xs={12} md={6} xl={3}>
         <CaseAggregate
