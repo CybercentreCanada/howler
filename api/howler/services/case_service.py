@@ -81,7 +81,7 @@ def get_case(
 CREATED_CASES = Counter(f"{APP_NAME.replace('-', '_')}_created_cases_total", "The number of created cases")
 
 
-def create_case(case_id: str, title: str, summary: str, user: str = "", index: str = "case") -> dict[str, Any]:
+def create_case(case_id: str, title: str, summary: str, user: str = "") -> dict[str, Any]:
     """Create a new case in the datastore.
 
     Args:
@@ -89,7 +89,6 @@ def create_case(case_id: str, title: str, summary: str, user: str = "", index: s
         title: Title of the case
         summary: Short summary of the case
         user: Username to record in the creation log
-        index: Datastore index to save to
 
     Returns:
         dict: The created case as a primitives dictionary
@@ -102,17 +101,14 @@ def create_case(case_id: str, title: str, summary: str, user: str = "", index: s
 
     case = Case({"case_id": case_id, "title": title, "summary": summary})
 
-    if user:
-        case.log = [CaseLog({"timestamp": "NOW", "explanation": "Case created", "user": user})]
-    else:
-        case.log = [CaseLog({"timestamp": "NOW", "explanation": "Case created"})]
+    case.log = [CaseLog({"timestamp": "NOW", "explanation": "Case created", "user": user or "system"})]
 
     CREATED_CASES.inc()
-    datastore()[index].save(case_id, case)
+    datastore().case.save(case_id, case)
     return case.as_primitives()
 
 
-def hide_cases(case_ids: set[str], user: str, index: str = "case") -> None:
+def hide_cases(case_ids: set[str], user: str) -> None:
     """Hide a set of cases by marking them and their references as not visible.
 
     Sets visible=False on all matching cases, and also sets visible=False on any
@@ -125,12 +121,12 @@ def hide_cases(case_ids: set[str], user: str, index: str = "case") -> None:
     ds = datastore()
 
     items_query = f"items.id:({' OR '.join(case_ids)})"
-    for case in ds[index].stream_search(items_query, as_obj=False):
+    for case in ds.case.stream_search(items_query, as_obj=False):
         related_case_id = case["case_id"]
         if related_case_id in case_ids:
             continue
 
-        related_case = ds[index].get_if_exists(related_case_id, as_obj=True)
+        related_case = ds.case.get_if_exists(related_case_id, as_obj=True)
         if related_case:
             hidden_ids: list[str] = []
             for item in related_case.items:
@@ -147,10 +143,10 @@ def hide_cases(case_ids: set[str], user: str, index: str = "case") -> None:
                         }
                     )
                 )
-            ds[index].save(related_case_id, related_case)
+                ds.case.save(related_case_id, related_case)
 
     for case_id in case_ids:
-        case = ds[index].get_if_exists(case_id, as_obj=True)
+        case = ds.case.get_if_exists(case_id, as_obj=True)
         if case:
             case.visible = False
             case.log.append(
@@ -162,12 +158,12 @@ def hide_cases(case_ids: set[str], user: str, index: str = "case") -> None:
                     }
                 )
             )
-            ds[index].save(case_id, case)
+            ds.case.save(case_id, case)
         else:
             logger.warning(f"Case {case_id} not found when attempting to hide")
 
 
-def delete_cases(case_ids: set[str], index: str = "case") -> bool:
+def delete_cases(case_ids: set[str]) -> bool:
     """Delete a set of cases from the datastore.
 
     Also removes any CaseItem references to the deleted cases from other cases.
@@ -218,7 +214,7 @@ def update_case(case_id: str, case_data: dict[str, Any], user: User) -> Case:
     if case is None:
         raise NotFoundException(f"Case {case_id} does not exist")
 
-    immutable_fields = {"case_id", "created", "updated", "items"}
+    immutable_fields = {"case_id", "created", "updated"}
     compound_fields = {"items", "enrichments", "rules", "tasks"}
 
     immutable_violations = set(case_data.keys()) & immutable_fields

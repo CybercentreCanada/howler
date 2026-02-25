@@ -108,7 +108,7 @@ def delete_cases(user: User, **kwargs):
     if "admin" not in user.type:
         return forbidden(err="Cannot delete case, only admin is allowed to delete")
 
-    non_existing_case_ids = [case_id for case_id in case_ids if not case_service.exists(case_id)]
+    non_existing_case_ids = set([case_id for case_id in case_ids if not case_service.exists(case_id)])
 
     if non_existing_case_ids:
         return not_found(err=f"Case id(s) {', '.join(non_existing_case_ids)} do not exist.")
@@ -145,7 +145,7 @@ def hide_cases(user: User, **kwargs):
     if case_ids is None:
         return bad_request(err="No case ids were sent.")
 
-    non_existing_case_ids = [case_id for case_id in case_ids if not case_service.exists(case_id)]
+    non_existing_case_ids = set([case_id for case_id in case_ids if not case_service.exists(case_id)])
 
     if non_existing_case_ids:
         return not_found(err=f"Case id(s) {', '.join(non_existing_case_ids)} do not exist.")
