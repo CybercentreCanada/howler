@@ -175,7 +175,7 @@ def delete_cases(user: User, **kwargs):
 @case_api.route("/hide", methods=["POST"])
 @api_login(required_priv=["W"])
 def hide_cases(user: User, **kwargs):
-    """Delete cases.
+    """Hide cases.
 
     Variables:
     None
