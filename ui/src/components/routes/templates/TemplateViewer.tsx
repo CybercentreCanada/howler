@@ -113,13 +113,16 @@ const TemplateViewer = () => {
 
       if (template) {
         setSelectedTemplate(template);
-        setDisplayFields(template.keys);
+        const templateKeys = template.keys;
+
+        const mergedArray = [...new Set([...displayFields, ...templateKeys])];
+        setDisplayFields(mergedArray);
       } else {
         setSelectedTemplate(null);
         setDisplayFields(DEFAULT_FIELDS);
       }
     }
-  }, [analytic, detection, templateList, type]);
+  }, [analytic, detection, displayFields, templateList, type]);
 
   useEffect(() => {
     if (analytic) {
