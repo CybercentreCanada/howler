@@ -247,7 +247,7 @@ class ESStore(object):
         name_match = re.match(r"[a-z0-9_]*", name)
         if not name_match or name_match.string != name:
             raise DataStoreException(
-                "Invalid characters in model name. " "You can only use lower case letters, numbers and underscores."
+                "Invalid characters in model name. You can only use lower case letters, numbers and underscores."
             )
 
         self._models[name] = model_class

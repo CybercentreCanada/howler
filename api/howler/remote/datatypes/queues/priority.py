@@ -99,7 +99,7 @@ class PriorityQueue(Generic[T]):
 
     def push(self, priority: int, data: T, vip=None):
         vip = 0 if vip else 9
-        value = f"{vip}{f'{int(time.time()*1000000):020}'}{json.dumps(data)}"
+        value = f"{vip}{f'{int(time.time() * 1000000):020}'}{json.dumps(data)}"
         retry_call(self.c.zadd, self.name, {value: -priority})
         return value
 

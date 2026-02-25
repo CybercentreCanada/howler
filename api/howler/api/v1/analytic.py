@@ -27,7 +27,7 @@ from howler.services import analytic_service, user_service
 MAX_COMMENT_LEN = 5000
 SUB_API = "analytic"
 analytic_api = make_subapi_blueprint(SUB_API, api_version=1)
-analytic_api._doc = "Manage the analytics that create hits"
+analytic_api._doc = "Manage the analytics that create hits"  # type: ignore
 
 logger = get_logger(__file__)
 
@@ -75,7 +75,7 @@ def get_analytic(id, **kwargs):
         if not analytic_service.does_analytic_exist(id):
             return not_found(err="Analytic does not exist")
 
-        return ok(analytic_service.get_analytic(id, as_obj=False))
+        return ok(analytic_service.get_analytic(id, as_odm=False))
     except ValueError as e:
         return bad_request(err=str(e))
 
@@ -251,7 +251,7 @@ def delete_rule(id: str, user: User, **kwargs):
     if not analytic_service.does_analytic_exist(id):
         return not_found(err=f"Analytic {id} does not exist")
 
-    analytic: Analytic = analytic_service.get_analytic(id, as_obj=True)
+    analytic = analytic_service.get_analytic(id, as_odm=True)
 
     if not analytic.rule:
         return bad_request(err="This is not a rule analytic, and cannot be deleted.")
@@ -304,7 +304,7 @@ def add_comment(id: str, user: dict[str, Any], **kwargs):
     if not analytic_service.does_analytic_exist(id):
         return not_found(err="Analytic %s does not exist" % id)
 
-    analytic: Analytic = analytic_service.get_analytic(id, as_obj=True)
+    analytic = analytic_service.get_analytic(id, as_odm=True)
 
     try:
         analytic.comment.append(
@@ -320,8 +320,6 @@ def add_comment(id: str, user: dict[str, Any], **kwargs):
         datastore().analytic.save(analytic.analytic_id, analytic)
     except DataStoreException as e:
         return bad_request(err=str(e))
-
-    analytic = analytic_service.get_analytic(id)
 
     return ok(analytic)
 
@@ -363,7 +361,7 @@ def edit_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
     if len(comment_data) > MAX_COMMENT_LEN:
         return bad_request(err="Comment is too long.")
 
-    analytic: Analytic = analytic_service.get_analytic(id, as_obj=True)
+    analytic = analytic_service.get_analytic(id, as_odm=True)
 
     comment: Optional[Comment] = next((c for c in analytic.comment if c.id == comment_id), None)
 
@@ -420,14 +418,11 @@ def react_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
     if not analytic_service.does_analytic_exist(id):
         return not_found(err=f"Analytic {id} does not exist")
 
-    analytic: Analytic = analytic_service.get_analytic(id, as_obj=True)
+    analytic = analytic_service.get_analytic(id, as_odm=True)
 
     for comment in analytic.comment:
         if comment.id == comment_id:
-            comment["reactions"] = {
-                **comment.get("reactions", {}),
-                user["uname"]: react_data,
-            }
+            comment.reactions[user["uname"]] = react_data
 
     datastore().analytic.save(analytic.analytic_id, analytic)
 
@@ -455,11 +450,11 @@ def remove_react_comment(id: str, comment_id: str, user: dict[str, Any], **kwarg
     if not analytic_service.does_analytic_exist(id):
         return not_found(err=f"Analytic {id} does not exist")
 
-    analytic: Analytic = analytic_service.get_analytic(id, as_obj=True)
+    analytic = analytic_service.get_analytic(id, as_odm=True)
 
     for comment in analytic.comment:
         if comment.id == comment_id:
-            reactions = comment.get("reactions", {})
+            reactions = comment.reactions
             reactions.pop(user["uname"], None)
             comment["reactions"] = {**reactions}
 
@@ -497,7 +492,7 @@ def delete_comments(id: str, user: User, **kwargs):
     if len(comment_ids) == 0:
         return bad_request(err="Supply at least one comment to delete.")
 
-    analytic: Analytic = analytic_service.get_analytic(id, as_obj=True)
+    analytic = analytic_service.get_analytic(id, as_odm=True)
 
     new_comments = []
     for comment in analytic.comment:
@@ -548,7 +543,7 @@ def set_analytic_owner(id: str, user: dict[str, Any], **kwargs):
     if not user_service.get_user(data["username"]):
         return not_found(err=f"User {data['username']} does not exist")
 
-    analytic: Analytic = analytic_service.get_analytic(id, as_obj=True)
+    analytic = analytic_service.get_analytic(id, as_odm=True)
 
     analytic.owner = data["username"]
 
@@ -588,7 +583,7 @@ def set_as_favourite(id, **kwargs):
     try:
         current_user = storage.user.get_if_exists(kwargs["user"]["uname"])
 
-        current_user["favourite_analytics"] = list(set(current_user.get("favourite_analytics", []) + [id]))
+        current_user.favourite_analytics.append(id)
 
         storage.user.save(current_user["uname"], current_user)
 
@@ -622,9 +617,7 @@ def remove_as_favourite(id, **kwargs):
     try:
         current_user = storage.user.get_if_exists(kwargs["user"]["uname"])
 
-        current_user["favourite_analytics"] = list(
-            filter(lambda f: f != id, current_user.get("favourite_analytics", []))
-        )
+        current_user["favourite_analytics"] = list(filter(lambda f: f != id, current_user.favourite_analytics))
 
         storage.user.save(current_user["uname"], current_user)
 
@@ -674,7 +667,7 @@ def add_notebook(id: str, user: dict[str, Any], **kwargs):
     if not analytic_service.does_analytic_exist(id):
         return not_found(err="Analytic %s does not exist" % id)
 
-    analytic: Analytic = analytic_service.get_analytic(id, as_obj=True)
+    analytic = analytic_service.get_analytic(id, as_odm=True)
 
     try:
         analytic.notebooks.append(
@@ -691,8 +684,6 @@ def add_notebook(id: str, user: dict[str, Any], **kwargs):
         datastore().analytic.save(analytic.analytic_id, analytic)
     except DataStoreException as e:
         return bad_request(err=str(e))
-
-    analytic = analytic_service.get_analytic(id)
 
     return ok(analytic)
 
@@ -726,7 +717,7 @@ def delete_notebook(id: str, user: User, **kwargs):
     if len(notebook_ids) == 0:
         return bad_request(err="A notebook id is necessary for deletion.")
 
-    analytic: Analytic = analytic_service.get_analytic(id, as_obj=True)
+    analytic = analytic_service.get_analytic(id, as_odm=True)
 
     new_notebooks = []
     for notebook in analytic.notebooks:

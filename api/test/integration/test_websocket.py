@@ -5,10 +5,10 @@ import struct
 import pytest
 import requests
 from requests.auth import HTTPBasicAuth
-from utils.oauth_credentials import get_token
 from websocket import WebSocket, create_connection
 
 from howler.api.socket import HWL_INTERPOD_COMMS_SECRET
+from test.utils.oauth_credentials import get_token
 
 
 @pytest.fixture(scope="module")

@@ -2,7 +2,6 @@ import json
 from pathlib import Path
 
 import pytest
-from utils.queries import generate_lucene_query
 
 from howler.common import loader
 from howler.common.logging import get_logger
@@ -10,6 +9,7 @@ from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.helper import generate_useful_hit
 from howler.odm.models.hit import Hit
 from howler.services import lucene_service
+from test.utils.queries import generate_lucene_query
 
 logger = get_logger(__file__)
 

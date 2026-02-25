@@ -43,7 +43,9 @@
   },
   "git.enableCommitSigning": true,
   "editor.formatOnSave": true,
-  "editor.rulers": [120],
+  "editor.rulers": [
+    120
+  ],
   "editor.tabSize": 4,
   "files.insertFinalNewline": true,
   "files.trimFinalNewlines": true,
@@ -79,7 +81,6 @@
   },
   "python.defaultInterpreterPath": "${workspaceFolder}/api/.venv/bin/python",
   "python.analysis.autoImportCompletions": true,
-  "python.analysis.exclude": ["**/build", "plugins/*/.venv"],
   "python.analysis.autoFormatStrings": true,
   "python.analysis.completeFunctionParens": true,
   "mypy-type-checker.ignorePatterns": [
@@ -96,10 +97,11 @@
   ],
   "editor.formatOnSaveMode": "modificationsIfAvailable",
   "mypy-type-checker.cwd": "${nearestConfig}",
-  "python.analysis.typeEvaluation.strictListInference": true,
-  "python.analysis.typeEvaluation.strictDictionaryInference": true,
   "eslint.workingDirectories": [
-    { "directory": "./ui", "changeProcessCWD": true }
+    {
+      "directory": "./ui",
+      "changeProcessCWD": true
+    }
   ],
   "prettier.configPath": "ui/.prettierrc",
   "search.exclude": {
@@ -116,6 +118,5 @@
       "code_blocks": false,
       "tables": false
     }
-
   }
 }

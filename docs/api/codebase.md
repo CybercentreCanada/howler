@@ -9,7 +9,7 @@ This document outlines the overall structure of the Howler API codebase. The fir
   - `classification.yml` - basic classification file for Howler
   - `coverage_reports.py` - used for printing the code coverage across the codebase during pull requests
   - `generate_classes.py` and `generate_md_docs.py` - used to create generated code and documentation based on the API endpoints and ODMs
-  - `keycloak_health.py` - utility script to poll for keycloak in a healthy state during build process
+  - `docker_health.py` - utility script to poll for keycloak and elasticsearch in a healthy state during build process
   - `run_tests.py` and `run_wrapped.py` - utility scripts to run tests and other scripts, wrapping the result in a markdown output for the build process
   - `set_version.py` - set the version dynamically for development builds (Why dev builds have an extra tag on them)
   - `type_check.py` - run static type checking on the codebase

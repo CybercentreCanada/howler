@@ -14,8 +14,7 @@ FILE_TYPE = ["file", "dir", "symlink"]
 @odm.model(
     index=True,
     store=True,
-    description="A file is defined as a set of information that has "
-    "been created on, or has existed on a filesystem.",
+    description="A file is defined as a set of information that has been created on, or has existed on a filesystem.",
 )
 class File(odm.Model):
     accessed: Optional[str] = odm.Optional(odm.Date(description="Last time the file was accessed."))

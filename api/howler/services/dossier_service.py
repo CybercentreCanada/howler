@@ -5,7 +5,7 @@ dossiers - collections of security alerts and investigation data organized by an
 Dossiers can be personal (private to the creator) or global (shared with the team).
 """
 
-from typing import Any, Optional, cast
+from typing import Any, Literal, Optional, cast, overload
 
 from mergedeep.mergedeep import merge
 
@@ -42,11 +42,39 @@ def exists(dossier_id: str) -> bool:
     return datastore().dossier.exists(dossier_id)
 
 
+@overload
+def get_dossier(id: str, as_odm: Literal[True], version: Literal[True]) -> tuple[Dossier, str]: ...
+
+
+@overload
+def get_dossier(id: str, as_odm: Literal[True], version: Literal[False]) -> Dossier: ...
+
+
+@overload
+def get_dossier(id: str, as_odm: Literal[True]) -> Dossier: ...
+
+
+@overload
+def get_dossier(id: str) -> Dossier: ...
+
+
+@overload
+def get_dossier(id: str, as_odm: Literal[False], version: Literal[True]) -> tuple[dict[str, Any], str]: ...
+
+
+@overload
+def get_dossier(id: str, as_odm: Literal[False], version: Literal[False]) -> dict[str, Any]: ...
+
+
+@overload
+def get_dossier(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...
+
+
 def get_dossier(
     id: str,
-    as_odm: bool = False,
-    version: bool = False,
-) -> Dossier:
+    as_odm=False,
+    version=False,
+):
     """Retrieve a dossier from the datastore.
 
     Args:
@@ -189,7 +217,7 @@ def update_dossier(dossier_id: str, dossier_data: dict[str, Any], user: User) ->
             storage.hit.search(dossier_data["query"])
 
         # Merge the new data with existing dossier data
-        new_data = Dossier(merge({}, existing_dossier.as_primitives(), dossier_data))
+        new_data = Dossier(cast(dict, merge({}, existing_dossier.as_primitives(), dossier_data)))
 
         storage.dossier.save(dossier_id, new_data)
 
@@ -207,7 +235,7 @@ def update_dossier(dossier_id: str, dossier_data: dict[str, Any], user: User) ->
         raise InvalidDataException("We were unable to update the dossier.", cause=e) from e
 
 
-def get_matching_dossiers(hit: dict[str, Any], dossiers: Optional[list[dict[str, Any]]] = None):
+def get_matching_dossiers(hit: dict[str, Any], dossiers: list[dict[str, Any]] | None = None):
     """Get a list of dossiers that match a specific security alert/hit.
 
     This function evaluates each dossier's query against the provided hit data
@@ -227,7 +255,7 @@ def get_matching_dossiers(hit: dict[str, Any], dossiers: Optional[list[dict[str,
     """
     # Retrieve all dossiers if none provided
     if dossiers is None:
-        dossiers: list[dict[str, Any]] = datastore().dossier.search(
+        dossiers = datastore().dossier.search(
             "dossier_id:*",
             as_obj=False,
             # TODO: Eventually implement caching here

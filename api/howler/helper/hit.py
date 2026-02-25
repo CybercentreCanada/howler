@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 
 from howler.common.exceptions import InvalidDataException
 from howler.common.logging import get_logger
@@ -47,7 +47,7 @@ def assess_hit(
             assessment_list = ", ".join(Assessment)
             raise InvalidDataException(f"Must set assessment to one of {assessment_list}.")
 
-        escalation = AssessmentEscalationMap[assessment]
+        escalation = cast(Escalation, AssessmentEscalationMap[assessment])
 
     if assessment is None and rationale:
         rationale = None

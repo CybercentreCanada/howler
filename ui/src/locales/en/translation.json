@@ -211,6 +211,7 @@
   "hit.panel.close": "Close",
   "hit.panel.hit.noselection": "No hit has been selected",
   "hit.panel.exclude": "Exclude By",
+  "hit.panel.include": "Include By",
 
   "hit.panel.details.cluster": "Cluster Size",
   "hit.panel.details.cluster.description": "Size of the cluster",
