@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from howler.common.exceptions import InvalidDataException, NotFoundException, ResourceExists
+from howler.common.exceptions import InvalidDataException, NotFoundException
 from howler.odm.models.case import Case
 from howler.services import case_service
 
@@ -150,49 +150,49 @@ class TestCreateCase:
         """create_case constructs a Case from title/summary and saves it."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
-        mock_ds.case.exists.return_value = False
 
-        case_service.create_case("case-new", "New Case", "A summary", user="admin")
+        case_service.create_case("New Case", "A summary", user="admin")
 
         mock_ds.case.save.assert_called_once()
         saved_id, saved_case = mock_ds.case.save.call_args[0]
-        assert saved_id == "case-new"
-        assert saved_case.case_id == "case-new"
+        assert saved_id == saved_case.case_id
         assert saved_case.title == "New Case"
         assert saved_case.summary == "A summary"
 
     @patch("howler.services.case_service.datastore")
-    def test_create_case_raises_resource_exists(self, mock_ds_fn):
-        """create_case raises ResourceExists when the case_id already exists."""
+    def test_create_case_generates_unique_id(self, mock_ds_fn):
+        """create_case auto-generates a unique UUID for each case."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
-        mock_ds.case.exists.return_value = True
 
-        with pytest.raises(ResourceExists):
-            case_service.create_case("case-existing", "Title", "Summary", user="admin")
+        case_service.create_case("Title A", "Summary A", user="admin")
+        case_service.create_case("Title B", "Summary B", user="admin")
+
+        calls = mock_ds.case.save.call_args_list
+        id_a = calls[0][0][0]
+        id_b = calls[1][0][0]
+        assert id_a != id_b
 
     @patch("howler.services.case_service.datastore")
     def test_create_case_returns_primitives_dict(self, mock_ds_fn):
         """create_case returns the created case as a plain dict."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
-        mock_ds.case.exists.return_value = False
 
-        result = case_service.create_case("case-new", "Title", "Summary", user="admin")
+        result = case_service.create_case("Title", "Summary", user="admin")
 
         assert isinstance(result, dict)
-        assert result["case_id"] == "case-new"
         assert result["title"] == "Title"
         assert result["summary"] == "Summary"
+        assert "case_id" in result
 
     @patch("howler.services.case_service.datastore")
     def test_create_case_sets_log_entry(self, mock_ds_fn):
         """create_case adds a creation log entry for the given user."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
-        mock_ds.case.exists.return_value = False
 
-        case_service.create_case("case-new", "Title", "Summary", user="admin")
+        case_service.create_case("Title", "Summary", user="admin")
 
         _, saved_case = mock_ds.case.save.call_args[0]
         assert len(saved_case.log) == 1
@@ -203,9 +203,8 @@ class TestCreateCase:
         """create_case uses 'system' as the log user when user='' (the default)."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
-        mock_ds.case.exists.return_value = False
 
-        case_service.create_case("case-sys", "Title", "Summary")
+        case_service.create_case("Title", "Summary")
 
         _, saved_case = mock_ds.case.save.call_args[0]
         assert len(saved_case.log) == 1
@@ -474,9 +473,7 @@ class TestHideCases:
         case_b = MagicMock()
         case_b.items = []
 
-        mock_ds.case.get_if_exists.side_effect = lambda case_id, as_obj=False: (
-            case_a if case_id == "case-a" else case_b
-        )
+        mock_ds.case.get_if_exists.side_effect = lambda case_id, as_obj=False: case_a if case_id == "case-a" else case_b
 
         case_service.hide_cases({"case-a", "case-b"}, user="analyst")
 
