@@ -18,6 +18,7 @@ import typing
 from datetime import datetime
 from enum import Enum as PyEnum
 from enum import EnumMeta
+from enum import StrEnum as PyStrEnum
 from typing import Any as _Any
 from typing import Callable
 from venv import logger
@@ -109,17 +110,17 @@ class KeyMaskException(HowlerKeyError):
 
 class _Field:
     def __init__(
-        self,
-        name=None,
-        index=None,
-        store=None,
-        copyto=None,
-        default=None,
-        description=None,
-        deprecated_description=None,
-        reference=None,
-        optional=False,
-        deprecated=False,
+            self,
+            name=None,
+            index=None,
+            store=None,
+            copyto=None,
+            default=None,
+            description=None,
+            deprecated_description=None,
+            reference=None,
+            optional=False,
+            deprecated=False,
     ):
         self.index = index
         self.store = store
@@ -549,15 +550,18 @@ class Processor(ValidatedKeyword):
 
 
 class Enum(Keyword):
-    """A field storing a short string that has predefined list of possible values"""
+    """A field storing a short string that has predefined list of possible values.
 
-    def __init__(self, values: PyEnum | list[typing.Any] | set[typing.Any], *args, **kwargs):
+    Accepts values from lists/sets, Enum classes, and StrEnum (PyStrEnum) members.
+    """
+
+    def __init__(self, values: PyEnum | PyStrEnum | list[typing.Any] | set[typing.Any], *args, **kwargs):
         super().__init__(*args, **kwargs)
         if isinstance(values, set):
             self.values = values
         elif isinstance(values, (list, tuple)):
             self.values = set(values)
-        elif isinstance(values, (PyEnum, EnumMeta)):
+        elif isinstance(values, (PyEnum, PyStrEnum, EnumMeta)):
             self.values = set([e.value for e in values])  # type: ignore
         else:
             raise HowlerTypeError(f"Type unsupported for Enum odm: {type(values)}")
@@ -1003,13 +1007,13 @@ class Compound(_Field):
         self.child_type = field_type
 
     def check(
-        self,
-        value,
-        mask=None,
-        ignore_extra_values=False,
-        extra_fields={},
-        context=[],
-        **kwargs,
+            self,
+            value,
+            mask=None,
+            ignore_extra_values=False,
+            extra_fields={},
+            context=[],
+            **kwargs,
     ):
         if self.optional and value is None:
             return None
@@ -1197,11 +1201,11 @@ class Model:
 
     @classmethod
     def markdown(
-        cls,
-        toc_depth=1,
-        include_autogen_note=True,
-        defaults=None,
-        url_prefix="/howler/odm/class/",
+            cls,
+            toc_depth=1,
+            include_autogen_note=True,
+            defaults=None,
+            url_prefix="/howler/odm/class/",
     ) -> dict | str:
         markdown_content = (
             (
@@ -1285,7 +1289,7 @@ class Model:
             default = f"`{info.default}`"
             # If the field is a model, then provide a link to that documentation
             if field_class and issubclass(field_class, Model) and isinstance(info.default, dict):
-                ref_link = field_type[field_type.index("(") : field_type.index(")") + 1]
+                ref_link = field_type[field_type.index("("): field_type.index(")") + 1]
                 default = f"See [{field_class.__name__}]{ref_link} for more details."
 
             # Handle how to display values from provided defaults (different from field defaults)
@@ -1307,13 +1311,13 @@ class Model:
     __description = None
 
     def __init__(
-        self,
-        data: dict = None,
-        mask: list = None,
-        docid=None,
-        ignore_extra_values=True,
-        extra_fields={},
-        context=[],
+            self,
+            data: dict = None,
+            mask: list = None,
+            docid=None,
+            ignore_extra_values=True,
+            extra_fields={},
+            context=[],
     ):
         if len(context) == 0:
             context = [self.__class__.__name__.lower()]
