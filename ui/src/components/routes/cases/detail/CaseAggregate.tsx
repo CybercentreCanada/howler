@@ -2,6 +2,7 @@ import { Icon } from '@iconify/react';
 import {
   Card,
   CardContent,
+  Skeleton,
   Stack,
   styled,
   Tooltip,
@@ -10,10 +11,10 @@ import {
   useTheme,
   type TooltipProps
 } from '@mui/material';
-import api from 'api';
-import useMyApi from 'components/hooks/useMyApi';
 import { get, isEmpty, uniq } from 'lodash-es';
-import { useEffect, useState, type FC } from 'react';
+import type { Hit } from 'models/entities/generated/Hit';
+import type { Observable } from 'models/entities/generated/Observable';
+import { type FC } from 'react';
 
 const NoMaxWidthTooltip = styled(({ className, ...props }: TooltipProps) => (
   <Tooltip {...props} classes={{ popper: className }} />
@@ -27,30 +28,17 @@ const CaseAggregate: FC<{
   icon?: string;
   iconColor?: string;
   field?: string;
-  ids?: string[];
+  records?: Partial<Hit | Observable>[];
   title?: string;
   subtitle?: string;
-}> = ({ icon, iconColor, field, ids, title, subtitle }) => {
-  const { dispatchApi } = useMyApi();
+}> = ({ icon, iconColor, field, records, title, subtitle }) => {
   const theme = useTheme();
 
-  const [values, setValues] = useState<string[]>([]);
+  if (!title && (!records || !field)) {
+    return <Skeleton height={120} />;
+  }
 
-  useEffect(() => {
-    if (ids?.length < 1 || !field) {
-      return;
-    }
-
-    dispatchApi(
-      api.v2.search.post(['hit', 'observable'], {
-        query: `howler.id:(${ids?.join(' OR ') || '*'})`,
-        fl: field
-      })
-    ).then(response => {
-      setValues(uniq(response.items.map(entry => get(entry, field)).flat()));
-    });
-  }, [dispatchApi, field, ids]);
-
+  const values = uniq(records?.map(_record => get(_record, field)).flat());
   return (
     <Card sx={{ height: '100%' }}>
       <CardContent>
