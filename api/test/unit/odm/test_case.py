@@ -255,18 +255,6 @@ class TestCase:
         with pytest.raises(HowlerValueError):
             Case(
                 {
-                    # missing 'case_id'
-                    "title": "T",
-                    "summary": "S",
-                    "overview": "O",
-                    "escalation": "high",
-                }
-            )
-
-        with pytest.raises(HowlerValueError):
-            Case(
-                {
-                    "case_id": "case-x",
                     # missing 'title'
                     "summary": "S",
                     "overview": "O",
@@ -277,7 +265,6 @@ class TestCase:
         with pytest.raises(HowlerValueError):
             Case(
                 {
-                    "case_id": "case-x",
                     "title": "T",
                     # missing 'summary'
                     "overview": "O",

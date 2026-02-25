@@ -8,7 +8,7 @@ from typing import Any, Literal, overload
 
 from prometheus_client import Counter
 
-from howler.common.exceptions import InvalidDataException, NotFoundException, ResourceExists
+from howler.common.exceptions import InvalidDataException, NotFoundException
 from howler.common.loader import APP_NAME, datastore
 from howler.common.logging import get_logger
 from howler.odm.models.case import Case, CaseLog
@@ -81,7 +81,7 @@ def get_case(
 CREATED_CASES = Counter(f"{APP_NAME.replace('-', '_')}_created_cases_total", "The number of created cases")
 
 
-def create_case(case_id: str, title: str, summary: str, user: str = "") -> dict[str, Any]:
+def create_case(title: str, summary: str, user: str = "") -> dict[str, Any]:
     """Create a new case in the datastore.
 
     Args:
@@ -96,15 +96,12 @@ def create_case(case_id: str, title: str, summary: str, user: str = "") -> dict[
     Raises:
         ResourceExists: If a case with the same ID already exists
     """
-    if exists(case_id):
-        raise ResourceExists(f"Case {case_id} already exists in datastore")
-
-    case = Case({"case_id": case_id, "title": title, "summary": summary})
+    case = Case({"title": title, "summary": summary})
 
     case.log = [CaseLog({"timestamp": "NOW", "explanation": "Case created", "user": user or "system"})]
 
     CREATED_CASES.inc()
-    datastore().case.save(case_id, case)
+    datastore().case.save(case.case_id, case)
     return case.as_primitives()
 
 

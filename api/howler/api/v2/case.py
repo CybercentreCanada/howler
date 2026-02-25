@@ -21,7 +21,6 @@ from howler.odm.models.observable import Observable
 from howler.odm.models.user import User
 from howler.security import api_login
 from howler.services import case_service
-from howler.utils.str_utils import sanitize_lucene_query
 
 SUB_API = "case"
 case_api = make_subapi_blueprint(SUB_API, api_version=2)
@@ -59,10 +58,8 @@ def create_case(user: User, **kwargs):
     if not title or not summary:
         return bad_request(err="Both title and summary are required.")
 
-    case_id = f"case-{sanitize_lucene_query(title).lower().replace(' ', '-')}"
-
     try:
-        new_case = case_service.create_case(case_id, title, summary, user=user.uname)
+        new_case = case_service.create_case(title, summary, user.uname)
         return created(new_case)
     except ResourceExists as e:
         return bad_request(err=str(e))
