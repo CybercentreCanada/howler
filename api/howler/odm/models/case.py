@@ -35,6 +35,7 @@ class CaseItem(odm.Model):
         default=None,
     )
     value: str = odm.Keyword(description="String reference value for the item (ID, URL, or token).")
+    visible: bool = odm.Boolean(default=True, description="Whether the item is visible/accessible in the frontend.")
 
 
 @odm.model(index=True, store=True, description="Rule used to place/query data into case paths.")
@@ -70,6 +71,7 @@ class Case(odm.Model):
     overview: str = odm.Text(description="Markdown overview of the case.")
     escalation: str = odm.Keyword(description="Escalation of the case.")
     created: str = odm.Date(default="NOW", description="Date/time when the case was created.")
+    visible: bool = odm.Boolean(default=True, description="Whether the case is visible/accessible in the frontend.")
     updated: Optional[str] = odm.Optional(
         odm.Date(description="Date/time when the case was last updated."),
         default=None,

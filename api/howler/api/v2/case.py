@@ -172,6 +172,43 @@ def delete_cases(user: User, **kwargs):
 
 
 @generate_swagger_docs()
+@case_api.route("/hide", methods=["POST"])
+@api_login(required_priv=["W"])
+def hide_cases(user: User, **kwargs):
+    """Delete cases.
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    [
+        caseId, caseId, caseId
+    ]
+
+    Result Example:
+    {
+        "success": true             # Did the hiding succeed?
+    }
+    """
+    case_ids = request.json
+
+    if case_ids is None:
+        return bad_request(err="No case ids were sent.")
+
+    non_existing_case_ids = [case_id for case_id in case_ids if not case_service.exists(case_id)]
+
+    if non_existing_case_ids:
+        return not_found(err=f"Case id(s) {', '.join(non_existing_case_ids)} do not exist.")
+
+    case_service.hide_cases(case_ids)
+
+    return no_content()
+
+
+@generate_swagger_docs()
 @case_api.route("/<id>", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
 def update_case(id: str, user: User, **kwargs):

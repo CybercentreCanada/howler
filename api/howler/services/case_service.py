@@ -109,6 +109,39 @@ def create_case(case_id: str, case: Case, user: str, skip_exists: bool = False, 
     return datastore()[index].save(case_id, case)
 
 
+def hide_cases(case_ids: set[str], index: str = "case") -> None:
+    """Hide a set of cases by marking them and their references as not visible.
+
+    Sets visible=False on all matching cases, and also sets visible=False on any
+    CaseItem in other cases that references one of the hidden cases.
+
+    Args:
+        case_ids (set[str]): The IDs of the cases to hide
+    """
+    ds = datastore()
+
+    items_query = f"items.id:({' OR '.join(case_ids)})"
+    for case in ds[index].stream_search(items_query, as_obj=False):
+        related_case_id = case["case_id"]
+        if related_case_id in case_ids:
+            continue
+
+        related_case = ds[index].get_if_exists(related_case_id, as_obj=True)
+        if related_case:
+            for item in related_case.items:
+                if item.id in case_ids:
+                    item.visible = False
+            ds[index].save(related_case_id, related_case)
+
+    for case_id in case_ids:
+        case = ds[index].get_if_exists(case_id, as_obj=True)
+        if case:
+            case.visible = False
+            ds[index].save(case_id, case)
+        else:
+            logger.warning(f"Case {case_id} not found when attempting to hide")
+
+
 def delete_cases(case_ids: set[str], index: str = "case") -> bool:
     """Delete a set of cases from the datastore.
 

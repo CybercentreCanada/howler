@@ -58,6 +58,26 @@ class TestCaseItem:
         assert primitives["value"] == "abc123"
         assert primitives["id"] == "x"
 
+    def test_case_item_visible_defaults_to_true(self):
+        """CaseItem.visible is True by default."""
+        item = CaseItem({"path": "/alerts", "type": "hit", "value": "abc123"})
+
+        assert item.visible is True
+
+    def test_case_item_visible_can_be_set_to_false(self):
+        """CaseItem.visible can be explicitly set to False."""
+        item = CaseItem({"path": "/alerts", "type": "hit", "value": "abc123", "visible": False})
+
+        assert item.visible is False
+
+    def test_case_item_visible_included_in_primitives(self):
+        """visible field is present in as_primitives output."""
+        item_true = CaseItem({"path": "/x", "type": "hit", "value": "v"})
+        item_false = CaseItem({"path": "/x", "type": "hit", "value": "v", "visible": False})
+
+        assert item_true.as_primitives()["visible"] is True
+        assert item_false.as_primitives()["visible"] is False
+
 
 class TestCaseRule:
     """Tests for the CaseRule ODM model."""
@@ -369,6 +389,51 @@ class TestCase:
         case = random_model_obj(Case)
         assert case.case_id is not None
         assert case.title is not None
+
+    def test_case_visible_defaults_to_true(self):
+        """Case.visible is True by default."""
+        case = Case(
+            {
+                "case_id": "case-vis",
+                "title": "Visibility Default",
+                "summary": "S",
+                "overview": "O",
+                "escalation": "low",
+            }
+        )
+
+        assert case.visible is True
+
+    def test_case_visible_can_be_set_to_false(self):
+        """Case.visible can be explicitly set to False."""
+        case = Case(
+            {
+                "case_id": "case-hidden",
+                "title": "Hidden Case",
+                "summary": "S",
+                "overview": "O",
+                "escalation": "high",
+                "visible": False,
+            }
+        )
+
+        assert case.visible is False
+
+    def test_case_visible_included_in_primitives(self):
+        """visible field is present in as_primitives output for Case."""
+        case = Case(
+            {
+                "case_id": "case-prim",
+                "title": "T",
+                "summary": "S",
+                "overview": "O",
+                "escalation": "medium",
+            }
+        )
+
+        primitives = case.as_primitives()
+        assert "visible" in primitives
+        assert primitives["visible"] is True
 
     def test_case_date_fields(self):
         """Optional date fields can be set and parsed correctly."""
