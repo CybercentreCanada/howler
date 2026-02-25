@@ -4,7 +4,7 @@ from typing import Optional
 from howler import odm
 from howler.common.exceptions import HowlerValueError
 
-CASE_ITEM_TYPES = {"observable", "hit", "table", "case", "lead", "reference"}
+CASE_ITEM_TYPES = {"observable", "hit", "case", "lead", "reference"}
 
 
 class CaseItemTypes(StrEnum):
@@ -28,6 +28,7 @@ class CaseItemTypes(StrEnum):
         REFERENCE: An external reference such as a URL, document, or resource that
             provides additional context or evidence.
     """
+
     OBSERVABLE = "observable"
     HIT = "hit"
     TABLE = "table"
@@ -95,12 +96,12 @@ class CaseEnrichment(odm.Model):
 
 @odm.model(index=True, store=True, description="Case model with path-based items, enrichments, rules, and tasks.")
 class Case(odm.Model):
-    case_id: str = odm.Keyword(description="A unique identifier for this case.")
+    case_id: str = odm.UUID(description="A unique identifier for this case.")
     title: str = odm.Keyword(description="Case title.")
     summary: str = odm.Text(description="Short case summary.")
-    overview: str = odm.Text(description="Markdown overview of the case.")
-    escalation: str = odm.Keyword(description="Escalation of the case.")
-    created: str = odm.Date(default="NOW", description="Date/time when the case was created.")
+    overview: str = odm.Optional(odm.Text(description="Markdown overview of the case."))
+    escalation: str = odm.Optional(odm.Keyword(description="Escalation of the case."))
+    created: str = odm.Optional(odm.Date(default="NOW", description="Date/time when the case was created."))
     visible: bool = odm.Boolean(default=True, description="Whether the case is visible/accessible in the frontend.")
     updated: Optional[str] = odm.Optional(
         odm.Date(description="Date/time when the case was last updated."),
@@ -114,48 +115,66 @@ class Case(odm.Model):
         odm.Date(description="Date/time when telemetry/alerts in this case ended."),
         default=None,
     )
-    targets: list[str] = odm.List(
-        odm.Keyword(),
-        default=[],
-        description="A list of target entities related to this case.",
+    targets: list[str] = odm.Optional(
+        odm.List(
+            odm.Keyword(),
+            default=[],
+            description="A list of target entities related to this case.",
+        )
     )
-    threats: list[str] = odm.List(
-        odm.Keyword(),
-        default=[],
-        description="A list of known or suspected threat entities related to this case.",
+    threats: list[str] = odm.Optional(
+        odm.List(
+            odm.Keyword(),
+            default=[],
+            description="A list of known or suspected threat entities related to this case.",
+        )
     )
-    indicators: list[str] = odm.List(
-        odm.Keyword(),
-        default=[],
-        description="A list of indicators relevant to this case.",
+    indicators: list[str] = odm.Optional(
+        odm.List(
+            odm.Keyword(),
+            default=[],
+            description="A list of indicators relevant to this case.",
+        )
     )
-    participants: list[str] = odm.List(
-        odm.Keyword(),
-        default=[],
-        description="A list of users participating in this case.",
+    participants: list[str] = odm.Optional(
+        odm.List(
+            odm.Keyword(),
+            default=[],
+            description="A list of users participating in this case.",
+        )
     )
-    items: list[CaseItem] = odm.List(
-        odm.Compound(CaseItem),
-        default=[],
-        description="Path-scoped case items referencing external object IDs or links.",
+    items: list[CaseItem] = odm.Optional(
+        odm.List(
+            odm.Compound(CaseItem),
+            default=[],
+            description="Path-scoped case items referencing external object IDs or links.",
+        )
     )
-    enrichments: list[CaseEnrichment] = odm.List(
-        odm.Compound(CaseEnrichment),
-        default=[],
-        description="Path-scoped enrichment annotations.",
+    enrichments: list[CaseEnrichment] = odm.Optional(
+        odm.List(
+            odm.Compound(CaseEnrichment),
+            default=[],
+            description="Path-scoped enrichment annotations.",
+        )
     )
-    rules: list[CaseRule] = odm.List(
-        odm.Compound(CaseRule),
-        default=[],
-        description="Rules for routing matched data into case paths.",
+    rules: list[CaseRule] = odm.Optional(
+        odm.List(
+            odm.Compound(CaseRule),
+            default=[],
+            description="Rules for routing matched data into case paths.",
+        )
     )
-    tasks: list[CaseTask] = odm.List(
-        odm.Compound(CaseTask),
-        default=[],
-        description="Tasks associated with this case.",
+    tasks: list[CaseTask] = odm.Optional(
+        odm.List(
+            odm.Compound(CaseTask),
+            default=[],
+            description="Tasks associated with this case.",
+        )
     )
-    log: list[CaseLog] = odm.List(
-        odm.Compound(CaseLog),
-        default=[],
-        description="A list of changes to the case with timestamps and attribution.",
+    log: list[CaseLog] = odm.Optional(
+        odm.List(
+            odm.Compound(CaseLog),
+            default=[],
+            description="A list of changes to the case with timestamps and attribution.",
+        )
     )

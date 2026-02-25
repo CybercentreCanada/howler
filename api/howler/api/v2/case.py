@@ -1,113 +1,68 @@
-from typing import Any
-
 from flask import request
 from werkzeug.exceptions import UnsupportedMediaType
 
-from howler.api import bad_request, created, forbidden, make_subapi_blueprint, no_content, not_found, ok, \
-    not_implemented, internal_error
-from howler.common.exceptions import HowlerException, InvalidDataException, NotFoundException, ResourceExists
+from howler.api import (
+    bad_request,
+    created,
+    forbidden,
+    internal_error,
+    make_subapi_blueprint,
+    no_content,
+    not_found,
+    not_implemented,
+    ok,
+)
+from howler.common.exceptions import InvalidDataException, NotFoundException, ResourceExists
 from howler.common.loader import datastore
-from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
-from howler.odm.models.case import CaseItem, Case, CaseItemTypes
+from howler.odm.models.case import Case, CaseItem, CaseItemTypes
 from howler.odm.models.hit import Hit
 from howler.odm.models.observable import Observable
 from howler.odm.models.user import User
 from howler.security import api_login
 from howler.services import case_service
-from howler.utils.str_utils import sanitize_lucene_query
 
 SUB_API = "case"
 case_api = make_subapi_blueprint(SUB_API, api_version=2)
 case_api._doc = "Manage the different cases created"  # type: ignore
 
-logger = get_logger(__file__)
-
 
 @generate_swagger_docs()
 @case_api.route("/", methods=["POST"])
 @api_login(required_priv=["R", "W"])
-def create_cases(user: User, **kwargs):
-    """Create cases.
+def create_case(user: User, **kwargs):
+    """Create a case.
 
     Variables:
-    None
-
-    Optional Arguments:
-    None
+    user      => The user creating the case (injected by @api_login)
 
     Data Block:
     {
-        [
-            {
-                ...case
-            },
-            {
-                ...case
-            }
-        ]
+        "title": "Case Title",
+        "summary": "Brief description"
     }
 
     Result Example:
     {
-        "valid": [
-            {
-                ...case
-            },
-            {
-                ...case
-            }
-        ],
-        "invalid": [
-            {
-                "input": { ...case },
-                "error": "Id already exists"
-            },
-            {
-                "input": { ...case },
-                "error": "Object 'Case' expected a parameter named: title"
-            }
-        ]
+        ...case     # The new case data
     }
     """
-    cases = request.json
+    case_data = request.json
 
-    if cases is None:
-        return bad_request(err="No cases were sent.")
+    if not case_data or not isinstance(case_data, dict):
+        return bad_request(err="Request body must be a JSON object with title and summary.")
 
-    response_body: dict[str, list[Any]] = {"valid": [], "invalid": []}
-    odms: list[tuple[str, Case]] = []
+    title = case_data.get("title")
+    summary = case_data.get("summary")
 
-    for case_data in cases:
-        try:
-            case_id = case_data.get("case_id") or (
-                f"case-{sanitize_lucene_query(case_data.get('title', 'untitled')).lower().replace(' ', '-')}"
-            )
-            case_data["case_id"] = case_id
+    if not title or not summary:
+        return bad_request(err="Both title and summary are required.")
 
-            if case_service.exists(case_id):
-                raise ResourceExists(f"Case {case_id} already exists in datastore")
-
-            odm = Case(case_data)
-            response_body["valid"].append(odm.as_primitives())
-            odms.append((case_id, odm))
-        except HowlerException as e:
-            logger.warning(f"{type(e).__name__} when saving new case!")
-            logger.warning(e)
-            response_body["invalid"].append({"input": case_data, "error": str(e)})
-
-    if len(response_body["invalid"]) == 0:
-        if len(odms) > 0:
-            for case_id, odm in odms:
-                case_service.create_case(case_id, odm, user=user.uname, skip_exists=True)
-
-            datastore().case.commit()
-
-        return created(response_body)
-    else:
-        err_msg = ", ".join(item["error"] for item in response_body["invalid"])
-
-        return bad_request(response_body, err=err_msg)
+    try:
+        new_case = case_service.create_case(title, summary, user.uname)
+        return created(new_case)
+    except ResourceExists as e:
+        return bad_request(err=str(e))
 
 
 @generate_swagger_docs()
@@ -165,7 +120,7 @@ def delete_cases(user: User, **kwargs):
     if "admin" not in user.type:
         return forbidden(err="Cannot delete case, only admin is allowed to delete")
 
-    non_existing_case_ids = [case_id for case_id in case_ids if not case_service.exists(case_id)]
+    non_existing_case_ids = set([case_id for case_id in case_ids if not case_service.exists(case_id)])
 
     if non_existing_case_ids:
         return not_found(err=f"Case id(s) {', '.join(non_existing_case_ids)} do not exist.")
@@ -202,12 +157,12 @@ def hide_cases(user: User, **kwargs):
     if case_ids is None:
         return bad_request(err="No case ids were sent.")
 
-    non_existing_case_ids = [case_id for case_id in case_ids if not case_service.exists(case_id)]
+    non_existing_case_ids = set([case_id for case_id in case_ids if not case_service.exists(case_id)])
 
     if non_existing_case_ids:
         return not_found(err=f"Case id(s) {', '.join(non_existing_case_ids)} do not exist.")
 
-    case_service.hide_cases(case_ids)
+    case_service.hide_cases(case_ids, user=user.uname)
 
     return no_content()
 
@@ -295,7 +250,7 @@ def append_item(id: str, user: User, **kwargs):
     case_item_data: dict[str, str] = {}
     backing_obj: Hit | Observable | None = None
 
-    match (body.get("type", "").lower()):
+    match body.get("type", "").lower():
         case CaseItemTypes.HIT:
             backing_obj: Hit = datastore().hit.get(body["value"]) or None
 
@@ -303,10 +258,10 @@ def append_item(id: str, user: User, **kwargs):
                 return not_found(err="Hit not found")
 
             case_item_data = {
-                'path': f'alerts/{backing_obj.howler.analytic} ({backing_obj.howler.id})',
-                'type': 'hit',
-                'id': body["value"],
-                'value': body["value"],
+                "path": f"alerts/{backing_obj.howler.analytic} ({backing_obj.howler.id})",
+                "type": "hit",
+                "id": body["value"],
+                "value": body["value"],
             }
 
         case CaseItemTypes.OBSERVABLE:
@@ -316,10 +271,10 @@ def append_item(id: str, user: User, **kwargs):
                 return not_found(err="Observable not found")
 
             case_item_data = {
-                'path': f'observables/{backing_obj.howler.analytic} ({backing_obj.howler.id})',
-                'type': 'hit',
-                'id': body["value"],
-                'value': body["value"],
+                "path": f"observables/{backing_obj.howler.analytic} ({backing_obj.howler.id})",
+                "type": "hit",
+                "id": body["value"],
+                "value": body["value"],
             }
 
         case CaseItemTypes.CASE:
@@ -329,10 +284,10 @@ def append_item(id: str, user: User, **kwargs):
                 return not_found(err="Case not found")
 
             case_item_data = {
-                'path': f'cases/{related_case.title} ({related_case.case_id})',
-                'type': 'case',
-                'id': body["value"],
-                'value': body["value"],
+                "path": f"cases/{related_case.title} ({related_case.case_id})",
+                "type": "case",
+                "id": body["value"],
+                "value": body["value"],
             }
 
         case _:
@@ -341,11 +296,11 @@ def append_item(id: str, user: User, **kwargs):
     if not case_item_data:
         return bad_request(err="Unable to construct item to add to Case")
 
-    if any(body['value'] == item["value"] for item in case['items']):
+    if any(body["value"] == item["value"] for item in case["items"]):
         return bad_request(err="Case item already exists")
 
     case_item = CaseItem(case_item_data)
-    case['items'].append(case_item)
+    case["items"].append(case_item)
 
     if not datastore().case.save(case.case_id, case):
         return internal_error(err="Failed to save case with new item")

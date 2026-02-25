@@ -82,7 +82,7 @@ venv = ".venv"
 [tool.ruff]
 line-length = 120
 indent-width = 4
-target-version = "py39"
+target-version = "py310"
 
 [tool.ruff.format]
 exclude = ["howler/patched.py"]

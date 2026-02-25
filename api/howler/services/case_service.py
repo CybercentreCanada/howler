@@ -8,7 +8,7 @@ from typing import Any, Literal, overload
 
 from prometheus_client import Counter
 
-from howler.common.exceptions import InvalidDataException, NotFoundException, ResourceExists
+from howler.common.exceptions import InvalidDataException, NotFoundException
 from howler.common.loader import APP_NAME, datastore
 from howler.common.logging import get_logger
 from howler.odm.models.case import Case, CaseLog
@@ -81,35 +81,31 @@ def get_case(
 CREATED_CASES = Counter(f"{APP_NAME.replace('-', '_')}_created_cases_total", "The number of created cases")
 
 
-def create_case(case_id: str, case: Case, user: str, skip_exists: bool = False, index: str = "case") -> bool:
+def create_case(title: str, summary: str, user: str = "") -> dict[str, Any]:
     """Create a new case in the datastore.
-
-    This function validates the input data, ensures the query is valid by testing it
-    against the hit collection, and creates a new case with the specified parameters.
 
     Args:
         case_id: Unique identifier for the case
-        case: Case ODM object to save
-        user: Optional username to record in the creation log
-        skip_exists: Whether to skip the existence check
+        title: Title of the case
+        summary: Short summary of the case
+        user: Username to record in the creation log
 
     Returns:
-        bool: True if the case was successfully created
+        dict: The created case as a primitives dictionary
 
     Raises:
         ResourceExists: If a case with the same ID already exists
     """
-    if not skip_exists and exists(case_id):
-        raise ResourceExists(f"Hit {case_id} already exists in datastore")
+    case = Case({"title": title, "summary": summary})
 
-    if user:
-        case.log = [CaseLog({"timestamp": "NOW", "explanation": "Created case", "user": user})]
+    case.log = [CaseLog({"timestamp": "NOW", "explanation": "Case created", "user": user or "system"})]
 
     CREATED_CASES.inc()
-    return datastore()[index].save(case_id, case)
+    datastore().case.save(case.case_id, case)
+    return case.as_primitives()
 
 
-def hide_cases(case_ids: set[str], index: str = "case") -> None:
+def hide_cases(case_ids: set[str], user: str) -> None:
     """Hide a set of cases by marking them and their references as not visible.
 
     Sets visible=False on all matching cases, and also sets visible=False on any
@@ -117,32 +113,54 @@ def hide_cases(case_ids: set[str], index: str = "case") -> None:
 
     Args:
         case_ids (set[str]): The IDs of the cases to hide
+        user (str): The username performing the hide action
     """
     ds = datastore()
 
     items_query = f"items.id:({' OR '.join(case_ids)})"
-    for case in ds[index].stream_search(items_query, as_obj=False):
+    for case in ds.case.stream_search(items_query, as_obj=False):
         related_case_id = case["case_id"]
         if related_case_id in case_ids:
             continue
 
-        related_case = ds[index].get_if_exists(related_case_id, as_obj=True)
+        related_case = ds.case.get_if_exists(related_case_id, as_obj=True)
         if related_case:
+            hidden_ids: list[str] = []
             for item in related_case.items:
                 if item.id in case_ids:
                     item.visible = False
-            ds[index].save(related_case_id, related_case)
+                    hidden_ids.append(item.id)
+            if hidden_ids:
+                related_case.log.append(
+                    CaseLog(
+                        {
+                            "timestamp": "NOW",
+                            "user": user,
+                            "explanation": f"Referenced case(s) hidden: {', '.join(hidden_ids)}",
+                        }
+                    )
+                )
+                ds.case.save(related_case_id, related_case)
 
     for case_id in case_ids:
-        case = ds[index].get_if_exists(case_id, as_obj=True)
+        case = ds.case.get_if_exists(case_id, as_obj=True)
         if case:
             case.visible = False
-            ds[index].save(case_id, case)
+            case.log.append(
+                CaseLog(
+                    {
+                        "timestamp": "NOW",
+                        "user": user,
+                        "explanation": "Case set to hidden",
+                    }
+                )
+            )
+            ds.case.save(case_id, case)
         else:
             logger.warning(f"Case {case_id} not found when attempting to hide")
 
 
-def delete_cases(case_ids: set[str], index: str = "case") -> bool:
+def delete_cases(case_ids: set[str]) -> bool:
     """Delete a set of cases from the datastore.
 
     Also removes any CaseItem references to the deleted cases from other cases.
@@ -193,7 +211,7 @@ def update_case(case_id: str, case_data: dict[str, Any], user: User) -> Case:
     if case is None:
         raise NotFoundException(f"Case {case_id} does not exist")
 
-    immutable_fields = {"case_id", "created", "updated", "items"}
+    immutable_fields = {"case_id", "created", "updated"}
     compound_fields = {"items", "enrichments", "rules", "tasks"}
 
     immutable_violations = set(case_data.keys()) & immutable_fields
