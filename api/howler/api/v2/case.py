@@ -1,13 +1,8 @@
-from typing import Any
-
 from flask import request
 
 from howler.api import bad_request, created, forbidden, make_subapi_blueprint, no_content, not_found, ok
-from howler.common.exceptions import HowlerException, InvalidDataException, NotFoundException, ResourceExists
-from howler.common.loader import datastore
-from howler.common.logging import get_logger
+from howler.common.exceptions import InvalidDataException, NotFoundException, ResourceExists
 from howler.common.swagger import generate_swagger_docs
-from howler.odm.models.case import Case
 from howler.odm.models.user import User
 from howler.security import api_login
 from howler.services import case_service
@@ -17,93 +12,45 @@ SUB_API = "case"
 case_api = make_subapi_blueprint(SUB_API, api_version=2)
 case_api._doc = "Manage the different cases created"  # type: ignore
 
-logger = get_logger(__file__)
-
 
 @generate_swagger_docs()
 @case_api.route("/", methods=["POST"])
 @api_login(required_priv=["R", "W"])
-def create_cases(user: User, **kwargs):
-    """Create cases.
+def create_case(user: User, **kwargs):
+    """Create a case.
 
     Variables:
-    None
-
-    Arguments:
-    None
+    user      => The user creating the case (injected by @api_login)
 
     Data Block:
     {
-        [
-            {
-                ...case
-            },
-            {
-                ...case
-            }
-        ]
+        "title": "Case Title",
+        "summary": "Brief description"
     }
 
     Result Example:
     {
-        "valid": [
-            {
-                ...case
-            },
-            {
-                ...case
-            }
-        ],
-        "invalid": [
-            {
-                "input": { ...case },
-                "error": "Id already exists"
-            },
-            {
-                "input": { ...case },
-                "error": "Object 'Case' expected a parameter named: title"
-            }
-        ]
+        ...case     # The new case data
     }
     """
-    cases = request.json
+    case_data = request.json
 
-    if cases is None:
-        return bad_request(err="No cases were sent.")
+    if not case_data or not isinstance(case_data, dict):
+        return bad_request(err="Request body must be a JSON object with title and summary.")
 
-    response_body: dict[str, list[Any]] = {"valid": [], "invalid": []}
-    odms: list[tuple[str, Case]] = []
+    title = case_data.get("title")
+    summary = case_data.get("summary")
 
-    for case_data in cases:
-        try:
-            case_id = case_data.get("case_id") or (
-                f"case-{sanitize_lucene_query(case_data.get('title', 'untitled')).lower().replace(' ', '-')}"
-            )
-            case_data["case_id"] = case_id
+    if not title or not summary:
+        return bad_request(err="Both title and summary are required.")
 
-            if case_service.exists(case_id):
-                raise ResourceExists(f"Case {case_id} already exists in datastore")
+    case_id = f"case-{sanitize_lucene_query(title).lower().replace(' ', '-')}"
 
-            odm = Case(case_data)
-            response_body["valid"].append(odm.as_primitives())
-            odms.append((case_id, odm))
-        except HowlerException as e:
-            logger.warning(f"{type(e).__name__} when saving new case!")
-            logger.warning(e)
-            response_body["invalid"].append({"input": case_data, "error": str(e)})
-
-    if len(response_body["invalid"]) == 0:
-        if len(odms) > 0:
-            for case_id, odm in odms:
-                case_service.create_case(case_id, odm, user=user.uname, skip_exists=True)
-
-            datastore().case.commit()
-
-        return created(response_body)
-    else:
-        err_msg = ", ".join(item["error"] for item in response_body["invalid"])
-
-        return bad_request(response_body, err=err_msg)
+    try:
+        new_case = case_service.create_case(case_id, title, summary, user=user.uname)
+        return created(new_case)
+    except ResourceExists as e:
+        return bad_request(err=str(e))
 
 
 @generate_swagger_docs()
@@ -203,7 +150,7 @@ def hide_cases(user: User, **kwargs):
     if non_existing_case_ids:
         return not_found(err=f"Case id(s) {', '.join(non_existing_case_ids)} do not exist.")
 
-    case_service.hide_cases(case_ids)
+    case_service.hide_cases(case_ids, user=user.uname)
 
     return no_content()
 
