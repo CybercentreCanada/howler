@@ -1,9 +1,39 @@
+from enum import StrEnum
 from typing import Optional
 
 from howler import odm
 from howler.common.exceptions import HowlerValueError
 
 CASE_ITEM_TYPES = {"observable", "hit", "case", "lead", "reference"}
+
+
+class CaseItemTypes(StrEnum):
+    """Enumeration of valid case item types.
+
+    Case items represent different types of objects that can be associated with a case.
+    Each item type corresponds to a specific kind of entity or reference that provides
+    context, evidence, or relationships for the case investigation.
+
+    Attributes:
+        OBSERVABLE: A suspicious or noteworthy observable (IP, domain, hash, etc.) that
+            has been identified and tracked in the system.
+        HIT: An alert or detection hit from an analytic that triggered on specific
+            telemetry or behavior patterns.
+        TABLE: A structured data table containing organized information relevant to
+            the case (e.g., timeline, correlation matrix).
+        CASE: A reference to another related case, enabling case-to-case relationships
+            for tracking linked investigations.
+        LEAD: An investigative lead or hypothesis that requires follow-up action or
+            validation by analysts.
+        REFERENCE: An external reference such as a URL, document, or resource that
+            provides additional context or evidence.
+    """
+    OBSERVABLE = "observable"
+    HIT = "hit"
+    TABLE = "table"
+    CASE = "case"
+    LEAD = "lead"
+    REFERENCE = "reference"
 
 
 @odm.model(index=True, store=True, description="Log definition.")
@@ -29,7 +59,7 @@ class CaseLog(odm.Model):
 @odm.model(index=True, store=True, description="A path-scoped item included in a case.")
 class CaseItem(odm.Model):
     path: str = odm.Keyword(description="Path of the item in the case hierarchy.")
-    type: str = odm.Enum(values=CASE_ITEM_TYPES, description="Type of case item.")
+    type: str = odm.Enum(values=CaseItemTypes, description="Type of case item.")
     id: Optional[str] = odm.Optional(
         odm.Keyword(description="Identifier for the backing object when available."),
         default=None,

@@ -716,7 +716,7 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
 
             items.append(
                 {
-                    "path": f"observable/{observable['howler']['analytic']} ({observable['howler']['id']})",
+                    "path": f"observable/{observable['howler']['id']}",
                     "type": "observable",
                     "id": observable_id,
                     "value": observable_id,
@@ -1134,7 +1134,6 @@ INDEXES: dict[str, tuple[Callable, list[Callable]]] = {
     "actions": (wipe_actions, [create_actions]),
     "dossiers": (wipe_dossiers, [create_dossiers]),
 }
-
 
 if __name__ == "__main__":
     # TODO: Implement a solid command line interface for running this
