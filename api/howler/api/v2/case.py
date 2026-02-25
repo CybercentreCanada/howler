@@ -314,10 +314,10 @@ def append_item(id: str, user: User, **kwargs):
         return internal_error(err="Failed to save case with new item")
 
     if backing_obj is not None:
-        if any(case.case_id == related_id for related_id in backing_obj.related.cases):
+        if any(case.case_id == related_id for related_id in backing_obj.howler.related):
             return ok()
 
-        backing_obj.related.cases.append(case.case_id)
+        backing_obj.howler.related.append(case.case_id)
         datastore()[backing_obj.__class__.__name__.lower()].save(backing_obj.howler.id, backing_obj)
 
     return ok()
@@ -370,8 +370,8 @@ def delete_item(id: str, value: str, **kwargs):
     if not datastore().case.save(case.case_id, case):
         return internal_error(err="Failed to save case after item removal")
 
-    if backing_obj is not None and case.case_id in backing_obj.related.cases:
-        backing_obj.related.cases.remove(case.case_id)
+    if backing_obj is not None and case.case_id in backing_obj.howler.related:
+        backing_obj.howler.related.remove(case.case_id)
         datastore()[backing_obj.__class__.__name__.lower()].save(backing_obj.howler.id, backing_obj)
 
     return ok()
