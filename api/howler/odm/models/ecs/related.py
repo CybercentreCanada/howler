@@ -10,14 +10,14 @@ class Related(odm.Model):
     hash: list[str] = odm.List(
         odm.Keyword(),
         description="All the hashes seen on your event. Populating this field, then using it to search "
-        "for hashes can help in situations where you're unsure what the hash algorithm is "
-        "(and therefore which key name to search).",
+                    "for hashes can help in situations where you're unsure what the hash algorithm is "
+                    "(and therefore which key name to search).",
         default=[],
     )
     hosts: list[str] = odm.List(
         odm.Keyword(),
         description="All hostnames or other host identifiers seen on your event. Example identifiers "
-        "include FQDNs, domain names, workstation names, or aliases.",
+                    "include FQDNs, domain names, workstation names, or aliases.",
         default=[],
     )
     ip: list[str] = odm.List(odm.IP(), description="All of the IPs seen on your event.", default=[])
@@ -30,11 +30,6 @@ class Related(odm.Model):
         odm.Keyword(),
         description="Any identifier that doesn't fit in other related fields like a GUID.",
         default=[],
-    )
-    cases: list[str] = odm.List(
-        odm.Keyword(),
-        description="Any cases that include this event. This can be used to pivot from an event to the cases that include it.",
-        default=[]
     )
 
     # Extra fields not defined in ECS but added for outline purposes
