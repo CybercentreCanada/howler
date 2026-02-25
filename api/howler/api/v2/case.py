@@ -3,13 +3,13 @@ from typing import Any
 from flask import request
 from werkzeug.exceptions import UnsupportedMediaType
 
-from howler.api import bad_request, forbidden, make_subapi_blueprint, no_content, not_found, ok, not_implemented, \
-    internal_error
+from howler.api import bad_request, created, forbidden, make_subapi_blueprint, no_content, not_found, ok, \
+    not_implemented, internal_error
 from howler.common.exceptions import HowlerException, InvalidDataException, NotFoundException, ResourceExists
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
-from howler.odm.models.case import CaseItem, Case
+from howler.odm.models.case import CaseItem, Case, CaseItemTypes
 from howler.odm.models.hit import Hit
 from howler.odm.models.observable import Observable
 from howler.odm.models.user import User
@@ -215,23 +215,28 @@ def update_case(id: str, user: User, **kwargs):
 @case_api.route("/<id>/items", methods=["POST"])
 @api_login(required_priv=["R", "W"])
 def append_item(id: str, user: User, **kwargs):
-    """Append to a case
+    """Append an item to a case
+
+    This endpoint adds a new item to a case's items list. The item can reference
+    different types of objects (hits, observables, or other cases). When a hit or
+    observable is added, a bidirectional relationship is created - the case will
+    reference the item, and the item will reference the case in its related.cases list.
 
     Variables:
-    id => The id of the case to modify
+    id       => The id of the case to modify
 
-    Optional Arguments:
+    Arguments:
     None
 
     Data Block:
     {
-        "type": "String type of item to append to case (observable, hit, table, case, lead, reference)"
-        "value": "Value for this item (id or url reference, depending on type)"
+        "type": "hit",              # Type of item to append: "hit", "observable", "case", "table", "lead", or "reference"
+        "value": "item-id-123"      # The ID or reference value for the item
     }
 
     Result Example:
     {
-        "success": true     # Did the deletion succeed?
+        "success": true     # Did the operation succeed?
     }
     """
     try:
@@ -250,14 +255,12 @@ def append_item(id: str, user: User, **kwargs):
     if "type" not in body:
         return bad_request(err="Case 'type' missing")
 
-    case_item_data = {}
+    case_item_data: dict[str, str] = {}
     backing_obj: Hit | Observable | None = None
-    index = str | None
 
     match (body.get("type", "").lower()):
-        case "hit":
+        case CaseItemTypes.HIT:
             backing_obj: Hit = datastore().hit.get(body["value"]) or None
-            index = 'hit'
 
             if backing_obj is None:
                 return not_found(err="Hit not found")
@@ -269,9 +272,8 @@ def append_item(id: str, user: User, **kwargs):
                 'value': body["value"],
             }
 
-        case "observable":
+        case CaseItemTypes.OBSERVABLE:
             backing_obj: Observable = datastore().observable.get(body["value"]) or None
-            index = 'observable'
 
             if backing_obj is None:
                 return not_found(err="Observable not found")
@@ -283,7 +285,7 @@ def append_item(id: str, user: User, **kwargs):
                 'value': body["value"],
             }
 
-        case "case":
+        case CaseItemTypes.CASE:
             related_case: Case = datastore().case.get(body["value"]) or None
 
             if related_case is None:
@@ -327,11 +329,15 @@ def append_item(id: str, user: User, **kwargs):
 def delete_item(id: str, value: str, **kwargs):
     """Delete an item from a case
 
-    Variables:
-    id => The id of the case to modify
-    value => The value of the item to delete
+    This endpoint removes an item from a case's items list. If the item is a hit or
+    observable, the bidirectional relationship is cleaned up - the case reference will
+    be removed from the backing object's related.cases list.
 
-    Optional Arguments:
+    Variables:
+    id       => The id of the case to modify
+    value    => The value of the item to delete (must match the item's value field)
+
+    Arguments:
     None
 
     Data Block:
@@ -342,27 +348,21 @@ def delete_item(id: str, value: str, **kwargs):
         "success": true     # Did the deletion succeed?
     }
     """
-    if not id:
-        return bad_request(err="Case 'id' is required")
-
-    if not value:
-        return bad_request(err="Case item 'value' is required")
-
     case: Case | None = datastore().case.get_if_exists(key=id, as_obj=True)
 
     if case is None:
         return not_found(err="Case not found")
 
-    case_item = item if (item := next((item for item in case.items if item["value"] == value), None)) else None
+    case_item = next((item for item in case.items if item["value"] == value), None)
 
     if case_item is None:
         return not_found(err="Case item not found")
 
     backing_obj: Hit | Observable | None = None
     match case_item.type:
-        case "hit":
+        case CaseItemTypes.HIT:
             backing_obj: Hit = datastore().hit.get(case_item.id) or None
-        case "observable":
+        case CaseItemTypes.OBSERVABLE:
             backing_obj: Observable = datastore().observable.get(case_item.id) or None
 
     case.items.remove(case_item)

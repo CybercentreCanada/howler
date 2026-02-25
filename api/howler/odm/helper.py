@@ -39,7 +39,8 @@ EXAMPLE_ANALYTICS = ["Password Checker", "Bad Guy Finder", "Exploit Patcher"]
 logger = get_logger(__file__)
 
 
-def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[str], prune_hit: bool = True) -> Hit:  # noqa: C901
+def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[str],
+                        prune_hit: bool = True) -> Hit:  # noqa: C901
     "Create a random, useful/cogent hit for synthetic data"
     hit: Hit = random_model_obj(cast(Model, Hit))
 
@@ -339,7 +340,7 @@ def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[str], pr
 
 
 def generate_useful_observable(  # noqa: C901
-    lookups: dict[str, dict[str, Any]], users: list[str], prune: bool = True
+        lookups: dict[str, dict[str, Any]], users: list[str], prune: bool = True
 ) -> Observable:
     "Create a random, useful/cogent observable for synthetic data"
     observable: Observable = random_model_obj(cast(Model, Observable))
@@ -401,59 +402,8 @@ def generate_useful_observable(  # noqa: C901
     for i in range(len(observable.howler.comment)):
         observable.howler.comment[i].user = choice(users)
 
-    observable.howler.labels.assignments = sample(
-        [
-            "APA2B",
-            "CCID1A",
-            "ACE1C",
-            "APA1B",
-            "ADS4B",
-            "ADS2A",
-        ],
-        1,
-    )
-
-    observable.howler.labels.generic = sample(
-        [
-            "Outlook",
-            "Danger",
-            "Drive",
-            "Documentation",
-            "Super Teams",
-        ],
-        ceil(rand_seed * 2),
-    )
-
-    observable.howler.labels.campaign = []
-    observable.howler.labels.insight = []
-    observable.howler.labels.victim = []
-    observable.howler.labels.mitigation = []
-    observable.howler.labels.operation = []
-    observable.howler.labels.threat = []
-    observable.howler.labels.tuning = []
-
-    label_type = ceil(rand_seed * 7)
-    if label_type == 1:
-        observable.howler.labels.campaign = ["Bad event 2023-07"]
-    elif label_type == 2:
-        observable.howler.labels.insight = ["admin"]
-    elif label_type == 3:
-        observable.howler.labels.victim = ["Bobby's Ice-Cream"]
-    elif label_type == 4:
-        observable.howler.labels.mitigation = ["Blocked: google.com"]
-    elif label_type == 5:
-        observable.howler.labels.operation = ["OP_HOWLER"]
-    elif label_type == 6:
-        observable.howler.labels.tuning = ["Tune example"]
-    else:
-        observable.howler.labels.threat = ["Bad Mojo"]
-
     observable.event.id = observable.howler.id
 
-    observable.howler.assessment = None
-    observable.howler.rationale = None
-    observable.howler.status = "open"
-    observable.howler.assignment = "unassigned"
     observable.howler.escalation = choice([Escalation.HIT, Escalation.ALERT])
 
     if randint(1, 10) > 9:
@@ -484,124 +434,7 @@ def generate_useful_observable(  # noqa: C901
         ),
     ]
 
-    observable.howler.links = [
-        Link(
-            {
-                "title": "Goose",
-                "href": "https://en.wikipedia.org/wiki/Canada_goose",
-                "icon": (
-                    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Canada_goose_on_Seedskadee_NWR"
-                    "_%2827826185489%29.jpg/788px-Canada_goose_on_Seedskadee_NWR_%2827826185489%29.jpg"
-                ),
-            }
-        )
-    ]
-
-    try:
-        observable.howler.links.extend(
-            Link(
-                {
-                    "title": get_random_word(),
-                    "href": app["route"],
-                    "icon": app["name"],
-                }
-            )
-            for app in random.choices(APPS, k=5)
-        )
-    except IndexError:
-        pass
-
     observable.howler.viewers = []
-
-    observable.howler.dossier = [
-        Lead(
-            {
-                "icon": "material-symbols:sound-detection-dog-barking",
-                "label": {"en": "Example Lead", "fr": "Exemple d'un lead"},
-                "format": "markdown",
-                "content": "# Hello, World!\n\nThis is a snippet of markdown to show off an example lead.",
-            }
-        ),
-    ]
-
-    if config.core.clue.enabled:
-        observable.howler.dossier.append(
-            Lead(
-                {
-                    "icon": "material-symbols:image",
-                    "label": {"en": "Clue", "fr": "Clue"},
-                    "format": "clue",
-                    "content": "test-plugin.image",
-                    "metadata": {"type": "ip", "value": "127.0.01", "classification": "TLP:CLEAR"},
-                }
-            )
-        )
-
-        observable.howler.dossier.append(
-            Lead(
-                {
-                    "icon": "material-symbols:code-rounded",
-                    "label": {"en": "Clue", "fr": "Clue"},
-                    "format": "clue",
-                    "content": "test-plugin.json",
-                    "metadata": {"type": "ip", "value": "127.0.01", "classification": "TLP:CLEAR"},
-                }
-            )
-        )
-
-    for log in observable.howler.log:
-        log.previous_version = get_random_id()
-
-    new_keys: list[str] = []
-    for plugin in get_plugins():  # pragma: no cover
-        if generate := plugin.modules.odm.generation.get("hit", None):
-            _new_keys, observable = generate(observable)
-            new_keys += _new_keys
-
-    if len(new_keys) > 0:
-        logger.debug("%s new top-level fields configured")
-
-    if prune:
-        empty_hit = Hit({"howler": observable.howler})
-
-        for key in observable.fields():
-            if key in [
-                "howler",
-                "event",
-                "related",
-                "organization",
-                "threat",
-                "timestamp",
-            ]:
-                continue
-
-            if key in new_keys:
-                continue
-
-            if observable.howler.analytic.lower() != "assemblyline":
-                observable.assemblyline = None
-            else:
-                verdict = choice(["info", "malicious", "safe", "suspicious"])
-                for host in observable.assemblyline.antivirus:
-                    host.verdict = verdict
-                for host in observable.assemblyline.behaviour:
-                    host.verdict = verdict
-                for host in observable.assemblyline.heuristic:
-                    host.verdict = verdict
-                for host in observable.assemblyline.yara:
-                    host.verdict = verdict
-                for host in observable.assemblyline.attribution:
-                    host.verdict = verdict
-                for item in observable.assemblyline.mitre.tactic:
-                    item.verdict = verdict
-                for item in observable.assemblyline.mitre.technique:
-                    item.verdict = verdict
-
-                if key in ["related", "file"]:
-                    continue
-
-            if round(rand_seed * 4) < 3:
-                observable[key] = empty_hit[key]
 
     return observable
 
