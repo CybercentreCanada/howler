@@ -5,7 +5,7 @@ import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import ThemedEditor from 'components/elements/ThemedEditor';
 import type { editor } from 'monaco-editor';
 import { memo, useCallback, useContext, useEffect, useMemo, type FC } from 'react';
-import { conf, language } from './markdownExtendedTokenProvider';
+import { conf, language } from '../routes/overviews/markdownExtendedTokenProvider';
 
 interface OverviewEditorProps {
   content: string;
@@ -17,7 +17,7 @@ interface OverviewEditorProps {
   editorOptions?: editor.IStandaloneEditorConstructionOptions;
 }
 
-const OverviewEditor: FC<OverviewEditorProps> = ({
+const MarkdownEditor: FC<OverviewEditorProps> = ({
   content,
   setContent,
   onMount,
@@ -99,4 +99,4 @@ const OverviewEditor: FC<OverviewEditorProps> = ({
   );
 };
 
-export default memo(OverviewEditor);
+export default memo(MarkdownEditor);

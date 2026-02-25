@@ -2,14 +2,23 @@ import { Grid, useTheme } from '@mui/material';
 import api from 'api';
 import useMyApi from 'components/hooks/useMyApi';
 import dayjs from 'dayjs';
+import { get } from 'lodash-es';
 import type { Case } from 'models/entities/generated/Case';
-import { useCallback, useEffect, useState, type FC } from 'react';
+import type { Hit } from 'models/entities/generated/Hit';
+import type { Observable } from 'models/entities/generated/Observable';
+import { useCallback, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import AlertPanel from './AlertPanel';
 import CaseAggregate from './CaseAggregate';
 import CaseOverview from './CaseOverview';
 import RelatedCasePanel from './RelatedCasePanel';
 import TaskPanel from './TaskPanel';
+
+const AGGREGATE_FIELDS = [
+  ['howler.outline.threat', 'material-symbols:warning-rounded', 'warning.main', 'page.cases.dashboard.threat'],
+  ['howler.outline.target', 'material-symbols:group', 'primary.main', 'page.cases.dashboard.target'],
+  ['howler.outline.indicators', 'fluent:number-symbol-24-filled', null, 'page.cases.dashboard.indicators']
+];
 
 const getDuration = (case_: Case) => {
   if (case_?.start) {
@@ -23,6 +32,12 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
   const theme = useTheme();
 
   const [_case, setCase] = useState(providedCase);
+  const [records, setRecords] = useState<Partial<Hit | Observable>[] | null>(null);
+
+  const ids = useMemo(
+    () => (_case?.items ?? []).filter(item => ['hit', 'observable'].includes(item.type)).map(item => item.id),
+    [_case?.items]
+  );
 
   useEffect(() => {
     if (providedCase) {
@@ -35,6 +50,19 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
       dispatchApi(api.v2.case.get(caseId), { throwError: false }).then(setCase);
     }
   }, [caseId, dispatchApi]);
+
+  useEffect(() => {
+    if (ids?.length < 1) {
+      return;
+    }
+
+    dispatchApi(
+      api.v2.search.post(['hit', 'observable'], {
+        query: `howler.id:(${ids?.join(' OR ') || '*'})`,
+        fl: AGGREGATE_FIELDS.map(([field]) => field).join(',')
+      })
+    ).then(response => setRecords(response.items));
+  }, [dispatchApi, ids]);
 
   const updateCase = useCallback(
     async (_updatedCase: Partial<Case>) => {
@@ -60,38 +88,22 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
       <Grid item xs={12}>
         <CaseOverview case={_case} updateCase={updateCase} />
       </Grid>
-      <Grid item xs={12} md={6} xl={3}>
-        <CaseAggregate
-          icon="material-symbols:warning-rounded"
-          iconColor={theme.palette.warning.main}
-          field="howler.outline.threat"
-          ids={_case.items.filter(item => ['hit', 'observable'].includes(item.type)).map(item => item.id)}
-          subtitle={t('page.cases.dashboard.threat')}
-        />
-      </Grid>
-      <Grid item xs={12} md={6} xl={3}>
-        <CaseAggregate
-          icon="material-symbols:group"
-          iconColor={theme.palette.primary.main}
-          field="howler.outline.target"
-          ids={_case.items.filter(item => ['hit', 'observable'].includes(item.type)).map(item => item.id)}
-          subtitle={t('page.cases.dashboard.target')}
-        />
-      </Grid>
-      <Grid item xs={12} md={6} xl={3}>
-        <CaseAggregate
-          icon="fluent:number-symbol-24-filled"
-          field="howler.outline.indicators"
-          ids={_case.items.filter(item => ['hit', 'observable'].includes(item.type)).map(item => item.id)}
-          subtitle={t('page.cases.dashboard.indicators')}
-        />
-      </Grid>
+      {AGGREGATE_FIELDS.map(([field, icon, iconColor, subtitle]) => (
+        <Grid key={field} item xs={12} md={6} xl={3}>
+          <CaseAggregate
+            icon={icon}
+            iconColor={iconColor && get(theme.palette, iconColor)}
+            field={field}
+            records={records}
+            subtitle={t(subtitle)}
+          />
+        </Grid>
+      ))}
       <Grid item xs={12} md={6} xl={3}>
         <CaseAggregate
           icon="mingcute:heartbeat-line"
           iconColor={theme.palette.error.light}
           title={getDuration(_case).format('HH[h] mm[m]')}
-          ids={_case.items.filter(item => ['hit', 'observable'].includes(item.type)).map(item => item.id)}
           subtitle={t('page.cases.dashboard.duration')}
         />
       </Grid>
