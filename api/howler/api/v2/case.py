@@ -4,7 +4,6 @@ from werkzeug.exceptions import UnsupportedMediaType
 from howler.api import (
     bad_request,
     created,
-    forbidden,
     internal_error,
     make_subapi_blueprint,
     no_content,
@@ -82,7 +81,7 @@ def get_case(id: str, **kwargs):
         ...case    # The requested case, if it exists
     }
     """
-    case = case_service.get_case(id, as_odm=False)
+    case = datastore().case.get_if_exists(key=id, as_obj=False)
 
     if not case:
         return not_found(err="Case %s does not exist" % id)
@@ -92,7 +91,7 @@ def get_case(id: str, **kwargs):
 
 @generate_swagger_docs()
 @case_api.route("/", methods=["DELETE"])
-@api_login(required_priv=["W"])
+@api_login(required_priv=["W"], required_type=["admin"])
 def delete_cases(user: User, **kwargs):
     """Delete cases.
 
@@ -117,10 +116,9 @@ def delete_cases(user: User, **kwargs):
     if case_ids is None:
         return bad_request(err="No case ids were sent.")
 
-    if "admin" not in user.type:
-        return forbidden(err="Cannot delete case, only admin is allowed to delete")
+    ds = datastore()
 
-    non_existing_case_ids = set([case_id for case_id in case_ids if not case_service.exists(case_id)])
+    non_existing_case_ids = set([case_id for case_id in case_ids if not ds.case.exists(case_id)])
 
     if non_existing_case_ids:
         return not_found(err=f"Case id(s) {', '.join(non_existing_case_ids)} do not exist.")
@@ -157,7 +155,9 @@ def hide_cases(user: User, **kwargs):
     if case_ids is None:
         return bad_request(err="No case ids were sent.")
 
-    non_existing_case_ids = set([case_id for case_id in case_ids if not case_service.exists(case_id)])
+    ds = datastore()
+
+    non_existing_case_ids = set([case_id for case_id in case_ids if not ds.case.exists(case_id)])
 
     if non_existing_case_ids:
         return not_found(err=f"Case id(s) {', '.join(non_existing_case_ids)} do not exist.")
@@ -206,7 +206,7 @@ def update_case(id: str, user: User, **kwargs):
 @generate_swagger_docs()
 @case_api.route("/<id>/items", methods=["POST"])
 @api_login(required_priv=["R", "W"])
-def append_item(id: str, user: User, **kwargs):
+def append_item(id: str, user: User, **kwargs):  # noqa: C901
     """Append an item to a case
 
     This endpoint adds a new item to a case's items list. The item can reference
@@ -222,8 +222,8 @@ def append_item(id: str, user: User, **kwargs):
 
     Data Block:
     {
-        "type": "hit",              # Type of item to append: "hit", "observable", "case", "table", "lead", or "reference"
-        "value": "item-id-123"      # The ID or reference value for the item
+        "type": "hit",            # Type of item to append: "hit", "observable", "case", "table", "lead", or "reference"
+        "value": "item-id-123"    # The ID or reference value for the item
     }
 
     Result Example:
