@@ -56,12 +56,13 @@ def create_case(user: User, **kwargs):
 
     title = case_data.get("title")
     summary = case_data.get("summary")
+    items: list[dict[str, str]] = case_data.get("items", [])
 
     if not title or not summary:
         return bad_request(err="Both title and summary are required.")
 
     try:
-        new_case = case_service.create_case(title, summary, user.uname)
+        new_case = case_service.create_case(title, summary, user.uname, list_items=items)  # type: ignore
         return created(new_case)
     except ResourceExists as e:
         return bad_request(err=str(e))
