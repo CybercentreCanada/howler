@@ -20,19 +20,19 @@ from howler.plugins import get_plugins
 if TYPE_CHECKING:
     from howler.datastore.store import ESStore
 
-INDEXES = [
-    ("hit", Hit),
-    ("observable", Observable),
-    ("case", Case),
-    ("template", Template),
-    ("overview", Overview),
-    ("analytic", Analytic),
-    ("action", Action),
-    ("user", User),
-    ("view", View),
-    ("dossier", Dossier),
-    ("user_avatar", None),
-]
+INDEXES = {
+    "hit": Hit,
+    "observable": Observable,
+    "case": Case,
+    "template": Template,
+    "overview": Overview,
+    "analytic": Analytic,
+    "action": Action,
+    "user": User,
+    "view": View,
+    "dossier": Dossier,
+    "user_avatar": None,
+}
 
 
 class HowlerDatastore(object):
@@ -40,7 +40,7 @@ class HowlerDatastore(object):
         self.ds: "ESStore" = datastore_object
 
         for plugin in get_plugins():
-            for _index, _odm in INDEXES:
+            for _index, _odm in INDEXES.items():
                 if _odm is None:
                     continue
 
@@ -54,7 +54,7 @@ class HowlerDatastore(object):
                 Compound(Clue, description="Clue-specific overrides for this alert", default=None, optional=True),
             )
 
-        for _index, _odm in INDEXES:
+        for _index, _odm in INDEXES.items():
             self.ds.register(_index, _odm)
 
     def __enter__(self):

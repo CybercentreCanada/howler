@@ -1,38 +1,19 @@
 import { Box, Stack } from '@mui/material';
-import api from 'api';
-import useMyApi from 'components/hooks/useMyApi';
-import type { Case } from 'models/entities/generated/Case';
-import { memo, useEffect, useState, type FC } from 'react';
+import { memo, type FC } from 'react';
 import { useParams } from 'react-router-dom';
 import NotFoundPage from '../404';
+import ErrorBoundary from '../ErrorBoundary';
 import CaseDashboard from './detail/CaseDashboard';
+import CaseDetails from './detail/CaseDetails';
 import CaseSidebar from './detail/CaseSidebar';
 import ItemPage from './detail/ItemPage';
+import useCase from './hooks/useCase';
 
 const CaseViewer: FC = () => {
   const params = useParams();
-  const { dispatchApi } = useMyApi();
+  const { case: _case, missing } = useCase({ caseId: params.id });
 
-  const [_case, setCase] = useState<Case>();
-  const [loading, setLoading] = useState(false);
-  const [notFound, setNotFound] = useState(false);
-
-  useEffect(() => {
-    if (!params.id) {
-      return;
-    }
-
-    setLoading(true);
-
-    dispatchApi(api.v2.case.get(params.id))
-      .then(_dossier => {
-        setCase(_dossier);
-      })
-      .catch(() => setNotFound(true))
-      .finally(() => setLoading(false));
-  }, [dispatchApi, params.id]);
-
-  if (notFound) {
+  if (missing) {
     return <NotFoundPage />;
   }
 
@@ -46,12 +27,15 @@ const CaseViewer: FC = () => {
           overflow: 'auto'
         }}
       >
-        {!_case || location.pathname.endsWith(_case.case_id) ? (
-          <CaseDashboard case={_case} />
-        ) : (
-          <ItemPage case={_case} />
-        )}
+        <ErrorBoundary>
+          {!_case || location.pathname.endsWith(_case.case_id) ? (
+            <CaseDashboard case={_case} />
+          ) : (
+            <ItemPage case={_case} />
+          )}
+        </ErrorBoundary>
       </Box>
+      <CaseDetails case={_case} />
     </Stack>
   );
 };

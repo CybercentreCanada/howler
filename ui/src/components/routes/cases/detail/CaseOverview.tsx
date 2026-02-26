@@ -7,6 +7,7 @@ import {
   Divider,
   IconButton,
   LinearProgress,
+  Skeleton,
   Stack,
   useTheme
 } from '@mui/material';
@@ -23,13 +24,17 @@ const CaseOverview: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promi
 
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [overview, setOverview] = useState(_case.overview);
+  const [overview, setOverview] = useState(_case?.overview);
 
   useEffect(() => {
-    if (!editing) {
+    if (!editing && _case?.overview) {
       setOverview(_case.overview);
     }
-  }, [_case.overview, editing]);
+  }, [_case?.overview, editing]);
+
+  if (!_case) {
+    return <Skeleton height={370} />;
+  }
 
   return (
     <Card>

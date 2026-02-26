@@ -39,8 +39,7 @@ EXAMPLE_ANALYTICS = ["Password Checker", "Bad Guy Finder", "Exploit Patcher"]
 logger = get_logger(__file__)
 
 
-def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[str],
-                        prune_hit: bool = True) -> Hit:  # noqa: C901
+def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[str], prune_hit: bool = True) -> Hit:  # noqa: C901
     "Create a random, useful/cogent hit for synthetic data"
     hit: Hit = random_model_obj(cast(Model, Hit))
 
@@ -340,7 +339,7 @@ def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[str],
 
 
 def generate_useful_observable(  # noqa: C901
-        lookups: dict[str, dict[str, Any]], users: list[str], prune: bool = True
+    lookups: dict[str, dict[str, Any]], users: list[str], prune: bool = True
 ) -> Observable:
     "Create a random, useful/cogent observable for synthetic data"
     observable: Observable = random_model_obj(cast(Model, Observable))

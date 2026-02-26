@@ -1,5 +1,3 @@
-from typing import Any
-
 from flask import request
 from werkzeug.exceptions import UnsupportedMediaType
 
@@ -15,106 +13,54 @@ from howler.api import (
 )
 from howler.common.exceptions import HowlerException, InvalidDataException, NotFoundException, ResourceExists
 from howler.common.loader import datastore
-from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import DataStoreException
 from howler.odm.models.case import Case
 from howler.odm.models.user import User
 from howler.security import api_login
 from howler.services import case_service
-from howler.utils.str_utils import sanitize_lucene_query
 
 SUB_API = "case"
 case_api = make_subapi_blueprint(SUB_API, api_version=2)
 case_api._doc = "Manage the different cases created"  # type: ignore
 
-logger = get_logger(__file__)
-
 
 @generate_swagger_docs()
 @case_api.route("/", methods=["POST"])
 @api_login(required_priv=["R", "W"])
-def create_cases(user: User, **kwargs):
-    """Create cases.
+def create_case(user: User, **kwargs):
+    """Create a case.
 
     Variables:
-    None
-
-    Optional Arguments:
-    None
+    user      => The user creating the case (injected by @api_login)
 
     Data Block:
     {
-        [
-            {
-                ...case
-            },
-            {
-                ...case
-            }
-        ]
+        "title": "Case Title",
+        "summary": "Brief description"
     }
 
     Result Example:
     {
-        "valid": [
-            {
-                ...case
-            },
-            {
-                ...case
-            }
-        ],
-        "invalid": [
-            {
-                "input": { ...case },
-                "error": "Id already exists"
-            },
-            {
-                "input": { ...case },
-                "error": "Object 'Case' expected a parameter named: title"
-            }
-        ]
+        ...case     # The new case data
     }
     """
-    cases = request.json
+    case_data = request.json
 
-    if cases is None:
-        return bad_request(err="No cases were sent.")
+    if not case_data or not isinstance(case_data, dict):
+        return bad_request(err="Request body must be a JSON object with title and summary.")
 
-    response_body: dict[str, list[Any]] = {"valid": [], "invalid": []}
-    odms: list[tuple[str, Case]] = []
+    title = case_data.get("title")
+    summary = case_data.get("summary")
 
-    for case_data in cases:
-        try:
-            case_id = case_data.get("case_id") or (
-                f"case-{sanitize_lucene_query(case_data.get('title', 'untitled')).lower().replace(' ', '-')}"
-            )
-            case_data["case_id"] = case_id
+    if not title or not summary:
+        return bad_request(err="Both title and summary are required.")
 
-            if case_service.exists(case_id):
-                raise ResourceExists(f"Case {case_id} already exists in datastore")
-
-            odm = Case(case_data)
-            response_body["valid"].append(odm.as_primitives())
-            odms.append((case_id, odm))
-        except HowlerException as e:
-            logger.warning(f"{type(e).__name__} when saving new case!")
-            logger.warning(e)
-            response_body["invalid"].append({"input": case_data, "error": str(e)})
-
-    if len(response_body["invalid"]) == 0:
-        if len(odms) > 0:
-            for case_id, odm in odms:
-                case_service.create_case(case_id, odm, user=user.uname, skip_exists=True)
-
-            datastore().case.commit()
-
-        return created(response_body)
-    else:
-        err_msg = ", ".join(item["error"] for item in response_body["invalid"])
-
-        return bad_request(response_body, err=err_msg)
+    try:
+        new_case = case_service.create_case(title, summary, user.uname)
+        return created(new_case)
+    except ResourceExists as e:
+        return bad_request(err=str(e))
 
 
 @generate_swagger_docs()
@@ -134,7 +80,7 @@ def get_case(id: str, **kwargs):
         ...case    # The requested case, if it exists
     }
     """
-    case = case_service.get_case(id, as_odm=False)
+    case = datastore().case.get_if_exists(key=id, as_obj=False)
 
     if not case:
         return not_found(err="Case %s does not exist" % id)
@@ -144,7 +90,7 @@ def get_case(id: str, **kwargs):
 
 @generate_swagger_docs()
 @case_api.route("/", methods=["DELETE"])
-@api_login(required_priv=["W"])
+@api_login(required_priv=["W"], required_type=["admin"])
 def delete_cases(user: User, **kwargs):
     """Delete cases.
 
@@ -169,10 +115,9 @@ def delete_cases(user: User, **kwargs):
     if case_ids is None:
         return bad_request(err="No case ids were sent.")
 
-    if "admin" not in user.type:
-        return forbidden(err="Cannot delete case, only admin is allowed to delete")
+    ds = datastore()
 
-    non_existing_case_ids = [case_id for case_id in case_ids if not case_service.exists(case_id)]
+    non_existing_case_ids = set([case_id for case_id in case_ids if not ds.case.exists(case_id)])
 
     if non_existing_case_ids:
         return not_found(err=f"Case id(s) {', '.join(non_existing_case_ids)} do not exist.")
@@ -209,12 +154,14 @@ def hide_cases(user: User, **kwargs):
     if case_ids is None:
         return bad_request(err="No case ids were sent.")
 
-    non_existing_case_ids = [case_id for case_id in case_ids if not case_service.exists(case_id)]
+    ds = datastore()
+
+    non_existing_case_ids = set([case_id for case_id in case_ids if not ds.case.exists(case_id)])
 
     if non_existing_case_ids:
         return not_found(err=f"Case id(s) {', '.join(non_existing_case_ids)} do not exist.")
 
-    case_service.hide_cases(case_ids)
+    case_service.hide_cases(case_ids, user=user.uname)
 
     return no_content()
 
@@ -258,7 +205,7 @@ def update_case(id: str, user: User, **kwargs):
 @generate_swagger_docs()
 @case_api.route("/<id>/items", methods=["POST"])
 @api_login(required_priv=["R", "W"])
-def append_item(id: str, user: User, **kwargs):
+def append_item(id: str, user: User, **kwargs):  # noqa: C901
     """Append an item to a case
 
     This endpoint adds a new item to a case's items list. The item can reference
@@ -274,8 +221,8 @@ def append_item(id: str, user: User, **kwargs):
 
     Data Block:
     {
-        "type": "hit",              # Type of item to append: "hit", "observable", "case", "table", "lead", or "reference"
-        "value": "item-id-123"      # The ID or reference value for the item
+        "type": "hit",            # Type of item to append: "hit", "observable", "case", "table", "lead", or "reference"
+        "value": "item-id-123"    # The ID or reference value for the item
     }
 
     Result Example:

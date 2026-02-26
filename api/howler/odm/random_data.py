@@ -39,7 +39,7 @@ from howler.odm.models.analytic import Analytic, Comment, Notebook, TriageOption
 from howler.odm.models.case import Case
 from howler.odm.models.ecs.event import EVENT_CATEGORIES
 from howler.odm.models.hit import Hit
-from howler.odm.models.howler_data import Assessment, Escalation, HitStatus, Scrutiny
+from howler.odm.models.howler_data import Assessment, Escalation, Scrutiny, Status
 from howler.odm.models.overview import Overview
 from howler.odm.models.template import Template
 from howler.odm.models.user import User
@@ -568,7 +568,7 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
                         "howler.assignment",
                         user.get("uname", user.get("username", None)),
                     ),
-                    hit_helper.update("howler.status", HitStatus.RESOLVED),
+                    hit_helper.update("howler.status", Status.RESOLVED),
                 ],
             )
 
@@ -817,6 +817,7 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
                     "id": str(uuid4()),
                     "complete": choice([True, False]),
                     "assignment": choice(selected_participants or ["admin"]),
+                    "status": choice(Status.list()),
                     "summary": choice(
                         [
                             "Review related indicators and determine additional pivots.",

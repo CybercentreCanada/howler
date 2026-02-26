@@ -102,7 +102,8 @@ def update_analytic(id: str, user: User, **kwargs):
     """
     storage = datastore()
 
-    if not storage.analytic.exists(id):
+    existing_analytic = storage.analytic.get(id)
+    if not existing_analytic:
         return not_found(err="This analytic does not exist")
 
     new_data = request.json
@@ -111,8 +112,6 @@ def update_analytic(id: str, user: User, **kwargs):
         return bad_request(err="You must provide updated data.")
 
     try:
-        existing_analytic: Analytic = storage.analytic.get_if_exists(id)
-
         existing_analytic.description = new_data.get("description", existing_analytic.description)
 
         if existing_analytic.triage_settings is not None:
@@ -471,7 +470,7 @@ def set_analytic_owner(id: str, user: dict[str, Any], **kwargs):
 @generate_swagger_docs()
 @analytic_api.route("/<id>/favourite", methods=["POST"])
 @api_login(required_priv=["R", "W"])
-def set_as_favourite(id, **kwargs):
+def set_as_favourite(id: str, user: User | None, **kwargs):
     """Add an analytic to a list of the user's favourites
 
     Variables:
@@ -490,16 +489,17 @@ def set_as_favourite(id, **kwargs):
     """
     storage = datastore()
 
-    existing_analytic: Analytic = storage.analytic.get_if_exists(id)
+    existing_analytic = storage.analytic.get(id)
     if not existing_analytic:
         return not_found(err="This analytic does not exist")
 
+    if not user:
+        return forbidden(err="User was not found.")
+
     try:
-        current_user = storage.user.get_if_exists(kwargs["user"]["uname"])
+        user.favourite_analytics.append(id)
 
-        current_user.favourite_analytics.append(id)
-
-        storage.user.save(current_user["uname"], current_user)
+        storage.user.save(user.uname, user)
 
         return ok()
     except ValueError as e:
@@ -509,7 +509,7 @@ def set_as_favourite(id, **kwargs):
 @generate_swagger_docs()
 @analytic_api.route("/<id>/favourite", methods=["DELETE"])
 @api_login(required_priv=["R", "W"])
-def remove_as_favourite(id, **kwargs):
+def remove_as_favourite(id: str, user: User | None, **kwargs):
     """Remove an analytic from a list of the user's favourites
 
     Variables:
@@ -528,12 +528,13 @@ def remove_as_favourite(id, **kwargs):
     if not storage.analytic.exists(id):
         return not_found(err="This analytic does not exist")
 
+    if not user:
+        return forbidden(err="User was not found.")
+
     try:
-        current_user = storage.user.get_if_exists(kwargs["user"]["uname"])
+        user.favourite_analytics = list(filter(lambda f: f != id, user.favourite_analytics))
 
-        current_user["favourite_analytics"] = list(filter(lambda f: f != id, current_user.favourite_analytics))
-
-        storage.user.save(current_user["uname"], current_user)
+        storage.user.save(user.uname, user)
 
         return no_content()
     except ValueError as e:

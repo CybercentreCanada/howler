@@ -6,10 +6,11 @@ import { get } from 'lodash-es';
 import type { Case } from 'models/entities/generated/Case';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Observable } from 'models/entities/generated/Observable';
-import { useCallback, useEffect, useMemo, useState, type FC } from 'react';
+import { useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import useCase from '../hooks/useCase';
+import CaseAggregate from './aggregates/CaseAggregate';
 import AlertPanel from './AlertPanel';
-import CaseAggregate from './CaseAggregate';
 import CaseOverview from './CaseOverview';
 import RelatedCasePanel from './RelatedCasePanel';
 import TaskPanel from './TaskPanel';
@@ -30,26 +31,14 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
   const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
   const theme = useTheme();
+  const { case: _case, updateCase } = useCase({ case: providedCase, caseId });
 
-  const [_case, setCase] = useState(providedCase);
   const [records, setRecords] = useState<Partial<Hit | Observable>[] | null>(null);
 
   const ids = useMemo(
     () => (_case?.items ?? []).filter(item => ['hit', 'observable'].includes(item.type)).map(item => item.id),
     [_case?.items]
   );
-
-  useEffect(() => {
-    if (providedCase) {
-      setCase(providedCase);
-    }
-  }, [providedCase]);
-
-  useEffect(() => {
-    if (caseId) {
-      dispatchApi(api.v2.case.get(caseId), { throwError: false }).then(setCase);
-    }
-  }, [caseId, dispatchApi]);
 
   useEffect(() => {
     if (ids?.length < 1) {
@@ -63,21 +52,6 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
       })
     ).then(response => setRecords(response.items));
   }, [dispatchApi, ids]);
-
-  const updateCase = useCallback(
-    async (_updatedCase: Partial<Case>) => {
-      if (!_case?.case_id) {
-        return;
-      }
-
-      try {
-        setCase(await dispatchApi(api.v2.case.put(_case.case_id, _updatedCase)));
-      } finally {
-        return;
-      }
-    },
-    [_case?.case_id, dispatchApi]
-  );
 
   if (!_case) {
     return null;

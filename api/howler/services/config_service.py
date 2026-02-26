@@ -11,7 +11,7 @@ from howler.common.logging import get_logger
 from howler.config import CLASSIFICATION, config, get_branch, get_commit, get_version
 from howler.helper.discover import get_apps_list
 from howler.helper.search import list_all_fields
-from howler.odm.models.howler_data import Assessment, Escalation, HitStatus, Scrutiny
+from howler.odm.models.howler_data import Assessment, Escalation, Scrutiny, Status
 from howler.odm.models.user import User
 from howler.plugins import get_plugins
 from howler.services import jwt_service
@@ -81,11 +81,11 @@ def get_configuration(user: User | None, **kwargs):
 
     return {
         "lookups": {
-            "howler.status": HitStatus.list(),
+            "howler.status": Status.list(),
             "howler.scrutiny": Scrutiny.list(),
             "howler.escalation": Escalation.list(),
             "howler.assessment": Assessment.list(),
-            "transitions": {status: hit_service.get_transitions(status) for status in HitStatus.list()},
+            "transitions": {status: hit_service.get_transitions(status) for status in Status.list()},
             **lookups,
         },
         "configuration": {

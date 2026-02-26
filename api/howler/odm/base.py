@@ -30,6 +30,7 @@ from dateutil.tz import tzutc
 from howler.common import loader
 from howler.common.exceptions import HowlerKeyError, HowlerNotImplementedError, HowlerTypeError, HowlerValueError
 from howler.common.net import is_valid_domain, is_valid_ip
+from howler.odm.howler_enum import HowlerEnum
 from howler.utils.dict_utils import flatten, recursive_update
 from howler.utils.isotime import now_as_iso
 from howler.utils.uid import get_random_id
@@ -110,17 +111,17 @@ class KeyMaskException(HowlerKeyError):
 
 class _Field:
     def __init__(
-            self,
-            name=None,
-            index=None,
-            store=None,
-            copyto=None,
-            default=None,
-            description=None,
-            deprecated_description=None,
-            reference=None,
-            optional=False,
-            deprecated=False,
+        self,
+        name=None,
+        index=None,
+        store=None,
+        copyto=None,
+        default=None,
+        description=None,
+        deprecated_description=None,
+        reference=None,
+        optional=False,
+        deprecated=False,
     ):
         self.index = index
         self.store = store
@@ -555,7 +556,12 @@ class Enum(Keyword):
     Accepts values from lists/sets, Enum classes, and StrEnum (PyStrEnum) members.
     """
 
-    def __init__(self, values: PyEnum | PyStrEnum | list[typing.Any] | set[typing.Any], *args, **kwargs):
+    def __init__(
+        self,
+        values: type[HowlerEnum] | type[PyEnum] | type[PyStrEnum] | list[typing.Any] | set[typing.Any],
+        *args,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         if isinstance(values, set):
             self.values = values
@@ -1007,13 +1013,13 @@ class Compound(_Field):
         self.child_type = field_type
 
     def check(
-            self,
-            value,
-            mask=None,
-            ignore_extra_values=False,
-            extra_fields={},
-            context=[],
-            **kwargs,
+        self,
+        value,
+        mask=None,
+        ignore_extra_values=False,
+        extra_fields={},
+        context=[],
+        **kwargs,
     ):
         if self.optional and value is None:
             return None
@@ -1201,11 +1207,11 @@ class Model:
 
     @classmethod
     def markdown(
-            cls,
-            toc_depth=1,
-            include_autogen_note=True,
-            defaults=None,
-            url_prefix="/howler/odm/class/",
+        cls,
+        toc_depth=1,
+        include_autogen_note=True,
+        defaults=None,
+        url_prefix="/howler/odm/class/",
     ) -> dict | str:
         markdown_content = (
             (
@@ -1289,7 +1295,7 @@ class Model:
             default = f"`{info.default}`"
             # If the field is a model, then provide a link to that documentation
             if field_class and issubclass(field_class, Model) and isinstance(info.default, dict):
-                ref_link = field_type[field_type.index("("): field_type.index(")") + 1]
+                ref_link = field_type[field_type.index("(") : field_type.index(")") + 1]
                 default = f"See [{field_class.__name__}]{ref_link} for more details."
 
             # Handle how to display values from provided defaults (different from field defaults)
@@ -1311,13 +1317,13 @@ class Model:
     __description = None
 
     def __init__(
-            self,
-            data: dict = None,
-            mask: list = None,
-            docid=None,
-            ignore_extra_values=True,
-            extra_fields={},
-            context=[],
+        self,
+        data: dict = None,
+        mask: list = None,
+        docid=None,
+        ignore_extra_values=True,
+        extra_fields={},
+        context=[],
     ):
         if len(context) == 0:
             context = [self.__class__.__name__.lower()]

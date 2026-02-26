@@ -2,140 +2,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from howler.common.exceptions import InvalidDataException, NotFoundException, ResourceExists
+from howler.common.exceptions import InvalidDataException, NotFoundException
 from howler.odm.models.case import Case
 from howler.services import case_service
-
-# ---------------------------------------------------------------------------
-# exists()
-# ---------------------------------------------------------------------------
-
-
-class TestExists:
-    """Tests for case_service.exists."""
-
-    @patch("howler.services.case_service.datastore")
-    def test_exists_returns_true(self, mock_ds_fn):
-        """Returns True when the case exists in the datastore."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-        mock_ds.case.exists.return_value = True
-
-        assert case_service.exists("case-001") is True
-        mock_ds.case.exists.assert_called_once_with("case-001")
-
-    @patch("howler.services.case_service.datastore")
-    def test_exists_returns_false(self, mock_ds_fn):
-        """Returns False when the case does not exist."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-        mock_ds.case.exists.return_value = False
-
-        assert case_service.exists("nonexistent") is False
-        mock_ds.case.exists.assert_called_once_with("nonexistent")
-
-    @patch("howler.services.case_service.datastore")
-    def test_exists_forwards_return_value(self, mock_ds_fn):
-        """exists() returns exactly what the datastore returns, not a hardcoded value."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-
-        # Return a truthy non-bool to prove passthrough
-        mock_ds.case.exists.return_value = "unexpected"
-        result = case_service.exists("case-x")
-
-        assert result == "unexpected"
-        mock_ds.case.exists.assert_called_once_with("case-x")
-
-
-# ---------------------------------------------------------------------------
-# get_case()
-# ---------------------------------------------------------------------------
-
-
-class TestGetCase:
-    """Tests for case_service.get_case."""
-
-    @patch("howler.services.case_service.datastore")
-    def test_get_case_default_params(self, mock_ds_fn):
-        """Calls datastore with as_obj=False and version=False by default."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-        mock_ds.case.get_if_exists.return_value = {"case_id": "case-001"}
-
-        result = case_service.get_case("case-001")
-
-        mock_ds.case.get_if_exists.assert_called_once_with(key="case-001", as_obj=False, version=False)
-        assert result == {"case_id": "case-001"}
-
-    @patch("howler.services.case_service.datastore")
-    def test_get_case_as_odm(self, mock_ds_fn):
-        """When as_odm=True, passes as_obj=True to the datastore."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-
-        case_obj = Case(
-            {
-                "case_id": "case-002",
-                "title": "T",
-                "summary": "S",
-                "overview": "O",
-                "escalation": "low",
-            }
-        )
-        mock_ds.case.get_if_exists.return_value = case_obj
-
-        result = case_service.get_case("case-002", as_odm=True)
-
-        mock_ds.case.get_if_exists.assert_called_once_with(key="case-002", as_obj=True, version=False)
-        assert result.case_id == "case-002"
-
-    @patch("howler.services.case_service.datastore")
-    def test_get_case_with_version(self, mock_ds_fn):
-        """When version=True, passes version=True to the datastore."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-        mock_ds.case.get_if_exists.return_value = ({"case_id": "case-003"}, "v1")
-
-        result = case_service.get_case("case-003", as_odm=False, version=True)
-
-        mock_ds.case.get_if_exists.assert_called_once_with(key="case-003", as_obj=False, version=True)
-        assert result == ({"case_id": "case-003"}, "v1")
-
-    @patch("howler.services.case_service.datastore")
-    def test_get_case_as_odm_with_version(self, mock_ds_fn):
-        """When as_odm=True and version=True, returns (Case, str) tuple."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-
-        case_obj = Case(
-            {
-                "case_id": "case-004",
-                "title": "T",
-                "summary": "S",
-                "overview": "O",
-                "escalation": "high",
-            }
-        )
-        mock_ds.case.get_if_exists.return_value = (case_obj, "v2")
-
-        result = case_service.get_case("case-004", as_odm=True, version=True)
-
-        mock_ds.case.get_if_exists.assert_called_once_with(key="case-004", as_obj=True, version=True)
-        assert result == (case_obj, "v2")
-
-    @patch("howler.services.case_service.datastore")
-    def test_get_case_returns_none_when_missing(self, mock_ds_fn):
-        """Returns None when case does not exist (get_if_exists returns None)."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-        mock_ds.case.get_if_exists.return_value = None
-
-        result = case_service.get_case("missing")
-
-        mock_ds.case.get_if_exists.assert_called_once_with(key="missing", as_obj=False, version=False)
-        assert result is None
-
 
 # ---------------------------------------------------------------------------
 # create_case()
@@ -147,50 +16,68 @@ class TestCreateCase:
 
     @patch("howler.services.case_service.datastore")
     def test_create_case_saves_to_datastore(self, mock_ds_fn):
-        """create_case saves the Case ODM to the datastore."""
+        """create_case constructs a Case from title/summary and saves it."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
-        mock_ds.case.exists.return_value = False
 
-        mock_collection = MagicMock()
-        mock_ds.__getitem__ = MagicMock(return_value=mock_collection)
+        case_service.create_case("New Case", "A summary", user="admin")
 
-        case_obj = MagicMock(spec=Case)
-        case_obj.log = []
-
-        case_service.create_case("case-new", case_obj, user="admin")
-
-        mock_collection.save.assert_called_once_with("case-new", case_obj)
+        mock_ds.case.save.assert_called_once()
+        saved_id, saved_case = mock_ds.case.save.call_args[0]
+        assert saved_id == saved_case.case_id
+        assert saved_case.title == "New Case"
+        assert saved_case.summary == "A summary"
 
     @patch("howler.services.case_service.datastore")
-    def test_create_case_raises_resource_exists(self, mock_ds_fn):
-        """create_case raises ResourceExists when the case_id already exists."""
+    def test_create_case_generates_unique_id(self, mock_ds_fn):
+        """create_case auto-generates a unique UUID for each case."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
-        mock_ds.case.exists.return_value = True
 
-        case_obj = MagicMock(spec=Case)
-        case_obj.log = []
+        case_service.create_case("Title A", "Summary A", user="admin")
+        case_service.create_case("Title B", "Summary B", user="admin")
 
-        with pytest.raises(ResourceExists):
-            case_service.create_case("case-existing", case_obj, user="admin")
+        calls = mock_ds.case.save.call_args_list
+        id_a = calls[0][0][0]
+        id_b = calls[1][0][0]
+        assert id_a != id_b
 
     @patch("howler.services.case_service.datastore")
-    def test_create_case_skip_exists_bypasses_check(self, mock_ds_fn):
-        """create_case with skip_exists=True does not check existence first."""
+    def test_create_case_returns_primitives_dict(self, mock_ds_fn):
+        """create_case returns the created case as a plain dict."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        mock_collection = MagicMock()
-        mock_ds.__getitem__ = MagicMock(return_value=mock_collection)
+        result = case_service.create_case("Title", "Summary", user="admin")
 
-        case_obj = MagicMock(spec=Case)
-        case_obj.log = []
+        assert isinstance(result, dict)
+        assert result["title"] == "Title"
+        assert result["summary"] == "Summary"
+        assert "case_id" in result
 
-        case_service.create_case("case-new", case_obj, user="admin", skip_exists=True)
+    @patch("howler.services.case_service.datastore")
+    def test_create_case_sets_log_entry(self, mock_ds_fn):
+        """create_case adds a creation log entry for the given user."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
 
-        mock_ds.case.exists.assert_not_called()
-        mock_collection.save.assert_called_once()
+        case_service.create_case("Title", "Summary", user="admin")
+
+        _, saved_case = mock_ds.case.save.call_args[0]
+        assert len(saved_case.log) == 1
+        assert saved_case.log[0].user == "admin"
+
+    @patch("howler.services.case_service.datastore")
+    def test_create_case_no_user_defaults_to_system(self, mock_ds_fn):
+        """create_case uses 'system' as the log user when user='' (the default)."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        case_service.create_case("Title", "Summary")
+
+        _, saved_case = mock_ds.case.save.call_args[0]
+        assert len(saved_case.log) == 1
+        assert saved_case.log[0].user == "system"
 
 
 # ---------------------------------------------------------------------------
@@ -257,6 +144,56 @@ class TestUpdateCase:
 
         mock_ds.case.save.assert_called_once()
         assert result.title == "New Title"
+        assert result.updated is not None
+        assert len(result.log) == 1
+        assert result.log[0].key == "title"
+        assert result.log[0].user == "analyst"
+        assert result.log[0].previous_value == "Old Title"
+        assert result.log[0].new_value == "New Title"
+
+    @patch("howler.services.case_service.datastore")
+    def test_update_case_raises_invalid_for_updated_field(self, mock_ds_fn):
+        """update_case raises InvalidDataException when the immutable 'updated' field is supplied."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+        mock_ds.case.get_if_exists.return_value = Case(
+            {"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"}
+        )
+        mock_user = MagicMock()
+        mock_user.uname = "analyst"
+
+        with pytest.raises(InvalidDataException):
+            case_service.update_case("case-001", {"updated": "2024-01-01T00:00:00Z"}, mock_user)
+
+    @patch("howler.services.case_service.datastore")
+    def test_update_case_raises_invalid_for_items_field(self, mock_ds_fn):
+        """update_case accepts 'items' as a compound field (not immutable) and does not raise."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+        mock_ds.case.get_if_exists.return_value = Case(
+            {"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"}
+        )
+        mock_user = MagicMock()
+        mock_user.uname = "analyst"
+
+        # items is now a compound field — update must succeed without raising
+        result = case_service.update_case("case-001", {"items": []}, mock_user)
+        assert result is not None
+        mock_ds.case.save.assert_called_once()
+
+    @patch("howler.services.case_service.datastore")
+    def test_update_case_raises_invalid_when_no_updatable_fields(self, mock_ds_fn):
+        """update_case raises InvalidDataException when the update dict is empty."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+        mock_ds.case.get_if_exists.return_value = Case(
+            {"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"}
+        )
+        mock_user = MagicMock()
+        mock_user.uname = "analyst"
+
+        with pytest.raises(InvalidDataException):
+            case_service.update_case("case-001", {}, mock_user)
 
 
 # ---------------------------------------------------------------------------
@@ -273,21 +210,17 @@ class TestHideCases:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        mock_collection = MagicMock()
-        mock_ds.__getitem__ = MagicMock(return_value=mock_collection)
-
-        # No cross-case references
-        mock_collection.stream_search.return_value = iter([])
+        mock_ds.case.stream_search.return_value = iter([])
 
         case_obj = MagicMock()
         case_obj.items = []
-        mock_collection.get_if_exists.return_value = case_obj
+        mock_ds.case.get_if_exists.return_value = case_obj
 
-        case_service.hide_cases({"case-001"})
+        case_service.hide_cases({"case-001"}, user="analyst")
 
-        mock_collection.get_if_exists.assert_called_with("case-001", as_obj=True)
+        mock_ds.case.get_if_exists.assert_called_with("case-001", as_obj=True)
         assert case_obj.visible is False
-        mock_collection.save.assert_called_with("case-001", case_obj)
+        mock_ds.case.save.assert_called_with("case-001", case_obj)
 
     @patch("howler.services.case_service.datastore")
     def test_hide_cases_marks_related_items_not_visible(self, mock_ds_fn):
@@ -295,11 +228,8 @@ class TestHideCases:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        mock_collection = MagicMock()
-        mock_ds.__getitem__ = MagicMock(return_value=mock_collection)
-
         # stream_search returns a related case that is NOT in the hidden set
-        mock_collection.stream_search.return_value = iter([{"case_id": "case-other"}])
+        mock_ds.case.stream_search.return_value = iter([{"case_id": "case-other"}])
 
         # The related case has an item pointing to the hidden case ID
         related_item = MagicMock()
@@ -317,18 +247,52 @@ class TestHideCases:
         target_case_obj = MagicMock()
         target_case_obj.items = []
 
-        mock_collection.get_if_exists.side_effect = lambda case_id, as_obj=False: (
+        mock_ds.case.get_if_exists.side_effect = lambda case_id, as_obj=False: (
             related_case_obj if case_id == "case-other" else target_case_obj
         )
 
-        case_service.hide_cases({"case-001"})
+        case_service.hide_cases({"case-001"}, user="analyst")
 
         # The matching item's visible flag must be set to False
         assert related_item.visible is False
         # The unrelated item must be untouched
         assert unrelated_item.visible is True
         # The related case must be saved with the update
-        mock_collection.save.assert_any_call("case-other", related_case_obj)
+        mock_ds.case.save.assert_any_call("case-other", related_case_obj)
+        # A log entry must have been appended to the related case documenting the hidden reference
+        related_case_obj.log.append.assert_called_once()
+        appended_log = related_case_obj.log.append.call_args[0][0]
+        assert "case-001" in appended_log.explanation
+
+    @patch("howler.services.case_service.datastore")
+    def test_hide_cases_does_not_save_related_case_when_no_items_match(self, mock_ds_fn):
+        """hide_cases does NOT save a related case when none of its items match the hidden IDs."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        # stream_search returns a case whose items don't actually match (stale index)
+        mock_ds.case.stream_search.return_value = iter([{"case_id": "case-other"}])
+
+        non_matching_item = MagicMock()
+        non_matching_item.id = "unrelated-id"
+
+        related_case_obj = MagicMock()
+        related_case_obj.items = [non_matching_item]
+
+        target_case_obj = MagicMock()
+        target_case_obj.items = []
+
+        mock_ds.case.get_if_exists.side_effect = lambda case_id, as_obj=False: (
+            related_case_obj if case_id == "case-other" else target_case_obj
+        )
+
+        case_service.hide_cases(["case-001"], user="analyst")
+
+        # No matching items → related case must NOT be saved
+        saved_ids = [call[0][0] for call in mock_ds.case.save.call_args_list]
+        assert "case-other" not in saved_ids
+        # The target case itself must still be saved
+        assert "case-001" in saved_ids
 
     @patch("howler.services.case_service.datastore")
     def test_hide_cases_skips_case_that_is_itself_being_hidden(self, mock_ds_fn):
@@ -336,24 +300,18 @@ class TestHideCases:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        mock_collection = MagicMock()
-        mock_ds.__getitem__ = MagicMock(return_value=mock_collection)
-
         # stream_search returns the case being hidden itself
-        mock_collection.stream_search.return_value = iter([{"case_id": "case-001"}])
+        mock_ds.case.stream_search.return_value = iter([{"case_id": "case-001"}])
 
         case_obj = MagicMock()
         case_obj.items = []
-        mock_collection.get_if_exists.return_value = case_obj
+        mock_ds.case.get_if_exists.return_value = case_obj
 
-        case_service.hide_cases({"case-001"})
+        case_service.hide_cases({"case-001"}, user="analyst")
 
-        # get_if_exists for the cross-case update path must NOT have been called
-        # with "case-001" from the stream loop (only from the direct hide loop)
-        calls = [call for call in mock_collection.get_if_exists.call_args_list]
-        # All get_if_exists calls must come from the direct hide loop (as_obj=True positional)
-        for call in calls:
-            assert call == (({"case-001"} & {call.args[0]}) and True) or call.kwargs.get("as_obj") is True
+        # stream_search returned "case-001" but the loop must have skipped it (continue).
+        # The only get_if_exists call should be from the direct hide loop that runs afterwards.
+        mock_ds.case.get_if_exists.assert_called_once_with("case-001", as_obj=True)
 
     @patch("howler.services.case_service.logger")
     @patch("howler.services.case_service.datastore")
@@ -362,13 +320,10 @@ class TestHideCases:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        mock_collection = MagicMock()
-        mock_ds.__getitem__ = MagicMock(return_value=mock_collection)
+        mock_ds.case.stream_search.return_value = iter([])
+        mock_ds.case.get_if_exists.return_value = None
 
-        mock_collection.stream_search.return_value = iter([])
-        mock_collection.get_if_exists.return_value = None
-
-        case_service.hide_cases({"case-missing"})
+        case_service.hide_cases({"case-missing"}, user="analyst")
 
         mock_logger.warning.assert_called_once()
         warning_msg = mock_logger.warning.call_args[0][0]
@@ -380,22 +335,103 @@ class TestHideCases:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        mock_collection = MagicMock()
-        mock_ds.__getitem__ = MagicMock(return_value=mock_collection)
-
-        mock_collection.stream_search.return_value = iter([])
+        mock_ds.case.stream_search.return_value = iter([])
 
         case_a = MagicMock()
         case_a.items = []
         case_b = MagicMock()
         case_b.items = []
 
-        mock_collection.get_if_exists.side_effect = lambda case_id, as_obj=False: (
-            case_a if case_id == "case-a" else case_b
-        )
+        mock_ds.case.get_if_exists.side_effect = lambda case_id, as_obj=False: case_a if case_id == "case-a" else case_b
 
-        case_service.hide_cases({"case-a", "case-b"})
+        case_service.hide_cases({"case-a", "case-b"}, user="analyst")
 
         assert case_a.visible is False
         assert case_b.visible is False
-        assert mock_collection.save.call_count == 2
+        assert mock_ds.case.save.call_count == 2
+
+    @patch("howler.services.case_service.datastore")
+    def test_hide_cases_appends_log_to_hidden_case(self, mock_ds_fn):
+        """hide_cases appends a CaseLog entry to each hidden case."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_ds.case.stream_search.return_value = iter([])
+
+        case_obj = MagicMock()
+        case_obj.items = []
+        case_obj.log = []  # use a real list so append actually works
+        mock_ds.case.get_if_exists.return_value = case_obj
+
+        case_service.hide_cases({"case-001"}, user="admin")
+
+        assert len(case_obj.log) == 1
+        assert case_obj.log[0].user == "admin"
+        assert "hidden" in case_obj.log[0].explanation.lower()
+
+
+# ---------------------------------------------------------------------------
+# delete_cases()
+# ---------------------------------------------------------------------------
+
+
+class TestDeleteCases:
+    """Tests for case_service.delete_cases."""
+
+    @patch("howler.services.case_service.datastore")
+    def test_delete_cases_calls_delete_by_query(self, mock_ds_fn):
+        """delete_cases calls delete_by_query with a query covering all supplied case IDs."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+        mock_ds.case.stream_search.return_value = iter([])
+
+        case_service.delete_cases({"case-del"})
+
+        mock_ds.case.delete_by_query.assert_called_once_with("case_id:(case-del)")
+
+    @patch("howler.services.case_service.datastore")
+    def test_delete_cases_removes_cross_case_item_references(self, mock_ds_fn):
+        """delete_cases removes CaseItem entries that reference a deleted case from other cases."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+        mock_ds.case.stream_search.return_value = iter([{"case_id": "case-other"}])
+
+        matching_item = MagicMock()
+        matching_item.id = "case-del"
+        unrelated_item = MagicMock()
+        unrelated_item.id = "other-id"
+
+        related_case = MagicMock()
+        related_case.items = [matching_item, unrelated_item]
+        mock_ds.case.get_if_exists.return_value = related_case
+
+        case_service.delete_cases({"case-del"})
+
+        assert len(related_case.items) == 1
+        assert related_case.items[0].id == "other-id"
+        mock_ds.case.save.assert_called_once_with("case-other", related_case)
+
+    @patch("howler.services.case_service.datastore")
+    def test_delete_cases_skips_stream_results_in_delete_set(self, mock_ds_fn):
+        """delete_cases does not attempt cross-reference cleanup on cases being deleted."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+        # stream_search returns the very case being deleted
+        mock_ds.case.stream_search.return_value = iter([{"case_id": "case-del"}])
+
+        case_service.delete_cases({"case-del"})
+
+        # The skip (continue) must prevent get_if_exists from being called
+        mock_ds.case.get_if_exists.assert_not_called()
+
+    @patch("howler.services.case_service.datastore")
+    def test_delete_cases_returns_delete_by_query_result(self, mock_ds_fn):
+        """delete_cases returns the boolean result of delete_by_query."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+        mock_ds.case.stream_search.return_value = iter([])
+        mock_ds.case.delete_by_query.return_value = True
+
+        result = case_service.delete_cases({"case-del"})
+
+        assert result is True

@@ -1,6 +1,8 @@
+import { Add } from '@mui/icons-material';
 import type { SxProps, Theme } from '@mui/material';
-import { Autocomplete, Box, IconButton, Popover, TextField, Typography } from '@mui/material';
+import { Autocomplete, AvatarGroup, Box, IconButton, Popover, Stack, TextField, Typography } from '@mui/material';
 import { UserListContext } from 'components/app/providers/UserListProvider';
+import { uniq } from 'lodash-es';
 import type { FC } from 'react';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -8,17 +10,19 @@ import HowlerAvatar from './display/HowlerAvatar';
 
 const UserList: FC<{
   buttonSx?: SxProps<Theme>;
-  userId: string;
-  onChange: (userId: string) => void;
+  userIds: string[];
+  onChange: (userIds: string[]) => void;
   i18nLabel: string;
   avatarHeight?: number;
-}> = ({ buttonSx = {}, userId, onChange, i18nLabel, avatarHeight = 32 }) => {
+  disabled?: boolean;
+  multiple?: boolean;
+}> = ({ buttonSx = {}, userIds, onChange, i18nLabel, avatarHeight = 32, multiple = false, disabled = false }) => {
   const { t } = useTranslation();
 
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement>(null);
   const { users, searchUsers } = useContext(UserListContext);
 
-  const userIds = useMemo(() => Object.keys(users), [users]);
+  const allUserIds = useMemo(() => Object.keys(users), [users]);
 
   useEffect(() => {
     searchUsers('uname:*');
@@ -26,9 +30,22 @@ const UserList: FC<{
 
   return (
     <>
-      <IconButton sx={buttonSx} onClick={e => setAnchorEl(e.currentTarget)}>
-        <HowlerAvatar userId={userId} sx={{ height: avatarHeight, width: avatarHeight }} />
-      </IconButton>
+      {multiple ? (
+        <Stack direction="row" spacing={0.25} alignItems="center">
+          <AvatarGroup>
+            {uniq(userIds ?? [null]).map(userId => (
+              <HowlerAvatar key={userId} userId={userId} sx={{ height: avatarHeight, width: avatarHeight }} />
+            ))}
+          </AvatarGroup>
+          <IconButton size="small" sx={buttonSx} disabled={disabled} onClick={e => setAnchorEl(e.currentTarget)}>
+            <Add />
+          </IconButton>
+        </Stack>
+      ) : (
+        <IconButton sx={buttonSx} disabled={disabled} onClick={e => setAnchorEl(e.currentTarget)}>
+          <HowlerAvatar userId={userIds[0]} sx={{ height: avatarHeight, width: avatarHeight }} />
+        </IconButton>
+      )}
       <Popover
         open={!!anchorEl}
         onClose={() => setAnchorEl(null)}
@@ -37,8 +54,10 @@ const UserList: FC<{
       >
         <Box sx={{ p: 2 }}>
           <Autocomplete
+            disabled={disabled}
+            multiple={multiple}
             sx={{ minWidth: '300px' }}
-            options={userIds}
+            options={allUserIds}
             renderInput={params => <TextField {...params} label={t(i18nLabel)} size="small" />}
             renderOption={(props, _userId) => {
               const user = users[_userId];
@@ -68,8 +87,14 @@ const UserList: FC<{
                 </li>
               );
             }}
-            value={userId}
-            onChange={(__, option) => onChange(option)}
+            value={userIds}
+            onChange={(__, options) => {
+              if (multiple) {
+                onChange(Array.isArray(options) ? options : [options]);
+              } else {
+                onChange([Array.isArray(options) ? (options[0] ?? null) : options]);
+              }
+            }}
           />
         </Box>
       </Popover>

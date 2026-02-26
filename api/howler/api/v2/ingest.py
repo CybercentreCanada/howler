@@ -20,11 +20,13 @@ from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.collection import ESCollection
 from howler.datastore.exceptions import DataStoreException
+from howler.datastore.howler_store import INDEXES
 from howler.datastore.operations import OdmHelper, OdmUpdateOperation
 from howler.odm.models.hit import Hit
 from howler.odm.models.user import User
 from howler.security import api_login
 from howler.services import hit_service
+from howler.utils.dict_utils import flatten
 
 MAX_COMMENT_LEN = 5000
 
@@ -220,43 +222,46 @@ def overwrite(index: str, id: str, server_version: str, **kwargs):
 
     Data Block:
     {
-        ...hit
+        ...record
     }
 
     Result Example:
-    https://github.com/CybercentreCanada/howler-api/blob/main/howler/odm/models/hit.py
+    https://github.com/CybercentreCanada/howler-api/blob/develop/howler/odm/models/hit.py
+    https://github.com/CybercentreCanada/howler-api/blob/develop/howler/odm/models/observable.py
     """
     if "," in index:
         return bad_request(err="You cannot overwrite across multiple indexes.")
 
     ds = datastore()
 
-    if not ds[index].exists(id):
-        return not_found(err="Hit %s does not exist" % id)
-
-    hit = ds[index].get(id, as_obj=False, version=False)
+    record = ds[index].get(id, as_obj=False, version=False)
+    if not record:
+        return not_found(err="Record %s does not exist" % id)
 
     new_fields = request.json
-
     if not isinstance(new_fields, dict):
-        return bad_request(err="The JSON payload must be a subset of a valid Hit object.")
+        return bad_request(err="The JSON payload must be a subset of a valid record.")
 
     try:
+        odm = INDEXES[index]
+
         # TODO: This is inefficient. We can use elastic's `update` command to just directly patch the document
-        new_hit = cast(
+        new_record = cast(
             dict[str, Any],
             merge(
-                hit_service.flatten(hit, odm=Hit),
-                hit_service.flatten(new_fields, odm=Hit),
+                flatten(record, odm=odm),
+                flatten(new_fields, odm=odm),
                 strategy=Strategy.REPLACE
                 if bool(request.args.get("replace", False, type=lambda v: v.lower() == "true"))
                 else Strategy.ADDITIVE,
             ),
         )
 
-        new_hit, new_version = hit_service.save_hit(Hit(new_hit), server_version)
+        ds[index].save(id, odm(new_record) if odm else new_record, version=server_version)
 
-        return ok(new_hit), new_version
+        new_record, new_version = ds[index].get(id, as_obj=False, version=True)
+
+        return ok(new_record), new_version
     except HowlerValueError as e:
         return bad_request(err=e.message)
 

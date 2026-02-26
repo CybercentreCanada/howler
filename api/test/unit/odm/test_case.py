@@ -3,8 +3,62 @@ from datetime import datetime, timezone
 import pytest
 
 from howler.common.exceptions import HowlerValueError
-from howler.odm.models.case import CASE_ITEM_TYPES, Case, CaseEnrichment, CaseItem, CaseRule, CaseTask
+from howler.odm.models.case import CASE_ITEM_TYPES, Case, CaseEnrichment, CaseItem, CaseLog, CaseRule, CaseTask
 from howler.odm.randomizer import random_model_obj
+
+
+class TestCaseLog:
+    """Tests for the CaseLog ODM model."""
+
+    def test_create_case_log_with_explanation(self):
+        """CaseLog is valid when explanation is provided alongside user."""
+        log = CaseLog({"timestamp": "NOW", "explanation": "Case created", "user": "admin"})
+
+        assert log.user == "admin"
+        assert log.explanation == "Case created"
+        assert log.key is None
+        assert log.previous_value is None
+        assert log.new_value is None
+
+    def test_create_case_log_without_explanation_requires_timestamp_new_value_user(self):
+        """CaseLog without explanation requires timestamp, new_value, and user."""
+        log = CaseLog(
+            {"timestamp": "NOW", "key": "escalation", "previous_value": "low", "new_value": "high", "user": "bob"}
+        )
+
+        assert log.user == "bob"
+        assert log.new_value == "high"
+        assert log.previous_value == "low"
+        assert log.key == "escalation"
+
+    def test_create_case_log_missing_new_value_without_explanation_raises(self):
+        """CaseLog raises HowlerValueError when explanation is absent and new_value is missing."""
+        with pytest.raises(HowlerValueError):
+            CaseLog({"timestamp": "NOW", "user": "analyst"})  # no explanation and no new_value
+
+    def test_create_case_log_missing_user_without_explanation_raises(self):
+        """CaseLog raises HowlerValueError when explanation is absent and user is missing."""
+        with pytest.raises(HowlerValueError):
+            CaseLog({"timestamp": "NOW", "new_value": "high"})  # no explanation and no user
+
+    def test_case_log_as_primitives(self):
+        """as_primitives returns a plain dict containing all stored fields."""
+        log = CaseLog(
+            {
+                "timestamp": "NOW",
+                "key": "escalation",
+                "previous_value": "low",
+                "new_value": "high",
+                "user": "alice",
+            }
+        )
+        primitives = log.as_primitives()
+
+        assert isinstance(primitives, dict)
+        assert primitives["user"] == "alice"
+        assert primitives["new_value"] == "high"
+        assert primitives["previous_value"] == "low"
+        assert primitives["key"] == "escalation"
 
 
 class TestCaseItem:
@@ -150,6 +204,25 @@ class TestCaseTask:
                 }
             )
 
+    def test_case_task_as_primitives(self):
+        """as_primitives returns a dict with all expected CaseTask fields."""
+        task = CaseTask(
+            {
+                "id": "00000000-0000-0000-0000-000000000005",
+                "assignment": "soc",
+                "summary": "Analyse logs",
+                "path": "/alerts/critical",
+                "complete": True,
+            }
+        )
+        primitives = task.as_primitives()
+
+        assert isinstance(primitives, dict)
+        assert primitives["assignment"] == "soc"
+        assert primitives["summary"] == "Analyse logs"
+        assert primitives["path"] == "/alerts/critical"
+        assert primitives["complete"] is True
+
 
 class TestCaseEnrichment:
     """Tests for the CaseEnrichment ODM model."""
@@ -182,8 +255,7 @@ class TestCase:
         with pytest.raises(HowlerValueError):
             Case(
                 {
-                    # missing 'case_id'
-                    "title": "T",
+                    # missing 'title'
                     "summary": "S",
                     "overview": "O",
                     "escalation": "high",
@@ -193,9 +265,8 @@ class TestCase:
         with pytest.raises(HowlerValueError):
             Case(
                 {
-                    "case_id": "case-x",
-                    # missing 'title'
-                    "summary": "S",
+                    "title": "T",
+                    # missing 'summary'
                     "overview": "O",
                     "escalation": "high",
                 }
@@ -471,3 +542,27 @@ class TestCase:
                     "start": "not-a-date",
                 }
             )
+
+    def test_case_with_log_entries(self):
+        """Case stores CaseLog entries and includes them in as_primitives."""
+        case = Case(
+            {
+                "case_id": "case-log",
+                "title": "T",
+                "summary": "S",
+                "overview": "O",
+                "escalation": "low",
+                "log": [
+                    {"timestamp": "NOW", "explanation": "Case created", "user": "admin"},
+                ],
+            }
+        )
+
+        assert len(case.log) == 1
+        assert case.log[0].user == "admin"
+        assert case.log[0].explanation == "Case created"
+
+        primitives = case.as_primitives()
+        assert "log" in primitives
+        assert len(primitives["log"]) == 1
+        assert primitives["log"][0]["user"] == "admin"
