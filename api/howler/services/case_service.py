@@ -514,7 +514,7 @@ def add_backreference(backing_obj: Hit | Observable, case_id: str):
         InvalidDataException: If backing_obj is None or case_id is empty/falsy.
     """
     if backing_obj is None:
-        raise InvalidDataException("Cannot add back reference on a nonexisting object")
+        raise InvalidDataException("Cannot add back reference on a nonexistent object")
 
     if not case_id:
         raise InvalidDataException("Missing back reference case_id")
