@@ -28,6 +28,7 @@ class CaseItemTypes(StrEnum):
         REFERENCE: An external reference such as a URL, document, or resource that
             provides additional context or evidence.
     """
+
     OBSERVABLE = "observable"
     HIT = "hit"
     TABLE = "table"
