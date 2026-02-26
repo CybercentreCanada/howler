@@ -16,7 +16,7 @@ from howler.datastore.operations import OdmHelper, OdmUpdateOperation
 from howler.odm.models.hit import Hit
 from howler.odm.models.user import User
 from howler.security import api_login
-from howler.services import hit_service
+from howler.services import hit_service, observable_service
 from howler.utils.dict_utils import flatten
 
 MAX_COMMENT_LEN = 5000
@@ -77,10 +77,10 @@ def create(index: str, user: User, **kwargs):
     for i, hit in enumerate(hits):
         try:
             if index == "observable":
-                odm, _warnings = hit_service.convert_observable(
+                odm, _warnings = observable_service.convert_observable(
                     hit, unique=True, ignore_extra_values=ignore_extra_values
                 )
-                hit_service.create_observable(odm.howler.id, odm, user.uname, skip_exists=True)
+                observable_service.create_observable(odm.howler.id, odm, user.uname, skip_exists=True)
             else:
                 odm, _warnings = hit_service.convert_hit(
                     hit, unique=True, ignore_extra_values=ignore_extra_values, index=index
@@ -196,7 +196,7 @@ def validate(index: str, **kwargs):
     for hit in hits:
         try:
             if index == "observable":
-                hit_service.convert_observable(hit, unique=True)
+                observable_service.convert_observable(hit, unique=True)
             else:
                 hit_service.convert_hit(hit, unique=True, index=index)
             validation["valid"].append(hit)
