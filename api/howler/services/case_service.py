@@ -278,9 +278,6 @@ def append_case_item(  # noqa: C901
 
         item = CaseItem({"type": item_type, "value": item_value, "path": item_path})
 
-    if not item.path.endswith("/"):
-        item.path += "/"
-
     match item_type:
         case CaseItemTypes.HIT:
             append_hit(case_id, item)
@@ -333,9 +330,7 @@ def append_hit(case_id: str, item: CaseItem):
     item.id = item.value
 
     if item.path == "related/":
-        item.path = "alerts/"
-
-    item.path += f"{hit.howler.analytic} ({hit.howler.id})"
+        item.path = f"alerts/{hit.howler.analytic} ({hit.howler.id})"
 
     case.items.append(item)
 
@@ -380,9 +375,7 @@ def append_observable(case_id: str, item: CaseItem):
     item.id = item.value
 
     if item.path == "related/":
-        item.path = "observables/"
-
-    item.path += f"{observable.howler.id}"
+        item.path = f"observables/{observable.howler.id}"
 
     case.items.append(item)
 

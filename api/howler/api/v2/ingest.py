@@ -4,16 +4,7 @@ from typing import Any, cast
 from flask import request
 from mergedeep import Strategy, merge
 
-from howler.api import (
-    bad_request,
-    created,
-    forbidden,
-    internal_error,
-    make_subapi_blueprint,
-    no_content,
-    not_found,
-    ok,
-)
+from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
 from howler.common.exceptions import HowlerException, HowlerValueError
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -25,7 +16,7 @@ from howler.datastore.operations import OdmHelper, OdmUpdateOperation
 from howler.odm.models.hit import Hit
 from howler.odm.models.user import User
 from howler.security import api_login
-from howler.services import hit_service
+from howler.services import hit_service, observable_service
 from howler.utils.dict_utils import flatten
 
 MAX_COMMENT_LEN = 5000
@@ -85,11 +76,16 @@ def create(index: str, user: User, **kwargs):
     warnings = []
     for i, hit in enumerate(hits):
         try:
-            odm, _warnings = hit_service.convert_hit(
-                hit, unique=True, ignore_extra_values=ignore_extra_values, index=index
-            )
-
-            hit_service.create_hit(odm.howler.id, odm, user.uname, skip_exists=True, index=index)
+            if index == "observable":
+                odm, _warnings = observable_service.convert_observable(
+                    hit, unique=True, ignore_extra_values=ignore_extra_values
+                )
+                observable_service.create_observable(odm.howler.id, odm, user.uname, skip_exists=True)
+            else:
+                odm, _warnings = hit_service.convert_hit(
+                    hit, unique=True, ignore_extra_values=ignore_extra_values, index=index
+                )
+                hit_service.create_hit(odm.howler.id, odm, user.uname, skip_exists=True, index=index)
 
             ids.append(odm.howler.id)
             warnings.extend(_warnings)
@@ -199,7 +195,10 @@ def validate(index: str, **kwargs):
 
     for hit in hits:
         try:
-            hit_service.convert_hit(hit, unique=True, index=index)
+            if index == "observable":
+                observable_service.convert_observable(hit, unique=True)
+            else:
+                hit_service.convert_hit(hit, unique=True, index=index)
             validation["valid"].append(hit)
         except HowlerException as e:
             validation["invalid"].append({"input": hit, "error": str(e)})

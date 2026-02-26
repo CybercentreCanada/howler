@@ -77,7 +77,7 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
         <CaseAggregate
           icon="mingcute:heartbeat-line"
           iconColor={theme.palette.error.light}
-          title={getDuration(_case).format('HH[h] mm[m]')}
+          title={getDuration(_case)?.format('HH[h] mm[m]') ?? '--'}
           subtitle={t('page.cases.dashboard.duration')}
         />
       </Grid>
