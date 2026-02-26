@@ -20,6 +20,7 @@ import {
   capitalize,
   groupBy,
   isArray,
+  isBoolean,
   isEmpty,
   isNull,
   isNumber,
@@ -172,7 +173,9 @@ const ObjectRenderer: FC<{
       {indent && <Divider orientation="vertical" flexItem sx={{ borderColor: 'primary.main', borderWidth: '2px' }} />}
       <Stack flex={1} ml={1} maxWidth="100%">
         {entries
-          .filter(([__, val]) => !isNull(val) && !isUndefined(val) && !isEmpty(val) && !isNumber(val))
+          .filter(
+            ([__, val]) => !isNull(val) && !isUndefined(val) && !isEmpty(val) && !isBoolean(val) && !isNumber(val)
+          )
           .map(([key, val]) => {
             if (Array.isArray(val)) {
               return <ListRenderer obj={obj} maxKeyLength={longestKey} key={key} objKey={key} entries={val} />;
@@ -308,7 +311,7 @@ const ObjectDetails: FC<{ obj: Hit | Observable }> = ({ obj }) => {
             !key.startsWith('__') &&
             key.includes('.') &&
             ['howler', 'labels'].every(prefix => !key.startsWith(prefix)) &&
-            (!isEmpty(value) || isNumber(value))
+            (!isEmpty(value) || isNumber(value) || isBoolean(value))
         ),
         ([key]) => key.split('.')[0]
       ),
