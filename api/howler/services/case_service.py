@@ -11,7 +11,10 @@ from prometheus_client import Counter
 from howler.common.exceptions import InvalidDataException, NotFoundException
 from howler.common.loader import APP_NAME, datastore
 from howler.common.logging import get_logger
-from howler.odm.models.case import Case, CaseLog
+from howler.datastore.exceptions import DataStoreException
+from howler.odm.models.case import Case, CaseItem, CaseItemTypes, CaseLog
+from howler.odm.models.hit import Hit
+from howler.odm.models.observable import Observable
 from howler.odm.models.user import User
 
 logger = get_logger(__file__)
@@ -205,3 +208,339 @@ def update_case(case_id: str, case_data: dict[str, Any], user: User) -> Case:
     ds.case.save(case_id, case)
 
     return case
+
+
+@overload
+def append_case_item(case_id: str, item: CaseItem): ...
+
+
+@overload
+def append_case_item(case_id: str, item_type: str, item_value: str, item_path: str = "related/"): ...
+
+
+def append_case_item(case_id: str, item: CaseItem = None, item_type: str = None, item_value=None, item_path="related/"):
+    """Append an item to a case, dispatching to the appropriate handler based on item type.
+
+    Can be called either with a pre-built CaseItem object or with individual
+    item_type, item_value, and item_path parameters to construct one.
+
+    Args:
+        case_id: Unique identifier of the case to append the item to.
+        item: A pre-built CaseItem object. If provided, item_type, item_value,
+            and item_path are ignored.
+        item_type: The type of item to append (e.g. "hit", "observable", "case",
+            "table", "lead", "reference"). Required if item is not provided.
+        item_value: The value/identifier of the item to append. Required if item
+            is not provided.
+        item_path: Optional path prefix for organizing the item within the case.
+            A trailing "/" is appended automatically if not present.
+
+    Raises:
+        InvalidDataException: If item is not provided and item_type or item_value
+            are missing, or if item_type is not a valid CaseItemTypes value.
+    """
+    if item is None:
+        if not all([item_type, item_value]):
+            raise InvalidDataException("item_type, item_value, and item_path are required if item is not provided")
+
+        if item_type not in CaseItemTypes:
+            raise InvalidDataException(f"Invalid item type: {item_type}, valid types are: {', '.join(CaseItemTypes)}")
+
+        if not item_path:
+            item_path = "related/"
+
+        item: CaseItem = CaseItem({"type": item_type, "value": item_value, "path": item_path})
+
+    if not item.path.endswith("/"):
+        item.path += "/"
+
+    match item_type:
+        case CaseItemTypes.HIT:
+            append_hit(case_id, item)
+        case CaseItemTypes.OBSERVABLE:
+            append_observable(case_id, item)
+        case CaseItemTypes.CASE:
+            append_case(case_id, item)
+        case CaseItemTypes.TABLE:
+            append_table(case_id, item)
+        case CaseItemTypes.LEAD:
+            append_lead(case_id, item)
+        case CaseItemTypes.REFERENCE:
+            append_reference(case_id, item)
+        case _:
+            raise InvalidDataException(f"Unsupported item type: {item_type}")
+
+
+def append_hit(case_id: str, item: CaseItem):
+    """Append a hit item to a case and create a back-reference on the hit.
+
+    Validates that the case and hit both exist and that the hit is not already
+    present in the case. Sets the item's path to include the hit's analytic
+    and ID, then persists the updated case and adds a back-reference from the
+    hit to the case.
+
+    Args:
+        case_id: Unique identifier of the case to append the hit to.
+        item: A CaseItem whose ``value`` is the ID of an existing hit.
+
+    Raises:
+        NotFoundException: If the case or hit does not exist.
+        InvalidDataException: If the hit is already present in the case.
+        DataStoreException: If saving the updated case fails.
+    """
+    ds = datastore()
+
+    case: Case = ds.case.get_if_exists(key=case_id, as_obj=True)
+
+    if case is None:
+        raise NotFoundException(f"Case {case_id} does not exist")
+
+    if any(item.value == case_item["value"] for case_item in case.items):
+        raise InvalidDataException(f"Hit {item.value} already exists in case {case_id}")
+
+    hit: Hit = ds.hit.get_if_exists(key=item.value, as_obj=True)
+
+    if hit is None:
+        raise NotFoundException(f"Hit {item.value} not found, cannot be added to case")
+
+    item.id = item.value
+
+    if item.path == "related/":
+        item.path = "alerts/"
+
+    item.path += f"{hit.howler.analytic} ({hit.howler.id})"
+
+    case.items.append(item)
+
+    if not datastore().case.save(case.case_id, case):
+        raise DataStoreException(f"Failed to save {case.case_id} with new item {item.value}")
+
+    add_backreference(hit, case.case_id)
+
+
+def append_observable(case_id: str, item: CaseItem):
+    """Append an observable item to a case and create a back-reference on the observable.
+
+    Validates that the case and observable both exist and that the observable is
+    not already present in the case. Sets the item's path to include the
+    observable's ID, then persists the updated case and adds a back-reference
+    from the observable to the case.
+
+    Args:
+        case_id: Unique identifier of the case to append the observable to.
+        item: A CaseItem whose ``value`` is the ID of an existing observable.
+
+    Raises:
+        NotFoundException: If the case or observable does not exist.
+        InvalidDataException: If the observable is already present in the case.
+        DataStoreException: If saving the updated case fails.
+    """
+    ds = datastore()
+
+    case: Case = ds.case.get_if_exists(key=case_id, as_obj=True)
+
+    if case is None:
+        raise NotFoundException(f"Case {case_id} does not exist")
+
+    if any(item.value == case_item["value"] for case_item in case.items):
+        raise InvalidDataException(f"Observable {item.value} already exists in case {case_id}")
+
+    observable: Observable = ds.observable.get_if_exists(key=item.value, as_obj=True)
+
+    if observable is None:
+        raise NotFoundException(f"Observable {item.value} not found, cannot be added to case")
+
+    item.id = item.value
+
+    if item.path == "related/":
+        item.path = "observables/"
+
+    item.path += f"{observable.howler.id}"
+
+    case.items.append(item)
+
+    if not datastore().case.save(case.case_id, case):
+        raise DataStoreException(f"Failed to save {case.case_id} with new item {item.value}")
+
+    add_backreference(observable, case.case_id)
+
+
+def append_case(case_id: str, item: CaseItem):
+    """Append a case reference item to a case.
+
+    Validates that both the parent case and the referenced case exist, and that
+    the referenced case is not already present in the parent case. Sets the
+    item's path to include the referenced case's ID, then persists the updated
+    parent case.
+
+    Args:
+        case_id: Unique identifier of the parent case to append the reference to.
+        item: A CaseItem whose ``value`` is the ID of an existing case to reference.
+
+    Raises:
+        NotFoundException: If the parent case or referenced case does not exist.
+        InvalidDataException: If the referenced case is already present in the parent case.
+        DataStoreException: If saving the updated case fails.
+    """
+    ds = datastore()
+
+    case: Case = ds.case.get_if_exists(key=case_id, as_obj=True)
+
+    if case is None:
+        raise NotFoundException(f"Case {case_id} does not exist")
+
+    if any(item.value == case_item["value"] for case_item in case.items):
+        raise InvalidDataException(f"Observable {item.value} already exists in case {case_id}")
+
+    referenced_case: Case = ds.case.get_if_exists(key=item.value, as_obj=True)
+
+    if referenced_case is None:
+        raise NotFoundException(f"Referenced case {item.value} not found, cannot be added to case")
+
+    item.id = item.value
+
+    if item.path == "related/":
+        item.path = "cases/"
+
+    item.path += f"{referenced_case.case_id}"
+
+    case.items.append(item)
+
+    if not datastore().case.save(case.case_id, case):
+        raise DataStoreException(f"Failed to save {case.case_id} with new item {item.value}")
+
+
+def append_table(case_id: str, item: CaseItem):
+    """Append a table item to a case.
+
+    Not yet implemented.
+
+    Args:
+        case_id: Unique identifier of the case to append the table to.
+        item: A CaseItem representing the table to append.
+
+    Raises:
+        NotImplementedError: Always raised; this feature is not yet implemented.
+    """
+    raise NotImplementedError
+
+
+def append_lead(case_id: str, item: CaseItem):
+    """Append a lead item to a case.
+
+    Not yet implemented.
+
+    Args:
+        case_id: Unique identifier of the case to append the lead to.
+        item: A CaseItem representing the lead to append.
+
+    Raises:
+        NotImplementedError: Always raised; this feature is not yet implemented.
+    """
+    raise NotImplementedError
+
+
+def append_reference(case_id: str, item: CaseItem):
+    """Append a reference item to a case.
+
+    Not yet implemented.
+
+    Args:
+        case_id: Unique identifier of the case to append the reference to.
+        item: A CaseItem representing the external reference to append.
+
+    Raises:
+        NotImplementedError: Always raised; this feature is not yet implemented.
+    """
+    raise NotImplementedError
+
+
+def add_backreference(backing_obj: Hit | Observable, case_id: str):
+    """Add a back-reference from a hit or observable to a case.
+
+    Records the case ID in the backing object's ``howler.related_ids`` set so
+    that the relationship can be traversed from the hit/observable side. If the
+    back-reference already exists, the call is a no-op.
+
+    Args:
+        backing_obj: The Hit or Observable object to add the back-reference to.
+        case_id: Unique identifier of the case to reference.
+
+    Raises:
+        InvalidDataException: If backing_obj is None or case_id is empty/falsy.
+    """
+    if backing_obj is None:
+        raise InvalidDataException("Cannot add back reference on a nonexistent object")
+
+    if not case_id:
+        raise InvalidDataException("Missing back reference case_id")
+
+    if any(case_id == related_id for related_id in backing_obj.howler.related):
+        return
+
+    backing_obj.howler.related.append(case_id)
+    datastore()[backing_obj.__class__.__name__.lower()].save(backing_obj.howler.id, backing_obj)
+
+
+def remove_backreference(backing_obj: Hit | Observable, case_id: str):
+    """Remove a back-reference from a hit or observable to a case.
+
+    Removes the case ID from the backing object's ``howler.related`` list
+    and persists the change. If the case ID is not present in the list,
+    the call is a no-op.
+
+    Args:
+        backing_obj: The Hit or Observable object to remove the back-reference from.
+        case_id: Unique identifier of the case reference to remove.
+
+    Raises:
+        InvalidDataException: If backing_obj is None or case_id is empty/falsy.
+    """
+    if backing_obj is None:
+        raise InvalidDataException("Cannot remove back reference on a nonexisting object")
+
+    if not case_id:
+        raise InvalidDataException("Missing back reference case_id")
+
+    if case_id in backing_obj.howler.related:
+        backing_obj.howler.related.remove(case_id)
+        datastore()[backing_obj.__class__.__name__.lower()].save(backing_obj.howler.id, backing_obj)
+
+
+def remove_case_item(case_id: str, item_value: str):
+    """Remove an item from a case and clean up any associated back-references.
+
+    Locates the item within the case by its value, removes it from the case's
+    items list, persists the updated case, and removes the back-reference from
+    the backing hit or observable if applicable.
+
+    Args:
+        case_id: Unique identifier of the case to remove the item from.
+        item_value: The value/identifier of the item to remove.
+
+    Raises:
+        NotFoundException: If the case does not exist.
+        DataStoreException: If saving the updated case fails.
+    """
+    ds = datastore()
+
+    case: Case | None = ds.case.get_if_exists(key=case_id, as_obj=True)
+
+    if case is None:
+        raise NotFoundException(f"Case {case_id} does not exist")
+
+    case_item = next((item for item in case.items if item["value"] == item_value), None)
+
+    backing_obj: Hit | Observable | None = None
+    match case_item.type:
+        case CaseItemTypes.HIT:
+            backing_obj: Hit = datastore().hit.get(case_item.id) or None
+        case CaseItemTypes.OBSERVABLE:
+            backing_obj: Observable = datastore().observable.get(case_item.id) or None
+
+    case.items.remove(case_item)
+
+    if not datastore().case.save(case.case_id, case):
+        raise DataStoreException("Failed to save case after item removal")
+
+    remove_backreference(backing_obj, case.case_id)
