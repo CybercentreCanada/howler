@@ -25,6 +25,7 @@ case_api._doc = "Manage the different cases created"  # type: ignore
 
 logger = get_logger(__file__)
 
+
 @generate_swagger_docs()
 @case_api.route("/", methods=["POST"])
 @api_login(required_priv=["R", "W"])
