@@ -85,11 +85,16 @@ def create(index: str, user: User, **kwargs):
     warnings = []
     for i, hit in enumerate(hits):
         try:
-            odm, _warnings = hit_service.convert_hit(
-                hit, unique=True, ignore_extra_values=ignore_extra_values, index=index
-            )
-
-            hit_service.create_hit(odm.howler.id, odm, user.uname, skip_exists=True, index=index)
+            if index == "observable":
+                odm, _warnings = hit_service.convert_observable(
+                    hit, unique=True, ignore_extra_values=ignore_extra_values
+                )
+                hit_service.create_observable(odm.howler.id, odm, user.uname, skip_exists=True)
+            else:
+                odm, _warnings = hit_service.convert_hit(
+                    hit, unique=True, ignore_extra_values=ignore_extra_values, index=index
+                )
+                hit_service.create_hit(odm.howler.id, odm, user.uname, skip_exists=True, index=index)
 
             ids.append(odm.howler.id)
             warnings.extend(_warnings)
@@ -199,7 +204,10 @@ def validate(index: str, **kwargs):
 
     for hit in hits:
         try:
-            hit_service.convert_hit(hit, unique=True, index=index)
+            if index == "observable":
+                hit_service.convert_observable(hit, unique=True)
+            else:
+                hit_service.convert_hit(hit, unique=True, index=index)
             validation["valid"].append(hit)
         except HowlerException as e:
             validation["invalid"].append({"input": hit, "error": str(e)})
