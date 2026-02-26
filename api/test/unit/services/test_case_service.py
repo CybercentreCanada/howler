@@ -79,6 +79,21 @@ class TestCreateCase:
         assert len(saved_case.log) == 1
         assert saved_case.log[0].user == "system"
 
+    @patch("howler.services.case_service.datastore")
+    def test_create_case_with_case_object(self, mock_ds_fn):
+        """create_case accepts a pre-built Case object."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        my_case = Case({"title": "Pre-built Case", "summary": "Pre-built summary"})
+        case_service.create_case(case=my_case)
+
+        mock_ds.case.save.assert_called_once()
+        saved_id, saved_case = mock_ds.case.save.call_args[0]
+        assert saved_id == saved_case.case_id
+        assert saved_case.title == "Pre-built Case"
+        assert saved_case.summary == "Pre-built summary"
+
 
 # ---------------------------------------------------------------------------
 # update_case()
