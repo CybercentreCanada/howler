@@ -1182,7 +1182,7 @@ class ESCollection(Generic[ModelType]):
         """
         if self.model_class:
             fields = self.model_class.flat_fields(show_compound=True)
-            if "classification in fields":
+            if "classification" in fields:
                 fields.update(
                     {
                         "__access_lvl__": Integer(),
