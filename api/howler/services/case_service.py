@@ -22,14 +22,22 @@ logger = get_logger(__file__)
 CREATED_CASES = Counter(f"{APP_NAME.replace('-', '_')}_created_cases_total", "The number of created cases")
 
 
-def create_case(title: str, summary: str, user: str = "") -> dict[str, Any]:
+@overload
+def create_case(*, case: Case) -> dict[str, Any]: ...
+
+
+@overload
+def create_case(title: str, summary: str, user: str = "") -> dict[str, Any]: ...
+
+
+def create_case(title: str = "", summary: str = "", user: str = "", *, case: Case | None = None) -> dict[str, Any]:  # type: ignore
     """Create a new case in the datastore.
 
     Args:
-        case_id: Unique identifier for the case
         title: Title of the case
         summary: Short summary of the case
         user: Username to record in the creation log
+        case: Pre-built Case object (if provided, title and summary are ignored)
 
     Returns:
         dict: The created case as a primitives dictionary
@@ -37,12 +45,23 @@ def create_case(title: str, summary: str, user: str = "") -> dict[str, Any]:
     Raises:
         ResourceExists: If a case with the same ID already exists
     """
-    case = Case({"title": title, "summary": summary})
+    if case is None:
+        case = Case({"title": title, "summary": summary})
+        items = []
+    else:
+        items = list(case.items)
+        case.items = []
 
     case.log = [CaseLog({"timestamp": "NOW", "explanation": "Case created", "user": user or "system"})]
 
     CREATED_CASES.inc()
     datastore().case.save(case.case_id, case)
+
+    for item in items:
+        append_case_item(case.case_id, item=item)
+
+    if items:
+        return datastore().case.get_if_exists(case.case_id, as_obj=False)
     return case.as_primitives()
 
 
