@@ -22,6 +22,7 @@ import {
   isArray,
   isEmpty,
   isNull,
+  isNumber,
   isObject,
   isPlainObject,
   isUndefined,
@@ -171,7 +172,7 @@ const ObjectRenderer: FC<{
       {indent && <Divider orientation="vertical" flexItem sx={{ borderColor: 'primary.main', borderWidth: '2px' }} />}
       <Stack flex={1} ml={1} maxWidth="100%">
         {entries
-          .filter(([__, val]) => !isNull(val) && !isUndefined(val) && !isEmpty(val))
+          .filter(([__, val]) => !isNull(val) && !isUndefined(val) && !isEmpty(val) && !isNumber(val))
           .map(([key, val]) => {
             if (Array.isArray(val)) {
               return <ListRenderer obj={obj} maxKeyLength={longestKey} key={key} objKey={key} entries={val} />;
@@ -231,7 +232,10 @@ const Collapsible: FC<{ obj: Hit | Observable; query: string; title: string; dat
     const [scores, setScores] = useState<[string, number][]>([]);
     const [results, setResults] = useState<{ [index: string]: any }>({});
 
-    const options = useMemo(() => Object.entries(data).map(([key, value]) => ({ key, value })), [data]);
+    const options = useMemo(
+      () => Object.entries(data).map(([key, value]) => ({ key, value: value.toString() })),
+      [data]
+    );
 
     const keys = useMemo(
       () =>
@@ -304,7 +308,7 @@ const ObjectDetails: FC<{ obj: Hit | Observable }> = ({ obj }) => {
             !key.startsWith('__') &&
             key.includes('.') &&
             ['howler', 'labels'].every(prefix => !key.startsWith(prefix)) &&
-            !isEmpty(value)
+            (!isEmpty(value) || isNumber(value))
         ),
         ([key]) => key.split('.')[0]
       ),
