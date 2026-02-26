@@ -24,7 +24,7 @@ const RelatedCasePanel: FC<{ case: Case }> = ({ case: _case }) => {
     <Stack spacing={1}>
       <Stack direction="row">
         <Typography flex={1} variant="h4">
-          {t('page.cases.dashboard.alerts')}
+          {t('page.cases.dashboard.cases')}
         </Typography>
 
         <Pagination count={casePages.length} page={casePage} onChange={(_, page) => setCasePage(page)} />

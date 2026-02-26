@@ -27,27 +27,27 @@ const CaseTask: FC<{
 }> = ({ task, onEdit, onDelete, paths, newTask = false }) => {
   const { t } = useTranslation();
 
-  const [editing, setEditing] = useState(newTask);
   const [loading, setLoading] = useState(false);
+  const [editing, setEditing] = useState(newTask);
+
   const [summary, setSummary] = useState(task?.summary || '');
   const [path, setPath] = useState(task?.path ?? null);
   const [assignment, setAssignment] = useState(task?.assignment);
   const [complete, setComplete] = useState(task?.complete ?? false);
 
-  const dirty = summary !== task?.summary || path !== task?.path;
+  const dirty =
+    summary !== task?.summary || path !== task?.path || complete !== task?.complete || assignment !== task?.assignment;
 
   const onSubmit = async () => {
     if (dirty && editing) {
-      console.log('confirmed bongo time');
       setLoading(true);
-      await onEdit({ summary, path: !path ? null : path, assignment });
+      await onEdit({ summary, path: !path ? null : path, assignment, complete });
       setLoading(false);
     }
   };
 
   useEffect(() => {
     if (!editing && task?.assignment !== assignment) {
-      console.log('confirmed bongo time 2');
       setLoading(true);
       onEdit({ assignment }).finally(() => setLoading(false));
     }
@@ -56,7 +56,6 @@ const CaseTask: FC<{
 
   useEffect(() => {
     if (!editing && task?.complete !== complete) {
-      console.log('confirmed bongo time 3');
       setLoading(true);
       onEdit({ complete }).finally(() => setLoading(false));
     }
@@ -83,12 +82,10 @@ const CaseTask: FC<{
             sx={{ minWidth: '40%' }}
           />
         ) : (
-          <Typography sx={[task?.complete && { textDecoration: 'line-through' }]}>
-            {task?.summary || summary}
-          </Typography>
+          <Typography sx={[complete && { textDecoration: 'line-through' }]}>{task?.summary || summary}</Typography>
         )}
 
-        {!editing && task?.path && <Chip clickable component={Link} to={task.path} label={task.path} />}
+        {!editing && path && <Chip clickable component={Link} to={path} label={path} />}
         {editing && (
           <Autocomplete
             disabled={loading}

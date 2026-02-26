@@ -336,6 +336,7 @@
   "page.cases.created": "Created",
   "page.cases.dashboard": "Dashboard",
   "page.cases.dashboard.alerts": "Alerts",
+  "page.cases.dashboard.cases": "Related Cases",
   "page.cases.dashboard.duration": "Duration",
   "page.cases.dashboard.indicators": "Indicators",
   "page.cases.dashboard.target": "Targets",

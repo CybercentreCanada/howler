@@ -340,6 +340,7 @@
   "page.cases.created": "Créé",
   "page.cases.dashboard": "Tableau de bord",
   "page.cases.dashboard.alerts": "Alertes",
+  "page.cases.dashboard.cases": "Cas connexes",
   "page.cases.dashboard.duration": "Durée",
   "page.cases.dashboard.indicators": "Indicateurs",
   "page.cases.dashboard.target": "Cibles",
