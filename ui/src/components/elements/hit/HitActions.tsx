@@ -22,6 +22,7 @@ import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import useHitActions from 'components/hooks/useHitActions';
 import { useMyLocalStorageProvider } from 'components/hooks/useMyLocalStorage';
+import CaseCreationModal from 'components/routes/cases/detail/CaseCreationModal';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Hit } from 'models/entities/generated/Hit';
 import howlerPluginStore from 'plugins/store';
@@ -183,6 +184,7 @@ const HitActions: FC<{
   const showDropdown = isMobile || !showButton;
 
   return (
+    <>
     <Stack direction="row" alignItems="stretch">
       {showDropdown || forceDropdown ? (
         <DropdownActions
@@ -284,9 +286,14 @@ const HitActions: FC<{
               </FormControl>
             </Stack>
           </Menu>
+
         </Box>
       )}
     </Stack>
+      <Stack spacing={1} direction="row" alignItems="center" sx={{ mt: 1, flex: 0, width: '100%' }}>
+        <CaseCreationModal hit={hit} />
+      </Stack>
+    </>
   );
 };
 

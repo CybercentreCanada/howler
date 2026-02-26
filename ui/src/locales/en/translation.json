@@ -132,6 +132,7 @@
   "hit.bundle.close": "Close Bundle",
   "hit.bundle.parents.show": "Show Parent Bundles",
   "hit.details.actions.action": "Manage",
+  "hit.details.actions.action.create_case": "Create Case",
   "hit.details.actions.action.assign_to_me": "Assign to Me",
   "hit.details.actions.action.assign_to_other": "Delegate",
   "hit.details.actions.action.demote": "Demote",
