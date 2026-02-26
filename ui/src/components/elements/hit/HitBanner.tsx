@@ -62,10 +62,13 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hit?.howler.analytic]);
 
-  const providerColor = useMemo(
-    () => PROVIDER_COLORS[hit.event?.provider ?? 'unknown'] ?? stringToColor(hit.event.provider),
-    [hit.event?.provider]
-  );
+  const providerColor = useMemo(() => {
+    if (!hit?.event.provider) {
+      return PROVIDER_COLORS.unknown;
+    }
+
+    return PROVIDER_COLORS[hit?.event.provider] ?? stringToColor(hit?.event.provider);
+  }, [hit?.event.provider]);
 
   const mitreId = useMemo(() => {
     if (hit.threat?.framework?.toLowerCase().startsWith('mitre')) {

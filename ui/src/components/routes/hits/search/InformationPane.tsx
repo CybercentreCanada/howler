@@ -215,7 +215,11 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
           )}
         </Stack>
         <Box pr={2}>
-          {loading ? <Skeleton variant="rounded" height={152} /> : <HitBanner layout={HitLayout.DENSE} hit={hit} />}
+          {loading || !hit ? (
+            <Skeleton variant="rounded" height={152} />
+          ) : (
+            <HitBanner layout={HitLayout.DENSE} hit={hit} />
+          )}
         </Box>
         {!!hit &&
           (!loading ? (
