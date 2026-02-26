@@ -35,6 +35,9 @@ def create_case(user: User, **kwargs):
     Variables:
     user      => The user creating the case (injected by @api_login)
 
+    Arguments:
+    None
+
     Data Block:
     {
         "title": "Case Title",

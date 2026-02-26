@@ -41,4 +41,4 @@ def get_api_documentation(**kwargs):
     """
     user_types = kwargs["user"]["type"]
 
-    return ok(docs_service.build_route_docs(user_types))
+    return ok(docs_service.build_route_docs("v2", user_types))

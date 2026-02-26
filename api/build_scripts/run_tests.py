@@ -78,7 +78,7 @@ def main():  # noqa: C901
                 summary_file = os.getenv("GITHUB_STEP_SUMMARY")
                 if summary_file:
                     print(f"Writing to {summary_file}")
-                    Path(summary_file).write_text(raw_failures)
+                    Path(summary_file).write_text(f"```\n{raw_failures}\n```")
 
                 (Path(__file__).parent.parent / "test-results.md").write_text(markdown_output)
 

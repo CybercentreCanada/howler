@@ -3,7 +3,7 @@ from textwrap import dedent
 from flask import current_app, request
 
 
-def build_route_docs(user_types: list[str]):
+def build_route_docs(version: str, user_types: list[str]):
     """This function iterates through all registered Flask routes.
 
     It generates documentation for those accessible by the specified user types. It collects
@@ -50,7 +50,7 @@ def build_route_docs(user_types: list[str]):
                         [x.capitalize() for x in rule.endpoint[rule.endpoint.rindex(".") + 1 :].split("_")]
                     )
                     blueprint = rule.endpoint[: rule.endpoint.rindex(".")]
-                    if blueprint == "apiv1":
+                    if blueprint == f"api{version}":
                         blueprint = "documentation"
 
                     if blueprint not in api_blueprints:
@@ -66,7 +66,7 @@ def build_route_docs(user_types: list[str]):
                     else:
                         description = "[INCOMPLETE]\n\nTHIS API HAS NOT BEEN DOCUMENTED YET!"
 
-                    api_id = rule.endpoint.replace("apiv1.", "").replace(".", "_")
+                    api_id = rule.endpoint.replace(f"api{version}.", "").replace(".", "_")
 
                     api_list.append(
                         {
@@ -74,7 +74,7 @@ def build_route_docs(user_types: list[str]):
                             "required_type": sorted(required_type),
                             "name": func_title,
                             "id": api_id,
-                            "function": f"api.v1.{rule.endpoint}",
+                            "function": f"api.{version}.{rule.endpoint}",
                             "path": rule.rule,
                             "ui_only": rule.rule.startswith("%sui/" % request.path),
                             "methods": sorted(methods),

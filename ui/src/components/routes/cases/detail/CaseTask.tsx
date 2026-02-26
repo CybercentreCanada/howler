@@ -104,7 +104,7 @@ const CaseTask: FC<{
           avatarHeight={24}
         />
         <div style={{ flex: 1 }} />
-        {editing && (
+        {editing && !newTask && (
           <Tooltip title={t('route.cases.task.delete')}>
             <IconButton
               size="small"
@@ -141,7 +141,17 @@ const CaseTask: FC<{
         </Tooltip>
         {editing && (
           <Tooltip title={t('route.cases.task.edit.cancel')}>
-            <IconButton size="small" onClick={() => setEditing(false)} disabled={loading}>
+            <IconButton
+              size="small"
+              onClick={() => {
+                if (newTask) {
+                  onDelete();
+                } else {
+                  setEditing(false);
+                }
+              }}
+              disabled={loading}
+            >
               <Close fontSize="small" />
             </IconButton>
           </Tooltip>
