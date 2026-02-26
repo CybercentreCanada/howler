@@ -8,8 +8,8 @@ from howler.helper.workflow import Workflow, WorkflowException
 from howler.odm.models.action import VALID_TRIGGERS
 from howler.odm.models.howler_data import (
     Assessment,
-    HitStatus,
     HitStatusTransition,
+    Status,
     Vote,
 )
 from howler.odm.models.user import User
@@ -180,15 +180,13 @@ def specification():
         "steps": [
             {
                 "args": {"status": []},
-                "options": {"status": HitStatus.list()},
+                "options": {"status": Status.list()},
                 "validation": {"error": {"query": "-howler.status:$status"}},
             },
             {
                 "args": {"transition": []},
                 "options": {
-                    "transition": {
-                        f"status:{status}": hit_service.get_transitions(status) for status in HitStatus.list()
-                    },
+                    "transition": {f"status:{status}": hit_service.get_transitions(status) for status in Status.list()},
                 },
             },
             {

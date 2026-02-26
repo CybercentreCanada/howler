@@ -17,6 +17,7 @@ export interface Case {
   overview?: string;
   participants?: string[];
   rules?: Rule[];
+  status?: string;
   start?: string;
   summary?: string;
   targets?: string[];

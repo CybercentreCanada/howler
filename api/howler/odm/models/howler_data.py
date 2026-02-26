@@ -3,6 +3,7 @@ from typing import Optional
 
 from howler import odm
 from howler.common.exceptions import HowlerValueError
+from howler.odm.constants import Status
 from howler.odm.howler_enum import HowlerEnum
 from howler.odm.models.lead import Lead
 
@@ -13,16 +14,6 @@ class Scrutiny(str, HowlerEnum):
     SCANNED = "scanned"
     INSPECTED = "inspected"
     INVESTIGATED = "investigated"
-
-    def __str__(self) -> str:
-        return self.value
-
-
-class HitStatus(str, HowlerEnum):
-    OPEN = "open"
-    IN_PROGRESS = "in-progress"
-    ON_HOLD = "on-hold"
-    RESOLVED = "resolved"
 
     def __str__(self) -> str:
         return self.value
@@ -248,7 +239,7 @@ class HowlerData(odm.Model):
     score: Optional[float] = odm.Optional(
         odm.Float(description="A score assigned by an enrichment to help prioritize triage.", default=0)
     )
-    status = odm.Enum(values=HitStatus, default=HitStatus.OPEN, description="Status of the hit.")
+    status = odm.Enum(values=Status, default=Status.OPEN, description="Status of the hit.")
     scrutiny = odm.Enum(
         values=Scrutiny,
         default=Scrutiny.UNSEEN,

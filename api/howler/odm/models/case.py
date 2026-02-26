@@ -3,6 +3,7 @@ from typing import Optional
 
 from howler import odm
 from howler.common.exceptions import HowlerValueError
+from howler.odm.constants import Status
 
 CASE_ITEM_TYPES = {"observable", "hit", "case", "lead", "reference"}
 
@@ -81,7 +82,7 @@ class CaseTask(odm.Model):
     complete: bool = odm.Boolean(default=False, description="Whether the task is complete.")
     assignment: str = odm.Keyword(description="Assigned discipline or user ID.")
     summary: str = odm.Text(description="Task summary.")
-    path: str = odm.Keyword(description="Associated case item path.")
+    path: str = odm.Keyword(description="Associated case item path.", optional=True)
 
 
 @odm.model(index=True, store=True, description="Enrichment annotations associated with a case path.")
@@ -101,6 +102,7 @@ class Case(odm.Model):
     summary: str = odm.Text(description="Short case summary.")
     overview: str = odm.Optional(odm.Text(description="Markdown overview of the case."))
     escalation: str = odm.Optional(odm.Keyword(description="Escalation of the case."))
+    status = odm.Enum(values=Status, default=Status.OPEN, description="Status of the case.")
     created: str = odm.Optional(odm.Date(default="NOW", description="Date/time when the case was created."))
     visible: bool = odm.Boolean(default=True, description="Whether the case is visible/accessible in the frontend.")
     updated: Optional[str] = odm.Optional(

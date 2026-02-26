@@ -82,7 +82,7 @@ const AnalyticDetails = () => {
   );
 
   const onOwnerChange = useCallback(
-    async (ownerId: string) => {
+    async ([ownerId]: string[]) => {
       const result = await dispatchApi(api.analytic.owner.post(analytic.analytic_id, { username: ownerId }), {
         throwError: true,
         showError: true
@@ -204,7 +204,7 @@ const AnalyticDetails = () => {
                     marginLeft: `${theme.spacing(-1)} !important`,
                     marginRight: `${theme.spacing(-1)} !important`
                   }}
-                  userId={analytic?.owner}
+                  userIds={[analytic?.owner]}
                   onChange={onOwnerChange}
                   i18nLabel="route.analytics.set.owner"
                 />

@@ -15,7 +15,8 @@ const CaseSidebar: FC<{ case: Case }> = ({ case: _case }) => {
   return (
     <Box
       sx={{
-        width: '350px',
+        flex: 1,
+        maxWidth: '350px',
         maxHeight: 'calc(100vh - 64px)',
         display: 'flex',
         flexDirection: 'column'

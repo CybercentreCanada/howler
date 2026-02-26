@@ -1,4 +1,4 @@
-import { Box, Divider, Pagination, Stack, Typography, useTheme } from '@mui/material';
+import { Box, Divider, Pagination, Skeleton, Stack, Typography, useTheme } from '@mui/material';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import { chunk, uniq } from 'lodash-es';
@@ -17,6 +17,11 @@ const AlertPanel: FC<{ case: Case }> = ({ case: _case }) => {
     () => chunk(uniq((_case?.items ?? []).filter(item => item.type === 'hit')), 5),
     [_case?.items]
   );
+
+  if (!_case) {
+    return <Skeleton height={240} />;
+  }
+
   return (
     <Stack spacing={1}>
       <Stack direction="row">

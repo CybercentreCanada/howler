@@ -1,4 +1,4 @@
-import { Box, Divider, Pagination, Stack, Typography, useTheme } from '@mui/material';
+import { Box, Divider, Pagination, Skeleton, Stack, Typography, useTheme } from '@mui/material';
 import { chunk, uniq } from 'lodash-es';
 import type { Case } from 'models/entities/generated/Case';
 import { useMemo, useState, type FC } from 'react';
@@ -15,6 +15,10 @@ const RelatedCasePanel: FC<{ case: Case }> = ({ case: _case }) => {
     () => chunk(uniq((_case?.items ?? []).filter(item => item.type === 'case')), 5),
     [_case?.items]
   );
+
+  if (!_case) {
+    return <Skeleton height={240} />;
+  }
 
   return (
     <Stack spacing={1}>

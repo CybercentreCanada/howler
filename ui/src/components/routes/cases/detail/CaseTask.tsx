@@ -22,6 +22,7 @@ const CaseTask: FC<{
   paths: string[];
   onDelete: () => void;
   onEdit: (task: Partial<Task>) => Promise<void>;
+  loading?: boolean;
 }> = ({ task, onEdit, onDelete, paths }) => {
   const { t } = useTranslation();
 
@@ -32,7 +33,7 @@ const CaseTask: FC<{
 
   const dirty = summary !== task.summary || path !== task.path;
 
-  const onOwnerChange = async (assignment: string) => {
+  const onOwnerChange = async ([assignment]: string[]) => {
     setLoading(true);
     await onEdit({
       assignment
@@ -52,13 +53,22 @@ const CaseTask: FC<{
     <Card key={task.id} sx={{ pl: 0.5, pr: 1, py: 0.5, position: 'relative' }}>
       <Stack direction="row" alignItems="center" spacing={1}>
         <Checkbox
+          disabled={loading}
           color="success"
           checked={task.complete}
           size="small"
-          onChange={(_ev, complete) => onEdit({ complete })}
+          onChange={async (_ev, complete) => {
+            try {
+              setLoading(true);
+              await onEdit({ complete });
+            } finally {
+              setLoading(false);
+            }
+          }}
         />
         {editing ? (
           <TextField
+            disabled={loading}
             value={summary}
             onChange={e => setSummary(e.target.value)}
             size="small"
@@ -72,6 +82,7 @@ const CaseTask: FC<{
         {task.path && !editing && <Chip clickable component={Link} to={task.path} label={task.path} />}
         {editing && (
           <Autocomplete
+            disabled={loading}
             value={path}
             options={paths}
             onChange={(_ev, value) => setPath(value)}
@@ -81,7 +92,8 @@ const CaseTask: FC<{
         )}
         {task.assignment && (
           <UserList
-            userId={task.assignment}
+            disabled={loading}
+            userIds={[task.assignment]}
             onChange={onOwnerChange}
             i18nLabel="route.cases.task.set.assignment"
             avatarHeight={24}
@@ -108,14 +120,14 @@ const CaseTask: FC<{
               setEditing(false);
               onSubmit();
             }}
-            disabled={!dirty && editing}
+            disabled={(!dirty && editing) || loading}
           >
             {editing ? <Check fontSize="small" /> : <Edit fontSize="small" />}
           </IconButton>
         </Tooltip>
         {editing && (
           <Tooltip title={t('route.cases.task.edit.cancel')}>
-            <IconButton size="small" onClick={() => setEditing(false)}>
+            <IconButton size="small" onClick={() => setEditing(false)} disabled={loading}>
               <Close fontSize="small" />
             </IconButton>
           </Tooltip>

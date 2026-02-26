@@ -1,6 +1,6 @@
-import { Divider, Stack, Typography } from '@mui/material';
+import { Divider, Skeleton, Stack, Typography } from '@mui/material';
 import type { Case } from 'models/entities/generated/Case';
-import type { FC } from 'react';
+import { type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import CaseTask from './CaseTask';
 
@@ -10,7 +10,9 @@ const TaskPanel: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promise<
 }) => {
   const { t } = useTranslation();
 
-  // TODO: Implement adding tasks, checking tasks off, etc.
+  if (!_case) {
+    return <Skeleton height={240} />;
+  }
 
   return (
     <Stack spacing={1}>

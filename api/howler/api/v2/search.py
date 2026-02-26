@@ -55,7 +55,7 @@ def generate_params(request: Request, fields: list[str], multi_fields: list[str]
 @generate_swagger_docs()
 @search_api.route("/<indexes>", methods=["GET", "POST"])
 @api_login(required_priv=["R"])
-def search(indexes, **kwargs):
+def search(indexes: str, **kwargs):
     """Search through specified index for a given query. Uses lucene search syntax for query.
 
     Variables:
@@ -264,9 +264,9 @@ def count(index, **kwargs):
 
 
 @generate_swagger_docs()
-@search_api.route("/facet/<index>", methods=["GET", "POST"])
+@search_api.route("/facet/<indexes>", methods=["GET", "POST"])
 @api_login(required_priv=["R"])
-def facet(index, **kwargs):
+def facet(indexes: str, **kwargs):
     """Perform field analysis on the selected fields. (Also known as facetting in lucene).
 
     This essentially counts the number of instances a field is seen with each specific
@@ -301,27 +301,33 @@ def facet(index, **kwargs):
     }
     """
     user = kwargs["user"]
-    collection = get_collection(index, user)
-    if collection is None:
-        return bad_request(err=f"Not a valid index to search in: {index}")
 
     fields = ["query", "mincount", "rows"]
     multi_fields = ["filters", "fields"]
 
     params = generate_params(request, fields, multi_fields)[0]
 
-    if has_access_control(index):
-        params.update({"access_control": user["access_control"]})
-
     try:
         fields = params.pop("fields")
         facet_result: dict[str, dict[str, Any]] = {}
-        for field in fields:
-            if field not in collection().fields():
-                logger.warning("Invalid field %s requested for faceting, skipping", field)
-                continue
+        index_list = indexes.split(",")
 
-            facet_result[field] = collection().facet(field, **params)
+        # TODO: rewrite this to facet acess all indices at the same time instead of separate network calls
+        for index in index_list:
+            collection = get_collection(index, user)
+            if collection is None:
+                return bad_request(err=f"Not a valid index to search in: {index}")
+
+            if has_access_control(index):
+                params.update({"access_control": user["access_control"]})
+            for field in fields:
+                facet_result.setdefault(field, {})
+
+                if field not in collection().fields():
+                    logger.warning("Invalid field %s requested for faceting, skipping", field)
+                    continue
+
+                facet_result[field].update(collection().facet(field, **params))
 
         return ok(facet_result)
     except (SearchException, BadRequestError) as e:

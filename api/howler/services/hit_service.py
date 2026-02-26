@@ -28,7 +28,7 @@ from howler.helper.hit import (
 from howler.helper.workflow import Transition, Workflow
 from howler.odm.models.ecs.event import Event
 from howler.odm.models.hit import Hit
-from howler.odm.models.howler_data import HitOperationType, HitStatus, HitStatusTransition, Log
+from howler.odm.models.howler_data import HitOperationType, HitStatusTransition, Log, Status
 from howler.odm.models.user import User
 from howler.services import action_service, analytic_service, dossier_service, overview_service, template_service
 from howler.utils.dict_utils import extra_keys, flatten
@@ -51,99 +51,99 @@ def get_hit_workflow() -> Workflow:
             Transition(
                 {
                     # current user starts investigation
-                    "source": HitStatus.OPEN,
+                    "source": Status.OPEN,
                     "transition": HitStatusTransition.ASSIGN_TO_ME,
-                    "dest": HitStatus.IN_PROGRESS,
+                    "dest": Status.IN_PROGRESS,
                     "actions": [assign_hit],
                 }
             ),
             Transition(
                 {
                     # assign to other user and starts investigation
-                    "source": HitStatus.OPEN,
+                    "source": Status.OPEN,
                     "transition": HitStatusTransition.ASSIGN_TO_OTHER,
-                    "dest": HitStatus.OPEN,
+                    "dest": Status.OPEN,
                     "actions": [assign_hit],
                 }
             ),
             Transition(
                 {
                     # assign to other user and starts investigation
-                    "source": HitStatus.OPEN,
+                    "source": Status.OPEN,
                     "transition": HitStatusTransition.START,
-                    "dest": HitStatus.IN_PROGRESS,
+                    "dest": Status.IN_PROGRESS,
                     "actions": [check_ownership],
                 }
             ),
             Transition(
                 {
                     # provides vote
-                    "source": HitStatus.OPEN,
+                    "source": Status.OPEN,
                     "transition": HitStatusTransition.VOTE,
-                    "dest": HitStatus.OPEN,
+                    "dest": Status.OPEN,
                     "actions": [vote_hit],
                 }
             ),
             Transition(
                 {
                     # assign to another user
-                    "source": HitStatus.IN_PROGRESS,
+                    "source": Status.IN_PROGRESS,
                     "transition": HitStatusTransition.ASSIGN_TO_OTHER,
-                    "dest": HitStatus.IN_PROGRESS,
+                    "dest": Status.IN_PROGRESS,
                     "actions": [assign_hit],
                 }
             ),
             Transition(
                 {
                     # removes assignment
-                    "source": HitStatus.IN_PROGRESS,
+                    "source": Status.IN_PROGRESS,
                     "transition": HitStatusTransition.RELEASE,
-                    "dest": HitStatus.OPEN,
+                    "dest": Status.OPEN,
                     "actions": [unassign_hit],
                 }
             ),
             Transition(
                 {
                     # user completes investigation
-                    "source": [HitStatus.OPEN, HitStatus.IN_PROGRESS],
+                    "source": [Status.OPEN, Status.IN_PROGRESS],
                     "transition": HitStatusTransition.ASSESS,
-                    "dest": HitStatus.RESOLVED,
+                    "dest": Status.RESOLVED,
                     "actions": [assess_hit, assign_hit],
                 }
             ),
             Transition(
                 {
                     # vote on in_progress hit
-                    "source": HitStatus.IN_PROGRESS,
+                    "source": Status.IN_PROGRESS,
                     "transition": HitStatusTransition.VOTE,
-                    "dest": HitStatus.IN_PROGRESS,
+                    "dest": Status.IN_PROGRESS,
                     "actions": [vote_hit],
                 }
             ),
             Transition(
                 {
                     # removes assignment
-                    "source": HitStatus.OPEN,
+                    "source": Status.OPEN,
                     "transition": HitStatusTransition.RELEASE,
-                    "dest": HitStatus.OPEN,
+                    "dest": Status.OPEN,
                     "actions": [unassign_hit],
                 }
             ),
             Transition(
                 {
                     # user pauses investigation
-                    "source": HitStatus.IN_PROGRESS,
+                    "source": Status.IN_PROGRESS,
                     "transition": HitStatusTransition.PAUSE,
-                    "dest": HitStatus.ON_HOLD,
+                    "dest": Status.ON_HOLD,
                     "actions": [check_ownership],
                 }
             ),
             Transition(
                 {
                     # user restarts investigation after pausing it
-                    "source": HitStatus.ON_HOLD,
+                    "source": Status.ON_HOLD,
                     "transition": HitStatusTransition.RESUME,
-                    "dest": HitStatus.IN_PROGRESS,
+                    "dest": Status.IN_PROGRESS,
                     "actions": [check_ownership],
                 }
             ),
@@ -151,17 +151,17 @@ def get_hit_workflow() -> Workflow:
                 {
                     # current user starts investigation
                     "transition": HitStatusTransition.ASSIGN_TO_ME,
-                    "source": HitStatus.IN_PROGRESS,
-                    "dest": HitStatus.IN_PROGRESS,
+                    "source": Status.IN_PROGRESS,
+                    "dest": Status.IN_PROGRESS,
                     "actions": [assign_hit],
                 }
             ),
             Transition(
                 {
                     # user restarts investigation after pausing it
-                    "source": HitStatus.ON_HOLD,
+                    "source": Status.ON_HOLD,
                     "transition": HitStatusTransition.ASSIGN_TO_OTHER,
-                    "dest": HitStatus.IN_PROGRESS,
+                    "dest": Status.IN_PROGRESS,
                     "actions": [assign_hit],
                 }
             ),
@@ -169,26 +169,26 @@ def get_hit_workflow() -> Workflow:
                 {
                     # user restarts investigation after pausing it
                     "transition": HitStatusTransition.VOTE,
-                    "source": HitStatus.ON_HOLD,
-                    "dest": HitStatus.ON_HOLD,
+                    "source": Status.ON_HOLD,
+                    "dest": Status.ON_HOLD,
                     "actions": [vote_hit],
                 }
             ),
             Transition(
                 {
                     # Reopen a task after resolving it
-                    "source": HitStatus.RESOLVED,
+                    "source": Status.RESOLVED,
                     "transition": HitStatusTransition.RE_EVALUATE,
-                    "dest": HitStatus.IN_PROGRESS,
+                    "dest": Status.IN_PROGRESS,
                     "actions": [assess_hit, assign_hit],
                 }
             ),
             Transition(
                 {
                     # Reopen a task after resolving it
-                    "source": HitStatus.RESOLVED,
+                    "source": Status.RESOLVED,
                     "transition": HitStatusTransition.VOTE,
-                    "dest": HitStatus.RESOLVED,
+                    "dest": Status.RESOLVED,
                     "actions": [vote_hit],
                 }
             ),
@@ -562,7 +562,7 @@ def _update_hit(
     return data, _version
 
 
-def get_transitions(status: HitStatus) -> list[str]:
+def get_transitions(status: Status) -> list[str]:
     """Get a list of the valid transitions beginning from the specified status
 
     Args:

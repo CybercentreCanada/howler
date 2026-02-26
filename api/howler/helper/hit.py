@@ -9,8 +9,8 @@ from howler.odm.models.howler_data import (
     Assessment,
     AssessmentEscalationMap,
     Escalation,
-    HitStatus,
     HitStatusTransition,
+    Status,
     Vote,
 )
 from howler.odm.models.user import User
@@ -225,11 +225,11 @@ def vote_hit(
 
     if user and hit["howler"]["assignment"] == user.get("uname", user.get("username", None)):
         if hit["howler"]["status"] in [
-            HitStatus.IN_PROGRESS,
-            HitStatus.OPEN,
+            Status.IN_PROGRESS,
+            Status.OPEN,
         ]:
             actions.append(odm_helper.update("howler.assignment", "unassigned"))
-            actions.append(odm_helper.update("howler.status", HitStatus.OPEN))
+            actions.append(odm_helper.update("howler.status", Status.OPEN))
         else:
             raise InvalidDataException("Cannot vote on hit you are assigned to.")
 

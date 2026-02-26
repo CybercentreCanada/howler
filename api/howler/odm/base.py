@@ -30,6 +30,7 @@ from dateutil.tz import tzutc
 from howler.common import loader
 from howler.common.exceptions import HowlerKeyError, HowlerNotImplementedError, HowlerTypeError, HowlerValueError
 from howler.common.net import is_valid_domain, is_valid_ip
+from howler.odm.howler_enum import HowlerEnum
 from howler.utils.dict_utils import flatten, recursive_update
 from howler.utils.isotime import now_as_iso
 from howler.utils.uid import get_random_id
@@ -555,7 +556,9 @@ class Enum(Keyword):
     Accepts values from lists/sets, Enum classes, and StrEnum (PyStrEnum) members.
     """
 
-    def __init__(self, values: PyEnum | PyStrEnum | list[typing.Any] | set[typing.Any], *args, **kwargs):
+    def __init__(
+        self, values: type[HowlerEnum] | PyEnum | PyStrEnum | list[typing.Any] | set[typing.Any], *args, **kwargs
+    ):
         super().__init__(*args, **kwargs)
         if isinstance(values, set):
             self.values = values
