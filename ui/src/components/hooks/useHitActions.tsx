@@ -141,9 +141,9 @@ const useHitActions = (_hits: Hit | Hit[]) => {
   );
 
   const assess = useCallback(
-    async (assessment: string, skipRationale = false) => {
+    async (assessment: string, skipRationale = false, providedRationale = null) => {
       const rationale = skipRationale
-        ? t('rationale.default', { assessment })
+        ? (providedRationale ?? t('rationale.default', { assessment }))
         : await new Promise<string>(res => {
             showModal(
               <RationaleModal

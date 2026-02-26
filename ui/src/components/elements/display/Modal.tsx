@@ -21,6 +21,7 @@ const Modal: FC = () => {
           left: '50%',
           maxWidth: options.maxWidth || '1200px',
           maxHeight: options.maxHeight || '400px',
+          height: '100%',
           transform: 'translate(-50%, -50%)',
           backgroundColor: 'background.paper',
           borderRadius: theme.shape.borderRadius,

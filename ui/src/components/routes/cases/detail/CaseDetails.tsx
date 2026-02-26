@@ -15,17 +15,20 @@ import {
   Typography
 } from '@mui/material';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
+import { ModalContext } from 'components/app/providers/ModalProvider';
 import UserList from 'components/elements/UserList';
 import dayjs from 'dayjs';
 import type { Case } from 'models/entities/generated/Case';
 import { useContext, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import useCase from '../hooks/useCase';
+import ResolveModal from '../modals/ResolveModal';
 import SourceAggregate from './aggregates/SourceAggregate';
 
 const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
   const { t } = useTranslation();
   const { case: _case, updateCase } = useCase({ case: providedCase });
+  const { showModal } = useContext(ModalContext);
 
   const { config } = useContext(ApiConfigContext);
   const [loading, setLoading] = useState(false);
@@ -36,6 +39,15 @@ const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
       await updateCase(subset);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleStatus = (status: string) => {
+    if (status === 'resolved') {
+      const onConfirm = () => wrappedUpdate({ status });
+      showModal(<ResolveModal case={_case} onConfirm={onConfirm} />, { maxHeight: '80vh' });
+    } else {
+      wrappedUpdate({ status });
     }
   };
 
@@ -86,7 +98,7 @@ const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
             value={_case.status}
             options={config.lookups['howler.status']}
             renderInput={params => <TextField {...params} size="small" />}
-            onChange={(_ev, status) => wrappedUpdate({ status })}
+            onChange={(_ev, status) => handleStatus(status)}
           />
         </Stack>
         <Divider />

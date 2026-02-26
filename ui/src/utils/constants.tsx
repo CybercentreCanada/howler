@@ -12,9 +12,9 @@ export const MY_LOCAL_STORAGE_PREFIX = 'howler.ui';
 export const MY_SESSION_STORAGE_PREFIX = `${MY_LOCAL_STORAGE_PREFIX}.cache`;
 
 export const ESCALATION_COLORS = {
-  alert: 'warning',
-  evidence: 'error',
-  hit: 'primary'
+  alert: 'warning' as const,
+  evidence: 'error' as const,
+  hit: 'primary' as const
 };
 
 export const STATUS_COLORS = {

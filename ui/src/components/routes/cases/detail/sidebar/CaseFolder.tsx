@@ -18,7 +18,7 @@ import type { Hit } from 'models/entities/generated/Hit';
 import type { Item } from 'models/entities/generated/Item';
 import { useEffect, useMemo, useState, type FC } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ESCALATION_COLORS, STATUS_COLORS } from 'utils/constants';
+import { ESCALATION_COLORS } from 'utils/constants';
 import type { Tree } from './types';
 
 const buildTree = (items: Item[] = []): Tree => {
@@ -92,18 +92,36 @@ const CaseFolder: FC<{
       });
   }, [tree.leaves, dispatchApi]);
 
-  const getItemColor = (itemType: string | undefined, itemKey: string | undefined, leafId: string): string => {
+  const getIconColor = (itemType: string | undefined, itemKey: string | undefined, leafId: string) => {
     if (itemType === 'hit' && leafId) {
       const meta = hitMetadata[leafId];
-      if (meta?.status && STATUS_COLORS[meta.status]) {
-        return `${STATUS_COLORS[meta.status]}.main`;
+      if (meta?.escalation && ESCALATION_COLORS[meta.escalation]) {
+        return ESCALATION_COLORS[meta.escalation];
       }
     }
 
     if (itemType === 'case' && itemKey) {
       const caseData = nestedCases[itemKey];
       if (caseData?.escalation && ESCALATION_COLORS[caseData.escalation]) {
-        return `${ESCALATION_COLORS[caseData.escalation]}.main`;
+        return ESCALATION_COLORS[caseData.escalation];
+      }
+    }
+
+    return 'default' as const;
+  };
+
+  const getItemColor = (itemType: string | undefined, itemKey: string | undefined, leafId: string): string => {
+    if (itemType === 'hit' && leafId) {
+      const meta = hitMetadata[leafId];
+      if (meta?.escalation && ESCALATION_COLORS[meta.escalation]) {
+        return `${ESCALATION_COLORS[meta.escalation]}.light`;
+      }
+    }
+
+    if (itemType === 'case' && itemKey) {
+      const caseData = nestedCases[itemKey];
+      if (caseData?.escalation && ESCALATION_COLORS[caseData.escalation]) {
+        return `${ESCALATION_COLORS[caseData.escalation]}.light`;
       }
     }
 
@@ -202,22 +220,24 @@ const CaseFolder: FC<{
               ? `/cases/${currentRootCaseId}/${fullRelativePath}`
               : `/cases/${currentRootCaseId}`;
 
-            const getIconForType = (type: string) => {
-              switch (type) {
+            const getIconForType = () => {
+              const iconColor = getIconColor(itemType, itemKey, leaf.id);
+
+              switch (itemType) {
                 case 'case':
-                  return <BookRounded fontSize="small" />;
+                  return <BookRounded fontSize="small" color={iconColor} />;
                 case 'observable':
-                  return <Visibility fontSize="small" />;
+                  return <Visibility fontSize="small" color={iconColor} />;
                 case 'hit':
-                  return <CheckCircle fontSize="small" />;
+                  return <CheckCircle fontSize="small" color={iconColor} />;
                 case 'table':
-                  return <TableChart fontSize="small" />;
+                  return <TableChart fontSize="small" color={iconColor} />;
                 case 'lead':
-                  return <Lightbulb fontSize="small" />;
+                  return <Lightbulb fontSize="small" color={iconColor} />;
                 case 'reference':
-                  return <LinkIcon fontSize="small" />;
+                  return <LinkIcon fontSize="small" color={iconColor} />;
                 default:
-                  return <Article fontSize="small" />;
+                  return <Article fontSize="small" color={iconColor} />;
               }
             };
 
@@ -260,7 +280,7 @@ const CaseFolder: FC<{
                     ]}
                   />
 
-                  {getIconForType(itemType)}
+                  {getIconForType()}
 
                   <Typography
                     variant="caption"

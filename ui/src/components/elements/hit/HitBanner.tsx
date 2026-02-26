@@ -11,18 +11,17 @@ import {
   useTheme,
   type TypographyProps
 } from '@mui/material';
-import useMatchers from 'components/app/hooks/useMatchers';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { uniq } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
 import howlerPluginStore from 'plugins/store';
-import { useCallback, useContext, useEffect, useMemo, useState, type FC } from 'react';
+import { useCallback, useContext, useMemo, type FC } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
-import { Link } from 'react-router-dom';
 import { ESCALATION_COLORS, PROVIDER_COLORS } from 'utils/constants';
 import { stringToColor } from 'utils/utils';
 import PluginTypography from '../PluginTypography';
+import AnalyticLink from './elements/AnalyticLink';
 import Assigned from './elements/Assigned';
 import EscalationChip from './elements/EscalationChip';
 import HitTimestamp from './elements/HitTimestamp';
@@ -46,21 +45,9 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
   const { config } = useContext(ApiConfigContext);
   const theme = useTheme();
   const pluginStore = usePluginStore();
-  const { getMatchingAnalytic } = useMatchers();
-
-  const [analyticId, setAnalyticId] = useState<string>();
 
   const compressed = useMemo(() => layout === HitLayout.DENSE, [layout]);
   const textVariant = useMemo(() => (layout === HitLayout.COMFY ? 'body1' : 'caption'), [layout]);
-
-  useEffect(() => {
-    if (!hit?.howler.analytic) {
-      return;
-    }
-
-    getMatchingAnalytic(hit).then(analytic => setAnalyticId(analytic?.analytic_id));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hit?.howler.analytic]);
 
   const providerColor = useMemo(() => {
     if (!hit?.event.provider) {
@@ -218,29 +205,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
           />
         }
       >
-        <Typography
-          variant={compressed ? 'body1' : 'h6'}
-          fontWeight={compressed && 'bold'}
-          sx={{ alignSelf: 'start', '& a': { color: 'text.primary' } }}
-        >
-          {analyticId ? (
-            <Link
-              to={`/analytics/${analyticId}`}
-              onAuxClick={e => {
-                e.stopPropagation();
-              }}
-              onClick={e => {
-                e.stopPropagation();
-              }}
-            >
-              {hit.howler.analytic}
-            </Link>
-          ) : (
-            hit.howler.analytic
-          )}
-          {hit.howler.detection && ': '}
-          {hit.howler.detection}
-        </Typography>
+        <AnalyticLink hit={hit} />
         {hit.howler?.rationale && (
           <Typography
             flex={1}

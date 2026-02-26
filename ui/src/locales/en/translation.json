@@ -292,6 +292,8 @@
   "modal.action.empty": "Action Name cannot be empty.",
   "modal.action.label": "Action Name",
   "modal.action.title": "Save Action",
+  "modal.cases.resolve": "Resolve Case",
+  "modal.cases.resolve.description": "When resolving a case, you must either assess all open alerts, or add an assessment to the alerts.",
   "modal.confirm.delete.description": "Are you sure you want to delete this item?",
   "modal.confirm.delete.title": "Confirm Deletion",
   "modal.rationale.description": "Provide a rationale that succinctly explains to other analysts why you are confident in this assessment.",
