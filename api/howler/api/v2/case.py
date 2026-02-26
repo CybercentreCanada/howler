@@ -295,12 +295,16 @@ def append_item(id: str, user: User, **kwargs):
         return bad_request(err="Case 'type' missing")
 
     try:
-        case_service.append_case_item(id, body["type"], body["value"], body.get("path", None))
+        case_service.append_case_item(
+            id, item_type=body["type"], item_value=body["value"], item_path=body.get("path", None)
+        )
     except DataStoreException as e:
         logger.exception(f"Save Error: {e}")
         return internal_error(err=str(e))
     except InvalidDataException as e:
         return bad_request(err=str(e))
+
+    return ok()
 
 
 @generate_swagger_docs()
@@ -329,7 +333,7 @@ def delete_item(id: str, value: str, **kwargs):
     }
     """
     try:
-        case_service.remove_case_item(id, value)
+        case_service.remove_case_item(id, item_value=value)
     except DataStoreException as e:
         logger.exception(f"Save Error: {e}")
         return internal_error(err=str(e))

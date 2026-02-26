@@ -259,10 +259,10 @@ def append_case_item(case_id: str, item: CaseItem): ...
 
 
 @overload
-def append_case_item(case_id: str, item_type: str, item_value: str, item_path: str): ...
+def append_case_item(case_id: str, item_type: str, item_value: str, item_path: str = "related/"): ...
 
 
-def append_case_item(case_id: str, item: CaseItem = None, item_type: str = None, item_value=None, item_path=None):
+def append_case_item(case_id: str, item: CaseItem = None, item_type: str = None, item_value=None, item_path="related/"):
     """Append an item to a case, dispatching to the appropriate handler based on item type.
 
     Can be called either with a pre-built CaseItem object or with individual
@@ -290,9 +290,12 @@ def append_case_item(case_id: str, item: CaseItem = None, item_type: str = None,
         if item_type not in CaseItemTypes:
             raise InvalidDataException(f"Invalid item type: {item_type}, valid types are: {', '.join(CaseItemTypes)}")
 
+        if not item_path:
+            item_path = "related/"
+
         item: CaseItem = CaseItem({"type": item_type, "value": item_value, "path": item_path})
 
-    if item.path is not None and not item.path.endswith("/"):
+    if not item.path.endswith("/"):
         item.path += "/"
 
     match item_type:
@@ -346,7 +349,7 @@ def append_hit(case_id: str, item: CaseItem):
 
     item.id = item.value
 
-    if not item.path:
+    if item.path == "related/":
         item.path = "alerts/"
 
     item.path += f"{hit.howler.analytic} ({hit.howler.id})"
@@ -393,7 +396,7 @@ def append_observable(case_id: str, item: CaseItem):
 
     item.id = item.value
 
-    if not item.path:
+    if item.path == "related/":
         item.path = "observables/"
 
     item.path += f"{observable.howler.id}"
@@ -440,7 +443,7 @@ def append_case(case_id: str, item: CaseItem):
 
     item.id = item.value
 
-    if not item.path:
+    if item.path == "related/":
         item.path = "cases/"
 
     item.path += f"{referenced_case.case_id}"
