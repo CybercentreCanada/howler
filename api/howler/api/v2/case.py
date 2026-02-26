@@ -4,18 +4,17 @@ from werkzeug.exceptions import UnsupportedMediaType
 from howler.api import (
     bad_request,
     created,
-    forbidden,
     internal_error,
     make_subapi_blueprint,
     no_content,
     not_found,
     ok,
 )
-from howler.common.exceptions import HowlerException, InvalidDataException, NotFoundException, ResourceExists
+from howler.common.exceptions import InvalidDataException, NotFoundException, ResourceExists
 from howler.common.loader import datastore
+from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import DataStoreException
-from howler.odm.models.case import Case
 from howler.odm.models.user import User
 from howler.security import api_login
 from howler.services import case_service
@@ -24,6 +23,7 @@ SUB_API = "case"
 case_api = make_subapi_blueprint(SUB_API, api_version=2)
 case_api._doc = "Manage the different cases created"  # type: ignore
 
+logger = get_logger(__file__)
 
 @generate_swagger_docs()
 @case_api.route("/", methods=["POST"])
@@ -246,7 +246,7 @@ def append_item(id: str, user: User, **kwargs):  # noqa: C901
             id, item_type=body["type"], item_value=body["value"], item_path=body.get("path", None)
         )
     except DataStoreException as e:
-        logger.exception(f"Save Error: {e}")
+        logger.exception("Save Error")
         return internal_error(err=str(e))
     except InvalidDataException as e:
         return bad_request(err=str(e))
@@ -282,7 +282,7 @@ def delete_item(id: str, value: str, **kwargs):
     try:
         case_service.remove_case_item(id, item_value=value)
     except DataStoreException as e:
-        logger.exception(f"Save Error: {e}")
+        logger.exception("Save Error")
         return internal_error(err=str(e))
     except InvalidDataException as e:
         return bad_request(err=str(e))

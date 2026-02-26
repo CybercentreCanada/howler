@@ -4,7 +4,7 @@ This module provides functionality for creating, updating, retrieving, and manag
 cases - collections of security alerts and investigation data organized by analysts.
 """
 
-from typing import Any
+from typing import Any, overload
 
 from prometheus_client import Counter
 
@@ -215,10 +215,18 @@ def append_case_item(case_id: str, item: CaseItem): ...
 
 
 @overload
-def append_case_item(case_id: str, item_type: str, item_value: str, item_path: str = "related/"): ...
+def append_case_item(
+    case_id: str, item: None = None, item_type: str = ..., item_value: str = ..., item_path: str = ...
+): ...
 
 
-def append_case_item(case_id: str, item: CaseItem = None, item_type: str = None, item_value=None, item_path="related/"):
+def append_case_item(  # noqa: C901
+    case_id: str,
+    item: CaseItem | None = None,
+    item_type: str | None = None,
+    item_value: str | None = None,
+    item_path: str = "related/",
+):
     """Append an item to a case, dispatching to the appropriate handler based on item type.
 
     Can be called either with a pre-built CaseItem object or with individual
@@ -249,7 +257,7 @@ def append_case_item(case_id: str, item: CaseItem = None, item_type: str = None,
         if not item_path:
             item_path = "related/"
 
-        item: CaseItem = CaseItem({"type": item_type, "value": item_value, "path": item_path})
+        item = CaseItem({"type": item_type, "value": item_value, "path": item_path})
 
     if not item.path.endswith("/"):
         item.path += "/"
@@ -524,23 +532,26 @@ def remove_case_item(case_id: str, item_value: str):
     """
     ds = datastore()
 
-    case: Case | None = ds.case.get_if_exists(key=case_id, as_obj=True)
+    _case = ds.case.get(key=case_id, as_obj=True)
 
-    if case is None:
+    if not _case:
         raise NotFoundException(f"Case {case_id} does not exist")
 
-    case_item = next((item for item in case.items if item["value"] == item_value), None)
+    case_item = next((item for item in _case.items if item["value"] == item_value), None)
+    if not case_item:
+        raise NotFoundException(f"Case item {item_value} does not exist")
 
     backing_obj: Hit | Observable | None = None
     match case_item.type:
         case CaseItemTypes.HIT:
-            backing_obj: Hit = datastore().hit.get(case_item.id) or None
+            backing_obj = datastore().hit.get(case_item.id)
         case CaseItemTypes.OBSERVABLE:
-            backing_obj: Observable = datastore().observable.get(case_item.id) or None
+            backing_obj = datastore().observable.get(case_item.id)
 
-    case.items.remove(case_item)
+    _case.items.remove(case_item)
 
-    if not datastore().case.save(case.case_id, case):
+    if not datastore().case.save(_case.case_id, _case):
         raise DataStoreException("Failed to save case after item removal")
 
-    remove_backreference(backing_obj, case.case_id)
+    if backing_obj:
+        remove_backreference(backing_obj, _case.case_id)
