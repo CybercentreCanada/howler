@@ -239,9 +239,9 @@ def append_item(id: str, user: User, **kwargs):  # noqa: C901
     if "value" not in body:
         return bad_request(err="Case 'value' is required")
 
-    case: Case | None = datastore().case.get_if_exists(key=id, as_obj=True)
+    _case = datastore().case.get(id)
 
-    if case is None:
+    if _case is None:
         return not_found(err="Case not found")
 
     if "type" not in body:
@@ -252,7 +252,7 @@ def append_item(id: str, user: User, **kwargs):  # noqa: C901
 
     match body.get("type", "").lower():
         case CaseItemTypes.HIT:
-            backing_obj: Hit = datastore().hit.get(body["value"]) or None
+            backing_obj = datastore().hit.get(body["value"])
 
             if backing_obj is None:
                 return not_found(err="Hit not found")
@@ -265,7 +265,7 @@ def append_item(id: str, user: User, **kwargs):  # noqa: C901
             }
 
         case CaseItemTypes.OBSERVABLE:
-            backing_obj: Observable = datastore().observable.get(body["value"]) or None
+            backing_obj = datastore().observable.get(body["value"]) or None
 
             if backing_obj is None:
                 return not_found(err="Observable not found")
@@ -278,7 +278,7 @@ def append_item(id: str, user: User, **kwargs):  # noqa: C901
             }
 
         case CaseItemTypes.CASE:
-            related_case: Case = datastore().case.get(body["value"]) or None
+            related_case = datastore().case.get(body["value"]) or None
 
             if related_case is None:
                 return not_found(err="Case not found")
@@ -296,20 +296,19 @@ def append_item(id: str, user: User, **kwargs):  # noqa: C901
     if not case_item_data:
         return bad_request(err="Unable to construct item to add to Case")
 
-    if any(body["value"] == item["value"] for item in case["items"]):
+    if any(body["value"] == item["value"] for item in _case.items):
         return bad_request(err="Case item already exists")
 
-    case_item = CaseItem(case_item_data)
-    case["items"].append(case_item)
+    _case.items.append(CaseItem(case_item_data))
 
-    if not datastore().case.save(case.case_id, case):
+    if not datastore().case.save(_case.case_id, _case):
         return internal_error(err="Failed to save case with new item")
 
     if backing_obj is not None:
-        if any(case.case_id == related_id for related_id in backing_obj.howler.related):
+        if any(_case.case_id == related_id for related_id in backing_obj.howler.related):
             return ok()
 
-        backing_obj.howler.related.append(case.case_id)
+        backing_obj.howler.related.append(_case.case_id)
         datastore()[backing_obj.__class__.__name__.lower()].save(backing_obj.howler.id, backing_obj)
 
     return ok()
@@ -353,9 +352,9 @@ def delete_item(id: str, value: str, **kwargs):
     backing_obj: Hit | Observable | None = None
     match case_item.type:
         case CaseItemTypes.HIT:
-            backing_obj: Hit = datastore().hit.get(case_item.id) or None
+            backing_obj = datastore().hit.get(case_item.id)
         case CaseItemTypes.OBSERVABLE:
-            backing_obj: Observable = datastore().observable.get(case_item.id) or None
+            backing_obj = datastore().observable.get(case_item.id)
 
     case.items.remove(case_item)
 

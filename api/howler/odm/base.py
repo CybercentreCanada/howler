@@ -557,7 +557,10 @@ class Enum(Keyword):
     """
 
     def __init__(
-        self, values: type[HowlerEnum] | PyEnum | PyStrEnum | list[typing.Any] | set[typing.Any], *args, **kwargs
+        self,
+        values: type[HowlerEnum] | type[PyEnum] | type[PyStrEnum] | list[typing.Any] | set[typing.Any],
+        *args,
+        **kwargs,
     ):
         super().__init__(*args, **kwargs)
         if isinstance(values, set):
