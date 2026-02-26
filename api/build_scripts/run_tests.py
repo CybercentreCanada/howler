@@ -14,7 +14,7 @@ def prep_command(cmd: str):
     return shlex.split(cmd)
 
 
-def main():
+def main():  # noqa: C901
     background_server = None
     try:
         print("Removing existing coverage files")
@@ -62,19 +62,23 @@ def main():
                 """
                 ).strip()
 
-                markdown_output += "\n".join(
-                    ("    " + line)
-                    for line in re.sub(
-                        r"[\s\S]+=+ FAILURES =+([\S\s]+)-+ coverage[\s\S]+",
-                        r"\n\1",
-                        output,
-                    ).splitlines()
+                raw_failures = re.sub(
+                    r"[\s\S]+=+ FAILURES =+([\S\s]+)-+ coverage[\s\S]+",
+                    r"\n\1",
+                    output,
                 )
+
+                markdown_output += "\n".join(("    " + line) for line in raw_failures.splitlines())
 
                 markdown_output += "\n</details>"
 
                 print("Markdown result:")
                 print(markdown_output)
+
+                summary_file = os.getenv("GITHUB_STEP_SUMMARY")
+                if summary_file:
+                    print(f"Writing to {summary_file}")
+                    Path(summary_file).write_text(raw_failures)
 
                 (Path(__file__).parent.parent / "test-results.md").write_text(markdown_output)
 

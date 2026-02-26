@@ -343,13 +343,13 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
               color="primary"
             />
           )}
-          {hit.howler.related && (
-            <Chip
-              size={layout !== HitLayout.COMFY ? 'small' : 'medium'}
-              label={t('hit.header.related', { count: hit.howler.related.length })}
-            />
-          )}
         </Stack>
+        {hit.howler.related && (
+          <Chip
+            size={layout !== HitLayout.COMFY ? 'small' : 'medium'}
+            label={t('hit.header.related', { count: hit.howler.related.length })}
+          />
+        )}
         {howlerPluginStore.plugins.flatMap(plugin => pluginStore.executeFunction(`${plugin}.status`, { hit, layout }))}
       </Stack>
     </Box>
