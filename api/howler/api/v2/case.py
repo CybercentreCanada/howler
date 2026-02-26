@@ -14,7 +14,7 @@ from howler.api import (
 from howler.common.exceptions import InvalidDataException, NotFoundException, ResourceExists
 from howler.common.loader import datastore
 from howler.common.swagger import generate_swagger_docs
-from howler.odm.models.case import Case, CaseItem, CaseItemTypes
+from howler.odm.models.case import CaseItem, CaseItemTypes
 from howler.odm.models.hit import Hit
 from howler.odm.models.observable import Observable
 from howler.odm.models.user import User
@@ -339,12 +339,12 @@ def delete_item(id: str, value: str, **kwargs):
         "success": true     # Did the deletion succeed?
     }
     """
-    case: Case | None = datastore().case.get_if_exists(key=id, as_obj=True)
+    _case = datastore().case.get(id)
 
-    if case is None:
+    if _case is None:
         return not_found(err="Case not found")
 
-    case_item = next((item for item in case.items if item["value"] == value), None)
+    case_item = next((item for item in _case.items if item["value"] == value), None)
 
     if case_item is None:
         return not_found(err="Case item not found")
@@ -356,13 +356,13 @@ def delete_item(id: str, value: str, **kwargs):
         case CaseItemTypes.OBSERVABLE:
             backing_obj = datastore().observable.get(case_item.id)
 
-    case.items.remove(case_item)
+    _case.items.remove(case_item)
 
-    if not datastore().case.save(case.case_id, case):
+    if not datastore().case.save(_case.case_id, _case):
         return internal_error(err="Failed to save case after item removal")
 
-    if backing_obj is not None and case.case_id in backing_obj.howler.related:
-        backing_obj.howler.related.remove(case.case_id)
+    if backing_obj is not None and _case.case_id in backing_obj.howler.related:
+        backing_obj.howler.related.remove(_case.case_id)
         datastore()[backing_obj.__class__.__name__.lower()].save(backing_obj.howler.id, backing_obj)
 
     return ok()
