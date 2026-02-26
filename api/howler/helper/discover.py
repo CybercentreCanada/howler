@@ -53,7 +53,7 @@ def get_apps_list(discovery_url: Optional[str]) -> list[dict[str, str]]:
         except Exception:
             logger.exception(f"Failed to get apps from discover URL: {discovery_url}")
 
-        DISCO_CACHE[discovery_url] = sorted(apps, key=lambda k: ["name"])
+        DISCO_CACHE[discovery_url] = sorted(apps, key=lambda k: k["name"])
         return sorted(apps, key=lambda k: k["name"])
     else:
         return DISCO_CACHE[discovery_url]
