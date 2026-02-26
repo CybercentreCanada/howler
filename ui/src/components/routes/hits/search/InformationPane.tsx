@@ -15,6 +15,7 @@ import Phrase from 'components/elements/addons/search/phrase/Phrase';
 import SocketBadge from 'components/elements/display/icons/SocketBadge';
 import JSONViewer from 'components/elements/display/json/JSONViewer';
 import HitActions from 'components/elements/hit/HitActions';
+import HitBanner from 'components/elements/hit/HitBanner';
 import HitComments from 'components/elements/hit/HitComments';
 import HitLabels from 'components/elements/hit/HitLabels';
 import { HitLayout } from 'components/elements/hit/HitLayout';
@@ -213,6 +214,9 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
             </TuiIconButton>
           )}
         </Stack>
+        <Box pr={2}>
+          {loading ? <Skeleton variant="rounded" height={152} /> : <HitBanner layout={HitLayout.DENSE} hit={hit} />}
+        </Box>
         {!!hit &&
           (!loading ? (
             <>
