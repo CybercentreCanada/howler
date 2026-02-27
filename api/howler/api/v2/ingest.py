@@ -14,6 +14,7 @@ from howler.datastore.exceptions import DataStoreException
 from howler.datastore.howler_store import INDEXES
 from howler.datastore.operations import OdmHelper, OdmUpdateOperation
 from howler.odm.models.hit import Hit
+from howler.odm.models.observable import Observable
 from howler.odm.models.user import User
 from howler.security import api_login
 from howler.services import hit_service, observable_service
@@ -76,6 +77,7 @@ def create(index: str, user: User, **kwargs):
     warnings = []
     for i, hit in enumerate(hits):
         try:
+            odm: Hit | Observable
             if index == "observable":
                 odm, _warnings = observable_service.convert_observable(
                     hit, unique=True, ignore_extra_values=ignore_extra_values
