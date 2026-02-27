@@ -304,6 +304,8 @@ def wipe_users(ds):
     """Wipe the users index"""
     ds.user.wipe()
     ds.user_avatar.wipe()
+    ds.user.commit()
+    ds.user_avatar.commit()
 
 
 def create_templates(ds: HowlerDatastore):

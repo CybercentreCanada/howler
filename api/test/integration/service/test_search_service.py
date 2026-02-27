@@ -36,6 +36,7 @@ def datastore(datastore_connection):
             ds.user.save(user.uname, user)
 
         ds.user.commit()
+        ds.hit.commit()
         yield ds
     finally:
         wipe_hits(ds)
@@ -78,7 +79,7 @@ def test_format_items():
 
 
 def test_search_defaults(datastore):
-    result = search_service.search("user", query="uname:*")
+    result = search_service.search("hit", query="howler.id:*")
 
     assert result["total"] >= TEST_SIZE
     assert result["offset"] == search_service.DEFAULT_OFFSET
@@ -87,7 +88,7 @@ def test_search_defaults(datastore):
 
 
 def test_search_query_none_uses_wildcard(datastore):
-    result = search_service.search("user", query=None, rows=5)
+    result = search_service.search("hit", query=None, rows=5)
 
     assert result["total"] >= TEST_SIZE
     assert len(result["items"]) <= 5
@@ -236,7 +237,7 @@ def test_search_clears_next_scroll_when_last_page(datastore):
     scroll_result = {
         "_scroll_id": "next-token",
         "hits": {
-            "total": {"value": 1},
+            "total": {"value": 2},
             "hits": [
                 {
                     "_id": "admin",
