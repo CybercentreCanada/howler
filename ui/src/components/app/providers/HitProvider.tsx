@@ -67,9 +67,9 @@ const HitProvider: FC<PropsWithChildren> = ({ children }) => {
   );
 
   useEffect(() => {
-    addListener<HitUpdate>('hit_provider', handler);
+    addListener<HitUpdate>('hits', handler);
 
-    return () => removeListener('hit_provider');
+    return () => removeListener('hits');
   }, [addListener, handler, removeListener]);
 
   /**

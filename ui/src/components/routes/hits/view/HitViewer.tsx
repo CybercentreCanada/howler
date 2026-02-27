@@ -222,7 +222,7 @@ const HitViewer: FC = () => {
                 right: theme.spacing(-6)
               }}
             >
-              <Tooltip title={t('page.hits.view.layout')}>
+              <Tooltip title={t('hit.panel.view.layout')}>
                 <IconButton onClick={onOrientationChange}>
                   <ViewAgenda
                     sx={{ transition: 'rotate 250ms', rotate: orientation === 'vertical' ? '90deg' : '0deg' }}
