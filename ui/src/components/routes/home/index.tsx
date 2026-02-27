@@ -71,7 +71,7 @@ const Home: FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [openSettings, setOpenSettings] = useState<null | HTMLElement>(null);
   const [refreshRate, setRefreshRate] = useState(user.refresh_rate ?? 15);
-  const [refreshTick, setRefreshTick] = useState<symbol>(null);
+  const [refreshTick, setRefreshTick] = useState<symbol | null>(null);
   const pendingRefreshes = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -109,10 +109,10 @@ const Home: FC = () => {
   const handleRefreshRateChange = useCallback(
     (newRate: number) => {
       setRefreshRate(newRate);
-      setUser({
-        ...user,
+      setUser(prev => ({
+        ...prev,
         refresh_rate: newRate
-      });
+      }));
 
       // Debounce the backend API call
       if (debounceTimerRef.current) {
@@ -123,7 +123,7 @@ const Home: FC = () => {
         setRefreshRateBackend(newRate);
       }, 500);
     },
-    [setRefreshRateBackend, setUser, user]
+    [setRefreshRateBackend, setUser]
   );
 
   const refreshViews = useCallback(() => {
@@ -257,7 +257,7 @@ const Home: FC = () => {
                   justifyContent: 'center'
                 }}
               >
-                <Tooltip title={t('Refresh')}>
+                <Tooltip title={t('refresh')}>
                   <IconButton onClick={refreshViews} disabled={isRefreshing} color="primary">
                     <Refresh />
                   </IconButton>

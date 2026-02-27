@@ -44,7 +44,7 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
 
   const [hitIds, setHitIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isRefreshing = useRef(false);
   const lastSignature = useRef<string>('');
 
