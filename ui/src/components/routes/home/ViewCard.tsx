@@ -13,7 +13,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FC } from 'reac
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
-import Throttler from 'utils/Throttler';
 
 // Utility functions
 const normalize = (val: any) => (val == null ? '' : String(val));
@@ -29,9 +28,7 @@ const createSignatureFromHits = (hits: Hit[]) => {
   return hits.map(createHitSignature).join('|');
 };
 
-const MIN_REFRESH_INTERVAL = 1000; // Minimum 1 second between refreshes
-const COOLDOWN_PERIOD = 1500; // Cooldown after refresh to prevent false triggers
-const DEBOUNCE_TIME = 500; // Base debounce time for signature changes
+const DEBOUNCE_TIME = 1000; // 1 second debounce for signature changes
 
 export interface ViewSettings {
   viewId: string;
@@ -47,43 +44,26 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
 
   const [hitIds, setHitIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const cooldownTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
   const isRefreshing = useRef(false);
-  const lastRefreshTime = useRef<number>(0);
   const lastSignature = useRef<string>('');
-  const isInCooldown = useRef(false);
-  const throttlerRef = useRef(new Throttler(DEBOUNCE_TIME));
-  const isInitialized = useRef(false);
 
   const view = useContextSelector(ViewContext, ctx => ctx.views[viewId]);
   const fetchViews = useContextSelector(ViewContext, ctx => ctx.fetchViews);
   const loadHits = useHitContextSelector(ctx => ctx.loadHits);
 
-  // Subscribe to hits from HitProvider cache, automatically getting updates via WebSocket
-  // Use a selector that only returns hits for this view to avoid unnecessary re-renders
+  // Subscribe to hits from HitProvider cache based on current hitIds in the view
   const hits = useHitContextSelector(useCallback(ctx => hitIds.map(id => ctx.hits[id]).filter(Boolean), [hitIds]));
 
   // Create a stable signature that only changes when relevant fields change
   const hitsSignature = useMemo(() => createSignatureFromHits(hits), [hits]);
 
-  // Refresh the view to re-evaluate query criteria
   const refreshView = useCallback(async () => {
-    if (!view?.query) {
-      return;
-    }
-
-    // Enforce minimum refresh interval to prevent spam
-    const now = Date.now();
-    if (now - lastRefreshTime.current < MIN_REFRESH_INTERVAL) {
-      return;
-    }
-
-    if (isRefreshing.current) {
+    if (!view?.query || isRefreshing.current) {
       return;
     }
 
     isRefreshing.current = true;
-    lastRefreshTime.current = now;
 
     try {
       const res = await dispatchApi(
@@ -98,32 +78,21 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
       loadHits(fetchedHits);
       setHitIds(fetchedHits.map(h => h.howler.id));
 
-      // Update signature to match the fresh data to prevent false triggers
       lastSignature.current = createSignatureFromHits(fetchedHits);
-
-      // Enter cooldown period to prevent detecting our own refresh as a change
-      isInCooldown.current = true;
-      if (cooldownTimerRef.current) {
-        clearTimeout(cooldownTimerRef.current);
-      }
-      cooldownTimerRef.current = setTimeout(() => {
-        isInCooldown.current = false;
-      }, COOLDOWN_PERIOD);
     } finally {
       isRefreshing.current = false;
       onRefreshComplete?.();
     }
   }, [dispatchApi, limit, view?.query, loadHits, onRefreshComplete]);
 
-  /**
-   * Debounced refresh to handle rapid WebSocket updates
-   */
   const debouncedRefresh = useCallback(() => {
-    throttlerRef.current.debounce(() => {
-      if (!isRefreshing.current) {
-        refreshView();
-      }
-    });
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      refreshView();
+    }, DEBOUNCE_TIME);
   }, [refreshView]);
 
   useEffect(() => {
@@ -156,12 +125,8 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
 
   // Monitor hits currently in the view for changes that might affect query results
   useEffect(() => {
-    if (!hitsSignature || hitIds.length === 0) {
-      return;
-    }
-
-    // Don't trigger during cooldown period (after a refresh completes)
-    if (isInCooldown.current) {
+    if (!hitsSignature || hitIds.length === 0 || !lastSignature.current) {
+      lastSignature.current = hitsSignature;
       return;
     }
 
@@ -170,22 +135,13 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
       return;
     }
 
-    // First time initialization - don't trigger refresh
-    if (!isInitialized.current) {
-      isInitialized.current = true;
-      lastSignature.current = hitsSignature;
-      return;
-    }
-
-    lastSignature.current = hitsSignature;
     debouncedRefresh();
   }, [hitsSignature, hitIds, debouncedRefresh]);
 
-  // Cleanup timers on unmount
   useEffect(() => {
     return () => {
-      if (cooldownTimerRef.current) {
-        clearTimeout(cooldownTimerRef.current);
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
       }
     };
   }, []);
