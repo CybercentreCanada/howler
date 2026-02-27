@@ -204,6 +204,7 @@
   "hit.panel.analytic.open": "Open Analytic",
   "hit.panel.bundles.open": "Parent Bundles",
   "hit.panel.bundles.open.prompt": "Open Parent Bundle",
+  "hit.panel.view.layout": "Change View Panel",
   "hit.panel.details.show": "Show Hit Details",
   "hit.panel.details.hide": "Hide Hit Details",
   "hit.panel.details.exit": "Close Hit",
@@ -404,6 +405,9 @@
   "page.error.support": "Please click here for teams support",
 
   "page.dashboard.title": "Dashboard",
+
+  "page.dashboard.settings.edit": "Edit Dashboard",
+  "page.dashboard.settings.refreshRate": "Refresh Rate",
 
   "page.documentation.categories": "API Categories",
   "page.documentation.categories.category": "Category",

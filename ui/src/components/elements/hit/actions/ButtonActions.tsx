@@ -181,6 +181,7 @@ const ButtonActions: FC<DesktopActionProps> = ({ actions, loading, orientation, 
               : { gridColumn: rowIndex + 1, gridRow: index + 3 + actionRows[0].length };
 
             const button = (
+              // Set tooltip placement to be uniform for all buttons
               <Tooltip title={t(`hit.details.asessments.${action.name}.description`)} placement="top">
                 <Button
                   key={action.name}

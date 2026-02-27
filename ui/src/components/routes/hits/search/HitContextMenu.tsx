@@ -92,8 +92,8 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
   const { config } = useContext(ApiConfigContext);
   const pluginStore = usePluginStore();
   const { getMatchingAnalytic, getMatchingTemplate } = useMatchers();
-  const query = useContextSelector(ParameterContext, ctx => ctx.query);
-  const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
+  const query = useContextSelector(ParameterContext, ctx => ctx?.query);
+  const setQuery = useContextSelector(ParameterContext, ctx => ctx?.setQuery);
 
   const [id, setId] = useState<string>(null);
 
@@ -337,7 +337,7 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
             </Paper>
           </Fade>
         </MenuItem>
-        {!isEmpty(template?.keys ?? []) && (
+        {!isEmpty(template?.keys ?? []) && setQuery && (
           <>
             <Divider />
             <MenuItem
