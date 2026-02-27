@@ -127,7 +127,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
 
     // Fetch all view queries
     if (views.length > 0) {
-      const viewObjects = await getCurrentViews();
+      const viewObjects = await getCurrentViews({ views });
 
       // Filter out null/undefined views and extract queries
       viewObjects
@@ -219,7 +219,8 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
       trackTotalHits,
       loadHits,
       getCurrentViews,
-      setOffset
+      setOffset,
+      getFilters
     ]
   );
 
@@ -258,12 +259,6 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
       {children}
     </HitSearchContext.Provider>
   );
-};
-
-export const useHitSearchContextSelector = <Selected,>(
-  selector: (value: HitSearchContextType) => Selected
-): Selected => {
-  return useContextSelector<HitSearchContextType, Selected>(HitSearchContext, selector);
 };
 
 export default HitSearchProvider;

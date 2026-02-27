@@ -54,7 +54,8 @@ def generate_swagger_docs(responses: dict[int, str] = {}):  # noqa: C901
     def decorator(function: Callable):  # noqa: ANN202
         "Decorator function for generating the swagger docs"
         func_signature = inspect.signature(function)
-        func_doc = inspect.getdoc(function)
+        func_doc = inspect.getdoc(function)  # type: ignore
+        module_name = None
         if module := inspect.getmodule(function):
             module_name = module.__name__
         func_path = f"{module_name}.{function.__name__}" if module_name else function.__name__

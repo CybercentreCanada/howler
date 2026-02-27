@@ -177,7 +177,7 @@ const ViewComposer: FC = () => {
     }
 
     (async () => {
-      const viewToEdit = (await getCurrentViews({ viewId: routeParams.id }))[0];
+      const viewToEdit = (await getCurrentViews({ views: [routeParams.id] }))[0];
 
       if (!viewToEdit) {
         setError('route.views.missing');
@@ -199,7 +199,7 @@ const ViewComposer: FC = () => {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routeParams.id, getCurrentViews]);
+  }, [routeParams.id]);
 
   return (
     <FlexPort>

@@ -2,8 +2,8 @@ import functools
 import sys
 from typing import Optional
 
-import elasticapm
 import requests
+from elasticapm.traces import set_user_context
 from flask import request
 from flask import session as flsk_session
 from jwt import ExpiredSignatureError
@@ -137,8 +137,9 @@ class api_login(object):  # noqa: D101, N801
                 # to the second user. The login format must be of type (2) above, with the added caveat that the apikey
                 # provided MUST be authorized for impersonation (i.e. "I" in priv == True). See validate_apikey for more
                 # on this.
-                impersonator: Optional[User] = None
-                impersonated_user: Optional[User] = None
+                impersonator: User | None = None
+                impersonated_user: User | None = None
+                impersonated_priv: list[str] | None = None
                 impersonation = request.headers.get("X-Impersonating", None)
                 if impersonation:
                     [auth_type, data] = impersonation.split(" ")
@@ -214,7 +215,7 @@ class api_login(object):  # noqa: D101, N801
                 return internal_error(err=e.message)
 
             if config.core.metrics.apm_server.server_url is not None:
-                elasticapm.set_user_context(
+                set_user_context(
                     username=user.get("name", None),
                     email=user.get("email", None),
                     user_id=user.get("uname", None),

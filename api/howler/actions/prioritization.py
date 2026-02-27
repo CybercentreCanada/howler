@@ -10,7 +10,7 @@ OPERATION_ID = "prioritization"
 VALID_FIELDS = ["reliability", "severity", "volume", "confidence", "score"]
 
 
-def execute(query: str, field: str = "score", value: str = "0.0", **kwargs):
+def execute(query: str, field: str = "score", value: str | float = "0.0", **kwargs):
     """Change one of the priorization fields of a hit
 
     Args:
@@ -34,7 +34,7 @@ def execute(query: str, field: str = "score", value: str = "0.0", **kwargs):
     report = []
 
     try:
-        value: float = float(value)
+        value = float(value)
 
         datastore().hit.update_by_query(
             query,

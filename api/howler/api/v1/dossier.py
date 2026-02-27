@@ -12,7 +12,7 @@ from howler.services import dossier_service
 
 SUB_API = "dossier"
 dossier_api = make_subapi_blueprint(SUB_API, api_version=1)
-dossier_api._doc = "Manage the different dossiers created for filtering hits"
+dossier_api._doc = "Manage the different dossiers created for filtering hits"  # type: ignore
 
 logger = get_logger(__file__)
 

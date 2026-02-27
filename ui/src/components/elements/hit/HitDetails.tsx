@@ -38,10 +38,11 @@ import Throttler from 'utils/Throttler';
 import PluginTypography from '../PluginTypography';
 
 const ListRenderer: FC<{
+  hit?: Hit;
   objKey?: string;
   maxKeyLength?: number;
   entries: any[];
-}> = memo(({ objKey: key, entries, maxKeyLength }) => {
+}> = memo(({ hit, objKey: key, entries, maxKeyLength }) => {
   const theme = useTheme();
   const { t } = useTranslation();
 
@@ -89,7 +90,7 @@ const ListRenderer: FC<{
           if (Array.isArray(entry)) {
             return (
               <Grid item xs="auto" maxWidth="100%" key={index}>
-                <ListRenderer objKey={`${key}.${index}`} entries={entry} />
+                <ListRenderer hit={hit} objKey={`${key}.${index}`} entries={entry} />
               </Grid>
             );
           }
@@ -118,6 +119,7 @@ const ListRenderer: FC<{
                 style={{ maxWidth: '100%', font: 'inherit' }}
                 value={entry}
                 field={key.replace(/\.[0-9]+/g, '')}
+                hit={hit}
               >
                 {entry}
               </PluginTypography>
@@ -138,8 +140,8 @@ const ListRenderer: FC<{
   );
 });
 
-const ObjectRenderer: FC<{ parentKey?: string; showParentKey?: boolean; data: any; indent?: boolean }> = memo(
-  ({ data, parentKey, indent = false }) => {
+const ObjectRenderer: FC<{ hit?: Hit; parentKey?: string; showParentKey?: boolean; data: any; indent?: boolean }> =
+  memo(({ hit, data, parentKey, indent = false }) => {
     const theme = useTheme();
 
     const entries = useMemo(() => {
@@ -167,7 +169,7 @@ const ObjectRenderer: FC<{ parentKey?: string; showParentKey?: boolean; data: an
             .filter(([__, val]) => !isNull(val) && !isUndefined(val) && !isEmpty(val))
             .map(([key, val]) => {
               if (Array.isArray(val)) {
-                return <ListRenderer maxKeyLength={longestKey} key={key} objKey={key} entries={val} />;
+                return <ListRenderer hit={hit} maxKeyLength={longestKey} key={key} objKey={key} entries={val} />;
               }
 
               return (
@@ -204,6 +206,7 @@ const ObjectRenderer: FC<{ parentKey?: string; showParentKey?: boolean; data: an
                       style={{ maxWidth: '100%', font: 'inherit' }}
                       value={val}
                       field={(parentKey ? parentKey.concat('.', key) : key).replace(/\.[0-9]+/g, '')}
+                      hit={hit}
                     >
                       {val}
                     </PluginTypography>
@@ -214,11 +217,10 @@ const ObjectRenderer: FC<{ parentKey?: string; showParentKey?: boolean; data: an
         </Stack>
       </Stack>
     );
-  }
-);
+  });
 
-const Collapsible: FC<{ query: string; title: string; data: { [index: string]: any } }> = memo(
-  ({ title, data, query }) => {
+const Collapsible: FC<{ hit: Hit; query: string; title: string; data: { [index: string]: any } }> = memo(
+  ({ hit, title, data, query }) => {
     const throttler = useMemo(() => new Throttler(400), []);
 
     const [scores, setScores] = useState<[string, number][]>([]);
@@ -276,7 +278,7 @@ const Collapsible: FC<{ query: string; title: string; data: { [index: string]: a
         </AccordionSummary>
         <AccordionDetails>
           <Stack spacing={1} justifyContent="stretch" sx={styles}>
-            <ObjectRenderer showParentKey data={results} />
+            <ObjectRenderer hit={hit} showParentKey data={results} />
           </Stack>
         </AccordionDetails>
       </Accordion>
@@ -310,6 +312,7 @@ const HitDetails: FC<{ hit: Hit }> = ({ hit }) => {
       {Object.entries(groups).map(([section, entries]) => {
         return (
           <Collapsible
+            hit={hit}
             query={query}
             key={section}
             title={section

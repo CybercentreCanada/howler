@@ -51,11 +51,11 @@ class Workflow:
         for t in transitions:
             if t.get("source", False) and isinstance(t["source"], list):
                 for s in t["source"]:
-                    self.transitions[f'{s}{t["transition"]}'] = t
-                    identifiers.append(f'{s}{t["transition"]}{t.get("dest", None) or ""}')
+                    self.transitions[f"{s}{t['transition']}"] = t
+                    identifiers.append(f"{s}{t['transition']}{t.get('dest', None) or ''}")
             else:
-                self.transitions[f'{t.get("source", "") or ""}{t["transition"]}'] = t
-                identifiers.append(f'{t.get("source", "") or ""}{t["transition"]}{t.get("dest", "") or ""}')
+                self.transitions[f"{t.get('source', '') or ''}{t['transition']}"] = t
+                identifiers.append(f"{t.get('source', '') or ''}{t['transition']}{t.get('dest', '') or ''}")
 
         if len(set(identifiers)) != len(identifiers):
             raise WorkflowException("There are duplicate transitions (same source, transition and dest values).")

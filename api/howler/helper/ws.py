@@ -33,7 +33,7 @@ class ConnectionClosed(RuntimeError):
     def __init__(self, reason=CloseReason.NO_STATUS_RCVD, message=None):
         self.reason = reason
         self.message = message
-        super().__init__(f'Connection closed: {reason} {message or ""}')
+        super().__init__(f"Connection closed: {reason} {message or ''}")
 
 
 class Base:

@@ -2,7 +2,6 @@ import json
 from typing import cast
 
 import pytest
-from conftest import APIError, get_api_data
 
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.models.hit import Hit
@@ -16,6 +15,7 @@ from howler.odm.random_data import (
     wipe_templates,
     wipe_users,
 )
+from test.conftest import APIError, get_api_data
 
 TEST_SIZE = 10
 collections = ["user"]

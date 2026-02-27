@@ -204,7 +204,7 @@ describe('ViewContext', () => {
       // lazy load should return nothing
       await expect(hook.result.current({ lazy: true })).resolves.toEqual([]);
 
-      const result = await act(async () => hook.result.current({ viewId: 'searched_view_id' }));
+      const result = await act(async () => hook.result.current({ views: ['searched_view_id'] }));
 
       expect(result).toEqual([MOCK_RESPONSES['/api/v1/search/view'].items[0]]);
     });

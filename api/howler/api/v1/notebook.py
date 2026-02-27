@@ -7,7 +7,7 @@ from howler.services import notebook_service
 
 SUB_API = "notebook"
 notebook_api = make_subapi_blueprint(SUB_API, api_version=1)
-notebook_api._doc = "Get notebook information"
+notebook_api._doc = "Get notebook information"  # type: ignore
 
 
 @generate_swagger_docs()

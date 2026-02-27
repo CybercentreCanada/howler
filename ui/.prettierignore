@@ -3,3 +3,4 @@ src/models/entities/generated
 
 src/locales/en/**/*.json
 src/locales/fr/**/*.json
+src/plugins/clue/locales/*.json

@@ -48,8 +48,8 @@ export interface APILookups {
     'mitigated'
   ];
   transitions: { [index: string]: string[] };
-  tactics: { [index: string]: { key: string; name: string; url: string } };
   techniques: { [index: string]: { key: string; name: string; url: string } };
+  tactics: { [index: string]: { key: string; name: string; url: string } };
   icons: string[];
   roles: ['admin', 'automation_advanced', 'automation_basic', 'user'];
 }
@@ -81,6 +81,7 @@ export interface APIConfiguration {
   };
   mapping: APIMappings;
   features: {
+    clue: boolean;
     notebook: boolean;
     [feature: string]: boolean;
   };

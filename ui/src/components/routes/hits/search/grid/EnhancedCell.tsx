@@ -1,10 +1,12 @@
 /* eslint-disable react/no-array-index-key */
 import { Stack, TableCell, type SxProps } from '@mui/material';
 import PluginTypography from 'components/elements/PluginTypography';
+import type { Hit } from 'models/entities/generated/Hit';
 import { memo, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 
-const EnhancedCell: FC<{ value: string; sx?: SxProps; className: string; field: string }> = ({
+const EnhancedCell: FC<{ hit: Hit; value: string; sx?: SxProps; className: string; field: string }> = ({
+  hit,
   value: rawValue,
   sx = {},
   className,
@@ -38,6 +40,7 @@ const EnhancedCell: FC<{ value: string; sx?: SxProps; className: string; field: 
             sx={{ fontSize: 'inherit', textOverflow: 'ellipsis' }}
             value={value}
             field={field}
+            hit={hit}
           >
             {value}
           </PluginTypography>

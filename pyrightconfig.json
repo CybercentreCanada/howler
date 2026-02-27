@@ -1,0 +1,88 @@
+{
+    "exclude": [
+        "**/build",
+        "**/.venv",
+        "ui"
+    ],
+    "executionEnvironments": [
+        {
+            "reportArgumentType": "none",
+            "reportAssignmentType": "none",
+            "root": "api/howler/odm/models"
+        },
+        {
+            "reportArgumentType": "information",
+            "reportAttributeAccessIssue": "information",
+            "reportOptionalCall": "information",
+            "root": "api/howler/datastore"
+        },
+        {
+            "reportOptionalMemberAccess": "information",
+            "reportPossiblyUnboundVariable": "information",
+            "root": "api/howler/odm/helper.py"
+        },
+        {
+            "reportPossiblyUnboundVariable": "information",
+            "root": "api/howler/odm/random_data.py"
+        },
+        {
+            "reportArgumentType": "information",
+            "reportAttributeAccessIssue": "information",
+            "reportIncompatibleMethodOverride": "information",
+            "reportOperatorIssue": "information",
+            "reportOptionalMemberAccess": "information",
+            "reportPossiblyUnboundVariable": "information",
+            "root": "api/howler/odm/base.py"
+        },
+        {
+            "reportAttributeAccessIssue": "information",
+            "root": "api/howler/security/__init__.py"
+        },
+        {
+            "reportArgumentType": "information",
+            "reportOperatorIssue": "information",
+            "reportOptionalMemberAccess": "information",
+            "reportPossiblyUnboundVariable": "information",
+            "root": "api/howler/helper/ws.py"
+        },
+        {
+            "reportArgumentType": "information",
+            "reportIncompatibleMethodOverride": "information",
+            "reportReturnType": "information",
+            "root": "api/howler/remote/datatypes"
+        },
+        {
+            "reportArgumentType": "none",
+            "root": "api/howler/common/classification.py"
+        },
+        {
+            "reportArgumentType": "none",
+            "reportAttributeAccessIssue": "none",
+            "reportCallIssue": "none",
+            "reportGeneralTypeIssues": "none",
+            "reportOperatorIssue": "none",
+            "reportOptionalIterable": "none",
+            "reportOptionalMemberAccess": "none",
+            "reportOptionalSubscript": "none",
+            "reportPossiblyUnboundVariable": "none",
+            "reportReturnType": "none",
+            "reportTypedDictNotRequiredAccess": "none",
+            "reportUnusedExpression": "none",
+            "root": "api/test"
+        },
+        {
+            "reportAssignmentType": "information",
+            "reportAttributeAccessIssue": "information",
+            "reportReturnType": "information",
+            "root": "plugins"
+        },
+        {
+            "reportArgumentType": "none",
+            "root": "plugins/sentinel/test"
+        }
+    ],
+    "reportMissingImports": "error",
+    "reportOptionalMemberAccess": "error",
+    "strictDictionaryInference": true,
+    "strictListInference": true
+}

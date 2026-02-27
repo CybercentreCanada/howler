@@ -1,5 +1,5 @@
 import inspect
-from typing import Optional
+from typing import Optional, cast
 
 from howler.common.exceptions import InvalidDataException, NotFoundException
 from howler.common.loader import datastore
@@ -41,7 +41,7 @@ def __parse_workflow_actions(workflow: Workflow) -> dict[str, set[str]]:
         )
 
         for key in wf_args:
-            entry = f'transition:{str(wf["transition"])}'
+            entry = f"transition:{str(wf['transition'])}"
 
             if key in parsed_args:
                 parsed_args[key].add(entry)
@@ -115,7 +115,7 @@ def execute(
         try:
             hit_service.transition_hit(
                 hit_id,
-                HitStatusTransition[transition],
+                cast(HitStatusTransition, HitStatusTransition[transition]),
                 user,
                 **kwargs,
             )
