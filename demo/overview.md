@@ -1,40 +1,46 @@
-<h3>Visualization</h3>
+<details>
+<summary>More details</summary>
+Phishing email from <b>john.smith@live.ca</b> (subject: "John Smith Law Corporation") targeting <b>tony.stark@gov.com</b>. The email contained a malicious link to <code>sharefile08.s3.us-east-1.amazonaws.com/document20251021_0101001.html</code>. On host <b>DESKTOP-TONY01</b>, <code>outlook.exe</code> (PID 7344) spawned <code>msedge.exe</code> (PID 10212) to open the SafeLinks-wrapped phishing URL. The attacker attempted to sign in with the stolen credentials but was blocked by Entra ID with error <b>AADSTS50074 – MFA Required</b>.
+</details>
+
+<h3>Phishing Email Flow</h3>
+
 
 ```mermaid
 
 sequenceDiagram
 
-  actor User
+  actor Attacker as john.smith@live.ca
 
-  participant AITM as Site
+  participant Inbox as tony.stark@gov.com
 
-  participant ENTRA as ID
+  participant Outlook as outlook.exe (PID 7344)
 
-  User->>AITM: Connects to Site on
+  participant Edge as msedge.exe (PID 10212)
 
-  AITM->>ENTRA: Proxies Connection
+  participant Phish as sharefile08.s3.us-east-1.amazonaws.com
 
-  AITM->>ENTRA: Proxies Sign In Attempt
+  participant Entra as Entra ID
 
-  ENTRA->>AITM: Returns Error Code
+  Attacker->>Inbox: Sends phishing email<br/>"John Smith Law Corporation"
 
-  AITM->>User: Redirects User Somewhere else
+  Inbox->>Outlook: User opens email on DESKTOP-TONY01
+
+  Note over Outlook: Parent: explorer.exe (PID 2140)<br/>Host: DESKTOP-TONY01
+
+  Outlook->>Edge: Opens SafeLinks-wrapped URL
+
+  Edge->>Phish: GET /document20251021_0101001.html
+
+  Phish-->>Edge: Phishing page content
+
+  Note over Phish: Credential harvesting page
+
+  Phish->>Entra: Sign-in attempt with<br/>tony.stark@gov.com credentials
+
+  Entra--xPhish: AADSTS50074 – MFA Required
 
 ```
-
-<h3>Actions</h3>
-
-<ul class="actions_list">
-
-<li>
-
-</li>
-
-<li>
-
-</li>
-
-</ul>
 
 <h3>Data</h3>
 
@@ -44,33 +50,57 @@ sequenceDiagram
 
 <tr>
 
-<td style="padding:8px;font-weight:bold;">Tangent</td>
+<td style="padding:8px;font-weight:bold;">Analytic</td>
 
-<td style="padding:8px;">Triangle</td>
-
-</tr>
-
-<tr>
-
-<td style="padding:8px;font-weight:bold;">Start date</td>
-
-<td style="padding:8px;">1</td>
+<td style="padding:8px;">Email Gateway</td>
 
 </tr>
 
 <tr>
 
-<td style="padding:8px;font-weight:bold;">End date</td>
+<td style="padding:8px;font-weight:bold;">Detection</td>
 
-<td style="padding:8px;">1</td>
+<td style="padding:8px;">Suspicious Inbound Email</td>
 
 </tr>
 
 <tr>
 
-<td style="padding:8px;font-weight:bold;">Country</td>
+<td style="padding:8px;font-weight:bold;">Threat</td>
 
-<td style="padding:8px;"><span style="text-transform: uppercase;">Canada</span> / <span style="text-transform: capitalize;">Canada / <span style="text-transform: capitalize;">Canada</span></td>
+<td style="padding:8px;">john.smith@live.ca</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:8px;font-weight:bold;">Target</td>
+
+<td style="padding:8px;">tony.stark@gov.com</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:8px;font-weight:bold;">Subject</td>
+
+<td style="padding:8px;">John Smith Law Corporation</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:8px;font-weight:bold;">Phishing URL</td>
+
+<td style="padding:8px;">sharefile08.s3.us-east-1.amazonaws.com/document20251021_0101001.html</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:8px;font-weight:bold;">Host</td>
+
+<td style="padding:8px;">DESKTOP-TONY01</td>
 
 </tr>
 
@@ -78,199 +108,40 @@ sequenceDiagram
 
 </table>
 
-<h3>Visualization</h3>
+<h3>Process Tree &amp; Network</h3>
 
 ```mermaid
 
 graph LR
 
-  A[Password Spraying IP] -- Login Failure Account A --> D{ Entra ID }
+  Edge["msedge.exe<br/>(PID 2140)"] -- spawns --> Outlook["outlook.exe<br/>(PID 7344)"]
 
-  A[Password Spraying IP] -- Login Failure Account B --> D{ Entra ID }
+  Outlook -- spawns --> Edge["msedge.exe<br/>(PID 10212)"]
 
-  A[Password Spraying IP] -- Login Failure Account C --> D{ Entra ID }
+  Edge == "SafeLinks redirect" ==> Phish["sharefile08.s3.us-east-1<br/>.amazonaws.com"]
 
-  A[Password Spraying IP] -- Login Failure Account D --> D{ Entra ID }
+  Phish -. "/document20251021<br/>_0101001.html" .-> Edge
 
-  A[Password Spraying IP] -- Login Failure Account E --> D{ Entra ID }
+  Phish -- "Sign-in with stolen<br/>tony.stark credentials" --> Entra["Entra ID"]
 
-  A[Password Spraying IP] -- Login Failure Account E --> D{ Entra ID }
+  Entra -. "AADSTS50074: MFA Required" .-> Phish
 
-  A[Password Spraying IP] == Login Attempt Account E ==> D{ Entra ID }
+  Email["john.smith@live.ca"] -- "Phishing email<br/>Subject: John Smith<br/>Law Corporation" --> Inbox["Email Gateway"]
 
-  D{ Entra ID } == Entra ID Returns Code {{error.code}} ==> A
+  Inbox -- delivers --> Inbox["tony.stark@gov.com"]
 
-  classDef orange fill:#f96,stroke:#333,stroke-width:2px
+  classDef red fill:#f96,stroke:#333,stroke-width:2px
 
   classDef blue fill:#32bedd,stroke:#333,stroke-width:2px
 
-  class D blue
+  classDef green fill:#28a745,stroke:#333,stroke-width:2px,color:#fff
 
-  class A orange
+  classDef orange fill:#f4a460,stroke:#333,stroke-width:2px
+
+  class Email,Phish red
+
+  class Inbox,Inbox,Entra blue
+
+  class Explorer,Outlook,Edge green
 
 ```
-
-<style>
-
-  /* Actions */
-
-  .actions_list li {
-
-    display:inline!important;
-
-    margin-right: 45px!important;
-
-    margin-bottom: 15px!important;
-
-  }
-
-  .actions_list {
-
-    list-style: none!important;
-
-    margin: 0px!important;
-
-    padding: 0px!important;
-
-  }
-
-  .actions_list img {
-
-    height:20px!important;
-
-    margin-bottom:-7px!important;
-
-    padding-right:5px!important;
-
-  }
-
-  /* Tables */
-
-  .MuiPaper-root.MuiPaper-elevation.MuiPaper-rounded.MuiPaper-elevation1.MuiTableContainer-root {
-
-    box-shadow:unset !important;
-
-    width: fit-content !important;
-
-  }
-
-  /* General */
-
-  h3 {
-
-    border-bottom: 2px solid #2d7dc9;
-
-    /*border-bottom: 5px solid rgba(255, 255, 255, 0.12);*/
-
-    /*color: #393939;*/
-
-  }
-
-  /* Visualization */
-
-  .mermaid {
-
-    background-color:#fff;
-
-    padding:15px;
-
-    text-align: center;
-
-  }
-
-  /* Boites */
-
-  .actor.actor-top {
-
-    stroke: #393939 !important;
-
-    fill: lightgrey !important;
-
-  }
-
-  /* Tête du bonhomme */
-
-  .actor-man circle {
-
-    stroke: #393939 !important;
-
-    fill: #28A745 !important;
-
-  }
-
-  /* Corps du bonhomme */
-
-  .actor-man line {
-
-    stroke: #393939 !important;
-
-    fill: #393939 !important;
-
-  }
-
-  /* Lignes verticales */
-
-  .actor-line {
-
-    stroke: #393939 !important;
-
-    fill: #393939 !important;
-
-  }
-
-  /* Description des flèches horizontales */
-  .messageText {
-
-    fill: #393939 !important;
-
-    stroke: none;
-
-  }
-
-  /* Têtes de flèches */
-
-  marker#arrowhead path {
-
-    fill: #DC3545 !important;
-
-  }
-
-  /* Texte en-dessous du bonhomme */
-
-  text.actor > tspan {
-
-    fill: #393939 !important;
-
-  }
-
-  /* Flèches horizontales */
-
-  .messageLine0, .messageLine1 {
-
-    stroke-width: 1.5;
-
-    stroke-dasharray: none;
-
-    stroke: #393939 !important;
-
-  }
-
-  /* Texte dans boites */
-
-  .actor-box {
-
-    font-weight: bold !important;
-
-    color: #393939 !important;
-
-  }
-
-  /* Cacher le bonhomme du bas */
-
-  .actor-bottom {
-
-    display:None;
-
-  }
-
-</style>

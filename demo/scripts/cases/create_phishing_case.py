@@ -19,6 +19,7 @@ import hashlib
 import os
 import sys
 import uuid
+from pathlib import Path
 
 import requests
 
@@ -78,7 +79,7 @@ PHISHING_HIT = {
         "hash": _hash("phishing-email-hit-demo"),
         "outline": {
             "threat": "john.smith@live.ca",
-            "target": "elvis.presley@gov.com",
+            "target": "tony.stark@gov.com",
             "indicators": [
                 "john.smith@live.ca",
                 "sharefile08.s3.us-east-1.amazonaws.com",
@@ -96,8 +97,7 @@ PHISHING_HIT = {
     },
     "email": {
         "from": {"address": "john.smith@live.ca"},
-        "to": {"address": "elvis.presley@gov.com"},
-        "cc": {"address": "tony.stark@gov.com"},
+        "to": {"address": "tony.stark@gov.com"},
         "subject": "John Smith Law Corporation",
         "direction": "inbound",
     },
@@ -109,14 +109,11 @@ PHISHING_HIT = {
     },
     "related": {
         "user": [
-            "elvis.presley@gov.com",
             "tony.stark@gov.com",
-            "benny.ben@gov.com",
-            "gennie.gen@gov.com",
         ],
     },
     "message": (
-        "Phishing email received from john.smith@live.ca to multiple gov.com recipients. "
+        "Phishing email received from john.smith@live.ca to tony.stark@gov.com. "
         "Subject: 'John Smith Law Corporation'. "
         "Contains link: https://sharefile08.s3.us-east-1.amazonaws.com/document20251021_0101001.html"
     ),
@@ -148,9 +145,9 @@ OUTLOOK_OBSERVABLE = {
         },
     },
     "host": {
-        "name": "DESKTOP-ELVIS01",
+        "name": "DESKTOP-TONY01",
     },
-    "message": "Process outlook.exe started by explorer.exe on DESKTOP-ELVIS01.",
+    "message": "Process outlook.exe started by explorer.exe on DESKTOP-TONY01.",
 }
 
 # ---------------------------------------------------------------------------
@@ -189,11 +186,197 @@ EDGE_OBSERVABLE = {
         "path": "/document20251021_0101001.html",
     },
     "host": {
-        "name": "DESKTOP-ELVIS01",
+        "name": "DESKTOP-TONY01",
     },
     "message": (
         "msedge.exe spawned by outlook.exe to open SafeLinks-wrapped phishing URL "
-        "on DESKTOP-ELVIS01."
+        "on DESKTOP-TONY01."
+    ),
+}
+
+
+# ---------------------------------------------------------------------------
+# 4. Observables — msedge.exe network connections
+# ---------------------------------------------------------------------------
+_NETCONN_RAW = [
+    # (timestamp, process, dest, dest_port, src_port, sent, rcvd)
+    (
+        "2026-02-06T17:15:14.677Z",
+        "msedge.exe",
+        "r8m2dk1w0xq9t5z4-1drvsharepoint.acmedomain.com",
+        443,
+        49812,
+        2602,
+        4259,
+    ),
+    (
+        "2026-02-06T17:15:14.695Z",
+        "msedge.exe",
+        "r8m2dk1w0xq9t5z4-1drvsharepoint.acmedomain.com",
+        443,
+        49813,
+        5189,
+        126423,
+    ),
+    (
+        "2026-02-06T17:15:14.844Z",
+        "msedge.exe",
+        "r8m2dk1w0xq9t5z4-1drvsharepoint.acmedomain.com",
+        6080,
+        49814,
+        721,
+        7194,
+    ),
+    (
+        "2026-02-06T17:15:14.922Z",
+        "msedge.exe",
+        "r8m2dk1w0xq9t5z4-1drvsharepoint.acmedomain.com",
+        6080,
+        49815,
+        2422,
+        11582,
+    ),
+    (
+        "2026-02-06T17:15:22.070Z",
+        "msedge.exe",
+        "r8m2dk1w0xq9t5z4-1drvsharepoint.acmedomain.com",
+        6080,
+        49816,
+        0,
+        0,
+    ),
+    (
+        "2026-02-06T17:15:25.785Z",
+        "msedge.exe",
+        "r8m2dk1w0xq9t5z4-1drvsharepoint.acmedomain.com",
+        443,
+        49817,
+        2026,
+        3729,
+    ),
+    (
+        "2026-02-06T17:15:26.372Z",
+        "msedge.exe",
+        "challenges.cloudflare.com",
+        443,
+        49818,
+        2131,
+        21221,
+    ),
+    (
+        "2026-02-06T17:15:26.443Z",
+        "msedge.exe",
+        "104.18.95.41",
+        443,
+        49819,
+        227048,
+        980073,
+    ),
+    (
+        "2026-02-06T17:15:26.496Z",
+        "msedge.exe",
+        "challenges.cloudflare.com",
+        443,
+        49820,
+        1663,
+        3908,
+    ),
+    (
+        "2026-02-06T17:15:26.501Z",
+        "msedge.exe",
+        "challenges.cloudflare.com",
+        443,
+        49821,
+        2822,
+        87304,
+    ),
+]
+
+NETCONN_OBSERVABLES = [
+    {
+        "howler": {
+            "hash": _hash("observable-netconn", ts, dest, str(dport), str(sport)),
+        },
+        "timestamp": ts,
+        "event": {
+            "kind": "event",
+            "category": ["network"],
+            "type": ["connection"],
+        },
+        "process": {
+            "name": proc,
+            "pid": 10212,
+        },
+        "destination": {
+            "domain": dest if not dest[0].isdigit() else None,
+            "ip": dest if dest[0].isdigit() else None,
+            "port": dport,
+            "bytes": rcvd,
+        },
+        "source": {
+            "ip": "10.0.42.15",
+            "port": sport,
+            "bytes": sent,
+        },
+        "host": {
+            "name": "DESKTOP-TONY01",
+        },
+        "message": (
+            f"{proc} (PID 10212) 10.0.42.15:{sport} -> {dest}:{dport}  sent={sent} rcvd={rcvd}"
+        ),
+    }
+    for ts, proc, dest, dport, sport, sent, rcvd in _NETCONN_RAW
+]
+
+
+# ---------------------------------------------------------------------------
+# 5. Observable — Entra ID sign-in attempt (AADSTS50074 – MFA required)
+# ---------------------------------------------------------------------------
+ENTRA_SIGNIN_OBSERVABLE = {
+    "howler": {
+        "hash": _hash("observable-entra-signin-demo"),
+    },
+    "timestamp": "2026-02-06T16:11:37.139Z",
+    "event": {
+        "kind": "event",
+        "category": ["authentication"],
+        "type": ["start"],
+        "outcome": "failure",
+        "code": "AADSTS50074",
+        "reason": "MFA required",
+    },
+    "source": {
+        "ip": "2411:5378:12:1260::1",
+    },
+    "organization": {
+        "name": "government.com",
+    },
+    "user": {
+        "email": "Tony.Stark@gov.com",
+    },
+    "user_agent": {
+        "original": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Edg/111.0.1661.44 "
+            "Safari/537.36"
+        ),
+    },
+    "observer": {
+        "product": "Azure Active Directory",
+        "name": "Microsoft.O365.Management.Audit.AzureActiveDirectoryStsLogon",
+    },
+    "labels": {
+        "app_id": "a91a48ee-7c1c-404b-9360-dd7dfdaa6094",
+        "response_code": "AADSTS50074",
+    },
+    "host": {
+        "name": "DESKTOP-TONY01",
+    },
+    "message": (
+        "Entra ID sign-in failure for Tony.Stark@gov.com from 2411:5378:12:1260::1. "
+        "Response: AADSTS50074 – MFA required. "
+        "Log source: Microsoft.O365.Management.Audit.AzureActiveDirectoryStsLogon. "
+        "App ID: a91a48ee-7c1c-404b-9360-dd7dfdaa6094."
     ),
 }
 
@@ -227,14 +410,14 @@ def ingest_observables(observables: list[dict]) -> list[str]:
 
 
 def create_case(case_data: dict) -> dict:
-    """Create a single case via POST /api/v2/case/."""
+    """Create a single case via POST /api/v2/case/.
+
+    The case_data dict may include an 'items' list, each with
+    'type', 'value', and optional 'path'. Items are linked to the
+    case automatically during creation by the service layer.
+    """
     result = _post("/api/v2/case/", case_data)
     return result.get("api_response", result)
-
-
-def append_case_item(case_id: str, item: dict) -> None:
-    """Append an item to an existing case."""
-    _post(f"/api/v2/case/{case_id}/items", item)
 
 
 def update_case(case_id: str, data: dict) -> dict:
@@ -268,16 +451,78 @@ if __name__ == "__main__":
     print(f"  Observable (outlook.exe): {outlook_obs_id}")
     print(f"  Observable (msedge.exe):  {edge_obs_id}")
 
-    # --- Create the case ---
-    print("[3/5] Creating investigation case...")
+    # --- Ingest network connection observables ---
+    print("[3/5] Creating network connection observables...")
+    netconn_ids = ingest_observables(NETCONN_OBSERVABLES)
+    if not netconn_ids:
+        print("  [WARN] Failed to create network observables.", file=sys.stderr)
+    for nc_id, (ts, _proc, dest, dport, _sport, sent, rcvd) in zip(
+        netconn_ids, _NETCONN_RAW
+    ):
+        print(f"  Connection {dest}:{dport} (sent={sent}/rcvd={rcvd}): {nc_id}")
+
+    # --- Ingest Entra ID sign-in observable ---
+    print("[4/6] Creating Entra ID sign-in observable...")
+    signin_ids = ingest_observables([ENTRA_SIGNIN_OBSERVABLE])
+    if not signin_ids:
+        print("  [WARN] Failed to create sign-in observable.", file=sys.stderr)
+    signin_obs_id = signin_ids[0] if signin_ids else None
+    if signin_obs_id:
+        print(f"  Sign-in (AADSTS50074): {signin_obs_id}")
+
+    # --- Create the case (with items linked inline) ---
+    print("[5/6] Creating investigation case with linked items...")
+    overview_path = Path(__file__).resolve().parent.parent.parent / "overview.md"
+    overview_content = (
+        overview_path.read_text(encoding="utf-8") if overview_path.exists() else ""
+    )
     case_payload = {
         "title": "Phishing – John Smith Law Corporation",
         "summary": (
-            "Investigate phishing email from john.smith@live.ca targeting multiple "
-            "gov.com recipients. Email contained a suspicious link to "
+            "Investigate phishing email from john.smith@live.ca targeting "
+            "tony.stark@gov.com. Email contained a suspicious link to "
             "sharefile08.s3.us-east-1.amazonaws.com. Outlook.exe opened the link "
-            "via msedge.exe on DESKTOP-ELVIS01."
+            "via msedge.exe on DESKTOP-TONY01."
         ),
+        "overview": overview_content,
+        "items": [
+            {
+                "type": "hit",
+                "value": hit_id,
+                "path": f"alerts/Email Gateway ({hit_id})",
+            },
+            {
+                "type": "observable",
+                "value": outlook_obs_id,
+                "path": f"observables/outlook.exe ({outlook_obs_id})",
+            },
+            {
+                "type": "observable",
+                "value": edge_obs_id,
+                "path": f"observables/msedge.exe ({edge_obs_id})",
+            },
+            *[
+                {
+                    "type": "observable",
+                    "value": nc_id,
+                    "path": f"observables/network/{dest}:{port} ({nc_id})",
+                }
+                for nc_id, (_ts, _p, dest, port, _sp, _s, _r) in zip(
+                    netconn_ids, _NETCONN_RAW
+                )
+            ],
+            *(
+                [
+                    {
+                        "type": "observable",
+                        "value": signin_obs_id,
+                        "path": f"observables/Entra ID Sign-in ({signin_obs_id})",
+                    }
+                ]
+                if signin_obs_id
+                else []
+            ),
+        ],
     }
     case_result = create_case(case_payload)
     case_id = case_result.get("case_id")
@@ -285,9 +530,16 @@ if __name__ == "__main__":
         print(f"  Unexpected response: {case_result}", file=sys.stderr)
         sys.exit(1)
     print(f"  Case created: {case_id}")
+    print(f"  Linked hit {hit_id}")
+    print(f"  Linked observable {outlook_obs_id}")
+    print(f"  Linked observable {edge_obs_id}")
+    for nc_id in netconn_ids:
+        print(f"  Linked network observable {nc_id}")
+    if signin_obs_id:
+        print(f"  Linked Entra sign-in observable {signin_obs_id}")
 
     # --- Add investigation tasks ---
-    print("[4/5] Adding investigation tasks...")
+    print("[6/6] Adding investigation tasks...")
     tasks = [
         {
             "id": str(uuid.uuid4()),
@@ -298,7 +550,7 @@ if __name__ == "__main__":
         {
             "id": str(uuid.uuid4()),
             "assignment": "huey",
-            "summary": "Review process telemetry on DESKTOP-ELVIS01 for further suspicious activity.",
+            "summary": "Review process telemetry on DESKTOP-TONY01 for further suspicious activity.",
             "path": f"observables/outlook.exe ({outlook_obs_id})",
         },
         {
@@ -315,44 +567,11 @@ if __name__ == "__main__":
         {
             "id": str(uuid.uuid4()),
             "assignment": "goose",
-            "summary": "Notify affected recipients (elvis.presley, tony.stark, benny.ben, gennie.gen) about the phishing email.",
+            "summary": "Notify tony.stark@gov.com about the phishing email.",
         },
     ]
     update_case(case_id, {"tasks": tasks})
     for t in tasks:
         print(f"  Task [{t['assignment']}]: {t['summary'][:60]}...")
-
-    # --- Link items to the case ---
-    print("[5/5] Linking hits and observables to case...")
-
-    append_case_item(
-        case_id,
-        {
-            "type": "hit",
-            "value": hit_id,
-            "path": f"alerts/Email Gateway ({hit_id})",
-        },
-    )
-    print(f"  Linked hit {hit_id}")
-
-    append_case_item(
-        case_id,
-        {
-            "type": "observable",
-            "value": outlook_obs_id,
-            "path": f"observables/outlook.exe ({outlook_obs_id})",
-        },
-    )
-    print(f"  Linked observable {outlook_obs_id}")
-
-    append_case_item(
-        case_id,
-        {
-            "type": "observable",
-            "value": edge_obs_id,
-            "path": f"observables/msedge.exe ({edge_obs_id})",
-        },
-    )
-    print(f"  Linked observable {edge_obs_id}")
 
     print(f"\n=== Done! Case ID: {case_id} ===")
