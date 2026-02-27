@@ -237,7 +237,7 @@ def test_search_clears_next_scroll_when_last_page(datastore):
     scroll_result = {
         "_scroll_id": "next-token",
         "hits": {
-            "total": {"value": 2},
+            "total": {"value": 1},
             "hits": [
                 {
                     "_id": "admin",

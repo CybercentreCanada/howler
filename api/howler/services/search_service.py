@@ -199,7 +199,7 @@ def search(  # noqa: C901
         except elasticsearch.exceptions.NotFoundError:
             pass
 
-    if next_deep_paging_id is not None and len(response["items"]) < response["rows"]:
+    if next_deep_paging_id is not None and len(response["items"]) < rows:
         try:
             client.clear_scroll(scroll_id=next_deep_paging_id)
         except elasticsearch.exceptions.NotFoundError:
