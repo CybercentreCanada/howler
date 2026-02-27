@@ -1,5 +1,5 @@
 import { CheckCircleOutline, HourglassBottom, RadioButtonUnchecked, UpdateOutlined } from '@mui/icons-material';
-import { Card, Chip, Divider, Grid, Skeleton, Stack, Tooltip, Typography } from '@mui/material';
+import { Card, Chip, Divider, Grid, Skeleton, Stack, Tooltip, Typography, useTheme } from '@mui/material';
 import api from 'api';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
 import PluginChip from 'components/elements/PluginChip';
@@ -10,6 +10,11 @@ import type { Case } from 'models/entities/generated/Case';
 import { useEffect, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { twitterShort } from 'utils/utils';
+import StatusIcon from './components/StatusIcon';
+
+const STATUS_COLORS = {
+  resolved: 'success'
+};
 
 const CaseCard: FC<{
   case?: Case;
@@ -18,6 +23,7 @@ const CaseCard: FC<{
 }> = ({ case: providedCase, caseId, className }) => {
   const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
+  const theme = useTheme();
 
   const [_case, setCase] = useState(providedCase);
 
@@ -38,13 +44,21 @@ const CaseCard: FC<{
   }
 
   return (
-    <Card key={_case.case_id} variant="outlined" sx={{ p: 1, mb: 1 }} className={className}>
+    <Card
+      key={_case.case_id}
+      variant="outlined"
+      sx={{ p: 1, mb: 1, borderColor: theme.palette[STATUS_COLORS[_case.status]]?.main }}
+      className={className}
+    >
       <Stack direction="row" alignItems="start" spacing={1}>
         <Stack sx={{ flex: 1 }} spacing={1}>
-          <Stack direction="row" spacing={1}>
-            <Typography variant="h6" display="flex" alignItems="start" flex={1}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography variant="h6" display="flex" alignItems="start">
               {_case.title}
             </Typography>
+            <StatusIcon status={_case.status} />
+
+            <div style={{ flex: 1 }} />
 
             {_case.start && _case.end && (
               <Tooltip title={dayjs(_case.updated).toString()}>

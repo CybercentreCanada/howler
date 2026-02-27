@@ -52,7 +52,10 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
     (async () => {
       try {
         const result = await dispatchApi(
-          api.search.hit.post({ query: `howler.id:(${hitIds.join(' OR ')}) AND -howler.status:resolved` })
+          api.search.hit.post({
+            query: `howler.id:(${hitIds.join(' OR ')}) AND -howler.status:resolved`,
+            metadata: ['analytic']
+          })
         );
 
         setHits(result.items);
