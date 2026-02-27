@@ -87,8 +87,8 @@ const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
           <Stack direction="row" spacing={1} alignItems="center">
             {{
               'in-progress': <HourglassBottom color="warning" />,
-              closed: <Check color="success" />,
-              'on-hold': <Pause color="disabled" />
+              'on-hold': <Pause color="disabled" />,
+              resolved: <Check color="success" />
             }[_case.status] ?? <WarningRounded fontSize="small" />}
             <Typography variant="body1">{t('page.cases.detail.status')}</Typography>
           </Stack>

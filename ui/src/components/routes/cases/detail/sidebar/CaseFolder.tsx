@@ -68,28 +68,28 @@ const CaseFolder: FC<{
   const [openCases, setOpenCases] = useState<Record<string, boolean>>({});
   const [loadingCases, setLoadingCases] = useState<Record<string, boolean>>({});
   const [nestedCases, setNestedCases] = useState<Record<string, Case>>({});
-  const [hitMetadata, setHitMetadata] = useState({});
+  const [hitMetadata, setHitMetadata] = useState<{ [id: string]: Hit['howler'] }>({});
 
   const tree = useMemo(() => folder || buildTree(_case?.items), [folder, _case?.items]);
   const currentRootCaseId = rootCaseId || _case?.case_id;
 
   // Metadata for hit-type items
   useEffect(() => {
-    tree.leaves
-      ?.filter(leaf => leaf.type?.toLowerCase() === 'hit')
-      .forEach(leaf => {
-        dispatchApi(api.hit.get<Hit>(leaf.id), { throwError: false }).then(hit => {
-          if (!hit) return;
-          setHitMetadata(prev => ({
-            ...prev,
-            [leaf.id]: {
-              status: hit.howler?.status,
-              escalation: hit.howler?.escalation,
-              assessment: hit.howler?.assessment
-            }
-          }));
-        });
-      });
+    const ids = tree.leaves?.filter(leaf => leaf.type?.toLowerCase() === 'hit').map(leaf => leaf.id);
+
+    if (!ids || ids.length < 1) {
+      return;
+    }
+
+    dispatchApi(api.search.hit.post({ query: `howler.id:(${ids.join(' OR ')})` }), { throwError: false }).then(
+      result => {
+        if (result?.items?.length < 1) {
+          return;
+        }
+
+        setHitMetadata(Object.fromEntries(result.items.map(hit => [hit.howler.id, hit.howler])));
+      }
+    );
   }, [tree.leaves, dispatchApi]);
 
   const getIconColor = (itemType: string | undefined, itemKey: string | undefined, leafId: string) => {
