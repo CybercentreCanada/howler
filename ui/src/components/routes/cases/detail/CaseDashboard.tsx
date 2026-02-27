@@ -23,8 +23,12 @@ const AGGREGATE_FIELDS = [
 
 const getDuration = (case_: Case) => {
   if (case_?.start) {
-    return dayjs.duration(dayjs(case_?.end ?? new Date()).diff(dayjs(case_.start), 'minute'), 'minute');
+    return dayjs
+      .duration(dayjs(case_?.end ?? new Date()).diff(dayjs(case_.start), 'minute'), 'minute')
+      .format('HH[h] mm[m]');
   }
+
+  return '--';
 };
 
 const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, caseId }) => {
@@ -77,7 +81,7 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
         <CaseAggregate
           icon="mingcute:heartbeat-line"
           iconColor={theme.palette.error.light}
-          title={getDuration(_case)?.format('HH[h] mm[m]') ?? '--'}
+          title={getDuration(_case)}
           subtitle={t('page.cases.dashboard.duration')}
         />
       </Grid>

@@ -21,13 +21,17 @@ TEST_SIZE = 12
 @pytest.fixture(scope="module")
 def datastore(datastore_connection):
     ds = datastore_connection
+
     try:
         wipe_users(ds)
         create_users(ds)
-        wipe_hits(ds)
-        wipe_observables(ds)
-        create_hits(ds, hit_count=40)
-        create_observables(ds, observable_count=40)
+        if ds.hit.search("howler.id:*")["total"] != 40:
+            wipe_hits(ds)
+            create_hits(ds, hit_count=40)
+
+        if ds.observable.search("howler.id:*")["total"] != 40:
+            wipe_observables(ds)
+            create_observables(ds, observable_count=40)
 
         for index in range(TEST_SIZE - 5):
             user = ds.user.get("user")
@@ -35,12 +39,8 @@ def datastore(datastore_connection):
             user.name = f"SVC_TEST_{index}"
             ds.user.save(user.uname, user)
 
-        ds.user.commit()
-        ds.hit.commit()
         yield ds
     finally:
-        wipe_hits(ds)
-        wipe_observables(ds)
         wipe_users(ds)
         create_users(ds)
 

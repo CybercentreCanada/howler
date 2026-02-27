@@ -132,7 +132,7 @@ def search(  # noqa: C901
         parsed_filters = filters
 
     if query is None:
-        query = "*"
+        query = "id:*"
 
     if sort is None:
         sort = DEFAULT_SORT
