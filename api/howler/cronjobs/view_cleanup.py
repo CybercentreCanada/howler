@@ -32,7 +32,7 @@ def execute():
 
     # Collect all views
     while len(view_list) < total_view_count:
-        view_list.extend(ds.view.search("*:*", rows=250, offset=len(user_list)))
+        view_list.extend(ds.view.search("*:*", rows=250, offset=len(view_list)))
 
     # Collect all users
     while len(user_list) < total_user_count:

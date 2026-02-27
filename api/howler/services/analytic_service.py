@@ -116,6 +116,7 @@ def save_from_hit(hit: Hit, user: User):
 
         if user["uname"] not in analytic.contributors:
             analytic.contributors.append(user.uname)
+            save = True
 
         if hit.howler.detection:
             new_detections = [d for d in analytic.detections if d.lower() != (hit.howler.detection or "").lower()]
