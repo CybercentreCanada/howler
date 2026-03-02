@@ -8,15 +8,16 @@ from uuid import uuid4
 
 import pytest
 import requests
+from test.conftest import APIError, get_api_data
 
 from howler.common import loader
+from howler.config import CLASSIFICATION
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.helper import generate_useful_hit
 from howler.odm.models.action import Action
 from howler.odm.models.howler_data import Assessment, HitStatusTransition
 from howler.odm.random_data import create_actions, create_hits, wipe_actions, wipe_hits
 from howler.services import hit_service
-from test.conftest import APIError, get_api_data
 
 
 @pytest.fixture(scope="module")
@@ -247,10 +248,12 @@ def test_valid_action_on_triage(datastore: HowlerDatastore, login_session):
     users = [user.uname for user in datastore.user.search("*:*")["items"]]
 
     test_hit_promote = generate_useful_hit(lookups, users, False)
+    test_hit_promote.classification = CLASSIFICATION.UNRESTRICTED
     test_hit_promote.howler.analytic = "test_triage_assess_promote"
     datastore.hit.save(test_hit_promote.howler.id, test_hit_promote)
 
     test_hit_demote = generate_useful_hit(lookups, users, False)
+    test_hit_demote.classification = CLASSIFICATION.UNRESTRICTED
     test_hit_demote.howler.analytic = "test_triage_assess_demote"
     datastore.hit.save(test_hit_demote.howler.id, test_hit_demote)
 

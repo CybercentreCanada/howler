@@ -4,7 +4,10 @@ import uuid
 from typing import Any, cast
 
 import pytest
+from test.conftest import APIError, get_api_data
+from test.utils.example_hashes import EXAMPLE_HASHES
 
+from howler.config import CLASSIFICATION
 from howler.datastore.collection import ESCollection
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm import Model
@@ -20,8 +23,6 @@ from howler.odm.randomizer import (
 )
 from howler.services import hit_service
 from howler.utils.dict_utils import flatten
-from test.conftest import APIError, get_api_data
-from test.utils.example_hashes import EXAMPLE_HASHES
 
 valid_hit_data = [
     {
@@ -850,6 +851,7 @@ def test_overwrite_hit(datastore: HowlerDatastore, login_session):
     session, host = login_session
 
     hit_to_update: Hit = random_model_obj(cast(Model, Hit))
+    hit_to_update.classification = CLASSIFICATION.UNRESTRICTED
     datastore.hit.save(hit_to_update.howler.id, hit_to_update)
     datastore.hit.commit()
 
@@ -878,6 +880,7 @@ def test_update_hit(datastore: HowlerDatastore, login_session):
     session, host = login_session
 
     hit_to_update: Hit = random_model_obj(cast(Model, Hit))
+    hit_to_update.classification = CLASSIFICATION.UNRESTRICTED
     datastore.hit.save(hit_to_update.howler.id, hit_to_update)
     datastore.hit.commit()
 
