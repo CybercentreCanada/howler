@@ -29,7 +29,7 @@ def get_jwk(access_token: str) -> PyJWK:
         cache.delete(key="get_jwks")
         try:
             jwks, _ = get_jwks()
-            key = jwks[kid]
+            key = PyJWK(jwks[kid])
         except KeyError:
             raise HowlerKeyError("Specified Key Set does not exist.")
 
