@@ -79,15 +79,15 @@ def main():
         ![Static Badge](https://img.shields.io/badge/Build%20(Python%20{platform.python_version()})-passing-brightgreen)
 
         # Howler API - Coverage Results
-        {generate_badge('Total Coverage', total_percentage, total_color)} {badge}
+        {generate_badge("Total Coverage", total_percentage, total_color)} {badge}
 
-{newline.join([(' ' * 8) + line for line in diff_result.splitlines()]) if (not develop and not rc_or_main) else ''}
+{newline.join([(" " * 8) + line for line in diff_result.splitlines()]) if (not develop and not rc_or_main) else ""}
 
         ## Full Coverage Report
         <details>
             <summary>Expand</summary>
 
-{newline.join([(' ' * 12) + line for line in report_result.splitlines()])}
+{newline.join([(" " * 12) + line for line in report_result.splitlines()])}
         </details>
         """
         ).strip()

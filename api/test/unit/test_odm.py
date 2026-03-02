@@ -835,4 +835,3 @@ def test_domain():
 
     with pytest.raises(HowlerException):
         Test({"domain": "foo", "strict_domain": "foo"})
-

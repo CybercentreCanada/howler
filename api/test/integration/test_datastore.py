@@ -794,9 +794,9 @@ def test_fix_replicas(es_connection: ESCollection, replicas: int):
         current_replica_count = int(
             current_settings[f"{test_index_name}_hot"]["settings"]["index"]["number_of_replicas"]
         )
-        assert (
-            current_replica_count == incorrect_replicas
-        ), f"Expected {incorrect_replicas} replicas, got {current_replica_count}"
+        assert current_replica_count == incorrect_replicas, (
+            f"Expected {incorrect_replicas} replicas, got {current_replica_count}"
+        )
 
         # Add some test data to ensure data preservation during replica fixing
         test_data = {"test_field": "test_value", "timestamp": time.time()}
