@@ -118,7 +118,6 @@ def invalidate_apikey_cache(username: str, key_name: str) -> None:
     redis.delete(_apikey_cache_key(username, key_name))
 
 
-
 def _get_token_store(user: str) -> ExpiringSet:
     """Get an expiring redis set in which to add a token
 
