@@ -119,7 +119,7 @@ def get_audience(oauth_provider: str) -> str:
 
 def decode(
     access_token: str,
-    key: Optional[str] = None,
+    key: str | bytes | None = None,
     algorithms: Optional[list[str]] = None,
     audience: Optional[str] = None,
     validate_audience: bool = False,
