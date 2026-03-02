@@ -291,9 +291,11 @@ const Home: FC = () => {
                 sx={{ '&:hover': { bgcolor: 'transparent' }, cursor: 'default' }}
               >
                 <FormControl sx={{ px: 2, py: 1, minWidth: 250, pointerEvents: 'auto' }}>
-                  {t('page.dashboard.settings.refreshRate')}
-                  <FormLabel id="refresh-rate-label" sx={{ mb: 2 }}></FormLabel>
+                  <FormLabel id="refresh-rate-label" sx={{ mb: 2 }}>
+                    {t('page.dashboard.settings.refreshRate')}
+                  </FormLabel>
                   <Slider
+                    aria-labelledby="refresh-rate-label"
                     value={REFRESH_RATES.indexOf(refreshRate)}
                     onChange={(_, value) => handleRefreshRateChange(REFRESH_RATES[value as number])}
                     step={1}
