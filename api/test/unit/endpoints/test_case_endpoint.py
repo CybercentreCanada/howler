@@ -122,7 +122,9 @@ class TestDeleteCases:
     @patch("howler.api.v2.case.datastore")
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
-    def test_delete_cases_success_admin(self, mock_auth_service, mock_case_service, mock_datastore, request_context: Flask):
+    def test_delete_cases_success_admin(
+        self, mock_auth_service, mock_case_service, mock_datastore, request_context: Flask
+    ):
         """Admin user can delete cases and gets 204."""
         user = _build_user(["admin", "user"])
         _mock_auth(mock_auth_service, user, ["R", "W"])
@@ -212,7 +214,7 @@ class TestCreateCaseEndpoint:
             assert result.status_code == 201
             body = result.get_json()
             assert body["api_response"]["case_id"] == "case-new-case"
-            mock_case_service.create_case.assert_called_once()
+            mock_case_service.create_case.assert_called_once_with({"title": "New Case", "summary": "S"}, user.uname)
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
@@ -236,49 +238,7 @@ class TestCreateCaseEndpoint:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
-    def test_create_case_missing_title_returns_400(self, mock_auth_service, mock_case_service, request_context: Flask):
-        """Returns 400 when title is missing."""
-        user = _build_user()
-        _mock_auth(mock_auth_service, user)
-
-        with request_context.test_request_context(
-            method="POST",
-            json={"summary": "S"},
-            headers={"Authorization": "Bearer ."},
-        ):
-            from howler.api.v2.case import create_case
-
-            result: Response = create_case(user=user)
-
-            assert result.status_code == 400
-            mock_case_service.create_case.assert_not_called()
-
-    @patch("howler.api.v2.case.case_service")
-    @patch("howler.security.auth_service")
-    def test_create_case_missing_summary_returns_400(
-        self, mock_auth_service, mock_case_service, request_context: Flask
-    ):
-        """Returns 400 when summary is missing."""
-        user = _build_user()
-        _mock_auth(mock_auth_service, user)
-
-        with request_context.test_request_context(
-            method="POST",
-            json={"title": "T"},
-            headers={"Authorization": "Bearer ."},
-        ):
-            from howler.api.v2.case import create_case
-
-            result: Response = create_case(user=user)
-
-            assert result.status_code == 400
-            mock_case_service.create_case.assert_not_called()
-
-    @patch("howler.api.v2.case.case_service")
-    @patch("howler.security.auth_service")
-    def test_create_case_already_exists_returns_400(
-        self, mock_auth_service, mock_case_service, request_context: Flask
-    ):
+    def test_create_case_already_exists_returns_400(self, mock_auth_service, mock_case_service, request_context: Flask):
         """Returns 400 when a case with the derived ID already exists."""
         from howler.common.exceptions import ResourceExists
 
@@ -389,9 +349,7 @@ class TestUpdateCaseEndpoint:
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        mock_case_service.update_case.side_effect = InvalidDataException(
-            "Cannot modify immutable field(s): case_id"
-        )
+        mock_case_service.update_case.side_effect = InvalidDataException("Cannot modify immutable field(s): case_id")
 
         with request_context.test_request_context(
             method="PUT",

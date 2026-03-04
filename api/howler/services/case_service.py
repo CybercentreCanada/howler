@@ -22,22 +22,12 @@ logger = get_logger(__file__)
 CREATED_CASES = Counter(f"{APP_NAME.replace('-', '_')}_created_cases_total", "The number of created cases")
 
 
-@overload
-def create_case(*, case: Case) -> dict[str, Any]: ...
-
-
-@overload
-def create_case(title: str, summary: str, user: str = "") -> dict[str, Any]: ...
-
-
-def create_case(title: str = "", summary: str = "", user: str = "", *, case: Case | None = None) -> dict[str, Any]:  # type: ignore
+def create_case(_case: dict, user: str = None) -> dict[str, Any]:  # type: ignore
     """Create a new case in the datastore.
 
     Args:
-        title: Title of the case
-        summary: Short summary of the case
+        case: Case data
         user: Username to record in the creation log
-        case: Pre-built Case object (if provided, title and summary are ignored)
 
     Returns:
         dict: The created case as a primitives dictionary
@@ -45,20 +35,19 @@ def create_case(title: str = "", summary: str = "", user: str = "", *, case: Cas
     Raises:
         ResourceExists: If a case with the same ID already exists
     """
-    if case is None:
-        case = Case({"title": title, "summary": summary})
-        items = []
-    else:
-        items = list(case.items)
-        case.items = []
+    if not _case:
+        raise InvalidDataException("Case data is required to create a case")
 
+    _case.pop("case_id", None)
+    items = _case.pop("items", [])
+
+    case = Case(_case)
     case.log = [CaseLog({"timestamp": "NOW", "explanation": "Case created", "user": user or "system"})]
-
-    CREATED_CASES.inc()
     datastore().case.save(case.case_id, case)
+    CREATED_CASES.inc()
 
     for item in items:
-        append_case_item(case.case_id, item=item)
+        append_case_item(case.case_id, item=CaseItem(item))
 
     if items:
         return datastore().case.get_if_exists(case.case_id, as_obj=False)
@@ -278,7 +267,7 @@ def append_case_item(  # noqa: C901
 
         item = CaseItem({"type": item_type, "value": item_value, "path": item_path})
 
-    match item_type:
+    match item.type:
         case CaseItemTypes.HIT:
             append_hit(case_id, item)
         case CaseItemTypes.OBSERVABLE:

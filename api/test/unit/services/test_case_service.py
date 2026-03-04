@@ -20,7 +20,7 @@ class TestCreateCase:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        case_service.create_case("New Case", "A summary", user="admin")
+        case_service.create_case({"title": "New Case", "summary": "A summary"}, user="admin")
 
         mock_ds.case.save.assert_called_once()
         saved_id, saved_case = mock_ds.case.save.call_args[0]
@@ -34,8 +34,8 @@ class TestCreateCase:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        case_service.create_case("Title A", "Summary A", user="admin")
-        case_service.create_case("Title B", "Summary B", user="admin")
+        case_service.create_case({"title": "Title A", "summary": "Summary A"}, user="admin")
+        case_service.create_case({"title": "Title B", "summary": "Summary B"}, user="admin")
 
         calls = mock_ds.case.save.call_args_list
         id_a = calls[0][0][0]
@@ -48,7 +48,7 @@ class TestCreateCase:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        result = case_service.create_case("Title", "Summary", user="admin")
+        result = case_service.create_case({"title": "Title", "summary": "Summary"}, user="admin")
 
         assert isinstance(result, dict)
         assert result["title"] == "Title"
@@ -61,7 +61,7 @@ class TestCreateCase:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        case_service.create_case("Title", "Summary", user="admin")
+        case_service.create_case({"title": "Title", "summary": "Summary"}, user="admin")
 
         _, saved_case = mock_ds.case.save.call_args[0]
         assert len(saved_case.log) == 1
@@ -73,26 +73,22 @@ class TestCreateCase:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        case_service.create_case("Title", "Summary")
+        case_service.create_case({"title": "Title", "summary": "Summary"})
 
         _, saved_case = mock_ds.case.save.call_args[0]
         assert len(saved_case.log) == 1
         assert saved_case.log[0].user == "system"
 
     @patch("howler.services.case_service.datastore")
-    def test_create_case_with_case_object(self, mock_ds_fn):
-        """create_case accepts a pre-built Case object."""
+    def test_create_case_raises_when_empty_data(self, mock_ds_fn):
+        """create_case raises InvalidDataException when case data is empty."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        my_case = Case({"title": "Pre-built Case", "summary": "Pre-built summary"})
-        case_service.create_case(case=my_case)
+        with pytest.raises(InvalidDataException):
+            case_service.create_case({})
 
-        mock_ds.case.save.assert_called_once()
-        saved_id, saved_case = mock_ds.case.save.call_args[0]
-        assert saved_id == saved_case.case_id
-        assert saved_case.title == "Pre-built Case"
-        assert saved_case.summary == "Pre-built summary"
+        mock_ds.case.save.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

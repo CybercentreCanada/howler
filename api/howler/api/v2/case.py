@@ -1,16 +1,8 @@
 from flask import request
 from werkzeug.exceptions import UnsupportedMediaType
 
-from howler.api import (
-    bad_request,
-    created,
-    internal_error,
-    make_subapi_blueprint,
-    no_content,
-    not_found,
-    ok,
-)
-from howler.common.exceptions import InvalidDataException, NotFoundException, ResourceExists
+from howler.api import bad_request, created, internal_error, make_subapi_blueprint, no_content, not_found, ok
+from howler.common.exceptions import HowlerException, InvalidDataException, NotFoundException, ResourceExists
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
@@ -41,7 +33,8 @@ def create_case(user: User, **kwargs):
     Data Block:
     {
         "title": "Case Title",
-        "summary": "Brief description"
+        "summary": "Brief description",
+        ...                         # Any other valid case fields
     }
 
     Result Example:
@@ -52,18 +45,16 @@ def create_case(user: User, **kwargs):
     case_data = request.json
 
     if not case_data or not isinstance(case_data, dict):
-        return bad_request(err="Request body must be a JSON object with title and summary.")
-
-    title = case_data.get("title")
-    summary = case_data.get("summary")
-
-    if not title or not summary:
-        return bad_request(err="Both title and summary are required.")
+        return bad_request(err="Request body must be a JSON object with case data.")
 
     try:
-        new_case = case_service.create_case(title, summary, user.uname)
+        new_case = case_service.create_case(case_data, user.uname)
         return created(new_case)
+    except InvalidDataException as e:
+        return bad_request(err=str(e))
     except ResourceExists as e:
+        return bad_request(err=str(e))
+    except HowlerException as e:
         return bad_request(err=str(e))
 
 
@@ -185,6 +176,7 @@ def update_case(id: str, user: User, **kwargs):
     Data Block:
     {
         "title": "New case Name"    # The name of this case
+        ...                        # Any other valid case fields to update
     }
 
     Result Example:
