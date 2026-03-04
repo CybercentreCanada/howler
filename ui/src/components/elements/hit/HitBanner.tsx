@@ -1,28 +1,15 @@
-import {
-  Box,
-  Chip,
-  Divider,
-  Grid,
-  Stack,
-  Tooltip,
-  Typography,
-  avatarClasses,
-  iconButtonClasses,
-  useTheme,
-  type TypographyProps
-} from '@mui/material';
+import { Box, Chip, Stack, Typography, avatarClasses, iconButtonClasses, useTheme } from '@mui/material';
 import useMatchers from 'components/app/hooks/useMatchers';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
-import { uniq } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
 import howlerPluginStore from 'plugins/store';
-import { useCallback, useContext, useEffect, useMemo, useState, type FC } from 'react';
+import { useContext, useEffect, useMemo, useState, type FC } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
 import { Link } from 'react-router-dom';
 import { ESCALATION_COLORS, PROVIDER_COLORS } from 'utils/constants';
 import { stringToColor } from 'utils/utils';
-import PluginTypography from '../PluginTypography';
+import OutlineGrid from './banner/OutlineGrid';
 import Assigned from './elements/Assigned';
 import EscalationChip from './elements/EscalationChip';
 import HitTimestamp from './elements/HitTimestamp';
@@ -50,8 +37,8 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
 
   const [analyticId, setAnalyticId] = useState<string>();
 
-  const compressed = useMemo(() => layout === HitLayout.DENSE, [layout]);
-  const textVariant = useMemo(() => (layout === HitLayout.COMFY ? 'body1' : 'caption'), [layout]);
+  const textVariant = layout === HitLayout.COMFY ? 'body1' : 'caption';
+  const compressed = layout === HitLayout.DENSE;
 
   useEffect(() => {
     if (!hit?.howler.analytic) {
@@ -141,71 +128,10 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
     }
   }, [compressed, hit, iconUrl, providerColor, theme.palette, theme.shape.borderRadius]);
 
-  /**
-   * The tooltips are necessary only when in the most compressed format
-   */
-  const Wrapper: FC<{ i18nKey: string; value: string | string[]; field: string } & TypographyProps> = useCallback(
-    ({ i18nKey, value, field, ...typographyProps }) => {
-      const _children = (
-        <Stack direction="row" spacing={1} flex={1}>
-          <Typography
-            variant={textVariant}
-            noWrap={compressed}
-            textOverflow={compressed ? 'ellipsis' : 'wrap'}
-            {...typographyProps}
-            sx={[
-              { display: 'flex', flexDirection: 'row' },
-              ...(Array.isArray(typographyProps?.sx) ? typographyProps?.sx : [typographyProps?.sx])
-            ]}
-          >
-            {t(i18nKey)}:
-          </Typography>
-          {(Array.isArray(value) ? value : [value]).map(val => (
-            <PluginTypography
-              component="span"
-              context="banner"
-              key={val}
-              variant={textVariant}
-              noWrap={compressed}
-              textOverflow={compressed ? 'ellipsis' : 'wrap'}
-              {...typographyProps}
-              value={val}
-              field={field}
-              hit={hit}
-            />
-          ))}
-        </Stack>
-      );
-
-      return compressed ? (
-        <Tooltip
-          title={
-            Array.isArray(value) ? (
-              <div>
-                {value.map(_indicator => (
-                  <p key={_indicator} style={{ margin: 0, padding: 0 }}>
-                    {_indicator}
-                  </p>
-                ))}
-              </div>
-            ) : (
-              value
-            )
-          }
-        >
-          {_children}
-        </Tooltip>
-      ) : (
-        _children
-      );
-    },
-    [compressed, hit, t, textVariant]
-  );
-
   return (
     <Box
       display="grid"
-      gridTemplateColumns="minmax(0, auto) minmax(0, 1fr) minmax(0, auto)"
+      gridTemplateColumns="auto 1fr auto"
       alignItems="stretch"
       sx={{ width: '100%', ml: 0, overflow: 'hidden' }}
     >
@@ -216,16 +142,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
           padding: theme.spacing(1),
           gridColumn: { xs: 'span 3', sm: 'span 1', md: 'span 1' }
         }}
-        spacing={layout !== HitLayout.COMFY ? 1 : 2}
-        divider={
-          <Divider
-            orientation="horizontal"
-            sx={[
-              layout !== HitLayout.COMFY && { marginTop: '4px !important' },
-              { mr: `${theme.spacing(-1)} !important` }
-            ]}
-          />
-        }
+        spacing={layout !== HitLayout.COMFY ? 0.5 : 1}
       >
         <Typography
           variant={compressed ? 'body1' : 'h6'}
@@ -260,67 +177,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
             {t('hit.header.rationale')}: {hit.howler.rationale}
           </Typography>
         )}
-        {hit.howler?.outline && (
-          <>
-            <Grid container spacing={layout !== HitLayout.COMFY ? 1 : 2} sx={{ ml: `${theme.spacing(-1)} !important` }}>
-              {hit.howler.outline.threat && (
-                <Grid item>
-                  <Wrapper
-                    i18nKey="hit.header.threat"
-                    value={hit.howler.outline.threat}
-                    field="howler.outline.threat"
-                  />
-                </Grid>
-              )}
-              {hit.howler.outline.target && (
-                <Grid item>
-                  <Wrapper
-                    i18nKey="hit.header.target"
-                    value={hit.howler.outline.target}
-                    field="howler.outline.target"
-                  />
-                </Grid>
-              )}
-            </Grid>
-            {hit.howler.outline.indicators?.length > 0 && (
-              <Stack direction="row" spacing={1}>
-                <Typography component="span" variant={textVariant}>
-                  {t('hit.header.indicators')}:
-                </Typography>
-                <Grid
-                  container
-                  spacing={0.5}
-                  sx={{ mt: `${theme.spacing(-0.5)} !important`, ml: `${theme.spacing(0.25)} !important` }}
-                >
-                  {uniq(hit.howler.outline.indicators).map((_indicator, index) => {
-                    return (
-                      <Grid key={_indicator} item>
-                        <Stack direction="row">
-                          <PluginTypography context="indicators" variant={textVariant} value={_indicator}>
-                            {_indicator}
-                          </PluginTypography>
-                          {index < hit.howler.outline.indicators.length - 1 && (
-                            <Typography variant={textVariant}>{','}</Typography>
-                          )}
-                        </Stack>
-                      </Grid>
-                    );
-                  })}
-                </Grid>
-              </Stack>
-            )}
-            {hit.howler.outline.summary && (
-              <Wrapper
-                i18nKey="hit.header.summary"
-                value={hit.howler.outline.summary}
-                paragraph
-                textOverflow="wrap"
-                sx={[compressed && { marginTop: `0 !important` }]}
-                field="howler.outline.summary"
-              />
-            )}
-          </>
-        )}
+        <OutlineGrid hit={hit} layout={layout} />
       </Stack>
       <Stack
         direction="column"
