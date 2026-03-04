@@ -302,7 +302,7 @@ def validate_apikey(  # noqa: C901
                     )
 
                 # Check the cache to avoid the expensive bcrypt verification.
-                # Key = username:key_name, Value = sha256(secret)
+                # Key = username:key_name, Value = HMAC-SHA256(username:key_name:secret) via _hash_secret
                 if _is_apikey_cached(username, name, apikey_password):
                     logger.debug("API key validated from cache for user %s", username)
                     return user_data, key.acl
