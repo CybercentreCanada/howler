@@ -112,7 +112,7 @@ def build_docs_for_model(model: type[BaseModel], parent_key: str | None = None):
             doc_string = doc_string + (
                 "    "
                 f"| `{key}` | [`{annotation.__name__}`](#{annotation.__name__.lower()}) | "
-                f"{(annotation.__doc__ or "None").replace("\n", " ")} | "
+                f"{(annotation.__doc__ or 'None').replace('\n', ' ')} | "
                 f":material-checkbox-marked-outline: Yes | See [{annotation.__name__}]"
                 f"(#{annotation.__name__.lower()}) for details. |\n"
             )

@@ -129,7 +129,7 @@ def add_user_account(username, **_):
 
     # Add dynamic classification group
     data["classification"] = user_service.get_dynamic_classification(
-        cast(str | None, data.get("classification", None)), data["email"]
+        cast(str | None, data.get("classification", None)), data
     )
 
     # Clear non user account data
@@ -290,7 +290,7 @@ def set_user_account(username: str, **kwargs):  # noqa: C901
             data.pop("new_pass_confirm", None)
 
         # Apply dynamic classification
-        data["classification"] = user_service.get_dynamic_classification(data["classification"], data["email"])
+        data["classification"] = user_service.get_dynamic_classification(data["classification"], data)
 
         ret_val = user_service.save_user_account(username, data, kwargs["user"])
         return ok({"success": ret_val})

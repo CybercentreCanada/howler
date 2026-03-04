@@ -454,7 +454,7 @@ def random_data_for_field(field: _Field, name: str, minimal: bool = False) -> _A
         return random.choice([True, False])
     elif isinstance(field, Classification):
         if field.engine.enforce:
-            possible_classifications = list(field.engine._classification_cache)
+            possible_classifications = list(field.engine.list_all_classification_combinations(normalized=True))
             possible_classifications.extend([field.engine.UNRESTRICTED, field.engine.RESTRICTED])
         else:
             possible_classifications = [field.engine.UNRESTRICTED]
@@ -490,11 +490,13 @@ def random_data_for_field(field: _Field, name: str, minimal: bool = False) -> _A
     elif isinstance(field, Date):
         return get_random_iso_date()
     elif isinstance(field, Integer):
-        return random.randint(128, 4096)
+        return random.randint(-2_147_483_648, 2_147_483_647)
     elif isinstance(field, Long):
-        return random.randint(1, 223372036854775807)
+        # Generate a random 64-bit signed integer
+        return random.randint(-9_223_372_036_854_775_808, 9_223_372_036_854_775_807)
     elif isinstance(field, Float):
-        return random.randint(12800, 409600) / 100.0
+        # Generate a random float in a reasonable range
+        return random.uniform(-1e6, 1e6)
     elif isinstance(field, MD5):
         return get_random_hash(32)
     elif isinstance(field, SHA1):
@@ -586,7 +588,7 @@ def random_data_for_field(field: _Field, name: str, minimal: bool = False) -> _A
 def random_model_obj(model: odm.Model, as_json: bool = False) -> _Any:
     """Create a random valid instance for the given model"""
     data = {}
-    for f_name, f_value in model.fields().items():
+    for f_name, f_value in model._odm_field_cache.items():
         data[f_name] = random_data_for_field(f_value, f_name)
 
     if as_json:
@@ -599,7 +601,7 @@ def random_model_obj(model: odm.Model, as_json: bool = False) -> _Any:
 def random_minimal_obj(model: odm.Model, as_json: bool = False) -> _Any:
     """Create a minimal valid instance for the given model"""
     data = {}
-    for f_name, f_value in model.fields().items():
+    for f_name, f_value in model._odm_field_cache.items():
         if not f_value.default_set:
             data[f_name] = random_data_for_field(f_value, f_name, minimal=True)
 
