@@ -32,8 +32,13 @@ const SearchSpan: FC<{
   const span = useContextSelector(ParameterContext, ctx => ctx.span);
   const setSpan = useContextSelector(ParameterContext, ctx => ctx.setSpan);
 
-  const startDate = useContextSelector(ParameterContext, ctx => (ctx.startDate ? dayjs(ctx.startDate) : null));
-  const endDate = useContextSelector(ParameterContext, ctx => (ctx.endDate ? dayjs(ctx.endDate) : null));
+  const defaultStartDate = dayjs().subtract(2, 'days');
+  const defaultEndDate = dayjs().subtract(1, 'day');
+
+  const startDate = useContextSelector(ParameterContext, ctx =>
+    ctx.startDate ? dayjs(ctx.startDate) : defaultStartDate
+  );
+  const endDate = useContextSelector(ParameterContext, ctx => (ctx.endDate ? dayjs(ctx.endDate) : defaultEndDate));
 
   const getCurrentViews = useContextSelector(ViewContext, ctx => ctx.getCurrentViews);
 
