@@ -284,6 +284,10 @@ class Auth(BaseModel):
 
     allow_apikeys: bool = Field(default=True, description="Allow API keys?")
     allow_extended_apikeys: bool = Field(default=True, description="Allow extended API keys?")
+    hmac_secret_key: str = Field(
+        default=os.environ.get("HMAC_SECRET_KEY", "changeme"),
+        description="HMAC secret used in auth hash operations. Change this in production!",
+    )
     max_apikey_duration_amount: Optional[int] = Field(
         default=None, description="Amount of unit of maximum duration for API keys"
     )

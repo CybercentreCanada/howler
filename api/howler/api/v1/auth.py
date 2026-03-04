@@ -144,6 +144,7 @@ def add_apikey(**kwargs):  # noqa: C901
     except HowlerException as e:
         return bad_request(err=e.message)
 
+    auth_service.invalidate_apikey_cache(user["uname"], key_name)
     storage.user.save(user["uname"], user_data)
 
     return ok({"apikey": f"{key_name}:{random_pass}"})
@@ -173,6 +174,7 @@ def delete_apikey(name, **kwargs):
         return not_found("Api key does not exist")
 
     user_data.apikeys.pop(name)
+    auth_service.invalidate_apikey_cache(user["uname"], name)
     storage.user.save(user["uname"], user_data)
 
     return no_content()
