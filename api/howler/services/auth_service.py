@@ -19,6 +19,7 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.config import config, redis
 from howler.odm.models.user import User
+from howler.remote.datatypes import retry_call
 from howler.remote.datatypes.queues.named import NamedQueue
 from howler.remote.datatypes.set import ExpiringSet
 from howler.security.utils import generate_random_secret, verify_password
@@ -83,7 +84,7 @@ def _is_apikey_cached(username: str, key_name: str, secret: str) -> bool:
     Returns:
         bool: True if the cache holds a matching hash for this secret.
     """
-    raw = redis.get(_apikey_cache_key(username, key_name))
+    raw = retry_call(redis.get, _apikey_cache_key(username, key_name))
     if raw is None:
         return False
     cached_hash = raw.decode() if isinstance(raw, bytes) else raw
@@ -98,7 +99,8 @@ def _cache_apikey_verification(username: str, key_name: str, secret: str) -> Non
         key_name (str): The name portion of the apikey.
         secret (str): The raw apikey secret whose hash will be stored.
     """
-    redis.setex(
+    retry_call(
+        redis.setex,
         _apikey_cache_key(username, key_name),
         _APIKEY_CACHE_TTL,
         _hash_secret(username, key_name, secret),
@@ -115,7 +117,7 @@ def invalidate_apikey_cache(username: str, key_name: str) -> None:
         username (str): The authenticating username.
         key_name (str): The name portion of the apikey.
     """
-    redis.delete(_apikey_cache_key(username, key_name))
+    retry_call(redis.delete, _apikey_cache_key(username, key_name))
 
 
 def _get_token_store(user: str) -> ExpiringSet:
