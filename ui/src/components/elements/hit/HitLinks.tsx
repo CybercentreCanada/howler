@@ -8,7 +8,7 @@ import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { FC } from 'react';
 
-const HitLinks: FC<{ hit: Hit; analytic: Analytic; dossiers: Dossier[] }> = ({ hit, analytic, dossiers }) => {
+const HitLinks: FC<{ hit?: Hit; analytic?: Analytic; dossiers: Dossier[] }> = ({ hit, analytic, dossiers = [] }) => {
   return (
     (hit?.howler?.links?.length > 0 ||
       analytic?.notebooks?.length > 0 ||
