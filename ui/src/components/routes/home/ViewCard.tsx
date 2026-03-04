@@ -60,6 +60,7 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
 
   const refreshView = useCallback(async () => {
     if (!view?.query || isRefreshing.current) {
+      onRefreshComplete?.();
       return;
     }
 

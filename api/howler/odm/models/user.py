@@ -83,5 +83,6 @@ class User(odm.Model):
     )
     refresh_rate: int = odm.Integer(
         default=15,
+        min=1,
         description="The refresh rate in seconds for the dashboard.",
     )
