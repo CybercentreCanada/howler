@@ -72,7 +72,7 @@ def _is_apikey_cached(username: str, key_name: str, secret: str) -> bool:
     """Check whether a previous bcrypt verification for this apikey is cached.
 
     The Redis key identifies the apikey (username + key name) and the stored
-     value is the HMAC-SHA256 digest of the apikey secret (as computed by
+    value is the HMAC-SHA256 digest of the apikey secret (as computed by
     :func:`_hash_secret` from the username, key name, and secret).
 
     Args:
