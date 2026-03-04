@@ -5,7 +5,7 @@ from howler.datastore.collection import ESCollection
 from howler.odm.models.user import User
 
 # List of indices where queries are protected with classification access control
-ACCESS_CONTROLLED_INDICES: dict[str, ESCollection] = {"hit"}
+ACCESS_CONTROLLED_INDICES: set[str] = {"hit"}
 
 ADMIN_INDEX_MAP: dict[str, Callable[[], ESCollection]] = {}
 

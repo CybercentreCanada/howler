@@ -260,13 +260,16 @@ class Classification(object):
             )
 
     def _get_c12n_level_text(self, lvl_idx: int, long_format: bool = True) -> str:
-        text = self.levels_map.get(str(lvl_idx), None)
+        text: Any = self.levels_map.get(str(lvl_idx), None)
+
         if not text:
             raise InvalidClassification(
                 "Classification level number '%s' was not found in your classification definition." % lvl_idx
             )
+
         if long_format:
             return self.levels_map_stl[text]
+
         return text
 
     def _get_c12n_required(self, c12n: str, long_format: bool = True) -> tuple[List, list[str]]:

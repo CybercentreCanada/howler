@@ -63,7 +63,7 @@ def parse_profile(  # noqa: C901
         uname = profile.get("uname", profile.get("preferred_username", email_adr))
 
         # Did we default to email?
-        if uname is not None and uname.lower() == email_adr.lower():
+        if uname is not None and email_adr is not None and uname.lower() == email_adr.lower():
             # 1. Use provided regex matcher
             if provider_config.uid_regex:
                 match = re.match(provider_config.uid_regex, uname)
@@ -187,6 +187,7 @@ def fetch_avatar(  # noqa: C901
         # Generic picture url endpoint, i.e. MS Graph
         if url == provider_config.picture_url:
             headers = {}
+            token: str | None = None
 
             if oauth_provider == "entraid":
                 if not access_token:
