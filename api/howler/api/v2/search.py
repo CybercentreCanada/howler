@@ -14,7 +14,7 @@ from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import SearchException
 from howler.helper.search import get_collection, has_access_control
 from howler.security import api_login
-from howler.services import lucene_service, search_service
+from howler.services import hit_service, lucene_service, search_service
 
 SUB_API = "search"
 search_api = make_subapi_blueprint(SUB_API, api_version=2)
@@ -130,7 +130,13 @@ def search(indexes: str, **kwargs):
     if not query:
         return bad_request(err="There was no search query.")
 
-    return ok(search_service.search(indexes, query, **params))
+    metadata = params.pop("metadata", [])
+    result = search_service.search(indexes, query, **params)
+
+    if metadata and any(idx in index_list for idx in ("hit", "observable")):
+        hit_service.augment_metadata(result["items"], metadata, user)
+
+    return ok(result)
 
 
 @generate_swagger_docs()

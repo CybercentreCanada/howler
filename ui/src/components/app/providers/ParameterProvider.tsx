@@ -6,6 +6,8 @@ import { createContext, useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY } from 'utils/constants';
 import Throttler from 'utils/Throttler';
 
+export type SearchIndex = 'hit' | 'observable';
+
 export interface ParameterContextType {
   selected?: string;
   query?: string;
@@ -13,6 +15,7 @@ export interface ParameterContextType {
   trackTotalHits: boolean;
   sort?: string;
   span?: string;
+  searchIndex?: SearchIndex;
   filters?: string[];
   startDate?: string;
   endDate?: string;
@@ -23,6 +26,7 @@ export interface ParameterContextType {
   setOffset: (offset: string | number) => void;
   setSort: (sort: string) => void;
   setSpan: (span: string) => void;
+  setSearchIndex: (index: SearchIndex) => void;
   setCustomSpan: (startDate: string, endDate: string) => void;
 
   addFilter: (filter: string) => void;
@@ -41,6 +45,7 @@ interface SearchValues {
   query: string;
   sort: string;
   span: string;
+  searchIndex: SearchIndex;
   filters: string[];
   views: string[];
   startDate: string;
@@ -54,7 +59,8 @@ export const ParameterContext = createContext<ParameterContextType>(null);
 const DEFAULT_VALUES: Partial<SearchValues> = {
   query: DEFAULT_QUERY,
   sort: 'event.created desc',
-  span: 'date.range.1.month'
+  span: 'date.range.1.month',
+  searchIndex: 'hit'
 };
 
 /**
@@ -65,6 +71,7 @@ const PARAM_MAPPINGS: [string, keyof SearchValues][] = [
   ['query', 'query'],
   ['sort', 'sort'],
   ['span', 'span'],
+  ['search_index', 'searchIndex'],
   ['start_date', 'startDate'],
   ['end_date', 'endDate']
 ];
@@ -114,6 +121,7 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
     query: params.get('query') ?? DEFAULT_VALUES.query,
     sort: params.get('sort') ?? DEFAULT_VALUES.sort,
     span: params.get('span') ?? DEFAULT_VALUES.span,
+    searchIndex: (params.get('search_index') as SearchIndex) ?? DEFAULT_VALUES.searchIndex,
     filters: params.getAll('filter'),
     views: params.getAll('view'),
     startDate: params.get('start_date'),
@@ -435,6 +443,7 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
         setQuery: useMemo(() => set('query'), [set]),
         setSort: useMemo(() => set('sort'), [set]),
         setSpan: useMemo(() => set('span'), [set]),
+        setSearchIndex: useMemo(() => set('searchIndex'), [set]),
 
         addFilter,
         removeFilter,
