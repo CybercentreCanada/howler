@@ -14,6 +14,40 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 
+// Custom hook to select hits by IDs with proper memoization
+const useSelectHitsByIds = (hitIds: string[]) => {
+  const hitIdsRef = useRef<string[]>(hitIds);
+  const prevResultRef = useRef<Hit[]>([]);
+  const prevHitIdsRef = useRef<string[]>([]);
+
+  // Keep ref up to date with latest hitIds
+  hitIdsRef.current = hitIds;
+
+  const selector = useCallback(ctx => {
+    const currentHitIds = hitIdsRef.current;
+
+    // Fast path: if hitIds array didn't change, check if hit objects changed
+    if (
+      prevHitIdsRef.current.length === currentHitIds.length &&
+      currentHitIds.every((id, i) => id === prevHitIdsRef.current[i])
+    ) {
+      // HitIds unchanged - check if any hit objects changed by reference
+      const anyHitChanged = currentHitIds.some((id, i) => ctx.hits[id] !== prevResultRef.current[i]);
+      if (!anyHitChanged) {
+        return prevResultRef.current;
+      }
+    }
+
+    // Something changed - rebuild the array
+    const currentHits = currentHitIds.map(id => ctx.hits[id]).filter(Boolean);
+    prevHitIdsRef.current = currentHitIds;
+    prevResultRef.current = currentHits;
+    return currentHits;
+  }, []); // Empty deps - selector never changes
+
+  return useHitContextSelector(selector);
+};
+
 // Utility functions
 const normalize = (val: any) => (val == null ? '' : String(val));
 
@@ -53,7 +87,8 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
   const loadHits = useHitContextSelector(ctx => ctx.loadHits);
 
   // Subscribe to hits from HitProvider cache based on current hitIds in the view
-  const hits = useHitContextSelector(useCallback(ctx => hitIds.map(id => ctx.hits[id]).filter(Boolean), [hitIds]));
+  // Uses memoized selector to avoid unnecessary re-renders on unrelated hit updates
+  const hits = useSelectHitsByIds(hitIds);
 
   // Create a stable signature that only changes when relevant fields change
   const hitsSignature = useMemo(() => createSignatureFromHits(hits), [hits]);
