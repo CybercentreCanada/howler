@@ -98,7 +98,7 @@ const CluePivot: FC<PivotLinkProps> = ({ pivot, hit, compact }: PivotLinkProps) 
       setLoading(true);
 
       const data: { [index: string]: any } = Object.fromEntries(
-        pivot.mappings.map(_mapping => {
+        (pivot.mappings ?? []).map(_mapping => {
           const value = getValue(pivot.value, _mapping);
 
           if (['selector', 'selectors'].includes(_mapping.key)) {

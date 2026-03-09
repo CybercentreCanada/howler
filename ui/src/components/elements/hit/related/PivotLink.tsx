@@ -30,7 +30,7 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false }) => {
     }
 
     const templateObject = Object.fromEntries(
-      pivot.mappings.map(mapping => {
+      (pivot.mappings ?? []).map(mapping => {
         const result = [mapping.key];
 
         if (mapping.field === 'custom') {
