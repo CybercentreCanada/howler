@@ -24,8 +24,6 @@ import VSBoxContent from 'components/elements/addons/layout/vsbox/VSBoxContent';
 import VSBoxHeader from 'components/elements/addons/layout/vsbox/VSBoxHeader';
 import SearchPagination from 'components/elements/addons/search/SearchPagination';
 import SearchTotal from 'components/elements/addons/search/SearchTotal';
-import HowlerCard from 'components/elements/display/HowlerCard';
-import HitBanner from 'components/elements/hit/HitBanner';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import useHitSelection from 'components/hooks/useHitSelection';
@@ -38,7 +36,6 @@ import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
-import { BundleScroller } from './BundleScroller';
 import HitContextMenu from './HitContextMenu';
 import HitQuery from './HitQuery';
 import QuerySettings from './QuerySettings';
@@ -114,8 +111,6 @@ const SearchPane: FC = () => {
   const location = useLocation();
   const routeParams = useParams();
 
-  const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
-  const setSelected = useContextSelector(ParameterContext, ctx => ctx.setSelected);
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const setOffset = useContextSelector(ParameterContext, ctx => ctx.setOffset);
 
@@ -129,10 +124,6 @@ const SearchPane: FC = () => {
   const { onClick } = useHitSelection();
 
   const getHit = useContextSelector(HitContext, ctx => ctx.getHit);
-  const clearSelectedHits = useContextSelector(HitContext, ctx => ctx.clearSelectedHits);
-  const bundleHit = useContextSelector(HitContext, ctx =>
-    location.pathname.startsWith('/bundles') ? ctx.hits[routeParams.id] : null
-  );
 
   const searchPaneWidth = useMyLocalStorageItem(StorageKey.SEARCH_PANE_WIDTH, null)[0];
 
@@ -161,28 +152,6 @@ const SearchPane: FC = () => {
       <PageCenter textAlign="left" mt={0} mb={6} ml={0} mr={0} maxWidth="1500px">
         <VSBox top={0}>
           <Stack ml={-1} mr={-1} sx={{ '& .overflowingContentWidgets > *': { zIndex: '2000 !important' } }} spacing={1}>
-            {bundleHit && (
-              <BundleScroller>
-                <HitContextMenu getSelectedId={() => bundleHit.howler.id}>
-                  <Stack spacing={1} sx={{ mx: -1 }}>
-                    <HowlerCard
-                      sx={[
-                        { p: 1, border: '4px solid transparent', cursor: 'pointer' },
-                        location.pathname.startsWith('/bundles') &&
-                          selected === routeParams.id && { borderColor: 'primary.main' }
-                      ]}
-                      onClick={() => {
-                        clearSelectedHits(bundleHit.howler.id);
-                        setSelected(bundleHit.howler.id);
-                      }}
-                    >
-                      <HitBanner hit={bundleHit} layout={HitLayout.DENSE} useListener />
-                    </HowlerCard>
-                  </Stack>
-                </HitContextMenu>
-              </BundleScroller>
-            )}
-
             <Stack direction="row" spacing={1} alignItems="center">
               <Typography
                 sx={{ color: 'text.secondary', fontSize: '0.9em', fontStyle: 'italic', mb: 0.5 }}
