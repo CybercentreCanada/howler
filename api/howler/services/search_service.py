@@ -77,6 +77,7 @@ def _format_items(hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
         source = hit.get("_source")
 
         if source:
+            source["__index"] = hit.get("_index")
             items.append(source)
 
     return items
