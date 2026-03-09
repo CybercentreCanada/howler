@@ -22,7 +22,7 @@ const CustomSpan: FC<{}> = () => {
 
   useEffect(() => {
     if (span?.endsWith('custom')) {
-      setCustomSpan(startDate.format('YYYY-MM-DD HH:mm'), endDate.format('YYYY-MM-DD HH:mm'));
+      setCustomSpan(startDate.toISOString(), endDate.toISOString());
     }
   }, [endDate, setCustomSpan, span, startDate]);
 
