@@ -133,7 +133,7 @@ def search(indexes: str, **kwargs):
     metadata = params.pop("metadata", [])
     result = search_service.search(indexes, query, **params)
 
-    if metadata and any(idx in index_list for idx in ("hit", "observable")):
+    if metadata and any(idx in index_list for idx in ["hit"]):
         hit_service.augment_metadata(result["items"], metadata, user)
 
     return ok(result)

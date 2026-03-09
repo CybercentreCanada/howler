@@ -1,5 +1,5 @@
 import { isEmpty, isEqual, isUndefined, omitBy, uniq } from 'lodash-es';
-import type { FC, PropsWithChildren } from 'react';
+import type { Dispatch, FC, PropsWithChildren, SetStateAction } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { createContext, useContextSelector } from 'use-context-selector';
@@ -15,7 +15,7 @@ export interface ParameterContextType {
   trackTotalHits: boolean;
   sort?: string;
   span?: string;
-  searchIndex?: SearchIndex;
+  indexes?: SearchIndex[];
   filters?: string[];
   startDate?: string;
   endDate?: string;
@@ -26,13 +26,18 @@ export interface ParameterContextType {
   setOffset: (offset: string | number) => void;
   setSort: (sort: string) => void;
   setSpan: (span: string) => void;
-  setSearchIndex: (index: SearchIndex) => void;
   setCustomSpan: (startDate: string, endDate: string) => void;
 
   addFilter: (filter: string) => void;
   removeFilter: (filter: string) => void;
   setFilter: (index: number, filter: string) => void;
   clearFilters: () => void;
+
+  addIndex: (index: SearchIndex) => void;
+  removeIndex: (index: SearchIndex) => void;
+  setIndex: (position: number, index: SearchIndex) => void;
+  setIndexes: (indexes: SearchIndex[]) => void;
+  clearIndexes: () => void;
 
   addView: (view: string) => void;
   removeView: (view: string) => void;
@@ -45,7 +50,7 @@ interface SearchValues {
   query: string;
   sort: string;
   span: string;
-  searchIndex: SearchIndex;
+  indexes: SearchIndex[];
   filters: string[];
   views: string[];
   startDate: string;
@@ -60,21 +65,32 @@ const DEFAULT_VALUES: Partial<SearchValues> = {
   query: DEFAULT_QUERY,
   sort: 'event.created desc',
   span: 'date.range.1.month',
-  searchIndex: 'hit'
+  indexes: ['hit']
 };
 
-/**
- * Mapping of URL parameter keys to internal state keys
- * Note: 'filters' is handled separately due to multi-value support
- */
+/** Scalar URL params that map 1:1 to a state key */
 const PARAM_MAPPINGS: [string, keyof SearchValues][] = [
   ['query', 'query'],
   ['sort', 'sort'],
   ['span', 'span'],
-  ['search_index', 'searchIndex'],
   ['start_date', 'startDate'],
   ['end_date', 'endDate']
 ];
+
+interface ArrayParamDescriptor {
+  urlKey: string;
+  stateKey: 'filters' | 'views' | 'indexes';
+  default?: string[];
+}
+
+/** Multi-value URL params that map to array state keys */
+const ARRAY_PARAMS: ArrayParamDescriptor[] = [
+  { urlKey: 'filter', stateKey: 'filters' },
+  { urlKey: 'view', stateKey: 'views' },
+  { urlKey: 'index', stateKey: 'indexes', default: DEFAULT_VALUES.indexes }
+];
+
+const ARRAY_URL_KEYS = new Set(ARRAY_PARAMS.map(p => p.urlKey));
 
 const WRITE_THROTTLER = new Throttler(100);
 
@@ -83,10 +99,7 @@ const WRITE_THROTTLER = new Throttler(100);
  * @returns
  */
 const parseOffset = (_offset: string | number) => {
-  if (typeof _offset === 'number') {
-    return _offset;
-  }
-
+  if (typeof _offset === 'number') return _offset;
   const candidate = parseInt(_offset);
   return isNaN(candidate) ? 0 : candidate;
 };
@@ -95,15 +108,186 @@ const parseOffset = (_offset: string | number) => {
  * Helper function to determine the selected value based on URL params and route context.
  */
 const getSelectedValue = (params: URLSearchParams, pathname: string, bundleId?: string) => {
-  if (params.has('selected')) {
-    return params.get('selected');
-  }
-
-  if (pathname.startsWith('/bundles') && bundleId) {
-    return bundleId;
-  }
-
+  if (params.has('selected')) return params.get('selected');
+  if (pathname.startsWith('/bundles') && bundleId) return bundleId;
   return null;
+};
+
+/**
+ * Returns stable add / remove / setAt / setAll / clear handlers for a list field in
+ * SearchValues. All returned functions are memoized; since _setValues (from useState)
+ * and key are both stable for the lifetime of the component, the deps array is empty.
+ */
+const useListHandlers = <T,>(
+  key: 'filters' | 'indexes' | 'views',
+  _setValues: Dispatch<SetStateAction<SearchValues>>
+) => {
+  const add = useCallback(
+    (item: T) => _setValues(c => ({ ...c, [key]: uniq([...(c[key] as T[]), item]) })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  const remove = useCallback(
+    (item: T) =>
+      _setValues(c => {
+        const arr = c[key] as T[];
+        const i = arr.indexOf(item);
+        return i === -1 ? c : { ...c, [key]: arr.filter((_, idx) => idx !== i) };
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  const setAt = useCallback(
+    (pos: number, item: T) =>
+      _setValues(c => {
+        const arr = c[key] as T[];
+        if (pos < 0 || pos >= arr.length) return c;
+        const next = [...arr] as T[];
+        next[pos] = item;
+        return { ...c, [key]: next };
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  const setAll = useCallback(
+    (items: T[]) => _setValues(c => ({ ...c, [key]: uniq(items) })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  const clear = useCallback(
+    () => _setValues(c => ({ ...c, [key]: [] })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  return { add, remove, setAt, setAll, clear };
+};
+
+/**
+ * Synchronizes SearchValues state with the URL search string, and vice-versa.
+ */
+const useUrlSync = (
+  values: SearchValues,
+  _setValues: Dispatch<SetStateAction<SearchValues>>,
+  params: URLSearchParams,
+  setParams: ReturnType<typeof useSearchParams>[1],
+  pathname: string,
+  search: string,
+  routeId?: string
+) => {
+  const getUrlFromState = useCallback(() => {
+    const changes: Record<string, unknown> = {};
+
+    // Scalar params: write if changed from URL, remove if back to default
+    PARAM_MAPPINGS.forEach(([urlKey, stateKey]) => {
+      const stateValue = values[stateKey];
+      const urlValue = params.get(urlKey);
+      if (stateValue === urlValue) return;
+
+      if (params.has(urlKey) && stateValue === DEFAULT_VALUES[stateKey]) {
+        changes[urlKey] = null; // remove
+      } else if (stateValue !== DEFAULT_VALUES[stateKey]) {
+        changes[urlKey] = stateValue; // write
+      }
+    });
+
+    // Array params: skip when state equals default and URL is already empty
+    ARRAY_PARAMS.forEach(({ urlKey, stateKey, default: def }) => {
+      const stateArr = values[stateKey] as string[];
+      const urlArr = params.getAll(urlKey);
+      if (isEqual(stateArr, urlArr)) return;
+
+      const isDefault = def ? isEqual(stateArr, def) : stateArr.length === 0;
+      if (!isDefault) {
+        changes[urlKey] = stateArr.length === 0 ? null : stateArr;
+      } else if (urlArr.length > 0) {
+        changes[urlKey] = null; // state is default but URL isn't — remove
+      }
+    });
+
+    // selected
+    if (pathname.startsWith('/bundles') && (!params.has('selected') || values.selected === params.get('selected'))) {
+      changes.selected = null;
+    } else if (values.selected !== params.get('selected')) {
+      changes.selected = values.selected;
+    }
+
+    // offset: remove when 0
+    if (parseOffset(params.get('offset')) !== values.offset) {
+      changes.offset = values.offset || null;
+    }
+
+    // Drop scalar entries that already match the URL
+    return omitBy(changes, (val, key) => !ARRAY_URL_KEYS.has(key) && val == params.get(key));
+  }, [values, params, pathname]);
+
+  const getStateFromUrl = useCallback(() => {
+    const changes: Partial<SearchValues> = {};
+
+    // Scalar params: fall back to default when absent from URL
+    PARAM_MAPPINGS.forEach(([urlKey, stateKey]) => {
+      const urlValue = params.has(urlKey) ? params.get(urlKey) : (DEFAULT_VALUES[stateKey] ?? undefined);
+      if (urlValue !== values[stateKey]) {
+        (changes as any)[stateKey] = urlValue;
+      }
+    });
+
+    // Array params: fall back to their declared default when absent from URL
+    ARRAY_PARAMS.forEach(({ urlKey, stateKey, default: def }) => {
+      const raw = params.getAll(urlKey);
+      const resolved = (isEmpty(raw) && def ? def : uniq(raw)) as SearchValues[typeof stateKey];
+      if (!isEqual(resolved, values[stateKey])) {
+        (changes as any)[stateKey] = resolved;
+      }
+    });
+
+    // selected
+    const selectedValue = getSelectedValue(params, pathname, routeId);
+    if (selectedValue !== values.selected) changes.selected = selectedValue;
+
+    // offset
+    const urlOffset = parseOffset(params.get('offset'));
+    if (urlOffset !== values.offset) changes.offset = urlOffset;
+
+    return omitBy(omitBy(changes, isUndefined), (val, key) => val == (values as any)[key]);
+  }, [values, params, pathname, routeId]);
+
+  // State → URL
+  useEffect(() => {
+    const changes = getUrlFromState();
+    if (isEmpty(changes)) return;
+
+    setParams(
+      _params => {
+        const newParams = new URLSearchParams(_params);
+        Object.entries(changes).forEach(([key, value]) => {
+          if (Array.isArray(value)) {
+            newParams.delete(key);
+            (value as string[]).forEach(val => newParams.append(key, val));
+          } else if (value === null || value === undefined) {
+            newParams.delete(key);
+          } else {
+            newParams.set(key, String(value));
+          }
+        });
+        return newParams;
+      },
+      { replace: !changes.query && !Object.keys(changes).includes('offset') }
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [values]);
+
+  // URL → State
+  useEffect(() => {
+    const changes = getStateFromUrl();
+    if (isEmpty(changes)) return;
+    _setValues(c => ({ ...c, ...changes }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, pathname, routeId]);
 };
 
 /**
@@ -121,7 +305,7 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
     query: params.get('query') ?? DEFAULT_VALUES.query,
     sort: params.get('sort') ?? DEFAULT_VALUES.sort,
     span: params.get('span') ?? DEFAULT_VALUES.span,
-    searchIndex: (params.get('search_index') as SearchIndex) ?? DEFAULT_VALUES.searchIndex,
+    indexes: isEmpty(params.getAll('index')) ? DEFAULT_VALUES.indexes : (params.getAll('index') as SearchIndex[]),
     filters: params.getAll('filter'),
     views: params.getAll('view'),
     startDate: params.get('start_date'),
@@ -131,25 +315,12 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
   });
 
   // TODO: SELECTING A BUNDLE STILL CAUSES A FREAKOUT
+  useUrlSync(values, _setValues, params, setParams, location.pathname, location.search, routeParams.id);
 
-  const set: <K extends Exclude<keyof SearchValues, 'filters'>>(key: K) => (value: SearchValues[K]) => void =
-    useCallback(
-      key => value => {
-        if ((key as string) === 'filters') {
-          // eslint-disable-next-line no-console
-          console.error('Cannot use set() for filters. Use addFilter/removeFilter/clearFilters instead.');
-          return;
-        }
-
-        if ((key as string) === 'views') {
-          // eslint-disable-next-line no-console
-          console.error('Cannot use set() for views. Use addView/removeView/clearViews instead.');
-          return;
-        }
-
-        if (value === values[key]) {
-          return;
-        }
+  const set = useCallback(
+    <K extends keyof SearchValues>(key: K) =>
+      (value: SearchValues[K]) => {
+        if (value === values[key]) return;
 
         if (key === 'selected') {
           pendingChanges.current.selected = value as string | null;
@@ -163,273 +334,26 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
         }
 
         WRITE_THROTTLER.debounce(() => {
-          _setValues(_current => ({ ..._current, ...pendingChanges.current }));
+          _setValues(c => ({ ...c, ...pendingChanges.current }));
           pendingChanges.current = {};
         });
       },
-      [values]
-    );
+    [values]
+  );
 
-  const setOffset: ParameterContextType['setOffset'] = useCallback(
-    _offset => _setValues(_current => ({ ..._current, offset: parseOffset(_offset) })),
+  const setOffset = useCallback(
+    (_offset: string | number) => _setValues(c => ({ ...c, offset: parseOffset(_offset) })),
     []
   );
 
-  const setCustomSpan: ParameterContextType['setCustomSpan'] = useCallback((startDate, endDate) => {
-    _setValues(_values => ({
-      ..._values,
-      startDate,
-      endDate
-    }));
-  }, []);
+  const setCustomSpan = useCallback(
+    (startDate: string, endDate: string) => _setValues(c => ({ ...c, startDate, endDate })),
+    []
+  );
 
-  /**
-   * Filter manipulation
-   */
-  const addFilter: ParameterContextType['addFilter'] = useCallback(filter => {
-    _setValues(_current => ({
-      ..._current,
-      filters: uniq([..._current.filters, filter])
-    }));
-  }, []);
-
-  const removeFilter: ParameterContextType['removeFilter'] = useCallback(filter => {
-    _setValues(_current => {
-      const index = _current.filters.indexOf(filter);
-      if (index === -1) {
-        return _current;
-      }
-      return {
-        ..._current,
-        filters: _current.filters.filter((_, i) => i !== index)
-      };
-    });
-  }, []);
-
-  const setFilter: ParameterContextType['setFilter'] = useCallback((index, filter) => {
-    _setValues(_current => {
-      // Validate index
-      if (index < 0 || index >= _current.filters.length) {
-        return _current;
-      }
-      const newFilters = [..._current.filters];
-      newFilters[index] = filter;
-      return {
-        ..._current,
-        filters: newFilters
-      };
-    });
-  }, []);
-
-  const clearFilters: ParameterContextType['clearFilters'] = useCallback(() => {
-    _setValues(_current => ({
-      ..._current,
-      filters: []
-    }));
-  }, []);
-
-  /**
-   * View manipulation
-   */
-  const addView: ParameterContextType['addView'] = useCallback(view => {
-    _setValues(_current => ({
-      ..._current,
-      views: uniq([..._current.views, view])
-    }));
-  }, []);
-
-  const removeView: ParameterContextType['removeView'] = useCallback(view => {
-    _setValues(_current => {
-      const index = _current.views.indexOf(view);
-      if (index === -1) {
-        return _current;
-      }
-
-      return {
-        ..._current,
-        views: _current.views.filter((_, i) => i !== index)
-      };
-    });
-  }, []);
-
-  const setView: ParameterContextType['setView'] = useCallback((index, view) => {
-    _setValues(_current => {
-      // Validate index
-      if (index < 0 || index >= _current.views.length) {
-        return _current;
-      }
-      const newViews = [..._current.views];
-      newViews[index] = view;
-      return {
-        ..._current,
-        views: newViews
-      };
-    });
-  }, []);
-
-  const clearViews: ParameterContextType['clearViews'] = useCallback(() => {
-    _setValues(_current => ({
-      ..._current,
-      views: []
-    }));
-  }, []);
-
-  /**
-   * Get URL parameter changes needed to sync internal state to the address bar.
-   * Returns null values for params that should be removed from URL.
-   */
-  const getUrlFromState = useCallback(() => {
-    const changes: Partial<SearchValues> = {};
-
-    PARAM_MAPPINGS.forEach(([urlKey, stateKey]) => {
-      const stateValue = values[stateKey];
-      const urlValue = params.get(urlKey);
-
-      if (stateValue !== urlValue) {
-        // If the value matches the default, remove it from URL (null signals removal)
-        if (params.has(urlKey) && stateValue === DEFAULT_VALUES[stateKey]) {
-          (changes as any)[urlKey] = null;
-        } else if (stateValue !== DEFAULT_VALUES[stateKey]) {
-          (changes as any)[urlKey] = stateValue;
-        }
-      }
-    });
-
-    // Handle filters: compare arrays with isEqual
-    const urlFilters = params.getAll('filter');
-    if (!isEqual(values.filters, urlFilters)) {
-      // Coerce empty array to null for removal signal
-      (changes as any).filters = values.filters.length === 0 ? null : values.filters;
-    }
-
-    // Handle views: compare arrays with isEqual
-    const urlViews = params.getAll('view');
-    if (!isEqual(values.views, urlViews)) {
-      // Coerce empty array to null for removal signal
-      (changes as any).views = values.views.length === 0 ? null : values.views;
-    }
-
-    // Handle selected: remove if redundant in bundle context, otherwise set
-    if (
-      location.pathname.startsWith('/bundles') &&
-      (!params.has('selected') || values.selected === params.get('selected'))
-    ) {
-      changes.selected = null;
-    } else if (values.selected !== params.get('selected')) {
-      changes.selected = values.selected;
-    }
-
-    // Handle offset: remove if 0, otherwise set
-    const urlOffset = parseOffset(params.get('offset'));
-    if (urlOffset !== values.offset) {
-      changes.offset = values.offset || null;
-    }
-
-    // Filter out values that already match the URL (skip 'filters', 'views' as they're handled above)
-    return omitBy(changes, (val, key) => {
-      if (['filters', 'views'].includes(key)) {
-        return false;
-      }
-
-      return val == params.get(key);
-    });
-  }, [values, params, location.pathname]);
-
-  /**
-   * Get state changes needed to sync URL parameters to internal state.
-   */
-  const getStateFromUrl = useCallback(() => {
-    const changes: Partial<SearchValues> = {};
-
-    PARAM_MAPPINGS.forEach(([urlKey, stateKey]) => {
-      const urlValue = params.has(urlKey) ? params.get(urlKey) : (DEFAULT_VALUES[stateKey] ?? undefined);
-
-      if (urlValue !== values[stateKey]) {
-        (changes as any)[stateKey] = urlValue;
-      }
-    });
-
-    // Handle filters: compare arrays with isEqual
-    const urlFilters = uniq(params.getAll('filter'));
-    if (!isEqual(urlFilters, values.filters)) {
-      changes.filters = urlFilters;
-    }
-
-    // Handle filters: compare arrays with isEqual
-    const urlViews = uniq(params.getAll('view'));
-    if (!isEqual(urlViews, values.views)) {
-      changes.views = urlViews;
-    }
-
-    // Handle selected using helper
-    const selectedValue = getSelectedValue(params, location.pathname, routeParams.id);
-    if (selectedValue !== values.selected) {
-      changes.selected = selectedValue;
-    }
-
-    // Handle offset
-    const urlOffset = parseOffset(params.get('offset'));
-    if (urlOffset !== values.offset) {
-      changes.offset = urlOffset;
-    }
-
-    // Filter out undefined values and values that already match state
-    return omitBy(omitBy(changes, isUndefined), (val, key) => val == values[key]);
-  }, [values, params, location.pathname, routeParams.id]);
-
-  /**
-   * Effect to synchronize the context's state with the address bar
-   */
-  useEffect(() => {
-    const changes = getUrlFromState();
-
-    if (isEmpty(changes)) {
-      return;
-    }
-
-    setParams(
-      _params => {
-        // Build fresh URLSearchParams from existing params
-        const newParams = new URLSearchParams(_params);
-
-        // Handle standard params
-        Object.entries(changes).forEach(([key, value]) => {
-          if (['filters', 'views'].includes(key)) {
-            const multiFieldKey = key.replace(/s$/, '');
-
-            // Special handling for arrays
-            newParams.delete(multiFieldKey);
-            if (Array.isArray(value)) {
-              value.forEach(val => newParams.append(multiFieldKey, val));
-            }
-            // null/undefined means remove (already deleted above)
-          } else if (value === null || value === undefined) {
-            newParams.delete(key);
-          } else {
-            newParams.set(key, String(value));
-          }
-        });
-
-        return newParams;
-      },
-      { replace: !changes.query && !Object.keys(changes).includes('offset') }
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [values]);
-
-  useEffect(() => {
-    const changes = getStateFromUrl();
-
-    if (isEmpty(changes)) {
-      return;
-    }
-
-    _setValues(_current => ({
-      ..._current,
-      ...changes
-    }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.search, location.pathname, routeParams.id]);
+  const filters = useListHandlers<string>('filters', _setValues);
+  const indexes = useListHandlers<SearchIndex>('indexes', _setValues);
+  const views = useListHandlers<string>('views', _setValues);
 
   return (
     <ParameterContext.Provider
@@ -443,17 +367,22 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
         setQuery: useMemo(() => set('query'), [set]),
         setSort: useMemo(() => set('sort'), [set]),
         setSpan: useMemo(() => set('span'), [set]),
-        setSearchIndex: useMemo(() => set('searchIndex'), [set]),
 
-        addFilter,
-        removeFilter,
-        setFilter,
-        clearFilters,
+        addFilter: filters.add,
+        removeFilter: filters.remove,
+        setFilter: filters.setAt,
+        clearFilters: filters.clear,
 
-        addView,
-        removeView,
-        setView,
-        clearViews
+        addIndex: indexes.add,
+        removeIndex: indexes.remove,
+        setIndex: indexes.setAt,
+        setIndexes: indexes.setAll,
+        clearIndexes: indexes.clear,
+
+        addView: views.add,
+        removeView: views.remove,
+        setView: views.setAt,
+        clearViews: views.clear
       }}
     >
       {children}

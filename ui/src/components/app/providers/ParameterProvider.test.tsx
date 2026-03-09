@@ -1039,6 +1039,439 @@ describe('ParameterContext', () => {
     });
   });
 
+  describe('indexes (multi-index support)', () => {
+    it('should initialize with default ["hit"] when no index params are present', async () => {
+      const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.indexes), { wrapper: Wrapper });
+
+      expect(hook.result.current).toEqual(['hit']);
+    });
+
+    it('should initialize with single index from URL', async () => {
+      mockSearchParams = new URLSearchParams({ index: 'observable' });
+
+      const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.indexes), { wrapper: Wrapper });
+
+      expect(hook.result.current).toEqual(['observable']);
+    });
+
+    it('should initialize with multiple indexes from URL', async () => {
+      mockSearchParams = new URLSearchParams();
+      mockSearchParams.append('index', 'hit');
+      mockSearchParams.append('index', 'observable');
+
+      const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.indexes), { wrapper: Wrapper });
+
+      expect(hook.result.current).toEqual(['hit', 'observable']);
+    });
+
+    it('should deduplicate repeated index values from URL', async () => {
+      mockSearchParams = new URLSearchParams();
+      mockSearchParams.append('index', 'hit');
+      mockSearchParams.append('index', 'hit');
+
+      const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.indexes), { wrapper: Wrapper });
+
+      expect(hook.result.current).toEqual(['hit']);
+    });
+
+    describe('addIndex', () => {
+      it('should add an index to the default array', async () => {
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              indexes: ctx.indexes,
+              addIndex: ctx.addIndex
+            })),
+          { wrapper: Wrapper }
+        );
+
+        await act(async () => {
+          hook.result.current.addIndex('observable');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.indexes).toEqual(['hit', 'observable']);
+        });
+      });
+
+      it('should not add a duplicate index', async () => {
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              indexes: ctx.indexes,
+              addIndex: ctx.addIndex
+            })),
+          { wrapper: Wrapper }
+        );
+
+        await act(async () => {
+          hook.result.current.addIndex('hit');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.indexes).toEqual(['hit']);
+        });
+      });
+    });
+
+    describe('removeIndex', () => {
+      it('should remove an index from the list', async () => {
+        mockSearchParams = new URLSearchParams();
+        mockSearchParams.append('index', 'hit');
+        mockSearchParams.append('index', 'observable');
+
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              indexes: ctx.indexes,
+              removeIndex: ctx.removeIndex
+            })),
+          { wrapper: Wrapper }
+        );
+
+        await act(async () => {
+          hook.result.current.removeIndex('hit');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.indexes).toEqual(['observable']);
+        });
+      });
+
+      it('should do nothing when removing a nonexistent index', async () => {
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              indexes: ctx.indexes,
+              removeIndex: ctx.removeIndex
+            })),
+          { wrapper: Wrapper }
+        );
+
+        await act(async () => {
+          hook.result.current.removeIndex('observable');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.indexes).toEqual(['hit']);
+        });
+      });
+
+      it('should handle removing from empty array', async () => {
+        mockSearchParams = new URLSearchParams();
+        mockSearchParams.append('index', 'hit');
+
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              indexes: ctx.indexes,
+              removeIndex: ctx.removeIndex
+            })),
+          { wrapper: Wrapper }
+        );
+
+        await act(async () => {
+          hook.result.current.removeIndex('hit');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.indexes).toEqual([]);
+        });
+      });
+    });
+
+    describe('setIndex', () => {
+      it('should update the index at the specified position', async () => {
+        mockSearchParams = new URLSearchParams();
+        mockSearchParams.append('index', 'hit');
+        mockSearchParams.append('index', 'observable');
+
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              indexes: ctx.indexes,
+              setIndex: ctx.setIndex
+            })),
+          { wrapper: Wrapper }
+        );
+
+        await act(async () => {
+          hook.result.current.setIndex(0, 'observable');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.indexes).toEqual(['observable', 'observable']);
+        });
+      });
+
+      it('should do nothing when index is out of bounds', async () => {
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              indexes: ctx.indexes,
+              setIndex: ctx.setIndex
+            })),
+          { wrapper: Wrapper }
+        );
+
+        await act(async () => {
+          hook.result.current.setIndex(5, 'observable');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.indexes).toEqual(['hit']);
+        });
+      });
+
+      it('should do nothing when position is negative', async () => {
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              indexes: ctx.indexes,
+              setIndex: ctx.setIndex
+            })),
+          { wrapper: Wrapper }
+        );
+
+        await act(async () => {
+          hook.result.current.setIndex(-1, 'observable');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.indexes).toEqual(['hit']);
+        });
+      });
+    });
+
+    describe('setIndexes', () => {
+      it('should replace all indexes with the provided list', async () => {
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              indexes: ctx.indexes,
+              setIndexes: ctx.setIndexes
+            })),
+          { wrapper: Wrapper }
+        );
+
+        await act(async () => {
+          hook.result.current.setIndexes(['observable']);
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.indexes).toEqual(['observable']);
+        });
+      });
+
+      it('should deduplicate values when setting all indexes', async () => {
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              indexes: ctx.indexes,
+              setIndexes: ctx.setIndexes
+            })),
+          { wrapper: Wrapper }
+        );
+
+        await act(async () => {
+          hook.result.current.setIndexes(['hit', 'hit', 'observable']);
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.indexes).toEqual(['hit', 'observable']);
+        });
+      });
+
+      it('should set to empty array', async () => {
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              indexes: ctx.indexes,
+              setIndexes: ctx.setIndexes
+            })),
+          { wrapper: Wrapper }
+        );
+
+        await act(async () => {
+          hook.result.current.setIndexes([]);
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.indexes).toEqual([]);
+        });
+      });
+    });
+
+    describe('clearIndexes', () => {
+      it('should clear all indexes', async () => {
+        mockSearchParams = new URLSearchParams();
+        mockSearchParams.append('index', 'hit');
+        mockSearchParams.append('index', 'observable');
+
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              indexes: ctx.indexes,
+              clearIndexes: ctx.clearIndexes
+            })),
+          { wrapper: Wrapper }
+        );
+
+        await act(async () => {
+          hook.result.current.clearIndexes();
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.indexes).toEqual([]);
+        });
+      });
+
+      it('should be a no-op when already empty', async () => {
+        mockSearchParams = new URLSearchParams();
+        mockSearchParams.append('index', 'hit');
+
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              indexes: ctx.indexes,
+              removeIndex: ctx.removeIndex,
+              clearIndexes: ctx.clearIndexes
+            })),
+          { wrapper: Wrapper }
+        );
+
+        // First empty it
+        await act(async () => {
+          hook.result.current.removeIndex('hit');
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.indexes).toEqual([]);
+        });
+
+        // Clearing an empty array should leave it empty
+        await act(async () => {
+          hook.result.current.clearIndexes();
+        });
+
+        await waitFor(() => {
+          expect(hook.result.current.indexes).toEqual([]);
+        });
+      });
+    });
+
+    describe('URL synchronization', () => {
+      it('should not write the default ["hit"] index to the URL', async () => {
+        renderHook(() => useContextSelector(ParameterContext, ctx => ctx.indexes), { wrapper: Wrapper });
+
+        // Allow any effects to flush
+        await waitFor(() => {
+          // If setParams was called, the URL must not contain ?index=hit
+          if (mockSetParams.mock.calls.length > 0) {
+            const call = mockSetParams.mock.calls[mockSetParams.mock.calls.length - 1];
+            const urlParams = typeof call[0] === 'function' ? call[0](mockSearchParams) : call[0];
+            expect(urlParams.getAll('index')).toEqual([]);
+          } else {
+            // setParams not called at all is also fine
+            expect(true).toBe(true);
+          }
+        });
+      });
+
+      it('should write a non-default index to the URL', async () => {
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              addIndex: ctx.addIndex,
+              clearIndexes: ctx.clearIndexes
+            })),
+          { wrapper: Wrapper }
+        );
+
+        await act(async () => {
+          hook.result.current.clearIndexes();
+          hook.result.current.addIndex('observable');
+        });
+
+        await waitFor(() => {
+          expect(mockSetParams).toHaveBeenCalled();
+          const call = mockSetParams.mock.calls[mockSetParams.mock.calls.length - 1];
+          const urlParams = typeof call[0] === 'function' ? call[0](mockSearchParams) : call[0];
+          expect(urlParams.getAll('index')).toEqual(['observable']);
+        });
+      });
+
+      it('should sync multiple indexes to URL as multiple index params', async () => {
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              addIndex: ctx.addIndex
+            })),
+          { wrapper: Wrapper }
+        );
+
+        await act(async () => {
+          hook.result.current.addIndex('observable');
+        });
+
+        await waitFor(() => {
+          expect(mockSetParams).toHaveBeenCalled();
+          const call = mockSetParams.mock.calls[mockSetParams.mock.calls.length - 1];
+          const urlParams = typeof call[0] === 'function' ? call[0](mockSearchParams) : call[0];
+          expect(urlParams.getAll('index')).toEqual(['hit', 'observable']);
+        });
+      });
+
+      it('should remove all index params from URL when indexes is empty', async () => {
+        mockSearchParams = new URLSearchParams();
+        mockSearchParams.append('index', 'hit');
+        mockSearchParams.append('index', 'observable');
+
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              clearIndexes: ctx.clearIndexes
+            })),
+          { wrapper: Wrapper }
+        );
+
+        await act(async () => {
+          hook.result.current.clearIndexes();
+        });
+
+        await waitFor(() => {
+          expect(mockSetParams).toHaveBeenCalled();
+          const call = mockSetParams.mock.calls[mockSetParams.mock.calls.length - 1];
+          const urlParams = typeof call[0] === 'function' ? call[0](mockSearchParams) : call[0];
+          expect(urlParams.getAll('index')).toEqual([]);
+        });
+      });
+
+      it('should remove index param from URL when state returns to default', async () => {
+        mockSearchParams = new URLSearchParams({ index: 'observable' });
+
+        const hook = renderHook(
+          () =>
+            useContextSelector(ParameterContext, ctx => ({
+              setIndexes: ctx.setIndexes
+            })),
+          { wrapper: Wrapper }
+        );
+
+        await act(async () => {
+          hook.result.current.setIndexes(['hit']);
+        });
+
+        await waitFor(() => {
+          expect(mockSetParams).toHaveBeenCalled();
+          const call = mockSetParams.mock.calls[mockSetParams.mock.calls.length - 1];
+          const urlParams = typeof call[0] === 'function' ? call[0](mockSearchParams) : call[0];
+          expect(urlParams.getAll('index')).toEqual([]);
+        });
+      });
+    });
+  });
+
   describe('views (multi-view support)', () => {
     it('should initialize with empty array when no view params present', async () => {
       const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.views), { wrapper: Wrapper });
