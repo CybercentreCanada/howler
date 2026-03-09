@@ -31,6 +31,11 @@ export default defineConfig(({ mode }) => {
           }
         });
       }
+    },
+    '/socket': {
+      target: apiTarget,
+      changeOrigin: true,
+      ws: true
     }
   };
 

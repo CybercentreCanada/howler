@@ -15,7 +15,7 @@ export type AppUser = {
 
 export type AppUserService<T extends AppUser> = {
   user: T; // The application's current user.
-  setUser: (user: T) => void; // Provide method to set the current user.
+  setUser: (user: T | ((prev: T) => T)) => void; // Provide method to set the current user (supports functional updates).
   isReady: () => boolean; // Indicate whether the current user is ready/available/authenticated.
   validateProps?: (props: AppUserValidatedProp[]) => boolean; // Decide whether leftnav menu items should be rendered for current user.
 };
