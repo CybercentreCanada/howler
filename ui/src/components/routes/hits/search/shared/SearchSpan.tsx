@@ -70,7 +70,7 @@ const SearchSpan: FC<{
         <Typography variant="body2">
           {span !== 'date.range.custom'
             ? t(span)
-            : `${startDate.format('YYYY-MM-DD HH:mm')} ${t('to')} ${endDate.format('YYYY-MM-DD HH:mm')}`}
+            : `${startDate?.format('YYYY-MM-DD HH:mm') ?? '?'} ${t('to')} ${endDate?.format('YYYY-MM-DD HH:mm') ?? '?'}`}
         </Typography>
       }
       minWidth="225px"

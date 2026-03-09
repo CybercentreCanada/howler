@@ -1,5 +1,6 @@
 import { ErrorOutline } from '@mui/icons-material';
-import { Card, Tooltip } from '@mui/material';
+import { Tooltip } from '@mui/material';
+import HowlerCard from 'components/elements/display/HowlerCard';
 import Handlebars from 'handlebars';
 import { isEmpty } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
@@ -71,7 +72,17 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false }) => {
   }
 
   return (
-    <Card variant="outlined" sx={{ display: 'flex', alignItems: 'center', px: 1 }}>
+    <HowlerCard
+      sx={[
+        theme => ({
+          p: 0.75,
+          backgroundColor: 'transparent',
+          transition: theme.transitions.create(['border-color']),
+          '&:hover': { borderColor: 'error.main' }
+        }),
+        { border: 'thin solid', borderColor: 'transparent' }
+      ]}
+    >
       <Tooltip
         title={
           <>
@@ -93,7 +104,7 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false }) => {
       >
         <ErrorOutline color="error" />
       </Tooltip>
-    </Card>
+    </HowlerCard>
   );
 };
 
