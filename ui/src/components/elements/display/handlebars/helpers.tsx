@@ -272,7 +272,7 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             fr: ''
           },
           callback: (str: string, searchValue: string, replaceValue: string) => {
-            return str.replace(searchValue ?? '', replaceValue ?? '');
+            return str.replaceAll(searchValue ?? '', replaceValue ?? '');
           }
         },
 
