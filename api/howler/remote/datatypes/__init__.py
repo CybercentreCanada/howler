@@ -25,7 +25,7 @@ if parse(redis.__version__) <= parse("2.10.0"):
 
 
 log = logging.getLogger(f"{loader.APP_NAME}.queue")
-pool: dict[tuple[str, str], redis.BlockingConnectionPool] = {}
+pool: dict[tuple[str, str, bool], redis.BlockingConnectionPool] = {}
 
 
 def now_as_iso():
@@ -88,7 +88,7 @@ def get_client(host, port, private):
     extra_conn_config = {}
     host_config = None
 
-    if host == config.core.redis.nonpersistent.host:
+    if host == config.core.redis.nonpersistent.host and port == config.core.redis.nonpersistent.port:
         host_config = config.core.redis.nonpersistent
     else:
         host_config = config.core.redis.persistent
@@ -103,7 +103,7 @@ def get_client(host, port, private):
 
         if host_config.tls_ca_cert:
             if not Path(host_config.tls_ca_cert).exists():
-                raise FileNotFoundError("Redis TLS CA cert or Path not found.")
+                raise FileNotFoundError(f"Redis TLS CA cert or path '{host_config.tls_ca_cert}' not found.")
 
             if Path(host_config.tls_ca_cert).is_file():
                 extra_conn_config["ssl_ca_certs"] = host_config.tls_ca_cert
