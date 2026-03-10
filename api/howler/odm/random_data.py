@@ -533,8 +533,18 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
     """Create some random records"""
     lookups = loader.get_lookups()
     users = ds.user.search("*:*")["items"]
+    observable_ids = [
+        obs["howler"]["id"] for obs in ds.observable.search("howler.id:*", rows=200, as_obj=False)["items"]
+    ]
+    created_hit_ids: list[str] = []
     for hit_idx in range(hit_count):
-        hit = generate_useful_hit(lookups, [user.uname for user in users], prune_hit=False)
+        hit = generate_useful_hit(
+            lookups,
+            [user.uname for user in users],
+            prune_hit=False,
+            hit_ids=created_hit_ids,
+            observable_ids=observable_ids,
+        )
 
         if hit_idx + 1 == hit_count:
             hit.howler.analytic = "SecretAnalytic"
@@ -553,6 +563,7 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
             )
 
         ds.hit.save(hit.howler.id, hit)
+        created_hit_ids.append(hit.howler.id)
         analytic_service.save_from_hit(hit, random.choice(users))
         ds.analytic.commit()
 
@@ -872,6 +883,15 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
         ds.case.save(case_id, case_data)
         generated_case_ids.append(case_id)
 
+        case_hit_ids = list({item["id"] for item in items if item.get("type") == "hit"})
+        case_observable_ids = list({item["id"] for item in items if item.get("type") == "observable"})
+
+        for hit_id in case_hit_ids:
+            ds.hit.update(hit_id, [hit_helper.list_add("howler.related", case_id)])
+
+        for observable_id in case_observable_ids:
+            ds.observable.update(observable_id, [hit_helper.list_add("howler.related", case_id)])
+
     ds.case.commit()
 
 
@@ -1130,8 +1150,8 @@ INDEXES: dict[str, tuple[Callable, list[Callable]]] = {
     "templates": (wipe_templates, [create_templates]),
     "overviews": (wipe_overviews, [create_overviews]),
     "views": (wipe_views, [create_views]),
-    "hits": (wipe_hits, [create_hits]),
     "observables": (wipe_observables, [create_observables]),
+    "hits": (wipe_hits, [create_hits]),
     "cases": (wipe_cases, [create_cases]),
     "analytics": (wipe_analytics, [create_analytics]),
     "actions": (wipe_actions, [create_actions]),

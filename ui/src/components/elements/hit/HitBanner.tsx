@@ -27,6 +27,7 @@ import EscalationChip from './elements/EscalationChip';
 import HitTimestamp from './elements/HitTimestamp';
 import HitBannerTooltip from './HitBannerTooltip';
 import { HitLayout } from './HitLayout';
+import RelatedRecords from './related/RelatedRecords';
 
 type HitBannerProps = {
   hit: Hit;
@@ -301,20 +302,10 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
         <Stack direction="row" spacing={layout !== HitLayout.COMFY ? 0.5 : 1}>
           <EscalationChip hit={hit} layout={layout} />
           {['in-progress', 'on-hold'].includes(hit.howler.status) && (
-            <Chip
-              sx={{ width: 'fit-content', display: 'inline-flex' }}
-              label={hit.howler.status}
-              size={layout !== HitLayout.COMFY ? 'small' : 'medium'}
-              color="primary"
-            />
+            <Chip sx={{ width: 'fit-content', display: 'inline-flex' }} label={hit.howler.status} color="primary" />
           )}
         </Stack>
-        {hit.howler.related && (
-          <Chip
-            size={layout !== HitLayout.COMFY ? 'small' : 'medium'}
-            label={t('hit.header.related', { count: hit.howler.related.length })}
-          />
-        )}
+        {hit.howler.related && <RelatedRecords hit={hit} />}
         {howlerPluginStore.plugins.flatMap(plugin => pluginStore.executeFunction(`${plugin}.status`, { hit, layout }))}
       </Stack>
     </Box>
