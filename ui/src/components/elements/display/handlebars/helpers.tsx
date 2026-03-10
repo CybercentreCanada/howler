@@ -262,6 +262,17 @@ export const useHelpers = (): HowlerHelper[] => {
         }
       },
 
+      {
+        keyword: 'replace',
+        documentation: {
+          en: '',
+          fr: ''
+        },
+        callback: (str: string, searchValue: string, replaceValue: string) => {
+          return str.replace(searchValue, replaceValue);
+        }
+      },
+
       ...howlerPluginStore.plugins.flatMap(plugin => pluginStore.executeFunction(`${plugin}.helpers`) as HowlerHelper)
     ],
     [pluginStore]
