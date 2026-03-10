@@ -1,5 +1,6 @@
 import { ErrorOutline } from '@mui/icons-material';
 import { Tooltip } from '@mui/material';
+import { useHelpers } from 'components/elements/display/handlebars/helpers';
 import HowlerCard from 'components/elements/display/HowlerCard';
 import Handlebars from 'handlebars';
 import { isEmpty } from 'lodash-es';
@@ -11,6 +12,8 @@ import { usePluginStore } from 'react-pluggable';
 import { flattenDeep } from 'utils/utils';
 import RelatedLink from './RelatedLink';
 
+type HandlebarsInstance = typeof Handlebars;
+
 export interface PivotLinkProps {
   pivot: Pivot;
   hit: Hit;
@@ -20,7 +23,10 @@ export interface PivotLinkProps {
 const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false }) => {
   const { i18n } = useTranslation();
 
+  const helpers = useHelpers({ async: false, components: false });
   const pluginStore = usePluginStore();
+
+  const handlebars: HandlebarsInstance = useMemo(() => Handlebars.create(), []);
 
   const flatHit = useMemo(() => flattenDeep(hit ?? {}), [hit]);
 
@@ -45,11 +51,30 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false }) => {
       })
     );
 
-    return Handlebars.compile(pivot.value)(templateObject);
-  }, [flatHit, pivot]);
+    helpers.forEach(helper => {
+      if (handlebars.helpers[helper.keyword]) {
+        return;
+      }
+
+      handlebars.registerHelper(helper.keyword, (...args: any[]) => {
+        // eslint-disable-next-line no-console
+        console.debug(`Running helper ${helper.keyword}`);
+
+        return helper.callback(...args);
+      });
+    });
+
+    try {
+      return handlebars.compile(pivot.value)(templateObject);
+    } catch (e) {
+      return pivot.value;
+    }
+  }, [flatHit, pivot, handlebars, helpers]);
 
   if (href) {
-    return <RelatedLink title={pivot.label[i18n.language]} href={href} compact={compact} icon={pivot.icon} />;
+    return (
+      <RelatedLink title={pivot.label[i18n.language]} href={href} compact={compact} icon={pivot.icon} target="_blank" />
+    );
   }
 
   // Hide a relatively useless console error, we'll show a UI component instead
