@@ -32,7 +32,7 @@ const HitLinks: FC<{ hit?: Hit; analytic?: Analytic; dossiers: Dossier[] }> = ({
         )}
         {analytic?.notebooks?.length > 0 && (
           <Grid item>
-            <HitNotebooks analytic={analytic} hit={hit} />
+            <HitNotebooks analytic={analytic} hit={hit} compact />
           </Grid>
         )}
       </Grid>
