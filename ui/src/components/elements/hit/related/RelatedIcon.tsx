@@ -1,4 +1,4 @@
-import { Icon, iconExists } from '@iconify/react';
+import { getIcon, Icon } from '@iconify/react';
 import Avatar from '@mui/material/Avatar';
 import { useAppTheme } from 'commons/components/app/hooks';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
@@ -17,7 +17,7 @@ const RelatedIcon: FC<{ icon?: string; title?: string; href?: string; compact?: 
     return null;
   }
 
-  if (iconExists(icon)) {
+  if (getIcon(icon)) {
     return <Icon fontSize="1.5rem" icon={icon} />;
   }
 

@@ -15,7 +15,7 @@ BANNED_STRINGS = [
         ],
     ),
     (
-        "/dist/iconify.js",
+        "@iconify/react/dist/iconify.js",
         [
             "Instead of using the import '@iconify/react/dist/iconify.js', you should use '@iconify/react'.",
         ],
