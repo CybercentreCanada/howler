@@ -1,4 +1,4 @@
-import { Grid } from '@mui/material';
+import { Grid, gridClasses } from '@mui/material';
 import HitNotebooks from 'components/elements/hit/HitNotebooks';
 import PivotLink from 'components/elements/hit/related/PivotLink';
 import RelatedLink from 'components/elements/hit/related/RelatedLink';
@@ -13,7 +13,7 @@ const HitLinks: FC<{ hit?: Hit; analytic?: Analytic; dossiers: Dossier[] }> = ({
     (hit?.howler?.links?.length > 0 ||
       analytic?.notebooks?.length > 0 ||
       dossiers.filter(_dossier => _dossier.pivots?.length > 0).length > 0) && (
-      <Grid container spacing={1} pr={2}>
+      <Grid container spacing={1} pr={2} sx={{ [`& .${gridClasses.item}`]: { display: 'flex' } }}>
         {hit?.howler?.links?.length > 0 &&
           uniqBy(hit.howler.links, 'href')
             .slice(0, 3)
