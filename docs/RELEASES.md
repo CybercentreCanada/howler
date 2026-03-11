@@ -1,5 +1,34 @@
 # Howler Releases
 
+## Howler UI `v2.17.0`
+
+- **Dashboard Auto Refresh** *(new feature)*: Added automatic refresh functionality to the dashboard for up-to-date data without manual reloading ([#226](https://github.com/CybercentreCanada/howler/pull/226))
+- **Pivot Link Improvements** *(new feature)*: Improved pivot link presentation and layout, including uniform height across all pivot links and enhanced rendering
+- **Replace Handlebars Helper** *(new feature)*: Added `replace`handlebars template helper for string manipulation in templates
+- **Simplified Sidebar Navigation** *(new feature)*: Removed nesting from the sidebar for a cleaner, flatter navigation structure ([#238](https://github.com/CybercentreCanada/howler/pull/238))
+- **Include By Function** *(new feature)*: Added "Include By" function to the hit context menu for more flexible hit filtering ([#176](https://github.com/CybercentreCanada/howler/pull/176))
+- **Improved Clue Type Support** *(new feature)*: Enhanced clue type support and UI plugin integration ([#137](https://github.com/CybercentreCanada/howler/pull/137))
+- **Dossier Card Overflow** *(bugfix)*: Fixed dossier cards overflowing their container bounds
+- **Pivot Initialization** *(bugfix)*: Fixed bug causing incorrect pivot initialization on load
+- **Empty Pivot Mapping Crash** *(bugfix)*: Fixed crash when an empty pivot mapping was encountered
+- **Pivot and Link Presentation** *(bugfix)*: Fixed display issues with pivots and links rendering ([#234](https://github.com/CybercentreCanada/howler/pull/234))
+- **Custom Date Searching** *(bugfix)*: Fixed custom date range searching in Howler ([#235](https://github.com/CybercentreCanada/howler/pull/235))
+- **Integrations Check** *(bugfix)*: Added guard for when no integrations are enabled to prevent UI errors
+- **Dependencies** *(technical update)*: Updated dompurify to v3.3.2, axios to v1.13.5, @fontsource/roboto to v5.2.9, and various other npm packages
+
+## Howler API `v3.2.0`
+
+- **HMAC-SHA256 API Key Caching** *(new feature)*: Implemented HMAC-SHA256 caching of API key validation for improved authentication performance ([#229](https://github.com/CybercentreCanada/howler/pull/229))
+- **Pyright Type Checking** *(new feature)*: Enabled pyright static type checker and resolved resulting type errors for improved code correctness ([#190](https://github.com/CybercentreCanada/howler/pull/190))
+- **Improved Clue Type Support** *(new feature)*: Enhanced clue type support in the API ([#137](https://github.com/CybercentreCanada/howler/pull/137))
+- **Lucene Timespan Query Fix** *(bugfix)*: Fixed incorrect query generation for timespan fields in Lucene search ([#241](https://github.com/CybercentreCanada/howler/pull/241))
+- **Lucene Explanation Bug** *(bugfix)*: Fixed a bug with Lucene query explanation introduced in the latest Elasticsearch v8
+- **Minor Bug Fixes** *(bugfix)*: Various minor bug fixes across the API ([#220](https://github.com/CybercentreCanada/howler/pull/220))
+- **Type Safety Fixes** *(bugfix)*: Resolved mypy type errors throughout the codebase for improved type correctness
+- **Helm Chart Update** *(bugfix)*: Updated howler-helm chart to remove the MinIO dependency ([#189](https://github.com/CybercentreCanada/howler/pull/189))
+- **dict_utils.flatten Performance** *(backend improvement)*: Significant performance improvements to the `dict_utils.flatten` function ([#183](https://github.com/CybercentreCanada/howler/pull/183))
+- **Dependencies** *(technical update)*: Updated flask to v3.1.3, werkzeug to v3.1.6, cryptography, authlib, ruff, and numerous other pip packages across the API and plugins
+
 ## Howler UI `v2.16.1`
 
 - **Rationale Modal Filter Query** *(bugfix)*: Fixed malformed Lucene query in rationale modal that had an extra closing parenthesis
