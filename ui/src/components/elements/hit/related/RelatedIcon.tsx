@@ -1,4 +1,4 @@
-import { Icon, iconExists } from '@iconify/react/dist/iconify.js';
+import { Icon, iconExists } from '@iconify/react';
 import Avatar from '@mui/material/Avatar';
 import { useAppTheme } from 'commons/components/app/hooks';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';

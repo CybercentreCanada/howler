@@ -1,5 +1,5 @@
 import { useClueActionsSelector, useClueEnrichSelector } from '@cccsaurora/clue-ui';
-import { Icon } from '@iconify/react/dist/iconify.js';
+import { Icon } from '@iconify/react';
 import type { JsonSchema7 } from '@jsonforms/core';
 import { Settings } from '@mui/icons-material';
 import { Divider, IconButton, Stack, Typography } from '@mui/material';

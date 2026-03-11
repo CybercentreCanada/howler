@@ -1,4 +1,4 @@
-import { Icon, iconExists } from '@iconify/react/dist/iconify.js';
+import { Icon, iconExists } from '@iconify/react';
 import { Add, Delete, OpenInNew, Remove } from '@mui/icons-material';
 import {
   Alert,

@@ -13,7 +13,13 @@ BANNED_STRINGS = [
             "functionality: https://stackoverflow.com/questions/78815858/mui-icons-material-vitest-es-module-issue ",
             "Instead, use import { SomeIcon } from '@mui/icons-material'",
         ],
-    )
+    ),
+    (
+        "/dist/iconify.js",
+        [
+            "Instead of using the import '@iconify/react/dist/iconify.js', you should use '@iconify/react'.",
+        ],
+    ),
 ]
 
 root = Path(__file__).parent.parent

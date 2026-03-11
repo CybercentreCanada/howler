@@ -1,4 +1,4 @@
-import { Icon } from '@iconify/react/dist/iconify.js';
+import { Icon } from '@iconify/react';
 import { Code, Comment, DataObject, History, LinkSharp, QueryStats, ViewAgenda } from '@mui/icons-material';
 import {
   Badge,
