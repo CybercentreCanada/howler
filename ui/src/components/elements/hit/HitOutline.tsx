@@ -28,7 +28,7 @@ const HitOutline: FC<{ hit: WithMetadata<Hit>; layout: HitLayout }> = ({ hit, la
         hit,
         layout,
         template,
-        fields: template.keys,
+        fields: layout === HitLayout.DENSE ? [...template.keys].slice(0, 3) : template.keys,
         readonly: template.type === 'readonly'
       });
     } else {

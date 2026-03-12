@@ -28,12 +28,8 @@ const HitCard: FC<{ id?: string; layout: HitLayout; readOnly?: boolean }> = ({ i
     <HowlerCard tabIndex={0} sx={{ position: 'relative' }}>
       <CardContent>
         <HitBanner hit={hit} layout={layout} />
-        {layout !== HitLayout.DENSE && (
-          <>
-            <HitOutline hit={hit} layout={layout} />
-            <HitLabels hit={hit} readOnly={readOnly} />
-          </>
-        )}
+        <HitOutline hit={hit} layout={layout} />
+        <HitLabels hit={hit} readOnly={readOnly} />
       </CardContent>
     </HowlerCard>
   );
