@@ -212,7 +212,7 @@ const Home: FC = () => {
   }, []);
 
   return (
-    <PageCenter maxWidth="1800px" textAlign="left" height="100%">
+    <PageCenter maxWidth="100%" textAlign="left" height="100%">
       <ErrorBoundary>
         <Stack direction="column" spacing={1} sx={{ height: '100%' }}>
           <Stack direction="row" justifyContent="end" spacing={1}>
@@ -264,7 +264,7 @@ const Home: FC = () => {
                 </Tooltip>
               </Box>
             </Box>
-            <IconButton size="small" color="primary" onClick={handleOpenSettings}>
+            <IconButton onClick={handleOpenSettings}>
               <MoreVert />
             </IconButton>
             <Menu
