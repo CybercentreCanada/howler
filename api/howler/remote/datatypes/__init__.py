@@ -65,7 +65,9 @@ def retry_call(func, *args, **kw):
             exponent = exponent + 1 if exponent < maximum else exponent
 
 
-def get_client(host, port, private):
+def get_client(
+    host: str | redis.Redis | redis.StrictRedis | redis.RedisCluster | None, port: int | None, private: bool = False
+):
     """
     Get Redis instance.
 
