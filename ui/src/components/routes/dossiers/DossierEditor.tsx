@@ -1,4 +1,4 @@
-import { iconExists } from '@iconify/react/dist/iconify.js';
+import { iconExists } from '@iconify/react';
 import { Language, Person, Save } from '@mui/icons-material';
 import {
   Box,

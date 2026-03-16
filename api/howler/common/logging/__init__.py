@@ -49,8 +49,8 @@ class JsonFormatter(logging.Formatter):
         return self._style.format(record)
 
     @override
-    def formatException(self, exc_info):
-        return "".join(format_exception(*exc_info))
+    def formatException(self, ei):
+        return "".join(format_exception(*ei))
 
 
 def init_log_to_file(logger: logging.Logger, log_level: int, name: str, config: "Config"):
@@ -228,8 +228,8 @@ def log_with_traceback(traceback, msg, is_exception=False, audit=False):
 
         try:
             message = (
-                f'{tb_user["uname"]} [{tb_user["classification"]}] :: {msg} - {tb_file}:{tb_function}:{tb_line_no}'
-                f'[{os.environ.get("HOWLER_VERSION", "0.0.0.dev0")}] ({request.path}{args})'
+                f"{tb_user['uname']} [{tb_user['classification']}] :: {msg} - {tb_file}:{tb_function}:{tb_line_no}"
+                f"[{os.environ.get('HOWLER_VERSION', '0.0.0.dev0')}] ({request.path}{args})"
             )
             if is_exception:
                 log.exception(message)

@@ -20,9 +20,7 @@ class Geo(odm.Model):
     country_name = odm.Optional(odm.Keyword(description="Country name."))
     location = odm.Optional(odm.Compound(GeoPoint, description="Longitude and latitude."))
     name = odm.Optional(
-        odm.Keyword(
-            description="User-defined description of a location, at the level " "of granularity they care about."
-        )
+        odm.Keyword(description="User-defined description of a location, at the level of granularity they care about.")
     )
     postal_code = odm.Optional(odm.Keyword(description="Postal code associated with the location."))
     region_iso_code = odm.Optional(odm.Keyword(description="Region ISO code."))

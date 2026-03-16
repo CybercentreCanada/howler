@@ -1,5 +1,5 @@
 import { useClueActionsSelector, useClueEnrichSelector } from '@cccsaurora/clue-ui';
-import { Icon } from '@iconify/react/dist/iconify.js';
+import { Icon } from '@iconify/react';
 import type { JsonSchema7 } from '@jsonforms/core';
 import { Settings } from '@mui/icons-material';
 import { Divider, IconButton, Stack, Typography } from '@mui/material';
@@ -98,7 +98,7 @@ const CluePivot: FC<PivotLinkProps> = ({ pivot, hit, compact }: PivotLinkProps) 
       setLoading(true);
 
       const data: { [index: string]: any } = Object.fromEntries(
-        pivot.mappings.map(_mapping => {
+        (pivot.mappings ?? []).map(_mapping => {
           const value = getValue(pivot.value, _mapping);
 
           if (['selector', 'selectors'].includes(_mapping.key)) {

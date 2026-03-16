@@ -20,7 +20,7 @@ def try_parse_date(date: str) -> Optional[datetime]:
         return None
 
 
-def try_parse_number(number: Union[str, int, float]) -> Optional[Union[int, float]]:
+def try_parse_number(number: str | int | float) -> int | float | None:
     "Try and parse a number string into an integer or float type, or infinity. Returns None if string is invalid."
     if isinstance(number, (int, float)):
         return number
@@ -69,9 +69,18 @@ def normalize_phrase(value: str, type: Union[Literal["phrase"], Literal["word"]]
         # probably an ID, no normalization
         return [value, value.lower()]
 
+    candidates: list[str] = []
     if type == "word":
-        value = re.sub(r"[^a-z0-9.,@_:/;()\-]", "", value.lower())
-    else:
-        value = re.sub(r"[^a-z0-9.,@_:/;()\- ]", "", value, flags=re.IGNORECASE)
+        candidates.append(re.sub(r"[^a-z0-9.,@_:/;()\-]", "", value.lower()))
+        candidates.append(re.sub(r"[^A-Za-z0-9.,@_:/;()\-]", "", value))
+        # For values that contain spaces (e.g. process.command_line), also include a
+        # space-preserved candidate so that wildcard patterns with escaped spaces can match.
+        if " " in value:
+            candidates.append(re.sub(r"[^a-z0-9.,@_:/;()\- ]", "", value.lower()))
+            candidates.append(re.sub(r"[^A-Za-z0-9.,@_:/;()\- ]", "", value))
 
-    return [value]
+        return candidates
+    else:
+        candidates.append(re.sub(r"[^a-z0-9.,@_:/;()\- ]", "", value, flags=re.IGNORECASE))
+
+    return candidates

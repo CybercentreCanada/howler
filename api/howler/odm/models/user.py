@@ -32,7 +32,7 @@ class DashboardEntry(odm.Model):
 
 @odm.model(index=True, store=True, description="Model of User")
 class User(odm.Model):
-    api_quota = odm.Integer(
+    api_quota: int = odm.Integer(
         default=25,
         store=False,
         description="Maximum number of concurrent API requests",
@@ -44,34 +44,34 @@ class User(odm.Model):
         store=False,
         description="Mapping of API keys",
     )
-    classification = odm.Classification(
+    classification: str = odm.Classification(
         is_user_classification=True,
         copyto="__text__",
         default=CLASSIFICATION.UNRESTRICTED,
         description="Maximum classification for the user",
     )
-    email = odm.Optional(odm.Email(copyto="__text__"), description="User's email address")
-    groups = odm.List(
+    email: str | None = odm.Optional(odm.Email(copyto="__text__"), description="User's email address")
+    groups: list[str] = odm.List(
         odm.Keyword(),
         copyto="__text__",
         default=["USERS"],
         description="List of groups the user submits to",
     )
-    is_active = odm.Boolean(default=True, description="Is the user active?")
-    name = odm.Keyword(copyto="__text__", description="Full name of the user")
-    password = odm.Keyword(index=False, store=False, description="BCrypt hash of the user's password")
-    type = odm.List(
+    is_active: bool = odm.Boolean(default=True, description="Is the user active?")
+    name: str = odm.Keyword(copyto="__text__", description="Full name of the user")
+    password: str = odm.Keyword(index=False, store=False, description="BCrypt hash of the user's password")
+    type: list[str] = odm.List(
         odm.Enum(values=loader.USER_TYPES),
         default=["user", "automation_basic"],
         description="Type of user",
     )
-    uname = odm.Keyword(copyto="__text__", description="Username")
-    favourite_views = odm.List(
+    uname: str = odm.Keyword(copyto="__text__", description="Username")
+    favourite_views: list[str] = odm.List(
         odm.Keyword(),
         default=[],
         description="List of favourite views of the user",
     )
-    favourite_analytics = odm.List(
+    favourite_analytics: list[str] = odm.List(
         odm.Keyword(),
         default=[],
         description="List of favourite analytics of the user",
@@ -80,4 +80,8 @@ class User(odm.Model):
         odm.Compound(DashboardEntry),
         default=[],
         description="A list of dashboard entries to render on the UI.",
+    )
+    refresh_rate: int = odm.Integer(
+        default=15,
+        description="The refresh rate in seconds for the dashboard.",
     )

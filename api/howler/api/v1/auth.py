@@ -30,7 +30,7 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.config import config
-from howler.odm.models.user import User
+from howler.odm.models.user import ApiKey, User
 from howler.security import api_login
 from howler.security.utils import generate_random_secret
 from howler.services import jwt_service
@@ -41,7 +41,7 @@ logger = get_logger(__file__)
 
 SUB_API = "auth"
 auth_api = make_subapi_blueprint(SUB_API, api_version=1)
-auth_api._doc = "Allow user to authenticate to the web server"
+auth_api._doc = "Allow user to authenticate to the web server"  # type: ignore
 
 logger = get_logger(__file__)
 
@@ -117,6 +117,7 @@ def add_apikey(**kwargs):  # noqa: C901
             )
             max_expiry = datetime.fromtimestamp(data["exp"])
 
+    expiry = None
     if expiry_date:
         try:
             expiry = datetime.fromisoformat(expiry_date.replace("Z", ""))
@@ -136,13 +137,14 @@ def add_apikey(**kwargs):  # noqa: C901
             "acl": privs,
         }
 
-        if expiry_date:
+        if expiry:
             new_key["expiry_date"] = expiry.isoformat()
 
-        user_data.apikeys[key_name] = new_key
+        user_data.apikeys[key_name] = ApiKey(new_key)
     except HowlerException as e:
         return bad_request(err=e.message)
 
+    auth_service.invalidate_apikey_cache(user["uname"], key_name)
     storage.user.save(user["uname"], user_data)
 
     return ok({"apikey": f"{key_name}:{random_pass}"})
@@ -172,6 +174,7 @@ def delete_apikey(name, **kwargs):
         return not_found("Api key does not exist")
 
     user_data.apikeys.pop(name)
+    auth_service.invalidate_apikey_cache(user["uname"], name)
     storage.user.save(user["uname"], user_data)
 
     return no_content()
@@ -235,8 +238,8 @@ def login(**_):  # noqa: C901
     apikey = data.get("apikey", None)
 
     # These variables are what will eventually be returned, if authentication is successful
-    logged_in_uname = None
-    access_token = None
+    logged_in_uname: str | None = None
+    access_token: str | None = None
     refresh_token = data.get("refresh_token", None)
     priv: Optional[list[str]] = []
 
@@ -316,7 +319,7 @@ def login(**_):  # noqa: C901
                 token_data, oauth_provider, skip_setup=False, access_token=access_token
             )
 
-            logged_in_uname = cur_user["uname"]
+            logged_in_uname = cur_user.uname
 
             priv = ["R", "W", "E"]
 
@@ -336,7 +339,7 @@ def login(**_):  # noqa: C901
             if not user_data:
                 raise AuthenticationException("User does not exist, or authentication was invalid")  # noqa: TRY301
 
-            logged_in_uname = user_data["uname"]
+            logged_in_uname = user_data.uname
 
         else:
             raise AuthenticationException("Not enough information to proceed with authentication")  # noqa: TRY301
@@ -366,9 +369,10 @@ def login(**_):  # noqa: C901
 
     # Generate the token this user can use to authenticate from now on
 
+    app_token = None
     if access_token:
         app_token = access_token
-    else:
+    elif logged_in_uname:
         app_token = f"{logged_in_uname}:{auth_service.create_token(logged_in_uname, typing.cast(list[str], priv))}"
 
     return ok(

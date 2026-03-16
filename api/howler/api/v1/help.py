@@ -7,7 +7,7 @@ SUB_API = "help"
 classification_definition = CLASSIFICATION.get_parsed_classification_definition()
 
 help_api = make_subapi_blueprint(SUB_API, api_version=1)
-help_api._doc = "Provide information about the system configuration"
+help_api._doc = "Provide information about the system configuration"  # type: ignore
 
 
 @generate_swagger_docs()

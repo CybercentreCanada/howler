@@ -204,6 +204,7 @@
   "hit.panel.analytic.open": "Open Analytic",
   "hit.panel.bundles.open": "Parent Bundles",
   "hit.panel.bundles.open.prompt": "Open Parent Bundle",
+  "hit.panel.view.layout": "Change View Panel",
   "hit.panel.details.show": "Show Hit Details",
   "hit.panel.details.hide": "Hide Hit Details",
   "hit.panel.details.exit": "Close Hit",
@@ -211,6 +212,7 @@
   "hit.panel.close": "Close",
   "hit.panel.hit.noselection": "No hit has been selected",
   "hit.panel.exclude": "Exclude By",
+  "hit.panel.include": "Include By",
 
   "hit.panel.details.cluster": "Cluster Size",
   "hit.panel.details.cluster.description": "Size of the cluster",
@@ -404,6 +406,8 @@
   "page.error.support": "Please click here for teams support",
 
   "page.dashboard.title": "Dashboard",
+  "page.dashboard.settings.edit": "Edit Dashboard",
+  "page.dashboard.settings.refreshRate": "Refresh Rate",
 
   "page.documentation.categories": "API Categories",
   "page.documentation.categories.category": "Category",

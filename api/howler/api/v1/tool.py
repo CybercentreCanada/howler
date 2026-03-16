@@ -20,7 +20,7 @@ from howler.utils.uid import get_random_id
 
 SUB_API = "tools"
 tool_api = make_subapi_blueprint(SUB_API, api_version=1)
-tool_api._doc = "Manage the tools"
+tool_api._doc = "Manage the tools"  # type: ignore
 
 logger = get_logger(__file__)
 
@@ -167,12 +167,12 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
                 bundle_hit.howler.bundle_size += 1
                 odm.howler.bundles.append(bundle_hit.howler.id)
 
-            hit_service.create_hit(odm.howler.id, odm, user=user["uname"])
+            hit_service.create_hit(odm.howler.id, odm, user=user.uname)
 
             analytic_service.save_from_hit(odm, user)
 
         if bundle_hit:
-            hit_service.create_hit(bundle_hit.howler.id, bundle_hit, user=user["uname"])
+            hit_service.create_hit(bundle_hit.howler.id, bundle_hit, user=user.uname)
 
             analytic_service.save_from_hit(bundle_hit, user)
 

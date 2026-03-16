@@ -1,7 +1,6 @@
 import json
 
 import pytest
-from conftest import get_api_data
 
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.models.analytic import Analytic
@@ -12,6 +11,7 @@ from howler.odm.random_data import (
     wipe_hits,
     wipe_templates,
 )
+from test.conftest import get_api_data
 
 
 @pytest.fixture(scope="module")

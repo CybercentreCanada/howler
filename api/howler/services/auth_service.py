@@ -1,9 +1,10 @@
 import base64
 import hashlib
+import hmac
 from datetime import datetime
 from typing import Optional, Union
 
-import elasticapm
+from elasticapm.traces import capture_span
 from flask import request
 
 import howler.services.jwt_service as jwt_service
@@ -18,6 +19,7 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.config import config, redis
 from howler.odm.models.user import User
+from howler.remote.datatypes import retry_call
 from howler.remote.datatypes.queues.named import NamedQueue
 from howler.remote.datatypes.set import ExpiringSet
 from howler.security.utils import generate_random_secret, verify_password
@@ -29,6 +31,93 @@ nonpersistent_config: dict[str, Union[str, int]] = {
     "port": config.core.redis.nonpersistent.port,
     "ttl": config.auth.internal.failure_ttl,
 }
+
+# TTL for the apikey verification cache (seconds)
+_APIKEY_CACHE_TTL: int = 600  # 10 minutes
+
+# Derive the HMAC key from the configured secret
+_HMAC_KEY: bytes = hashlib.sha256(config.auth.hmac_secret_key.encode()).digest()
+
+
+def _apikey_cache_key(username: str, key_name: str) -> str:
+    """Build the Redis key that identifies a cached apikey verification.
+
+    Args:
+        username (str): The authenticating username.
+        key_name (str): The name portion of the apikey.
+
+    Returns:
+        str: The Redis cache key.
+    """
+    return f"apikey_cache:{username}:{key_name}"
+
+
+def _hash_secret(username: str, key_name: str, secret: str) -> str:
+    """Return an HMAC-SHA256 hex digest of an apikey secret.
+
+    Uses a derived HMAC key so that cached hashes are useless without
+    access to the application's configured secret.
+
+    Args:
+        username (str): The authenticating username.
+        key_name (str): The name portion of the apikey.
+        secret (str): The raw apikey secret.
+
+    Returns:
+        str: The HMAC hex digest.
+    """
+    return hmac.new(_HMAC_KEY, f"{username}:{key_name}:{secret}".encode(), hashlib.sha256).hexdigest()
+
+
+def _is_apikey_cached(username: str, key_name: str, secret: str) -> bool:
+    """Check whether a previous bcrypt verification for this apikey is cached.
+
+    The Redis key identifies the apikey (username + key name) and the stored
+    value is the HMAC-SHA256 digest of the apikey secret (as computed by
+    :func:`_hash_secret` from the username, key name, and secret).
+
+    Args:
+        username (str): The authenticating username.
+        key_name (str): The name portion of the apikey.
+        secret (str): The raw apikey secret to compare against the cache.
+
+    Returns:
+        bool: True if the cache holds a matching hash for this secret.
+    """
+    raw = retry_call(redis.get, _apikey_cache_key(username, key_name))
+    if raw is None:
+        return False
+    cached_hash = raw.decode() if isinstance(raw, bytes) else raw
+    return hmac.compare_digest(cached_hash, _hash_secret(username, key_name, secret))
+
+
+def _cache_apikey_verification(username: str, key_name: str, secret: str) -> None:
+    """Store a successful bcrypt verification in Redis.
+
+    Args:
+        username (str): The authenticating username.
+        key_name (str): The name portion of the apikey.
+        secret (str): The raw apikey secret whose hash will be stored.
+    """
+    retry_call(
+        redis.setex,
+        _apikey_cache_key(username, key_name),
+        _APIKEY_CACHE_TTL,
+        _hash_secret(username, key_name, secret),
+    )
+
+
+def invalidate_apikey_cache(username: str, key_name: str) -> None:
+    """Remove a cached apikey verification from Redis.
+
+    Call this whenever an API key is created, modified, or deleted so that
+    stale cache entries do not allow authentication with an old secret.
+
+    Args:
+        username (str): The authenticating username.
+        key_name (str): The name portion of the apikey.
+    """
+    retry_call(redis.delete, _apikey_cache_key(username, key_name))
 
 
 def _get_token_store(user: str) -> ExpiringSet:
@@ -124,7 +213,7 @@ def validate_token(username: str, token: str) -> Optional[list[str]]:
     return None
 
 
-@elasticapm.capture_span(span_type="authentication")
+@capture_span(span_type="authentication")
 def bearer_auth(
     data: str, skip_jwt: bool = False, skip_internal: bool = False
 ) -> tuple[Optional[User], Optional[list[str]]]:
@@ -168,8 +257,8 @@ def bearer_auth(
             raise InvalidDataException("Not a valid authentication type for this endpoint.")
 
 
-@elasticapm.capture_span(span_type="authentication")
-def validate_apikey(
+@capture_span(span_type="authentication")
+def validate_apikey(  # noqa: C901
     username: str, apikey: str, impersonator: Optional[User] = None
 ) -> tuple[Optional[User], Optional[list[str]]]:
     """This function identifies the user via the internal API key functionality.
@@ -214,8 +303,15 @@ def validate_apikey(
                         + "Provide your credentials and supply it in the X-Impersonating header instead."
                     )
 
+                # Check the cache to avoid the expensive bcrypt verification.
+                # Key = username:key_name, Value = HMAC-SHA256(username:key_name:secret) via _hash_secret
+                if _is_apikey_cached(username, name, apikey_password):
+                    logger.debug("API key validated from cache for user %s", username)
+                    return user_data, key.acl
+
                 # If the key can be used for whichever purpose, actually validate the secret data
                 if verify_password(apikey_password, key.password):
+                    _cache_apikey_verification(username, name, apikey_password)
                     return user_data, key.acl
             except ValueError:
                 pass
@@ -267,10 +363,10 @@ def decode_b64(b64_str: str) -> str:
         raise InvalidDataException("Basic authentication data must be base64 encoded") from e
 
 
-@elasticapm.capture_span(span_type="authentication")
+@capture_span(span_type="authentication")
 def basic_auth(
     data: str, is_base64: bool = True, skip_apikey: bool = False, skip_password: bool = False
-) -> tuple[Optional[User], Optional[list[str]]]:
+) -> tuple[User | None, list[str] | None]:
     """This function handles Basic type Authorization headers.
 
     Args:
@@ -291,6 +387,7 @@ def basic_auth(
     [username, data] = key_pair.split(":", maxsplit=1)
 
     validated_user = None
+    priv = None
     if not skip_apikey:
         validated_user, priv = validate_apikey(username, data)
 

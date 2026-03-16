@@ -18,7 +18,7 @@ SUB_API = "action"
 classification_definition = CLASSIFICATION.get_parsed_classification_definition()
 
 action_api = make_subapi_blueprint(SUB_API, api_version=1)
-action_api._doc = "Endpoints relating to bulk actions and automation"
+action_api._doc = "Endpoints relating to bulk actions and automation"  # type: ignore
 
 
 @generate_swagger_docs()
@@ -240,7 +240,7 @@ def execute_action(id: str, **kwargs) -> Response:
     current_user: User | None = kwargs.get("user", None)
 
     for operation in action.operations:
-        op_data = json.loads(operation["data_json"])
+        op_data = json.loads(operation.data_json) if operation.data_json else {}
 
         query = execute_req.get("query", action.query) or action.query
 

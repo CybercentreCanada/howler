@@ -10,7 +10,7 @@ from howler.security.utils import get_disco_url
 
 SUB_API = "configs"
 config_api = make_subapi_blueprint(SUB_API, api_version=1)
-config_api._doc = "Read configuration data about the system"
+config_api._doc = "Read configuration data about the system"  # type: ignore
 
 
 @generate_swagger_docs()

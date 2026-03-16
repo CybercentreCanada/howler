@@ -39,7 +39,7 @@ def test_plugin_actions_integration(datastore_connection: HowlerDatastore):
     from howler.plugins import PLUGINS
 
     cast(BasePluginConfig, PLUGINS["test-plugin"]).modules.operations.append(
-        importlib.import_module("utils.plugins.example_action")
+        importlib.import_module("test.utils.plugins.example_action")
     )
 
     assert any(spec["id"] == "test-plugin-execute" for spec in specifications())

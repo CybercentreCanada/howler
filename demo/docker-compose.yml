@@ -95,7 +95,7 @@ services:
 
   # Howler UI
   howler-ui:
-    image: cccs/howler-ui:2.15.0-dev.339_develop_cddadfd
+    image: cccs/howler-ui:nightly
     depends_on:
       howler-api:
         condition: service_started

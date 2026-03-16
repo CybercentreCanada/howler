@@ -206,6 +206,7 @@
   "hit.panel.analytic.open": "Ouvrir l'analyse",
   "hit.panel.bundles.open": "Groupes parentaux",
   "hit.panel.bundles.open.prompt": "Ouvrir le groupe parent",
+  "hit.panel.view.layout": "Modifier le panneau d'affichage",
   "hit.panel.details.show": "Montrer les détails du hit",
   "hit.panel.details.hide": "Cacher les détails du hit",
   "hit.panel.details.exit": "Fermer hit",
@@ -213,6 +214,7 @@
   "hit.panel.close": "Fermer",
   "hit.panel.hit.noselection": "Aucun résultat n'a été sélectionné",
   "hit.panel.exclude": "Exclure par",
+  "hit.panel.include": "Inclure par",
 
   "hit.panel.details.cluster": "Taille de la grappe",
   "hit.panel.details.cluster.description": "Taille de la grappe",
@@ -407,6 +409,8 @@
   "page.error.support": "Cliquez ici pour obtenir du soutien sur teams",
 
   "page.dashboard.title": "Tableau de bord",
+  "page.dashboard.settings.edit": "Modifier le tableau de bord",
+  "page.dashboard.settings.refreshRate": "Fréquence de rafraîchissement",
 
   "page.documentation.categories": "Catégories d'API",
   "page.documentation.categories.category": "Catégorie",

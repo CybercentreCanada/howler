@@ -11,7 +11,7 @@ from copy import deepcopy
 from datetime import datetime
 from os import environ
 from random import random
-from typing import Any, Dict, Generic, Optional, TypeVar, Union
+from typing import Any, Dict, Generic, Literal, Optional, TypeVar, Union, overload
 
 import elasticsearch
 from datemath import dm
@@ -37,6 +37,7 @@ from howler.datastore.support.schemas import (
     default_index,
     default_mapping,
 )
+from howler.datastore.types import SearchResult
 from howler.odm.base import (
     BANNED_FIELDS,
     IP,
@@ -66,6 +67,8 @@ console.setFormatter(logging.Formatter(HWL_LOG_FORMAT, HWL_DATE_FORMAT))
 logger.addHandler(console)
 
 ModelType = TypeVar("ModelType", bound=Model)
+
+
 write_block_settings = {"index.blocks.write": True}
 write_unblock_settings = {"index.blocks.write": None}
 
@@ -206,8 +209,8 @@ class ESCollection(Generic[ModelType]):
         "df": None,
         "script_fields": [],
     }
-    IGNORE_ENSURE_COLLECTION = False
-    ENSURE_COLLECTION_WARNED = False
+    IGNORE_ENSURE_COLLECTION: bool = False
+    ENSURE_COLLECTION_WARNED: bool = False
 
     def __init__(self, datastore: ESStore, name, model_class=None, validate=True, max_attempts=10):
         self.replicas = int(
@@ -396,14 +399,14 @@ class ESCollection(Generic[ModelType]):
                     retries += 1
                 elif err_code == 429 or err_code == "429":
                     logger.warning(
-                        "Elasticsearch is too busy to perform the requested " f"task on index {self.name}, retrying..."
+                        f"Elasticsearch is too busy to perform the requested task on index {self.name}, retrying..."
                     )
                     time.sleep(min(retries, self.MAX_RETRY_BACKOFF))
                     self.datastore.connection_reset()
                     retries += 1
                 elif err_code == 403 or err_code == "403":
                     logger.warning(
-                        "Elasticsearch cluster is preventing writing operations " f"on index {self.name}, retrying..."
+                        f"Elasticsearch cluster is preventing writing operations on index {self.name}, retrying..."
                     )
                     time.sleep(min(retries, self.MAX_RETRY_BACKOFF))
                     self.datastore.connection_reset()
@@ -422,7 +425,6 @@ class ESCollection(Generic[ModelType]):
         res = None
         while res is None:
             attempt = attempt + 1
-            logger.warning("Checking status of task %s (Attempt %s)", task["task"], attempt)
             try:
                 res = self.with_retries(
                     self.datastore.client.tasks.get,
@@ -442,8 +444,6 @@ class ESCollection(Generic[ModelType]):
                     raise
 
         result = res.get("response", res["task"]["status"])
-
-        logger.info("Task result:\n%s", str(result))
 
         return result
 
@@ -842,14 +842,23 @@ class ESCollection(Generic[ModelType]):
                     key_list.remove(row["_id"])
                     add_to_output(row["_source"], row["_id"])
                 except ValueError:
-                    logger.exception(f'MGet returned multiple documents for id: {row["_id"]}')
+                    logger.exception(f"MGet returned multiple documents for id: {row['_id']}")
 
         if key_list and error_on_missing:
             raise MultiKeyError(key_list, out)
 
         return out
 
-    def normalize(self, data, as_obj=True) -> Union[ModelType, dict[str, Any], None]:
+    @overload
+    def normalize(self, data) -> ModelType | None: ...
+
+    @overload
+    def normalize(self, data, as_obj: Literal[True]) -> ModelType | None: ...
+
+    @overload
+    def normalize(self, data, as_obj: Literal[False]) -> dict[str, Any] | None: ...
+
+    def normalize(self, data, as_obj=True):
         """Normalize the data using the model class
 
         :param as_obj: Return an object instead of a dictionary
@@ -871,6 +880,12 @@ class ESCollection(Generic[ModelType]):
         :return: true/false depending if the document exists or not
         """
         return self.with_retries(self.datastore.client.exists, index=self.name, id=key, _source=False)
+
+    @overload
+    def _get(self, key, retries, version: Literal[False]) -> dict[str, Any]: ...
+
+    @overload
+    def _get(self, key, retries, version: Literal[True]) -> tuple[dict[str, Any], str]: ...
 
     def _get(self, key, retries, version=False):
         """Versioned get-save for atomic update has two paths:
@@ -918,6 +933,27 @@ class ESCollection(Generic[ModelType]):
 
         return None
 
+    @overload
+    def get(self, key, as_obj: Literal[True], version: Literal[True]) -> tuple[ModelType, str]: ...
+
+    @overload
+    def get(self, key, as_obj: Literal[True], version: Literal[False]) -> ModelType: ...
+
+    @overload
+    def get(self, key, as_obj: Literal[True]) -> ModelType: ...
+
+    @overload
+    def get(self, key) -> ModelType: ...
+
+    @overload
+    def get(self, key, as_obj: Literal[False], version: Literal[True]) -> tuple[dict[str, Any], str]: ...
+
+    @overload
+    def get(self, key, as_obj: Literal[False], version: Literal[False]) -> dict[str, Any]: ...
+
+    @overload
+    def get(self, key, as_obj: Literal[False]) -> dict[str, Any]: ...
+
     def get(self, key, as_obj=True, version=False):
         """Get a document from the datastore, retry a few times if not found and normalize the
         document with the model provided with the collection.
@@ -936,7 +972,28 @@ class ESCollection(Generic[ModelType]):
             return self.normalize(data, as_obj=as_obj), version
         return self.normalize(data, as_obj=as_obj)
 
-    def get_if_exists(self, key, as_obj=True, version=False):
+    @overload
+    def get_if_exists(self, key: str, as_obj: Literal[True], version: Literal[True]) -> tuple[ModelType, str]: ...
+
+    @overload
+    def get_if_exists(self, key: str, as_obj: Literal[True], version: Literal[False]) -> ModelType: ...
+
+    @overload
+    def get_if_exists(self, key: str, as_obj: Literal[True]) -> ModelType: ...
+
+    @overload
+    def get_if_exists(self, key: str) -> ModelType: ...
+
+    @overload
+    def get_if_exists(self, key: str, as_obj: Literal[False], version: Literal[True]) -> tuple[dict[str, Any], str]: ...
+
+    @overload
+    def get_if_exists(self, key: str, as_obj: Literal[False], version: Literal[False]) -> dict[str, Any]: ...
+
+    @overload
+    def get_if_exists(self, key: str, as_obj: Literal[False]) -> dict[str, Any]: ...
+
+    def get_if_exists(self, key: str, as_obj=True, version=False):
         """Get a document from the datastore but do not retry if not found.
 
         Use this more in caching scenarios because eventually consistent database may lead
@@ -952,6 +1009,7 @@ class ESCollection(Generic[ModelType]):
         if version:
             data, version = data
             return self.normalize(data, as_obj=as_obj), version
+
         return self.normalize(data, as_obj=as_obj)
 
     def require(
@@ -991,7 +1049,7 @@ class ESCollection(Generic[ModelType]):
 
         data = self.normalize(data)
 
-        if self.model_class:
+        if self.model_class and data:
             saved_data = data.as_primitives(hidden_fields=True)
         else:
             if not isinstance(data, dict):
@@ -1125,7 +1183,7 @@ class ESCollection(Generic[ModelType]):
         """
         if self.model_class:
             fields = self.model_class.flat_fields(show_compound=True)
-            if "classification in fields":
+            if "classification" in fields:
                 fields.update(
                     {
                         "__access_lvl__": Integer(),
@@ -1212,7 +1270,7 @@ class ESCollection(Generic[ModelType]):
                 script=script,
                 if_seq_no=seq_no,
                 if_primary_term=primary_term,
-                raise_conflicts=seq_no and primary_term,
+                raise_conflicts=bool(seq_no and primary_term),
             )
             return (
                 res["result"] == "updated",
@@ -1320,7 +1378,7 @@ class ESCollection(Generic[ModelType]):
         if args is None:
             args = []
 
-        params = {}
+        params: dict[str, Any] = {}
         if deep_paging_id is not None:
             params = {"scroll": self.SCROLL_TIMEOUT}
         elif track_total_hits:
@@ -1338,7 +1396,7 @@ class ESCollection(Generic[ModelType]):
 
         # This is our minimal query, the following sections will fill it out
         # with whatever extra options the search has been given.
-        query_body = {
+        query_body: dict[str, Any] = {
             "query": {
                 "bool": {
                     "must": {"query_string": {"query": parsed_values["query"]}},
@@ -1460,9 +1518,46 @@ class ESCollection(Generic[ModelType]):
         except Exception as error:
             raise SearchException("collection: %s, query: %s, error: %s" % (self.name, query_body, str(error)))
 
+    @overload
+    def search(
+        self,
+        query: str | None,
+        as_obj: Literal[True] = True,
+        offset: int = 0,
+        rows: int | None = None,
+        sort: typing.Any = None,
+        fl: str | None = None,
+        timeout: int | None = None,
+        filters: list[str] | str | None = None,
+        access_control: typing.Any = None,
+        deep_paging_id: str | None = None,
+        use_archive: bool = False,
+        track_total_hits: bool = False,
+        script_fields: list[str] = [],
+    ) -> SearchResult[ModelType]: ...
+
+    @overload
+    def search(
+        self,
+        query: str | None,
+        as_obj: Literal[False],
+        offset: int = 0,
+        rows: int | None = None,
+        sort: typing.Any = None,
+        fl: str | None = None,
+        timeout: int | None = None,
+        filters: list[str] | str | None = None,
+        access_control: typing.Any = None,
+        deep_paging_id: str | None = None,
+        use_archive: bool = False,
+        track_total_hits: bool = False,
+        script_fields: list[str] = [],
+    ) -> SearchResult[dict[str, typing.Any]]: ...
+
     def search(
         self,
         query,
+        as_obj=True,
         offset=0,
         rows=None,
         sort=None,
@@ -1471,7 +1566,6 @@ class ESCollection(Generic[ModelType]):
         filters=None,
         access_control=None,
         deep_paging_id=None,
-        as_obj=True,
         use_archive=False,
         track_total_hits=None,
         script_fields=[],
@@ -1553,7 +1647,7 @@ class ESCollection(Generic[ModelType]):
             track_total_hits=track_total_hits,
         )
 
-        ret_data: dict[str, Any] = {
+        ret_data: SearchResult = {
             "offset": int(offset),
             "rows": int(rows),
             "total": int(result["hits"]["total"]["value"]),
@@ -2075,13 +2169,16 @@ class ESCollection(Generic[ModelType]):
                             "description": (field_model.description if field_model else ""),
                             "regex": (
                                 field_model.child_type.validation_regex.pattern
-                                if issubclass(type(field_model.child_type), ValidatedKeyword)
-                                or issubclass(type(field_model.child_type), IP)
+                                if field_model
+                                and (
+                                    issubclass(type(field_model.child_type), ValidatedKeyword)
+                                    or issubclass(type(field_model.child_type), IP)
+                                )
                                 else None
                             ),
                             "values": (
                                 list(field_model.child_type.values)
-                                if issubclass(type(field_model.child_type), Enum)
+                                if field_model and issubclass(type(field_model.child_type), Enum)
                                 else None
                             ),
                             "deprecated_description": (field_model.deprecated_description if field_model else ""),
@@ -2103,10 +2200,11 @@ class ESCollection(Generic[ModelType]):
                 "description": field_model.description if field_model else "",
                 "regex": (
                     field_model.validation_regex.pattern
-                    if issubclass(type(field_model), ValidatedKeyword) or issubclass(type(field_model), IP)
+                    if field_model
+                    and (issubclass(type(field_model), ValidatedKeyword) or issubclass(type(field_model), IP))
                     else None
                 ),
-                "values": list(field_model.values) if issubclass(type(field_model), Enum) else None,
+                "values": list(field_model.values) if field_model and issubclass(type(field_model), Enum) else None,
                 "deprecated_description": (field_model.deprecated_description if field_model else ""),
             }
 
@@ -2196,6 +2294,10 @@ class ESCollection(Generic[ModelType]):
         if model is None:
             if self.model_class:
                 return self._check_fields(self.model_class)
+
+            return
+
+        if self.model_class is None:
             return
 
         fields = self.fields()
@@ -2307,7 +2409,7 @@ class ESCollection(Generic[ModelType]):
         # simply raise an exception
         if no_fix:
             raise HowlerValueError(
-                f"Can't update database mapping for {self.name}, " f"couldn't safely amend mapping for {no_fix}"
+                f"Can't update database mapping for {self.name}, couldn't safely amend mapping for {no_fix}"
             )
 
         # If we got this far, the missing fields have been described in properties, upload them to the
