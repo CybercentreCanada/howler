@@ -788,6 +788,9 @@
   "route.views.saved": "Pinned Views",
   "route.views.search.prompt": "Search by name, query, or owner.",
 
+  "healthcheck.healthy": "Plugins are healthy",
+  "healthcheck.unhealthy": "Plugins are unhealthy",
+
   "search.open": "Open Search",
   "search.result.showing": "Showing {{offset}} to {{length}} of {{total}} results",
   "search.result.showing.single": "No results",

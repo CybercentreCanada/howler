@@ -787,6 +787,9 @@
   "route.views.show": "Voir les vues",
   "route.views": "Vues",
 
+  "healthcheck.healthy": "Plugins sont sains",
+  "healthcheck.unhealthy": "Plugins sont malsains",
+
   "search.open": "Ouvrir la recherche",
   "search.result.showing": "Affichage de {{offset}} à {{length}} sur {{total}} articles",
   "search.result.showing.single": "Aucun articles",

@@ -2,7 +2,7 @@ import logging
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, ImportString, model_validator
+from pydantic import BaseModel, ImportString, field_validator, model_validator
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, YamlConfigSettingsSource
 
 from howler.common.logging import HWL_DATE_FORMAT, HWL_LOG_FORMAT
@@ -48,6 +48,20 @@ class BasePluginConfig(BaseSettings):
     features: dict[str, bool] = {}
     importance: PluginImportance = PluginImportance.OPTIONAL
     modules: Modules = Modules()
+
+    @field_validator("importance", mode="before")
+    @classmethod
+    def parse_importance(cls, v):
+        """Parse the importance field from a string to a PluginImportance enum.
+
+        If the value is not a valid PluginImportance,default to PluginImportance.OPTIONAL
+        """
+        if isinstance(v, str):
+            try:
+                return PluginImportance(v)
+            except ValueError:
+                return PluginImportance.OPTIONAL
+        return PluginImportance.OPTIONAL
 
     @model_validator(mode="before")
     @classmethod
