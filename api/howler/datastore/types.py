@@ -1,11 +1,14 @@
-from typing import Generic, NotRequired, TypedDict, TypeVar
+from typing import Generic, TypedDict, TypeVar
 
 SearchResultType = TypeVar("SearchResultType")
 
 
-class SearchResult(TypedDict, Generic[SearchResultType]):
+class _SearchResult(TypedDict, Generic[SearchResultType]):
     offset: int
     rows: int
     total: int
     items: list[SearchResultType]
-    next_deep_paging_id: NotRequired[str | None]
+
+
+class SearchResult(_SearchResult, total=False):
+    next_deep_paging_id: str | None
