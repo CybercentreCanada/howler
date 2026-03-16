@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 
 const RelatedRecords: FC<{ hit: Hit }> = ({ hit }) => {
   const { t } = useTranslation();
-  const { dispatchApi } = useMyApi;
+  const { dispatchApi } = useMyApi();
 
   const [open, setOpen] = useState(false);
   const [records, setRecords] = useState([]);
@@ -22,7 +22,9 @@ const RelatedRecords: FC<{ hit: Hit }> = ({ hit }) => {
 
     (async () => {
       const result = await dispatchApi(
-        api.v2.search.post('hit,observable', { query: `howler.id:(${related.join(' OR ')})` })
+        api.v2.search.post('hit,observable,case', {
+          query: `howler.id:(${related.join(' OR ')}) OR case_id:(${related.join(' OR ')})`
+        })
       );
 
       console.log(result);

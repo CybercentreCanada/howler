@@ -17,9 +17,9 @@ export const post = <T = Hit>(
     indexes = indexes.split(',');
   }
 
-  if (indexes.some(index => !['hit', 'observable'].includes(index))) {
+  if (indexes.some(index => !['hit', 'observable', 'case'].includes(index))) {
     // eslint-disable-next-line no-console
-    console.error('Only hit and observable indexes should be used currently.');
+    console.error('Only hit, case and observable indexes should be used currently.');
   }
 
   return hpost(uri(indexes), { ...(request || {}), query: request?.query || 'howler.id:*' });

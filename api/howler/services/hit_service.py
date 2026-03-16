@@ -632,7 +632,7 @@ def transition_hit(
 
         if transition == HitStatusTransition.ASSESS:
             # For assessments, determine promotion/demotion based on escalation level
-            new_escalation = AssessmentEscalationMap[kwargs["assessment"]]
+            new_escalation = AssessmentEscalationMap[kwargs["assessment"]]  # pyright: ignore[reportInvalidTypeArguments]
             trigger = "promote" if new_escalation == Escalation.EVIDENCE else "demote"
         elif transition == HitStatusTransition.RE_EVALUATE:
             # Re-evaluation always promotes the hit
@@ -821,7 +821,7 @@ def augment_metadata(data: list[dict[str, Any]] | dict[str, Any] | None, metadat
     else:
         hits = []
 
-    hits = [hit for hit in hits if hit.get("type", "hit") in ["hit", "observable"]]
+    hits = [hit for hit in hits if hit.get("__index", "hit") == "hit"]
 
     if len(hits) < 1:
         return

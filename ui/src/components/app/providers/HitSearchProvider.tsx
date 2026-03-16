@@ -25,7 +25,7 @@ import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
 import Throttler from 'utils/Throttler';
 import { convertCustomDateRangeToLucene, convertDateToLucene } from 'utils/utils';
 import { HitContext } from './HitProvider';
-import { ParameterContext, type SearchIndex } from './ParameterProvider';
+import { ParameterContext } from './ParameterProvider';
 import { ViewContext } from './ViewProvider';
 
 export interface QueryEntry {
@@ -35,7 +35,6 @@ export interface QueryEntry {
 export interface HitSearchContextType {
   displayType: 'list' | 'grid';
   searching: boolean;
-  searchIndex: SearchIndex;
   error: string | null;
   response: HowlerSearchResponse<WithMetadata<Hit>> | null;
   bundleId: string | null;
@@ -71,7 +70,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const trackTotalHits = useContextSelector(ParameterContext, ctx => ctx.trackTotalHits);
   const sort = useContextSelector(ParameterContext, ctx => ctx.sort);
   const span = useContextSelector(ParameterContext, ctx => ctx.span);
-  const searchIndex = useContextSelector(ParameterContext, ctx => ctx.searchIndex);
+  const indexes = useContextSelector(ParameterContext, ctx => ctx.indexes);
   const allFilters = useContextSelector(ParameterContext, ctx => ctx.filters);
   const startDate = useContextSelector(ParameterContext, ctx => ctx.startDate);
   const endDate = useContextSelector(ParameterContext, ctx => ctx.endDate);
@@ -167,7 +166,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
 
         try {
           const _response = await dispatchApi(
-            api.v2.search.post<WithMetadata<Hit>>(searchIndex ?? 'hit', {
+            api.v2.search.post<WithMetadata<Hit>>(indexes, {
               offset: appendResults && response ? response.rows : offset,
               rows: pageCount,
               query: _query || DEFAULT_QUERY,
@@ -211,7 +210,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
       startDate,
       endDate,
       filters,
-      searchIndex,
+      indexes,
       setQuery,
       location.pathname,
       routeParams.id,
@@ -240,20 +239,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    offset,
-    pageCount,
-    sort,
-    span,
-    searchIndex,
-    bundleId,
-    location.pathname,
-    startDate,
-    endDate,
-    filters,
-    query,
-    views
-  ]);
+  }, [offset, pageCount, sort, span, indexes, bundleId, location.pathname, startDate, endDate, filters, query, views]);
 
   return (
     <HitSearchContext.Provider
@@ -262,7 +248,6 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
         setDisplayType,
         search,
         searching,
-        searchIndex: searchIndex ?? 'hit',
         getFilters,
         error,
         response,

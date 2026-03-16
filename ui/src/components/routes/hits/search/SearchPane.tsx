@@ -30,10 +30,10 @@ import useHitSelection from 'components/hooks/useHitSelection';
 import useMyLocalStorage, { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { FC } from 'react';
-import React, { memo, useCallback, useEffect, useMemo } from 'react';
+import React, { memo, useCallback, useMemo } from 'react';
 import { isMobile } from 'react-device-detect';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
 import HitContextMenu from './HitContextMenu';
@@ -77,7 +77,7 @@ const Item: FC<{
           '& span,p,h6': {
             cursor: 'text'
           },
-          '& .MuiPaper-root': {
+          '& > .MuiPaper-root': {
             border: '4px solid transparent',
             boxShadow: `0px 0px 0px 0px transparent`,
             transition: theme.transitions.create(['border-color', 'box-shadow'])
@@ -91,10 +91,10 @@ const Item: FC<{
           }
         },
         selectedHits.some(_hit => _hit.howler.id === hit.howler.id) && {
-          '& .MuiPaper-root': { borderColor: grey[500], boxShadow: `0px 0px 5px 2px ${grey[500]}` }
+          '& > .MuiPaper-root': { borderColor: grey[500], boxShadow: `0px 0px 5px 2px ${grey[500]}` }
         },
         selected === hit.howler.id && {
-          '& .MuiPaper-root': {
+          '& > .MuiPaper-root': {
             borderColor: 'primary.main',
             boxShadow: `0px 0px 5px 2px ${theme.palette.primary.main}`
           }
@@ -108,8 +108,6 @@ const Item: FC<{
 
 const SearchPane: FC = () => {
   const { t } = useTranslation();
-  const location = useLocation();
-  const routeParams = useParams();
 
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const setOffset = useContextSelector(ParameterContext, ctx => ctx.setOffset);
@@ -122,8 +120,6 @@ const SearchPane: FC = () => {
   const error = useContextSelector(HitSearchContext, ctx => ctx.error);
 
   const { onClick } = useHitSelection();
-
-  const getHit = useContextSelector(HitContext, ctx => ctx.getHit);
 
   const searchPaneWidth = useMyLocalStorageItem(StorageKey.SEARCH_PANE_WIDTH, null)[0];
 
@@ -139,13 +135,6 @@ const SearchPane: FC = () => {
 
     return selectedElement.id;
   }, []);
-
-  useEffect(() => {
-    if (location.pathname.startsWith('/bundles')) {
-      getHit(routeParams.id);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, routeParams.id]);
 
   return (
     <FlexPort id="hitscrollbar">

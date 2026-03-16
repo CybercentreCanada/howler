@@ -25,7 +25,7 @@ const HitCard: FC<{ id?: string; layout: HitLayout; readOnly?: boolean }> = ({ i
   }
 
   return (
-    <HowlerCard tabIndex={0} sx={{ position: 'relative' }}>
+    <HowlerCard id={hit?.howler.id} tabIndex={0} sx={{ position: 'relative' }}>
       <CardContent>
         <HitBanner hit={hit} layout={layout} />
         <HitOutline hit={hit} layout={layout} />
