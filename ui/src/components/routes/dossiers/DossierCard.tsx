@@ -1,5 +1,5 @@
 import { Delete, Language, ManageSearch, Person } from '@mui/icons-material';
-import { Box, Card, Chip, Divider, IconButton, Stack, Tooltip, Typography } from '@mui/material';
+import { Box, Card, Chip, Divider, Grid, IconButton, Stack, Tooltip, Typography } from '@mui/material';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
 import { isEmpty } from 'lodash-es';
 import type { Dossier } from 'models/entities/generated/Dossier';
@@ -16,7 +16,7 @@ const DossierCard: FC<{
 
   return (
     <Card key={dossier.dossier_id} variant="outlined" sx={{ p: 1, mb: 1 }} className={className}>
-      <Stack direction="row" alignItems="center" spacing={1}>
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ '& > *': { flexShrink: 0 } }}>
         <Stack sx={{ flex: 1 }}>
           <Typography variant="body1" display="flex" alignItems="start">
             <Tooltip title={t(`route.dossiers.manager.${dossier.type}`)}>
@@ -29,31 +29,39 @@ const DossierCard: FC<{
           <Typography variant="caption" color="text.secondary">
             <code>{dossier.query}</code>
           </Typography>
-          <Stack spacing={1} direction="row" sx={{ mt: 1 }}>
+          <Grid container spacing={1} sx={{ mt: 1 }}>
             {dossier.leads?.map((lead, index) => (
-              <Chip
-                key={lead.format + lead.label?.en}
-                clickable
-                label={`${lead.label?.[i18n.language] ?? t('unknown')} (${lead.format})`}
-                size="small"
-                component={Link}
-                to={`/dossiers/${dossier.dossier_id}/edit?tab=leads&lead=${index}`}
-                onClick={e => e.stopPropagation()}
-              />
+              <Grid item key={lead.format + lead.label?.en}>
+                <Chip
+                  sx={{ maxWidth: '300px' }}
+                  clickable
+                  label={`${lead.label?.[i18n.language] ?? t('unknown')} (${lead.format})`}
+                  size="small"
+                  component={Link}
+                  to={`/dossiers/${dossier.dossier_id}/edit?tab=leads&lead=${index}`}
+                  onClick={e => e.stopPropagation()}
+                />
+              </Grid>
             ))}
-            {!isEmpty(dossier.leads) && !isEmpty(dossier.pivots) && <Divider flexItem orientation="vertical" />}
+            {!isEmpty(dossier.leads) && !isEmpty(dossier.pivots) && (
+              <Grid item>
+                <Divider orientation="vertical" />
+              </Grid>
+            )}
             {dossier.pivots?.map((pivot, index) => (
-              <Chip
-                key={pivot.format + pivot.label?.en}
-                clickable
-                label={`${pivot.label?.[i18n.language] ?? t('unknown')} (${pivot.format})`}
-                size="small"
-                component={Link}
-                to={`/dossiers/${dossier.dossier_id}/edit?tab=pivots&pivot=${index}`}
-                onClick={e => e.stopPropagation()}
-              />
+              <Grid item key={pivot.format + pivot.label?.en}>
+                <Chip
+                  sx={{ maxWidth: '300px' }}
+                  clickable
+                  label={`${pivot.label?.[i18n.language] ?? t('unknown')} (${pivot.format})`}
+                  size="small"
+                  component={Link}
+                  to={`/dossiers/${dossier.dossier_id}/edit?tab=pivots&pivot=${index}`}
+                  onClick={e => e.stopPropagation()}
+                />
+              </Grid>
             ))}
-          </Stack>
+          </Grid>
         </Stack>
 
         <HowlerAvatar sx={{ height: '28px', width: '28px' }} userId={dossier.owner} />

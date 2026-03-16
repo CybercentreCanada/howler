@@ -2,7 +2,7 @@ import { Clear, Code, Comment, DataObject, History, LinkSharp, OpenInNew, QueryS
 import { Badge, Box, Divider, IconButton, Skeleton, Stack, Tab, Tabs, Tooltip, useTheme } from '@mui/material';
 import TuiIconButton from 'components/elements/addons/buttons/CustomIconButton';
 
-import { Icon } from '@iconify/react/dist/iconify.js';
+import { Icon } from '@iconify/react';
 import useMatchers from 'components/app/hooks/useMatchers';
 import { HitContext } from 'components/app/providers/HitProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
@@ -19,18 +19,15 @@ import HitBanner from 'components/elements/hit/HitBanner';
 import HitComments from 'components/elements/hit/HitComments';
 import HitLabels from 'components/elements/hit/HitLabels';
 import { HitLayout } from 'components/elements/hit/HitLayout';
-import HitNotebooks from 'components/elements/hit/HitNotebooks';
+import HitLinks from 'components/elements/hit/HitLinks';
 import HitOutline from 'components/elements/hit/HitOutline';
 import HitOverview from 'components/elements/hit/HitOverview';
 import HitRelated from 'components/elements/hit/HitRelated';
 import HitSummary from 'components/elements/hit/HitSummary';
 import HitWorklog from 'components/elements/hit/HitWorklog';
-import PivotLink from 'components/elements/hit/related/PivotLink';
-import RelatedLink from 'components/elements/hit/related/RelatedLink';
 import ObjectDetails from 'components/elements/ObjectDetails';
 import useMyUserList from 'components/hooks/useMyUserList';
 import ErrorBoundary from 'components/routes/ErrorBoundary';
-import { uniqBy } from 'lodash-es';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import howlerPluginStore from 'plugins/store';
@@ -230,23 +227,7 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
           ) : (
             <Skeleton height={124} />
           ))}
-        {(hit?.howler?.links?.length > 0 ||
-          analytic?.notebooks?.length > 0 ||
-          dossiers.filter(_dossier => _dossier.pivots?.length > 0).length > 0) && (
-          <Stack direction="row" spacing={1} pr={2}>
-            {analytic?.notebooks?.length > 0 && <HitNotebooks analytic={analytic} hit={hit} />}
-            {hit?.howler?.links?.length > 0 &&
-              uniqBy(hit.howler.links, 'href')
-                .slice(0, 3)
-                .map(l => <RelatedLink key={l.href} compact {...l} />)}
-            {dossiers.flatMap(_dossier =>
-              (_dossier.pivots ?? []).map((_pivot, index) => (
-                // eslint-disable-next-line react/no-array-index-key
-                <PivotLink key={_dossier.dossier_id + index} pivot={_pivot} hit={hit} compact />
-              ))
-            )}
-          </Stack>
-        )}
+        <HitLinks hit={hit} analytic={analytic} dossiers={dossiers} />
         <VSBoxHeader ml={-1} mr={-1} pb={1} sx={{ top: '0px' }}>
           <Tabs
             value={tab === 'overview' && !hasOverview ? 'details' : tab}

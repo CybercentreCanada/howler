@@ -48,7 +48,7 @@ vi.mock('@monaco-editor/react', async () => {
 });
 
 // Mock iconExists
-vi.mock('@iconify/react/dist/iconify.js', () => ({
+vi.mock('@iconify/react', () => ({
   Icon: ({ ...args }) => <div {...args}>{'iconify'}</div>,
   iconExists: (icon: string) => icon?.startsWith('material-symbols:') || icon === 'test-icon'
 }));

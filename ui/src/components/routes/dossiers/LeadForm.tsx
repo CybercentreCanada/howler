@@ -1,4 +1,4 @@
-import { Icon } from '@iconify/react/dist/iconify.js';
+import { Icon } from '@iconify/react';
 import { Add } from '@mui/icons-material';
 import { Alert, Button, Paper, Stack, Tab, Tabs } from '@mui/material';
 import isNull from 'lodash-es/isNull';

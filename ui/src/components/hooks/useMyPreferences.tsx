@@ -6,7 +6,6 @@ import {
   Code,
   Dashboard,
   Description,
-  Edit,
   ExitToApp,
   FormatListBulleted,
   Help,
@@ -77,6 +76,10 @@ const useMyPreferences = (): AppPreferenceConfigs => {
           }
         },
         {
+          type: 'divider',
+          element: null
+        },
+        {
           type: 'item',
           element: {
             id: 'search.hit',
@@ -99,69 +102,73 @@ const useMyPreferences = (): AppPreferenceConfigs => {
           element: null
         },
         {
-          type: 'group',
+          type: 'item',
           element: {
-            id: 'manage',
-            i18nKey: 'manage',
-            icon: <Edit />,
-            items: [
-              {
-                id: 'manage.views',
-                i18nKey: 'route.views',
-                icon: <ManageSearch />,
-                nested: true,
-                route: '/views'
-              },
-              {
-                id: 'manage.analytics',
-                i18nKey: 'route.analytics',
-                icon: <QueryStats />,
-                nested: true,
-                route: '/analytics'
-              },
-              {
-                id: 'manage.templates',
-                i18nKey: 'route.templates',
-                icon: <FormatListBulleted />,
-                nested: true,
-                route: '/templates'
-              },
-              {
-                id: 'manage.overviews',
-                i18nKey: 'route.overviews',
-                icon: <Article />,
-                nested: true,
-                route: '/overviews'
-              },
-              {
-                id: 'manage.dossiers',
-                i18nKey: 'route.dossiers',
-                icon: <Topic />,
-                nested: true,
-                route: '/dossiers'
-              },
-              {
-                id: 'manage.actions',
-                i18nKey: 'route.actions',
-                icon: <Terminal />,
-                nested: true,
-                route: '/action',
-                userPropValidators: [
-                  { prop: 'roles', value: 'automation_basic' },
-                  { prop: 'roles', value: 'automation_advanced' },
-                  { prop: 'roles', value: 'actionrunner_basic' },
-                  { prop: 'roles', value: 'actionrunner_advanced' }
-                ]
-              },
-              {
-                id: 'action.integrations',
-                i18nKey: 'route.integrations',
-                icon: <Api />,
-                nested: true,
-                route: '/action/integrations',
-                userPropValidators: [{ prop: 'roles', value: 'automation_basic' }]
-              }
+            id: 'manage.views',
+            i18nKey: 'route.views',
+            icon: <ManageSearch />,
+            route: '/views'
+          }
+        },
+        {
+          type: 'item',
+          element: {
+            id: 'manage.analytics',
+            i18nKey: 'route.analytics',
+            icon: <QueryStats />,
+            route: '/analytics'
+          }
+        },
+        {
+          type: 'item',
+          element: {
+            id: 'manage.templates',
+            i18nKey: 'route.templates',
+            icon: <FormatListBulleted />,
+            route: '/templates'
+          }
+        },
+        {
+          type: 'item',
+          element: {
+            id: 'manage.overviews',
+            i18nKey: 'route.overviews',
+            icon: <Article />,
+            route: '/overviews'
+          }
+        },
+        {
+          type: 'item',
+          element: {
+            id: 'manage.dossiers',
+            i18nKey: 'route.dossiers',
+            icon: <Topic />,
+            route: '/dossiers'
+          }
+        },
+        {
+          type: 'item',
+          element: {
+            id: 'manage.actions',
+            i18nKey: 'route.actions',
+            icon: <Terminal />,
+            route: '/action',
+            userPropValidators: [
+              { prop: 'roles', value: 'automation_basic' },
+              { prop: 'roles', value: 'automation_advanced' },
+              { prop: 'roles', value: 'actionrunner_basic' },
+              { prop: 'roles', value: 'actionrunner_advanced' }
             ]
+          }
+        },
+        {
+          type: 'item',
+          element: {
+            id: 'action.integrations',
+            i18nKey: 'route.integrations',
+            icon: <Api />,
+            route: '/action/integrations',
+            userPropValidators: [{ prop: 'roles', value: 'automation_basic' }]
           }
         },
         {

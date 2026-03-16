@@ -28,6 +28,12 @@ class RedisServer(BaseModel):
 
     host: str = Field(description="Hostname of Redis instance")
     port: int = Field(description="Port of Redis instance")
+    password: Optional[str] = Field(description="Password for Redis instance", default=None)
+    tls_enabled: bool = Field(default=False, description="Enable TLS for Redis connection")
+    tls_ca_cert: Optional[str] = Field(
+        description="Path to CA Certificate (PEM) to validate Redis instance certificate when using TLS", default=None
+    )
+    is_cluster: bool = Field(default=False, description="Is this Redis instance a cluster?")
 
 
 class Redis(BaseModel):
@@ -284,6 +290,10 @@ class Auth(BaseModel):
 
     allow_apikeys: bool = Field(default=True, description="Allow API keys?")
     allow_extended_apikeys: bool = Field(default=True, description="Allow extended API keys?")
+    hmac_secret_key: str = Field(
+        default=os.environ.get("HMAC_SECRET_KEY", "changeme"),
+        description="HMAC secret used in auth hash operations. Change this in production!",
+    )
     max_apikey_duration_amount: Optional[int] = Field(
         default=None, description="Amount of unit of maximum duration for API keys"
     )

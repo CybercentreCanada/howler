@@ -148,6 +148,11 @@ class LuceneProcessor(TreeVisitor):
         # Unescape escaped colons in value
         sanitized_value = sanitized_value.replace("\\:", ":")
 
+        # Unescape Lucene-escaped spaces so fnmatch can match them correctly
+        # (fnmatch does not treat \ as an escape character, so *\ foo\ * would require
+        # a literal backslash in the candidate rather than matching a space)
+        sanitized_value = sanitized_value.replace("\\ ", " ")
+
         return sanitized_value
 
     @staticmethod

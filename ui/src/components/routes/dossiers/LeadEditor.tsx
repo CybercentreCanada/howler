@@ -1,4 +1,4 @@
-import { Icon, iconExists } from '@iconify/react/dist/iconify.js';
+import { Icon, iconExists } from '@iconify/react';
 import { useMonaco } from '@monaco-editor/react';
 import { Delete, OpenInNew } from '@mui/icons-material';
 import { Autocomplete, Button, IconButton, Stack, TextField, Typography, useTheme } from '@mui/material';

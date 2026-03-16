@@ -472,7 +472,7 @@ def save_hit(hit: Hit, version: Optional[str] = None) -> tuple[Hit, str]:
     data, _version = datastore().hit.get(hit.howler.id, as_obj=False, version=True)
     event_service.emit("hits", {"hit": data, "version": _version})
 
-    return data, version
+    return data, _version
 
 
 def _update_hit(
