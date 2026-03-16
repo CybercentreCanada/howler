@@ -108,5 +108,6 @@
       "tables": false
     }
   },
-  "editor.autoIndentOnPaste": true
+  "editor.autoIndentOnPaste": true,
+  "python-envs.defaultEnvManager": "ms-python.python:system"
 }
