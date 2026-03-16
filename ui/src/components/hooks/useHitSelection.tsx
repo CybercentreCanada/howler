@@ -63,7 +63,7 @@ const useHitSelection = () => {
       clearSelectedHits,
       lastSelected,
       removeHitFromSelection,
-      response.items,
+      response?.items,
       selectedHits,
       setSelected
     ]

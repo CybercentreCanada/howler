@@ -2,14 +2,13 @@
 import { hpost, joinAllUri } from 'api';
 import type { HowlerSearchRequest, HowlerSearchResponse } from 'api/search';
 import { uri as parentUri } from 'api/v2';
-import type { Hit } from 'models/entities/generated/Hit';
 import * as facet from './facet';
 
 export const uri = (indexes: string[]) => {
   return joinAllUri(parentUri(), 'search', indexes.join(','));
 };
 
-export const post = <T = Hit>(
+export const post = <T>(
   indexes: string | string[],
   request?: HowlerSearchRequest
 ): Promise<HowlerSearchResponse<T>> => {
