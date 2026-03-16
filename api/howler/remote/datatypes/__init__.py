@@ -85,7 +85,7 @@ def get_client(host, port, private):
         host = host or config.core.redis.nonpersistent.host
         port = int(port or config.core.redis.nonpersistent.port)
 
-    extra_conn_config = {}
+    extra_conn_config: dict[str, str | bool | int] = {}
     host_config = None
 
     if host == config.core.redis.nonpersistent.host and port == config.core.redis.nonpersistent.port:
@@ -111,10 +111,10 @@ def get_client(host, port, private):
                 extra_conn_config["ssl_ca_path"] = host_config.tls_ca_cert
 
     if host_config.is_cluster is True:
-        return redis.RedisCluster(host=host, port=port, **extra_conn_config)
+        return redis.RedisCluster(host=host, port=port, **extra_conn_config)  # type: ignore
 
     if private:
-        return redis.StrictRedis(host=host, port=port, **extra_conn_config)
+        return redis.StrictRedis(host=host, port=port, **extra_conn_config)  # type: ignore
     else:
         return redis.StrictRedis(connection_pool=get_pool(host, port, **extra_conn_config))
 
