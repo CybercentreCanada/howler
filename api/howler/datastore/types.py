@@ -10,5 +10,5 @@ class _SearchResult(TypedDict, Generic[SearchResultType]):
     items: list[SearchResultType]
 
 
-class SearchResult(_SearchResult, total=False):
+class SearchResult(_SearchResult[SearchResultType], total=False):
     next_deep_paging_id: str | None
