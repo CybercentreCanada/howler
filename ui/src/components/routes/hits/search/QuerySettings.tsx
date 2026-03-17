@@ -6,7 +6,7 @@ import ChipPopper from 'components/elements/display/ChipPopper';
 import { memo, useMemo, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
-import SearchFilter from './SearchFilter';
+import IndexPicker from './SearchFilter';
 import HitFilter from './shared/HitFilter';
 import HitSort from './shared/HitSort';
 import SearchSpan from './shared/SearchSpan';
@@ -43,7 +43,7 @@ const QuerySettings: FC<{ verticalSorters?: boolean; boxSx?: SxProps }> = ({ box
           sx={theme => ({ ml: `${theme.spacing(-1)} !important`, mt: `${theme.spacing(-1)} !important` })}
         >
           <Grid item>
-            <SearchFilter />
+            <IndexPicker />
           </Grid>
           <Grid item>
             <HitSort />

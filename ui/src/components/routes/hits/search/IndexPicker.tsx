@@ -11,7 +11,7 @@ const FILTER_OPTIONS: { label: string; value: SearchIndex }[] = [
   { label: 'hit.search.filter.observable', value: 'observable' }
 ];
 
-const SearchFilter: FC = () => {
+const IndexPicker: FC = () => {
   const { t } = useTranslation();
   const indexes = useContextSelector(ParameterContext, ctx => ctx.indexes);
   const setIndexes = useContextSelector(ParameterContext, ctx => ctx.setIndexes);
@@ -30,7 +30,7 @@ const SearchFilter: FC = () => {
         multiple
         options={FILTER_OPTIONS}
         value={selectedOptions}
-        onChange={(_ev, values) => setIndexes(values.map(val => val.value))}
+        onChange={(_ev, values) => values.length > 0 && setIndexes(values.map(val => val.value))}
         isOptionEqualToValue={(opt, val) => opt.value === val.value}
         getOptionLabel={opt => t(opt.label)}
         renderInput={params => <TextField {...params} />}
@@ -39,4 +39,4 @@ const SearchFilter: FC = () => {
   );
 };
 
-export default memo(SearchFilter);
+export default memo(IndexPicker);

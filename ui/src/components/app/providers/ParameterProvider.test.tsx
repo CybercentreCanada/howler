@@ -395,7 +395,7 @@ describe('ParameterContext', () => {
       });
     });
 
-    describe('clearFilters', () => {
+    describe('resetFilters', () => {
       it('should clear all filters', async () => {
         mockSearchParams = new URLSearchParams();
         mockSearchParams.append('filter', 'filter1');
@@ -405,13 +405,13 @@ describe('ParameterContext', () => {
           () =>
             useContextSelector(ParameterContext, ctx => ({
               filters: ctx.filters,
-              clearFilters: ctx.clearFilters
+              resetFilters: ctx.resetFilters
             })),
           { wrapper: Wrapper }
         );
 
         await act(async () => {
-          hook.result.current.clearFilters();
+          hook.result.current.resetFilters();
         });
 
         await waitFor(() => {
@@ -424,13 +424,13 @@ describe('ParameterContext', () => {
           () =>
             useContextSelector(ParameterContext, ctx => ({
               filters: ctx.filters,
-              clearFilters: ctx.clearFilters
+              resetFilters: ctx.resetFilters
             })),
           { wrapper: Wrapper }
         );
 
         await act(async () => {
-          hook.result.current.clearFilters();
+          hook.result.current.resetFilters();
         });
 
         await waitFor(() => {
@@ -652,13 +652,13 @@ describe('ParameterContext', () => {
         const hook = renderHook(
           () =>
             useContextSelector(ParameterContext, ctx => ({
-              clearFilters: ctx.clearFilters
+              resetFilters: ctx.resetFilters
             })),
           { wrapper: Wrapper }
         );
 
         await act(async () => {
-          hook.result.current.clearFilters();
+          hook.result.current.resetFilters();
         });
 
         await waitFor(() => {
@@ -1302,8 +1302,8 @@ describe('ParameterContext', () => {
       });
     });
 
-    describe('clearIndexes', () => {
-      it('should clear all indexes', async () => {
+    describe('resetIndexes', () => {
+      it('should reset indexes to default ["hit"]', async () => {
         mockSearchParams = new URLSearchParams();
         mockSearchParams.append('index', 'hit');
         mockSearchParams.append('index', 'observable');
@@ -1312,21 +1312,21 @@ describe('ParameterContext', () => {
           () =>
             useContextSelector(ParameterContext, ctx => ({
               indexes: ctx.indexes,
-              clearIndexes: ctx.clearIndexes
+              resetIndexes: ctx.resetIndexes
             })),
           { wrapper: Wrapper }
         );
 
         await act(async () => {
-          hook.result.current.clearIndexes();
+          hook.result.current.resetIndexes();
         });
 
         await waitFor(() => {
-          expect(hook.result.current.indexes).toEqual([]);
+          expect(hook.result.current.indexes).toEqual(['hit']);
         });
       });
 
-      it('should be a no-op when already empty', async () => {
+      it('should reset to default even when called on empty array', async () => {
         mockSearchParams = new URLSearchParams();
         mockSearchParams.append('index', 'hit');
 
@@ -1335,7 +1335,7 @@ describe('ParameterContext', () => {
             useContextSelector(ParameterContext, ctx => ({
               indexes: ctx.indexes,
               removeIndex: ctx.removeIndex,
-              clearIndexes: ctx.clearIndexes
+              resetIndexes: ctx.resetIndexes
             })),
           { wrapper: Wrapper }
         );
@@ -1349,13 +1349,13 @@ describe('ParameterContext', () => {
           expect(hook.result.current.indexes).toEqual([]);
         });
 
-        // Clearing an empty array should leave it empty
+        // Resetting always returns to default ['hit']
         await act(async () => {
-          hook.result.current.clearIndexes();
+          hook.result.current.resetIndexes();
         });
 
         await waitFor(() => {
-          expect(hook.result.current.indexes).toEqual([]);
+          expect(hook.result.current.indexes).toEqual(['hit']);
         });
       });
     });
@@ -1383,13 +1383,13 @@ describe('ParameterContext', () => {
           () =>
             useContextSelector(ParameterContext, ctx => ({
               addIndex: ctx.addIndex,
-              clearIndexes: ctx.clearIndexes
+              resetIndexes: ctx.resetIndexes
             })),
           { wrapper: Wrapper }
         );
 
         await act(async () => {
-          hook.result.current.clearIndexes();
+          hook.result.current.resetIndexes();
           hook.result.current.addIndex('observable');
         });
 
@@ -1397,7 +1397,7 @@ describe('ParameterContext', () => {
           expect(mockSetParams).toHaveBeenCalled();
           const call = mockSetParams.mock.calls[mockSetParams.mock.calls.length - 1];
           const urlParams = typeof call[0] === 'function' ? call[0](mockSearchParams) : call[0];
-          expect(urlParams.getAll('index')).toEqual(['observable']);
+          expect(urlParams.getAll('index')).toEqual(['hit', 'observable']);
         });
       });
 
@@ -1422,7 +1422,7 @@ describe('ParameterContext', () => {
         });
       });
 
-      it('should remove all index params from URL when indexes is empty', async () => {
+      it('should remove all index params from URL when state resets to default', async () => {
         mockSearchParams = new URLSearchParams();
         mockSearchParams.append('index', 'hit');
         mockSearchParams.append('index', 'observable');
@@ -1430,13 +1430,13 @@ describe('ParameterContext', () => {
         const hook = renderHook(
           () =>
             useContextSelector(ParameterContext, ctx => ({
-              clearIndexes: ctx.clearIndexes
+              resetIndexes: ctx.resetIndexes
             })),
           { wrapper: Wrapper }
         );
 
         await act(async () => {
-          hook.result.current.clearIndexes();
+          hook.result.current.resetIndexes();
         });
 
         await waitFor(() => {
@@ -1673,7 +1673,7 @@ describe('ParameterContext', () => {
       });
     });
 
-    describe('clearViews', () => {
+    describe('resetViews', () => {
       it('should clear all views', async () => {
         mockSearchParams = new URLSearchParams();
         mockSearchParams.append('view', 'view_1');
@@ -1683,13 +1683,13 @@ describe('ParameterContext', () => {
           () =>
             useContextSelector(ParameterContext, ctx => ({
               views: ctx.views,
-              clearViews: ctx.clearViews
+              resetViews: ctx.resetViews
             })),
           { wrapper: Wrapper }
         );
 
         await act(async () => {
-          hook.result.current.clearViews();
+          hook.result.current.resetViews();
         });
 
         await waitFor(() => {
@@ -1702,13 +1702,13 @@ describe('ParameterContext', () => {
           () =>
             useContextSelector(ParameterContext, ctx => ({
               views: ctx.views,
-              clearViews: ctx.clearViews
+              resetViews: ctx.resetViews
             })),
           { wrapper: Wrapper }
         );
 
         await act(async () => {
-          hook.result.current.clearViews();
+          hook.result.current.resetViews();
         });
 
         await waitFor(() => {
@@ -1930,13 +1930,13 @@ describe('ParameterContext', () => {
         const hook = renderHook(
           () =>
             useContextSelector(ParameterContext, ctx => ({
-              clearViews: ctx.clearViews
+              resetViews: ctx.resetViews
             })),
           { wrapper: Wrapper }
         );
 
         await act(async () => {
-          hook.result.current.clearViews();
+          hook.result.current.resetViews();
         });
 
         await waitFor(() => {

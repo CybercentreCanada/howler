@@ -4,7 +4,7 @@ import CasePreview from 'components/elements/case/CasePreview';
 import ChipPopper from 'components/elements/display/ChipPopper';
 import ObservablePreview from 'components/elements/observable/ObservablePreview';
 import useRelatedRecords from 'components/hooks/useRelatedRecords';
-import { uniq } from 'lodash-es';
+import { identity, uniq } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
 import { memo, useMemo, useState, type FC, type PropsWithChildren } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -69,14 +69,16 @@ const RelatedRecords: FC<{ hit: Hit }> = ({ hit }) => {
       onToggle={_open => setOpen(_open)}
     >
       <Stack direction="row" spacing={1} mb={1} justifyContent="end">
-        {uniq(records.map(record => record.__index)).map(_type => (
-          <Chip
-            color={_type === filter ? 'primary' : 'default'}
-            key={_type}
-            label={_type}
-            onClick={() => setFilter(current => (current === _type ? null : _type))}
-          />
-        ))}
+        {uniq(records.map(record => record.__index))
+          .filter(identity)
+          .map(_type => (
+            <Chip
+              color={_type === filter ? 'primary' : 'default'}
+              key={_type}
+              label={_type}
+              onClick={() => setFilter(current => (current === _type ? null : _type))}
+            />
+          ))}
       </Stack>
       <Stack maxWidth="40vw" maxHeight="70vh" sx={{ overflowY: 'auto' }}>
         <Divider />

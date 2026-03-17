@@ -31,18 +31,18 @@ export interface ParameterContextType {
   addFilter: (filter: string) => void;
   removeFilter: (filter: string) => void;
   setFilter: (index: number, filter: string) => void;
-  clearFilters: () => void;
+  resetFilters: () => void;
 
   addIndex: (index: SearchIndex) => void;
   removeIndex: (index: SearchIndex) => void;
   setIndex: (position: number, index: SearchIndex) => void;
   setIndexes: (indexes: SearchIndex[]) => void;
-  clearIndexes: () => void;
+  resetIndexes: () => void;
 
   addView: (view: string) => void;
   removeView: (view: string) => void;
   setView: (index: number, view: string) => void;
-  clearViews: () => void;
+  resetViews: () => void;
 }
 
 interface SearchValues {
@@ -158,13 +158,13 @@ const useListHandlers = <T,>(
     []
   );
 
-  const clear = useCallback(
+  const reset = useCallback(
     (defaultValue: T[] = []) => _setValues(c => ({ ...c, [key]: defaultValue })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
-  return { add, remove, setAt, setAll, clear };
+  return { add, remove, setAt, setAll, reset };
 };
 
 /**
@@ -373,18 +373,18 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
         addFilter: filters.add,
         removeFilter: filters.remove,
         setFilter: filters.setAt,
-        clearFilters: filters.clear,
+        resetFilters: filters.reset,
 
         addIndex: indexes.add,
         removeIndex: indexes.remove,
         setIndex: indexes.setAt,
         setIndexes: indexes.setAll,
-        clearIndexes: useCallback(() => indexes.clear(DEFAULT_VALUES.indexes), [indexes]),
+        resetIndexes: useCallback(() => indexes.reset(DEFAULT_VALUES.indexes), [indexes]),
 
         addView: views.add,
         removeView: views.remove,
         setView: views.setAt,
-        clearViews: views.clear
+        resetViews: views.reset
       }}
     >
       {children}
