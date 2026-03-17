@@ -1044,6 +1044,8 @@ def test_delete_hit(datastore: HowlerDatastore, login_session):
         method="DELETE",
     )
 
+    datastore.hit.commit()
+
     # Assert that hits do not exist
     for id in hit_ids:
         assert not datastore.hit.exists(id)
