@@ -60,8 +60,8 @@ const CasePreview: FC<PreviewProps> = ({ case: _case }) => {
             ))}
           </Stack>
         )}
-        <Chip color="success" icon={<CheckCircleOutline />} label={`${taskCounts.true} ${t('complete')}`} />
-        <Chip icon={<RadioButtonUnchecked />} label={`${taskCounts.false} ${t('incomplete')}`} />
+        <Chip color="success" icon={<CheckCircleOutline />} label={`${taskCounts.true ?? 0} ${t('complete')}`} />
+        <Chip icon={<RadioButtonUnchecked />} label={`${taskCounts.false ?? 0} ${t('incomplete')}`} />
       </Stack>
     </Stack>
   );
