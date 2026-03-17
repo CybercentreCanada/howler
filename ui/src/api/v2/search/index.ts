@@ -8,7 +8,7 @@ export const uri = (indexes: string[]) => {
   return joinAllUri(parentUri(), 'search', indexes.join(','));
 };
 
-export const post = <T>(
+export const post = <T = any>(
   indexes: string | string[],
   request?: HowlerSearchRequest
 ): Promise<HowlerSearchResponse<T>> => {

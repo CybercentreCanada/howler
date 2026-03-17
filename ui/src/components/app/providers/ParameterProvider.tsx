@@ -1,4 +1,4 @@
-import { isEmpty, isEqual, isUndefined, omitBy, uniq } from 'lodash-es';
+import { identity, isEmpty, isEqual, isUndefined, omitBy, uniq } from 'lodash-es';
 import type { Dispatch, FC, PropsWithChildren, SetStateAction } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useParams, useSearchParams } from 'react-router-dom';
@@ -6,7 +6,7 @@ import { createContext, useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY } from 'utils/constants';
 import Throttler from 'utils/Throttler';
 
-export type SearchIndex = 'hit' | 'observable';
+export type SearchIndex = 'hit' | 'observable' | 'case';
 
 export interface ParameterContextType {
   selected?: string;
@@ -159,7 +159,7 @@ const useListHandlers = <T,>(
   );
 
   const clear = useCallback(
-    () => _setValues(c => ({ ...c, [key]: [] })),
+    (defaultValue: T[] = []) => _setValues(c => ({ ...c, [key]: defaultValue })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
@@ -305,7 +305,9 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
     query: params.get('query') ?? DEFAULT_VALUES.query,
     sort: params.get('sort') ?? DEFAULT_VALUES.sort,
     span: params.get('span') ?? DEFAULT_VALUES.span,
-    indexes: isEmpty(params.getAll('index')) ? DEFAULT_VALUES.indexes : (params.getAll('index') as SearchIndex[]),
+    indexes: params.has('index')
+      ? uniq(params.getAll('index') as SearchIndex[]).filter(identity)
+      : DEFAULT_VALUES.indexes,
     filters: params.getAll('filter'),
     views: params.getAll('view'),
     startDate: params.get('start_date'),
@@ -377,7 +379,7 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
         removeIndex: indexes.remove,
         setIndex: indexes.setAt,
         setIndexes: indexes.setAll,
-        clearIndexes: indexes.clear,
+        clearIndexes: useCallback(() => indexes.clear(DEFAULT_VALUES.indexes), [indexes]),
 
         addView: views.add,
         removeView: views.remove,
