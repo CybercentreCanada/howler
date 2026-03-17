@@ -34,6 +34,7 @@ const ObservablePreview: FC<PreviewProps> = ({ observable }) => {
               to={observable.event.reference}
               sx={{ opacity: 1 }}
               target="_blank"
+              rel="noopener noreferrer"
             >
               <OpenInNew fontSize="small" />
             </IconButton>
