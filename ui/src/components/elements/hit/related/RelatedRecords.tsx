@@ -56,7 +56,7 @@ const RelatedRecords: FC<{ hit: Hit }> = ({ hit }) => {
     <ChipPopper
       // eslint-disable-next-line jsx-a11y/anchor-is-valid
       icon={<LinkIcon />}
-      label={<span style={{ cursor: 'pointer' }}>{t('hit.header.related', { count: hit.howler.related.length })}</span>}
+      label={<span style={{ cursor: 'pointer' }}>{t('hit.header.related', { count: related.length })}</span>}
       slotProps={{
         chip: { disabled: related.length < 1 },
         paper: {

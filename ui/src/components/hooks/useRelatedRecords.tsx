@@ -20,6 +20,10 @@ const useRelatedRecords = <T = MixedRecords,>(ids: string[], enabled = true): Wi
 
   useEffect(() => {
     if (!enabled || ids.length === 0) {
+      if (records.length > 0) {
+        setRecords([]);
+      }
+
       return;
     }
 
@@ -28,12 +32,15 @@ const useRelatedRecords = <T = MixedRecords,>(ids: string[], enabled = true): Wi
       const result = await dispatchApi(
         api.v2.search.post<WithMetadata<T>>('hit,observable,case', {
           query: `howler.id:(${joined}) OR case_id:(${joined})`
-        })
+        }),
+        { throwError: false, showError: true }
       );
 
-      setRecords(result.items);
+      if (result) {
+        setRecords(result.items);
+      }
     })();
-  }, [dispatchApi, enabled, ids]);
+  }, [dispatchApi, enabled, ids, records.length]);
 
   return records;
 };

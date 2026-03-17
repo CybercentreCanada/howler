@@ -180,7 +180,7 @@
   "hit.header.threat": "Menace",
   "hit.header.view.case": "Voir le cas {{id}}",
   "hit.header.view.hit": "Voir l'alerte {{id}}",
-  "hit.header.view.observable": "Voir l'observable  {{id}}",
+  "hit.header.view.observable": "Voir l'observable {{id}}",
   "hit.header.votes": "Votes: ",
   "hit.label": "Étiquettes",
   "hit.label.category.assignments": "Catégorie : Affectation - Indique quel analyste ou quelle équipe d'analystes est chargé(e) de trier cette réponse positive.",
