@@ -14,11 +14,11 @@ from __future__ import annotations
 import copy
 import json
 import re
+import sys
 import typing
 from datetime import datetime
 from enum import Enum as PyEnum
 from enum import EnumMeta
-from enum import StrEnum as PyStrEnum
 from typing import Any as _Any
 from typing import Callable
 from venv import logger
@@ -34,6 +34,14 @@ from howler.odm.howler_enum import HowlerEnum
 from howler.utils.dict_utils import flatten, recursive_update
 from howler.utils.isotime import now_as_iso
 from howler.utils.uid import get_random_id
+
+if sys.version_info >= (3, 11):
+    from enum import StrEnum as PyStrEnum
+else:
+    # StrEnum was added in Python 3.11; provide a compatible fallback for 3.10
+    class PyStrEnum(str, PyEnum):  # type: ignore[no-redef]
+        pass
+
 
 BANNED_FIELDS = {
     "_id",
