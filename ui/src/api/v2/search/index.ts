@@ -2,7 +2,7 @@
 import { hpost, joinAllUri } from 'api';
 import type { HowlerSearchRequest, HowlerSearchResponse } from 'api/search';
 import { uri as parentUri } from 'api/v2';
-import { identity } from 'lodash-es';
+import { identity, isNil } from 'lodash-es';
 import * as facet from './facet';
 
 export const uri = (indexes: string[]) => {
@@ -13,6 +13,10 @@ export const post = <T = any>(
   indexes: string | string[],
   request?: HowlerSearchRequest
 ): Promise<HowlerSearchResponse<T>> => {
+  if (isNil(indexes)) {
+    throw new Error('Indexes cannot be null or undefined.');
+  }
+
   if (typeof indexes === 'string') {
     indexes = indexes.split(',').filter(identity);
   }

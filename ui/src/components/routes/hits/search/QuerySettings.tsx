@@ -6,9 +6,9 @@ import ChipPopper from 'components/elements/display/ChipPopper';
 import { memo, useMemo, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
-import IndexPicker from './SearchFilter';
 import HitFilter from './shared/HitFilter';
 import HitSort from './shared/HitSort';
+import IndexPicker from './shared/IndexPicker';
 import SearchSpan from './shared/SearchSpan';
 import ViewLink from './ViewLink';
 

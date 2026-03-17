@@ -37,7 +37,6 @@ export interface HitSearchContextType {
   searching: boolean;
   error: string | null;
   response: HowlerSearchResponse<WithMetadata<Hit>> | null;
-  bundleId: string | null;
   fzfSearch: boolean;
 
   setDisplayType: (type: 'list' | 'grid') => void;
@@ -88,11 +87,6 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   });
   const [fzfSearch, setFzfSearch] = useState<boolean>(false);
 
-  const bundleId = useMemo(
-    () => (location.pathname.startsWith('/bundles') ? routeParams.id : null),
-    [location.pathname, routeParams.id]
-  );
-
   const filters = useMemo(() => allFilters.filter(filter => !filter.endsWith('*')), [allFilters]);
 
   // On load check to filter out any queries older than one month
@@ -120,12 +114,6 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
       _filters.push(`event.created:${convertCustomDateRangeToLucene(startDate, endDate)}`);
     }
 
-    // Add bundle filter
-    const bundle = location.pathname.startsWith('/bundles') && routeParams.id;
-    if (bundle) {
-      _filters.push(`howler.bundles:${bundle}`);
-    }
-
     // Fetch all view queries
     if (views.length > 0) {
       const viewObjects = await getCurrentViews({ views });
@@ -138,7 +126,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
     }
 
     return _filters;
-  }, [endDate, filters, getCurrentViews, location.pathname, routeParams.id, span, startDate, views]);
+  }, [endDate, filters, getCurrentViews, span, startDate, views]);
 
   const search = useCallback(
     async (_query?: string, appendResults?: boolean) => {
@@ -232,14 +220,14 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
       return;
     }
 
-    if (views.length > 0 || bundleId || (query && query !== DEFAULT_QUERY) || offset > 0 || filters.length > 0) {
+    if (views.length > 0 || (query && query !== DEFAULT_QUERY) || offset > 0 || filters.length > 0) {
       search(query);
     } else {
       setResponse(null);
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offset, pageCount, sort, span, indexes, bundleId, location.pathname, startDate, endDate, filters, query, views]);
+  }, [offset, pageCount, sort, span, indexes, location.pathname, startDate, endDate, filters, query, views]);
 
   return (
     <HitSearchContext.Provider
@@ -251,7 +239,6 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
         getFilters,
         error,
         response,
-        bundleId,
         setQueryHistory,
         queryHistory,
         fzfSearch,
