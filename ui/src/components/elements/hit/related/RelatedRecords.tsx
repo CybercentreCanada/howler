@@ -52,10 +52,7 @@ const RelatedRecords: FC<{ hit: Hit }> = ({ hit }) => {
         chip: { disabled: related.length < 1 },
         paper: {
           elevation: 4,
-          onAuxClick: ev => {
-            console.log('asdjkgasdkljsagdh');
-            ev.stopPropagation();
-          }
+          onAuxClick: ev => ev.stopPropagation()
         }
       }}
       disablePortal={false}
@@ -102,6 +99,8 @@ const RelatedRecords: FC<{ hit: Hit }> = ({ hit }) => {
                     to={`/hits/${key}`}
                     style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
                     target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={t('hit.header.view.hit', { id: key })}
                   />
                   <HitPreview hit={entry} />
                 </Box>
@@ -130,6 +129,7 @@ const RelatedRecords: FC<{ hit: Hit }> = ({ hit }) => {
                     to={`/cases/${key}`}
                     style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
                     target="_blank"
+                    aria-label={t('hit.header.view.case', { id: key })}
                   />
                   <CasePreview case={entry} />
                 </Box>
@@ -158,6 +158,7 @@ const RelatedRecords: FC<{ hit: Hit }> = ({ hit }) => {
                     to={`/observables/${key}`}
                     style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
                     target="_blank"
+                    aria-label={t('hit.header.view.observable', { id: key })}
                   />
                   <ObservablePreview observable={entry} />
                 </Box>
