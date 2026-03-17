@@ -2,7 +2,7 @@ import { Alert, Box, Typography } from '@mui/material';
 import api from 'api';
 import type { AppSearchServiceState } from 'commons/components/app/AppContexts';
 import type { AppSearchService } from 'commons/components/app/AppSearchService';
-import HitQuickSearch from 'components/elements/hit/HitQuickSearch';
+import HitPreview from 'components/elements/hit/HitPreview';
 import type { Hit } from 'models/entities/generated/Hit';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -65,7 +65,7 @@ const useMySearch = (): AppSearchService<Hit> => {
             to={`/hits/${item.id}`}
             style={{ flex: 1, textDecoration: 'none', color: 'inherit', overflow: 'hidden' }}
           >
-            <HitQuickSearch hit={item.item} options={options} />
+            <HitPreview hit={item.item} options={options} />
           </Link>
         );
       }

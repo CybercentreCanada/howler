@@ -24,21 +24,18 @@ import VSBoxContent from 'components/elements/addons/layout/vsbox/VSBoxContent';
 import VSBoxHeader from 'components/elements/addons/layout/vsbox/VSBoxHeader';
 import SearchPagination from 'components/elements/addons/search/SearchPagination';
 import SearchTotal from 'components/elements/addons/search/SearchTotal';
-import HowlerCard from 'components/elements/display/HowlerCard';
-import HitBanner from 'components/elements/hit/HitBanner';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import useHitSelection from 'components/hooks/useHitSelection';
 import useMyLocalStorage, { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { FC } from 'react';
-import React, { memo, useCallback, useEffect, useMemo } from 'react';
+import React, { memo, useCallback, useMemo } from 'react';
 import { isMobile } from 'react-device-detect';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
-import { BundleScroller } from './BundleScroller';
 import HitContextMenu from './HitContextMenu';
 import HitQuery from './HitQuery';
 import QuerySettings from './QuerySettings';
@@ -80,7 +77,7 @@ const Item: FC<{
           '& span,p,h6': {
             cursor: 'text'
           },
-          '& .MuiPaper-root': {
+          '& > .MuiPaper-root': {
             border: '4px solid transparent',
             boxShadow: `0px 0px 0px 0px transparent`,
             transition: theme.transitions.create(['border-color', 'box-shadow'])
@@ -94,10 +91,10 @@ const Item: FC<{
           }
         },
         selectedHits.some(_hit => _hit.howler.id === hit.howler.id) && {
-          '& .MuiPaper-root': { borderColor: grey[500], boxShadow: `0px 0px 5px 2px ${grey[500]}` }
+          '& > .MuiPaper-root': { borderColor: grey[500], boxShadow: `0px 0px 5px 2px ${grey[500]}` }
         },
         selected === hit.howler.id && {
-          '& .MuiPaper-root': {
+          '& > .MuiPaper-root': {
             borderColor: 'primary.main',
             boxShadow: `0px 0px 5px 2px ${theme.palette.primary.main}`
           }
@@ -111,11 +108,7 @@ const Item: FC<{
 
 const SearchPane: FC = () => {
   const { t } = useTranslation();
-  const location = useLocation();
-  const routeParams = useParams();
 
-  const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
-  const setSelected = useContextSelector(ParameterContext, ctx => ctx.setSelected);
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const setOffset = useContextSelector(ParameterContext, ctx => ctx.setOffset);
 
@@ -127,12 +120,6 @@ const SearchPane: FC = () => {
   const error = useContextSelector(HitSearchContext, ctx => ctx.error);
 
   const { onClick } = useHitSelection();
-
-  const getHit = useContextSelector(HitContext, ctx => ctx.getHit);
-  const clearSelectedHits = useContextSelector(HitContext, ctx => ctx.clearSelectedHits);
-  const bundleHit = useContextSelector(HitContext, ctx =>
-    location.pathname.startsWith('/bundles') ? ctx.hits[routeParams.id] : null
-  );
 
   const searchPaneWidth = useMyLocalStorageItem(StorageKey.SEARCH_PANE_WIDTH, null)[0];
 
@@ -149,40 +136,11 @@ const SearchPane: FC = () => {
     return selectedElement.id;
   }, []);
 
-  useEffect(() => {
-    if (location.pathname.startsWith('/bundles')) {
-      getHit(routeParams.id);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, routeParams.id]);
-
   return (
     <FlexPort id="hitscrollbar">
       <PageCenter textAlign="left" mt={0} mb={6} ml={0} mr={0} maxWidth="1500px">
         <VSBox top={0}>
           <Stack ml={-1} mr={-1} sx={{ '& .overflowingContentWidgets > *': { zIndex: '2000 !important' } }} spacing={1}>
-            {bundleHit && (
-              <BundleScroller>
-                <HitContextMenu getSelectedId={() => bundleHit.howler.id}>
-                  <Stack spacing={1} sx={{ mx: -1 }}>
-                    <HowlerCard
-                      sx={[
-                        { p: 1, border: '4px solid transparent', cursor: 'pointer' },
-                        location.pathname.startsWith('/bundles') &&
-                          selected === routeParams.id && { borderColor: 'primary.main' }
-                      ]}
-                      onClick={() => {
-                        clearSelectedHits(bundleHit.howler.id);
-                        setSelected(bundleHit.howler.id);
-                      }}
-                    >
-                      <HitBanner hit={bundleHit} layout={HitLayout.DENSE} useListener />
-                    </HowlerCard>
-                  </Stack>
-                </HitContextMenu>
-              </BundleScroller>
-            )}
-
             <Stack direction="row" spacing={1} alignItems="center">
               <Typography
                 sx={{ color: 'text.secondary', fontSize: '0.9em', fontStyle: 'italic', mb: 0.5 }}

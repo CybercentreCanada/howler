@@ -35,6 +35,7 @@ let mockParameterContext: Partial<ParameterContextType> = {
     mockParameterContext.offset = parseInt(offset as any);
   },
   views: [],
+  indexes: ['hit'],
   addView: vi.fn()
 };
 const originalMockParameterContext = cloneDeep(mockParameterContext);
@@ -89,7 +90,6 @@ describe('HitSearchContext', () => {
           searching: ctx.searching,
           error: ctx.error,
           response: ctx.response,
-          bundleId: ctx.bundleId,
           fzfSearch: ctx.fzfSearch
         })),
       { wrapper: Wrapper }
@@ -99,17 +99,7 @@ describe('HitSearchContext', () => {
     expect(hook.result.current.searching).toBe(false);
     expect(hook.result.current.error).toBeNull();
     expect(hook.result.current.response).toBeNull();
-    expect(hook.result.current.bundleId).toBeNull();
     expect(hook.result.current.fzfSearch).toBe(false);
-  });
-
-  it('should set bundleId when on bundles route', () => {
-    mockLocation.pathname = '/bundles/test_bundle_id';
-    mockParams.mockReturnValue({ id: 'test_bundle_id' });
-
-    const hook = renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.bundleId), { wrapper: Wrapper });
-
-    expect(hook.result.current).toBe('test_bundle_id');
   });
 
   it('should initialize queryHistory from localStorage', () => {
@@ -203,7 +193,7 @@ describe('HitSearchContext', () => {
 
       await waitFor(() => {
         expect(hpost).toHaveBeenCalledWith(
-          '/api/v1/search/hit',
+          '/api/v2/search/hit',
           expect.objectContaining({
             query: expect.stringContaining('test query')
           })
@@ -324,27 +314,6 @@ describe('HitSearchContext', () => {
       });
     });
 
-    it('should include bundle filter when on bundles route', async () => {
-      mockLocation.pathname = '/bundles/test_bundle_id';
-      mockParams.mockReturnValue({ id: 'test_bundle_id' });
-
-      const hook = renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.search), { wrapper: Wrapper });
-
-      act(() => {
-        hook.result.current('test query');
-      });
-
-      await waitFor(() => {
-        expect(hpost).toHaveBeenCalledWith(
-          '/api/v1/search/hit',
-          expect.objectContaining({
-            query: 'test query',
-            filters: ['event.created:[now-1w TO now]', 'howler.bundles:test_bundle_id']
-          })
-        );
-      });
-    });
-
     it('should apply date range filter from span', async () => {
       const hook = renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.search), { wrapper: Wrapper });
 
@@ -354,7 +323,7 @@ describe('HitSearchContext', () => {
 
       await waitFor(() => {
         expect(hpost).toHaveBeenCalledWith(
-          '/api/v1/search/hit',
+          '/api/v2/search/hit',
           expect.objectContaining({
             filters: expect.arrayContaining([expect.stringContaining('event.created:')])
           })
@@ -375,7 +344,7 @@ describe('HitSearchContext', () => {
 
       await waitFor(() => {
         expect(hpost).toHaveBeenCalledWith(
-          '/api/v1/search/hit',
+          '/api/v2/search/hit',
           expect.objectContaining({
             filters: expect.arrayContaining([expect.stringContaining('event.created:')])
           })
@@ -394,7 +363,7 @@ describe('HitSearchContext', () => {
 
       await waitFor(() => {
         expect(hpost).toHaveBeenCalledWith(
-          '/api/v1/search/hit',
+          '/api/v2/search/hit',
           expect.objectContaining({
             filters: expect.not.arrayContaining([expect.stringContaining('howler.escalation:*')])
           })
@@ -477,7 +446,7 @@ describe('HitSearchContext', () => {
       );
     });
 
-    it('should not trigger search when query is DEFAULT_QUERY and no bundleId', async () => {
+    it('should not trigger search when query is DEFAULT_QUERY', async () => {
       mockParameterContext.query = DEFAULT_QUERY;
 
       renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.response), { wrapper: Wrapper });
@@ -532,7 +501,7 @@ describe('HitSearchContext', () => {
       );
     });
 
-    it('should clear response when query becomes DEFAULT_QUERY without viewId or bundleId', async () => {
+    it('should clear response when query becomes DEFAULT_QUERY without viewId', async () => {
       const hook = renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.response), { wrapper: Wrapper });
 
       await waitFor(
@@ -571,7 +540,7 @@ describe('HitSearchContext', () => {
 
         await waitFor(() => {
           expect(hpost).toHaveBeenCalledWith(
-            '/api/v1/search/hit',
+            '/api/v2/search/hit',
             expect.objectContaining({
               query: 'test query',
               filters: expect.arrayContaining(['howler.status:open', 'howler.priority:high'])
@@ -597,7 +566,7 @@ describe('HitSearchContext', () => {
 
         await waitFor(() => {
           expect(hpost).toHaveBeenCalledWith(
-            '/api/v1/search/hit',
+            '/api/v2/search/hit',
             expect.objectContaining({
               query: 'test query',
               filters: [
@@ -675,7 +644,7 @@ describe('HitSearchContext', () => {
         await waitFor(
           () => {
             expect(hpost).toHaveBeenCalledWith(
-              '/api/v1/search/hit',
+              '/api/v2/search/hit',
               expect.objectContaining({
                 query: expect.stringContaining('test query'),
                 filters: ['event.created:[now-1w TO now]']
@@ -702,7 +671,7 @@ describe('HitSearchContext', () => {
 
         await waitFor(() => {
           expect(hpost).toHaveBeenCalledWith(
-            '/api/v1/search/hit',
+            '/api/v2/search/hit',
             expect.objectContaining({
               query: 'test query',
               filters: ['event.created:[now-1w TO now]', 'howler.status:open', 'howler.priority:high']

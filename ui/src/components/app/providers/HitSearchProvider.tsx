@@ -25,7 +25,7 @@ import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
 import Throttler from 'utils/Throttler';
 import { convertCustomDateRangeToLucene, convertDateToLucene } from 'utils/utils';
 import { HitContext } from './HitProvider';
-import { ParameterContext, type SearchIndex } from './ParameterProvider';
+import { ParameterContext } from './ParameterProvider';
 import { ViewContext } from './ViewProvider';
 
 export interface QueryEntry {
@@ -35,10 +35,8 @@ export interface QueryEntry {
 export interface HitSearchContextType {
   displayType: 'list' | 'grid';
   searching: boolean;
-  searchIndex: SearchIndex;
   error: string | null;
   response: HowlerSearchResponse<WithMetadata<Hit>> | null;
-  bundleId: string | null;
   fzfSearch: boolean;
 
   setDisplayType: (type: 'list' | 'grid') => void;
@@ -71,7 +69,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const trackTotalHits = useContextSelector(ParameterContext, ctx => ctx.trackTotalHits);
   const sort = useContextSelector(ParameterContext, ctx => ctx.sort);
   const span = useContextSelector(ParameterContext, ctx => ctx.span);
-  const searchIndex = useContextSelector(ParameterContext, ctx => ctx.searchIndex);
+  const indexes = useContextSelector(ParameterContext, ctx => ctx.indexes);
   const allFilters = useContextSelector(ParameterContext, ctx => ctx.filters);
   const startDate = useContextSelector(ParameterContext, ctx => ctx.startDate);
   const endDate = useContextSelector(ParameterContext, ctx => ctx.endDate);
@@ -88,11 +86,6 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
     'howler.id: *': new Date().toISOString()
   });
   const [fzfSearch, setFzfSearch] = useState<boolean>(false);
-
-  const bundleId = useMemo(
-    () => (location.pathname.startsWith('/bundles') ? routeParams.id : null),
-    [location.pathname, routeParams.id]
-  );
 
   const filters = useMemo(() => allFilters.filter(filter => !filter.endsWith('*')), [allFilters]);
 
@@ -121,12 +114,6 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
       _filters.push(`event.created:${convertCustomDateRangeToLucene(startDate, endDate)}`);
     }
 
-    // Add bundle filter
-    const bundle = location.pathname.startsWith('/bundles') && routeParams.id;
-    if (bundle) {
-      _filters.push(`howler.bundles:${bundle}`);
-    }
-
     // Fetch all view queries
     if (views.length > 0) {
       const viewObjects = await getCurrentViews({ views });
@@ -139,7 +126,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
     }
 
     return _filters;
-  }, [endDate, filters, getCurrentViews, location.pathname, routeParams.id, span, startDate, views]);
+  }, [endDate, filters, getCurrentViews, span, startDate, views]);
 
   const search = useCallback(
     async (_query?: string, appendResults?: boolean) => {
@@ -167,7 +154,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
 
         try {
           const _response = await dispatchApi(
-            api.v2.search.post<WithMetadata<Hit>>(searchIndex ?? 'hit', {
+            api.v2.search.post<WithMetadata<Hit>>(indexes, {
               offset: appendResults && response ? response.rows : offset,
               rows: pageCount,
               query: _query || DEFAULT_QUERY,
@@ -211,7 +198,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
       startDate,
       endDate,
       filters,
-      searchIndex,
+      indexes,
       setQuery,
       location.pathname,
       routeParams.id,
@@ -233,27 +220,14 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
       return;
     }
 
-    if (views.length > 0 || bundleId || (query && query !== DEFAULT_QUERY) || offset > 0 || filters.length > 0) {
+    if (views.length > 0 || (query && query !== DEFAULT_QUERY) || offset > 0 || filters.length > 0) {
       search(query);
     } else {
       setResponse(null);
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    offset,
-    pageCount,
-    sort,
-    span,
-    searchIndex,
-    bundleId,
-    location.pathname,
-    startDate,
-    endDate,
-    filters,
-    query,
-    views
-  ]);
+  }, [offset, pageCount, sort, span, indexes, location.pathname, startDate, endDate, filters, query, views]);
 
   return (
     <HitSearchContext.Provider
@@ -262,11 +236,9 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
         setDisplayType,
         search,
         searching,
-        searchIndex: searchIndex ?? 'hit',
         getFilters,
         error,
         response,
-        bundleId,
         setQueryHistory,
         queryHistory,
         fzfSearch,

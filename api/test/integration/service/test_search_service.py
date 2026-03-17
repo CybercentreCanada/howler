@@ -39,6 +39,10 @@ def datastore(datastore_connection):
             user.name = f"SVC_TEST_{index}"
             ds.user.save(user.uname, user)
 
+        ds.user.commit()
+        ds.hit.commit()
+        ds.observable.commit()
+
         yield ds
     finally:
         wipe_users(ds)
@@ -119,9 +123,9 @@ def test_search_with_offset_and_rows(datastore):
 @pytest.mark.parametrize(
     "sort_value",
     [
-        "name asc",
-        {"name": "asc"},
-        [{"name": "asc"}],
+        "uname asc",
+        {"uname": "asc"},
+        [{"uname": "asc"}],
     ],
 )
 def test_search_with_sort_variants(datastore, sort_value):
@@ -138,7 +142,9 @@ def test_search_with_fl_string(datastore):
     for item in result["items"]:
         assert "uname" in item
         assert "name" in item
-        assert len(list(item.keys())) == 2
+        assert "__index" in item
+        assert item["__index"] == "user"
+        assert len(list(item.keys())) == 3
 
 
 def test_search_with_fl_list(datastore):
@@ -148,7 +154,9 @@ def test_search_with_fl_list(datastore):
     for item in result["items"]:
         assert "uname" in item
         assert "name" in item
-        assert len(list(item.keys())) == 2
+        assert "__index" in item
+        assert item["__index"] == "user"
+        assert len(list(item.keys())) == 3
 
 
 def test_search_with_empty_fl_string(datastore):

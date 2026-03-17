@@ -4,7 +4,7 @@ import type { Case } from 'models/entities/generated/Case';
 import { useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import CaseCard from '../CaseCard';
+import CaseCard from '../../../elements/case/CaseCard';
 
 const RelatedCasePanel: FC<{ case: Case }> = ({ case: _case }) => {
   const { t } = useTranslation();

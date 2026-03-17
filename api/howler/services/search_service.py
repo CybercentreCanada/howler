@@ -77,6 +77,11 @@ def _format_items(hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
         source = hit.get("_source")
 
         if source:
+            raw_index = hit.get("_index", None)
+
+            if raw_index:
+                source["__index"] = raw_index.replace(f"{APP_NAME}-", "").replace("_hot", "")
+
             items.append(source)
 
     return items

@@ -7,12 +7,12 @@ import { Trans, useTranslation } from 'react-i18next';
 import { ESCALATION_COLORS, PROVIDER_COLORS, STATUS_COLORS } from 'utils/constants';
 import { formatDate, stringToColor } from 'utils/utils';
 
-type QuickSearchProps = {
+type PreviewProps = {
   hit: Hit;
-  options: AppSearchItemRendererOption<Hit>;
+  options?: AppSearchItemRendererOption<Hit>;
 };
 
-const HitQuickSearch: FC<QuickSearchProps> = ({ hit, options }) => {
+const HitPreview: FC<PreviewProps> = ({ hit, options }) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const isUnderLg = useMediaQuery(theme.breakpoints.down('lg'));
@@ -24,17 +24,23 @@ const HitQuickSearch: FC<QuickSearchProps> = ({ hit, options }) => {
 
   return (
     <Box
-      sx={{ overflow: 'hidden', borderBottom: `thin solid ${theme.palette.divider}`, pb: 1, mb: 0 }}
+      sx={{
+        overflow: 'hidden',
+        borderBottom: `thin solid ${theme.palette.divider}`,
+        pb: 1,
+        mb: 0,
+        gap: theme.spacing(1)
+      }}
       display="grid"
       gridTemplateColumns="minmax(0, 1fr) minmax(0, auto)"
     >
-      <Stack flexGrow={1} gridColumn={options.state.mode === 'inline' ? 'span 2' : ''}>
+      <Stack flexGrow={1} gridColumn={options?.state.mode === 'inline' ? 'span 2' : ''}>
         <Typography variant="body1" fontWeight="bold">
           {hit.howler.analytic}
           {hit.howler.detection && ': '}
           {hit.howler.detection}
         </Typography>
-        {options.state.mode !== 'inline' && hit.howler?.outline && (
+        {options?.state.mode !== 'inline' && hit.howler?.outline && (
           <Tooltip
             placement={isUnderLg ? 'bottom' : 'left'}
             componentsProps={{
@@ -65,18 +71,15 @@ const HitQuickSearch: FC<QuickSearchProps> = ({ hit, options }) => {
               <Typography variant="caption" textOverflow="ellipsis" sx={{ wordBreak: 'break-all', overflow: 'hidden' }}>
                 <Trans i18nKey="hit.header.target" />: {hit.howler.outline.target}
               </Typography>
-              <Typography variant="caption" textOverflow="ellipsis" sx={{ wordBreak: 'break-all', overflow: 'hidden' }}>
-                <Trans i18nKey="hit.header.indicators" />: {hit.howler.outline.indicators.map(i => i).join(', ')}
-              </Typography>
             </Stack>
           </Tooltip>
         )}
       </Stack>
 
-      <Stack alignItems={options.state.mode === 'fullscreen' ? 'end' : 'start'} spacing={0.5}>
-        {options.state.mode === 'fullscreen' && <Chip label={formatDate(hit.timestamp)} size="small" />}
+      <Stack alignItems={options?.state.mode === 'fullscreen' ? 'end' : 'start'} spacing={0.5}>
+        {options?.state.mode === 'fullscreen' && <Chip label={formatDate(hit.timestamp)} size="small" />}
         <Stack direction="row" spacing={0.5}>
-          {options.state.mode === 'inline' && <Chip label={formatDate(hit.timestamp)} size="small" />}
+          {options?.state.mode === 'inline' && <Chip label={formatDate(hit.timestamp)} size="small" />}
           <Chip
             sx={{
               backgroundColor: providerColor,
@@ -108,4 +111,4 @@ const HitQuickSearch: FC<QuickSearchProps> = ({ hit, options }) => {
   );
 };
 
-export default memo(HitQuickSearch);
+export default memo(HitPreview);

@@ -632,7 +632,7 @@ def transition_hit(
 
         if transition == HitStatusTransition.ASSESS:
             # For assessments, determine promotion/demotion based on escalation level
-            new_escalation = AssessmentEscalationMap[kwargs["assessment"]]
+            new_escalation = AssessmentEscalationMap[kwargs["assessment"]]  # pyright: ignore[reportInvalidTypeArguments]
             trigger = "promote" if new_escalation == Escalation.EVIDENCE else "demote"
         elif transition == HitStatusTransition.RE_EVALUATE:
             # Re-evaluation always promotes the hit
@@ -658,7 +658,7 @@ def transition_hit(
 DELETED_HITS = Counter(f"{APP_NAME.replace('-', '_')}_deleted_hits_total", "The number of deleted hits")
 
 
-def delete_hits(hit_ids: set[str], indexes: list[str] | None = None) -> bool:
+def delete_hits(hit_ids: list[str]) -> bool:
     """Delete a set of hits from the database
 
     Args:
@@ -669,16 +669,18 @@ def delete_hits(hit_ids: set[str], indexes: list[str] | None = None) -> bool:
     """
     ds = datastore()
 
-    if not indexes:
-        indexes = ["hit"]
+    success = True
+    operations: list[OdmUpdateOperation] = []
 
-    operations = [odm_helper.list_remove("howler.related", hit_id, silent=True) for hit_id in hit_ids]
+    for hit_id in hit_ids:
+        success = success and ds.hit.delete(hit_id)
+        operations.append(odm_helper.list_remove("howler.related", hit_id, silent=True))
 
-    delete_result = all(ds[index].delete_by_query(f"howler.id:({' OR '.join(hit_ids)})") for index in indexes)
+    ds.hit.update_by_query(f"howler.related:({' OR '.join(hit_ids)})", operations)
 
-    return delete_result and all(
-        ds[index].update_by_query(f"howler.related:({' OR '.join(hit_ids)})", operations) for index in indexes
-    )
+    ds.hit.commit()
+
+    return success
 
 
 @overload
@@ -821,7 +823,7 @@ def augment_metadata(data: list[dict[str, Any]] | dict[str, Any] | None, metadat
     else:
         hits = []
 
-    hits = [hit for hit in hits if hit.get("type", "hit") in ["hit", "observable"]]
+    hits = [hit for hit in hits if hit.get("__index", "hit") == "hit"]
 
     if len(hits) < 1:
         return

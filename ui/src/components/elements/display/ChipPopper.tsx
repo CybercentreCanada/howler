@@ -18,6 +18,7 @@ interface ChipPopperProps {
   onToggle?: (show: boolean) => void;
   onDelete?: (event?: any) => void;
   toggleOnDelete?: boolean;
+  disablePortal?: boolean;
   closeOnClick?: boolean;
 }
 
@@ -32,6 +33,7 @@ const ChipPopper: FC<ChipPopperProps> = ({
   onDelete,
   toggleOnDelete = false,
   closeOnClick = false,
+  disablePortal = true,
   slotProps = {}
 }) => {
   const [show, setShow] = useState(false);
@@ -68,7 +70,7 @@ const ChipPopper: FC<ChipPopperProps> = ({
       <Popper
         placement={placement}
         anchorEl={anchorEl.current}
-        disablePortal
+        disablePortal={disablePortal}
         open
         sx={{
           minWidth: Math.max(

@@ -1,5 +1,6 @@
 import { HitContext } from 'components/app/providers/HitProvider';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
+import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import type { Hit } from 'models/entities/generated/Hit';
 import type React from 'react';
 import { useCallback, useState } from 'react';
@@ -10,6 +11,9 @@ const useHitSelection = () => {
   const selectedHits = useContextSelector(HitContext, ctx => ctx.selectedHits);
   const addHitToSelection = useContextSelector(HitContext, ctx => ctx.addHitToSelection);
   const removeHitFromSelection = useContextSelector(HitContext, ctx => ctx.removeHitFromSelection);
+  const clearSelectedHits = useContextSelector(HitContext, ctx => ctx.clearSelectedHits);
+
+  const setSelected = useContextSelector(ParameterContext, ctx => ctx.setSelected);
 
   const [lastSelected, setLastSelected] = useState<string>(null);
 
@@ -50,8 +54,19 @@ const useHitSelection = () => {
         e.stopPropagation();
         return;
       }
+
+      clearSelectedHits(hit.howler.id);
+      setSelected(hit.howler.id);
     },
-    [addHitToSelection, lastSelected, removeHitFromSelection, response, selectedHits]
+    [
+      addHitToSelection,
+      clearSelectedHits,
+      lastSelected,
+      removeHitFromSelection,
+      response?.items,
+      selectedHits,
+      setSelected
+    ]
   );
 
   return { lastSelected, setLastSelected, onClick };

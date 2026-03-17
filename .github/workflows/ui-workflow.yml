@@ -25,6 +25,7 @@ on:
     branches:
       - main
       - develop
+      - cases
       - rc/*
       - patch/*
     paths:
@@ -32,7 +33,7 @@ on:
       - "ui/**"
       - "!ui/LICENSE"
       - "!ui/README.md"
-      - .github/workflows/ui-workflow.yml
+      - .github/workflows/ui-workflow.yml  # Run when this workflow changes
   workflow_dispatch: {}  # Allow manual triggering
 
 # Required permissions for the workflow

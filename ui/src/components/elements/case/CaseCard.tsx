@@ -1,6 +1,7 @@
 import { CheckCircleOutline, HourglassBottom, RadioButtonUnchecked, UpdateOutlined } from '@mui/icons-material';
 import { Card, Chip, Divider, Grid, Skeleton, Stack, Tooltip, Typography, useTheme } from '@mui/material';
 import api from 'api';
+import StatusIcon from 'components/elements/case/StatusIcon';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
 import PluginChip from 'components/elements/PluginChip';
 import useMyApi from 'components/hooks/useMyApi';
@@ -10,7 +11,6 @@ import type { Case } from 'models/entities/generated/Case';
 import { useEffect, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { twitterShort } from 'utils/utils';
-import StatusIcon from './components/StatusIcon';
 
 const STATUS_COLORS = {
   resolved: 'success'

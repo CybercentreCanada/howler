@@ -39,7 +39,13 @@ EXAMPLE_ANALYTICS = ["Password Checker", "Bad Guy Finder", "Exploit Patcher"]
 logger = get_logger(__file__)
 
 
-def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[str], prune_hit: bool = True) -> Hit:  # noqa: C901
+def generate_useful_hit(  # noqa: C901
+    lookups: dict[str, dict[str, Any]],
+    users: list[str],
+    prune_hit: bool = True,
+    hit_ids: list[str] | None = None,
+    observable_ids: list[str] | None = None,
+) -> Hit:
     "Create a random, useful/cogent hit for synthetic data"
     hit: Hit = random_model_obj(cast(Model, Hit))
 
@@ -334,6 +340,13 @@ def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[str], pr
 
             if round(rand_seed * 4) < 3:
                 hit[key] = empty_hit[key]
+
+    related: list[str] = []
+    if hit_ids:
+        related.extend(sample(hit_ids, k=randint(0, min(3, len(hit_ids)))))
+    if observable_ids:
+        related.extend(sample(observable_ids, k=randint(0, min(5, len(observable_ids)))))
+    hit.howler.related = related
 
     return hit
 

@@ -18,7 +18,6 @@ import typing
 from datetime import datetime
 from enum import Enum as PyEnum
 from enum import EnumMeta
-from enum import StrEnum as PyStrEnum
 from typing import Any as _Any
 from typing import Callable
 from venv import logger
@@ -31,6 +30,7 @@ from howler.common import loader
 from howler.common.exceptions import HowlerKeyError, HowlerNotImplementedError, HowlerTypeError, HowlerValueError
 from howler.common.net import is_valid_domain, is_valid_ip
 from howler.odm.howler_enum import HowlerEnum
+from howler.utils.compat import StrEnum as PyStrEnum
 from howler.utils.dict_utils import flatten, recursive_update
 from howler.utils.isotime import now_as_iso
 from howler.utils.uid import get_random_id

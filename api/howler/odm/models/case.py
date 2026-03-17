@@ -1,9 +1,9 @@
-from enum import StrEnum
 from typing import Optional
 
 from howler import odm
 from howler.common.exceptions import HowlerValueError
 from howler.odm.constants import Status
+from howler.utils.compat import StrEnum
 
 CASE_ITEM_TYPES = {"observable", "hit", "case", "lead", "reference"}
 

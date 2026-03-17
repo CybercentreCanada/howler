@@ -135,7 +135,8 @@ def delete(indexes: str, user: User, **kwargs):
     if non_existing_hit_ids := [hit_id for hit_id in hit_ids if not hit_service.exists(hit_id, indexes=index_list)]:
         return not_found(err=f"Hit ids [{','.join(non_existing_hit_ids)}] do not exist.")
 
-    hit_service.delete_hits(hit_ids, indexes=index_list)
+    # TODO: Reimplement in a generic function
+    # hit_service.delete_hits(hit_ids, indexes=index_list)
 
     return no_content()
 
