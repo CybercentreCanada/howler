@@ -1,19 +1,9 @@
-import sys
-
-if sys.version_info >= (3, 11):
-    from enum import StrEnum
-else:
-    from enum import Enum
-
-    class StrEnum(str, Enum):  # type: ignore[no-redef]
-        pass
-
-
 from typing import Optional
 
 from howler import odm
 from howler.common.exceptions import HowlerValueError
 from howler.odm.constants import Status
+from howler.utils.compat import StrEnum
 
 CASE_ITEM_TYPES = {"observable", "hit", "case", "lead", "reference"}
 

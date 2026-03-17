@@ -3,7 +3,6 @@ import ObservableCard from 'components/elements/observable/ObservableCard';
 import useRelatedRecords from 'components/hooks/useRelatedRecords';
 import { groupBy } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { Observable } from 'models/entities/generated/Observable';
 import { useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -87,7 +86,7 @@ const HitRelated: FC<{ hit: Hit }> = ({ hit }) => {
 
       {currentTab === 'observable' && (
         <Stack spacing={1} pt={1}>
-          {(records.filter(isObservable) as Observable[]).map(o => (
+          {records.filter(isObservable).map(o => (
             <Link
               key={o.howler.id}
               to={`/observables/${o.howler.id}`}
