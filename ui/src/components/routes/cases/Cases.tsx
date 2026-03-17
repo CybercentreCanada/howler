@@ -12,7 +12,7 @@ import { useCallback, useContext, useEffect, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { StorageKey } from 'utils/constants';
-import CaseCard from './CaseCard';
+import CaseCard from '../../elements/case/CaseCard';
 
 const CasesBase: FC = () => {
   const { t } = useTranslation();
