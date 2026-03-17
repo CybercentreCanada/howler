@@ -135,7 +135,8 @@ def parse_user_data(  # noqa: C901
         if response.ok:
             data = response.json()
 
-    user_data = parse_profile(data, oauth_provider_config)
+    user_data, _ = parse_profile(data, oauth_provider_config)
+    # user_data, assignments = parse_profile(data, oauth_provider_config)
 
     if len(oauth_provider_config.required_groups) > 0:
         required_groups = set(oauth_provider_config.required_groups)
@@ -175,7 +176,7 @@ def parse_user_data(  # noqa: C901
         username = user_data["uname"]
 
         # Add add dynamic classification group
-        user_data["classification"] = get_dynamic_classification(user_data["classification"], user_data["email"])
+        user_data["classification"] = get_dynamic_classification(user_data["classification"], user_data)
 
         # Make sure the user exists in howler and is in sync
         if (not current_user and oauth_provider_config.auto_create) or (
@@ -193,19 +194,25 @@ def parse_user_data(  # noqa: C901
 
             # Save updated user if there are changes to sync or it doesn't exist
             if old_user != current_user:
+                log_id = user_id if not isinstance(user_id, list) else user_id[0]
                 if user_id:
-                    logger.info("Updating %s with new data", user_id if not isinstance(user_id, list) else user_id[0])
+                    logger.info("Updating %s with new data", log_id)
+                    current_user["id"] = user_id
                 else:
                     logger.info("Creating new user %s", username)
-
-                if user_id:
-                    current_user["id"] = user_id
 
                 if avatar:
                     current_user["avatar"] = avatar
 
+                add_access_control(current_user)
                 storage.user.save(username, current_user)
-                storage.user.commit()
+            else:
+                # Ensure access_control is always present, even if user data hasn't changed
+                if "access_control" not in current_user:
+                    add_access_control(current_user)
+                    storage.user.save(username, current_user)
+                else:
+                    logger.debug("User is up to date!")
 
             if not skip_setup:
                 if avatar:
@@ -335,18 +342,33 @@ def save_user_account(username: str, data: dict[str, Any], user: dict[str, Any])
     return storage.user.save(username, data)
 
 
-def get_dynamic_classification(current_c12n: str | None, email: str) -> str | None:
+def get_dynamic_classification(current_c12n: str | None, user_info: dict[str, Any]) -> str | None:
     """Get the classification of the user
 
     Args:
         current_c12n (str): The current classification of the user
-        email (str): The user's email
+        user_info (dict): The user definition
 
     Returns:
-        str: The classification
+        str: The normalized classification with dynamic groups applied
     """
-    if CLASSIFICATION.dynamic_groups and email:
-        dyn_group = email.upper().split("@")[1]
-        return CLASSIFICATION.build_user_classification(current_c12n, f"{CLASSIFICATION.UNRESTRICTED}//{dyn_group}")
+    new_c12n = CLASSIFICATION.normalize_classification(
+        current_c12n, skip_auto_select=True, get_dynamic_groups=False, ignore_unused=True
+    )
 
-    return current_c12n
+    if CLASSIFICATION.dynamic_groups:
+        email = user_info.get("email", None)
+        groups = user_info.get("groups", [])
+
+        if CLASSIFICATION.dynamic_groups_type in ["email", "all"] and email:
+            dyn_group = email.upper().split("@")[1]
+            new_c12n = CLASSIFICATION.build_user_classification(
+                new_c12n, f"{CLASSIFICATION.UNRESTRICTED}//REL {dyn_group}"
+            )
+
+        if CLASSIFICATION.dynamic_groups_type in ["group", "all"] and groups:
+            new_c12n = CLASSIFICATION.build_user_classification(
+                new_c12n, f"{CLASSIFICATION.UNRESTRICTED}//REL {', '.join(groups)}"
+            )
+
+    return new_c12n

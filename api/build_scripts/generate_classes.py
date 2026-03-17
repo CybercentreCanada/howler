@@ -260,10 +260,7 @@ def generate_structure():  # noqa: C901
                     assert isinstance(
                         current_value,
                         python_type,
-                    ), (
-                        f"Type {key} does not match: {type(current_value)}, "
-                        f"{python_type} from {index_data[key]['type']}"
-                    )
+                    ), f"Type {key} does not match: {type(current_value)}, {python_type} from {index_data[key]['type']}"
             except KeyError as e:
                 # We have to special case dossier models, since they have up to five defined fields but often only the
                 # first few are actually set. We can safely ignore KeyErrors from them if they aren't set.
@@ -536,7 +533,7 @@ def generate_api_config_types():
             # | }]              |
             def fix_whitespace(match_obj):
                 lines = match_obj.group(2).split("\n")
-                return f'{{{" ".join(line.strip() for line in lines)}}}[]'
+                return f"{{{' '.join(line.strip() for line in lines)}}}[]"
 
             config_type = re.sub(r"\[\s+({([\s\S]+?)},?\s+)+]", fix_whitespace, config_type)
 
@@ -581,10 +578,10 @@ def generate_api_config_types():
             + textwrap.dedent(
                 f"""
                 export interface ApiType {{
-                  indexes: API{to_pascal_case('indexes')};
-                  lookups: API{to_pascal_case('lookups')};
-                  configuration: API{to_pascal_case('configuration')};
-                  c12nDef: API{to_pascal_case('c12nDef')};
+                  indexes: API{to_pascal_case("indexes")};
+                  lookups: API{to_pascal_case("lookups")};
+                  configuration: API{to_pascal_case("configuration")};
+                  c12nDef: API{to_pascal_case("c12nDef")};
                 }}
                 """
             )

@@ -44,7 +44,7 @@ from howler.odm.models.user import User
 from howler.odm.models.view import View
 from howler.odm.randomizer import get_random_string, get_random_user, get_random_word, random_model_obj
 from howler.security.utils import get_password_hash
-from howler.services import analytic_service
+from howler.services import analytic_service, user_service
 
 classification = loader.get_classification()
 
@@ -173,6 +173,10 @@ def create_users(ds):
         }
     )
 
+    c12n = user_service.get_dynamic_classification(classification.RESTRICTED, user_data.as_primitives())
+    if c12n:
+        user_data.classification = c12n
+
     user_view = run_modifications("view", user_view)
     user_data = run_modifications("user", user_data)
 
@@ -184,7 +188,7 @@ def create_users(ds):
     ds.view.save(user_view.view_id, user_view)
 
     if "pytest" not in sys.modules:
-        logger.info(f"\t{user_data.uname}:{user_pass}")
+        logger.info("\t%s:%s", user_data.uname, user_pass)
 
     huey_hash = get_password_hash(huey_pass)
 
@@ -231,7 +235,7 @@ def create_users(ds):
     ds.view.save(huey_view.view_id, huey_view)
 
     if "pytest" not in sys.modules:
-        logger.info(f"\t{huey_data.uname}:{huey_pass}")
+        logger.info("\t%s:%s", huey_data.uname, huey_pass)
 
     shawnh_view = View(
         {
@@ -261,7 +265,7 @@ def create_users(ds):
     ds.view.save(shawnh_view.view_id, shawnh_view)
 
     if "pytest" not in sys.modules:
-        logger.info(f"\t{shawn_data.uname}:{shawnh_pass}")
+        logger.info("\t%s:%s", shawn_data.uname, shawnh_pass)
 
     goose_view = View(
         {
@@ -291,7 +295,7 @@ def create_users(ds):
     ds.view.save(goose_view.view_id, goose_view)
 
     if "pytest" not in sys.modules:
-        logger.info(f"\t{goose_data.uname}:{goose_pass}")
+        logger.info("\t%s:%s", goose_data.uname, goose_pass)
 
     ds.user.commit()
     ds.user_avatar.commit()
@@ -524,7 +528,11 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
     lookups = loader.get_lookups()
     users = ds.user.search("*:*")["items"]
     for hit_idx in range(hit_count):
-        hit = generate_useful_hit(lookups, [user.uname for user in users], prune_hit=False)
+        hit = generate_useful_hit(lookups, [user["uname"] for user in users], prune_hit=False)
+
+        # Ensure the first 20 hits have unrestricted classification for test access
+        if hit_idx < 20:
+            hit.classification = classification.UNRESTRICTED
 
         if hit_idx + 1 == hit_count:
             hit.howler.analytic = "SecretAnalytic"
@@ -587,6 +595,7 @@ def create_bundles(ds: HowlerDatastore):
     for i in range(3):
         bundle_hit: Hit = generate_useful_hit(lookups, users)
         bundle_hit.howler.is_bundle = True
+        bundle_hit.classification = classification.UNRESTRICTED
 
         for hit in ds.hit.search("howler.is_bundle:false", rows=randint(3, 10), offset=(i * 2))["items"]:
             if hit.howler.id not in hits:
@@ -892,7 +901,7 @@ if __name__ == "__main__":
 
     for index, operations in INDEXES.items():
         if index in args:
-            logger.info(f"Creating {index}...")
+            logger.info("Creating %s...", index)
 
             # Create functions
             for create_fn in operations[1]:

@@ -13,7 +13,7 @@ from test.utils.oauth_credentials import get_token
 
 @pytest.fixture(scope="module")
 def ws_client(host, datastore_connection):
-    ws = create_connection(f'{host.replace("http", "ws")}/socket/v1/connect')
+    ws = create_connection(f"{host.replace('http', 'ws')}/socket/v1/connect")
 
     app_token = get_token(user="goose")
     ws.send(app_token)
@@ -82,7 +82,7 @@ def test_ws_communication(ws_client: WebSocket, timeout):
 def test_ws_outstanding_actions(ws_client: WebSocket, timeout, host):
     app_token = get_token(user="huey")
     assert app_token is not None
-    ws = create_connection(f'{host.replace("http", "ws")}/socket/v1/connect')
+    ws = create_connection(f"{host.replace('http', 'ws')}/socket/v1/connect")
     ws.send(app_token)
 
     data = json.loads(ws.recv())

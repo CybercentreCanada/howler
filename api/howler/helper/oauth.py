@@ -1,11 +1,10 @@
 import base64
 import hashlib
 import re
-from typing import Any, Optional
+from typing import Any, List, Optional, Tuple
 
+import elasticapm
 import requests
-from authlib.integrations.flask_client import OAuth
-from elasticapm.traces import capture_span
 
 from howler.common.exceptions import HowlerException, HowlerValueError
 from howler.common.loader import USER_TYPES
@@ -30,8 +29,10 @@ def reorder_name(name: Optional[str]) -> Optional[str]:
     return " ".join(name.split(", ", 1)[::-1])
 
 
-@capture_span(span_type="authentication")
-def parse_profile(profile: dict[str, Any], provider_config: OAuthProvider) -> dict[str, Any]:  # noqa: C901
+@elasticapm.capture_span(span_type="authentication")
+def parse_profile(  # noqa: C901
+    profile: dict[str, Any], provider_config: OAuthProvider
+) -> Tuple[dict[str, Any], List[str]]:
     """Parse a raw profile dict into a useful user data dict"""
     # Find email address and normalize it for further processing
     email_adr = profile.get(
@@ -62,7 +63,7 @@ def parse_profile(profile: dict[str, Any], provider_config: OAuthProvider) -> di
         uname = profile.get("uname", profile.get("preferred_username", email_adr))
 
         # Did we default to email?
-        if email_adr is not None and uname is not None and uname.lower() == email_adr.lower():
+        if uname is not None and email_adr is not None and uname.lower() == email_adr.lower():
             # 1. Use provided regex matcher
             if provider_config.uid_regex:
                 match = re.match(provider_config.uid_regex, uname)
@@ -95,6 +96,8 @@ def parse_profile(profile: dict[str, Any], provider_config: OAuthProvider) -> di
     # Compute access, roles and classification using auto_properties
     access = True
     roles = ["user"]
+    groups = []
+    assignments = []
     classification = CLASSIFICATION_ENGINE.UNRESTRICTED
     if provider_config.auto_properties:
         for auto_prop in provider_config.auto_properties:
@@ -131,6 +134,19 @@ def parse_profile(profile: dict[str, Any], provider_config: OAuthProvider) -> di
                         classification = CLASSIFICATION_ENGINE.build_user_classification(
                             classification, auto_prop.value
                         )
+                        logger.debug("Classification: %s", classification)
+                        break
+
+                # Append groups from matching patterns
+                elif auto_prop.type == "group":
+                    if re.match(auto_prop.pattern, value):
+                        groups.append(auto_prop.value)
+                        break
+
+                # Append assignments from matching patterns
+                elif auto_prop.type == "assignment":
+                    if re.match(auto_prop.pattern, value):
+                        assignments.append(auto_prop.value)
                         break
 
     # Infer roles from groups
@@ -143,21 +159,24 @@ def parse_profile(profile: dict[str, Any], provider_config: OAuthProvider) -> di
             ):
                 roles.append(user_type)
 
-    return dict(
-        access=access,
-        type=roles,
-        classification=classification,
-        uname=uname,
-        name=name,
-        email=email_adr,
-        password="__NO_PASSWORD__",  # noqa: S106
-        avatar=profile.get("picture", provider_config.picture_url or alternate),
-        groups=profile.get("groups", []),
+    return (
+        dict(
+            access=access,
+            type=roles,
+            classification=classification,
+            uname=uname,
+            name=name,
+            email=email_adr,
+            password="__NO_PASSWORD__",  # noqa: S106
+            avatar=profile.get("picture", provider_config.picture_url or alternate),
+            groups=groups,
+        ),
+        sorted(assignments),
     )
 
 
 def fetch_avatar(  # noqa: C901
-    url: str, provider: OAuth, oauth_provider: str, access_token: Optional[str] = None
+    url: str, provider: dict[str, Any], oauth_provider: str, access_token: Optional[str] = None
 ):
     """Fetch a user's avatar form the oauth provider"""
     provider_config = config.auth.oauth.providers[oauth_provider]
@@ -168,9 +187,9 @@ def fetch_avatar(  # noqa: C901
         # Generic picture url endpoint, i.e. MS Graph
         if url == provider_config.picture_url:
             headers = {}
-
             token: str | None = None
-            if oauth_provider == "azure":
+
+            if oauth_provider == "entraid":
                 if not access_token:
                     raise HowlerValueError("An azure access token is necessary to retrieve the profile picture")  # noqa: TRY301
 
@@ -187,7 +206,7 @@ def fetch_avatar(  # noqa: C901
                 return avatar
 
         # Url that is protected through OAuth
-        elif provider_config.api_base_url and url.startswith(provider_config.api_base_url) and provider.get:
+        elif provider_config.api_base_url and url.startswith(provider_config.api_base_url):
             resp = provider.get(url[len(provider_config.api_base_url) :])
             if resp.ok and resp.headers.get("content-type") is not None:
                 b64_img = base64.b64encode(resp.content).decode()
@@ -208,13 +227,13 @@ def fetch_avatar(  # noqa: C901
         return None
 
 
-def fetch_groups(token: str):
+def fetch_groups(token: str):  # noqa: C901
     """Fetch a user's groups form an external endpoint"""
     oauth_provider = jwt_service.get_provider(token)
     oauth_provider_config = config.auth.oauth.providers[oauth_provider]
 
     if oauth_provider_config.groups_url:
-        if oauth_provider == "azure":
+        if oauth_provider == "entraid":
             try:
                 token = azure_obo(token)
             except HowlerException:
@@ -234,13 +253,20 @@ def fetch_groups(token: str):
                     result = result[part]
 
             detailed_group_data = []
+
             for group in result:
-                detailed_group_data.append(
-                    {
-                        "id": group.get("id", None),
-                        "name": group.get("name", group.get("displayName", group.get("id", None))),
-                    }
-                )
+                # Only process groups that are groups (not directory roles)
+                if group.get("@odata.type") == "#microsoft.graph.group":
+                    group_id = group.get("id")
+                    display_name = group.get("displayName")
+                    if display_name:  # Only add if display name exists
+                        detailed_group_data.append(
+                            {
+                                "id": group_id,
+                                "name": display_name,
+                            }
+                        )
+                        logger.debug("Added group: %s (%s)", display_name, group_id)
 
             return sorted(detailed_group_data, key=lambda g: g.get("name", "").lower())
 
