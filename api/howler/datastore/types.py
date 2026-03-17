@@ -1,10 +1,11 @@
 import sys
-from typing import Generic, TypedDict, TypeVar
+from typing import Generic, TypeVar
 
 if sys.version_info >= (3, 11):
-    from typing import NotRequired
+    from typing import NotRequired, TypedDict
 else:
-    from typing_extensions import NotRequired
+    # typing_extensions.TypedDict supports Generic mixing on Python < 3.11
+    from typing_extensions import NotRequired, TypedDict
 
 SearchResultType = TypeVar("SearchResultType")
 
