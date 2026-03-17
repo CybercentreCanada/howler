@@ -20,7 +20,7 @@ const ObservablePreview: FC<PreviewProps> = ({ observable }) => {
       spacing={1}
       sx={{ overflow: 'hidden', borderBottom: `thin solid ${theme.palette.divider}`, pb: 1, mb: 0 }}
     >
-      <Stack spacing={1}>
+      <Stack>
         <Stack direction="row" spacing={1} alignItems="center">
           <Typography variant="body1" fontWeight="bold">
             {observable.event.provider}
