@@ -21,6 +21,7 @@ on:
     branches:
       - main
       - develop
+      - cases
       - rc/*
       - patch/*
     paths:
