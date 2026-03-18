@@ -1,5 +1,10 @@
 # Howler Releases
 
+## Howler UI `v2.17.1`
+
+- **Dashboard Refresh Re-render Fix** *(bugfix)*: Fixed full-page re-renders caused by the auto-refresh countdown timer living in the root dashboard component.
+- **Pivot Link Security Fix** *(bugfix)*: Added rel="noopener noreferrer" to dossier links to protect references back to Howler.
+
 ## Howler UI `v2.17.0`
 
 - **Dashboard Auto Refresh** *(new feature)*: Added automatic refresh functionality to the dashboard for up-to-date data without manual reloading ([#226](https://github.com/CybercentreCanada/howler/pull/226))
