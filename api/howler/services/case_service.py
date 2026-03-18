@@ -464,7 +464,7 @@ def append_reference(case_id: str, item: CaseItem):
     raise NotImplementedError
 
 
-def add_backreference(backing_obj: Hit | Observable, case_id: str):
+def add_backreference(backing_obj: Hit | Observable | None, case_id: str):
     """Add a back-reference from a hit or observable to a case.
 
     Records the case ID in the backing object's ``howler.related_ids`` set so
@@ -491,7 +491,7 @@ def add_backreference(backing_obj: Hit | Observable, case_id: str):
     datastore()[backing_obj.__class__.__name__.lower()].save(backing_obj.howler.id, backing_obj)
 
 
-def remove_backreference(backing_obj: Hit | Observable, case_id: str):
+def remove_backreference(backing_obj: Hit | Observable | None, case_id: str):
     """Remove a back-reference from a hit or observable to a case.
 
     Removes the case ID from the backing object's ``howler.related`` list
@@ -545,13 +545,13 @@ def remove_case_item(case_id: str, item_value: str):
     backing_obj: Hit | Observable | None = None
     match case_item.type:
         case CaseItemTypes.HIT:
-            backing_obj = datastore().hit.get(case_item.id)
+            backing_obj = ds.hit.get(case_item.id)
         case CaseItemTypes.OBSERVABLE:
-            backing_obj = datastore().observable.get(case_item.id)
+            backing_obj = ds.observable.get(case_item.id)
 
     _case.items.remove(case_item)
 
-    if not datastore().case.save(_case.case_id, _case):
+    if not ds.case.save(_case.case_id, _case):
         raise DataStoreException("Failed to save case after item removal")
 
     if backing_obj:
