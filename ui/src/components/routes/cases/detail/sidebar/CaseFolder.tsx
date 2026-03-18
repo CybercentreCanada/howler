@@ -58,22 +58,27 @@ const CaseFolder: FC<CaseFolderProps> = ({ case: _case, folder, name, step = -1,
 
   // Stable string key so the effect only re-runs when the actual hit IDs change,
   // not on every array reference change.
-  const hitIdKey = useMemo(
-    () => (tree.leaves?.filter(l => l.type?.toLowerCase() === 'hit').map(l => l.id) ?? []).join(','),
+  const hitIds = useMemo(
+    () =>
+      tree.leaves
+        ?.filter(l => l.type?.toLowerCase() === 'hit')
+        .map(l => l.id)
+        .filter(id => !!id) ?? [],
     [tree.leaves]
   );
 
   useEffect(() => {
-    if (!hitIdKey) return;
-    const ids = hitIdKey.split(',');
+    if (hitIds.length < 1) {
+      return;
+    }
 
-    dispatchApi(api.search.hit.post({ query: `howler.id:(${ids.join(' OR ')})` }), { throwError: false }).then(
+    dispatchApi(api.search.hit.post({ query: `howler.id:(${hitIds.join(' OR ')})` }), { throwError: false }).then(
       result => {
         if ((result?.items?.length ?? 0) < 1) return;
         setHitMetadata(Object.fromEntries(result.items.map(hit => [hit.howler.id, hit.howler])));
       }
     );
-  }, [hitIdKey, dispatchApi]);
+  }, [hitIds, dispatchApi]);
 
   // Returns the MUI colour token for the item's escalation, or undefined if none.
   const getEscalationColor = (itemType: string | undefined, itemKey: string | undefined, leafId: string) => {
@@ -230,7 +235,7 @@ const CaseFolder: FC<CaseFolderProps> = ({ case: _case, folder, name, step = -1,
                     color={leafColor}
                     sx={{ userSelect: 'none', pl: 0.5, textWrap: 'nowrap' }}
                   >
-                    {leaf.path?.split('/').at(-1) ?? leaf.id}
+                    {leaf.path?.split('/').pop() || leaf.id}
                   </Typography>
                 </Stack>
 
