@@ -1,16 +1,5 @@
-import { Close, ErrorOutline, List, SavedSearch, TableChart, Terminal } from '@mui/icons-material';
-import {
-  Box,
-  IconButton,
-  LinearProgress,
-  Stack,
-  ToggleButton,
-  ToggleButtonGroup,
-  Tooltip,
-  Typography,
-  useMediaQuery,
-  useTheme
-} from '@mui/material';
+import { Close, ErrorOutline, SavedSearch, Terminal } from '@mui/icons-material';
+import { Box, IconButton, LinearProgress, Stack, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { grey } from '@mui/material/colors';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
 import PageCenter from 'commons/components/pages/PageCenter';
@@ -29,7 +18,7 @@ import HitBanner from 'components/elements/hit/HitBanner';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import useHitSelection from 'components/hooks/useHitSelection';
-import useMyLocalStorage, { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
+import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { FC } from 'react';
 import React, { memo, useCallback, useEffect, useMemo } from 'react';
@@ -42,6 +31,7 @@ import BundleParentMenu from './BundleParentMenu';
 import { BundleScroller } from './BundleScroller';
 import HitContextMenu from './HitContextMenu';
 import HitQuery from './HitQuery';
+import LayoutSettings from './LayoutSettings';
 import QuerySettings from './QuerySettings';
 
 const Item: FC<{
@@ -49,7 +39,6 @@ const Item: FC<{
   onClick: (event: React.MouseEvent<HTMLDivElement>, hit: Hit) => void;
 }> = memo(({ hit, onClick }) => {
   const theme = useTheme();
-  const { get } = useMyLocalStorage();
 
   const selectedHits = useContextSelector(HitContext, ctx => ctx.selectedHits);
 
@@ -63,10 +52,9 @@ const Item: FC<{
     }
   }, []);
 
-  const layout: HitLayout = useMemo(
-    () => (isMobile ? HitLayout.COMFY : (get(StorageKey.HIT_LAYOUT) ?? HitLayout.NORMAL)),
-    [get]
-  );
+  const [hitLayout] = useMyLocalStorageItem(StorageKey.HIT_LAYOUT, HitLayout.NORMAL);
+
+  const layout: HitLayout = useMemo(() => (isMobile ? HitLayout.COMFY : hitLayout), [hitLayout]);
 
   // Search result list item renderer.
   return (
@@ -121,8 +109,6 @@ const SearchPane: FC = () => {
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const setOffset = useContextSelector(ParameterContext, ctx => ctx.setOffset);
 
-  const displayType = useContextSelector(HitSearchContext, ctx => ctx.displayType);
-  const setDisplayType = useContextSelector(HitSearchContext, ctx => ctx.setDisplayType);
   const triggerSearch = useContextSelector(HitSearchContext, ctx => ctx.search);
   const searching = useContextSelector(HitSearchContext, ctx => ctx.searching);
   const response = useContextSelector(HitSearchContext, ctx => ctx.response);
@@ -216,19 +202,7 @@ const SearchPane: FC = () => {
                   <Terminal />
                 </IconButton>
               </Tooltip>
-              <ToggleButtonGroup
-                exclusive
-                value={displayType}
-                onChange={(__, value) => setDisplayType(value)}
-                size="small"
-              >
-                <ToggleButton value="list">
-                  <List />
-                </ToggleButton>
-                <ToggleButton value="grid">
-                  <TableChart />
-                </ToggleButton>
-              </ToggleButtonGroup>
+              <LayoutSettings />
             </Stack>
           </Stack>
 
