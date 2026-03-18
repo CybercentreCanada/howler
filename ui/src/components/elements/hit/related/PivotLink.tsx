@@ -73,7 +73,14 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false }) => {
 
   if (href) {
     return (
-      <RelatedLink title={pivot.label[i18n.language]} href={href} compact={compact} icon={pivot.icon} target="_blank" />
+      <RelatedLink
+        title={pivot.label[i18n.language]}
+        href={href}
+        compact={compact}
+        icon={pivot.icon}
+        target="_blank"
+        rel="noopener noreferrer"
+      />
     );
   }
 

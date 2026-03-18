@@ -8,11 +8,10 @@ import {
   type DragEndEvent
 } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import { Cancel, Check, Close, Edit, MoreVert, OpenInNew, Refresh } from '@mui/icons-material';
+import { Cancel, Check, Close, Edit, MoreVert, OpenInNew } from '@mui/icons-material';
 import {
   Alert,
   AlertTitle,
-  Box,
   CircularProgress,
   FormControl,
   FormLabel,
@@ -23,7 +22,6 @@ import {
   MenuItem,
   Slider,
   Stack,
-  Tooltip,
   Typography
 } from '@mui/material';
 import api from 'api';
@@ -45,6 +43,7 @@ import AddNewCard from './AddNewCard';
 import AnalyticCard, { type AnalyticSettings } from './AnalyticCard';
 import EntryWrapper from './EntryWrapper';
 import ViewCard, { type ViewSettings } from './ViewCard';
+import ViewRefresh, { type ViewRefreshHandle } from './ViewRefresh';
 
 const LUCENE_DATE_FMT = 'YYYY-MM-DD[T]HH:mm:ss';
 const REFRESH_RATES = [15, 30, 60, 300];
@@ -67,13 +66,10 @@ const Home: FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [updatedHitTotal, setUpdatedHitTotal] = useState(0);
   const [dashboard, setStateDashboard] = useState(user.dashboard ?? []);
-  const [progress, setProgress] = useState(0);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [openSettings, setOpenSettings] = useState<null | HTMLElement>(null);
   const [refreshRate, setRefreshRate] = useState(user.refresh_rate ?? 15);
   const [refreshTick, setRefreshTick] = useState<symbol | null>(null);
-  const pendingRefreshes = useRef(0);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const viewRefreshRef = useRef<ViewRefreshHandle>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const updateQuery = useMemo(
@@ -99,11 +95,7 @@ const Home: FC = () => {
   }, []);
 
   const handleRefreshComplete = useCallback(() => {
-    pendingRefreshes.current -= 1;
-    if (pendingRefreshes.current <= 0) {
-      setIsRefreshing(false);
-      setProgress(0);
-    }
+    viewRefreshRef.current?.handleRefreshComplete();
   }, []);
 
   const handleRefreshRateChange = useCallback(
@@ -126,19 +118,9 @@ const Home: FC = () => {
     [setRefreshRateBackend, setUser]
   );
 
-  const refreshViews = useCallback(() => {
-    const viewCardCount = (dashboard ?? []).filter(e => e.type === 'view').length;
-    setIsRefreshing(true);
-    pendingRefreshes.current = viewCardCount;
-
-    if (viewCardCount === 0) {
-      setIsRefreshing(false);
-      setProgress(0);
-      return;
-    }
-
+  const handleRefresh = useCallback(() => {
     setRefreshTick(Symbol());
-  }, [dashboard]);
+  }, []);
 
   const handleOpenSettings = (event: React.MouseEvent<HTMLButtonElement>) => {
     setOpenSettings(event.currentTarget);
@@ -189,27 +171,12 @@ const Home: FC = () => {
   }, [updateQuery]);
 
   useEffect(() => {
-    if (isRefreshing) return;
-
-    if (progress >= 100) {
-      refreshViews();
-      return;
-    }
-
-    timerRef.current = setTimeout(() => {
-      setProgress(prev => prev + 1);
-    }, refreshRate * 10);
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [progress, isRefreshing, refreshRate, refreshViews]);
-
-  useEffect(() => {
     return () => {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     };
   }, []);
+
+  const viewCardCount = useMemo(() => (dashboard ?? []).filter(e => e.type === 'view').length, [dashboard]);
 
   return (
     <PageCenter maxWidth="100%" textAlign="left" height="100%">
@@ -239,31 +206,12 @@ const Home: FC = () => {
                 {t('save')}
               </CustomButton>
             )}
-            <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-              {isRefreshing ? (
-                <CircularProgress variant="indeterminate" />
-              ) : (
-                <CircularProgress variant="determinate" value={progress} />
-              )}
-              <Box
-                sx={{
-                  top: 0,
-                  left: 0,
-                  bottom: 0,
-                  right: 0,
-                  position: 'absolute',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <Tooltip title={t('refresh')}>
-                  <IconButton onClick={refreshViews} disabled={isRefreshing} color="primary">
-                    <Refresh />
-                  </IconButton>
-                </Tooltip>
-              </Box>
-            </Box>
+            <ViewRefresh
+              ref={viewRefreshRef}
+              refreshRate={refreshRate}
+              viewCardCount={viewCardCount}
+              onRefresh={handleRefresh}
+            />
             <IconButton onClick={handleOpenSettings}>
               <MoreVert />
             </IconButton>

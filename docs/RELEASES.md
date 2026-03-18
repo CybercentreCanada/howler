@@ -1,5 +1,14 @@
 # Howler Releases
 
+## Howler UI `v2.17.1`
+
+- **Dashboard Refresh Re-render Fix** *(bugfix)*: Fixed full-page re-renders caused by the auto-refresh countdown timer living in the root dashboard component.
+- **Pivot Link Security Fix** *(bugfix)*: Added rel="noopener noreferrer" to dossier links to protect references back to Howler.
+- **Template field count** *(new feature)*: Added ability to more granularly control how many fields to show from a template.
+- **Search Pane Layout Settings** *(new feature)*: Extracted display-type and hit-density controls from `SearchPane` into a dedicated `LayoutSettings` component. The settings chip now shows labelled toggle buttons for both list/grid display type and dense/normal/comfy hit layout, matching the layout controls already available on the Settings page.
+- **Shared Local Storage State** *(improvement)*: Enhanced `useLocalStorageItem` so that all components using the same key share a single logical state. Updates in one component are now reflected immediately in all others on the same page, and changes from other browser tabs are picked up via the native `storage` event.
+- **useLocalStorageItem Unit Tests** *(technical update)*: Added a comprehensive unit test suite for `useLocalStorageItem` covering initialization, the setter, the reset function, same-tab cross-component synchronization, and cross-tab synchronization via `StorageEvent`.
+
 ## Howler UI `v2.17.0`
 
 - **Dashboard Auto Refresh** *(new feature)*: Added automatic refresh functionality to the dashboard for up-to-date data without manual reloading ([#226](https://github.com/CybercentreCanada/howler/pull/226))
