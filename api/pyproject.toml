@@ -152,7 +152,7 @@ suppress-none-returning = true
 [tool.poetry]
 package-mode = true
 name = "howler-api"
-version = "3.2.0"
+version = "3.3.0"
 description = "Howler - API server"
 authors = [
     "Canadian Centre for Cyber Security <howler@cyber.gc.ca>",
