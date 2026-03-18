@@ -4,6 +4,7 @@
 
 - **Dashboard Refresh Re-render Fix** *(bugfix)*: Fixed full-page re-renders caused by the auto-refresh countdown timer living in the root dashboard component.
 - **Pivot Link Security Fix** *(bugfix)*: Added rel="noopener noreferrer" to dossier links to protect references back to Howler.
+- **Template field count** *(new feature)*: Added ability to more granularly control how many fields to show from a template.
 
 ## Howler UI `v2.17.0`
 
