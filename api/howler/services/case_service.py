@@ -13,6 +13,7 @@ from howler.common.loader import APP_NAME, datastore
 from howler.common.logging import get_logger
 from howler.datastore.exceptions import DataStoreException
 from howler.odm.models.case import Case, CaseItem, CaseItemTypes, CaseLog
+from howler.odm.models.ecs.related import Related
 from howler.odm.models.hit import Hit
 from howler.odm.models.observable import Observable
 from howler.odm.models.user import User
@@ -326,7 +327,8 @@ def append_hit(case_id: str, item: CaseItem):
     if not datastore().case.save(case.case_id, case):
         raise DataStoreException(f"Failed to save {case.case_id} with new item {item.value}")
 
-    add_backreference(hit, case.case_id)
+    _add_backreference(hit, case.case_id)
+    _sync_case_metadata(case_id)
 
 
 def append_observable(case_id: str, item: CaseItem):
@@ -371,7 +373,8 @@ def append_observable(case_id: str, item: CaseItem):
     if not datastore().case.save(case.case_id, case):
         raise DataStoreException(f"Failed to save {case.case_id} with new item {item.value}")
 
-    add_backreference(observable, case.case_id)
+    _add_backreference(observable, case.case_id)
+    _sync_case_metadata(case_id)
 
 
 def append_case(case_id: str, item: CaseItem):
@@ -464,7 +467,67 @@ def append_reference(case_id: str, item: CaseItem):
     raise NotImplementedError
 
 
-def add_backreference(backing_obj: Hit | Observable | None, case_id: str):
+def _collect_indicators_from_related(related: Related | None) -> set[str]:
+    """Extract all indicator values from a Related ECS compound object."""
+    if related is None:
+        return set()
+
+    indicators: set[str] = set()
+    for key in related.fields().keys():
+        value = related[key]
+        if value:
+            indicators.update(str(v) for v in value if v)
+
+    return indicators
+
+
+def _sync_case_metadata(case_id: str) -> None:  # noqa: C901
+    """Re-compute and persist threat/target/indicator lists from all case items.
+
+    Iterates over hit and observable items in the case and re-derives the
+    ``targets``, ``threats``, and ``indicators`` lists from the backing
+    objects' ECS ``related.*`` fields and, for hits, the outline fields.
+    """
+    ds = datastore()
+    _case = ds.case.get_if_exists(case_id, as_obj=True)
+    if _case is None:
+        return
+
+    targets: set[str] = set()
+    threats: set[str] = set()
+    indicators: set[str] = set()
+
+    for item in _case.items:
+        if item.type == CaseItemTypes.HIT and item.id:
+            hit = ds.hit.get_if_exists(item.id, as_obj=True)
+            if hit is None:
+                continue
+
+            indicators.update(_collect_indicators_from_related(hit.related))
+
+            if hit.howler.outline:
+                outline = hit.howler.outline
+                if outline.threat:
+                    threats.add(outline.threat)
+                if outline.target:
+                    targets.add(outline.target)
+                if outline.indicators:
+                    indicators.update(str(v) for v in outline.indicators if v)
+
+        elif item.type == CaseItemTypes.OBSERVABLE and item.id:
+            observable = ds.observable.get_if_exists(item.id, as_obj=True)
+            if observable is None:
+                continue
+
+            indicators.update(_collect_indicators_from_related(observable.related))
+
+    _case.targets = sorted(targets)
+    _case.threats = sorted(threats)
+    _case.indicators = sorted(indicators)
+    ds.case.save(case_id, _case)
+
+
+def _add_backreference(backing_obj: Hit | Observable | None, case_id: str):
     """Add a back-reference from a hit or observable to a case.
 
     Records the case ID in the backing object's ``howler.related_ids`` set so
@@ -556,3 +619,5 @@ def remove_case_item(case_id: str, item_value: str):
 
     if backing_obj:
         remove_backreference(backing_obj, _case.case_id)
+
+    _sync_case_metadata(case_id)
