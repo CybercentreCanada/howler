@@ -9,158 +9,118 @@ import {
   TableChart,
   Visibility
 } from '@mui/icons-material';
+import type { SvgIconProps } from '@mui/material';
 import { Skeleton, Stack, Typography, useTheme } from '@mui/material';
 import api from 'api';
 import useMyApi from 'components/hooks/useMyApi';
-import { get, last, omit, set } from 'lodash-es';
+import { omit } from 'lodash-es';
 import type { Case } from 'models/entities/generated/Case';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Item } from 'models/entities/generated/Item';
-import { useEffect, useMemo, useState, type FC } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ComponentType, type FC } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ESCALATION_COLORS } from 'utils/constants';
 import type { Tree } from './types';
+import { buildTree } from './utils';
 
-const buildTree = (items: Item[] = []): Tree => {
-  // Root tree node stores direct children in `leaves` and nested folders as object keys.
-  const tree: Tree = { leaves: [] };
-
-  items.forEach(item => {
-    // Ignore items that cannot be placed in the folder structure.
-    if (!item?.path) {
-      return;
-    }
-
-    // Split path into folder segments + item name, then remove the item name.
-    const parts = item.path.split('/');
-    parts.pop();
-
-    if (parts.length > 0) {
-      // Use dot notation so lodash `get/set` can address nested folder objects.
-      const key = parts.join('.');
-      const size = (get(tree, key) as Tree)?.leaves?.length || 0;
-
-      // Append this item to the folder's `leaves` array.
-      set(tree, `${key}.leaves.${size}`, item);
-      return;
-    }
-
-    // Items without parent folders are top-level leaves.
-    tree.leaves.push(item);
-  });
-
-  return tree;
+// Static map: item type → MUI icon component (avoids re-creating closures on each render)
+const ICON_FOR_TYPE: Record<string, ComponentType<SvgIconProps>> = {
+  case: BookRounded,
+  observable: Visibility,
+  hit: CheckCircle,
+  table: TableChart,
+  lead: Lightbulb,
+  reference: LinkIcon
 };
 
-const CaseFolder: FC<{
+type CaseNodeState = { open: boolean; loading: boolean; data: Case | null };
+
+interface CaseFolderProps {
   case: Case;
   folder?: Tree;
   name?: string;
   step?: number;
   rootCaseId?: string;
   pathPrefix?: string;
-}> = ({ case: _case, folder, name, step = -1, rootCaseId, pathPrefix = '' }) => {
+}
+
+const CaseFolder: FC<CaseFolderProps> = ({ case: _case, folder, name, step = -1, rootCaseId, pathPrefix = '' }) => {
   const theme = useTheme();
   const location = useLocation();
   const { dispatchApi } = useMyApi();
 
   const [open, setOpen] = useState(true);
-  const [openCases, setOpenCases] = useState<Record<string, boolean>>({});
-  const [loadingCases, setLoadingCases] = useState<Record<string, boolean>>({});
-  const [nestedCases, setNestedCases] = useState<Record<string, Case>>({});
+  const [caseStates, setCaseStates] = useState<Record<string, CaseNodeState>>({});
   const [hitMetadata, setHitMetadata] = useState<{ [id: string]: Hit['howler'] }>({});
 
   const tree = useMemo(() => folder || buildTree(_case?.items), [folder, _case?.items]);
   const currentRootCaseId = rootCaseId || _case?.case_id;
 
-  // Metadata for hit-type items
-  useEffect(() => {
-    const ids = tree.leaves?.filter(leaf => leaf.type?.toLowerCase() === 'hit').map(leaf => leaf.id);
+  // Stable string key so the effect only re-runs when the actual hit IDs change,
+  // not on every array reference change.
+  const hitIds = useMemo(
+    () =>
+      tree.leaves
+        ?.filter(l => l.type?.toLowerCase() === 'hit')
+        .map(l => l.id)
+        .filter(id => !!id) ?? [],
+    [tree.leaves]
+  );
 
-    if (!ids || ids.length < 1) {
+  useEffect(() => {
+    if (hitIds.length < 1) {
       return;
     }
 
-    dispatchApi(api.search.hit.post({ query: `howler.id:(${ids.join(' OR ')})` }), { throwError: false }).then(
+    dispatchApi(api.search.hit.post({ query: `howler.id:(${hitIds.join(' OR ')})` }), { throwError: false }).then(
       result => {
-        if (result?.items?.length < 1) {
-          return;
-        }
-
+        if ((result?.items?.length ?? 0) < 1) return;
         setHitMetadata(Object.fromEntries(result.items.map(hit => [hit.howler.id, hit.howler])));
       }
     );
-  }, [tree.leaves, dispatchApi]);
+  }, [hitIds, dispatchApi]);
 
-  const getIconColor = (itemType: string | undefined, itemKey: string | undefined, leafId: string) => {
+  // Returns the MUI colour token for the item's escalation, or undefined if none.
+  const getEscalationColor = (itemType: string | undefined, itemKey: string | undefined, leafId: string) => {
     if (itemType === 'hit' && leafId) {
-      const meta = hitMetadata[leafId];
-      if (meta?.escalation && ESCALATION_COLORS[meta.escalation]) {
-        return ESCALATION_COLORS[meta.escalation];
-      }
+      const color = ESCALATION_COLORS[hitMetadata[leafId]?.escalation as keyof typeof ESCALATION_COLORS];
+      if (color) return color;
     }
-
     if (itemType === 'case' && itemKey) {
-      const caseData = nestedCases[itemKey];
-      if (caseData?.escalation && ESCALATION_COLORS[caseData.escalation]) {
-        return ESCALATION_COLORS[caseData.escalation];
-      }
+      const color = ESCALATION_COLORS[caseStates[itemKey]?.data?.escalation as keyof typeof ESCALATION_COLORS];
+      if (color) return color;
     }
-
-    return 'default' as const;
+    return undefined;
   };
 
-  const getItemColor = (itemType: string | undefined, itemKey: string | undefined, leafId: string): string => {
-    if (itemType === 'hit' && leafId) {
-      const meta = hitMetadata[leafId];
-      if (meta?.escalation && ESCALATION_COLORS[meta.escalation]) {
-        return `${ESCALATION_COLORS[meta.escalation]}.light`;
-      }
-    }
+  const toggleCase = useCallback(
+    (item: Item, itemKey?: string) => {
+      const resolvedKey = itemKey || item.path || item.id;
+      if (!resolvedKey) return;
 
-    if (itemType === 'case' && itemKey) {
-      const caseData = nestedCases[itemKey];
-      if (caseData?.escalation && ESCALATION_COLORS[caseData.escalation]) {
-        return `${ESCALATION_COLORS[caseData.escalation]}.light`;
-      }
-    }
+      const prev = caseStates[resolvedKey] ?? { open: false, loading: false, data: null };
+      const shouldOpen = !prev.open;
 
-    return 'text.secondary';
-  };
+      setCaseStates(current => ({ ...current, [resolvedKey]: { ...prev, open: shouldOpen } }));
 
-  const toggleCase = (item: Item, itemKey?: string) => {
-    // Use the fully-qualified path key when available so nested case toggles are unique.
-    const resolvedItemKey = itemKey || item.path || item.id;
+      if (!shouldOpen || !item.id || prev.data || prev.loading) return;
 
-    if (!resolvedItemKey) {
-      return;
-    }
+      setCaseStates(current => ({
+        ...current,
+        [resolvedKey]: { ...(current[resolvedKey] ?? prev), loading: true }
+      }));
 
-    // Toggle expand/collapse state for this case node.
-    const shouldOpen = !openCases[resolvedItemKey];
-
-    setOpenCases(current => ({ ...current, [resolvedItemKey]: shouldOpen }));
-
-    // Only fetch when opening, with a valid case id, and when no fetch/data is already in-flight/cached.
-    if (!shouldOpen || !item.id || nestedCases[resolvedItemKey] || loadingCases[resolvedItemKey]) {
-      return;
-    }
-
-    setLoadingCases(current => ({ ...current, [resolvedItemKey]: true }));
-
-    // Lazy-load the nested case content and cache it by the same unique key.
-    dispatchApi(api.v2.case.get(item.id), { throwError: false })
-      .then(caseResponse => {
-        if (!caseResponse) {
-          return;
-        }
-
-        setNestedCases(current => ({ ...current, [resolvedItemKey]: caseResponse }));
-      })
-      .finally(() => {
-        setLoadingCases(current => ({ ...current, [resolvedItemKey]: false }));
-      });
-  };
+      dispatchApi(api.v2.case.get(item.id), { throwError: false })
+        .then(caseResponse => {
+          if (!caseResponse) return;
+          setCaseStates(current => ({ ...current, [resolvedKey]: { ...current[resolvedKey], data: caseResponse } }));
+        })
+        .finally(() => {
+          setCaseStates(current => ({ ...current, [resolvedKey]: { ...current[resolvedKey], loading: false } }));
+        });
+    },
+    [caseStates, dispatchApi]
+  );
 
   return (
     <Stack sx={{ overflow: 'visible' }}>
@@ -213,35 +173,21 @@ const CaseFolder: FC<{
             const isCase = itemType === 'case';
             const fullRelativePath = [pathPrefix, leaf.path].filter(Boolean).join('/');
             const itemKey = fullRelativePath || leaf.id;
-            const isCaseOpen = !!(itemKey && openCases[itemKey]);
-            const isCaseLoading = !!(itemKey && loadingCases[itemKey]);
-            const nestedCase = itemKey ? nestedCases[itemKey] : null;
-            const itemPath = fullRelativePath
-              ? `/cases/${currentRootCaseId}/${fullRelativePath}`
-              : `/cases/${currentRootCaseId}`;
+            const nodeState = itemKey ? caseStates[itemKey] : null;
+            const isCaseOpen = !!nodeState?.open;
+            const isCaseLoading = !!nodeState?.loading;
+            const nestedCase = nodeState?.data ?? null;
+            const itemPath =
+              itemType !== 'reference'
+                ? fullRelativePath
+                  ? `/cases/${currentRootCaseId}/${fullRelativePath}`
+                  : `/cases/${currentRootCaseId}`
+                : leaf.value;
 
-            const getIconForType = () => {
-              const iconColor = getIconColor(itemType, itemKey, leaf.id);
-
-              switch (itemType) {
-                case 'case':
-                  return <BookRounded fontSize="small" color={iconColor} />;
-                case 'observable':
-                  return <Visibility fontSize="small" color={iconColor} />;
-                case 'hit':
-                  return <CheckCircle fontSize="small" color={iconColor} />;
-                case 'table':
-                  return <TableChart fontSize="small" color={iconColor} />;
-                case 'lead':
-                  return <Lightbulb fontSize="small" color={iconColor} />;
-                case 'reference':
-                  return <LinkIcon fontSize="small" color={iconColor} />;
-                default:
-                  return <Article fontSize="small" color={iconColor} />;
-              }
-            };
-
-            const leafColor = getItemColor(itemType, itemKey, leaf.id);
+            const escalationColor = getEscalationColor(itemType, itemKey, leaf.id);
+            const iconColor = escalationColor ?? ('inherit' as const);
+            const leafColor = escalationColor ? `${escalationColor}.light` : 'text.secondary';
+            const Icon = ICON_FOR_TYPE[itemType ?? ''] ?? Article;
 
             return (
               <Stack key={`${_case?.case_id}-${leaf.id}-${leaf.path}`}>
@@ -268,6 +214,8 @@ const CaseFolder: FC<{
                   onClick={() => isCase && toggleCase(leaf, itemKey)}
                   component={Link}
                   to={itemPath}
+                  target={itemType === 'reference' ? '_blank' : undefined}
+                  rel={itemType === 'reference' ? 'noopener noreferrer' : undefined}
                 >
                   <ChevronRight
                     fontSize="small"
@@ -280,14 +228,14 @@ const CaseFolder: FC<{
                     ]}
                   />
 
-                  {getIconForType()}
+                  <Icon fontSize="small" color={iconColor} />
 
                   <Typography
                     variant="caption"
                     color={leafColor}
                     sx={{ userSelect: 'none', pl: 0.5, textWrap: 'nowrap' }}
                   >
-                    {last(leaf.path?.split('/') || [])}
+                    {leaf.path?.split('/').pop() || leaf.id}
                   </Typography>
                 </Stack>
 
