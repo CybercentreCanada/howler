@@ -14,7 +14,11 @@ import DefaultOutline from './outlines/DefaultOutline';
 
 export const DEFAULT_FIELDS = ['event.created', 'howler.id', 'howler.hash'];
 
-const HitOutline: FC<{ hit: WithMetadata<Hit>; layout: HitLayout }> = ({ hit, layout }) => {
+const HitOutline: FC<{ hit: WithMetadata<Hit>; layout: HitLayout; forceAllFields?: boolean }> = ({
+  hit,
+  layout,
+  forceAllFields = false
+}) => {
   const { t } = useTranslation();
 
   const { getMatchingTemplate } = useMatchers();
@@ -33,7 +37,10 @@ const HitOutline: FC<{ hit: WithMetadata<Hit>; layout: HitLayout }> = ({ hit, la
         hit,
         layout,
         template,
-        fields: !isNil(templateFieldCount) ? [...template.keys].slice(0, templateFieldCount) : template.keys,
+        fields:
+          !isNil(templateFieldCount) && !forceAllFields
+            ? [...template.keys].slice(0, templateFieldCount)
+            : template.keys,
         readonly: template.type === 'readonly'
       });
     } else {

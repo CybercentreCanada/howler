@@ -189,7 +189,7 @@ const HitViewer: FC = () => {
           <HowlerCard tabIndex={0} sx={{ position: 'relative' }}>
             <CardContent>
               <HitBanner hit={hit} layout={HitLayout.COMFY} useListener />
-              <HitOutline hit={hit} layout={HitLayout.COMFY} />
+              <HitOutline hit={hit} layout={HitLayout.COMFY} forceAllFields />
               <HitLabels hit={hit} />
               <HitLinks hit={hit} analytic={analytic} dossiers={dossiers} />
             </CardContent>

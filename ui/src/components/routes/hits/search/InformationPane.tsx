@@ -245,7 +245,7 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
           !hit.howler.is_bundle &&
           (!loading ? (
             <>
-              <HitOutline hit={hit} layout={HitLayout.DENSE} />
+              <HitOutline hit={hit} layout={HitLayout.DENSE} forceAllFields />
               <HitLabels hit={hit} />
             </>
           ) : (
