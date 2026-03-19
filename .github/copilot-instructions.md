@@ -253,3 +253,20 @@ README.md, LICENSE, .gitignore, .pre-commit-config.yaml, pyrightconfig.json
 - **For PRs**: Ensure all automated and manual review requirements are satisfied prior to merge to reduce rejection risk.
 
 ---
+
+## Agent Notes & Learned Pitfalls
+
+> **IMPORTANT FOR ALL FUTURE AGENTS**: When you learn something new, encounter a pitfall, or discover a non-obvious convention in this repository, **add a note to this section** before finishing your task. This keeps institutional knowledge available across conversations.
+
+---
+
+### Terminal Output Restriction
+
+**This repository's VS Code settings suppress terminal output from being returned to the agent.** Running commands via the terminal tool will yield no output — the terminal appears to complete with exit code 0 but all stdout/stderr is suppressed.
+
+**Workaround**: Ask the user to run the command and paste the result back. Phrase it clearly:
+> "I can't read terminal output due to repository settings. Please run `<command>` and share the result."
+
+The correct test command for the API is `poetry run test <path>` (not `pytest` directly), run from the `api/` directory.
+
+---
