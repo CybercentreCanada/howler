@@ -11,8 +11,9 @@ import HitContextMenu from 'components/routes/hits/search/HitContextMenu';
 import type { Hit } from 'models/entities/generated/Hit';
 import { useCallback, useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
+import { buildViewUrl } from 'utils/viewUtils';
 
 // Custom hook to select hits by IDs with proper memoization
 const useSelectHitsByIds = (hitIds: string[]) => {
@@ -202,7 +203,13 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
           <Typography variant="h6">
             {t(view?.title) || <Skeleton variant="text" height="2em" width="100px" />}
           </Typography>
-          <IconButton size="small" onClick={() => onClick(view.query)}>
+          <IconButton
+            size="small"
+            component={Link}
+            disabled={!view}
+            to={view ? buildViewUrl(view) : null}
+            onClick={() => onClick(view.query)}
+          >
             <OpenInNew fontSize="small" />
           </IconButton>
         </Stack>
