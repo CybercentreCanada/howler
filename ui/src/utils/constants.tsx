@@ -65,6 +65,8 @@ export enum StorageKey {
   SEARCH_PANE_WIDTH = 'search_pane_width',
   TEMPLATE_FIELD_COUNT = 'template_field_count',
   GRID_COLLAPSE_COLUMN = 'grid_collapse_column',
+  GRID_COLUMNS = 'grid_columns',
+  GRID_COLUMN_WIDTHS = 'grid_column_widths',
   QUERY_HISTORY = 'query_history',
   LOGIN_NONCE = 'login_nonce',
   DISPLAY_TYPE = 'display_type'

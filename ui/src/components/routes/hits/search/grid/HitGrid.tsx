@@ -8,7 +8,7 @@ import {
   type DragEndEvent
 } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import { Add, FormatIndentDecrease, FormatIndentIncrease, Info, List, Search, TableChart } from '@mui/icons-material';
+import { FormatIndentDecrease, FormatIndentIncrease, Info, List, Search, TableChart } from '@mui/icons-material';
 import {
   IconButton,
   LinearProgress,
@@ -28,10 +28,8 @@ import useMatchers from 'components/app/hooks/useMatchers';
 import { HitContext } from 'components/app/providers/HitProvider';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
-import FlexOne from 'components/elements/addons/layout/FlexOne';
 import SearchTotal from 'components/elements/addons/search/SearchTotal';
 import DevelopmentBanner from 'components/elements/display/features/DevelopmentBanner';
-import DevelopmentIcon from 'components/elements/display/features/DevelopmentIcon';
 import useHitSelection from 'components/hooks/useHitSelection';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import { useCallback, useEffect, useMemo, useRef, useState, type FC } from 'react';
@@ -67,19 +65,18 @@ const HitGrid: FC = () => {
   const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
 
   const [collapseMainColumn, setCollapseMainColumn] = useMyLocalStorageItem(StorageKey.GRID_COLLAPSE_COLUMN, false);
-  const [analyticIds, setAnalyticIds] = useState<Record<string, string>>({});
-
-  const columnModalRef = useRef<HTMLButtonElement>();
-
-  const [columns, setColumns] = useState<string[]>([
+  const [columns, setColumns] = useMyLocalStorageItem(StorageKey.GRID_COLUMNS, [
     'howler.outline.threat',
     'howler.outline.target',
     'howler.outline.indicators',
     'howler.outline.summary'
   ]);
+  const [columnWidths, setColumnWidths] = useMyLocalStorageItem<Record<string, string>>(
+    StorageKey.GRID_COLUMN_WIDTHS,
+    {}
+  );
 
-  const [columnWidths, setColumnWidths] = useState<Record<string, string>>({});
-  const [showAddColumn, setShowAddColumn] = useState(false);
+  const [analyticIds, setAnalyticIds] = useState<Record<string, string>>({});
 
   const resizingCol = useRef<[string, HTMLElement]>();
 
@@ -122,10 +119,10 @@ const HitGrid: FC = () => {
   const onMouseUp = useCallback(() => {
     const [col, element] = resizingCol.current;
 
-    setColumnWidths(_widths => ({
-      ..._widths,
+    setColumnWidths({
+      ...columnWidths,
       [col]: element.style.width
-    }));
+    });
 
     element.style.width = null;
     element.style.maxWidth = null;
@@ -137,7 +134,7 @@ const HitGrid: FC = () => {
 
     window.removeEventListener('mousemove', onMouseMove);
     window.removeEventListener('mouseup', onMouseUp);
-  }, [onMouseMove]);
+  }, [columnWidths, onMouseMove, setColumnWidths]);
 
   const onMouseDown = useCallback(
     (col: string, event: React.MouseEvent<HTMLElement, MouseEvent>) => {
@@ -174,7 +171,7 @@ const HitGrid: FC = () => {
         setColumns(arrayMove(columns, oldIndex, newIndex));
       }
     },
-    [columns]
+    [columns, setColumns]
   );
 
   const getSelectedId = useCallback((event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
@@ -196,14 +193,20 @@ const HitGrid: FC = () => {
       sx={{ overflow: 'hidden', height: `calc(100vh - ${theme.spacing(showSelectBar ? 13 : 8)})` }}
     >
       <DevelopmentBanner />
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
+      <Stack direction="row" justifyContent="space-between">
         <Typography
           sx={{ color: 'text.secondary', fontSize: '0.9em', fontStyle: 'italic', mb: 0.5, textAlign: 'left' }}
           variant="body2"
         >
           {t('hit.search.prompt')}
         </Typography>
-        <DevelopmentIcon />
+        <SearchTotal
+          sx={{ color: 'text.secondary', fontSize: '0.9em', fontStyle: 'italic', mb: 0.5 }}
+          variant="body2"
+          offset={response.offset}
+          pageLength={response.rows}
+          total={response.total}
+        />
       </Stack>
       <Stack direction="row" spacing={1}>
         <Stack position="relative" flex={1}>
@@ -230,30 +233,9 @@ const HitGrid: FC = () => {
           </ToggleButton>
         </ToggleButtonGroup>
       </Stack>
-      <Stack direction="row" spacing={1} width="100%" sx={{ '& > *': { flex: 1 } }}>
-        <QuerySettings />
-        {response && (
-          <SearchTotal
-            sx={{ alignSelf: 'center' }}
-            color="text.secondary"
-            offset={response.offset}
-            pageLength={response.rows}
-            total={response.total}
-          />
-        )}
-        <Stack direction="row">
-          <FlexOne />
-          <IconButton ref={columnModalRef} onClick={() => setShowAddColumn(true)}>
-            <Add fontSize="small" />
-          </IconButton>
-        </Stack>
-        <AddColumnModal
-          anchorEl={columnModalRef.current}
-          open={showAddColumn}
-          onClose={() => setShowAddColumn(false)}
-          columns={columns}
-          addColumn={key => setColumns(_columns => [..._columns, key])}
-        />
+      <Stack direction="row" spacing={1} width="100%" alignItems="center">
+        <QuerySettings boxSx={{ flex: 1 }} />
+        <AddColumnModal columns={columns} addColumn={key => setColumns([...columns, key])} />
       </Stack>
       <Stack
         component={Paper}
