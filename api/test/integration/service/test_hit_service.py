@@ -269,7 +269,7 @@ def test_augment_metadata_single_hit_with_template(mock_match_metadata, mock_dat
     # Setup test data
     test_hit = {"howler": {"analytic": "test_analytic", "detection": "test_detection", "id": "test_hit_1"}}
 
-    test_user = {"uname": "test_user"}
+    test_user = User({"uname": "test_user", "name": "Test User", "password": "test_password"})
 
     # Mock template search response
     mock_template_collection = MagicMock()
@@ -308,7 +308,7 @@ def test_augment_metadata_multiple_hits_with_overview(mock_match_metadata, mock_
         {"howler": {"analytic": "analytic_2", "detection": "detection_2", "id": "hit_2"}},
     ]
 
-    test_user = {"uname": "test_user"}
+    test_user = User({"uname": "test_user", "name": "Test User", "password": "test_password"})
 
     # Mock overview search response
     mock_overview_collection = MagicMock()
@@ -349,7 +349,7 @@ def test_augment_metadata_with_dossiers(mock_get_matching_dossiers, mock_datasto
     # Setup test data
     test_hit = {"howler": {"analytic": "security_analytic", "detection": "threat_detection", "id": "security_hit_1"}}
 
-    test_user = {"uname": "security_analyst"}
+    test_user = User({"uname": "security_analyst", "name": "Security Analyst", "password": "test_password"})
 
     # Mock dossier search response
     mock_dossier_collection = MagicMock()
@@ -375,15 +375,19 @@ def test_augment_metadata_with_dossiers(mock_get_matching_dossiers, mock_datasto
     # Test the function
     hit_service.augment_metadata(test_hit, ["dossiers"], test_user)
 
-    # Verify the dossier search was called
-    mock_dossier_collection.search.assert_called_once_with("dossier_id:*", as_obj=False, rows=1000)
+    # Verify the dossier search was called with user-scoped query
+    mock_dossier_collection.search.assert_called_once_with(
+        "type:global OR owner:security_analyst", as_obj=False, rows=1000
+    )
 
     # Verify the hit was augmented with dossier metadata
     assert "__dossiers" in test_hit
     assert test_hit["__dossiers"] == expected_dossiers
 
-    # Verify get_matching_dossiers was called correctly
-    mock_get_matching_dossiers.assert_called_once()
+    # Verify get_matching_dossiers was called with the username
+    mock_get_matching_dossiers.assert_called_once_with(
+        test_hit, mock_dossier_collection.search.return_value["items"], username="security_analyst"
+    )
 
 
 @patch("howler.services.overview_service.datastore")
@@ -408,7 +412,7 @@ def test_augment_metadata_all_metadata_types(
         }
     }
 
-    test_user = {"uname": "comprehensive_user"}
+    test_user = User({"uname": "comprehensive_user", "name": "Test User", "password": "test_password"})
 
     # Mock datastore collections
     mock_template_collection = MagicMock()
@@ -444,20 +448,25 @@ def test_augment_metadata_all_metadata_types(
     # Verify all datastore searches were called
     mock_template_collection.search.assert_called_once()
     mock_overview_collection.search.assert_called_once()
-    mock_dossier_collection.search.assert_called_once()
+    # Verify dossier search uses user-scoped query
+    mock_dossier_collection.search.assert_called_once_with(
+        "type:global OR owner:comprehensive_user", as_obj=False, rows=1000
+    )
 
     # Verify match_metadata was called twice (for template and overview)
     assert mock_match_metadata.call_count == 2
 
-    # Verify get_matching_dossiers was called once
-    mock_get_matching_dossiers.assert_called_once()
+    # Verify get_matching_dossiers was called once with the username
+    mock_get_matching_dossiers.assert_called_once_with(
+        test_hit, mock_dossier_collection.search.return_value["items"], username="comprehensive_user"
+    )
 
 
 def test_augment_metadata_empty_metadata_list():
     """Test augment_metadata with empty metadata list (should do nothing)."""
     test_hit = {"howler": {"analytic": "test_analytic", "id": "test_hit"}}
 
-    test_user = {"uname": "test_user"}
+    test_user = User({"uname": "test_user", "name": "Test User", "password": "test_password"})
     original_hit = test_hit.copy()
 
     # Test with empty metadata list
@@ -476,7 +485,7 @@ def test_augment_metadata_no_matching_templates(mock_match_metadata, mock_datast
     """Test augment_metadata when no templates match."""
     test_hit = {"howler": {"analytic": "no_match_analytic", "id": "test_hit"}}
 
-    test_user = {"uname": "test_user"}
+    test_user = User({"uname": "test_user", "name": "Test User", "password": "test_password"})
 
     # Mock template search with no results
     mock_template_collection = MagicMock()
@@ -503,7 +512,7 @@ def test_augment_metadata_duplicate_analytics(mock_match_metadata, mock_datastor
         {"howler": {"analytic": "same_analytic", "detection": "detection_2", "id": "hit_2"}},
     ]
 
-    test_user = {"uname": "test_user"}
+    test_user = User({"uname": "test_user", "name": "Test User", "password": "test_password"})
 
     # Mock template search response
     mock_template_collection = MagicMock()
@@ -529,7 +538,7 @@ def test_augment_metadata_user_permission_filtering(mock_datastore):
     """Test that template search includes proper user permission filtering."""
     test_hit = {"howler": {"analytic": "permission_test_analytic", "id": "permission_hit"}}
 
-    test_user = {"uname": "specific_user"}
+    test_user = User({"uname": "specific_user", "name": "Test User", "password": "test_password"})
 
     # Mock template search
     mock_template_collection = MagicMock()
@@ -548,7 +557,7 @@ def test_augment_metadata_single_hit_as_dict():
     """Test augment_metadata properly handles single hit passed as dictionary."""
     test_hit = {"howler": {"analytic": "single_hit_analytic", "id": "single_hit"}}
 
-    test_user = {"uname": "test_user"}
+    test_user = User({"uname": "test_user", "name": "Test User", "password": "test_password"})
 
     with patch("howler.services.hit_service.datastore") as mock_datastore:
         # Mock collections to avoid actual datastore calls
@@ -725,7 +734,7 @@ def test_transition_hit_bundle_status_mismatch_skips_children(
 @patch("howler.services.hit_service.datastore")
 def test_augment_metadata_empty_hit_list(mock_datastore):
     """Test augment_metadata with an empty list of hits."""
-    test_user = {"uname": "test_user"}
+    test_user = User({"uname": "test_user", "name": "Test User", "password": "test_password"})
 
     # Mock datastore collections to ensure they're not called
     mock_template_collection = MagicMock()
@@ -752,7 +761,7 @@ def test_augment_metadata_empty_hit_list(mock_datastore):
 @patch("howler.services.hit_service.datastore")
 def test_augment_metadata_none_hit(mock_datastore):
     """Test augment_metadata with a None hit value."""
-    test_user = {"uname": "test_user"}
+    test_user = User({"uname": "test_user", "name": "Test User", "password": "test_password"})
 
     # Mock datastore collections to ensure they're not called
     mock_template_collection = MagicMock()

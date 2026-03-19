@@ -880,7 +880,7 @@ def __match_metadata(candidates: list[dict[str, Any]], hit: dict[str, Any]) -> O
     return sorted(matching_candidates, key=functools.cmp_to_key(__compare_metadata))[0]
 
 
-def augment_metadata(data: list[dict[str, Any]] | dict[str, Any] | None, metadata: list[str], user: dict[str, Any]):  # noqa: C901
+def augment_metadata(data: list[dict[str, Any]] | dict[str, Any] | None, metadata: list[str], user: User):  # noqa: C901
     """Augment hit search results with additional metadata.
 
     This function enriches hit data by adding related information such as templates,
@@ -909,7 +909,7 @@ def augment_metadata(data: list[dict[str, Any]] | dict[str, Any] | None, metadat
     logger.debug("Augmenting %s hits with %s", len(hits), ",".join(metadata))
 
     if "template" in metadata:
-        template_candidates = template_service.get_matching_templates(hits, as_odm=False, uname=user["uname"])
+        template_candidates = template_service.get_matching_templates(hits, as_odm=False, uname=user.uname)
 
         logger.debug("\tRetrieved %s matching templates", len(template_candidates))
 
@@ -942,11 +942,11 @@ def augment_metadata(data: list[dict[str, Any]] | dict[str, Any] | None, metadat
 
     if "dossiers" in metadata:
         dossiers: list[dict[str, Any]] = datastore().dossier.search(
-            "dossier_id:*",
+            f"type:global OR owner:{user.uname}",
             as_obj=False,
             # TODO: Eventually implement caching here
             rows=1000,
         )["items"]
 
         for hit in hits:
-            hit["__dossiers"] = dossier_service.get_matching_dossiers(hit, dossiers)
+            hit["__dossiers"] = dossier_service.get_matching_dossiers(hit, dossiers, username=user.uname)

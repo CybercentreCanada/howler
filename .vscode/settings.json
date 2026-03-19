@@ -107,5 +107,6 @@
       "code_blocks": false,
       "tables": false
     }
-  }
+  },
+  "python-envs.defaultEnvManager": "ms-python.python:system"
 }
