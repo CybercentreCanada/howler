@@ -3,9 +3,9 @@ import { Box, IconButton, LinearProgress, Stack, Tooltip, Typography, useMediaQu
 import { grey } from '@mui/material/colors';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
 import PageCenter from 'commons/components/pages/PageCenter';
-import { HitContext } from 'components/app/providers/HitProvider';
-import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
+import { RecordContext } from 'components/app/providers/RecordProvider';
+import { RecordSearchContext } from 'components/app/providers/RecordSearchProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import FlexPort from 'components/elements/addons/layout/FlexPort';
 import VSBox from 'components/elements/addons/layout/vsbox/VSBox';
@@ -15,9 +15,11 @@ import SearchPagination from 'components/elements/addons/search/SearchPagination
 import SearchTotal from 'components/elements/addons/search/SearchTotal';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
-import useHitSelection from 'components/hooks/useHitSelection';
+import ObservableCard from 'components/elements/observable/ObservableCard';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
+import useRecordSelection from 'components/hooks/useRecordSelection';
 import type { Hit } from 'models/entities/generated/Hit';
+import type { Observable } from 'models/entities/generated/Observable';
 import type { FC } from 'react';
 import React, { memo, useCallback, useMemo } from 'react';
 import { isMobile } from 'react-device-detect';
@@ -25,18 +27,19 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
-import HitContextMenu from './HitContextMenu';
-import HitQuery from './HitQuery';
+import { isHit, isObservable } from 'utils/typeUtils';
+import RecordContextMenu from './HitContextMenu';
 import LayoutSettings from './LayoutSettings';
 import QuerySettings from './QuerySettings';
+import RecordQuery from './RecordQuery';
 
 const Item: FC<{
-  hit: Hit;
-  onClick: (event: React.MouseEvent<HTMLDivElement>, hit: Hit) => void;
-}> = memo(({ hit, onClick }) => {
+  record: Hit | Observable;
+  onClick: (event: React.MouseEvent<HTMLDivElement>, record: Hit | Observable) => void;
+}> = memo(({ record, onClick }) => {
   const theme = useTheme();
 
-  const selectedHits = useContextSelector(HitContext, ctx => ctx.selectedHits);
+  const selectedRecords = useContextSelector(RecordContext, ctx => ctx.selectedRecords);
 
   const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
 
@@ -55,9 +58,9 @@ const Item: FC<{
   // Search result list item renderer.
   return (
     <Box
-      id={hit.howler.id}
-      onAuxClick={e => checkMiddleClick(e, hit.howler.id)}
-      onClick={ev => onClick(ev, hit)}
+      id={record.howler.id}
+      onAuxClick={e => checkMiddleClick(e, record.howler.id)}
+      onClick={ev => onClick(ev, record)}
       sx={[
         {
           mb: 2,
@@ -78,10 +81,10 @@ const Item: FC<{
             paddingBottom: 'inherit' // prevents slight height variation on selected card.
           }
         },
-        selectedHits.some(_hit => _hit.howler.id === hit.howler.id) && {
+        selectedRecords.some(_record => _record.howler.id === record.howler.id) && {
           '& > .MuiPaper-root': { borderColor: grey[500], boxShadow: `0px 0px 5px 2px ${grey[500]}` }
         },
-        selected === hit.howler.id && {
+        selected === record.howler.id && {
           '& > .MuiPaper-root': {
             borderColor: 'primary.main',
             boxShadow: `0px 0px 5px 2px ${theme.palette.primary.main}`
@@ -89,7 +92,8 @@ const Item: FC<{
         }
       ]}
     >
-      <HitCard id={hit.howler.id} layout={layout} />
+      {isHit(record) && <HitCard id={record.howler.id} layout={layout} />}
+      {isObservable(record) && <ObservableCard id={record.howler.id} observable={record} />}
     </Box>
   );
 });
@@ -100,12 +104,12 @@ const SearchPane: FC = () => {
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const setOffset = useContextSelector(ParameterContext, ctx => ctx.setOffset);
 
-  const triggerSearch = useContextSelector(HitSearchContext, ctx => ctx.search);
-  const searching = useContextSelector(HitSearchContext, ctx => ctx.searching);
-  const response = useContextSelector(HitSearchContext, ctx => ctx.response);
-  const error = useContextSelector(HitSearchContext, ctx => ctx.error);
+  const triggerSearch = useContextSelector(RecordSearchContext, ctx => ctx.search);
+  const searching = useContextSelector(RecordSearchContext, ctx => ctx.searching);
+  const response = useContextSelector(RecordSearchContext, ctx => ctx.response);
+  const error = useContextSelector(RecordSearchContext, ctx => ctx.error);
 
-  const { onClick } = useHitSelection();
+  const { onClick } = useRecordSelection();
 
   const searchPaneWidth = useMyLocalStorageItem(StorageKey.SEARCH_PANE_WIDTH, null)[0];
 
@@ -157,7 +161,7 @@ const SearchPane: FC = () => {
           <VSBoxHeader ml={-3} mr={-3} px={2} pb={1} sx={{ zIndex: 989 }}>
             <Stack sx={{ pt: 1 }}>
               <Stack sx={{ position: 'relative', flex: 1 }}>
-                <HitQuery searching={searching} triggerSearch={triggerSearch} />
+                <RecordQuery searching={searching} triggerSearch={triggerSearch} />
                 {searching && (
                   <LinearProgress
                     sx={theme => ({
@@ -194,13 +198,13 @@ const SearchPane: FC = () => {
             )}
           </VSBoxHeader>
           <VSBoxContent mr={-1} ml={-1} mt={1}>
-            <HitContextMenu getSelectedId={getSelectedId}>
+            <RecordContextMenu getSelectedId={getSelectedId}>
               {!response ? (
                 <AppListEmpty />
               ) : (
-                response.items.map(hit => <Item key={hit.howler.id} hit={hit} onClick={onClick} />)
+                response.items.map(record => <Item key={record.howler.id} record={record} onClick={onClick} />)
               )}
-            </HitContextMenu>
+            </RecordContextMenu>
           </VSBoxContent>
         </VSBox>
       </PageCenter>

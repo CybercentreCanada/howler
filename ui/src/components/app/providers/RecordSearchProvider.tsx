@@ -8,6 +8,7 @@ import { cloneDeep } from 'lodash-es';
 import isNull from 'lodash-es/isNull';
 import isUndefined from 'lodash-es/isUndefined';
 import type { Hit } from 'models/entities/generated/Hit';
+import type { Observable } from 'models/entities/generated/Observable';
 import type { WithMetadata } from 'models/WithMetadata';
 import {
   useCallback,
@@ -24,19 +25,19 @@ import { createContext, useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
 import Throttler from 'utils/Throttler';
 import { convertCustomDateRangeToLucene, convertDateToLucene } from 'utils/utils';
-import { HitContext } from './HitProvider';
 import { ParameterContext } from './ParameterProvider';
+import { RecordContext } from './RecordProvider';
 import { ViewContext } from './ViewProvider';
 
 export interface QueryEntry {
   [query: string]: string;
 }
 
-export interface HitSearchContextType {
+export interface RecordSearchContextType {
   displayType: 'list' | 'grid';
   searching: boolean;
   error: string | null;
-  response: HowlerSearchResponse<WithMetadata<Hit>> | null;
+  response: HowlerSearchResponse<WithMetadata<Hit | Observable>> | null;
   fzfSearch: boolean;
 
   setDisplayType: (type: 'list' | 'grid') => void;
@@ -48,11 +49,11 @@ export interface HitSearchContextType {
   setQueryHistory: ReturnType<typeof useMyLocalStorageItem>[1];
 }
 
-export const HitSearchContext = createContext<HitSearchContextType>(null);
+export const RecordSearchContext = createContext<RecordSearchContextType>(null);
 
 const THROTTLER = new Throttler(500);
 
-const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
+const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const { get } = useMyLocalStorage();
   const routeParams = useParams();
   const location = useLocation();
@@ -76,7 +77,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const views = useContextSelector(ParameterContext, ctx => ctx.views);
   const addView = useContextSelector(ParameterContext, ctx => ctx.addView);
 
-  const loadHits = useContextSelector(HitContext, ctx => ctx.loadHits);
+  const loadHits = useContextSelector(RecordContext, ctx => ctx.loadRecords);
 
   const [displayType, setDisplayType] = useState<'list' | 'grid'>(get(StorageKey.DISPLAY_TYPE) ?? 'list');
   const [searching, setSearching] = useState<boolean>(false);
@@ -230,7 +231,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   }, [offset, pageCount, sort, span, indexes, location.pathname, startDate, endDate, filters, query, views]);
 
   return (
-    <HitSearchContext.Provider
+    <RecordSearchContext.Provider
       value={{
         displayType,
         setDisplayType,
@@ -246,8 +247,8 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
       }}
     >
       {children}
-    </HitSearchContext.Provider>
+    </RecordSearchContext.Provider>
   );
 };
 
-export default HitSearchProvider;
+export default RecordSearchProvider;

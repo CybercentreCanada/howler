@@ -40,6 +40,7 @@ import type { Vulnerability } from './Vulnerability';
  * NOTE: This is an auto-generated file. Don't edit this manually.
  */
 export interface Observable {
+  __index: 'observable';
   agent?: Agent;
   assemblyline?: Assemblyline;
   aws?: Aws;

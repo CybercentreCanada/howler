@@ -19,8 +19,8 @@ import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
 import PageCenter from 'commons/components/pages/PageCenter';
-import { HitContext } from 'components/app/providers/HitProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
+import { RecordContext } from 'components/app/providers/RecordProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import CustomButton from 'components/elements/addons/buttons/CustomButton';
 import FlexPort from 'components/elements/addons/layout/FlexPort';
@@ -40,7 +40,7 @@ import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
 import { convertDateToLucene } from 'utils/utils';
 import { buildViewUrl } from 'utils/viewUtils';
 import ErrorBoundary from '../ErrorBoundary';
-import HitQuery from '../hits/search/HitQuery';
+import RecordQuery from '../hits/search/RecordQuery';
 import HitSort from '../hits/search/shared/HitSort';
 import SearchSpan from '../hits/search/shared/SearchSpan';
 
@@ -57,7 +57,7 @@ const ViewComposer: FC = () => {
 
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
-  const loadHits = useContextSelector(HitContext, ctx => ctx.loadHits);
+  const loadHits = useContextSelector(RecordContext, ctx => ctx.loadRecords);
 
   // view state
   const [title, setTitle] = useState('');
@@ -259,7 +259,7 @@ const ViewComposer: FC = () => {
                 >
                   {t('hit.search.prompt')}
                 </Typography>
-                <HitQuery
+                <RecordQuery
                   triggerSearch={search}
                   searching={searching}
                   onChange={(_query, isDirty) => setIsSearchDirty(isDirty)}

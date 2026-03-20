@@ -1,7 +1,7 @@
 import { KeyboardArrowUp } from '@mui/icons-material';
 import { Box, Collapse, IconButton, lighten, Stack, TableCell, TableRow, Typography, useTheme } from '@mui/material';
-import { HitContext } from 'components/app/providers/HitProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
+import { RecordContext } from 'components/app/providers/RecordProvider';
 import Assigned from 'components/elements/hit/elements/Assigned';
 import EscalationChip from 'components/elements/hit/elements/EscalationChip';
 import HitCard from 'components/elements/hit/HitCard';
@@ -25,7 +25,7 @@ const HitRow: FC<{
   const theme = useTheme();
   const { t } = useTranslation();
 
-  const selectedHits = useContextSelector(HitContext, ctx => ctx.selectedHits);
+  const selectedHits = useContextSelector(RecordContext, ctx => ctx.selectedRecords);
 
   const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
 

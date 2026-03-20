@@ -4,10 +4,10 @@ import type { Hit } from 'models/entities/generated/Hit';
 import type { WithMetadata } from 'models/WithMetadata';
 import { useCallback } from 'react';
 import { useContextSelector } from 'use-context-selector';
-import { HitContext } from '../providers/HitProvider';
+import { RecordContext } from '../providers/RecordProvider';
 
 const useMatchers = () => {
-  const getHit = useContextSelector(HitContext, ctx => ctx.getHit);
+  const getHit = useContextSelector(RecordContext, ctx => ctx.getRecord);
 
   const getMatchingTemplate = useCallback(
     async (hit: WithMetadata<Hit>) => {

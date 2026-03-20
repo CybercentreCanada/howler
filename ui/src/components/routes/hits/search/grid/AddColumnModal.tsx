@@ -2,7 +2,7 @@ import { Add, Check, Settings, TableChart } from '@mui/icons-material';
 import { Autocomplete, Chip, Divider, Grid, IconButton, Stack, TextField } from '@mui/material';
 import useMatchers from 'components/app/hooks/useMatchers';
 import { FieldContext } from 'components/app/providers/FieldProvider';
-import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
+import { RecordSearchContext } from 'components/app/providers/RecordSearchProvider';
 import ChipPopper from 'components/elements/display/ChipPopper';
 import { has, sortBy, uniq } from 'lodash-es';
 import { memo, useContext, useEffect, useMemo, useState, type FC } from 'react';
@@ -15,7 +15,7 @@ const AddColumnModal: FC<{
 }> = ({ addColumn, columns }) => {
   const { t } = useTranslation();
   const { hitFields } = useContext(FieldContext);
-  const response = useContextSelector(HitSearchContext, ctx => ctx.response);
+  const response = useContextSelector(RecordSearchContext, ctx => ctx.response);
   const { getMatchingTemplate } = useMatchers();
 
   const [columnToAdd, setColumnToAdd] = useState<string>(null);

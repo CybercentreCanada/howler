@@ -4,9 +4,9 @@ import { cloneDeep } from 'lodash-es';
 import { setupContextSelectorMock, setupLocalStorageMock } from 'tests/mocks';
 import { useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY, MY_LOCAL_STORAGE_PREFIX, StorageKey } from 'utils/constants';
-import { HitContext, type HitContextType } from './HitProvider';
-import HitSearchProvider, { HitSearchContext } from './HitSearchProvider';
 import { ParameterContext, type ParameterContextType } from './ParameterProvider';
+import { RecordContext, type RecordContextType } from './RecordProvider';
+import RecordSearchProvider, { RecordSearchContext } from './RecordSearchProvider';
 import { ViewContext, type ViewContextType } from './ViewProvider';
 
 vi.mock('api', { spy: true });
@@ -40,11 +40,11 @@ let mockParameterContext: Partial<ParameterContextType> = {
 };
 const originalMockParameterContext = cloneDeep(mockParameterContext);
 
-const mockHitContext: Partial<HitContextType> = {
-  hits: {},
-  loadHits: hits => {
-    mockHitContext.hits = {
-      ...mockHitContext.hits,
+const mockHitContext: Partial<RecordContextType> = {
+  records: {},
+  loadRecords: hits => {
+    mockHitContext.records = {
+      ...mockHitContext.records,
       ...Object.fromEntries(hits.map(hit => [hit.howler.id, hit]))
     };
   }
@@ -54,9 +54,9 @@ const Wrapper = ({ children }) => {
   return (
     <ViewContext.Provider value={mockViewContext as any}>
       <ParameterContext.Provider value={mockParameterContext as any}>
-        <HitContext.Provider value={mockHitContext as any}>
-          <HitSearchProvider>{children}</HitSearchProvider>
-        </HitContext.Provider>
+        <RecordContext.Provider value={mockHitContext as any}>
+          <RecordSearchProvider>{children}</RecordSearchProvider>
+        </RecordContext.Provider>
       </ParameterContext.Provider>
     </ViewContext.Provider>
   );
@@ -81,11 +81,11 @@ beforeEach(() => {
   vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
 });
 
-describe('HitSearchContext', () => {
+describe('RecordSearchContext', () => {
   it('should initialize with default values', async () => {
     const hook = renderHook(
       () =>
-        useContextSelector(HitSearchContext, ctx => ({
+        useContextSelector(RecordSearchContext, ctx => ({
           displayType: ctx.displayType,
           searching: ctx.searching,
           error: ctx.error,
@@ -106,7 +106,9 @@ describe('HitSearchContext', () => {
     const mockHistory = { 'test:query': new Date().toISOString() };
     mockLocalStorage.setItem(`${MY_LOCAL_STORAGE_PREFIX}.${StorageKey.QUERY_HISTORY}`, JSON.stringify(mockHistory));
 
-    const hook = renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.queryHistory), { wrapper: Wrapper });
+    const hook = renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.queryHistory), {
+      wrapper: Wrapper
+    });
 
     expect(hook.result.current).toEqual(mockHistory);
   });
@@ -115,7 +117,7 @@ describe('HitSearchContext', () => {
     it('should update display type', () => {
       const hook = renderHook(
         () =>
-          useContextSelector(HitSearchContext, ctx => ({
+          useContextSelector(RecordSearchContext, ctx => ({
             displayType: ctx.displayType,
             setDisplayType: ctx.setDisplayType
           })),
@@ -136,7 +138,7 @@ describe('HitSearchContext', () => {
     it('should update fzfSearch state', () => {
       const hook = renderHook(
         () =>
-          useContextSelector(HitSearchContext, ctx => ({
+          useContextSelector(RecordSearchContext, ctx => ({
             fzfSearch: ctx.fzfSearch,
             setFzfSearch: ctx.setFzfSearch
           })),
@@ -157,7 +159,7 @@ describe('HitSearchContext', () => {
     it('should update query history', () => {
       const hook = renderHook(
         () =>
-          useContextSelector(HitSearchContext, ctx => ({
+          useContextSelector(RecordSearchContext, ctx => ({
             queryHistory: ctx.queryHistory,
             setQueryHistory: ctx.setQueryHistory
           })),
@@ -178,7 +180,7 @@ describe('HitSearchContext', () => {
     it('should perform a search and update response', async () => {
       const hook = renderHook(
         () =>
-          useContextSelector(HitSearchContext, ctx => ({
+          useContextSelector(RecordSearchContext, ctx => ({
             search: ctx.search,
             searching: ctx.searching,
             response: ctx.response,
@@ -204,7 +206,7 @@ describe('HitSearchContext', () => {
     it('should set searching state during search', async () => {
       const hook = renderHook(
         () =>
-          useContextSelector(HitSearchContext, ctx => ({
+          useContextSelector(RecordSearchContext, ctx => ({
             search: ctx.search,
             searching: ctx.searching
           })),
@@ -247,7 +249,7 @@ describe('HitSearchContext', () => {
 
       const hook = renderHook(
         () =>
-          useContextSelector(HitSearchContext, ctx => ({
+          useContextSelector(RecordSearchContext, ctx => ({
             search: ctx.search,
             error: ctx.error,
             searching: ctx.searching
@@ -277,7 +279,7 @@ describe('HitSearchContext', () => {
 
       const hook = renderHook(
         () =>
-          useContextSelector(HitSearchContext, ctx => ({
+          useContextSelector(RecordSearchContext, ctx => ({
             search: ctx.search,
             response: ctx.response
           })),
@@ -315,7 +317,7 @@ describe('HitSearchContext', () => {
     });
 
     it('should apply date range filter from span', async () => {
-      const hook = renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.search), { wrapper: Wrapper });
+      const hook = renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.search), { wrapper: Wrapper });
 
       act(() => {
         hook.result.current('test query');
@@ -336,7 +338,7 @@ describe('HitSearchContext', () => {
       mockParameterContext.startDate = '2025-01-01';
       mockParameterContext.endDate = '2025-12-31';
 
-      const hook = renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.search), { wrapper: Wrapper });
+      const hook = renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.search), { wrapper: Wrapper });
 
       act(() => {
         hook.result.current('test query');
@@ -355,7 +357,7 @@ describe('HitSearchContext', () => {
     it('should exclude filters ending with * from search', async () => {
       mockParameterContext.filters = ['status:open', 'howler.escalation:*'];
 
-      const hook = renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.search), { wrapper: Wrapper });
+      const hook = renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.search), { wrapper: Wrapper });
 
       act(() => {
         hook.result.current('test query');
@@ -383,7 +385,7 @@ describe('HitSearchContext', () => {
 
       const hook = renderHook(
         () =>
-          useContextSelector(HitSearchContext, ctx => ({
+          useContextSelector(RecordSearchContext, ctx => ({
             search: ctx.search
           })),
         { wrapper: Wrapper }
@@ -404,7 +406,7 @@ describe('HitSearchContext', () => {
       mockParameterContext.sort = null;
       mockParameterContext.span = null;
 
-      const hook = renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.search), { wrapper: Wrapper });
+      const hook = renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.search), { wrapper: Wrapper });
 
       act(() => {
         hook.result.current('test query');
@@ -421,7 +423,7 @@ describe('HitSearchContext', () => {
     it('should trigger search when filters change', async () => {
       const hook = renderHook(
         () =>
-          useContextSelector(HitSearchContext, ctx => ({
+          useContextSelector(RecordSearchContext, ctx => ({
             response: ctx.response
           })),
         { wrapper: Wrapper }
@@ -449,7 +451,7 @@ describe('HitSearchContext', () => {
     it('should not trigger search when query is DEFAULT_QUERY', async () => {
       mockParameterContext.query = DEFAULT_QUERY;
 
-      renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.response), { wrapper: Wrapper });
+      renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.response), { wrapper: Wrapper });
 
       await waitFor(() => {
         expect(hpost).not.toHaveBeenCalled();
@@ -457,7 +459,7 @@ describe('HitSearchContext', () => {
     });
 
     it('should not trigger search when span is custom but dates are missing', async () => {
-      renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.response), { wrapper: Wrapper });
+      renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.response), { wrapper: Wrapper });
 
       await waitFor(() => {
         expect(hpost).not.toHaveBeenCalled();
@@ -465,11 +467,11 @@ describe('HitSearchContext', () => {
     });
   });
 
-  describe('useHitSearchContextSelector', () => {
+  describe('useRecordSearchContextSelector', () => {
     it('should allow selecting specific values from context', async () => {
       const hook = renderHook(
         () =>
-          useContextSelector(HitSearchContext, ctx => ({
+          useContextSelector(RecordSearchContext, ctx => ({
             searching: ctx.searching,
             error: ctx.error
           })),
@@ -483,7 +485,7 @@ describe('HitSearchContext', () => {
 
   describe('edge cases', () => {
     it('should handle concurrent search calls with throttling', async () => {
-      const hook = renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.search), { wrapper: Wrapper });
+      const hook = renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.search), { wrapper: Wrapper });
 
       // Make multiple rapid calls
       act(() => {
@@ -502,7 +504,7 @@ describe('HitSearchContext', () => {
     });
 
     it('should clear response when query becomes DEFAULT_QUERY without viewId', async () => {
-      const hook = renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.response), { wrapper: Wrapper });
+      const hook = renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.response), { wrapper: Wrapper });
 
       await waitFor(
         () => {
@@ -532,7 +534,7 @@ describe('HitSearchContext', () => {
           { view_id: 'view_2', query: 'howler.priority:high' }
         ]);
 
-        const hook = renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.search), { wrapper: Wrapper });
+        const hook = renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.search), { wrapper: Wrapper });
 
         act(() => {
           hook.result.current('test query');
@@ -558,7 +560,7 @@ describe('HitSearchContext', () => {
           { view_id: 'view_3', query: 'howler.analytic:sigma' }
         ]);
 
-        const hook = renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.search), { wrapper: Wrapper });
+        const hook = renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.search), { wrapper: Wrapper });
 
         act(() => {
           hook.result.current('test query');
@@ -590,7 +592,7 @@ describe('HitSearchContext', () => {
         const mockSearchParams = new URLSearchParams();
         vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
 
-        renderHook(() => useContextSelector(HitSearchContext, () => {}), { wrapper: Wrapper });
+        renderHook(() => useContextSelector(RecordSearchContext, () => {}), { wrapper: Wrapper });
 
         await waitFor(() => {
           expect(mockParameterContext.addView).toBeCalledWith('default_view_id');
@@ -606,7 +608,7 @@ describe('HitSearchContext', () => {
         mockSearchParams.append('view', 'existing_view');
         vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
 
-        renderHook(() => useContextSelector(HitSearchContext, () => {}), { wrapper: Wrapper });
+        renderHook(() => useContextSelector(RecordSearchContext, () => {}), { wrapper: Wrapper });
 
         await waitFor(() => {
           expect(mockParameterContext.addView).not.toBeCalled();
@@ -621,7 +623,7 @@ describe('HitSearchContext', () => {
         const mockSearchParams = new URLSearchParams();
         vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetParams]);
 
-        renderHook(() => useContextSelector(HitSearchContext, () => {}), { wrapper: Wrapper });
+        renderHook(() => useContextSelector(RecordSearchContext, () => {}), { wrapper: Wrapper });
 
         await waitFor(() => {
           expect(mockSetParams).not.toHaveBeenCalled();
@@ -635,7 +637,7 @@ describe('HitSearchContext', () => {
 
         mockViewContext.getCurrentViews = vi.fn(() => Promise.resolve([null]));
 
-        const hook = renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.search), { wrapper: Wrapper });
+        const hook = renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.search), { wrapper: Wrapper });
 
         act(() => {
           hook.result.current('test query');
@@ -663,7 +665,7 @@ describe('HitSearchContext', () => {
           { view_id: 'view_2', query: 'howler.priority:high' }
         ]);
 
-        const hook = renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.search), { wrapper: Wrapper });
+        const hook = renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.search), { wrapper: Wrapper });
 
         act(() => {
           hook.result.current('test query');
@@ -686,7 +688,7 @@ describe('HitSearchContext', () => {
         mockParameterContext.query = DEFAULT_QUERY;
         mockParameterContext.views = [];
 
-        renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.response), { wrapper: Wrapper });
+        renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.response), { wrapper: Wrapper });
 
         await waitFor(() => {
           expect(hpost).not.toHaveBeenCalled();
@@ -697,7 +699,7 @@ describe('HitSearchContext', () => {
         mockParameterContext.query = DEFAULT_QUERY;
         mockParameterContext.views = ['view_1'];
 
-        renderHook(() => useContextSelector(HitSearchContext, ctx => ctx.response), { wrapper: Wrapper });
+        renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.response), { wrapper: Wrapper });
 
         await waitFor(() => {
           expect(hpost).toHaveBeenCalled();

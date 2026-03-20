@@ -6,7 +6,7 @@ import TuiIconButton from 'components/elements/addons/buttons/CustomIconButton';
 import QueryEditor from 'components/routes/advanced/QueryEditor';
 import type { IDisposable, editor } from 'monaco-editor';
 
-import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
+import { RecordSearchContext } from 'components/app/providers/RecordSearchProvider';
 import type { FC } from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -17,9 +17,9 @@ import { sanitizeMultilineLucene } from 'utils/stringUtils';
 
 const DEFAULT_MULTILINE_HEIGHT = 250;
 const PROMPT_CONTEXT =
-  'isHitQuery && !suggestWidgetVisible && !renameInputVisible && !inSnippetMode && !quickFixWidgetVisible';
+  'isRecordQuery && !suggestWidgetVisible && !renameInputVisible && !inSnippetMode && !quickFixWidgetVisible';
 
-export type HitQueryProps = {
+export type RecordQueryProps = {
   triggerSearch: (query: string) => void;
   onChange?: (query: string, isDirty: boolean) => void;
   searching?: boolean;
@@ -27,7 +27,7 @@ export type HitQueryProps = {
   compact?: boolean;
 };
 
-const HitQuery: FC<HitQueryProps> = ({
+const RecordQuery: FC<RecordQueryProps> = ({
   searching = false,
   disabled = false,
   compact = false,
@@ -44,7 +44,7 @@ const HitQuery: FC<HitQueryProps> = ({
   const prevQuery = useRef<string | null>(null);
 
   const [query, setQuery] = useState(new URLSearchParams(window.location.search).get('query') || DEFAULT_QUERY);
-  const fzfSearch = useContextSelector(HitSearchContext, ctx => ctx?.fzfSearch ?? false);
+  const fzfSearch = useContextSelector(RecordSearchContext, ctx => ctx?.fzfSearch ?? false);
   const [loaded, setLoaded] = useState(false);
   const [multiline, setMultiline] = useState(false);
   const [y, setY] = useState(0);
@@ -128,7 +128,7 @@ const HitQuery: FC<HitQueryProps> = ({
   }, [onMouseMove, onMouseUp]);
 
   const onMount = useCallback((ed: editor.IStandaloneCodeEditor) => {
-    ed.createContextKey('isHitQuery', true);
+    ed.createContextKey('isRecordQuery', true);
     setLoaded(true);
   }, []);
 
@@ -267,4 +267,4 @@ const HitQuery: FC<HitQueryProps> = ({
   );
 };
 
-export default memo(HitQuery);
+export default memo(RecordQuery);

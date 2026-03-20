@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { AnalyticContext } from '../providers/AnalyticProvider';
-import { HitContext } from '../providers/HitProvider';
+import { RecordContext } from '../providers/RecordProvider';
 
 const useTitle = () => {
   const { t } = useTranslation();
@@ -16,8 +16,8 @@ const useTitle = () => {
 
   const { getAnalyticFromId } = useContext(AnalyticContext);
 
-  const hits = useContextSelector(HitContext, ctx => ctx.hits);
-  const getHit = useContextSelector(HitContext, ctx => ctx.getHit);
+  const hits = useContextSelector(RecordContext, ctx => ctx.records);
+  const getHit = useContextSelector(RecordContext, ctx => ctx.getRecord);
 
   const setTitle = useCallback((title: string) => {
     document.querySelector('title').innerHTML = title;

@@ -1,17 +1,17 @@
-import { HitContext } from 'components/app/providers/HitProvider';
-import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
+import { RecordContext } from 'components/app/providers/RecordProvider';
+import { RecordSearchContext } from 'components/app/providers/RecordSearchProvider';
 import type { Hit } from 'models/entities/generated/Hit';
 import type React from 'react';
 import { useCallback, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 
-const useHitSelection = () => {
-  const response = useContextSelector(HitSearchContext, ctx => ctx.response);
-  const selectedHits = useContextSelector(HitContext, ctx => ctx.selectedHits);
-  const addHitToSelection = useContextSelector(HitContext, ctx => ctx.addHitToSelection);
-  const removeHitFromSelection = useContextSelector(HitContext, ctx => ctx.removeHitFromSelection);
-  const clearSelectedHits = useContextSelector(HitContext, ctx => ctx.clearSelectedHits);
+const useRecordSelection = () => {
+  const response = useContextSelector(RecordSearchContext, ctx => ctx.response);
+  const selectedHits = useContextSelector(RecordContext, ctx => ctx.selectedRecords);
+  const addHitToSelection = useContextSelector(RecordContext, ctx => ctx.addRecordToSelection);
+  const removeHitFromSelection = useContextSelector(RecordContext, ctx => ctx.removeRecordFromSelection);
+  const clearSelectedHits = useContextSelector(RecordContext, ctx => ctx.clearSelectedRecords);
 
   const setSelected = useContextSelector(ParameterContext, ctx => ctx.setSelected);
 
@@ -72,4 +72,4 @@ const useHitSelection = () => {
   return { lastSelected, setLastSelected, onClick };
 };
 
-export default useHitSelection;
+export default useRecordSelection;

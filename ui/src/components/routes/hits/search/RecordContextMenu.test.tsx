@@ -126,14 +126,14 @@ vi.mock('@mui/material', async () => {
 
 // Import component after mocks
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
-import { HitContext } from 'components/app/providers/HitProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
+import { RecordContext } from 'components/app/providers/RecordProvider';
 import i18n from 'i18n';
 import type { Hit } from 'models/entities/generated/Hit';
 import { I18nextProvider } from 'react-i18next';
 import { createMockAction, createMockAnalytic, createMockHit, createMockTemplate } from 'tests/utils';
 import { DEFAULT_QUERY } from 'utils/constants';
-import HitContextMenu from './HitContextMenu';
+import RecordContextMenu from './HitContextMenu';
 
 const mockGetSelectedId = vi.fn(() => 'test-hit-1');
 const mockConfig = {
@@ -156,9 +156,9 @@ const Wrapper = ({ children }: PropsWithChildren) => {
   return (
     <I18nextProvider i18n={i18n as any}>
       <ApiConfigContext.Provider value={mockApiContext as any}>
-        <HitContext.Provider value={mockHitContext as any}>
+        <RecordContext.Provider value={mockHitContext as any}>
           <ParameterContext.Provider value={mockParameterContext as any}>{children}</ParameterContext.Provider>
-        </HitContext.Provider>
+        </RecordContext.Provider>
       </ApiConfigContext.Provider>
     </I18nextProvider>
   );
@@ -181,9 +181,9 @@ describe('HitContextMenu', () => {
 
     rerender = render(
       <Wrapper>
-        <HitContextMenu getSelectedId={mockGetSelectedId}>
+        <RecordContextMenu getSelectedId={mockGetSelectedId}>
           <div>Test Content</div>
-        </HitContextMenu>
+        </RecordContextMenu>
       </Wrapper>
     ).rerender;
   });
@@ -329,9 +329,9 @@ describe('HitContextMenu', () => {
 
       rerender(
         <Wrapper>
-          <HitContextMenu getSelectedId={mockGetSelectedId}>
+          <RecordContextMenu getSelectedId={mockGetSelectedId}>
             <div>Test Content</div>
-          </HitContextMenu>
+          </RecordContextMenu>
         </Wrapper>
       );
 
@@ -408,9 +408,9 @@ describe('HitContextMenu', () => {
 
       rerender(
         <Wrapper>
-          <HitContextMenu getSelectedId={mockGetSelectedId}>
+          <RecordContextMenu getSelectedId={mockGetSelectedId}>
             <div>Test Content</div>
-          </HitContextMenu>
+          </RecordContextMenu>
         </Wrapper>
       );
       act(() => {
@@ -470,9 +470,9 @@ describe('HitContextMenu', () => {
 
       rerender(
         <Wrapper>
-          <HitContextMenu getSelectedId={mockGetSelectedId}>
+          <RecordContextMenu getSelectedId={mockGetSelectedId}>
             <div>Test Content</div>
-          </HitContextMenu>
+          </RecordContextMenu>
         </Wrapper>
       );
 
@@ -530,9 +530,9 @@ describe('HitContextMenu', () => {
 
       rerender(
         <Wrapper>
-          <HitContextMenu getSelectedId={mockGetSelectedId}>
+          <RecordContextMenu getSelectedId={mockGetSelectedId}>
             <div>Test Content</div>
-          </HitContextMenu>
+          </RecordContextMenu>
         </Wrapper>
       );
 
@@ -624,9 +624,9 @@ describe('HitContextMenu', () => {
 
       rerender(
         <Wrapper>
-          <HitContextMenu getSelectedId={mockGetSelectedId}>
+          <RecordContextMenu getSelectedId={mockGetSelectedId}>
             <div>Test Content</div>
-          </HitContextMenu>
+          </RecordContextMenu>
         </Wrapper>
       );
 
@@ -699,9 +699,9 @@ describe('HitContextMenu', () => {
 
       rerender(
         <Wrapper>
-          <HitContextMenu getSelectedId={mockGetSelectedId}>
+          <RecordContextMenu getSelectedId={mockGetSelectedId}>
             <div>Test Content</div>
-          </HitContextMenu>
+          </RecordContextMenu>
         </Wrapper>
       );
     });
@@ -767,9 +767,9 @@ describe('HitContextMenu', () => {
 
       rerender(
         <Wrapper>
-          <HitContextMenu getSelectedId={mockGetSelectedId}>
+          <RecordContextMenu getSelectedId={mockGetSelectedId}>
             <div>Test Content</div>
-          </HitContextMenu>
+          </RecordContextMenu>
         </Wrapper>
       );
 
@@ -833,9 +833,9 @@ describe('HitContextMenu', () => {
 
       rerender(
         <Wrapper>
-          <HitContextMenu getSelectedId={mockGetSelectedId}>
+          <RecordContextMenu getSelectedId={mockGetSelectedId}>
             <div>Test Content</div>
-          </HitContextMenu>
+          </RecordContextMenu>
         </Wrapper>
       );
 
@@ -885,9 +885,9 @@ describe('HitContextMenu', () => {
 
       rerender(
         <Wrapper>
-          <HitContextMenu getSelectedId={mockGetSelectedId}>
+          <RecordContextMenu getSelectedId={mockGetSelectedId}>
             <div>Test Content</div>
-          </HitContextMenu>
+          </RecordContextMenu>
         </Wrapper>
       );
     });
@@ -955,9 +955,9 @@ describe('HitContextMenu', () => {
 
       rerender(
         <Wrapper>
-          <HitContextMenu getSelectedId={mockGetSelectedId}>
+          <RecordContextMenu getSelectedId={mockGetSelectedId}>
             <div>Test Content</div>
-          </HitContextMenu>
+          </RecordContextMenu>
         </Wrapper>
       );
 
@@ -1023,9 +1023,9 @@ describe('HitContextMenu', () => {
 
       rerender(
         <Wrapper>
-          <HitContextMenu getSelectedId={mockGetSelectedId}>
+          <RecordContextMenu getSelectedId={mockGetSelectedId}>
             <div>Test Content</div>
-          </HitContextMenu>
+          </RecordContextMenu>
         </Wrapper>
       );
 
@@ -1175,9 +1175,9 @@ describe('HitContextMenu', () => {
 
       rerender(
         <Wrapper>
-          <HitContextMenu getSelectedId={mockGetSelectedId}>
+          <RecordContextMenu getSelectedId={mockGetSelectedId}>
             <div>Test Content</div>
-          </HitContextMenu>
+          </RecordContextMenu>
         </Wrapper>
       );
 
@@ -1200,9 +1200,9 @@ describe('HitContextMenu', () => {
 
       rerender(
         <Wrapper>
-          <HitContextMenu getSelectedId={mockGetSelectedId}>
+          <RecordContextMenu getSelectedId={mockGetSelectedId}>
             <div>Test Content</div>
-          </HitContextMenu>
+          </RecordContextMenu>
         </Wrapper>
       );
 
@@ -1225,9 +1225,9 @@ describe('HitContextMenu', () => {
 
       rerender(
         <Wrapper>
-          <HitContextMenu getSelectedId={mockGetSelectedId}>
+          <RecordContextMenu getSelectedId={mockGetSelectedId}>
             <div>Test Content</div>
-          </HitContextMenu>
+          </RecordContextMenu>
         </Wrapper>
       );
 
