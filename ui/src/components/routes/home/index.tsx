@@ -8,33 +8,20 @@ import {
   type DragEndEvent
 } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import { Cancel, Check, Close, Edit, MoreVert, OpenInNew } from '@mui/icons-material';
-import {
-  Alert,
-  AlertTitle,
-  CircularProgress,
-  FormControl,
-  FormLabel,
-  Grid,
-  IconButton,
-  ListItemIcon,
-  Menu,
-  MenuItem,
-  Slider,
-  Stack,
-  Typography
-} from '@mui/material';
+import { Cancel, Check, Close, OpenInNew } from '@mui/icons-material';
+import { Alert, AlertTitle, CircularProgress, Grid, IconButton, Stack, Typography } from '@mui/material';
 import api from 'api';
 import { AppBrand } from 'branding/AppBrand';
 import { useAppUser } from 'commons/components/app/hooks';
 import PageCenter from 'commons/components/pages/PageCenter';
+import { AppBarContext } from 'components/app/providers/AppBarProvider';
 import CustomButton from 'components/elements/addons/buttons/CustomButton';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useMyUserFunctions from 'components/hooks/useMyUserFunctions';
 import dayjs from 'dayjs';
 import isEqual from 'lodash-es/isEqual';
 import type { HowlerUser } from 'models/entities/HowlerUser';
-import { useCallback, useEffect, useMemo, useRef, useState, type FC } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { StorageKey } from 'utils/constants';
@@ -42,15 +29,17 @@ import ErrorBoundary from '../ErrorBoundary';
 import AddNewCard from './AddNewCard';
 import AnalyticCard, { type AnalyticSettings } from './AnalyticCard';
 import EntryWrapper from './EntryWrapper';
+import HomeSettings from './HomeSettings';
 import ViewCard, { type ViewSettings } from './ViewCard';
 import ViewRefresh, { type ViewRefreshHandle } from './ViewRefresh';
 
 const LUCENE_DATE_FMT = 'YYYY-MM-DD[T]HH:mm:ss';
-const REFRESH_RATES = [15, 30, 60, 300];
 
 const Home: FC = () => {
   const { t } = useTranslation();
   const { user, setUser } = useAppUser<HowlerUser>();
+  const { addToAppBar, removeFromAppBar } = useContext(AppBarContext);
+
   const { setDashboard, setRefreshRate: setRefreshRateBackend } = useMyUserFunctions();
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -66,7 +55,6 @@ const Home: FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [updatedHitTotal, setUpdatedHitTotal] = useState(0);
   const [dashboard, setStateDashboard] = useState(user.dashboard ?? []);
-  const [openSettings, setOpenSettings] = useState<null | HTMLElement>(null);
   const [refreshRate, setRefreshRate] = useState(user.refresh_rate ?? 15);
   const [refreshTick, setRefreshTick] = useState<symbol | null>(null);
   const viewRefreshRef = useRef<ViewRefreshHandle>(null);
@@ -122,10 +110,6 @@ const Home: FC = () => {
     setRefreshTick(Symbol());
   }, []);
 
-  const handleOpenSettings = (event: React.MouseEvent<HTMLButtonElement>) => {
-    setOpenSettings(event.currentTarget);
-  };
-
   const saveChanges = useCallback(async () => {
     setLoading(true);
 
@@ -178,6 +162,35 @@ const Home: FC = () => {
 
   const viewCardCount = useMemo(() => (dashboard ?? []).filter(e => e.type === 'view').length, [dashboard]);
 
+  useEffect(() => {
+    addToAppBar(
+      'left',
+      'view_refresh',
+      <ViewRefresh
+        ref={viewRefreshRef}
+        refreshRate={refreshRate}
+        viewCardCount={viewCardCount}
+        onRefresh={handleRefresh}
+      />
+    );
+
+    addToAppBar(
+      'left',
+      'home_settings',
+      <HomeSettings
+        isEditing={isEditing}
+        refreshRate={refreshRate}
+        onRefreshRateChange={handleRefreshRateChange}
+        onEdit={() => setIsEditing(true)}
+      />
+    );
+
+    return () => {
+      removeFromAppBar('view_refresh');
+      removeFromAppBar('home_settings');
+    };
+  }, [addToAppBar, handleRefresh, handleRefreshRateChange, isEditing, refreshRate, removeFromAppBar, viewCardCount]);
+
   return (
     <PageCenter maxWidth="100%" textAlign="left" height="100%">
       <ErrorBoundary>
@@ -206,64 +219,6 @@ const Home: FC = () => {
                 {t('save')}
               </CustomButton>
             )}
-            <ViewRefresh
-              ref={viewRefreshRef}
-              refreshRate={refreshRate}
-              viewCardCount={viewCardCount}
-              onRefresh={handleRefresh}
-            />
-            <IconButton onClick={handleOpenSettings}>
-              <MoreVert />
-            </IconButton>
-            <Menu
-              id="settings-menu"
-              anchorEl={openSettings}
-              open={!!openSettings}
-              onClose={() => setOpenSettings(null)}
-            >
-              <MenuItem
-                disabled={isEditing}
-                onClick={() => {
-                  setOpenSettings(null);
-                  setIsEditing(true);
-                }}
-              >
-                <ListItemIcon>
-                  <Edit />
-                </ListItemIcon>
-                {t('page.dashboard.settings.edit')}
-              </MenuItem>
-              <MenuItem
-                disableRipple
-                disableTouchRipple
-                sx={{ '&:hover': { bgcolor: 'transparent' }, cursor: 'default' }}
-              >
-                <FormControl sx={{ px: 2, py: 1, minWidth: 250, pointerEvents: 'auto' }}>
-                  <FormLabel id="refresh-rate-label" sx={{ mb: 2 }}>
-                    {t('page.dashboard.settings.refreshRate')}
-                  </FormLabel>
-                  <Slider
-                    aria-labelledby="refresh-rate-label"
-                    value={REFRESH_RATES.indexOf(refreshRate)}
-                    onChange={(_, value) => handleRefreshRateChange(REFRESH_RATES[value as number])}
-                    step={1}
-                    marks={[
-                      { value: 0, label: '15s' },
-                      { value: 1, label: '30s' },
-                      { value: 2, label: '1m' },
-                      { value: 3, label: '5m' }
-                    ]}
-                    min={0}
-                    max={3}
-                    valueLabelDisplay="auto"
-                    valueLabelFormat={value => {
-                      const rates = ['15s', '30s', '1m', '5m'];
-                      return rates[value] || '';
-                    }}
-                  />
-                </FormControl>
-              </MenuItem>
-            </Menu>
           </Stack>
           {updatedHitTotal > 0 && (
             <Alert

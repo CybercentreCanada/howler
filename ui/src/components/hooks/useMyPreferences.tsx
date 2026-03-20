@@ -22,18 +22,22 @@ import {
   Terminal,
   Topic
 } from '@mui/icons-material';
+import { Stack } from '@mui/material';
 import { AppBrand } from 'branding/AppBrand';
 import type { AppLeftNavElement, AppPreferenceConfigs } from 'commons/components/app/AppConfigs';
+import { AppBarContext } from 'components/app/providers/AppBarProvider';
 import Classification from 'components/elements/display/Classification';
 import DocumentationButton from 'components/elements/display/DocumentationButton';
 import howlerPluginStore from 'plugins/store';
-import { useMemo } from 'react';
+import { Fragment, useContext, useMemo } from 'react';
 import AppMenuBuilder from 'utils/menuUtils';
 
 // This is your App Name that will be displayed in the left drawer and the top navbar
 const APP_NAME = 'howler';
 
 const useMyPreferences = (): AppPreferenceConfigs => {
+  const { leftItems, rightItems } = useContext(AppBarContext);
+
   // The following menu items will show up in the Left Navigation Drawer
   const MENU_ITEMS = useMemo<AppLeftNavElement[]>(
     () => {
@@ -302,14 +306,28 @@ const useMyPreferences = (): AppPreferenceConfigs => {
         adminMenuI18nKey: 'adminmenu',
         quickSearchParam: 'query',
         quickSearchURI: '/hits',
-        leftAfterBreadcrumbs: <DocumentationButton />,
-        rightBeforeSearch: <Classification />
+        leftAfterBreadcrumbs: (
+          <Stack direction="row" spacing={1} alignItems="center">
+            <DocumentationButton />
+            {leftItems.map(item => (
+              <Fragment key={item.id}>{item.component}</Fragment>
+            ))}
+          </Stack>
+        ),
+        rightBeforeSearch: (
+          <Stack direction="row" spacing={1} alignItems="center" pr={1}>
+            {rightItems.map(item => (
+              <Fragment key={item.id}>{item.component}</Fragment>
+            ))}
+            <Classification />
+          </Stack>
+        )
       },
       leftnav: {
         elements: MENU_ITEMS
       }
     }),
-    [USER_MENU_ITEMS, ADMIN_MENU_ITEMS, MENU_ITEMS]
+    [USER_MENU_ITEMS, ADMIN_MENU_ITEMS, MENU_ITEMS, leftItems, rightItems]
   );
 };
 

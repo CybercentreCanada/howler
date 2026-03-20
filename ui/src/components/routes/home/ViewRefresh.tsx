@@ -83,9 +83,9 @@ const ViewRefresh = forwardRef<ViewRefreshHandle, ViewRefreshProps>(
     return (
       <Box sx={{ position: 'relative', display: 'inline-flex' }}>
         {isRefreshing ? (
-          <CircularProgress variant="indeterminate" />
+          <CircularProgress variant="indeterminate" size={32} />
         ) : (
-          <CircularProgress variant="determinate" value={progress} />
+          <CircularProgress variant="determinate" value={progress} size={32} />
         )}
         <Box
           sx={{
@@ -100,7 +100,7 @@ const ViewRefresh = forwardRef<ViewRefreshHandle, ViewRefreshProps>(
           }}
         >
           <Tooltip title={t('refresh')}>
-            <IconButton onClick={triggerRefresh} disabled={isRefreshing} color="primary">
+            <IconButton onClick={triggerRefresh} disabled={isRefreshing} color="primary" size="small">
               <Refresh />
             </IconButton>
           </Tooltip>
