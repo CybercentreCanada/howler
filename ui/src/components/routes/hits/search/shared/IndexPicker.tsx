@@ -7,8 +7,8 @@ import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 
 const FILTER_OPTIONS: { label: string; value: SearchIndex }[] = [
-  { label: 'hit.search.filter.hit', value: 'hit' },
-  { label: 'hit.search.filter.observable', value: 'observable' }
+  { label: 'hit.search.index.hit', value: 'hit' },
+  { label: 'hit.search.index.observable', value: 'observable' }
 ];
 
 const IndexPicker: FC = () => {
