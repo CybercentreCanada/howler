@@ -32,6 +32,7 @@ import SearchTotal from 'components/elements/addons/search/SearchTotal';
 import DevelopmentBanner from 'components/elements/display/features/DevelopmentBanner';
 import useHitSelection from 'components/hooks/useHitSelection';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
+import { uniq } from 'lodash-es';
 import { useCallback, useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
@@ -235,7 +236,7 @@ const HitGrid: FC = () => {
       </Stack>
       <Stack direction="row" spacing={1} width="100%" alignItems="center">
         <QuerySettings boxSx={{ flex: 1 }} />
-        <AddColumnModal columns={columns} addColumn={key => setColumns([...columns, key])} />
+        <AddColumnModal columns={columns} addColumn={key => setColumns(uniq([...columns, key]))} />
       </Stack>
       <Stack
         component={Paper}
