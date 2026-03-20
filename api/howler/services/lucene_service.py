@@ -60,12 +60,14 @@ class LuceneProcessor(TreeVisitor):
         for child in node.children:
             child_context = self.child_context(node, child, context)
             for result in self.visit_iter(child, context=child_context):
-                # If we run across a MUST or MUST NOT (plus, probhit) object and the value doesn't match, we immediately
-                # shortcircuit and return false.
+                # If we run across a MUST or MUST NOT (plus, prohibit) object and the value doesn't match, we
+                # immediately shortcircuit and return false.
+                # NOTE: visit_prohibit already negates the inner result, so a violated MUST NOT arrives here as
+                # False (not True). We therefore short-circuit on `not result` rather than `result`.
                 if isinstance(child, Plus) and not result:
                     yield False
                     return
-                elif isinstance(child, Prohibit) and result:
+                elif isinstance(child, Prohibit) and not result:
                     yield False
                     return
 
