@@ -1,20 +1,29 @@
 import { Box, Divider, Typography } from '@mui/material';
 import useMatchers from 'components/app/hooks/useMatchers';
+import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
+import { isNil } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Template } from 'models/entities/generated/Template';
 import type { WithMetadata } from 'models/WithMetadata';
 import type { FC } from 'react';
 import { createElement, memo, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { StorageKey } from 'utils/constants';
 import { HitLayout } from './HitLayout';
 import DefaultOutline from './outlines/DefaultOutline';
 
-export const DEFAULT_FIELDS = ['howler.hash'];
+export const DEFAULT_FIELDS = ['event.created', 'howler.id', 'howler.hash'];
 
-const HitOutline: FC<{ hit: WithMetadata<Hit>; layout: HitLayout }> = ({ hit, layout }) => {
+const HitOutline: FC<{ hit: WithMetadata<Hit>; layout: HitLayout; forceAllFields?: boolean }> = ({
+  hit,
+  layout,
+  forceAllFields = false
+}) => {
   const { t } = useTranslation();
 
   const { getMatchingTemplate } = useMatchers();
+
+  const [templateFieldCount] = useMyLocalStorageItem(StorageKey.TEMPLATE_FIELD_COUNT, null);
 
   const [template, setTemplate] = useState<Template>(null);
 
@@ -28,7 +37,10 @@ const HitOutline: FC<{ hit: WithMetadata<Hit>; layout: HitLayout }> = ({ hit, la
         hit,
         layout,
         template,
-        fields: layout === HitLayout.DENSE ? [...template.keys].slice(0, 3) : template.keys,
+        fields:
+          !isNil(templateFieldCount) && !forceAllFields
+            ? [...template.keys].slice(0, templateFieldCount)
+            : template.keys,
         readonly: template.type === 'readonly'
       });
     } else {
@@ -38,7 +50,7 @@ const HitOutline: FC<{ hit: WithMetadata<Hit>; layout: HitLayout }> = ({ hit, la
         fields: DEFAULT_FIELDS
       });
     }
-  }, [hit, layout, template]);
+  }, [hit, layout, template, templateFieldCount]);
 
   return (
     <Box sx={{ py: 1, width: '100%', pr: 2 }}>

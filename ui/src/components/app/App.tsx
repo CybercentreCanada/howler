@@ -72,6 +72,7 @@ import useMySearch from '../hooks/useMySearch';
 import AppContainer from './AppContainer';
 import AnalyticProvider from './providers/AnalyticProvider';
 import ApiConfigProvider, { ApiConfigContext } from './providers/ApiConfigProvider';
+import AppBarProvider from './providers/AppBarProvider';
 import AvatarProvider from './providers/AvatarProvider';
 import CustomPluginProvider from './providers/CustomPluginProvider';
 import FavouriteProvider from './providers/FavouritesProvider';
@@ -212,10 +213,12 @@ const AppProviderWrapper = () => {
     <I18nextProvider i18n={i18n as any} defaultNS="translation">
       <ApiConfigProvider>
         <PluginProvider pluginStore={howlerPluginStore.pluginStore}>
-          <MyAppProvider>
-            <MyApp />
-            <Modal />
-          </MyAppProvider>
+          <AppBarProvider>
+            <MyAppProvider>
+              <MyApp />
+              <Modal />
+            </MyAppProvider>
+          </AppBarProvider>
         </PluginProvider>
       </ApiConfigProvider>
     </I18nextProvider>

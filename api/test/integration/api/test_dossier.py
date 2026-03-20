@@ -209,3 +209,87 @@ def test_get_dossier_for_hit(datastore: HowlerDatastore, login_session):
 
         datastore.dossier.delete(created_dossier_id)
         datastore.dossier.commit()
+
+
+# noinspection PyUnusedLocal
+def test_get_dossier_for_hit_user_scoping(datastore: HowlerDatastore, login_session):
+    "Test that get_dossier_for_hit returns global and personal-own dossiers, but not other users' personal dossiers."
+    session, host = login_session
+
+    test_hit_id = "test-hit-dossier-scoping"
+    hit_data = {
+        "howler": {
+            "id": test_hit_id,
+            "analytic": "Scoping Test Analytic",
+            "hash": "ab12cd34ef56ab12cd34ef56ab12cd34ef56ab12cd34ef56ab12cd34ef56ab12",
+            "score": "0.5",
+            "assignment": "admin",
+            "outline": {
+                "threat": "10.0.0.2",
+                "target": "scoping-target",
+                "indicators": ["scoping-indicator"],
+                "summary": "Hit for user-scoping dossier test",
+            },
+        },
+        "event": {"provider": "test"},
+    }
+    datastore.hit.save(test_hit_id, hit_data)
+    datastore.hit.commit()
+
+    matching_query = f'howler.id:"{test_hit_id}"'
+
+    # Create a personal dossier owned by admin (the logged-in user) - should be returned
+    personal_admin_res = get_api_data(
+        session,
+        f"{host}/api/v1/dossier/",
+        method="POST",
+        data=json.dumps({"title": "Admin Personal Dossier", "query": matching_query, "type": "personal", "leads": []}),
+    )
+    personal_admin_dossier_id = personal_admin_res["dossier_id"]
+
+    # Directly save a personal dossier owned by another user - should NOT be returned for admin
+    from howler.odm.models.dossier import Dossier as DossierModel
+
+    other_user_dossier = DossierModel(
+        {
+            "title": "Other User Personal Dossier",
+            "query": matching_query,
+            "type": "personal",
+            "owner": "other_user",
+            "leads": [],
+        }
+    )
+    other_user_dossier_id = other_user_dossier.dossier_id
+    datastore.dossier.save(other_user_dossier_id, other_user_dossier)
+    datastore.dossier.commit()
+
+    try:
+        resp = get_api_data(
+            session,
+            f"{host}/api/v1/dossier/hit/{test_hit_id}/",
+            method="GET",
+        )
+
+        assert isinstance(resp, list)
+
+        returned_ids = [d["dossier_id"] for d in resp]
+
+        # Admin's own personal dossier should be visible
+        assert personal_admin_dossier_id in returned_ids
+
+        # Another user's personal dossier should NOT be visible
+        assert other_user_dossier_id not in returned_ids
+
+        # All returned dossiers must be either global or owned by admin
+        for dossier in resp:
+            assert (
+                dossier["type"] == "global" or dossier["owner"] == "admin"
+            ), f"Unexpected dossier in results: {dossier}"
+
+    finally:
+        datastore.hit.delete(test_hit_id)
+        datastore.hit.commit()
+
+        datastore.dossier.delete(personal_admin_dossier_id)
+        datastore.dossier.delete(other_user_dossier_id)
+        datastore.dossier.commit()

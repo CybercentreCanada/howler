@@ -33,6 +33,7 @@ const LocalSection: FC = () => {
   const [displayType, setDisplayType] = useMyLocalStorageItem(StorageKey.DISPLAY_TYPE, 'list');
   const [pageCount, setPageCount] = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25);
   const [searchWidth, setSearchWidth] = useMyLocalStorageItem(StorageKey.SEARCH_PANE_WIDTH, null);
+  const [templateFieldCount, setTemplateFieldCount] = useMyLocalStorageItem(StorageKey.TEMPLATE_FIELD_COUNT, null);
 
   return (
     <SettingsSection title={t('page.settings.local.title')} colSpan={3}>
@@ -101,6 +102,18 @@ const LocalSection: FC = () => {
           </Typography>
         </TableCell>
       </TableRow>
+      <EditRow
+        titleKey="page.settings.local.hits.field_count"
+        descriptionKey="page.settings.local.hits.field_count.description"
+        value={templateFieldCount}
+        type="range"
+        min={0}
+        step={1}
+        max={15}
+        optional
+        onEdit={async value => setTemplateFieldCount(value ? parseInt(value) : null)}
+        valueLabelFormat={val => val.toString()}
+      />
       <TableRow>
         <TableCell sx={CELL_SX} style={{ whiteSpace: 'nowrap' }}>
           {t('page.settings.local.hits.display_type')}

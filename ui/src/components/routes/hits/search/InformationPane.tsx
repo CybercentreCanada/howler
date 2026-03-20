@@ -221,7 +221,7 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
         {!!hit &&
           (!loading ? (
             <>
-              <HitOutline hit={hit} layout={HitLayout.DENSE} />
+              <HitOutline hit={hit} layout={HitLayout.DENSE} forceAllFields />
               <HitLabels hit={hit} />
             </>
           ) : (
