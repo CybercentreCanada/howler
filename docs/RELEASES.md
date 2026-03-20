@@ -7,10 +7,12 @@
 - **Dossier Save Notifications** *(new feature)*: Added success notifications when a dossier is created or updated in the dossier editor.
 - **Template Field Count in Details** *(bugfix)*: Fixed issue where template field count was incorrectly affecting the details view.
 - **View Card Navigation** *(bugfix)*: Fixed view card to correctly open the view it is referring to.
+- **Dashboard Edit Controls** *(improvement)*: Moved dashboard edit/refresh icons to the App Bar to reclaim some vertical space.
 
 ## Howler API `v3.2.1`
 
 - **Dossier Query Visibility** *(bugfix)*: Fixed dossier queries not respecting dossier visibility settings.
+- **Lucene AND NOT / Negation Fix** *(bugfix)*: Fixed `AND NOT` and minus-prefix (`-field:value`) negation in `lucene_service` not being respected. A inverted short-circuit condition in `visit_bool_operation` caused prohibited terms to be ignored, so dossier queries like `_exists_:threat.technique.id AND NOT howler.labels.assignments:msfit` would incorrectly match alerts that should have been excluded.
 
 ## Howler UI `v2.17.1`
 

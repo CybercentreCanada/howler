@@ -260,6 +260,20 @@ README.md, LICENSE, .gitignore, .pre-commit-config.yaml, pyrightconfig.json
 
 ---
 
+### Changelog Entries for Bug Fixes
+
+When both of the following are true:
+1. The agent is relatively confident in a bug fix (i.e. root cause identified, fix verified by tests), AND
+2. The current branch is a trunk branch (`develop`, `main`) or a patch/RC branch (e.g. `patch/*`, `rc/*`)
+
+...then a changelog entry **must** be added to `docs/RELEASES.md` under the appropriate version heading before finishing the task. Follow the existing format:
+
+```markdown
+- **Short Title** *(bugfix)*: One-sentence description of what was broken and what was fixed.
+```
+
+---
+
 ### Terminal Output Restriction
 
 **This repository's VS Code settings suppress terminal output from being returned to the agent.** Running commands via the terminal tool will yield no output — the terminal appears to complete with exit code 0 but all stdout/stderr is suppressed.
