@@ -1,5 +1,17 @@
 # Howler Releases
 
+## Howler UI `v2.17.2`
+
+- **Table Settings Persistence** *(new feature)*: Added persistence to table settings in grid view so display preferences are retained across sessions.
+- **Field Count in Layout Settings** *(new feature)*: Added field count control to layout settings for more granular display configuration.
+- **Dossier Save Notifications** *(new feature)*: Added success notifications when a dossier is created or updated in the dossier editor.
+- **Template Field Count in Details** *(bugfix)*: Fixed issue where template field count was incorrectly affecting the details view.
+- **View Card Navigation** *(bugfix)*: Fixed view card to correctly open the view it is referring to.
+
+## Howler API `v3.2.1`
+
+- **Dossier Query Visibility** *(bugfix)*: Fixed dossier queries not respecting dossier visibility settings.
+
 ## Howler UI `v2.17.1`
 
 - **Dashboard Refresh Re-render Fix** *(bugfix)*: Fixed full-page re-renders caused by the auto-refresh countdown timer living in the root dashboard component.
