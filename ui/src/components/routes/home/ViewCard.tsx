@@ -207,7 +207,7 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
             size="small"
             component={Link}
             disabled={!view}
-            to={view ? buildViewUrl(view) : null}
+            to={view ? buildViewUrl(view) : ''}
             onClick={() => onClick(view.query)}
           >
             <OpenInNew fontSize="small" />

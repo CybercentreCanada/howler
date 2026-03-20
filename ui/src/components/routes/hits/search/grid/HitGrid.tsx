@@ -165,7 +165,7 @@ const HitGrid: FC = () => {
     (event: DragEndEvent) => {
       const { active, over } = event;
 
-      if (active.id !== over.id) {
+      if (over && active.id !== over.id) {
         const oldIndex = (columns ?? []).findIndex(entry => entry === active.id);
         const newIndex = (columns ?? []).findIndex(entry => entry === over.id);
 
@@ -201,13 +201,15 @@ const HitGrid: FC = () => {
         >
           {t('hit.search.prompt')}
         </Typography>
-        <SearchTotal
-          sx={{ color: 'text.secondary', fontSize: '0.9em', fontStyle: 'italic', mb: 0.5 }}
-          variant="body2"
-          offset={response.offset}
-          pageLength={response.rows}
-          total={response.total}
-        />
+        {response && (
+          <SearchTotal
+            sx={{ color: 'text.secondary', fontSize: '0.9em', fontStyle: 'italic', mb: 0.5 }}
+            variant="body2"
+            offset={response.offset}
+            pageLength={response.rows}
+            total={response.total}
+          />
+        )}
       </Stack>
       <Stack direction="row" spacing={1}>
         <Stack position="relative" flex={1}>
