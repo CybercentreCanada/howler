@@ -16,6 +16,7 @@ import SearchTotal from 'components/elements/addons/search/SearchTotal';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import ObservableCard from 'components/elements/observable/ObservableCard';
+import RecordContextMenu from 'components/elements/record/RecordContextMenu';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useRecordSelection from 'components/hooks/useRecordSelection';
 import type { Hit } from 'models/entities/generated/Hit';
@@ -30,7 +31,6 @@ import { StorageKey } from 'utils/constants';
 import { isHit, isObservable } from 'utils/typeUtils';
 import LayoutSettings from './LayoutSettings';
 import QuerySettings from './QuerySettings';
-import RecordContextMenu from './RecordContextMenu';
 import RecordQuery from './RecordQuery';
 
 const Item: FC<{
