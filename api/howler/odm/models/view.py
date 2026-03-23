@@ -10,7 +10,9 @@ class Settings(odm.Model):
         description="Should the user advance to the next alert when triage is complete?", default=False
     )
 
+
 DEFAULT_INDEXES = ["hit"]
+
 
 @odm.model(index=True, store=True, description="Model of views")
 class View(odm.Model):
