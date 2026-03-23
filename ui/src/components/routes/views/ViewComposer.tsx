@@ -16,7 +16,7 @@ import {
   Typography
 } from '@mui/material';
 import api from 'api';
-import type { HowlerSearchResponse } from 'api/search';
+import { type HowlerSearchResponse } from 'api/search';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
 import PageCenter from 'commons/components/pages/PageCenter';
 import { ParameterContext, type SearchIndex } from 'components/app/providers/ParameterProvider';
@@ -30,10 +30,12 @@ import VSBoxHeader from 'components/elements/addons/layout/vsbox/VSBoxHeader';
 import SearchTotal from 'components/elements/addons/search/SearchTotal';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
+import ObservableCard from 'components/elements/observable/ObservableCard';
 import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import type { Hit } from 'models/entities/generated/Hit';
+import type { Observable } from 'models/entities/generated/Observable';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
@@ -60,7 +62,7 @@ const ViewComposer: FC = () => {
 
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
-  const loadHits = useContextSelector(RecordContext, ctx => ctx.loadRecords);
+  const loadRecords = useContextSelector(RecordContext, ctx => ctx.loadRecords);
 
   // view state
   const [title, setTitle] = useState('');
@@ -79,15 +81,14 @@ const ViewComposer: FC = () => {
   const [isSearchDirty, setIsSearchDirty] = useState(false);
   const [searching, setSearching] = useState<boolean>(false);
   const [error, setError] = useState<string>(null);
-  const [response, setResponse] = useState<HowlerSearchResponse<Hit>>();
+  const [response, setResponse] = useState<HowlerSearchResponse<Hit | Observable>>();
   const [isLoadingView, setIsLoadingView] = useState(!!routeParams.id);
 
   const onSave = useCallback(async () => {
     setLoading(true);
 
     try {
-      const normalizedIndexes = indexes && indexes.length > 0 ? indexes : ['hit'];
-
+      const normalizedIndexes = indexes?.length > 0 ? indexes : ['hit'];
       if (!routeParams.id) {
         const newView = await addView({
           title,
@@ -137,26 +138,25 @@ const ViewComposer: FC = () => {
     showErrorMessage
   ]);
 
-  const search = useCallback(
-    async (_query: string) => {
-      setQuery(_query);
-
+  const performSearch = useCallback(
+    async (searchQuery: string, searchIndexes: SearchIndex[], searchSort: string, searchSpan: string) => {
       setSearching(true);
       setError(null);
 
       try {
+        const normalizedIndexes = searchIndexes?.length > 0 ? searchIndexes : ['hit'];
         const _response = await dispatchApi(
-          api.v2.search.post(indexes?.length > 0 ? indexes : ['hit'], {
+          api.v2.search.post(normalizedIndexes, {
             rows: pageCount,
-            query: _query,
-            sort,
-            filters: span ? [`event.created:${convertDateToLucene(span)}`] : [],
+            query: searchQuery,
+            sort: searchSort,
+            filters: searchSpan ? [`event.created:${convertDateToLucene(searchSpan)}`] : [],
             metadata: ['template', 'analytic']
           }),
           { showError: false, throwError: true }
         );
 
-        loadHits(_response.items);
+        loadRecords(_response.items);
         setResponse(_response);
       } catch (e) {
         setError(e.message);
@@ -164,7 +164,15 @@ const ViewComposer: FC = () => {
         setSearching(false);
       }
     },
-    [dispatchApi, loadHits, pageCount, setQuery, sort, span, indexes]
+    [dispatchApi, loadRecords, pageCount]
+  );
+
+  const search = useCallback(
+    async (_query: string) => {
+      setQuery(_query);
+      await performSearch(_query, indexes, sort, span);
+    },
+    [performSearch, indexes, sort, span, setQuery]
   );
 
   useEffect(() => {
@@ -200,19 +208,25 @@ const ViewComposer: FC = () => {
 
       setTitle(viewToEdit.title);
       setAdvanceOnTriage(viewToEdit.settings?.advance_on_triage ?? false);
-      setQuery(viewToEdit.query);
 
+      const loadedQuery = viewToEdit.query || DEFAULT_QUERY;
+      const loadedIndexes = (viewToEdit.indexes as SearchIndex[]) || indexes;
+      const loadedSort = viewToEdit.sort || sort;
+      const loadedSpan = viewToEdit.span || span;
+
+      setQuery(loadedQuery);
       if (viewToEdit.indexes) {
-        setIndexes(viewToEdit.indexes as SearchIndex[]);
+        setIndexes(loadedIndexes);
       }
-
       if (viewToEdit.sort) {
-        setSort(viewToEdit.sort);
+        setSort(loadedSort);
+      }
+      if (viewToEdit.span) {
+        setSpan(loadedSpan);
       }
 
-      if (viewToEdit.span) {
-        setSpan(viewToEdit.span);
-      }
+      // Perform search with the loaded values to avoid using stale state
+      await performSearch(loadedQuery, loadedIndexes, loadedSort, loadedSpan);
 
       setIsLoadingView(false);
     })();
@@ -318,9 +332,13 @@ const ViewComposer: FC = () => {
             <VSBoxContent>
               <Stack spacing={1}>
                 {!response?.total && <AppListEmpty />}
-                {response?.items.map(hit => (
-                  <HitCard key={hit.howler.id} id={hit.howler.id} layout={HitLayout.DENSE} />
-                ))}
+                {response?.items.map(record =>
+                  record.__index === 'hit' ? (
+                    <HitCard key={record.howler.id} id={record.howler.id} layout={HitLayout.DENSE} />
+                  ) : (
+                    <ObservableCard key={record.howler.id} observable={record} />
+                  )
+                )}
               </Stack>
             </VSBoxContent>
           </VSBox>
