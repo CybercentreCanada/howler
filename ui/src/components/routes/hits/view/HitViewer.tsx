@@ -36,6 +36,7 @@ import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useMyUserList from 'components/hooks/useMyUserList';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Dossier } from 'models/entities/generated/Dossier';
+import type { Hit } from 'models/entities/generated/Hit';
 import type { FC } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -61,7 +62,7 @@ const HitViewer: FC = () => {
   const { getMatchingOverview, getMatchingDossiers, getMatchingAnalytic } = useMatchers();
 
   const getHit = useContextSelector(RecordContext, ctx => ctx.getRecord);
-  const hit = useContextSelector(RecordContext, ctx => ctx.records[params.id]);
+  const hit = useContextSelector(RecordContext, ctx => ctx.records[params.id] as Hit);
 
   const [userIds, setUserIds] = useState<Set<string>>(new Set());
   const users = useMyUserList(userIds);
