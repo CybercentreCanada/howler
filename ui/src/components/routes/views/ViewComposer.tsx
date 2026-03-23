@@ -19,7 +19,7 @@ import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
 import PageCenter from 'commons/components/pages/PageCenter';
-import { ParameterContext } from 'components/app/providers/ParameterProvider';
+import { ParameterContext, type SearchIndex } from 'components/app/providers/ParameterProvider';
 import { RecordContext } from 'components/app/providers/RecordProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import CustomButton from 'components/elements/addons/buttons/CustomButton';
@@ -86,12 +86,14 @@ const ViewComposer: FC = () => {
     setLoading(true);
 
     try {
+      const normalizedIndexes = indexes && indexes.length > 0 ? indexes : ['hit'];
+
       if (!routeParams.id) {
         const newView = await addView({
           title,
           type,
           query,
-          indexes,
+          indexes: normalizedIndexes,
           sort: sort || null,
           span: span || null,
           settings: {
@@ -105,7 +107,7 @@ const ViewComposer: FC = () => {
           title,
           type,
           query,
-          indexes,
+          indexes: normalizedIndexes,
           sort,
           span,
           settings: { advance_on_triage: advanceOnTriage }
@@ -144,7 +146,7 @@ const ViewComposer: FC = () => {
 
       try {
         const _response = await dispatchApi(
-          api.v2.search.post(indexes, {
+          api.v2.search.post(indexes?.length > 0 ? indexes : ['hit'], {
             rows: pageCount,
             query: _query,
             sort,
@@ -201,7 +203,7 @@ const ViewComposer: FC = () => {
       setQuery(viewToEdit.query);
 
       if (viewToEdit.indexes) {
-        setIndexes(viewToEdit.indexes as any);
+        setIndexes(viewToEdit.indexes as SearchIndex[]);
       }
 
       if (viewToEdit.sort) {
