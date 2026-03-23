@@ -28,9 +28,9 @@ import { Link } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
 import { isHit, isObservable } from 'utils/typeUtils';
-import RecordContextMenu from './HitContextMenu';
 import LayoutSettings from './LayoutSettings';
 import QuerySettings from './QuerySettings';
+import RecordContextMenu from './RecordContextMenu';
 import RecordQuery from './RecordQuery';
 
 const Item: FC<{

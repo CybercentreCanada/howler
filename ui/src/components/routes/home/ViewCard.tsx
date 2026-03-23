@@ -7,7 +7,7 @@ import { ViewContext } from 'components/app/providers/ViewProvider';
 import HitBanner from 'components/elements/hit/HitBanner';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import useMyApi from 'components/hooks/useMyApi';
-import RecordContextMenu from 'components/routes/hits/search/HitContextMenu';
+import RecordContextMenu from 'components/routes/hits/search/RecordContextMenu';
 import type { Hit } from 'models/entities/generated/Hit';
 import { useCallback, useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';

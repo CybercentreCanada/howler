@@ -133,7 +133,7 @@ import type { Hit } from 'models/entities/generated/Hit';
 import { I18nextProvider } from 'react-i18next';
 import { createMockAction, createMockAnalytic, createMockHit, createMockTemplate } from 'tests/utils';
 import { DEFAULT_QUERY } from 'utils/constants';
-import RecordContextMenu from './HitContextMenu';
+import RecordContextMenu from './RecordContextMenu';
 
 const mockGetSelectedId = vi.fn(() => 'test-hit-1');
 const mockConfig = {

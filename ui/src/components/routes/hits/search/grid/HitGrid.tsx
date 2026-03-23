@@ -37,8 +37,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FC } from 'reac
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
-import RecordContextMenu from '../HitContextMenu';
 import QuerySettings from '../QuerySettings';
+import RecordContextMenu from '../RecordContextMenu';
 import RecordQuery from '../RecordQuery';
 import AddColumnModal from './AddColumnModal';
 import ColumnHeader from './ColumnHeader';
