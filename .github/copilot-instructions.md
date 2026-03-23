@@ -274,6 +274,28 @@ When both of the following are true:
 
 ---
 
+### TypeScript: Prefer `const` Arrow Functions
+
+Use `const` arrow functions instead of named `function` declarations for all TypeScript/React code in `ui/`:
+
+```ts
+// Preferred
+const myFn = <T>(arg: T): T => { ... };
+
+// Avoid
+function myFn<T>(arg: T): T { ... }
+```
+
+For overloaded functions, express overload signatures as a typed `const`:
+```ts
+const myFn: {
+  (key: string, list?: false): Scalar;
+  (key: string, list: true): List;
+} = (key, list = false) => { ... };
+```
+
+---
+
 ### Terminal Output Restriction
 
 **This repository's VS Code settings suppress terminal output from being returned to the agent.** Running commands via the terminal tool will yield no output — the terminal appears to complete with exit code 0 but all stdout/stderr is suppressed.
