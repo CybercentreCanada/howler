@@ -63,8 +63,14 @@ repos:
         files: ^ui/.*
       - id: check-commit-msg
         name: Validate Commit Message
-        entry: hooks/commit-msg.py
+        entry: hooks/commit_msg.py
         language: python
         stages: [commit-msg]
         additional_dependencies: ["conventional-pre-commit", "rich"]
         verbose: true
+      - id: check-translation
+        name: check-translation
+        entry: hooks/check_translation.py
+        language: python
+        stages: [pre-commit]
+        files: ^ui/.*
