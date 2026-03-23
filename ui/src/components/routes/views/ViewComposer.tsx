@@ -80,6 +80,7 @@ const ViewComposer: FC = () => {
   const [searching, setSearching] = useState<boolean>(false);
   const [error, setError] = useState<string>(null);
   const [response, setResponse] = useState<HowlerSearchResponse<Hit>>();
+  const [isLoadingView, setIsLoadingView] = useState(!!routeParams.id);
 
   const onSave = useCallback(async () => {
     setLoading(true);
@@ -165,17 +166,20 @@ const ViewComposer: FC = () => {
   );
 
   useEffect(() => {
-    search(query || DEFAULT_QUERY);
+    // Only run initial search if we're NOT editing an existing view
+    if (!routeParams.id) {
+      search(query || DEFAULT_QUERY);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [routeParams.id]);
 
   // We only run this when ancillary properties (i.e. filters, sorting) change
   useEffect(() => {
-    if (query) {
+    if (query && !isLoadingView) {
       search(query);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sort, span]);
+  }, [sort, span, indexes, isLoadingView]);
 
   useEffect(() => {
     if (!routeParams.id) {
@@ -196,6 +200,10 @@ const ViewComposer: FC = () => {
       setAdvanceOnTriage(viewToEdit.settings?.advance_on_triage ?? false);
       setQuery(viewToEdit.query);
 
+      if (viewToEdit.indexes) {
+        setIndexes(viewToEdit.indexes as any);
+      }
+
       if (viewToEdit.sort) {
         setSort(viewToEdit.sort);
       }
@@ -204,9 +212,7 @@ const ViewComposer: FC = () => {
         setSpan(viewToEdit.span);
       }
 
-      if (viewToEdit.indexes) {
-        setIndexes(viewToEdit.indexes as any);
-      }
+      setIsLoadingView(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeParams.id]);
