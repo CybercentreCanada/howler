@@ -19,6 +19,7 @@ import api from 'api';
 import PageCenter from 'commons/components/pages/PageCenter';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import useMyApi from 'components/hooks/useMyApi';
+import useMySnackbar from 'components/hooks/useMySnackbar';
 import { isEqual, omit, uniqBy } from 'lodash-es';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import { memo, useCallback, useEffect, useMemo, useState, type FC } from 'react';
@@ -26,7 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import QueryResultText from '../../elements/display/QueryResultText';
-import HitQuery from '../hits/search/HitQuery';
+import RecordQuery from '../hits/search/RecordQuery';
 import LeadForm from './LeadForm';
 import PivotForm from './PivotForm';
 
@@ -34,6 +35,7 @@ const DossierEditor: FC = () => {
   const { t, i18n } = useTranslation();
   const params = useParams();
   const { dispatchApi } = useMyApi();
+  const { showSuccessMessage } = useMySnackbar();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -171,14 +173,16 @@ const DossierEditor: FC = () => {
       if (!params.id) {
         const result = await dispatchApi(api.dossier.post(dossier));
 
+        showSuccessMessage(t('route.dossiers.manager.create.success'));
         navigate(`/dossiers/${result.dossier_id}/edit`);
       } else {
         setDossier(await dispatchApi(api.dossier.put(dossier.dossier_id, omit(dossier, ['dossier_id', 'id']))));
+        showSuccessMessage(t('route.dossiers.manager.edit.success'));
       }
     } finally {
       setLoading(false);
     }
-  }, [dispatchApi, dossier, navigate, params.id]);
+  }, [dispatchApi, dossier, navigate, params.id, showSuccessMessage, t]);
 
   useEffect(() => {
     if (!params.id) {
@@ -291,7 +295,7 @@ const DossierEditor: FC = () => {
               >
                 {t('hit.search.prompt')}
               </Typography>
-              <HitQuery
+              <RecordQuery
                 disabled={!dossier || loading}
                 onChange={(_val, isDirty) => setSearchDirty(isDirty)}
                 triggerSearch={query => setDossier(_dossier => ({ ..._dossier, query }))}

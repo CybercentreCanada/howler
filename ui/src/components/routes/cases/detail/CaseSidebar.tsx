@@ -1,15 +1,16 @@
 import { Circle, Dashboard } from '@mui/icons-material';
-import { Box, Card, Chip, Divider, Skeleton, Stack, Typography, useTheme } from '@mui/material';
+import { alpha, Box, Card, Chip, Divider, Skeleton, Stack, Typography, useTheme } from '@mui/material';
 import dayjs from 'dayjs';
 import type { Case } from 'models/entities/generated/Case';
 import { type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ESCALATION_COLOR_MAP } from '../constants';
 import CaseFolder from './sidebar/CaseFolder';
 
 const CaseSidebar: FC<{ case: Case }> = ({ case: _case }) => {
   const { t } = useTranslation();
+  const location = useLocation();
   const theme = useTheme();
 
   return (
@@ -44,19 +45,25 @@ const CaseSidebar: FC<{ case: Case }> = ({ case: _case }) => {
       <Stack
         direction="row"
         alignItems="center"
-        sx={{
-          cursor: 'pointer',
-          px: 1,
-          py: 1,
-          transition: theme.transitions.create('background', { duration: 100 }),
-          color: `${theme.palette.text.primary} !important`,
-          textDecoration: 'none',
-          background: 'transparent',
-          borderRight: `thin solid ${theme.palette.divider}`,
-          '&:hover': {
-            background: theme.palette.grey[800]
+        sx={[
+          {
+            cursor: 'pointer',
+            px: 1,
+            py: 1,
+            transition: theme.transitions.create('background', { duration: 100 }),
+            color: `${theme.palette.text.primary} !important`,
+            textDecoration: 'none',
+            background: 'transparent',
+            borderRight: `thin solid ${theme.palette.divider}`,
+            '&:hover': {
+              background: theme.palette.grey[800]
+            }
+          },
+          location.pathname === `/cases/${_case?.case_id}` && {
+            background: alpha(theme.palette.grey[600], 0.15),
+            borderRight: `3px solid ${theme.palette.primary.main}`
           }
-        }}
+        ]}
         component={Link}
         to={`/cases/${_case?.case_id}`}
       >
@@ -76,7 +83,7 @@ const CaseSidebar: FC<{ case: Case }> = ({ case: _case }) => {
             borderRight: `thin solid ${theme.palette.divider}`
           }}
         >
-          <Box position="absolute" sx={{ left: 0 }}>
+          <Box position="absolute" sx={{ left: 0, right: 0 }}>
             <CaseFolder case={_case} />
           </Box>
         </Box>

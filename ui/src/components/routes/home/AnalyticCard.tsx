@@ -5,7 +5,7 @@ import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { FC } from 'react';
-import { useContext, useEffect, useRef, useState } from 'react';
+import { memo, useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import Assessment from '../analytics/widgets/Assessment';
@@ -65,4 +65,4 @@ const AnalyticCard: FC<AnalyticSettings> = ({ analyticId, type }) => {
   );
 };
 
-export default AnalyticCard;
+export default memo(AnalyticCard);

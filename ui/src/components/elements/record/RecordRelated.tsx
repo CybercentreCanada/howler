@@ -3,24 +3,25 @@ import ObservableCard from 'components/elements/observable/ObservableCard';
 import useRelatedRecords from 'components/hooks/useRelatedRecords';
 import { groupBy } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
+import type { Observable } from 'models/entities/generated/Observable';
 import { useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { isCase, isHit, isObservable } from 'utils/typeUtils';
 import CaseCard from '../case/CaseCard';
-import HitCard from './HitCard';
-import { HitLayout } from './HitLayout';
-import RelatedLink from './related/RelatedLink';
+import HitCard from '../hit/HitCard';
+import { HitLayout } from '../hit/HitLayout';
+import RelatedLink from '../hit/related/RelatedLink';
 
-const HitRelated: FC<{ hit: Hit }> = ({ hit }) => {
+const RecordRelated: FC<{ record: Hit | Observable }> = ({ record }) => {
   const theme = useTheme();
   const { t } = useTranslation();
-  const related = useMemo(() => hit?.howler.related ?? [], [hit?.howler.related]);
+  const related = useMemo(() => record?.howler.related ?? [], [record?.howler.related]);
   const records = useRelatedRecords(related, related.length > 0);
 
   const groups = groupBy(records, '__index');
 
-  const hasLinks = (hit?.howler.links?.length ?? 0) > 0;
+  const hasLinks = (record?.howler.links?.length ?? 0) > 0;
   const tabs = [
     hasLinks && 'links',
     groups.hit?.length > 0 && 'hit',
@@ -31,7 +32,7 @@ const HitRelated: FC<{ hit: Hit }> = ({ hit }) => {
   const [activeTab, setActiveTab] = useState<string | false>(false);
   const currentTab = activeTab !== false && tabs.includes(activeTab) ? activeTab : (tabs[0] ?? false);
 
-  if (!hit) {
+  if (!record) {
     return null;
   }
 
@@ -46,7 +47,7 @@ const HitRelated: FC<{ hit: Hit }> = ({ hit }) => {
 
       {currentTab === 'links' && (
         <Box display="grid" gridTemplateColumns="repeat(auto-fill, minmax(200px, 1fr))" gap={1} pt={1}>
-          {hit.howler.links.map(l => (
+          {record.howler.links.map(l => (
             <RelatedLink key={l.title + l.href} {...l} />
           ))}
         </Box>
@@ -103,4 +104,4 @@ const HitRelated: FC<{ hit: Hit }> = ({ hit }) => {
   );
 };
 
-export default HitRelated;
+export default RecordRelated;

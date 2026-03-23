@@ -40,6 +40,7 @@ jobs:
             revert
             style
             chore
+            release
 
           requireScope: false
           subjectPattern: '^[a-z0-9.-_/, ]+$'

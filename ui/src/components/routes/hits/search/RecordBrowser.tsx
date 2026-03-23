@@ -13,9 +13,9 @@ import {
   useMediaQuery,
   useTheme
 } from '@mui/material';
-import { HitContext } from 'components/app/providers/HitProvider';
-import HitSearchProvider, { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import ParameterProvider, { ParameterContext } from 'components/app/providers/ParameterProvider';
+import { RecordContext } from 'components/app/providers/RecordProvider';
+import RecordSearchProvider, { RecordSearchContext } from 'components/app/providers/RecordSearchProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import FlexPort from 'components/elements/addons/layout/FlexPort';
@@ -67,16 +67,16 @@ const HitBrowser: FC = () => {
   const setOffset = useContextSelector(ParameterContext, ctx => ctx.setOffset);
   const selectedViews = useContextSelector(ParameterContext, ctx => ctx.views);
 
-  const selectedHits = useContextSelector(HitContext, ctx => ctx.selectedHits);
-  const addHitToSelection = useContextSelector(HitContext, ctx => ctx.addHitToSelection);
-  const removeHitFromSelection = useContextSelector(HitContext, ctx => ctx.removeHitFromSelection);
-  const clearSelectedHits = useContextSelector(HitContext, ctx => ctx.clearSelectedHits);
+  const selectedHits = useContextSelector(RecordContext, ctx => ctx.selectedRecords);
+  const addHitToSelection = useContextSelector(RecordContext, ctx => ctx.addRecordToSelection);
+  const removeHitFromSelection = useContextSelector(RecordContext, ctx => ctx.removeRecordFromSelection);
+  const clearSelectedHits = useContextSelector(RecordContext, ctx => ctx.clearSelectedRecords);
 
   const searchPaneWidth = useMyLocalStorageItem(StorageKey.SEARCH_PANE_WIDTH, null)[0];
   const forceDrawer = useMyLocalStorageItem(StorageKey.FORCE_DRAWER, false)[0];
 
-  const displayType = useContextSelector(HitSearchContext, ctx => ctx.displayType);
-  const response = useContextSelector(HitSearchContext, ctx => ctx.response);
+  const displayType = useContextSelector(RecordSearchContext, ctx => ctx.displayType);
+  const response = useContextSelector(RecordSearchContext, ctx => ctx.response);
 
   const location = useLocation();
   const routeParams = useParams();
@@ -258,9 +258,9 @@ const HitBrowser: FC = () => {
 const HitBrowserProvider: FC = () => {
   return (
     <ParameterProvider>
-      <HitSearchProvider>
+      <RecordSearchProvider>
         <HitBrowser />
-      </HitSearchProvider>
+      </RecordSearchProvider>
     </ParameterProvider>
   );
 };

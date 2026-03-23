@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 
 from howler import odm
 from howler.common.exceptions import HowlerValueError
@@ -177,3 +177,10 @@ class Case(odm.Model):
             description="A list of changes to the case with timestamps and attribution.",
         )
     )
+
+    def as_primitives(self, hidden_fields=False, strip_null=True) -> dict[str, Any]:
+        result = super().as_primitives(hidden_fields, strip_null)
+
+        result["__index"] = self.__class__.__name__.lower()
+
+        return result

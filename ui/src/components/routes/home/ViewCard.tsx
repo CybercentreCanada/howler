@@ -2,17 +2,18 @@ import { OpenInNew } from '@mui/icons-material';
 import { Card, CardContent, IconButton, Skeleton, Stack, Typography } from '@mui/material';
 import api from 'api';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
-import { useHitContextSelector } from 'components/app/providers/HitProvider';
+import { useHitContextSelector } from 'components/app/providers/RecordProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import HitBanner from 'components/elements/hit/HitBanner';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import useMyApi from 'components/hooks/useMyApi';
-import HitContextMenu from 'components/routes/hits/search/HitContextMenu';
+import RecordContextMenu from 'components/routes/hits/search/HitContextMenu';
 import type { Hit } from 'models/entities/generated/Hit';
 import { useCallback, useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
+import { buildViewUrl } from 'utils/viewUtils';
 
 // Custom hook to select hits by IDs with proper memoization
 const useSelectHitsByIds = (hitIds: string[]) => {
@@ -84,7 +85,7 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
 
   const view = useContextSelector(ViewContext, ctx => ctx.views[viewId]);
   const fetchViews = useContextSelector(ViewContext, ctx => ctx.fetchViews);
-  const loadHits = useHitContextSelector(ctx => ctx.loadHits);
+  const loadHits = useHitContextSelector(ctx => ctx.loadRecords);
 
   // Subscribe to hits from HitProvider cache based on current hitIds in the view
   // Uses memoized selector to avoid unnecessary re-renders on unrelated hit updates
@@ -202,7 +203,13 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
           <Typography variant="h6">
             {t(view?.title) || <Skeleton variant="text" height="2em" width="100px" />}
           </Typography>
-          <IconButton size="small" onClick={() => onClick(view.query)}>
+          <IconButton
+            size="small"
+            component={Link}
+            disabled={!view}
+            to={view ? buildViewUrl(view) : ''}
+            onClick={() => onClick(view.query)}
+          >
             <OpenInNew fontSize="small" />
           </IconButton>
         </Stack>
@@ -213,7 +220,7 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
             <Skeleton height={140} width="100%" variant="rounded" />
           </>
         ) : hits.length > 0 ? (
-          <HitContextMenu getSelectedId={getSelectedId}>
+          <RecordContextMenu getSelectedId={getSelectedId}>
             {hits.map(h => (
               <Card
                 id={h.howler.id}
@@ -227,7 +234,7 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
                 </CardContent>
               </Card>
             ))}
-          </HitContextMenu>
+          </RecordContextMenu>
         ) : (
           <AppListEmpty />
         )}

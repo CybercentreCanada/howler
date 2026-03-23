@@ -16,26 +16,27 @@ import {
 } from '@mui/material';
 import PageCenter from 'commons/components/pages/PageCenter';
 import useMatchers from 'components/app/hooks/useMatchers';
-import { HitContext } from 'components/app/providers/HitProvider';
+import { RecordContext } from 'components/app/providers/RecordProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import HowlerCard from 'components/elements/display/HowlerCard';
 import SocketBadge from 'components/elements/display/icons/SocketBadge';
 import JSONViewer from 'components/elements/display/json/JSONViewer';
 import HitActions from 'components/elements/hit/HitActions';
 import HitBanner from 'components/elements/hit/HitBanner';
-import HitComments from 'components/elements/hit/HitComments';
 import HitLabels from 'components/elements/hit/HitLabels';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import HitLinks from 'components/elements/hit/HitLinks';
 import HitOutline from 'components/elements/hit/HitOutline';
 import HitOverview from 'components/elements/hit/HitOverview';
-import HitRelated from 'components/elements/hit/HitRelated';
-import HitWorklog from 'components/elements/hit/HitWorklog';
 import ObjectDetails from 'components/elements/ObjectDetails';
+import RecordComments from 'components/elements/record/RecordComments';
+import RecordRelated from 'components/elements/record/RecordRelated';
+import RecordWorklog from 'components/elements/record/RecordWorklog';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useMyUserList from 'components/hooks/useMyUserList';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Dossier } from 'models/entities/generated/Dossier';
+import type { Hit } from 'models/entities/generated/Hit';
 import type { FC } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -60,8 +61,8 @@ const HitViewer: FC = () => {
   const [orientation, setOrientation] = useMyLocalStorageItem(StorageKey.VIEWER_ORIENTATION, Orientation.VERTICAL);
   const { getMatchingOverview, getMatchingDossiers, getMatchingAnalytic } = useMatchers();
 
-  const getHit = useContextSelector(HitContext, ctx => ctx.getHit);
-  const hit = useContextSelector(HitContext, ctx => ctx.hits[params.id]);
+  const getHit = useContextSelector(RecordContext, ctx => ctx.getRecord);
+  const hit = useContextSelector(RecordContext, ctx => ctx.records[params.id] as Hit);
 
   const [userIds, setUserIds] = useState<Set<string>>(new Set());
   const users = useMyUserList(userIds);
@@ -123,11 +124,11 @@ const HitViewer: FC = () => {
     return {
       overview: () => <HitOverview hit={hit} />,
       details: () => <ObjectDetails obj={hit} />,
-      hit_comments: () => <HitComments hit={hit} users={users} />,
+      hit_comments: () => <RecordComments record={hit} users={users} />,
       hit_raw: () => <JSONViewer data={hit} />,
       hit_data: () => <JSONViewer data={hit?.howler?.data?.map(entry => tryParse(entry))} collapse={false} />,
-      hit_worklog: () => <HitWorklog hit={hit} users={users} />,
-      hit_related: () => <HitRelated hit={hit} />,
+      hit_worklog: () => <RecordWorklog record={hit} users={users} />,
+      hit_related: () => <RecordRelated record={hit} />,
       ...Object.fromEntries(
         hit?.howler.dossier?.map((lead, index) => ['lead:' + index, () => <LeadRenderer lead={lead} hit={hit} />]) ?? []
       ),
@@ -188,7 +189,7 @@ const HitViewer: FC = () => {
           <HowlerCard tabIndex={0} sx={{ position: 'relative' }}>
             <CardContent>
               <HitBanner hit={hit} layout={HitLayout.COMFY} useListener />
-              <HitOutline hit={hit} layout={HitLayout.COMFY} />
+              <HitOutline hit={hit} layout={HitLayout.COMFY} forceAllFields />
               <HitLabels hit={hit} />
               <HitLinks hit={hit} analytic={analytic} dossiers={dossiers} />
             </CardContent>

@@ -9,10 +9,11 @@ import {
   TableCell,
   TableRow,
   TextField,
-  Typography
+  Typography,
+  type SliderProps
 } from '@mui/material';
 import useMySnackbar from 'components/hooks/useMySnackbar';
-import { isNull, isUndefined } from 'lodash-es';
+import { isNil, isNull, isUndefined } from 'lodash-es';
 import type { KeyboardEventHandler } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,7 +28,9 @@ type EditRowTypes<T extends string | number | boolean> = {
   type?: 'password' | 'number' | 'text' | 'checkbox' | 'range';
   min?: number;
   max?: number;
+  step?: number;
   optional?: boolean;
+  valueLabelFormat?: SliderProps['valueLabelFormat'];
 };
 
 const EditRow = <T extends string | number | boolean>({
@@ -40,6 +43,8 @@ const EditRow = <T extends string | number | boolean>({
   type = 'text',
   min,
   max,
+  step,
+  valueLabelFormat,
   optional
 }: EditRowTypes<T>) => {
   const { t } = useTranslation();
@@ -188,11 +193,13 @@ const EditRow = <T extends string | number | boolean>({
                   <Slider
                     min={min ?? 0}
                     max={max ?? 100}
-                    step={Math.pow(10, Math.floor(Math.log10(max ?? 100) - Math.log10(Math.max(min ?? 0, 1)) / 2))}
+                    step={
+                      step ?? Math.pow(10, Math.floor(Math.log10(max ?? 100) - Math.log10(Math.max(min ?? 0, 1)) / 2))
+                    }
                     onChange={(__, val) => onChange(val as number)}
                     value={editValue as number}
                     valueLabelDisplay="auto"
-                    valueLabelFormat={val => `${val}px`}
+                    valueLabelFormat={valueLabelFormat ?? (val => `${val}px`)}
                   />
                 )}
                 {type === 'password' && (
@@ -238,10 +245,11 @@ const EditRow = <T extends string | number | boolean>({
           <TableCell sx={cellSx} width="100%">
             {type === 'checkbox' ? (
               <Checkbox onChange={ev => onChange(ev.target.checked)} checked={value.toString() === 'true'} />
+            ) : type === 'range' && !isNil(value) ? (
+              ((valueLabelFormat as any) ?? (val => `${val}px`))(value as number)
             ) : (
               (value ?? t('none'))
             )}
-            {type === 'range' && value && 'px'}
           </TableCell>
         )}
         {onEdit && !editing && type !== 'checkbox' && (

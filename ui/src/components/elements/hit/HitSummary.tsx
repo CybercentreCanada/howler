@@ -20,25 +20,27 @@ import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
 import useMatchers from 'components/app/hooks/useMatchers';
 import { FieldContext } from 'components/app/providers/FieldProvider';
-import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
+import { RecordSearchContext } from 'components/app/providers/RecordSearchProvider';
 import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import { isEmpty } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
+import type { Observable } from 'models/entities/generated/Observable';
 import type { WithMetadata } from 'models/WithMetadata';
 import type { FC } from 'react';
 import { memo, useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
+import { isHit } from 'utils/typeUtils';
 import { getTimeRange } from 'utils/utils';
 import PluginChip from '../PluginChip';
 import HitGraph from './aggregate/HitGraph';
 
 const HitSummary: FC<{
-  response?: HowlerSearchResponse<WithMetadata<Hit>>;
+  response?: HowlerSearchResponse<WithMetadata<Hit | Observable>>;
   execute?: boolean;
   onStart?: () => void;
   onComplete?: () => void;
@@ -50,9 +52,9 @@ const HitSummary: FC<{
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
   const { getMatchingTemplate } = useMatchers();
 
-  const searching = useContextSelector(HitSearchContext, ctx => ctx.searching);
-  const error = useContextSelector(HitSearchContext, ctx => ctx.error);
-  const getFilters = useContextSelector(HitSearchContext, ctx => ctx.getFilters);
+  const searching = useContextSelector(RecordSearchContext, ctx => ctx.searching);
+  const error = useContextSelector(RecordSearchContext, ctx => ctx.error);
+  const getFilters = useContextSelector(RecordSearchContext, ctx => ctx.getFilters);
 
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
@@ -73,7 +75,7 @@ const HitSummary: FC<{
     try {
       // Get a list of every key in every template of the hits we're searching
       const rawCounts = await Promise.all(
-        (response?.items ?? []).map(async h => {
+        (response?.items ?? []).filter(isHit).map(async h => {
           const matchingTemplate = await getMatchingTemplate(h);
 
           return (matchingTemplate?.keys ?? [])

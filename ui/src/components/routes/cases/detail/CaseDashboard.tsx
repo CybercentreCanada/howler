@@ -62,7 +62,7 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
   }
 
   return (
-    <Grid container spacing={5} width="100%" px={3}>
+    <Grid container spacing={5} width="100%" px={2}>
       <Grid item xs={12}>
         <CaseOverview case={_case} updateCase={updateCase} />
       </Grid>

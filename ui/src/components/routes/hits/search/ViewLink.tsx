@@ -11,8 +11,8 @@ import {
   SelectAll
 } from '@mui/icons-material';
 import { Autocomplete, Chip, CircularProgress, IconButton, Stack, TextField, Tooltip, Typography } from '@mui/material';
-import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
+import { RecordSearchContext } from 'components/app/providers/RecordSearchProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import ChipPopper from 'components/elements/display/ChipPopper';
 import type { View } from 'models/entities/generated/View';
@@ -35,7 +35,7 @@ const ViewLink: FC<{ id: number; viewId: string }> = ({ id, viewId }) => {
   const removeView = useContextSelector(ParameterContext, ctx => ctx.removeView);
   const setParamView = useContextSelector(ParameterContext, ctx => ctx.setView);
 
-  const search = useContextSelector(HitSearchContext, ctx => ctx.search);
+  const search = useContextSelector(RecordSearchContext, ctx => ctx.search);
 
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>(null);

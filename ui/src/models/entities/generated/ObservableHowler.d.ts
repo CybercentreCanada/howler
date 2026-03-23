@@ -16,7 +16,7 @@ export interface ObservableHowler {
   assignment: string;
   comment?: HowlerComment[];
   confidence?: number;
-  data?: string;
+  data?: string[];
   detection?: string;
   dossier?: HowlerDossier[];
   escalation?: string;

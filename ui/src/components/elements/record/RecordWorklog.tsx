@@ -5,6 +5,7 @@ import useMyUtils from 'components/hooks/useMyUtils';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Log } from 'models/entities/generated/Log';
+import type { Observable } from 'models/entities/generated/Observable';
 import type { FC } from 'react';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -14,7 +15,7 @@ import HowlerAvatar from '../display/HowlerAvatar';
 import HowlerCard from '../display/HowlerCard';
 import Markdown from '../display/Markdown';
 
-const HitWorklog: FC<{ hit: Hit; users: { [id: string]: HowlerUser } }> = ({ hit, users }) => {
+const RecordWorklog: FC<{ record: Hit | Observable; users: { [id: string]: HowlerUser } }> = ({ record, users }) => {
   const theme = useTheme();
   const { shiftColor } = useMyUtils();
   const { t } = useTranslation();
@@ -34,15 +35,15 @@ const HitWorklog: FC<{ hit: Hit; users: { [id: string]: HowlerUser } }> = ({ hit
     () => {
       let setInitialVersion = false;
 
-      return (hit?.howler?.log || [])
+      return (record?.howler?.log || [])
         .slice()
         .sort((a, b) => compareTimestamp(b.timestamp, a.timestamp))
         .reduce((acc, l) => {
-          if (!initialVersions[hit.howler.id] && !setInitialVersion) {
+          if (!initialVersions[record.howler.id] && !setInitialVersion) {
             setInitialVersion = true;
             setInitialVersions({
               ...initialVersions,
-              [hit.howler.id]: l.previous_version
+              [record.howler.id]: l.previous_version
             });
           }
 
@@ -55,9 +56,9 @@ const HitWorklog: FC<{ hit: Hit; users: { [id: string]: HowlerUser } }> = ({ hit
           const currArr = acc[acc.length - 1];
           if (
             // Does this log version match the saved version?
-            l.previous_version === initialVersions[hit.howler.id] &&
+            l.previous_version === initialVersions[record.howler.id] &&
             // Does the previous entry not match?
-            currArr[currArr.length - 1].previous_version !== initialVersions[hit.howler.id]
+            currArr[currArr.length - 1].previous_version !== initialVersions[record.howler.id]
           ) {
             // If so, we've figured out where the new logs should start, so we start a new card.
             acc.push([l]);
@@ -75,16 +76,16 @@ const HitWorklog: FC<{ hit: Hit; users: { [id: string]: HowlerUser } }> = ({ hit
         }, [] as Log[][]);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [hit?.howler?.log]
+    [record?.howler?.log]
   );
 
   useEffect(() => {
     // On unmount, mark the latest entry version as the last seen version.
     return () => {
-      if (hit?.howler.id) {
+      if (record?.howler.id) {
         setInitialVersions({
           ...initialVersions,
-          [hit.howler.id]: worklogGroups[0][0]?.previous_version ?? initialVersions[hit.howler.id]
+          [record.howler.id]: worklogGroups[0][0]?.previous_version ?? initialVersions[record.howler.id]
         });
       }
     };
@@ -97,7 +98,11 @@ const HitWorklog: FC<{ hit: Hit; users: { [id: string]: HowlerUser } }> = ({ hit
       return worklogGroups.flatMap((ls, index) => {
         const result = [];
 
-        if (index > 0 && initialVersions[hit.howler.id] && ls[0].previous_version === initialVersions[hit.howler.id]) {
+        if (
+          index > 0 &&
+          initialVersions[record.howler.id] &&
+          ls[0].previous_version === initialVersions[record.howler.id]
+        ) {
           result.push(
             <Divider key="new">
               <Stack direction="row">
@@ -180,7 +185,7 @@ const HitWorklog: FC<{ hit: Hit; users: { [id: string]: HowlerUser } }> = ({ hit
 
         return result;
       });
-    } else if (!hit?.howler) {
+    } else if (!record?.howler) {
       return (
         <>
           <Skeleton width="100%" height={200} variant="rounded" />
@@ -189,7 +194,7 @@ const HitWorklog: FC<{ hit: Hit; users: { [id: string]: HowlerUser } }> = ({ hit
         </>
       );
     }
-  }, [worklogGroups, hit.howler, initialVersions, users, t, shiftColor, theme.palette.text.primary]);
+  }, [worklogGroups, record.howler, initialVersions, users, t, shiftColor, theme.palette.text.primary]);
 
   return (
     <Stack sx={{ p: 2 }} spacing={1}>
@@ -198,4 +203,4 @@ const HitWorklog: FC<{ hit: Hit; users: { [id: string]: HowlerUser } }> = ({ hit
   );
 };
 
-export default HitWorklog;
+export default RecordWorklog;

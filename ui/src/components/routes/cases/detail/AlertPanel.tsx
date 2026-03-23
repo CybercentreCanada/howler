@@ -32,29 +32,30 @@ const AlertPanel: FC<{ case: Case }> = ({ case: _case }) => {
         <Pagination count={alertPages.length} page={alertPage} onChange={(_, page) => setAlertPage(page)} />
       </Stack>
       <Divider />
-      {alertPages[alertPage - 1].map(item => (
-        <Box key={item.id} position="relative">
-          <HitCard layout={HitLayout.DENSE} id={item.id} />
-          <Box
-            component={Link}
-            to={item.path}
-            sx={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              cursor: 'pointer',
-              zIndex: 100,
-              borderRadius: '4px',
-              '&:hover': {
-                background: theme.palette.divider,
-                border: `thin solid ${theme.palette.primary.light}`
-              }
-            }}
-          />
-        </Box>
-      ))}
+      {alertPages?.length > 0 &&
+        alertPages[alertPage - 1].map(item => (
+          <Box key={item.id} position="relative">
+            <HitCard layout={HitLayout.DENSE} id={item.id} />
+            <Box
+              component={Link}
+              to={item.path}
+              sx={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                cursor: 'pointer',
+                zIndex: 100,
+                borderRadius: '4px',
+                '&:hover': {
+                  background: theme.palette.divider,
+                  border: `thin solid ${theme.palette.primary.light}`
+                }
+              }}
+            />
+          </Box>
+        ))}
     </Stack>
   );
 };

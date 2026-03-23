@@ -4,8 +4,8 @@ import TuiIconButton from 'components/elements/addons/buttons/CustomIconButton';
 
 import { Icon } from '@iconify/react';
 import useMatchers from 'components/app/hooks/useMatchers';
-import { HitContext } from 'components/app/providers/HitProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
+import { RecordContext } from 'components/app/providers/RecordProvider';
 import { SocketContext } from 'components/app/providers/SocketProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import VSBox from 'components/elements/addons/layout/vsbox/VSBox';
@@ -16,16 +16,16 @@ import SocketBadge from 'components/elements/display/icons/SocketBadge';
 import JSONViewer from 'components/elements/display/json/JSONViewer';
 import HitActions from 'components/elements/hit/HitActions';
 import HitBanner from 'components/elements/hit/HitBanner';
-import HitComments from 'components/elements/hit/HitComments';
 import HitLabels from 'components/elements/hit/HitLabels';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import HitLinks from 'components/elements/hit/HitLinks';
 import HitOutline from 'components/elements/hit/HitOutline';
 import HitOverview from 'components/elements/hit/HitOverview';
-import HitRelated from 'components/elements/hit/HitRelated';
 import HitSummary from 'components/elements/hit/HitSummary';
-import HitWorklog from 'components/elements/hit/HitWorklog';
 import ObjectDetails from 'components/elements/ObjectDetails';
+import RecordComments from 'components/elements/record/RecordComments';
+import RecordRelated from 'components/elements/record/RecordRelated';
+import RecordWorklog from 'components/elements/record/RecordWorklog';
 import useMyUserList from 'components/hooks/useMyUserList';
 import ErrorBoundary from 'components/routes/ErrorBoundary';
 import type { Analytic } from 'models/entities/generated/Analytic';
@@ -39,6 +39,7 @@ import { useLocation } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { getUserList } from 'utils/hitFunctions';
 import { validateRegex } from 'utils/stringUtils';
+import { isHit } from 'utils/typeUtils';
 import { tryParse } from 'utils/utils';
 import LeadRenderer from '../view/LeadRenderer';
 
@@ -51,7 +52,7 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
   const selected = useContextSelector(ParameterContext, ctx => ctx?.selected) ?? _selected;
   const pluginStore = usePluginStore();
 
-  const getHit = useContextSelector(HitContext, ctx => ctx.getHit);
+  const getRecord = useContextSelector(RecordContext, ctx => ctx.getRecord);
 
   const [userIds, setUserIds] = useState<Set<string>>(new Set());
   const [analytic, setAnalytic] = useState<Analytic>();
@@ -66,7 +67,7 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
 
   const users = useMyUserList(userIds);
 
-  const hit = useContextSelector(HitContext, ctx => ctx.hits[selected]);
+  const record = useContextSelector(RecordContext, ctx => ctx.records[selected]);
 
   howlerPluginStore.plugins.forEach(plugin => {
     pluginStore.executeFunction(`${plugin}.on`, 'viewing');
@@ -77,16 +78,16 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
       return;
     }
 
-    if (!hit?.howler.data) {
+    if (!record?.howler.data) {
       setLoading(true);
-      getHit(selected, true).finally(() => setLoading(false));
+      getRecord(selected, true).finally(() => setLoading(false));
       return;
     }
 
-    setUserIds(getUserList(hit));
+    setUserIds(getUserList(record));
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getHit, selected]);
+  }, [getRecord, selected]);
 
   useEffect(() => {
     if (selected) {
@@ -97,20 +98,22 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
   }, [selected]);
 
   useEffect(() => {
-    if (hit && !analytic) {
-      getMatchingAnalytic(hit).then(setAnalytic);
+    if (isHit(record) && !analytic) {
+      getMatchingAnalytic(record).then(setAnalytic);
     }
-  }, [analytic, getMatchingAnalytic, hit]);
+  }, [analytic, getMatchingAnalytic, record]);
 
   useEffect(() => {
-    if (hit && !_dossiers) {
-      getMatchingDossiers(hit).then(setDossiers);
+    if (isHit(record) && !_dossiers) {
+      getMatchingDossiers(record).then(setDossiers);
     }
-  }, [_dossiers, getMatchingDossiers, hit]);
+  }, [_dossiers, getMatchingDossiers, record]);
 
   useEffect(() => {
-    getMatchingOverview(hit).then(_overview => setHasOverview(!!_overview));
-  }, [getMatchingOverview, hit]);
+    if (isHit(record)) {
+      getMatchingOverview(record).then(_overview => setHasOverview(!!_overview));
+    }
+  }, [getMatchingOverview, record]);
 
   useEffect(() => {
     if (selected && isOpen()) {
@@ -143,38 +146,46 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
       return;
     }
 
-    return {
-      overview: () => <HitOverview hit={hit} />,
-      details: () => <ObjectDetails obj={hit} />,
-      hit_comments: () => <HitComments hit={hit} users={users} />,
-      hit_raw: () => <JSONViewer data={!loading && hit} hideSearch filter={filter} />,
-      hit_data: () => (
+    const defaultContent = {
+      details: () => <ObjectDetails obj={record} />,
+      comments: () => <RecordComments record={record} users={users} />,
+      raw: () => <JSONViewer data={!loading && record} hideSearch filter={filter} />,
+      data: () => (
         <JSONViewer
-          data={!loading && hit?.howler?.data?.map(entry => tryParse(entry))}
+          data={!loading && record?.howler?.data?.map(entry => tryParse(entry))}
           collapse={false}
           hideSearch
           filter={filter}
         />
       ),
-      hit_worklog: () => <HitWorklog hit={!loading && hit} users={users} />,
+      related: () => <RecordRelated record={record} />,
+      worklog: () => <RecordWorklog record={!loading && record} users={users} />
+    };
+
+    if (!isHit(record)) {
+      return defaultContent[tab]?.();
+    }
+
+    return {
+      ...defaultContent,
+      overview: () => <HitOverview hit={record} />,
       hit_aggregate: () => <HitSummary />,
-      hit_related: () => <HitRelated hit={hit} />,
       ...Object.fromEntries(
-        (hit?.howler.dossier ?? []).map((lead, index) => [
+        (record?.howler.dossier ?? []).map((lead, index) => [
           'lead:' + index,
-          () => <LeadRenderer lead={lead} hit={hit} />
+          () => <LeadRenderer lead={lead} hit={record} />
         ])
       ),
       ...Object.fromEntries(
         dossiers.flatMap((_dossier, dossierIndex) =>
           (_dossier.leads ?? []).map((_lead, leadIndex) => [
             `external-lead:${dossierIndex}:${leadIndex}`,
-            () => <LeadRenderer lead={_lead} hit={hit} />
+            () => <LeadRenderer lead={_lead} hit={record} />
           ])
         )
       )
     }[tab]?.();
-  }, [dossiers, filter, hit, loading, tab, users]);
+  }, [dossiers, filter, record, loading, tab, users]);
 
   const hasError = useMemo(() => !validateRegex(filter), [filter]);
 
@@ -199,11 +210,11 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
               <QueryStats />
             </TuiIconButton>
           )}
-          {!!hit && (
+          {!!record && (
             <TuiIconButton
-              tooltip={t('hit.panel.open')}
-              href={`/hits/${selected}`}
-              disabled={!hit || loading}
+              tooltip={t(`${record.__index}.open`)}
+              href={`/${record.__index}s/${selected}`}
+              disabled={!record || loading}
               size="small"
               target="_blank"
             >
@@ -211,23 +222,26 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
             </TuiIconButton>
           )}
         </Stack>
-        <Box pr={2}>
-          {loading || !hit ? (
+        {isHit(record) && (
+          <>
+            <Box pr={2}>
+              <HitBanner layout={HitLayout.DENSE} hit={record} />
+            </Box>
+            {!loading && (
+              <>
+                <HitOutline hit={record} layout={HitLayout.DENSE} forceAllFields />
+                <HitLabels hit={record} />
+              </>
+            )}
+            <HitLinks hit={record} analytic={analytic} dossiers={dossiers} />
+          </>
+        )}
+        {loading && (
+          <>
             <Skeleton variant="rounded" height={152} />
-          ) : (
-            <HitBanner layout={HitLayout.DENSE} hit={hit} />
-          )}
-        </Box>
-        {!!hit &&
-          (!loading ? (
-            <>
-              <HitOutline hit={hit} layout={HitLayout.DENSE} />
-              <HitLabels hit={hit} />
-            </>
-          ) : (
             <Skeleton height={124} />
-          ))}
-        <HitLinks hit={hit} analytic={analytic} dossiers={dossiers} />
+          </>
+        )}
         <VSBoxHeader ml={-1} mr={-1} pb={1} sx={{ top: '0px' }}>
           <Tabs
             value={tab === 'overview' && !hasOverview ? 'details' : tab}
@@ -259,7 +273,7 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
             <Tab
               sx={{ px: 2, minWidth: 0 }}
               label={
-                <Tooltip title={t('hit.viewer.comments')}>
+                <Tooltip title={t('viewer.comments')}>
                   <Badge
                     sx={{
                       '& > .MuiBadge-badge': {
@@ -269,33 +283,34 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
                       },
                       '& > svg': { zIndex: 2 }
                     }}
-                    badgeContent={hit?.howler.comment?.length ?? 0}
+                    badgeContent={record?.howler.comment?.length ?? 0}
                   >
                     <Comment />
                   </Badge>
                 </Tooltip>
               }
-              value="hit_comments"
-              onClick={() => setTab('hit_comments')}
+              value="comments"
+              onClick={() => setTab('comments')}
             />
-            {hasOverview && (
+            {isHit(record) && hasOverview && (
               <Tab label={t('hit.viewer.overview')} value="overview" onClick={() => setTab('overview')} />
             )}
             <Tab label={t('hit.viewer.details')} value="details" onClick={() => setTab('details')} />
-            {hit?.howler.dossier?.map((lead, index) => (
-              <Tab
-                // eslint-disable-next-line react/no-array-index-key
-                key={'lead:' + index}
-                label={
-                  <Stack direction="row" spacing={0.5}>
-                    {lead.icon && <Icon icon={lead.icon} />}
-                    <span>{i18n.language === 'en' ? lead.label.en : lead.label.fr}</span>
-                  </Stack>
-                }
-                value={'lead:' + index}
-                onClick={() => setTab('lead:' + index)}
-              />
-            ))}
+            {isHit(record) &&
+              record?.howler.dossier?.map((lead, index) => (
+                <Tab
+                  // eslint-disable-next-line react/no-array-index-key
+                  key={'lead:' + index}
+                  label={
+                    <Stack direction="row" spacing={0.5}>
+                      {lead.icon && <Icon icon={lead.icon} />}
+                      <span>{i18n.language === 'en' ? lead.label.en : lead.label.fr}</span>
+                    </Stack>
+                  }
+                  value={'lead:' + index}
+                  onClick={() => setTab('lead:' + index)}
+                />
+              ))}
             {dossiers.flatMap((_dossier, dossierIndex) =>
               (_dossier.leads ?? []).map((_lead, leadIndex) => (
                 <Tab
@@ -320,9 +335,9 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
                   <DataObject />
                 </Tooltip>
               }
-              value="hit_data"
-              onClick={() => setTab('hit_data')}
-              disabled={!hit?.howler?.data}
+              value="data"
+              onClick={() => setTab('data')}
+              disabled={!record?.howler?.data}
             />
             <Tab
               sx={{ px: 2, minWidth: 0 }}
@@ -331,8 +346,8 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
                   <Code />
                 </Tooltip>
               }
-              value="hit_raw"
-              onClick={() => setTab('hit_raw')}
+              value="raw"
+              onClick={() => setTab('raw')}
             />
             <Tab
               sx={{ px: 2, minWidth: 0 }}
@@ -341,8 +356,8 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
                   <History />
                 </Tooltip>
               }
-              value="hit_worklog"
-              onClick={() => setTab('hit_worklog')}
+              value="worklog"
+              onClick={() => setTab('worklog')}
             />
             <Tab
               sx={{ px: 2, minWidth: 0 }}
@@ -351,11 +366,11 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
                   <LinkSharp />
                 </Tooltip>
               }
-              value="hit_related"
-              onClick={() => setTab('hit_related')}
+              value="related"
+              onClick={() => setTab('related')}
             />
           </Tabs>
-          {['hit_raw', 'hit_data'].includes(tab) && (
+          {['raw', 'data'].includes(tab) && (
             <Phrase
               sx={{ mt: 1, pr: 1 }}
               value={filter}
@@ -379,10 +394,10 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
           </VSBoxContent>
         </ErrorBoundary>
       </Stack>
-      {!!hit && hit?.howler && (
+      {isHit(record) && (
         <Box pr={2} bgcolor={theme.palette.background.default} position="relative">
           <Divider orientation="horizontal" />
-          <HitActions hit={hit} />
+          <HitActions hit={record} />
         </Box>
       )}
     </VSBox>

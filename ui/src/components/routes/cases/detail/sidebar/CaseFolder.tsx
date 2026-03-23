@@ -10,7 +10,7 @@ import {
   Visibility
 } from '@mui/icons-material';
 import type { SvgIconProps } from '@mui/material';
-import { Skeleton, Stack, Typography, useTheme } from '@mui/material';
+import { alpha, Skeleton, Stack, Typography, useTheme } from '@mui/material';
 import api from 'api';
 import useMyApi from 'components/hooks/useMyApi';
 import { omit } from 'lodash-es';
@@ -56,14 +56,12 @@ const CaseFolder: FC<CaseFolderProps> = ({ case: _case, folder, name, step = -1,
   const tree = useMemo(() => folder || buildTree(_case?.items), [folder, _case?.items]);
   const currentRootCaseId = rootCaseId || _case?.case_id;
 
-  // Stable string key so the effect only re-runs when the actual hit IDs change,
-  // not on every array reference change.
   const hitIds = useMemo(
     () =>
       tree.leaves
         ?.filter(l => l.type?.toLowerCase() === 'hit')
         .map(l => l.id)
-        .filter(id => !!id) ?? [],
+        .filter(Boolean) ?? [],
     [tree.leaves]
   );
 
@@ -100,17 +98,13 @@ const CaseFolder: FC<CaseFolderProps> = ({ case: _case, folder, name, step = -1,
 
       const prev = caseStates[resolvedKey] ?? { open: false, loading: false, data: null };
       const shouldOpen = !prev.open;
+      const shouldFetch = shouldOpen && !!item.id && !prev.data && !prev.loading;
 
-      setCaseStates(current => ({ ...current, [resolvedKey]: { ...prev, open: shouldOpen } }));
+      setCaseStates(current => ({ ...current, [resolvedKey]: { ...prev, open: shouldOpen, loading: shouldFetch } }));
 
-      if (!shouldOpen || !item.id || prev.data || prev.loading) return;
+      if (!shouldFetch) return;
 
-      setCaseStates(current => ({
-        ...current,
-        [resolvedKey]: { ...(current[resolvedKey] ?? prev), loading: true }
-      }));
-
-      dispatchApi(api.v2.case.get(item.id), { throwError: false })
+      dispatchApi(api.v2.case.get(item.id!), { throwError: false })
         .then(caseResponse => {
           if (!caseResponse) return;
           setCaseStates(current => ({ ...current, [resolvedKey]: { ...current[resolvedKey], data: caseResponse } }));
@@ -205,10 +199,12 @@ const CaseFolder: FC<CaseFolderProps> = ({ case: _case, folder, name, step = -1,
                       background: 'transparent',
                       '&:hover': {
                         background: theme.palette.grey[800]
-                      }
+                      },
+                      borderRight: '3px solid transparent'
                     },
                     decodeURIComponent(location.pathname) === itemPath && {
-                      background: theme.palette.grey[800]
+                      background: alpha(theme.palette.grey[600], 0.15),
+                      borderRightColor: theme.palette.primary.main
                     }
                   ]}
                   onClick={() => isCase && toggleCase(leaf, itemKey)}

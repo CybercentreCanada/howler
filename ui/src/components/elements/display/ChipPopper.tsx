@@ -20,6 +20,7 @@ interface ChipPopperProps {
   toggleOnDelete?: boolean;
   disablePortal?: boolean;
   closeOnClick?: boolean;
+  disablePortal?: boolean;
 }
 
 const ChipPopper: FC<ChipPopperProps> = ({
@@ -77,7 +78,7 @@ const ChipPopper: FC<ChipPopperProps> = ({
             typeof minWidth === 'number' ? minWidth : parseInt((minWidth as string)?.replace('px', '')) || 0,
             anchorEl.current?.clientWidth || 0
           ),
-          zIndex: 1
+          zIndex: 1000
         }}
       >
         <Collapse

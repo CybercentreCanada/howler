@@ -174,6 +174,26 @@ README.md, LICENSE, .gitignore, .pre-commit-config.yaml, pyrightconfig.json
 - **Type checks** for frontend (TypeScript).
 - **Formatting**: Prettier for UI, Ruff for Python.
 
+### **Frontend UI Unit Tests**
+
+- **Framework**: Vitest + `@testing-library/react` (`renderHook`, `act`, `waitFor`), jsdom environment.
+- **Setup file**: `ui/src/setupTests.ts` (referenced in `vite.config.ts` `test.setupFiles`).
+- **Scope exclusion**: `vite.config.ts` excludes `src/commons/**` from the default test run. To test a file inside `src/commons/`, pass the path explicitly:
+  ```bash
+  npx vitest run src/commons/path/to/file.test.tsx
+  ```
+- **Shared test helpers** live in `ui/src/tests/`:
+  - `setupLocalStorageMock()` — replaces `window.localStorage` with a `MockLocalStorage` instance whose `getItem`/`setItem`/`removeItem`/`clear` methods are Vitest spies. Call `mockLocalStorage.clear()` and clear the spies in `beforeEach`.
+  - `setupContextSelectorMock()` — re-wires `use-context-selector` to use React's native context so providers work without the full library in tests.
+  - `setupReactRouterMock()` — stubs `react-router-dom` (location, params, navigate, etc.).
+- **`MockLocalStorage` caveat**: `setItem` stores values as strings (`this[key] = \`${val}\``). The key `'key'` is a reserved property name on the object and is read-only — **do not use `'key'` as a storage key in tests**; use descriptive names like `'testkey'`.
+- **Cross-tab events**: jsdom does not propagate `StorageEvent` automatically. Dispatch them manually:
+  ```ts
+  window.dispatchEvent(new StorageEvent('storage', { key: 'mykey', newValue: JSON.stringify(value) }));
+  ```
+  The `key` field of the event **must exactly match** the key string the hook was initialized with.
+- **Hook state updates** must be wrapped in `act()`; assertions go after the `act()` call.
+
 ### **CI/CD, Pre-merge Validation**
 
 - **GitHub Actions** workflows for API, UI, plugins, and docs. See:
@@ -231,5 +251,58 @@ README.md, LICENSE, .gitignore, .pre-commit-config.yaml, pyrightconfig.json
 - Most common failure: Python version mismatch, missing conf files, skipped install, or dependency update.
 - Check documentation/ for deep developer and CI/CD guidance.
 - **For PRs**: Ensure all automated and manual review requirements are satisfied prior to merge to reduce rejection risk.
+
+---
+
+## Agent Notes & Learned Pitfalls
+
+> **IMPORTANT FOR ALL FUTURE AGENTS**: When you learn something new, encounter a pitfall, or discover a non-obvious convention in this repository, **add a note to this section** before finishing your task. This keeps institutional knowledge available across conversations.
+
+---
+
+### Changelog Entries for Bug Fixes
+
+When both of the following are true:
+1. The agent is relatively confident in a bug fix (i.e. root cause identified, fix verified by tests), AND
+2. The current branch is a trunk branch (`develop`, `main`) or a patch/RC branch (e.g. `patch/*`, `rc/*`)
+
+...then a changelog entry **must** be added to `docs/RELEASES.md` under the appropriate version heading before finishing the task. Follow the existing format:
+
+```markdown
+- **Short Title** *(bugfix)*: One-sentence description of what was broken and what was fixed.
+```
+
+---
+
+### TypeScript: Prefer `const` Arrow Functions
+
+Use `const` arrow functions instead of named `function` declarations for all TypeScript/React code in `ui/`:
+
+```ts
+// Preferred
+const myFn = <T>(arg: T): T => { ... };
+
+// Avoid
+function myFn<T>(arg: T): T { ... }
+```
+
+For overloaded functions, express overload signatures as a typed `const`:
+```ts
+const myFn: {
+  (key: string, list?: false): Scalar;
+  (key: string, list: true): List;
+} = (key, list = false) => { ... };
+```
+
+---
+
+### Terminal Output Restriction
+
+**This repository's VS Code settings suppress terminal output from being returned to the agent.** Running commands via the terminal tool will yield no output — the terminal appears to complete with exit code 0 but all stdout/stderr is suppressed.
+
+**Workaround**: Ask the user to run the command and paste the result back. Phrase it clearly:
+> "I can't read terminal output due to repository settings. Please run `<command>` and share the result."
+
+The correct test command for the API is `poetry run test <path>` (not `pytest` directly), run from the `api/` directory.
 
 ---

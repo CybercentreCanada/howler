@@ -84,7 +84,7 @@ vi.mock('../../elements/display/QueryResultText', () => ({
   )
 }));
 
-vi.mock('../hits/search/HitQuery', () => ({
+vi.mock('../hits/search/RecordQuery', () => ({
   default: ({ onChange, triggerSearch, disabled }) => {
     return (
       <div id="hit-query">

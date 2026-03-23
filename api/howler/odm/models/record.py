@@ -1,5 +1,5 @@
 # mypy: ignore-errors
-from typing import Optional
+from typing import Any, Optional
 
 from howler import odm
 from howler.common.logging import get_logger
@@ -334,3 +334,10 @@ class Record(odm.Model):
             reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-vulnerability.html",
         )
     )
+
+    def as_primitives(self, hidden_fields=False, strip_null=True) -> dict[str, Any]:
+        result = super().as_primitives(hidden_fields, strip_null)
+
+        result["__index"] = self.__class__.__name__.lower()
+
+        return result

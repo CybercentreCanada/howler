@@ -20,6 +20,7 @@ import useMyApi from 'components/hooks/useMyApi';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Comment as AnalyticComment } from 'models/entities/generated/Comment';
 import type { Hit } from 'models/entities/generated/Hit';
+import type { Observable } from 'models/entities/generated/Observable';
 import type { SocketEvent } from 'models/socket/HitUpdate';
 import {
   useCallback,
@@ -33,6 +34,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { isHit } from 'utils/typeUtils';
 import { compareTimestamp, sortByTimestamp } from 'utils/utils';
 import Comment from '../Comment';
 import HowlerAvatar from '../display/HowlerAvatar';
@@ -40,12 +42,12 @@ import TypingIndicator from '../display/TypingIndicator';
 
 const MAX_LENGTH = 5000;
 
-interface HitCommentsProps {
-  hit: Hit;
+interface RecordCommentsProps {
+  record: Hit | Observable;
   users: { [id: string]: HowlerUser };
 }
 
-const HitComments: FC<HitCommentsProps> = ({ hit, users }) => {
+const RecordComments: FC<RecordCommentsProps> = ({ record, users }) => {
   const { user } = useAppUser();
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -59,7 +61,7 @@ const HitComments: FC<HitCommentsProps> = ({ hit, users }) => {
   const [length, setLength] = useState(0);
   const [analyticId, setAnalyticId] = useState<string>();
   const [analyticComments, setAnalyticComments] = useState<AnalyticComment[]>([]);
-  const [comments, setComments] = useState(sortByTimestamp(hit?.howler?.comment));
+  const [comments, setComments] = useState(sortByTimestamp(record?.howler?.comment));
 
   const input = useRef<HTMLTextAreaElement>();
 
@@ -90,21 +92,21 @@ const HitComments: FC<HitCommentsProps> = ({ hit, users }) => {
   }, [handler]);
 
   useEffect(() => {
-    if (hit?.howler?.analytic) {
-      getMatchingAnalytic(hit).then(analytic => {
+    if (isHit(record) && record.howler.analytic) {
+      getMatchingAnalytic(record).then(analytic => {
         setAnalyticId(analytic?.analytic_id);
         setAnalyticComments(sortByTimestamp(analytic?.comment ?? []));
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getMatchingAnalytic, hit?.howler?.analytic]);
+  }, [getMatchingAnalytic, record]);
 
   const onSubmit = useCallback(async () => {
-    if (!input.current?.value || !hit || input.current.value.length > MAX_LENGTH) return;
+    if (!input.current?.value || !record || input.current.value.length > MAX_LENGTH) return;
 
     setLoading(true);
     try {
-      const result = await dispatchApi(api.hit.comments.post(hit.howler.id, input.current.value), {
+      const result = await dispatchApi(api.hit.comments.post(record.howler.id, input.current.value), {
         showError: true,
         throwError: true,
         logError: false
@@ -116,7 +118,7 @@ const HitComments: FC<HitCommentsProps> = ({ hit, users }) => {
     } finally {
       setLoading(false);
     }
-  }, [dispatchApi, hit]);
+  }, [dispatchApi, record]);
 
   /**
    * Emit a typing event when textbox is focused
@@ -126,9 +128,9 @@ const HitComments: FC<HitCommentsProps> = ({ hit, users }) => {
       emit({
         broadcast: true,
         action: 'typing',
-        id: hit?.howler?.id
+        id: record?.howler?.id
       }),
-    [emit, hit?.howler?.id]
+    [emit, record?.howler?.id]
   );
 
   /**
@@ -139,9 +141,9 @@ const HitComments: FC<HitCommentsProps> = ({ hit, users }) => {
       emit({
         broadcast: true,
         action: 'stop_typing',
-        id: hit?.howler?.id
+        id: record?.howler?.id
       }),
-    [emit, hit?.howler?.id]
+    [emit, record?.howler?.id]
   );
 
   const onClear = useCallback(() => {
@@ -169,21 +171,21 @@ const HitComments: FC<HitCommentsProps> = ({ hit, users }) => {
 
   const handleDelete = useCallback(
     async (commentId: string) => {
-      await dispatchApi(api.hit.comments.del(hit.howler.id, [commentId]), { throwError: true, showError: true });
+      await dispatchApi(api.hit.comments.del(record.howler.id, [commentId]), { throwError: true, showError: true });
       setComments(comments.filter(cmt => cmt.id !== commentId));
     },
-    [comments, dispatchApi, hit?.howler?.id]
+    [comments, dispatchApi, record?.howler?.id]
   );
 
   const handleEdit = useCallback(
     async (commentId: string, editValue: string) => {
-      await dispatchApi(api.hit.comments.put(hit.howler.id, commentId, editValue), {
+      await dispatchApi(api.hit.comments.put(record.howler.id, commentId, editValue), {
         throwError: true,
         showError: true
       });
       setComments(comments.map(cmt => (cmt.id !== commentId ? cmt : { ...cmt, value: editValue })));
     },
-    [comments, dispatchApi, hit?.howler?.id]
+    [comments, dispatchApi, record?.howler?.id]
   );
 
   const handleQuote = useCallback((value: string) => {
@@ -206,7 +208,7 @@ const HitComments: FC<HitCommentsProps> = ({ hit, users }) => {
   const handleReact = useCallback(
     async (commentId: string, type: string) => {
       if (type) {
-        await dispatchApi(api.hit.comments.react.put(hit.howler.id, commentId, type));
+        await dispatchApi(api.hit.comments.react.put(record.howler.id, commentId, type));
 
         setComments(
           comments.map(cmt =>
@@ -214,7 +216,7 @@ const HitComments: FC<HitCommentsProps> = ({ hit, users }) => {
           )
         );
       } else {
-        await dispatchApi(api.hit.comments.react.del(hit.howler.id, commentId));
+        await dispatchApi(api.hit.comments.react.del(record.howler.id, commentId));
 
         setComments(
           comments.map(cmt =>
@@ -225,19 +227,19 @@ const HitComments: FC<HitCommentsProps> = ({ hit, users }) => {
         );
       }
     },
-    [comments, dispatchApi, hit?.howler.id, user.username]
+    [comments, dispatchApi, record?.howler.id, user.username]
   );
 
   /**
    * Handle loading the comments when the hit changes
    */
   useEffect(() => {
-    if (hit?.howler?.comment) {
-      setComments(hit?.howler?.comment.slice().sort((a, b) => compareTimestamp(b.timestamp, a.timestamp)));
-    } else if (!hit) {
+    if (record?.howler?.comment) {
+      setComments(record?.howler?.comment.slice().sort((a, b) => compareTimestamp(b.timestamp, a.timestamp)));
+    } else if (!record) {
       setComments([]);
     }
-  }, [hit]);
+  }, [record]);
 
   /**
    * This is the comments for the analytic associated with the hit. We show this at the start of the comment
@@ -248,7 +250,7 @@ const HitComments: FC<HitCommentsProps> = ({ hit, users }) => {
       return null;
     }
 
-    const displayedComments = analyticComments.filter(c => !c.detection || c.detection === hit?.howler.detection);
+    const displayedComments = analyticComments.filter(c => !c.detection || c.detection === record?.howler.detection);
 
     return (
       <Accordion variant="outlined">
@@ -274,7 +276,7 @@ const HitComments: FC<HitCommentsProps> = ({ hit, users }) => {
                       )
                     }
                     sx={theme => ({ marginLeft: '0 !important', mr: `${theme.spacing(2)} !important` })}
-                    label={`${hit?.howler?.analytic ?? 'Analytic'}${c.detection ? ' - ' + c.detection : ''}`}
+                    label={`${record?.howler?.analytic ?? 'Analytic'}${c.detection ? ' - ' + c.detection : ''}`}
                   />
                 }
                 users={users}
@@ -284,7 +286,7 @@ const HitComments: FC<HitCommentsProps> = ({ hit, users }) => {
         </AccordionDetails>
       </Accordion>
     );
-  }, [analyticComments, analyticId, hit?.howler.analytic, hit?.howler.detection, navigate, t, users]);
+  }, [analyticComments, analyticId, record?.howler.analytic, record?.howler.detection, navigate, t, users]);
 
   const renderedComments = useMemo(
     () =>
@@ -304,7 +306,7 @@ const HitComments: FC<HitCommentsProps> = ({ hit, users }) => {
 
   return (
     <Stack sx={{ py: 1, pr: 1 }} spacing={1}>
-      {hit && renderedAnalyticComments}
+      {record && renderedAnalyticComments}
       <Stack direction="row" spacing={1}>
         <HowlerAvatar userId={user.username} />
         <TextField
@@ -347,7 +349,7 @@ const HitComments: FC<HitCommentsProps> = ({ hit, users }) => {
           <Send fontSize="small" />
         </IconButton>
       </Stack>
-      {hit ? (
+      {record ? (
         renderedComments
       ) : (
         <>
@@ -369,4 +371,4 @@ const HitComments: FC<HitCommentsProps> = ({ hit, users }) => {
   );
 };
 
-export default HitComments;
+export default RecordComments;

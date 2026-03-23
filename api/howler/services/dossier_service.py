@@ -235,7 +235,9 @@ def update_dossier(dossier_id: str, dossier_data: dict[str, Any], user: User) ->
         raise InvalidDataException("We were unable to update the dossier.", cause=e) from e
 
 
-def get_matching_dossiers(hit: dict[str, Any], dossiers: list[dict[str, Any]] | None = None):
+def get_matching_dossiers(
+    hit: dict[str, Any], dossiers: list[dict[str, Any]] | None = None, username: str | None = None
+):
     """Get a list of dossiers that match a specific security alert/hit.
 
     This function evaluates each dossier's query against the provided hit data
@@ -256,7 +258,7 @@ def get_matching_dossiers(hit: dict[str, Any], dossiers: list[dict[str, Any]] | 
     # Retrieve all dossiers if none provided
     if dossiers is None:
         dossiers = datastore().dossier.search(
-            "dossier_id:*",
+            f"type:global OR owner:{username}" if username else "type:global",
             as_obj=False,
             # TODO: Eventually implement caching here
             rows=1000,

@@ -6,7 +6,7 @@ import type { Template } from 'models/entities/generated/Template';
 import type { WithMetadata } from 'models/WithMetadata';
 import { useContextSelector } from 'use-context-selector';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { HitContext } from '../providers/HitProvider';
+import { RecordContext } from '../providers/RecordProvider';
 import useMatchers from './useMatchers';
 
 // Mock the useContextSelector hook
@@ -61,7 +61,7 @@ describe('useMatchers', () => {
 
     // Mock useContextSelector to return our mock getHit function
     (useContextSelector as any).mockImplementation((context: any, selector: any) => {
-      if (context === HitContext) {
+      if (context === RecordContext) {
         return selector({ getHit: mockGetHit });
       }
       return null;

@@ -1,5 +1,28 @@
 # Howler Releases
 
+## Howler UI `v2.17.2`
+
+- **Table Settings Persistence** *(new feature)*: Added persistence to table settings in grid view so display preferences are retained across sessions.
+- **Field Count in Layout Settings** *(new feature)*: Added field count control to layout settings for more granular display configuration.
+- **Dossier Save Notifications** *(new feature)*: Added success notifications when a dossier is created or updated in the dossier editor.
+- **Template Field Count in Details** *(bugfix)*: Fixed issue where template field count was incorrectly affecting the details view.
+- **View Card Navigation** *(bugfix)*: Fixed view card to correctly open the view it is referring to.
+- **Dashboard Edit Controls** *(improvement)*: Moved dashboard edit/refresh icons to the App Bar to reclaim some vertical space.
+
+## Howler API `v3.2.1`
+
+- **Dossier Query Visibility** *(bugfix)*: Fixed dossier queries not respecting dossier visibility settings.
+- **Lucene AND NOT / Negation Fix** *(bugfix)*: Fixed `AND NOT` and minus-prefix (`-field:value`) negation in `lucene_service` not being respected. A inverted short-circuit condition in `visit_bool_operation` caused prohibited terms to be ignored, so dossier queries like `_exists_:threat.technique.id AND NOT howler.labels.assignments:msfit` would incorrectly match alerts that should have been excluded.
+
+## Howler UI `v2.17.1`
+
+- **Dashboard Refresh Re-render Fix** *(bugfix)*: Fixed full-page re-renders caused by the auto-refresh countdown timer living in the root dashboard component.
+- **Pivot Link Security Fix** *(bugfix)*: Added rel="noopener noreferrer" to dossier links to protect references back to Howler.
+- **Template field count** *(new feature)*: Added ability to more granularly control how many fields to show from a template.
+- **Search Pane Layout Settings** *(new feature)*: Extracted display-type and hit-density controls from `SearchPane` into a dedicated `LayoutSettings` component. The settings chip now shows labelled toggle buttons for both list/grid display type and dense/normal/comfy hit layout, matching the layout controls already available on the Settings page.
+- **Shared Local Storage State** *(improvement)*: Enhanced `useLocalStorageItem` so that all components using the same key share a single logical state. Updates in one component are now reflected immediately in all others on the same page, and changes from other browser tabs are picked up via the native `storage` event.
+- **useLocalStorageItem Unit Tests** *(technical update)*: Added a comprehensive unit test suite for `useLocalStorageItem` covering initialization, the setter, the reset function, same-tab cross-component synchronization, and cross-tab synchronization via `StorageEvent`.
+
 ## Howler UI `v2.17.0`
 
 - **Dashboard Auto Refresh** *(new feature)*: Added automatic refresh functionality to the dashboard for up-to-date data without manual reloading ([#226](https://github.com/CybercentreCanada/howler/pull/226))

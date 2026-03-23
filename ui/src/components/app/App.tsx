@@ -43,7 +43,7 @@ import RetentionDocumentation from 'components/routes/help/RetentionDocumentatio
 import SearchDocumentation from 'components/routes/help/SearchDocumentation';
 import TemplateDocumentation from 'components/routes/help/TemplateDocumentation';
 import ViewDocumentation from 'components/routes/help/ViewDocumentation';
-import HitBrowser from 'components/routes/hits/search/HitBrowser';
+import RecordBrowser from 'components/routes/hits/search/RecordBrowser';
 import HitViewer from 'components/routes/hits/view/HitViewer';
 import Home from 'components/routes/home';
 import OverviewViewer from 'components/routes/overviews/OverviewViewer';
@@ -72,15 +72,16 @@ import useMySearch from '../hooks/useMySearch';
 import AppContainer from './AppContainer';
 import AnalyticProvider from './providers/AnalyticProvider';
 import ApiConfigProvider, { ApiConfigContext } from './providers/ApiConfigProvider';
+import AppBarProvider from './providers/AppBarProvider';
 import AvatarProvider from './providers/AvatarProvider';
 import CustomPluginProvider from './providers/CustomPluginProvider';
 import FavouriteProvider from './providers/FavouritesProvider';
 import FieldProvider from './providers/FieldProvider';
-import HitProvider from './providers/HitProvider';
 import LocalStorageProvider from './providers/LocalStorageProvider';
 import ModalProvider from './providers/ModalProvider';
 import OverviewProvider from './providers/OverviewProvider';
 import ParameterProvider from './providers/ParameterProvider';
+import RecordProvider from './providers/RecordProvider';
 import SocketProvider from './providers/SocketProvider';
 import UserListProvider from './providers/UserListProvider';
 import ViewProvider from './providers/ViewProvider';
@@ -184,7 +185,7 @@ const MyAppProvider: FC<PropsWithChildren> = ({ children }) => {
                     <FieldProvider>
                       <LocalStorageProvider>
                         <SocketProvider>
-                          <HitProvider>
+                          <RecordProvider>
                             <OverviewProvider>
                               <AnalyticProvider>
                                 <FavouriteProvider>
@@ -192,7 +193,7 @@ const MyAppProvider: FC<PropsWithChildren> = ({ children }) => {
                                 </FavouriteProvider>
                               </AnalyticProvider>
                             </OverviewProvider>
-                          </HitProvider>
+                          </RecordProvider>
                         </SocketProvider>
                       </LocalStorageProvider>
                     </FieldProvider>
@@ -212,10 +213,12 @@ const AppProviderWrapper = () => {
     <I18nextProvider i18n={i18n as any} defaultNS="translation">
       <ApiConfigProvider>
         <PluginProvider pluginStore={howlerPluginStore.pluginStore}>
-          <MyAppProvider>
-            <MyApp />
-            <Modal />
-          </MyAppProvider>
+          <AppBarProvider>
+            <MyAppProvider>
+              <MyApp />
+              <Modal />
+            </MyAppProvider>
+          </AppBarProvider>
         </PluginProvider>
       </ApiConfigProvider>
     </I18nextProvider>
@@ -241,11 +244,11 @@ const router = createBrowserRouter([
       },
       {
         path: 'hits',
-        element: <HitBrowser />
+        element: <RecordBrowser />
       },
       {
         path: 'search',
-        element: <HitBrowser />
+        element: <RecordBrowser />
       },
       {
         path: 'hits/:id',
@@ -253,7 +256,7 @@ const router = createBrowserRouter([
       },
       {
         path: 'bundles/:id',
-        element: <HitBrowser />
+        element: <RecordBrowser />
       },
       {
         path: 'cases',
@@ -317,7 +320,7 @@ const router = createBrowserRouter([
       },
       {
         path: 'views/:id',
-        element: <HitBrowser />
+        element: <RecordBrowser />
       },
       {
         path: 'views/:id/edit',

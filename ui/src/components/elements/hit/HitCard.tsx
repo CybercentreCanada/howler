@@ -1,5 +1,6 @@
 import { CardContent, Skeleton } from '@mui/material';
-import { HitContext } from 'components/app/providers/HitProvider';
+import { RecordContext } from 'components/app/providers/RecordProvider';
+import type { Hit } from 'models/entities/generated/Hit';
 import type { FC } from 'react';
 import { memo, useEffect } from 'react';
 import { useContextSelector } from 'use-context-selector';
@@ -10,12 +11,12 @@ import type { HitLayout } from './HitLayout';
 import HitOutline from './HitOutline';
 
 const HitCard: FC<{ id?: string; layout: HitLayout; readOnly?: boolean }> = ({ id, layout, readOnly = true }) => {
-  const getHit = useContextSelector(HitContext, ctx => ctx.getHit);
-  const hit = useContextSelector(HitContext, ctx => ctx.hits[id]);
+  const getRecord = useContextSelector(RecordContext, ctx => ctx.getRecord);
+  const hit = useContextSelector(RecordContext, ctx => ctx.records[id] as Hit);
 
   useEffect(() => {
     if (!hit) {
-      getHit(id);
+      getRecord(id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);

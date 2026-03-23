@@ -16,6 +16,7 @@ from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import SearchException
 from howler.helper.search import get_collection, get_default_sort, has_access_control, list_all_fields
+from howler.odm.models.user import User
 from howler.security import api_login
 from howler.services import hit_service, lucene_service
 
@@ -100,7 +101,7 @@ def search(index, **kwargs):
      "next_deep_paging_id": "asX3f...342",  # ID to pass back for the next page during deep paging
      "items": []}                           # List of results
     """
-    user = kwargs["user"]
+    user: User = kwargs["user"]
     collection = get_collection(index, user)
     default_sort = get_default_sort(index, user)
 
