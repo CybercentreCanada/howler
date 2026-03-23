@@ -50,7 +50,7 @@ export const ViewTitle: FC<ViewTitleProps> = ({ title, type, query, sort, span, 
       <Typography variant="caption">
         <code>{query}</code>
       </Typography>
-      {(sort || span || indexes?.length) && (
+      {(sort || span || indexLabel) && (
         <Stack direction="row" sx={{ mt: 1 }} spacing={1}>
           {sort?.split(',').map(_sort => (
             <Chip
