@@ -16,6 +16,7 @@ type RecursivePartial<T> = {
 // Mock data factories
 export const createMockHit = (overrides?: RecursivePartial<Hit>): Hit =>
   ({
+    __index: 'hit',
     howler: {
       id: 'test-hit-1',
       analytic: 'test-analytic',

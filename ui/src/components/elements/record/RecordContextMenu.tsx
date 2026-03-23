@@ -3,31 +3,18 @@ import {
   Assignment,
   Edit,
   HowToVote,
-  KeyboardArrowRight,
   OpenInNew,
   QueryStats,
   RemoveCircleOutline,
   SettingsSuggest,
   Terminal
 } from '@mui/icons-material';
-import {
-  Box,
-  Divider,
-  Fade,
-  ListItemIcon,
-  ListItemText,
-  Menu,
-  MenuItem,
-  MenuList,
-  Paper,
-  useTheme,
-  type SxProps
-} from '@mui/material';
 import api from 'api';
 import useMatchers from 'components/app/hooks/useMatchers';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { RecordContext } from 'components/app/providers/RecordProvider';
+import ContextMenu, { type ContextMenuEntry } from 'components/elements/ContextMenu';
 import { TOP_ROW, VOTE_OPTIONS, type ActionButton } from 'components/elements/hit/actions/SharedComponents';
 import useHitActions from 'components/hooks/useHitActions';
 import useMyApi from 'components/hooks/useMyApi';
@@ -38,11 +25,10 @@ import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Template } from 'models/entities/generated/Template';
 import howlerPluginStore from 'plugins/store';
-import type { FC, MouseEventHandler, PropsWithChildren } from 'react';
+import type { FC, PropsWithChildren } from 'react';
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
-import { Link } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY } from 'utils/constants';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
@@ -69,13 +55,6 @@ interface RecordContextMenuProps {
 const ORDER = ['assessment', 'vote', 'action'];
 
 /**
- * The margin at the bottom of the screen by which the context menu should be inverted.
- * That is, if right clicking within this many pixels of the bottom, render the context menu to the top right
- * of the pointer instead of the bottom right.
- */
-const CONTEXTMENU_MARGIN = 350;
-
-/**
  * Icon mapping for different action types
  */
 const ICON_MAP = {
@@ -89,12 +68,7 @@ const ICON_MAP = {
  * Provides quick access to common hit actions including assessment, voting,
  * transitions, and exclusion filters based on template fields.
  */
-const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({
-  children,
-  getSelectedId,
-  Component = Box
-}) => {
-  const theme = useTheme();
+const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ children, getSelectedId, Component }) => {
   const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
   const { executeAction } = useMyActionFunctions();
@@ -112,11 +86,7 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({
   const [analytic, setAnalytic] = useState<Analytic>(null);
   const [template, setTemplate] = useState<Template>(null);
 
-  const [anchorEl, setAnchorEl] = useState<HTMLElement>();
-  const [transformProps, setTransformProps] = useState<SxProps>({});
   const [actions, setActions] = useState<Action[]>([]);
-
-  const [show, setShow] = useState<{ [index: string]: EventTarget & HTMLElement }>({});
 
   const records = useMemo(
     () =>
@@ -133,37 +103,13 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({
   const { availableTransitions, canVote, canAssess, assess, vote } = useHitActions(hits);
 
   /**
-   * Handles right-click context menu events.
-   * Opens the context menu at the click location and loads available actions.
+   * Called by ContextMenu after the menu is positioned and opened.
+   * Identifies the clicked record and fetches available actions.
    */
-  const onContextMenu: MouseEventHandler<HTMLDivElement> = useCallback(
-    async event => {
-      if (anchorEl) {
-        event.preventDefault();
-        setAnchorEl(null);
-        return;
-      }
-      event.preventDefault();
-
-      const _id = getSelectedId(event);
+  const onOpen = useCallback(
+    async (event: React.MouseEvent<HTMLElement, MouseEvent>) => {
+      const _id = getSelectedId(event as React.MouseEvent<HTMLDivElement, MouseEvent>);
       setId(_id);
-
-      if (window.innerHeight - event.clientY < 300) {
-        setTransformProps({
-          position: 'fixed',
-          bottom: `${window.innerHeight - event.clientY}px !important`,
-          top: 'unset !important',
-          left: `${event.clientX}px !important`
-        });
-      } else {
-        setTransformProps({
-          position: 'fixed',
-          top: `${event.clientY}px !important`,
-          left: `${event.clientX}px !important`
-        });
-      }
-
-      setAnchorEl(event.target as HTMLElement);
 
       const _actions = (await dispatchApi(api.search.action.post({ query: 'action_id:*' }), { throwError: false }))
         ?.items;
@@ -172,7 +118,7 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({
         setActions(_actions);
       }
     },
-    [anchorEl, dispatchApi, getSelectedId]
+    [dispatchApi, getSelectedId]
   );
 
   const rowStatus = useMemo(
@@ -226,27 +172,6 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({
     return Object.entries(groupBy(_actions, 'type')).sort(([a], [b]) => ORDER.indexOf(a) - ORDER.indexOf(b));
   }, [analytic, assess, availableTransitions, canAssess, canVote, config.lookups, vote, pluginActions]);
 
-  /**
-   * Calculates appropriate styles for submenu positioning.
-   * Adjusts position based on available screen space to prevent overflow.
-   */
-  const calculateSubMenuStyles = useCallback((parent: HTMLElement) => {
-    const baseStyles = { position: 'absolute', maxHeight: '300px', overflow: 'auto' };
-    const defaultStyles = { ...baseStyles, top: 0, left: '100%' };
-
-    if (!parent) {
-      return defaultStyles;
-    }
-
-    const parentBounds = parent.getBoundingClientRect();
-
-    if (window.innerHeight - parentBounds.y < CONTEXTMENU_MARGIN) {
-      return { ...baseStyles, bottom: 0, left: '100%' };
-    }
-
-    return defaultStyles;
-  }, []);
-
   // Load analytic and template data when a hit is selected
   useEffect(() => {
     if (!record?.howler.analytic) {
@@ -258,236 +183,129 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [record]);
 
-  // Reset menu state when context menu is closed
-  useEffect(() => {
-    if (!anchorEl) {
-      setShow({});
-      setAnalytic(null);
+  /**
+   * Builds the declarative items structure for the ContextMenu component.
+   */
+  const items = useMemo<ContextMenuEntry[]>(() => {
+    const result: ContextMenuEntry[] = [
+      {
+        kind: 'item',
+        id: 'open-record',
+        icon: <OpenInNew />,
+        label: t(`${record?.__index ?? 'hit'}.open`),
+        disabled: !record,
+        to: `/${record?.__index}s/${record?.howler.id}`
+      }
+    ];
+
+    if (isHit(record)) {
+      result.push({
+        kind: 'item',
+        id: 'open-analytic',
+        icon: <QueryStats />,
+        label: t('analytic.open'),
+        disabled: !analytic,
+        to: `/analytics/${analytic?.analytic_id}`
+      });
+
+      result.push({ kind: 'divider', id: 'actions-divider' });
+
+      for (const [type, typeItems] of entries) {
+        result.push({
+          kind: 'submenu',
+          id: type,
+          icon: ICON_MAP[type] ?? <Terminal />,
+          label: t(`hit.details.actions.${type}`),
+          disabled: rowStatus[type] === false,
+          items: typeItems.map(a => ({
+            key: a.name,
+            label: a.i18nKey ? t(a.i18nKey) : capitalize(a.name),
+            onClick: a.actionFunction
+          }))
+        });
+      }
+
+      result.push({
+        kind: 'submenu',
+        id: 'actions',
+        icon: <SettingsSuggest />,
+        label: t('route.actions.change'),
+        disabled: actions.length < 1,
+        items: actions.map(action => ({
+          key: action.action_id,
+          label: action.name,
+          onClick: () => executeAction(action.action_id, `howler.id:${record?.howler.id}`)
+        }))
+      });
+
+      if (!isEmpty(template?.keys ?? []) && setQuery) {
+        result.push({ kind: 'divider', id: 'filter-divider' });
+
+        result.push({
+          kind: 'submenu',
+          id: 'excludes',
+          icon: <RemoveCircleOutline />,
+          label: t('hit.panel.exclude'),
+          items: (template?.keys ?? []).flatMap(key => {
+            let newQuery = '';
+            if (query !== DEFAULT_QUERY) {
+              newQuery = `(${query}) AND `;
+            }
+            const value = get(record, key);
+            if (!value) {
+              return [];
+            } else if (Array.isArray(value)) {
+              const sanitizedValues = value
+                .map(toString)
+                .filter(val => !!val)
+                .map(val => `"${sanitizeLuceneQuery(val)}"`);
+              if (sanitizedValues.length < 1) {
+                return [];
+              }
+              newQuery += `-${key}:(${sanitizedValues.join(' OR ')})`;
+            } else {
+              newQuery += `-${key}:"${sanitizeLuceneQuery(value.toString())}"`;
+            }
+            return [{ key, label: key, onClick: () => setQuery(newQuery) }];
+          })
+        });
+
+        result.push({
+          kind: 'submenu',
+          id: 'includes',
+          icon: <AddCircleOutline />,
+          label: t('hit.panel.include'),
+          items: (template?.keys ?? []).flatMap(key => {
+            let newQuery = `(${query}) AND `;
+            const value = get(record, key);
+            if (!value) {
+              return [];
+            } else if (Array.isArray(value)) {
+              const sanitizedValues = value
+                .map(toString)
+                .filter(val => !!val)
+                .map(val => `"${sanitizeLuceneQuery(val)}"`);
+              if (sanitizedValues.length < 1) {
+                return [];
+              }
+              newQuery += `${key}:(${sanitizedValues.join(' OR ')})`;
+            } else {
+              newQuery += `${key}:"${sanitizeLuceneQuery(value.toString())}"`;
+            }
+            return [{ key, label: key, onClick: () => setQuery(newQuery) }];
+          })
+        });
+      }
     }
-  }, [anchorEl]);
+
+    return result;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [record, analytic, template, entries, rowStatus, actions, query, t, setQuery, executeAction]);
 
   return (
-    <Component id="contextMenu" onContextMenu={onContextMenu}>
+    <ContextMenu id="contextMenu" Component={Component} onOpen={onOpen} onClose={() => setAnalytic(null)} items={items}>
       {children}
-      <Menu
-        id="record-menu"
-        open={!!anchorEl}
-        anchorEl={anchorEl}
-        onClose={() => setAnchorEl(null)}
-        slotProps={{
-          paper: {
-            sx: {
-              ...transformProps,
-              overflow: 'visible !important'
-            },
-            elevation: 2
-          }
-        }}
-        MenuListProps={{
-          dense: true,
-          sx: {
-            minWidth: '250px',
-            paddingY: '0 !important',
-            '& > :first-child': {
-              borderTopLeftRadius: theme.shape.borderRadius,
-              borderTopRightRadius: theme.shape.borderRadius
-            },
-            '& > :last-child': {
-              borderBottomLeftRadius: theme.shape.borderRadius,
-              borderBottomRightRadius: theme.shape.borderRadius
-            }
-          }
-        }}
-        anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
-        onClick={() => setAnchorEl(null)}
-      >
-        <MenuItem component={Link} to={`/${record?.__index}s/${record?.howler.id}`} disabled={!record}>
-          <ListItemIcon>
-            <OpenInNew />
-          </ListItemIcon>
-          <ListItemText>{t(`${record?.__index}.open`)}</ListItemText>
-        </MenuItem>
-        {isHit(record) && (
-          <MenuItem component={Link} to={`/analytics/${analytic?.analytic_id}`} disabled={!analytic}>
-            <ListItemIcon>
-              <QueryStats />
-            </ListItemIcon>
-            <ListItemText>{t('hit.analytic.open')}</ListItemText>
-          </MenuItem>
-        )}
-        {isHit(record) && (
-          <>
-            <Divider sx={{ my: '0 !important' }} />
-            {entries.map(([type, items]) => (
-              <MenuItem
-                key={type}
-                id={`${type}-menu-item`}
-                sx={{ position: 'relative' }}
-                onMouseEnter={ev => setShow(_show => ({ ..._show, [type]: ev.target as EventTarget & HTMLLIElement }))}
-                onMouseLeave={() => setShow(_show => ({ ..._show, [type]: null }))}
-                disabled={rowStatus[type] === false}
-              >
-                <ListItemIcon>{ICON_MAP[type] ?? <Terminal />}</ListItemIcon>
-                <ListItemText sx={{ flex: 1 }}>{t(`hit.details.actions.${type}`)}</ListItemText>
-                {rowStatus[type] !== false && (
-                  <KeyboardArrowRight fontSize="small" sx={{ color: 'text.secondary', mr: -1 }} />
-                )}
-                <Fade in={!!show[type]} unmountOnExit>
-                  <Paper id={`${type}-submenu`} sx={calculateSubMenuStyles(show[type])} elevation={2}>
-                    <MenuList sx={{ p: 0, borderTopLeftRadius: 0 }} dense role="group">
-                      {items.map(a => (
-                        <MenuItem value={a.name} onClick={a.actionFunction} key={a.name}>
-                          {a.i18nKey ? t(a.i18nKey) : capitalize(a.name)}
-                        </MenuItem>
-                      ))}
-                    </MenuList>
-                  </Paper>
-                </Fade>
-              </MenuItem>
-            ))}
-            <MenuItem
-              id="actions-menu-item"
-              sx={{ position: 'relative' }}
-              onMouseEnter={ev => setShow(_show => ({ ..._show, actions: ev.target as EventTarget & HTMLLIElement }))}
-              onMouseLeave={() => setShow(_show => ({ ..._show, actions: null }))}
-              disabled={actions.length < 1}
-            >
-              <ListItemIcon>
-                <SettingsSuggest />
-              </ListItemIcon>
-              <ListItemText sx={{ flex: 1 }}>{t('route.actions.change')}</ListItemText>
-              {actions.length > 0 && <KeyboardArrowRight fontSize="small" sx={{ color: 'text.secondary', mr: -1 }} />}
-              <Fade in={!!show.actions} unmountOnExit>
-                <Paper id="actions-submenu" sx={calculateSubMenuStyles(show.actions)} elevation={2}>
-                  <MenuList sx={{ p: 0 }} dense role="group">
-                    {actions.map(action => (
-                      <MenuItem
-                        key={action.action_id}
-                        onClick={() => executeAction(action.action_id, `howler.id:${record?.howler.id}`)}
-                      >
-                        <ListItemText>{action.name}</ListItemText>
-                      </MenuItem>
-                    ))}
-                  </MenuList>
-                </Paper>
-              </Fade>
-            </MenuItem>
-            {!isEmpty(template?.keys ?? []) && setQuery && (
-              <>
-                <Divider />
-                <MenuItem
-                  id="excludes-menu-item"
-                  sx={{ position: 'relative' }}
-                  onMouseEnter={ev =>
-                    setShow(_show => ({ ..._show, excludes: ev.target as EventTarget & HTMLLIElement }))
-                  }
-                  onMouseLeave={() => setShow(_show => ({ ..._show, excludes: null }))}
-                >
-                  <ListItemIcon>
-                    <RemoveCircleOutline />
-                  </ListItemIcon>
-                  <ListItemText sx={{ flex: 1 }}>{t('hit.panel.exclude')}</ListItemText>
-                  <KeyboardArrowRight fontSize="small" sx={{ color: 'text.secondary', mr: -1 }} />
-                  <Fade in={!!show.excludes} unmountOnExit>
-                    <Paper id="excludes-submenu" sx={calculateSubMenuStyles(show.excludes)} elevation={2}>
-                      <MenuList sx={{ p: 0 }} dense role="group">
-                        {template?.keys.map(key => {
-                          // Build exclusion query based on current query and field value
-                          let newQuery = '';
-
-                          if (query !== DEFAULT_QUERY) {
-                            newQuery = `(${query}) AND `;
-                          }
-
-                          const value = get(record, key);
-                          if (!value) {
-                            return null;
-                          } else if (Array.isArray(value)) {
-                            // Handle array values by excluding all items
-                            const sanitizedValues = value
-                              .map(toString)
-                              .filter(val => !!val)
-                              .map(val => `"${sanitizeLuceneQuery(val)}"`);
-
-                            if (sanitizedValues.length < 1) {
-                              return null;
-                            }
-
-                            newQuery += `-${key}:(${sanitizedValues.join(' OR ')})`;
-                          } else {
-                            // Handle single value
-                            newQuery += `-${key}:"${sanitizeLuceneQuery(value.toString())}"`;
-                          }
-
-                          return (
-                            <MenuItem key={key} onClick={() => setQuery(newQuery)}>
-                              <ListItemText>{key}</ListItemText>
-                            </MenuItem>
-                          );
-                        })}
-                      </MenuList>
-                    </Paper>
-                  </Fade>
-                </MenuItem>
-
-                <MenuItem
-                  id="includes-menu-item"
-                  sx={{ position: 'relative' }}
-                  onMouseEnter={ev =>
-                    setShow(_show => ({ ..._show, includes: ev.target as EventTarget & HTMLLIElement }))
-                  }
-                  onMouseLeave={() => setShow(_show => ({ ..._show, includes: null }))}
-                >
-                  <ListItemIcon>
-                    <AddCircleOutline />
-                  </ListItemIcon>
-                  <ListItemText sx={{ flex: 1 }}>{t('hit.panel.include')}</ListItemText>
-                  <KeyboardArrowRight fontSize="small" sx={{ color: 'text.secondary', mr: -1 }} />
-                  <Fade in={!!show.includes} unmountOnExit>
-                    <Paper id="includes-submenu" sx={calculateSubMenuStyles(show.includes)} elevation={8}>
-                      <MenuList sx={{ p: 0 }} dense role="group">
-                        {template?.keys.map(key => {
-                          // Build inclusion query based on current query and field
-                          // If default, we include default query
-                          let newQuery = `(${query}) AND `;
-
-                          const value = get(record, key);
-
-                          if (!value) {
-                            return null;
-                          } else if (Array.isArray(value)) {
-                            // Handle array values by including all items
-                            const sanitizedValues = value
-                              .map(toString)
-                              .filter(val => !!val)
-                              .map(val => `"${sanitizeLuceneQuery(val)}"`);
-
-                            if (sanitizedValues.length < 1) {
-                              return null;
-                            }
-
-                            newQuery += `${key}:(${sanitizedValues.join(' OR ')})`;
-                          } else {
-                            // Handle single value
-                            newQuery += `${key}:"${sanitizeLuceneQuery(value.toString())}"`;
-                          }
-
-                          return (
-                            <MenuItem key={key} onClick={() => setQuery(newQuery)}>
-                              <ListItemText>{key}</ListItemText>
-                            </MenuItem>
-                          );
-                        })}
-                      </MenuList>
-                    </Paper>
-                  </Fade>
-                </MenuItem>
-              </>
-            )}
-          </>
-        )}
-      </Menu>
-    </Component>
+    </ContextMenu>
   );
 };
 

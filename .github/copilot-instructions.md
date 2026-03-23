@@ -314,6 +314,19 @@ const myFn: {
 
 ---
 
+### Frontend UI Tests: Use `id` as the Test ID Attribute
+
+Vitest/testing-library queries that target elements by test ID (e.g. `getByTestId`, `queryByTestId`) use the `id` attribute, **not** `data-testid`. This is configured via `vite.config.ts`:
+
+```ts
+// vite.config.ts (test section)
+testIdAttribute: 'id'
+```
+
+Always set `id="..."` on elements you need to query by test ID. Do not use `data-testid`.
+
+---
+
 ### Terminal Output Restriction
 
 **This repository's VS Code settings suppress terminal output from being returned to the agent.** Running commands via the terminal tool will yield no output — the terminal appears to complete with exit code 0 but all stdout/stderr is suppressed.

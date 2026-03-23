@@ -203,7 +203,7 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
           {analytic && (
             <TuiIconButton
               size="small"
-              tooltip={t('hit.panel.analytic.open')}
+              tooltip={t('analytic.open')}
               disabled={!analytic || loading}
               route={`/analytics/${analytic.analytic_id}`}
             >
