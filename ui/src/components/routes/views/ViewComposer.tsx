@@ -42,6 +42,7 @@ import { buildViewUrl } from 'utils/viewUtils';
 import ErrorBoundary from '../ErrorBoundary';
 import HitQuery from '../hits/search/HitQuery';
 import HitSort from '../hits/search/shared/HitSort';
+import IndexPicker from '../hits/search/shared/IndexPicker';
 import SearchSpan from '../hits/search/shared/SearchSpan';
 
 const ViewComposer: FC = () => {
@@ -54,6 +55,8 @@ const ViewComposer: FC = () => {
   const addView = useContextSelector(ViewContext, ctx => ctx.addView);
   const editView = useContextSelector(ViewContext, ctx => ctx.editView);
   const getCurrentViews = useContextSelector(ViewContext, ctx => ctx.getCurrentViews);
+  const indexes = useContextSelector(ParameterContext, ctx => ctx.indexes);
+  const setIndexes = useContextSelector(ParameterContext, ctx => ctx.setIndexes);
 
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
@@ -87,6 +90,7 @@ const ViewComposer: FC = () => {
           title,
           type,
           query,
+          indexes,
           sort: sort || null,
           span: span || null,
           settings: {
@@ -100,6 +104,7 @@ const ViewComposer: FC = () => {
           title,
           type,
           query,
+          indexes,
           sort,
           span,
           settings: { advance_on_triage: advanceOnTriage }
@@ -123,6 +128,7 @@ const ViewComposer: FC = () => {
     sort,
     span,
     advanceOnTriage,
+    indexes,
     navigate,
     editView,
     showErrorMessage
@@ -137,7 +143,7 @@ const ViewComposer: FC = () => {
 
       try {
         const _response = await dispatchApi(
-          api.search.hit.post({
+          api.v2.search.post(indexes, {
             rows: pageCount,
             query: _query,
             sort,
@@ -155,7 +161,7 @@ const ViewComposer: FC = () => {
         setSearching(false);
       }
     },
-    [dispatchApi, loadHits, pageCount, setQuery, sort, span]
+    [dispatchApi, loadHits, pageCount, setQuery, sort, span, indexes]
   );
 
   useEffect(() => {
@@ -196,6 +202,10 @@ const ViewComposer: FC = () => {
 
       if (viewToEdit.span) {
         setSpan(viewToEdit.span);
+      }
+
+      if (viewToEdit.indexes) {
+        setIndexes(viewToEdit.indexes as any);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -265,6 +275,7 @@ const ViewComposer: FC = () => {
                   onChange={(_query, isDirty) => setIsSearchDirty(isDirty)}
                 />
                 <Stack direction="row" spacing={1}>
+                  <IndexPicker />
                   <HitSort />
                   <SearchSpan omitCustom />
                   <div style={{ flex: 1 }} />

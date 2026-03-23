@@ -22,7 +22,7 @@ export const post = <T = any>(
   }
 
   if (indexes.some(index => !['hit', 'observable', 'case'].includes(index))) {
-    throw new Error('Only hit, case and observable indexes should be used currently.');
+    throw new Error('Only hit, case, and observable indexes should be used currently.');
   }
 
   if (indexes.length < 1) {

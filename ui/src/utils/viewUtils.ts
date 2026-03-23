@@ -13,5 +13,9 @@ export const buildViewUrl = (view: View) => {
     params.set('sort', view.sort);
   }
 
+  if (view.indexes && view.indexes.length > 0) {
+    view.indexes.forEach(index => params.append('index', index));
+  }
+
   return `/search?${params.toString()}`;
 };

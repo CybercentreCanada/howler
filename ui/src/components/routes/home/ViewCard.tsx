@@ -103,7 +103,7 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
 
     try {
       const res = await dispatchApi(
-        api.search.hit.post({
+        api.v2.search.post(view.indexes, {
           query: view.query,
           rows: limit,
           metadata: ['analytic']
@@ -119,7 +119,7 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
       isRefreshing.current = false;
       onRefreshComplete?.();
     }
-  }, [dispatchApi, limit, view?.query, loadHits, onRefreshComplete]);
+  }, [dispatchApi, limit, view?.query, view?.indexes, loadHits, onRefreshComplete]);
 
   const debouncedRefresh = useCallback(() => {
     if (debounceTimerRef.current) {
