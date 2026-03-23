@@ -20,6 +20,7 @@ import {
   MenuItem,
   MenuList,
   Paper,
+  useTheme,
   type SxProps
 } from '@mui/material';
 import api from 'api';
@@ -93,6 +94,7 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({
   getSelectedId,
   Component = Box
 }) => {
+  const theme = useTheme();
   const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
   const { executeAction } = useMyActionFunctions();
@@ -281,7 +283,21 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({
             elevation: 2
           }
         }}
-        MenuListProps={{ dense: true, sx: { minWidth: '250px' } }}
+        MenuListProps={{
+          dense: true,
+          sx: {
+            minWidth: '250px',
+            paddingY: '0 !important',
+            '& > :first-child': {
+              borderTopLeftRadius: theme.shape.borderRadius,
+              borderTopRightRadius: theme.shape.borderRadius
+            },
+            '& > :last-child': {
+              borderBottomLeftRadius: theme.shape.borderRadius,
+              borderBottomRightRadius: theme.shape.borderRadius
+            }
+          }
+        }}
         anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
         onClick={() => setAnchorEl(null)}
       >
@@ -301,7 +317,7 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({
         )}
         {isHit(record) && (
           <>
-            <Divider />
+            <Divider sx={{ my: '0 !important' }} />
             {entries.map(([type, items]) => (
               <MenuItem
                 key={type}
