@@ -22,7 +22,7 @@ repos:
   - repo: local
     hooks:
       - id: poetry-check-api
-        name: poetry-check-api
+        name: Poetry Check (API)
         entry: hooks/check_poetry.sh
         args: [api]
         language: script
