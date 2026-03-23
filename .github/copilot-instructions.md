@@ -274,6 +274,24 @@ When both of the following are true:
 
 ---
 
+### TypeScript: Always Use Braces on `if` Statements
+
+Never use single-line, braceless `if` statements. Always add braces and a newline for the body:
+
+```ts
+// Preferred
+if (!value) {
+  return;
+}
+
+// Avoid
+if (!value) return;
+```
+
+This applies to `for`/`while` loop bodies as well.
+
+---
+
 ### TypeScript: Prefer `const` Arrow Functions
 
 Use `const` arrow functions instead of named `function` declarations for all TypeScript/React code in `ui/`:

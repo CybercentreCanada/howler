@@ -166,7 +166,7 @@ const CaseFolder: FC<CaseFolderProps> = ({ case: _case, folder, name, step = -1,
             const itemType = leaf.type?.toLowerCase();
             const isCase = itemType === 'case';
             const fullRelativePath = [pathPrefix, leaf.path].filter(Boolean).join('/');
-            const itemKey = fullRelativePath || leaf.id;
+            const itemKey = fullRelativePath || leaf.value;
             const nodeState = itemKey ? caseStates[itemKey] : null;
             const isCaseOpen = !!nodeState?.open;
             const isCaseLoading = !!nodeState?.loading;
@@ -178,13 +178,13 @@ const CaseFolder: FC<CaseFolderProps> = ({ case: _case, folder, name, step = -1,
                   : `/cases/${currentRootCaseId}`
                 : leaf.value;
 
-            const escalationColor = getEscalationColor(itemType, itemKey, leaf.id);
+            const escalationColor = getEscalationColor(itemType, itemKey, leaf.value);
             const iconColor = escalationColor ?? ('inherit' as const);
             const leafColor = escalationColor ? `${escalationColor}.light` : 'text.secondary';
             const Icon = ICON_FOR_TYPE[itemType ?? ''] ?? Article;
 
             return (
-              <Stack key={`${_case?.case_id}-${leaf.id}-${leaf.path}`}>
+              <Stack key={`${_case?.case_id}-${leaf.value}-${leaf.path}`}>
                 <Stack
                   direction="row"
                   pl={step * 1.5 + 1}
@@ -231,7 +231,7 @@ const CaseFolder: FC<CaseFolderProps> = ({ case: _case, folder, name, step = -1,
                     color={leafColor}
                     sx={{ userSelect: 'none', pl: 0.5, textWrap: 'nowrap' }}
                   >
-                    {leaf.path?.split('/').pop() || leaf.id}
+                    {leaf.path?.split('/').pop() || leaf.value}
                   </Typography>
                 </Stack>
 

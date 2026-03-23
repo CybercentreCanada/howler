@@ -8,6 +8,7 @@ import type { Hit } from 'models/entities/generated/Hit';
 import type { Observable } from 'models/entities/generated/Observable';
 import { useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useOutletContext } from 'react-router-dom';
 import useCase from '../hooks/useCase';
 import CaseAggregate from './aggregates/CaseAggregate';
 import AlertPanel from './AlertPanel';
@@ -35,7 +36,8 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
   const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
   const theme = useTheme();
-  const { case: _case, updateCase } = useCase({ case: providedCase, caseId });
+  const routeCase = useOutletContext<Case>();
+  const { case: _case, updateCase } = useCase({ case: providedCase ?? routeCase, caseId });
 
   const [records, setRecords] = useState<Partial<Hit | Observable>[] | null>(null);
 

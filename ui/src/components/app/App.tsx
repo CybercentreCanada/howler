@@ -29,6 +29,9 @@ import AnalyticDetails from 'components/routes/analytics/AnalyticDetails';
 import AnalyticSearch from 'components/routes/analytics/AnalyticSearch';
 import CaseViewer from 'components/routes/cases/CaseViewer';
 import Cases from 'components/routes/cases/Cases';
+import CaseAssets from 'components/routes/cases/detail/CaseAssets';
+import CaseDashboard from 'components/routes/cases/detail/CaseDashboard';
+import ItemPage from 'components/routes/cases/detail/ItemPage';
 import DossierEditor from 'components/routes/dossiers/DossierEditor';
 import Dossiers from 'components/routes/dossiers/Dossiers';
 import ActionDocumentation from 'components/routes/help/ActionDocumentation';
@@ -264,11 +267,21 @@ const router = createBrowserRouter([
       },
       {
         path: 'cases/:id',
-        element: <CaseViewer />
-      },
-      {
-        path: 'cases/:id/*',
-        element: <CaseViewer />
+        element: <CaseViewer />,
+        children: [
+          {
+            index: true,
+            element: <CaseDashboard />
+          },
+          {
+            path: 'assets',
+            element: <CaseAssets />
+          },
+          {
+            path: '*',
+            element: <ItemPage />
+          }
+        ]
       },
       {
         path: 'templates',
