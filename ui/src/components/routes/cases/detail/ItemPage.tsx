@@ -68,7 +68,7 @@ const ItemPage: FC<{ case?: Case }> = ({ case: providedCase }) => {
           return;
         }
 
-        if (!matchedNestedCase.id) {
+        if (!matchedNestedCase.value) {
           if (!cancelled) {
             setItem(null);
             setLoading(false);
@@ -76,7 +76,7 @@ const ItemPage: FC<{ case?: Case }> = ({ case: providedCase }) => {
           return;
         }
 
-        const nextCase = await dispatchApi(api.v2.case.get(matchedNestedCase.id), { throwError: false });
+        const nextCase = await dispatchApi(api.v2.case.get(matchedNestedCase.value), { throwError: false });
 
         if (!nextCase) {
           if (!cancelled) {
