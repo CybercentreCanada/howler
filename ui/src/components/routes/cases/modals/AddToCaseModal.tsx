@@ -53,16 +53,28 @@ const AddToCaseModal: FC<{ records: (Hit | Observable)[] }> = ({ records }) => {
   const fullPath = path ? `${path}/${title}` : title;
   const isValid = !!selectedCase && !!title;
 
-  const onSubmit = () => {
+  const onSubmit = async () => {
+    if (!selectedCase || records?.length < 1) {
+      return;
+    }
+
     // eslint-disable-next-line no-console
     console.log({ case_id: selectedCase?.case_id, path: fullPath, records });
+    await dispatchApi(
+      api.v2.case.items.post(selectedCase.case_id, {
+        path: fullPath,
+        value: records[0].howler.id,
+        type: records[0].__index
+      })
+    );
+
     close();
   };
 
   // TODO: No support currently for multiple records
 
   return (
-    <Stack spacing={2} p={2} sx={{ minWidth: 'min(800px, 60vw)' }}>
+    <Stack spacing={2} p={2} sx={{ minWidth: 'min(800px, 60vw)', height: '100%' }}>
       <Typography variant="h4">{t('modal.cases.add_to_case')}</Typography>
       <Autocomplete<Case>
         options={cases}
@@ -75,8 +87,12 @@ const AddToCaseModal: FC<{ records: (Hit | Observable)[] }> = ({ records }) => {
           setPath('');
         }}
         renderOption={(props, option) => (
-          <li {...props} key={option.case_id}>
-            <CaseCard case={option} />
+          <li
+            {...props}
+            key={option.case_id}
+            style={{ ...props.style, display: 'flex', justifyContent: 'stretch', alignItems: 'stretch' }}
+          >
+            <CaseCard case={option} slotProps={{ card: { sx: { width: '100%' } } }} />
           </li>
         )}
         renderInput={params => (
@@ -109,6 +125,7 @@ const AddToCaseModal: FC<{ records: (Hit | Observable)[] }> = ({ records }) => {
           )}
         </>
       )}
+      <div style={{ flex: 1 }} />
       <Stack direction="row" spacing={1} alignSelf="end">
         <Button variant="outlined" color="error" onClick={close}>
           {t('cancel')}

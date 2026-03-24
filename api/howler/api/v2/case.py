@@ -7,6 +7,7 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import DataStoreException
+from howler.odm.models.case import CaseItem
 from howler.odm.models.user import User
 from howler.security import api_login
 from howler.services import case_service
@@ -218,7 +219,8 @@ def append_item(id: str, user: User, **kwargs):  # noqa: C901
     Data Block:
     {
         "type": "hit",            # Type of item to append: "hit", "observable", "case", "table", "lead", or "reference"
-        "value": "item-id-123"    # The ID or reference value for the item
+        "value": "item-id-123"    # The ID or reference value for the item,
+        "path": "example/path/Title"
     }
 
     Result Example:
@@ -238,16 +240,12 @@ def append_item(id: str, user: User, **kwargs):  # noqa: C901
         return bad_request(err="Case 'type' missing")
 
     try:
-        case_service.append_case_item(
-            id, item_type=body["type"], item_value=body["value"], item_path=body.get("path", None)
-        )
+        return ok(case_service.append_case_item(id, item=CaseItem(body)))
     except DataStoreException as e:
         logger.exception("Save Error")
         return internal_error(err=str(e))
     except InvalidDataException as e:
         return bad_request(err=str(e))
-
-    return ok()
 
 
 @generate_swagger_docs()

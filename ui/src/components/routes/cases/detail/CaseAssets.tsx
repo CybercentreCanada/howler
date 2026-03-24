@@ -80,7 +80,11 @@ const CaseAssets: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, 
   const [activeFilters, setActiveFilters] = useState<Set<AssetType>>(new Set());
 
   const ids = useMemo(
-    () => (_case?.items ?? []).filter(item => ['hit', 'observable'].includes(item.type)).map(item => item.id),
+    () =>
+      (_case?.items ?? [])
+        .filter(item => ['hit', 'observable'].includes(item.type))
+        .map(item => item.value)
+        .filter(val => !!val),
     [_case?.items]
   );
 

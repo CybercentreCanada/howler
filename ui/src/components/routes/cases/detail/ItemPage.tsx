@@ -114,15 +114,15 @@ const ItemPage: FC<{ case?: Case }> = ({ case: providedCase }) => {
   }
 
   if (item.type === 'hit') {
-    return <InformationPane selected={item.id} />;
+    return <InformationPane selected={item.value} />;
   }
 
   if (item.type === 'observable') {
-    return <ObservableViewer observableId={item.id} />;
+    return <ObservableViewer observableId={item.value} />;
   }
 
   if (item.type === 'case') {
-    return <CaseDashboard caseId={item.id} />;
+    return <CaseDashboard caseId={item.value} />;
   }
 
   return <h1>{JSON.stringify(item)}</h1>;

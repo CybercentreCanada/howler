@@ -12,7 +12,14 @@ const SourceAggregate: FC<{ case: Case }> = ({ case: providedCase }) => {
 
   const [analytics, setAnalytics] = useState([]);
 
-  const hitIds = useMemo(() => _case?.items.filter(item => item.type === 'hit').map(item => item.id), [_case?.items]);
+  const hitIds = useMemo(
+    () =>
+      _case?.items
+        .filter(item => item.type === 'hit')
+        .map(item => item.value)
+        .filter(value => !!value),
+    [_case?.items]
+  );
 
   useEffect(() => {
     dispatchApi(api.v2.search.post('hit', { query: `howler.id:(${hitIds.join(' OR ')})`, fl: 'howler.analytic' }))

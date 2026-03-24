@@ -1,5 +1,16 @@
 import { CheckCircleOutline, HourglassBottom, RadioButtonUnchecked, UpdateOutlined } from '@mui/icons-material';
-import { Card, Chip, Divider, Grid, Skeleton, Stack, Tooltip, Typography, useTheme } from '@mui/material';
+import {
+  Card,
+  Chip,
+  Divider,
+  Grid,
+  Skeleton,
+  Stack,
+  Tooltip,
+  Typography,
+  useTheme,
+  type CardProps
+} from '@mui/material';
 import api from 'api';
 import StatusIcon from 'components/elements/case/StatusIcon';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
@@ -20,7 +31,8 @@ const CaseCard: FC<{
   case?: Case;
   caseId?: string;
   className?: string;
-}> = ({ case: providedCase, caseId, className }) => {
+  slotProps?: { card?: CardProps };
+}> = ({ case: providedCase, caseId, className, slotProps }) => {
   const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
   const theme = useTheme();
@@ -47,7 +59,11 @@ const CaseCard: FC<{
     <Card
       key={_case.case_id}
       variant="outlined"
-      sx={{ p: 1, mb: 1, borderColor: theme.palette[STATUS_COLORS[_case.status]]?.main }}
+      {...slotProps?.card}
+      sx={[
+        { p: 1, mb: 1, borderColor: theme.palette[STATUS_COLORS[_case.status]]?.main },
+        ...(Array.isArray(slotProps?.card?.sx) ? slotProps.card.sx : slotProps?.card?.sx ? [slotProps.card.sx] : [])
+      ]}
       className={className}
     >
       <Stack direction="row" alignItems="start" spacing={1}>
