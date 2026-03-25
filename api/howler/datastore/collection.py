@@ -270,14 +270,17 @@ class ESCollection(Generic[ModelType]):
         if index is None:
             index = self.index_name
 
+        client = self.datastore.client
+        if request_timeout is not None:
+            client = client.options(request_timeout=request_timeout)
+
         # initial search
         resp = self.with_retries(
-            self.datastore.client.search,
+            client.search,
             index=index,
             query=query,
             scroll=scroll,
             size=size,
-            request_timeout=request_timeout,
             sort=sort,
             _source=source,
         )
@@ -305,16 +308,18 @@ class ESCollection(Generic[ModelType]):
 
         finally:
             if scroll_id:
-                resp = self.with_retries(
-                    self.datastore.client.clear_scroll,
-                    scroll_id=[scroll_id],
-                    ignore=(404,),
-                )
-                if not resp.get("succeeded", False):
-                    logger.warning(
-                        f"Could not clear scroll ID {scroll_id}, there is potential "
-                        "memory leak in you Elastic cluster..."
+                try:
+                    resp = self.with_retries(
+                        self.datastore.client.clear_scroll,
+                        scroll_id=[scroll_id],
                     )
+                    if not resp.get("succeeded", False):
+                        logger.warning(
+                            f"Could not clear scroll ID {scroll_id}, there is potential "
+                            "memory leak in you Elastic cluster..."
+                        )
+                except elasticsearch.exceptions.NotFoundError:
+                    pass
 
     def with_retries(self, func, *args, raise_conflicts=False, **kwargs):
         """This function performs the passed function with the given args and kwargs and reconnect if it fails
@@ -470,7 +475,9 @@ class ESCollection(Generic[ModelType]):
                     raise
 
     def _safe_index_copy(self, copy_function, src, target, settings=None, min_status="yellow"):
-        ret = copy_function(index=src, target=target, settings=settings, request_timeout=60)
+        options_client = self.datastore.client.options(request_timeout=60)
+        timed_function = getattr(options_client.indices, copy_function.__name__)
+        ret = timed_function(index=src, target=target, settings=settings)
         if not ret["acknowledged"]:
             raise DataStoreException(f"Failed to create index {target} from {src}.")
 
@@ -1658,19 +1665,23 @@ class ESCollection(Generic[ModelType]):
 
         # Check if the scroll is finished and close it
         if deep_paging_id is not None and new_deep_paging_id is None:
-            self.with_retries(
-                self.datastore.client.clear_scroll,
-                scroll_id=[deep_paging_id],
-                ignore=(404,),
-            )
+            try:
+                self.with_retries(
+                    self.datastore.client.clear_scroll,
+                    scroll_id=[deep_paging_id],
+                )
+            except elasticsearch.exceptions.NotFoundError:
+                pass
 
         # Check if we can tell from inspection that we have finished the scroll
         if new_deep_paging_id is not None and len(ret_data["items"]) < ret_data["rows"]:
-            self.with_retries(
-                self.datastore.client.clear_scroll,
-                scroll_id=[new_deep_paging_id],
-                ignore=(404,),
-            )
+            try:
+                self.with_retries(
+                    self.datastore.client.clear_scroll,
+                    scroll_id=[new_deep_paging_id],
+                )
+            except elasticsearch.exceptions.NotFoundError:
+                pass
             new_deep_paging_id = None
 
         if new_deep_paging_id is not None:
