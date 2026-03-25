@@ -316,7 +316,7 @@ class ESCollection(Generic[ModelType]):
                     if not resp.get("succeeded", False):
                         logger.warning(
                             f"Could not clear scroll ID {scroll_id}, there is potential "
-                            "memory leak in you Elastic cluster..."
+                            "memory leak in your Elastic cluster..."
                         )
                 except elasticsearch.exceptions.NotFoundError:
                     pass
