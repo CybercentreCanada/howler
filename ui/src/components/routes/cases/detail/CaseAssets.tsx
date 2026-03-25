@@ -159,7 +159,7 @@ const CaseAssets: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, 
           )}
         </Stack>
       </Grid>
-      {filteredAssets === null ? (
+      {records === null ? (
         Array.from({ length: 6 }, (_, i) => (
           <Grid key={`skeleton-${i}`} item xs={12} sm={6} md={4} xl={3}>
             <Skeleton height={100} />

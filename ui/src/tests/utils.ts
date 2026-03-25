@@ -3,6 +3,7 @@ import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Case } from 'models/entities/generated/Case';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Hit } from 'models/entities/generated/Hit';
+import type { Observable } from 'models/entities/generated/Observable';
 import type { Template } from 'models/entities/generated/Template';
 import type { View } from 'models/entities/generated/View';
 
@@ -17,6 +18,7 @@ type RecursivePartial<T> = {
 // Mock data factories
 export const createMockHit = (overrides?: RecursivePartial<Hit>): Hit =>
   ({
+    ...overrides,
     __index: 'hit',
     howler: {
       id: 'test-hit-1',
@@ -32,6 +34,19 @@ export const createMockHit = (overrides?: RecursivePartial<Hit>): Hit =>
       ...overrides?.event
     }
   }) as Hit;
+
+export const createMockObservable = (overrides?: RecursivePartial<Observable>): Observable =>
+  ({
+    ...overrides,
+    __index: 'observable',
+    howler: {
+      id: 'test-observable-1',
+      analytic: 'test-analytic',
+      detection: 'Test Detection',
+      hash: '',
+      ...overrides?.howler
+    }
+  }) as Observable;
 
 export const createMockAnalytic = (overrides?: Partial<Analytic>): Analytic => ({
   analytic_id: 'test-analytic-id',
