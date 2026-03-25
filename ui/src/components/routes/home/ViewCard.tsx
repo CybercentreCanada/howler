@@ -7,14 +7,15 @@ import { ViewContext } from 'components/app/providers/ViewProvider';
 import HitBanner from 'components/elements/hit/HitBanner';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import ObservableCard from 'components/elements/observable/ObservableCard';
+import RecordContextMenu from 'components/elements/record/RecordContextMenu';
 import useMyApi from 'components/hooks/useMyApi';
-import RecordContextMenu from 'components/routes/hits/search/HitContextMenu';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Observable } from 'models/entities/generated/Observable';
 import { useCallback, useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
+import { isObservable } from 'utils/typeUtils';
 import { buildViewUrl } from 'utils/viewUtils';
 
 // Custom hook to select records by IDs with proper memoization
@@ -56,7 +57,14 @@ const normalize = (val: any) => (val == null ? '' : String(val));
 
 // Have to normalize the fields as websockets and api return null and undefined respectively. This causes false positives when comparing signatures if not normalized to a consistent value. We also stringify non-primitive values to ensure changes are detected.
 const createRecordSignature = (record: Hit | Observable) => {
-  if (!record) return '';
+  if (!record) {
+    return '';
+  }
+
+  if (isObservable(record)) {
+    return record.howler?.id;
+  }
+
   return `${record.howler?.id}:${normalize(record.howler?.status)}:${normalize(record.howler?.assignment)}:${normalize(record.howler?.assessment)}`;
 };
 

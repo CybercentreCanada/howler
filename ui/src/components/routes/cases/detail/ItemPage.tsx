@@ -6,17 +6,24 @@ import ObservableViewer from 'components/routes/observables/ObservableViewer';
 import type { Case } from 'models/entities/generated/Case';
 import type { Item } from 'models/entities/generated/Item';
 import { useEffect, useMemo, useState, type FC } from 'react';
-import { useLocation } from 'react-router';
+import { useOutletContext, useParams } from 'react-router-dom';
+import useCase from '../hooks/useCase';
 import CaseDashboard from './CaseDashboard';
 
-const ItemPage: FC<{ case: Case }> = ({ case: _case }) => {
-  const location = useLocation();
+const ItemPage: FC<{ case?: Case }> = ({ case: providedCase }) => {
+  const params = useParams();
+  const routeCase = useOutletContext<Case>();
+  const { case: fetchedCase } = useCase({ caseId: !providedCase && !routeCase ? params.id : undefined });
+  const _case = providedCase ?? routeCase ?? fetchedCase;
+
   const { dispatchApi } = useMyApi();
 
   const [item, setItem] = useState<Item>(null);
   const [loading, setLoading] = useState(true);
 
-  const subPath = decodeURIComponent(location.pathname).replace(`/cases/${_case.case_id}/`, '');
+  // When rendered as a child route, the wildcard segment is in params['*'].
+  // When rendered directly with a case prop, fall back to parsing the pathname.
+  const subPath = params['*'] ?? '';
 
   const normalizedSubPath = useMemo(() => subPath.replace(/^\/+|\/+$/g, ''), [subPath]);
 

@@ -274,6 +274,24 @@ When both of the following are true:
 
 ---
 
+### TypeScript: Always Use Braces on `if` Statements
+
+Never use single-line, braceless `if` statements. Always add braces and a newline for the body:
+
+```ts
+// Preferred
+if (!value) {
+  return;
+}
+
+// Avoid
+if (!value) return;
+```
+
+This applies to `for`/`while` loop bodies as well.
+
+---
+
 ### TypeScript: Prefer `const` Arrow Functions
 
 Use `const` arrow functions instead of named `function` declarations for all TypeScript/React code in `ui/`:
@@ -293,6 +311,19 @@ const myFn: {
   (key: string, list: true): List;
 } = (key, list = false) => { ... };
 ```
+
+---
+
+### Frontend UI Tests: Use `id` as the Test ID Attribute
+
+Vitest/testing-library queries that target elements by test ID (e.g. `getByTestId`, `queryByTestId`) use the `id` attribute, **not** `data-testid`. This is configured via `vite.config.ts`:
+
+```ts
+// vite.config.ts (test section)
+testIdAttribute: 'id'
+```
+
+Always set `id="..."` on elements you need to query by test ID. Do not use `data-testid`.
 
 ---
 

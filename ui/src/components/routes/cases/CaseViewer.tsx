@@ -1,12 +1,10 @@
 import { Box, Stack } from '@mui/material';
 import { memo, type FC } from 'react';
-import { useParams } from 'react-router-dom';
+import { Outlet, useParams } from 'react-router-dom';
 import NotFoundPage from '../404';
 import ErrorBoundary from '../ErrorBoundary';
-import CaseDashboard from './detail/CaseDashboard';
 import CaseDetails from './detail/CaseDetails';
 import CaseSidebar from './detail/CaseSidebar';
-import ItemPage from './detail/ItemPage';
 import useCase from './hooks/useCase';
 
 const CaseViewer: FC = () => {
@@ -28,11 +26,7 @@ const CaseViewer: FC = () => {
         }}
       >
         <ErrorBoundary>
-          {!_case || location.pathname.endsWith(_case.case_id) ? (
-            <CaseDashboard case={_case} />
-          ) : (
-            <ItemPage case={_case} />
-          )}
+          <Outlet context={_case} />
         </ErrorBoundary>
       </Box>
       <CaseDetails case={_case} />

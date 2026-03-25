@@ -127,13 +127,13 @@ vi.mock('@mui/material', async () => {
 // Import component after mocks
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
-import { RecordContext } from 'components/app/providers/RecordProvider';
+import { RecordContext, type RecordContextType } from 'components/app/providers/RecordProvider';
 import i18n from 'i18n';
 import type { Hit } from 'models/entities/generated/Hit';
 import { I18nextProvider } from 'react-i18next';
 import { createMockAction, createMockAnalytic, createMockHit, createMockTemplate } from 'tests/utils';
 import { DEFAULT_QUERY } from 'utils/constants';
-import RecordContextMenu from './HitContextMenu';
+import RecordContextMenu from './RecordContextMenu';
 
 const mockGetSelectedId = vi.fn(() => 'test-hit-1');
 const mockConfig = {
@@ -143,11 +143,11 @@ const mockConfig = {
 };
 
 const mockApiContext = { config: mockConfig };
-const mockHitContext = {
-  hits: {
+const mockRecordContext: Partial<RecordContextType> = {
+  records: {
     'test-hit-1': createMockHit()
   },
-  selectedHits: [] as Hit[]
+  selectedRecords: [] as Hit[]
 };
 const mockParameterContext = { query: DEFAULT_QUERY, setQuery: vi.fn() };
 
@@ -156,7 +156,7 @@ const Wrapper = ({ children }: PropsWithChildren) => {
   return (
     <I18nextProvider i18n={i18n as any}>
       <ApiConfigContext.Provider value={mockApiContext as any}>
-        <RecordContext.Provider value={mockHitContext as any}>
+        <RecordContext.Provider value={mockRecordContext as any}>
           <ParameterContext.Provider value={mockParameterContext as any}>{children}</ParameterContext.Provider>
         </RecordContext.Provider>
       </ApiConfigContext.Provider>
@@ -172,9 +172,9 @@ describe('HitContextMenu', () => {
     user = userEvent.setup();
 
     vi.clearAllMocks();
-    mockHitContext.selectedHits.length = 0;
+    mockRecordContext.selectedRecords.length = 0;
 
-    mockHitContext.hits['test-hit-1'] = createMockHit();
+    mockRecordContext.records['test-hit-1'] = createMockHit();
 
     mockGetMatchingAnalytic.mockResolvedValue(createMockAnalytic());
     mockGetMatchingTemplate.mockResolvedValue(createMockTemplate());
@@ -265,7 +265,7 @@ describe('HitContextMenu', () => {
 
     it('should disable "Open Hit" when hit is null', async () => {
       act(() => {
-        mockHitContext.hits['test-hit-1'] = null;
+        mockRecordContext.records['test-hit-1'] = null;
 
         const contextMenuWrapper = screen.getByText('Test Content').parentElement;
         fireEvent.contextMenu(contextMenuWrapper);
@@ -273,7 +273,7 @@ describe('HitContextMenu', () => {
 
       await waitFor(() => {
         const menuItems = screen.getAllByRole('menuitem');
-        const openHitItem = menuItems.find(item => item.textContent?.toLowerCase().includes('open hit viewer'));
+        const openHitItem = menuItems.find(item => item.textContent?.toLowerCase().includes('open hit'));
 
         expect(openHitItem).toHaveAttribute('aria-disabled', 'true');
       });
@@ -853,7 +853,7 @@ describe('HitContextMenu', () => {
 
     it('should skip null field values in exclusion menu', async () => {
       act(() => {
-        mockHitContext.hits['test-hit-1'].event = {};
+        mockRecordContext.records['test-hit-1'].event = {};
       });
 
       act(() => {
@@ -1043,7 +1043,7 @@ describe('HitContextMenu', () => {
 
     it('should skip null field values in inclusion menu', async () => {
       act(() => {
-        mockHitContext.hits['test-hit-1'].event = {};
+        mockRecordContext.records['test-hit-1'].event = {};
       });
 
       act(() => {
@@ -1066,27 +1066,27 @@ describe('HitContextMenu', () => {
   });
 
   describe('Multiple Hit Selection', () => {
-    it('should use selectedHits when current hit is included', async () => {
+    it('should use selectedRecords when current hit is included', async () => {
       act(() => {
-        mockHitContext.hits['hit-1'] = createMockHit({ howler: { id: 'hit-1' } });
-        mockHitContext.hits['hit-2'] = createMockHit({ howler: { id: 'hit-2' } });
-        mockHitContext.selectedHits.push(mockHitContext.hits['hit-1'], mockHitContext.hits['hit-2']);
+        mockRecordContext.records['hit-1'] = createMockHit({ howler: { id: 'hit-1' } });
+        mockRecordContext.records['hit-2'] = createMockHit({ howler: { id: 'hit-2' } });
+        mockRecordContext.selectedRecords.push(mockRecordContext.records['hit-1'], mockRecordContext.records['hit-2']);
         mockGetSelectedId.mockReturnValue('hit-1');
       });
 
       const contextMenuWrapper = screen.getByText('Test Content').parentElement;
       await user.pointer({ keys: '[MouseRight]', target: contextMenuWrapper });
 
-      // The component should use selectedHits for actions
+      // The component should use selectedRecords for actions
       // We can verify this indirectly through the useHitActions hook receiving the right data
       expect(screen.getByRole('menu')).toBeInTheDocument();
       expect(mockGetSelectedId).toHaveBeenCalled();
     });
 
-    it('should use only current hit when not in selectedHits', async () => {
+    it('should use only current hit when not in selectedRecords', async () => {
       act(() => {
-        mockHitContext.hits['hit-1'] = createMockHit({ howler: { id: 'hit-1' } });
-        mockHitContext.selectedHits.push(mockHitContext.hits['hit-1']);
+        mockRecordContext.records['hit-1'] = createMockHit({ howler: { id: 'hit-1' } });
+        mockRecordContext.selectedRecords.push(mockRecordContext.records['hit-1']);
         mockGetSelectedId.mockReturnValue('test-hit-1');
       });
 
@@ -1110,13 +1110,13 @@ describe('HitContextMenu', () => {
 
     it('should call getMatchingAnalytic when hit has analytic', async () => {
       await waitFor(() => {
-        expect(mockGetMatchingAnalytic).toHaveBeenCalledWith(mockHitContext.hits['test-hit-1']);
+        expect(mockGetMatchingAnalytic).toHaveBeenCalledWith(mockRecordContext.records['test-hit-1']);
       });
     });
 
     it('should call getMatchingTemplate when menu opens', async () => {
       await waitFor(() => {
-        expect(mockGetMatchingTemplate).toHaveBeenCalledWith(mockHitContext.hits['test-hit-1']);
+        expect(mockGetMatchingTemplate).toHaveBeenCalledWith(mockRecordContext.records['test-hit-1']);
       });
     });
 
@@ -1157,7 +1157,7 @@ describe('HitContextMenu', () => {
   describe('Edge Cases and Error Handling', () => {
     it('should not crash when hit is null', async () => {
       act(() => {
-        mockHitContext.hits = {} as any;
+        mockRecordContext.records = {} as any;
       });
 
       const contextMenuWrapper = screen.getByText('Test Content').parentElement;
@@ -1244,7 +1244,7 @@ describe('HitContextMenu', () => {
 
     it('should not call getMatchingAnalytic or getMatchingTemplate when hit has no analytic', async () => {
       act(() => {
-        mockHitContext.hits['test-hit-1'].howler.analytic = null;
+        mockRecordContext.records['test-hit-1'].howler.analytic = null;
       });
 
       const contextMenuWrapper = screen.getByText('Test Content').parentElement;

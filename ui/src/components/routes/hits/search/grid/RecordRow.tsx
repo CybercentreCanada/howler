@@ -6,22 +6,25 @@ import Assigned from 'components/elements/hit/elements/Assigned';
 import EscalationChip from 'components/elements/hit/elements/EscalationChip';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
+import ObservableCard from 'components/elements/observable/ObservableCard';
 import { get } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
+import type { Observable } from 'models/entities/generated/Observable';
 import { memo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
+import { isHit } from 'utils/typeUtils';
 import EnhancedCell from './EnhancedCell';
 
-const HitRow: FC<{
-  hit: Hit;
+const RecordRow: FC<{
+  record: Hit | Observable;
   analyticIds: Record<string, string>;
   columns: string[];
   columnWidths: Record<string, string>;
   collapseMainColumn: boolean;
-  onClick: (e: React.MouseEvent<HTMLDivElement>, hit: Hit) => void;
-}> = ({ hit, analyticIds, columns, columnWidths, collapseMainColumn, onClick }) => {
+  onClick: (e: React.MouseEvent<HTMLDivElement>, record: Hit | Observable) => void;
+}> = ({ record, analyticIds, columns, columnWidths, collapseMainColumn, onClick }) => {
   const theme = useTheme();
   const { t } = useTranslation();
 
@@ -34,9 +37,9 @@ const HitRow: FC<{
   return (
     <>
       <TableRow
-        key={hit.howler.id}
-        id={hit.howler.id}
-        onClick={ev => onClick(ev, hit)}
+        key={record.howler.id}
+        id={record.howler.id}
+        onClick={ev => onClick(ev, record)}
         sx={[
           {
             transition: theme.transitions.create('background-color'),
@@ -45,10 +48,10 @@ const HitRow: FC<{
               backgroundColor: theme.palette.background.paper
             }
           },
-          selectedHits.some(_hit => _hit.howler.id === hit.howler.id) && {
+          selectedHits.some(_hit => _hit.howler.id === record.howler.id) && {
             backgroundColor: lighten(theme.palette.background.paper, 0.15)
           },
-          selected === hit.howler.id && {
+          selected === record.howler.id && {
             backgroundColor: lighten(theme.palette.background.paper, 0.25)
           }
         ]}
@@ -78,39 +81,45 @@ const HitRow: FC<{
             </IconButton>
             <Collapse in={!collapseMainColumn} orientation="horizontal" unmountOnExit>
               <Stack direction="row" spacing={1} flexWrap="nowrap">
-                <EscalationChip hit={hit} layout={HitLayout.DENSE} hideLabel />
+                {isHit(record) && <EscalationChip hit={record} layout={HitLayout.DENSE} hideLabel />}
                 <Typography sx={{ textWrap: 'nowrap', whiteSpace: 'nowrap', fontSize: 'inherit' }}>
-                  {analyticIds[hit.howler.analytic] ? (
-                    <Link to={`/analytics/${analyticIds[hit.howler.analytic]}`} onClick={e => e.stopPropagation()}>
-                      {hit.howler.analytic}
+                  {analyticIds[record.howler.analytic] ? (
+                    <Link to={`/analytics/${analyticIds[record.howler.analytic]}`} onClick={e => e.stopPropagation()}>
+                      {record.howler.analytic}
                     </Link>
                   ) : (
-                    hit.howler.analytic
+                    record.howler.analytic
                   )}
-                  {hit.howler.detection && ': '}
-                  {hit.howler.detection}
+                  {record.howler.detection && ': '}
+                  {record.howler.detection}
                 </Typography>
-                {hit.howler.assignment !== 'unassigned' && <Assigned hit={hit} layout={HitLayout.DENSE} hideLabel />}
+                {isHit(record) && record.howler.assignment !== 'unassigned' && (
+                  <Assigned hit={record} layout={HitLayout.DENSE} hideLabel />
+                )}
               </Stack>
             </Collapse>
           </Stack>
         </TableCell>
         {columns.map(col => (
           <EnhancedCell
-            hit={hit}
+            record={record}
             className={`col-${col.replaceAll('.', '-')}`}
             key={col}
-            value={get(hit, col) ?? t('none')}
+            value={get(record, col) ?? t('none')}
             sx={columnWidths[col] ? { width: columnWidths[col] } : { width: '220px', maxWidth: '300px' }}
             field={col}
           />
         ))}
       </TableRow>
-      <TableRow onClick={ev => onClick(ev, hit)}>
+      <TableRow onClick={ev => onClick(ev, record)}>
         <TableCell colSpan={columns.length + 2} style={{ paddingBottom: 0, paddingTop: 0 }}>
           <Collapse in={expandRow} unmountOnExit>
             <Box width="100%" maxWidth="1200px" margin={1}>
-              <HitCard id={hit.howler.id} layout={HitLayout.NORMAL} />
+              {isHit(record) ? (
+                <HitCard id={record.howler.id} layout={HitLayout.NORMAL} />
+              ) : (
+                <ObservableCard id={record.howler.id} observable={record} />
+              )}
             </Box>
           </Collapse>
         </TableCell>
@@ -119,4 +128,4 @@ const HitRow: FC<{
   );
 };
 
-export default memo(HitRow);
+export default memo(RecordRow);

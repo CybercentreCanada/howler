@@ -212,7 +212,7 @@ const HitViewer: FC = () => {
               </Tooltip>
               <SocketBadge size="medium" />
               {analytic && (
-                <Tooltip title={t('hit.panel.analytic.open')}>
+                <Tooltip title={t('analytic.open')}>
                   <IconButton onClick={() => navigate(`/analytics/${analytic.analytic_id}`)}>
                     <QueryStats />
                   </IconButton>

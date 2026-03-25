@@ -30,6 +30,7 @@ import { RecordContext } from 'components/app/providers/RecordProvider';
 import { RecordSearchContext } from 'components/app/providers/RecordSearchProvider';
 import SearchTotal from 'components/elements/addons/search/SearchTotal';
 import DevelopmentBanner from 'components/elements/display/features/DevelopmentBanner';
+import RecordContextMenu from 'components/elements/record/RecordContextMenu';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useRecordSelection from 'components/hooks/useRecordSelection';
 import { uniq } from 'lodash-es';
@@ -37,12 +38,12 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FC } from 'reac
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
-import RecordContextMenu from '../HitContextMenu';
+import { isHit } from 'utils/typeUtils';
 import QuerySettings from '../QuerySettings';
 import RecordQuery from '../RecordQuery';
 import AddColumnModal from './AddColumnModal';
 import ColumnHeader from './ColumnHeader';
-import HitRow from './HitRow';
+import RecordRow from './RecordRow';
 
 const HitGrid: FC = () => {
   const { t } = useTranslation();
@@ -94,12 +95,14 @@ const HitGrid: FC = () => {
   }, [selected, selectedHits]);
 
   useEffect(() => {
-    response?.items.forEach(hit => {
-      if (!analyticIds[hit.howler.analytic]) {
-        getMatchingAnalytic(hit).then(_analytic =>
-          setAnalyticIds(_analyticIds => ({ ..._analyticIds, [hit.howler.analytic]: _analytic.analytic_id }))
-        );
+    response?.items.forEach(record => {
+      if (!isHit(record) || analyticIds[record.howler.analytic]) {
+        return;
       }
+
+      getMatchingAnalytic(record).then(_analytic =>
+        setAnalyticIds(_analyticIds => ({ ..._analyticIds, [record.howler.analytic]: _analytic.analytic_id }))
+      );
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analyticIds, response]);
@@ -283,9 +286,9 @@ const HitGrid: FC = () => {
           </TableHead>
           <RecordContextMenu Component={TableBody} getSelectedId={getSelectedId}>
             {response?.items.map(hit => (
-              <HitRow
+              <RecordRow
                 key={hit.howler.id}
-                hit={hit}
+                record={hit}
                 analyticIds={analyticIds}
                 columns={columns}
                 columnWidths={columnWidths}

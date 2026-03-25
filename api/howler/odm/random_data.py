@@ -717,7 +717,6 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
                 {
                     "path": f"alerts/{hit['howler']['analytic']} ({hit['howler']['id']})",
                     "type": "hit",
-                    "id": hit_id,
                     "value": hit_id,
                 }
             )
@@ -731,7 +730,6 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
                 {
                     "path": f"observable/{observable['howler']['id']}",
                     "type": "observable",
-                    "id": observable_id,
                     "value": observable_id,
                 }
             )
@@ -747,7 +745,6 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
                 {
                     "path": f"alerts/{get_random_word()}/{get_random_word()}",
                     "type": "hit",
-                    "id": nested_hit_id,
                     "value": nested_hit_id,
                 }
             )
@@ -769,7 +766,6 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
                 {
                     "path": f"alerts/{get_random_word()}/{get_random_word()}/{get_random_word()}",
                     "type": "observable",
-                    "id": nested_observable_id,
                     "value": nested_observable_id,
                 }
             )
@@ -788,7 +784,6 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
                 {
                     "path": f"cases/Related Case {idx}",
                     "type": "case",
-                    "id": related_case_id,
                     "value": related_case_id,
                 }
             )
@@ -883,8 +878,8 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
         ds.case.save(case_id, case_data)
         generated_case_ids.append(case_id)
 
-        case_hit_ids = list({item["id"] for item in items if item.get("type") == "hit"})
-        case_observable_ids = list({item["id"] for item in items if item.get("type") == "observable"})
+        case_hit_ids = list({item["value"] for item in items if item.get("type") == "hit"})
+        case_observable_ids = list({item["value"] for item in items if item.get("type") == "observable"})
 
         for hit_id in case_hit_ids:
             ds.hit.update(hit_id, [hit_helper.list_add("howler.related", case_id)])

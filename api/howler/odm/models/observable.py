@@ -53,7 +53,6 @@ class Log(odm.Model):
 
 
 DEFAULT_LABELS = {"assignments": [], "generic": []}
-DEFAULT_ASSIGNMENT = "unassigned"
 
 
 @odm.model(
