@@ -48,8 +48,7 @@ def create_case(user: User, **kwargs):
         return bad_request(err="Request body must be a JSON object with case data.")
 
     try:
-        new_case = case_service.create_case(case_data, user.uname)
-        return created(new_case)
+        return created(case_service.create_case(case_data, user.uname))
     except InvalidDataException as e:
         return bad_request(err=str(e))
     except ResourceExists as e:
