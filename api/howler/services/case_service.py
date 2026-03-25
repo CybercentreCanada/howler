@@ -236,7 +236,7 @@ def append_case_item(  # noqa: C901
     item: CaseItem | None = None,
     item_type: str | None = None,
     item_value: str | None = None,
-    item_path: str = "related/",
+    item_path: str = "related",
 ) -> Case:
     """Append an item to a case, dispatching to the appropriate handler based on item type.
 
@@ -251,12 +251,13 @@ def append_case_item(  # noqa: C901
             "table", "lead", "reference"). Required if item is not provided.
         item_value: The value/identifier of the item to append. Required if item
             is not provided.
-        item_path: Optional path prefix for organizing the item within the case.
-            A trailing "/" is appended automatically if not present.
+        item_path: Path for organizing the item within the case. Must not end
+            with a trailing "/".
 
     Raises:
         InvalidDataException: If item is not provided and item_type or item_value
-            are missing, or if item_type is not a valid CaseItemTypes value.
+            are missing, or if item_type is not a valid CaseItemTypes value, or
+            if the resolved item path ends with a trailing "/".
     """
     if item is None:
         if not all([item_type, item_value]):
@@ -266,9 +267,12 @@ def append_case_item(  # noqa: C901
             raise InvalidDataException(f"Invalid item type: {item_type}, valid types are: {', '.join(CaseItemTypes)}")
 
         if not item_path:
-            item_path = "related/"
+            item_path = "related"
 
         item = CaseItem({"type": item_type, "value": item_value, "path": item_path})
+
+    if item.path.endswith("/"):
+        raise InvalidDataException("item path must not end with a trailing '/'")
 
     match item.type:
         case CaseItemTypes.HIT:
@@ -460,9 +464,6 @@ def append_reference(case_id: str, item: CaseItem) -> Case:
 
     if any(item.value == case_item["value"] for case_item in _case.items):
         raise InvalidDataException(f"Reference {item.value} already exists in case {case_id}")
-
-    if item.path == "related/":
-        item.path = f"references/{item.value}"
 
     _case.items.append(item)
 
