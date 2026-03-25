@@ -329,8 +329,7 @@ def append_observable(case_id: str, item: CaseItem) -> Case:
     """Append an observable item to a case and create a back-reference on the observable.
 
     Validates that the case and observable both exist and that the observable is
-    not already present in the case. Sets the item's path to include the
-    observable's ID, then persists the updated case and adds a back-reference
+    not already present in the case. It then persists the updated case and adds a back-reference
     from the observable to the case.
 
     Args:
@@ -357,9 +356,6 @@ def append_observable(case_id: str, item: CaseItem) -> Case:
     if observable is None:
         raise NotFoundException(f"Observable {item.value} not found, cannot be added to case")
 
-    if item.path == "related/":
-        item.path = f"observables/{observable.howler.id}"
-
     _case.items.append(item)
 
     if not datastore().case.save(_case.case_id, _case):
@@ -375,8 +371,7 @@ def append_case(case_id: str, item: CaseItem) -> Case:
     """Append a case reference item to a case.
 
     Validates that both the parent case and the referenced case exist, and that
-    the referenced case is not already present in the parent case. Sets the
-    item's path to include the referenced case's ID, then persists the updated
+    the referenced case is not already present in the parent case. It then persists the updated
     parent case.
 
     Args:
@@ -402,11 +397,6 @@ def append_case(case_id: str, item: CaseItem) -> Case:
 
     if referenced_case is None:
         raise NotFoundException(f"Referenced case {item.value} not found, cannot be added to case")
-
-    if item.path == "related/":
-        item.path = "cases/"
-
-    item.path += f"{referenced_case.case_id}"
 
     _case.items.append(item)
 
@@ -450,8 +440,7 @@ def append_reference(case_id: str, item: CaseItem) -> Case:
     """Append an external reference item to a case.
 
     Validates that the case exists and that the reference URL is not already
-    present in the case. Sets the item's ``id`` to its ``value`` (the URL) and
-    organises it under a ``references/`` path, then persists the updated case.
+    present in the case. It then persists the updated case.
 
     Args:
         case_id: Unique identifier of the case to append the reference to.
@@ -471,8 +460,6 @@ def append_reference(case_id: str, item: CaseItem) -> Case:
 
     if any(item.value == case_item["value"] for case_item in _case.items):
         raise InvalidDataException(f"Reference {item.value} already exists in case {case_id}")
-
-    item.id = item.value
 
     if item.path == "related/":
         item.path = f"references/{item.value}"
