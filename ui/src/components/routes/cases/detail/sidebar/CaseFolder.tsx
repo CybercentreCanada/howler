@@ -94,7 +94,9 @@ const CaseFolder: FC<CaseFolderProps> = ({ case: _case, folder, name, step = -1,
   const toggleCase = useCallback(
     (item: Item, itemKey?: string) => {
       const resolvedKey = itemKey || item.path || item.value;
-      if (!resolvedKey) return;
+      if (!resolvedKey) {
+        return;
+      }
 
       const prev = caseStates[resolvedKey] ?? { open: false, loading: false, data: null };
       const shouldOpen = !prev.open;
