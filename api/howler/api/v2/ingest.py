@@ -275,7 +275,7 @@ def update_by_query(indexes: str, **kwargs):
     """Update a set of hits using a query.
 
     Variables:
-    None
+    indexes => Comma-separated list of indexes to update
 
     Arguments:
     None

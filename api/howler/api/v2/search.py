@@ -279,7 +279,7 @@ def facet(indexes: str, **kwargs):
     values where the documents matches the specified queries.
 
     Variables:
-    index       =>   Index to search in (hit, user,...)
+    indexes       =>   Comma-separated indexes to search in (hit, user,...)
 
     Optional Arguments:
     query       =>   Query to search for

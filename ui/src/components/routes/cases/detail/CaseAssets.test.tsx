@@ -116,9 +116,12 @@ describe('CaseAssets component', () => {
 
   it('renders skeletons while records are loading', () => {
     mockDispatchApi.mockReturnValue(new Promise(() => {})); // never resolves
+
     render(<CaseAssets case={mockCase} />, { wrapper: Wrapper });
+
     // 6 skeleton cards
     const skeletons = document.querySelectorAll('.MuiSkeleton-root');
+
     expect(skeletons.length).toBeGreaterThan(0);
   });
 
@@ -126,16 +129,21 @@ describe('CaseAssets component', () => {
     mockDispatchApi.mockResolvedValue({
       items: [{ howler: { id: 'hit-1' } }, { howler: { id: 'obs-1' } }]
     });
+
     render(<CaseAssets case={mockCase} />, { wrapper: Wrapper });
-    await screen.findByText('No assets found.');
+
+    await screen.findByText('page.cases.assets.empty');
   });
 
   it('renders asset cards for extracted assets', async () => {
     mockDispatchApi.mockResolvedValue({
       items: [{ howler: { id: 'hit-1' }, related: { ip: ['1.2.3.4'], user: ['alice'] } }]
     });
+
     render(<CaseAssets case={mockCase} />, { wrapper: Wrapper });
+
     await screen.findByText('1.2.3.4');
+
     expect(screen.getByText('alice')).toBeTruthy();
   });
 
@@ -143,9 +151,13 @@ describe('CaseAssets component', () => {
     mockDispatchApi.mockResolvedValue({
       items: [{ howler: { id: 'hit-1' }, related: { ip: ['1.2.3.4'], user: ['alice'] } }]
     });
+
     render(<CaseAssets case={mockCase} />, { wrapper: Wrapper });
-    await screen.findByText('ip');
-    expect(screen.getByText('user')).toBeTruthy();
+
+    await screen.findAllByText('page.cases.assets.type.ip');
+
+    expect(screen.getAllByText('page.cases.assets.type.ip')).toHaveLength(2);
+    expect(screen.getAllByText('page.cases.assets.type.user')).toHaveLength(2);
   });
 
   it('filters assets when a type chip is clicked', async () => {
@@ -160,7 +172,7 @@ describe('CaseAssets component', () => {
 
     // Click the 'ip' filter chip
     await act(async () => {
-      await userEvent.click(screen.getByRole('button', { name: 'ip' }));
+      await userEvent.click(screen.getByRole('button', { name: 'page.cases.assets.type.ip' }));
     });
 
     // Alice (user) should be filtered out
@@ -175,7 +187,7 @@ describe('CaseAssets component', () => {
     render(<CaseAssets case={mockCase} />, { wrapper: Wrapper });
     await screen.findByText('1.2.3.4');
 
-    const ipChip = screen.getByRole('button', { name: 'ip' });
+    const ipChip = screen.getByRole('button', { name: 'page.cases.assets.type.ip' });
     await act(async () => {
       await userEvent.click(ipChip);
     });
@@ -190,7 +202,7 @@ describe('CaseAssets component', () => {
   it('renders nothing when the case has no hit/observable items', async () => {
     const emptyCase = { case_id: 'case-002', items: [] } as any;
     render(<CaseAssets case={emptyCase} />, { wrapper: Wrapper });
-    await screen.findByText('No assets found.');
+    await screen.findByText('page.cases.assets.empty');
     expect(mockDispatchApi).not.toHaveBeenCalled();
   });
 });

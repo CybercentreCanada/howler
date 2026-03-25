@@ -4,7 +4,7 @@ This module provides functionality for creating, updating, retrieving, and manag
 cases - collections of security alerts and investigation data organized by analysts.
 """
 
-from typing import Any, overload
+from typing import Any, cast, overload
 
 from prometheus_client import Counter
 
@@ -23,7 +23,7 @@ logger = get_logger(__file__)
 CREATED_CASES = Counter(f"{APP_NAME.replace('-', '_')}_created_cases_total", "The number of created cases")
 
 
-def create_case(_case: dict, user: str = None) -> dict[str, Any]:  # type: ignore
+def create_case(_case: dict, user: str = None) -> Case:  # type: ignore
     """Create a new case in the datastore.
 
     Args:
@@ -51,8 +51,9 @@ def create_case(_case: dict, user: str = None) -> dict[str, Any]:  # type: ignor
         append_case_item(case.case_id, item=CaseItem(item))
 
     if items:
-        return datastore().case.get_if_exists(case.case_id, as_obj=False)
-    return case.as_primitives()
+        return cast(Case, datastore().case.get(case.case_id))
+
+    return case
 
 
 def hide_cases(case_ids: set[str], user: str) -> None:
@@ -67,19 +68,20 @@ def hide_cases(case_ids: set[str], user: str) -> None:
     """
     ds = datastore()
 
-    items_query = f"items.id:({' OR '.join(case_ids)})"
+    items_query = f"items.value:({' OR '.join(case_ids)})"
     for case in ds.case.stream_search(items_query, as_obj=False):
         related_case_id = case["case_id"]
         if related_case_id in case_ids:
             continue
 
-        related_case = ds.case.get_if_exists(related_case_id, as_obj=True)
+        related_case = ds.case.get(related_case_id)
         if related_case:
             hidden_ids: list[str] = []
             for item in related_case.items:
-                if item.id in case_ids:
+                if item.value in case_ids:
                     item.visible = False
-                    hidden_ids.append(item.id)
+                    hidden_ids.append(item.value)
+
             if hidden_ids:
                 related_case.log.append(
                     CaseLog(
@@ -93,7 +95,7 @@ def hide_cases(case_ids: set[str], user: str) -> None:
                 ds.case.save(related_case_id, related_case)
 
     for case_id in case_ids:
-        case = ds.case.get_if_exists(case_id, as_obj=True)
+        case = ds.case.get(case_id)
         if case:
             case.visible = False
             case.log.append(
@@ -123,15 +125,15 @@ def delete_cases(case_ids: set[str]) -> bool:
     """
     ds = datastore()
 
-    items_query = f"items.id:({' OR '.join(case_ids)})"
+    items_query = f"items.value:({' OR '.join(case_ids)})"
     for case in ds.case.stream_search(items_query, as_obj=False):
         related_case_id = case["case_id"]
         if related_case_id in case_ids:
             continue
 
-        related_case = ds.case.get_if_exists(related_case_id, as_obj=True)
+        related_case = ds.case.get(related_case_id)
         if related_case:
-            related_case.items = [item for item in related_case.items if item.id not in case_ids]
+            related_case.items = [item for item in related_case.items if item.value not in case_ids]
             ds.case.save(related_case_id, related_case)
 
     return ds.case.delete_by_query(f"case_id:({' OR '.join(case_ids)})")
@@ -157,7 +159,7 @@ def update_case(case_id: str, case_data: dict[str, Any], user: User) -> Case:
     """
     ds = datastore()
 
-    case = ds.case.get_if_exists(case_id, as_obj=True)
+    case = ds.case.get(case_id)
     if case is None:
         raise NotFoundException(f"Case {case_id} does not exist")
 
@@ -304,7 +306,7 @@ def append_hit(case_id: str, item: CaseItem) -> Case:
     """
     ds = datastore()
 
-    _case = ds.case.get_if_exists(key=case_id, as_obj=True)
+    _case = ds.case.get(case_id)
 
     if _case is None:
         raise NotFoundException(f"Case {case_id} does not exist")
@@ -312,18 +314,11 @@ def append_hit(case_id: str, item: CaseItem) -> Case:
     if any(item.value == case_item["value"] for case_item in _case.items):
         raise InvalidDataException(f"Hit {item.value} already exists in case {case_id}")
 
-    if item.type in ["hit", "observable", "case"] and not ds[item.type].exists(key=item.value):
-        raise NotFoundException(f"{item.type.capitalize()} {item.value} not found, cannot be added to case")
+    hit = ds.hit.get(item.value)
 
     _case.items.append(item)
 
-    if not datastore().case.save(_case.case_id, _case):
-        raise DataStoreException(f"Failed to save {_case.case_id} with new item {item.value}")
-
-    if item.type in ["hit", "observable"]:
-        record = ds[item.type].get(item.value)
-
-        _add_backreference(record, _case.case_id)
+    _add_backreference(hit, _case.case_id)
 
     _sync_case_metadata(_case.case_id)
 
@@ -349,7 +344,7 @@ def append_observable(case_id: str, item: CaseItem) -> Case:
     """
     ds = datastore()
 
-    _case = ds.case.get_if_exists(key=case_id, as_obj=True)
+    _case = ds.case.get(key=case_id)
 
     if _case is None:
         raise NotFoundException(f"Case {case_id} does not exist")
@@ -357,12 +352,10 @@ def append_observable(case_id: str, item: CaseItem) -> Case:
     if any(item.value == case_item["value"] for case_item in _case.items):
         raise InvalidDataException(f"Observable {item.value} already exists in case {case_id}")
 
-    observable: Observable = ds.observable.get_if_exists(key=item.value, as_obj=True)
+    observable = ds.observable.get(key=item.value)
 
     if observable is None:
         raise NotFoundException(f"Observable {item.value} not found, cannot be added to case")
-
-    item.id = item.value
 
     if item.path == "related/":
         item.path = f"observables/{observable.howler.id}"
@@ -397,7 +390,7 @@ def append_case(case_id: str, item: CaseItem) -> Case:
     """
     ds = datastore()
 
-    _case = ds.case.get_if_exists(key=case_id, as_obj=True)
+    _case = ds.case.get(case_id)
 
     if _case is None:
         raise NotFoundException(f"Case {case_id} does not exist")
@@ -405,12 +398,10 @@ def append_case(case_id: str, item: CaseItem) -> Case:
     if any(item.value == case_item["value"] for case_item in _case.items):
         raise InvalidDataException(f"Observable {item.value} already exists in case {case_id}")
 
-    referenced_case: Case = ds.case.get_if_exists(key=item.value, as_obj=True)
+    referenced_case = ds.case.get(item.value)
 
     if referenced_case is None:
         raise NotFoundException(f"Referenced case {item.value} not found, cannot be added to case")
-
-    item.id = item.value
 
     if item.path == "related/":
         item.path = "cases/"
@@ -516,7 +507,7 @@ def _sync_case_metadata(case_id: str) -> None:  # noqa: C901
     objects' ECS ``related.*`` fields and, for hits, the outline fields.
     """
     ds = datastore()
-    _case = ds.case.get_if_exists(case_id, as_obj=True)
+    _case = ds.case.get(case_id)
     if _case is None:
         return
 
@@ -526,7 +517,7 @@ def _sync_case_metadata(case_id: str) -> None:  # noqa: C901
 
     for item in _case.items:
         if item.type == CaseItemTypes.HIT and item.value:
-            hit = ds.hit.get_if_exists(item.value, as_obj=True)
+            hit = ds.hit.get(item.value)
             if hit is None:
                 continue
 
@@ -542,7 +533,7 @@ def _sync_case_metadata(case_id: str) -> None:  # noqa: C901
                     indicators.update(str(v) for v in outline.indicators if v)
 
         elif item.type == CaseItemTypes.OBSERVABLE and item.value:
-            observable = ds.observable.get_if_exists(item.value, as_obj=True)
+            observable = ds.observable.get(item.value)
             if observable is None:
                 continue
 
@@ -623,7 +614,7 @@ def remove_case_item(case_id: str, item_value: str):
     """
     ds = datastore()
 
-    _case = ds.case.get(key=case_id, as_obj=True)
+    _case = ds.case.get(key=case_id)
 
     if not _case:
         raise NotFoundException(f"Case {case_id} does not exist")
