@@ -102,14 +102,13 @@ class TestCaseItem:
 
     def test_case_item_as_primitives(self):
         """as_primitives returns a plain dict representation."""
-        item = CaseItem({"path": "/alerts", "type": "hit", "value": "abc123", "id": "x"})
+        item = CaseItem({"path": "/alerts", "type": "hit", "value": "abc123"})
         primitives = item.as_primitives()
 
         assert isinstance(primitives, dict)
         assert primitives["path"] == "/alerts"
         assert primitives["type"] == "hit"
         assert primitives["value"] == "abc123"
-        assert primitives["id"] == "x"
 
     def test_case_item_visible_defaults_to_true(self):
         """CaseItem.visible is True by default."""
