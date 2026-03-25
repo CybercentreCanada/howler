@@ -8,11 +8,12 @@ interface ViewTitleProps {
   title?: string;
   type?: string;
   query?: string;
+  indexes?: string[];
   sort?: string;
   span?: string;
 }
 
-export const ViewTitle: FC<ViewTitleProps> = ({ title, type, query, sort, span }) => {
+export const ViewTitle: FC<ViewTitleProps> = ({ title, type, query, sort, span, indexes }) => {
   const { t } = useTranslation();
   const spanLabel = useMemo(() => {
     if (!span) {
@@ -25,6 +26,12 @@ export const ViewTitle: FC<ViewTitleProps> = ({ title, type, query, sort, span }
       return t(span);
     }
   }, [span, t]);
+
+  const indexLabel = useMemo(() => {
+    if (!indexes || indexes.length === 0) {
+      return '';
+    } else return `(${indexes.join(', ')})`;
+  }, [indexes]);
 
   return (
     <Stack>
@@ -43,7 +50,7 @@ export const ViewTitle: FC<ViewTitleProps> = ({ title, type, query, sort, span }
       <Typography variant="caption">
         <code>{query}</code>
       </Typography>
-      {(sort || span) && (
+      {(sort || span || indexLabel) && (
         <Stack direction="row" sx={{ mt: 1 }} spacing={1}>
           {sort?.split(',').map(_sort => (
             <Chip
@@ -54,6 +61,7 @@ export const ViewTitle: FC<ViewTitleProps> = ({ title, type, query, sort, span }
             />
           ))}
           {spanLabel && <Chip label={spanLabel} />}
+          {indexLabel && <Chip label={indexLabel} />}
         </Stack>
       )}
     </Stack>

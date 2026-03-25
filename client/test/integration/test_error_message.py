@@ -1,5 +1,6 @@
-from howler_client.client import Client
 from utils import random_hash
+
+from howler_client.client import Client
 
 
 def test_create_error(client: Client, caplog):
