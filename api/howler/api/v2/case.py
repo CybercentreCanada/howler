@@ -246,9 +246,9 @@ def append_item(id: str, user: User, **kwargs):  # noqa: C901
 
 
 @generate_swagger_docs()
-@case_api.route("/<id>/items/<value>", methods=["DELETE"])
+@case_api.route("/<id>/items", methods=["DELETE"])
 @api_login(required_priv=["R", "W"])
-def delete_item(id: str, value: str, **kwargs):
+def delete_item(id: str, **kwargs):
     """Delete an item from a case
 
     This endpoint removes an item from a case's items list. If the item is a hit or
@@ -257,21 +257,27 @@ def delete_item(id: str, value: str, **kwargs):
 
     Variables:
     id       => The id of the case to modify
-    value    => The value of the item to delete (must match the item's value field)
 
     Arguments:
     None
 
     Data Block:
-    None
+    {
+        "value": "item-id-123"   # The value of the item to delete
+    }
 
     Result Example:
     {
         "success": true     # Did the deletion succeed?
     }
     """
+    body = request.json
+
+    if not body or not isinstance(body, dict) or "value" not in body:
+        return bad_request(err="Request body must be a JSON object with a 'value' field.")
+
     try:
-        case_service.remove_case_item(id, item_value=value)
+        case_service.remove_case_item(id, item_value=body["value"])
     except DataStoreException as e:
         logger.exception("Save Error")
         return internal_error(err=str(e))
