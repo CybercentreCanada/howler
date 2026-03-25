@@ -8,6 +8,7 @@ import useParamState from './useParamState';
 // Creates a MemoryRouter wrapper using createElement to avoid JSX in a .ts file
 const makeWrapper =
   (search = ''): FC<PropsWithChildren> =>
+  // eslint-disable-next-line react/function-component-definition
   ({ children }) =>
     createElement(MemoryRouter, { initialEntries: [search ? `/?${search}` : '/'] }, children);
 

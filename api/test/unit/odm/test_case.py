@@ -71,13 +71,12 @@ class TestCaseItem:
         assert item.path == "/alerts"
         assert item.type == "hit"
         assert item.value == "abc123"
-        assert item.id is None
 
     def test_create_case_item_with_id(self):
         """CaseItem can be created with an optional id."""
-        item = CaseItem({"path": "/obs", "type": "observable", "value": "1.2.3.4", "id": "obs-001"})
+        item = CaseItem({"path": "/obs", "type": "observable", "value": "obs-001"})
 
-        assert item.id == "obs-001"
+        assert item.value == "obs-001"
 
     @pytest.mark.parametrize("item_type", sorted(CASE_ITEM_TYPES))
     def test_valid_item_types(self, item_type):
@@ -103,14 +102,13 @@ class TestCaseItem:
 
     def test_case_item_as_primitives(self):
         """as_primitives returns a plain dict representation."""
-        item = CaseItem({"path": "/alerts", "type": "hit", "value": "abc123", "id": "x"})
+        item = CaseItem({"path": "/alerts", "type": "hit", "value": "abc123"})
         primitives = item.as_primitives()
 
         assert isinstance(primitives, dict)
         assert primitives["path"] == "/alerts"
         assert primitives["type"] == "hit"
         assert primitives["value"] == "abc123"
-        assert primitives["id"] == "x"
 
     def test_case_item_visible_defaults_to_true(self):
         """CaseItem.visible is True by default."""

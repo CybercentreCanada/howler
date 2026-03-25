@@ -45,17 +45,17 @@ class TestCreateCase:
         assert id_a != id_b
 
     @patch("howler.services.case_service.datastore")
-    def test_create_case_returns_primitives_dict(self, mock_ds_fn):
+    def test_create_case_returns_odm(self, mock_ds_fn):
         """create_case returns the created case as a plain dict."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
         result = case_service.create_case({"title": "Title", "summary": "Summary"}, user="admin")
 
-        assert isinstance(result, dict)
-        assert result["title"] == "Title"
-        assert result["summary"] == "Summary"
-        assert "case_id" in result
+        assert isinstance(result, Case)
+        assert result.title == "Title"
+        assert result.summary == "Summary"
+        assert result.case_id
 
     @patch("howler.services.case_service.datastore")
     def test_create_case_sets_log_entry(self, mock_ds_fn):
@@ -127,7 +127,7 @@ class TestUpdateCase:
         """update_case raises NotFoundException when case does not exist."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
-        mock_ds.case.get_if_exists.return_value = None
+        mock_ds.case.get.return_value = None
 
         mock_user = MagicMock()
         mock_user.uname = "analyst"
@@ -140,7 +140,7 @@ class TestUpdateCase:
         """update_case raises InvalidDataException when an immutable field is supplied."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
-        mock_ds.case.get_if_exists.return_value = Case(
+        mock_ds.case.get.return_value = Case(
             {
                 "case_id": "case-001",
                 "title": "T",
@@ -161,7 +161,7 @@ class TestUpdateCase:
         """update_case saves the updated case and returns it."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
-        mock_ds.case.get_if_exists.return_value = Case(
+        mock_ds.case.get.return_value = Case(
             {
                 "case_id": "case-001",
                 "title": "Old Title",
@@ -190,7 +190,7 @@ class TestUpdateCase:
         """update_case raises InvalidDataException when the immutable 'updated' field is supplied."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
-        mock_ds.case.get_if_exists.return_value = Case(
+        mock_ds.case.get.return_value = Case(
             {"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"}
         )
         mock_user = MagicMock()
@@ -204,7 +204,7 @@ class TestUpdateCase:
         """update_case accepts 'items' as a compound field (not immutable) and does not raise."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
-        mock_ds.case.get_if_exists.return_value = Case(
+        mock_ds.case.get.return_value = Case(
             {"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"}
         )
         mock_user = MagicMock()
@@ -220,7 +220,7 @@ class TestUpdateCase:
         """update_case raises InvalidDataException when the update dict is empty."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
-        mock_ds.case.get_if_exists.return_value = Case(
+        mock_ds.case.get.return_value = Case(
             {"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"}
         )
         mock_user = MagicMock()
@@ -234,7 +234,7 @@ class TestUpdateCase:
         """update_case logs added/removed entries when a list field is changed."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
-        mock_ds.case.get_if_exists.return_value = Case(
+        mock_ds.case.get.return_value = Case(
             {
                 "case_id": "case-001",
                 "title": "T",
@@ -258,7 +258,7 @@ class TestUpdateCase:
         """update_case raises InvalidDataException for every immutable field."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
-        mock_ds.case.get_if_exists.return_value = Case(
+        mock_ds.case.get.return_value = Case(
             {"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"}
         )
         mock_user = MagicMock()
@@ -286,11 +286,11 @@ class TestHideCases:
 
         case_obj = MagicMock()
         case_obj.items = []
-        mock_ds.case.get_if_exists.return_value = case_obj
+        mock_ds.case.get.return_value = case_obj
 
         case_service.hide_cases({"case-001"}, user="analyst")
 
-        mock_ds.case.get_if_exists.assert_called_with("case-001", as_obj=True)
+        mock_ds.case.get.assert_called_with("case-001")
         assert case_obj.visible is False
         mock_ds.case.save.assert_called_with("case-001", case_obj)
 
@@ -305,11 +305,11 @@ class TestHideCases:
 
         # The related case has an item pointing to the hidden case ID
         related_item = MagicMock()
-        related_item.id = "case-001"
+        related_item.value = "case-001"
         related_item.visible = True
 
         unrelated_item = MagicMock()
-        unrelated_item.id = "something-else"
+        unrelated_item.value = "something-else"
         unrelated_item.visible = True
 
         related_case_obj = MagicMock()
@@ -319,7 +319,7 @@ class TestHideCases:
         target_case_obj = MagicMock()
         target_case_obj.items = []
 
-        mock_ds.case.get_if_exists.side_effect = lambda case_id, as_obj=False: (
+        mock_ds.case.get.side_effect = lambda case_id, as_obj=False: (
             related_case_obj if case_id == "case-other" else target_case_obj
         )
 
@@ -346,7 +346,7 @@ class TestHideCases:
         mock_ds.case.stream_search.return_value = iter([{"case_id": "case-other"}])
 
         non_matching_item = MagicMock()
-        non_matching_item.id = "unrelated-id"
+        non_matching_item.value = "unrelated-id"
 
         related_case_obj = MagicMock()
         related_case_obj.items = [non_matching_item]
@@ -354,7 +354,7 @@ class TestHideCases:
         target_case_obj = MagicMock()
         target_case_obj.items = []
 
-        mock_ds.case.get_if_exists.side_effect = lambda case_id, as_obj=False: (
+        mock_ds.case.get.side_effect = lambda case_id, as_obj=False: (
             related_case_obj if case_id == "case-other" else target_case_obj
         )
 
@@ -377,13 +377,13 @@ class TestHideCases:
 
         case_obj = MagicMock()
         case_obj.items = []
-        mock_ds.case.get_if_exists.return_value = case_obj
+        mock_ds.case.get.return_value = case_obj
 
         case_service.hide_cases({"case-001"}, user="analyst")
 
         # stream_search returned "case-001" but the loop must have skipped it (continue).
-        # The only get_if_exists call should be from the direct hide loop that runs afterwards.
-        mock_ds.case.get_if_exists.assert_called_once_with("case-001", as_obj=True)
+        # The only get call should be from the direct hide loop that runs afterwards.
+        mock_ds.case.get.assert_called_once_with("case-001")
 
     @patch("howler.services.case_service.logger")
     @patch("howler.services.case_service.datastore")
@@ -393,7 +393,7 @@ class TestHideCases:
         mock_ds_fn.return_value = mock_ds
 
         mock_ds.case.stream_search.return_value = iter([])
-        mock_ds.case.get_if_exists.return_value = None
+        mock_ds.case.get.return_value = None
 
         case_service.hide_cases({"case-missing"}, user="analyst")
 
@@ -414,7 +414,7 @@ class TestHideCases:
         case_b = MagicMock()
         case_b.items = []
 
-        mock_ds.case.get_if_exists.side_effect = lambda case_id, as_obj=False: case_a if case_id == "case-a" else case_b
+        mock_ds.case.get.side_effect = lambda case_id, as_obj=False: case_a if case_id == "case-a" else case_b
 
         case_service.hide_cases({"case-a", "case-b"}, user="analyst")
 
@@ -433,7 +433,7 @@ class TestHideCases:
         case_obj = MagicMock()
         case_obj.items = []
         case_obj.log = []  # use a real list so append actually works
-        mock_ds.case.get_if_exists.return_value = case_obj
+        mock_ds.case.get.return_value = case_obj
 
         case_service.hide_cases({"case-001"}, user="admin")
 
@@ -469,18 +469,18 @@ class TestDeleteCases:
         mock_ds.case.stream_search.return_value = iter([{"case_id": "case-other"}])
 
         matching_item = MagicMock()
-        matching_item.id = "case-del"
+        matching_item.value = "case-del"
         unrelated_item = MagicMock()
-        unrelated_item.id = "other-id"
+        unrelated_item.value = "other-id"
 
         related_case = MagicMock()
         related_case.items = [matching_item, unrelated_item]
-        mock_ds.case.get_if_exists.return_value = related_case
+        mock_ds.case.get.return_value = related_case
 
         case_service.delete_cases({"case-del"})
 
         assert len(related_case.items) == 1
-        assert related_case.items[0].id == "other-id"
+        assert related_case.items[0].value == "other-id"
         mock_ds.case.save.assert_called_once_with("case-other", related_case)
 
     @patch("howler.services.case_service.datastore")
@@ -493,8 +493,8 @@ class TestDeleteCases:
 
         case_service.delete_cases({"case-del"})
 
-        # The skip (continue) must prevent get_if_exists from being called
-        mock_ds.case.get_if_exists.assert_not_called()
+        # The skip (continue) must prevent get from being called
+        mock_ds.case.get.assert_not_called()
 
     @patch("howler.services.case_service.datastore")
     def test_delete_cases_returns_delete_by_query_result(self, mock_ds_fn):
@@ -569,13 +569,13 @@ class TestAppendHit:
         mock_case = MagicMock()
         mock_case.case_id = "case-001"
         mock_case.items = []
-        mock_ds.case.get_if_exists.return_value = mock_case
+        mock_ds.case.get.return_value = mock_case
         mock_ds.case.save.return_value = True
 
         mock_hit = MagicMock()
         mock_hit.howler.analytic = "test-analytic"
         mock_hit.howler.id = "hit-001"
-        mock_ds.hit.get_if_exists.return_value = mock_hit
+        mock_ds.hit.get.return_value = mock_hit
 
         item = CaseItem({"type": "hit", "value": "hit-001", "path": "related/"})
         case_service.append_hit("case-001", item)
@@ -596,13 +596,13 @@ class TestAppendHit:
         mock_case = MagicMock()
         mock_case.case_id = "case-001"
         mock_case.items = []
-        mock_ds.case.get_if_exists.return_value = mock_case
+        mock_ds.case.get.return_value = mock_case
         mock_ds.case.save.return_value = True
 
         mock_hit = MagicMock()
         mock_hit.howler.analytic = "my-analytic"
         mock_hit.howler.id = "hit-001"
-        mock_ds.hit.get_if_exists.return_value = mock_hit
+        mock_ds.hit.get.return_value = mock_hit
 
         item = CaseItem({"type": "hit", "value": "hit-001", "path": "related/"})
         case_service.append_hit("case-001", item)
@@ -614,7 +614,7 @@ class TestAppendHit:
         """append_hit raises NotFoundException when the case does not exist."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
-        mock_ds.case.get_if_exists.return_value = None
+        mock_ds.case.get.return_value = None
 
         item = CaseItem({"type": "hit", "value": "hit-001", "path": "related/"})
         with pytest.raises(NotFoundException):
@@ -628,8 +628,8 @@ class TestAppendHit:
 
         mock_case = MagicMock()
         mock_case.items = []
-        mock_ds.case.get_if_exists.return_value = mock_case
-        mock_ds.hit.get_if_exists.return_value = None
+        mock_ds.case.get.return_value = mock_case
+        mock_ds.hit.get.return_value = None
 
         item = CaseItem({"type": "hit", "value": "nonexistent-hit", "path": "related/"})
         with pytest.raises(NotFoundException):
@@ -644,7 +644,7 @@ class TestAppendHit:
         existing = CaseItem({"type": "hit", "value": "hit-001", "path": "alerts/test"})
         mock_case = MagicMock()
         mock_case.items = [existing]
-        mock_ds.case.get_if_exists.return_value = mock_case
+        mock_ds.case.get.return_value = mock_case
 
         item = CaseItem({"type": "hit", "value": "hit-001", "path": "related/"})
         with pytest.raises(InvalidDataException):
@@ -659,13 +659,13 @@ class TestAppendHit:
         mock_case = MagicMock()
         mock_case.case_id = "case-001"
         mock_case.items = []
-        mock_ds.case.get_if_exists.return_value = mock_case
+        mock_ds.case.get.return_value = mock_case
         mock_ds.case.save.return_value = False
 
         mock_hit = MagicMock()
         mock_hit.howler.analytic = "analytic"
         mock_hit.howler.id = "hit-001"
-        mock_ds.hit.get_if_exists.return_value = mock_hit
+        mock_ds.hit.get.return_value = mock_hit
 
         item = CaseItem({"type": "hit", "value": "hit-001", "path": "related/"})
         with pytest.raises(DataStoreException):
@@ -691,12 +691,12 @@ class TestAppendObservable:
         mock_case = MagicMock()
         mock_case.case_id = "case-001"
         mock_case.items = []
-        mock_ds.case.get_if_exists.return_value = mock_case
+        mock_ds.case.get.return_value = mock_case
         mock_ds.case.save.return_value = True
 
         mock_obs = MagicMock()
         mock_obs.howler.id = "obs-001"
-        mock_ds.observable.get_if_exists.return_value = mock_obs
+        mock_ds.observable.get.return_value = mock_obs
 
         item = CaseItem({"type": "observable", "value": "obs-001", "path": "related/"})
         case_service.append_observable("case-001", item)
@@ -711,7 +711,7 @@ class TestAppendObservable:
         """append_observable raises NotFoundException when the case does not exist."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
-        mock_ds.case.get_if_exists.return_value = None
+        mock_ds.case.get.return_value = None
 
         item = CaseItem({"type": "observable", "value": "obs-001", "path": "related/"})
         with pytest.raises(NotFoundException):
@@ -725,8 +725,8 @@ class TestAppendObservable:
 
         mock_case = MagicMock()
         mock_case.items = []
-        mock_ds.case.get_if_exists.return_value = mock_case
-        mock_ds.observable.get_if_exists.return_value = None
+        mock_ds.case.get.return_value = mock_case
+        mock_ds.observable.get.return_value = None
 
         item = CaseItem({"type": "observable", "value": "nonexistent-obs", "path": "related/"})
         with pytest.raises(NotFoundException):
@@ -741,7 +741,7 @@ class TestAppendObservable:
         existing = CaseItem({"type": "observable", "value": "obs-001", "path": "observables/obs-001"})
         mock_case = MagicMock()
         mock_case.items = [existing]
-        mock_ds.case.get_if_exists.return_value = mock_case
+        mock_ds.case.get.return_value = mock_case
 
         item = CaseItem({"type": "observable", "value": "obs-001", "path": "related/"})
         with pytest.raises(InvalidDataException):
@@ -769,9 +769,7 @@ class TestAppendCase:
         mock_child = MagicMock()
         mock_child.case_id = "child-001"
 
-        mock_ds.case.get_if_exists.side_effect = (
-            lambda key, as_obj=False: mock_parent if key == "parent-001" else mock_child
-        )
+        mock_ds.case.get.side_effect = lambda key, as_obj=False: mock_parent if key == "parent-001" else mock_child
         mock_ds.case.save.return_value = True
 
         item = CaseItem({"type": "case", "value": "child-001", "path": "related/"})
@@ -786,7 +784,7 @@ class TestAppendCase:
         """append_case raises NotFoundException when the parent case does not exist."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
-        mock_ds.case.get_if_exists.return_value = None
+        mock_ds.case.get.return_value = None
 
         item = CaseItem({"type": "case", "value": "child-001", "path": "related/"})
         with pytest.raises(NotFoundException):
@@ -801,7 +799,7 @@ class TestAppendCase:
         mock_parent = MagicMock()
         mock_parent.items = []
 
-        mock_ds.case.get_if_exists.side_effect = lambda key, as_obj=False: mock_parent if key == "parent-001" else None
+        mock_ds.case.get.side_effect = lambda key, as_obj=False: mock_parent if key == "parent-001" else None
 
         item = CaseItem({"type": "case", "value": "nonexistent-child", "path": "related/"})
         with pytest.raises(NotFoundException):
@@ -816,7 +814,7 @@ class TestAppendCase:
         existing = CaseItem({"type": "case", "value": "child-001", "path": "cases/child-001"})
         mock_parent = MagicMock()
         mock_parent.items = [existing]
-        mock_ds.case.get_if_exists.return_value = mock_parent
+        mock_ds.case.get.return_value = mock_parent
 
         item = CaseItem({"type": "case", "value": "child-001", "path": "related/"})
         with pytest.raises(InvalidDataException):
@@ -862,7 +860,6 @@ class TestRemoveCaseItem:
         mock_ds_fn.return_value = mock_ds
 
         hit_item = CaseItem({"type": "hit", "value": "hit-001", "path": "alerts/test"})
-        hit_item.id = "hit-001"
 
         mock_case = MagicMock()
         mock_case.case_id = "case-001"
@@ -888,7 +885,6 @@ class TestRemoveCaseItem:
         mock_ds_fn.return_value = mock_ds
 
         obs_item = CaseItem({"type": "observable", "value": "obs-001", "path": "observables/obs-001"})
-        obs_item.id = "obs-001"
 
         mock_case = MagicMock()
         mock_case.case_id = "case-001"
@@ -950,7 +946,7 @@ class TestSyncCaseMetadata:
         """_sync_case_metadata does nothing when the case does not exist."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
-        mock_ds.case.get_if_exists.return_value = None
+        mock_ds.case.get.return_value = None
 
         case_service._sync_case_metadata("nonexistent-id")
 
@@ -963,11 +959,10 @@ class TestSyncCaseMetadata:
         mock_ds_fn.return_value = mock_ds
 
         hit_item = CaseItem({"type": "hit", "value": "hit-001", "path": "alerts/test"})
-        hit_item.id = "hit-001"
 
         mock_case = MagicMock()
         mock_case.items = [hit_item]
-        mock_ds.case.get_if_exists.return_value = mock_case
+        mock_ds.case.get.return_value = mock_case
 
         mock_outline = MagicMock()
         mock_outline.threat = "evil.example.com"
@@ -977,7 +972,7 @@ class TestSyncCaseMetadata:
         mock_hit = MagicMock()
         mock_hit.related = None
         mock_hit.howler.outline = mock_outline
-        mock_ds.hit.get_if_exists.return_value = mock_hit
+        mock_ds.hit.get.return_value = mock_hit
 
         case_service._sync_case_metadata("case-001")
 
@@ -994,7 +989,7 @@ class TestSyncCaseMetadata:
 
         mock_case = MagicMock()
         mock_case.items = []
-        mock_ds.case.get_if_exists.return_value = mock_case
+        mock_ds.case.get.return_value = mock_case
 
         case_service._sync_case_metadata("case-001")
 
