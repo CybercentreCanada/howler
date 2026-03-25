@@ -4,10 +4,11 @@ import useMatchers from 'components/app/hooks/useMatchers';
 import { FieldContext } from 'components/app/providers/FieldProvider';
 import { RecordSearchContext } from 'components/app/providers/RecordSearchProvider';
 import ChipPopper from 'components/elements/display/ChipPopper';
-import { has, sortBy, uniq } from 'lodash-es';
+import { sortBy, uniq } from 'lodash-es';
 import { memo, useContext, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
+import { isHit } from 'utils/typeUtils';
 
 const AddColumnModal: FC<{
   addColumn: (key: string) => void;
@@ -29,10 +30,7 @@ const AddColumnModal: FC<{
         uniq(
           (
             await Promise.all(
-              (response?.items ?? []).map(
-                async _hit =>
-                  (has(_hit, '__template') ? _hit.__template?.keys : (await getMatchingTemplate(_hit))?.keys) ?? []
-              )
+              (response?.items ?? []).filter(isHit).map(async _hit => (await getMatchingTemplate(_hit))?.keys ?? [])
             )
           ).flat()
         )

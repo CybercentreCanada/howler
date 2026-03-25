@@ -20,7 +20,6 @@ interface ChipPopperProps {
   toggleOnDelete?: boolean;
   disablePortal?: boolean;
   closeOnClick?: boolean;
-  disablePortal?: boolean;
 }
 
 const ChipPopper: FC<ChipPopperProps> = ({
