@@ -34,8 +34,8 @@ const AlertPanel: FC<{ case: Case }> = ({ case: _case }) => {
       <Divider />
       {alertPages?.length > 0 &&
         alertPages[alertPage - 1].map(item => (
-          <Box key={item.id} position="relative">
-            <HitCard layout={HitLayout.DENSE} id={item.id} />
+          <Box key={item.path} position="relative">
+            <HitCard layout={HitLayout.DENSE} id={item.value} />
             <Box
               component={Link}
               to={item.path}

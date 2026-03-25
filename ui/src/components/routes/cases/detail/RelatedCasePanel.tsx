@@ -31,8 +31,8 @@ const RelatedCasePanel: FC<{ case: Case }> = ({ case: _case }) => {
       </Stack>
       <Divider />
       {casePages[casePage - 1]?.map(item => (
-        <Box key={item.id} position="relative">
-          <CaseCard caseId={item.id} />
+        <Box key={item.path} position="relative">
+          <CaseCard caseId={item.value} />
           <Box
             component={Link}
             to={item.path}
