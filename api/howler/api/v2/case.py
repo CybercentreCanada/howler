@@ -232,11 +232,9 @@ def append_item(id: str, user: User, **kwargs):  # noqa: C901
     except UnsupportedMediaType:
         return bad_request(err="Invalid JSON body")
 
-    if "value" not in body:
-        return bad_request(err="Case 'value' is required")
-
-    if "type" not in body:
-        return bad_request(err="Case 'type' missing")
+    for field in ["value", "type", "path"]:
+        if field not in body:
+            return bad_request(err=f"CaseItem '{field}' is required")
 
     try:
         return ok(case_service.append_case_item(id, item=CaseItem(body)))

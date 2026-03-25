@@ -58,8 +58,6 @@ const AddToCaseModal: FC<{ records: (Hit | Observable)[] }> = ({ records }) => {
       return;
     }
 
-    // eslint-disable-next-line no-console
-    console.log({ case_id: selectedCase?.case_id, path: fullPath, records });
     await dispatchApi(
       api.v2.case.items.post(selectedCase.case_id, {
         path: fullPath,
