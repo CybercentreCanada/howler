@@ -261,7 +261,7 @@ def remove_as_favourite(view_id: str, **kwargs):
     """Remove a view from a list of the user's favourites
 
     Variables:
-    id => The id of the view to remove as a favourite
+    view_id => The id of the view to remove as a favourite
 
     Optional Arguments:
     None

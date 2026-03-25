@@ -859,14 +859,14 @@ def test_fix_replicas(es_connection: ESCollection, replicas: int):
 
 
 @odm.model(index=True)
-class Test1(odm.Model):
+class ReindexModel1(odm.Model):
     field_1 = odm.Keyword(default="default")
     field_2 = odm.Keyword()
     field_3 = odm.Keyword(optional=True)
 
 
 @odm.model(index=True)
-class Test2(odm.Model):
+class ReindexModel2(odm.Model):
     field_2 = odm.Keyword()
     field_3 = odm.Integer(default=1)
 
@@ -875,14 +875,14 @@ def test_reindex(es_connection: ESCollection):
     # Create a unique test collection name to avoid conflicts
     test_collection_name = f"test_fix_replicas_{uuid.uuid4().hex[:8]}"
 
-    # Register and create a new collection instance using Test1 model
-    es_connection.datastore.register(test_collection_name, Test1)
+    # Register and create a new collection instance using ReindexModel1 model
+    es_connection.datastore.register(test_collection_name, ReindexModel1)
     test_collection: ESCollection = getattr(es_connection.datastore, test_collection_name)
 
-    # Add two documents using Test1 model
-    test_data: Any = Test1({"field_1": "example", "field_2": "example", "field_3": "example"})
+    # Add two documents using ReindexModel1 model
+    test_data: Any = ReindexModel1({"field_1": "example", "field_2": "example", "field_3": "example"})
     test_collection.save("example", test_data)
-    test_data = Test1({"field_1": "example2", "field_2": "example2"})
+    test_data = ReindexModel1({"field_1": "example2", "field_2": "example2"})
     test_collection.save("example2", test_data)
     test_collection.commit()
 
@@ -892,8 +892,8 @@ def test_reindex(es_connection: ESCollection):
     # Remove the collection from the registry to simulate a model change
     es_connection.datastore._collections.pop(test_collection_name)
 
-    # Register the same collection name with a new model (Test2)
-    es_connection.datastore.register(test_collection_name, Test2)
+    # Register the same collection name with a new model (ReindexModel2)
+    es_connection.datastore.register(test_collection_name, ReindexModel2)
     ESCollection.IGNORE_ENSURE_COLLECTION = True  # Temporarily ignore collection checks
     test_collection: ESCollection = getattr(es_connection.datastore, test_collection_name)
 
@@ -902,8 +902,8 @@ def test_reindex(es_connection: ESCollection):
     test_collection._ensure_collection()
     ESCollection.IGNORE_ENSURE_COLLECTION = False  # Restore collection checks
 
-    # Add a new document using Test2 model
-    test_data = Test2({"field_2": "example3", "field_3": 2})
+    # Add a new document using ReindexModel2 model
+    test_data = ReindexModel2({"field_2": "example3", "field_3": 2})
     test_collection.save("example3", test_data)
     test_collection.commit()
 
@@ -920,7 +920,7 @@ def test_reindex(es_connection: ESCollection):
 
     # Check field values for "example2" and "example3"
     assert test_collection.get("example2", as_obj=False)["field_2"] == "example2"
-    assert test_collection.get("example2")["field_3"] == 1  # default value from Test2
+    assert test_collection.get("example2")["field_3"] == 1  # default value from ReindexModel2
 
     assert test_collection.get("example3", as_obj=False)["field_2"] == "example3"
     assert test_collection.get("example3", as_obj=False)["field_3"] == 2
@@ -928,10 +928,10 @@ def test_reindex(es_connection: ESCollection):
     # "example1" should not exist
     assert test_collection.get("example1") is None
 
-    # Returned objects should be instances of Test2
-    assert isinstance(test_collection.get("example2"), Test2)
-    assert isinstance(test_collection.get("example3"), Test2)
+    # Returned objects should be instances of ReindexModel2
+    assert isinstance(test_collection.get("example2"), ReindexModel2)
+    assert isinstance(test_collection.get("example3"), ReindexModel2)
 
-    # Accessing field_1 on Test2 model should raise, since it's not defined
+    # Accessing field_1 on ReindexModel2 model should raise, since it's not defined
     with pytest.raises(Exception):
         test_collection.get("example2").field_1
