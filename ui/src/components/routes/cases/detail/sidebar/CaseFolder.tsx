@@ -20,6 +20,7 @@ import type { Item } from 'models/entities/generated/Item';
 import { useCallback, useEffect, useMemo, useState, type ComponentType, type FC } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ESCALATION_COLORS } from 'utils/constants';
+import CaseFolderContextMenu from './CaseFolderContextMenu';
 import type { Tree } from './types';
 import { buildTree } from './utils';
 
@@ -42,9 +43,18 @@ interface CaseFolderProps {
   step?: number;
   rootCaseId?: string;
   pathPrefix?: string;
+  onItemRemoved?: (newCase: Case) => void;
 }
 
-const CaseFolder: FC<CaseFolderProps> = ({ case: _case, folder, name, step = -1, rootCaseId, pathPrefix = '' }) => {
+const CaseFolder: FC<CaseFolderProps> = ({
+  case: _case,
+  folder,
+  name,
+  step = -1,
+  rootCaseId,
+  pathPrefix = '',
+  onItemRemoved
+}) => {
   const theme = useTheme();
   const location = useLocation();
   const { dispatchApi } = useMyApi();
@@ -121,33 +131,39 @@ const CaseFolder: FC<CaseFolderProps> = ({ case: _case, folder, name, step = -1,
   return (
     <Stack sx={{ overflow: 'visible' }}>
       {name && (
-        <Stack
-          direction="row"
-          pl={step * 1.5}
-          py={0.25}
-          sx={{
-            cursor: 'pointer',
-            transition: theme.transitions.create('background', { duration: 50 }),
-            background: 'transparent',
-            '&:hover': {
-              background: theme.palette.grey[800]
-            }
-          }}
-          onClick={() => setOpen(_open => !_open)}
-        >
-          <ChevronRight
-            fontSize="small"
-            color="disabled"
-            sx={[
-              { transition: theme.transitions.create('transform', { duration: 100 }), transform: 'rotate(0deg)' },
-              open && { transform: 'rotate(90deg)' }
-            ]}
-          />
-          <FolderIcon fontSize="small" color="disabled" />
-          <Typography variant="caption" color="textSecondary" sx={{ userSelect: 'none', pl: 0.5, textWrap: 'nowrap' }}>
-            {name}
-          </Typography>
-        </Stack>
+        <CaseFolderContextMenu _case={_case} tree={tree} onRemoved={onItemRemoved}>
+          <Stack
+            direction="row"
+            pl={step * 1.5}
+            py={0.25}
+            sx={{
+              cursor: 'pointer',
+              transition: theme.transitions.create('background', { duration: 50 }),
+              background: 'transparent',
+              '&:hover': {
+                background: theme.palette.grey[800]
+              }
+            }}
+            onClick={() => setOpen(_open => !_open)}
+          >
+            <ChevronRight
+              fontSize="small"
+              color="disabled"
+              sx={[
+                { transition: theme.transitions.create('transform', { duration: 100 }), transform: 'rotate(0deg)' },
+                open && { transform: 'rotate(90deg)' }
+              ]}
+            />
+            <FolderIcon fontSize="small" color="disabled" />
+            <Typography
+              variant="caption"
+              color="textSecondary"
+              sx={{ userSelect: 'none', pl: 0.5, textWrap: 'nowrap' }}
+            >
+              {name}
+            </Typography>
+          </Stack>
+        </CaseFolderContextMenu>
       )}
 
       {open && (
@@ -161,6 +177,7 @@ const CaseFolder: FC<CaseFolderProps> = ({ case: _case, folder, name, step = -1,
               step={step + 1}
               rootCaseId={currentRootCaseId}
               pathPrefix={pathPrefix}
+              onItemRemoved={onItemRemoved}
             />
           ))}
 
@@ -186,72 +203,80 @@ const CaseFolder: FC<CaseFolderProps> = ({ case: _case, folder, name, step = -1,
             const Icon = ICON_FOR_TYPE[itemType ?? ''] ?? Article;
 
             return (
-              <Stack key={`${_case?.case_id}-${leaf.value}-${leaf.path}`}>
-                <Stack
-                  direction="row"
-                  pl={step * 1.5 + 1}
-                  py={0.25}
-                  sx={[
-                    {
-                      cursor: 'pointer',
-                      overflow: 'visible',
-                      color: `${theme.palette.text.secondary} !important`,
-                      textDecoration: 'none',
-                      transition: theme.transitions.create('background', { duration: 100 }),
-                      background: 'transparent',
-                      '&:hover': {
-                        background: theme.palette.grey[800]
-                      },
-                      borderRight: '3px solid transparent'
-                    },
-                    decodeURIComponent(location.pathname) === itemPath && {
-                      background: alpha(theme.palette.grey[600], 0.15),
-                      borderRightColor: theme.palette.primary.main
-                    }
-                  ]}
-                  onClick={() => isCase && toggleCase(leaf, itemKey)}
-                  component={Link}
-                  to={itemPath}
-                  target={itemType === 'reference' ? '_blank' : undefined}
-                  rel={itemType === 'reference' ? 'noopener noreferrer' : undefined}
-                >
-                  <ChevronRight
-                    fontSize="small"
+              <CaseFolderContextMenu
+                key={`${_case?.case_id}-${leaf.value}-${leaf.path}`}
+                _case={_case}
+                leaf={leaf}
+                onRemoved={onItemRemoved}
+              >
+                <Stack>
+                  <Stack
+                    direction="row"
+                    pl={step * 1.5 + 1}
+                    py={0.25}
                     sx={[
-                      !isCase && { opacity: 0 },
-                      isCase && {
-                        transition: theme.transitions.create('transform', { duration: 100 }),
-                        transform: isCaseOpen ? 'rotate(90deg)' : 'rotate(0deg)'
+                      {
+                        cursor: 'pointer',
+                        overflow: 'visible',
+                        color: `${theme.palette.text.secondary} !important`,
+                        textDecoration: 'none',
+                        transition: theme.transitions.create('background', { duration: 100 }),
+                        background: 'transparent',
+                        '&:hover': {
+                          background: theme.palette.grey[800]
+                        },
+                        borderRight: '3px solid transparent'
+                      },
+                      decodeURIComponent(location.pathname) === itemPath && {
+                        background: alpha(theme.palette.grey[600], 0.15),
+                        borderRightColor: theme.palette.primary.main
                       }
                     ]}
-                  />
-
-                  <Icon fontSize="small" color={iconColor} />
-
-                  <Typography
-                    variant="caption"
-                    color={leafColor}
-                    sx={{ userSelect: 'none', pl: 0.5, textWrap: 'nowrap' }}
+                    onClick={() => isCase && toggleCase(leaf, itemKey)}
+                    component={Link}
+                    to={itemPath}
+                    target={itemType === 'reference' ? '_blank' : undefined}
+                    rel={itemType === 'reference' ? 'noopener noreferrer' : undefined}
                   >
-                    {leaf.path?.split('/').pop() || leaf.value}
-                  </Typography>
-                </Stack>
+                    <ChevronRight
+                      fontSize="small"
+                      sx={[
+                        !isCase && { opacity: 0 },
+                        isCase && {
+                          transition: theme.transitions.create('transform', { duration: 100 }),
+                          transform: isCaseOpen ? 'rotate(90deg)' : 'rotate(0deg)'
+                        }
+                      ]}
+                    />
 
-                {isCase && isCaseOpen && isCaseLoading && (
-                  <Stack pl={step * 1.5 + 4} py={0.25}>
-                    <Skeleton width={140} height={16} />
+                    <Icon fontSize="small" color={iconColor} />
+
+                    <Typography
+                      variant="caption"
+                      color={leafColor}
+                      sx={{ userSelect: 'none', pl: 0.5, textWrap: 'nowrap' }}
+                    >
+                      {leaf.path?.split('/').pop() || leaf.value}
+                    </Typography>
                   </Stack>
-                )}
 
-                {isCase && isCaseOpen && nestedCase && (
-                  <CaseFolder
-                    case={nestedCase}
-                    step={step + 1}
-                    rootCaseId={currentRootCaseId}
-                    pathPrefix={fullRelativePath}
-                  />
-                )}
-              </Stack>
+                  {isCase && isCaseOpen && isCaseLoading && (
+                    <Stack pl={step * 1.5 + 4} py={0.25}>
+                      <Skeleton width={140} height={16} />
+                    </Stack>
+                  )}
+
+                  {isCase && isCaseOpen && nestedCase && (
+                    <CaseFolder
+                      case={nestedCase}
+                      step={step + 1}
+                      rootCaseId={currentRootCaseId}
+                      pathPrefix={fullRelativePath}
+                      onItemRemoved={onItemRemoved}
+                    />
+                  )}
+                </Stack>
+              </CaseFolderContextMenu>
             );
           })}
         </>

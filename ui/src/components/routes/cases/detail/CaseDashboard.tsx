@@ -37,7 +37,7 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
   const { dispatchApi } = useMyApi();
   const theme = useTheme();
   const routeCase = useOutletContext<Case>();
-  const { case: _case, updateCase } = useCase({ case: providedCase ?? routeCase, caseId });
+  const { case: _case, update: updateCase } = useCase({ case: providedCase ?? routeCase, caseId });
 
   const [records, setRecords] = useState<Partial<Hit | Observable>[] | null>(null);
 

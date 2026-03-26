@@ -8,7 +8,12 @@ import { Link, useLocation } from 'react-router-dom';
 import { ESCALATION_COLOR_MAP } from '../constants';
 import CaseFolder from './sidebar/CaseFolder';
 
-const CaseSidebar: FC<{ case: Case }> = ({ case: _case }) => {
+interface CaseSidebarProps {
+  case: Case;
+  update: (newCase: Case) => void;
+}
+
+const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
   const { t } = useTranslation();
   const location = useLocation();
   const theme = useTheme();
@@ -113,7 +118,7 @@ const CaseSidebar: FC<{ case: Case }> = ({ case: _case }) => {
           }}
         >
           <Box position="absolute" sx={{ left: 0, right: 0 }}>
-            <CaseFolder case={_case} />
+            <CaseFolder case={_case} onItemRemoved={update} />
           </Box>
         </Box>
       )}

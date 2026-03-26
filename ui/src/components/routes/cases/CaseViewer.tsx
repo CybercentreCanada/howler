@@ -9,7 +9,7 @@ import useCase from './hooks/useCase';
 
 const CaseViewer: FC = () => {
   const params = useParams();
-  const { case: _case, missing } = useCase({ caseId: params.id });
+  const { case: _case, missing, update } = useCase({ caseId: params.id });
 
   if (missing) {
     return <NotFoundPage />;
@@ -17,7 +17,7 @@ const CaseViewer: FC = () => {
 
   return (
     <Stack direction="row" height="100%">
-      <CaseSidebar case={_case} />
+      <CaseSidebar case={_case} update={updatedCase => update(updatedCase, false)} />
       <Box
         sx={{
           maxHeight: 'calc(100vh - 64px)',

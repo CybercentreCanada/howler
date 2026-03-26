@@ -320,7 +320,13 @@ def append_hit(case_id: str, item: CaseItem) -> Case:
 
     hit = ds.hit.get(item.value)
 
+    if hit is None:
+        raise NotFoundException(f"Hit {item.value} not found, cannot be added to case")
+
     _case.items.append(item)
+
+    if not ds.case.save(_case.case_id, _case):
+        raise DataStoreException(f"Failed to save {_case.case_id} with new item {item.value}")
 
     _add_backreference(hit, _case.case_id)
 
@@ -362,7 +368,7 @@ def append_observable(case_id: str, item: CaseItem) -> Case:
 
     _case.items.append(item)
 
-    if not datastore().case.save(_case.case_id, _case):
+    if not ds.case.save(_case.case_id, _case):
         raise DataStoreException(f"Failed to save {_case.case_id} with new item {item.value}")
 
     _add_backreference(observable, _case.case_id)
@@ -585,20 +591,26 @@ def remove_backreference(backing_obj: Hit | Observable | None, case_id: str):
         datastore()[backing_obj.__class__.__name__.lower()].save(backing_obj.howler.id, backing_obj)
 
 
-def remove_case_item(case_id: str, item_value: str):
-    """Remove an item from a case and clean up any associated back-references.
+def remove_case_items(case_id: str, values: list[str]):
+    """Remove one or more items from a case in a single atomic operation.
 
-    Locates the item within the case by its value, removes it from the case's
-    items list, persists the updated case, and removes the back-reference from
-    the backing hit or observable if applicable.
+    Validates that every requested value exists within the case before making
+    any modifications.  If any value is missing the call raises NotFoundException
+    without altering the case.  When all values are confirmed, all matching
+    items are removed in memory, the case is persisted once, and back-references
+    are cleaned up from any associated hits or observables.
 
     Args:
-        case_id: Unique identifier of the case to remove the item from.
-        item_value: The value/identifier of the item to remove.
+        case_id: Unique identifier of the case to remove items from.
+        item_values: List of item values (IDs / URLs) to remove.
+
+    Returns:
+        The updated Case object.
 
     Raises:
-        NotFoundException: If the case does not exist.
-        DataStoreException: If saving the updated case fails.
+        NotFoundException: If the case does not exist, or if any requested value
+            is not present in the case's items list.
+        DataStoreException: If persisting the updated case fails.
     """
     ds = datastore()
 
@@ -607,20 +619,34 @@ def remove_case_item(case_id: str, item_value: str):
     if not _case:
         raise NotFoundException(f"Case {case_id} does not exist")
 
-    item = next((_item for _item in _case.items if _item["value"] == item_value), None)
-    if not item:
-        raise NotFoundException(f"Case item {item_value} does not exist")
+    # Build a lookup of value → item for all items currently in the case.
+    items_by_value = {_item["value"]: _item for _item in _case.items}
 
-    backing_obj: Hit | Observable | None = None
-    if item.type in [CaseItemTypes.HIT, CaseItemTypes.OBSERVABLE]:
-        backing_obj = ds[item.type].get(item.value)
+    # Pre-validate all requested values before touching anything.
+    missing = [v for v in values if v not in items_by_value]
+    if missing:
+        raise NotFoundException(f"Case item(s) not found in case: {', '.join(missing)}")
 
-    _case.items.remove(item)
+    # Resolve items and collect backing objects that need back-reference cleanup.
+    items_to_remove = [items_by_value[v] for v in values]
+    backing_objs: list[Hit | Observable] = []
+    for item in items_to_remove:
+        if item.type in [CaseItemTypes.HIT, CaseItemTypes.OBSERVABLE]:
+            obj = ds[item.type].get(item.value)
+            if obj:
+                backing_objs.append(obj)
+
+    # Remove all items in memory, then persist the case once.
+    for item in items_to_remove:
+        _case.items.remove(item)
 
     if not ds.case.save(_case.case_id, _case):
         raise DataStoreException("Failed to save case after item removal")
 
-    if backing_obj:
+    # Clean up back-references after the case is safely persisted.
+    for backing_obj in backing_objs:
         remove_backreference(backing_obj, _case.case_id)
 
     _sync_case_metadata(case_id)
+
+    return _case
