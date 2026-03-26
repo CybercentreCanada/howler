@@ -1,4 +1,5 @@
 """Datastore convenience mixins for Howler ODM Model classes.
+
 Provides :class:`DatastoreMixin`, a generic mixin that adds a class-level
 ``store`` property (returning a typed :class:`ESCollection`) and instance-level
 ``ds`` / ``save`` helpers so that Model subclasses can interact with the
@@ -19,9 +20,10 @@ ModelType = TypeVar("ModelType", bound=Model)
 
 class _ObjectsDescriptor(Generic[ModelType]):
     """Descriptor that provides class-level-only access to the model's ESCollection.
+
     Intended to be accessed exclusively via the class (e.g. ``Case.store``).
     Raises ``AttributeError`` if accessed from an instance to enforce
-    class-only usage.
+    cla  # noqa: D205
     """
 
     @overload
@@ -32,6 +34,7 @@ class _ObjectsDescriptor(Generic[ModelType]):
 
     def __get__(self, obj: ModelType | None, objtype: type[ModelType] | None = None) -> ESCollection[ModelType]:
         """Return the ESCollection for the owner class.
+
         Args:
             obj: The instance the descriptor was accessed from, or ``None``
                 when accessed via the class.
