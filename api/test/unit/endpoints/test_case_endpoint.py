@@ -661,3 +661,163 @@ class TestDeleteItemEndpoint:
             result: Response = delete_item("case-001")
 
             assert result.status_code == 500
+
+
+# ---------------------------------------------------------------------------
+# PATCH /api/v2/case/<case_id>/items
+# ---------------------------------------------------------------------------
+
+
+class TestRenameItemEndpoint:
+    """Tests for the PATCH /<case_id>/items endpoint."""
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_rename_item_success(self, mock_auth_service, mock_case_service, request_context: Flask):
+        """Returns 200 with the updated case when the rename succeeds."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        mock_case_service.rename_case_item.return_value = {"case_id": "case-001", "title": "Test"}
+
+        with request_context.test_request_context(
+            method="PATCH",
+            json={"value": "hit-001", "new_path": "folder/New Name"},
+            headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
+        ):
+            from howler.api.v2.case import rename_item
+
+            result: Response = rename_item(case_id="case-001")
+
+            assert result.status_code == 200
+            mock_case_service.rename_case_item.assert_called_once_with(
+                "case-001", item_value="hit-001", new_path="folder/New Name"
+            )
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_rename_item_missing_body_returns_400(self, mock_auth_service, mock_case_service, request_context: Flask):
+        """Returns 400 when no JSON body is provided."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        with request_context.test_request_context(
+            method="PATCH",
+            data=b"null",
+            content_type="application/json",
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.case import rename_item
+
+            result: Response = rename_item(case_id="case-001")
+
+            assert result.status_code == 400
+            mock_case_service.rename_case_item.assert_not_called()
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_rename_item_missing_value_returns_400(self, mock_auth_service, mock_case_service, request_context: Flask):
+        """Returns 400 when 'value' field is missing from the body."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        with request_context.test_request_context(
+            method="PATCH",
+            json={"new_path": "folder/New Name"},
+            headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
+        ):
+            from howler.api.v2.case import rename_item
+
+            result: Response = rename_item(case_id="case-001")
+
+            assert result.status_code == 400
+            mock_case_service.rename_case_item.assert_not_called()
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_rename_item_missing_new_path_returns_400(
+        self, mock_auth_service, mock_case_service, request_context: Flask
+    ):
+        """Returns 400 when 'new_path' field is missing from the body."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        with request_context.test_request_context(
+            method="PATCH",
+            json={"value": "hit-001"},
+            headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
+        ):
+            from howler.api.v2.case import rename_item
+
+            result: Response = rename_item(case_id="case-001")
+
+            assert result.status_code == 400
+            mock_case_service.rename_case_item.assert_not_called()
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_rename_item_not_found_returns_400(self, mock_auth_service, mock_case_service, request_context: Flask):
+        """Returns 400 when case_service raises NotFoundException."""
+        from howler.common.exceptions import NotFoundException
+
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        mock_case_service.rename_case_item.side_effect = NotFoundException("Item not found")
+
+        with request_context.test_request_context(
+            method="PATCH",
+            json={"value": "missing", "new_path": "folder/New Name"},
+            headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
+        ):
+            from howler.api.v2.case import rename_item
+
+            result: Response = rename_item(case_id="case-001")
+
+            assert result.status_code == 400
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_rename_item_path_conflict_returns_400(self, mock_auth_service, mock_case_service, request_context: Flask):
+        """Returns 400 when case_service raises InvalidDataException (path already taken)."""
+        from howler.common.exceptions import InvalidDataException
+
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        mock_case_service.rename_case_item.side_effect = InvalidDataException("Path already taken")
+
+        with request_context.test_request_context(
+            method="PATCH",
+            json={"value": "hit-001", "new_path": "folder/Taken"},
+            headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
+        ):
+            from howler.api.v2.case import rename_item
+
+            result: Response = rename_item(case_id="case-001")
+
+            assert result.status_code == 400
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_rename_item_datastore_error_returns_500(
+        self, mock_auth_service, mock_case_service, request_context: Flask
+    ):
+        """Returns 500 when case_service raises DataStoreException."""
+        from howler.datastore.exceptions import DataStoreException
+
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        mock_case_service.rename_case_item.side_effect = DataStoreException("datastore failure")
+
+        with request_context.test_request_context(
+            method="PATCH",
+            json={"value": "hit-001", "new_path": "folder/New Name"},
+            headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
+        ):
+            from howler.api.v2.case import rename_item
+
+            result: Response = rename_item(case_id="case-001")
+
+            assert result.status_code == 500

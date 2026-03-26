@@ -37,17 +37,32 @@ vi.mock('components/hooks/useMyApi', () => ({
 }));
 
 const mockDel = vi.hoisted(() => vi.fn());
+const mockPatch = vi.hoisted(() => vi.fn());
 
 vi.mock('api', () => ({
   default: {
     v2: {
       case: {
         items: {
-          del: (...args: any[]) => mockDel(...args)
+          del: (...args: any[]) => mockDel(...args),
+          patch: (...args: any[]) => mockPatch(...args)
         }
       }
     }
   }
+}));
+
+const mockShowModal = vi.hoisted(() => vi.fn());
+
+vi.mock('components/app/providers/ModalProvider', async () => {
+  const { createContext } = await import('react');
+  return {
+    ModalContext: createContext({ showModal: mockShowModal, close: vi.fn(), setContent: vi.fn() })
+  };
+});
+
+vi.mock('components/routes/cases/modals/RenameItemModal', () => ({
+  default: () => <div id="rename-item-modal" />
 }));
 
 // ---------------------------------------------------------------------------
@@ -82,9 +97,12 @@ const renderMenu = (props: Partial<React.ComponentPropsWithoutRef<typeof CaseFol
 
 beforeEach(() => {
   mockDel.mockClear();
+  mockPatch.mockClear();
   mockDispatchApi.mockClear();
+  mockShowModal.mockClear();
   mockDispatchApi.mockImplementation((p: Promise<any>) => p);
   mockDel.mockResolvedValue(mockCase);
+  mockPatch.mockResolvedValue(mockCase);
   vi.spyOn(window, 'open').mockReturnValue(null);
 });
 
@@ -212,12 +230,15 @@ describe('CaseFolderContextMenu', () => {
       expect(screen.getByTestId('remove-item')).toHaveTextContent('page.cases.sidebar.item.remove');
     });
 
-    it('shows a divider only when "Open item" is also present', () => {
+    it('shows a divider for all leaf types (between leaf actions and remove)', () => {
       const { container: withOpen } = renderMenu({ leaf: hitLeaf });
       expect(withOpen.querySelector('hr')).not.toBeNull();
 
       const { container: withoutOpen } = renderMenu({ leaf: tableLeaf });
-      expect(withoutOpen.querySelector('hr')).toBeNull();
+      expect(withoutOpen.querySelector('hr')).not.toBeNull();
+
+      const { container: withFolder } = renderMenu({ tree: { leaves: [hitLeaf] } });
+      expect(withFolder.querySelector('hr')).toBeNull();
     });
   });
 
@@ -281,14 +302,14 @@ describe('CaseFolderContextMenu', () => {
       });
     });
 
-    it('calls onRemoved with the updated case after the delete resolves', async () => {
-      const onRemoved = vi.fn();
-      renderMenu({ leaf: hitLeaf, onRemoved });
+    it('calls onUpdate with the updated case after the delete resolves', async () => {
+      const onUpdate = vi.fn();
+      renderMenu({ leaf: hitLeaf, onUpdate: onUpdate });
       act(() => {
         fireEvent.click(screen.getByTestId('remove-item'));
       });
       await waitFor(() => {
-        expect(onRemoved).toHaveBeenCalledWith(mockCase);
+        expect(onUpdate).toHaveBeenCalledWith(mockCase);
       });
     });
 
@@ -309,6 +330,50 @@ describe('CaseFolderContextMenu', () => {
       await waitFor(() => {
         expect(mockDel).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  describe('"Rename item" action', () => {
+    it('shows "Rename item" entry for a hit leaf', () => {
+      renderMenu({ leaf: hitLeaf });
+      expect(screen.getByTestId('rename-item')).toBeInTheDocument();
+    });
+
+    it('shows "Rename item" for a table leaf', () => {
+      renderMenu({ leaf: tableLeaf });
+      expect(screen.getByTestId('rename-item')).toBeInTheDocument();
+    });
+
+    it('does not show "Rename item" for a folder', () => {
+      renderMenu({ tree: { leaves: [hitLeaf] } });
+      expect(screen.queryByTestId('rename-item')).not.toBeInTheDocument();
+    });
+
+    it('calls showModal when "Rename item" is clicked', () => {
+      renderMenu({ leaf: hitLeaf });
+      act(() => {
+        fireEvent.click(screen.getByTestId('rename-item'));
+      });
+      expect(mockShowModal).toHaveBeenCalledTimes(1);
+    });
+
+    it('passes the current case and leaf to the rename modal', () => {
+      const onUpdate = vi.fn();
+      renderMenu({ leaf: hitLeaf, onUpdate: onUpdate });
+      act(() => {
+        fireEvent.click(screen.getByTestId('rename-item'));
+      });
+      const [modalElement] = mockShowModal.mock.calls[0];
+      expect(modalElement.props._case).toBe(mockCase);
+      expect(modalElement.props.leaf).toBe(hitLeaf);
+    });
+
+    it('works fine when onUpdate is not provided', () => {
+      renderMenu({ leaf: hitLeaf });
+      act(() => {
+        fireEvent.click(screen.getByTestId('rename-item'));
+      });
+      expect(mockShowModal).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -340,26 +405,26 @@ describe('CaseFolderContextMenu', () => {
       });
     });
 
-    it('calls onRemoved with the updated case after deletion', async () => {
-      const onRemoved = vi.fn();
+    it('calls onUpdate with the updated case after deletion', async () => {
+      const onUpdate = vi.fn();
       const folderTree: Tree = { leaves: [hitLeaf, referenceLeaf] };
-      renderMenu({ tree: folderTree, onRemoved });
+      renderMenu({ tree: folderTree, onUpdate: onUpdate });
       act(() => {
         fireEvent.click(screen.getByTestId('remove-item'));
       });
       await waitFor(() => {
-        expect(onRemoved).toHaveBeenCalledWith(mockCase);
+        expect(onUpdate).toHaveBeenCalledWith(mockCase);
       });
     });
 
-    it('does not call the API or onRemoved for an empty folder', () => {
-      const onRemoved = vi.fn();
-      renderMenu({ tree: { leaves: [] }, onRemoved });
+    it('does not call the API or onUpdate for an empty folder', () => {
+      const onUpdate = vi.fn();
+      renderMenu({ tree: { leaves: [] }, onUpdate: onUpdate });
       act(() => {
         fireEvent.click(screen.getByTestId('remove-item'));
       });
       expect(mockDel).not.toHaveBeenCalled();
-      expect(onRemoved).not.toHaveBeenCalled();
+      expect(onUpdate).not.toHaveBeenCalled();
     });
   });
 });

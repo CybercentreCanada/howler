@@ -118,7 +118,7 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
           }}
         >
           <Box position="absolute" sx={{ left: 0, right: 0 }}>
-            <CaseFolder case={_case} onItemRemoved={update} />
+            <CaseFolder case={_case} onItemUpdated={update} />
           </Box>
         </Box>
       )}
