@@ -61,7 +61,7 @@ class TestGetCase:
         ):
             from howler.api.v2.case import get_case
 
-            result: Response = get_case(id="case-001")
+            result: Response = get_case("case-001")
 
             assert result.status_code == 200
             body = result.get_json()
@@ -294,7 +294,7 @@ class TestUpdateCaseEndpoint:
         ):
             from howler.api.v2.case import update_case
 
-            result: Response = update_case(id="case-001", user=user)
+            result: Response = update_case("case-001", user=user)
 
             assert result.status_code == 200
             mock_case_service.update_case.assert_called_once_with("case-001", {"title": "Updated Title"}, user)
@@ -317,7 +317,7 @@ class TestUpdateCaseEndpoint:
         ):
             from howler.api.v2.case import update_case
 
-            result: Response = update_case(id="case-001", user=user)
+            result: Response = update_case("case-001", user=user)
 
             assert result.status_code == 404
 
@@ -336,7 +336,7 @@ class TestUpdateCaseEndpoint:
         ):
             from howler.api.v2.case import update_case
 
-            result: Response = update_case(id="case-001", user=user)
+            result: Response = update_case("case-001", user=user)
 
             assert result.status_code == 400
 
@@ -358,7 +358,7 @@ class TestUpdateCaseEndpoint:
         ):
             from howler.api.v2.case import update_case
 
-            result: Response = update_case(id="case-001", user=user)
+            result: Response = update_case("case-001", user=user)
 
             assert result.status_code == 400
             mock_case_service.update_case.assert_called_once_with("case-001", {"case_id": "new-id"}, user)
@@ -482,7 +482,7 @@ class TestDeleteItemEndpoint:
         ):
             from howler.api.v2.case import delete_item
 
-            result: Response = delete_item(id="case-001")
+            result: Response = delete_item("case-001")
 
             assert result.status_code == 200
             mock_case_service.remove_case_item.assert_called_once_with("case-001", item_values=["hit-001"])
@@ -503,7 +503,7 @@ class TestDeleteItemEndpoint:
         ):
             from howler.api.v2.case import delete_item
 
-            result: Response = delete_item(id="case-001")
+            result: Response = delete_item("case-001")
 
             assert result.status_code == 200
             mock_case_service.remove_case_item.assert_called_once_with(
@@ -525,7 +525,7 @@ class TestDeleteItemEndpoint:
         ):
             from howler.api.v2.case import delete_item
 
-            result: Response = delete_item(id="case-001")
+            result: Response = delete_item("case-001")
 
             assert result.status_code == 400
             mock_case_service.remove_case_item.assert_not_called()
@@ -546,7 +546,7 @@ class TestDeleteItemEndpoint:
         ):
             from howler.api.v2.case import delete_item
 
-            result: Response = delete_item(id="case-001")
+            result: Response = delete_item("case-001")
 
             assert result.status_code == 400
             mock_case_service.remove_case_item.assert_not_called()
@@ -567,7 +567,7 @@ class TestDeleteItemEndpoint:
         ):
             from howler.api.v2.case import delete_item
 
-            result: Response = delete_item(id="case-001")
+            result: Response = delete_item("case-001")
 
             assert result.status_code == 400
             mock_case_service.remove_case_item.assert_not_called()
@@ -588,7 +588,7 @@ class TestDeleteItemEndpoint:
         ):
             from howler.api.v2.case import delete_item
 
-            result: Response = delete_item(id="case-001")
+            result: Response = delete_item("case-001")
 
             assert result.status_code == 400
             mock_case_service.remove_case_item.assert_not_called()
@@ -613,7 +613,7 @@ class TestDeleteItemEndpoint:
         ):
             from howler.api.v2.case import delete_item
 
-            result: Response = delete_item(id="case-001")
+            result: Response = delete_item("case-001")
 
             assert result.status_code == 400
             mock_case_service.remove_case_item.assert_called_once_with("case-001", item_values=["missing-item"])
@@ -636,7 +636,7 @@ class TestDeleteItemEndpoint:
         ):
             from howler.api.v2.case import delete_item
 
-            result: Response = delete_item(id="case-001")
+            result: Response = delete_item("case-001")
 
             assert result.status_code == 400
 
@@ -660,6 +660,6 @@ class TestDeleteItemEndpoint:
         ):
             from howler.api.v2.case import delete_item
 
-            result: Response = delete_item(id="case-001")
+            result: Response = delete_item("case-001")
 
             assert result.status_code == 500
