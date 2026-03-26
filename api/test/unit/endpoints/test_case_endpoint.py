@@ -473,7 +473,7 @@ class TestDeleteItemEndpoint:
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        mock_case_service.remove_case_item.return_value = {"case_id": "case-001", "title": "Test"}
+        mock_case_service.remove_case_items.return_value = {"case_id": "case-001", "title": "Test"}
 
         with request_context.test_request_context(
             method="DELETE",
@@ -485,7 +485,7 @@ class TestDeleteItemEndpoint:
             result: Response = delete_item("case-001")
 
             assert result.status_code == 200
-            mock_case_service.remove_case_item.assert_called_once_with("case-001", item_values=["hit-001"])
+            mock_case_service.remove_case_items.assert_called_once_with("case-001", ["hit-001"])
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
@@ -494,7 +494,7 @@ class TestDeleteItemEndpoint:
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        mock_case_service.remove_case_item.return_value = {"case_id": "case-001", "title": "Test"}
+        mock_case_service.remove_case_items.return_value = {"case_id": "case-001", "title": "Test"}
 
         with request_context.test_request_context(
             method="DELETE",
@@ -506,9 +506,7 @@ class TestDeleteItemEndpoint:
             result: Response = delete_item("case-001")
 
             assert result.status_code == 200
-            mock_case_service.remove_case_item.assert_called_once_with(
-                "case-001", item_values=["hit-001", "hit-002", "obs-003"]
-            )
+            mock_case_service.remove_case_items.assert_called_once_with("case-001", ["hit-001", "hit-002", "obs-003"])
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
@@ -528,7 +526,7 @@ class TestDeleteItemEndpoint:
             result: Response = delete_item("case-001")
 
             assert result.status_code == 400
-            mock_case_service.remove_case_item.assert_not_called()
+            mock_case_service.remove_case_items.assert_not_called()
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
@@ -549,7 +547,7 @@ class TestDeleteItemEndpoint:
             result: Response = delete_item("case-001")
 
             assert result.status_code == 400
-            mock_case_service.remove_case_item.assert_not_called()
+            mock_case_service.remove_case_items.assert_not_called()
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
@@ -570,7 +568,7 @@ class TestDeleteItemEndpoint:
             result: Response = delete_item("case-001")
 
             assert result.status_code == 400
-            mock_case_service.remove_case_item.assert_not_called()
+            mock_case_service.remove_case_items.assert_not_called()
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
@@ -591,7 +589,7 @@ class TestDeleteItemEndpoint:
             result: Response = delete_item("case-001")
 
             assert result.status_code == 400
-            mock_case_service.remove_case_item.assert_not_called()
+            mock_case_service.remove_case_items.assert_not_called()
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
@@ -602,7 +600,7 @@ class TestDeleteItemEndpoint:
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        mock_case_service.remove_case_item.side_effect = NotFoundException(
+        mock_case_service.remove_case_items.side_effect = NotFoundException(
             "Case item(s) not found in case: missing-item"
         )
 
@@ -616,7 +614,7 @@ class TestDeleteItemEndpoint:
             result: Response = delete_item("case-001")
 
             assert result.status_code == 400
-            mock_case_service.remove_case_item.assert_called_once_with("case-001", item_values=["missing-item"])
+            mock_case_service.remove_case_items.assert_called_once_with("case-001", ["missing-item"])
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
@@ -627,7 +625,7 @@ class TestDeleteItemEndpoint:
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        mock_case_service.remove_case_item.side_effect = InvalidDataException("Invalid item data")
+        mock_case_service.remove_case_items.side_effect = InvalidDataException("Invalid item data")
 
         with request_context.test_request_context(
             method="DELETE",
@@ -651,7 +649,7 @@ class TestDeleteItemEndpoint:
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        mock_case_service.remove_case_item.side_effect = DataStoreException("datastore failure")
+        mock_case_service.remove_case_items.side_effect = DataStoreException("datastore failure")
 
         with request_context.test_request_context(
             method="DELETE",
