@@ -13,6 +13,10 @@ export const post = (id: string, newData: Item): Promise<Case> => {
   return hpost(uri(id), newData);
 };
 
-export const del = (id: string, values: string[]): Promise<Case> => {
+export const del = (id: string, values: string | string[]): Promise<Case> => {
+  if (!Array.isArray(values)) {
+    values = [values];
+  }
+
   return hdelete(uri(id), { values });
 };
