@@ -650,3 +650,49 @@ def remove_case_items(case_id: str, values: list[str]):
     _sync_case_metadata(case_id)
 
     return _case
+
+
+def rename_case_item(case_id: str, item_value: str, new_path: str) -> Case:
+    """Rename (re-path) a single item within a case.
+
+    Validates that the target item exists in the case, that the new path is not
+    already used by another item, then updates the item's path in memory and
+    persists the case once.
+
+    Args:
+        case_id: Unique identifier of the case to modify.
+        item_value: The value/identifier of the item to rename.
+        new_path: The new path for the item (must not end with '/').
+
+    Returns:
+        The updated Case object.
+
+    Raises:
+        NotFoundException: If the case does not exist or the item is not found.
+        InvalidDataException: If new_path ends with '/' or is already taken by
+            another item in the case.
+        DataStoreException: If persisting the updated case fails.
+    """
+    if not new_path or new_path.endswith("/"):
+        raise InvalidDataException("new_path must be a non-empty string and must not end with '/'")
+
+    ds = datastore()
+
+    _case = ds.case.get(key=case_id)
+
+    if not _case:
+        raise NotFoundException(f"Case {case_id} does not exist")
+
+    item = next((_item for _item in _case.items if _item["value"] == item_value), None)
+    if not item:
+        raise NotFoundException(f"Case item {item_value} does not exist in case {case_id}")
+
+    if any(_item["path"] == new_path for _item in _case.items if _item["value"] != item_value):
+        raise InvalidDataException(f"An item already exists at path '{new_path}' in case {case_id}")
+
+    item.path = new_path
+
+    if not ds.case.save(_case.case_id, _case):
+        raise DataStoreException("Failed to save case after item rename")
+
+    return _case

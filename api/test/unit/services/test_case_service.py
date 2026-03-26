@@ -897,6 +897,129 @@ class TestRemoveCaseItem:
 
 
 # ---------------------------------------------------------------------------
+# rename_case_item()
+# ---------------------------------------------------------------------------
+
+
+class TestRenameCaseItem:
+    """Tests for case_service.rename_case_item."""
+
+    @patch("howler.services.case_service.datastore")
+    def test_rename_item_success(self, mock_ds_fn):
+        """Updates the item path and saves the case once."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        item = CaseItem({"type": "hit", "value": "hit-001", "path": "folder/Old Name"})
+        mock_case = MagicMock()
+        mock_case.case_id = "case-001"
+        mock_case.items = [item]
+        mock_ds.case.get.return_value = mock_case
+        mock_ds.case.save.return_value = True
+
+        result = case_service.rename_case_item("case-001", "hit-001", "folder/New Name")
+
+        assert item.path == "folder/New Name"
+        mock_ds.case.save.assert_called_once_with("case-001", mock_case)
+        assert result is mock_case
+
+    @patch("howler.services.case_service.datastore")
+    def test_rename_item_raises_not_found_for_missing_case(self, mock_ds_fn):
+        """Raises NotFoundException when the case does not exist."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+        mock_ds.case.get.return_value = None
+
+        with pytest.raises(NotFoundException):
+            case_service.rename_case_item("nonexistent", "hit-001", "folder/New Name")
+
+        mock_ds.case.save.assert_not_called()
+
+    @patch("howler.services.case_service.datastore")
+    def test_rename_item_raises_not_found_for_missing_item(self, mock_ds_fn):
+        """Raises NotFoundException when the item value is not in the case."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = MagicMock()
+        mock_case.items = [CaseItem({"type": "hit", "value": "other-id", "path": "folder/x"})]
+        mock_ds.case.get.return_value = mock_case
+
+        with pytest.raises(NotFoundException):
+            case_service.rename_case_item("case-001", "hit-001", "folder/New Name")
+
+        mock_ds.case.save.assert_not_called()
+
+    @patch("howler.services.case_service.datastore")
+    def test_rename_item_raises_invalid_data_when_path_taken(self, mock_ds_fn):
+        """Raises InvalidDataException when new_path is already used by another item."""
+        from howler.common.exceptions import InvalidDataException
+
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        item_a = CaseItem({"type": "hit", "value": "hit-001", "path": "folder/A"})
+        item_b = CaseItem({"type": "hit", "value": "hit-002", "path": "folder/B"})
+        mock_case = MagicMock()
+        mock_case.items = [item_a, item_b]
+        mock_ds.case.get.return_value = mock_case
+
+        with pytest.raises(InvalidDataException):
+            case_service.rename_case_item("case-001", "hit-001", "folder/B")
+
+        mock_ds.case.save.assert_not_called()
+
+    def test_rename_item_raises_invalid_data_for_trailing_slash(self):
+        """Raises InvalidDataException without touching the datastore for a bad path."""
+        from howler.common.exceptions import InvalidDataException
+
+        with pytest.raises(InvalidDataException):
+            case_service.rename_case_item("case-001", "hit-001", "folder/")
+
+    def test_rename_item_raises_invalid_data_for_empty_path(self):
+        """Raises InvalidDataException for an empty new_path."""
+        from howler.common.exceptions import InvalidDataException
+
+        with pytest.raises(InvalidDataException):
+            case_service.rename_case_item("case-001", "hit-001", "")
+
+    @patch("howler.services.case_service.datastore")
+    def test_rename_item_raises_datastore_error_on_save_failure(self, mock_ds_fn):
+        """Raises DataStoreException when ds.case.save returns False."""
+        from howler.datastore.exceptions import DataStoreException
+
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        item = CaseItem({"type": "hit", "value": "hit-001", "path": "folder/Old Name"})
+        mock_case = MagicMock()
+        mock_case.case_id = "case-001"
+        mock_case.items = [item]
+        mock_ds.case.get.return_value = mock_case
+        mock_ds.case.save.return_value = False
+
+        with pytest.raises(DataStoreException):
+            case_service.rename_case_item("case-001", "hit-001", "folder/New Name")
+
+    @patch("howler.services.case_service.datastore")
+    def test_rename_item_allows_same_path_on_same_item(self, mock_ds_fn):
+        """Renaming an item to its current path is allowed (no conflict with itself)."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        item = CaseItem({"type": "hit", "value": "hit-001", "path": "folder/Same"})
+        mock_case = MagicMock()
+        mock_case.case_id = "case-001"
+        mock_case.items = [item]
+        mock_ds.case.get.return_value = mock_case
+        mock_ds.case.save.return_value = True
+
+        case_service.rename_case_item("case-001", "hit-001", "folder/Same")
+
+        mock_ds.case.save.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
 # _collect_indicators_from_related()
 # ---------------------------------------------------------------------------
 

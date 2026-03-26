@@ -1,5 +1,6 @@
 import { Box, Modal as MuiModal } from '@mui/material';
 import { ModalContext } from 'components/app/providers/ModalProvider';
+import { has } from 'lodash-es';
 import type { FC } from 'react';
 import { useCallback, useContext } from 'react';
 
@@ -21,7 +22,7 @@ const Modal: FC = () => {
           left: '50%',
           maxWidth: options.maxWidth || '1200px',
           maxHeight: options.maxHeight || '400px',
-          height: '100%',
+          height: has(options, 'height') ? options.height : '100%',
           transform: 'translate(-50%, -50%)',
           backgroundColor: 'background.paper',
           borderRadius: theme.shape.borderRadius,

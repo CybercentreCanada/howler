@@ -1,10 +1,12 @@
-import { Delete, OpenInNew } from '@mui/icons-material';
+import { Delete, DriveFileRenameOutline, OpenInNew } from '@mui/icons-material';
 import api from 'api';
+import { ModalContext } from 'components/app/providers/ModalProvider';
 import ContextMenu, { type ContextMenuEntry } from 'components/elements/ContextMenu';
 import useMyApi from 'components/hooks/useMyApi';
+import RenameItemModal from 'components/routes/cases/modals/RenameItemModal';
 import type { Case } from 'models/entities/generated/Case';
 import type { Item } from 'models/entities/generated/Item';
-import { useMemo, type FC, type PropsWithChildren } from 'react';
+import { useContext, useMemo, type FC, type PropsWithChildren } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Tree } from './types';
 
@@ -54,7 +56,7 @@ export interface CaseFolderContextMenuProps extends PropsWithChildren {
   /** Present when the context menu is for a folder (all leaves within it will be removed). */
   tree?: Tree;
   /** Called after item(s) have been successfully removed. */
-  onRemoved?: (updatedCase: Case) => void;
+  onUpdate?: (updatedCase: Case) => void;
 }
 
 /**
@@ -62,9 +64,10 @@ export interface CaseFolderContextMenuProps extends PropsWithChildren {
  * - **Open item** – opens the item in a new tab (only for leaf items with a navigable URL).
  * - **Remove item / Remove folder** – deletes the leaf item or all items under a folder.
  */
-const CaseFolderContextMenu: FC<CaseFolderContextMenuProps> = ({ _case, leaf, tree, onRemoved, children }) => {
+const CaseFolderContextMenu: FC<CaseFolderContextMenuProps> = ({ _case, leaf, tree, onUpdate, children }) => {
   const { dispatchApi } = useMyApi();
   const { t } = useTranslation();
+  const { showModal } = useContext(ModalContext);
 
   const items = useMemo<ContextMenuEntry[]>(() => {
     const entries: ContextMenuEntry[] = [];
@@ -80,6 +83,14 @@ const CaseFolderContextMenu: FC<CaseFolderContextMenuProps> = ({ _case, leaf, tr
           onClick: () => window.open(openUrl, '_blank', 'noopener noreferrer')
         });
       }
+
+      entries.push({
+        kind: 'item',
+        id: 'rename-item',
+        label: t('page.cases.sidebar.item.rename'),
+        icon: <DriveFileRenameOutline fontSize="small" />,
+        onClick: () => showModal(<RenameItemModal _case={_case} leaf={leaf} onRenamed={onUpdate} />, { height: null })
+      });
     }
 
     if (entries.length > 0) {
@@ -103,14 +114,14 @@ const CaseFolderContextMenu: FC<CaseFolderContextMenuProps> = ({ _case, leaf, tr
         }
         dispatchApi(api.v2.case.items.del(_case.case_id!, values), { throwError: false }).then(updatedCase => {
           if (updatedCase) {
-            onRemoved?.(updatedCase);
+            onUpdate?.(updatedCase);
           }
         });
       }
     });
 
     return entries;
-  }, [_case, leaf, tree, dispatchApi, onRemoved, t]);
+  }, [_case, leaf, tree, dispatchApi, onUpdate, showModal, t]);
 
   return <ContextMenu items={items}>{children}</ContextMenu>;
 };

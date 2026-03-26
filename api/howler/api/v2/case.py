@@ -287,3 +287,47 @@ def delete_item(case_id: str, **kwargs):
         return internal_error(err=str(e))
     except (InvalidDataException, NotFoundException) as e:
         return bad_request(err=str(e))
+
+
+@generate_swagger_docs()
+@case_api.route("/<case_id>/items", methods=["PATCH"])
+@api_login(required_priv=["R", "W"])
+def rename_item(case_id: str, **kwargs):
+    """Rename (re-path) an item within a case
+
+    Updates the path of a single item identified by its value. The new path must
+    not already be used by another item in the case.
+
+    Variables:
+    case_id       => The id of the case to modify
+
+    Arguments:
+    None
+
+    Data Block:
+    {
+        "value": "item-id-123",          # The value of the item to rename
+        "new_path": "folder/New Name"    # The new path for the item
+    }
+
+    Result Example:
+    {
+        ...case     # The updated case data
+    }
+    """
+    body = request.json
+
+    if not body or not isinstance(body, dict):
+        return bad_request(err="Request body must be a JSON object.")
+
+    for field in ["value", "new_path"]:
+        if field not in body:
+            return bad_request(err=f"'{field}' is required.")
+
+    try:
+        return ok(case_service.rename_case_item(case_id, item_value=body["value"], new_path=body["new_path"]))
+    except DataStoreException as e:
+        logger.exception("Save Error")
+        return internal_error(err=str(e))
+    except (InvalidDataException, NotFoundException) as e:
+        return bad_request(err=str(e))

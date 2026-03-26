@@ -131,7 +131,7 @@ const CaseFolder: FC<CaseFolderProps> = ({
   return (
     <Stack sx={{ overflow: 'visible' }}>
       {name && (
-        <CaseFolderContextMenu _case={_case} tree={tree} onRemoved={onItemRemoved}>
+        <CaseFolderContextMenu _case={_case} tree={tree} onUpdate={onItemRemoved}>
           <Stack
             direction="row"
             pl={step * 1.5}
@@ -207,7 +207,7 @@ const CaseFolder: FC<CaseFolderProps> = ({
                 key={`${_case?.case_id}-${leaf.value}-${leaf.path}`}
                 _case={_case}
                 leaf={leaf}
-                onRemoved={onItemRemoved}
+                onUpdate={onItemRemoved}
               >
                 <Stack>
                   <Stack
