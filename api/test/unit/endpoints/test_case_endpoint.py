@@ -456,3 +456,118 @@ class TestHideCasesEndpoint:
 
             assert result.status_code == 404
             mock_case_service.hide_cases.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# DELETE /api/v2/case/<id>/items
+# ---------------------------------------------------------------------------
+
+
+class TestDeleteItemEndpoint:
+    """Tests for the DELETE /<id>/items case endpoint."""
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_delete_item_success(self, mock_auth_service, mock_case_service, request_context: Flask):
+        """Returns 200 when the item is removed successfully."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        with request_context.test_request_context(
+            method="DELETE",
+            json={"value": "hit-001"},
+            headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
+        ):
+            from howler.api.v2.case import delete_item
+
+            result: Response = delete_item(id="case-001")
+
+            assert result.status_code == 200
+            mock_case_service.remove_case_item.assert_called_once_with("case-001", item_value="hit-001")
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_delete_item_missing_body_returns_400(self, mock_auth_service, mock_case_service, request_context: Flask):
+        """Returns 400 when no JSON body is sent."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        with request_context.test_request_context(
+            method="DELETE",
+            data=b"null",
+            content_type="application/json",
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.case import delete_item
+
+            result: Response = delete_item(id="case-001")
+
+            assert result.status_code == 400
+            mock_case_service.remove_case_item.assert_not_called()
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_delete_item_missing_value_field_returns_400(
+        self, mock_auth_service, mock_case_service, request_context: Flask
+    ):
+        """Returns 400 when the JSON body does not contain a 'value' field."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        with request_context.test_request_context(
+            method="DELETE",
+            json={"type": "hit"},
+            headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
+        ):
+            from howler.api.v2.case import delete_item
+
+            result: Response = delete_item(id="case-001")
+
+            assert result.status_code == 400
+            mock_case_service.remove_case_item.assert_not_called()
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_delete_item_invalid_data_returns_400(self, mock_auth_service, mock_case_service, request_context: Flask):
+        """Returns 400 when case_service raises InvalidDataException."""
+        from howler.common.exceptions import InvalidDataException
+
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        mock_case_service.remove_case_item.side_effect = InvalidDataException("Item not found in case")
+
+        with request_context.test_request_context(
+            method="DELETE",
+            json={"value": "missing-item"},
+            headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
+        ):
+            from howler.api.v2.case import delete_item
+
+            result: Response = delete_item(id="case-001")
+
+            assert result.status_code == 400
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_delete_item_datastore_error_returns_500(
+        self, mock_auth_service, mock_case_service, request_context: Flask
+    ):
+        """Returns 500 when case_service raises DataStoreException."""
+        from howler.datastore.exceptions import DataStoreException
+
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        mock_case_service.remove_case_item.side_effect = DataStoreException("datastore failure")
+
+        with request_context.test_request_context(
+            method="DELETE",
+            json={"value": "hit-001"},
+            headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
+        ):
+            from howler.api.v2.case import delete_item
+
+            result: Response = delete_item(id="case-001")
+
+            assert result.status_code == 500

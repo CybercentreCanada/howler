@@ -7,6 +7,7 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import DataStoreException
+from howler.odm.models.case import CaseItem
 from howler.odm.models.user import User
 from howler.security import api_login
 from howler.services import case_service
@@ -217,7 +218,8 @@ def append_item(id: str, user: User, **kwargs):  # noqa: C901
     Data Block:
     {
         "type": "hit",            # Type of item to append: "hit", "observable", "case", "table", "lead", or "reference"
-        "value": "item-id-123"    # The ID or reference value for the item
+        "value": "item-id-123"    # The ID or reference value for the item,
+        "path": "example/path/Title"
     }
 
     Result Example:
@@ -230,29 +232,23 @@ def append_item(id: str, user: User, **kwargs):  # noqa: C901
     except UnsupportedMediaType:
         return bad_request(err="Invalid JSON body")
 
-    if "value" not in body:
-        return bad_request(err="Case 'value' is required")
-
-    if "type" not in body:
-        return bad_request(err="Case 'type' missing")
+    for field in ["value", "type", "path"]:
+        if field not in body:
+            return bad_request(err=f"CaseItem '{field}' is required")
 
     try:
-        case_service.append_case_item(
-            id, item_type=body["type"], item_value=body["value"], item_path=body.get("path", None)
-        )
+        return ok(case_service.append_case_item(id, item=CaseItem(body)))
     except DataStoreException as e:
         logger.exception("Save Error")
         return internal_error(err=str(e))
     except InvalidDataException as e:
         return bad_request(err=str(e))
 
-    return ok()
-
 
 @generate_swagger_docs()
-@case_api.route("/<id>/items/<value>", methods=["DELETE"])
+@case_api.route("/<id>/items", methods=["DELETE"])
 @api_login(required_priv=["R", "W"])
-def delete_item(id: str, value: str, **kwargs):
+def delete_item(id: str, **kwargs):
     """Delete an item from a case
 
     This endpoint removes an item from a case's items list. If the item is a hit or
@@ -261,21 +257,27 @@ def delete_item(id: str, value: str, **kwargs):
 
     Variables:
     id       => The id of the case to modify
-    value    => The value of the item to delete (must match the item's value field)
 
     Arguments:
     None
 
     Data Block:
-    None
+    {
+        "value": "item-id-123"   # The value of the item to delete
+    }
 
     Result Example:
     {
         "success": true     # Did the deletion succeed?
     }
     """
+    body = request.json
+
+    if not body or not isinstance(body, dict) or "value" not in body:
+        return bad_request(err="Request body must be a JSON object with a 'value' field.")
+
     try:
-        case_service.remove_case_item(id, item_value=value)
+        case_service.remove_case_item(id, item_value=body["value"])
     except DataStoreException as e:
         logger.exception("Save Error")
         return internal_error(err=str(e))

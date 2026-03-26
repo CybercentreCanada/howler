@@ -42,7 +42,13 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
   const [hits, setHits] = useState<Hit[]>([]);
 
   const hitIds = useMemo(
-    () => uniq((_case?.items ?? []).filter(item => item.type === 'hit').map(item => item.id)),
+    () =>
+      uniq(
+        (_case?.items ?? [])
+          .filter(item => item.type === 'hit')
+          .map(item => item.value)
+          .filter(Boolean)
+      ),
     [_case?.items]
   );
 

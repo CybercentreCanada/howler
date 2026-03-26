@@ -3,7 +3,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from howler.common.exceptions import InvalidDataException, NotFoundException
-from howler.datastore.exceptions import DataStoreException
 from howler.odm.models.case import Case, CaseItem
 from howler.odm.models.ecs.related import Related
 from howler.services import case_service
@@ -538,16 +537,35 @@ class TestAppendCaseItemRouting:
         with pytest.raises(InvalidDataException):
             case_service.append_case_item("case-001", item_type="unicorn", item_value="some-id")
 
-    @pytest.mark.parametrize("item_type", ["table", "lead", "reference"])
+    @pytest.mark.parametrize("item_type", ["table", "lead"])
     @patch("howler.services.case_service.datastore")
     def test_append_not_implemented_types_raise(self, mock_ds_fn, item_type):
         """append_case_item raises NotImplementedError for table/lead/reference item types."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        item = CaseItem({"type": item_type, "value": "x", "path": "misc/"})
+        item = CaseItem({"type": item_type, "value": "x", "path": "misc"})
         with pytest.raises(NotImplementedError):
             case_service.append_case_item("case-001", item=item)
+
+    @patch("howler.services.case_service.datastore")
+    def test_append_case_item_raises_if_item_path_ends_with_slash(self, mock_ds_fn):
+        """append_case_item raises InvalidDataException when the pre-built item's path ends with '/'."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        item = CaseItem({"type": "hit", "value": "hit-001", "path": "alerts/"})
+        with pytest.raises(InvalidDataException, match="trailing"):
+            case_service.append_case_item("case-001", item=item)
+
+    @patch("howler.services.case_service.datastore")
+    def test_append_case_item_raises_if_item_type_path_ends_with_slash(self, mock_ds_fn):
+        """append_case_item raises InvalidDataException when item_path param ends with '/'."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        with pytest.raises(InvalidDataException, match="trailing"):
+            case_service.append_case_item("case-001", item_type="hit", item_value="hit-001", item_path="alerts/")
 
 
 # ---------------------------------------------------------------------------
@@ -562,7 +580,7 @@ class TestAppendHit:
     @patch("howler.services.case_service._add_backreference")
     @patch("howler.services.case_service.datastore")
     def test_append_hit_adds_item(self, mock_ds_fn, mock_backref, mock_sync):
-        """append_hit appends the item to the case and saves."""
+        """append_hit appends the item to the case and delegates save to _sync_case_metadata."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -570,17 +588,13 @@ class TestAppendHit:
         mock_case.case_id = "case-001"
         mock_case.items = []
         mock_ds.case.get.return_value = mock_case
-        mock_ds.case.save.return_value = True
 
         mock_hit = MagicMock()
-        mock_hit.howler.analytic = "test-analytic"
-        mock_hit.howler.id = "hit-001"
         mock_ds.hit.get.return_value = mock_hit
 
         item = CaseItem({"type": "hit", "value": "hit-001", "path": "related/"})
         case_service.append_hit("case-001", item)
 
-        mock_ds.case.save.assert_called_once()
         assert len(mock_case.items) == 1
         mock_backref.assert_called_once_with(mock_hit, "case-001")
         mock_sync.assert_called_once_with("case-001")
@@ -588,8 +602,8 @@ class TestAppendHit:
     @patch("howler.services.case_service._sync_case_metadata")
     @patch("howler.services.case_service._add_backreference")
     @patch("howler.services.case_service.datastore")
-    def test_append_hit_sets_default_path(self, mock_ds_fn, mock_backref, mock_sync):
-        """append_hit replaces the 'related/' placeholder path with a structured alerts/ path."""
+    def test_append_hit_preserves_path(self, mock_ds_fn, mock_backref, mock_sync):
+        """append_hit preserves the item path as-is without any manipulation."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -597,17 +611,14 @@ class TestAppendHit:
         mock_case.case_id = "case-001"
         mock_case.items = []
         mock_ds.case.get.return_value = mock_case
-        mock_ds.case.save.return_value = True
 
         mock_hit = MagicMock()
-        mock_hit.howler.analytic = "my-analytic"
-        mock_hit.howler.id = "hit-001"
         mock_ds.hit.get.return_value = mock_hit
 
         item = CaseItem({"type": "hit", "value": "hit-001", "path": "related/"})
         case_service.append_hit("case-001", item)
 
-        assert item.path.startswith("alerts/")
+        assert item.path == "related/"
 
     @patch("howler.services.case_service.datastore")
     def test_append_hit_missing_case_raises(self, mock_ds_fn):
@@ -622,7 +633,7 @@ class TestAppendHit:
 
     @patch("howler.services.case_service.datastore")
     def test_append_hit_missing_hit_raises(self, mock_ds_fn):
-        """append_hit raises NotFoundException when the hit does not exist."""
+        """append_hit raises InvalidDataException when the hit does not exist."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -632,7 +643,7 @@ class TestAppendHit:
         mock_ds.hit.get.return_value = None
 
         item = CaseItem({"type": "hit", "value": "nonexistent-hit", "path": "related/"})
-        with pytest.raises(NotFoundException):
+        with pytest.raises(InvalidDataException):
             case_service.append_hit("case-001", item)
 
     @patch("howler.services.case_service.datastore")
@@ -648,27 +659,6 @@ class TestAppendHit:
 
         item = CaseItem({"type": "hit", "value": "hit-001", "path": "related/"})
         with pytest.raises(InvalidDataException):
-            case_service.append_hit("case-001", item)
-
-    @patch("howler.services.case_service.datastore")
-    def test_append_hit_raises_on_save_failure(self, mock_ds_fn):
-        """append_hit raises DataStoreException when case.save returns False."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-
-        mock_case = MagicMock()
-        mock_case.case_id = "case-001"
-        mock_case.items = []
-        mock_ds.case.get.return_value = mock_case
-        mock_ds.case.save.return_value = False
-
-        mock_hit = MagicMock()
-        mock_hit.howler.analytic = "analytic"
-        mock_hit.howler.id = "hit-001"
-        mock_ds.hit.get.return_value = mock_hit
-
-        item = CaseItem({"type": "hit", "value": "hit-001", "path": "related/"})
-        with pytest.raises(DataStoreException):
             case_service.append_hit("case-001", item)
 
 
@@ -772,7 +762,7 @@ class TestAppendCase:
         mock_ds.case.get.side_effect = lambda key, as_obj=False: mock_parent if key == "parent-001" else mock_child
         mock_ds.case.save.return_value = True
 
-        item = CaseItem({"type": "case", "value": "child-001", "path": "related/"})
+        item = CaseItem({"type": "case", "value": "child-001", "path": "related/child-001"})
         case_service.append_case("parent-001", item)
 
         mock_ds.case.save.assert_called_once()

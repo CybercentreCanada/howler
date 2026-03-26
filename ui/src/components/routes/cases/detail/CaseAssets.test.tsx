@@ -2,9 +2,9 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { Observable } from 'models/entities/generated/Observable';
 import { createElement, type FC, type PropsWithChildren } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { createMockHit, createMockObservable } from 'tests/utils';
 import { describe, expect, it, vi } from 'vitest';
 import { buildAssetEntries } from './CaseAssets';
 
@@ -12,46 +12,47 @@ import { buildAssetEntries } from './CaseAssets';
 // Pure logic tests — no React needed
 // ---------------------------------------------------------------------------
 
-const makeHit = (id: string, related: Hit['related']): Partial<Hit> => ({
-  howler: { id } as any,
-  related
-});
-
-const makeObservable = (id: string, related: Observable['related']): Partial<Observable> => ({
-  howler: { id } as any,
-  related
-});
-
 describe('buildAssetEntries', () => {
   it('returns an empty array for records with no related field', () => {
-    expect(buildAssetEntries([makeHit('h1', undefined)])).toEqual([]);
+    expect(buildAssetEntries([createMockHit({ howler: { id: 'h1' } })])).toEqual([]);
   });
 
   it('extracts a single IP from a hit', () => {
-    const result = buildAssetEntries([makeHit('h1', { ip: ['1.2.3.4'] })]);
+    const result = buildAssetEntries([createMockHit({ howler: { id: 'h1' }, related: { ip: ['1.2.3.4'] } })]);
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual({ type: 'ip', value: '1.2.3.4', seenIn: ['h1'] });
   });
 
   it('extracts multiple fields from a single record', () => {
-    const result = buildAssetEntries([makeHit('h1', { ip: ['1.2.3.4'], user: ['alice'] })]);
+    const result = buildAssetEntries([
+      createMockHit({ howler: { id: 'h1' }, related: { ip: ['1.2.3.4'], user: ['alice'] } })
+    ]);
     const types = result.map(a => a.type).sort();
     expect(types).toEqual(['ip', 'user']);
   });
 
   it('deduplicates the same asset value across multiple records', () => {
-    const result = buildAssetEntries([makeHit('h1', { ip: ['1.2.3.4'] }), makeObservable('obs1', { ip: ['1.2.3.4'] })]);
+    const result = buildAssetEntries([
+      createMockHit({ howler: { id: 'h1' }, related: { ip: ['1.2.3.4'] } }),
+      createMockObservable({ howler: { id: 'obs1' }, related: { ip: ['1.2.3.4'] } })
+    ]);
     expect(result).toHaveLength(1);
     expect(result[0].seenIn).toEqual(['h1', 'obs1']);
   });
 
   it('keeps distinct asset values as separate entries', () => {
-    const result = buildAssetEntries([makeHit('h1', { ip: ['1.2.3.4'] }), makeHit('h2', { ip: ['5.6.7.8'] })]);
+    const result = buildAssetEntries([
+      createMockHit({ howler: { id: 'h1' }, related: { ip: ['1.2.3.4'] } }),
+      createMockHit({ howler: { id: 'h2' }, related: { ip: ['5.6.7.8'] } })
+    ]);
     expect(result).toHaveLength(2);
   });
 
   it('does not duplicate seenIn ids when the same record appears twice for the same asset', () => {
-    const result = buildAssetEntries([makeHit('h1', { ip: ['1.2.3.4'] }), makeHit('h1', { ip: ['1.2.3.4'] })]);
+    const result = buildAssetEntries([
+      createMockHit({ howler: { id: 'h1' }, related: { ip: ['1.2.3.4'] } }),
+      createMockHit({ howler: { id: 'h1' }, related: { ip: ['1.2.3.4'] } })
+    ]);
     expect(result[0].seenIn).toEqual(['h1']);
   });
 
@@ -61,7 +62,7 @@ describe('buildAssetEntries', () => {
   });
 
   it('handles the scalar `id` field on Related', () => {
-    const result = buildAssetEntries([makeHit('h1', { id: 'some-id' })]);
+    const result = buildAssetEntries([createMockHit({ howler: { id: 'h1' }, related: { id: 'some-id' } })]);
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual({ type: 'id', value: 'some-id', seenIn: ['h1'] });
   });
@@ -75,7 +76,7 @@ describe('buildAssetEntries', () => {
       uri: ['https://example.com'],
       signature: ['rule-X']
     };
-    const result = buildAssetEntries([makeHit('h1', related)]);
+    const result = buildAssetEntries([createMockHit({ howler: { id: 'h1' }, related })]);
     const types = result.map(a => a.type).sort();
     expect(types).toEqual(['hash', 'hosts', 'ids', 'signature', 'uri', 'user']);
   });
@@ -98,8 +99,8 @@ vi.mock('../hooks/useCase', () => ({
 const mockCase = {
   case_id: 'case-001',
   items: [
-    { id: 'hit-1', type: 'hit', path: 'hit-1' },
-    { id: 'obs-1', type: 'observable', path: 'obs-1' }
+    { type: 'hit', value: 'hit-1' },
+    { type: 'observable', value: 'obs-1' }
   ]
 } as any;
 

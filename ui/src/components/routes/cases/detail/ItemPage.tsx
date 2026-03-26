@@ -68,7 +68,7 @@ const ItemPage: FC<{ case?: Case }> = ({ case: providedCase }) => {
           return;
         }
 
-        if (!matchedNestedCase.id) {
+        if (!matchedNestedCase.value) {
           if (!cancelled) {
             setItem(null);
             setLoading(false);
@@ -76,7 +76,7 @@ const ItemPage: FC<{ case?: Case }> = ({ case: providedCase }) => {
           return;
         }
 
-        const nextCase = await dispatchApi(api.v2.case.get(matchedNestedCase.id), { throwError: false });
+        const nextCase = await dispatchApi(api.v2.case.get(matchedNestedCase.value), { throwError: false });
 
         if (!nextCase) {
           if (!cancelled) {
@@ -114,15 +114,15 @@ const ItemPage: FC<{ case?: Case }> = ({ case: providedCase }) => {
   }
 
   if (item.type === 'hit') {
-    return <InformationPane selected={item.id} />;
+    return <InformationPane selected={item.value} />;
   }
 
   if (item.type === 'observable') {
-    return <ObservableViewer observableId={item.id} />;
+    return <ObservableViewer observableId={item.value} />;
   }
 
   if (item.type === 'case') {
-    return <CaseDashboard caseId={item.id} />;
+    return <CaseDashboard caseId={item.value} />;
   }
 
   return <h1>{JSON.stringify(item)}</h1>;

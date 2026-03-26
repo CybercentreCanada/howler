@@ -34,7 +34,7 @@ const Asset: FC<{ asset: AssetEntry; case: Case }> = ({ asset, case: _case }) =>
               </Typography>
               <Stack direction="row" flexWrap="wrap" gap={0.5}>
                 {asset.seenIn.map(id => {
-                  const entry = _case.items.find(item => item.id === id);
+                  const entry = _case.items.find(item => item.value === id);
 
                   return (
                     <Chip

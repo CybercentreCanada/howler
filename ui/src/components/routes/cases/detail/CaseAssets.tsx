@@ -80,7 +80,11 @@ const CaseAssets: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, 
   const [activeFilters, setActiveFilters] = useState<Set<AssetType>>(new Set());
 
   const ids = useMemo(
-    () => (_case?.items ?? []).filter(item => ['hit', 'observable'].includes(item.type)).map(item => item.id),
+    () =>
+      (_case?.items ?? [])
+        .filter(item => ['hit', 'observable'].includes(item.type))
+        .map(item => item.value)
+        .filter(val => !!val),
     [_case?.items]
   );
 
@@ -155,7 +159,7 @@ const CaseAssets: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, 
           )}
         </Stack>
       </Grid>
-      {filteredAssets === null ? (
+      {records === null ? (
         Array.from({ length: 6 }, (_, i) => (
           <Grid key={`skeleton-${i}`} item xs={12} sm={6} md={4} xl={3}>
             <Skeleton height={100} />

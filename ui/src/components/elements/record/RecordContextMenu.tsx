@@ -1,6 +1,7 @@
 import {
   AddCircleOutline,
   Assignment,
+  CreateNewFolder,
   Edit,
   HowToVote,
   OpenInNew,
@@ -12,6 +13,7 @@ import {
 import api from 'api';
 import useMatchers from 'components/app/hooks/useMatchers';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
+import { ModalContext } from 'components/app/providers/ModalProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { RecordContext } from 'components/app/providers/RecordProvider';
 import ContextMenu, { type ContextMenuEntry } from 'components/elements/ContextMenu';
@@ -19,6 +21,7 @@ import { TOP_ROW, VOTE_OPTIONS, type ActionButton } from 'components/elements/hi
 import useHitActions from 'components/hooks/useHitActions';
 import useMyApi from 'components/hooks/useMyApi';
 import useMyActionFunctions from 'components/routes/action/useMyActionFunctions';
+import AddToCaseModal from 'components/routes/cases/modals/AddToCaseModal';
 import { capitalize, get, groupBy, isEmpty, toString } from 'lodash-es';
 import type { Action } from 'models/entities/generated/Action';
 import type { Analytic } from 'models/entities/generated/Analytic';
@@ -73,6 +76,7 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
   const { dispatchApi } = useMyApi();
   const { executeAction } = useMyActionFunctions();
   const { config } = useContext(ApiConfigContext);
+  const { showModal } = useContext(ModalContext);
   const pluginStore = usePluginStore();
   const { getMatchingAnalytic, getMatchingTemplate } = useMatchers();
   const query = useContextSelector(ParameterContext, ctx => ctx?.query);
@@ -298,9 +302,19 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
       }
     }
 
+    result.push({ kind: 'divider', id: 'add-to-case-divider' });
+    result.push({
+      kind: 'item',
+      id: 'add-to-case',
+      icon: <CreateNewFolder />,
+      label: t('modal.cases.add_to_case'),
+      disabled: !record,
+      onClick: () => showModal(<AddToCaseModal records={records} />)
+    });
+
     return result;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [record, analytic, template, entries, rowStatus, actions, query, t, setQuery, executeAction]);
+  }, [record, analytic, template, entries, rowStatus, actions, query, t, setQuery, executeAction, showModal, records]);
 
   return (
     <ContextMenu id="contextMenu" Component={Component} onOpen={onOpen} onClose={() => setAnalytic(null)} items={items}>

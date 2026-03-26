@@ -58,11 +58,11 @@ const CaseFolder: FC<CaseFolderProps> = ({ case: _case, folder, name, step = -1,
 
   const hitIds = useMemo(
     () =>
-      tree.leaves
-        ?.filter(l => l.type?.toLowerCase() === 'hit')
-        .map(l => l.id)
-        .filter(Boolean) ?? [],
-    [tree.leaves]
+      _case?.items
+        .filter(item => item.type === 'hit')
+        .map(item => item.value)
+        .filter(value => !!value),
+    [_case?.items]
   );
 
   useEffect(() => {
@@ -93,18 +93,20 @@ const CaseFolder: FC<CaseFolderProps> = ({ case: _case, folder, name, step = -1,
 
   const toggleCase = useCallback(
     (item: Item, itemKey?: string) => {
-      const resolvedKey = itemKey || item.path || item.id;
-      if (!resolvedKey) return;
+      const resolvedKey = itemKey || item.path || item.value;
+      if (!resolvedKey) {
+        return;
+      }
 
       const prev = caseStates[resolvedKey] ?? { open: false, loading: false, data: null };
       const shouldOpen = !prev.open;
-      const shouldFetch = shouldOpen && !!item.id && !prev.data && !prev.loading;
+      const shouldFetch = shouldOpen && !!item.value && !prev.data && !prev.loading;
 
       setCaseStates(current => ({ ...current, [resolvedKey]: { ...prev, open: shouldOpen, loading: shouldFetch } }));
 
       if (!shouldFetch) return;
 
-      dispatchApi(api.v2.case.get(item.id!), { throwError: false })
+      dispatchApi(api.v2.case.get(item.value!), { throwError: false })
         .then(caseResponse => {
           if (!caseResponse) return;
           setCaseStates(current => ({ ...current, [resolvedKey]: { ...current[resolvedKey], data: caseResponse } }));

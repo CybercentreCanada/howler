@@ -57,6 +57,7 @@ vi.mock('components/app/hooks/useMatchers', () => ({
   }))
 }));
 
+const mockShowModal = vi.fn();
 const mockDispatchApi = vi.fn();
 vi.mock('components/hooks/useMyApi', () => ({
   default: vi.fn(() => ({
@@ -85,6 +86,10 @@ vi.mock('plugins/store', () => ({
   default: {
     plugins: ['plugin1']
   }
+}));
+
+vi.mock('components/routes/cases/modals/AddToCaseModal', () => ({
+  default: () => null
 }));
 
 // Mock MUI components
@@ -126,6 +131,7 @@ vi.mock('@mui/material', async () => {
 
 // Import component after mocks
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
+import { ModalContext } from 'components/app/providers/ModalProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { RecordContext, type RecordContextType } from 'components/app/providers/RecordProvider';
 import i18n from 'i18n';
@@ -156,9 +162,11 @@ const Wrapper = ({ children }: PropsWithChildren) => {
   return (
     <I18nextProvider i18n={i18n as any}>
       <ApiConfigContext.Provider value={mockApiContext as any}>
-        <RecordContext.Provider value={mockRecordContext as any}>
-          <ParameterContext.Provider value={mockParameterContext as any}>{children}</ParameterContext.Provider>
-        </RecordContext.Provider>
+        <ModalContext.Provider value={{ showModal: mockShowModal } as any}>
+          <RecordContext.Provider value={mockRecordContext as any}>
+            <ParameterContext.Provider value={mockParameterContext as any}>{children}</ParameterContext.Provider>
+          </RecordContext.Provider>
+        </ModalContext.Provider>
       </ApiConfigContext.Provider>
     </I18nextProvider>
   );
@@ -1267,6 +1275,66 @@ describe('HitContextMenu', () => {
 
       // Plugin store should be called during menu render
       expect(mockPluginStoreExecuteFunction).toHaveBeenCalled();
+    });
+  });
+
+  describe('Add to Case Menu Item', () => {
+    it('should render "Add to Case" item in the menu', async () => {
+      act(() => {
+        const contextMenuWrapper = screen.getByText('Test Content').parentElement;
+        fireEvent.contextMenu(contextMenuWrapper);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Add to Case')).toBeInTheDocument();
+      });
+    });
+
+    it('should enable "Add to Case" when a record is present', async () => {
+      act(() => {
+        const contextMenuWrapper = screen.getByText('Test Content').parentElement;
+        fireEvent.contextMenu(contextMenuWrapper);
+      });
+
+      await waitFor(() => {
+        const menuItems = screen.getAllByRole('menuitem');
+        const addToCaseItem = menuItems.find(item => item.textContent?.includes('Add to Case'));
+        expect(addToCaseItem).toHaveAttribute('aria-disabled', 'false');
+      });
+    });
+
+    it('should disable "Add to Case" when record is null', async () => {
+      act(() => {
+        mockRecordContext.records['test-hit-1'] = null;
+        const contextMenuWrapper = screen.getByText('Test Content').parentElement;
+        fireEvent.contextMenu(contextMenuWrapper);
+      });
+
+      await waitFor(() => {
+        const menuItems = screen.getAllByRole('menuitem');
+        const addToCaseItem = menuItems.find(item => item.textContent?.includes('Add to Case'));
+        expect(addToCaseItem).toHaveAttribute('aria-disabled', 'true');
+      });
+    });
+
+    it('should call showModal with an AddToCaseModal element when clicked', async () => {
+      act(() => {
+        const contextMenuWrapper = screen.getByText('Test Content').parentElement;
+        fireEvent.contextMenu(contextMenuWrapper);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Add to Case')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        await user.click(screen.getByText('Add to Case'));
+      });
+
+      await waitFor(() => {
+        expect(mockShowModal).toHaveBeenCalledOnce();
+        expect(mockShowModal).toHaveBeenCalledWith(expect.objectContaining({ type: expect.any(Function) }));
+      });
     });
   });
 });

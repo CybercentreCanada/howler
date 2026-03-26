@@ -42,7 +42,11 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
   const [records, setRecords] = useState<Partial<Hit | Observable>[] | null>(null);
 
   const ids = useMemo(
-    () => (_case?.items ?? []).filter(item => ['hit', 'observable'].includes(item.type)).map(item => item.id),
+    () =>
+      (_case?.items ?? [])
+        .filter(item => ['hit', 'observable'].includes(item.type))
+        .map(item => item.value)
+        .filter(val => !!val),
     [_case?.items]
   );
 
