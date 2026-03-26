@@ -272,7 +272,9 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             fr: ''
           },
           callback: (str: string, searchValue: string, replaceValue: string) => {
-            return str.replaceAll(searchValue ?? '', replaceValue ?? '');
+            return typeof str === 'string' && typeof searchValue === 'string' && typeof replaceValue === 'string'
+              ? str.replaceAll(searchValue ?? '', replaceValue ?? '')
+              : new Handlebars.SafeString('This input is invalid');
           }
         },
 
