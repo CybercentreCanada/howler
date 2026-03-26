@@ -830,7 +830,7 @@ class TestRemoveCaseItem:
         mock_ds.case.get.return_value = None
 
         with pytest.raises(NotFoundException):
-            case_service.remove_case_items("nonexistent-case", "some-value")
+            case_service.remove_case_items("nonexistent-case", ["some-value"])
 
     @patch("howler.services.case_service.datastore")
     def test_remove_case_item_raises_not_found_for_missing_item(self, mock_ds_fn):
@@ -843,7 +843,7 @@ class TestRemoveCaseItem:
         mock_ds.case.get.return_value = mock_case
 
         with pytest.raises(NotFoundException):
-            case_service.remove_case_items("case-001", "nonexistent-item-value")
+            case_service.remove_case_items("case-001", ["nonexistent-item-value"])
 
     @patch("howler.services.case_service._sync_case_metadata")
     @patch("howler.services.case_service.datastore")
@@ -864,7 +864,7 @@ class TestRemoveCaseItem:
         mock_hit.howler.related = ["case-001"]
         mock_ds.hit.get.return_value = mock_hit
 
-        case_service.remove_case_items("case-001", "hit-001")
+        case_service.remove_case_items("case-001", ["hit-001"])
 
         assert hit_item not in mock_case.items
         mock_ds.case.save.assert_called_once()
@@ -889,7 +889,7 @@ class TestRemoveCaseItem:
         mock_obs.howler.related = ["case-001"]
         mock_ds.observable.get.return_value = mock_obs
 
-        case_service.remove_case_items("case-001", "obs-001")
+        case_service.remove_case_items("case-001", ["obs-001"])
 
         assert obs_item not in mock_case.items
         mock_ds.case.save.assert_called_once()
