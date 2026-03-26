@@ -1503,11 +1503,31 @@ def recursive_set_name(field, name, to_parent=False):
         recursive_set_name(field.child_type, name, to_parent=True)
 
 
-def model(index=None, store=None, description=None):
-    """Decorator to create model objects."""
+def model(index=None, store=None, description=None, id_field=None):
+    """Decorator that finalizes a Model subclass for use with the datastore.
+    Assigns metadata to the class (description, id field), validates that all
+    declared field names are legal, recursively sets each field's name, and
+    applies default index/store settings to every field.
+    If ``id_field`` is not provided, it defaults to ``<classname_lower>_id``.
+    Args:
+        index: Default index setting applied to all fields on the model.
+        store: Default store setting applied to all fields on the model.
+        description: Human-readable description of the model.
+        id_field: Name of the field used as the primary key. Defaults to
+            ``<classname_lower>_id`` when not specified.
+    Returns:
+        A class decorator that configures and returns the decorated Model subclass.
+    Raises:
+        HowlerValueError: If any field name fails the ``FIELD_SANITIZER`` regex
+            or appears in ``BANNED_FIELDS``.
+    """
 
     def _finish_model(cls):
         cls._Model__description = description
+        cls._Model__id_field = id_field
+
+        if cls._Model__id_field is None:
+            cls._Model__id_field = f"{cls.__name__.lower()}_id"
 
         for name, field_data in cls.fields().items():
             if not FIELD_SANITIZER.match(name) or name in BANNED_FIELDS:
