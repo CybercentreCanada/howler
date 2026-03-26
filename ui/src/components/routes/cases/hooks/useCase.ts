@@ -10,7 +10,7 @@ interface CaseArguments {
 
 interface CaseResult {
   case: Case;
-  updateCase: (update: Partial<Case>) => Promise<void>;
+  update: (update: Partial<Case>, publish?: boolean) => Promise<void>;
   loading: boolean;
   missing: boolean;
 }
@@ -37,14 +37,18 @@ const useCase: (args: CaseArguments) => CaseResult = ({ caseId, case: providedCa
     }
   }, [caseId, dispatchApi]);
 
-  const updateCase = useCallback(
-    async (_updatedCase: Partial<Case>) => {
+  const update = useCallback(
+    async (_updatedCase: Partial<Case>, publish = true) => {
       if (!_case?.case_id) {
         return;
       }
 
       try {
-        setCase(await dispatchApi(api.v2.case.put(_case.case_id, _updatedCase)));
+        if (publish) {
+          setCase(await dispatchApi(api.v2.case.put(_case.case_id, _updatedCase)));
+        } else {
+          setCase(_updatedCase);
+        }
       } catch (e) {
         setMissing(true);
       } finally {
@@ -54,7 +58,7 @@ const useCase: (args: CaseArguments) => CaseResult = ({ caseId, case: providedCa
     [_case?.case_id, dispatchApi]
   );
 
-  return { case: _case, updateCase, loading, missing };
+  return { case: _case, update, loading, missing };
 };
 
 export default useCase;

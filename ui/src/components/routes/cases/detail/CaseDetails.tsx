@@ -27,7 +27,7 @@ import SourceAggregate from './aggregates/SourceAggregate';
 
 const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
   const { t } = useTranslation();
-  const { case: _case, updateCase } = useCase({ case: providedCase });
+  const { case: _case, update: updateCase } = useCase({ case: providedCase });
   const { showModal } = useContext(ModalContext);
 
   const { config } = useContext(ApiConfigContext);

@@ -322,6 +322,9 @@ def append_hit(case_id: str, item: CaseItem) -> Case:
 
     _case.items.append(item)
 
+    if not ds.case.save(_case.case_id, _case):
+        raise DataStoreException(f"Failed to save {_case.case_id} with new item {item.value}")
+
     _add_backreference(hit, _case.case_id)
 
     _sync_case_metadata(_case.case_id)
@@ -362,7 +365,7 @@ def append_observable(case_id: str, item: CaseItem) -> Case:
 
     _case.items.append(item)
 
-    if not datastore().case.save(_case.case_id, _case):
+    if not ds.case.save(_case.case_id, _case):
         raise DataStoreException(f"Failed to save {_case.case_id} with new item {item.value}")
 
     _add_backreference(observable, _case.case_id)
@@ -624,3 +627,5 @@ def remove_case_item(case_id: str, item_value: str):
         remove_backreference(backing_obj, _case.case_id)
 
     _sync_case_metadata(case_id)
+
+    return _case

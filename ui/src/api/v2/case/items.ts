@@ -13,6 +13,6 @@ export const post = (id: string, newData: Item): Promise<Case> => {
   return hpost(uri(id), newData);
 };
 
-export const del = (id: string, value: string): Promise<void> => {
-  return hdelete(uri(id), { value });
+export const del = (id: string, values: string[]): Promise<Case> => {
+  return hdelete(uri(id), { values });
 };

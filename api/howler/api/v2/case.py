@@ -249,9 +249,9 @@ def append_item(id: str, user: User, **kwargs):  # noqa: C901
 @case_api.route("/<id>/items", methods=["DELETE"])
 @api_login(required_priv=["R", "W"])
 def delete_item(id: str, **kwargs):
-    """Delete an item from a case
+    """Delete one or more items from a case
 
-    This endpoint removes an item from a case's items list. If the item is a hit or
+    This endpoint removes items from a case's items list. If an item is a hit or
     observable, the bidirectional relationship is cleaned up - the case reference will
     be removed from the backing object's related.cases list.
 
@@ -263,25 +263,31 @@ def delete_item(id: str, **kwargs):
 
     Data Block:
     {
-        "value": "item-id-123"   # The value of the item to delete
+        "values": ["item-id-123", "item-id-456"]   # The values of the items to delete
     }
 
     Result Example:
     {
-        "success": true     # Did the deletion succeed?
+        ...case     # The updated case data
     }
     """
     body = request.json
 
-    if not body or not isinstance(body, dict) or "value" not in body:
-        return bad_request(err="Request body must be a JSON object with a 'value' field.")
+    if not body or not isinstance(body, dict) or "values" not in body:
+        return bad_request(err="Request body must be a JSON object with a 'values' field.")
 
+    values = body["values"]
+    if not isinstance(values, list) or not values:
+        return bad_request(err="'values' must be a non-empty list.")
+
+    updated_case = None
     try:
-        case_service.remove_case_item(id, item_value=body["value"])
+        for value in values:
+            updated_case = case_service.remove_case_item(id, item_value=value)
     except DataStoreException as e:
         logger.exception("Save Error")
         return internal_error(err=str(e))
     except InvalidDataException as e:
         return bad_request(err=str(e))
 
-    return ok()
+    return ok(updated_case)

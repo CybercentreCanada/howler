@@ -34,7 +34,7 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
   const { dispatchApi } = useMyApi();
   const { close } = useContext(ModalContext);
   const { config } = useContext(ApiConfigContext);
-  const { updateCase } = useCase({ case: _case });
+  const { update: updateCase } = useCase({ case: _case });
 
   const [loading, setLoading] = useState(true);
   const [rationale, setRationale] = useState('');
