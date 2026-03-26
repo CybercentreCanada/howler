@@ -43,7 +43,7 @@ interface CaseFolderProps {
   step?: number;
   rootCaseId?: string;
   pathPrefix?: string;
-  onItemRemoved?: (newCase: Case) => void;
+  onItemUpdated?: (newCase: Case) => void;
 }
 
 const CaseFolder: FC<CaseFolderProps> = ({
@@ -53,7 +53,7 @@ const CaseFolder: FC<CaseFolderProps> = ({
   step = -1,
   rootCaseId,
   pathPrefix = '',
-  onItemRemoved
+  onItemUpdated
 }) => {
   const theme = useTheme();
   const location = useLocation();
@@ -131,7 +131,7 @@ const CaseFolder: FC<CaseFolderProps> = ({
   return (
     <Stack sx={{ overflow: 'visible' }}>
       {name && (
-        <CaseFolderContextMenu _case={_case} tree={tree} onUpdate={onItemRemoved}>
+        <CaseFolderContextMenu _case={_case} tree={tree} onUpdate={onItemUpdated}>
           <Stack
             direction="row"
             pl={step * 1.5}
@@ -177,7 +177,7 @@ const CaseFolder: FC<CaseFolderProps> = ({
               step={step + 1}
               rootCaseId={currentRootCaseId}
               pathPrefix={pathPrefix}
-              onItemRemoved={onItemRemoved}
+              onItemUpdated={onItemUpdated}
             />
           ))}
 
@@ -207,7 +207,7 @@ const CaseFolder: FC<CaseFolderProps> = ({
                 key={`${_case?.case_id}-${leaf.value}-${leaf.path}`}
                 _case={_case}
                 leaf={leaf}
-                onUpdate={onItemRemoved}
+                onUpdate={onItemUpdated}
               >
                 <Stack>
                   <Stack
@@ -272,7 +272,7 @@ const CaseFolder: FC<CaseFolderProps> = ({
                       step={step + 1}
                       rootCaseId={currentRootCaseId}
                       pathPrefix={fullRelativePath}
-                      onItemRemoved={onItemRemoved}
+                      onItemUpdated={onItemUpdated}
                     />
                   )}
                 </Stack>
