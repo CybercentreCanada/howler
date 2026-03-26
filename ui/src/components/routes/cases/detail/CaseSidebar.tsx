@@ -8,12 +8,12 @@ import { Link, useLocation } from 'react-router-dom';
 import { ESCALATION_COLOR_MAP } from '../constants';
 import CaseFolder from './sidebar/CaseFolder';
 
-interface CaseFolderProps {
+interface CaseSidebarProps {
   case: Case;
   update: (newCase: Case) => void;
 }
 
-const CaseSidebar: FC<CaseFolderProps> = ({ case: _case, update }) => {
+const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
   const { t } = useTranslation();
   const location = useLocation();
   const theme = useTheme();

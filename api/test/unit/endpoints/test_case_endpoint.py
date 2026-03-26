@@ -469,7 +469,7 @@ class TestDeleteItemEndpoint:
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
     def test_delete_item_success(self, mock_auth_service, mock_case_service, request_context: Flask):
-        """Returns 200 with the updated case when an item is removed successfully."""
+        """Returns 200 with the updated case when a single item is removed successfully."""
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
@@ -485,12 +485,12 @@ class TestDeleteItemEndpoint:
             result: Response = delete_item(id="case-001")
 
             assert result.status_code == 200
-            mock_case_service.remove_case_item.assert_called_once_with("case-001", item_value="hit-001")
+            mock_case_service.remove_case_item.assert_called_once_with("case-001", item_values=["hit-001"])
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
     def test_delete_item_multiple_values(self, mock_auth_service, mock_case_service, request_context: Flask):
-        """Calls remove_case_item once per value and returns 200 with the updated case."""
+        """Calls remove_case_item once with the full list and returns 200 with the updated case."""
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
@@ -506,10 +506,9 @@ class TestDeleteItemEndpoint:
             result: Response = delete_item(id="case-001")
 
             assert result.status_code == 200
-            assert mock_case_service.remove_case_item.call_count == 3
-            mock_case_service.remove_case_item.assert_any_call("case-001", item_value="hit-001")
-            mock_case_service.remove_case_item.assert_any_call("case-001", item_value="hit-002")
-            mock_case_service.remove_case_item.assert_any_call("case-001", item_value="obs-003")
+            mock_case_service.remove_case_item.assert_called_once_with(
+                "case-001", item_values=["hit-001", "hit-002", "obs-003"]
+            )
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
@@ -596,6 +595,31 @@ class TestDeleteItemEndpoint:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
+    def test_delete_item_not_found_returns_400(self, mock_auth_service, mock_case_service, request_context: Flask):
+        """Returns 400 when case_service raises NotFoundException (missing item or case)."""
+        from howler.common.exceptions import NotFoundException
+
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        mock_case_service.remove_case_item.side_effect = NotFoundException(
+            "Case item(s) not found in case: missing-item"
+        )
+
+        with request_context.test_request_context(
+            method="DELETE",
+            json={"values": ["missing-item"]},
+            headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
+        ):
+            from howler.api.v2.case import delete_item
+
+            result: Response = delete_item(id="case-001")
+
+            assert result.status_code == 400
+            mock_case_service.remove_case_item.assert_called_once_with("case-001", item_values=["missing-item"])
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
     def test_delete_item_invalid_data_returns_400(self, mock_auth_service, mock_case_service, request_context: Flask):
         """Returns 400 when case_service raises InvalidDataException."""
         from howler.common.exceptions import InvalidDataException
@@ -603,11 +627,11 @@ class TestDeleteItemEndpoint:
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        mock_case_service.remove_case_item.side_effect = InvalidDataException("Item not found in case")
+        mock_case_service.remove_case_item.side_effect = InvalidDataException("Invalid item data")
 
         with request_context.test_request_context(
             method="DELETE",
-            json={"values": ["missing-item"]},
+            json={"values": ["hit-001"]},
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
         ):
             from howler.api.v2.case import delete_item

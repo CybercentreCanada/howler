@@ -47,7 +47,16 @@ const useCase: (args: CaseArguments) => CaseResult = ({ caseId, case: providedCa
         if (publish) {
           setCase(await dispatchApi(api.v2.case.put(_case.case_id, _updatedCase)));
         } else {
-          setCase(_updatedCase);
+          setCase(prevCase => {
+            if (!prevCase) {
+              return prevCase;
+            }
+
+            return {
+              ...prevCase,
+              ..._updatedCase
+            };
+          });
         }
       } catch (e) {
         setMissing(true);

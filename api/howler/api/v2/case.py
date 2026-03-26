@@ -246,9 +246,9 @@ def append_item(id: str, user: User, **kwargs):  # noqa: C901
 
 
 @generate_swagger_docs()
-@case_api.route("/<id>/items", methods=["DELETE"])
+@case_api.route("/<case_id>/items", methods=["DELETE"])
 @api_login(required_priv=["R", "W"])
-def delete_item(id: str, **kwargs):
+def delete_item(case_id: str, **kwargs):
     """Delete one or more items from a case
 
     This endpoint removes items from a case's items list. If an item is a hit or
@@ -256,7 +256,7 @@ def delete_item(id: str, **kwargs):
     be removed from the backing object's related.cases list.
 
     Variables:
-    id       => The id of the case to modify
+    case_id       => The id of the case to modify
 
     Arguments:
     None
@@ -280,14 +280,10 @@ def delete_item(id: str, **kwargs):
     if not isinstance(values, list) or not values:
         return bad_request(err="'values' must be a non-empty list.")
 
-    updated_case = None
     try:
-        for value in values:
-            updated_case = case_service.remove_case_item(id, item_value=value)
+        return ok(case_service.remove_case_items(case_id, values))
     except DataStoreException as e:
         logger.exception("Save Error")
         return internal_error(err=str(e))
-    except InvalidDataException as e:
+    except (InvalidDataException, NotFoundException) as e:
         return bad_request(err=str(e))
-
-    return ok(updated_case)
