@@ -3,7 +3,7 @@ import { createContext, useCallback, useEffect, useState } from 'react';
 
 export interface ModalOptions {
   disableClose?: boolean;
-  height?: number | string;
+  height?: number | string | null;
   maxWidth?: string;
   maxHeight?: string;
 }
