@@ -55,6 +55,7 @@ class _ObjectsDescriptor(Generic[ModelType]):
 
 class DatastoreMixin(Generic[ModelType]):
     """Mixin that provides convenience datastore access to Model instances.
+
     Generic over ``ModelType`` so that the ``store`` class property returns a
     correctly-typed ``ESCollection[ModelType]``.  Adds a ``ds`` property for
     retrieving the shared datastore connection, a ``store`` class-only property
@@ -69,6 +70,7 @@ class DatastoreMixin(Generic[ModelType]):
     @property
     def ds(self):
         """Return the shared datastore instance.
+
         Returns:
             The singleton datastore connection used for all persistence operations.
         """
@@ -76,6 +78,7 @@ class DatastoreMixin(Generic[ModelType]):
 
     def save(self) -> bool:
         """Persist the current model instance to the datastore.
+
         Determines the target index from the lowercase class name, extracts the
         model's ID from the configured ID field, and saves the instance.
         Returns:

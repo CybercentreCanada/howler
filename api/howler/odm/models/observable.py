@@ -111,7 +111,7 @@ class ObservableData(odm.Model):
     index=True,
     store=True,
     description="Observable schema which is an extended version of Elastic Common Schema (ECS)",
-    id_field="howler.id"
+    id_field="howler.id",
 )
 class Observable(DatastoreMixin["Observable"], Record):
     # Howler extended fields. Deviates from ECS
