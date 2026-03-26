@@ -55,7 +55,7 @@ export interface CaseFolderContextMenuProps extends PropsWithChildren {
   leaf?: Item;
   /** Present when the context menu is for a folder (all leaves within it will be removed). */
   tree?: Tree;
-  /** Called after item(s) have been successfully removed. */
+  /** Called after item(s) have been updated (renamed, removed). */
   onUpdate?: (updatedCase: Case) => void;
 }
 
