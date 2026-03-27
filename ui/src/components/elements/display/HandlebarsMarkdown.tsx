@@ -103,11 +103,8 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
         setRendered(`
 <h2 style="color: red">${t('markdown.error')}</h2>
 
-**\`${err.toString()}\`**
+The parser seems to have an error with the way it handles the JSON.
 
-<code style="font-size: 0.8rem"><pre>
-${err.stack}
-</pre></code>
         `);
       }
     });

@@ -182,7 +182,12 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             fr: 'Convertit une chaîne JSON en objet.'
           },
           callback: str => {
-            return JSON.parse(str);
+            try {
+              const parsedJSON = JSON.parse(str);
+              return parsedJSON;
+            } catch (e) {
+              return null;
+            }
           }
         },
         {
