@@ -68,7 +68,7 @@ class DatastoreMixin(Generic[ModelType]):
     document key.
     """
 
-    store = _ObjectsDescriptor()
+    store: _ObjectsDescriptor = _ObjectsDescriptor()
 
     @property
     def ds(self):
@@ -88,7 +88,7 @@ class DatastoreMixin(Generic[ModelType]):
             bool: True if the save operation succeeded, False otherwise.
         """
         index_name = self.__class__.__name__.lower()
-        id_field = self.__class__._Model__id_field
+        id_field = self.__class__._Model__id_field  # type: ignore[attr-defined]
         current_id = attrgetter(id_field)(self)
 
         return self.ds[index_name].save(current_id, self)
