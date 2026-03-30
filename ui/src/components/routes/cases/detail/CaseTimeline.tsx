@@ -75,6 +75,10 @@ const CaseTimeline: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase
   const getPath = (value: string) => _case?.items.find(item => item.value === value)?.path;
 
   useEffect(() => {
+    if (ids.length < 1) {
+      return;
+    }
+
     dispatchApi(
       api.v2.search.facet.post(['hit', 'observable'], {
         fields: ['threat.tactic.id', 'threat.technique.id', 'howler.escalation'],
