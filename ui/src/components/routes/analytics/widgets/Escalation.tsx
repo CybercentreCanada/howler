@@ -13,7 +13,7 @@ const Escalation = forwardRef<any, { analytic: Analytic; maxWidth?: string }>(({
   const { doughnut } = useMyChart();
 
   const [loading, setLoading] = useState(false);
-  const [escalationData, setEscalationData] = useState<HowlerFacetSearchResponse>({});
+  const [escalationData, setEscalationData] = useState<HowlerFacetSearchResponse[string]>({});
 
   const escalationColors = useMemo(
     () =>

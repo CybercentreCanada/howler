@@ -79,7 +79,8 @@ const CaseTimeline: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase
       api.v2.search.facet.post(['hit', 'observable'], {
         fields: ['threat.tactic.id', 'threat.technique.id', 'howler.escalation'],
         filters: [`howler.id:(${ids.join(' OR ')})`]
-      })
+      }),
+      { throwError: false }
     ).then(result => {
       if (!result) {
         return;
