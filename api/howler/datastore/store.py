@@ -9,7 +9,6 @@ from typing import Any, Optional, cast
 from urllib.parse import urlparse
 
 import elasticsearch
-import elasticsearch.client
 
 from howler.common.logging.format import HWL_DATE_FORMAT, HWL_LOG_FORMAT
 from howler.datastore.collection import ESCollection
@@ -138,7 +137,6 @@ class ESStore(object):
                 max_retries=0,
                 request_timeout=TRANSPORT_TIMEOUT,
             )
-        self.eql = elasticsearch.client.EqlClient(self.client)
         self.archive_access = archive_access
         self.url_path = "elastic"
 
@@ -218,14 +216,12 @@ class ESStore(object):
             max_retries=0,
             request_timeout=TRANSPORT_TIMEOUT,
         )
-        self.eql = elasticsearch.client.EqlClient(self.client)
 
     def close(self):
         self._closed = True
         # Flatten the client object so that attempts to access without reconnecting errors hard
         # But 'cast' it so that mypy and other linters don't think that its normal for client to be None
         self.client = cast(elasticsearch.Elasticsearch, None)
-        self.eql = cast(elasticsearch.client.EqlClient, None)
 
     def get_hosts(self, safe=False):
         if not safe:
