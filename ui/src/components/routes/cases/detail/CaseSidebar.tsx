@@ -1,8 +1,8 @@
-import { Circle, Dashboard, Dataset } from '@mui/icons-material';
+import { CalendarMonth, Circle, Dashboard, Dataset } from '@mui/icons-material';
 import { alpha, Box, Card, Chip, Divider, Skeleton, Stack, Typography, useTheme } from '@mui/material';
 import dayjs from 'dayjs';
 import type { Case } from 'models/entities/generated/Case';
-import { type FC } from 'react';
+import { useCallback, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
 import { ESCALATION_COLOR_MAP } from '../constants';
@@ -17,6 +17,35 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
   const { t } = useTranslation();
   const location = useLocation();
   const theme = useTheme();
+
+  const navItemSx = useCallback(
+    (isActive: boolean) => [
+      {
+        cursor: 'pointer',
+        px: 1,
+        py: 1,
+        transition: theme.transitions.create('background', { duration: 100 }),
+        color: `${theme.palette.text.primary} !important`,
+        textDecoration: 'none',
+        background: 'transparent',
+        borderRight: `thin solid ${theme.palette.divider}`,
+        '&:hover': {
+          background: alpha(theme.palette.grey[600], 0.25)
+        }
+      },
+      isActive && {
+        background: alpha(theme.palette.grey[600], 0.15),
+        borderRight: `3px solid ${theme.palette.primary.main}`
+      }
+    ],
+    [
+      theme.palette.divider,
+      theme.palette.grey,
+      theme.palette.primary.main,
+      theme.palette.text.primary,
+      theme.transitions
+    ]
+  );
 
   return (
     <Box
@@ -50,25 +79,7 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
       <Stack
         direction="row"
         alignItems="center"
-        sx={[
-          {
-            cursor: 'pointer',
-            px: 1,
-            py: 1,
-            transition: theme.transitions.create('background', { duration: 100 }),
-            color: `${theme.palette.text.primary} !important`,
-            textDecoration: 'none',
-            background: 'transparent',
-            borderRight: `thin solid ${theme.palette.divider}`,
-            '&:hover': {
-              background: alpha(theme.palette.grey[600], 0.25)
-            }
-          },
-          location.pathname === `/cases/${_case?.case_id}` && {
-            background: alpha(theme.palette.grey[600], 0.15),
-            borderRight: `3px solid ${theme.palette.primary.main}`
-          }
-        ]}
+        sx={navItemSx(location.pathname === `/cases/${_case?.case_id}`)}
         component={Link}
         to={`/cases/${_case?.case_id}`}
       >
@@ -79,30 +90,23 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
       <Stack
         direction="row"
         alignItems="center"
-        sx={[
-          {
-            cursor: 'pointer',
-            px: 1,
-            py: 1,
-            transition: theme.transitions.create('background', { duration: 100 }),
-            color: `${theme.palette.text.primary} !important`,
-            textDecoration: 'none',
-            background: 'transparent',
-            borderRight: `thin solid ${theme.palette.divider}`,
-            '&:hover': {
-              background: alpha(theme.palette.grey[600], 0.25)
-            }
-          },
-          location.pathname === `/cases/${_case?.case_id}/assets` && {
-            background: alpha(theme.palette.grey[600], 0.15),
-            borderRight: `3px solid ${theme.palette.primary.main}`
-          }
-        ]}
+        sx={navItemSx(location.pathname === `/cases/${_case?.case_id}/assets`)}
         component={Link}
         to={`/cases/${_case?.case_id}/assets`}
       >
         <Dataset />
         <Typography sx={{ userSelect: 'none', pl: 0.5, textWrap: 'nowrap' }}>{t('page.cases.assets')}</Typography>
+      </Stack>
+
+      <Stack
+        direction="row"
+        alignItems="center"
+        sx={navItemSx(location.pathname === `/cases/${_case?.case_id}/timeline`)}
+        component={Link}
+        to={`/cases/${_case?.case_id}/timeline`}
+      >
+        <CalendarMonth />
+        <Typography sx={{ userSelect: 'none', pl: 0.5, textWrap: 'nowrap' }}>{t('page.cases.timeline')}</Typography>
       </Stack>
 
       <Divider />

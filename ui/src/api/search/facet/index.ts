@@ -14,6 +14,6 @@ export type HowlerFacetSearchRequest = {
   filters?: string[];
 };
 
-export type HowlerFacetSearchResponse = { [value: string]: number };
+export type HowlerFacetSearchResponse = { [field: string]: { [value: string]: number } };
 
 export { hit };

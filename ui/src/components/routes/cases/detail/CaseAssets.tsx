@@ -5,7 +5,7 @@ import type { Case } from 'models/entities/generated/Case';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Observable } from 'models/entities/generated/Observable';
 import type { Related } from 'models/entities/generated/Related';
-import { useEffect, useMemo, useState, type FC } from 'react';
+import { memo, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useOutletContext } from 'react-router-dom';
 import useCase from '../hooks/useCase';
@@ -180,4 +180,4 @@ const CaseAssets: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, 
   );
 };
 
-export default CaseAssets;
+export default memo(CaseAssets);
