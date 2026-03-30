@@ -72,7 +72,7 @@ const CaseTimeline: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase
     [_case]
   );
 
-  const getPath = (value: string) => _case.items.find(item => item.value === value)?.path;
+  const getPath = (value: string) => _case?.items.find(item => item.value === value)?.path;
 
   useEffect(() => {
     dispatchApi(
