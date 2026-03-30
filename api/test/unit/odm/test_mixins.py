@@ -32,8 +32,9 @@ class _AnotherModel(DatastoreMixin["_AnotherModel"]):
         self.another_id = another_id
 
 
-class _SubModel():
+class _SubModel:
     """Subclass of _FakeModel to verify that index name and ID field are inherited correctly."""
+
     def __init__(self, fake_id: str = "id-004"):
         self.id = fake_id
 

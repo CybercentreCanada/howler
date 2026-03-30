@@ -11,6 +11,7 @@ from __future__ import annotations
 from operator import attrgetter
 from typing import Generic, TypeVar, overload
 
+from howler.common.exceptions import HowlerRuntimeError
 from howler.common.loader import datastore
 from howler.datastore.collection import ESCollection
 from howler.odm.base import Model
@@ -46,12 +47,14 @@ class _ObjectsDescriptor(Generic[ModelType]):
                 or if *objtype* cannot be determined.
         """
         if obj is not None:
-            raise AttributeError(
+            raise HowlerRuntimeError(
                 f"'{type(obj).__name__}.store' is a class-level property and cannot be accessed from an instance. "
                 f"Use '{type(obj).__name__}.store' instead."
             )
+
         if objtype is None:
-            raise AttributeError("Cannot resolve owner class for 'store' descriptor.")
+            raise HowlerRuntimeError("Cannot resolve owner class for 'store' descriptor.")
+
         index_name = objtype.__name__.lower()
         return datastore()[index_name]
 
