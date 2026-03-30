@@ -3,6 +3,7 @@ from typing import Any, Optional
 from howler import odm
 from howler.common.exceptions import HowlerValueError
 from howler.odm.constants import Status
+from howler.odm.mixins import DatastoreMixin
 from howler.utils.compat import StrEnum
 
 CASE_ITEM_TYPES = {"observable", "hit", "case", "lead", "reference"}
@@ -92,7 +93,7 @@ class CaseEnrichment(odm.Model):
 
 
 @odm.model(index=True, store=True, description="Case model with path-based items, enrichments, rules, and tasks.")
-class Case(odm.Model):
+class Case(DatastoreMixin["Case"], odm.Model):
     case_id: str = odm.UUID(description="A unique identifier for this case.")
     title: str = odm.Keyword(description="Case title.")
     summary: str = odm.Text(description="Short case summary.")
