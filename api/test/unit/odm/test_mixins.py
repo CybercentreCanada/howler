@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from howler.common.exceptions import HowlerRuntimeError
 from howler.odm.mixins import DatastoreMixin
 
 # ---------------------------------------------------------------------------
@@ -87,10 +88,10 @@ class TestStoreDescriptor:
         assert calls[0] != calls[1]
 
     def test_store_accessed_via_instance_raises_attribute_error(self):
-        """Accessing .store on an instance raises AttributeError."""
+        """Accessing .store on an instance raises HowlerRuntimeError."""
         instance = _FakeModel()
 
-        with pytest.raises(AttributeError) as exc_info:
+        with pytest.raises(HowlerRuntimeError) as exc_info:
             _ = instance.store
 
         assert "_FakeModel.store" in str(exc_info.value)
@@ -107,10 +108,10 @@ class TestStoreDescriptor:
         assert mock_datastore.call_count == 2
 
     def test_store_error_message_includes_class_name(self):
-        """AttributeError message includes the model class name when raised from an instance."""
+        """HowlerRuntimeError message includes the model class name when raised from an instance."""
         instance = _FakeModel()
 
-        with pytest.raises(AttributeError) as exc_info:
+        with pytest.raises(HowlerRuntimeError) as exc_info:
             _ = instance.store
 
         assert "_FakeModel" in str(exc_info.value)
