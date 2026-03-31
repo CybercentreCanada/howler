@@ -55,8 +55,6 @@ const HitGraph: FC = () => {
   const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
   const span = useContextSelector(ParameterContext, ctx => ctx.span);
   const views = useContextSelector(ParameterContext, ctx => ctx.views);
-  const startDate = useContextSelector(ParameterContext, ctx => (ctx.startDate ? dayjs(ctx.startDate) : null));
-  const endDate = useContextSelector(ParameterContext, ctx => (ctx.endDate ? dayjs(ctx.endDate) : null));
 
   const selectedHits = useContextSelector(HitContext, ctx => ctx.selectedHits);
   const addHitToSelection = useContextSelector(HitContext, ctx => ctx.addHitToSelection);
@@ -106,16 +104,14 @@ const HitGraph: FC = () => {
         setDisabled(false);
       }
 
-      console.log(filters);
-
       const _data = await dispatchApi(
         api.search.grouped.hit.post(filterField, {
           query: query || DEFAULT_QUERY,
           fl: 'event.created,howler.assessment,howler.analytic,howler.detection,howler.outline.threat,howler.outline.target,howler.outline.summary,howler.id',
           // We want a generally random sample across all date ranges, so we use hash.
           // If we used event.created instead, when 1 million hits/hour are created, you'd only see hits from this past minute
-          sort: 'event.created desc',
-          group_sort: 'event.created desc',
+          sort: 'howler.hash desc',
+          group_sort: 'howler.hash desc',
           limit: override ? OVERRIDE_ROWS : MAX_ROWS,
           rows: override ? OVERRIDE_ROWS : MAX_ROWS,
           filters

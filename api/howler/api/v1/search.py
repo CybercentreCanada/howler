@@ -556,7 +556,6 @@ def count(index, **kwargs):
         params.update({"access_control": user["access_control"]})
 
     query = req_data.get("query", None)
-    print(f"This is data {req_data}")
     filters = req_data.get("filters", None)
 
     if not query:
