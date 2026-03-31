@@ -556,11 +556,14 @@ def count(index, **kwargs):
         params.update({"access_control": user["access_control"]})
 
     query = req_data.get("query", None)
+    print(f"This is data {req_data}")
+    filters = req_data.get("filters", None)
+
     if not query:
         return bad_request(err="There was no search query.")
 
     try:
-        return ok(collection().count(query, **params))
+        return ok(collection().count(query, filters=filters, **params))
     except (SearchException, BadRequestError) as e:
         return bad_request(err=f"SearchException: {e}")
 

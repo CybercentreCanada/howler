@@ -1885,6 +1885,7 @@ class ESCollection(Generic[ModelType]):
     def count(
         self,
         query,
+        filters,
         access_control=None,
     ):
         """This function should perform a count operation through the datastore and return a
@@ -1898,6 +1899,9 @@ class ESCollection(Generic[ModelType]):
         :param access_control: access control parameters to limit the scope of the query
         :return: a count result object
         """
+        for _, filter in enumerate(filters):
+            query += f" AND {filter}"
+
         result = self.with_retries(self.datastore.client.count, index=self.name, q=query)
 
         ret_data: dict[str, Any] = {
