@@ -68,7 +68,7 @@ def setup_job(sched: BaseScheduler):
 
         return
 
-    logger.debug(f"Initializing view cleanup cronjob with cron {config.system.view_cleanup.crontab}")
+    logger.debug("Initializing view cleanup cronjob with cron %s", config.system.view_cleanup.crontab)
 
     if DEBUG:
         _kwargs: dict[str, Any] = {"next_run_time": datetime.now()}

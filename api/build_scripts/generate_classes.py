@@ -143,7 +143,7 @@ def generate_structure():  # noqa: C901
             sys.exit(1)
 
         if validation_req.status_code == 400:
-            log.fatal(f"400 when pulling validation data! Response: {validation_req.json()}")
+            log.fatal("400 when pulling validation data! Response: %s", validation_req.json())
             sys.exit(1)
 
         validation_list = validation_req.json()["api_response"]["items"]

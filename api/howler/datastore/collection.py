@@ -398,7 +398,7 @@ class ESCollection(Generic[ModelType]):
             except elasticsearch.exceptions.TransportError as e:
                 err_code, msg, cause = e.args
                 if err_code == 503 or err_code == "503":
-                    logger.warning(f"Looks like index {self.name} is not ready yet, retrying...")
+                    logger.warning("Looks like index %s is not ready yet, retrying...", self.name)
                     time.sleep(min(retries, self.MAX_RETRY_BACKOFF))
                     self.datastore.connection_reset()
                     retries += 1
