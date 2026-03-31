@@ -112,14 +112,25 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
   );
 
   const loadRecords = useContextSelector(RecordContext, ctx => ctx.loadRecords);
-  const hits = useContextSelector(RecordContext, ctx => hitIds.map(id => ctx.records[id] as Hit).filter(Boolean));
+  const records = useContextSelector(RecordContext, ctx => ctx.records);
+  const hits = useMemo(() => hitIds.map(id => records[id] as Hit).filter(Boolean), [hitIds, records]);
 
   const selectedHits = useMemo(() => hits.filter(hit => selectedHitIds.has(hit.howler.id)), [hits, selectedHitIds]);
   const { assess } = useHitActions(selectedHits);
 
   const unresolvedHits = useMemo(
-    () => hitIds.filter(id => !!hits.find(hit => hit?.howler.id === id && hit.howler.status !== 'resolved')),
-    [hitIds, hits]
+    () =>
+      hitIds.filter(id => {
+        const record = records[id];
+
+        if (!record) {
+          // Treat missing records as unresolved until they are loaded
+          return true;
+        }
+
+        return record.howler.status !== 'resolved';
+      }),
+    [hitIds, records]
   );
 
   const handleConfirm = async () => {

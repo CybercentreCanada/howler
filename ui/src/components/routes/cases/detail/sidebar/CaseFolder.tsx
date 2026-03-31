@@ -85,8 +85,9 @@ const CaseFolder: FC<CaseFolderProps> = ({
 
     dispatchApi(api.search.hit.post({ query: `howler.id:(${hitIds.join(' OR ')})` }), { throwError: false }).then(
       result => {
-        if ((result?.items?.length ?? 0) < 1) return;
-        loadRecords(result.items);
+        if (result?.items?.length < 1) {
+          return;
+        }
       }
     );
   }, [hitIds, dispatchApi, _case.status, loadRecords]);
