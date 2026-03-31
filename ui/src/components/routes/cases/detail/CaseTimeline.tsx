@@ -27,7 +27,7 @@ interface MitreOption {
 }
 
 // builds the additional filters for the lucene query
-const buildFilters = (mitre: MitreOption[], escalations: string[]): string[] => {
+export const buildFilters = (mitre: MitreOption[], escalations: string[]): string[] => {
   const filters: string[] = [];
 
   const tacticIds = mitre.filter(o => o.kind === 'tactic').map(o => o.id);
@@ -72,7 +72,7 @@ const CaseTimeline: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase
     [_case]
   );
 
-  const getPath = (value: string) => _case?.items.find(item => item.value === value)?.path;
+  const getPath = (value: string) => _case!.items.find(item => item.value === value)?.path;
 
   useEffect(() => {
     if (ids.length < 1) {
@@ -124,7 +124,8 @@ const CaseTimeline: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase
         sort: 'event.created asc',
         rows: ids.length,
         filters
-      })
+      }),
+      { throwError: false }
     ).then(response => {
       setLoading(false);
 
@@ -210,7 +211,7 @@ const CaseTimeline: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase
                 </Typography>
                 <Box
                   component={Link}
-                  to={`/cases/${_case?.case_id}/${getPath(entry.howler.id)}`}
+                  to={`/cases/${_case.case_id}/${getPath(entry.howler.id)}`}
                   sx={{ flex: 1, minWidth: 0, textDecoration: 'none' }}
                 >
                   {isHit(entry) ? (
