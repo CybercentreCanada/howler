@@ -200,6 +200,7 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
               size="small"
               fullWidth
               placeholder={t('modal.rationale.label')}
+              aria-label={t('modal.rationale.label')}
               value={rationale}
               onChange={ev => setRationale(ev.target.value)}
             />
@@ -212,7 +213,12 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
               options={config.lookups['howler.assessment']}
               disablePortal
               renderInput={params => (
-                <TextField {...params} placeholder={t('hit.details.actions.assessment')} fullWidth />
+                <TextField
+                  {...params}
+                  placeholder={t('hit.details.actions.assessment')}
+                  aria-label={t('hit.details.actions.assessment')}
+                  fullWidth
+                />
               )}
             />
           </Box>
