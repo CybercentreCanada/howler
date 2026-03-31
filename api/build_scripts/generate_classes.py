@@ -149,7 +149,7 @@ def generate_structure():  # noqa: C901
         validation_list = validation_req.json()["api_response"]["items"]
 
         if len(validation_list) == 0:
-            log.critical(f"No validation object found for index {index}, aborting")
+            log.critical("No validation object found for index %s, aborting", index)
             sys.exit(1)
 
         validation_obj = next(
@@ -192,7 +192,7 @@ def generate_structure():  # noqa: C901
                 if current.get(current_field, None) is None:
                     # If we haven't initialized this node yet, we'll do so now
                     current[current_field] = dict()
-                    log.debug(f"{indent}{current_field}:")
+                    log.debug("%s%s:", indent, current_field)
 
                 # Descend down the tree we're creating, and the validation object.
                 current = current[current_field]
@@ -260,10 +260,7 @@ def generate_structure():  # noqa: C901
                     assert isinstance(
                         current_value,
                         python_type,
-                    ), (
-                        f"Type {key} does not match: {type(current_value)}, "
-                        f"{python_type} from {index_data[key]['type']}"
-                    )
+                    ), f"Type {key} does not match: {type(current_value)}, {python_type} from {index_data[key]['type']}"
             except KeyError as e:
                 # We have to special case dossier models, since they have up to five defined fields but often only the
                 # first few are actually set. We can safely ignore KeyErrors from them if they aren't set.
@@ -285,7 +282,7 @@ def generate_structure():  # noqa: C901
                 "__ts_field_type": ts_field_type,
                 "__required": key in REQUIRED_FIELDS,
             }
-            log.debug(f"{indent}{current_field}: ts:{ts_field_type}")
+            log.debug("%s%s: ts:%s", indent, current_field, ts_field_type)
 
     return structure
 
@@ -536,7 +533,7 @@ def generate_api_config_types():
             # | }]              |
             def fix_whitespace(match_obj):
                 lines = match_obj.group(2).split("\n")
-                return f'{{{" ".join(line.strip() for line in lines)}}}[]'
+                return f"{{{' '.join(line.strip() for line in lines)}}}[]"
 
             config_type = re.sub(r"\[\s+({([\s\S]+?)},?\s+)+]", fix_whitespace, config_type)
 
@@ -581,10 +578,10 @@ def generate_api_config_types():
             + textwrap.dedent(
                 f"""
                 export interface ApiType {{
-                  indexes: API{to_pascal_case('indexes')};
-                  lookups: API{to_pascal_case('lookups')};
-                  configuration: API{to_pascal_case('configuration')};
-                  c12nDef: API{to_pascal_case('c12nDef')};
+                  indexes: API{to_pascal_case("indexes")};
+                  lookups: API{to_pascal_case("lookups")};
+                  configuration: API{to_pascal_case("configuration")};
+                  c12nDef: API{to_pascal_case("c12nDef")};
                 }}
                 """
             )

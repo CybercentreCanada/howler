@@ -411,7 +411,8 @@ class ESCollection(Generic[ModelType]):
                     retries += 1
                 elif err_code == 403 or err_code == "403":
                     logger.warning(
-                        f"Elasticsearch cluster is preventing writing operations on index {self.name}, retrying..."
+                        "Elasticsearch cluster is preventing writing operations on index %s, retrying...",
+                        self.name,
                     )
                     time.sleep(min(retries, self.MAX_RETRY_BACKOFF))
                     self.datastore.connection_reset()
@@ -470,7 +471,7 @@ class ESCollection(Generic[ModelType]):
             except elasticsearch.exceptions.TransportError as e:
                 err_code, _, _ = e.args
                 if err_code == 408 or err_code == "408":
-                    logger.warning(f"Waiting for index {index} to get to status {min_status}...")
+                    logger.warning("Waiting for index %s to get to status %s...", index, min_status)
                 else:
                     raise
 
@@ -576,8 +577,9 @@ class ESCollection(Generic[ModelType]):
 
         if cur_shards > target_shards:
             logger.info(
-                f"Current shards ({cur_shards}) is bigger then target shards ({target_shards}), "
-                "we will be shrinking the index."
+                "Current shards (%s) is bigger then target shards (%s), we will be shrinking the index.",
+                cur_shards,
+                target_shards,
             )
             if cur_shards % target_shards != 0:
                 logger.info("The target shards is not a factor of the current shards, aborting...")
@@ -591,8 +593,9 @@ class ESCollection(Generic[ModelType]):
                 method = self.datastore.client.indices.shrink
         elif cur_shards < target_shards:
             logger.info(
-                f"Current shards ({cur_shards}) is smaller then target shards ({target_shards}), "
-                "we will be splitting the index."
+                "Current shards (%s) is smaller then target shards (%s), we will be splitting the index.",
+                cur_shards,
+                target_shards,
             )
             if target_shards % cur_shards != 0:
                 logger.warning("The current shards is not a factor of the target shards, aborting...")
@@ -601,13 +604,14 @@ class ESCollection(Generic[ModelType]):
                 method = self.datastore.client.indices.split
         else:
             logger.info(
-                f"Current shards ({cur_shards}) is equal to the target shards ({target_shards}), "
-                "only house keeping operations will be performed."
+                "Current shards (%s) is equal to the target shards (%s), only house keeping operations will be performed.",
+                cur_shards,
+                target_shards,
             )
 
         if method:
             # Before we do anything, we should make sure the source index is in a good state
-            logger.info(f"Waiting for {self.name.upper()} status to be GREEN.")
+            logger.info("Waiting for %s status to be GREEN.", self.name.upper())
             self._wait_for_status(self.name, min_status="green")
 
             # Block all indexes to be written to
@@ -618,7 +622,7 @@ class ESCollection(Generic[ModelType]):
             if not self.with_retries(self.datastore.client.indices.exists, index=temp_name):
                 # if there are specific settings to be applied to the index, apply them
                 if clone_setup_settings:
-                    logger.info(f"Rellocating index to node {target_node.upper()}.")
+                    logger.info("Rellocating index to node %s.", target_node.upper())
                     self.with_retries(
                         self.datastore.client.indices.put_settings,
                         index=self.index_name,
@@ -630,7 +634,7 @@ class ESCollection(Generic[ModelType]):
                         time.sleep(1)
 
                 # Make a clone of the current index
-                logger.info(f"Cloning {self.index_name.upper()} into {temp_name.upper()}.")
+                logger.info("Cloning %s into %s.", self.index_name.upper(), temp_name.upper())
                 self._safe_index_copy(
                     self.datastore.client.indices.clone,
                     self.index_name,
@@ -640,14 +644,16 @@ class ESCollection(Generic[ModelType]):
                 )
 
             # Make 100% sure temporary index is ready
-            logger.info(f"Waiting for {temp_name.upper()} status to be GREEN.")
+            logger.info("Waiting for %s status to be GREEN.", temp_name.upper())
             self._wait_for_status(temp_name, "green")
 
             # Make sure temporary index is the alias if not already
             if self._get_current_alias(self.name) != temp_name:
                 logger.info(
-                    f"Make {temp_name.upper()} the current alias for {self.name.upper()} "
-                    f"and delete {self.index_name.upper()}."
+                    "Make %s the current alias for %s and delete %s.",
+                    temp_name.upper(),
+                    self.name.upper(),
+                    self.index_name.upper(),
                 )
                 # Make the hot index the temporary index while deleting the original index
                 alias_actions = [
@@ -658,17 +664,19 @@ class ESCollection(Generic[ModelType]):
 
             # Make sure the original index is deleted
             if self.with_retries(self.datastore.client.indices.exists, index=self.index_name):
-                logger.info(f"Delete extra {self.index_name.upper()} index.")
+                logger.info("Delete extra %s index.", self.index_name.upper())
                 self.with_retries(self.datastore.client.indices.delete, index=self.index_name)
 
             # Shrink/split the temporary index into the original index
-            logger.info(f"Perform shard fix operation from {temp_name.upper()} to {self.index_name.upper()}.")
+            logger.info("Perform shard fix operation from %s to %s.", temp_name.upper(), self.index_name.upper())
             self._safe_index_copy(method, temp_name, self.index_name, settings=settings)
 
             # Make the original index the new alias
             logger.info(
-                f"Make {self.index_name.upper()} the current alias for {self.name.upper()} "
-                f"and delete {temp_name.upper()}."
+                "Make %s the current alias for %s and delete %s.",
+                self.index_name.upper(),
+                self.name.upper(),
+                temp_name.upper(),
             )
             alias_actions = [
                 {"add": {"index": self.index_name, "alias": self.name}},
@@ -681,7 +689,7 @@ class ESCollection(Generic[ModelType]):
         self.with_retries(self.datastore.client.indices.put_settings, settings=write_unblock_settings)
 
         # Restore normal routing and replicas
-        logger.debug(f"Restore original routing table for {self.name.upper()}.")
+        logger.debug("Restore original routing table for %s.", self.name.upper())
         self.with_retries(
             self.datastore.client.indices.put_settings,
             index=self.name,
@@ -849,7 +857,7 @@ class ESCollection(Generic[ModelType]):
                     key_list.remove(row["_id"])
                     add_to_output(row["_source"], row["_id"])
                 except ValueError:
-                    logger.exception(f"MGet returned multiple documents for id: {row['_id']}")
+                    logger.exception("MGet returned multiple documents for id: %s", row["_id"])
 
         if key_list and error_on_missing:
             raise MultiKeyError(key_list, out)
@@ -2359,7 +2367,7 @@ class ESCollection(Generic[ModelType]):
         """
         # Create HOT index
         if not self.with_retries(self.datastore.client.indices.exists, index=self.name):
-            logger.debug(f"Index {self.name.upper()} does not exists. Creating it now...")
+            logger.debug("Index %s does not exists. Creating it now...", self.name.upper())
             try:
                 self.with_retries(
                     self.datastore.client.indices.create,
@@ -2370,7 +2378,7 @@ class ESCollection(Generic[ModelType]):
             except elasticsearch.exceptions.RequestError as e:
                 if "resource_already_exists_exception" not in str(e):
                     raise
-                logger.warning(f"Tried to create an index template that already exists: {self.name.upper()}")
+                logger.warning("Tried to create an index template that already exists: %s", self.name.upper())
 
             self.with_retries(
                 self.datastore.client.indices.put_alias,
