@@ -604,7 +604,7 @@ class ESCollection(Generic[ModelType]):
                 method = self.datastore.client.indices.split
         else:
             logger.info(
-                "Current shards (%s) is equal to the target shards (%s), only house keeping operations will be "
+                "Current shards (%s) is equal to the target shards (%s), only housekeeping operations will be "
                 "performed.",
                 cur_shards,
                 target_shards,
@@ -623,7 +623,7 @@ class ESCollection(Generic[ModelType]):
             if not self.with_retries(self.datastore.client.indices.exists, index=temp_name):
                 # if there are specific settings to be applied to the index, apply them
                 if clone_setup_settings:
-                    logger.info("Rellocating index to node %s.", target_node.upper())
+                    logger.info("Relocating index to node %s.", target_node.upper())
                     self.with_retries(
                         self.datastore.client.indices.put_settings,
                         index=self.index_name,
@@ -2368,7 +2368,7 @@ class ESCollection(Generic[ModelType]):
         """
         # Create HOT index
         if not self.with_retries(self.datastore.client.indices.exists, index=self.name):
-            logger.debug("Index %s does not exists. Creating it now...", self.name.upper())
+            logger.debug("Index %s does not exist. Creating it now...", self.name.upper())
             try:
                 self.with_retries(
                     self.datastore.client.indices.create,
