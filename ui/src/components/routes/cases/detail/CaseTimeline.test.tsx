@@ -94,6 +94,21 @@ vi.mock('components/elements/observable/ObservableCard', () => ({
   default: ({ id }: { id: string }) => <div>{`ObservableCard:${id}`}</div>
 }));
 
+// Return the request object rather than a Promise so dispatchApi's first
+// argument is JSON-serialisable (JSON.stringify(Promise) === '{}').
+vi.mock('api', () => ({
+  default: {
+    v2: {
+      search: {
+        post: (_indexes: any, request: any) => request ?? {},
+        facet: {
+          post: (_indexes: any, request: any) => request ?? {}
+        }
+      }
+    }
+  }
+}));
+
 const mockLoadRecords = vi.fn();
 
 const mockConfig = {
