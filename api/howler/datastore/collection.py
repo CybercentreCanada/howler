@@ -1899,8 +1899,9 @@ class ESCollection(Generic[ModelType]):
         :param access_control: access control parameters to limit the scope of the query
         :return: a count result object
         """
-        for _, filter in enumerate(filters):
-            query += f" AND {filter}"
+        if filters is not None:
+            for _, filter in enumerate(filters):
+                query += f" AND {filter}"
 
         result = self.with_retries(self.datastore.client.count, index=self.name, q=query)
 
