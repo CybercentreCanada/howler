@@ -71,7 +71,13 @@ export default defineConfig(({ mode }) => {
       }
     },
     define: {
-      'process.env': {}
+      'process.env': {},
+      global: 'globalThis'
+    },
+    resolve: {
+      alias: {
+        stream: 'stream-browserify'
+      }
     },
     server: {
       port: 3000,
