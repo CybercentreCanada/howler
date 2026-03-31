@@ -1,12 +1,12 @@
-import { get, set } from 'lodash-es';
+import { get, set, sortBy, take } from 'lodash-es';
 import type { Item } from 'models/entities/generated/Item';
 import type { Tree } from './types';
 
 export const buildTree = (items: Item[] = []): Tree => {
   // Root tree node stores direct children in `leaves` and nested folders as object keys.
-  const tree: Tree = { leaves: [] };
+  const tree: any = { leaves: [], __path: '' };
 
-  items.forEach(item => {
+  sortBy(items, 'path').forEach(item => {
     // Ignore items that cannot be placed in the folder structure.
     if (!item?.path) {
       return;
@@ -15,6 +15,11 @@ export const buildTree = (items: Item[] = []): Tree => {
     // Split path into folder segments + item name, then remove the item name.
     const parts = item.path.split('/');
     parts.pop();
+
+    parts.map((_, index) => {
+      const subpath = take(parts, index + 1).join('.');
+      set(tree, `${subpath}.__path`, take(parts, index + 1).join('/'));
+    });
 
     if (parts.length > 0) {
       // Use dot notation so lodash `get/set` can address nested folder objects.

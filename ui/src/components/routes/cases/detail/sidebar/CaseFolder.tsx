@@ -1,39 +1,17 @@
-import {
-  Article,
-  BookRounded,
-  CheckCircle,
-  ChevronRight,
-  Folder as FolderIcon,
-  Lightbulb,
-  Link as LinkIcon,
-  TableChart,
-  Visibility
-} from '@mui/icons-material';
-import type { SvgIconProps } from '@mui/material';
-import { alpha, Skeleton, Stack, Typography, useTheme } from '@mui/material';
+import { Box, Skeleton, Stack, useTheme } from '@mui/material';
 import api from 'api';
 import { RecordContext } from 'components/app/providers/RecordProvider';
 import useMyApi from 'components/hooks/useMyApi';
 import { omit } from 'lodash-es';
 import type { Case } from 'models/entities/generated/Case';
 import type { Item } from 'models/entities/generated/Item';
-import { useCallback, useEffect, useMemo, useState, type ComponentType, type FC } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState, type FC } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { ESCALATION_COLORS } from 'utils/constants';
 import CaseFolderContextMenu from './CaseFolderContextMenu';
+import FolderEntry from './FolderEntry';
 import type { Tree } from './types';
 import { buildTree } from './utils';
-
-// Static map: item type → MUI icon component (avoids re-creating closures on each render)
-const ICON_FOR_TYPE: Record<string, ComponentType<SvgIconProps>> = {
-  case: BookRounded,
-  observable: Visibility,
-  hit: CheckCircle,
-  table: TableChart,
-  lead: Lightbulb,
-  reference: LinkIcon
-};
 
 type CaseNodeState = { open: boolean; loading: boolean; data: Case | null };
 
@@ -57,7 +35,6 @@ const CaseFolder: FC<CaseFolderProps> = ({
   onItemUpdated
 }) => {
   const theme = useTheme();
-  const location = useLocation();
   const { dispatchApi } = useMyApi();
 
   const [open, setOpen] = useState(true);
@@ -88,6 +65,8 @@ const CaseFolder: FC<CaseFolderProps> = ({
         if (result?.items?.length < 1) {
           return;
         }
+
+        loadRecords(result.items);
       }
     );
   }, [hitIds, dispatchApi, _case.status, loadRecords]);
@@ -136,54 +115,42 @@ const CaseFolder: FC<CaseFolderProps> = ({
     <Stack sx={{ overflow: 'visible' }}>
       {name && (
         <CaseFolderContextMenu _case={_case} tree={tree} onUpdate={onItemUpdated}>
-          <Stack
-            direction="row"
-            pl={step * 1.5}
-            py={0.25}
+          <Box
             sx={{
-              cursor: 'pointer',
-              transition: theme.transitions.create('background', { duration: 50 }),
+              transition: theme.transitions.create('background', { duration: 100 }),
               background: 'transparent',
-              '&:hover': {
-                background: theme.palette.grey[800]
-              }
+              '&:hover': { background: theme.palette.grey[800] }
             }}
-            onClick={() => setOpen(_open => !_open)}
           >
-            <ChevronRight
-              fontSize="small"
-              color="disabled"
-              sx={[
-                { transition: theme.transitions.create('transform', { duration: 100 }), transform: 'rotate(0deg)' },
-                open && { transform: 'rotate(90deg)' }
-              ]}
+            <FolderEntry
+              caseId={_case.case_id === rootCaseId ? rootCaseId : null}
+              path={tree.__path}
+              itemType="folder"
+              indent={step * 1.5}
+              label={name}
+              chevronOpen={open}
+              onClick={() => setOpen(_open => !_open)}
             />
-            <FolderIcon fontSize="small" color="disabled" />
-            <Typography
-              variant="caption"
-              color="textSecondary"
-              sx={{ userSelect: 'none', pl: 0.5, textWrap: 'nowrap' }}
-            >
-              {name}
-            </Typography>
-          </Stack>
+          </Box>
         </CaseFolderContextMenu>
       )}
 
       {open && (
         <>
-          {Object.entries(omit(tree, 'leaves')).map(([path, subfolder]) => (
-            <CaseFolder
-              key={`${_case?.case_id}-${path}`}
-              name={path}
-              case={_case}
-              folder={subfolder as Tree}
-              step={step + 1}
-              rootCaseId={currentRootCaseId}
-              pathPrefix={pathPrefix}
-              onItemUpdated={onItemUpdated}
-            />
-          ))}
+          {Object.entries(omit(tree, ['leaves', '__path'])).map(([path, subfolder]) => {
+            return (
+              <CaseFolder
+                key={`${_case?.case_id}-${path}`}
+                name={path}
+                case={_case}
+                folder={subfolder as Tree}
+                step={step + 1}
+                rootCaseId={currentRootCaseId}
+                pathPrefix={`${pathPrefix ?? ''}${pathPrefix ? '/' : ''}${name ?? ''}`}
+                onItemUpdated={onItemUpdated}
+              />
+            );
+          })}
 
           {tree.leaves?.map(leaf => {
             const itemType = leaf.type?.toLowerCase();
@@ -194,7 +161,7 @@ const CaseFolder: FC<CaseFolderProps> = ({
             const isCaseOpen = !!nodeState?.open;
             const isCaseLoading = !!nodeState?.loading;
             const nestedCase = nodeState?.data ?? null;
-            const itemPath =
+            const itemTo =
               itemType !== 'reference'
                 ? fullRelativePath
                   ? `/cases/${currentRootCaseId}/${fullRelativePath}`
@@ -204,7 +171,6 @@ const CaseFolder: FC<CaseFolderProps> = ({
             const escalationColor = getEscalationColor(itemType, itemKey, leaf.value);
             const iconColor = escalationColor ?? ('inherit' as const);
             const leafColor = escalationColor ? `${escalationColor}.light` : 'text.secondary';
-            const Icon = ICON_FOR_TYPE[itemType ?? ''] ?? Article;
 
             return (
               <CaseFolderContextMenu
@@ -214,55 +180,27 @@ const CaseFolder: FC<CaseFolderProps> = ({
                 onUpdate={onItemUpdated}
               >
                 <Stack>
-                  <Stack
-                    direction="row"
-                    pl={step * 1.5 + 1}
-                    py={0.25}
-                    sx={[
-                      {
-                        cursor: 'pointer',
-                        overflow: 'visible',
-                        color: `${theme.palette.text.secondary} !important`,
-                        textDecoration: 'none',
-                        transition: theme.transitions.create('background', { duration: 100 }),
-                        background: 'transparent',
-                        '&:hover': {
-                          background: theme.palette.grey[800]
-                        },
-                        borderRight: '3px solid transparent'
-                      },
-                      decodeURIComponent(location.pathname) === itemPath && {
-                        background: alpha(theme.palette.grey[600], 0.15),
-                        borderRightColor: theme.palette.primary.main
-                      }
-                    ]}
-                    onClick={() => isCase && toggleCase(leaf, itemKey)}
-                    component={Link}
-                    to={itemPath}
-                    target={itemType === 'reference' ? '_blank' : undefined}
-                    rel={itemType === 'reference' ? 'noopener noreferrer' : undefined}
+                  <Box
+                    sx={{
+                      transition: theme.transitions.create('background', { duration: 100 }),
+                      background: 'transparent',
+                      '&:hover': { background: theme.palette.grey[800] }
+                    }}
                   >
-                    <ChevronRight
-                      fontSize="small"
-                      sx={[
-                        !isCase && { opacity: 0 },
-                        isCase && {
-                          transition: theme.transitions.create('transform', { duration: 100 }),
-                          transform: isCaseOpen ? 'rotate(90deg)' : 'rotate(0deg)'
-                        }
-                      ]}
+                    <FolderEntry
+                      caseId={_case.case_id === rootCaseId ? rootCaseId : null}
+                      path={leaf.path}
+                      indent={step * 1.5 + 1}
+                      label={leaf.path?.split('/').pop() || leaf.value || ''}
+                      itemType={itemType}
+                      iconColor={iconColor}
+                      labelColor={leafColor}
+                      chevronOpen={isCaseOpen}
+                      to={itemTo}
+                      onClick={() => isCase && toggleCase(leaf, itemKey)}
+                      item={leaf}
                     />
-
-                    <Icon fontSize="small" color={iconColor} />
-
-                    <Typography
-                      variant="caption"
-                      color={leafColor}
-                      sx={{ userSelect: 'none', pl: 0.5, textWrap: 'nowrap' }}
-                    >
-                      {leaf.path?.split('/').pop() || leaf.value}
-                    </Typography>
-                  </Stack>
+                  </Box>
 
                   {isCase && isCaseOpen && isCaseLoading && (
                     <Stack pl={step * 1.5 + 4} py={0.25}>
