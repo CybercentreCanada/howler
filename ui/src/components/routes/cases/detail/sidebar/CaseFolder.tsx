@@ -12,13 +12,14 @@ import {
 import type { SvgIconProps } from '@mui/material';
 import { alpha, Skeleton, Stack, Typography, useTheme } from '@mui/material';
 import api from 'api';
+import { RecordContext } from 'components/app/providers/RecordProvider';
 import useMyApi from 'components/hooks/useMyApi';
 import { omit } from 'lodash-es';
 import type { Case } from 'models/entities/generated/Case';
-import type { Hit } from 'models/entities/generated/Hit';
 import type { Item } from 'models/entities/generated/Item';
 import { useCallback, useEffect, useMemo, useState, type ComponentType, type FC } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useContextSelector } from 'use-context-selector';
 import { ESCALATION_COLORS } from 'utils/constants';
 import CaseFolderContextMenu from './CaseFolderContextMenu';
 import type { Tree } from './types';
@@ -61,7 +62,9 @@ const CaseFolder: FC<CaseFolderProps> = ({
 
   const [open, setOpen] = useState(true);
   const [caseStates, setCaseStates] = useState<Record<string, CaseNodeState>>({});
-  const [hitMetadata, setHitMetadata] = useState<{ [id: string]: Hit['howler'] }>({});
+
+  const loadRecords = useContextSelector(RecordContext, ctx => ctx.loadRecords);
+  const records = useContextSelector(RecordContext, ctx => ctx.records);
 
   const tree = useMemo(() => folder || buildTree(_case?.items), [folder, _case?.items]);
   const currentRootCaseId = rootCaseId || _case?.case_id;
@@ -83,15 +86,15 @@ const CaseFolder: FC<CaseFolderProps> = ({
     dispatchApi(api.search.hit.post({ query: `howler.id:(${hitIds.join(' OR ')})` }), { throwError: false }).then(
       result => {
         if ((result?.items?.length ?? 0) < 1) return;
-        setHitMetadata(Object.fromEntries(result.items.map(hit => [hit.howler.id, hit.howler])));
+        loadRecords(result.items);
       }
     );
-  }, [hitIds, dispatchApi]);
+  }, [hitIds, dispatchApi, _case.status, loadRecords]);
 
   // Returns the MUI colour token for the item's escalation, or undefined if none.
   const getEscalationColor = (itemType: string | undefined, itemKey: string | undefined, leafId: string) => {
     if (itemType === 'hit' && leafId) {
-      const color = ESCALATION_COLORS[hitMetadata[leafId]?.escalation as keyof typeof ESCALATION_COLORS];
+      const color = ESCALATION_COLORS[records[leafId]?.howler?.escalation as keyof typeof ESCALATION_COLORS];
       if (color) return color;
     }
     if (itemType === 'case' && itemKey) {

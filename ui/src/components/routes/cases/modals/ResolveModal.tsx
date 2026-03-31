@@ -1,10 +1,14 @@
-import { OpenInNew } from '@mui/icons-material';
+import { KeyboardArrowDown, OpenInNew } from '@mui/icons-material';
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Autocomplete,
   Box,
   Button,
-  Card,
+  Checkbox,
   Chip,
+  CircularProgress,
   Divider,
   IconButton,
   LinearProgress,
@@ -16,18 +20,73 @@ import {
 import api from 'api';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { ModalContext } from 'components/app/providers/ModalProvider';
+import { RecordContext } from 'components/app/providers/RecordProvider';
 import AnalyticLink from 'components/elements/hit/elements/AnalyticLink';
 import EscalationChip from 'components/elements/hit/elements/EscalationChip';
+import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import useHitActions from 'components/hooks/useHitActions';
 import useMyApi from 'components/hooks/useMyApi';
-import { uniq } from 'lodash-es';
+import { isNil, uniq } from 'lodash-es';
 import type { Case } from 'models/entities/generated/Case';
 import type { Hit } from 'models/entities/generated/Hit';
-import { useContext, useEffect, useMemo, useState, type FC } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { useContextSelector } from 'use-context-selector';
 import useCase from '../hooks/useCase';
+
+const HitEntry: FC<{ hit: Hit; checked?: boolean; onChange?: () => void }> = ({ hit, checked, onChange }) => {
+  if (!hit) {
+    return <Skeleton variant="rounded" height="40px" width="100%" />;
+  }
+
+  return (
+    <Accordion key={hit.howler.id} sx={{ flexShrink: 0, px: 0, py: 0 }}>
+      <AccordionSummary
+        expandIcon={<KeyboardArrowDown />}
+        sx={{
+          px: 1,
+          py: 0,
+          minHeight: '48px !important',
+          '& > *': {
+            margin: '0 !important'
+          }
+        }}
+      >
+        <Stack direction="row" alignItems="center" spacing={1} pr={1} width="100%">
+          {!isNil(checked) && (
+            <Checkbox
+              size="small"
+              checked={checked}
+              onClick={e => {
+                onChange?.();
+
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+            />
+          )}
+          <AnalyticLink hit={hit} compressed alignSelf="center" />
+          <EscalationChip hit={hit} layout={HitLayout.DENSE} />
+          <Chip
+            sx={{ width: 'fit-content', display: 'inline-flex' }}
+            label={hit.howler.status}
+            size="small"
+            color="primary"
+          />
+          <div style={{ flex: 1 }} />
+          <IconButton size="small" component={Link} to={`/hits/${hit.howler.id}`}>
+            <OpenInNew fontSize="small" />
+          </IconButton>
+        </Stack>
+      </AccordionSummary>
+      <AccordionDetails>
+        <HitCard id={hit.howler.id} layout={HitLayout.NORMAL} elevation={0} />
+      </AccordionDetails>
+    </Accordion>
+  );
+};
 
 const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, onConfirm }) => {
   const { t } = useTranslation();
@@ -39,7 +98,7 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
   const [loading, setLoading] = useState(true);
   const [rationale, setRationale] = useState('');
   const [assessment, setAssessment] = useState(null);
-  const [hits, setHits] = useState<Hit[]>([]);
+  const [selectedHitIds, setSelectedHitIds] = useState<Set<string>>(new Set());
 
   const hitIds = useMemo(
     () =>
@@ -52,36 +111,69 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
     [_case?.items]
   );
 
-  const { assess } = useHitActions(hits);
+  const loadRecords = useContextSelector(RecordContext, ctx => ctx.loadRecords);
+  const hits = useContextSelector(RecordContext, ctx => hitIds.map(id => ctx.records[id] as Hit).filter(Boolean));
+
+  console.log(hits);
+
+  const selectedHits = useMemo(() => hits.filter(hit => selectedHitIds.has(hit.howler.id)), [hits, selectedHitIds]);
+  const { assess } = useHitActions(selectedHits);
+
+  const unresolvedHits = useMemo(
+    () => hitIds.filter(id => !!hits.find(hit => hit?.howler.id === id && hit.howler.status !== 'resolved')),
+    [hitIds, hits]
+  );
+
+  const handleConfirm = async () => {
+    setLoading(true);
+    try {
+      await assess(assessment, true, rationale);
+
+      setSelectedHitIds(new Set());
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleHit = useCallback((hitId: string) => {
+    setSelectedHitIds(prev => {
+      const next = new Set(prev);
+      if (next.has(hitId)) {
+        next.delete(hitId);
+      } else {
+        next.add(hitId);
+      }
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     (async () => {
       try {
         const result = await dispatchApi(
           api.search.hit.post({
-            query: `howler.id:(${hitIds.join(' OR ')}) AND -howler.status:resolved`,
+            query: `howler.id:(${hitIds.join(' OR ')})`,
             metadata: ['analytic']
           })
         );
 
-        setHits(result.items);
+        loadRecords(result.items);
       } finally {
         setLoading(false);
       }
     })();
-  }, [dispatchApi, hitIds]);
+  }, [dispatchApi, hitIds, loadRecords]);
 
-  const handleConfirm = async () => {
-    setLoading(true);
-    try {
-      await assess(assessment, true, rationale);
-      await updateCase({ status: 'resolved' });
+  useEffect(() => {
+    if (loading || unresolvedHits.length > 0) {
+      return;
+    }
+
+    updateCase({ status: 'resolved' }).then(() => {
       onConfirm();
       close();
-    } finally {
-      setLoading(false);
-    }
-  };
+    });
+  }, [close, loading, onConfirm, unresolvedHits.length, updateCase]);
 
   return (
     <Stack
@@ -120,26 +212,28 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
           <Divider />
           <LinearProgress sx={{ opacity: +loading }} />
         </Stack>
-        {loading
-          ? hitIds.map(id => <Skeleton key={id} variant="rounded" height="40px" width="100%" />)
-          : hits.map(hit => (
-              <Card key={hit.howler.id} sx={{ p: 1, flexShrink: 0 }}>
-                <Stack direction="row" alignItems="center" spacing={1} width="100%">
-                  <AnalyticLink hit={hit} compressed alignSelf="center" />
-                  <EscalationChip hit={hit} layout={HitLayout.DENSE} />
-                  <Chip
-                    sx={{ width: 'fit-content', display: 'inline-flex' }}
-                    label={hit.howler.status}
-                    size="small"
-                    color="primary"
-                  />
-                  <div style={{ flex: 1 }} />
-                  <IconButton size="small" component={Link} to={`/hits/${hit.howler.id}`}>
-                    <OpenInNew fontSize="small" />
-                  </IconButton>
-                </Stack>
-              </Card>
-            ))}
+        {hits
+          .filter(hit => unresolvedHits.includes(hit.howler.id))
+          .map(hit => (
+            <HitEntry
+              key={hit.howler.id}
+              hit={hit}
+              checked={selectedHitIds.has(hit.howler.id)}
+              onChange={() => handleToggleHit(hit.howler.id)}
+            />
+          ))}
+        <Accordion variant="outlined">
+          <AccordionSummary expandIcon={<KeyboardArrowDown />}>Resolved Alerts</AccordionSummary>
+          <AccordionDetails>
+            <Stack spacing={1}>
+              {hits
+                .filter(hit => !unresolvedHits.includes(hit.howler.id))
+                .map(hit => (
+                  <HitEntry key={hit.howler.id} hit={hit} />
+                ))}
+            </Stack>
+          </AccordionDetails>
+        </Accordion>
       </Stack>
       <Stack direction="row" spacing={1} alignSelf="end">
         <Button variant="outlined" color="error" onClick={close}>
@@ -148,7 +242,8 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
         <Button
           variant="outlined"
           color="success"
-          disabled={loading || !assessment || !rationale}
+          disabled={loading || !assessment || !rationale || selectedHitIds.size === 0}
+          startIcon={loading ? <CircularProgress size={16} color="inherit" /> : undefined}
           onClick={handleConfirm}
         >
           {t('confirm')}
