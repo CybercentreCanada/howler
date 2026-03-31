@@ -315,6 +315,7 @@
   "modal.cases.add_to_case.select_case": "Search Cases",
   "modal.cases.add_to_case.select_path": "Select Folder Path",
   "modal.cases.add_to_case.title": "Item Title",
+  "modal.cases.alerts.resolved": "Resolved Alerts",
   "modal.cases.rename_item": "Rename Item",
   "modal.cases.rename_item.error.empty": "Name cannot be empty",
   "modal.cases.rename_item.error.slash": "Name cannot contain '/'",

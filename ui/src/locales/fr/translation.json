@@ -315,6 +315,7 @@
   "modal.cases.add_to_case.select_case": "Rechercher des cas",
   "modal.cases.add_to_case.select_path": "Sélectionner le chemin du dossier",
   "modal.cases.add_to_case.title": "Titre de l'élément",
+  "modal.cases.alerts.resolved": "Alertes résolues",
   "modal.cases.rename_item": "Renommer l'élément",
   "modal.cases.rename_item.error.empty": "Le nom ne peut pas être vide",
   "modal.cases.rename_item.error.slash": "Le nom ne peut pas contenir '/'",

@@ -114,8 +114,6 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
   const loadRecords = useContextSelector(RecordContext, ctx => ctx.loadRecords);
   const hits = useContextSelector(RecordContext, ctx => hitIds.map(id => ctx.records[id] as Hit).filter(Boolean));
 
-  console.log(hits);
-
   const selectedHits = useMemo(() => hits.filter(hit => selectedHitIds.has(hit.howler.id)), [hits, selectedHitIds]);
   const { assess } = useHitActions(selectedHits);
 
@@ -223,7 +221,7 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
             />
           ))}
         <Accordion variant="outlined">
-          <AccordionSummary expandIcon={<KeyboardArrowDown />}>Resolved Alerts</AccordionSummary>
+          <AccordionSummary expandIcon={<KeyboardArrowDown />}>{t('modal.cases.alerts.resolved')}</AccordionSummary>
           <AccordionDetails>
             <Stack spacing={1}>
               {hits
