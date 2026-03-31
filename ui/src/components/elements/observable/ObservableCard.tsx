@@ -1,5 +1,4 @@
 import { CardContent, Skeleton } from '@mui/material';
-import { hit } from 'api/search';
 import { RecordContext } from 'components/app/providers/RecordProvider';
 import HowlerCard from 'components/elements/display/HowlerCard';
 import type { Observable } from 'models/entities/generated/Observable';
@@ -18,7 +17,7 @@ const ObservableCard: FC<{ id?: string; observable?: Observable }> = ({ id, obse
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  if (!hit) {
+  if (!observable) {
     return <Skeleton variant="rounded" height="200px" />;
   }
 

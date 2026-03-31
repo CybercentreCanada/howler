@@ -107,7 +107,7 @@ const LUCENE_QUERY_OPTIONS: ('default' | 'facet' | 'groupby' | 'explain')[] = [
 type SearchResponse<T> =
   | HowlerSearchResponse<T>
   | HowlerEQLSearchResponse<T>
-  | { [index: string]: HowlerFacetSearchResponse }
+  | HowlerFacetSearchResponse
   | HowlerGroupedSearchResponse<T>;
 
 const CustomPopper = (props: PopperProps) => {

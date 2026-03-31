@@ -31,6 +31,7 @@ import CaseViewer from 'components/routes/cases/CaseViewer';
 import Cases from 'components/routes/cases/Cases';
 import CaseAssets from 'components/routes/cases/detail/CaseAssets';
 import CaseDashboard from 'components/routes/cases/detail/CaseDashboard';
+import CaseTimeline from 'components/routes/cases/detail/CaseTimeline';
 import ItemPage from 'components/routes/cases/detail/ItemPage';
 import DossierEditor from 'components/routes/dossiers/DossierEditor';
 import Dossiers from 'components/routes/dossiers/Dossiers';
@@ -276,6 +277,10 @@ const router = createBrowserRouter([
           {
             path: 'assets',
             element: <CaseAssets />
+          },
+          {
+            path: 'timeline',
+            element: <CaseTimeline />
           },
           {
             path: '*',
