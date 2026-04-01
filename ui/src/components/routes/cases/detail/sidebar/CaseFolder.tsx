@@ -5,7 +5,7 @@ import useMyApi from 'components/hooks/useMyApi';
 import { omit } from 'lodash-es';
 import type { Case } from 'models/entities/generated/Case';
 import type { Item } from 'models/entities/generated/Item';
-import { useCallback, useEffect, useMemo, useState, type FC } from 'react';
+import { useCallback, useMemo, useState, type FC } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { ESCALATION_COLORS } from 'utils/constants';
 import CaseFolderContextMenu from './CaseFolderContextMenu';
@@ -40,36 +40,10 @@ const CaseFolder: FC<CaseFolderProps> = ({
   const [open, setOpen] = useState(true);
   const [caseStates, setCaseStates] = useState<Record<string, CaseNodeState>>({});
 
-  const loadRecords = useContextSelector(RecordContext, ctx => ctx.loadRecords);
   const records = useContextSelector(RecordContext, ctx => ctx.records);
 
   const tree = useMemo(() => folder || buildTree(_case?.items), [folder, _case?.items]);
   const currentRootCaseId = rootCaseId || _case?.case_id;
-
-  const hitIds = useMemo(
-    () =>
-      _case?.items
-        .filter(item => item.type === 'hit')
-        .map(item => item.value)
-        .filter(value => !!value),
-    [_case?.items]
-  );
-
-  useEffect(() => {
-    if (hitIds.length < 1) {
-      return;
-    }
-
-    dispatchApi(api.search.hit.post({ query: `howler.id:(${hitIds.join(' OR ')})` }), { throwError: false }).then(
-      result => {
-        if (result?.items?.length < 1) {
-          return;
-        }
-
-        loadRecords(result.items);
-      }
-    );
-  }, [hitIds, dispatchApi, _case.status, loadRecords]);
 
   // Returns the MUI colour token for the item's escalation, or undefined if none.
   const getEscalationColor = (itemType: string | undefined, itemKey: string | undefined, leafId: string) => {
@@ -77,10 +51,12 @@ const CaseFolder: FC<CaseFolderProps> = ({
       const color = ESCALATION_COLORS[records[leafId]?.howler?.escalation as keyof typeof ESCALATION_COLORS];
       if (color) return color;
     }
+
     if (itemType === 'case' && itemKey) {
       const color = ESCALATION_COLORS[caseStates[itemKey]?.data?.escalation as keyof typeof ESCALATION_COLORS];
       if (color) return color;
     }
+
     return undefined;
   };
 

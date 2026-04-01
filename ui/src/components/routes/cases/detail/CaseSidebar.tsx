@@ -8,10 +8,12 @@ import {
   type DragEndEvent
 } from '@dnd-kit/core';
 import { CalendarMonth, Circle, Dashboard, Dataset } from '@mui/icons-material';
-import { alpha, Box, Card, Chip, Divider, Skeleton, Stack, Typography, useTheme } from '@mui/material';
+import { alpha, Box, Card, Chip, Divider, LinearProgress, Skeleton, Stack, Typography, useTheme } from '@mui/material';
+import api from 'api';
+import useMyApi from 'components/hooks/useMyApi';
 import dayjs from 'dayjs';
 import type { Case } from 'models/entities/generated/Case';
-import { useCallback, type FC } from 'react';
+import { useCallback, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
 import { ESCALATION_COLOR_MAP } from '../constants';
@@ -23,6 +25,7 @@ interface CaseSidebarProps {
 }
 
 const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
+  const { dispatchApi } = useMyApi();
   const { t } = useTranslation();
   const location = useLocation();
   const theme = useTheme();
@@ -39,6 +42,8 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
       }
     })
   );
+
+  const [loading, setLoading] = useState(false);
 
   const navItemSx = useCallback(
     (isActive: boolean) => [
@@ -70,7 +75,7 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
   );
 
   const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
+    async (event: DragEndEvent) => {
       if (!_case) {
         return;
       }
@@ -84,11 +89,23 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
       const movingItem = active.data.current.item;
       const newPath = `${over.data.current.path}/${movingItem.path.split('/').pop()}`;
 
-      update({
-        items: _case.items.map(_item => (_item.path === movingItem.path ? { ...movingItem, path: newPath } : _item))
-      });
+      const items = _case.items.map(_item =>
+        _item.path === movingItem.path ? { ...movingItem, path: newPath } : _item
+      );
+
+      try {
+        setLoading(true);
+
+        await dispatchApi(api.v2.case.put(_case.case_id, { items }));
+
+        update({
+          items
+        });
+      } finally {
+        setLoading(false);
+      }
     },
-    [_case, update]
+    [_case, dispatchApi, update]
   );
 
   return (
@@ -166,6 +183,7 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
           }}
         >
           <Box position="absolute" sx={{ left: 0, right: 0 }}>
+            <LinearProgress sx={{ mb: 0.5, opacity: +loading }} />
             <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragEnd={handleDragEnd}>
               <CaseFolder case={_case} onItemUpdated={update} />
             </DndContext>
