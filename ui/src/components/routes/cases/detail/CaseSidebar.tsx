@@ -71,6 +71,10 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
+      if (!_case) {
+        return;
+      }
+
       const { active, over } = event;
 
       if (!over) {
@@ -84,7 +88,7 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
         items: _case.items.map(_item => (_item.path === movingItem.path ? { ...movingItem, path: newPath } : _item))
       });
     },
-    [_case.items, update]
+    [_case, update]
   );
 
   return (

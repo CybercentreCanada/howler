@@ -11,7 +11,7 @@ import {
   Visibility
 } from '@mui/icons-material';
 import type { SvgIconProps } from '@mui/material';
-import { alpha, Stack, Typography, useTheme } from '@mui/material';
+import { alpha, Box, Stack, Typography, useTheme } from '@mui/material';
 import type { Item } from 'models/entities/generated/Item';
 import { type ComponentType, type FC } from 'react';
 import { Link, useLocation } from 'react-router-dom';
@@ -102,7 +102,6 @@ const FolderEntry: FC<FolderEntryProps> = ({
       }}
       direction="row"
       pl={indent}
-      py={0.25}
       style={{ transform: CSS.Transform.toString(transform) }}
       sx={[
         {
@@ -111,14 +110,14 @@ const FolderEntry: FC<FolderEntryProps> = ({
           color: `${theme.palette.text.secondary} !important`,
           textDecoration: 'none',
           background: 'transparent',
+          position: 'relative',
           ...(isLink && { borderRight: '3px solid transparent' })
         },
         isLink &&
           active && {
             background: alpha(theme.palette.grey[600], 0.15),
             borderRightColor: theme.palette.primary.main
-          },
-        isOver && activeDragSubject?.data.current.caseId === caseId && { backgroundColor: 'red !important' }
+          }
       ]}
       onClick={onClick}
       {...attributes}
@@ -130,6 +129,21 @@ const FolderEntry: FC<FolderEntryProps> = ({
         rel: itemType === 'reference' ? 'noopener noreferrer' : undefined
       })}
     >
+      <Box
+        sx={[
+          {
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
+            border: '2px solid transparent',
+            borderRadius: '5px',
+            transition: theme.transitions.create('border-color')
+          },
+          isOver && activeDragSubject?.data.current.caseId === caseId && { borderColor: theme.palette.primary.main }
+        ]}
+      />
       <ChevronRight
         fontSize="small"
         color="disabled"
