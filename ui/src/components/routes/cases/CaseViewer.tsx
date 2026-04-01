@@ -16,21 +16,23 @@ const CaseViewer: FC = () => {
   }
 
   return (
-    <Stack direction="row" height="100%">
-      <CaseSidebar case={_case} update={updatedCase => update(updatedCase, false)} />
-      <Box
-        sx={{
-          maxHeight: 'calc(100vh - 64px)',
-          flex: 1,
-          overflow: 'auto'
-        }}
-      >
-        <ErrorBoundary>
-          <Outlet context={_case} />
-        </ErrorBoundary>
-      </Box>
-      <CaseDetails case={_case} />
-    </Stack>
+    <ErrorBoundary>
+      <Stack direction="row" height="100%">
+        <CaseSidebar case={_case} update={updatedCase => update(updatedCase, false)} />
+        <Box
+          sx={{
+            maxHeight: 'calc(100vh - 64px)',
+            flex: 1,
+            overflow: 'auto'
+          }}
+        >
+          <ErrorBoundary>
+            <Outlet context={_case} />
+          </ErrorBoundary>
+        </Box>
+        <CaseDetails case={_case} />
+      </Stack>
+    </ErrorBoundary>
   );
 };
 

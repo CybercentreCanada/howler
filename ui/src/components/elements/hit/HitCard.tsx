@@ -10,7 +10,12 @@ import HitLabels from './HitLabels';
 import type { HitLayout } from './HitLayout';
 import HitOutline from './HitOutline';
 
-const HitCard: FC<{ id?: string; layout: HitLayout; readOnly?: boolean }> = ({ id, layout, readOnly = true }) => {
+const HitCard: FC<{ id?: string; layout: HitLayout; readOnly?: boolean; elevation?: number }> = ({
+  id,
+  layout,
+  readOnly = true,
+  elevation
+}) => {
   const getRecord = useContextSelector(RecordContext, ctx => ctx.getRecord);
   const hit = useContextSelector(RecordContext, ctx => ctx.records[id] as Hit);
 
@@ -26,7 +31,7 @@ const HitCard: FC<{ id?: string; layout: HitLayout; readOnly?: boolean }> = ({ i
   }
 
   return (
-    <HowlerCard id={hit?.howler.id} tabIndex={0} sx={{ position: 'relative' }}>
+    <HowlerCard id={hit?.howler.id} tabIndex={0} sx={{ position: 'relative' }} elevation={elevation}>
       <CardContent>
         <HitBanner hit={hit} layout={layout} />
         <HitOutline hit={hit} layout={layout} />
