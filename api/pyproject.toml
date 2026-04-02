@@ -216,7 +216,6 @@ redis = "4.6.0"
 requests = "2.32.5"
 wsproto = "1.2.0"
 chevron = "0.14.0"
-typing-extensions = "^4.12.2"
 flasgger = "^0.9.7.1"
 pysigma = "0.11.23"
 pysigma-backend-elasticsearch = "^1.1.2"
@@ -248,6 +247,7 @@ mypy-extensions = "^1.0.0"
 coverage = { extras = ["toml"], version = "^7.4.4" }
 
 [tool.poetry.group.types.dependencies]
+typing-extensions = "^4.12.2"
 types-PyYAML = "6.0.12.20250915"
 types-paramiko = "3.5.0.20250801"
 types-pyOpenSSL = "23.3.0.20240106"
