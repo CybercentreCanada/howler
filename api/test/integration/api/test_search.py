@@ -231,6 +231,50 @@ def test_count_with_filters(datastore, login_session):
     assert "count" in filtered_resp
     assert filtered_resp["count"] <= total_resp["count"]
 
+def test_count_missing_query(datastore, login_session):
+    """Omitting the query parameter returns a 400 error for both GET and POST."""
+    session, host = login_session
+
+    with pytest.raises(APIError) as api_err:
+        get_api_data(session, f"{host}/api/v1/search/count/user/")
+    assert "400" in str(api_err)
+
+    with pytest.raises(APIError) as api_err:
+        get_api_data(
+            session,
+            f"{host}/api/v1/search/count/user/",
+            method="POST",
+            data=json.dumps({}),
+        )
+    assert "400" in str(api_err)
+
+def test_count_invalid_index(datastore, login_session):
+    session, host = login_session
+
+    with pytest.raises(APIError) as api_err:
+        get_api_data(
+            session,
+            f"{host}/api/v1/search/count/nonexistent_index/",
+            params={"query": "id:*"},
+        )
+    assert "400" in str(api_err)
+
+def test_count_hit_matches_search_total(datastore, login_session):
+    """Count result for the hit index is consistent with the total from a full search."""
+    session, host = login_session
+
+    search_resp = get_api_data(
+        session,
+        f"{host}/api/v1/search/hit/",
+        params={"query": "id:*", "track_total_hits": "true"},
+    )
+    count_resp = get_api_data(
+        session,
+        f"{host}/api/v1/search/count/hit/",
+        params={"query": "id:*"},
+    )
+    assert count_resp["count"] == search_resp["total"]
+
 def test_stats_search(datastore, login_session):
     session, host = login_session
 
