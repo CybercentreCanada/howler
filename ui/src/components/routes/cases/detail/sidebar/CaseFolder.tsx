@@ -20,7 +20,14 @@ interface CaseFolderProps {
   name?: string;
   step?: number;
   rootCaseId?: string;
-  pathPrefix?: string;
+  /**
+   * The chain of `leaf.path` values for each case item traversed from the root
+   * case to reach this nested case. Empty at the top level.
+   *
+   * Example: case1 → case2 (path "cases/caseone") → case3 (path "cases/casetwo")
+   * gives parentCasePaths = ['cases/caseone', 'cases/casetwo'] inside case3.
+   */
+  parentCasePaths?: string[];
   onItemUpdated?: (newCase: Case) => void;
 }
 
@@ -30,7 +37,7 @@ const CaseFolder: FC<CaseFolderProps> = ({
   name,
   step = -1,
   rootCaseId,
-  pathPrefix = '',
+  parentCasePaths = [],
   onItemUpdated
 }) => {
   const theme = useTheme();
@@ -98,7 +105,7 @@ const CaseFolder: FC<CaseFolderProps> = ({
             }}
           >
             <FolderEntry
-              caseId={_case.case_id === rootCaseId ? rootCaseId : null}
+              caseId={_case.case_id === currentRootCaseId ? currentRootCaseId : null}
               path={tree.path}
               itemType="folder"
               indent={step * 1.5}
@@ -121,7 +128,7 @@ const CaseFolder: FC<CaseFolderProps> = ({
                 folder={subfolder}
                 step={step + 1}
                 rootCaseId={currentRootCaseId}
-                pathPrefix={`${pathPrefix ?? ''}${pathPrefix ? '/' : ''}${name ?? ''}`}
+                parentCasePaths={parentCasePaths}
                 onItemUpdated={onItemUpdated}
               />
             );
@@ -130,17 +137,15 @@ const CaseFolder: FC<CaseFolderProps> = ({
           {tree.leaves?.map(leaf => {
             const itemType = leaf.type?.toLowerCase();
             const isCase = itemType === 'case';
-            const fullRelativePath = [pathPrefix, leaf.path].filter(Boolean).join('/');
-            const itemKey = fullRelativePath || leaf.value;
+            const itemKey = leaf.path || leaf.value;
             const nodeState = itemKey ? caseStates[itemKey] : null;
             const isCaseOpen = !!nodeState?.open;
             const isCaseLoading = !!nodeState?.loading;
             const nestedCase = nodeState?.data ?? null;
+            const fullItemPath = [...parentCasePaths, leaf.path].filter(Boolean).join('/');
             const itemTo =
               itemType !== 'reference'
-                ? fullRelativePath
-                  ? `/cases/${currentRootCaseId}/${fullRelativePath}`
-                  : `/cases/${currentRootCaseId}`
+                ? `/cases/${currentRootCaseId}${fullItemPath ? `/${fullItemPath}` : ''}`
                 : leaf.value;
 
             const escalationColor = getEscalationColor(itemType, itemKey, leaf.value);
@@ -163,7 +168,7 @@ const CaseFolder: FC<CaseFolderProps> = ({
                     }}
                   >
                     <FolderEntry
-                      caseId={_case.case_id === rootCaseId ? rootCaseId : null}
+                      caseId={_case.case_id === currentRootCaseId ? currentRootCaseId : null}
                       path={leaf.path}
                       indent={step * 1.5 + 1}
                       label={leaf.path?.split('/').pop() || leaf.value || ''}
@@ -188,7 +193,7 @@ const CaseFolder: FC<CaseFolderProps> = ({
                       case={nestedCase}
                       step={step + 1}
                       rootCaseId={currentRootCaseId}
-                      pathPrefix={fullRelativePath}
+                      parentCasePaths={[...parentCasePaths, leaf.path].filter(Boolean)}
                       onItemUpdated={onItemUpdated}
                     />
                   )}
