@@ -2,7 +2,6 @@ import { Box, Skeleton, Stack, useTheme } from '@mui/material';
 import api from 'api';
 import { RecordContext } from 'components/app/providers/RecordProvider';
 import useMyApi from 'components/hooks/useMyApi';
-import { omit } from 'lodash-es';
 import type { Case } from 'models/entities/generated/Case';
 import type { Item } from 'models/entities/generated/Item';
 import { useCallback, useMemo, useState, type FC } from 'react';
@@ -100,7 +99,7 @@ const CaseFolder: FC<CaseFolderProps> = ({
           >
             <FolderEntry
               caseId={_case.case_id === rootCaseId ? rootCaseId : null}
-              path={tree.__path}
+              path={tree.path}
               itemType="folder"
               indent={step * 1.5}
               label={name}
@@ -113,13 +112,13 @@ const CaseFolder: FC<CaseFolderProps> = ({
 
       {open && (
         <>
-          {Object.entries(omit(tree, ['leaves', '__path'])).map(([path, subfolder]) => {
+          {Object.entries(tree.folders ?? {}).map(([path, subfolder]) => {
             return (
               <CaseFolder
                 key={`${_case?.case_id}-${path}`}
                 name={path}
                 case={_case}
-                folder={subfolder as Tree}
+                folder={subfolder}
                 step={step + 1}
                 rootCaseId={currentRootCaseId}
                 pathPrefix={`${pathPrefix ?? ''}${pathPrefix ? '/' : ''}${name ?? ''}`}
