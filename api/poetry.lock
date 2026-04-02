@@ -2865,7 +2865,6 @@ files = [
     {file = "typing_extensions-4.15.0-py3-none-any.whl", hash = "sha256:f0fa19c6845758ab08074a0cfa8b7aecb71c999ca73d62883bc25cc018c4e548"},
     {file = "typing_extensions-4.15.0.tar.gz", hash = "sha256:0cea48d173cc12fa28ecabc3b837ea3cf6f38c6d1136f85cbaaf598984861466"},
 ]
-markers = {types = "python_version <= \"3.10\" or platform_python_implementation != \"CPython\""}
 
 [[package]]
 name = "typing-inspection"
@@ -3208,4 +3207,4 @@ testing = ["coverage[toml]", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.9.17"
-content-hash = "1a4902a2ec69472ba5e6b260cd8ce0ca490e8cba8ec3928974cf8b7b5d0aa14d"
+content-hash = "fd68c4be617d229e6503934e39461cfa8a90a071be057f195458ed67702426d0"
