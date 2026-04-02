@@ -198,6 +198,38 @@ def test_count_with_filters_vs_total(datastore, login_session):
     assert "count" in filtered_resp
     assert filtered_resp["count"] <= total_resp["count"]
 
+def test_count_zero_results(datastore, login_session):
+    session, host = login_session
+
+    for collection in collections:
+        resp = get_api_data(
+            session,
+            f"{host}/api/v1/search/count/{collection}/",
+            method="POST",
+            data=json.dumps({"query": "name:not_real_value"}),
+        )
+        assert "count" in resp
+        assert resp["count"] == 0
+
+def test_count_with_filters(datastore, login_session):
+    session, host = login_session
+
+    total_resp = get_api_data(
+        session,
+        f"{host}/api/v1/search/count/hit/",
+        method="POST",
+        data=json.dumps({"query": "id:*"}),
+    )
+    assert total_resp["count"] > 0
+
+    filtered_resp = get_api_data(
+        session,
+        f"{host}/api/v1/search/count/hit/",
+        method="POST",
+        data=json.dumps({"query": "id:*", "filters": ["howler.status:open"]}),
+    )
+    assert "count" in filtered_resp
+    assert filtered_resp["count"] <= total_resp["count"]
 
 def test_stats_search(datastore, login_session):
     session, host = login_session
