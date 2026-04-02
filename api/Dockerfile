@@ -88,7 +88,4 @@ ENV APP_PREFIX=hwl
 ENV HOWLER_VERSION=${version}
 ENV HOWLER_IMAGE_TAG=${version_tag}
 
-# Switch back to howler and run the app
-USER nonroot
-
-CMD ["gunicorn", "howler.patched:app", "--config=python:howler.gunicorn_config", "--worker-class", "gevent"]
+ENTRYPOINT ["python", "-m", "gunicorn", "howler.patched:app", "--config=python:howler.gunicorn_config", "--worker-class", "gevent"]
