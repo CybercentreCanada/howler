@@ -35,7 +35,7 @@ const AlertPanel: FC<{ case: Case }> = ({ case: _case }) => {
       {alertPages?.length > 0 &&
         alertPages[alertPage - 1].map(item => (
           <Box key={item.path} position="relative">
-            <HitCard layout={HitLayout.DENSE} id={item.value} />
+            <HitCard layout={HitLayout.DENSE} id={item.value} lazy />
             <Box
               component={Link}
               to={item.path}

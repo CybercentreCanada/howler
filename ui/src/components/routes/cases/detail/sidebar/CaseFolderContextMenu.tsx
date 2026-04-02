@@ -15,10 +15,8 @@ import type { Tree } from './types';
  */
 export const collectAllLeaves = (tree: Tree): Item[] => {
   const result: Item[] = [...(tree.leaves ?? [])];
-  for (const key of Object.keys(tree)) {
-    if (key !== 'leaves') {
-      result.push(...collectAllLeaves(tree[key] as Tree));
-    }
+  for (const subfolder of Object.values(tree.folders ?? {})) {
+    result.push(...collectAllLeaves(subfolder));
   }
   return result;
 };

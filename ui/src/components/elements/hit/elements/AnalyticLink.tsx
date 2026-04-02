@@ -4,12 +4,13 @@ import type { Hit } from 'models/entities/generated/Hit';
 import { useEffect, useState, type FC } from 'react';
 import { Link } from 'react-router-dom';
 
-const AnalyticLink: FC<{ hit: Hit; compressed?: boolean; alignSelf?: string }> = ({
+const AnalyticLink: FC<{ hit: Hit; lazy?: boolean; compressed?: boolean; alignSelf?: string }> = ({
   hit,
+  lazy = false,
   compressed,
   alignSelf = 'start'
 }) => {
-  const { getMatchingAnalytic } = useMatchers();
+  const { getMatchingAnalytic } = useMatchers(lazy);
 
   const [analyticId, setAnalyticId] = useState<string>();
   useEffect(() => {

@@ -1,14 +1,14 @@
 import { Grid, useTheme } from '@mui/material';
 import api from 'api';
+import { RecordContext } from 'components/app/providers/RecordProvider';
 import useMyApi from 'components/hooks/useMyApi';
 import dayjs from 'dayjs';
-import { get } from 'lodash-es';
+import { difference, get, isNil } from 'lodash-es';
 import type { Case } from 'models/entities/generated/Case';
-import type { Hit } from 'models/entities/generated/Hit';
-import type { Observable } from 'models/entities/generated/Observable';
 import { useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useOutletContext } from 'react-router-dom';
+import { useContextSelector } from 'use-context-selector';
 import useCase from '../hooks/useCase';
 import CaseAggregate from './aggregates/CaseAggregate';
 import AlertPanel from './AlertPanel';
@@ -39,7 +39,7 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
   const routeCase = useOutletContext<Case>();
   const { case: _case, update: updateCase } = useCase({ case: providedCase ?? routeCase, caseId });
 
-  const [records, setRecords] = useState<Partial<Hit | Observable>[] | null>(null);
+  const [invalidIds, setInvalidIds] = useState<string[]>([]);
 
   const ids = useMemo(
     () =>
@@ -50,18 +50,37 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
     [_case?.items]
   );
 
+  const records = useContextSelector(RecordContext, ctx => ctx.records);
+  const loadRecords = useContextSelector(RecordContext, ctx => ctx.loadRecords);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const caseRecords = useMemo(() => Object.fromEntries(ids.map(id => [id, records[id]])), [ids, records]);
+
   useEffect(() => {
-    if (ids?.length < 1) {
+    const missingIds = Object.entries(caseRecords)
+      .filter(([id, record]) => !invalidIds.includes(id) && isNil(record))
+      .map(([id]) => id);
+
+    if (missingIds.length < 1) {
       return;
     }
 
     dispatchApi(
       api.v2.search.post(['hit', 'observable'], {
-        query: `howler.id:(${ids?.join(' OR ') || '*'})`,
-        fl: AGGREGATE_FIELDS.map(([field]) => field).join(',')
+        query: `howler.id:(${missingIds.join(' OR ')})`,
+        metadata: ['template', 'analytic']
       })
-    ).then(response => setRecords(response.items));
-  }, [dispatchApi, ids]);
+    ).then(response => {
+      loadRecords(response.items);
+
+      setInvalidIds(
+        difference(
+          missingIds,
+          response.items.map(record => record.howler.id)
+        )
+      );
+    });
+  }, [caseRecords, dispatchApi, ids, invalidIds, loadRecords]);
 
   if (!_case) {
     return null;
@@ -78,7 +97,7 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
             icon={icon}
             iconColor={iconColor && get(theme.palette, iconColor)}
             field={field}
-            records={records}
+            records={Object.values(caseRecords)}
             subtitle={t(subtitle)}
           />
         </Grid>

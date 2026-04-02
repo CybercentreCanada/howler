@@ -20,13 +20,14 @@ const UserList: FC<{
   const { t } = useTranslation();
 
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement>(null);
-  const { users, searchUsers } = useContext(UserListContext);
+  const { users, fetchUsers } = useContext(UserListContext);
 
   const allUserIds = useMemo(() => Object.keys(users), [users]);
 
   useEffect(() => {
-    searchUsers('uname:*');
-  }, [searchUsers]);
+    fetchUsers(new Set(userIds));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userIds]);
 
   return (
     <>
