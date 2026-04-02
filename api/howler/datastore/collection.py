@@ -1899,11 +1899,21 @@ class ESCollection(Generic[ModelType]):
         :param access_control: access control parameters to limit the scope of the query
         :return: a count result object
         """
-        if filters is not None:
-            for _, filter in enumerate(filters):
-                query += f" AND {filter}"
+        if filters is None:
+            filters = []
+        elif isinstance(filters, str):
+            filters = [filters]
 
-        result = self.with_retries(self.datastore.client.count, index=self.name, q=query)
+        query_body: dict[str, Any] = {
+            "query": {
+                "bool": {
+                    "must": {"query_string": {"query": query}},
+                    "filter": [{"query_string": {"query": ff}} for ff in filters],
+                }
+            }
+        }
+
+        result = self.with_retries(self.datastore.client.count, index=self.name, **query_body)
 
         ret_data: dict[str, Any] = {
             "count": result["count"],
