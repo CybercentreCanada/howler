@@ -1,22 +1,18 @@
-# Base image
-FROM node:alpine
+# Build output is served by a minimal nginx static server
+FROM cgr.dev/chainguard/nginx:latest
 
-# Creating howler-ui user (and using gid and uid 1001, since gid and uid 1000 are used by the node:node user in the base node image)
-RUN addgroup -g 1001 howler-ui && adduser -u 1001 -G howler-ui -s /bin/sh -D howler-ui
+# Copy the compiled project into nginx's default serve directory
+COPY --chown=nginx:nginx ./build /usr/share/nginx/html
 
-# Set working directory
-WORKDIR /howler-ui
+# Fallback to index.html for client-side routing
+RUN printf 'server {\n\
+    listen 3000;\n\
+    root /usr/share/nginx/html;\n\
+    index index.html;\n\
+    location / {\n\
+        try_files $uri $uri/ /index.html;\n\
+    }\n\
+}\n' > /etc/nginx/http.d/default.conf
 
-# Copying the webpacked project into the working directory
-COPY  --chown=howler-ui:howler-ui ./build /howler-ui/build
-
-RUN npm install serve -g
-
-USER root
-RUN apk update && apk add --no-cache vim htop procps
-
-# Run container rootless
-USER howler-ui:howler-ui
-
-# start app
-CMD ["serve", "-s", "build"]
+EXPOSE 3000
+CMD ["nginx", "-g", "daemon off;"]
