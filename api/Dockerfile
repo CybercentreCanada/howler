@@ -1,4 +1,4 @@
-FROM python:3.12-alpine AS base
+FROM cgr.dev/chainguard/python AS base
 
 # Make sure root account is locked so 'su' commands fail all the time
 RUN passwd -l root
