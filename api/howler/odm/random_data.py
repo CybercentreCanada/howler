@@ -137,7 +137,7 @@ def create_users(ds):
     ds.view.save(admin_view.view_id, admin_view)
 
     if "pytest" not in sys.modules:
-        logger.info(f"\t{user_data.uname}:{admin_pass}")
+        logger.info("\t%s:%s", user_data.uname, admin_pass)
 
     user_hash = get_password_hash(user_pass)
 
@@ -184,7 +184,7 @@ def create_users(ds):
     ds.view.save(user_view.view_id, user_view)
 
     if "pytest" not in sys.modules:
-        logger.info(f"\t{user_data.uname}:{user_pass}")
+        logger.info("\t%s:%s", user_data.uname, user_pass)
 
     huey_hash = get_password_hash(huey_pass)
 
@@ -231,7 +231,7 @@ def create_users(ds):
     ds.view.save(huey_view.view_id, huey_view)
 
     if "pytest" not in sys.modules:
-        logger.info(f"\t{huey_data.uname}:{huey_pass}")
+        logger.info("\t%s:%s", huey_data.uname, huey_pass)
 
     shawnh_view = View(
         {
@@ -261,7 +261,7 @@ def create_users(ds):
     ds.view.save(shawnh_view.view_id, shawnh_view)
 
     if "pytest" not in sys.modules:
-        logger.info(f"\t{shawn_data.uname}:{shawnh_pass}")
+        logger.info("\t%s:%s", shawn_data.uname, shawnh_pass)
 
     goose_view = View(
         {
@@ -291,7 +291,7 @@ def create_users(ds):
     ds.view.save(goose_view.view_id, goose_view)
 
     if "pytest" not in sys.modules:
-        logger.info(f"\t{goose_data.uname}:{goose_pass}")
+        logger.info("\t%s:%s", goose_data.uname, goose_pass)
 
     ds.user.commit()
     ds.user_avatar.commit()
@@ -892,7 +892,7 @@ if __name__ == "__main__":
 
     for index, operations in INDEXES.items():
         if index in args:
-            logger.info(f"Creating {index}...")
+            logger.info("Creating %s...", index)
 
             # Create functions
             for create_fn in operations[1]:
