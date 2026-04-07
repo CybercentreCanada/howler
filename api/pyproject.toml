@@ -228,6 +228,7 @@ luqum = "^1.0.0"
 pydash = "^8.0.5"
 pytz = "^2025.2"
 bcrypt = "4.3.0"
+tzdata = "^2026.1"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.7.0"
