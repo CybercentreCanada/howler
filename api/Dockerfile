@@ -15,12 +15,15 @@ ENV HOWLER_VERSION=$version
 RUN mkdir -p /etc/howler && \
     mkdir -p /etc/howler/static && \
     mkdir -p /etc/howler/lookups && \
+    mkdir -p /etc/howler/plugins && \
     chmod 750 /etc/howler && \
     chmod 750 /etc/howler/static && \
     chmod 750 /etc/howler/lookups && \
+    chmod 750 /etc/howler/plugins && \
     chown nonroot:nonroot /etc/howler && \
     chown nonroot:nonroot /etc/howler/static && \
-    chown nonroot:nonroot /etc/howler/lookups
+    chown nonroot:nonroot /etc/howler/lookups && \
+    chown nonroot:nonroot /etc/howler/plugins
 
 # Create howler cache directory
 RUN mkdir -p /var/cache/howler
