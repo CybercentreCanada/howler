@@ -44,7 +44,7 @@ RUN chmod 770 /var/log/howler
 RUN chown nonroot:nonroot /var/log/howler
 
 # Install common dependancies
-RUN apk update && apk add --no-cache zip vim nano && rm -rf /var/cache/apk/*
+RUN apk update && apk add --no-cache vim tzdata && rm -rf /var/cache/apk/*
 
 # Create a temporary image to compile dependencies
 FROM base AS builder
