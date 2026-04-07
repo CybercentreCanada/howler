@@ -224,6 +224,9 @@ jobs:
       run:
         working-directory: ./api
 
+    permissions:
+      id-token: write
+
     steps:
       - name: Checkout current ref
         uses: actions/checkout@v4
