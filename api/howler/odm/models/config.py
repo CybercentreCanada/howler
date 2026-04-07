@@ -4,10 +4,9 @@ import os
 from pathlib import Path
 from typing import Literal, Optional
 
+from howler.common.logging.format import HWL_DATE_FORMAT, HWL_LOG_FORMAT
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict, YamlConfigSettingsSource
-
-from howler.common.logging.format import HWL_DATE_FORMAT, HWL_LOG_FORMAT
 
 APP_NAME = os.environ.get("APP_NAME", "howler")
 
@@ -305,27 +304,6 @@ class Auth(BaseModel):
     oauth: OAuth = OAuth()
 
 
-class APMServer(BaseModel):
-    """Application Performance Monitoring (APM) server configuration.
-
-    Defines the connection details for an external APM server used to
-    collect and analyze application performance metrics.
-    """
-
-    server_url: Optional[str] = Field(default=None, description="URL to API server")
-    token: Optional[str] = Field(default=None, description="Authentication token for server")
-
-
-class Metrics(BaseModel):
-    """Metrics collection configuration.
-
-    Configures how Howler collects and exports application metrics,
-    including integration with external APM servers.
-    """
-
-    apm_server: APMServer = APMServer()
-
-
 class Retention(BaseModel):
     """Hit retention policy configuration.
 
@@ -459,18 +437,29 @@ class Notebook(BaseModel):
     )
 
 
+class Telemetry(BaseModel):
+    """OpenTelemetry configuration for Howler.
+
+    Controls whether OpenTelemetry tracing is enabled. When enabled, the OTLP
+    exporter is configured via standard OTEL environment variables such as
+    OTEL_EXPORTER_OTLP_ENDPOINT and OTEL_EXPORTER_OTLP_HEADERS.
+    """
+
+    enabled: bool = Field(default=False, description="Enable OpenTelemetry tracing?")
+
+
 class Core(BaseModel):
     """Core application configuration for Howler.
 
-    Aggregates all core service configurations including Redis, metrics,
+    Aggregates all core service configurations including Redis, telemetry,
     and external integrations like Clue and nbgallery notebooks.
     Also manages the loading of external plugins.
     """
 
     plugins: set[str] = Field(description="A list of external plugins to load", default=set())
 
-    metrics: Metrics = Metrics()
-    "Configuration for Metrics Collection"
+    telemetry: Telemetry = Telemetry()
+    "Configuration for OpenTelemetry"
 
     redis: Redis = Redis()
     "Configuration for Redis instances"

@@ -3,7 +3,6 @@ import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
-
 from howler.plugins import get_plugins
 
 load_dotenv()
@@ -24,14 +23,10 @@ import logging
 from typing import Any, cast
 
 from authlib.integrations.flask_client import OAuth
-from elasticapm.contrib.flask import ElasticAPM
 from flasgger import Swagger
 from flask import Flask
 from flask.blueprints import Blueprint
 from flask.logging import default_handler
-from prometheus_client import make_wsgi_app
-from werkzeug.middleware.dispatcher import DispatcherMiddleware
-
 from howler.api.base import api
 from howler.api.socket import socket_api
 from howler.api.v1 import apiv1
@@ -62,14 +57,24 @@ from howler.config import (
 from howler.cronjobs import setup_jobs
 from howler.error import errors
 from howler.healthz import healthz
+from howler.telemetry import instrument_flask_app, setup_telemetry
+from prometheus_client import make_wsgi_app
+from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
 logger = get_logger(__file__)
+if config.core.telemetry.enabled:
+    setup_telemetry()
 
 app = Flask(
     "howler-api",
     static_url_path="/api/static",
     static_folder=config.ui.static_folder,
 )
+
+if config.core.telemetry.enabled:
+    # Instrument Flask app with OpenTelemetry
+    instrument_flask_app(app)
+
 # Disable strict check on trailing slashes for endpoints
 app.url_map.strict_slashes = False
 app.config["JSON_SORT_KEYS"] = False
@@ -204,14 +209,8 @@ if logger.parent:
     for ph in logger.parent.handlers:
         app.logger.addHandler(ph)
 
-# Setup APMs
-if config.core.metrics.apm_server.server_url is not None:
-    logger.info(f"Exporting application metrics to: {config.core.metrics.apm_server.server_url}")
-    ElasticAPM(
-        app,
-        server_url=config.core.metrics.apm_server.server_url,
-        service_name="howler_api",
-    )
+# Setup Telemetry
+
 
 wlog = logging.getLogger("werkzeug")
 wlog.setLevel(logging.WARNING)

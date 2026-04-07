@@ -2,14 +2,10 @@ import functools
 import sys
 from typing import Optional
 
+import howler.services.auth_service as auth_service
 import requests
-from elasticapm.traces import set_user_context
 from flask import request
 from flask import session as flsk_session
-from jwt import ExpiredSignatureError
-from prometheus_client import Counter
-
-import howler.services.auth_service as auth_service
 from howler.api import bad_request, forbidden, internal_error, not_found, too_many_requests, unauthorized
 from howler.common.exceptions import (
     AccessDeniedException,
@@ -24,6 +20,8 @@ from howler.common.logging import get_logger
 from howler.common.logging.audit import audit
 from howler.config import AUDIT, QUOTA_TRACKER, config
 from howler.odm.models.user import User
+from jwt import ExpiredSignatureError
+from prometheus_client import Counter
 
 logger = get_logger(__file__)
 
@@ -213,13 +211,6 @@ class api_login(object):  # noqa: D101, N801
             except HowlerRuntimeError as e:
                 FAILED_ATTEMPTS.labels("500").inc()
                 return internal_error(err=e.message)
-
-            if config.core.metrics.apm_server.server_url is not None:
-                set_user_context(
-                    username=user.get("name", None),
-                    email=user.get("email", None),
-                    user_id=user.get("uname", None),
-                )
 
             if request.path.startswith("/api/v1/clue"):
                 logger.debug("Bypassing quota limits for clue enrichment")

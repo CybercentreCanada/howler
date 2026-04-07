@@ -1,9 +1,7 @@
 from typing import Any, Literal, Optional, overload
 
 from authlib.integrations.flask_client import OAuth
-from elasticapm.traces import capture_span
 from flask import current_app, request
-
 from howler.common.exceptions import AccessDeniedException, HowlerValueError, InvalidDataException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -89,7 +87,6 @@ def convert_user(user: User) -> dict[str, Any]:
     return user_data
 
 
-@capture_span(span_type="authentication")
 def parse_user_data(  # noqa: C901
     data: dict,
     oauth_provider: str,
