@@ -91,6 +91,12 @@ jobs:
           jq 'walk(if type == "string" then sub("api/"; "") else . end)' ../pyrightconfig.json > pyrightconfig.json
           poetry run pyright --level warning
 
+      - name: Run docker formatting checks
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: api/Dockerfile
+          failure-threshold: warning
+
   test:
     runs-on: ubuntu-latest
 
