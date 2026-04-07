@@ -2,7 +2,7 @@ import api from 'api';
 import useMyApi from 'components/hooks/useMyApi';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { FC, PropsWithChildren } from 'react';
-import { createContext, useCallback, useRef, useState } from 'react';
+import { createContext, useCallback, useEffect, useRef, useState } from 'react';
 
 interface UserListContextType {
   users: { [id: string]: HowlerUser };
@@ -43,8 +43,9 @@ const UserListProvider: FC<PropsWithChildren> = ({ children }) => {
 
   const fetchUsers = useCallback(
     (ids: Set<string>) => {
-      ids.delete('Unknown');
-      ids.forEach(id => pendingIds.current.add(id));
+      const nextIds = new Set(ids);
+      nextIds.delete('Unknown');
+      nextIds.forEach(id => pendingIds.current.add(id));
 
       if (debounceTimer.current) {
         clearTimeout(debounceTimer.current);
@@ -64,6 +65,14 @@ const UserListProvider: FC<PropsWithChildren> = ({ children }) => {
     },
     [searchUsers]
   );
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, []);
 
   return <UserListContext.Provider value={{ users, fetchUsers, searchUsers }}>{children}</UserListContext.Provider>;
 };

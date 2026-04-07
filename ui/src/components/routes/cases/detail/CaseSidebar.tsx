@@ -86,8 +86,18 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
         return;
       }
 
-      const movingItem = active.data.current.item;
-      const newPath = `${over.data.current.path}/${movingItem.path.split('/').pop()}`;
+      const movingItem = active.data.current?.item;
+      const targetPath = over.data.current?.path;
+
+      if (!movingItem?.path || !targetPath) {
+        return;
+      }
+
+      const newPath = `${targetPath}/${movingItem.path.split('/').pop()}`;
+
+      if (newPath === movingItem.path) {
+        return;
+      }
 
       const items = _case.items.map(_item =>
         _item.path === movingItem.path ? { ...movingItem, path: newPath } : _item
@@ -96,11 +106,9 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
       try {
         setLoading(true);
 
-        await dispatchApi(api.v2.case.put(_case.case_id, { items }));
+        const updatedCase = await dispatchApi(api.v2.case.put(_case.case_id, { items }));
 
-        update({
-          items
-        });
+        update(updatedCase);
       } finally {
         setLoading(false);
       }

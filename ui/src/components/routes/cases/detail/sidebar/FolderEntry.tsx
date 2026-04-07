@@ -28,7 +28,7 @@ const ICON_FOR_TYPE: Record<string, ComponentType<SvgIconProps>> = {
 };
 
 interface FolderEntryProps {
-  caseId: string;
+  caseId?: string | null;
   path: string;
   /** MUI `pl` value for indentation */
   indent: number;
@@ -66,6 +66,8 @@ const FolderEntry: FC<FolderEntryProps> = ({
   const isCase = itemType === 'case';
   const isFolder = itemType === 'folder';
 
+  const dndId = `${caseId ?? ''}:${itemType}:${path}`;
+
   const {
     attributes,
     listeners,
@@ -74,15 +76,15 @@ const FolderEntry: FC<FolderEntryProps> = ({
     isDragging,
     active: activeDragSubject
   } = useDraggable({
-    id: path,
+    id: dndId,
     data: {
       item,
       caseId
     },
-    disabled: !caseId
+    disabled: !caseId || isFolder
   });
   const { setNodeRef: setDroppableNodeRef, isOver } = useDroppable({
-    id: path,
+    id: dndId,
     disabled: !isFolder || isDragging || activeDragSubject?.data.current.caseId !== caseId,
     data: {
       path,
@@ -92,7 +94,7 @@ const FolderEntry: FC<FolderEntryProps> = ({
 
   const isLink = to != null && !isDragging;
   const active = decodeURIComponent(location.pathname) === to;
-  const Icon = ICON_FOR_TYPE[itemType];
+  const Icon = ICON_FOR_TYPE[itemType] ?? Folder;
 
   return (
     <Stack
