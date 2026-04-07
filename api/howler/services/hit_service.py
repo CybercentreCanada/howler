@@ -5,6 +5,7 @@ import typing
 from hashlib import sha256
 from typing import Any, Literal, Optional, Union, cast, overload
 
+from opentelemetry import trace
 from prometheus_client import Counter
 
 import howler.services.event_service as event_service
@@ -36,9 +37,11 @@ from howler.utils.uid import get_random_id
 
 logger = get_logger(__file__)
 
+tracer = trace.get_tracer(__file__)
 odm_helper = OdmHelper(Hit)
 
 
+@tracer.start_as_current_span(f"{__name__}.get_hit_workflow")
 def get_hit_workflow() -> Workflow:
     """Get the workflow that is used for transitioning between howler statuses
 
@@ -212,6 +215,7 @@ def get_hit_workflow() -> Workflow:
     )
 
 
+@tracer.start_as_current_span(f"{__name__}._modifies_prop")
 def _modifies_prop(prop: str, operations: list[OdmUpdateOperation]) -> bool:
     """Check if the list of provided operations modifies the specified property
 
@@ -225,6 +229,7 @@ def _modifies_prop(prop: str, operations: list[OdmUpdateOperation]) -> bool:
     return any(op for op in operations if op.key == prop)
 
 
+@tracer.start_as_current_span(f"{__name__}.does_hit_exist")
 def does_hit_exist(hit_id: str) -> bool:
     """Checks if the provided ID matches any entries in the database
 
@@ -237,6 +242,7 @@ def does_hit_exist(hit_id: str) -> bool:
     return datastore().hit.exists(hit_id)
 
 
+@tracer.start_as_current_span(f"{__name__}.validate_hit_ids")
 def validate_hit_ids(hit_ids: list[str]) -> bool:
     """Checks if all hit_ids are available
 
@@ -249,6 +255,7 @@ def validate_hit_ids(hit_ids: list[str]) -> bool:
     return not any(does_hit_exist(hit_id) for hit_id in hit_ids)
 
 
+@tracer.start_as_current_span(f"{__name__}.convert_hit")
 def convert_hit(data: dict[str, Any], unique: bool, ignore_extra_values: bool = False) -> tuple[Hit, list[str]]:  # noqa: C901
     """Validate and convert a dictionary to a Hit ODM object.
 
@@ -354,6 +361,7 @@ def convert_hit(data: dict[str, Any], unique: bool, ignore_extra_values: bool = 
     return odm, warnings
 
 
+@tracer.start_as_current_span(f"{__name__}.exists")
 def exists(id: str):
     """Check if a hit exists in the datastore.
 
@@ -394,6 +402,7 @@ def get_hit(id: str, as_odm: Literal[False], version: Literal[False]) -> dict[st
 def get_hit(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...
 
 
+@tracer.start_as_current_span(f"{__name__}.get_hit")
 def get_hit(
     id: str,
     as_odm: bool = False,
@@ -420,6 +429,7 @@ CREATED_HITS = Counter(
 )
 
 
+@tracer.start_as_current_span(f"{__name__}.create_hit")
 def create_hit(
     id: str,
     hit: Hit,
@@ -453,6 +463,7 @@ def create_hit(
     return datastore().hit.save(id, hit)
 
 
+@tracer.start_as_current_span(f"{__name__}.update_hit")
 def update_hit(
     hit_id: str,
     operations: list[OdmUpdateOperation],
@@ -486,6 +497,7 @@ def update_hit(
 
 
 @typing.no_type_check
+@tracer.start_as_current_span(f"{__name__}.save_hit")
 def save_hit(hit: Hit, version: Optional[str] = None) -> tuple[Hit, str]:
     """Save a hit to the datastore and emit an event notification.
 
@@ -506,6 +518,7 @@ def save_hit(hit: Hit, version: Optional[str] = None) -> tuple[Hit, str]:
     return data, _version
 
 
+@tracer.start_as_current_span(f"{__name__}._update_hit")
 def _update_hit(
     hit_id: str,
     operations: list[OdmUpdateOperation],
@@ -593,6 +606,7 @@ def _update_hit(
     return data, _version
 
 
+@tracer.start_as_current_span(f"{__name__}.get_transitions")
 def get_transitions(status: HitStatus) -> list[str]:
     """Get a list of the valid transitions beginning from the specified status
 
@@ -605,6 +619,7 @@ def get_transitions(status: HitStatus) -> list[str]:
     return get_hit_workflow().get_transitions(status)
 
 
+@tracer.start_as_current_span(f"{__name__}.get_all_children")
 def get_all_children(hit: dict[str, Any]) -> list[dict[str, Any]]:
     """Get a list of all child hits for a given hit, including nested children.
 
@@ -632,6 +647,7 @@ def get_all_children(hit: dict[str, Any]) -> list[dict[str, Any]]:
     return child_hits
 
 
+@tracer.start_as_current_span(f"{__name__}.transition_hit")
 def transition_hit(
     id: str,
     transition: HitStatusTransition,
@@ -736,6 +752,7 @@ def transition_hit(
 DELETED_HITS = Counter(f"{APP_NAME.replace('-', '_')}_deleted_hits_total", "The number of deleted hits")
 
 
+@tracer.start_as_current_span(f"{__name__}.delete_hits")
 def delete_hits(hit_ids: list[str]) -> bool:
     """Delete a set of hits from the database
 
@@ -791,6 +808,7 @@ def search(
 ) -> SearchResult[dict[str, Any]]: ...
 
 
+@tracer.start_as_current_span(f"{__name__}.search")
 def search(
     query: str,
     as_obj: bool = True,

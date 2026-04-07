@@ -7,6 +7,7 @@ from typing import Optional, Union
 import howler.services.jwt_service as jwt_service
 import howler.services.user_service as user_service
 from flask import request
+from opentelemetry import trace
 from howler.common.exceptions import (
     AccessDeniedException,
     AuthenticationException,
@@ -23,6 +24,7 @@ from howler.remote.datatypes.set import ExpiringSet
 from howler.security.utils import generate_random_secret, verify_password
 
 logger = get_logger(__file__)
+tracer = trace.get_tracer(__name__)
 
 nonpersistent_config: dict[str, Union[str, int]] = {
     "host": config.core.redis.nonpersistent.host,
@@ -211,6 +213,7 @@ def validate_token(username: str, token: str) -> Optional[list[str]]:
     return None
 
 
+@tracer.start_as_current_span("bearer_auth")
 def bearer_auth(
     data: str, skip_jwt: bool = False, skip_internal: bool = False
 ) -> tuple[Optional[User], Optional[list[str]]]:
@@ -254,6 +257,7 @@ def bearer_auth(
             raise InvalidDataException("Not a valid authentication type for this endpoint.")
 
 
+@tracer.start_as_current_span("validate_apikey")
 def validate_apikey(  # noqa: C901
     username: str, apikey: str, impersonator: Optional[User] = None
 ) -> tuple[Optional[User], Optional[list[str]]]:
@@ -317,6 +321,7 @@ def validate_apikey(  # noqa: C901
         raise AccessDeniedException("API Key authentication disabled")
 
 
+@tracer.start_as_current_span("validate_userpass")
 def validate_userpass(username: str, password: str) -> tuple[Optional[User], Optional[list[str]]]:
     """This function identifies the user via the user/pass functionality
 
@@ -359,6 +364,7 @@ def decode_b64(b64_str: str) -> str:
         raise InvalidDataException("Basic authentication data must be base64 encoded") from e
 
 
+@tracer.start_as_current_span("basic_auth")
 def basic_auth(
     data: str, is_base64: bool = True, skip_apikey: bool = False, skip_password: bool = False
 ) -> tuple[User | None, list[str] | None]:

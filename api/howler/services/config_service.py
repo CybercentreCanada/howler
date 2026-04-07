@@ -3,6 +3,7 @@ from math import ceil
 from typing import Optional
 
 from flask import request
+from opentelemetry import trace
 
 import howler.services.hit_service as hit_service
 from howler.common.exceptions import ForbiddenException, HowlerException
@@ -18,6 +19,8 @@ from howler.services import jwt_service
 from howler.utils.str_utils import default_string_value
 
 classification_definition = CLASSIFICATION.get_parsed_classification_definition()
+
+tracer = trace.get_tracer(__name__)
 
 lookups = get_lookups()
 
@@ -61,6 +64,7 @@ def _get_apikey_max_duration():
         return amount, unit
 
 
+@tracer.start_as_current_span(f"{__name__}.get_configuration")
 def get_configuration(user: User | None, **kwargs):
     """Get system configration data for the Howler API
 
