@@ -82,7 +82,7 @@ def specification():
             "short": "Change one of the prioritization fields of a hit",
             "long": execute.__doc__,
         },
-        "roles": ["automation_basic"],
+        "roles": ["automation_basic", "actionrunner_basic"],
         "steps": [
             {
                 "args": {"field": [], "value": []},

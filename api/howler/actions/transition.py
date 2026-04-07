@@ -176,7 +176,7 @@ def specification():
             "short": "Transition a hit",
             "long": execute.__doc__,
         },
-        "roles": ["automation_basic"],
+        "roles": ["automation_basic", "actionrunner_basic"],
         "steps": [
             {
                 "args": {"status": []},

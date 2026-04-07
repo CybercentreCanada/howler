@@ -99,7 +99,7 @@ def specification():
             "short": "Remove a label from a hit",
             "long": execute.__doc__,
         },
-        "roles": ["automation_basic"],
+        "roles": ["automation_basic", "actionrunner_basic"],
         "steps": [
             {
                 "args": {"category": [], "label": []},

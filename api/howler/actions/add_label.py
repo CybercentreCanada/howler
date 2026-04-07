@@ -99,7 +99,7 @@ def specification():
             "short": "Add a label to a hit",
             "long": execute.__doc__,
         },
-        "roles": ["automation_basic"],
+        "roles": ["automation_basic", "actionrunner_basic"],
         "steps": [
             {
                 "args": {"category": [], "label": []},

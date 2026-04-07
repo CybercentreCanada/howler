@@ -121,7 +121,7 @@ def specification():
             "short": "Remove a set of hits from a bundle",
             "long": execute.__doc__,
         },
-        "roles": ["automation_basic"],
+        "roles": ["automation_basic", "actionrunner_basic"],
         "steps": [
             {
                 "args": {"bundle_id": []},
