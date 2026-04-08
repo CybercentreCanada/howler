@@ -186,7 +186,7 @@ class api_login(object):  # noqa: D101, N801
 
                 ip = request.headers.get("X-Forwarded-For", request.remote_addr)
                 if "pytest" not in sys.modules:
-                    logger.info(f"Logged in as {user['uname']} from {ip} for path {request.path}")
+                    logger.info("Logged in as %s from %s for path %s", user["uname"], ip, request.path)
 
                 # If auditing is enabled, write this successful access to the audit logs
                 if self.audit:
@@ -231,13 +231,13 @@ class api_login(object):  # noqa: D101, N801
                 quota = user.get("api_quota", 25)
                 if not QUOTA_TRACKER.begin(user["uname"], quota):
                     if config.ui.enforce_quota:
-                        logger.warning(f"{user['uname']} was prevented from using the api due to exceeded quota.")
+                        logger.warning("%s was prevented from using the api due to exceeded quota.", user["uname"])
                         FAILED_ATTEMPTS.labels("429").inc()
                         return too_many_requests(err=f"You've exceeded your maximum quota of {quota}")
                     else:
-                        logger.debug(f"Quota of {quota} exceeded for user {user['uname']}.")
+                        logger.debug("Quota of %s exceeded for user %s.", quota, user["uname"])
             else:
-                logger.debug(f"Quota not enforced for {user['uname']}")
+                logger.debug("Quota not enforced for %s", user["uname"])
 
             # Save user data in kwargs for future reference in the wrapped method
             kwargs["user"] = user
