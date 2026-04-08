@@ -1,5 +1,9 @@
 # Howler Releases
 
+## Howler UI `v2.17.3`
+
+- **Append-Results Null Crash Fix** *(bugfix)*: Fixed a crash (`can't access property "offset", q is null`) that occurred when a load-more (append) search response resolved after the component had remounted with a null response state (e.g., after a page refresh); the updater now falls back to replacing the response instead of merging into null.
+
 ## Howler UI `v2.17.2`
 
 - **Table Settings Persistence** *(new feature)*: Added persistence to table settings in grid view so display preferences are retained across sessions.
