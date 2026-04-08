@@ -142,7 +142,7 @@ const FolderEntry: FC<FolderEntryProps> = ({
             bottom: 0,
             left: 0,
             right: 0,
-            border: '2px solid transparent',
+            border: '2px dashed transparent',
             borderRadius: '5px',
             transition: theme.transitions.create('border-color')
           },
