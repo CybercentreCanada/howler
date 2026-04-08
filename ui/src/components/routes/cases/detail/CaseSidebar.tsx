@@ -1,11 +1,13 @@
 import {
   DndContext,
+  DragOverlay,
   MouseSensor,
   pointerWithin,
   TouchSensor,
   useSensor,
   useSensors,
-  type DragEndEvent
+  type DragEndEvent,
+  type DragStartEvent
 } from '@dnd-kit/core';
 import { CalendarMonth, Circle, Dashboard, Dataset } from '@mui/icons-material';
 import { alpha, Box, Card, Chip, Divider, LinearProgress, Skeleton, Stack, Typography, useTheme } from '@mui/material';
@@ -13,11 +15,15 @@ import api from 'api';
 import useMyApi from 'components/hooks/useMyApi';
 import dayjs from 'dayjs';
 import type { Case } from 'models/entities/generated/Case';
+import type { Item } from 'models/entities/generated/Item';
 import { useCallback, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
 import { ESCALATION_COLOR_MAP } from '../constants';
 import CaseFolder from './sidebar/CaseFolder';
+import FolderEntry from './sidebar/FolderEntry';
+import RootDropZone from './sidebar/RootDropZone';
+import type { Tree } from './sidebar/types';
 
 interface CaseSidebarProps {
   case: Case;
@@ -44,6 +50,12 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
   );
 
   const [loading, setLoading] = useState(false);
+  const [activeDragData, setActiveDragData] = useState<{ type: string; label: string } | null>(null);
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    const data = event.active.data.current;
+    setActiveDragData({ type: data.type, label: data.label ?? '' });
+  }, []);
 
   const navItemSx = useCallback(
     (isActive: boolean) => [
@@ -76,31 +88,44 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
+      setActiveDragData(null);
+
       if (!_case) {
         return;
       }
 
       const { active, over } = event;
 
-      if (!over) {
+      if (!over?.data.current || !active?.data.current) {
         return;
       }
 
-      const movingItem = active.data.current?.item;
-      const targetPath = over.data.current?.path;
+      const movingEntry: Item | Tree = active.data.current.entry;
+      const movingType = active.data.current.type;
 
-      if (!movingItem?.path || !targetPath) {
+      if (!movingEntry?.path) {
         return;
       }
 
-      const newPath = `${targetPath}/${movingItem.path.split('/').pop()}`;
+      const filename = movingEntry.path.split('/').pop();
+      const targetPath = over.data.current.path ? `${over.data.current.path}/${filename}` : filename;
 
-      if (newPath === movingItem.path) {
+      if (!targetPath) {
+        return;
+      }
+
+      if (targetPath === movingEntry.path) {
         return;
       }
 
       const items = _case.items.map(_item =>
-        _item.path === movingItem.path ? { ...movingItem, path: newPath } : _item
+        (
+          movingType === 'folder'
+            ? _item.path.startsWith(movingEntry.path)
+            : _item.value === (movingEntry as Item).value
+        )
+          ? { ..._item, path: _item.path.replace(movingEntry.path, targetPath) }
+          : _item
       );
 
       try {
@@ -192,8 +217,25 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
         >
           <Box position="absolute" sx={{ left: 0, right: 0 }}>
             <LinearProgress sx={{ mb: 0.5, opacity: +loading }} />
-            <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragEnd={handleDragEnd}>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={pointerWithin}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
               <CaseFolder case={_case} onItemUpdated={update} />
+              <RootDropZone caseId={_case.case_id} />
+              <DragOverlay dropAnimation={null}>
+                {activeDragData && (
+                  <FolderEntry
+                    caseId={null}
+                    path=""
+                    indent={0}
+                    label={activeDragData.label}
+                    itemType={activeDragData.type}
+                  />
+                )}
+              </DragOverlay>
             </DndContext>
           </Box>
         </Box>

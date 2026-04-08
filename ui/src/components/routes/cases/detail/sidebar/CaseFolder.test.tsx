@@ -2,40 +2,16 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Case } from 'models/entities/generated/Case';
 import type { Item } from 'models/entities/generated/Item';
-import { act } from 'react';
-import { MemoryRouter } from 'react-router-dom';
-import { setupContextSelectorMock } from 'tests/mocks';
+import { act, createContext } from 'react';
+import { setupContextSelectorMock, setupReactRouterMock } from 'tests/mocks';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-// ---------------------------------------------------------------------------
-// use-context-selector must be patched before any component module is loaded
-// ---------------------------------------------------------------------------
-
-setupContextSelectorMock();
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
 
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
-  return {
-    ...actual,
-    Link: ({ to, children, onClick, ...props }: any) => (
-      <a
-        href={to}
-        {...props}
-        onClick={e => {
-          e.preventDefault();
-          onClick?.(e);
-        }}
-      >
-        {children}
-      </a>
-    ),
-    useLocation: vi.fn(() => ({ pathname: '/', search: '' }))
-  };
-});
+setupContextSelectorMock();
+setupReactRouterMock();
 
 vi.mock('@dnd-kit/core', () => ({
   useDraggable: () => ({
@@ -81,7 +57,6 @@ vi.mock('./CaseFolderContextMenu', () => ({
 }));
 
 vi.mock('components/app/providers/ModalProvider', async () => {
-  const { createContext } = await import('react');
   return {
     ModalContext: createContext({ showModal: vi.fn(), close: vi.fn(), setContent: vi.fn() })
   };
@@ -91,7 +66,6 @@ vi.mock('components/app/providers/ModalProvider', async () => {
 const mockRecords = vi.hoisted(() => ({ current: {} as Record<string, any> }));
 
 vi.mock('components/app/providers/RecordProvider', async () => {
-  const { createContext } = await import('react');
   return {
     RecordContext: createContext({ records: mockRecords.current })
   };
@@ -101,6 +75,7 @@ vi.mock('components/app/providers/RecordProvider', async () => {
 // Imports after mocks
 // ---------------------------------------------------------------------------
 
+import { MemoryRouter, useParams } from 'react-router-dom';
 import CaseFolder from './CaseFolder';
 
 // ---------------------------------------------------------------------------
@@ -117,12 +92,17 @@ const hitItem = (path: string, value = path): Item => ({ type: 'hit', value, pat
 const caseItem = (path: string, value: string): Item => ({ type: 'case', value, path });
 const refItem = (path: string, value: string): Item => ({ type: 'reference', value, path });
 
-const renderFolder = (props: Partial<React.ComponentPropsWithoutRef<typeof CaseFolder>> & { case: Case }) =>
-  render(
+const renderFolder = (
+  props: Partial<React.ComponentPropsWithoutRef<typeof CaseFolder>> & { case: Case },
+  routeId?: string
+) => {
+  vi.mocked(useParams).mockReturnValue({ id: routeId ?? props.case.case_id });
+  return render(
     <MemoryRouter>
       <CaseFolder step={0} {...props} />
     </MemoryRouter>
   );
+};
 
 // ---------------------------------------------------------------------------
 // Setup
@@ -229,22 +209,26 @@ describe('CaseFolder', () => {
   describe('nested case paths', () => {
     it('prepends parentCasePaths to the leaf URL', () => {
       const leaf = hitItem('example/page', 'page-val');
-      renderFolder({
-        case: makeCase('case3', [leaf]),
-        rootCaseId: 'case1',
-        parentCasePaths: ['cases/caseone', 'cases/casetwo']
-      });
+      renderFolder(
+        {
+          case: makeCase('case3', [leaf]),
+          parentCasePaths: ['cases/caseone', 'cases/casetwo']
+        },
+        'case1'
+      );
       const link = screen.getByText('page').closest('a');
       expect(link).toHaveAttribute('href', '/cases/case1/cases/caseone/cases/casetwo/example/page');
     });
 
     it('produces the correct URL at one level of nesting', () => {
       const leaf = hitItem('data/item', 'val');
-      renderFolder({
-        case: makeCase('case2', [leaf]),
-        rootCaseId: 'case1',
-        parentCasePaths: ['cases/caseone']
-      });
+      renderFolder(
+        {
+          case: makeCase('case2', [leaf]),
+          parentCasePaths: ['cases/caseone']
+        },
+        'case1'
+      );
       const link = screen.getByText('item').closest('a');
       expect(link).toHaveAttribute('href', '/cases/case1/cases/caseone/data/item');
     });
@@ -377,10 +361,7 @@ describe('CaseFolder', () => {
     });
 
     it('uses the provided rootCaseId in URLs when given', () => {
-      renderFolder({
-        case: makeCase('nested-case', [hitItem('folder/item', 'v')]),
-        rootCaseId: 'root-case'
-      });
+      renderFolder({ case: makeCase('nested-case', [hitItem('folder/item', 'v')]) }, 'root-case');
       const link = screen.getByText('item').closest('a');
       expect(link).toHaveAttribute('href', '/cases/root-case/folder/item');
     });

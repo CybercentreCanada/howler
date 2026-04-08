@@ -15,6 +15,7 @@ import { alpha, Box, Stack, Typography, useTheme } from '@mui/material';
 import type { Item } from 'models/entities/generated/Item';
 import { type ComponentType, type FC } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import type { Tree } from './types';
 
 // Static map: item type → MUI icon component (avoids re-creating closures on each render)
 const ICON_FOR_TYPE: Record<string, ComponentType<SvgIconProps>> = {
@@ -44,7 +45,7 @@ interface FolderEntryProps {
   to?: string;
   onClick?: () => void;
   itemType: string;
-  item?: Item;
+  entry?: Item | Tree;
 }
 
 const FolderEntry: FC<FolderEntryProps> = ({
@@ -58,7 +59,7 @@ const FolderEntry: FC<FolderEntryProps> = ({
   chevronOpen = false,
   to,
   onClick,
-  item
+  entry
 }) => {
   const location = useLocation();
   const theme = useTheme();
@@ -73,19 +74,21 @@ const FolderEntry: FC<FolderEntryProps> = ({
     listeners,
     setNodeRef: setDraggableNodeRef,
     transform,
-    isDragging,
-    active: activeDragSubject
+    isDragging
   } = useDraggable({
     id: dndId,
     data: {
-      item,
+      type: itemType,
+      label,
+      entry,
       caseId
     },
-    disabled: !caseId || isFolder
+    disabled: !caseId
   });
+
   const { setNodeRef: setDroppableNodeRef, isOver } = useDroppable({
     id: dndId,
-    disabled: !isFolder || isDragging || activeDragSubject?.data.current.caseId !== caseId,
+    disabled: !isFolder || isDragging || !caseId,
     data: {
       path,
       caseId
@@ -104,7 +107,7 @@ const FolderEntry: FC<FolderEntryProps> = ({
       }}
       direction="row"
       pl={indent}
-      style={{ transform: CSS.Transform.toString(transform) }}
+      style={{ transform: CSS.Transform.toString(transform), opacity: isDragging ? 0 : undefined }}
       sx={[
         {
           cursor: 'pointer',
@@ -143,7 +146,7 @@ const FolderEntry: FC<FolderEntryProps> = ({
             borderRadius: '5px',
             transition: theme.transitions.create('border-color')
           },
-          isOver && activeDragSubject?.data.current.caseId === caseId && { borderColor: theme.palette.primary.main }
+          isOver && caseId && { borderColor: theme.palette.primary.main }
         ]}
       />
       <ChevronRight

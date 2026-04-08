@@ -5,6 +5,7 @@ import useMyApi from 'components/hooks/useMyApi';
 import type { Case } from 'models/entities/generated/Case';
 import type { Item } from 'models/entities/generated/Item';
 import { useCallback, useMemo, useState, type FC } from 'react';
+import { useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { ESCALATION_COLORS } from 'utils/constants';
 import CaseFolderContextMenu from './CaseFolderContextMenu';
@@ -19,7 +20,7 @@ interface CaseFolderProps {
   folder?: Tree;
   name?: string;
   step?: number;
-  rootCaseId?: string;
+
   /**
    * The chain of `leaf.path` values for each case item traversed from the root
    * case to reach this nested case. Empty at the top level.
@@ -28,6 +29,7 @@ interface CaseFolderProps {
    * gives parentCasePaths = ['cases/caseone', 'cases/casetwo'] inside case3.
    */
   parentCasePaths?: string[];
+
   onItemUpdated?: (newCase: Case) => void;
 }
 
@@ -36,12 +38,12 @@ const CaseFolder: FC<CaseFolderProps> = ({
   folder,
   name,
   step = -1,
-  rootCaseId,
   parentCasePaths = [],
   onItemUpdated
 }) => {
   const theme = useTheme();
   const { dispatchApi } = useMyApi();
+  const params = useParams();
 
   const [open, setOpen] = useState(true);
   const [caseStates, setCaseStates] = useState<Record<string, CaseNodeState>>({});
@@ -49,7 +51,7 @@ const CaseFolder: FC<CaseFolderProps> = ({
   const records = useContextSelector(RecordContext, ctx => ctx.records);
 
   const tree = useMemo(() => folder || buildTree(_case?.items), [folder, _case?.items]);
-  const currentRootCaseId = rootCaseId || _case?.case_id;
+  const rootCaseId = params.id;
 
   // Returns the MUI colour token for the item's escalation, or undefined if none.
   const getEscalationColor = (itemType: string | undefined, itemKey: string | undefined, leafId: string) => {
@@ -105,13 +107,14 @@ const CaseFolder: FC<CaseFolderProps> = ({
             }}
           >
             <FolderEntry
-              caseId={_case.case_id === currentRootCaseId ? currentRootCaseId : null}
+              caseId={_case.case_id === rootCaseId ? rootCaseId : null}
               path={tree.path}
               itemType="folder"
               indent={step * 1.5}
               label={name}
               chevronOpen={open}
               onClick={() => setOpen(_open => !_open)}
+              entry={tree}
             />
           </Box>
         </CaseFolderContextMenu>
@@ -127,7 +130,6 @@ const CaseFolder: FC<CaseFolderProps> = ({
                 case={_case}
                 folder={subfolder}
                 step={step + 1}
-                rootCaseId={currentRootCaseId}
                 parentCasePaths={parentCasePaths}
                 onItemUpdated={onItemUpdated}
               />
@@ -144,9 +146,7 @@ const CaseFolder: FC<CaseFolderProps> = ({
             const nestedCase = nodeState?.data ?? null;
             const fullItemPath = [...parentCasePaths, leaf.path].filter(Boolean).join('/');
             const itemTo =
-              itemType !== 'reference'
-                ? `/cases/${currentRootCaseId}${fullItemPath ? `/${fullItemPath}` : ''}`
-                : leaf.value;
+              itemType !== 'reference' ? `/cases/${rootCaseId}${fullItemPath ? `/${fullItemPath}` : ''}` : leaf.value;
 
             const escalationColor = getEscalationColor(itemType, itemKey, leaf.value);
             const iconColor = escalationColor ?? ('inherit' as const);
@@ -168,7 +168,7 @@ const CaseFolder: FC<CaseFolderProps> = ({
                     }}
                   >
                     <FolderEntry
-                      caseId={_case.case_id === currentRootCaseId ? currentRootCaseId : null}
+                      caseId={_case.case_id === rootCaseId ? rootCaseId : null}
                       path={leaf.path}
                       indent={step * 1.5 + 1}
                       label={leaf.path?.split('/').pop() || leaf.value || ''}
@@ -178,7 +178,7 @@ const CaseFolder: FC<CaseFolderProps> = ({
                       chevronOpen={isCaseOpen}
                       to={itemTo}
                       onClick={() => isCase && toggleCase(leaf, itemKey)}
-                      item={leaf}
+                      entry={leaf}
                     />
                   </Box>
 
@@ -192,7 +192,6 @@ const CaseFolder: FC<CaseFolderProps> = ({
                     <CaseFolder
                       case={nestedCase}
                       step={step + 1}
-                      rootCaseId={currentRootCaseId}
                       parentCasePaths={[...parentCasePaths, leaf.path].filter(Boolean)}
                       onItemUpdated={onItemUpdated}
                     />

@@ -1,5 +1,6 @@
 import { CardContent, Skeleton } from '@mui/material';
 import { RecordContext } from 'components/app/providers/RecordProvider';
+import type { Hit } from 'models/entities/generated/Hit';
 import type { FC } from 'react';
 import { memo, useEffect } from 'react';
 import { useContextSelector } from 'use-context-selector';
