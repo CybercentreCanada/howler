@@ -361,7 +361,7 @@ def create_users_with_username(ds: HowlerDatastore, usernames: list[str]):
         ds.user.save(username, user_data)
 
         if "pytest" not in sys.modules:
-            logger.info(f"{username}:{username}")
+            logger.info("%s:%s", username, username)
 
     ds.user.commit()
     ds.user_avatar.commit()

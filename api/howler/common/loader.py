@@ -58,9 +58,9 @@ def get_classification(yml_config: Optional[str] = None):  # noqa: C901
                 )
 
         if not yml_config_path.exists():
-            log.warning(f"{yml_config_path} does not exist!")
+            log.warning("%s does not exist!", yml_config_path)
             yml_config_path = Path("/etc") / APP_NAME.replace("-dev", "") / "classification.yml"
-            log.warning(f"Checking at {yml_config_path} instead.")
+            log.warning("Checking at %s instead.", yml_config_path)
     else:
         yml_config_path = Path(yml_config)
 
