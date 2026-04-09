@@ -1,11 +1,13 @@
 """Telemetry setup for Howler API."""
 
+import os
+
+from flask import Flask
 from howler.common.logging import get_logger
 
 logger = get_logger(__file__)
 
-
-def setup_telemetry() -> None:
+def setup_telemetry(app: Flask) -> None:
     """Initialize telemetry and library instrumentors.
 
     The backend is selected via ``config.core.telemetry.backend``.
@@ -31,16 +33,22 @@ def setup_telemetry() -> None:
         if backend == "opentelemetry":
             from opentelemetry import trace
             from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+            from opentelemetry.instrumentation.flask import FlaskInstrumentor
             from opentelemetry.sdk.resources import Resource
             from opentelemetry.sdk.trace import TracerProvider
             from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+            if not os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT"):
+                logger.error("OpenTelemetry telemetry backend selected but OTEL_EXPORTER_OTLP_ENDPOINT is not set.")
+                return
 
             resource = Resource.create()
             provider = TracerProvider(resource=resource)
             provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
             trace.set_tracer_provider(provider)
+            FlaskInstrumentor().instrument_app(app)
         elif backend == "azure_monitor":
-            import os
+
 
             from azure.monitor.opentelemetry import configure_azure_monitor
 
