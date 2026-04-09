@@ -62,8 +62,6 @@ def emit(event: str, data: Any):
         for handler in handlers[event]:
             handler(data)
 
-
-@tracer.start_as_current_span(f"{__name__}.on")
 def on(event: str, handler: Callable):
     """Add a new listener to the specified event
 
@@ -78,8 +76,6 @@ def on(event: str, handler: Callable):
 
     logger.debug("event:%s - added listener", event)
 
-
-@tracer.start_as_current_span(f"{__name__}.off")
 def off(event: str, handler: Callable):
     """Remove an existing listener from the specified event
 
