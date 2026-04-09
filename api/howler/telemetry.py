@@ -18,7 +18,6 @@ def setup_telemetry(app: Flask) -> None:
     manually. Environment variables control the exporter:
         - OTEL_EXPORTER_OTLP_ENDPOINT
         - OTEL_EXPORTER_OTLP_HEADERS
-        - OTEL_EXPORTER_OTLP_PROTOCOL
 
     See https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/
 
