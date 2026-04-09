@@ -42,7 +42,7 @@
     "i18next": "^23.16.8",
     "i18next-browser-languagedetector": "^7.2.2",
     "json-schema": "^0.4.0",
-    "lodash-es": "^4.17.23",
+    "lodash-es": "^4.18.1",
     "md5": "^2.3.0",
     "mermaid": "^11.13.0",
     "monaco-editor": "0.49.0",
@@ -113,7 +113,7 @@
     "prettier": "^3.8.1",
     "prettier-plugin-organize-imports": "^3.2.4",
     "typescript": "^5.9.3",
-    "vite": "^6.4.1",
+    "vite": "^6.4.2",
     "vite-plugin-dts": "^4.5.4",
     "vite-tsconfig-paths": "^4.3.2",
     "vitest": "^3.2.4"

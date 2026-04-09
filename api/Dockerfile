@@ -15,12 +15,15 @@ ENV HOWLER_VERSION=$version
 RUN mkdir -p /etc/howler && \
     mkdir -p /etc/howler/static && \
     mkdir -p /etc/howler/lookups && \
+    mkdir -p /etc/howler/plugins && \
     chmod 750 /etc/howler && \
     chmod 750 /etc/howler/static && \
     chmod 750 /etc/howler/lookups && \
+    chmod 750 /etc/howler/plugins && \
     chown nonroot:nonroot /etc/howler && \
     chown nonroot:nonroot /etc/howler/static && \
-    chown nonroot:nonroot /etc/howler/lookups
+    chown nonroot:nonroot /etc/howler/lookups && \
+    chown nonroot:nonroot /etc/howler/plugins
 
 # Create howler cache directory
 RUN mkdir -p /var/cache/howler
@@ -41,7 +44,7 @@ RUN chmod 770 /var/log/howler
 RUN chown nonroot:nonroot /var/log/howler
 
 # Install common dependancies
-RUN apk update && apk add --no-cache zip vim nano && rm -rf /var/cache/apk/*
+RUN apk update && apk add --no-cache vim tzdata && rm -rf /var/cache/apk/*
 
 # Create a temporary image to compile dependencies
 FROM base AS builder
@@ -88,4 +91,4 @@ ENV APP_PREFIX=hwl
 ENV HOWLER_VERSION=${version}
 ENV HOWLER_IMAGE_TAG=${version_tag}
 
-ENTRYPOINT ["python", "-m", "gunicorn", "howler.patched:app", "--config=python:howler.gunicorn_config", "--worker-class", "gevent"]
+ENTRYPOINT ["gunicorn", "howler.patched:app", "--config=python:howler.gunicorn_config", "--worker-class", "gevent"]

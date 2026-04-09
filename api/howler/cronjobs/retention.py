@@ -39,7 +39,7 @@ def setup_job(sched: BaseScheduler):
 
         return
 
-    logger.debug(f"Initializing retention cronjob with cron {config.system.retention.crontab}")
+    logger.debug("Initializing retention cronjob with cron %s", config.system.retention.crontab)
 
     if DEBUG:
         _kwargs: dict[str, Any] = {"next_run_time": datetime.now()}
