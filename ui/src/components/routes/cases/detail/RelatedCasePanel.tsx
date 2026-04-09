@@ -20,6 +20,10 @@ const RelatedCasePanel: FC<{ case: Case }> = ({ case: _case }) => {
     return <Skeleton height={240} />;
   }
 
+  if (casePages.length < 1) {
+    return null;
+  }
+
   return (
     <Stack spacing={1}>
       <Stack direction="row">

@@ -55,7 +55,7 @@ const useMySitemap = (): AppSiteMapConfigs => {
         { path: '/', title: t('route.home'), isRoot: true, icon: <Dashboard /> },
         { path: '/cases', title: t('route.cases'), isRoot: true, icon: <BookRounded /> },
         { path: '/cases/:id', title: t('route.cases.view'), breadcrumbs: ['/cases'] },
-        { path: '/cases/:id/*', title: t('route.cases.view'), breadcrumbs: ['/cases'] },
+        { path: '/cases/:id/*', title: t('route.cases.view'), isLeaf: true, breadcrumbs: ['/cases'] },
         { path: '/admin/users', title: t('route.admin.user.search'), isRoot: true, icon: <PersonSearch /> },
         {
           path: '/admin/users/:id',

@@ -1,12 +1,12 @@
-import { get, set } from 'lodash-es';
+import { get, set, sortBy, take } from 'lodash-es';
 import type { Item } from 'models/entities/generated/Item';
 import type { Tree } from './types';
 
 export const buildTree = (items: Item[] = []): Tree => {
-  // Root tree node stores direct children in `leaves` and nested folders as object keys.
-  const tree: Tree = { leaves: [] };
+  // Root tree node stores direct children in `leaves`; subfolders live under `folders`.
+  const tree: any = { leaves: [], path: '' };
 
-  items.forEach(item => {
+  sortBy(items, 'path').forEach(item => {
     // Ignore items that cannot be placed in the folder structure.
     if (!item?.path) {
       return;
@@ -16,13 +16,17 @@ export const buildTree = (items: Item[] = []): Tree => {
     const parts = item.path.split('/');
     parts.pop();
 
-    if (parts.length > 0) {
-      // Use dot notation so lodash `get/set` can address nested folder objects.
-      const key = parts.join('.');
-      const size = (get(tree, key) as Tree)?.leaves?.length || 0;
+    // Ensure each folder node exists and has its path set.
+    parts.forEach((_, index) => {
+      const folderPath = `folders.${take(parts, index + 1).join('.folders.')}`;
+      set(tree, `${folderPath}.path`, take(parts, index + 1).join('/'));
+    });
 
-      // Append this item to the folder's `leaves` array.
-      set(tree, `${key}.leaves.${size}`, item);
+    if (parts.length > 0) {
+      // Navigate to the target folder via the `folders` nesting and append the leaf.
+      const folderPath = `folders.${parts.join('.folders.')}`;
+      const size = (get(tree, folderPath) as Tree)?.leaves?.length ?? 0;
+      set(tree, `${folderPath}.leaves.${size}`, item);
       return;
     }
 

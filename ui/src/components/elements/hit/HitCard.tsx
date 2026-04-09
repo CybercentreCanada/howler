@@ -10,17 +10,18 @@ import HitLabels from './HitLabels';
 import type { HitLayout } from './HitLayout';
 import HitOutline from './HitOutline';
 
-const HitCard: FC<{ id?: string; layout: HitLayout; readOnly?: boolean; elevation?: number }> = ({
-  id,
-  layout,
-  readOnly = true,
-  elevation
-}) => {
+const HitCard: FC<{
+  id?: string;
+  lazy?: boolean;
+  layout: HitLayout;
+  readOnly?: boolean;
+  elevation?: number;
+}> = ({ id, layout, readOnly = true, lazy = false, elevation }) => {
   const getRecord = useContextSelector(RecordContext, ctx => ctx.getRecord);
   const hit = useContextSelector(RecordContext, ctx => ctx.records[id] as Hit);
 
   useEffect(() => {
-    if (!hit) {
+    if (!hit && !lazy) {
       getRecord(id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -33,8 +34,8 @@ const HitCard: FC<{ id?: string; layout: HitLayout; readOnly?: boolean; elevatio
   return (
     <HowlerCard id={hit?.howler.id} tabIndex={0} sx={{ position: 'relative' }} elevation={elevation}>
       <CardContent>
-        <HitBanner hit={hit} layout={layout} />
-        <HitOutline hit={hit} layout={layout} />
+        <HitBanner hit={hit} layout={layout} lazy={lazy} />
+        <HitOutline hit={hit} layout={layout} lazy={lazy} />
         <HitLabels hit={hit} readOnly={readOnly} />
       </CardContent>
     </HowlerCard>

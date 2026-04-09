@@ -1,27 +1,20 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
+import { setupReactRouterMock } from 'tests/mocks';
 import { useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY } from 'utils/constants';
 import ParameterProvider, { ParameterContext } from './ParameterProvider';
 
 // Mock dependencies
-const mockSetParams = vi.fn();
-const mockLocation = { pathname: '/hits', search: '' };
-const mockParams = { id: undefined };
-
-let mockSearchParams = new URLSearchParams();
-
-vi.mock('react-router-dom', () => ({
-  useLocation: vi.fn(() => mockLocation),
-  useParams: vi.fn(() => mockParams),
-  useSearchParams: vi.fn(() => [mockSearchParams, mockSetParams])
-}));
+const { mockParams, mockLocation, mockSetParams, mockSearchParams } = setupReactRouterMock();
 
 const Wrapper = ({ children }) => {
   return <ParameterProvider>{children}</ParameterProvider>;
 };
 
 beforeEach(() => {
-  mockSearchParams = new URLSearchParams();
+  for (const key of [...mockSearchParams.keys()]) {
+    mockSearchParams.delete(key);
+  }
   mockSetParams.mockClear();
   mockLocation.pathname = '/hits';
   mockLocation.search = '';
@@ -50,15 +43,13 @@ describe('ParameterContext', () => {
   });
 
   it('should initialize with values from URL params', async () => {
-    mockSearchParams = new URLSearchParams({
-      query: 'test query',
-      sort: 'test.field asc',
-      span: 'date.range.1.week',
-      offset: '25',
-      selected: 'test_id',
-      filter: 'status:open',
-      track_total_hits: 'true'
-    });
+    mockSearchParams.set('query', 'test query');
+    mockSearchParams.set('sort', 'test.field asc');
+    mockSearchParams.set('span', 'date.range.1.week');
+    mockSearchParams.set('offset', '25');
+    mockSearchParams.set('selected', 'test_id');
+    mockSearchParams.set('filter', 'status:open');
+    mockSearchParams.set('track_total_hits', 'true');
 
     const hook = renderHook(
       () =>
@@ -84,11 +75,9 @@ describe('ParameterContext', () => {
   });
 
   it('should handle custom date span with start and end dates', async () => {
-    mockSearchParams = new URLSearchParams({
-      span: 'date.range.custom',
-      start_date: '2025-01-01',
-      end_date: '2025-12-31'
-    });
+    mockSearchParams.set('span', 'date.range.custom');
+    mockSearchParams.set('start_date', '2025-01-01');
+    mockSearchParams.set('end_date', '2025-12-31');
 
     const hook = renderHook(
       () =>
@@ -126,7 +115,7 @@ describe('ParameterContext', () => {
     });
 
     it('should not update if the value is the same', async () => {
-      mockSearchParams = new URLSearchParams({ query: 'existing query' });
+      mockSearchParams.set('query', 'existing query');
 
       const hook = renderHook(
         () =>
@@ -189,11 +178,9 @@ describe('ParameterContext', () => {
     });
 
     it('should clear startDate and endDate when span does not end with custom', async () => {
-      mockSearchParams = new URLSearchParams({
-        span: 'date.range.custom',
-        start_date: '2025-01-01',
-        end_date: '2025-12-31'
-      });
+      mockSearchParams.set('span', 'date.range.custom');
+      mockSearchParams.set('start_date', '2025-01-01');
+      mockSearchParams.set('end_date', '2025-12-31');
 
       const hook = renderHook(
         () =>
@@ -226,7 +213,7 @@ describe('ParameterContext', () => {
     });
 
     it('should initialize with single filter from URL', async () => {
-      mockSearchParams = new URLSearchParams({ filter: 'status:open' });
+      mockSearchParams.set('filter', 'status:open');
 
       const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.filters), { wrapper: Wrapper });
 
@@ -234,7 +221,6 @@ describe('ParameterContext', () => {
     });
 
     it('should initialize with multiple filters from URL', async () => {
-      mockSearchParams = new URLSearchParams();
       mockSearchParams.append('filter', 'howler.escalation:hit');
       mockSearchParams.append('filter', 'howler.assignment:someuser');
 
@@ -244,7 +230,6 @@ describe('ParameterContext', () => {
     });
 
     it('should preserve filter order from URL', async () => {
-      mockSearchParams = new URLSearchParams();
       mockSearchParams.append('filter', 'c');
       mockSearchParams.append('filter', 'a');
       mockSearchParams.append('filter', 'b');
@@ -255,7 +240,6 @@ describe('ParameterContext', () => {
     });
 
     it('should deduplicate multiple empty filter params to single empty string', async () => {
-      mockSearchParams = new URLSearchParams();
       mockSearchParams.append('filter', '');
       mockSearchParams.append('filter', '');
       mockSearchParams.append('filter', '');
@@ -286,7 +270,7 @@ describe('ParameterContext', () => {
       });
 
       it('should append filter to existing filters', async () => {
-        mockSearchParams = new URLSearchParams({ filter: 'existing:filter' });
+        mockSearchParams.set('filter', 'existing:filter');
 
         const hook = renderHook(
           () =>
@@ -307,7 +291,7 @@ describe('ParameterContext', () => {
       });
 
       it('should not add duplicate filters', async () => {
-        mockSearchParams = new URLSearchParams({ filter: 'status:open' });
+        mockSearchParams.set('filter', 'status:open');
 
         const hook = renderHook(
           () =>
@@ -331,7 +315,6 @@ describe('ParameterContext', () => {
 
     describe('removeFilter', () => {
       it('should remove first matching filter', async () => {
-        mockSearchParams = new URLSearchParams();
         mockSearchParams.append('filter', 'filter1');
         mockSearchParams.append('filter', 'filter2');
         mockSearchParams.append('filter', 'filter3');
@@ -355,7 +338,7 @@ describe('ParameterContext', () => {
       });
 
       it('should do nothing when removing nonexistent filter', async () => {
-        mockSearchParams = new URLSearchParams({ filter: 'existing' });
+        mockSearchParams.set('filter', 'existing');
 
         const hook = renderHook(
           () =>
@@ -397,7 +380,6 @@ describe('ParameterContext', () => {
 
     describe('resetFilters', () => {
       it('should clear all filters', async () => {
-        mockSearchParams = new URLSearchParams();
         mockSearchParams.append('filter', 'filter1');
         mockSearchParams.append('filter', 'filter2');
 
@@ -441,7 +423,6 @@ describe('ParameterContext', () => {
 
     describe('setFilter', () => {
       it('should update filter at specified index', async () => {
-        mockSearchParams = new URLSearchParams();
         mockSearchParams.append('filter', 'filter1');
         mockSearchParams.append('filter', 'filter2');
         mockSearchParams.append('filter', 'filter3');
@@ -465,7 +446,6 @@ describe('ParameterContext', () => {
       });
 
       it('should update filter at index 0', async () => {
-        mockSearchParams = new URLSearchParams();
         mockSearchParams.append('filter', 'old:filter');
         mockSearchParams.append('filter', 'filter2');
 
@@ -488,7 +468,6 @@ describe('ParameterContext', () => {
       });
 
       it('should update filter at last index', async () => {
-        mockSearchParams = new URLSearchParams();
         mockSearchParams.append('filter', 'filter1');
         mockSearchParams.append('filter', 'old:last');
 
@@ -511,7 +490,7 @@ describe('ParameterContext', () => {
       });
 
       it('should do nothing when index is out of bounds', async () => {
-        mockSearchParams = new URLSearchParams({ filter: 'existing' });
+        mockSearchParams.set('filter', 'existing');
 
         const hook = renderHook(
           () =>
@@ -532,7 +511,7 @@ describe('ParameterContext', () => {
       });
 
       it('should do nothing when index is negative', async () => {
-        mockSearchParams = new URLSearchParams({ filter: 'existing' });
+        mockSearchParams.set('filter', 'existing');
 
         const hook = renderHook(
           () =>
@@ -572,7 +551,6 @@ describe('ParameterContext', () => {
       });
 
       it('should sync updated filter to URL', async () => {
-        mockSearchParams = new URLSearchParams();
         mockSearchParams.append('filter', 'filter1');
         mockSearchParams.append('filter', 'filter2');
 
@@ -645,7 +623,6 @@ describe('ParameterContext', () => {
       });
 
       it('should remove all filter params when filters is empty', async () => {
-        mockSearchParams = new URLSearchParams();
         mockSearchParams.append('filter', 'filter1');
         mockSearchParams.append('filter', 'filter2');
 
@@ -840,14 +817,14 @@ describe('ParameterContext', () => {
     });
 
     it('should read changes from URL params', async () => {
-      mockSearchParams = new URLSearchParams({ query: 'initial query' });
+      mockSearchParams.set('query', 'initial query');
 
       const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.query), { wrapper: Wrapper });
 
       expect(hook.result.current).toBe('initial query');
 
       // Simulate URL change
-      mockSearchParams = new URLSearchParams({ query: 'updated query' });
+      mockSearchParams.set('query', 'updated query');
       mockLocation.search = '?query=updated%20query';
 
       hook.rerender();
@@ -871,7 +848,7 @@ describe('ParameterContext', () => {
     it('should handle selected parameter in bundle when it matches bundle id', async () => {
       mockLocation.pathname = '/bundles/bundle_123';
       mockParams.id = 'bundle_123';
-      mockSearchParams = new URLSearchParams({ selected: 'bundle_123' });
+      mockSearchParams.set('selected', 'bundle_123');
 
       const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.selected), { wrapper: Wrapper });
 
@@ -881,7 +858,7 @@ describe('ParameterContext', () => {
     it('should handle selected parameter in bundle when it differs from bundle id', async () => {
       mockLocation.pathname = '/bundles/bundle_123';
       mockParams.id = 'bundle_123';
-      mockSearchParams = new URLSearchParams({ selected: 'different_hit_id' });
+      mockSearchParams.set('selected', 'different_hit_id');
 
       const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.selected), { wrapper: Wrapper });
 
@@ -891,10 +868,8 @@ describe('ParameterContext', () => {
 
   describe('useParameterContextSelector', () => {
     it('should allow selecting specific values from context', async () => {
-      mockSearchParams = new URLSearchParams({
-        query: 'test query',
-        sort: 'test.field asc'
-      });
+      mockSearchParams.set('query', 'test query');
+      mockSearchParams.set('sort', 'test.field asc');
 
       const hook = renderHook(
         () =>
@@ -912,7 +887,7 @@ describe('ParameterContext', () => {
 
   describe('edge cases', () => {
     it('should handle offset of 0 in URL params', async () => {
-      mockSearchParams = new URLSearchParams({ offset: '0' });
+      mockSearchParams.set('offset', '0');
 
       const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.offset), { wrapper: Wrapper });
 
@@ -920,7 +895,7 @@ describe('ParameterContext', () => {
     });
 
     it('should handle trackTotalHits with various values', async () => {
-      mockSearchParams = new URLSearchParams({ track_total_hits: 'false' });
+      mockSearchParams.set('track_total_hits', 'false');
 
       let hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.trackTotalHits), {
         wrapper: Wrapper
@@ -928,7 +903,7 @@ describe('ParameterContext', () => {
 
       expect(hook.result.current).toBe(false);
 
-      mockSearchParams = new URLSearchParams({ track_total_hits: 'true' });
+      mockSearchParams.set('track_total_hits', 'true');
 
       hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.trackTotalHits), { wrapper: Wrapper });
 
@@ -955,11 +930,9 @@ describe('ParameterContext', () => {
     });
 
     it('should fallback to default values when URL params are cleared', async () => {
-      mockSearchParams = new URLSearchParams({
-        query: 'custom query',
-        sort: 'custom.sort asc',
-        span: 'date.range.1.week'
-      });
+      mockSearchParams.set('query', 'custom query');
+      mockSearchParams.set('sort', 'custom.sort asc');
+      mockSearchParams.set('span', 'date.range.1.week');
       mockLocation.search = mockSearchParams.toString();
 
       const hook = renderHook(
@@ -975,7 +948,9 @@ describe('ParameterContext', () => {
       expect(hook.result.current.query).toBe('custom query');
 
       // Simulate clearing URL params
-      mockSearchParams = new URLSearchParams();
+      for (const key of [...mockSearchParams.keys()]) {
+        mockSearchParams.delete(key);
+      }
       mockLocation.search = '';
 
       hook.rerender();
@@ -1012,6 +987,8 @@ describe('ParameterContext', () => {
         hook.result.current.addFilter('status:resolved');
       });
 
+      hook.rerender();
+
       await waitFor(() => {
         expect(hook.result.current.query).toBe('multi query');
         expect(hook.result.current.sort).toBe('multi.sort desc');
@@ -1047,7 +1024,7 @@ describe('ParameterContext', () => {
     });
 
     it('should initialize with single index from URL', async () => {
-      mockSearchParams = new URLSearchParams({ index: 'observable' });
+      mockSearchParams.set('index', 'observable');
 
       const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.indexes), { wrapper: Wrapper });
 
@@ -1055,7 +1032,6 @@ describe('ParameterContext', () => {
     });
 
     it('should initialize with multiple indexes from URL', async () => {
-      mockSearchParams = new URLSearchParams();
       mockSearchParams.append('index', 'hit');
       mockSearchParams.append('index', 'observable');
 
@@ -1065,7 +1041,6 @@ describe('ParameterContext', () => {
     });
 
     it('should deduplicate repeated index values from URL', async () => {
-      mockSearchParams = new URLSearchParams();
       mockSearchParams.append('index', 'hit');
       mockSearchParams.append('index', 'hit');
 
@@ -1116,7 +1091,6 @@ describe('ParameterContext', () => {
 
     describe('removeIndex', () => {
       it('should remove an index from the list', async () => {
-        mockSearchParams = new URLSearchParams();
         mockSearchParams.append('index', 'hit');
         mockSearchParams.append('index', 'observable');
 
@@ -1158,7 +1132,6 @@ describe('ParameterContext', () => {
       });
 
       it('should handle removing from empty array', async () => {
-        mockSearchParams = new URLSearchParams();
         mockSearchParams.append('index', 'hit');
 
         const hook = renderHook(
@@ -1182,7 +1155,6 @@ describe('ParameterContext', () => {
 
     describe('setIndex', () => {
       it('should update the index at the specified position', async () => {
-        mockSearchParams = new URLSearchParams();
         mockSearchParams.append('index', 'hit');
         mockSearchParams.append('index', 'observable');
 
@@ -1304,7 +1276,6 @@ describe('ParameterContext', () => {
 
     describe('resetIndexes', () => {
       it('should reset indexes to default ["hit"]', async () => {
-        mockSearchParams = new URLSearchParams();
         mockSearchParams.append('index', 'hit');
         mockSearchParams.append('index', 'observable');
 
@@ -1327,7 +1298,6 @@ describe('ParameterContext', () => {
       });
 
       it('should reset to default even when called on empty array', async () => {
-        mockSearchParams = new URLSearchParams();
         mockSearchParams.append('index', 'hit');
 
         const hook = renderHook(
@@ -1423,7 +1393,6 @@ describe('ParameterContext', () => {
       });
 
       it('should remove all index params from URL when state resets to default', async () => {
-        mockSearchParams = new URLSearchParams();
         mockSearchParams.append('index', 'hit');
         mockSearchParams.append('index', 'observable');
 
@@ -1448,7 +1417,7 @@ describe('ParameterContext', () => {
       });
 
       it('should remove index param from URL when state returns to default', async () => {
-        mockSearchParams = new URLSearchParams({ index: 'observable' });
+        mockSearchParams.set('index', 'observable');
 
         const hook = renderHook(
           () =>
@@ -1480,7 +1449,7 @@ describe('ParameterContext', () => {
     });
 
     it('should initialize with single view from URL', async () => {
-      mockSearchParams = new URLSearchParams({ view: 'view_1' });
+      mockSearchParams.set('view', 'view_1');
 
       const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.views), { wrapper: Wrapper });
 
@@ -1488,7 +1457,6 @@ describe('ParameterContext', () => {
     });
 
     it('should initialize with multiple views from URL', async () => {
-      mockSearchParams = new URLSearchParams();
       mockSearchParams.append('view', 'view_1');
       mockSearchParams.append('view', 'view_2');
 
@@ -1498,7 +1466,6 @@ describe('ParameterContext', () => {
     });
 
     it('should preserve view order from URL', async () => {
-      mockSearchParams = new URLSearchParams();
       mockSearchParams.append('view', 'view_c');
       mockSearchParams.append('view', 'view_a');
       mockSearchParams.append('view', 'view_b');
@@ -1509,7 +1476,6 @@ describe('ParameterContext', () => {
     });
 
     it('should deduplicate multiple empty view params to single empty string', async () => {
-      mockSearchParams = new URLSearchParams();
       mockSearchParams.append('view', '');
       mockSearchParams.append('view', '');
       mockSearchParams.append('view', '');
@@ -1540,7 +1506,7 @@ describe('ParameterContext', () => {
       });
 
       it('should append view to existing views', async () => {
-        mockSearchParams = new URLSearchParams({ view: 'existing_view' });
+        mockSearchParams.set('view', 'existing_view');
 
         const hook = renderHook(
           () =>
@@ -1561,7 +1527,7 @@ describe('ParameterContext', () => {
       });
 
       it('should not add duplicate views', async () => {
-        mockSearchParams = new URLSearchParams({ view: 'view_1' });
+        mockSearchParams.set('view', 'view_1');
 
         const hook = renderHook(
           () =>
@@ -1585,7 +1551,6 @@ describe('ParameterContext', () => {
 
     describe('removeView', () => {
       it('should remove first matching view', async () => {
-        mockSearchParams = new URLSearchParams();
         mockSearchParams.append('view', 'view_1');
         mockSearchParams.append('view', 'view_2');
         mockSearchParams.append('view', 'view_3');
@@ -1609,7 +1574,6 @@ describe('ParameterContext', () => {
       });
 
       it('should remove only first occurrence of duplicate views', async () => {
-        mockSearchParams = new URLSearchParams();
         mockSearchParams.append('view', 'dup');
         mockSearchParams.append('view', 'dup');
         mockSearchParams.append('view', 'other');
@@ -1633,7 +1597,7 @@ describe('ParameterContext', () => {
       });
 
       it('should do nothing when removing nonexistent view', async () => {
-        mockSearchParams = new URLSearchParams({ view: 'existing' });
+        mockSearchParams.set('view', 'existing');
 
         const hook = renderHook(
           () =>
@@ -1675,7 +1639,6 @@ describe('ParameterContext', () => {
 
     describe('resetViews', () => {
       it('should clear all views', async () => {
-        mockSearchParams = new URLSearchParams();
         mockSearchParams.append('view', 'view_1');
         mockSearchParams.append('view', 'view_2');
 
@@ -1719,7 +1682,6 @@ describe('ParameterContext', () => {
 
     describe('setView', () => {
       it('should update view at specified index', async () => {
-        mockSearchParams = new URLSearchParams();
         mockSearchParams.append('view', 'view_1');
         mockSearchParams.append('view', 'view_2');
         mockSearchParams.append('view', 'view_3');
@@ -1743,7 +1705,6 @@ describe('ParameterContext', () => {
       });
 
       it('should update view at index 0', async () => {
-        mockSearchParams = new URLSearchParams();
         mockSearchParams.append('view', 'old_view');
         mockSearchParams.append('view', 'view_2');
 
@@ -1766,7 +1727,6 @@ describe('ParameterContext', () => {
       });
 
       it('should update view at last index', async () => {
-        mockSearchParams = new URLSearchParams();
         mockSearchParams.append('view', 'view_1');
         mockSearchParams.append('view', 'old_last');
 
@@ -1789,7 +1749,7 @@ describe('ParameterContext', () => {
       });
 
       it('should do nothing when index is out of bounds', async () => {
-        mockSearchParams = new URLSearchParams({ view: 'existing' });
+        mockSearchParams.set('view', 'existing');
 
         const hook = renderHook(
           () =>
@@ -1810,7 +1770,7 @@ describe('ParameterContext', () => {
       });
 
       it('should do nothing when index is negative', async () => {
-        mockSearchParams = new URLSearchParams({ view: 'existing' });
+        mockSearchParams.set('view', 'existing');
 
         const hook = renderHook(
           () =>
@@ -1850,7 +1810,6 @@ describe('ParameterContext', () => {
       });
 
       it('should sync updated view to URL', async () => {
-        mockSearchParams = new URLSearchParams();
         mockSearchParams.append('view', 'view_1');
         mockSearchParams.append('view', 'view_2');
 
@@ -1923,7 +1882,6 @@ describe('ParameterContext', () => {
       });
 
       it('should remove all view params when views is empty', async () => {
-        mockSearchParams = new URLSearchParams();
         mockSearchParams.append('view', 'view_1');
         mockSearchParams.append('view', 'view_2');
 
