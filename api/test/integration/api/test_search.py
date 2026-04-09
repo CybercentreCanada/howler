@@ -2,7 +2,9 @@ import json
 from typing import cast
 
 import pytest
+from unittest.mock import MagicMock, patch
 
+from howler.datastore.collection import ESCollection
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.models.hit import Hit
 from howler.odm.random_data import (
@@ -20,6 +22,13 @@ from test.conftest import APIError, get_api_data
 TEST_SIZE = 10
 collections = ["user"]
 
+def _make_collection():
+    mock_datastore = MagicMock()
+    with patch.object(ESCollection, "_ensure_collection"), \
+         patch.object(ESCollection, "_check_fields"):
+        coll = ESCollection(mock_datastore, "hit")
+    coll.with_retries = MagicMock(return_value={"count": 7})
+    return coll
 
 @pytest.fixture(scope="module")
 def datastore(datastore_connection):
@@ -231,6 +240,7 @@ def test_count_with_filters(datastore, login_session):
     assert "count" in filtered_resp
     assert filtered_resp["count"] <= total_resp["count"]
 
+
 def test_count_missing_query(datastore, login_session):
     """Omitting the query parameter returns a 400 error for both GET and POST."""
     session, host = login_session
@@ -274,6 +284,40 @@ def test_count_hit_matches_search_total(datastore, login_session):
         params={"query": "id:*"},
     )
     assert count_resp["count"] == search_resp["total"]
+
+def test_count_filters_none_becomes_empty_list():
+    coll = _make_collection()
+
+    result = coll.count(query="id:*", filters=None)
+
+    assert result == {"count": 7}
+    # Verify the filter list in the query body is empty
+    _, kwargs = coll.with_retries.call_args
+    assert kwargs["query"]["bool"]["filter"] == []
+
+def test_count_single_filter():
+    coll = _make_collection()
+
+    result = coll.count(query="id:*", filters="howler.status:open")
+
+    assert result == {"count": 7}
+    _, kwargs = coll.with_retries.call_args
+    assert kwargs["query"]["bool"]["filter"] == [
+        {"query_string": {"query": "howler.status:open"}}
+    ]
+
+def test_count_multiple_filters():
+    coll = _make_collection()
+
+    result = coll.count(query="id:*", filters=["howler.status:open", "id:*"])
+
+    assert result == {"count": 7}
+    _, kwargs = coll.with_retries.call_args
+    assert kwargs["query"]["bool"]["filter"] == [
+        {"query_string": {"query": "howler.status:open"}},
+        {"query_string": {"query": "id:*"}},
+    ]
+
 
 def test_stats_search(datastore, login_session):
     session, host = login_session
