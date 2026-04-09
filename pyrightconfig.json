@@ -55,6 +55,7 @@
             "reportAttributeAccessIssue": "none",
             "reportCallIssue": "none",
             "reportGeneralTypeIssues": "none",
+            "reportInvalidTypeForm": "none",
             "reportOperatorIssue": "none",
             "reportOptionalIterable": "none",
             "reportOptionalMemberAccess": "none",
