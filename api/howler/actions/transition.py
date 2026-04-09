@@ -70,7 +70,7 @@ def execute(
         status (str): The status from which to transition.
         transition (str): The transition to attempt to execute.
     """
-    rows = 1000 if "automation_advanced" in user.type else 10
+    rows = 1000 if ("automation_advanced" in user.type or "actionrunner_advanced" in user.type) else 10
     hits = datastore().hit.search(f"({query}) AND howler.status:{status}", rows=rows, fl="howler.id")
 
     ids = [hit.howler.id for hit in hits["items"]]

@@ -119,7 +119,14 @@ def create_users(ds):
             "email": "admin@howler.cyber.gc.ca",
             "password": admin_hash,
             "uname": "admin",
-            "type": ["admin", "user", "automation_basic", "automation_advanced"],
+            "type": [
+                "admin",
+                "user",
+                "automation_basic",
+                "automation_advanced",
+                "actionrunner_basic",
+                "actionrunner_advanced",
+            ],
             "groups": [
                 "group1",
                 "group2",

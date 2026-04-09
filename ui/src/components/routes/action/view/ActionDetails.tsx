@@ -86,6 +86,10 @@ const ActionDetails = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [action?.query]);
 
+  const editRoles = user.roles.includes('automation_basic') || user.roles.includes('automation_advanced');
+  const execRoles =
+    editRoles || user.roles.includes('actionrunner_basic') || user.roles.includes('actionrunner_advanced');
+
   return (
     <PageCenter maxWidth="1500px" textAlign="left" height="100%">
       <Stack spacing={1}>
@@ -108,7 +112,7 @@ const ActionDetails = () => {
         <Stack direction="row" alignItems="center" spacing={1}>
           {response && <QueryResultText count={response.total} query={action?.query} />}
           <FlexOne />
-          {(action?.owner_id === user.username || user.roles?.includes('admin')) && (
+          {((action?.owner_id === user.username && editRoles) || user.roles?.includes('admin')) && (
             <Button
               startIcon={<Delete />}
               size="small"
@@ -119,16 +123,18 @@ const ActionDetails = () => {
               {t('delete')}
             </Button>
           )}
-          <Button
-            startIcon={<PlayCircleOutline />}
-            size="small"
-            variant="outlined"
-            color="success"
-            onClick={() => executeAction(action?.action_id)}
-          >
-            {t('route.actions.execute')}
-          </Button>
-          {(action?.owner_id === user.username || user.roles?.includes('admin')) && (
+          {execRoles && (
+            <Button
+              startIcon={<PlayCircleOutline />}
+              size="small"
+              variant="outlined"
+              color="success"
+              onClick={() => executeAction(action?.action_id)}
+            >
+              {t('route.actions.execute')}
+            </Button>
+          )}
+          {((action?.owner_id === user.username && editRoles) || user.roles?.includes('admin')) && (
             <Button
               startIcon={<Edit />}
               size="small"
