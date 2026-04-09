@@ -39,11 +39,7 @@ def setup_telemetry(app: Flask) -> None:
             from opentelemetry.sdk.trace import TracerProvider
             from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-            if not os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT"):
-                logger.error("OpenTelemetry telemetry backend selected but OTEL_EXPORTER_OTLP_ENDPOINT is not set.")
-                return
-
-            resource = Resource.create()
+            resource = Resource.create({"service.name": "howler-api"})
             provider = TracerProvider(resource=resource)
             provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
             trace.set_tracer_provider(provider)
