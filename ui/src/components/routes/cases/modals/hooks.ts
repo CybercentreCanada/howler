@@ -31,6 +31,8 @@ export const useFolderOptions = (selectedCase: Case | null): string[] => {
         paths.add(parts.slice(0, i).join('/'));
       }
     }
+
+    return Array.from(paths);
   }, [selectedCase]);
 };
 
