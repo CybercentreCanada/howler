@@ -1063,7 +1063,7 @@ def create_actions(ds: HowlerDatastore, num_actions: int = 30):
 
             for step in available_operations[operation_id].specification()["steps"]:
                 for key in step["args"].keys():
-                    potential_values = step["options"].get(key, None)
+                    potential_values = step.get("options", {}).get(key, None)
                     if potential_values:
                         if isinstance(potential_values, dict):
                             try:

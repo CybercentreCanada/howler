@@ -129,6 +129,7 @@ def specification():
                     "path": [],
                     "title_template": [],
                 },
+                "options": {},
             }
         ],
         "triggers": VALID_TRIGGERS,
