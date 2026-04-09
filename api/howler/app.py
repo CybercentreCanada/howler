@@ -208,9 +208,6 @@ if logger.parent:
     for ph in logger.parent.handlers:
         app.logger.addHandler(ph)
 
-# Setup Telemetry
-
-
 wlog = logging.getLogger("werkzeug")
 wlog.setLevel(logging.WARNING)
 if logger.parent:  # pragma: no cover
