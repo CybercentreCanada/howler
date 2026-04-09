@@ -1,9 +1,8 @@
-
 # Default Configuration
 
 ??? success "Auto-Generated Documentation"
-    This set of documentation is automatically generated from source, and will help ensure any change to functionality
-    will always be documented and available on release.
+This set of documentation is automatically generated from source, and will help ensure any change to functionality
+will always be documented and available on release.
 
 Below is the default configuration for Howler when unit tests are run. You can use it as a starting point for your
 installation. For more information, see [Configuration](/howler/installation/configuration).
@@ -48,14 +47,14 @@ auth:
         request_token_params: null
         request_token_url: null
         required_groups:
-        - howler_user
+          - howler_user
         role_map:
           admin: howler_admin
           user: howler_user
         scope: openid offline_access
         uid_format: null
         uid_randomize: false
-        uid_randomize_delimiter: '-'
+        uid_randomize_delimiter: "-"
         uid_randomize_digits: 0
         uid_regex: null
         user_get: null
@@ -81,15 +80,18 @@ core:
     persistent:
       host: 127.0.0.1
       port: 6380
+  telemetry:
+    enabled: false
+    backend: opentelemetry
 datastore:
   hosts:
-  - apikey_id: null
-    apikey_secret: null
-    host: localhost:9200
-    name: elastic
-    password: devpass
-    scheme: http
-    username: elastic
+    - apikey_id: null
+      apikey_secret: null
+      host: localhost:9200
+      name: elastic
+      password: devpass
+      scheme: http
+      username: elastic
   type: elasticsearch
 logging:
   export_interval: 5
