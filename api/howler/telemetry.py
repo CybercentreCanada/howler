@@ -48,9 +48,8 @@ def setup_telemetry(app: Flask) -> None:
             trace.set_tracer_provider(provider)
             FlaskInstrumentor().instrument_app(app)
         elif backend == "azure_monitor":
-
-
             from azure.monitor.opentelemetry import configure_azure_monitor
+            from opentelemetry.instrumentation.flask import FlaskInstrumentor
 
             if not os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING"):
                 logger.error(
@@ -59,6 +58,7 @@ def setup_telemetry(app: Flask) -> None:
                 return
 
             configure_azure_monitor()
+            FlaskInstrumentor().instrument_app(app)
         else:
             logger.error("Unsupported telemetry backend '%s'.", backend)
             return
