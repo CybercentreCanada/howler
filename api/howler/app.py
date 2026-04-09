@@ -62,14 +62,15 @@ from prometheus_client import make_wsgi_app
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
 logger = get_logger(__file__)
-if config.core.telemetry.enabled:
-    setup_telemetry()
+
 
 app = Flask(
     "howler-api",
     static_url_path="/api/static",
     static_folder=config.ui.static_folder,
 )
+if config.core.telemetry.enabled:
+    setup_telemetry(app)
 
 # Disable strict check on trailing slashes for endpoints
 app.url_map.strict_slashes = False
