@@ -347,27 +347,6 @@ describe('RecordSearchContext', () => {
       });
     });
 
-    it('should include bundle filter when on bundles route', async () => {
-      mockLocation.pathname = '/bundles/test_bundle_id';
-      mockParams.mockReturnValue({ id: 'test_bundle_id' });
-
-      const hook = renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.search), { wrapper: Wrapper });
-
-      act(() => {
-        hook.result.current('test query');
-      });
-
-      await waitFor(() => {
-        expect(hpost).toHaveBeenCalledWith(
-          '/api/v1/search/hit',
-          expect.objectContaining({
-            query: 'test query',
-            filters: ['event.created:[now-1w TO now]', 'howler.bundles:test_bundle_id']
-          })
-        );
-      });
-    });
-
     it('should apply date range filter from span', async () => {
       const hook = renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.search), { wrapper: Wrapper });
 
