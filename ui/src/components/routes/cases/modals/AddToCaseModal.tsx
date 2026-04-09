@@ -17,7 +17,19 @@ const AddToCaseModal: FC<{ records: (Hit | Observable)[] }> = ({ records }) => {
   const [cases, setCases] = useState<Case[]>([]);
   const [selectedCase, setSelectedCase] = useState<Case | null>(null);
   const [path, setPath] = useState('');
-  const [title, setTitle] = useState('');
+
+  const defaultTitle = useMemo(() => {
+    if (!records?.length) {
+      return '';
+    }
+    const record = records[0];
+    if (record.__index === 'hit') {
+      return `${record.howler.analytic} (${record.howler.id})`;
+    }
+    return `Observable (${record.howler.id})`;
+  }, [records]);
+
+  const [title, setTitle] = useState(defaultTitle);
 
   useEffect(() => {
     dispatchApi(api.search.case.post({ query: 'case_id:*', rows: 100 }), { throwError: false }).then(result => {
