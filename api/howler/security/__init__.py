@@ -2,10 +2,13 @@ import functools
 import sys
 from typing import Optional
 
-import howler.services.auth_service as auth_service
 import requests
 from flask import request
 from flask import session as flsk_session
+from jwt import ExpiredSignatureError
+from prometheus_client import Counter
+
+import howler.services.auth_service as auth_service
 from howler.api import bad_request, forbidden, internal_error, not_found, too_many_requests, unauthorized
 from howler.common.exceptions import (
     AccessDeniedException,
@@ -20,8 +23,6 @@ from howler.common.logging import get_logger
 from howler.common.logging.audit import audit
 from howler.config import AUDIT, QUOTA_TRACKER, config
 from howler.odm.models.user import User
-from jwt import ExpiredSignatureError
-from prometheus_client import Counter
 
 logger = get_logger(__file__)
 

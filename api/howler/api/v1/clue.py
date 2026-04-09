@@ -4,6 +4,7 @@ from typing import Callable, Optional
 
 import requests
 from flask import request
+
 from howler.api import bad_gateway, make_subapi_blueprint, ok
 from howler.common.exceptions import AuthenticationException
 from howler.common.logging import get_logger

@@ -3,6 +3,7 @@ from typing import Any, Literal, Optional, overload
 from authlib.integrations.flask_client import OAuth
 from flask import current_app, request
 from opentelemetry import trace
+
 from howler.common.exceptions import AccessDeniedException, HowlerValueError, InvalidDataException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger

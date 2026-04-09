@@ -4,10 +4,11 @@ import hmac
 from datetime import datetime
 from typing import Optional, Union
 
-import howler.services.jwt_service as jwt_service
-import howler.services.user_service as user_service
 from flask import request
 from opentelemetry import trace
+
+import howler.services.jwt_service as jwt_service
+import howler.services.user_service as user_service
 from howler.common.exceptions import (
     AccessDeniedException,
     AuthenticationException,

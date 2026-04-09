@@ -5,6 +5,7 @@ from typing import Any, Optional
 
 import requests
 from authlib.integrations.flask_client import OAuth
+
 from howler.common.exceptions import HowlerException, HowlerValueError
 from howler.common.loader import USER_TYPES
 from howler.common.logging import get_logger
