@@ -91,7 +91,7 @@ def proxy_to_clue(path, **kwargs):
                 timeout=5 * 60,
             )
 
-    logger.debug(f"Request to clue completed in {round(time.perf_counter() - start)}ms")
+    logger.debug("Request to clue completed in %s ms", round(time.perf_counter() - start))
 
     if not response.ok:
         return bad_gateway(response.json(), err="Something went wrong when connecting to clue")

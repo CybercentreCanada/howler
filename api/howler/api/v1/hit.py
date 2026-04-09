@@ -99,7 +99,7 @@ def create_hits(user: User, **kwargs):
     response_body: dict[str, list[Any]] = {"valid": [], "invalid": []}
     odms = []
     ignore_extra_values: bool = bool(request.args.get("ignore_extra_values", False, type=lambda v: v.lower() == "true"))
-    logger.debug(f"ignore_extra_values = {ignore_extra_values}")
+    logger.debug("ignore_extra_values = %s", ignore_extra_values)
     warnings = []
     for hit in hits:
         try:
@@ -108,7 +108,7 @@ def create_hits(user: User, **kwargs):
             odms.append(odm)
             warnings.extend(_warnings)
         except HowlerException as e:
-            logger.warning(f"{type(e).__name__} when saving new hit!")
+            logger.warning("%s when saving new hit!", type(e).__name__)
             logger.warning(e)
             response_body["invalid"].append({"input": hit, "error": str(e)})
 

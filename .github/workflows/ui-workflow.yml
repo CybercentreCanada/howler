@@ -270,6 +270,11 @@ jobs:
           VITE_COMMIT_HASH: ${{ github.sha }}      # Embed commit hash in build
           NODE_OPTIONS: --max-old-space-size=16384 # Increase memory for large builds
 
+      - name: Set up chainctl with howler identity
+        uses: chainguard-dev/setup-chainctl@main
+        with:
+          identity: 42b9b0076fcee50f3ee6d013eadb93841a051303/7799abfc569cf293
+
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:

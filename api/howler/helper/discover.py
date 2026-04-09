@@ -51,11 +51,11 @@ def get_apps_list(discovery_url: Optional[str]) -> list[dict[str, str]]:
                             )
 
                     except Exception:
-                        logger.exception(f"Failed to parse get app: {str(app)}")
+                        logger.exception("Failed to parse get app: %s", str(app))
             else:
-                logger.warning(f"Invalid response from server for apps discovery: {discovery_url}")
+                logger.warning("Invalid response from server for apps discovery: %s", discovery_url)
         except Exception:
-            logger.exception(f"Failed to get apps from discover URL: {discovery_url}")
+            logger.exception("Failed to get apps from discover URL: %s", discovery_url)
 
         DISCO_CACHE[discovery_url] = sorted(apps, key=lambda k: k["name"])
         return sorted(apps, key=lambda k: k["name"])

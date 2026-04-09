@@ -67,7 +67,7 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
     field_map = data.pop("map", None)
     hits = data.pop("hits", None)
     ignore_extra_values: bool = bool(request.args.get("ignore_extra_values", False, type=lambda v: v.lower() == "true"))
-    logger.debug(f"ignore_extra_values = {ignore_extra_values}")
+    logger.debug("ignore_extra_values = %s", ignore_extra_values)
     # Check data type
     if not isinstance(field_map, dict):
         return bad_request(err="Invalid: 'map' field is missing or invalid.")
@@ -114,7 +114,7 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
                     try:
                         field_data: Optional[_Field] = hit_fields[target]
                     except KeyError:
-                        logger.debug(f"`{target}` not in hit fields")
+                        logger.debug("`%s` not in hit fields", target)
                         field_data = next(
                             (v for k, v in hit_fields.items() if get_parent_key(k) == target),
                             None,
@@ -147,7 +147,7 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
                 }
             )
         except HowlerException as e:
-            logger.warning(f"{type(e).__name__} when saving {cur_id}!")
+            logger.warning("%s when saving %s!", type(e).__name__, cur_id)
             logger.warning(e)
 
             out.append({"id": None, "error": str(e)})

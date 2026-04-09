@@ -54,7 +54,7 @@ def emit(event: str, data: Any):
         if event not in handlers:
             return
 
-        logger.debug(f"event:{event} - emitting data")
+        logger.debug("event:%s - emitting data", event)
 
         for handler in handlers[event]:
             handler(data)
@@ -72,7 +72,7 @@ def on(event: str, handler: Callable):
 
     handlers[event].append(handler)
 
-    logger.debug(f"event:{event} - added listener")
+    logger.debug("event:%s - added listener", event)
 
 
 def off(event: str, handler: Callable):
@@ -90,4 +90,4 @@ def off(event: str, handler: Callable):
 
     handlers[event] = [h for h in handlers[event] if h != handler]
 
-    logger.debug(f"event:{event} - removed listener")
+    logger.debug("event:%s - removed listener", event)

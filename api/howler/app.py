@@ -216,7 +216,7 @@ if logger.parent:
 
 # Setup APMs
 if config.core.metrics.apm_server.server_url is not None:
-    logger.info(f"Exporting application metrics to: {config.core.metrics.apm_server.server_url}")
+    logger.info("Exporting application metrics to: %s", config.core.metrics.apm_server.server_url)
     ElasticAPM(
         app,
         server_url=config.core.metrics.apm_server.server_url,

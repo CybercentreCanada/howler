@@ -316,6 +316,58 @@ describe('RecordSearchContext', () => {
       });
     });
 
+    it('should not crash when appendResults is true but response is null', async () => {
+      const mockResponse = {
+        items: [{ howler: { id: 'hit1' } }],
+        offset: 0,
+        rows: 1,
+        total: 10
+      };
+
+      vi.mocked(hpost).mockResolvedValueOnce(mockResponse as any);
+
+      const hook = renderHook(
+        () =>
+          useContextSelector(RecordSearchContext, ctx => ({
+            search: ctx.search,
+            response: ctx.response
+          })),
+        { wrapper: Wrapper }
+      );
+
+      // response is null — call search with appendResults=true directly
+      act(() => {
+        hook.result.current.search('test query', true);
+      });
+
+      await waitFor(() => {
+        expect(hook.result.current.response).not.toBeNull();
+        expect(hook.result.current.response?.items).toHaveLength(1);
+        expect(hook.result.current.response?.items[0].howler.id).toBe('hit1');
+      });
+    });
+
+    it('should include bundle filter when on bundles route', async () => {
+      mockLocation.pathname = '/bundles/test_bundle_id';
+      mockParams.mockReturnValue({ id: 'test_bundle_id' });
+
+      const hook = renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.search), { wrapper: Wrapper });
+
+      act(() => {
+        hook.result.current('test query');
+      });
+
+      await waitFor(() => {
+        expect(hpost).toHaveBeenCalledWith(
+          '/api/v1/search/hit',
+          expect.objectContaining({
+            query: 'test query',
+            filters: ['event.created:[now-1w TO now]', 'howler.bundles:test_bundle_id']
+          })
+        );
+      });
+    });
+
     it('should apply date range filter from span', async () => {
       const hook = renderHook(() => useContextSelector(RecordSearchContext, ctx => ctx.search), { wrapper: Wrapper });
 

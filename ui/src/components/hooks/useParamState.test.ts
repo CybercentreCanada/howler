@@ -6,11 +6,10 @@ import { describe, expect, it } from 'vitest';
 import useParamState from './useParamState';
 
 // Creates a MemoryRouter wrapper using createElement to avoid JSX in a .ts file
-const makeWrapper =
-  (search = ''): FC<PropsWithChildren> =>
+const makeWrapper = (search = ''): FC<PropsWithChildren> => {
   // eslint-disable-next-line react/function-component-definition
-  ({ children }) =>
-    createElement(MemoryRouter, { initialEntries: [search ? `/?${search}` : '/'] }, children);
+  return ({ children }) => createElement(MemoryRouter, { initialEntries: [search ? `/?${search}` : '/'] }, children);
+};
 
 // Composite hook: exposes the param state AND the live URL params for URL-level assertions
 const useParamStateWithUrl = <T extends string | number | boolean | null>(key: string, defaultValue: T) => {

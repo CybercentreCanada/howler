@@ -176,12 +176,16 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
           if (!appendResults) {
             setResponse(_response);
           } else {
-            setResponse(_existingResponse => ({
-              ..._response,
-              offset: _existingResponse.offset,
-              rows: Math.min(_existingResponse.rows + _response.rows, _response.total),
-              items: [..._existingResponse.items, ..._response.items]
-            }));
+            setResponse(_existingResponse =>
+              _existingResponse
+                ? {
+                    ..._response,
+                    offset: _existingResponse.offset,
+                    rows: Math.min(_existingResponse.rows + _response.rows, _response.total),
+                    items: [..._existingResponse.items, ..._response.items]
+                  }
+                : _response
+            );
           }
         } catch (e) {
           setError(e.message);
