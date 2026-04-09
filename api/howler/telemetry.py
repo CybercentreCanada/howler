@@ -31,7 +31,6 @@ def setup_telemetry() -> None:
         if backend == "opentelemetry":
             from opentelemetry import trace
             from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-            from opentelemetry.instrumentation.flask import FlaskInstrumentor
             from opentelemetry.sdk.resources import Resource
             from opentelemetry.sdk.trace import TracerProvider
             from opentelemetry.sdk.trace.export import BatchSpanProcessor
@@ -40,23 +39,18 @@ def setup_telemetry() -> None:
             provider = TracerProvider(resource=resource)
             provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
             trace.set_tracer_provider(provider)
-            FlaskInstrumentor().instrument()
         elif backend == "azure_monitor":
+            import os
+
             from azure.monitor.opentelemetry import configure_azure_monitor
 
-            configure_azure_monitor(
-                enable_live_metrics=True,
-                instrumentation_options={
-                    "azure_sdk": {"enabled": True},
-                    "flask": {"enabled": True},
-                    "urllib3": {"enabled": True},
-                    "requests": {"enabled": True},
-                    "urllib": {"enabled": True},
-                    "psycopg2": {"enabled": False},
-                    "django": {"enabled": False},
-                    "fastapi": {"enabled": False},
-                },
-            )
+            if not os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING"):
+                logger.error(
+                    "Azure Monitor telemetry backend selected but APPLICATIONINSIGHTS_CONNECTION_STRING is not set."
+                )
+                return
+
+            configure_azure_monitor()
         else:
             logger.error("Unsupported telemetry backend '%s'.", backend)
             return
