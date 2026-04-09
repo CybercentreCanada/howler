@@ -230,6 +230,7 @@ bcrypt = "4.3.0"
 opentelemetry-sdk = "1.40.0"
 opentelemetry-exporter-otlp-proto-http = "1.40.0"
 opentelemetry-instrumentation-flask = "0.61b0"
+azure-monitor-opentelemetry = "^1.8.7"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.7.0"

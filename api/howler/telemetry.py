@@ -1,47 +1,66 @@
-"""OpenTelemetry setup for Howler API."""
+"""Telemetry setup for Howler API."""
 
-from flask import Flask
 from howler.common.logging import get_logger
-from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-from opentelemetry.instrumentation.flask import FlaskInstrumentor
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 logger = get_logger(__file__)
 
-_flask_instrumentor: FlaskInstrumentor | None = None
-
 
 def setup_telemetry() -> None:
-    """Initialize the OpenTelemetry TracerProvider and library instrumentors.
+    """Initialize telemetry and library instrumentors.
 
-    This should only be called when telemetry is enabled via config
-    (core.telemetry.enabled). The OTLP exporter is configured via
-    environment variables:
+    The backend is selected via ``config.core.telemetry.backend``.
+
+    For ``opentelemetry``, a TracerProvider with the OTLP exporter is created
+    manually. Environment variables control the exporter:
         - OTEL_EXPORTER_OTLP_ENDPOINT
         - OTEL_EXPORTER_OTLP_HEADERS
         - OTEL_EXPORTER_OTLP_PROTOCOL
 
     See https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/
+
+    For ``azure_monitor``, ``configure_azure_monitor`` from
+    ``azure-monitor-opentelemetry`` handles the full setup (provider,
+    exporters, and instrumentation). Requires the
+    ``APPLICATIONINSIGHTS_CONNECTION_STRING`` environment variable.
     """
-    global _flask_instrumentor  # noqa: PLW0603
+    from howler.odm.models.config import config
+
+    backend = config.core.telemetry.backend
 
     try:
-        resource = Resource.create({"service.name": "howler"})
-        provider = TracerProvider(resource=resource)
-        provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
-        trace.set_tracer_provider(provider)
+        if backend == "opentelemetry":
+            from opentelemetry import trace
+            from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+            from opentelemetry.instrumentation.flask import FlaskInstrumentor
+            from opentelemetry.sdk.resources import Resource
+            from opentelemetry.sdk.trace import TracerProvider
+            from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-        _flask_instrumentor = FlaskInstrumentor()
+            resource = Resource.create()
+            provider = TracerProvider(resource=resource)
+            provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+            trace.set_tracer_provider(provider)
+            FlaskInstrumentor().instrument()
+        elif backend == "azure_monitor":
+            from azure.monitor.opentelemetry import configure_azure_monitor
 
-        logger.info("OpenTelemetry configured successfully.")
+            configure_azure_monitor(
+                enable_live_metrics=True,
+                instrumentation_options={
+                    "azure_sdk": {"enabled": True},
+                    "flask": {"enabled": True},
+                    "urllib3": {"enabled": True},
+                    "requests": {"enabled": True},
+                    "urllib": {"enabled": True},
+                    "psycopg2": {"enabled": False},
+                    "django": {"enabled": False},
+                    "fastapi": {"enabled": False},
+                },
+            )
+        else:
+            logger.error("Unsupported telemetry backend '%s'.", backend)
+            return
+
+        logger.info("Telemetry configured successfully (backend=%s).", backend)
     except Exception:
-        logger.exception("Failed to configure OpenTelemetry.")
-
-
-def instrument_flask_app(app: Flask) -> None:
-    """Instrument a Flask app with OpenTelemetry tracing."""
-    if _flask_instrumentor is not None:
-        _flask_instrumentor.instrument_app(app)
+        logger.exception("Failed to configure telemetry (backend=%s).", backend)

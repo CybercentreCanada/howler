@@ -438,14 +438,21 @@ class Notebook(BaseModel):
 
 
 class Telemetry(BaseModel):
-    """OpenTelemetry configuration for Howler.
+    """Telemetry configuration for Howler.
 
-    Controls whether OpenTelemetry tracing is enabled. When enabled, the OTLP
-    exporter is configured via standard OTEL environment variables such as
-    OTEL_EXPORTER_OTLP_ENDPOINT and OTEL_EXPORTER_OTLP_HEADERS.
+    Controls whether tracing is enabled and which backend to use.
+    When using ``opentelemetry``, the OTLP exporter is configured via
+    standard OTEL environment variables such as OTEL_EXPORTER_OTLP_ENDPOINT
+    and OTEL_EXPORTER_OTLP_HEADERS.
+    When using ``azure_monitor``, the Azure Monitor exporter is used instead,
+    configured via the APPLICATIONINSIGHTS_CONNECTION_STRING environment variable.
     """
 
-    enabled: bool = Field(default=False, description="Enable OpenTelemetry tracing?")
+    enabled: bool = Field(default=False, description="Enable telemetry tracing?")
+    backend: str = Field(
+        default="opentelemetry",
+        description="Telemetry backend to use (e.g. 'opentelemetry', 'azure_monitor')",
+    )
 
 
 class Core(BaseModel):

@@ -57,7 +57,7 @@ from howler.config import (
 from howler.cronjobs import setup_jobs
 from howler.error import errors
 from howler.healthz import healthz
-from howler.telemetry import instrument_flask_app, setup_telemetry
+from howler.telemetry import setup_telemetry
 from prometheus_client import make_wsgi_app
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
@@ -70,10 +70,6 @@ app = Flask(
     static_url_path="/api/static",
     static_folder=config.ui.static_folder,
 )
-
-if config.core.telemetry.enabled:
-    # Instrument Flask app with OpenTelemetry
-    instrument_flask_app(app)
 
 # Disable strict check on trailing slashes for endpoints
 app.url_map.strict_slashes = False
