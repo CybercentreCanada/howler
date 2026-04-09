@@ -62,6 +62,7 @@ def emit(event: str, data: Any):
         for handler in handlers[event]:
             handler(data)
 
+
 def on(event: str, handler: Callable):
     """Add a new listener to the specified event
 
@@ -75,6 +76,7 @@ def on(event: str, handler: Callable):
     handlers[event].append(handler)
 
     logger.debug("event:%s - added listener", event)
+
 
 def off(event: str, handler: Callable):
     """Remove an existing listener from the specified event

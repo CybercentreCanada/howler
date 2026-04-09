@@ -3,9 +3,11 @@
 import os
 
 from flask import Flask
+
 from howler.common.logging import get_logger
 
 logger = get_logger(__file__)
+
 
 def setup_telemetry(app: Flask) -> None:
     """Initialize telemetry and library instrumentors.
