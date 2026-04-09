@@ -37,7 +37,7 @@ from howler.utils.uid import get_random_id
 
 logger = get_logger(__file__)
 
-tracer = trace.get_tracer(__file__)
+tracer = trace.get_tracer(__name__)
 odm_helper = OdmHelper(Hit)
 
 
