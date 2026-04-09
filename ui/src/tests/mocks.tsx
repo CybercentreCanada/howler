@@ -34,20 +34,27 @@ export const setupReactRouterMock = () => {
   const mockSetParams = vi.hoisted(() => vi.fn());
 
   beforeAll(() => {
-    vi.mock('react-router-dom', () => ({
-      Link: forwardRef<any, any>(({ to, children, ...props }, ref) => (
-        <a ref={ref} href={to} {...props}>
-          {children}
-        </a>
-      )),
-      useLocation: vi.fn(() => mockLocation),
-      useParams: vi.fn(() => mockParams),
-      useSearchParams: vi.fn(() => [mockSearchParams, mockSetParams]),
-      useNavigate: () => vi.fn()
-    }));
+    vi.mock('react-router-dom', async () => {
+      const actual = await vi.importActual('react-router-dom');
+
+      return {
+        ...actual,
+        Link: forwardRef<any, any>(({ to, children, ...props }, ref) => (
+          <a ref={ref} href={to} {...props}>
+            {children}
+          </a>
+        )),
+        useLocation: vi.fn(() => mockLocation),
+        useParams: vi.fn(() => mockParams),
+        useSearchParams: vi.fn(() => [mockSearchParams, mockSetParams]),
+        useNavigate: () => vi.fn()
+      };
+    });
   });
 
   afterAll(() => vi.resetModules());
+
+  return { mockSearchParams, mockSetParams, mockLocation, mockParams };
 };
 
 /**

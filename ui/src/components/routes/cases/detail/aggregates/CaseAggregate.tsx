@@ -14,7 +14,7 @@ import {
 import { get, isEmpty, uniq } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Observable } from 'models/entities/generated/Observable';
-import { type FC } from 'react';
+import { memo, type FC } from 'react';
 
 const NoMaxWidthTooltip = styled(({ className, ...props }: TooltipProps) => (
   <Tooltip {...props} classes={{ popper: className }} />
@@ -38,7 +38,15 @@ const CaseAggregate: FC<{
     return <Skeleton height={120} />;
   }
 
-  const values = uniq(records?.map(_record => get(_record, field)).flat());
+  const values = records
+    ? uniq(
+        records
+          .map(_record => get(_record, field))
+          .flat()
+          .filter(Boolean)
+      )
+    : [];
+
   return (
     <Card sx={{ height: '100%' }}>
       <CardContent>
@@ -49,7 +57,7 @@ const CaseAggregate: FC<{
               title={
                 !isEmpty(values) && (
                   <Stack spacing={0.5}>
-                    {values.map(value => (
+                    {uniq(values).map(value => (
                       <span key={value}>{value}</span>
                     ))}
                   </Stack>
@@ -70,4 +78,4 @@ const CaseAggregate: FC<{
   );
 };
 
-export default CaseAggregate;
+export default memo(CaseAggregate);

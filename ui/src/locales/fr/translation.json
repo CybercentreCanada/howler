@@ -391,6 +391,7 @@
   "page.cases.detail.properties": "Propriétés",
   "page.cases.detail.status": "Statut",
   "page.cases.escalation": "Escalade",
+  "page.cases.folder.drop.root": "Déposer ici pour déplacer à la racine",
   "page.cases.sidebar.folder.remove": "Supprimer le dossier",
   "page.cases.sidebar.item.open": "Ouvrir l'élément",
   "page.cases.sidebar.item.remove": "Supprimer l'élément",

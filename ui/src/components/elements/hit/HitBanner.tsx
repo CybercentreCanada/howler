@@ -31,6 +31,7 @@ import RelatedRecords from './related/RelatedRecords';
 
 type HitBannerProps = {
   hit: Hit;
+  lazy?: boolean;
   layout?: HitLayout;
   showAssigned?: boolean;
   useListener?: boolean;
@@ -41,7 +42,7 @@ export interface StatusProps<T extends Hit = Hit> {
   layout: HitLayout;
 }
 
-const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAssigned = true }) => {
+const HitBanner: FC<HitBannerProps> = ({ hit, lazy = false, layout = HitLayout.NORMAL, showAssigned = true }) => {
   const { t } = useTranslation();
   const { config } = useContext(ApiConfigContext);
   const theme = useTheme();
@@ -206,7 +207,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
           />
         }
       >
-        <AnalyticLink hit={hit} />
+        <AnalyticLink lazy={lazy} hit={hit} />
         {hit.howler?.rationale && (
           <Typography
             flex={1}
