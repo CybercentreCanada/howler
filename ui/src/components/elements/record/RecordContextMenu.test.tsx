@@ -1333,7 +1333,10 @@ describe('HitContextMenu', () => {
 
       await waitFor(() => {
         expect(mockShowModal).toHaveBeenCalledOnce();
-        expect(mockShowModal).toHaveBeenCalledWith(expect.objectContaining({ type: expect.any(Function) }));
+        expect(mockShowModal).toHaveBeenCalledWith(
+          expect.objectContaining({ type: expect.any(Function) }),
+          expect.objectContaining({ maxHeight: expect.any(String) })
+        );
       });
     });
   });

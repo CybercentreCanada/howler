@@ -4,6 +4,7 @@ import {
   CreateNewFolder,
   Edit,
   HowToVote,
+  NoteAdd,
   OpenInNew,
   QueryStats,
   RemoveCircleOutline,
@@ -22,6 +23,7 @@ import useHitActions from 'components/hooks/useHitActions';
 import useMyApi from 'components/hooks/useMyApi';
 import useMyActionFunctions from 'components/routes/action/useMyActionFunctions';
 import AddToCaseModal from 'components/routes/cases/modals/AddToCaseModal';
+import CreateCaseModal from 'components/routes/cases/modals/CreateCaseModal';
 import { capitalize, get, groupBy, isEmpty, toString } from 'lodash-es';
 import type { Action } from 'models/entities/generated/Action';
 import type { Analytic } from 'models/entities/generated/Analytic';
@@ -309,7 +311,15 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
       icon: <CreateNewFolder />,
       label: t('modal.cases.add_to_case'),
       disabled: !record,
-      onClick: () => showModal(<AddToCaseModal records={records} />)
+      onClick: () => showModal(<AddToCaseModal records={records} />, { maxHeight: '90vh' })
+    });
+    result.push({
+      kind: 'item',
+      id: 'create-case',
+      icon: <NoteAdd />,
+      label: t('modal.cases.create_case'),
+      disabled: !record,
+      onClick: () => showModal(<CreateCaseModal records={records} />, { maxHeight: '90vh' })
     });
 
     return result;
