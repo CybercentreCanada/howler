@@ -28,6 +28,17 @@ from howler.datastore.howler_store import HowlerDatastore
 from howler.services import user_service
 from test.conftest import get_api_data
 
+# The search-filtering tests rely on the server enforcing classification levels.
+# When CLASSIFICATION.enforce is False (e.g. default dev / unenforced deployment),
+# all hits are indexed at the null level and every user can see every hit, so
+# the assertions would be vacuously wrong.  Skip gracefully in that case.
+_enforce_only = pytest.mark.skipif(
+    not CLASSIFICATION.enforce,
+    reason="Classification enforcement is disabled (CLASSIFICATION.enforce=False); "
+    "access-control filter tests require enforce=True in the deployment's "
+    "classification.yml.",
+)
+
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -168,6 +179,7 @@ class TestHitClassificationField:
 # ===================================================================
 
 
+@_enforce_only
 class TestSearchAccessControl:
     """Test that hit search results are filtered based on the user's classification.
 
@@ -177,6 +189,8 @@ class TestSearchAccessControl:
       2. The search endpoint checks has_access_control("hit") -> True.
       3. The access_control filter is appended to the Lucene query, limiting results
          to hits whose classification level, groups, and requirements are satisfied.
+
+    Skipped when CLASSIFICATION.enforce is False (see _enforce_only marker above).
     """
 
     def test_unrestricted_user_search_excludes_restricted_hits(self, huey_session, classified_hits):

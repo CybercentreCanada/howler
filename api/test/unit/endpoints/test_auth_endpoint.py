@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta
 from typing import cast
 
@@ -26,6 +27,11 @@ def request_context():
 def _build_user() -> User:
     user_data: User = random_model_obj(cast(Model, User))
     user_data.type = ["admin", "user"]
+
+    # Use a guaranteed-unique uname so the QUOTA_TRACKER never confuses this
+    # ephemeral test user with a real user (e.g. "admin") whose quota may
+    # already be exhausted from earlier tests in the same Redis session.
+    user_data.uname = f"test_{uuid.uuid4().hex[:12]}"
 
     return user_data
 
