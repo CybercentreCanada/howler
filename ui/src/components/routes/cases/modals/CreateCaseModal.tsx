@@ -26,7 +26,10 @@ const CreateCaseModal: FC<{ records: (Hit | Observable)[] }> = ({ records }) => 
   const [entries, updateEntry] = useRecordEntries(records);
 
   const isValid = useMemo(
-    () => !!caseTitle.trim() && !!summary.trim() && entries.every(e => !!e.title.trim()),
+    () =>
+      !!caseTitle.trim() &&
+      !!summary.trim() &&
+      entries.every(e => !!e.title.trim() && !e.path.startsWith('/') && !e.path.endsWith('/')),
     [caseTitle, summary, entries]
   );
 

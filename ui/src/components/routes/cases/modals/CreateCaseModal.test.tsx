@@ -246,6 +246,24 @@ describe('CreateCaseModal', () => {
       await fillCaseMetadata(user);
       expect(screen.getByRole('button', { name: i18n.t('confirm') })).toBeEnabled();
     });
+
+    it('disables confirm when a folder path starts with /', async () => {
+      renderModal([MOCK_HIT_1]);
+      await fillCaseMetadata(user);
+
+      await user.type(screen.getByPlaceholderText(i18n.t('modal.cases.add_to_case.select_path')), '/leading');
+
+      expect(screen.getByRole('button', { name: i18n.t('confirm') })).toBeDisabled();
+    });
+
+    it('disables confirm when a folder path ends with /', async () => {
+      renderModal([MOCK_HIT_1]);
+      await fillCaseMetadata(user);
+
+      await user.type(screen.getByPlaceholderText(i18n.t('modal.cases.add_to_case.select_path')), 'trailing/');
+
+      expect(screen.getByRole('button', { name: i18n.t('confirm') })).toBeDisabled();
+    });
   });
 
   // -------------------------------------------------------------------------
