@@ -1,4 +1,4 @@
-import { Icon } from '@iconify/react/dist/iconify.js';
+import { Icon } from '@iconify/react';
 import { Code, Comment, DataObject, History, LinkSharp, QueryStats, ViewAgenda } from '@mui/icons-material';
 import {
   Badge,
@@ -28,16 +28,13 @@ import HitComments from 'components/elements/hit/HitComments';
 import HitDetails from 'components/elements/hit/HitDetails';
 import HitLabels from 'components/elements/hit/HitLabels';
 import { HitLayout } from 'components/elements/hit/HitLayout';
-import HitNotebooks from 'components/elements/hit/HitNotebooks';
+import HitLinks from 'components/elements/hit/HitLinks';
 import HitOutline from 'components/elements/hit/HitOutline';
 import HitOverview from 'components/elements/hit/HitOverview';
 import HitRelated from 'components/elements/hit/HitRelated';
 import HitWorklog from 'components/elements/hit/HitWorklog';
-import PivotLink from 'components/elements/hit/related/PivotLink';
-import RelatedLink from 'components/elements/hit/related/RelatedLink';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useMyUserList from 'components/hooks/useMyUserList';
-import uniqBy from 'lodash-es/uniqBy';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import type { FC } from 'react';
@@ -192,25 +189,9 @@ const HitViewer: FC = () => {
           <HowlerCard tabIndex={0} sx={{ position: 'relative' }}>
             <CardContent>
               <HitBanner hit={hit} layout={HitLayout.COMFY} useListener />
-              <HitOutline hit={hit} layout={HitLayout.COMFY} />
+              <HitOutline hit={hit} layout={HitLayout.COMFY} forceAllFields />
               <HitLabels hit={hit} />
-              {(hit?.howler?.links?.length > 0 ||
-                analytic?.notebooks?.length > 0 ||
-                dossiers.filter(_dossier => _dossier.pivots?.length > 0).length > 0) && (
-                <Stack direction="row" spacing={1} pr={2}>
-                  {analytic?.notebooks?.length > 0 && <HitNotebooks analytic={analytic} hit={hit} />}
-                  {hit?.howler?.links?.length > 0 &&
-                    uniqBy(hit.howler.links, 'href')
-                      .slice(0, 3)
-                      .map(l => <RelatedLink key={l.href} compact {...l} />)}
-                  {dossiers.flatMap(_dossier =>
-                    (_dossier.pivots ?? []).map((_pivot, index) => (
-                      // eslint-disable-next-line react/no-array-index-key
-                      <PivotLink key={_dossier.dossier_id + index} pivot={_pivot} hit={hit} compact />
-                    ))
-                  )}
-                </Stack>
-              )}
+              <HitLinks hit={hit} analytic={analytic} dossiers={dossiers} />
             </CardContent>
           </HowlerCard>
           {!isUnderLg && (
@@ -222,7 +203,7 @@ const HitViewer: FC = () => {
                 right: theme.spacing(-6)
               }}
             >
-              <Tooltip title={t('page.hits.view.layout')}>
+              <Tooltip title={t('hit.panel.view.layout')}>
                 <IconButton onClick={onOrientationChange}>
                   <ViewAgenda
                     sx={{ transition: 'rotate 250ms', rotate: orientation === 'vertical' ? '90deg' : '0deg' }}

@@ -5,7 +5,6 @@ import {
   Code,
   Dashboard,
   Description,
-  Edit,
   ExitToApp,
   FormatListBulleted,
   Help,
@@ -23,18 +22,22 @@ import {
   Terminal,
   Topic
 } from '@mui/icons-material';
+import { Stack } from '@mui/material';
 import { AppBrand } from 'branding/AppBrand';
 import type { AppLeftNavElement, AppPreferenceConfigs } from 'commons/components/app/AppConfigs';
+import { AppBarContext } from 'components/app/providers/AppBarProvider';
 import Classification from 'components/elements/display/Classification';
 import DocumentationButton from 'components/elements/display/DocumentationButton';
 import howlerPluginStore from 'plugins/store';
-import { useMemo } from 'react';
+import { Fragment, useContext, useMemo } from 'react';
 import AppMenuBuilder from 'utils/menuUtils';
 
 // This is your App Name that will be displayed in the left drawer and the top navbar
 const APP_NAME = 'howler';
 
 const useMyPreferences = (): AppPreferenceConfigs => {
+  const { leftItems, rightItems } = useContext(AppBarContext);
+
   // The following menu items will show up in the Left Navigation Drawer
   const MENU_ITEMS = useMemo<AppLeftNavElement[]>(
     () => {
@@ -67,6 +70,10 @@ const useMyPreferences = (): AppPreferenceConfigs => {
           }
         },
         {
+          type: 'divider',
+          element: null
+        },
+        {
           type: 'item',
           element: {
             id: 'search.hit',
@@ -89,69 +96,73 @@ const useMyPreferences = (): AppPreferenceConfigs => {
           element: null
         },
         {
-          type: 'group',
+          type: 'item',
           element: {
-            id: 'manage',
-            i18nKey: 'manage',
-            icon: <Edit />,
-            items: [
-              {
-                id: 'manage.views',
-                i18nKey: 'route.views',
-                icon: <ManageSearch />,
-                nested: true,
-                route: '/views'
-              },
-              {
-                id: 'manage.analytics',
-                i18nKey: 'route.analytics',
-                icon: <QueryStats />,
-                nested: true,
-                route: '/analytics'
-              },
-              {
-                id: 'manage.templates',
-                i18nKey: 'route.templates',
-                icon: <FormatListBulleted />,
-                nested: true,
-                route: '/templates'
-              },
-              {
-                id: 'manage.overviews',
-                i18nKey: 'route.overviews',
-                icon: <Article />,
-                nested: true,
-                route: '/overviews'
-              },
-              {
-                id: 'manage.dossiers',
-                i18nKey: 'route.dossiers',
-                icon: <Topic />,
-                nested: true,
-                route: '/dossiers'
-              },
-              {
-                id: 'manage.actions',
-                i18nKey: 'route.actions',
-                icon: <Terminal />,
-                nested: true,
-                route: '/action',
-                userPropValidators: [
-                  { prop: 'roles', value: 'automation_basic' },
-                  { prop: 'roles', value: 'automation_advanced' },
-                  { prop: 'roles', value: 'actionrunner_basic' },
-                  { prop: 'roles', value: 'actionrunner_advanced' }
-                ]
-              },
-              {
-                id: 'action.integrations',
-                i18nKey: 'route.integrations',
-                icon: <Api />,
-                nested: true,
-                route: '/action/integrations',
-                userPropValidators: [{ prop: 'roles', value: 'automation_basic' }]
-              }
+            id: 'manage.views',
+            i18nKey: 'route.views',
+            icon: <ManageSearch />,
+            route: '/views'
+          }
+        },
+        {
+          type: 'item',
+          element: {
+            id: 'manage.analytics',
+            i18nKey: 'route.analytics',
+            icon: <QueryStats />,
+            route: '/analytics'
+          }
+        },
+        {
+          type: 'item',
+          element: {
+            id: 'manage.templates',
+            i18nKey: 'route.templates',
+            icon: <FormatListBulleted />,
+            route: '/templates'
+          }
+        },
+        {
+          type: 'item',
+          element: {
+            id: 'manage.overviews',
+            i18nKey: 'route.overviews',
+            icon: <Article />,
+            route: '/overviews'
+          }
+        },
+        {
+          type: 'item',
+          element: {
+            id: 'manage.dossiers',
+            i18nKey: 'route.dossiers',
+            icon: <Topic />,
+            route: '/dossiers'
+          }
+        },
+        {
+          type: 'item',
+          element: {
+            id: 'manage.actions',
+            i18nKey: 'route.actions',
+            icon: <Terminal />,
+            route: '/action',
+            userPropValidators: [
+              { prop: 'roles', value: 'automation_basic' },
+              { prop: 'roles', value: 'automation_advanced' },
+              { prop: 'roles', value: 'actionrunner_basic' },
+              { prop: 'roles', value: 'actionrunner_advanced' }
             ]
+          }
+        },
+        {
+          type: 'item',
+          element: {
+            id: 'action.integrations',
+            i18nKey: 'route.integrations',
+            icon: <Api />,
+            route: '/action/integrations',
+            userPropValidators: [{ prop: 'roles', value: 'automation_basic' }]
           }
         },
         {
@@ -295,14 +306,28 @@ const useMyPreferences = (): AppPreferenceConfigs => {
         adminMenuI18nKey: 'adminmenu',
         quickSearchParam: 'query',
         quickSearchURI: '/hits',
-        leftAfterBreadcrumbs: <DocumentationButton />,
-        rightBeforeSearch: <Classification />
+        leftAfterBreadcrumbs: (
+          <Stack direction="row" spacing={1} alignItems="center">
+            <DocumentationButton />
+            {leftItems.map(item => (
+              <Fragment key={item.id}>{item.component}</Fragment>
+            ))}
+          </Stack>
+        ),
+        rightBeforeSearch: (
+          <Stack direction="row" spacing={1} alignItems="center" pr={1}>
+            {rightItems.map(item => (
+              <Fragment key={item.id}>{item.component}</Fragment>
+            ))}
+            <Classification />
+          </Stack>
+        )
       },
       leftnav: {
         elements: MENU_ITEMS
       }
     }),
-    [USER_MENU_ITEMS, ADMIN_MENU_ITEMS, MENU_ITEMS]
+    [USER_MENU_ITEMS, ADMIN_MENU_ITEMS, MENU_ITEMS, leftItems, rightItems]
   );
 };
 

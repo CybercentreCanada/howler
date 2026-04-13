@@ -1,9 +1,8 @@
 import base64
 import hashlib
 import re
-from typing import Any, List, Optional, Tuple
+from typing import Any, Optional
 
-import elasticapm
 import requests
 
 from howler.common.exceptions import HowlerException, HowlerValueError
@@ -29,10 +28,7 @@ def reorder_name(name: Optional[str]) -> Optional[str]:
     return " ".join(name.split(", ", 1)[::-1])
 
 
-@elasticapm.capture_span(span_type="authentication")
-def parse_profile(  # noqa: C901
-    profile: dict[str, Any], provider_config: OAuthProvider
-) -> Tuple[dict[str, Any], List[str]]:
+def parse_profile(profile: dict[str, Any], provider_config: OAuthProvider) -> dict[str, Any]:  # noqa: C901
     """Parse a raw profile dict into a useful user data dict"""
     # Find email address and normalize it for further processing
     email_adr = profile.get(
@@ -96,7 +92,7 @@ def parse_profile(  # noqa: C901
     # Compute access, roles and classification using auto_properties
     access = True
     roles = ["user"]
-    groups = []
+    groups = profile.get("groups", [])
     assignments = []
     classification = CLASSIFICATION_ENGINE.UNRESTRICTED
     if provider_config.auto_properties:
@@ -159,19 +155,18 @@ def parse_profile(  # noqa: C901
             ):
                 roles.append(user_type)
 
-    return (
-        dict(
-            access=access,
-            type=roles,
-            classification=classification,
-            uname=uname,
-            name=name,
-            email=email_adr,
-            password="__NO_PASSWORD__",  # noqa: S106
-            avatar=profile.get("picture", provider_config.picture_url or alternate),
-            groups=groups,
-        ),
-        sorted(assignments),
+    # TODO: re-export assignments once they're actually used.
+    # This may need a refactor once the tags stuff is figured out
+    return dict(
+        access=access,
+        type=roles,
+        classification=classification,
+        uname=uname,
+        name=name,
+        email=email_adr,
+        password="__NO_PASSWORD__",  # noqa: S106
+        avatar=profile.get("picture", provider_config.picture_url or alternate),
+        groups=groups,
     )
 
 
@@ -189,7 +184,7 @@ def fetch_avatar(  # noqa: C901
             headers = {}
             token: str | None = None
 
-            if oauth_provider == "entraid":
+            if oauth_provider in ["entraid", "azure"]:
                 if not access_token:
                     raise HowlerValueError("An azure access token is necessary to retrieve the profile picture")  # noqa: TRY301
 

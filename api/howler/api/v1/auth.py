@@ -144,6 +144,7 @@ def add_apikey(**kwargs):  # noqa: C901
     except HowlerException as e:
         return bad_request(err=e.message)
 
+    auth_service.invalidate_apikey_cache(user["uname"], key_name)
     storage.user.save(user["uname"], user_data)
 
     return ok({"apikey": f"{key_name}:{random_pass}"})
@@ -173,6 +174,7 @@ def delete_apikey(name, **kwargs):
         return not_found("Api key does not exist")
 
     user_data.apikeys.pop(name)
+    auth_service.invalidate_apikey_cache(user["uname"], name)
     storage.user.save(user["uname"], user_data)
 
     return no_content()
@@ -345,23 +347,23 @@ def login(**_):  # noqa: C901
     # For sanity's sake, we throw exceptions throughout the authentication code and simply catch the exceptions here to
     # return the corresponding HTTP Code to the user
     except (OAuthError, AuthenticationException) as err:
-        logger.warning(f"Authentication failure. (U:{user} - IP:{ip}) [{err}]")
+        logger.warning("Authentication failure. (U:%s - IP:%s) [%s]", user, ip, err)
         return unauthorized(err=str(err))
 
     except AccessDeniedException as err:
-        logger.warning(f"Authorization failure. (U:{user} - IP:{ip}) [{err}]")
+        logger.warning("Authorization failure. (U:%s - IP:%s) [%s]", user, ip, err)
         return forbidden(err=err.message)
 
     except InvalidDataException as err:
         return bad_request(err=err.message or str(err))
 
     except HowlerException:
-        logger.exception(f"Internal Authentication Error. (U:{user} - IP:{ip})")
+        logger.exception("Internal Authentication Error. (U:%s - IP:%s)", user, ip)
         return internal_error(
             err="Unhandled exception occured while Authenticating. Contact your administrator.",
         )
 
-    logger.info(f"Login successful. (U:{logged_in_uname} - IP:{ip})")
+    logger.info("Login successful. (U:%s - IP:%s)", logged_in_uname, ip)
 
     xsrf_token = generate_random_secret()
 

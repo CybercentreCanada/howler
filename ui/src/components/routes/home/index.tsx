@@ -8,19 +8,20 @@ import {
   type DragEndEvent
 } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import { Cancel, Check, Close, Edit, OpenInNew } from '@mui/icons-material';
+import { Cancel, Check, Close, OpenInNew } from '@mui/icons-material';
 import { Alert, AlertTitle, CircularProgress, Grid, IconButton, Stack, Typography } from '@mui/material';
 import api from 'api';
 import { AppBrand } from 'branding/AppBrand';
 import { useAppUser } from 'commons/components/app/hooks';
 import PageCenter from 'commons/components/pages/PageCenter';
+import { AppBarContext } from 'components/app/providers/AppBarProvider';
 import CustomButton from 'components/elements/addons/buttons/CustomButton';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useMyUserFunctions from 'components/hooks/useMyUserFunctions';
 import dayjs from 'dayjs';
 import isEqual from 'lodash-es/isEqual';
 import type { HowlerUser } from 'models/entities/HowlerUser';
-import { useCallback, useEffect, useMemo, useState, type FC } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { StorageKey } from 'utils/constants';
@@ -28,14 +29,18 @@ import ErrorBoundary from '../ErrorBoundary';
 import AddNewCard from './AddNewCard';
 import AnalyticCard, { type AnalyticSettings } from './AnalyticCard';
 import EntryWrapper from './EntryWrapper';
+import HomeSettings from './HomeSettings';
 import ViewCard, { type ViewSettings } from './ViewCard';
+import ViewRefresh, { type ViewRefreshHandle } from './ViewRefresh';
 
 const LUCENE_DATE_FMT = 'YYYY-MM-DD[T]HH:mm:ss';
 
 const Home: FC = () => {
   const { t } = useTranslation();
   const { user, setUser } = useAppUser<HowlerUser>();
-  const { setDashboard } = useMyUserFunctions();
+  const { addToAppBar, removeFromAppBar } = useContext(AppBarContext);
+
+  const { setDashboard, setRefreshRate: setRefreshRateBackend } = useMyUserFunctions();
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -50,6 +55,10 @@ const Home: FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [updatedHitTotal, setUpdatedHitTotal] = useState(0);
   const [dashboard, setStateDashboard] = useState(user.dashboard ?? []);
+  const [refreshRate, setRefreshRate] = useState(user.refresh_rate ?? 15);
+  const [refreshTick, setRefreshTick] = useState<symbol | null>(null);
+  const viewRefreshRef = useRef<ViewRefreshHandle>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const updateQuery = useMemo(
     () =>
@@ -71,6 +80,34 @@ const Home: FC = () => {
 
   const setLocalDashboard = useCallback((_dashboard: HowlerUser['dashboard']) => {
     setStateDashboard(_dashboard);
+  }, []);
+
+  const handleRefreshComplete = useCallback(() => {
+    viewRefreshRef.current?.handleRefreshComplete();
+  }, []);
+
+  const handleRefreshRateChange = useCallback(
+    (newRate: number) => {
+      setRefreshRate(newRate);
+      setUser(prev => ({
+        ...prev,
+        refresh_rate: newRate
+      }));
+
+      // Debounce the backend API call
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+
+      debounceTimerRef.current = setTimeout(() => {
+        setRefreshRateBackend(newRate);
+      }, 500);
+    },
+    [setRefreshRateBackend, setUser]
+  );
+
+  const handleRefresh = useCallback(() => {
+    setRefreshTick(Symbol());
   }, []);
 
   const saveChanges = useCallback(async () => {
@@ -117,8 +154,45 @@ const Home: FC = () => {
       .then(result => setUpdatedHitTotal(result.total));
   }, [updateQuery]);
 
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, []);
+
+  const viewCardCount = useMemo(() => (dashboard ?? []).filter(e => e.type === 'view').length, [dashboard]);
+
+  useEffect(() => {
+    addToAppBar(
+      'left',
+      'view_refresh',
+      <ViewRefresh
+        ref={viewRefreshRef}
+        refreshRate={refreshRate}
+        viewCardCount={viewCardCount}
+        onRefresh={handleRefresh}
+      />
+    );
+
+    addToAppBar(
+      'left',
+      'home_settings',
+      <HomeSettings
+        isEditing={isEditing}
+        refreshRate={refreshRate}
+        onRefreshRateChange={handleRefreshRateChange}
+        onEdit={() => setIsEditing(true)}
+      />
+    );
+
+    return () => {
+      removeFromAppBar('view_refresh');
+      removeFromAppBar('home_settings');
+    };
+  }, [addToAppBar, handleRefresh, handleRefreshRateChange, isEditing, refreshRate, removeFromAppBar, viewCardCount]);
+
   return (
-    <PageCenter maxWidth="1800px" textAlign="left" height="100%">
+    <PageCenter maxWidth="100%" textAlign="left" height="100%">
       <ErrorBoundary>
         <Stack direction="column" spacing={1} sx={{ height: '100%' }}>
           <Stack direction="row" justifyContent="end" spacing={1}>
@@ -133,16 +207,18 @@ const Home: FC = () => {
                 {t('cancel')}
               </CustomButton>
             )}
-            <CustomButton
-              variant="outlined"
-              size="small"
-              disabled={isEditing && isEqual(dashboard, user.dashboard)}
-              color={isEditing ? 'success' : 'primary'}
-              startIcon={isEditing ? loading ? <CircularProgress size={20} /> : <Check /> : <Edit />}
-              onClick={() => (!isEditing ? setIsEditing(true) : saveChanges())}
-            >
-              {t(isEditing ? 'save' : 'edit')}
-            </CustomButton>
+            {isEditing && (
+              <CustomButton
+                variant="outlined"
+                size="small"
+                disabled={isEqual(dashboard, user.dashboard)}
+                color={'success'}
+                startIcon={loading ? <CircularProgress size={20} /> : <Check />}
+                onClick={saveChanges}
+              >
+                {t('save')}
+              </CustomButton>
+            )}
           </Stack>
           {updatedHitTotal > 0 && (
             <Alert
@@ -207,7 +283,12 @@ const Home: FC = () => {
                           )
                         }
                       >
-                        <ViewCard key={entry.config} {...settings} />
+                        <ViewCard
+                          key={entry.config}
+                          refreshTick={refreshTick}
+                          onRefreshComplete={handleRefreshComplete}
+                          {...settings}
+                        />
                       </EntryWrapper>
                     );
                   } else if (entry.type === 'analytic') {

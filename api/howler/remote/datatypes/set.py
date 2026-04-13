@@ -1,5 +1,6 @@
 import json
 import time
+from typing import Any
 
 from howler.remote.datatypes import get_client, retry_call
 
@@ -26,7 +27,7 @@ return false
 
 class Set(object):
     def __init__(self, name, host=None, port=None):
-        self.c = get_client(host, port, False)
+        self.c: Any = get_client(host, port, False)
         self.name = name
         self._drop_card = self.c.register_script(_drop_card_script)
         self._limited_add = self.c.register_script(_limited_add)

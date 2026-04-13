@@ -4,10 +4,12 @@ import re
 from typing import List, Optional
 from urllib.parse import urlparse
 
-from elasticapm.traces import capture_span
+from opentelemetry import trace
 from passlib.hash import bcrypt
 
 from howler.config import config
+
+tracer = trace.get_tracer(__name__)
 
 UPPERCASE = r"[A-Z]"
 LOWERCASE = r"[a-z]"
@@ -48,7 +50,7 @@ def get_password_hash(password: Optional[str]) -> Optional[str]:
     return bcrypt.hash(password)
 
 
-@capture_span(span_type="authentication")
+@tracer.start_as_current_span("verify_password")
 def verify_password(password: str, pw_hash: str):
     """Use bcrypt to verify a user's password against the hash"""
     try:

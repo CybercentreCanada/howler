@@ -137,7 +137,7 @@ def create_users(ds):
     ds.view.save(admin_view.view_id, admin_view)
 
     if "pytest" not in sys.modules:
-        logger.info(f"\t{user_data.uname}:{admin_pass}")
+        logger.info("\t%s:%s", user_data.uname, admin_pass)
 
     user_hash = get_password_hash(user_pass)
 

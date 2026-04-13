@@ -1,3 +1,5 @@
+from typing import Any
+
 from howler.remote.datatypes import get_client, retry_call
 from howler.utils.uid import get_random_id
 
@@ -27,7 +29,7 @@ end
 class Lock(object):
     def __init__(self, name, timeout, host=None, port=None):
         self.uuid = get_random_id()
-        self.c = get_client(host, port, False)
+        self.c: Any = get_client(host, port, False)
         self.lock_release = "-".join(("lock", str(timeout), name, "released"))
         self.lock_holder = "-".join(("lock", str(timeout), name, "holder"))
         self.timeout = timeout

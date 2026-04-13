@@ -3,7 +3,6 @@ import time
 from typing import Callable, Optional
 
 import requests
-from elasticapm.traces import capture_span
 from flask import request
 
 from howler.api import bad_gateway, make_subapi_blueprint, ok
@@ -74,24 +73,23 @@ def proxy_to_clue(path, **kwargs):
     clue_token = get_token(auth_token)
 
     start = time.perf_counter()
-    with capture_span("clue", span_type="http"):
-        if request.method.lower() == "get":
-            response = requests.get(
-                f"{config.core.clue.url}/{path}",
-                headers={"Authorization": f"Bearer {clue_token}", "Accept": "application/json"},
-                params=request.args.to_dict(),
-                timeout=5 * 60,
-            )
-        else:
-            response = requests.post(
-                f"{config.core.clue.url}/{path}",
-                json=request.json,
-                headers={"Authorization": f"Bearer {clue_token}", "Accept": "application/json"},
-                params=request.args.to_dict(),
-                timeout=5 * 60,
-            )
+    if request.method.lower() == "get":
+        response = requests.get(
+            f"{config.core.clue.url}/{path}",
+            headers={"Authorization": f"Bearer {clue_token}", "Accept": "application/json"},
+            params=request.args.to_dict(),
+            timeout=5 * 60,
+        )
+    else:
+        response = requests.post(
+            f"{config.core.clue.url}/{path}",
+            json=request.json,
+            headers={"Authorization": f"Bearer {clue_token}", "Accept": "application/json"},
+            params=request.args.to_dict(),
+            timeout=5 * 60,
+        )
 
-    logger.debug(f"Request to clue completed in {round(time.perf_counter() - start)}ms")
+    logger.debug("Request to clue completed in %s ms", round(time.perf_counter() - start))
 
     if not response.ok:
         return bad_gateway(response.json(), err="Something went wrong when connecting to clue")

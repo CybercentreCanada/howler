@@ -1,6 +1,6 @@
 import json
 import time
-from typing import Generic, Optional, TypeVar
+from typing import Any, Generic, Optional, TypeVar
 
 from howler.common.exceptions import HowlerTypeError
 from howler.remote.datatypes import get_client, retry_call
@@ -10,7 +10,7 @@ T = TypeVar("T")
 
 class NamedQueue(Generic[T]):
     def __init__(self, name: str, host=None, port=None, private: bool = False, ttl: int = 0):
-        self.c = get_client(host, port, private)
+        self.c: Any = get_client(host, port, private)
         self.name: str = name
         self.ttl: int = ttl
         self.last_expire_time: float = 0

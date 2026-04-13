@@ -3,7 +3,8 @@
 import json
 import logging
 import time
-from datetime import datetime
+from datetime import datetime, timezone
+from pathlib import Path
 
 import redis
 from packaging.version import parse
@@ -24,11 +25,11 @@ if parse(redis.__version__) <= parse("2.10.0"):
 
 
 log = logging.getLogger(f"{loader.APP_NAME}.queue")
-pool: dict[tuple[str, str], redis.BlockingConnectionPool] = {}
+pool: dict[tuple[str, str, bool], redis.BlockingConnectionPool] = {}
 
 
 def now_as_iso():
-    s = datetime.utcfromtimestamp(time.time()).isoformat()
+    s = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
     return f"{s}Z"
 
 
@@ -59,32 +60,90 @@ def retry_call(func, *args, **kw):
 
             return ret_val
         except (redis.ConnectionError, ConnectionResetError) as ce:
-            log.warning(f"No connection to Redis, reconnecting... [{ce}]")
+            log.warning("No connection to Redis, reconnecting... [%s]", ce)
             time.sleep(2**exponent)
             exponent = exponent + 1 if exponent < maximum else exponent
 
 
-def get_client(host, port, private):
+def get_client(
+    host: str | redis.Redis | redis.StrictRedis | redis.RedisCluster | None, port: int | None, private: bool = False
+):
+    """
+    Get Redis instance.
+
+    Args:
+        host: Redis host, defaults to nonpersistent host
+        port: Redis port, defaults to nonpersistent port
+        private: If true then use standard connection, otherwise use a Pool
+
+    Returns:
+        Redis instance
+    """
     # In case a structure is passed a client as host
-    if isinstance(host, (redis.Redis, redis.StrictRedis)):
+    if isinstance(host, (redis.Redis, redis.StrictRedis, redis.RedisCluster)):
         return host
 
     if not host or not port:
         host = host or config.core.redis.nonpersistent.host
         port = int(port or config.core.redis.nonpersistent.port)
 
-    if private:
-        return redis.StrictRedis(host=host, port=port)
+    extra_conn_config: dict[str, str | bool | int] = {}
+    host_config = None
+
+    if host == config.core.redis.nonpersistent.host and port == config.core.redis.nonpersistent.port:
+        host_config = config.core.redis.nonpersistent
     else:
-        return redis.StrictRedis(connection_pool=get_pool(host, port))
+        host_config = config.core.redis.persistent
+
+    if host_config.password:
+        extra_conn_config["username"] = "default"
+        extra_conn_config["password"] = host_config.password
+
+    if host_config.tls_enabled:
+        extra_conn_config["ssl"] = True
+        extra_conn_config["ssl_cert_reqs"] = "required"
+
+        if host_config.tls_ca_cert:
+            if not Path(host_config.tls_ca_cert).exists():
+                raise FileNotFoundError(f"Redis TLS CA cert or path '{host_config.tls_ca_cert}' not found.")
+
+            if Path(host_config.tls_ca_cert).is_file():
+                extra_conn_config["ssl_ca_certs"] = host_config.tls_ca_cert
+            else:
+                extra_conn_config["ssl_ca_path"] = host_config.tls_ca_cert
+
+    if host_config.is_cluster is True:
+        return redis.RedisCluster(host=host, port=port, **extra_conn_config)  # type: ignore
+
+    if private:
+        return redis.StrictRedis(host=host, port=port, **extra_conn_config)  # type: ignore
+    else:
+        return redis.StrictRedis(connection_pool=get_pool(host, port, **extra_conn_config))
 
 
-def get_pool(host, port):
-    key = (host, port)
+def get_pool(host, port, **kwargs):
+    """
+    Get Redis connection pool
+    Args:
+        host: Redis host
+        port: Redis port
+        **kwargs: Extra parameters to pass to pool connection class
 
+    Returns:
+        Redis BlockingConnectionPool
+    """
+    key = (host, str(port), kwargs.get("ssl", False))
     connection_pool = pool.get(key, None)
+
     if not connection_pool:
-        connection_pool = redis.BlockingConnectionPool(host=host, port=port, max_connections=200)
+        if "ssl" in kwargs and kwargs["ssl"]:
+            # SSLConnection class doesn't accept 'ssl' parameter as it implicitly uses SSL
+            kwargs.pop("ssl")
+            connection_pool = redis.BlockingConnectionPool(
+                host=host, port=port, max_connections=200, connection_class=redis.SSLConnection, **kwargs
+            )
+        else:
+            connection_pool = redis.BlockingConnectionPool(host=host, port=port, max_connections=200, **kwargs)
         pool[key] = connection_pool
 
     return connection_pool

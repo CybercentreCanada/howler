@@ -1,4 +1,4 @@
-import { Icon, iconExists } from '@iconify/react/dist/iconify.js';
+import { Icon, iconExists } from '@iconify/react';
 import { Add, Delete, OpenInNew, Remove } from '@mui/icons-material';
 import {
   Alert,
@@ -246,7 +246,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
                 ..._dossier,
                 pivots: [
                   ...(_dossier.pivots ?? []),
-                  { icon: 'material-symbols:add-ad', label: { en: 'New Pivot', fr: 'Nouvelle pivot' } }
+                  { icon: 'material-symbols:add-ad', label: { en: 'New Pivot', fr: 'Nouvelle pivot' }, mappings: [] }
                 ]
               }));
             }}

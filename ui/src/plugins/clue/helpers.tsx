@@ -166,13 +166,7 @@ const HELPERS: HowlerHelper[] = [
 
       console.debug(`Rendering fetcher (${props.fetcherId}) for selector ${props.type}:${props.value}`);
 
-      return (
-        <Fetcher
-          slotProps={{ stack: { component: 'span', sx: { width: 'fit-content' } } }}
-          component="span"
-          {...props}
-        />
-      );
+      return <Fetcher slotProps={{ stack: { component: 'span', sx: { width: 'fit-content' } } }} {...(props as any)} />;
     }
   },
 

@@ -51,7 +51,7 @@ def websocket_auth(required_type: Optional[list[str]] = None, required_priv: Opt
                     raise AuthenticationException()  # noqa: TRY301
 
                 if not set(required_priv) & set(privs):
-                    logger.warning(f"{ws_id}: Authentication header is invalid")
+                    logger.warning("%s: Authentication header is invalid", ws_id)
                     ws.close(
                         1008,
                         ws_response(
@@ -63,7 +63,7 @@ def websocket_auth(required_type: Optional[list[str]] = None, required_priv: Opt
                     )
                     return forbidden()
 
-                logger.info(f"{ws_id} authenticated as {user['uname']}")
+                logger.info("%s authenticated as %s", ws_id, user["uname"])
                 ws.send(
                     ws_response(
                         "info",
@@ -77,13 +77,13 @@ def websocket_auth(required_type: Optional[list[str]] = None, required_priv: Opt
 
                 f(ws, *args, ws_id=ws_id, username=user["uname"], privs=privs, **kwargs)
             except ConnectionClosed:
-                logger.info(f"{ws_id}: Client closed connection")
+                logger.info("%s: Client closed connection", ws_id)
             except (
                 AuthenticationException,
                 ValueError,
                 InvalidTokenError,
             ):
-                logger.warning(f"{ws_id}: Authentication header is invalid")
+                logger.warning("%s: Authentication header is invalid", ws_id)
                 if ws:
                     ws.close(
                         1008,

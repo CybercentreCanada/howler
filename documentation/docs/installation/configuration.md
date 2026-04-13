@@ -17,7 +17,7 @@ For example: HWL_DATASTORE__TYPE=elasticsearch
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
 | `auth` | [`Auth`](#auth) | Authentication configuration for Howler.      Configures all authentication methods supported by Howler, including     internal username/password authentication and OAuth providers. Also     controls API key settings and restrictions.      | :material-checkbox-marked-outline: Yes | See [Auth](#auth) for details. |
-| `core` | [`Core`](#core) | Core application configuration for Howler.      Aggregates all core service configurations including Redis, metrics,     and external integrations like Clue and nbgallery notebooks.     Also manages the loading of external plugins.      | :material-checkbox-marked-outline: Yes | See [Core](#core) for details. |
+| `core` | [`Core`](#core) | Core application configuration for Howler.      Aggregates all core service configurations including Redis, telemetry,     and external integrations like Clue and nbgallery notebooks.     Also manages the loading of external plugins.      | :material-checkbox-marked-outline: Yes | See [Core](#core) for details. |
 | `datastore` | [`Datastore`](#datastore) | Datastore configuration for Howler.      Defines the backend datastore used by Howler for storing hits and metadata.     Currently supports Elasticsearch as the datastore type.      | :material-checkbox-marked-outline: Yes | See [Datastore](#datastore) for details. |
 | `logging` | [`Logging`](#logging) | Logging configuration for Howler.      Defines how and where Howler logs should be output, including console,     file, and syslog destinations. Also controls log level, format, and     metric export intervals.      | :material-checkbox-marked-outline: Yes | See [Logging](#logging) for details. |
 | `system` | [`System`](#system) | System-level configuration for Howler.      Defines global system settings including deployment type (production,     staging, or development) and configuration for automated maintenance     jobs like data retention and view cleanup.      | :material-checkbox-marked-outline: Yes | See [System](#system) for details. |
@@ -143,40 +143,33 @@ OAuth provider data.
 
 Core application configuration for Howler.
 
-Aggregates all core service configurations including Redis, metrics,
+Aggregates all core service configurations including Redis, telemetry,
 and external integrations like Clue and nbgallery notebooks.
 Also manages the loading of external plugins.
 
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
 | `plugins` | `set[str]` | A list of external plugins to load | :material-checkbox-marked-outline: Yes | `set()`
-| `metrics` | [`Metrics`](#metrics) | Metrics collection configuration.      Configures how Howler collects and exports application metrics,     including integration with external APM servers.      | :material-checkbox-marked-outline: Yes | See [Metrics](#metrics) for details. |
+| `telemetry` | [`Telemetry`](#telemetry) | Telemetry configuration for Howler.      Controls whether tracing is enabled and which backend to use.     When using ``opentelemetry``, the OTLP exporter is configured via     standard OTEL environment variables such as OTEL_EXPORTER_OTLP_ENDPOINT     and OTEL_EXPORTER_OTLP_HEADERS.     When using ``azure_monitor``, the Azure Monitor exporter is used instead,     configured via the APPLICATIONINSIGHTS_CONNECTION_STRING environment variable.      | :material-checkbox-marked-outline: Yes | See [Telemetry](#telemetry) for details. |
 | `redis` | [`Redis`](#redis) | Redis configuration for Howler.      Defines connections to both persistent and non-persistent Redis instances.     The non-persistent instance is used for volatile data like caches, while     the persistent instance is used for data that needs to survive restarts.      | :material-checkbox-marked-outline: Yes | See [Redis](#redis) for details. |
 | `clue` | [`Clue`](#clue) | Clue enrichment service integration configuration.      Defines settings for integrating with Clue, an external enrichment     service that can provide additional context and status information for     hits displayed in the Howler UI.      | :material-checkbox-marked-outline: Yes | See [Clue](#clue) for details. |
 | `notebook` | [`Notebook`](#notebook) | Jupyter notebook integration configuration.      Defines settings for integrating with nbgallery, a collaborative     Jupyter notebook platform, allowing users to access and share     notebooks related to their Howler analysis work.      | :material-checkbox-marked-outline: Yes | See [Notebook](#notebook) for details. |
 
-# Metrics
+# Telemetry
 
-Metrics collection configuration.
+Telemetry configuration for Howler.
 
-Configures how Howler collects and exports application metrics,
-including integration with external APM servers.
-
-| Field | Type | Description | Required | Default |
-| :--- | :--- | :--- | :--- | :--- |
-| `apm_server` | [`APMServer`](#apmserver) | Application Performance Monitoring (APM) server configuration.      Defines the connection details for an external APM server used to     collect and analyze application performance metrics.      | :material-checkbox-marked-outline: Yes | See [APMServer](#apmserver) for details. |
-
-# APMServer
-
-Application Performance Monitoring (APM) server configuration.
-
-Defines the connection details for an external APM server used to
-collect and analyze application performance metrics.
+Controls whether tracing is enabled and which backend to use.
+When using ``opentelemetry``, the OTLP exporter is configured via
+standard OTEL environment variables such as OTEL_EXPORTER_OTLP_ENDPOINT
+and OTEL_EXPORTER_OTLP_HEADERS.
+When using ``azure_monitor``, the Azure Monitor exporter is used instead,
+configured via the APPLICATIONINSIGHTS_CONNECTION_STRING environment variable.
 
 | Field | Type | Description | Required | Default |
 | :--- | :--- | :--- | :--- | :--- |
-| `server_url` | `str` | URL to API server | :material-minus-box-outline: Optional | `None`
-| `token` | `str` | Authentication token for server | :material-minus-box-outline: Optional | `None`
+| `enabled` | `bool` | Enable telemetry tracing? | :material-checkbox-marked-outline: Yes | `False`
+| `backend` | `str` | Telemetry backend to use (e.g. 'opentelemetry', 'azure_monitor') | :material-checkbox-marked-outline: Yes | `opentelemetry`
 
 # Redis
 
