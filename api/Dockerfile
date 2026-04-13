@@ -16,38 +16,37 @@ RUN mkdir -p /etc/howler && \
     mkdir -p /etc/howler/static && \
     mkdir -p /etc/howler/lookups && \
     mkdir -p /etc/howler/plugins && \
+    mkdir -p /var/lib/howler && \
+    mkdir -p /var/log/howler && \
+    mkdir -p /var/cache/howler && \
     chmod 750 /etc/howler && \
     chmod 750 /etc/howler/static && \
     chmod 750 /etc/howler/lookups && \
     chmod 750 /etc/howler/plugins && \
+    chmod 750 /var/lib/howler && \
+    chmod 770 /var/log/howler && \
+    chmod 770 /var/cache/howler && \
     chown nonroot:nonroot /etc/howler && \
     chown nonroot:nonroot /etc/howler/static && \
     chown nonroot:nonroot /etc/howler/lookups && \
-    chown nonroot:nonroot /etc/howler/plugins
+    chown nonroot:nonroot /etc/howler/plugins && \
+    chown nonroot:nonroot /var/lib/howler && \
+    chown nonroot:nonroot /var/log/howler && \
+    chown nonroot:nonroot /var/cache/howler && \
+    # Set the setgid bit so files created in here inherit the group
+    chmod g+s /var/lib/howler
 
-# Create howler cache directory
-RUN mkdir -p /var/cache/howler
-RUN chmod 770 /var/cache/howler
-RUN chown nonroot:nonroot /var/cache/howler
-
-# Create howler home directory
-RUN mkdir -p /var/lib/howler
-RUN chmod 750 /var/lib/howler
-RUN chown nonroot:nonroot /var/lib/howler
-# Set the setgid bit so files created in here inherit the group
-RUN chmod g+s /var/lib/howler
 WORKDIR /var/lib/howler
-
-# Create howler log directory
-RUN mkdir -p /var/log/howler
-RUN chmod 770 /var/log/howler
-RUN chown nonroot:nonroot /var/log/howler
 
 # Install common dependancies
 RUN apk update && apk add --no-cache vim tzdata && rm -rf /var/cache/apk/*
 
+USER nonroot
+
 # Create a temporary image to compile dependencies
 FROM base AS builder
+
+USER root
 
 # Get required apk packages
 RUN apk update && apk add --no-cache build-base gcc libffi-dev openssl-dev && rm -rf /var/cache/apk/*
@@ -55,21 +54,20 @@ RUN apk update && apk add --no-cache build-base gcc libffi-dev openssl-dev && rm
 # Switch user to howler to get predicatable python packages creation
 USER nonroot
 
-# Upgrade pip
+# Upgrade pip (always install the latest version)
+# hadolint ignore=DL3013
 RUN pip install --no-cache-dir --no-warn-script-location --upgrade pip && rm -rf ~/.cache/pip
 
 # Install poetry
-RUN pip install --no-cache-dir --no-warn-script-location poetry && rm -rf ~/.cache/pip
+RUN pip install --no-cache-dir --no-warn-script-location poetry==2.3.2 && rm -rf ~/.cache/pip
 ENV PATH=/var/lib/howler/.local/bin:$PATH
 
 # Install howler into local so it merges new and old packages
 COPY . .
 
-RUN python -m poetry install --without dev,test,types,pre-commit --no-interaction
-
-RUN /var/lib/howler/.venv/bin/python /var/lib/howler/howler/external/generate_mitre.py /etc/howler/lookups
-
-RUN pip uninstall poetry -y && rm -rf ~/.cache/pip
+RUN python -m poetry install --without dev,test,types,pre-commit --no-interaction && \
+    /var/lib/howler/.venv/bin/python /var/lib/howler/howler/external/generate_mitre.py /etc/howler/lookups && \
+    pip uninstall poetry -y && rm -rf ~/.cache/pip
 
 # Create a new image, without compile depedencies
 FROM base
@@ -82,6 +80,8 @@ COPY --chown=nonroot:nonroot --from=builder /etc/howler/lookups /etc/howler/look
 COPY --chown=nonroot:nonroot ./build_scripts/mappings.yml /etc/howler/conf/mappings.yml
 COPY --chown=nonroot:nonroot ./static /etc/howler/static/
 COPY --chown=nonroot:nonroot ./howler/common/classification.yml /var/lib/howler/.local/lib/python3.12/site-packages/howler/common/
+
+USER nonroot
 
 # Setup Environment
 ENV PATH=/var/lib/howler/.local/bin:/var/lib/howler/.venv/bin:$PATH
