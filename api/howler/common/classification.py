@@ -92,10 +92,6 @@ class Classification(object):
 
             self.dynamic_groups_type = classification_definition.get("dynamic_groups_type", self.dynamic_groups_type)
 
-            if self.enforce:
-                self._classification_cache = self.list_all_classification_combinations()
-                self._classification_cache_short = self.list_all_classification_combinations(long_format=False)
-
             if classification_definition.get("levels", None) is None:
                 raise HowlerKeyError("No classification levels provided!")
 
@@ -190,6 +186,16 @@ class Classification(object):
                 self.params_map[name] = self.params_map[short_name]
                 self.description[short_name] = x.get("description", "N/A")
                 self.description[name] = self.description[short_name]
+
+            # Build the classification cache AFTER all maps are populated so
+            # that normalize_classification can fully validate each combination.
+            # Using normalized=True filters out invalid combos (e.g. subgroups
+            # that violate limited_to_group constraints).
+            if self.enforce:
+                self._classification_cache = self.list_all_classification_combinations(normalized=True)
+                self._classification_cache_short = self.list_all_classification_combinations(
+                    long_format=False, normalized=True
+                )
 
             if not self.is_valid(classification_definition["unrestricted"]):
                 raise InvalidDefinition("Classification definition's unrestricted classification is invalid.")
@@ -506,6 +512,7 @@ class Classification(object):
     ) -> Tuple[int, list[str], list[str], list[str]]:
         lvl_idx, unused = self._get_c12n_level_index(c12n)
         req, unused_parts = self._get_c12n_required(unused, long_format=long_format)
+
         groups, subgroups, unused_parts = self._get_c12n_groups(
             unused_parts, long_format=long_format, get_dynamic_groups=get_dynamic_groups, auto_select=auto_select
         )
@@ -601,10 +608,13 @@ class Classification(object):
                 else:
                     combinations.add(cl)
             else:
-                cl = "//REL TO ".join(p)
+                # No group present — subgroups are joined with "//" (not "//REL TO ")
+                # to match the format produced by _get_normalized_classification_text.
+                # "REL TO" is reserved for groups in _get_c12n_groups.
+                cl = "//".join(p)
 
-                if cl.endswith("//REL TO "):
-                    combinations.add(cl[:-9])
+                if cl.endswith("//"):
+                    combinations.add(cl[:-2])
                 else:
                     combinations.add(cl)
 

@@ -19,6 +19,7 @@ import pytest
 
 from howler.common import loader
 from howler.common.classification import Classification
+from howler.common.exceptions import InvalidClassification
 from howler.helper import oauth as oauth_module
 from howler.odm.models.config import OAuthProvider
 from howler.services import user_service
@@ -465,3 +466,29 @@ class TestHasAccessControl:
         from howler.helper.search import has_access_control
 
         assert has_access_control("analytic") is False
+
+
+class TestExampleClassifications:
+    @pytest.mark.parametrize(
+        "c12n",
+        [
+            "RESTRICTED//ADMIN//GROUP 2",  # level + required + subgroup (no group needed for G2)
+            "UNRESTRICTED//ANY",  # D1 via solitary display name
+            "UNRESTRICTED//REL TO DEPARTMENT 2",  # D2 via explicit REL TO form
+            "UNRESTRICTED//ANY/GROUP 1",  # D1 (ANY) + G1 (requires D1, satisfied)
+            "UNRESTRICTED//REL TO DEPARTMENT 2/GROUP 2",  # D2 + G2 (no group constraint on G2)
+        ],
+    )
+    def test_valid_classifications(self, cl_engine: Classification, c12n: str):
+        cl_engine.get_access_control_parts(c12n)
+
+    @pytest.mark.parametrize(
+        "c12n",
+        [
+            "RESTRICTED//ADMIN//REL TO GROUP 2",  # REL TO is for groups; GROUP 2 is a subgroup
+            "UNRESTRICTED//REL TO DEPARTMENT 2/GROUP 1",  # G1 is limited_to_group D1, but only D2 present
+        ],
+    )
+    def test_invalid_classifications(self, cl_engine: Classification, c12n: str):
+        with pytest.raises(InvalidClassification):
+            cl_engine.get_access_control_parts(c12n)
