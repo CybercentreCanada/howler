@@ -601,7 +601,7 @@ def random_model_obj(model: odm.Model, as_json: bool = False) -> _Any:
 def random_minimal_obj(model: odm.Model, as_json: bool = False) -> _Any:
     """Create a minimal valid instance for the given model"""
     data = {}
-    for f_name, f_value in model._odm_field_cache.items():
+    for f_name, f_value in model.fields().items():
         if not f_value.default_set:
             data[f_name] = random_data_for_field(f_value, f_name, minimal=True)
 
