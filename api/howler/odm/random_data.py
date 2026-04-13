@@ -154,6 +154,7 @@ def create_users(ds):
         {
             "name": "Dwight Schrute",
             "email": "user@howler.cyber.gc.ca",
+            "classification": classification.RESTRICTED,
             "apikeys": {
                 "devkey": {"acl": ["R", "W"], "password": user_hash},
                 "impersonate_admin": {
@@ -173,7 +174,7 @@ def create_users(ds):
         }
     )
 
-    c12n = user_service.get_dynamic_classification(classification.RESTRICTED, user_data.as_primitives())
+    c12n = user_service.get_dynamic_classification(user_data.as_primitives())
     if c12n:
         user_data.classification = c12n
 
@@ -218,6 +219,7 @@ def create_users(ds):
                     "password": huey_hash,
                 },
             },
+            "classification": classification.UNRESTRICTED,
             "password": huey_hash,
             "uname": "huey",
             "favourite_views": [huey_view.view_id],
@@ -252,6 +254,7 @@ def create_users(ds):
             "apikeys": {},
             "type": ["admin", "user"],
             "groups": ["group1", "group2"],
+            "classification": classification.UNRESTRICTED,
             "password": get_password_hash(shawnh_pass),
             "uname": "shawn-h",
             "favourite_views": [shawnh_view.view_id],
@@ -282,6 +285,7 @@ def create_users(ds):
             "apikeys": {},
             "type": ["admin", "user"],
             "groups": ["group1", "group2"],
+            "classification": classification.RESTRICTED,
             "password": get_password_hash(goose_pass),
             "uname": "goose",
             "favourite_views": [goose_view.view_id],

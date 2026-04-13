@@ -136,8 +136,7 @@ def parse_user_data(  # noqa: C901
         if response.ok:
             data = response.json()
 
-    user_data, _ = parse_profile(data, oauth_provider_config)
-    # user_data, assignments = parse_profile(data, oauth_provider_config)
+    user_data = parse_profile(data, oauth_provider_config)
 
     if len(oauth_provider_config.required_groups) > 0:
         required_groups = set(oauth_provider_config.required_groups)
@@ -177,7 +176,7 @@ def parse_user_data(  # noqa: C901
         username = user_data["uname"]
 
         # Add add dynamic classification group
-        user_data["classification"] = get_dynamic_classification(user_data["classification"], user_data)
+        user_data["classification"] = get_dynamic_classification(user_data)
 
         # Make sure the user exists in howler and is in sync
         if (not current_user and oauth_provider_config.auto_create) or (
@@ -343,7 +342,7 @@ def save_user_account(username: str, data: dict[str, Any], user: dict[str, Any])
     return storage.user.save(username, data)
 
 
-def get_dynamic_classification(current_c12n: str | None, user_info: dict[str, Any]) -> str | None:
+def get_dynamic_classification(user_info: dict[str, Any]) -> str | None:
     """Get the classification of the user
 
     Args:
@@ -354,7 +353,10 @@ def get_dynamic_classification(current_c12n: str | None, user_info: dict[str, An
         str: The normalized classification with dynamic groups applied
     """
     new_c12n = CLASSIFICATION.normalize_classification(
-        current_c12n, skip_auto_select=True, get_dynamic_groups=False, ignore_unused=True
+        user_info.get("classification", CLASSIFICATION.UNRESTRICTED),
+        skip_auto_select=True,
+        get_dynamic_groups=False,
+        ignore_unused=True,
     )
 
     if CLASSIFICATION.dynamic_groups:
