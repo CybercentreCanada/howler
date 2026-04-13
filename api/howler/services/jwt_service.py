@@ -113,7 +113,7 @@ def get_audience(oauth_provider: str) -> str:
         audience = provider_data.client_id
 
     if oauth_provider in ["entraid", "azure"] and f"{audience}/.default" not in provider_data.scope:
-        raise HowlerValueError("Azure scope must contain the <client_id>/.default claim!")
+        raise HowlerValueError("Azure/Entra ID scope must contain the <client_id>/.default claim!")
 
     return audience
 
