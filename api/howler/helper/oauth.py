@@ -93,7 +93,7 @@ def parse_profile(profile: dict[str, Any], provider_config: OAuthProvider) -> di
     # Compute access, roles and classification using auto_properties
     access = True
     roles = ["user"]
-    groups = profile.get("groups", [])
+    groups: list[str] = profile.get("groups", [])
     assignments = []
     classification = CLASSIFICATION_ENGINE.UNRESTRICTED
     if provider_config.auto_properties:
@@ -146,12 +146,12 @@ def parse_profile(profile: dict[str, Any], provider_config: OAuthProvider) -> di
                         assignments.append(auto_prop.value)
                         break
 
-    # Infer roles from groups
-    if profile.get("groups") and provider_config.role_map:
+    # Infer roles from groups (legacy)
+    if groups and provider_config.role_map:
         for user_type in USER_TYPES:
             if (
                 user_type in provider_config.role_map
-                and provider_config.role_map[user_type] in profile.get("groups", [])
+                and provider_config.role_map[user_type] in groups
                 and user_type not in roles
             ):
                 roles.append(user_type)

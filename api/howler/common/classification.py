@@ -887,7 +887,7 @@ class Classification(object):
 
         return True
 
-    def max_classification(self, c12n_1: str, c12n_2: str, long_format: bool = True) -> str:
+    def max_classification(self, c12n_1: str | None, c12n_2: str | None, long_format: bool = True) -> str:
         """Mixes to classification and returns to most restrictive form for them
 
         Args:
@@ -908,9 +908,10 @@ class Classification(object):
             c12n_2 = self.normalize_classification(c12n_2)
 
         if c12n_1 is None:
-            return c12n_2
+            return c12n_2 if c12n_2 else self.UNRESTRICTED
+
         if c12n_2 is None:
-            return c12n_1
+            return c12n_1 if c12n_1 else self.UNRESTRICTED
 
         lvl_idx_1, req_1, groups_1, subgroups_1 = self._get_classification_parts(c12n_1, long_format=long_format)
         lvl_idx_2, req_2, groups_2, subgroups_2 = self._get_classification_parts(c12n_2, long_format=long_format)

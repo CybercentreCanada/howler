@@ -193,7 +193,7 @@ def parse_user_data(  # noqa: C901
             avatar = current_user.pop("avatar", None)
 
             # Save updated user if there are changes to sync or it doesn't exist
-            log_id: str = user_id if not isinstance(user_id, list) else user_id[0]
+            log_id: str | None = user_id if not isinstance(user_id, list) else user_id[0]
             if old_user != current_user:
                 if log_id:
                     logger.info("Updating %s with new data", log_id)
@@ -208,7 +208,7 @@ def parse_user_data(  # noqa: C901
                 storage.user.save(username, current_user)
             # Ensure access_control is always present, even if user data hasn't changed
             elif "access_control" not in current_user:
-                logger.info("Adding access control for user %s", log_id)
+                logger.info("Adding access control for user %s", log_id or username)
                 add_access_control(current_user)
                 storage.user.save(username, current_user)
             else:
