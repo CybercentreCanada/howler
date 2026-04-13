@@ -5,7 +5,6 @@ from typing import Any, Optional
 
 import requests
 from authlib.integrations.flask_client import OAuth
-from elasticapm.traces import capture_span
 
 from howler.common.exceptions import HowlerException, HowlerValueError
 from howler.common.loader import USER_TYPES
@@ -30,7 +29,6 @@ def reorder_name(name: Optional[str]) -> Optional[str]:
     return " ".join(name.split(", ", 1)[::-1])
 
 
-@capture_span(span_type="authentication")
 def parse_profile(profile: dict[str, Any], provider_config: OAuthProvider) -> dict[str, Any]:  # noqa: C901
     """Parse a raw profile dict into a useful user data dict"""
     # Find email address and normalize it for further processing

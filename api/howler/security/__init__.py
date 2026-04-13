@@ -3,7 +3,6 @@ import sys
 from typing import Optional
 
 import requests
-from elasticapm.traces import set_user_context
 from flask import request
 from flask import session as flsk_session
 from jwt import ExpiredSignatureError
@@ -213,13 +212,6 @@ class api_login(object):  # noqa: D101, N801
             except HowlerRuntimeError as e:
                 FAILED_ATTEMPTS.labels("500").inc()
                 return internal_error(err=e.message)
-
-            if config.core.metrics.apm_server.server_url is not None:
-                set_user_context(
-                    username=user.get("name", None),
-                    email=user.get("email", None),
-                    user_id=user.get("uname", None),
-                )
 
             if request.path.startswith("/api/v1/clue"):
                 logger.debug("Bypassing quota limits for clue enrichment")

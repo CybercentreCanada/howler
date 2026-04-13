@@ -16,6 +16,7 @@ from typing import Any, Dict, Generic, Literal, Optional, TypeVar, Union, overlo
 import elasticsearch
 from datemath import dm
 from datemath.helpers import DateMathException
+from opentelemetry import trace
 
 from howler import odm
 from howler.common.exceptions import HowlerRuntimeError, HowlerValueError, NonRecoverableError
@@ -65,6 +66,8 @@ console = logging.StreamHandler()
 console.setLevel(logging.INFO)
 console.setFormatter(logging.Formatter(HWL_LOG_FORMAT, HWL_DATE_FORMAT))
 logger.addHandler(console)
+
+tracer = trace.get_tracer(__name__)
 
 ModelType = TypeVar("ModelType", bound=Model)
 
@@ -524,6 +527,7 @@ class ESCollection(Generic[ModelType]):
             else:
                 updated += res["updated"]
 
+    @tracer.start_as_current_span(f"{__name__}.commit")
     def commit(self):
         """This function should be overloaded to perform a commit of the index data of all the different hosts
         specified in self.datastore.hosts.

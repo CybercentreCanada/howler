@@ -24,7 +24,6 @@ import logging
 from typing import Any, cast
 
 from authlib.integrations.flask_client import OAuth
-from elasticapm.contrib.flask import ElasticAPM
 from flasgger import Swagger
 from flask import Flask
 from flask.blueprints import Blueprint
@@ -62,14 +61,19 @@ from howler.config import (
 from howler.cronjobs import setup_jobs
 from howler.error import errors
 from howler.healthz import healthz
+from howler.telemetry import setup_telemetry
 
 logger = get_logger(__file__)
+
 
 app = Flask(
     "howler-api",
     static_url_path="/api/static",
     static_folder=config.ui.static_folder,
 )
+if config.core.telemetry.enabled:
+    setup_telemetry(app)
+
 # Disable strict check on trailing slashes for endpoints
 app.url_map.strict_slashes = False
 app.config["JSON_SORT_KEYS"] = False
@@ -203,15 +207,6 @@ app.logger.removeHandler(default_handler)
 if logger.parent:
     for ph in logger.parent.handlers:
         app.logger.addHandler(ph)
-
-# Setup APMs
-if config.core.metrics.apm_server.server_url is not None:
-    logger.info("Exporting application metrics to: %s", config.core.metrics.apm_server.server_url)
-    ElasticAPM(
-        app,
-        server_url=config.core.metrics.apm_server.server_url,
-        service_name="howler_api",
-    )
 
 wlog = logging.getLogger("werkzeug")
 wlog.setLevel(logging.WARNING)
