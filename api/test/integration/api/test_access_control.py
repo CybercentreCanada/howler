@@ -517,3 +517,156 @@ class TestGroupMembershipAccessControl:
                 method="POST",
             )
             assert result["total"] == 1, f"admin should see hit {hit_id}"
+
+
+# ===================================================================
+# Group I -- Wildcard searches return only classification-matching hits
+# ===================================================================
+
+# All hits in this group share the analytic prefix "wildcard_acl_test_" so the
+# wildcard query can be scoped to just these records without touching the rest
+# of the index.  IDs are fixed at module level so the ID set is deterministic
+# for the membership assertions below.
+_WC_UNRESTRICTED_ID = str(uuid.uuid4())
+_WC_RESTRICTED_ID = str(uuid.uuid4())
+_WC_D1_ID = str(uuid.uuid4())
+_WC_D2_ID = str(uuid.uuid4())
+_WC_BOTH_ID = str(uuid.uuid4())
+
+# Query that matches exactly the five hits created in this group.
+_WC_QUERY = "howler.analytic:wildcard_acl_test_*"
+
+
+@pytest.fixture(scope="module")
+def wildcard_hits(datastore: HowlerDatastore):
+    """Create five hits with different classification levels and groups.
+
+    analytic prefix "wildcard_acl_test_" allows a single wildcard query to
+    address exactly this set without matching unrelated index content.
+
+    Hit IDs and their expected classifications:
+      _WC_UNRESTRICTED_ID  -> UNRESTRICTED
+      _WC_RESTRICTED_ID    -> RESTRICTED  (plain level, no group/required)
+      _WC_D1_ID            -> RESTRICTED//ANY  (D1 only)
+      _WC_D2_ID            -> RESTRICTED//REL TO DEPARTMENT 2  (D2 only)
+      _WC_BOTH_ID          -> RESTRICTED//REL TO DEPARTMENT 1, DEPARTMENT 2
+
+    Note: CLASSIFICATION.RESTRICTED is RESTRICTED//ADMIN//ANY (requires ADMIN
+    marking and D1 group).  We deliberately use a plain "RESTRICTED" string
+    here so the hit has no group or required-marking fence.
+    """
+    _restricted_nogroup = CLASSIFICATION.normalize_classification("RESTRICTED")
+    hits = [
+        (_WC_UNRESTRICTED_ID, "wildcard_acl_test_unrestricted", CLASSIFICATION.UNRESTRICTED),
+        (_WC_RESTRICTED_ID, "wildcard_acl_test_restricted", _restricted_nogroup),
+        (_WC_D1_ID, "wildcard_acl_test_d1", _C12N_D1),
+        (_WC_D2_ID, "wildcard_acl_test_d2", _C12N_D2),
+        (_WC_BOTH_ID, "wildcard_acl_test_both", _C12N_BOTH),
+    ]
+    for hit_id, analytic, c12n in hits:
+        datastore.hit.save(
+            hit_id,
+            {
+                "howler": {"id": hit_id, "analytic": analytic, "hash": "e" * 64},
+                "classification": c12n,
+            },
+        )
+    datastore.hit.commit()
+
+    yield
+
+    for hit_id, _, _ in hits:
+        datastore.hit.delete(hit_id)
+    datastore.hit.commit()
+
+
+def _search_ids(session, host: str, query: str) -> set[str]:
+    """Return the set of howler.id values from a search, fetching up to 25 rows."""
+    result = get_api_data(
+        session,
+        f"{host}/api/v1/search/hit/",
+        data=json.dumps({"query": query, "rows": 25, "fl": "howler.id"}),
+        method="POST",
+    )
+    return {item["howler"]["id"] for item in result["items"]}
+
+
+@_enforce_only
+class TestWildcardSearchFiltering:
+    """Wildcard queries must still honour classification access control.
+
+    All tests use _WC_QUERY ("howler.analytic:wildcard_acl_test_*") to address
+    only the five hits created by the wildcard_hits fixture, then assert on the
+    exact set of IDs returned rather than bare counts.
+    """
+
+    def test_huey_wildcard_returns_only_unrestricted(self, huey_session, wildcard_hits):
+        """huey (UNRESTRICTED, no group) sees only the UNRESTRICTED hit.
+
+        RESTRICTED hits (_WC_RESTRICTED_ID, _WC_D1_ID, _WC_D2_ID, _WC_BOTH_ID)
+        are all at level 200 which exceeds huey's clearance of 100.
+        """
+        session, host = huey_session
+        ids = _search_ids(session, host, _WC_QUERY)
+        assert ids == {_WC_UNRESTRICTED_ID}
+
+    def test_user_wildcard_returns_unrestricted_restricted_d1_and_both(self, user_session, wildcard_hits):
+        """'user' (CLASSIFICATION.RESTRICTED = RESTRICTED//ADMIN//ANY) sees four hits.
+
+        CLASSIFICATION.RESTRICTED normalises to RESTRICTED//ADMIN//ANY, giving 'user':
+          - Level RESTRICTED (200)
+          - Required marking ADMIN
+          - Group D1 (via the solitary display name ANY)
+
+        Visible hits:
+          _WC_UNRESTRICTED_ID -- level 100, no fences
+          _WC_RESTRICTED_ID   -- plain RESTRICTED, no group/required fence
+          _WC_D1_ID           -- RESTRICTED//ANY: user has D1 ✓
+          _WC_BOTH_ID         -- RESTRICTED//D1+D2: D1 membership is sufficient ✓
+
+        _WC_D2_ID (D2-only) is NOT visible because user holds D1, not D2.
+        """
+        session, host = user_session
+        ids = _search_ids(session, host, _WC_QUERY)
+        assert ids == {_WC_UNRESTRICTED_ID, _WC_RESTRICTED_ID, _WC_D1_ID, _WC_BOTH_ID}
+
+    def test_d1_user_wildcard_returns_d1_and_both_not_d2(self, d1_session, wildcard_hits, group_accounts):
+        """D1 user sees UNRESTRICTED, RESTRICTED (no group), D1-only, and both-dept hits.
+
+        The D2-only hit (_WC_D2_ID) must NOT appear because the user holds D1, not D2.
+        """
+        session, host = d1_session
+        ids = _search_ids(session, host, _WC_QUERY)
+        assert _WC_UNRESTRICTED_ID in ids
+        assert _WC_RESTRICTED_ID in ids
+        assert _WC_D1_ID in ids
+        assert _WC_BOTH_ID in ids
+        assert _WC_D2_ID not in ids
+
+    def test_d2_user_wildcard_returns_d2_and_both_not_d1(self, d2_session, wildcard_hits, group_accounts):
+        """D2 user sees UNRESTRICTED, RESTRICTED (no group), D2-only, and both-dept hits.
+
+        The D1-only hit (_WC_D1_ID) must NOT appear because the user holds D2, not D1.
+        """
+        session, host = d2_session
+        ids = _search_ids(session, host, _WC_QUERY)
+        assert _WC_UNRESTRICTED_ID in ids
+        assert _WC_RESTRICTED_ID in ids
+        assert _WC_D2_ID in ids
+        assert _WC_BOTH_ID in ids
+        assert _WC_D1_ID not in ids
+
+    def test_admin_wildcard_returns_all_five(self, admin_session, wildcard_hits):
+        """admin sees all five hits regardless of classification or group.
+
+        Admin type bypasses the access_control Lucene filter entirely.
+        """
+        session, host = admin_session
+        ids = _search_ids(session, host, _WC_QUERY)
+        assert ids == {
+            _WC_UNRESTRICTED_ID,
+            _WC_RESTRICTED_ID,
+            _WC_D1_ID,
+            _WC_D2_ID,
+            _WC_BOTH_ID,
+        }
