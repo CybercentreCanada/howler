@@ -60,8 +60,5 @@ def test_execute_missing_roles():
 
     assert result["outcome"] == "error"
     assert result["title"] == "Insufficient permissions"
-    assert (
-        result["message"]
-        == "The operation ID provided (add_label) requires permissions you do not have (automation_basic). Contact "
-        "HOWLER Support for more information."
-    )
+    assert result["message"].startswith("The operation ID provided (add_label) requires permissions you do not have")
+

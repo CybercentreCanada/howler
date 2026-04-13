@@ -12,10 +12,10 @@ const PermissionDeniedPage: FC = () => {
         <PersonOffIcon color="secondary" fontSize="inherit" />
       </Box>
       <Box pb={2}>
-        <Typography variant="h2">{t('page.403.title')}</Typography>
+        <Typography variant="h2">{t('Error 403')}</Typography>
       </Box>
       <Box>
-        <Typography variant="h5">{t('page.403.description')}</Typography>
+        <Typography variant="h5">{t('Access Forbidden')}</Typography>
       </Box>
     </PageCenter>
   );

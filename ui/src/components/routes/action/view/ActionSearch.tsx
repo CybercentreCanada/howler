@@ -129,6 +129,8 @@ const ActionSearch: FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchModifiers]);
 
+  const editRoles = user.roles.includes('automation_basic') || user.roles.includes('automation_advanced');
+
   // Search result list item renderer.
   const renderer = useCallback(
     ({ item }: TuiListItemProps<Action>, classRenderer: () => string) => {
@@ -163,7 +165,7 @@ const ActionSearch: FC = () => {
                   </Tooltip>
                 )}
                 <FlexOne />
-                {(item.item.owner_id === user.username || user.roles?.includes('admin')) && (
+                {((item.item.owner_id === user.username && editRoles) || user.roles?.includes('admin')) && (
                   <IconButton
                     size="small"
                     onClick={async e => {
@@ -202,7 +204,7 @@ const ActionSearch: FC = () => {
   return (
     <ItemManager
       onSearch={onSearch}
-      onCreate={() => navigate('/action/execute')}
+      onCreate={editRoles ? () => navigate('/action/execute') : null}
       onPageChange={onPageChange}
       phrase={phrase}
       setPhrase={setPhrase}

@@ -117,9 +117,9 @@ def execute(
             }
         ]
 
-    user_roles: set[str] = set(user["type"] if user else [])
-    missing_roles = set(operation.specification()["roles"]) - user_roles
-    if missing_roles:
+    required_roles = set(operation.specification()["roles"])
+    has_roles = required_roles & set(user["type"])
+    if not has_roles:
         return [
             {
                 "query": query,
@@ -127,7 +127,7 @@ def execute(
                 "title": "Insufficient permissions",
                 "message": (
                     f"The operation ID provided ({operation_id}) requires permissions you do not have "
-                    f"({', '.join(missing_roles)}). Contact HOWLER Support for more information."
+                    f"(missing one of: {', '.join(required_roles)} ). Contact HOWLER Support for more information."
                 ),
             }
         ]
