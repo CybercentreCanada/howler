@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta
 from typing import cast
 
@@ -27,6 +28,11 @@ def _build_user() -> User:
     user_data: User = random_model_obj(cast(Model, User))
     user_data.api_quota = 1000
     user_data.type = ["admin", "user"]
+
+    # The randomizer draws unames from ["admin", "user", "shawnh"], which are
+    # real fixture users whose Redis quota slots get exhausted by integration
+    # tests. Force a unique uname so this ephemeral test user never collides.
+    user_data.uname = f"test_{uuid.uuid4().hex[:12]}"
 
     return user_data
 

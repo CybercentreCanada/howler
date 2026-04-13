@@ -73,7 +73,7 @@ def _minimal_provider(**overrides) -> OAuthProvider:
         "jwks_uri": "https://example.com/.well-known/jwks.json",
     }
     defaults.update(overrides)
-    return OAuthProvider(defaults)
+    return OAuthProvider(**defaults)
 
 
 # ===================================================================
@@ -104,27 +104,32 @@ class TestClassificationEngine:
 
     def test_is_accessible_group_membership_required(self, cl_engine: Classification):
         """A hit classified with a group (D1) is NOT accessible to a user without that group."""
-        # User has RESTRICTED level but only department 2
-        user_c12n = "RESTRICTED//ANY/DEPARTMENT 2"
-        hit_c12n = "UNRESTRICTED//DEPARTMENT 1/GROUP 1"
+        # User has RESTRICTED level but only department 2 (REL TO form -- no solitary name)
+        user_c12n = "RESTRICTED//REL TO DEPARTMENT 2"
+        # Hit requires D1 (expressed via its solitary display name ANY) plus subgroup G1
+        hit_c12n = "UNRESTRICTED//ANY/GROUP 1"
         assert not cl_engine.is_accessible(user_c12n, hit_c12n)
 
     def test_is_accessible_group_membership_satisfied(self, cl_engine: Classification):
         """A hit classified with group D1 IS accessible to a user who has that group."""
-        user_c12n = cl_engine.RESTRICTED  # RESTRICTED includes all depts
-        hit_c12n = "UNRESTRICTED//ANY/DEPARTMENT 1"
+        user_c12n = cl_engine.RESTRICTED  # RESTRICTED//ADMIN//ANY includes D1
+        # D1 expressed via its solitary display name ANY (no separate DEPARTMENT 1 appended)
+        hit_c12n = "UNRESTRICTED//ANY"
         assert cl_engine.is_accessible(user_c12n, hit_c12n)
 
     def test_is_accessible_required_marking_blocks(self, cl_engine: Classification):
         """A hit with the ADMIN required marking blocks a user who lacks it."""
-        user_c12n = "RESTRICTED//ANY/DEPARTMENT 1"
-        hit_c12n = "RESTRICTED//ADMIN//ANY/DEPARTMENT 1"
+        # User: RESTRICTED + D1 (ANY) but NO required markings
+        user_c12n = "RESTRICTED//ANY"
+        # Hit: RESTRICTED + ADMIN required + D1 (ANY)
+        hit_c12n = "RESTRICTED//ADMIN//ANY"
         assert not cl_engine.is_accessible(user_c12n, hit_c12n)
 
     def test_is_accessible_required_marking_satisfied(self, cl_engine: Classification):
         """A user with the ADMIN required marking can access a hit that requires it."""
-        user_c12n = cl_engine.RESTRICTED  # top-level includes ADMIN
-        hit_c12n = "RESTRICTED//ADMIN//ANY/DEPARTMENT 1"
+        user_c12n = cl_engine.RESTRICTED  # RESTRICTED//ADMIN//ANY includes ADMIN required
+        # Same classification as RESTRICTED (ADMIN required + D1 via solitary ANY)
+        hit_c12n = "RESTRICTED//ADMIN//ANY"
         assert cl_engine.is_accessible(user_c12n, hit_c12n)
 
     # -- build_user_classification ------------------------------------
@@ -138,13 +143,14 @@ class TestClassificationEngine:
 
     def test_build_user_classification_combines_groups(self, cl_engine: Classification):
         """Merging two different group-level classifications includes groups from both."""
-        c1 = "UNRESTRICTED//DEPARTMENT 1"
-        c2 = "UNRESTRICTED//DEPARTMENT 2"
+        # D1's solitary display name is ANY; D2 requires the REL TO form
+        c1 = "UNRESTRICTED//ANY"
+        c2 = "UNRESTRICTED//REL TO DEPARTMENT 2"
         result = cl_engine.build_user_classification(c1, c2)
-        # Result should have both departments
+        # get_access_control_parts uses long_format=False, so groups appear as short names
         parts = cl_engine.get_access_control_parts(result, user_classification=True)
-        assert "DEPARTMENT 1" in parts["__access_grp1__"]
-        assert "DEPARTMENT 2" in parts["__access_grp1__"]
+        assert "D1" in parts["__access_grp1__"]
+        assert "D2" in parts["__access_grp1__"]
 
     # -- get_access_control_parts -------------------------------------
 
