@@ -590,7 +590,10 @@ class Classification(object):
 
         temp_combinations = copy(combinations)
         for p in itertools.product(temp_combinations, sgrp_cbs):
-            if "//REL TO " in p[0]:
+            # A combo already has a group part when it contains "//REL TO " (explicit)
+            # or ends with a solitary display name like "//ANY" (after replacement).
+            has_group = "//REL TO " in p[0] or any(p[0].endswith(f"//{sol_name}") for sol_name in solitary_names)
+            if has_group:
                 cl = "/".join(p)
 
                 if cl.endswith("/"):
