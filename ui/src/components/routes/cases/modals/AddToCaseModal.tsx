@@ -1,4 +1,4 @@
-import { Autocomplete, Button, Stack, TextField, Typography } from '@mui/material';
+import { Autocomplete, Button, CircularProgress, Divider, Stack, TextField, Typography } from '@mui/material';
 import api from 'api';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import CaseCard from 'components/elements/case/CaseCard';
@@ -8,6 +8,12 @@ import type { Hit } from 'models/entities/generated/Hit';
 import type { Observable } from 'models/entities/generated/Observable';
 import { useContext, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import CaseRecordRow from './CaseRecordRow';
+import { useFolderOptions, useRecordEntries } from './hooks';
+
+// ---------------------------------------------------------------------------
+// Modal
+// ---------------------------------------------------------------------------
 
 const AddToCaseModal: FC<{ records: (Hit | Observable)[] }> = ({ records }) => {
   const { t } = useTranslation();
@@ -16,8 +22,9 @@ const AddToCaseModal: FC<{ records: (Hit | Observable)[] }> = ({ records }) => {
 
   const [cases, setCases] = useState<Case[]>([]);
   const [selectedCase, setSelectedCase] = useState<Case | null>(null);
-  const [path, setPath] = useState('');
-  const [title, setTitle] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const [entries, updateEntry] = useRecordEntries(records);
 
   useEffect(() => {
     dispatchApi(api.search.case.post({ query: 'case_id:*', rows: 100 }), { throwError: false }).then(result => {
@@ -27,52 +34,42 @@ const AddToCaseModal: FC<{ records: (Hit | Observable)[] }> = ({ records }) => {
     });
   }, [dispatchApi]);
 
-  const folderOptions = useMemo<string[]>(() => {
-    if (!selectedCase?.items) {
-      return [];
-    }
+  const folderOptions = useFolderOptions(selectedCase);
 
-    const paths = new Set<string>();
-
-    for (const item of selectedCase.items) {
-      if (!item.path) {
-        continue;
-      }
-
-      const parts = item.path.split('/');
-      parts.pop();
-
-      for (let i = 1; i <= parts.length; i++) {
-        paths.add(parts.slice(0, i).join('/'));
-      }
-    }
-
-    return Array.from(paths).sort();
-  }, [selectedCase]);
-
-  const fullPath = path ? `${path}/${title}` : title;
-  const isValid = !!selectedCase && !!title;
+  const isValid = useMemo(
+    () =>
+      !!selectedCase &&
+      entries.length > 0 &&
+      entries.every(e => !!e.title.trim() && !e.path.startsWith('/') && !e.path.endsWith('/')),
+    [selectedCase, entries]
+  );
 
   const onSubmit = async () => {
-    if (!selectedCase || records?.length < 1) {
+    if (!isValid || !selectedCase) {
       return;
     }
 
-    await dispatchApi(
-      api.v2.case.items.post(selectedCase.case_id, {
-        path: fullPath,
-        value: records[0].howler.id,
-        type: records[0].__index
-      })
-    );
+    setSubmitting(true);
+    try {
+      for (const entry of entries) {
+        const fullPath = entry.path ? `${entry.path}/${entry.title}` : entry.title;
+        await dispatchApi(
+          api.v2.case.items.post(selectedCase.case_id, {
+            path: fullPath,
+            value: entry.record.howler.id,
+            type: entry.record.__index
+          })
+        );
+      }
 
-    close();
+      close();
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  // TODO: No support currently for multiple records
-
   return (
-    <Stack spacing={2} p={2} sx={{ minWidth: 'min(800px, 60vw)', height: '100%' }}>
+    <Stack spacing={2} p={2} sx={{ minWidth: 'min(800px, 60vw)', maxHeight: '90vh', height: '100%' }}>
       <Typography variant="h4">{t('modal.cases.add_to_case')}</Typography>
       <Autocomplete<Case>
         options={cases}
@@ -82,7 +79,6 @@ const AddToCaseModal: FC<{ records: (Hit | Observable)[] }> = ({ records }) => {
         disablePortal
         onChange={(_ev, newVal) => {
           setSelectedCase(newVal);
-          setPath('');
         }}
         renderOption={(props, option) => (
           <li
@@ -97,38 +93,40 @@ const AddToCaseModal: FC<{ records: (Hit | Observable)[] }> = ({ records }) => {
           <TextField {...params} size="small" placeholder={t('modal.cases.add_to_case.select_case')} fullWidth />
         )}
       />
-      {selectedCase && (
+      {selectedCase && entries.length > 0 ? (
         <>
-          <Autocomplete
-            freeSolo
-            disablePortal
-            options={folderOptions}
-            value={path}
-            onInputChange={(_ev, newVal) => setPath(newVal)}
-            renderInput={params => (
-              <TextField {...params} size="small" placeholder={t('modal.cases.add_to_case.select_path')} fullWidth />
-            )}
-          />
-          <TextField
-            size="small"
-            placeholder={t('modal.cases.add_to_case.title')}
-            value={title}
-            onChange={ev => setTitle(ev.target.value)}
-            fullWidth
-          />
-          {title && (
+          <Divider>
             <Typography variant="caption" color="textSecondary">
-              {t('modal.cases.add_to_case.full_path', { path: fullPath })}
+              {t('modal.cases.add_to_case.items_section')}
             </Typography>
-          )}
+          </Divider>
+          <Stack spacing={1} overflow="auto" flex={1}>
+            {entries.map((entry, i) => (
+              <CaseRecordRow
+                key={entry.record.howler.id}
+                entry={entry}
+                folderOptions={folderOptions}
+                onTitleChange={val => updateEntry(i, 'title', val)}
+                onPathChange={val => updateEntry(i, 'path', val)}
+              />
+            ))}
+          </Stack>
         </>
+      ) : (
+        <div style={{ flex: 1, maxHeight: '100px' }} />
       )}
-      <div style={{ flex: 1 }} />
+
       <Stack direction="row" spacing={1} alignSelf="end">
-        <Button variant="outlined" color="error" onClick={close}>
+        <Button variant="outlined" color="error" onClick={close} disabled={submitting}>
           {t('cancel')}
         </Button>
-        <Button variant="outlined" color="success" disabled={!isValid} onClick={onSubmit}>
+        <Button
+          variant="outlined"
+          color="success"
+          disabled={!isValid || submitting}
+          startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : undefined}
+          onClick={onSubmit}
+        >
           {t('confirm')}
         </Button>
       </Stack>
