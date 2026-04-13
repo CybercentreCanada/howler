@@ -178,20 +178,35 @@ const useMyActionFunctions = () => {
             }
           );
 
-          setReport(
-            await dispatchApi(
-              api.action.execute.post({
-                request_id: reqId,
-                query,
-                action_id: actionId
-              }),
-              { throwError: false, showError: true }
-            )
+          const result = await dispatchApi(
+            api.action.execute.post({
+              request_id: reqId,
+              query,
+              action_id: actionId
+            }),
+            { throwError: false, showError: true }
           );
 
-          showSuccessMessage(
-            <Trans i18nKey="actions.succeeded" values={{ action: (await action).items[0]?.name || t('unknown') }} />
-          );
+          setReport(result);
+
+          const reportItem =
+            result &&
+            Object.values(result)
+              .flat()
+              .find(item => item.outcome !== 'success');
+
+          const actionName = (await action).items[0]?.name || t('unknown');
+          const actionOutcome = Object.values(result).flat()[0]?.outcome;
+
+          if (actionOutcome === 'error') {
+            showErrorMessage(
+              <Trans i18nKey="actions.error" values={{ action: actionName, message: reportItem.message }} />
+            );
+          } else if (actionOutcome === 'skipped') {
+            showInfoMessage(<Trans i18nKey="actions.skipped" values={{ action: actionName }} />);
+          } else {
+            showSuccessMessage(<Trans i18nKey="actions.succeeded" values={{ action: actionName }} />);
+          }
         } finally {
           if (key) {
             closeSnackbar(key);
@@ -201,7 +216,7 @@ const useMyActionFunctions = () => {
           setProgress([0, 0]);
         }
       },
-      [closeSnackbar, dispatchApi, showInfoMessage, showSuccessMessage, t]
+      [closeSnackbar, dispatchApi, showInfoMessage, showSuccessMessage, showErrorMessage, t]
     ),
     deleteAction: useCallback(
       async (actionId: string) => {
