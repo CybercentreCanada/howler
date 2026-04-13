@@ -1,8 +1,10 @@
+import { OpenInNew } from '@mui/icons-material';
 import {
   Box,
   Chip,
   Divider,
   Grid,
+  IconButton,
   Stack,
   Tooltip,
   Typography,
@@ -235,9 +237,8 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
           {analyticId ? (
             <Link
               to={`/analytics/${analyticId}`}
-              onAuxClick={e => {
-                e.stopPropagation();
-              }}
+              target="_blank"
+              rel="noopener noreferrer"
               onClick={e => {
                 e.stopPropagation();
               }}
@@ -248,7 +249,14 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
             hit.howler.analytic
           )}
           {hit.howler.detection && ': '}
-          {hit.howler.detection}
+          <Link
+            to={`/hits/${hit.howler.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+          >
+            {hit.howler.detection}
+          </Link>
         </Typography>
         {hit.howler?.rationale && (
           <Typography
@@ -342,6 +350,19 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
       >
         <HitTimestamp hit={hit} layout={layout} />
         {showAssigned && <Assigned hit={hit} layout={layout} />}
+        {hit.howler.links?.[0]?.href && (
+          <Tooltip title={hit.howler.links[0].title || 'Open in source platform'}>
+            <IconButton
+              size="small"
+              onClick={e => {
+                e.stopPropagation();
+                window.open(hit.howler.links[0].href, '_blank');
+              }}
+            >
+              <OpenInNew />
+            </IconButton>
+          </Tooltip>
+        )}
         <Stack direction="row" spacing={layout !== HitLayout.COMFY ? 0.5 : 1}>
           <EscalationChip hit={hit} layout={layout} />
           {['in-progress', 'on-hold'].includes(hit.howler.status) && (
