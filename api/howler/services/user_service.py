@@ -193,11 +193,11 @@ def parse_user_data(  # noqa: C901
             avatar = current_user.pop("avatar", None)
 
             # Save updated user if there are changes to sync or it doesn't exist
+            log_id: str = user_id if not isinstance(user_id, list) else user_id[0]
             if old_user != current_user:
-                log_id = user_id if not isinstance(user_id, list) else user_id[0]
-                if user_id:
+                if log_id:
                     logger.info("Updating %s with new data", log_id)
-                    current_user["id"] = user_id
+                    current_user["id"] = log_id
                 else:
                     logger.info("Creating new user %s", username)
 
@@ -206,13 +206,13 @@ def parse_user_data(  # noqa: C901
 
                 add_access_control(current_user)
                 storage.user.save(username, current_user)
+            # Ensure access_control is always present, even if user data hasn't changed
+            elif "access_control" not in current_user:
+                logger.info("Adding access control for user %s", log_id)
+                add_access_control(current_user)
+                storage.user.save(username, current_user)
             else:
-                # Ensure access_control is always present, even if user data hasn't changed
-                if "access_control" not in current_user:
-                    add_access_control(current_user)
-                    storage.user.save(username, current_user)
-                else:
-                    logger.debug("User is up to date!")
+                logger.debug("User is up to date!")
 
             if not skip_setup:
                 if avatar:

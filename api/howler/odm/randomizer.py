@@ -588,7 +588,7 @@ def random_data_for_field(field: _Field, name: str, minimal: bool = False) -> _A
 def random_model_obj(model: odm.Model, as_json: bool = False) -> _Any:
     """Create a random valid instance for the given model"""
     data = {}
-    for f_name, f_value in model._odm_field_cache.items():
+    for f_name, f_value in model.fields().items():
         data[f_name] = random_data_for_field(f_value, f_name)
 
     if as_json:
