@@ -532,7 +532,7 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
     lookups = loader.get_lookups()
     users = ds.user.search("*:*")["items"]
     for hit_idx in range(hit_count):
-        hit = generate_useful_hit(lookups, [user["uname"] for user in users], prune_hit=False)
+        hit = generate_useful_hit(lookups, [user.uname for user in users], prune_hit=False)
 
         # Ensure the first 20 hits have unrestricted classification for test access
         if hit_idx < 20:
