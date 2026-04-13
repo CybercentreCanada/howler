@@ -228,7 +228,7 @@ def fetch_groups(token: str):  # noqa: C901
     oauth_provider_config = config.auth.oauth.providers[oauth_provider]
 
     if oauth_provider_config.groups_url:
-        if oauth_provider == "entraid":
+        if oauth_provider in ["entraid", "azure"]:
             try:
                 token = azure_obo(token)
             except HowlerException:

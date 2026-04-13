@@ -90,7 +90,7 @@ class Classification(object):
             if self.dynamic_groups is None:
                 raise HowlerKeyError("Dynamic groups not set!")
 
-            self.dynamic_groups_type = classification_definition.get("dynamic_groups_type", None)
+            self.dynamic_groups_type = classification_definition.get("dynamic_groups_type", self.dynamic_groups_type)
 
             if self.enforce:
                 self._classification_cache = self.list_all_classification_combinations()
