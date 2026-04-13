@@ -39,13 +39,13 @@ def main():
         output = ""
         while pytest.poll() is None:
             if pytest.stdout:
-                out = pytest.stdout.read(1).decode()
+                out = pytest.stdout.read(1).decode(errors="ignore")
                 output += out
                 sys.stdout.write(out)
                 sys.stdout.flush()
 
         if pytest.stdout:
-            out = pytest.stdout.read().decode()
+            out = pytest.stdout.read().decode(errors="ignore")
             output += out
             sys.stdout.write(out)
             sys.stdout.flush()
