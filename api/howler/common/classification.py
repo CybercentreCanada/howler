@@ -518,7 +518,7 @@ class Classification(object):
         )
 
         if unused_parts and not ignore_unused:
-            raise InvalidClassification(f"Unparsable classification parts: {''.join(unused_parts)}")
+            raise InvalidClassification(f"Unparsable classification parts: {', '.join(unused_parts)}")
 
         return lvl_idx, req, groups, subgroups
 
