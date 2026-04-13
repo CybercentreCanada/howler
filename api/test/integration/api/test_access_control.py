@@ -25,6 +25,8 @@ import requests
 
 from howler.config import CLASSIFICATION
 from howler.datastore.howler_store import HowlerDatastore
+from howler.odm.models.user import User
+from howler.security.utils import get_password_hash
 from howler.services import user_service
 from test.conftest import get_api_data
 
@@ -295,3 +297,223 @@ class TestUserClassification:
         result = get_api_data(session, f"{host}/api/v1/user/whoami/")
         assert "classification" in result
         assert result["classification"] == CLASSIFICATION.UNRESTRICTED
+
+
+# ===================================================================
+# Group H -- Group membership access control
+# ===================================================================
+
+# Canonical classification strings for the two departments.
+# DEPARTMENT 1 uses its solitary display name ("ANY"); DEPARTMENT 2 uses
+# the explicit "REL TO" form. normalize_classification ensures we always
+# use the canonical normalized form stored in Elasticsearch.
+_C12N_D1 = CLASSIFICATION.normalize_classification("RESTRICTED//ANY")
+_C12N_D2 = CLASSIFICATION.normalize_classification("RESTRICTED//REL TO DEPARTMENT 2")
+_C12N_BOTH = CLASSIFICATION.normalize_classification("RESTRICTED//REL TO DEPARTMENT 1, DEPARTMENT 2")
+
+
+@pytest.fixture(scope="module")
+def group_accounts(datastore: HowlerDatastore):
+    """Create two transient users — one with D1 clearance only, one with D2 clearance only.
+
+    Each user gets a single API key so the HTTP session fixtures can authenticate.
+    add_access_control() is called before saving so Elasticsearch has the correct
+    Lucene access_control filter stored on each user document.
+
+    Yields a dict mapping uname -> plain-text key password.
+    Cleans up both user records on teardown.
+    """
+    d1_uname = "test_grp_d1"
+    d2_uname = "test_grp_d2"
+    d1_pass = "d1-devkey-secret"
+    d2_pass = "d2-devkey-secret"
+
+    for uname, c12n, password in [
+        (d1_uname, _C12N_D1, d1_pass),
+        (d2_uname, _C12N_D2, d2_pass),
+    ]:
+        pw_hash = get_password_hash(password)
+        user_data = User(
+            {
+                "name": f"Group Test User ({uname})",
+                "email": f"{uname}@example.com",
+                "classification": c12n,
+                "password": pw_hash,
+                "uname": uname,
+                "type": ["user"],
+                "apikeys": {"devkey": {"acl": ["R", "W"], "password": pw_hash}},
+            }
+        )
+        doc = user_data.as_primitives()
+        user_service.add_access_control(doc)
+        datastore.user.save(uname, doc)
+
+    datastore.user.commit()
+
+    yield {d1_uname: d1_pass, d2_uname: d2_pass}
+
+    datastore.user.delete(d1_uname)
+    datastore.user.delete(d2_uname)
+    datastore.user.commit()
+
+
+@pytest.fixture(scope="module")
+def group_hits(datastore: HowlerDatastore):
+    """Create three hits differentiated only by group classification.
+
+    - d1_id:   classified as D1 only (RESTRICTED//ANY)
+    - d2_id:   classified as D2 only (RESTRICTED//REL TO DEPARTMENT 2)
+    - both_id: classified as both D1 and D2 (RESTRICTED//REL TO DEPARTMENT 1, DEPARTMENT 2)
+
+    Yields (d1_id, d2_id, both_id). Cleans up on teardown.
+    """
+    d1_id = str(uuid.uuid4())
+    d2_id = str(uuid.uuid4())
+    both_id = str(uuid.uuid4())
+
+    for hit_id, analytic, c12n in [
+        (d1_id, "grp_test_d1_only", _C12N_D1),
+        (d2_id, "grp_test_d2_only", _C12N_D2),
+        (both_id, "grp_test_both_depts", _C12N_BOTH),
+    ]:
+        datastore.hit.save(
+            hit_id,
+            {
+                "howler": {"id": hit_id, "analytic": analytic, "hash": "d" * 64},
+                "classification": c12n,
+            },
+        )
+
+    datastore.hit.commit()
+
+    yield d1_id, d2_id, both_id
+
+    for hit_id in [d1_id, d2_id, both_id]:
+        datastore.hit.delete(hit_id)
+    datastore.hit.commit()
+
+
+@pytest.fixture(scope="function")
+def d1_session(host, group_accounts):
+    """Authenticated session for the D1-only test user."""
+    uname = "test_grp_d1"
+    token = base64.b64encode(f"{uname}:devkey:{group_accounts[uname]}".encode()).decode()
+    session = requests.Session()
+    session.headers.update({"Authorization": f"Basic {token}"})
+    return session, host
+
+
+@pytest.fixture(scope="function")
+def d2_session(host, group_accounts):
+    """Authenticated session for the D2-only test user."""
+    uname = "test_grp_d2"
+    token = base64.b64encode(f"{uname}:devkey:{group_accounts[uname]}".encode()).decode()
+    session = requests.Session()
+    session.headers.update({"Authorization": f"Basic {token}"})
+    return session, host
+
+
+@_enforce_only
+class TestGroupMembershipAccessControl:
+    """Verify that group-restricted hits are only visible to users who hold the matching group.
+
+    The enforcement path is identical to level-based filtering:
+      - Each hit's classification is indexed as __access_grp1__ (short group names).
+      - Each user's access_control Lucene filter limits hits to those whose
+        __access_grp1__ contains __EMPTY__ (no group required) or one of the
+        user's own group short names.
+
+    Parameterised helpers reduce repetition; individual test methods name the
+    exact scenario so failures are immediately understandable.
+    """
+
+    # ── D1 user ───────────────────────────────────────────────────────────
+
+    def test_d1_user_can_see_d1_hit(self, d1_session, group_hits):
+        """D1 user can see a hit classified for D1."""
+        session, host = d1_session
+        d1_id, _, _ = group_hits
+        result = get_api_data(
+            session,
+            f"{host}/api/v1/search/hit/",
+            data=json.dumps({"query": f"howler.id:{d1_id}"}),
+            method="POST",
+        )
+        assert result["total"] == 1
+
+    def test_d1_user_cannot_see_d2_hit(self, d1_session, group_hits):
+        """D1 user cannot see a hit classified for D2 only."""
+        session, host = d1_session
+        _, d2_id, _ = group_hits
+        result = get_api_data(
+            session,
+            f"{host}/api/v1/search/hit/",
+            data=json.dumps({"query": f"howler.id:{d2_id}"}),
+            method="POST",
+        )
+        assert result["total"] == 0
+
+    def test_d1_user_can_see_both_depts_hit(self, d1_session, group_hits):
+        """D1 user can see a hit classified for both D1 and D2 (D1 membership is sufficient)."""
+        session, host = d1_session
+        _, _, both_id = group_hits
+        result = get_api_data(
+            session,
+            f"{host}/api/v1/search/hit/",
+            data=json.dumps({"query": f"howler.id:{both_id}"}),
+            method="POST",
+        )
+        assert result["total"] == 1
+
+    # ── D2 user ───────────────────────────────────────────────────────────
+
+    def test_d2_user_cannot_see_d1_hit(self, d2_session, group_hits):
+        """D2 user cannot see a hit classified for D1 only."""
+        session, host = d2_session
+        d1_id, _, _ = group_hits
+        result = get_api_data(
+            session,
+            f"{host}/api/v1/search/hit/",
+            data=json.dumps({"query": f"howler.id:{d1_id}"}),
+            method="POST",
+        )
+        assert result["total"] == 0
+
+    def test_d2_user_can_see_d2_hit(self, d2_session, group_hits):
+        """D2 user can see a hit classified for D2."""
+        session, host = d2_session
+        _, d2_id, _ = group_hits
+        result = get_api_data(
+            session,
+            f"{host}/api/v1/search/hit/",
+            data=json.dumps({"query": f"howler.id:{d2_id}"}),
+            method="POST",
+        )
+        assert result["total"] == 1
+
+    def test_d2_user_can_see_both_depts_hit(self, d2_session, group_hits):
+        """D2 user can see a hit classified for both D1 and D2 (D2 membership is sufficient)."""
+        session, host = d2_session
+        _, _, both_id = group_hits
+        result = get_api_data(
+            session,
+            f"{host}/api/v1/search/hit/",
+            data=json.dumps({"query": f"howler.id:{both_id}"}),
+            method="POST",
+        )
+        assert result["total"] == 1
+
+    # ── Admin bypasses group filter ────────────────────────────────────────
+
+    def test_admin_can_see_all_group_hits(self, admin_session, group_hits):
+        """admin (admin type) can see all three group-restricted hits."""
+        session, host = admin_session
+        d1_id, d2_id, both_id = group_hits
+        for hit_id in [d1_id, d2_id, both_id]:
+            result = get_api_data(
+                session,
+                f"{host}/api/v1/search/hit/",
+                data=json.dumps({"query": f"howler.id:{hit_id}"}),
+                method="POST",
+            )
+            assert result["total"] == 1, f"admin should see hit {hit_id}"

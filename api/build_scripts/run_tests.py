@@ -27,8 +27,8 @@ def main():
             prep_command("coverage run -m flask --app howler.app run --no-reload"),
         )
 
+        time.sleep(5)
         print("Running pytest")
-        time.sleep(2)
         _path = sys.argv[1] if len(sys.argv) > 1 else "test"
 
         pytest = subprocess.Popen(
