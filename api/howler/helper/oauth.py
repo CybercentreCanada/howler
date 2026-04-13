@@ -224,7 +224,7 @@ def fetch_avatar(  # noqa: C901
 
 
 def fetch_groups(token: str):  # noqa: C901
-    """Fetch a user's groups form an external endpoint"""
+    """Fetch a user's groups from an external endpoint"""
     oauth_provider = jwt_service.get_provider(token)
     oauth_provider_config = config.auth.oauth.providers[oauth_provider]
 
