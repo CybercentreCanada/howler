@@ -206,9 +206,34 @@ const CaseTimeline: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase
           {displayedEntries.map(entry => (
             <Stack component="li" spacing={1} key={entry.howler.id} sx={{ pb: 1 }}>
               <Stack direction="row" spacing={2} alignItems="flex-start">
-                <Typography variant="caption" color="textSecondary" sx={{ whiteSpace: 'nowrap' }}>
-                  {dayjs(entry.event?.created ?? entry.timestamp).format('YYYY-MM-DD HH:mm:ss')}
-                </Typography>
+                <Stack spacing={0.5} alignItems="end">
+                  <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+                    {dayjs(entry.event?.created ?? entry.timestamp).format('YYYY-MM-DD HH:mm:ss')}
+                  </Typography>
+                  {entry.threat?.technique?.id && (
+                    <Typography
+                      component="a"
+                      href={`https://attack.mitre.org/techniques/${entry.threat.technique.id}`}
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ whiteSpace: 'nowrap' }}
+                    >
+                      {entry.threat.technique.id}
+                    </Typography>
+                  )}
+
+                  {entry.threat?.tactic?.id && (
+                    <Typography
+                      component="a"
+                      href={`https://attack.mitre.org/tactics/${entry.threat.tactic.id}`}
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ whiteSpace: 'nowrap' }}
+                    >
+                      {entry.threat.tactic.id}
+                    </Typography>
+                  )}
+                </Stack>
                 <Box
                   component={Link}
                   to={`/cases/${_case.case_id}/${getPath(entry.howler.id)}`}
