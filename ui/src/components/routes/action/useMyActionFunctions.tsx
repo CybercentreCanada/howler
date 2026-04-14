@@ -189,20 +189,22 @@ const useMyActionFunctions = () => {
 
           setReport(result);
 
-          const reportItem =
-            result &&
-            Object.values(result)
-              .flat()
-              .find(item => item.outcome !== 'success');
-
           const actionName = (await action).items[0]?.name || t('unknown');
-          const actionOutcome = Object.values(result).flat()[0]?.outcome;
 
-          if (actionOutcome === 'error') {
+          if (!result) {
+            showErrorMessage(<Trans i18nKey="actions.error" values={{ action: actionName, message: t('unknown') }} />);
+            return;
+          }
+
+          const reportItem = Object.values(result)
+            .flat()
+            .find(item => item.outcome !== 'success');
+
+          if (reportItem?.outcome === 'error') {
             showErrorMessage(
               <Trans i18nKey="actions.error" values={{ action: actionName, message: reportItem.message }} />
             );
-          } else if (actionOutcome === 'skipped') {
+          } else if (reportItem?.outcome === 'skipped') {
             showInfoMessage(<Trans i18nKey="actions.skipped" values={{ action: actionName }} />);
           } else {
             showSuccessMessage(<Trans i18nKey="actions.succeeded" values={{ action: actionName }} />);
