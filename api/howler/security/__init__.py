@@ -1,5 +1,4 @@
 import functools
-import sys
 from typing import Optional
 
 import requests
@@ -23,6 +22,7 @@ from howler.common.logging import get_logger
 from howler.common.logging.audit import audit
 from howler.config import AUDIT, QUOTA_TRACKER, config
 from howler.odm.models.user import User
+from howler.utils.constants import TESTING
 
 logger = get_logger(__file__)
 
@@ -184,7 +184,7 @@ class api_login(object):  # noqa: D101, N801
                     )
 
                 ip = request.headers.get("X-Forwarded-For", request.remote_addr)
-                if "pytest" not in sys.modules:
+                if not TESTING:
                     logger.info("Logged in as %s from %s for path %s", user["uname"], ip, request.path)
 
                 # If auditing is enabled, write this successful access to the audit logs

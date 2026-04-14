@@ -1,4 +1,3 @@
-import sys
 import typing
 from typing import Optional
 
@@ -6,6 +5,7 @@ import requests
 
 from howler.common.logging import get_logger
 from howler.config import config
+from howler.utils.constants import TESTING
 
 logger = get_logger(__file__)
 DISCO_CACHE = {}
@@ -20,7 +20,7 @@ def get_apps_list(discovery_url: Optional[str]) -> list[dict[str, str]]:
     if discovery_url not in DISCO_CACHE:
         apps = []
 
-        if "pytest" in sys.modules:
+        if TESTING:
             logger.info("Skipping discovery, running in a test environment")
 
         try:

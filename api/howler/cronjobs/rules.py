@@ -3,7 +3,6 @@ import json
 import os
 import random
 import re
-import sys
 from datetime import datetime
 from typing import Any, Optional
 
@@ -23,6 +22,7 @@ from howler.datastore.operations import OdmHelper, OdmUpdateOperation
 from howler.odm.models.analytic import Analytic
 from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import HitOperationType
+from howler.utils.constants import TESTING
 
 logger = get_logger(__file__)
 hit_helper = OdmHelper(Hit)
@@ -217,7 +217,7 @@ def register_rules(new_rule: Optional[Analytic] = None, test_override: bool = Fa
         logger.error("Scheduler instance does not exist!")
         return
 
-    if "pytest" in sys.modules and not test_override:
+    if TESTING and not test_override:
         logger.info("Skipping registration, running in a test environment")
         return
 

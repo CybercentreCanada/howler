@@ -1,4 +1,3 @@
-import sys
 import time
 from typing import Callable, Optional
 
@@ -12,6 +11,7 @@ from howler.common.swagger import generate_swagger_docs
 from howler.config import cache, config
 from howler.plugins import get_plugins
 from howler.security import api_login
+from howler.utils.constants import TESTING
 
 SUB_API = "clue"
 clue_api = make_subapi_blueprint(SUB_API, api_version=1)
@@ -22,7 +22,7 @@ logger = get_logger(__file__)
 
 def skip_cache(*args):
     "Function to skip cache in testing mode"
-    return "pytest" in sys.modules
+    return TESTING
 
 
 @cache.memoize(15 * 60, unless=skip_cache)

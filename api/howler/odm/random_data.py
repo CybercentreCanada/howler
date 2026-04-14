@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 from howler.odm.models.clue import Clue
 from howler.plugins import get_plugins
+from howler.utils.constants import TESTING
 
 load_dotenv()
 
@@ -136,7 +137,7 @@ def create_users(ds):
     )
     ds.view.save(admin_view.view_id, admin_view)
 
-    if "pytest" not in sys.modules:
+    if not TESTING:
         logger.info("\t%s:%s", user_data.uname, admin_pass)
 
     user_hash = get_password_hash(user_pass)
@@ -183,7 +184,7 @@ def create_users(ds):
     )
     ds.view.save(user_view.view_id, user_view)
 
-    if "pytest" not in sys.modules:
+    if not TESTING:
         logger.info("\t%s:%s", user_data.uname, user_pass)
 
     huey_hash = get_password_hash(huey_pass)
@@ -230,7 +231,7 @@ def create_users(ds):
     )
     ds.view.save(huey_view.view_id, huey_view)
 
-    if "pytest" not in sys.modules:
+    if not TESTING:
         logger.info("\t%s:%s", huey_data.uname, huey_pass)
 
     shawnh_view = View(
@@ -260,7 +261,7 @@ def create_users(ds):
     ds.user.save("shawn-h", shawn_data)
     ds.view.save(shawnh_view.view_id, shawnh_view)
 
-    if "pytest" not in sys.modules:
+    if not TESTING:
         logger.info("\t%s:%s", shawn_data.uname, shawnh_pass)
 
     goose_view = View(
@@ -290,7 +291,7 @@ def create_users(ds):
     ds.user.save("goose", goose_data)
     ds.view.save(goose_view.view_id, goose_view)
 
-    if "pytest" not in sys.modules:
+    if not TESTING:
         logger.info("\t%s:%s", goose_data.uname, goose_pass)
 
     ds.user.commit()
@@ -566,10 +567,10 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
 
         ds.hit.commit()
 
-        if hit_idx % 25 == 0 and "pytest" not in sys.modules:
+        if hit_idx % 25 == 0 and not TESTING:
             logger.info("\tCreated %s/%s", hit_idx, hit_count)
 
-    if "pytest" not in sys.modules:
+    if not TESTING:
         logger.info("\tCreated %s/%s", hit_idx + 1, hit_count)
 
     logger.info(

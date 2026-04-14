@@ -195,7 +195,7 @@ homepage = "https://cybercentrecanada.github.io/howler/"
 repository = "https://github.com/CybercentreCanada/howler-api"
 
 [tool.poetry.dependencies]
-python = "^3.9.17"
+python = "^3.10"
 apscheduler = "3.11.2"
 authlib = "^1.6.0"
 chardet = "5.2.0"
@@ -240,7 +240,7 @@ pyright = {extras = ["nodejs"], version = "^1.1.408"}
 mypy = "^1.6.1"
 
 [tool.poetry.group.test.dependencies]
-pytest = "^8.1.1"
+pytest = "9.0.3"
 retrying = "^1.3.4"
 pyftpdlib = "^1.5.9"
 pyopenssl = ">=24.1,<27.0"

@@ -17,6 +17,7 @@ from howler.common.exceptions import InvalidDataException
 from howler.common.loader import datastore
 from howler.config import redis
 from howler.remote.datatypes.hash import Hash
+from howler.utils.constants import TESTING
 from howler.utils.dict_utils import flatten_deep
 from howler.utils.lucene import coerce, normalize_phrase, try_parse_date, try_parse_ip, try_parse_number
 
@@ -235,7 +236,7 @@ def match(lucene: str, obj: dict[str, Any]):
     hash_key = sha256(lucene.encode()).hexdigest()
 
     # We cache the results back from ES, since we will frequently run the same validation queries over and over again.
-    if (normalized_query := NORMALIZED_QUERY_CACHE.get(hash_key)) is None or "pytest" in sys.modules:
+    if (normalized_query := NORMALIZED_QUERY_CACHE.get(hash_key)) is None or TESTING:
         # This regex checks for lucene phrases (i.e. the "Example Analytic" part of howler.analytic:"Example Analytic")
         # And then escapes them.
         # https://regex101.com/r/8u5F6a/1

@@ -25,6 +25,7 @@ def main():
         print("Running howler server (with coverage)")
         background_server = subprocess.Popen(
             prep_command("coverage run -m flask --app howler.app run --no-reload"),
+            env={"TESTING": "true", **os.environ},
         )
 
         print("Running pytest")

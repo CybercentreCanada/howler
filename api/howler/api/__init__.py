@@ -10,6 +10,7 @@ from howler import odm
 from howler.common.loader import APP_NAME
 from howler.common.logging import get_logger, log_with_traceback
 from howler.config import QUOTA_TRACKER, get_version
+from howler.utils.constants import TESTING
 from howler.utils.str_utils import safe_str
 
 API_PREFIX = "/api"
@@ -72,7 +73,8 @@ def _make_api_response(
             resp.set_cookie(k, v, secure=True, httponly=True, samesite="Lax")
 
     RAW_API_COUNTER.labels(request.method, str(request.url_rule), status_code).inc()
-    logger.info("%s %s - %s", request.method, request.path, status_code)
+    if not TESTING:
+        logger.info("%s %s - %s", request.method, request.path, status_code)
 
     return resp
 
