@@ -211,27 +211,35 @@ const CaseTimeline: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase
                     {dayjs(entry.event?.created ?? entry.timestamp).format('YYYY-MM-DD HH:mm:ss')}
                   </Typography>
                   {entry.threat?.technique?.id && (
-                    <Typography
-                      component="a"
-                      href={`https://attack.mitre.org/techniques/${entry.threat.technique.id}`}
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ whiteSpace: 'nowrap' }}
+                    <Tooltip
+                      title={`${entry.threat.technique.id}: ${config.lookups?.techniques?.[entry.threat.technique.id].name}`}
                     >
-                      {entry.threat.technique.id}
-                    </Typography>
+                      <Typography
+                        component="a"
+                        href={config.lookups?.techniques?.[entry.threat.technique.id].url}
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ whiteSpace: 'nowrap' }}
+                      >
+                        {entry.threat.technique.id}
+                      </Typography>
+                    </Tooltip>
                   )}
 
                   {entry.threat?.tactic?.id && (
-                    <Typography
-                      component="a"
-                      href={`https://attack.mitre.org/tactics/${entry.threat.tactic.id}`}
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ whiteSpace: 'nowrap' }}
+                    <Tooltip
+                      title={`${entry.threat.tactic.id}: ${config.lookups?.tactics?.[entry.threat.tactic.id].name}`}
                     >
-                      {entry.threat.tactic.id}
-                    </Typography>
+                      <Typography
+                        component="a"
+                        href={config.lookups?.tactics?.[entry.threat.tactic.id].url}
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ whiteSpace: 'nowrap' }}
+                      >
+                        {entry.threat.tactic.id}
+                      </Typography>
+                    </Tooltip>
                   )}
                 </Stack>
                 <Box
