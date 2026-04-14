@@ -248,15 +248,19 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
           ) : (
             hit.howler.analytic
           )}
-          {hit.howler.detection && ': '}
-          <Link
-            to={`/hits/${hit.howler.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={e => e.stopPropagation()}
-          >
-            {hit.howler.detection}
-          </Link>
+          {hit.howler.detection && (
+            <>
+              {': '}
+              <Link
+                to={`/hits/${hit.howler.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={e => e.stopPropagation()}
+              >
+                {hit.howler.detection}
+              </Link>
+            </>
+          )}
         </Typography>
         {hit.howler?.rationale && (
           <Typography
@@ -354,9 +358,10 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
           <Tooltip title={hit.howler.links[0].title || 'Open in source platform'}>
             <IconButton
               size="small"
+              aria-label={hit.howler.links[0].title || 'Open in source platform'}
               onClick={e => {
                 e.stopPropagation();
-                window.open(hit.howler.links[0].href, '_blank');
+                window.open(hit.howler.links[0].href, '_blank', 'noopener,noreferrer');
               }}
             >
               <OpenInNew />
