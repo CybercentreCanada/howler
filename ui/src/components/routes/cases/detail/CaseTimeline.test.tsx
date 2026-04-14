@@ -134,6 +134,23 @@ const Wrapper: FC<PropsWithChildren> = ({ children }) => (
   </ApiConfigContext.Provider>
 );
 
+const mockConfigWithUrls = {
+  lookups: {
+    tactics: { TA0001: { key: 'TA0001', name: 'Initial Access', url: 'https://attack.mitre.org/tactics/TA0001' } },
+    techniques: {
+      T1059: { key: 'T1059', name: 'Command Scripting', url: 'https://attack.mitre.org/techniques/T1059' }
+    }
+  }
+} as any;
+
+const WrapperWithUrl: FC<PropsWithChildren> = ({ children }) => (
+  <ApiConfigContext.Provider value={{ config: mockConfigWithUrls, setConfig: vi.fn() }}>
+    <RecordContext.Provider value={{ records: {}, loadRecords: mockLoadRecords } as any}>
+      <MemoryRouter initialEntries={['/cases/case-001/timeline']}>{children}</MemoryRouter>
+    </RecordContext.Provider>
+  </ApiConfigContext.Provider>
+);
+
 const CaseTimeline = (await import('./CaseTimeline')).default;
 
 // Reusable mock response factories
@@ -317,5 +334,133 @@ describe('CaseTimeline component', () => {
     render(<CaseTimeline case={{ case_id: 'empty', items: [] } as any} />, { wrapper: Wrapper });
 
     expect(mockDispatchApi).not.toHaveBeenCalled();
+  });
+
+  describe('tactic and technique inline entries', () => {
+    it('renders the technique ID link for a hit with threat.technique', async () => {
+      mockDispatchApi
+        .mockResolvedValueOnce(mockFacetResponse)
+        .mockResolvedValueOnce(
+          mockSearchResponse([createMockHit({ howler: { id: 'hit-1' }, threat: { technique: { id: 'T1059' } } })])
+        );
+
+      render(<CaseTimeline case={mockCase} />, { wrapper: Wrapper });
+
+      expect(await screen.findByText('T1059')).toBeTruthy();
+    });
+
+    it('renders the tactic ID link for a hit with threat.tactic', async () => {
+      mockDispatchApi
+        .mockResolvedValueOnce(mockFacetResponse)
+        .mockResolvedValueOnce(
+          mockSearchResponse([createMockHit({ howler: { id: 'hit-1' }, threat: { tactic: { id: 'TA0001' } } })])
+        );
+
+      render(<CaseTimeline case={mockCase} />, { wrapper: Wrapper });
+
+      expect(await screen.findByText('TA0001')).toBeTruthy();
+    });
+
+    it('renders both technique and tactic ID links when the entry has both threat fields', async () => {
+      mockDispatchApi.mockResolvedValueOnce(mockFacetResponse).mockResolvedValueOnce(
+        mockSearchResponse([
+          createMockHit({
+            howler: { id: 'hit-1' },
+            threat: { technique: { id: 'T1059' }, tactic: { id: 'TA0001' } }
+          })
+        ])
+      );
+
+      render(<CaseTimeline case={mockCase} />, { wrapper: Wrapper });
+
+      await screen.findByText('T1059');
+      expect(screen.getByText('TA0001')).toBeTruthy();
+    });
+
+    it('does not render tactic or technique links when threat data is absent', async () => {
+      mockDispatchApi
+        .mockResolvedValueOnce(mockFacetResponse)
+        .mockResolvedValueOnce(mockSearchResponse([createMockHit({ howler: { id: 'hit-1' } })]));
+
+      render(<CaseTimeline case={mockCase} />, { wrapper: Wrapper });
+
+      await screen.findByText('HitCard:hit-1');
+      expect(screen.queryByText('T1059')).toBeNull();
+      expect(screen.queryByText('TA0001')).toBeNull();
+    });
+
+    it('sets href on the technique link from config.lookups.techniques.url', async () => {
+      mockDispatchApi
+        .mockResolvedValueOnce(mockFacetResponse)
+        .mockResolvedValueOnce(
+          mockSearchResponse([createMockHit({ howler: { id: 'hit-1' }, threat: { technique: { id: 'T1059' } } })])
+        );
+
+      render(<CaseTimeline case={mockCase} />, { wrapper: WrapperWithUrl });
+
+      const link = await screen.findByText('T1059');
+      expect(link.getAttribute('href')).toBe('https://attack.mitre.org/techniques/T1059');
+    });
+
+    it('sets href on the tactic link from config.lookups.tactics.url', async () => {
+      mockDispatchApi
+        .mockResolvedValueOnce(mockFacetResponse)
+        .mockResolvedValueOnce(
+          mockSearchResponse([createMockHit({ howler: { id: 'hit-1' }, threat: { tactic: { id: 'TA0001' } } })])
+        );
+
+      render(<CaseTimeline case={mockCase} />, { wrapper: WrapperWithUrl });
+
+      const link = await screen.findByText('TA0001');
+      expect(link.getAttribute('href')).toBe('https://attack.mitre.org/tactics/TA0001');
+    });
+
+    describe('tooltip content', () => {
+      beforeEach(() => {
+        vi.useFakeTimers({ shouldAdvanceTime: true });
+      });
+
+      afterEach(() => {
+        vi.useRealTimers();
+      });
+
+      it('shows a tooltip with technique ID and name on hover', async () => {
+        mockDispatchApi
+          .mockResolvedValueOnce(mockFacetResponse)
+          .mockResolvedValueOnce(
+            mockSearchResponse([createMockHit({ howler: { id: 'hit-1' }, threat: { technique: { id: 'T1059' } } })])
+          );
+
+        render(<CaseTimeline case={mockCase} />, { wrapper: Wrapper });
+
+        const link = await screen.findByText('T1059');
+
+        await act(async () => {
+          await userEvent.hover(link);
+        });
+
+        const tooltip = await screen.findByRole('tooltip');
+        expect(tooltip.textContent).toContain('T1059: Command Scripting');
+      });
+
+      it('shows a tooltip with tactic ID and name on hover', async () => {
+        mockDispatchApi
+          .mockResolvedValueOnce(mockFacetResponse)
+          .mockResolvedValueOnce(
+            mockSearchResponse([createMockHit({ howler: { id: 'hit-1' }, threat: { tactic: { id: 'TA0001' } } })])
+          );
+
+        render(<CaseTimeline case={mockCase} />, { wrapper: Wrapper });
+
+        const link = await screen.findByText('TA0001');
+
+        await act(async () => {
+          await userEvent.hover(link);
+        });
+
+        const tooltip = await screen.findByRole('tooltip');
+        expect(tooltip.textContent).toContain('TA0001: Initial Access');
+      });
+    });
   });
 });
