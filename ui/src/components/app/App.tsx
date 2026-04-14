@@ -390,10 +390,6 @@ const createRouter = () =>
           element: <QueryBuilder />
         },
         {
-          path: 'settings',
-          element: <Settings />
-        },
-        {
           path: 'action',
           element: <RoleRoute role="automation_basic" />,
           children: [
