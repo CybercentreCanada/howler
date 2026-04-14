@@ -54,12 +54,17 @@ def test_ingest_endpoint(client, caplog):
     assert result.json["api_response"]["bundle_size"] == 2
     assert len(result.json["api_response"]["individual_hit_ids"]) == 2
     assert datastore().hit.exists(result.json["api_response"]["bundle_hit_id"])
-    assert (
-        datastore().hit.get(result.json["api_response"]["bundle_hit_id"], as_obj=True).howler.hits
-        == result.json["api_response"]["individual_hit_ids"]
-    )
+
+    # Verify child hits are linked via a case, not via howler.hits
+    root_hit = datastore().hit.get(result.json["api_response"]["bundle_hit_id"], as_obj=True)
+    assert root_hit
+    assert len(root_hit.howler.related) > 0, "Root hit should have a case back-reference"
+    case = datastore().case.get(root_hit.howler.related[0])
+    assert case
+    case_hit_values = [item.value for item in case.items if item.type == "hit"]
     for _id in result.json["api_response"]["individual_hit_ids"]:
         assert datastore().hit.exists(_id)
+        assert _id in case_hit_values, f"Child hit {_id} should be in case items"
 
 
 def test_update_incident_status(client):
@@ -76,8 +81,10 @@ def test_update_incident_status(client):
     bundle_hit_id = response.json["api_response"]["bundle_hit_id"]
     # Assert: Checking that underlying alerts in the incident are open
     alert = datastore().hit.get(response.json["api_response"]["individual_hit_ids"][0], as_obj=True)
+    assert alert
     assert alert.howler.status == "open"
     alert = datastore().hit.get(response.json["api_response"]["individual_hit_ids"][1], as_obj=True)
+    assert alert
     assert alert.howler.status == "open"
 
     # Act: Update the incident status. This should also update the underlying alerts.
@@ -94,11 +101,14 @@ def test_update_incident_status(client):
     assert update_response.json["api_response"]["updated"] is True
     assert update_response.json["api_response"]["bundle_hit_id"] == bundle_hit_id
     bundle = datastore().hit.get(bundle_hit_id, as_obj=True)
+    assert bundle
     assert bundle.howler.status == "resolved"
     # Assert: Checking that underlying alerts in the incident are resolved
     alert = datastore().hit.get(response.json["api_response"]["individual_hit_ids"][0], as_obj=True)
+    assert alert
     assert alert.howler.status == "resolved"
     alert = datastore().hit.get(response.json["api_response"]["individual_hit_ids"][1], as_obj=True)
+    assert alert
     assert alert.howler.status == "resolved"
 
 
@@ -119,8 +129,10 @@ def test_update_incident_status_noalerts(client):
     bundle_hit_id = response.json["api_response"]["bundle_hit_id"]
     # Assert: Checking that underlying alerts in the incident are open
     alert = datastore().hit.get(response.json["api_response"]["individual_hit_ids"][0], as_obj=True)
+    assert alert
     assert alert.howler.status == "open"
     alert = datastore().hit.get(response.json["api_response"]["individual_hit_ids"][1], as_obj=True)
+    assert alert
     assert alert.howler.status == "open"
 
     # Act: Update the incident status. This should also update the underlying alerts.
@@ -136,11 +148,14 @@ def test_update_incident_status_noalerts(client):
     assert update_response.json["api_response"]["updated"] is True
     assert update_response.json["api_response"]["bundle_hit_id"] == bundle_hit_id
     bundle = datastore().hit.get(bundle_hit_id, as_obj=True)
+    assert bundle
     assert bundle.howler.status == "resolved"
     # Assert: Checking that underlying alerts in the (incident) bundle are resolved
     alert = datastore().hit.get(response.json["api_response"]["individual_hit_ids"][0], as_obj=True)
+    assert alert
     assert alert.howler.status == "resolved"
     alert = datastore().hit.get(response.json["api_response"]["individual_hit_ids"][1], as_obj=True)
+    assert alert
     assert alert.howler.status == "resolved"
 
 
@@ -163,9 +178,10 @@ def test_ingest_incident_without_alerts(client):
     assert api_response["individual_hit_ids"] == []
     assert datastore().hit.exists(api_response["bundle_hit_id"])
     bundle = datastore().hit.get(api_response["bundle_hit_id"], as_obj=True)
-    assert not bundle.howler.is_bundle
+    assert bundle
     assert bundle.howler.status == "open"
-    assert bundle.howler.hits == []
+    # No case should be created when there are no alerts
+    assert len(bundle.howler.related) == 0
 
 
 def test_ingest_incident_without_alerts_key(client):
@@ -188,9 +204,10 @@ def test_ingest_incident_without_alerts_key(client):
     assert api_response["individual_hit_ids"] == []
     assert datastore().hit.exists(api_response["bundle_hit_id"])
     bundle = datastore().hit.get(api_response["bundle_hit_id"], as_obj=True)
-    assert not bundle.howler.is_bundle
+    assert bundle
     assert bundle.howler.status == "open"
-    assert bundle.howler.hits == []
+    # No case should be created when there are no alerts
+    assert len(bundle.howler.related) == 0
 
 
 def test_bundle_alert_linking_consistency(client):
@@ -208,10 +225,16 @@ def test_bundle_alert_linking_consistency(client):
     api_response = response.json["api_response"]
     bundle_id = api_response["bundle_hit_id"]
     alert_ids = api_response["individual_hit_ids"]
-    # Assert: Bundle's hits field contains all alert IDs
-    bundle = datastore().hit.get(bundle_id, as_obj=True)
-    assert set(bundle.howler.hits) == set(alert_ids)
-    # Assert: Each alert's bundles field contains the bundle ID
+    # Assert: Root hit should have a case back-reference, and case items should contain all alerts
+    root_hit = datastore().hit.get(bundle_id, as_obj=True)
+    assert root_hit
+    assert len(root_hit.howler.related) > 0, "Root hit should have a case back-reference"
+    case = datastore().case.get(root_hit.howler.related[0])
+    assert case
+    case_hit_values = {item.value for item in case.items if item.type == "hit" and item.value != bundle_id}
+    assert case_hit_values == set(alert_ids)
+    # Assert: Each alert should have a case back-reference
     for alert_id in alert_ids:
         alert = datastore().hit.get(alert_id, as_obj=True)
-        assert bundle_id in getattr(alert.howler, "bundles", [])
+        assert alert
+        assert any(rid == case.case_id for rid in alert.howler.related)

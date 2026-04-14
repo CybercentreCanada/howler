@@ -94,6 +94,8 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
 
     out: list[dict[str, Any]] = []
     odms = []
+    bundle_raw: dict[str, Any] | None = None
+    bundle_index: int | None = None
     for hit in hits:
         cur_id = get_random_id()
         cur_time = now_as_iso()
@@ -135,7 +137,18 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
                         obj[target] = _val
 
         try:
+            is_bundle = obj.pop("howler.is_bundle", False)
+            obj.pop("howler.hits", None)
+            obj.pop("howler.bundle_size", None)
+            obj.pop("howler.bundles", None)
+
             odm, warns = hit_service.convert_hit(obj, unique=True, ignore_extra_values=ignore_extra_values)
+
+            if is_bundle:
+                if bundle_raw is not None:
+                    return bad_request(err="You can only specify one bundle hit!")
+                bundle_raw = obj
+                bundle_index = len(odms)
 
             odms.append(odm)
 
@@ -155,12 +168,36 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
     if any([obj["error"] for obj in out]):
         return bad_request(out, warnings=warnings, err="No valid hits were provided")
     else:
-        for odm in odms:
-            hit_service.create_hit(odm.howler.id, odm, user=user.uname)
-            analytic_service.save_from_hit(odm, user)
+        if bundle_index is not None:
+            # Route through bundle compat service → creates a case
+            from howler.services import bundle_compat_service
+
+            bundle_odm = odms[bundle_index]
+            child_odms = [odm for i, odm in enumerate(odms) if i != bundle_index]
+
+            for odm in child_odms:
+                hit_service.create_hit(odm.howler.id, odm, user=user.uname)
+                analytic_service.save_from_hit(odm, user)
+
+            child_ids = [odm.howler.id for odm in child_odms]
+            bundle_data = bundle_odm.as_primitives()
+            result = bundle_compat_service.create_bundle(bundle_data, child_ids, user=user.uname)
+            warnings.append(bundle_compat_service.DEPRECATION_MESSAGE)
+
+            # Replace the bundle entry in the output with the created bundle id
+            for entry in out:
+                if entry.get("id") == bundle_odm.howler.id:
+                    entry["id"] = result["howler"]["id"]
+                    entry["_case_id"] = result.get("_case_id")
+        else:
+            for odm in odms:
+                hit_service.create_hit(odm.howler.id, odm, user=user.uname)
+                analytic_service.save_from_hit(odm, user)
 
         datastore().hit.commit()
 
-        action_service.bulk_execute_on_query(f"howler.id:({' OR '.join(entry['id'] for entry in out)})", user=user)
+        action_service.bulk_execute_on_query(
+            f"howler.id:({' OR '.join(entry['id'] for entry in out if entry['id'])})", user=user
+        )
 
         return created(out, warnings=warnings)
