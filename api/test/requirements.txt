@@ -1,6 +1,6 @@
 coverage==7.10.7
 diff-cover==8.0.2
-pytest==7.1.2
+pytest==9.0.3
 pytest-cov==4.1.0
 retrying==1.4.2
 mock==5.2.0
