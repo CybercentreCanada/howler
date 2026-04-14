@@ -1,5 +1,5 @@
 import { Topic } from '@mui/icons-material';
-import { Typography } from '@mui/material';
+import { Stack, Typography } from '@mui/material';
 import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
 import { TuiListProvider, type TuiListItem, type TuiListItemProps } from 'components/elements/addons/lists';
@@ -7,12 +7,19 @@ import { TuiListMethodContext, type TuiListMethodsState } from 'components/eleme
 import ItemManager from 'components/elements/display/ItemManager';
 import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
+import dayjs from 'dayjs';
 import type { Case } from 'models/entities/generated/Case';
-import { useCallback, useContext, useEffect, useState, type FC } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { StorageKey } from 'utils/constants';
+import { DATE_RANGE_LUCENE, StorageKey } from 'utils/constants';
 import CaseCard from '../../elements/case/CaseCard';
+import CaseAssigneeFilter from './search/CaseAssigneeFilter';
+import CaseDateFilter, { type DateRangeOption } from './search/CaseDateFilter';
+import CaseStatusFilter from './search/CaseStatusFilter';
+
+const buildPhraseQuery = (p: string) =>
+  `(title:*${p}* OR summary:*${p}* OR overview:*${p}* OR participants:*${p}* OR tasks.summary:*${p}* OR tasks.assignment:*${p}*)`;
 
 const CasesBase: FC = () => {
   const { t } = useTranslation();
@@ -28,6 +35,32 @@ const CasesBase: FC = () => {
   const [hasError, setHasError] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [assigneeFilter, setAssigneeFilter] = useState<string[]>([]);
+  const [dateRange, setDateRange] = useState<DateRangeOption>('date.range.all');
+  const [customStart, setCustomStart] = useState(dayjs().subtract(2, 'days'));
+  const [customEnd, setCustomEnd] = useState(dayjs());
+
+  const filtersReady = useRef(false);
+
+  const buildFilters = useCallback((): string[] => {
+    const filters: string[] = [];
+    if (statusFilter.length > 0) {
+      filters.push(`status:(${statusFilter.map(s => `"${s}"`).join(' OR ')})`);
+    }
+    if (assigneeFilter.length > 0) {
+      const ap = assigneeFilter.map(a => `(participants:"${a}" OR tasks.assignment:"${a}")`).join(' OR ');
+      filters.push(`(${ap})`);
+    }
+    const lucene = DATE_RANGE_LUCENE[dateRange];
+    if (lucene) {
+      filters.push(`created:[${lucene} TO now]`);
+    } else if (dateRange === 'date.range.custom') {
+      filters.push(`created:[${customStart.toISOString()} TO ${customEnd.toISOString()}]`);
+    }
+    return filters;
+  }, [statusFilter, assigneeFilter, dateRange, customStart, customEnd]);
+
   const onSearch = useCallback(async () => {
     try {
       setLoading(true);
@@ -40,13 +73,12 @@ const CasesBase: FC = () => {
       }
       setSearchParams(searchParams, { replace: true });
 
-      // Check for the actual search query
-      const query = phrase ? `*:*${phrase}*` : '*:*';
-      // Ensure the overview should be visible and/or matches the type we are filtering for
+      const filters = buildFilters();
       setResponse(
         await dispatchApi(
           api.search.case.post({
-            query,
+            query: buildPhraseQuery(phrase || '*'),
+            filters,
             rows: pageCount,
             offset
           })
@@ -57,10 +89,9 @@ const CasesBase: FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [phrase, setSearchParams, searchParams, dispatchApi, pageCount, offset]);
+  }, [buildFilters, phrase, setSearchParams, searchParams, dispatchApi, pageCount, offset]);
 
   // Load the items into list when response changes.
-  // This hook should only trigger when the 'response' changes.
   useEffect(() => {
     if (response) {
       load(
@@ -111,6 +142,18 @@ const CasesBase: FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offset]);
 
+  // Re-search when filter chips change, but skip the initial render.
+  useEffect(() => {
+    if (!filtersReady.current) {
+      filtersReady.current = true;
+      return;
+    }
+    if (!loading) {
+      onSearch();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter, assigneeFilter, dateRange]);
+
   const renderer = useCallback((item: Case, className?: string) => <CaseCard case={item} className={className} />, []);
 
   return (
@@ -128,6 +171,20 @@ const CasesBase: FC = () => {
         >
           {t('route.cases.search.prompt')}
         </Typography>
+      }
+      searchFilters={
+        <Stack direction="row" spacing={1} useFlexGap sx={{ mt: 0.5, flexWrap: 'wrap' }}>
+          <CaseStatusFilter statusFilter={statusFilter} onChange={setStatusFilter} />
+          <CaseAssigneeFilter assigneeFilter={assigneeFilter} onChange={setAssigneeFilter} />
+          <CaseDateFilter
+            dateRange={dateRange}
+            onChange={setDateRange}
+            customStart={customStart}
+            customEnd={customEnd}
+            onCustomStartChange={setCustomStart}
+            onCustomEndChange={setCustomEnd}
+          />
+        </Stack>
       }
       renderer={({ item }: TuiListItemProps<Case>, classRenderer) => renderer(item.item, classRenderer())}
       response={response}
