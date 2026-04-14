@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 from typing import Any, Optional
 
+from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.odm.models.user import User
 from howler.plugins import get_plugins
@@ -11,6 +12,9 @@ from howler.plugins import get_plugins
 logger = get_logger(__file__)
 
 PLUGIN_PATH = Path(os.environ.get("HWL_PLUGIN_DIRECTORY", "/etc/howler/plugins"))
+
+# Roles that grant advanced hit limits
+ADVANCED_ROLES = {"automation_advanced", "actionrunner_advanced", "admin"}
 
 
 def __sanitize_specification(spec: dict[str, Any]) -> dict[str, Any]:
@@ -117,6 +121,16 @@ def execute(
             }
         ]
 
+    if not user:
+        return [
+            {
+                "query": query,
+                "outcome": "error",
+                "title": "Authentication required",
+                "message": "You must be logged in to execute actions.",
+            }
+        ]
+
     required_roles = set(operation.specification()["roles"])
     has_roles = required_roles & set(user["type"])
     if not has_roles:
@@ -131,6 +145,27 @@ def execute(
                 ),
             }
         ]
+
+    # Check hit count limits based on user role
+    is_advanced = bool(ADVANCED_ROLES & set(user["type"]))
+    max_hits_basic = getattr(operation, "MAX_HITS_BASIC", None)
+    max_hits_advanced = getattr(operation, "MAX_HITS_ADVANCED", None)
+    limit = max_hits_advanced if is_advanced else max_hits_basic
+
+    if limit is not None:
+        hit_count = datastore().hit.search(query, rows=0)["total"]
+        if hit_count > limit:
+            return [
+                {
+                    "query": query,
+                    "outcome": "error",
+                    "title": "Hit limit exceeded",
+                    "message": (
+                        f"This action affects {hit_count} hits, but you can only process {limit} at a time. "
+                        "Contact an administrator for bulk operations."
+                    ),
+                }
+            ]
 
     report = operation.execute(query=query, request_id=request_id, user=user, **kwargs)
 

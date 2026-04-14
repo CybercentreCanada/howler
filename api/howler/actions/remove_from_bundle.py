@@ -11,6 +11,8 @@ from howler.utils.str_utils import sanitize_lucene_query
 hit_helper = OdmHelper(Hit)
 
 OPERATION_ID = "remove_from_bundle"
+MAX_HITS_BASIC = 10
+MAX_HITS_ADVANCED = 1000
 
 
 def execute(query: str, bundle_id: Optional[str] = None, **kwargs):

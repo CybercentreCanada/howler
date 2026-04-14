@@ -13,6 +13,8 @@ from howler.odm.models.howler_data import (
 from howler.utils.str_utils import sanitize_lucene_query
 
 OPERATION_ID = "promote"
+MAX_HITS_BASIC = 10
+MAX_HITS_ADVANCED = 1000
 
 ESCALATIONS = [esc for esc in Escalation.list() if esc != Escalation.MISS]
 
