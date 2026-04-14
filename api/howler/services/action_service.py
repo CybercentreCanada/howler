@@ -1,5 +1,4 @@
 import json
-import sys
 from typing import Any, Optional
 
 from flask import Response
@@ -12,6 +11,7 @@ from howler.common.logging import get_logger
 from howler.common.logging.audit import audit
 from howler.odm.models.action import VALID_TRIGGERS, Action
 from howler.odm.models.user import User
+from howler.utils.constants import TESTING
 from howler.utils.str_utils import sanitize_lucene_query
 
 logger = get_logger(__file__)
@@ -67,7 +67,7 @@ def bulk_execute_on_query(query: str, trigger: str = "create", user: Optional[Us
         intersected_query = f"({query}) AND ({action.query})"
 
         if datastore().hit.search(intersected_query, rows=0)["total"] < 1:
-            if "pytest" in sys.modules:
+            if TESTING:
                 logger.debug("Action %s does not apply to query %s", action.action_id, query)
 
             continue

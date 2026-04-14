@@ -1,16 +1,16 @@
-import sys
-from typing import Any, Optional
+from typing import Any
 
 import requests
 
 from howler.common.logging import get_logger
 from howler.config import config
+from howler.utils.constants import TESTING
 
 logger = get_logger(__file__)
 DISCO_CACHE = {}
 
 
-def get_apps_list(discovery_url: Optional[str]) -> list[dict[str, str]]:
+def get_apps_list(discovery_url: str | None) -> list[dict[str, str]]:
     """Get a list of apps from the discovery service
 
     Returns:
@@ -19,7 +19,7 @@ def get_apps_list(discovery_url: Optional[str]) -> list[dict[str, str]]:
     if discovery_url not in DISCO_CACHE:
         apps: list[dict[str, Any]] = []
 
-        if "pytest" in sys.modules:
+        if TESTING:
             logger.info("Skipping discovery, running in a test environment")
 
         url = discovery_url or config.ui.discover_url

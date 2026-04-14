@@ -65,10 +65,9 @@ core:
     enabled: false
     status_checks: []
     url: http://enrichment-rest.enrichment.svc.cluster.local:5000
-  metrics:
-    apm_server:
-      server_url: null
-      token: null
+  telemetry:
+    enabled: false
+    backend: opentelemetry
   notebook:
     enabled: false
     scope: null

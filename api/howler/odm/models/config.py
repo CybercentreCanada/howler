@@ -305,27 +305,6 @@ class Auth(BaseModel):
     oauth: OAuth = OAuth()
 
 
-class APMServer(BaseModel):
-    """Application Performance Monitoring (APM) server configuration.
-
-    Defines the connection details for an external APM server used to
-    collect and analyze application performance metrics.
-    """
-
-    server_url: Optional[str] = Field(default=None, description="URL to API server")
-    token: Optional[str] = Field(default=None, description="Authentication token for server")
-
-
-class Metrics(BaseModel):
-    """Metrics collection configuration.
-
-    Configures how Howler collects and exports application metrics,
-    including integration with external APM servers.
-    """
-
-    apm_server: APMServer = APMServer()
-
-
 class Retention(BaseModel):
     """Hit retention policy configuration.
 
@@ -459,18 +438,36 @@ class Notebook(BaseModel):
     )
 
 
+class Telemetry(BaseModel):
+    """Telemetry configuration for Howler.
+
+    Controls whether tracing is enabled and which backend to use.
+    When using ``opentelemetry``, the OTLP exporter is configured via
+    standard OTEL environment variables such as OTEL_EXPORTER_OTLP_ENDPOINT
+    and OTEL_EXPORTER_OTLP_HEADERS.
+    When using ``azure_monitor``, the Azure Monitor exporter is used instead,
+    configured via the APPLICATIONINSIGHTS_CONNECTION_STRING environment variable.
+    """
+
+    enabled: bool = Field(default=False, description="Enable telemetry tracing?")
+    backend: str = Field(
+        default="opentelemetry",
+        description="Telemetry backend to use (e.g. 'opentelemetry', 'azure_monitor')",
+    )
+
+
 class Core(BaseModel):
     """Core application configuration for Howler.
 
-    Aggregates all core service configurations including Redis, metrics,
+    Aggregates all core service configurations including Redis, telemetry,
     and external integrations like Clue and nbgallery notebooks.
     Also manages the loading of external plugins.
     """
 
     plugins: set[str] = Field(description="A list of external plugins to load", default=set())
 
-    metrics: Metrics = Metrics()
-    "Configuration for Metrics Collection"
+    telemetry: Telemetry = Telemetry()
+    "Configuration for OpenTelemetry"
 
     redis: Redis = Redis()
     "Configuration for Redis instances"

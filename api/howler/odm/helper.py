@@ -1,6 +1,5 @@
 import json
 import random
-import sys
 from datetime import datetime, timedelta
 from hashlib import md5
 from math import ceil
@@ -30,6 +29,7 @@ from howler.odm.randomizer import (
 )
 from howler.plugins import get_plugins
 from howler.security.utils import get_password_hash
+from howler.utils.constants import TESTING
 from howler.utils.uid import get_random_id
 
 APPS = get_apps_list(discovery_url=config.ui.discover_url)
@@ -470,7 +470,7 @@ def create_users_with_username(ds: HowlerDatastore, usernames: list[str]):
         )
         ds.user.save(username, user_data)
 
-        if "pytest" not in sys.modules:
+        if not TESTING:
             logger.info("%s:%s", username, username)
 
     ds.user.commit()

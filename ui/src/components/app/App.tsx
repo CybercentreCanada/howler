@@ -67,7 +67,7 @@ import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Hit } from 'models/entities/generated/Hit';
 import * as monaco from 'monaco-editor';
 import howlerPluginStore from 'plugins/store';
-import { useContext, useEffect, type FC, type PropsWithChildren } from 'react';
+import { useContext, useEffect, useMemo, type FC, type PropsWithChildren } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { PluginProvider, usePluginStore } from 'react-pluggable';
 import { createBrowserRouter, Outlet, RouterProvider, useLocation, useNavigate } from 'react-router-dom';
@@ -229,250 +229,245 @@ const AppProviderWrapper = () => {
   );
 };
 
-const router = createBrowserRouter([
-  {
-    path: '/',
-    element: <AppProviderWrapper />,
-    children: [
-      {
-        path: 'login',
-        element: <LoginScreen />
-      },
-      {
-        path: 'logout',
-        element: <Logout />
-      },
-      {
-        index: true,
-        element: <Home />
-      },
-      {
-        path: 'hits',
-        element: <RecordBrowser />
-      },
-      {
-        path: 'search',
-        element: <RecordBrowser />
-      },
-      {
-        path: 'hits/:id',
-        element: <HitViewer />
-      },
-      {
-        path: 'bundles/:id',
-        element: <RecordBrowser />
-      },
-      {
-        path: 'cases',
-        element: <Cases />
-      },
-      {
-        path: 'cases/:id',
-        element: <CaseViewer />,
-        children: [
-          {
-            index: true,
-            element: <CaseDashboard />
-          },
-          {
-            path: 'assets',
-            element: <CaseAssets />
-          },
-          {
-            path: 'timeline',
-            element: <CaseTimeline />
-          },
-          {
-            path: '*',
-            element: <ItemPage />
-          }
-        ]
-      },
-      {
-        path: 'templates',
-        element: <Templates />
-      },
-      {
-        path: 'templates/view',
-        element: <TemplateViewer />
-      },
-      {
-        path: 'overviews',
-        element: <Overviews />
-      },
-      {
-        path: 'overviews/view',
-        element: <OverviewViewer />
-      },
-      {
-        path: 'dossiers',
-        element: <Dossiers />
-      },
-      {
-        path: 'dossiers/create',
-        element: (
-          <ParameterProvider>
-            <DossierEditor />
-          </ParameterProvider>
-        )
-      },
-      {
-        path: 'dossiers/:id/edit',
-        element: (
-          <ParameterProvider>
-            <DossierEditor />
-          </ParameterProvider>
-        )
-      },
-      {
-        path: 'views',
-        element: <Views />
-      },
-      {
-        path: 'views/create',
-        element: (
-          <ParameterProvider>
-            <ViewComposer />
-          </ParameterProvider>
-        )
-      },
-      {
-        path: 'views/:id',
-        element: <RecordBrowser />
-      },
-      {
-        path: 'views/:id/edit',
-        element: (
-          <ParameterProvider>
-            <ViewComposer />
-          </ParameterProvider>
-        )
-      },
-      {
-        path: 'admin/users',
-        element: <UserSearchProvider />
-      },
-      {
-        path: 'admin/users/:id',
-        element: <UserEditor />
-      },
-      {
-        path: 'analytics',
-        element: <AnalyticSearch />
-      },
-      {
-        path: 'analytics/:id',
-        element: <AnalyticDetails />
-      },
-      {
-        path: 'help',
-        element: <HelpDashboard />
-      },
-      {
-        path: 'help/search',
-        element: <SearchDocumentation />
-      },
-      {
-        path: 'help/api',
-        element: <ApiDocumentation />
-      },
-      {
-        path: 'help/auth',
-        element: <AuthDocumentation />
-      },
-      {
-        path: 'help/client',
-        element: <ClientDocumentation />
-      },
-      {
-        path: 'help/hit',
-        element: <HitDocumentation />
-      },
-      {
-        path: 'help/retention',
-        element: <RetentionDocumentation />
-      },
-      {
-        path: 'help/templates',
-        element: <TemplateDocumentation />
-      },
-      {
-        path: 'help/actions',
-        element: <ActionDocumentation />
-      },
-      {
-        path: 'help/notebook',
-        element: <NotebookDocumentation />
-      },
-      {
-        path: 'help/overviews',
-        element: <OverviewDocumentation />
-      },
-      {
-        path: 'help/views',
-        element: <ViewDocumentation />
-      },
-      {
-        path: 'settings',
-        element: <Settings />
-      },
-      {
-        path: 'advanced',
-        element: <QueryBuilder />
-      },
-      {
-        path: 'settings',
-        element: <Settings />
-      },
-      {
-        path: 'action',
-        element: <RoleRoute role="automation_basic" />,
-        children: [
-          {
-            index: true,
-            element: <ActionSearchProvider />
-          },
-          {
-            path: 'integrations',
-            element: <Integrations />
-          },
-          {
-            path: 'execute',
-            element: (
-              <ParameterProvider>
-                <ActionEditor />
-              </ParameterProvider>
-            )
-          },
-          {
-            path: ':id',
-            children: [
-              {
-                index: true,
-                element: <ActionDetails />
-              },
-              {
-                path: 'edit',
-                element: (
-                  <ParameterProvider>
-                    <ActionEditor />
-                  </ParameterProvider>
-                )
-              }
-            ]
-          }
-        ]
-      },
-      ...howlerPluginStore.routes,
-      {
-        path: '*',
-        element: <NotFoundPage />
-      }
-    ]
-  }
-]);
+const createRouter = () =>
+  createBrowserRouter([
+    {
+      path: '/',
+      element: <AppProviderWrapper />,
+      children: [
+        {
+          path: 'login',
+          element: <LoginScreen />
+        },
+        {
+          path: 'logout',
+          element: <Logout />
+        },
+        {
+          index: true,
+          element: <Home />
+        },
+        {
+          path: 'hits',
+          element: <RecordBrowser />
+        },
+        {
+          path: 'search',
+          element: <RecordBrowser />
+        },
+        {
+          path: 'hits/:id',
+          element: <HitViewer />
+        },
+
+        {
+          path: 'cases',
+          element: <Cases />
+        },
+        {
+          path: 'cases/:id',
+          element: <CaseViewer />,
+          children: [
+            {
+              index: true,
+              element: <CaseDashboard />
+            },
+            {
+              path: 'assets',
+              element: <CaseAssets />
+            },
+            {
+              path: 'timeline',
+              element: <CaseTimeline />
+            },
+            {
+              path: '*',
+              element: <ItemPage />
+            }
+          ]
+        },
+        {
+          path: 'templates',
+          element: <Templates />
+        },
+        {
+          path: 'templates/view',
+          element: <TemplateViewer />
+        },
+        {
+          path: 'overviews',
+          element: <Overviews />
+        },
+        {
+          path: 'overviews/view',
+          element: <OverviewViewer />
+        },
+        {
+          path: 'dossiers',
+          element: <Dossiers />
+        },
+        {
+          path: 'dossiers/create',
+          element: (
+            <ParameterProvider>
+              <DossierEditor />
+            </ParameterProvider>
+          )
+        },
+        {
+          path: 'dossiers/:id/edit',
+          element: (
+            <ParameterProvider>
+              <DossierEditor />
+            </ParameterProvider>
+          )
+        },
+        {
+          path: 'views',
+          element: <Views />
+        },
+        {
+          path: 'views/create',
+          element: (
+            <ParameterProvider>
+              <ViewComposer />
+            </ParameterProvider>
+          )
+        },
+        {
+          path: 'views/:id',
+          element: <RecordBrowser />
+        },
+        {
+          path: 'views/:id/edit',
+          element: (
+            <ParameterProvider>
+              <ViewComposer />
+            </ParameterProvider>
+          )
+        },
+        {
+          path: 'admin/users',
+          element: <UserSearchProvider />
+        },
+        {
+          path: 'admin/users/:id',
+          element: <UserEditor />
+        },
+        {
+          path: 'analytics',
+          element: <AnalyticSearch />
+        },
+        {
+          path: 'analytics/:id',
+          element: <AnalyticDetails />
+        },
+        {
+          path: 'help',
+          element: <HelpDashboard />
+        },
+        {
+          path: 'help/search',
+          element: <SearchDocumentation />
+        },
+        {
+          path: 'help/api',
+          element: <ApiDocumentation />
+        },
+        {
+          path: 'help/auth',
+          element: <AuthDocumentation />
+        },
+        {
+          path: 'help/client',
+          element: <ClientDocumentation />
+        },
+        {
+          path: 'help/hit',
+          element: <HitDocumentation />
+        },
+        {
+          path: 'help/retention',
+          element: <RetentionDocumentation />
+        },
+        {
+          path: 'help/templates',
+          element: <TemplateDocumentation />
+        },
+        {
+          path: 'help/actions',
+          element: <ActionDocumentation />
+        },
+        {
+          path: 'help/notebook',
+          element: <NotebookDocumentation />
+        },
+        {
+          path: 'help/overviews',
+          element: <OverviewDocumentation />
+        },
+        {
+          path: 'help/views',
+          element: <ViewDocumentation />
+        },
+        {
+          path: 'settings',
+          element: <Settings />
+        },
+        {
+          path: 'advanced',
+          element: <QueryBuilder />
+        },
+        {
+          path: 'action',
+          element: <RoleRoute role="automation_basic" />,
+          children: [
+            {
+              index: true,
+              element: <ActionSearchProvider />
+            },
+            {
+              path: 'integrations',
+              element: <Integrations />
+            },
+            {
+              path: 'execute',
+              element: (
+                <ParameterProvider>
+                  <ActionEditor />
+                </ParameterProvider>
+              )
+            },
+            {
+              path: ':id',
+              children: [
+                {
+                  index: true,
+                  element: <ActionDetails />
+                },
+                {
+                  path: 'edit',
+                  element: (
+                    <ParameterProvider>
+                      <ActionEditor />
+                    </ParameterProvider>
+                  )
+                }
+              ]
+            }
+          ]
+        },
+        ...howlerPluginStore.routes,
+        {
+          path: '*',
+          element: <NotFoundPage />
+        }
+      ]
+    }
+  ]);
 
 const App: FC = () => {
+  const router = useMemo(() => createRouter(), []);
   return <RouterProvider router={router} />;
 };
 

@@ -1,9 +1,7 @@
-import sys
 import time
 from typing import Callable, Optional
 
 import requests
-from elasticapm.traces import capture_span
 from flask import request
 
 from howler.api import bad_gateway, make_subapi_blueprint, ok
@@ -13,6 +11,7 @@ from howler.common.swagger import generate_swagger_docs
 from howler.config import cache, config
 from howler.plugins import get_plugins
 from howler.security import api_login
+from howler.utils.constants import TESTING
 
 SUB_API = "clue"
 clue_api = make_subapi_blueprint(SUB_API, api_version=1)
@@ -23,7 +22,7 @@ logger = get_logger(__file__)
 
 def skip_cache(*args):
     "Function to skip cache in testing mode"
-    return "pytest" in sys.modules
+    return TESTING
 
 
 @cache.memoize(15 * 60, unless=skip_cache)
@@ -74,22 +73,21 @@ def proxy_to_clue(path, **kwargs):
     clue_token = get_token(auth_token)
 
     start = time.perf_counter()
-    with capture_span("clue", span_type="http"):
-        if request.method.lower() == "get":
-            response = requests.get(
-                f"{config.core.clue.url}/{path}",
-                headers={"Authorization": f"Bearer {clue_token}", "Accept": "application/json"},
-                params=request.args.to_dict(),
-                timeout=5 * 60,
-            )
-        else:
-            response = requests.post(
-                f"{config.core.clue.url}/{path}",
-                json=request.json,
-                headers={"Authorization": f"Bearer {clue_token}", "Accept": "application/json"},
-                params=request.args.to_dict(),
-                timeout=5 * 60,
-            )
+    if request.method.lower() == "get":
+        response = requests.get(
+            f"{config.core.clue.url}/{path}",
+            headers={"Authorization": f"Bearer {clue_token}", "Accept": "application/json"},
+            params=request.args.to_dict(),
+            timeout=5 * 60,
+        )
+    else:
+        response = requests.post(
+            f"{config.core.clue.url}/{path}",
+            json=request.json,
+            headers={"Authorization": f"Bearer {clue_token}", "Accept": "application/json"},
+            params=request.args.to_dict(),
+            timeout=5 * 60,
+        )
 
     logger.debug("Request to clue completed in %s ms", round(time.perf_counter() - start))
 

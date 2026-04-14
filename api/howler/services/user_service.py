@@ -1,8 +1,8 @@
 from typing import Any, Literal, Optional, overload
 
 from authlib.integrations.flask_client import OAuth
-from elasticapm.traces import capture_span
 from flask import current_app, request
+from opentelemetry import trace
 
 from howler.common.exceptions import AccessDeniedException, HowlerValueError, InvalidDataException
 from howler.common.loader import datastore
@@ -16,6 +16,7 @@ from howler.utils.str_utils import safe_str
 ACCOUNT_USER_MODIFIABLE = ["name", "email", "avatar", "password", "dashboard", "refresh_rate"]
 
 logger = get_logger(__file__)
+tracer = trace.get_tracer(__name__)
 
 
 @overload
@@ -89,7 +90,7 @@ def convert_user(user: User) -> dict[str, Any]:
     return user_data
 
 
-@capture_span(span_type="authentication")
+@tracer.start_as_current_span(f"{__name__}.parse_user_data")
 def parse_user_data(  # noqa: C901
     data: dict,
     oauth_provider: str,

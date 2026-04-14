@@ -16,6 +16,7 @@ from typing import Any, Dict, Generic, Literal, Optional, TypeVar, Union, overlo
 import elasticsearch
 from datemath import dm
 from datemath.helpers import DateMathException
+from opentelemetry import trace
 
 from howler import odm
 from howler.common.exceptions import HowlerRuntimeError, HowlerValueError, NonRecoverableError
@@ -65,6 +66,8 @@ console = logging.StreamHandler()
 console.setLevel(logging.INFO)
 console.setFormatter(logging.Formatter(HWL_LOG_FORMAT, HWL_DATE_FORMAT))
 logger.addHandler(console)
+
+tracer = trace.get_tracer(__name__)
 
 ModelType = TypeVar("ModelType", bound=Model)
 
@@ -524,6 +527,7 @@ class ESCollection(Generic[ModelType]):
             else:
                 updated += res["updated"]
 
+    @tracer.start_as_current_span(f"{__name__}.commit")
     def commit(self):
         """This function should be overloaded to perform a commit of the index data of all the different hosts
         specified in self.datastore.hosts.
@@ -1893,6 +1897,7 @@ class ESCollection(Generic[ModelType]):
     def count(
         self,
         query,
+        filters,
         access_control=None,
     ):
         """This function should perform a count operation through the datastore and return a
@@ -1906,7 +1911,21 @@ class ESCollection(Generic[ModelType]):
         :param access_control: access control parameters to limit the scope of the query
         :return: a count result object
         """
-        result = self.with_retries(self.datastore.client.count, index=self.name, q=query)
+        if filters is None:
+            filters = []
+        elif isinstance(filters, str):
+            filters = [filters]
+
+        query_body: dict[str, Any] = {
+            "query": {
+                "bool": {
+                    "must": {"query_string": {"query": query}},
+                    "filter": [{"query_string": {"query": ff}} for ff in filters],
+                }
+            }
+        }
+
+        result = self.with_retries(self.datastore.client.count, index=self.name, **query_body)
 
         ret_data: dict[str, Any] = {
             "count": result["count"],

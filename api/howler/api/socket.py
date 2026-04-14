@@ -4,6 +4,7 @@ import os
 from typing import Any
 
 from flask import Blueprint, request
+from opentelemetry import trace
 
 import howler.services.event_service as event_service
 from howler.api import ok, unauthorized
@@ -21,10 +22,12 @@ socket_api = Blueprint("socket", "socket", url_prefix="/socket/v1")
 socket_api._doc = "Endpoints concerning websocket connectivity between the client and server"  # type: ignore
 
 logger = get_logger(__file__)
+tracer = trace.get_tracer(__name__)
 
 hit_helper = OdmHelper(Hit)
 
 
+@tracer.start_as_current_span(f"{__name__}.emit")
 @socket_api.route("/emit/<event>", methods=["POST"])
 def emit(event: str):
     """Emit an event to all listening websockets"""
@@ -46,6 +49,7 @@ def emit(event: str):
     return ok()
 
 
+@tracer.start_as_current_span(f"{__name__}.connect")
 @socket_api.route("/connect", websocket=True)  # type: ignore
 @websocket_auth(required_priv=["R"])
 def connect(ws: Server, *args: Any, ws_id: str, **kwargs):

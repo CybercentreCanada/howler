@@ -2,18 +2,21 @@ import os
 from typing import Any, Callable
 
 import requests
+from opentelemetry import trace
 from requests.auth import HTTPBasicAuth
 
 from howler.common.logging import get_logger
 from howler.config import DEBUG, HWL_USE_WEBSOCKET_API, config
 
 logger = get_logger(__file__)
+tracer = trace.get_tracer(__name__)
 
 handlers: dict[str, list[Callable]] = {}
 
 HWL_INTERPOD_COMMS_SECRET = os.getenv("HWL_INTERPOD_COMMS_SECRET", "secret")
 
 
+@tracer.start_as_current_span(f"{__name__}.emit")
 def emit(event: str, data: Any):
     """Emit a new instance of the specified event, with additional data related to that event
 

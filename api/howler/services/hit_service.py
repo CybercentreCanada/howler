@@ -5,6 +5,7 @@ import typing
 from hashlib import sha256
 from typing import Any, Literal, Optional, Union, cast, overload
 
+from opentelemetry import trace
 from prometheus_client import Counter
 
 import howler.services.event_service as event_service
@@ -36,9 +37,11 @@ from howler.utils.uid import get_random_id
 
 logger = get_logger(__file__)
 
+tracer = trace.get_tracer(__name__)
 odm_helper = OdmHelper(Hit)
 
 
+@tracer.start_as_current_span(f"{__name__}.get_hit_workflow")
 def get_hit_workflow() -> Workflow:
     """Get the workflow that is used for transitioning between howler statuses
 
@@ -212,6 +215,7 @@ def get_hit_workflow() -> Workflow:
     )
 
 
+@tracer.start_as_current_span(f"{__name__}._modifies_prop")
 def _modifies_prop(prop: str, operations: list[OdmUpdateOperation]) -> bool:
     """Check if the list of provided operations modifies the specified property
 
@@ -326,6 +330,7 @@ def convert_hit(  # noqa: C901
     return odm, warnings
 
 
+@tracer.start_as_current_span(f"{__name__}.exists")
 def exists(id: str, indexes: list[str] | None = None) -> str | None:
     """Check if a hit exists in the datastore.
 
@@ -371,6 +376,7 @@ def get_hit(id: str, as_odm: Literal[False], version: Literal[False]) -> dict[st
 def get_hit(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...
 
 
+@tracer.start_as_current_span(f"{__name__}.get_hit")
 def get_hit(id: str, as_odm=False, version=False):
     """Retrieve a hit from the datastore.
 
@@ -393,7 +399,8 @@ CREATED_HITS = Counter(
 )
 
 
-def create_hit(id: str, hit: Hit, user: Optional[str] = None, skip_exists: bool = False, index: str = "hit") -> bool:
+@tracer.start_as_current_span(f"{__name__}.create_hit")
+def create_hit(id: str, hit: Hit, user: Optional[str] = None, skip_exists: bool = False) -> bool:
     """Create a new hit in the database.
 
     This function saves a hit to the datastore, optionally adding a creation log entry
@@ -404,7 +411,6 @@ def create_hit(id: str, hit: Hit, user: Optional[str] = None, skip_exists: bool 
         hit: The Hit ODM object to save
         user: Optional username to record in the creation log
         skip_exists: Whether to check for an existing record
-        index: What index to save the record to
 
     Returns:
         bool: True if the hit was successfully created
@@ -419,9 +425,10 @@ def create_hit(id: str, hit: Hit, user: Optional[str] = None, skip_exists: bool 
         hit.howler.log = [Log({"timestamp": "NOW", "explanation": "Created hit", "user": user})]
 
     CREATED_HITS.labels(hit.howler.analytic).inc()
-    return datastore()[index].save(id, hit)
+    return datastore().hit.save(id, hit)
 
 
+@tracer.start_as_current_span(f"{__name__}.update_hit")
 def update_hit(
     hit_id: str,
     operations: list[OdmUpdateOperation],
@@ -455,6 +462,7 @@ def update_hit(
 
 
 @typing.no_type_check
+@tracer.start_as_current_span(f"{__name__}.save_hit")
 def save_hit(hit: Hit, version: Optional[str] = None) -> tuple[Hit, str]:
     """Save a hit to the datastore and emit an event notification.
 
@@ -475,6 +483,7 @@ def save_hit(hit: Hit, version: Optional[str] = None) -> tuple[Hit, str]:
     return data, _version
 
 
+@tracer.start_as_current_span(f"{__name__}._update_hit")
 def _update_hit(
     hit_id: str,
     operations: list[OdmUpdateOperation],
@@ -562,6 +571,7 @@ def _update_hit(
     return data, _version
 
 
+@tracer.start_as_current_span(f"{__name__}.get_transitions")
 def get_transitions(status: Status) -> list[str]:
     """Get a list of the valid transitions beginning from the specified status
 
@@ -658,6 +668,7 @@ def transition_hit(
 DELETED_HITS = Counter(f"{APP_NAME.replace('-', '_')}_deleted_hits_total", "The number of deleted hits")
 
 
+@tracer.start_as_current_span(f"{__name__}.delete_hits")
 def delete_hits(hit_ids: list[str]) -> bool:
     """Delete a set of hits from the database
 
@@ -711,6 +722,7 @@ def search(
 ) -> SearchResult[dict[str, Any]]: ...
 
 
+@tracer.start_as_current_span(f"{__name__}.search")
 def search(
     query,
     as_obj=True,
