@@ -13,13 +13,24 @@ import { useCallback, useContext, useEffect, useRef, useState, type FC } from 'r
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DATE_RANGE_LUCENE, StorageKey } from 'utils/constants';
+import { sanitizeLuceneQuery } from 'utils/stringUtils';
 import CaseCard from '../../elements/case/CaseCard';
 import CaseAssigneeFilter from './search/CaseAssigneeFilter';
 import CaseDateFilter, { type DateRangeOption } from './search/CaseDateFilter';
 import CaseStatusFilter from './search/CaseStatusFilter';
 
-const buildPhraseQuery = (p: string) =>
-  `(title:*${p}* OR summary:*${p}* OR overview:*${p}* OR participants:*${p}* OR tasks.summary:*${p}* OR tasks.assignment:*${p}*)`;
+const buildPhraseQuery = (phrase: string | null) => {
+  const sanitized = sanitizeLuceneQuery(phrase);
+
+  if (!phrase) {
+    return '(title:* OR summary:* OR overview:* OR participants:* OR tasks.summary:* OR tasks.assignment:*)';
+  }
+
+  return (
+    `(title:*${sanitized}* OR summary:*${sanitized}* OR overview:*${sanitized}* OR participants:*${sanitized}* ` +
+    `OR tasks.summary:*${sanitized}* OR tasks.assignment:*${sanitized}*)`
+  );
+};
 
 const CasesBase: FC = () => {
   const { t } = useTranslation();
@@ -46,18 +57,27 @@ const CasesBase: FC = () => {
   const buildFilters = useCallback((): string[] => {
     const filters: string[] = [];
     if (statusFilter.length > 0) {
-      filters.push(`status:(${statusFilter.map(s => `"${s}"`).join(' OR ')})`);
+      filters.push(`status:(${statusFilter.map(status => `"${status}"`).join(' OR ')})`);
     }
+
     if (assigneeFilter.length > 0) {
-      const ap = assigneeFilter.map(a => `(participants:"${a}" OR tasks.assignment:"${a}")`).join(' OR ');
-      filters.push(`(${ap})`);
+      filters.push(
+        assigneeFilter
+          .map(
+            assignee =>
+              `(participants:"${sanitizeLuceneQuery(assignee)}" OR tasks.assignment:"${sanitizeLuceneQuery(assignee)}")`
+          )
+          .join(' OR ')
+      );
     }
+
     const lucene = DATE_RANGE_LUCENE[dateRange];
     if (lucene) {
       filters.push(`created:[${lucene} TO now]`);
     } else if (dateRange === 'date.range.custom') {
       filters.push(`created:[${customStart.toISOString()} TO ${customEnd.toISOString()}]`);
     }
+
     return filters;
   }, [statusFilter, assigneeFilter, dateRange, customStart, customEnd]);
 
@@ -77,7 +97,7 @@ const CasesBase: FC = () => {
       setResponse(
         await dispatchApi(
           api.search.case.post({
-            query: buildPhraseQuery(phrase || '*'),
+            query: buildPhraseQuery(phrase),
             filters,
             rows: pageCount,
             offset
@@ -152,7 +172,7 @@ const CasesBase: FC = () => {
       onSearch();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, assigneeFilter, dateRange]);
+  }, [statusFilter, assigneeFilter, dateRange, customStart, customEnd]);
 
   const renderer = useCallback((item: Case, className?: string) => <CaseCard case={item} className={className} />, []);
 
