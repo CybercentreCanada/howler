@@ -18,32 +18,32 @@ In practice, this means plugins can contribute features incrementally rather tha
 From `HowlerPlugin.ts` and store usage, plugins can provide:
 
 - **Lead formats** (`addLead`) with:
-	- a lead editor form (`lead.<format>.form`)
-	- a lead renderer (`lead.<format>`)
+  - a lead editor form (`lead.<format>.form`)
+  - a lead renderer (`lead.<format>`)
 - **Pivot formats** (`addPivot`) with:
-	- a pivot form (`pivot.<format>.form`)
-	- a pivot link renderer (`pivot.<format>`)
+  - a pivot form (`pivot.<format>.form`)
+  - a pivot link renderer (`pivot.<format>`)
 - **Custom action operations** (`addOperation`) with:
-	- operation editor UI (`operation.<id>`)
-	- operation help docs (`operation.<id>.documentation`)
+  - operation editor UI (`operation.<id>`)
+  - operation help docs (`operation.<id>.documentation`)
 - **Menu entries**:
-	- user menu items
-	- admin menu items
-	- main menu insertions/dividers
+  - user menu items
+  - admin menu items
+  - main menu insertions/dividers
 - **Routing/navigation**:
-	- routes
-	- sitemap entries and breadcrumbs behavior
+  - routes
+  - sitemap entries and breadcrumbs behavior
 - **Global extension hooks**:
-	- `provider()` wrapper for app-wide context
-	- `setup()` startup logic
-	- `localization(...)` translation bundles
-	- `helpers()` custom handlebars helpers
-	- `typography(...)` and `chip(...)` custom UI rendering
-	- `actions(...)` hit actions
-	- `status(...)` hit banner/status widgets
-	- `support()`, `help()`, and section-specific `settings(...)`
-	- `documentation(md)` markdown post-processing
-	- `on(event, hit)` event callback
+  - `provider()` wrapper for app-wide context
+  - `setup()` startup logic
+  - `localization(...)` translation bundles
+  - `helpers()` custom handlebars helpers
+  - `typography(...)` and `chip(...)` custom UI rendering
+  - `actions(...)` hit actions
+  - `status(...)` hit banner/status widgets
+  - `support()`, `help()`, and section-specific `settings(...)`
+  - `documentation(md)` markdown post-processing
+  - `on(event, hit)` event callback
 
 ## Where hooks are executed
 
@@ -67,8 +67,8 @@ The Clue plugin (`ui/src/plugins/clue/index.tsx`) demonstrates a typical plugin:
 - registers localization bundles in English/French
 - provides a plugin provider + setup hook
 - adds a custom lead format (`clue`) with:
-	- a lead form component
-	- a renderer that parses lead metadata and renders a `Fetcher`
+  - a lead form component
+  - a renderer that parses lead metadata and renders a `Fetcher`
 - adds a custom pivot format (`clue`) with form + renderer
 - provides custom handlebars helpers
 - overrides plugin typography/chip renderers

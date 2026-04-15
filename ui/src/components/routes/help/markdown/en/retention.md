@@ -36,10 +36,10 @@ Administrators can configure retention settings in the system configuration:
 system:
   type: staging
   retention:
-    limit_amount: 120      # Retention period duration
-    limit_unit: days       # Time unit (days, hours, etc.)
-    crontab: "0 0 * * *"   # Schedule (nightly at midnight)
-    enabled: true          # Whether retention is active
+    limit_amount: 120 # Retention period duration
+    limit_unit: days # Time unit (days, hours, etc.)
+    crontab: '0 0 * * *' # Schedule (nightly at midnight)
+    enabled: true # Whether retention is active
 ```
 
 ## User Interface
