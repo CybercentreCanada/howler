@@ -128,13 +128,19 @@ class TestCreateBundle:
     def test_create_bundle_returns_201(self, datastore: HowlerDatastore, login_session):
         """The endpoint must return HTTP 201 Created."""
         session, host = login_session
-        resp = _create_bundle(session, host)
+        child_ids = _create_child_hits(session, host, count=1)
+        datastore.hit.commit()
+        time.sleep(1)
+        resp = _create_bundle(session, host, child_ids=child_ids)
         assert resp.status_code == 201
 
     def test_create_bundle_deprecation_headers(self, datastore: HowlerDatastore, login_session):
         """Deprecation and Sunset headers must be present."""
         session, host = login_session
-        resp = _create_bundle(session, host)
+        child_ids = _create_child_hits(session, host, count=1)
+        datastore.hit.commit()
+        time.sleep(1)
+        resp = _create_bundle(session, host, child_ids=child_ids)
         assert resp.headers.get("Deprecation") == "true"
         assert "2027" in resp.headers.get("Sunset", "")
 
@@ -161,8 +167,11 @@ class TestCreateBundle:
     def test_create_bundle_root_hit_persisted(self, datastore: HowlerDatastore, login_session):
         """The root hit must be persisted and retrievable."""
         session, host = login_session
+        child_ids = _create_child_hits(session, host, count=1)
+        datastore.hit.commit()
+        time.sleep(1)
         bundle_data = _make_hit_data(analytic="root-persist-test")
-        resp = _create_bundle(session, host, bundle_data=bundle_data)
+        resp = _create_bundle(session, host, bundle_data=bundle_data, child_ids=child_ids)
         body = resp.json()["api_response"]
         datastore.hit.commit()
 
@@ -195,7 +204,10 @@ class TestCreateBundle:
     def test_create_bundle_root_hit_has_related(self, datastore: HowlerDatastore, login_session):
         """The root hit must have the case in howler.related."""
         session, host = login_session
-        resp = _create_bundle(session, host)
+        child_ids = _create_child_hits(session, host, count=1)
+        datastore.hit.commit()
+        time.sleep(1)
+        resp = _create_bundle(session, host, child_ids=child_ids)
         body = resp.json()["api_response"]
         case_id = body["_case_id"]
 
@@ -221,14 +233,10 @@ class TestCreateBundle:
             assert case_id in child.howler.related
 
     def test_create_bundle_no_children(self, datastore: HowlerDatastore, login_session):
-        """Creating a bundle with zero children should produce an empty hits list."""
+        """Creating a bundle with zero children should return 400."""
         session, host = login_session
         resp = _create_bundle(session, host, child_ids=[])
-        body = resp.json()["api_response"]
-
-        assert body["howler"]["is_bundle"] is True
-        assert body["howler"]["hits"] == []
-        assert body["howler"]["bundle_size"] == 0
+        assert resp.status_code == 400
 
     def test_create_bundle_missing_bundle_key(self, datastore: HowlerDatastore, login_session):
         """Omitting the 'bundle' key returns 400."""
@@ -245,8 +253,11 @@ class TestCreateBundle:
     def test_create_bundle_case_title_format(self, datastore: HowlerDatastore, login_session):
         """The auto-created case should have title '{analytic} - {detection}'."""
         session, host = login_session
+        child_ids = _create_child_hits(session, host, count=1)
+        datastore.hit.commit()
+        time.sleep(1)
         bundle_data = _make_hit_data(analytic="MyAnalytic", detection="MyDetection")
-        resp = _create_bundle(session, host, bundle_data=bundle_data)
+        resp = _create_bundle(session, host, bundle_data=bundle_data, child_ids=child_ids)
         body = resp.json()["api_response"]
         case_id = body["_case_id"]
         datastore.case.commit()
@@ -265,9 +276,12 @@ class TestUpdateBundle:
 
     @pytest.fixture()
     def bundle(self, datastore: HowlerDatastore, login_session):
-        """Create a bundle with no initial children."""
+        """Create a bundle with one initial child."""
         session, host = login_session
-        resp = _create_bundle(session, host, child_ids=[])
+        child_ids = _create_child_hits(session, host, count=1)
+        datastore.hit.commit()
+        time.sleep(1)
+        resp = _create_bundle(session, host, child_ids=child_ids)
         body = resp.json()["api_response"]
         datastore.hit.commit()
         datastore.case.commit()
@@ -292,8 +306,8 @@ class TestUpdateBundle:
 
         body = resp.json()["api_response"]
         assert body["howler"]["is_bundle"] is True
-        assert body["howler"]["bundle_size"] == 2
-        assert set(body["howler"]["hits"]) == set(new_ids)
+        assert body["howler"]["bundle_size"] == 3
+        assert set(new_ids).issubset(set(body["howler"]["hits"]))
 
     def test_add_hits_deprecation_headers(self, datastore: HowlerDatastore, login_session, bundle):
         """PUT bundle endpoint returns deprecation headers."""
@@ -308,7 +322,7 @@ class TestUpdateBundle:
         assert resp.headers.get("Deprecation") == "true"
 
     def test_add_hits_nonexistent_bundle(self, datastore: HowlerDatastore, login_session):
-        """Adding to a bundle that doesn't exist returns 400."""
+        """Adding to a bundle that doesn't exist returns 404."""
         session, host = login_session
         resp = get_api_data(
             session,
@@ -317,7 +331,7 @@ class TestUpdateBundle:
             data=json.dumps(["some-id"]),
             raw=True,
         )
-        assert resp.status_code == 400
+        assert resp.status_code == 404
 
 
 # ---------------------------------------------------------------------------
@@ -397,7 +411,7 @@ class TestRemoveFromBundle:
         assert resp.headers.get("Deprecation") == "true"
 
     def test_remove_from_nonexistent_bundle(self, datastore: HowlerDatastore, login_session):
-        """Removing from a bundle that doesn't exist returns 400."""
+        """Removing from a bundle that doesn't exist returns 404."""
         session, host = login_session
         resp = get_api_data(
             session,
@@ -406,7 +420,7 @@ class TestRemoveFromBundle:
             data=json.dumps(["some-id"]),
             raw=True,
         )
-        assert resp.status_code == 400
+        assert resp.status_code == 404
 
 
 # ---------------------------------------------------------------------------
@@ -504,7 +518,10 @@ class TestAddToBundleAction:
     def bundle(self, datastore: HowlerDatastore, login_session):
         """Create a bundle to which we will add hits via the action."""
         session, host = login_session
-        resp = _create_bundle(session, host, child_ids=[])
+        child_ids = _create_child_hits(session, host, count=1)
+        datastore.hit.commit()
+        time.sleep(1)
+        resp = _create_bundle(session, host, child_ids=child_ids)
         body = resp.json()["api_response"]
         datastore.hit.commit()
         datastore.case.commit()
@@ -757,7 +774,7 @@ class TestBundleLifecycle:
         datastore.case.commit()
         time.sleep(1)
 
-        # Try adding the same child again
+        # Try adding the same child again — should return 409 conflict
         resp = get_api_data(
             session,
             f"{host}/api/v1/hit/bundle/{bundle_id}",
@@ -765,10 +782,7 @@ class TestBundleLifecycle:
             data=json.dumps(child_ids),
             raw=True,
         )
-
-        body = resp.json()["api_response"]
-        # bundle_size should still be 1 - no duplicates
-        assert body["howler"]["bundle_size"] == 1
+        assert resp.status_code == 409
 
 
 # ---------------------------------------------------------------------------
@@ -782,7 +796,10 @@ class TestFetchBundleRootHit:
     def test_get_bundle_root_via_hit_api(self, datastore: HowlerDatastore, login_session):
         """GET /api/v1/hit/<id> should return the hit, even though it was created as a bundle root."""
         session, host = login_session
-        resp = _create_bundle(session, host, child_ids=[])
+        child_ids = _create_child_hits(session, host, count=1)
+        datastore.hit.commit()
+        time.sleep(1)
+        resp = _create_bundle(session, host, child_ids=child_ids)
         body = resp.json()["api_response"]
         root_id = body["howler"]["id"]
         datastore.hit.commit()
@@ -845,6 +862,6 @@ class TestBundleEdgeCases:
         # The endpoint should succeed - the nonexistent child is logged and skipped
         assert resp.status_code == 201
         body = resp.json()["api_response"]
-        assert body["howler"]["is_bundle"] is True
-        # The nonexistent child should not appear in the hits list
+        # The nonexistent child was skipped, so no children were added
         assert "nonexistent-child-id" not in body["howler"]["hits"]
+        assert body["howler"]["bundle_size"] == 0

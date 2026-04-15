@@ -1,17 +1,16 @@
 """Cross-branch API contract tests for bundle endpoints.
 
-These tests validate ONLY the HTTP status codes, response envelope structure,
+These tests validate HTTP status codes, response envelope structure,
 and common response fields of the bundle API.  They are designed to pass on
 **both** the ``develop`` branch (native bundle ODM) and the feature branch
 (case-backed compatibility shim), so they intentionally avoid:
 
 * Case-related assertions (``_case_id``, ``howler.related``, case items).
 * Deprecation-header assertions (only present on the feature branch).
-* ``bundle_size`` exact-value assertions (semantics differ between branches).
-* ``is_bundle`` assertions after a wildcard remove-all (``True`` on feature,
-  ``False`` on develop).
-* ``howler.bundles`` (removed from the ODM on the feature branch).
-* Creating a bundle with zero children (returns 400 on develop, 201 on feature).
+
+The ``TestBundleDiscrepancies`` class pins down develop-specific edge-case
+behavior.  One test (``howler.bundles`` back-reference) is marked ``xfail``
+on the feature branch because the ODM field has been removed.
 """
 
 import json
@@ -21,7 +20,7 @@ from uuid import uuid4
 import pytest
 
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm.random_data import create_hits, wipe_cases, wipe_hits
+from howler.odm.random_data import create_hits, wipe_hits
 from test.conftest import get_api_data
 
 # ---------------------------------------------------------------------------
@@ -114,15 +113,12 @@ def datastore(datastore_connection: HowlerDatastore):
     ds = datastore_connection
     try:
         wipe_hits(ds)
-        wipe_cases(ds)
         create_hits(ds, hit_count=5)
         ds.hit.commit()
-        ds.case.commit()
         time.sleep(1)
         yield ds
     finally:
         wipe_hits(ds)
-        wipe_cases(ds)
 
 
 # ---------------------------------------------------------------------------
@@ -253,7 +249,6 @@ class TestUpdateBundleContract:
         resp = _post_bundle(session, host, child_ids=children)
         root_id = resp.json()["api_response"]["howler"]["id"]
         datastore.hit.commit()
-        datastore.case.commit()
         time.sleep(1)
         return root_id
 
@@ -304,11 +299,12 @@ class TestUpdateBundleContract:
         )
         assert resp.status_code in (400, 404)
 
-    def test_invalid_body_400(self, datastore: HowlerDatastore, login_session):
+    def test_invalid_body_400(self, datastore: HowlerDatastore, login_session, bundle_id):
+        """Sending a non-list body to a valid bundle returns 400."""
         session, host = login_session
         resp = get_api_data(
             session,
-            f"{host}/api/v1/hit/bundle/any-id",
+            f"{host}/api/v1/hit/bundle/{bundle_id}",
             method="PUT",
             data=json.dumps({"not": "a list"}),
             raw=True,
@@ -335,7 +331,6 @@ class TestRemoveBundleContract:
         resp = _post_bundle(session, host, child_ids=children)
         root_id = resp.json()["api_response"]["howler"]["id"]
         datastore.hit.commit()
-        datastore.case.commit()
         time.sleep(1)
         return root_id, children
 
@@ -397,11 +392,13 @@ class TestRemoveBundleContract:
         )
         assert resp.status_code in (400, 404)
 
-    def test_invalid_body_400(self, datastore: HowlerDatastore, login_session):
+    def test_invalid_body_400(self, datastore: HowlerDatastore, login_session, bundle_with_children):
+        """Sending a non-list body to a valid bundle returns 400."""
         session, host = login_session
+        root_id, _ = bundle_with_children
         resp = get_api_data(
             session,
-            f"{host}/api/v1/hit/bundle/any-id",
+            f"{host}/api/v1/hit/bundle/{root_id}",
             method="DELETE",
             data=json.dumps("not a list"),
             raw=True,
@@ -513,7 +510,6 @@ class TestBundleLifecycleContract:
         assert set(body["howler"]["hits"]) == set(initial)
 
         datastore.hit.commit()
-        datastore.case.commit()
         time.sleep(1)
 
         # --- Add more children ---
@@ -536,7 +532,6 @@ class TestBundleLifecycleContract:
         assert set(howler["hits"]) == set(all_children)
 
         datastore.hit.commit()
-        datastore.case.commit()
         time.sleep(1)
 
         # --- Remove one child ---
@@ -554,3 +549,241 @@ class TestBundleLifecycleContract:
         assert to_remove[0] not in howler["hits"]
         remaining = [c for c in all_children if c not in to_remove]
         assert set(howler["hits"]) == set(remaining)
+
+
+# ---------------------------------------------------------------------------
+#  7. Behavioral discrepancies between develop (native ODM) and feature
+#     (case-backed shim).  Each test documents the exact divergence so we
+#     can align the feature branch to match develop where needed.
+# ---------------------------------------------------------------------------
+
+
+class TestBundleDiscrepancies:
+    """Tests that pin down develop-specific behavior.
+
+    On the feature branch some of these behaviors change.  The tests are
+    written to pass on *develop* and are expected to need ``xfail`` or
+    adjustment on the feature branch.
+    """
+
+    # -- POST /hit/bundle with zero children → develop returns 400 ----------
+
+    def test_create_bundle_zero_children_rejected(self, datastore: HowlerDatastore, login_session):
+        """develop: creating a bundle with no children returns 400."""
+        session, host = login_session
+        resp = _post_bundle(session, host, child_ids=[])
+        assert resp.status_code == 400
+
+    # -- PUT duplicate child → develop returns 409 conflict -----------------
+
+    def test_put_duplicate_child_returns_conflict(self, datastore: HowlerDatastore, login_session):
+        """develop: adding a child that is already in the bundle returns 409."""
+        session, host = login_session
+        children = _post_children(session, host, count=1)
+        datastore.hit.commit()
+        time.sleep(1)
+
+        resp = _post_bundle(session, host, child_ids=children)
+        assert resp.status_code == 201
+        bundle_id = resp.json()["api_response"]["howler"]["id"]
+        datastore.hit.commit()
+        time.sleep(1)
+
+        resp = get_api_data(
+            session,
+            f"{host}/api/v1/hit/bundle/{bundle_id}",
+            method="PUT",
+            data=json.dumps(children),
+            raw=True,
+        )
+        assert resp.status_code == 409
+
+    # -- DELETE on a non-bundle hit → develop returns 400 -------------------
+
+    def test_delete_on_non_bundle_hit_returns_400(self, datastore: HowlerDatastore, login_session):
+        """develop: DELETE /hit/bundle/<id> on a regular (non-bundle) hit returns 400."""
+        session, host = login_session
+        # Create a plain hit (not a bundle)
+        plain = _make_hit(analytic="plain-hit")
+        resp = get_api_data(
+            session,
+            f"{host}/api/v1/hit/",
+            method="POST",
+            data=json.dumps([plain]),
+        )
+        plain_id = resp["valid"][0]["howler"]["id"]
+        datastore.hit.commit()
+        time.sleep(1)
+
+        resp = get_api_data(
+            session,
+            f"{host}/api/v1/hit/bundle/{plain_id}",
+            method="DELETE",
+            data=json.dumps(["some-child"]),
+            raw=True,
+        )
+        assert resp.status_code == 400
+
+    # -- PUT on nonexistent bundle → develop returns 404 --------------------
+
+    def test_put_nonexistent_bundle_returns_404(self, datastore: HowlerDatastore, login_session):
+        """develop: PUT /hit/bundle/<nonexistent> returns 404 (etag lookup fails)."""
+        session, host = login_session
+        resp = get_api_data(
+            session,
+            f"{host}/api/v1/hit/bundle/does-not-exist-abc",
+            method="PUT",
+            data=json.dumps(["some-id"]),
+            raw=True,
+        )
+        assert resp.status_code == 404
+
+    # -- DELETE on nonexistent bundle → develop returns 404 -----------------
+
+    def test_delete_nonexistent_bundle_returns_404(self, datastore: HowlerDatastore, login_session):
+        """develop: DELETE /hit/bundle/<nonexistent> returns 404 (etag lookup fails)."""
+        session, host = login_session
+        resp = get_api_data(
+            session,
+            f"{host}/api/v1/hit/bundle/does-not-exist-abc",
+            method="DELETE",
+            data=json.dumps(["some-id"]),
+            raw=True,
+        )
+        assert resp.status_code == 404
+
+    # -- DELETE wildcard sets is_bundle=False on develop --------------------
+
+    def test_wildcard_delete_sets_is_bundle_false(self, datastore: HowlerDatastore, login_session):
+        """develop: removing all children with ['*'] sets is_bundle to False."""
+        session, host = login_session
+        children = _post_children(session, host, count=2)
+        datastore.hit.commit()
+        time.sleep(1)
+
+        resp = _post_bundle(session, host, child_ids=children)
+        bundle_id = resp.json()["api_response"]["howler"]["id"]
+        datastore.hit.commit()
+        time.sleep(1)
+
+        resp = get_api_data(
+            session,
+            f"{host}/api/v1/hit/bundle/{bundle_id}",
+            method="DELETE",
+            data=json.dumps(["*"]),
+            raw=True,
+        )
+        assert resp.status_code == 200
+        howler = resp.json()["api_response"]["howler"]
+        assert howler["hits"] == []
+        assert howler["is_bundle"] is False
+
+    # -- POST with child-is-a-bundle → develop returns 400 -----------------
+
+    def test_create_bundle_child_is_bundle_rejected(self, datastore: HowlerDatastore, login_session):
+        """develop: nesting a bundle inside another bundle returns 400."""
+        session, host = login_session
+        # Create an inner bundle first
+        inner_children = _post_children(session, host, count=1)
+        datastore.hit.commit()
+        time.sleep(1)
+
+        inner_resp = _post_bundle(session, host, child_ids=inner_children)
+        assert inner_resp.status_code == 201
+        inner_id = inner_resp.json()["api_response"]["howler"]["id"]
+        datastore.hit.commit()
+        time.sleep(1)
+
+        # Try to create an outer bundle containing the inner bundle
+        resp = _post_bundle(session, host, child_ids=[inner_id])
+        assert resp.status_code == 400
+
+    # -- PUT child-is-a-bundle → develop returns 400 -----------------------
+
+    def test_put_child_is_bundle_rejected(self, datastore: HowlerDatastore, login_session):
+        """develop: adding a bundle as a child via PUT returns 400."""
+        session, host = login_session
+        # Create a bundle to be the "child"
+        child_bundle_children = _post_children(session, host, count=1)
+        datastore.hit.commit()
+        time.sleep(1)
+
+        child_resp = _post_bundle(session, host, child_ids=child_bundle_children)
+        child_bundle_id = child_resp.json()["api_response"]["howler"]["id"]
+        datastore.hit.commit()
+        time.sleep(1)
+
+        # Create a separate bundle to be the "parent"
+        parent_children = _post_children(session, host, count=1)
+        datastore.hit.commit()
+        time.sleep(1)
+
+        parent_resp = _post_bundle(session, host, child_ids=parent_children)
+        parent_id = parent_resp.json()["api_response"]["howler"]["id"]
+        datastore.hit.commit()
+        time.sleep(1)
+
+        # Try to add the child bundle into the parent bundle
+        resp = get_api_data(
+            session,
+            f"{host}/api/v1/hit/bundle/{parent_id}",
+            method="PUT",
+            data=json.dumps([child_bundle_id]),
+            raw=True,
+        )
+        assert resp.status_code == 400
+
+    # -- Children get howler.bundles back-reference on develop --------------
+    # On the feature branch the howler.bundles field has been removed from
+    # the ODM entirely, so children use howler.related (case back-refs)
+    # instead.  This test cannot pass on the feature branch.
+
+    @pytest.mark.xfail(
+        reason="howler.bundles ODM field removed on feature branch; children use howler.related instead",
+        strict=False,
+    )
+    def test_children_have_bundles_backref(self, datastore: HowlerDatastore, login_session):
+        """develop: each child hit has the bundle ID in howler.bundles."""
+        session, host = login_session
+        children = _post_children(session, host, count=2)
+        datastore.hit.commit()
+        time.sleep(1)
+
+        resp = _post_bundle(session, host, child_ids=children)
+        bundle_id = resp.json()["api_response"]["howler"]["id"]
+        datastore.hit.commit()
+        time.sleep(1)
+
+        for child_id in children:
+            hit = get_api_data(session, f"{host}/api/v1/hit/{child_id}")
+            assert bundle_id in hit["howler"]["bundles"]
+
+    # -- PUT on a plain (non-bundle) hit converts it to a bundle on develop --
+
+    def test_put_on_plain_hit_converts_to_bundle(self, datastore: HowlerDatastore, login_session):
+        """develop: PUT /hit/bundle/<plain_hit_id> converts a regular hit into a bundle."""
+        session, host = login_session
+        plain = _make_hit(analytic="convert-me")
+        resp = get_api_data(
+            session,
+            f"{host}/api/v1/hit/",
+            method="POST",
+            data=json.dumps([plain]),
+        )
+        plain_id = resp["valid"][0]["howler"]["id"]
+
+        new_children = _post_children(session, host, count=1)
+        datastore.hit.commit()
+        time.sleep(1)
+
+        resp = get_api_data(
+            session,
+            f"{host}/api/v1/hit/bundle/{plain_id}",
+            method="PUT",
+            data=json.dumps(new_children),
+            raw=True,
+        )
+        assert resp.status_code == 200
+        howler = resp.json()["api_response"]["howler"]
+        assert howler["is_bundle"] is True
+        assert set(howler["hits"]) == set(new_children)

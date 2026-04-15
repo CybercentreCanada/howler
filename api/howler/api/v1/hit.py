@@ -17,7 +17,7 @@ from howler.api import (
     ok,
 )
 from howler.api.v1.utils.etag import add_etag
-from howler.common.exceptions import HowlerException, HowlerValueError, InvalidDataException
+from howler.common.exceptions import HowlerException, HowlerValueError, InvalidDataException, NotFoundException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
@@ -1057,6 +1057,7 @@ def update_bundle(id, **kwargs):
     }
     """
     from howler.services import bundle_compat_service
+    from howler.services.bundle_compat_service import BundleConflictException
 
     hit_ids = request.json
     if not isinstance(hit_ids, list):
@@ -1065,6 +1066,10 @@ def update_bundle(id, **kwargs):
     try:
         result = bundle_compat_service.add_to_bundle(id, hit_ids)
         return _deprecation_headers(ok(result))
+    except BundleConflictException as e:
+        return conflict(err=str(e))
+    except NotFoundException as e:
+        return not_found(err=str(e))
     except HowlerException as e:
         return bad_request(err=str(e))
 
@@ -1100,5 +1105,7 @@ def remove_bundle_children(id, **kwargs):
     try:
         result = bundle_compat_service.remove_from_bundle(id, hit_ids)
         return _deprecation_headers(ok(result))
+    except NotFoundException as e:
+        return not_found(err=str(e))
     except HowlerException as e:
         return bad_request(err=str(e))
