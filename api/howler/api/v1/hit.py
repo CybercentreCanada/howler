@@ -984,9 +984,10 @@ def remove_react_comment(id: str, comment_id: str, user: dict[str, Any], **kwarg
 
 
 def _deprecation_headers(response):
-    """Inject deprecation headers into a Flask response tuple."""
-    body, status = response if isinstance(response, tuple) else (response, 200)
-    return body, status, {"Deprecation": "true", "Sunset": "2027-01-01"}
+    """Inject deprecation headers into a Flask Response."""
+    response.headers["Deprecation"] = "true"
+    response.headers["Sunset"] = "2027-01-01"
+    return response
 
 
 @generate_swagger_docs()

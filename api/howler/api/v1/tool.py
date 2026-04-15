@@ -77,8 +77,11 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
     warnings = []
     # Validate field_map targets
     hit_fields = Hit.flat_fields()
+    _bundle_compat_fields = {"howler.is_bundle", "howler.hits", "howler.bundle_size", "howler.bundles"}
     for targets in field_map.values():
         for target in targets:
+            if target in _bundle_compat_fields:
+                continue
             # This is checking to see if the target matches one of two cases:
             # Simple fields - hit.obj.key of type str (should match)
             # Compound fields - hit.obj of type dict (should also match)

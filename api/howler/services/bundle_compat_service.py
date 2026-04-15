@@ -89,7 +89,7 @@ def create_bundle(
         case.case_id,
         item_type="hit",
         item_value=odm.howler.id,
-        item_path=odm.howler.analytic,
+        item_path="",
     )
 
     for child_id in child_hit_ids:
