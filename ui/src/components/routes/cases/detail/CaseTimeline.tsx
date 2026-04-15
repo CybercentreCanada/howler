@@ -215,8 +215,8 @@ const CaseTimeline: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase
                       title={`${entry.threat.technique.id}: ${config.lookups?.techniques?.[entry.threat.technique.id].name}`}
                     >
                       <Typography
-                        component="a"
-                        href={config.lookups?.techniques?.[entry.threat.technique.id].url}
+                        component={config.lookups?.techniques?.[entry.threat.technique.id]?.url ? 'a' : undefined}
+                        href={config.lookups?.techniques?.[entry.threat.technique.id]?.url}
                         variant="caption"
                         color="text.secondary"
                         sx={{ whiteSpace: 'nowrap' }}
@@ -228,11 +228,11 @@ const CaseTimeline: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase
 
                   {entry.threat?.tactic?.id && (
                     <Tooltip
-                      title={`${entry.threat.tactic.id}: ${config.lookups?.tactics?.[entry.threat.tactic.id].name}`}
+                      title={`${entry.threat.tactic.id}: ${config.lookups?.tactics?.[entry.threat.tactic.id]?.name ?? t('unknown')}`}
                     >
                       <Typography
-                        component="a"
-                        href={config.lookups?.tactics?.[entry.threat.tactic.id].url}
+                        component={config.lookups?.tactics?.[entry.threat.tactic.id]?.url ? 'a' : undefined}
+                        href={config.lookups?.tactics?.[entry.threat.tactic.id]?.url}
                         variant="caption"
                         color="text.secondary"
                         sx={{ whiteSpace: 'nowrap' }}
