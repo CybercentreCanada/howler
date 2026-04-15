@@ -93,7 +93,7 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
                     return bad_request(err=warning)
 
     out: list[dict[str, Any]] = []
-    odms = []
+    odms: list[Hit] = []
     bundle_raw: dict[str, Any] | None = None
     bundle_index: int | None = None
     for hit in hits:

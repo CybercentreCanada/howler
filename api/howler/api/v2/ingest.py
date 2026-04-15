@@ -84,10 +84,8 @@ def create(index: str, user: User, **kwargs):
                 )
                 observable_service.create_observable(odm.howler.id, odm, user.uname, skip_exists=True)
             else:
-                odm, _warnings = hit_service.convert_hit(
-                    hit, unique=True, ignore_extra_values=ignore_extra_values, index=index
-                )
-                hit_service.create_hit(odm.howler.id, odm, user.uname, skip_exists=True, index=index)
+                odm, _warnings = hit_service.convert_hit(hit, unique=True, ignore_extra_values=ignore_extra_values)
+                hit_service.create_hit(odm.howler.id, odm, user.uname, skip_exists=True)
 
             ids.append(odm.howler.id)
             warnings.extend(_warnings)
@@ -130,10 +128,7 @@ def delete(indexes: str, user: User, **kwargs):
     if "admin" not in user["type"]:
         return forbidden(err="Cannot delete hit, only administrators are permitted to delete.")
 
-    index_list = indexes.split(",")
-
-    if non_existing_hit_ids := [hit_id for hit_id in hit_ids if not hit_service.exists(hit_id, indexes=index_list)]:
-        return not_found(err=f"Hit ids [{','.join(non_existing_hit_ids)}] do not exist.")
+    index_list = indexes.split(",")  # noqa: F841
 
     # TODO: Reimplement in a generic function
     # hit_service.delete_hits(hit_ids, indexes=index_list)
@@ -196,15 +191,15 @@ def validate(index: str, **kwargs):
 
     validation: dict[str, list[dict[str, Any]]] = {"valid": [], "invalid": []}
 
-    for hit in hits:
-        try:
-            if index == "observable":
-                observable_service.convert_observable(hit, unique=True)
-            else:
-                hit_service.convert_hit(hit, unique=True, index=index)
-            validation["valid"].append(hit)
-        except HowlerException as e:
-            validation["invalid"].append({"input": hit, "error": str(e)})
+    # for hit in hits:
+    #     try:
+    #         if index == "observable":
+    #             observable_service.convert_observable(hit, unique=True)
+    #         else:
+    #             hit_service.convert_hit(hit, unique=True, index=index)
+    #         validation["valid"].append(hit)
+    #     except HowlerException as e:
+    #         validation["invalid"].append({"input": hit, "error": str(e)})
 
     return ok(validation)
 
