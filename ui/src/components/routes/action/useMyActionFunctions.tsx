@@ -184,7 +184,7 @@ const useMyActionFunctions = () => {
               query,
               action_id: actionId
             }),
-            { throwError: false, showError: true }
+            { throwError: false, showError: false }
           );
 
           setReport(result);
@@ -196,17 +196,30 @@ const useMyActionFunctions = () => {
             return;
           }
 
-          const reportItem = Object.values(result)
-            .flat()
-            .find(item => item.outcome !== 'success');
+          const allItems = Object.values(result).flat();
+          const errors = allItems.filter(item => item.outcome === 'error');
+          const skipped = allItems.filter(item => item.outcome === 'skipped');
+          const succeeded = allItems.filter(item => item.outcome === 'success');
 
-          if (reportItem?.outcome === 'error') {
+          if (errors.length > 0) {
             showErrorMessage(
-              <Trans i18nKey="actions.error" values={{ action: actionName, message: reportItem.message }} />
+              <Trans
+                i18nKey="actions.error"
+                values={{ action: actionName, messages: errors.map(error => error.message).join(', ') }}
+              />
             );
-          } else if (reportItem?.outcome === 'skipped') {
-            showInfoMessage(<Trans i18nKey="actions.skipped" values={{ action: actionName }} />);
-          } else {
+          }
+
+          if (skipped.length > 0) {
+            showInfoMessage(
+              <Trans
+                i18nKey="actions.skipped"
+                values={{ action: actionName, messages: skipped.map(skippedAction => skippedAction.message).join(', ') }}
+              />
+            );
+          }
+
+          if (succeeded.length > 0) {
             showSuccessMessage(<Trans i18nKey="actions.succeeded" values={{ action: actionName }} />);
           }
         } finally {
