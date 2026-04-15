@@ -43,8 +43,7 @@ def test_formatting(datastore_connection, login_session):
                 ]
 
                 variables_err = (
-                    f"Endpoint {api['function']} is missing a properly formatted Variables: portion of "
-                    "the docstring!"
+                    f"Endpoint {api['function']} is missing a properly formatted Variables: portion of the docstring!"
                 )
 
                 if len(desc_parts) != len(matches):

@@ -45,7 +45,7 @@ from howler.odm.models.user import User
 from howler.odm.models.view import View
 from howler.odm.randomizer import get_random_string, get_random_user, get_random_word, random_model_obj
 from howler.security.utils import get_password_hash
-from howler.services import analytic_service
+from howler.services import analytic_service, user_service
 
 classification = loader.get_classification()
 
@@ -155,6 +155,7 @@ def create_users(ds):
         {
             "name": "Dwight Schrute",
             "email": "user@howler.cyber.gc.ca",
+            "classification": classification.RESTRICTED,
             "apikeys": {
                 "devkey": {"acl": ["R", "W"], "password": user_hash},
                 "impersonate_admin": {
@@ -173,6 +174,10 @@ def create_users(ds):
             "favourite_views": [user_view.view_id],
         }
     )
+
+    c12n = user_service.get_dynamic_classification(user_data.as_primitives())
+    if c12n:
+        user_data.classification = c12n
 
     user_view = run_modifications("view", user_view)
     user_data = run_modifications("user", user_data)
@@ -215,6 +220,7 @@ def create_users(ds):
                     "password": huey_hash,
                 },
             },
+            "classification": classification.UNRESTRICTED,
             "password": huey_hash,
             "uname": "huey",
             "favourite_views": [huey_view.view_id],
@@ -249,6 +255,7 @@ def create_users(ds):
             "apikeys": {},
             "type": ["admin", "user"],
             "groups": ["group1", "group2"],
+            "classification": classification.UNRESTRICTED,
             "password": get_password_hash(shawnh_pass),
             "uname": "shawn-h",
             "favourite_views": [shawnh_view.view_id],
@@ -279,6 +286,7 @@ def create_users(ds):
             "apikeys": {},
             "type": ["admin", "user"],
             "groups": ["group1", "group2"],
+            "classification": classification.RESTRICTED,
             "password": get_password_hash(goose_pass),
             "uname": "goose",
             "favourite_views": [goose_view.view_id],
@@ -527,6 +535,10 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
     for hit_idx in range(hit_count):
         hit = generate_useful_hit(lookups, [user.uname for user in users], prune_hit=False)
 
+        # Ensure the first 20 hits have unrestricted classification for test access
+        if hit_idx < 20:
+            hit.classification = classification.UNRESTRICTED
+
         if hit_idx + 1 == hit_count:
             hit.howler.analytic = "SecretAnalytic"
             hit.howler.detection = None
@@ -588,6 +600,7 @@ def create_bundles(ds: HowlerDatastore):
     for i in range(3):
         bundle_hit: Hit = generate_useful_hit(lookups, users)
         bundle_hit.howler.is_bundle = True
+        bundle_hit.classification = classification.UNRESTRICTED
 
         for hit in ds.hit.search("howler.is_bundle:false", rows=randint(3, 10), offset=(i * 2))["items"]:
             if hit.howler.id not in hits:

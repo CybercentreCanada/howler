@@ -10,7 +10,7 @@ from howler.remote.datatypes.user_quota_tracker import UserQuotaTracker
 #################################################################
 # Configuration
 
-CLASSIFICATION = loader.get_classification()
+CLASSIFICATION = loader.get_classification(os.getenv("HWL_CLASSIFICATION_PATH", None))
 
 AUDIT = config.ui.audit
 

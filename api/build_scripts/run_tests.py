@@ -28,8 +28,8 @@ def main():
             env={"TESTING": "true", **os.environ},
         )
 
+        time.sleep(5)
         print("Running pytest")
-        time.sleep(2)
         _path = sys.argv[1] if len(sys.argv) > 1 else "test"
 
         pytest = subprocess.Popen(
@@ -40,13 +40,13 @@ def main():
         output = ""
         while pytest.poll() is None:
             if pytest.stdout:
-                out = pytest.stdout.read(1).decode()
+                out = pytest.stdout.read(1).decode(errors="ignore")
                 output += out
                 sys.stdout.write(out)
                 sys.stdout.flush()
 
         if pytest.stdout:
-            out = pytest.stdout.read().decode()
+            out = pytest.stdout.read().decode(errors="ignore")
             output += out
             sys.stdout.write(out)
             sys.stdout.flush()

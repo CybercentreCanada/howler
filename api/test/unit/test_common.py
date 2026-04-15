@@ -23,8 +23,8 @@ def test_classification():
     yml_config = os.path.join(os.path.dirname(os.path.dirname(__file__)), "classification.yml")
     cl_engine = loader.get_classification(yml_config=yml_config)
 
-    u = "U//REL TO DEPTS"
-    r = "R//GOD//REL TO G1"
+    u = "U//REL DEPTS"
+    r = "R//GOD//G1"
 
     assert cl_engine.normalize_classification(r, long_format=True) == "RESTRICTED//ADMIN//ANY/GROUP 1"
     assert cl_engine.is_accessible(r, u)
@@ -37,8 +37,8 @@ def test_classification():
     with pytest.raises(InvalidClassification):
         cl_engine.normalize_classification("D//BOB//REL TO SOUP")
 
-    c1 = "U//REL TO D1"
-    c2 = "U//REL TO D2"
+    c1 = "U//REL D1"
+    c2 = "U//REL D2"
     assert cl_engine.min_classification(c1, c2) == "UNRESTRICTED//REL TO DEPARTMENT 1, DEPARTMENT 2"
     assert cl_engine.intersect_user_classification(c1, c2) == "UNRESTRICTED"
     with pytest.raises(InvalidClassification):
@@ -49,8 +49,47 @@ def test_classification():
     dyn3 = "U//TEST2"
     assert not cl_engine.is_valid(dyn1)
     assert not cl_engine.is_valid(dyn2)
-    assert cl_engine.normalize_classification(dyn1, long_format=False) == "U"
-    assert cl_engine.normalize_classification(dyn2, long_format=False) == "U//ADM"
+    assert not cl_engine.is_valid(dyn3)
+    with pytest.raises(InvalidClassification):
+        cl_engine.normalize_classification(dyn1, long_format=False)
+    with pytest.raises(InvalidClassification):
+        cl_engine.normalize_classification(dyn2, long_format=False)
+    with pytest.raises(InvalidClassification):
+        cl_engine.normalize_classification(dyn3, long_format=False)
+
+    cl_engine.dynamic_groups = True
+    assert not cl_engine.is_valid(dyn1)
+    assert not cl_engine.is_valid(dyn2)
+    assert not cl_engine.is_valid(dyn3)
+    with pytest.raises(InvalidClassification):
+        cl_engine.normalize_classification(dyn1, long_format=False)
+    with pytest.raises(InvalidClassification):
+        cl_engine.normalize_classification(dyn2, long_format=False)
+    with pytest.raises(InvalidClassification):
+        cl_engine.normalize_classification(dyn3, long_format=False)
+    with pytest.raises(InvalidClassification):
+        cl_engine.is_accessible(dyn2, dyn1)
+    with pytest.raises(InvalidClassification):
+        cl_engine.is_accessible(dyn1, dyn2)
+    with pytest.raises(InvalidClassification):
+        cl_engine.is_accessible(dyn3, dyn1)
+    with pytest.raises(InvalidClassification):
+        cl_engine.is_accessible(dyn1, dyn3)
+    with pytest.raises(InvalidClassification):
+        cl_engine.intersect_user_classification(dyn1, dyn1)
+    with pytest.raises(InvalidClassification):
+        cl_engine.max_classification(dyn1, dyn2)
+
+    cl_engine.dynamic_groups = False
+    dyn1 = "U//REL TEST"
+    dyn2 = "U//GOD//REL TEST"
+    dyn3 = "U//REL TEST2"
+    assert not cl_engine.is_valid(dyn1)
+    assert not cl_engine.is_valid(dyn2)
+    with pytest.raises(InvalidClassification):
+        assert cl_engine.normalize_classification(dyn1, long_format=False)
+    with pytest.raises(InvalidClassification):
+        assert cl_engine.normalize_classification(dyn2, long_format=False)
     cl_engine.dynamic_groups = True
     assert cl_engine.is_valid(dyn1)
     assert cl_engine.is_valid(dyn2)
@@ -110,7 +149,7 @@ def test_translate_str():
     assert translate_str(b"fran\xc3\xa7ais \xc3\xa9l\xc3\xa8ve")["encoding"] == "utf-8"
     assert (
         translate_str(
-            b"\x83G\x83\x93\x83R\x81[\x83f\x83B\x83\x93\x83O\x82" b"\xcd\x93\xef\x82\xb5\x82\xad\x82\xc8\x82\xa2"
+            b"\x83G\x83\x93\x83R\x81[\x83f\x83B\x83\x93\x83O\x82\xcd\x93\xef\x82\xb5\x82\xad\x82\xc8\x82\xa2"
         )["language"]
         == "Japanese"
     )

@@ -21,7 +21,7 @@ def datastore(datastore_connection):
 
         for x in range(NUM_USERS):
             u = ds.user.get("user")
-            u.uname = f"test_{x+1}"
+            u.uname = f"test_{x + 1}"
             ds.user.save(u.uname, u)
             ds.user_avatar.save(u.uname, AVATAR)
             user_list.append(u.uname)
