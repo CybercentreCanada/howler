@@ -2,6 +2,7 @@ import importlib
 import os
 import re
 from pathlib import Path
+from types import ModuleType
 from typing import Any, Optional
 
 from howler.common.loader import datastore
@@ -75,6 +76,51 @@ def __sanitize_report(report: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return sanitized
 
 
+def _get_operation(operation_id: str) -> ModuleType | None:
+    """Find and return an operation module by ID."""
+    operation = None
+    try:
+        operation = importlib.import_module(f"howler.actions.{operation_id}")
+    except ImportError:
+        pass
+
+    if not operation:
+        for plugin in get_plugins():
+            if not plugin.modules.operations:
+                continue
+
+            operation = next(
+                (operation for operation in plugin.modules.operations if operation.OPERATION_ID == operation_id), None
+            )
+
+            if operation:
+                break
+
+    return operation
+
+
+def _check_hit_limit(operation: ModuleType, query: str, user: User) -> dict[str, Any] | None:
+    """Check if the user exceeds hit count limits. Returns error dict if exceeded, None otherwise."""
+    is_advanced = bool(ADVANCED_ROLES & set(user["type"]))
+    max_hits_basic = getattr(operation, "MAX_HITS_BASIC", None)
+    max_hits_advanced = getattr(operation, "MAX_HITS_ADVANCED", None)
+    limit = max_hits_advanced if is_advanced else max_hits_basic
+
+    if limit is not None:
+        hit_count = datastore().hit.search(query, rows=0)["total"]
+        if hit_count > limit:
+            return {
+                "query": query,
+                "outcome": "error",
+                "title": "Hit limit exceeded",
+                "message": (
+                    f"This action affects {hit_count} hits, but you can only process {limit} at a time. "
+                    "Contact an administrator for bulk operations."
+                ),
+            }
+    return None
+
+
 def execute(
     operation_id: str,
     query: str,
@@ -93,23 +139,7 @@ def execute(
     Returns:
         list[dict[str, Any]]: A report on the execution
     """
-    operation = None
-    try:
-        operation = importlib.import_module(f"howler.actions.{operation_id}")
-    except ImportError:
-        pass
-
-    if not operation:
-        for plugin in get_plugins():
-            if not plugin.modules.operations:
-                continue
-
-            operation = next(
-                (operation for operation in plugin.modules.operations if operation.OPERATION_ID == operation_id), None
-            )
-
-            if operation:
-                break
+    operation = _get_operation(operation_id)
 
     if not operation:
         return [
@@ -146,26 +176,9 @@ def execute(
             }
         ]
 
-    # Check hit count limits based on user role
-    is_advanced = bool(ADVANCED_ROLES & set(user["type"]))
-    max_hits_basic = getattr(operation, "MAX_HITS_BASIC", None)
-    max_hits_advanced = getattr(operation, "MAX_HITS_ADVANCED", None)
-    limit = max_hits_advanced if is_advanced else max_hits_basic
-
-    if limit is not None:
-        hit_count = datastore().hit.search(query, rows=0)["total"]
-        if hit_count > limit:
-            return [
-                {
-                    "query": query,
-                    "outcome": "error",
-                    "title": "Hit limit exceeded",
-                    "message": (
-                        f"This action affects {hit_count} hits, but you can only process {limit} at a time. "
-                        "Contact an administrator for bulk operations."
-                    ),
-                }
-            ]
+    limit_error = _check_hit_limit(operation, query, user)
+    if limit_error:
+        return [limit_error]
 
     report = operation.execute(query=query, request_id=request_id, user=user, **kwargs)
 

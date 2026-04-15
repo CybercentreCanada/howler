@@ -198,7 +198,7 @@ const ActionSearch: FC = () => {
         </Card>
       );
     },
-    [deleteAction, navigate, onSearch, t, user.roles, user.username]
+    [deleteAction, editRoles, navigate, onSearch, t, user.roles, user.username]
   );
 
   return (
