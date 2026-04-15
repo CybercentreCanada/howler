@@ -541,7 +541,7 @@ def count(index, **kwargs):
     if collection is None:
         return bad_request(err=f"Not a valid index to search in: {index}")
 
-    params, req_data = generate_params(request, [], [])
+    params, req_data = generate_params(request, [], ["filters"])
 
     boolean_fields = ["use_archive"]
     params.update(
@@ -556,7 +556,7 @@ def count(index, **kwargs):
         params.update({"access_control": user["access_control"]})
 
     query = req_data.get("query", None)
-    filters = req_data.get("filters", [])
+    filters = params.pop("filters", [])
 
     if not query:
         return bad_request(err="There was no search query.")
