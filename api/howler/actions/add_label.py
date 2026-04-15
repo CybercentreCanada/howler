@@ -10,6 +10,8 @@ from howler.utils.str_utils import sanitize_lucene_query
 hit_helper = OdmHelper(Hit)
 
 OPERATION_ID = "add_label"
+MAX_HITS_BASIC = 20
+MAX_HITS_ADVANCED = 1000
 
 CATEGORIES = list(Label.fields().keys())
 
@@ -99,7 +101,7 @@ def specification():
             "short": "Add a label to a hit",
             "long": execute.__doc__,
         },
-        "roles": ["automation_basic"],
+        "roles": ["automation_basic", "actionrunner_basic"],
         "steps": [
             {
                 "args": {"category": [], "label": []},

@@ -10,6 +10,8 @@ from howler.utils.str_utils import sanitize_lucene_query
 hit_helper = OdmHelper(Hit)
 
 OPERATION_ID = "add_to_bundle"
+MAX_HITS_BASIC = 10
+MAX_HITS_ADVANCED = 1000
 
 
 def execute(query: str, bundle_id: Optional[str] = None, **kwargs):
@@ -141,7 +143,7 @@ def specification():
             "short": "Add a set of hits to a bundle",
             "long": execute.__doc__,
         },
-        "roles": ["automation_basic"],
+        "roles": ["automation_basic", "actionrunner_basic"],
         "steps": [
             {
                 "args": {"bundle_id": []},

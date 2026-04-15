@@ -2,8 +2,10 @@ import importlib
 import os
 import re
 from pathlib import Path
+from types import ModuleType
 from typing import Any, Optional
 
+from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.odm.models.user import User
 from howler.plugins import get_plugins
@@ -11,6 +13,9 @@ from howler.plugins import get_plugins
 logger = get_logger(__file__)
 
 PLUGIN_PATH = Path(os.environ.get("HWL_PLUGIN_DIRECTORY", "/etc/howler/plugins"))
+
+# Roles that grant advanced hit limits
+ADVANCED_ROLES = {"automation_advanced", "actionrunner_advanced", "admin"}
 
 
 def __sanitize_specification(spec: dict[str, Any]) -> dict[str, Any]:
@@ -71,24 +76,8 @@ def __sanitize_report(report: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return sanitized
 
 
-def execute(
-    operation_id: str,
-    query: str,
-    user: User | None,
-    request_id: Optional[str] = None,
-    **kwargs,
-) -> list[dict[str, Any]]:
-    """Execute a specification
-
-    Args:
-        operation_id (str): The id of the operation to run
-        query (str): The query to run this action on
-        user (dict[str, Any]): The user running this action
-        request_id (str, None): A user-provided ID, can be used to track the progress of their excecution via websockets
-
-    Returns:
-        list[dict[str, Any]]: A report on the execution
-    """
+def _get_operation(operation_id: str) -> ModuleType | None:
+    """Find and return an operation module by ID."""
     operation = None
     try:
         operation = importlib.import_module(f"howler.actions.{operation_id}")
@@ -107,6 +96,51 @@ def execute(
             if operation:
                 break
 
+    return operation
+
+
+def _check_hit_limit(operation: ModuleType, query: str, user: User) -> dict[str, Any] | None:
+    """Check if the user exceeds hit count limits. Returns error dict if exceeded, None otherwise."""
+    is_advanced = bool(ADVANCED_ROLES & set(user["type"]))
+    max_hits_basic = getattr(operation, "MAX_HITS_BASIC", None)
+    max_hits_advanced = getattr(operation, "MAX_HITS_ADVANCED", None)
+    limit = max_hits_advanced if is_advanced else max_hits_basic
+
+    if limit is not None:
+        hit_count = datastore().hit.search(query, rows=0)["total"]
+        if hit_count > limit:
+            return {
+                "query": query,
+                "outcome": "error",
+                "title": "Hit limit exceeded",
+                "message": (
+                    f"This action affects {hit_count} hits, but you can only process {limit} at a time. "
+                    "Contact an administrator for bulk operations."
+                ),
+            }
+    return None
+
+
+def execute(
+    operation_id: str,
+    query: str,
+    user: User | None,
+    request_id: Optional[str] = None,
+    **kwargs,
+) -> list[dict[str, Any]]:
+    """Execute a specification
+
+    Args:
+        operation_id (str): The id of the operation to run
+        query (str): The query to run this action on
+        user (dict[str, Any]): The user running this action
+        request_id (str, None): A user-provided ID, can be used to track the progress of their excecution via websockets
+
+    Returns:
+        list[dict[str, Any]]: A report on the execution
+    """
+    operation = _get_operation(operation_id)
+
     if not operation:
         return [
             {
@@ -117,9 +151,19 @@ def execute(
             }
         ]
 
-    user_roles: set[str] = set(user["type"] if user else [])
-    missing_roles = set(operation.specification()["roles"]) - user_roles
-    if missing_roles:
+    if not user:
+        return [
+            {
+                "query": query,
+                "outcome": "error",
+                "title": "Authentication required",
+                "message": "You must be logged in to execute actions.",
+            }
+        ]
+
+    required_roles = set(operation.specification()["roles"])
+    has_roles = required_roles & set(user["type"])
+    if not has_roles:
         return [
             {
                 "query": query,
@@ -127,10 +171,14 @@ def execute(
                 "title": "Insufficient permissions",
                 "message": (
                     f"The operation ID provided ({operation_id}) requires permissions you do not have "
-                    f"({', '.join(missing_roles)}). Contact HOWLER Support for more information."
+                    f"(missing one of: {', '.join(required_roles)} ). Contact HOWLER Support for more information."
                 ),
             }
         ]
+
+    limit_error = _check_hit_limit(operation, query, user)
+    if limit_error:
+        return [limit_error]
 
     report = operation.execute(query=query, request_id=request_id, user=user, **kwargs)
 

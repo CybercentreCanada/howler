@@ -11,6 +11,8 @@ from howler.utils.str_utils import sanitize_lucene_query
 hit_helper = OdmHelper(Hit)
 
 OPERATION_ID = "remove_from_bundle"
+MAX_HITS_BASIC = 10
+MAX_HITS_ADVANCED = 1000
 
 
 def execute(query: str, bundle_id: Optional[str] = None, **kwargs):
@@ -121,7 +123,7 @@ def specification():
             "short": "Remove a set of hits from a bundle",
             "long": execute.__doc__,
         },
-        "roles": ["automation_basic"],
+        "roles": ["automation_basic", "actionrunner_basic"],
         "steps": [
             {
                 "args": {"bundle_id": []},

@@ -62,7 +62,7 @@ class User(odm.Model):
     password: str = odm.Keyword(index=False, store=False, description="BCrypt hash of the user's password")
     type: list[str] = odm.List(
         odm.Enum(values=loader.USER_TYPES),
-        default=["user", "automation_basic"],
+        default=["user", "actionrunner_basic"],
         description="Type of user",
     )
     uname: str = odm.Keyword(copyto="__text__", description="Username")
