@@ -2,7 +2,6 @@ import api from 'api';
 import useMyApi from 'components/hooks/useMyApi';
 import NotFoundPage from 'components/routes/404';
 import InformationPane from 'components/routes/hits/search/InformationPane';
-import ObservableViewer from 'components/routes/observables/ObservableViewer';
 import type { Case } from 'models/entities/generated/Case';
 import type { Item } from 'models/entities/generated/Item';
 import { useEffect, useMemo, useState, type FC } from 'react';
@@ -113,12 +112,8 @@ const ItemPage: FC<{ case?: Case }> = ({ case: providedCase }) => {
     return <NotFoundPage />;
   }
 
-  if (item.type === 'hit') {
+  if (item.type === 'hit' || item.type === 'observable') {
     return <InformationPane selected={item.value} />;
-  }
-
-  if (item.type === 'observable') {
-    return <ObservableViewer observableId={item.value} />;
   }
 
   if (item.type === 'case') {

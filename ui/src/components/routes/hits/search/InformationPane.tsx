@@ -147,7 +147,11 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
     }
 
     const defaultContent = {
-      details: () => <ObjectDetails obj={record} />,
+      details: () => (
+        <Box pr={2}>
+          <ObjectDetails obj={record} />
+        </Box>
+      ),
       comments: () => <RecordComments record={record} users={users} />,
       raw: () => <JSONViewer data={!loading && record} hideSearch filter={filter} />,
       data: () => (
