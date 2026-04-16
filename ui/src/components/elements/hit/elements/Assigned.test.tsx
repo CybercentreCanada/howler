@@ -1,32 +1,16 @@
 import { render, screen } from '@testing-library/react';
+import { SocketContext } from 'components/app/providers/SocketProvider';
+import type { ReactNode } from 'react';
 import { createMockHit } from 'tests/utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks
 // ---------------------------------------------------------------------------
 
-const mockViewers = vi.hoisted(() => ({ current: {} as Record<string, string[]> }));
-
 vi.mock('commons/components/app/hooks', () => ({
   useAppUser: () => ({ user: { username: 'current-user' } })
 }));
-
-vi.mock('components/app/providers/SocketProvider', async () => {
-  const { createContext } = await import('react');
-  return {
-    SocketContext: createContext({
-      viewers: mockViewers.current,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      emit: vi.fn(),
-      status: 1,
-      reconnect: vi.fn(),
-      isOpen: () => true,
-      fetchViewers: vi.fn()
-    })
-  };
-});
 
 vi.mock('components/elements/display/HowlerAvatar', () => ({
   default: ({ userId }: { userId: string }) => <div id={`avatar-${userId}`}>{userId}</div>
@@ -46,12 +30,30 @@ import { HitLayout } from '../HitLayout';
 import Assigned from './Assigned';
 
 // ---------------------------------------------------------------------------
-// Setup
+// Helpers
 // ---------------------------------------------------------------------------
 
-beforeEach(() => {
-  mockViewers.current = {};
-});
+const createWrapper = (viewers: Record<string, string[]>) => {
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <SocketContext.Provider
+      value={
+        {
+          viewers,
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          emit: vi.fn(),
+          status: 1,
+          reconnect: vi.fn(),
+          isOpen: () => true,
+          fetchViewers: vi.fn()
+        } as any
+      }
+    >
+      {children}
+    </SocketContext.Provider>
+  );
+  return Wrapper;
+};
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -61,45 +63,29 @@ describe('Assigned', () => {
   it('renders the assignment avatar', () => {
     const hit = createMockHit({ howler: { assignment: 'analyst-1' } });
 
-    render(<Assigned hit={hit} layout={HitLayout.COMFY} />);
+    render(<Assigned hit={hit} layout={HitLayout.COMFY} />, { wrapper: createWrapper({}) });
 
     expect(screen.getByTestId('avatar-analyst-1')).toBeInTheDocument();
   });
 
-  it('renders viewer avatars from socket context', () => {
+  it('renders viewer avatars from socket context, filtering out current user', () => {
     const hit = createMockHit({ howler: { id: 'hit-1', assignment: 'analyst-1' } });
-    mockViewers.current = { 'hit-1': ['viewer-a', 'viewer-b', 'current-user'] };
 
-    // Re-create context with updated viewers
-    vi.doMock('components/app/providers/SocketProvider', async () => {
-      const { createContext } = await import('react');
-      return {
-        SocketContext: createContext({
-          viewers: mockViewers.current,
-          addListener: vi.fn(),
-          removeListener: vi.fn(),
-          emit: vi.fn(),
-          status: 1,
-          reconnect: vi.fn(),
-          isOpen: () => true,
-          fetchViewers: vi.fn()
-        })
-      };
+    render(<Assigned hit={hit} layout={HitLayout.COMFY} />, {
+      wrapper: createWrapper({ 'hit-1': ['viewer-a', 'viewer-b', 'current-user'] })
     });
 
-    render(<Assigned hit={hit} layout={HitLayout.COMFY} />);
-
-    // current-user should be filtered out
+    expect(screen.getByTestId('avatar-viewer-a')).toBeInTheDocument();
+    expect(screen.getByTestId('avatar-viewer-b')).toBeInTheDocument();
     expect(screen.queryByText('current-user')).not.toBeInTheDocument();
   });
 
   it('renders no viewer avatars when no viewers exist', () => {
     const hit = createMockHit({ howler: { id: 'hit-2', assignment: 'analyst-1' } });
-    mockViewers.current = {};
 
-    render(<Assigned hit={hit} layout={HitLayout.COMFY} />);
+    render(<Assigned hit={hit} layout={HitLayout.COMFY} />, { wrapper: createWrapper({}) });
 
-    // Only the assignment avatar should render
     expect(screen.getByTestId('avatar-analyst-1')).toBeInTheDocument();
+    expect(screen.queryByTestId('avatar-viewer-a')).not.toBeInTheDocument();
   });
 });

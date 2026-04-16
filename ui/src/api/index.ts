@@ -80,6 +80,11 @@ export const uri = () => {
  * @returns `string` - properly formatted howler uri.
  */
 const format = (_uri: string): string => {
+  // skip validation if we're hitting the socket endpoints
+  if (_uri.startsWith('/socket')) {
+    return _uri;
+  }
+
   return _uri.startsWith('/api') ? _uri : `${uri()}/${_uri.replace(/\/$/, '')}`;
 };
 

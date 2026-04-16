@@ -84,10 +84,8 @@ def create(index: str, user: User, **kwargs):
                 )
                 observable_service.create_observable(odm.howler.id, odm, user.uname, skip_exists=True)
             else:
-                odm, _warnings = hit_service.convert_hit(
-                    hit, unique=True, ignore_extra_values=ignore_extra_values, index=index
-                )
-                hit_service.create_hit(odm.howler.id, odm, user.uname, skip_exists=True, index=index)
+                odm, _warnings = hit_service.convert_hit(hit, unique=True, ignore_extra_values=ignore_extra_values)
+                hit_service.create_hit(odm.howler.id, odm, user.uname, skip_exists=True)
 
             ids.append(odm.howler.id)
             warnings.extend(_warnings)
@@ -122,9 +120,9 @@ def delete(indexes: str, user: User, **kwargs):
      "success": True             # Deleting the hits succeded
     }
     """
-    hit_ids = request.json
+    ids = request.json
 
-    if hit_ids is None:
+    if ids is None:
         return bad_request(err="No hit ids were sent.")
 
     if "admin" not in user["type"]:
@@ -132,8 +130,10 @@ def delete(indexes: str, user: User, **kwargs):
 
     index_list = indexes.split(",")
 
-    if non_existing_hit_ids := [hit_id for hit_id in hit_ids if not hit_service.exists(hit_id, indexes=index_list)]:
-        return not_found(err=f"Hit ids [{','.join(non_existing_hit_ids)}] do not exist.")
+    ds = datastore()
+
+    if non_existing_hit_ids := [id for id in ids if all(not ds[index].exists(id) for index in index_list)]:
+        return not_found(err=f"Record ids [{','.join(non_existing_hit_ids)}] do not exist.")
 
     # TODO: Reimplement in a generic function
     # hit_service.delete_hits(hit_ids, indexes=index_list)
@@ -201,7 +201,7 @@ def validate(index: str, **kwargs):
             if index == "observable":
                 observable_service.convert_observable(hit, unique=True)
             else:
-                hit_service.convert_hit(hit, unique=True, index=index)
+                hit_service.convert_hit(hit, unique=True)
             validation["valid"].append(hit)
         except HowlerException as e:
             validation["invalid"].append({"input": hit, "error": str(e)})

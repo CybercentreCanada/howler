@@ -47,7 +47,7 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
   const { t, i18n } = useTranslation();
   const theme = useTheme();
   const location = useLocation();
-  const { emit, isOpen } = useContext(SocketContext);
+  const { emit, open } = useContext(SocketContext);
   const { getMatchingOverview, getMatchingDossiers, getMatchingAnalytic } = useMatchers();
   const selected = useContextSelector(ParameterContext, ctx => ctx?.selected) ?? _selected;
   const pluginStore = usePluginStore();
@@ -116,7 +116,7 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
   }, [getMatchingOverview, record]);
 
   useEffect(() => {
-    if (selected && isOpen()) {
+    if (selected && open) {
       emit({
         broadcast: false,
         action: 'viewing',
@@ -130,7 +130,7 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
           id: selected
         });
     }
-  }, [emit, selected, isOpen]);
+  }, [emit, selected, open]);
 
   useEffect(() => {
     if (hasOverview && tab === 'details') {

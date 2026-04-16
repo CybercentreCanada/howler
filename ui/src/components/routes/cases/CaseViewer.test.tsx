@@ -9,8 +9,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // ---------------------------------------------------------------------------
 
 const mockEmit = vi.hoisted(() => vi.fn());
-const mockIsOpen = vi.hoisted(() => vi.fn(() => true));
 const mockFetchViewers = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+const mockOpen = vi.hoisted(() => ({ current: true }));
 const mockAddListener = vi.hoisted(() => vi.fn());
 const mockRemoveListener = vi.hoisted(() => vi.fn());
 const mockParams = vi.hoisted(() => ({ id: 'case-1' }));
@@ -71,7 +71,7 @@ const createWrapper = () => {
       value={
         {
           emit: mockEmit,
-          isOpen: mockIsOpen,
+          open: mockOpen.current,
           fetchViewers: mockFetchViewers,
           addListener: mockAddListener,
           removeListener: mockRemoveListener,
@@ -93,7 +93,7 @@ const createWrapper = () => {
 
 beforeEach(() => {
   mockEmit.mockClear();
-  mockIsOpen.mockClear().mockReturnValue(true);
+  mockOpen.current = true;
   mockFetchViewers.mockClear().mockResolvedValue(undefined);
   mockAddListener.mockClear();
   mockRemoveListener.mockClear();
@@ -148,7 +148,7 @@ describe('CaseViewer', () => {
   });
 
   it('does not emit viewing when socket is closed', async () => {
-    mockIsOpen.mockReturnValue(false);
+    mockOpen.current = false;
 
     render(<CaseViewer />, { wrapper: createWrapper() });
 
@@ -160,7 +160,7 @@ describe('CaseViewer', () => {
   });
 
   it('still fetches viewers when socket is closed', async () => {
-    mockIsOpen.mockReturnValue(false);
+    mockOpen.current = false;
 
     render(<CaseViewer />, { wrapper: createWrapper() });
 

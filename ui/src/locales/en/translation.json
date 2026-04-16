@@ -401,6 +401,7 @@
   "page.cases.detail.participants": "Participants",
   "page.cases.detail.properties": "Properties",
   "page.cases.detail.status": "Status",
+  "page.cases.detail.viewers": "Active Viewers",
   "page.cases.escalation": "Escalation",
   "page.cases.folder.drop.root": "Place here to move to root",
   "page.cases.sidebar.folder.remove": "Remove folder",

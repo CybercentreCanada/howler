@@ -9,7 +9,7 @@ import type { ViewersUpdate } from 'models/socket/ViewersUpdate';
  * @returns whether the data is a hit update
  */
 export const isHitUpdate = (data: any): data is RecievedDataType<HitUpdate> => {
-  return data.version && data.hit;
+  return !!(data.version && data.hit);
 };
 
 /**
@@ -18,7 +18,7 @@ export const isHitUpdate = (data: any): data is RecievedDataType<HitUpdate> => {
  * @returns whether the data is a case update
  */
 export const isCaseUpdate = (data: any): data is RecievedDataType<CaseUpdate> => {
-  return data.type === 'cases' && data.case;
+  return !!(data.type === 'cases' && data.case);
 };
 
 /**
@@ -27,5 +27,5 @@ export const isCaseUpdate = (data: any): data is RecievedDataType<CaseUpdate> =>
  * @returns whether the data is a viewers update
  */
 export const isViewersUpdate = (data: any): data is RecievedDataType<ViewersUpdate> => {
-  return data.type === 'viewers_update' && data.viewers && data.id;
+  return !!(data.type === 'viewers_update' && data.viewers && data.id);
 };

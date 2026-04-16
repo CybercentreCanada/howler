@@ -14,7 +14,7 @@ const useTitle = () => {
   const searchParams = useSearchParams()[0];
   const sitemap = useMySitemap();
 
-  const { getAnalyticFromId } = useContext(AnalyticContext);
+  const { getAnalyticFromId } = useContext(AnalyticContext) ?? {};
 
   const hits = useContextSelector(RecordContext, ctx => ctx.records);
   const getHit = useContextSelector(RecordContext, ctx => ctx.getRecord);
@@ -27,7 +27,7 @@ const useTitle = () => {
     const searchType = location.pathname.replace(/^\/(\w+)(\/.+)?$/, '$1').replace(/s$/, '');
 
     if (searchType === 'analytic') {
-      if (params.id) {
+      if (params.id && getAnalyticFromId) {
         const analytic = await getAnalyticFromId(params.id);
 
         if (analytic) {

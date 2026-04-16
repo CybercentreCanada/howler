@@ -11,7 +11,7 @@ import useCase from './hooks/useCase';
 const CaseViewer: FC = () => {
   const params = useParams();
   const { case: _case, missing, update } = useCase({ caseId: params.id });
-  const { emit, isOpen, fetchViewers } = useContext(SocketContext);
+  const { emit, open, fetchViewers } = useContext(SocketContext);
 
   useEffect(() => {
     if (!params.id) {
@@ -20,7 +20,7 @@ const CaseViewer: FC = () => {
 
     fetchViewers(params.id);
 
-    if (isOpen()) {
+    if (open) {
       emit({
         broadcast: false,
         action: 'viewing',
@@ -35,7 +35,7 @@ const CaseViewer: FC = () => {
         });
       };
     }
-  }, [emit, params.id, isOpen, fetchViewers]);
+  }, [emit, params.id, open, fetchViewers]);
 
   if (missing) {
     return <NotFoundPage />;

@@ -4,11 +4,11 @@ This module provides functionality for creating, updating, retrieving, and manag
 cases - collections of security alerts and investigation data organized by analysts.
 """
 
-from typing import Any, cast, overload
+from typing import Any, overload
 
 from prometheus_client import Counter
 
-from howler.common.exceptions import InvalidDataException, NotFoundException
+from howler.common.exceptions import HowlerValueError, InvalidDataException, NotFoundException
 from howler.common.loader import APP_NAME, datastore
 from howler.common.logging import get_logger
 from howler.datastore.exceptions import DataStoreException
@@ -52,7 +52,12 @@ def create_case(_case: dict, user: str = None) -> Case:  # type: ignore
         append_case_item(case.case_id, item=CaseItem(item))
 
     if items:
-        case = cast(Case, datastore().case.get(case.case_id))
+        updated_case = datastore().case.get(case.case_id)
+
+        if not updated_case:
+            raise HowlerValueError("Error occurred when creating case")
+
+        case = updated_case
 
     event_service.emit("cases", {"case": case.as_primitives()})
 

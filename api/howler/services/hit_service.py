@@ -230,7 +230,7 @@ def _modifies_prop(prop: str, operations: list[OdmUpdateOperation]) -> bool:
 
 
 def convert_hit(  # noqa: C901
-    data: dict[str, Any], unique: bool, ignore_extra_values: bool = False, index: str = "hit"
+    data: dict[str, Any], unique: bool, ignore_extra_values: bool = False
 ) -> tuple[Hit, list[str]]:
     """Validate and convert a dictionary to a Hit ODM object.
 
@@ -324,28 +324,23 @@ def convert_hit(  # noqa: C901
     else:
         odm.event = Event({"created": "NOW", "id": odm.howler.id})
 
-    if unique and exists(odm.howler.id, indexes=[index]):
+    if unique and exists(odm.howler.id):
         raise ResourceExists("Resource with id %s already exists" % odm.howler.id)
 
     return odm, warnings
 
 
 @tracer.start_as_current_span(f"{__name__}.exists")
-def exists(id: str, indexes: list[str] | None = None) -> str | None:
+def exists(id: str) -> bool:
     """Check if a hit exists in the datastore.
 
     Args:
         id: The unique identifier of the hit to check
 
     Returns:
-        str: The index the record exists in
+        bool: True if the hit exists, otherwise False
     """
-    if not indexes:
-        indexes = ["hit"]
-
-    ds = datastore()
-
-    return next((index for index in indexes if ds[index].exists(id)), None)
+    return datastore().hit.exists(id)
 
 
 @overload

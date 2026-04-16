@@ -5,12 +5,12 @@ from howler.utils.socket_utils import check_action
 
 @patch("howler.services.hit_service.update_hit")
 @patch("howler.services.hit_service.exists")
+@patch("howler.utils.socket_utils.viewer_service")
 @patch("howler.services.event_service.emit")
-def test_socket(emit, exists, update_hit):
+def test_socket(emit, mock_viewer_service, exists, update_hit):
     _id = "test_id"
 
     exists.return_value = True
-
     kwargs = {"username": "test_user"}
 
     actions = [
@@ -36,9 +36,10 @@ def test_socket(emit, exists, update_hit):
         else:
             emit.assert_not_called()
 
-        if action.endswith("viewing"):
-            exists.assert_called_once()
-            update_hit.assert_called_once()
+        if action == "viewing":
+            mock_viewer_service.add_viewer.assert_called_once_with(_id, kwargs["username"])
+        elif action == "stop_viewing":
+            mock_viewer_service.remove_viewer.assert_called_once_with(_id, kwargs["username"])
 
         if action in ["typing", "viewing"]:
             assert len(new_outstanding_actions) == 1

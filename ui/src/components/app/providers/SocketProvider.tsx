@@ -3,7 +3,7 @@ import api from 'api';
 import useMyApi from 'components/hooks/useMyApi';
 import useMyLocalStorage from 'components/hooks/useMyLocalStorage';
 import type { PropsWithChildren } from 'react';
-import { createContext, useCallback, useEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StorageKey } from 'utils/constants';
 import { getStored, setAxiosCache, setStored } from 'utils/sessionStorage';
 import { isHitUpdate, isViewersUpdate } from 'utils/socketUtils';
@@ -61,9 +61,9 @@ interface SocketContextType {
   reconnect: () => void;
 
   /**
-   * Helper function to tell if the socket is open
+   * Helper to tell if the socket is open
    */
-  isOpen: () => boolean;
+  open: boolean;
 
   /**
    * A map of entity IDs to their current viewers.
@@ -279,7 +279,7 @@ const SocketProvider: React.FC<PropsWithChildren> = ({ children }) => {
   const addListener: SocketContextType['addListener'] = useCallback((key, callback) => {
     // If a listener with the same key already exists, remove it.
     if (listeners.current[key]) {
-      socket.current?.removeEventListener('message', listeners[key]);
+      socket.current?.removeEventListener('message', listeners.current[key]);
     }
 
     // We wrap the callback so that all the listeners don't need to JSON.parse the data
@@ -334,7 +334,7 @@ const SocketProvider: React.FC<PropsWithChildren> = ({ children }) => {
     [status]
   );
 
-  const isOpen = useCallback(() => status === Status.OPEN, [status]);
+  const open = useMemo(() => status === Status.OPEN, [status]);
 
   const reconnect: SocketContextType['reconnect'] = useCallback(() => setRetry(true), []);
 
@@ -350,7 +350,7 @@ const SocketProvider: React.FC<PropsWithChildren> = ({ children }) => {
 
   return (
     <SocketContext.Provider
-      value={{ addListener, removeListener, emit, status, reconnect, isOpen, viewers, fetchViewers }}
+      value={{ addListener, removeListener, emit, status, reconnect, open, viewers, fetchViewers }}
     >
       {children}
     </SocketContext.Provider>

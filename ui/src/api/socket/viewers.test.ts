@@ -4,19 +4,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // Hoisted mocks
 // ---------------------------------------------------------------------------
 
-const mockFetch = vi.hoisted(() => vi.fn());
+const mockHget = vi.hoisted(() => vi.fn());
 
-vi.mock('rest/AxiosClient', () => ({
-  default: vi.fn().mockImplementation(() => ({
-    fetch: mockFetch
-  }))
-}));
-
-const mockGetStored = vi.hoisted(() => vi.fn());
-
-vi.mock('utils/localStorage', () => ({
-  getStored: mockGetStored
-}));
+vi.mock('api', async () => {
+  const urlJoin = (await import('url-join')).default;
+  return {
+    hget: mockHget,
+    joinAllUri: (...parts: string[]) => urlJoin(...parts)
+  };
+});
 
 // ---------------------------------------------------------------------------
 // Import after mocks
@@ -30,8 +26,7 @@ import { get } from './viewers';
 // ---------------------------------------------------------------------------
 
 beforeEach(() => {
-  mockFetch.mockReset();
-  mockGetStored.mockReset();
+  mockHget.mockReset();
 });
 
 // ---------------------------------------------------------------------------
@@ -40,57 +35,26 @@ beforeEach(() => {
 
 describe('viewers API', () => {
   describe('get', () => {
-    it('calls fetch with the correct URL', async () => {
-      mockGetStored.mockReturnValue('test-token');
-      mockFetch.mockResolvedValue([{ api_response: ['alice', 'bob'] }, 200]);
+    it('calls hget with the correct URI', async () => {
+      mockHget.mockResolvedValue(['alice', 'bob']);
 
       await get('entity-1');
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/socket/v1/viewers/entity-1',
-        'get',
-        undefined,
-        undefined,
-        expect.objectContaining({ 'Content-Type': 'application/json' })
-      );
+      expect(mockHget).toHaveBeenCalledWith('/socket/v1/viewers/entity-1');
     });
 
-    it('returns the api_response on success', async () => {
-      mockGetStored.mockReturnValue('test-token');
-      mockFetch.mockResolvedValue([{ api_response: ['alice', 'bob'] }, 200]);
+    it('returns the result from hget', async () => {
+      mockHget.mockResolvedValue(['alice', 'bob']);
 
       const result = await get('entity-1');
 
       expect(result).toEqual(['alice', 'bob']);
     });
 
-    it('returns empty array on error status', async () => {
-      mockGetStored.mockReturnValue('test-token');
-      mockFetch.mockResolvedValue([{ api_error_message: 'not found' }, 404]);
+    it('propagates errors from hget', async () => {
+      mockHget.mockRejectedValue(new Error('not found'));
 
-      const result = await get('entity-1');
-
-      expect(result).toEqual([]);
-    });
-
-    it('includes authorization header when token is available', async () => {
-      mockGetStored.mockReturnValue('my-app-token');
-      mockFetch.mockResolvedValue([{ api_response: [] }, 200]);
-
-      await get('entity-1');
-
-      const headers = mockFetch.mock.calls[0][4];
-      expect(headers.Authorization).toBe('Bearer my-app-token');
-    });
-
-    it('omits authorization header when no token', async () => {
-      mockGetStored.mockReturnValue(null);
-      mockFetch.mockResolvedValue([{ api_response: [] }, 200]);
-
-      await get('entity-1');
-
-      const headers = mockFetch.mock.calls[0][4];
-      expect(headers.Authorization).toBeUndefined();
+      await expect(get('entity-1')).rejects.toThrow('not found');
     });
   });
 });
