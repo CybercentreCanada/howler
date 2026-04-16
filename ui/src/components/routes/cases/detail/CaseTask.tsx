@@ -62,6 +62,16 @@ const CaseTask: FC<{
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [complete]);
 
+  useEffect(() => {
+    if (!editing && task) {
+      setSummary(task.summary);
+      setPath(task.path);
+      setComplete(task.complete);
+      setAssignment(task.assignment);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [task]);
+
   return (
     <Card sx={{ pl: 0.5, pr: 1, py: 0.5, position: 'relative' }}>
       <Stack direction="row" alignItems="center" spacing={1}>

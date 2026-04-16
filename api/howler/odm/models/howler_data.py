@@ -293,7 +293,3 @@ class HowlerData(odm.Model):
     dossier: list[Lead] = odm.List(
         odm.Compound(Lead), default=[], description="A list of leads forming the dossier associated with this hit"
     )
-    viewers: list[str] = odm.List(
-        odm.Keyword(description="A list of users currently viewing the hit"),
-        default=[],
-    )

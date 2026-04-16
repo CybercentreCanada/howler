@@ -1,6 +1,16 @@
-import { Check, FormatListBulleted, HourglassBottom, Pause, People, WarningRounded } from '@mui/icons-material';
+import {
+  Check,
+  FormatListBulleted,
+  HourglassBottom,
+  Pause,
+  People,
+  Visibility,
+  WarningRounded
+} from '@mui/icons-material';
 import {
   Autocomplete,
+  avatarClasses,
+  AvatarGroup,
   Card,
   Chip,
   Divider,
@@ -14,11 +24,16 @@ import {
   TextField,
   Typography
 } from '@mui/material';
+import { useAppUser } from 'commons/components/app/hooks';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { ModalContext } from 'components/app/providers/ModalProvider';
+import { SocketContext } from 'components/app/providers/SocketProvider';
+import HowlerAvatar from 'components/elements/display/HowlerAvatar';
+import SocketBadge from 'components/elements/display/icons/SocketBadge';
 import UserList from 'components/elements/UserList';
 import dayjs from 'dayjs';
 import type { Case } from 'models/entities/generated/Case';
+import type { HowlerUser } from 'models/entities/HowlerUser';
 import { useContext, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import useCase from '../hooks/useCase';
@@ -29,9 +44,13 @@ const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
   const { t } = useTranslation();
   const { case: _case, update: updateCase } = useCase({ case: providedCase });
   const { showModal } = useContext(ModalContext);
+  const { user } = useAppUser<HowlerUser>();
+  const { viewers } = useContext(SocketContext);
 
   const { config } = useContext(ApiConfigContext);
   const [loading, setLoading] = useState(false);
+
+  const caseViewers = (_case?.case_id ? (viewers[_case.case_id] ?? []) : []).filter(v => v !== user.username);
 
   const wrappedUpdate = async (subset: Partial<Case>) => {
     try {
@@ -83,6 +102,28 @@ const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
     >
       <LinearProgress sx={{ opacity: +loading, position: 'absolute', top: 0, left: 0, right: 0 }} />
       <Stack spacing={2}>
+        <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+          <SocketBadge />
+          {caseViewers.length > 0 && (
+            <Stack direction="row" spacing={0.5} alignItems="center">
+              <Visibility fontSize="small" color="action" />
+              <AvatarGroup
+                max={4}
+                sx={{ [`.${avatarClasses.root}`]: { border: 0, marginLeft: 0.5 } }}
+                componentsProps={{
+                  additionalAvatar: {
+                    sx: { height: 24, width: 24, fontSize: '12px' }
+                  }
+                }}
+              >
+                {caseViewers.map(viewer => (
+                  <HowlerAvatar key={viewer} userId={viewer} sx={{ height: 24, width: 24 }} />
+                ))}
+              </AvatarGroup>
+            </Stack>
+          )}
+        </Stack>
+        <Divider />
         <Stack spacing={1}>
           <Stack direction="row" spacing={1} alignItems="center">
             {{

@@ -1,5 +1,6 @@
 import { Box, Stack } from '@mui/material';
-import { memo, type FC } from 'react';
+import { SocketContext } from 'components/app/providers/SocketProvider';
+import { memo, useContext, useEffect, type FC } from 'react';
 import { Outlet, useParams } from 'react-router-dom';
 import NotFoundPage from '../404';
 import ErrorBoundary from '../ErrorBoundary';
@@ -10,6 +11,31 @@ import useCase from './hooks/useCase';
 const CaseViewer: FC = () => {
   const params = useParams();
   const { case: _case, missing, update } = useCase({ caseId: params.id });
+  const { emit, isOpen, fetchViewers } = useContext(SocketContext);
+
+  useEffect(() => {
+    if (!params.id) {
+      return;
+    }
+
+    fetchViewers(params.id);
+
+    if (isOpen()) {
+      emit({
+        broadcast: false,
+        action: 'viewing',
+        id: params.id
+      });
+
+      return () => {
+        emit({
+          broadcast: false,
+          action: 'stop_viewing',
+          id: params.id
+        });
+      };
+    }
+  }, [emit, params.id, isOpen, fetchViewers]);
 
   if (missing) {
     return <NotFoundPage />;

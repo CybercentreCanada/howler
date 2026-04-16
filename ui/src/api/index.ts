@@ -8,6 +8,7 @@ import * as hit from 'api/hit';
 import * as notebook from 'api/notebook';
 import * as overview from 'api/overview';
 import * as search from 'api/search';
+import * as socket from 'api/socket';
 import * as template from 'api/template';
 import * as user from 'api/user';
 import * as v2 from 'api/v2';
@@ -43,6 +44,7 @@ const api = {
   hit,
   overview,
   search,
+  socket,
   template,
   user,
   view,

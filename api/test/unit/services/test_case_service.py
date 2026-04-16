@@ -1208,3 +1208,96 @@ class TestRemoveBackreference:
         assert "case-abc" not in mock_obj.howler.related
         assert "other-case" in mock_obj.howler.related
         mock_ds.__getitem__.return_value.save.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Event emission on case mutations
+# ---------------------------------------------------------------------------
+
+
+class TestCaseEventEmission:
+    """Tests that case mutations emit 'cases' events via event_service."""
+
+    @patch("howler.services.case_service.event_service")
+    @patch("howler.services.case_service.datastore")
+    def test_update_case_emits_event(self, mock_ds_fn, mock_events):
+        """update_case emits a 'cases' event containing the updated case primitives."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+        mock_ds.case.get.return_value = Case(
+            {"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"}
+        )
+
+        mock_user = MagicMock()
+        mock_user.uname = "analyst"
+
+        case_service.update_case("case-001", {"title": "New"}, mock_user)
+
+        mock_events.emit.assert_called_once()
+        args = mock_events.emit.call_args
+        assert args[0][0] == "cases"
+        assert "case" in args[0][1]
+        assert args[0][1]["case"]["title"] == "New"
+
+    @patch("howler.services.case_service.event_service")
+    @patch("howler.services.case_service.datastore")
+    def test_create_case_emits_event(self, mock_ds_fn, mock_events):
+        """create_case emits a 'cases' event with the new case."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        case_service.create_case({"title": "New", "summary": "S"}, user="admin")
+
+        mock_events.emit.assert_called_once()
+        args = mock_events.emit.call_args
+        assert args[0][0] == "cases"
+        assert "case" in args[0][1]
+        assert args[0][1]["case"]["title"] == "New"
+
+    @patch("howler.services.case_service._sync_case_metadata")
+    @patch("howler.services.case_service.event_service")
+    @patch("howler.services.case_service.datastore")
+    def test_append_hit_emits_event(self, mock_ds_fn, mock_events, mock_sync):
+        """append_hit emits a 'cases' event after adding a hit."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_hit = MagicMock()
+        mock_hit.howler.related = []
+        mock_hit.howler.id = "hit-001"
+
+        mock_ds.case.get.return_value = mock_case
+        mock_ds.hit.get.return_value = mock_hit
+        mock_ds.case.save.return_value = True
+
+        item = CaseItem({"type": "hit", "value": "hit-001", "path": "alerts/test"})
+        case_service.append_hit("case-001", item)
+
+        mock_events.emit.assert_called_once()
+        args = mock_events.emit.call_args
+        assert args[0][0] == "cases"
+        assert "case" in args[0][1]
+
+    @patch("howler.services.case_service._sync_case_metadata")
+    @patch("howler.services.case_service.event_service")
+    @patch("howler.services.case_service.datastore")
+    def test_append_hit_skips_emit_when_refetch_returns_none(self, mock_ds_fn, mock_events, mock_sync):
+        """append_hit does not emit when the re-fetch returns None."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_hit = MagicMock()
+        mock_hit.howler.related = []
+        mock_hit.howler.id = "hit-001"
+
+        # First get returns the case, second get (refetch) returns None
+        mock_ds.case.get.side_effect = [mock_case, None]
+        mock_ds.hit.get.return_value = mock_hit
+        mock_ds.case.save.return_value = True
+
+        item = CaseItem({"type": "hit", "value": "hit-001", "path": "alerts/test"})
+        case_service.append_hit("case-001", item)
+
+        mock_events.emit.assert_not_called()

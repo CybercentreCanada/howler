@@ -17,6 +17,7 @@ from howler.odm.models.ecs.related import Related
 from howler.odm.models.hit import Hit
 from howler.odm.models.observable import Observable
 from howler.odm.models.user import User
+from howler.services import event_service
 
 logger = get_logger(__file__)
 
@@ -51,7 +52,9 @@ def create_case(_case: dict, user: str = None) -> Case:  # type: ignore
         append_case_item(case.case_id, item=CaseItem(item))
 
     if items:
-        return cast(Case, datastore().case.get(case.case_id))
+        case = cast(Case, datastore().case.get(case.case_id))
+
+    event_service.emit("cases", {"case": case.as_primitives()})
 
     return case
 
@@ -218,6 +221,8 @@ def update_case(case_id: str, case_data: dict[str, Any], user: User) -> Case:
     case.updated = "NOW"
     ds.case.save(case_id, case)
 
+    event_service.emit("cases", {"case": case.as_primitives()})
+
     return case
 
 
@@ -332,6 +337,10 @@ def append_hit(case_id: str, item: CaseItem) -> Case:
 
     _sync_case_metadata(_case.case_id)
 
+    updated_case = ds.case.get(_case.case_id)
+    if updated_case:
+        event_service.emit("cases", {"case": updated_case.as_primitives()})
+
     return _case
 
 
@@ -374,6 +383,10 @@ def append_observable(case_id: str, item: CaseItem) -> Case:
     _add_backreference(observable, _case.case_id)
     _sync_case_metadata(case_id)
 
+    updated_case = ds.case.get(_case.case_id)
+    if updated_case:
+        event_service.emit("cases", {"case": updated_case.as_primitives()})
+
     return _case
 
 
@@ -412,6 +425,8 @@ def append_case(case_id: str, item: CaseItem) -> Case:
 
     if not datastore().case.save(_case.case_id, _case):
         raise DataStoreException(f"Failed to save {_case.case_id} with new item {item.value}")
+
+    event_service.emit("cases", {"case": _case.as_primitives()})
 
     return _case
 
@@ -475,6 +490,8 @@ def append_reference(case_id: str, item: CaseItem) -> Case:
 
     if not datastore().case.save(_case.case_id, _case):
         raise DataStoreException(f"Failed to save {_case.case_id} with new item {item.value}")
+
+    event_service.emit("cases", {"case": _case.as_primitives()})
 
     return _case
 
@@ -649,6 +666,10 @@ def remove_case_items(case_id: str, values: list[str]):
 
     _sync_case_metadata(case_id)
 
+    updated_case = ds.case.get(_case.case_id)
+    if updated_case:
+        event_service.emit("cases", {"case": updated_case.as_primitives()})
+
     return _case
 
 
@@ -694,5 +715,7 @@ def rename_case_item(case_id: str, item_value: str, new_path: str) -> Case:
 
     if not ds.case.save(_case.case_id, _case):
         raise DataStoreException("Failed to save case after item rename")
+
+    event_service.emit("cases", {"case": _case.as_primitives()})
 
     return _case
