@@ -4,6 +4,8 @@
   "Unclassified//Official Use Only": "Non classé//Réservé à des fins officielles",
   "actions.running": "Action \"{{action}}\" s'exécute.",
   "actions.succeeded": "Action \"{{action}}\" achevé avec succès.",
+  "actions.skipped": "Action \"{{action}}\" a été ignorée: {{messages}}",
+  "actions.error": "Action \"{{action}}\" a rencontré une ou des erreur(s): {{messages}}",
   "add": "Ajouter",
   "adminmenu": "Menu d'administration",
   "adminmenu.config": "Configuration",

@@ -2,6 +2,8 @@
   "*": "All values",
   "actions.running": "Action \"{{action}}\" is executing.",
   "actions.succeeded": "Action \"{{action}}\" completed successfully.",
+  "actions.skipped": "Action \"{{action}}\" was skipped: {{messages}}",
+  "actions.error": "Action \"{{action}}\" had error(s): {{messages}}",
   "add": "Add",
   "adminmenu": "Admin menu",
   "adminmenu.config": "Configuration",
