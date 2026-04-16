@@ -191,15 +191,15 @@ def validate(index: str, **kwargs):
 
     validation: dict[str, list[dict[str, Any]]] = {"valid": [], "invalid": []}
 
-    # for hit in hits:
-    #     try:
-    #         if index == "observable":
-    #             observable_service.convert_observable(hit, unique=True)
-    #         else:
-    #             hit_service.convert_hit(hit, unique=True, index=index)
-    #         validation["valid"].append(hit)
-    #     except HowlerException as e:
-    #         validation["invalid"].append({"input": hit, "error": str(e)})
+    for hit in hits:
+        try:
+            if index == "observable":
+                observable_service.convert_observable(hit, unique=True)
+            else:
+                hit_service.convert_hit(hit, unique=True)
+            validation["valid"].append(hit)
+        except HowlerException as e:
+            validation["invalid"].append({"input": hit, "error": str(e)})
 
     return ok(validation)
 

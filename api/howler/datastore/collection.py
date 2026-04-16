@@ -11,7 +11,7 @@ from copy import deepcopy
 from datetime import datetime
 from os import environ
 from random import random
-from typing import Any, Dict, Generic, Literal, Optional, TypeVar, Union, overload
+from typing import Any, Callable, Dict, Generic, Literal, Optional, TypeVar, Union, cast, overload
 
 import elasticsearch
 from datemath import dm
@@ -70,6 +70,7 @@ logger.addHandler(console)
 tracer = trace.get_tracer(__name__)
 
 ModelType = TypeVar("ModelType", bound=Model)
+_R = TypeVar("_R")
 
 
 write_block_settings = {"index.blocks.write": True}
@@ -324,14 +325,12 @@ class ESCollection(Generic[ModelType]):
                 except elasticsearch.exceptions.NotFoundError:
                     pass
 
-    def with_retries(self, func, *args, raise_conflicts=False, **kwargs):
+    def with_retries(self, func: Callable[..., _R], *args: Any, raise_conflicts: bool = False, **kwargs: Any) -> _R:
         """This function performs the passed function with the given args and kwargs and reconnect if it fails
 
         :return: return the output of the function passed
         """
         retries = 0
-        updated = 0
-        deleted = 0
 
         while True:
             if retries >= self.max_attempts:
@@ -342,12 +341,6 @@ class ESCollection(Generic[ModelType]):
 
                 if retries:
                     logger.info("Reconnected to elasticsearch!")
-
-                if updated:
-                    ret_val["updated"] += updated
-
-                if deleted:
-                    ret_val["deleted"] += deleted
 
                 return ret_val
             except elasticsearch.exceptions.NotFoundError as e:
@@ -365,8 +358,6 @@ class ESCollection(Generic[ModelType]):
                     # De-sync potential treads trying to write to the index
                     time.sleep(random() * 0.1)  # noqa: S311
                     raise VersionConflictException(str(ce))
-                updated += ce.info.get("updated", 0)
-                deleted += ce.info.get("deleted", 0)
 
                 time.sleep(min(retries, self.MAX_RETRY_BACKOFF))
                 self.datastore.connection_reset()
@@ -589,7 +580,7 @@ class ESCollection(Generic[ModelType]):
                 logger.info("The target shards is not a factor of the current shards, aborting...")
                 return
             else:
-                target_node = self.with_retries(self.datastore.client.cat.nodes, format="json")[0]["name"]
+                target_node = self.with_retries(self.datastore.client.cat.nodes, format="json")[0]["name"]  # type: ignore
                 clone_setup_settings = {
                     "index.number_of_replicas": 0,
                     "index.routing.allocation.require._name": target_node,
@@ -893,13 +884,13 @@ class ESCollection(Generic[ModelType]):
 
         return data
 
-    def exists(self, key):
+    def exists(self, key) -> bool:
         """Check if a document exists in the datastore.
 
         :param key: key of the document to get from the datastore
         :return: true/false depending if the document exists or not
         """
-        return self.with_retries(self.datastore.client.exists, index=self.name, id=key, _source=False)
+        return cast(bool, self.with_retries(self.datastore.client.exists, index=self.name, id=key, _source=False))
 
     @overload
     def _get(self, key, retries, version: Literal[False]) -> dict[str, Any]: ...

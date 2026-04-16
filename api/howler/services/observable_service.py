@@ -19,14 +19,14 @@ tracer = trace.get_tracer(__name__)
 
 
 @tracer.start_as_current_span(f"{__name__}.exists")
-def exists(id: str) -> str | None:
+def exists(id: str) -> bool:
     """Check if an observable exists in the datastore.
 
     Args:
-        id: The unique identifier of the hit to check
+        id: The unique identifier of the observable to check
 
     Returns:
-        str: The index the record exists in
+        bool: True if the observable exists, otherwise False
     """
     return datastore().observable.exists(id)
 

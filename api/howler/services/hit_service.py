@@ -331,14 +331,14 @@ def convert_hit(  # noqa: C901
 
 
 @tracer.start_as_current_span(f"{__name__}.exists")
-def exists(id: str) -> str | None:
+def exists(id: str) -> bool:
     """Check if a hit exists in the datastore.
 
     Args:
         id: The unique identifier of the hit to check
 
     Returns:
-        str: The index the record exists in
+        bool: True if the hit exists, otherwise False
     """
     return datastore().hit.exists(id)
 
