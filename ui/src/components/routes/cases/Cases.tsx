@@ -77,7 +77,6 @@ const CasesBase: FC = () => {
     } else if (dateRange === 'date.range.custom') {
       filters.push(`created:[${customStart.toISOString()} TO ${customEnd.toISOString()}]`);
     }
-
     return filters;
   }, [statusFilter, assigneeFilter, dateRange, customStart, customEnd]);
 

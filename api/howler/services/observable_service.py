@@ -2,6 +2,7 @@ import json
 from hashlib import sha256
 from typing import Any, Optional
 
+from opentelemetry import trace
 from prometheus_client import Counter
 
 from howler.common.exceptions import HowlerTypeError, HowlerValueError, ResourceExists
@@ -10,11 +11,24 @@ from howler.common.logging import get_logger
 from howler.odm.models.ecs.event import Event
 from howler.odm.models.observable import Log as ObservableLog
 from howler.odm.models.observable import Observable
-from howler.services.hit_service import exists
 from howler.utils.dict_utils import extra_keys, flatten
 from howler.utils.uid import get_random_id
 
 logger = get_logger(__file__)
+tracer = trace.get_tracer(__name__)
+
+
+@tracer.start_as_current_span(f"{__name__}.exists")
+def exists(id: str) -> bool:
+    """Check if an observable exists in the datastore.
+
+    Args:
+        id: The unique identifier of the observable to check
+
+    Returns:
+        bool: True if the observable exists, otherwise False
+    """
+    return datastore().observable.exists(id)
 
 
 def convert_observable(
@@ -88,7 +102,7 @@ def convert_observable(
     else:
         odm.event = Event({"created": "NOW", "id": odm.howler.id})
 
-    if unique and exists(odm.howler.id, indexes=["observable"]):
+    if unique and exists(odm.howler.id):
         raise ResourceExists("Resource with id %s already exists" % odm.howler.id)
 
     return odm, warnings
@@ -118,7 +132,7 @@ def create_observable(id: str, observable: Observable, user: Optional[str] = Non
     Raises:
         ResourceExists: If an observable with the same ID already exists and skip_exists=False
     """
-    if not skip_exists and exists(id, indexes=["observable"]):
+    if not skip_exists and exists(id):
         raise ResourceExists(f"Observable {id} already exists in datastore")
 
     if user:
