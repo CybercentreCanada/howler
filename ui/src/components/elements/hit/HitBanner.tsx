@@ -8,6 +8,7 @@ import {
   Tooltip,
   Typography,
   avatarClasses,
+  chipClasses,
   iconButtonClasses,
   useTheme,
   type TypographyProps
@@ -208,7 +209,10 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
       display="grid"
       gridTemplateColumns="minmax(0, auto) minmax(0, 1fr) minmax(0, auto)"
       alignItems="stretch"
-      sx={{ width: '100%', ml: 0, overflow: 'hidden' }}
+      sx={{ width: '100%', ml: 0, overflow: 'hidden', textDecoration: 'none', color: 'text.primary' }}
+      component="a"
+      href={`/hits/${hit?.howler.id}`}
+      onClick={e => e.preventDefault()}
     >
       {leftBox}
       <Stack
@@ -345,11 +349,15 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
         {hit.howler.links?.[0]?.href && (
           <Chip
             icon={<OpenInNew />}
-            label={hit.howler.links[0].title || 'Open in source platform'}
+            label={hit.howler.links[0].title || t('hit.header.link')}
             size={layout !== HitLayout.COMFY ? 'small' : 'medium'}
+            component="a"
+            href={hit.howler.links[0].href}
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{ [`.${chipClasses.label}`]: { cursor: 'pointer !important' } }}
             onClick={e => {
               e.stopPropagation();
-              window.open(hit.howler.links[0].href, '_blank', 'noopener,noreferrer');
             }}
           />
         )}
