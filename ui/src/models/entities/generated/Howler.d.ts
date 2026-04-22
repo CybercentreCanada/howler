@@ -38,7 +38,6 @@ export interface Howler {
   scrutiny?: string;
   severity?: number;
   status?: string;
-  viewers?: string[];
   volume?: number;
   votes?: Votes;
 }

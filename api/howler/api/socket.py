@@ -7,11 +7,11 @@ from flask import Blueprint, request
 from opentelemetry import trace
 
 import howler.services.event_service as event_service
+import howler.services.viewer_service as viewer_service
 from howler.api import ok, unauthorized
 from howler.common.logging import get_logger
-from howler.datastore.operations import OdmHelper
 from howler.helper.ws import ConnectionClosed, Server
-from howler.odm.models.hit import Hit
+from howler.security import api_login
 from howler.security.socket import websocket_auth, ws_response
 from howler.utils.socket_utils import check_action
 
@@ -23,8 +23,6 @@ socket_api._doc = "Endpoints concerning websocket connectivity between the clien
 
 logger = get_logger(__file__)
 tracer = trace.get_tracer(__name__)
-
-hit_helper = OdmHelper(Hit)
 
 
 @tracer.start_as_current_span(f"{__name__}.emit")
@@ -49,10 +47,25 @@ def emit(event: str):
     return ok()
 
 
+@tracer.start_as_current_span(f"{__name__}.get_viewers")
+@socket_api.route("/viewers/<entity_id>", methods=["GET"])
+@api_login(audit=False, required_priv=["R"])
+def get_viewers(entity_id: str, **kwargs):
+    """Get the list of users currently viewing the specified entity
+
+    Variables:
+    entity_id       => The ID of the entity to get viewers for
+
+    Result Example:
+    ["user1", "user2"]
+    """
+    return ok(viewer_service.get_viewers(entity_id))
+
+
 @tracer.start_as_current_span(f"{__name__}.connect")
 @socket_api.route("/connect", websocket=True)  # type: ignore
 @websocket_auth(required_priv=["R"])
-def connect(ws: Server, *args: Any, ws_id: str, **kwargs):
+def connect(ws: Server, *args: Any, ws_id: str, **kwargs):  # noqa: C901
     """Connect to the server to monitor for updates via websocket
 
     Variables:
@@ -78,10 +91,20 @@ def connect(ws: Server, *args: Any, ws_id: str, **kwargs):
         logger.debug("Sending action: %s", data)
         ws.send(ws_response("action", data))
 
+    def send_case(data: dict[str, Any]):
+        logger.debug("Sending case update: %s", data.get("case", {}).get("case_id", "unknown"))
+        ws.send(ws_response("cases", data))
+
+    def send_viewers_update(data: dict[str, Any]):
+        logger.debug("Sending viewers update: %s", data.get("id", "unknown"))
+        ws.send(ws_response("viewers_update", data))
+
     try:
         event_service.on("hits", send_hit)
         event_service.on("broadcast", send_broadcast)
         event_service.on("action", send_action)
+        event_service.on("cases", send_case)
+        event_service.on("viewers_update", send_viewers_update)
         while ws.connected:
             data = ws.receive(10)
             if data:
@@ -113,6 +136,8 @@ def connect(ws: Server, *args: Any, ws_id: str, **kwargs):
         event_service.off("hits", send_hit)
         event_service.off("broadcast", send_broadcast)
         event_service.off("action", send_action)
+        event_service.off("cases", send_case)
+        event_service.off("viewers_update", send_viewers_update)
 
         for id, action, broadcast in outstanding_actions:
             outstanding_actions = check_action(id, action, broadcast, outstanding_actions=outstanding_actions, **kwargs)

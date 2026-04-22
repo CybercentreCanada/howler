@@ -1,6 +1,7 @@
 import { Check, FormatListBulleted, HourglassBottom, Pause, People, WarningRounded } from '@mui/icons-material';
 import {
   Autocomplete,
+  AvatarGroup,
   Card,
   Chip,
   Divider,
@@ -16,6 +17,9 @@ import {
 } from '@mui/material';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { ModalContext } from 'components/app/providers/ModalProvider';
+import { SocketContext } from 'components/app/providers/SocketProvider';
+import HowlerAvatar from 'components/elements/display/HowlerAvatar';
+import SocketBadge from 'components/elements/display/icons/SocketBadge';
 import UserList from 'components/elements/UserList';
 import dayjs from 'dayjs';
 import type { Case } from 'models/entities/generated/Case';
@@ -29,9 +33,12 @@ const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
   const { t } = useTranslation();
   const { case: _case, update: updateCase } = useCase({ case: providedCase });
   const { showModal } = useContext(ModalContext);
+  const { viewers } = useContext(SocketContext);
 
   const { config } = useContext(ApiConfigContext);
   const [loading, setLoading] = useState(false);
+
+  const caseViewers = _case?.case_id ? (viewers[_case.case_id] ?? []) : [];
 
   const wrappedUpdate = async (subset: Partial<Case>) => {
     try {
@@ -107,14 +114,41 @@ const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
             <People />
             <Typography variant="body1">{t('page.cases.detail.participants')}</Typography>
           </Stack>
-          <UserList
-            buttonSx={{ alignSelf: 'start' }}
-            multiple
-            i18nLabel="page.cases.detail.assignment"
-            userIds={_case.participants ?? []}
-            onChange={participants => wrappedUpdate({ participants })}
-            disabled={loading}
-          />
+
+          <Stack direction="row" spacing={0.5} alignItems="center">
+            <UserList
+              buttonSx={{ alignSelf: 'start' }}
+              multiple
+              i18nLabel="page.cases.detail.assignment"
+              userIds={_case.participants ?? []}
+              onChange={participants => wrappedUpdate({ participants })}
+              disabled={loading}
+            />
+            <div style={{ flex: 1 }} />
+          </Stack>
+
+          {caseViewers.length > 0 && (
+            <>
+              <Divider />
+              <Stack direction="row" alignItems="center">
+                <SocketBadge size="medium" />
+                <Typography variant="body1">{t('page.cases.detail.viewers')}</Typography>
+              </Stack>
+              <AvatarGroup
+                max={4}
+                sx={{ alignSelf: 'start' }}
+                componentsProps={{
+                  additionalAvatar: {
+                    sx: { height: 32, width: 32, fontSize: '12px' }
+                  }
+                }}
+              >
+                {caseViewers.map(viewer => (
+                  <HowlerAvatar key={viewer} userId={viewer} sx={{ height: 32, width: 32 }} />
+                ))}
+              </AvatarGroup>
+            </>
+          )}
         </Stack>
         <Divider />
         <Stack spacing={1}>

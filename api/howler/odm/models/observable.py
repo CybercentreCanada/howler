@@ -101,10 +101,6 @@ class ObservableData(odm.Model):
         default=[],
         description="A list of changes to the observable with timestamps and attribution.",
     )
-    viewers: list[str] = odm.List(
-        odm.Keyword(description="A list of users currently viewing the observable"),
-        default=[],
-    )
 
 
 @odm.model(

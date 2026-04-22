@@ -120,15 +120,20 @@ def delete(indexes: str, user: User, **kwargs):
      "success": True             # Deleting the hits succeded
     }
     """
-    hit_ids = request.json
+    ids = request.json
 
-    if hit_ids is None:
+    if ids is None:
         return bad_request(err="No hit ids were sent.")
 
     if "admin" not in user["type"]:
         return forbidden(err="Cannot delete hit, only administrators are permitted to delete.")
 
-    index_list = indexes.split(",")  # noqa: F841
+    index_list = indexes.split(",")
+
+    ds = datastore()
+
+    if non_existing_hit_ids := [id for id in ids if all(not ds[index].exists(id) for index in index_list)]:
+        return not_found(err=f"Record ids [{','.join(non_existing_hit_ids)}] do not exist.")
 
     # TODO: Reimplement in a generic function
     # hit_service.delete_hits(hit_ids, indexes=index_list)

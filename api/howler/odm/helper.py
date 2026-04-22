@@ -249,8 +249,6 @@ def generate_useful_hit(  # noqa: C901
     except IndexError:
         pass
 
-    hit.howler.viewers = []
-
     hit.howler.dossier = [
         Lead(
             {
@@ -445,8 +443,6 @@ def generate_useful_observable(  # noqa: C901
             }
         ),
     ]
-
-    observable.howler.viewers = []
 
     return observable
 
