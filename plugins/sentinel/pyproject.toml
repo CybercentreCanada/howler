@@ -150,6 +150,7 @@ types-python-dateutil = "^2.9.0.20260124"
 
 [tool.poetry.dependencies]
 python-dateutil = "^2.9.0.post0"
+opentelemetry-sdk = "1.40.0"
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
