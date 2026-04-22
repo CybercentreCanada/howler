@@ -155,7 +155,7 @@ class TestDeleteRule:
 
 
 class TestUpdateRule:
-    """Integration tests for PATCH /api/v2/case/<id>/rules/<rule_id>."""
+    """Integration tests for PUT /api/v2/case/<id>/rules/<rule_id>."""
 
     def test_update_rule_toggle_enabled(self, test_case):
         case_id, session, host = test_case
@@ -168,14 +168,14 @@ class TestUpdateRule:
         )
         rule_id = add_resp["rules"][0]["rule_id"]
 
-        patch_resp = get_api_data(
+        put_resp = get_api_data(
             session,
             f"{host}/api/v2/case/{case_id}/rules/{rule_id}",
-            method="PATCH",
+            method="PUT",
             data=json.dumps({"enabled": False}),
         )
 
-        updated_rule = next(r for r in patch_resp["rules"] if r["id"] == rule_id)
+        updated_rule = next(r for r in put_resp["rules"] if r["id"] == rule_id)
         assert updated_rule["enabled"] is False
 
     def test_update_rule_change_query(self, test_case):
@@ -189,14 +189,14 @@ class TestUpdateRule:
         )
         rule_id = add_resp["rules"][0]["rule_id"]
 
-        patch_resp = get_api_data(
+        put_resp = get_api_data(
             session,
             f"{host}/api/v2/case/{case_id}/rules/{rule_id}",
-            method="PATCH",
+            method="PUT",
             data=json.dumps({"query": "new:query"}),
         )
 
-        updated_rule = next(r for r in patch_resp["rules"] if r["id"] == rule_id)
+        updated_rule = next(r for r in put_resp["rules"] if r["id"] == rule_id)
         assert updated_rule["query"] == "new:query"
 
     def test_update_rule_not_found_returns_404(self, test_case):
@@ -205,7 +205,7 @@ class TestUpdateRule:
         resp = get_api_data(
             session,
             f"{host}/api/v2/case/{case_id}/rules/nonexistent",
-            method="PATCH",
+            method="PUT",
             data=json.dumps({"enabled": False}),
             raw=True,
         )

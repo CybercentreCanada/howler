@@ -681,7 +681,7 @@ class TestRenameItemEndpoint:
         mock_case_service.rename_case_item.return_value = {"case_id": "case-001", "title": "Test"}
 
         with request_context.test_request_context(
-            method="PATCH",
+            method="PUT",
             json={"value": "hit-001", "new_path": "folder/New Name"},
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
         ):
@@ -702,7 +702,7 @@ class TestRenameItemEndpoint:
         _mock_auth(mock_auth_service, user)
 
         with request_context.test_request_context(
-            method="PATCH",
+            method="PUT",
             data=b"null",
             content_type="application/json",
             headers={"Authorization": "Bearer ."},
@@ -722,7 +722,7 @@ class TestRenameItemEndpoint:
         _mock_auth(mock_auth_service, user)
 
         with request_context.test_request_context(
-            method="PATCH",
+            method="PUT",
             json={"new_path": "folder/New Name"},
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
         ):
@@ -743,7 +743,7 @@ class TestRenameItemEndpoint:
         _mock_auth(mock_auth_service, user)
 
         with request_context.test_request_context(
-            method="PATCH",
+            method="PUT",
             json={"value": "hit-001"},
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
         ):
@@ -766,7 +766,7 @@ class TestRenameItemEndpoint:
         mock_case_service.rename_case_item.side_effect = NotFoundException("Item not found")
 
         with request_context.test_request_context(
-            method="PATCH",
+            method="PUT",
             json={"value": "missing", "new_path": "folder/New Name"},
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
         ):
@@ -788,7 +788,7 @@ class TestRenameItemEndpoint:
         mock_case_service.rename_case_item.side_effect = InvalidDataException("Path already taken")
 
         with request_context.test_request_context(
-            method="PATCH",
+            method="PUT",
             json={"value": "hit-001", "new_path": "folder/Taken"},
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
         ):
@@ -812,7 +812,7 @@ class TestRenameItemEndpoint:
         mock_case_service.rename_case_item.side_effect = DataStoreException("datastore failure")
 
         with request_context.test_request_context(
-            method="PATCH",
+            method="PUT",
             json={"value": "hit-001", "new_path": "folder/New Name"},
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
         ):
@@ -991,7 +991,7 @@ class TestUpdateRule:
         }
 
         with request_context.test_request_context(
-            method="PATCH",
+            method="PUT",
             json={"enabled": False},
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
         ):
@@ -1010,7 +1010,7 @@ class TestUpdateRule:
         _mock_auth(mock_auth_service, user)
 
         with request_context.test_request_context(
-            method="PATCH",
+            method="PUT",
             data=b"null",
             content_type="application/json",
             headers={"Authorization": "Bearer ."},
@@ -1033,7 +1033,7 @@ class TestUpdateRule:
         mock_case_service.update_case_rule.side_effect = NotFoundException("Rule not found")
 
         with request_context.test_request_context(
-            method="PATCH",
+            method="PUT",
             json={"enabled": False},
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
         ):
@@ -1055,7 +1055,7 @@ class TestUpdateRule:
         mock_case_service.update_case_rule.side_effect = InvalidDataException("No valid fields")
 
         with request_context.test_request_context(
-            method="PATCH",
+            method="PUT",
             json={"invalid_field": "value"},
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
         ):

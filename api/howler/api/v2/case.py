@@ -290,7 +290,7 @@ def delete_item(case_id: str, **kwargs):
 
 
 @generate_swagger_docs()
-@case_api.route("/<case_id>/items", methods=["PATCH"])
+@case_api.route("/<case_id>/items", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
 def rename_item(case_id: str, **kwargs):
     """Rename (re-path) an item within a case
@@ -398,12 +398,12 @@ def delete_rule(id: str, rule_id: str, user: User, **kwargs):
 
 
 @generate_swagger_docs()
-@case_api.route("/<id>/rules/<rule_id>", methods=["PATCH"])
+@case_api.route("/<id>/rules/<rule_id>", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
 def update_rule(id: str, rule_id: str, user: User, **kwargs):
     """Update a correlation rule on a case
 
-    Allows patching individual fields on a rule: enabled, query, destination, timeframe.
+    Allows updating individual fields on a rule: enabled, query, destination, timeframe.
 
     Variables:
     id        => The id of the case
