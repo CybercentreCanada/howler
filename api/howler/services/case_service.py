@@ -276,9 +276,6 @@ def append_case_item(  # noqa: C901
         if item_type not in CaseItemTypes:
             raise InvalidDataException(f"Invalid item type: {item_type}, valid types are: {', '.join(CaseItemTypes)}")
 
-        if not item_path:
-            item_path = "related"
-
         item = CaseItem({"type": item_type, "value": item_value, "path": item_path})
 
     if item.path.endswith("/"):

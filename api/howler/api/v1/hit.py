@@ -17,7 +17,7 @@ from howler.api import (
     ok,
 )
 from howler.api.v1.utils.etag import add_etag
-from howler.common.exceptions import HowlerException, HowlerValueError, InvalidDataException
+from howler.common.exceptions import HowlerException, HowlerValueError, InvalidDataException, NotFoundException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
@@ -976,3 +976,136 @@ def remove_react_comment(id: str, comment_id: str, user: dict[str, Any], **kwarg
     new_hit, version = hit_service.save_hit(hit, version=kwargs.get("server_version"))
 
     return ok(new_hit), version
+
+
+# ---------------------------------------------------------------------------
+# Deprecated bundle shim endpoints
+# ---------------------------------------------------------------------------
+
+
+def _deprecation_headers(response):
+    """Inject deprecation headers into a Flask Response."""
+    response.headers["Deprecation"] = "true"
+    response.headers["Sunset"] = "2027-01-01"
+    return response
+
+
+@generate_swagger_docs()
+@hit_api.route("/bundle", methods=["POST"])
+@api_login(audit=False, required_priv=["W"])
+def create_bundle(user: User, **kwargs):
+    """Create a new bundle (deprecated — creates a case instead).
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    {
+        "bundle": {
+            ...hit          # A howler hit that will be used as a template for this new bundle
+        },
+        "hits": [...ids]    # A list of existing howler hits to add as children to the new bundle
+    }
+
+    Result Example:
+    {
+        ...hit      # The created bundle (synthesized from the underlying case)
+    }
+    """
+    from howler.services import bundle_compat_service
+
+    data = request.json
+    if not isinstance(data, dict):
+        return bad_request(err="Invalid data format")
+
+    bundle_hit: Optional[dict[str, Any]] = data.get("bundle")
+    if bundle_hit is None:
+        return bad_request(err="You did not provide a bundle hit.")
+
+    child_hits: list[str] = data.get("hits", [])
+
+    try:
+        result = bundle_compat_service.create_bundle(bundle_hit, child_hits, user=user.uname)
+        return _deprecation_headers(created(result))
+    except HowlerException as e:
+        return bad_request(err=str(e))
+
+
+@generate_swagger_docs()
+@hit_api.route("/bundle/<id>", methods=["PUT"])
+@api_login(audit=False, required_priv=["W"])
+def update_bundle(id, **kwargs):
+    """Add hits to a bundle (deprecated — adds items to the underlying case).
+
+    Variables:
+    id  => The ID of the bundle to update
+
+    Arguments:
+    None
+
+    Data Block:
+    [
+        ...ids
+    ]
+
+    Result Example:
+    {
+        ...hit      # The updated bundle (synthesized from the underlying case)
+    }
+    """
+    from howler.services import bundle_compat_service
+    from howler.services.bundle_compat_service import BundleConflictException
+
+    hit_ids = request.json
+    if not isinstance(hit_ids, list):
+        return bad_request(err="Invalid data format")
+
+    try:
+        result = bundle_compat_service.add_to_bundle(id, hit_ids)
+        return _deprecation_headers(ok(result))
+    except BundleConflictException as e:
+        return conflict(err=str(e))
+    except NotFoundException as e:
+        return not_found(err=str(e))
+    except HowlerException as e:
+        return bad_request(err=str(e))
+
+
+@generate_swagger_docs()
+@hit_api.route("/bundle/<id>", methods=["DELETE"])
+@api_login(audit=False, required_priv=["W"])
+def remove_bundle_children(id, **kwargs):
+    """Remove hits from a bundle (deprecated — removes items from the underlying case).
+
+    Variables:
+    id  => The ID of the bundle to update
+
+    Arguments:
+    None
+
+    Data Block:
+    [
+        ...ids OR '*'   # A list of ids to remove, or a single '*' to remove all
+    ]
+
+    Result Example:
+    {
+        ...hit      # The updated hit (synthesized from the underlying case)
+    }
+    """
+    from howler.services import bundle_compat_service
+
+    hit_ids = request.json
+    if not isinstance(hit_ids, list):
+        return bad_request(err="Invalid data format")
+
+    try:
+        result = bundle_compat_service.remove_from_bundle(id, hit_ids)
+        return _deprecation_headers(ok(result))
+    except NotFoundException as e:
+        return not_found(err=str(e))
+    except HowlerException as e:
+        return bad_request(err=str(e))

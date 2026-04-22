@@ -95,9 +95,6 @@ class TestCaseItem:
             CaseItem({"path": "/test", "type": "hit"})  # missing 'value'
 
         with pytest.raises(HowlerValueError):
-            CaseItem({"type": "hit", "value": "v"})  # missing 'path'
-
-        with pytest.raises(HowlerValueError):
             CaseItem({"path": "/test", "value": "v"})  # missing 'type'
 
     def test_case_item_as_primitives(self):

@@ -61,7 +61,7 @@ class CaseLog(odm.Model):
 
 @odm.model(index=True, store=True, description="A path-scoped item included in a case.")
 class CaseItem(odm.Model):
-    path: str = odm.Keyword(description="Path of the item in the case hierarchy.")
+    path: str = odm.Keyword(description="Path of the item in the case hierarchy.", default="")
     type: str = odm.Enum(values=CaseItemTypes, description="Type of case item.")
     value: str = odm.Keyword(description="String reference value for the item (ID, URL, or token).")
     visible: bool = odm.Boolean(default=True, description="Whether the item is visible/accessible in the frontend.")
