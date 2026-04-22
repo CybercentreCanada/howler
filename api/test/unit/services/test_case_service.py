@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from howler.common.exceptions import InvalidDataException, NotFoundException
-from howler.odm.models.case import Case, CaseItem
+from howler.odm.models.case import Case, CaseItem, CaseRule
 from howler.odm.models.ecs.related import Related
 from howler.services import case_service
 
@@ -1301,3 +1301,278 @@ class TestCaseEventEmission:
         case_service.append_hit("case-001", item)
 
         mock_events.emit.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# add_case_rule()
+# ---------------------------------------------------------------------------
+
+
+class TestAddCaseRule:
+    """Tests for case_service.add_case_rule."""
+
+    @patch("howler.services.case_service.event_service")
+    @patch("howler.services.case_service.datastore")
+    def test_add_rule_success(self, mock_ds_fn, mock_events):
+        """add_case_rule appends a rule and saves the case."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_ds.case.get.return_value = mock_case
+
+        user = MagicMock()
+        user.uname = "analyst1"
+
+        result = case_service.add_case_rule(
+            "case-001",
+            {"query": "event.kind:alert", "destination": "alerts/incoming"},
+            user,
+        )
+
+        assert len(result.rules) == 1
+        assert result.rules[0].query == "event.kind:alert"
+        assert result.rules[0].destination == "alerts/incoming"
+        assert result.rules[0].author == "analyst1"
+        assert result.rules[0].enabled is True
+        assert result.rules[0].rule_id is not None
+        mock_ds.case.save.assert_called_once()
+
+    @patch("howler.services.case_service.event_service")
+    @patch("howler.services.case_service.datastore")
+    def test_add_rule_with_timeframe(self, mock_ds_fn, mock_events):
+        """add_case_rule stores the timeframe when provided."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_ds.case.get.return_value = mock_case
+
+        user = MagicMock()
+        user.uname = "analyst1"
+
+        result = case_service.add_case_rule(
+            "case-001",
+            {"query": "*:*", "destination": "alerts/all", "timeframe": "2026-06-01T00:00:00Z"},
+            user,
+        )
+
+        assert result.rules[0].timeframe is not None
+
+    @patch("howler.services.case_service.datastore")
+    def test_add_rule_case_not_found(self, mock_ds_fn):
+        """add_case_rule raises NotFoundException when the case doesn't exist."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+        mock_ds.case.get.return_value = None
+
+        user = MagicMock()
+        user.uname = "analyst1"
+
+        with pytest.raises(NotFoundException):
+            case_service.add_case_rule(
+                "nonexistent",
+                {"query": "*:*", "destination": "alerts/incoming"},
+                user,
+            )
+
+    @patch("howler.services.case_service.datastore")
+    def test_add_rule_missing_query(self, mock_ds_fn):
+        """add_case_rule raises InvalidDataException when query is missing."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_ds.case.get.return_value = mock_case
+
+        user = MagicMock()
+        user.uname = "analyst1"
+
+        with pytest.raises(InvalidDataException, match="query"):
+            case_service.add_case_rule("case-001", {"destination": "alerts/incoming"}, user)
+
+    @patch("howler.services.case_service.datastore")
+    def test_add_rule_missing_destination(self, mock_ds_fn):
+        """add_case_rule raises InvalidDataException when destination is missing."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_ds.case.get.return_value = mock_case
+
+        user = MagicMock()
+        user.uname = "analyst1"
+
+        with pytest.raises(InvalidDataException, match="destination"):
+            case_service.add_case_rule("case-001", {"query": "event.kind:alert"}, user)
+
+    @patch("howler.services.case_service.event_service")
+    @patch("howler.services.case_service.datastore")
+    def test_add_rule_strips_client_rule_id(self, mock_ds_fn, mock_events):
+        """add_case_rule ignores any 'id' provided by the client."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_ds.case.get.return_value = mock_case
+
+        user = MagicMock()
+        user.uname = "analyst1"
+
+        result = case_service.add_case_rule(
+            "case-001",
+            {"query": "*:*", "destination": "alerts/all", "rule_id": "client-supplied-id"},
+            user,
+        )
+
+        assert result.rules[0].rule_id != "client-supplied-id"
+
+
+# ---------------------------------------------------------------------------
+# remove_case_rule()
+# ---------------------------------------------------------------------------
+
+
+class TestRemoveCaseRule:
+    """Tests for case_service.remove_case_rule."""
+
+    @patch("howler.services.case_service.event_service")
+    @patch("howler.services.case_service.datastore")
+    def test_remove_rule_success(self, mock_ds_fn, mock_events):
+        """remove_case_rule removes the rule and saves."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        rule = CaseRule({"query": "*:*", "destination": "alerts/all", "author": "admin"})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case.rules.append(rule)
+        mock_ds.case.get.return_value = mock_case
+
+        user = MagicMock()
+        user.uname = "analyst1"
+
+        result = case_service.remove_case_rule("case-001", rule.rule_id, user)
+
+        assert len(result.rules) == 0
+        mock_ds.case.save.assert_called_once()
+
+    @patch("howler.services.case_service.datastore")
+    def test_remove_rule_not_found(self, mock_ds_fn):
+        """remove_case_rule raises NotFoundException when rule doesn't exist."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_ds.case.get.return_value = mock_case
+
+        user = MagicMock()
+        user.uname = "analyst1"
+
+        with pytest.raises(NotFoundException, match="Rule"):
+            case_service.remove_case_rule("case-001", "nonexistent-id", user)
+
+    @patch("howler.services.case_service.datastore")
+    def test_remove_rule_case_not_found(self, mock_ds_fn):
+        """remove_case_rule raises NotFoundException when case doesn't exist."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+        mock_ds.case.get.return_value = None
+
+        user = MagicMock()
+        user.uname = "analyst1"
+
+        with pytest.raises(NotFoundException, match="Case"):
+            case_service.remove_case_rule("nonexistent", "rule-id", user)
+
+
+# ---------------------------------------------------------------------------
+# update_case_rule()
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateCaseRule:
+    """Tests for case_service.update_case_rule."""
+
+    @patch("howler.services.case_service.event_service")
+    @patch("howler.services.case_service.datastore")
+    def test_update_rule_toggle_enabled(self, mock_ds_fn, mock_events):
+        """update_case_rule can toggle the enabled field."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        rule = CaseRule({"query": "*:*", "destination": "alerts/all", "author": "admin", "enabled": True})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case.rules.append(rule)
+        mock_ds.case.get.return_value = mock_case
+
+        user = MagicMock()
+        user.uname = "analyst1"
+
+        result = case_service.update_case_rule("case-001", rule.rule_id, {"enabled": False}, user)
+
+        assert result.rules[0].enabled is False
+        mock_ds.case.save.assert_called_once()
+
+    @patch("howler.services.case_service.event_service")
+    @patch("howler.services.case_service.datastore")
+    def test_update_rule_change_query(self, mock_ds_fn, mock_events):
+        """update_case_rule can update the query field."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        rule = CaseRule({"query": "old:query", "destination": "alerts/all", "author": "admin"})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case.rules.append(rule)
+        mock_ds.case.get.return_value = mock_case
+
+        user = MagicMock()
+        user.uname = "analyst1"
+
+        result = case_service.update_case_rule("case-001", rule.rule_id, {"query": "new:query"}, user)
+
+        assert result.rules[0].query == "new:query"
+
+    @patch("howler.services.case_service.datastore")
+    def test_update_rule_no_valid_fields(self, mock_ds_fn):
+        """update_case_rule raises InvalidDataException when no allowed fields are provided."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        rule = CaseRule({"query": "*:*", "destination": "alerts/all", "author": "admin"})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case.rules.append(rule)
+        mock_ds.case.get.return_value = mock_case
+
+        user = MagicMock()
+        user.uname = "analyst1"
+
+        with pytest.raises(InvalidDataException, match="No valid fields"):
+            case_service.update_case_rule("case-001", rule.rule_id, {"author": "hacker"}, user)
+
+    @patch("howler.services.case_service.datastore")
+    def test_update_rule_not_found(self, mock_ds_fn):
+        """update_case_rule raises NotFoundException when rule doesn't exist."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_ds.case.get.return_value = mock_case
+
+        user = MagicMock()
+        user.uname = "analyst1"
+
+        with pytest.raises(NotFoundException, match="Rule"):
+            case_service.update_case_rule("case-001", "nonexistent", {"enabled": False}, user)
+
+    @patch("howler.services.case_service.datastore")
+    def test_update_rule_case_not_found(self, mock_ds_fn):
+        """update_case_rule raises NotFoundException when case doesn't exist."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+        mock_ds.case.get.return_value = None
+
+        user = MagicMock()
+        user.uname = "analyst1"
+
+        with pytest.raises(NotFoundException, match="Case"):
+            case_service.update_case_rule("nonexistent", "rule-id", {"enabled": False}, user)

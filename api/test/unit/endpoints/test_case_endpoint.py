@@ -821,3 +821,246 @@ class TestRenameItemEndpoint:
             result: Response = rename_item(case_id="case-001")
 
             assert result.status_code == 500
+
+
+# ---------------------------------------------------------------------------
+# POST /api/v2/case/<id>/rules
+# ---------------------------------------------------------------------------
+
+
+class TestAddRule:
+    """Tests for the POST rule endpoint."""
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_add_rule_success(self, mock_auth_service, mock_case_service, request_context: Flask):
+        """Returns 200 with the updated case when a valid rule is added."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        mock_case_service.add_case_rule.return_value = {
+            "case_id": "case-001",
+            "rules": [{"id": "rule-1", "query": "event.kind:alert", "destination": "alerts/incoming"}],
+        }
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"query": "event.kind:alert", "destination": "alerts/incoming"},
+            headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
+        ):
+            from howler.api.v2.case import add_rule
+
+            result: Response = add_rule(id="case-001", user=user)
+
+            assert result.status_code == 200
+            mock_case_service.add_case_rule.assert_called_once()
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_add_rule_no_body_returns_400(self, mock_auth_service, mock_case_service, request_context: Flask):
+        """Returns 400 when no JSON body is provided."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        with request_context.test_request_context(
+            method="POST",
+            data=b"null",
+            content_type="application/json",
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.case import add_rule
+
+            result: Response = add_rule(id="case-001", user=user)
+
+            assert result.status_code == 400
+            mock_case_service.add_case_rule.assert_not_called()
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_add_rule_case_not_found_returns_404(self, mock_auth_service, mock_case_service, request_context: Flask):
+        """Returns 404 when the case does not exist."""
+        from howler.common.exceptions import NotFoundException
+
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        mock_case_service.add_case_rule.side_effect = NotFoundException("Case not found")
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"query": "event.kind:alert", "destination": "alerts/incoming"},
+            headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
+        ):
+            from howler.api.v2.case import add_rule
+
+            result: Response = add_rule(id="nonexistent", user=user)
+
+            assert result.status_code == 404
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_add_rule_invalid_data_returns_400(self, mock_auth_service, mock_case_service, request_context: Flask):
+        """Returns 400 when case_service raises InvalidDataException."""
+        from howler.common.exceptions import InvalidDataException
+
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        mock_case_service.add_case_rule.side_effect = InvalidDataException("Missing query")
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"destination": "alerts/incoming"},
+            headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
+        ):
+            from howler.api.v2.case import add_rule
+
+            result: Response = add_rule(id="case-001", user=user)
+
+            assert result.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# DELETE /api/v2/case/<id>/rules/<rule_id>
+# ---------------------------------------------------------------------------
+
+
+class TestDeleteRule:
+    """Tests for the DELETE rule endpoint."""
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_delete_rule_success(self, mock_auth_service, mock_case_service, request_context: Flask):
+        """Returns 200 with the updated case when a rule is deleted."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        mock_case_service.remove_case_rule.return_value = {"case_id": "case-001", "rules": []}
+
+        with request_context.test_request_context(
+            method="DELETE",
+            headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
+        ):
+            from howler.api.v2.case import delete_rule
+
+            result: Response = delete_rule(id="case-001", rule_id="rule-1", user=user)
+
+            assert result.status_code == 200
+            mock_case_service.remove_case_rule.assert_called_once_with("case-001", "rule-1", user)
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_delete_rule_not_found_returns_404(self, mock_auth_service, mock_case_service, request_context: Flask):
+        """Returns 404 when the rule does not exist."""
+        from howler.common.exceptions import NotFoundException
+
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        mock_case_service.remove_case_rule.side_effect = NotFoundException("Rule not found")
+
+        with request_context.test_request_context(
+            method="DELETE",
+            headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
+        ):
+            from howler.api.v2.case import delete_rule
+
+            result: Response = delete_rule(id="case-001", rule_id="nonexistent", user=user)
+
+            assert result.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# PATCH /api/v2/case/<id>/rules/<rule_id>
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateRule:
+    """Tests for the PATCH rule endpoint."""
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_update_rule_success(self, mock_auth_service, mock_case_service, request_context: Flask):
+        """Returns 200 with the updated case when a rule is patched."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        mock_case_service.update_case_rule.return_value = {
+            "case_id": "case-001",
+            "rules": [{"id": "rule-1", "enabled": False}],
+        }
+
+        with request_context.test_request_context(
+            method="PATCH",
+            json={"enabled": False},
+            headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
+        ):
+            from howler.api.v2.case import update_rule
+
+            result: Response = update_rule(id="case-001", rule_id="rule-1", user=user)
+
+            assert result.status_code == 200
+            mock_case_service.update_case_rule.assert_called_once_with("case-001", "rule-1", {"enabled": False}, user)
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_update_rule_no_body_returns_400(self, mock_auth_service, mock_case_service, request_context: Flask):
+        """Returns 400 when no JSON body is provided."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        with request_context.test_request_context(
+            method="PATCH",
+            data=b"null",
+            content_type="application/json",
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.case import update_rule
+
+            result: Response = update_rule(id="case-001", rule_id="rule-1", user=user)
+
+            assert result.status_code == 400
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_update_rule_not_found_returns_404(self, mock_auth_service, mock_case_service, request_context: Flask):
+        """Returns 404 when the rule does not exist."""
+        from howler.common.exceptions import NotFoundException
+
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        mock_case_service.update_case_rule.side_effect = NotFoundException("Rule not found")
+
+        with request_context.test_request_context(
+            method="PATCH",
+            json={"enabled": False},
+            headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
+        ):
+            from howler.api.v2.case import update_rule
+
+            result: Response = update_rule(id="case-001", rule_id="nonexistent", user=user)
+
+            assert result.status_code == 404
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_update_rule_invalid_data_returns_400(self, mock_auth_service, mock_case_service, request_context: Flask):
+        """Returns 400 when case_service raises InvalidDataException."""
+        from howler.common.exceptions import InvalidDataException
+
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        mock_case_service.update_case_rule.side_effect = InvalidDataException("No valid fields")
+
+        with request_context.test_request_context(
+            method="PATCH",
+            json={"invalid_field": "value"},
+            headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
+        ):
+            from howler.api.v2.case import update_rule
+
+            result: Response = update_rule(id="case-001", rule_id="rule-1", user=user)
+
+            assert result.status_code == 400

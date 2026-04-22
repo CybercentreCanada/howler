@@ -19,7 +19,7 @@ import importlib
 import json
 import random
 import textwrap
-from datetime import datetime
+from datetime import datetime, timedelta
 from random import choice, randint, sample
 from typing import Any, Callable, cast
 from uuid import uuid4
@@ -866,9 +866,36 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
                 "enrichments": [],
                 "rules": [
                     {
-                        "destination": "alerts/{{howler.id}}",
-                        "query": f"destination.domain:{choice(threat_pool)}",
+                        "id": str(uuid4()),
+                        "destination": choice(
+                            [
+                                "alerts/{{howler.analytic}}",
+                                "incoming/{{event.kind}}",
+                                "alerts/{{howler.analytic}}/{{event.category}}",
+                                "correlated/{{source.ip}}",
+                                "triage/{{howler.escalation}}",
+                            ]
+                        ),
+                        "query": choice(
+                            [
+                                f"destination.domain:{choice(threat_pool)}",
+                                "source.ip:10.0.0.0/8 AND howler.analytic:Suspicious*",
+                                "event.category:authentication AND event.outcome:failure",
+                                "howler.escalation:focus OR howler.escalation:crisis",
+                                f"destination.domain:{choice(threat_pool)} AND event.kind:alert",
+                            ]
+                        ),
+                        "author": choice(selected_participants or ["admin"]),
+                        "enabled": choice([True, True, True, False]),
+                        "timeframe": choice(
+                            [
+                                (datetime.now() + timedelta(days=randint(7, 28))).isoformat(),
+                                (datetime.now() + timedelta(days=randint(7, 28))).isoformat(),
+                                None,
+                            ]
+                        ),
                     }
+                    for _ in range(randint(1, 3))
                 ],
                 "tasks": tasks,
             }

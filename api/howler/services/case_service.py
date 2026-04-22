@@ -12,7 +12,7 @@ from howler.common.exceptions import HowlerValueError, InvalidDataException, Not
 from howler.common.loader import APP_NAME, datastore
 from howler.common.logging import get_logger
 from howler.datastore.exceptions import DataStoreException
-from howler.odm.models.case import Case, CaseItem, CaseItemTypes, CaseLog
+from howler.odm.models.case import Case, CaseItem, CaseItemTypes, CaseLog, CaseRule
 from howler.odm.models.ecs.related import Related
 from howler.odm.models.hit import Hit
 from howler.odm.models.observable import Observable
@@ -720,4 +720,156 @@ def rename_case_item(case_id: str, item_value: str, new_path: str) -> Case:
 
     event_service.emit("cases", {"case": _case.as_primitives()})
 
+    return _case
+
+
+def add_case_rule(case_id: str, rule_data: dict, user: User) -> Case:
+    """Add a correlation rule to a case.
+
+    Injects a unique id and the author from the current user, then appends
+    the rule to the case's rules list.
+
+    Args:
+        case_id: Unique identifier of the case.
+        rule_data: Dictionary with ``query``, ``destination``, and optionally ``timeframe``.
+        user: The user creating the rule.
+
+    Returns:
+        The updated Case object.
+
+    Raises:
+        NotFoundException: If the case does not exist.
+        InvalidDataException: If required rule fields are missing.
+    """
+    ds = datastore()
+
+    _case = ds.case.get(case_id)
+    if _case is None:
+        raise NotFoundException(f"Case {case_id} does not exist")
+
+    if not rule_data.get("query"):
+        raise InvalidDataException("Rule 'query' is required")
+
+    if not rule_data.get("destination"):
+        raise InvalidDataException("Rule 'destination' is required")
+
+    rule_data.pop("rule_id", None)
+    rule_data["author"] = user.uname
+    rule_data.setdefault("enabled", True)
+
+    rule = CaseRule(rule_data)
+    _case.rules.append(rule)
+
+    _case.log.append(
+        CaseLog(
+            {
+                "timestamp": "NOW",
+                "user": user.uname,
+                "explanation": f"Added correlation rule targeting '{rule.destination}'",
+            }
+        )
+    )
+
+    _case.updated = "NOW"
+    ds.case.save(case_id, _case)
+    event_service.emit("cases", {"case": _case.as_primitives()})
+    return _case
+
+
+def remove_case_rule(case_id: str, rule_id: str, user: User) -> Case:
+    """Remove a correlation rule from a case.
+
+    Args:
+        case_id: Unique identifier of the case.
+        rule_id: UUID of the rule to remove.
+        user: The user performing the deletion.
+
+    Returns:
+        The updated Case object.
+
+    Raises:
+        NotFoundException: If the case or rule does not exist.
+    """
+    ds = datastore()
+
+    _case = ds.case.get(case_id)
+    if _case is None:
+        raise NotFoundException(f"Case {case_id} does not exist")
+
+    original_len = len(_case.rules)
+    _case.rules = [r for r in _case.rules if r.rule_id != rule_id]
+
+    if len(_case.rules) == original_len:
+        raise NotFoundException(f"Rule {rule_id} not found in case {case_id}")
+
+    _case.log.append(
+        CaseLog(
+            {
+                "timestamp": "NOW",
+                "user": user.uname,
+                "explanation": f"Removed correlation rule {rule_id}",
+            }
+        )
+    )
+
+    _case.updated = "NOW"
+    ds.case.save(case_id, _case)
+    event_service.emit("cases", {"case": _case.as_primitives()})
+    return _case
+
+
+def update_case_rule(case_id: str, rule_id: str, update_data: dict, user: User) -> Case:
+    """Update fields on an existing correlation rule.
+
+    Allowed fields: ``enabled``, ``query``, ``destination``, ``timeframe``.
+
+    Args:
+        case_id: Unique identifier of the case.
+        rule_id: UUID of the rule to update.
+        update_data: Dictionary of fields to patch.
+        user: The user performing the update.
+
+    Returns:
+        The updated Case object.
+
+    Raises:
+        NotFoundException: If the case or rule does not exist.
+        InvalidDataException: If no valid fields are provided.
+    """
+    ds = datastore()
+
+    _case = ds.case.get(case_id)
+    if _case is None:
+        raise NotFoundException(f"Case {case_id} does not exist")
+
+    allowed_fields = {"enabled", "query", "destination", "timeframe"}
+    patch = {k: v for k, v in update_data.items() if k in allowed_fields}
+    if not patch:
+        raise InvalidDataException(
+            f"No valid fields provided for update. Allowed fields: {', '.join(sorted(allowed_fields))}"
+        )
+
+    rule = next((r for r in _case.rules if r.rule_id == rule_id), None)
+    if rule is None:
+        raise NotFoundException(f"Rule {rule_id} not found in case {case_id}")
+
+    changes: list[str] = []
+    for key, value in patch.items():
+        old_value = getattr(rule, key, None)
+        setattr(rule, key, value)
+        changes.append(f"{key}: '{old_value}' → '{value}'")
+
+    _case.log.append(
+        CaseLog(
+            {
+                "timestamp": "NOW",
+                "user": user.uname,
+                "explanation": f"Updated correlation rule {rule_id}: {'; '.join(changes)}",
+            }
+        )
+    )
+
+    _case.updated = "NOW"
+    ds.case.save(case_id, _case)
+    event_service.emit("cases", {"case": _case.as_primitives()})
     return _case

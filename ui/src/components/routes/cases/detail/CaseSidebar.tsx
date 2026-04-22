@@ -9,7 +9,7 @@ import {
   type DragEndEvent,
   type DragStartEvent
 } from '@dnd-kit/core';
-import { CalendarMonth, Circle, Dashboard, Dataset } from '@mui/icons-material';
+import { CalendarMonth, Circle, Dashboard, Dataset, Rule } from '@mui/icons-material';
 import { alpha, Box, Card, Chip, Divider, LinearProgress, Skeleton, Stack, Typography, useTheme } from '@mui/material';
 import api from 'api';
 import useMyApi from 'components/hooks/useMyApi';
@@ -201,6 +201,17 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
       >
         <CalendarMonth />
         <Typography sx={{ userSelect: 'none', pl: 0.5, textWrap: 'nowrap' }}>{t('page.cases.timeline')}</Typography>
+      </Stack>
+
+      <Stack
+        direction="row"
+        alignItems="center"
+        sx={navItemSx(location.pathname === `/cases/${_case?.case_id}/rules`)}
+        component={Link}
+        to={`/cases/${_case?.case_id}/rules`}
+      >
+        <Rule />
+        <Typography sx={{ userSelect: 'none', pl: 0.5, textWrap: 'nowrap' }}>{t('page.cases.rules')}</Typography>
       </Stack>
 
       <Divider />

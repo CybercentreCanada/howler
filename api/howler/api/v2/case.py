@@ -331,3 +331,105 @@ def rename_item(case_id: str, **kwargs):
         return internal_error(err=str(e))
     except (InvalidDataException, NotFoundException) as e:
         return bad_request(err=str(e))
+
+
+@generate_swagger_docs()
+@case_api.route("/<id>/rules", methods=["POST"])
+@api_login(required_priv=["R", "W"])
+def add_rule(id: str, user: User, **kwargs):
+    """Add a correlation rule to a case
+
+    Creates a new correlation rule that will match incoming alerts into the case.
+    The rule's id and author are generated server-side.
+
+    Variables:
+    id       => The id of the case to add a rule to
+
+    Arguments:
+    None
+
+    Data Block:
+    {
+        "query": "howler.analytic:Suspicious*",
+        "destination": "alerts/{{howler.analytic}}",
+        "timeframe": "2026-05-06T00:00:00Z"   // optional, null means no expiry
+    }
+
+    Result Example:
+    {
+        ...case     # The updated case data
+    }
+    """
+    body = request.json
+
+    if not body or not isinstance(body, dict):
+        return bad_request(err="Request body must be a JSON object with rule data.")
+
+    try:
+        return ok(case_service.add_case_rule(id, body, user))
+    except NotFoundException as e:
+        return not_found(err=str(e))
+    except InvalidDataException as e:
+        return bad_request(err=str(e))
+
+
+@generate_swagger_docs()
+@case_api.route("/<id>/rules/<rule_id>", methods=["DELETE"])
+@api_login(required_priv=["R", "W"])
+def delete_rule(id: str, rule_id: str, user: User, **kwargs):
+    """Delete a correlation rule from a case
+
+    Variables:
+    id        => The id of the case
+    rule_id   => The id of the rule to delete
+
+    Arguments:
+    None
+
+    Result Example:
+    {
+        ...case     # The updated case data
+    }
+    """
+    try:
+        return ok(case_service.remove_case_rule(id, rule_id, user))
+    except NotFoundException as e:
+        return not_found(err=str(e))
+
+
+@generate_swagger_docs()
+@case_api.route("/<id>/rules/<rule_id>", methods=["PATCH"])
+@api_login(required_priv=["R", "W"])
+def update_rule(id: str, rule_id: str, user: User, **kwargs):
+    """Update a correlation rule on a case
+
+    Allows patching individual fields on a rule: enabled, query, destination, timeframe.
+
+    Variables:
+    id        => The id of the case
+    rule_id   => The id of the rule to update
+
+    Arguments:
+    None
+
+    Data Block:
+    {
+        "enabled": false
+    }
+
+    Result Example:
+    {
+        ...case     # The updated case data
+    }
+    """
+    body = request.json
+
+    if not body or not isinstance(body, dict):
+        return bad_request(err="Request body must be a JSON object with fields to update.")
+
+    try:
+        return ok(case_service.update_case_rule(id, rule_id, body, user))
+    except NotFoundException as e:
+        return not_found(err=str(e))
+    except InvalidDataException as e:
+        return bad_request(err=str(e))
