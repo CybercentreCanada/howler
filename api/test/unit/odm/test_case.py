@@ -146,7 +146,7 @@ class TestCaseRule:
         assert rule.author == "analyst1"
         assert rule.enabled is True
         assert rule.timeframe is None
-        assert rule.id is not None
+        assert rule.rule_id is not None
 
     def test_case_rule_uuid_auto_generated(self):
         """CaseRule.id is a valid UUID auto-generated when not provided."""
@@ -158,7 +158,7 @@ class TestCaseRule:
             }
         )
 
-        assert rule.id is not None
+        assert rule.rule_id is not None
         assert len(str(rule.id)) == 36  # UUID format
 
     def test_case_rule_enabled_defaults_to_true(self):
@@ -231,7 +231,7 @@ class TestCaseRule:
         assert primitives["author"] == "admin"
         assert primitives["enabled"] is False
         assert "timeframe" in primitives
-        assert primitives["id"] is not None
+        assert primitives["rule_id"] is not None
 
     def test_case_rule_missing_required_field(self):
         """CaseRule raises HowlerValueError when a required field is missing."""
@@ -250,7 +250,7 @@ class TestCaseRule:
         assert rule.destination is not None
         assert rule.query is not None
         assert rule.author is not None
-        assert rule.id is not None
+        assert rule.rule_id is not None
 
 
 class TestCaseTask:

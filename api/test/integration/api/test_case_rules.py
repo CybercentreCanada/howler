@@ -72,7 +72,7 @@ class TestAddRule:
         assert rule["destination"] == "alerts/{{howler.analytic}}"
         assert rule["author"] is not None
         assert rule["enabled"] is True
-        assert rule["id"] is not None
+        assert rule["rule_id"] is not None
 
     def test_add_rule_no_expiry(self, test_case):
         case_id, session, host = test_case
@@ -131,7 +131,7 @@ class TestDeleteRule:
             method="POST",
             data=json.dumps({"query": "*:*", "destination": "alerts/all"}),
         )
-        rule_id = add_resp["rules"][0]["id"]
+        rule_id = add_resp["rules"][0]["rule_id"]
 
         del_resp = get_api_data(
             session,
@@ -166,7 +166,7 @@ class TestUpdateRule:
             method="POST",
             data=json.dumps({"query": "*:*", "destination": "alerts/all"}),
         )
-        rule_id = add_resp["rules"][0]["id"]
+        rule_id = add_resp["rules"][0]["rule_id"]
 
         patch_resp = get_api_data(
             session,
@@ -187,7 +187,7 @@ class TestUpdateRule:
             method="POST",
             data=json.dumps({"query": "old:query", "destination": "alerts/all"}),
         )
-        rule_id = add_resp["rules"][0]["id"]
+        rule_id = add_resp["rules"][0]["rule_id"]
 
         patch_resp = get_api_data(
             session,
