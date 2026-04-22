@@ -52,10 +52,15 @@ class BasePluginConfig(BaseSettings):
     @field_validator("importance", mode="before")
     @classmethod
     def parse_importance(cls, v):
-        """Parse the importance field from a string to a PluginImportance enum.
+        """Parse the importance field into a PluginImportance enum.
 
-        If the value is not a valid PluginImportance,default to PluginImportance.OPTIONAL
+        If the value is already a PluginImportance, preserve it as-is.
+        If the value is not a valid PluginImportance string, default to
+        PluginImportance.OPTIONAL.
         """
+        if isinstance(v, PluginImportance):
+            return v
+
         if isinstance(v, str):
             try:
                 return PluginImportance(v)
