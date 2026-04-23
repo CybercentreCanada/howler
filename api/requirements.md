@@ -34,8 +34,9 @@ Elasticsearch is purpose-built for Lucene query evaluation at scale. Running
 
 Tens of thousands of alerts per hour ≈ 3–10 ingestions per second.
 Processing one-at-a-time would create unsustainable per-alert overhead.
-Batching up to 50 alerts **or** flushing every 5 seconds (whichever comes
-first) amortizes the rule-load and ES query cost across many alerts.
+Batching alerts until the configured batch-size threshold is reached **or**
+the configured batch-timeout elapses (whichever comes first) amortizes the
+rule-load and ES query cost across many alerts.
 
 ---
 
