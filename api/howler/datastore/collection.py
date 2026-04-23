@@ -1365,6 +1365,7 @@ class ESCollection(Generic[ModelType]):
                     extra_fields["_index"] = result["_index"]
                 if "*" in fields:
                     fields = None
+
                 return self.model_class(source_data, mask=fields, docid=item_id, extra_fields=extra_fields)
             else:
                 source_data = recursive_update(source_data, extra_fields, allow_recursion=False)

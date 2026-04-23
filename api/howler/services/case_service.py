@@ -136,9 +136,8 @@ def delete_cases(case_ids: set[str]) -> bool:
     """
     ds = datastore()
 
-    items_query = f"items.value:({' OR '.join(case_ids)})"
-    for case in ds.case.stream_search(items_query, as_obj=False):
-        related_case_id = case["case_id"]
+    for case in ds.case.stream_search(f"items.value:({' OR '.join(case_ids)})"):
+        related_case_id = case.case_id
         if related_case_id in case_ids:
             continue
 
@@ -511,7 +510,7 @@ def append_reference(case_id: str, item: CaseItem) -> Case:
     """
     ds = datastore()
 
-    _case = ds.case.get_if_exists(key=case_id, as_obj=True)
+    _case = ds.case.get(key=case_id)
 
     if _case is None:
         raise NotFoundException(f"Case {case_id} does not exist")

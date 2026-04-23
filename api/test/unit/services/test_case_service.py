@@ -299,41 +299,31 @@ class TestHideCases:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        # stream_search returns a related case that is NOT in the hidden set
-        mock_ds.case.stream_search.return_value = iter([{"case_id": "case-other"}])
+        # Build a Case object with items — stream_search returns it directly.
+        related_case = Case({"case_id": "case-other", "title": "test case", "summary": "summary"})
+        related_case.items = [
+            CaseItem({"type": "case", "value": "case-001", "path": "ref"}),
+            CaseItem({"type": "case", "value": "something-else", "path": "other"}),
+        ]
+        mock_ds.case.stream_search.return_value = iter([related_case])
 
-        # The related case has an item pointing to the hidden case ID
-        related_item = MagicMock()
-        related_item.value = "case-001"
-        related_item.visible = True
-
-        unrelated_item = MagicMock()
-        unrelated_item.value = "something-else"
-        unrelated_item.visible = True
-
-        related_case_obj = MagicMock()
-        related_case_obj.items = [related_item, unrelated_item]
-
-        # The target case itself
+        # The target case itself (returned by ds.case.get in the second pass)
         target_case_obj = MagicMock()
         target_case_obj.items = []
-
-        mock_ds.case.get.side_effect = lambda case_id, as_obj=False: (
-            related_case_obj if case_id == "case-other" else target_case_obj
-        )
+        mock_ds.case.get.return_value = target_case_obj
 
         case_service.hide_cases({"case-001"}, user="analyst")
 
         # The matching item's visible flag must be set to False
-        assert related_item.visible is False
+        matching = next(i for i in related_case.items if i.value == "case-001")
+        assert matching.visible is False
         # The unrelated item must be untouched
-        assert unrelated_item.visible is True
+        unrelated = next(i for i in related_case.items if i.value == "something-else")
+        assert unrelated.visible is True
         # The related case must be saved with the update
-        mock_ds.case.save.assert_any_call("case-other", related_case_obj)
-        # A log entry must have been appended to the related case documenting the hidden reference
-        related_case_obj.log.append.assert_called_once()
-        appended_log = related_case_obj.log.append.call_args[0][0]
-        assert "case-001" in appended_log.explanation
+        mock_ds.case.save.assert_any_call("case-other", related_case)
+        # A log entry must have been appended documenting the hidden reference
+        assert any("case-001" in log.explanation for log in related_case.log)
 
     @patch("howler.services.case_service.datastore")
     def test_hide_cases_does_not_save_related_case_when_no_items_match(self, mock_ds_fn):
@@ -342,7 +332,9 @@ class TestHideCases:
         mock_ds_fn.return_value = mock_ds
 
         # stream_search returns a case whose items don't actually match (stale index)
-        mock_ds.case.stream_search.return_value = iter([{"case_id": "case-other"}])
+        mock_ds.case.stream_search.return_value = iter(
+            [Case({"case_id": "case-other", "title": "test case", "summary": "summary"})]
+        )
 
         non_matching_item = MagicMock()
         non_matching_item.value = "unrelated-id"
@@ -372,7 +364,9 @@ class TestHideCases:
         mock_ds_fn.return_value = mock_ds
 
         # stream_search returns the case being hidden itself
-        mock_ds.case.stream_search.return_value = iter([{"case_id": "case-001"}])
+        mock_ds.case.stream_search.return_value = iter(
+            [Case({"case_id": "case-001", "title": "test case", "summary": "summary"})]
+        )
 
         case_obj = MagicMock()
         case_obj.items = []
@@ -397,8 +391,9 @@ class TestHideCases:
         case_service.hide_cases({"case-missing"}, user="analyst")
 
         mock_logger.warning.assert_called_once()
-        warning_msg = mock_logger.warning.call_args[0][0]
-        assert "case-missing" in warning_msg
+        # The format string uses %s, so check the interpolated args contain the case ID.
+        warning_args = mock_logger.warning.call_args[0]
+        assert any("case-missing" in str(a) for a in warning_args)
 
     @patch("howler.services.case_service.datastore")
     def test_hide_cases_multiple_ids(self, mock_ds_fn):
@@ -465,7 +460,9 @@ class TestDeleteCases:
         """delete_cases removes CaseItem entries that reference a deleted case from other cases."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
-        mock_ds.case.stream_search.return_value = iter([{"case_id": "case-other"}])
+        mock_ds.case.stream_search.return_value = iter(
+            [Case({"case_id": "case-other", "title": "test case", "summary": "summary"})]
+        )
 
         matching_item = MagicMock()
         matching_item.value = "case-del"
@@ -488,7 +485,9 @@ class TestDeleteCases:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
         # stream_search returns the very case being deleted
-        mock_ds.case.stream_search.return_value = iter([{"case_id": "case-del"}])
+        mock_ds.case.stream_search.return_value = iter(
+            [Case({"case_id": "case-del", "title": "test case", "summary": "summary"})]
+        )
 
         case_service.delete_cases({"case-del"})
 
