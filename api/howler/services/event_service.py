@@ -34,6 +34,24 @@ def _get_sender():
     return _sender
 
 
+def _dispatch(data: dict[str, Any]):
+    """Unpack a pubsub message and dispatch to registered handlers."""
+    event_type = data.get("__event__")
+    payload = data.get("__payload__")
+    if not event_type or payload is None:
+        logger.warning("Received malformed pubsub message: %s", data)
+        return
+
+    if event_type not in handlers:
+        return
+
+    for handler in handlers[event_type]:
+        try:
+            handler(payload)
+        except Exception:
+            logger.exception("Error in event handler for %s", event_type)
+
+
 def start_watcher():
     """Start the Redis pubsub watcher that routes incoming events to local handlers.
 
@@ -50,23 +68,6 @@ def start_watcher():
         port=config.core.redis.nonpersistent.port,
         private=False,
     )
-
-    def _dispatch(data: dict[str, Any]):
-        """Unpack a pubsub message and dispatch to registered handlers."""
-        event_type = data.get("__event__")
-        payload = data.get("__payload__")
-        if not event_type or payload is None:
-            logger.warning("Received malformed pubsub message: %s", data)
-            return
-
-        if event_type not in handlers:
-            return
-
-        for handler in handlers[event_type]:
-            try:
-                handler(payload)
-            except Exception:
-                logger.exception("Error in event handler for %s", event_type)
 
     watcher.register("howler.events.*", _dispatch)
     watcher.start()

@@ -7,6 +7,14 @@ from howler.odm.models.case import Case, CaseItem, CaseRule
 from howler.odm.models.ecs.related import Related
 from howler.services import case_service
 
+
+@pytest.fixture(autouse=True)
+def _suppress_event_emit():
+    """Prevent event_service.emit from reaching Redis during unit tests."""
+    with patch("howler.services.case_service.event_service"):
+        yield
+
+
 # ---------------------------------------------------------------------------
 # create_case()
 # ---------------------------------------------------------------------------
@@ -250,6 +258,29 @@ class TestUpdateCase:
 
         log_explanations = [entry.explanation for entry in result.log]
         assert any("removed" in e for e in log_explanations)
+
+    @patch("howler.services.case_service.datastore")
+    def test_update_case_list_field_logs_added(self, mock_ds_fn):
+        """update_case logs added entries when new items appear in a list field."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+        mock_ds.case.get.return_value = Case(
+            {
+                "case_id": "case-001",
+                "title": "T",
+                "summary": "S",
+                "overview": "O",
+                "escalation": "low",
+                "targets": ["host-a"],
+            }
+        )
+        mock_user = MagicMock()
+        mock_user.uname = "analyst"
+
+        result = case_service.update_case("case-001", {"targets": ["host-a", "host-b"]}, mock_user)
+
+        log_explanations = [entry.explanation for entry in result.log]
+        assert any("added" in e for e in log_explanations)
 
     @pytest.mark.parametrize("field", ["case_id", "created", "updated"])
     @patch("howler.services.case_service.datastore")
@@ -566,6 +597,17 @@ class TestAppendCaseItemRouting:
         with pytest.raises(InvalidDataException, match="trailing"):
             case_service.append_case_item("case-001", item_type="hit", item_value="hit-001", item_path="alerts/")
 
+    @patch("howler.services.case_service.datastore")
+    def test_append_case_item_raises_not_found_for_missing_case(self, mock_ds_fn):
+        """append_case_item raises NotFoundException when the case doesn't exist."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+        mock_ds.case.get.return_value = None
+
+        item = CaseItem({"type": "hit", "value": "hit-001", "path": "alerts"})
+        with pytest.raises(NotFoundException, match="does not exist"):
+            case_service.append_case_item("nonexistent", item=item)
+
 
 # ---------------------------------------------------------------------------
 # append_hit()
@@ -811,6 +853,59 @@ class TestAppendCase:
         item = CaseItem({"type": "case", "value": "child-001", "path": "related/"})
         with pytest.raises(InvalidDataException):
             case_service.append_case("parent-001", item)
+
+
+# ---------------------------------------------------------------------------
+# append_reference()
+# ---------------------------------------------------------------------------
+
+
+class TestAppendReference:
+    """Tests for case_service.append_reference."""
+
+    @patch("howler.services.case_service.datastore")
+    def test_append_reference_adds_item(self, mock_ds_fn):
+        """append_reference saves the reference item to the case."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = MagicMock()
+        mock_case.items = []
+        mock_case.case_id = "case-001"
+        mock_ds.case.get.return_value = mock_case
+        mock_ds.case.save.return_value = True
+
+        item = CaseItem({"type": "reference", "value": "https://example.com", "path": "refs"})
+        case_service.append_reference("case-001", item)
+
+        assert item in mock_case.items
+        mock_ds.case.save.assert_called_once()
+
+    @patch("howler.services.case_service.datastore")
+    def test_append_reference_missing_case_raises(self, mock_ds_fn):
+        """append_reference raises NotFoundException when the case does not exist."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+        mock_ds.case.get.return_value = None
+
+        item = CaseItem({"type": "reference", "value": "https://example.com", "path": "refs"})
+        with pytest.raises(NotFoundException):
+            case_service.append_reference("nonexistent", item)
+
+    @patch("howler.services.case_service.datastore")
+    def test_append_reference_duplicate_raises(self, mock_ds_fn):
+        """append_reference raises InvalidDataException when the URL already exists."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        existing = CaseItem({"type": "reference", "value": "https://example.com", "path": "refs"})
+        mock_case = MagicMock()
+        mock_case.items = [existing]
+        mock_ds.case.get.return_value = mock_case
+
+        item = CaseItem({"type": "reference", "value": "https://example.com", "path": "refs"})
+        with pytest.raises(InvalidDataException):
+            case_service.append_reference("case-001", item)
 
 
 # ---------------------------------------------------------------------------

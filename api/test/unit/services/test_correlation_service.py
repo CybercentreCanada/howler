@@ -106,6 +106,26 @@ class TestGetActiveRules:
         case_ids = {cid for cid, _ in result}
         assert case_ids == {"case-1", "case-2"}
 
+    @patch("howler.services.correlation_service.datastore")
+    def test_excludes_rules_with_invalid_timeframe(self, mock_ds_fn):
+        """Rules with an unparseable timeframe are skipped with a warning."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        # Use a MagicMock rule since CaseRule validates the timeframe at
+        # construction and would reject an invalid string.
+        bad_rule = MagicMock()
+        bad_rule.enabled = True
+        bad_rule.timeframe = "not-a-date"
+        bad_rule.rule_id = "rule-bad"
+
+        case = _make_case_obj("case-1", [bad_rule])
+        mock_ds.case.stream_search.return_value = iter([case])
+
+        result = correlation_service.get_active_rules()
+
+        assert len(result) == 0
+
 
 # ---------------------------------------------------------------------------
 # process_batch
