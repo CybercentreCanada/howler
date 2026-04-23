@@ -77,47 +77,28 @@ def hide_cases(case_ids: set[str], user: str) -> None:
     ds = datastore()
 
     items_query = f"items.value:({' OR '.join(case_ids)})"
-    for case in ds.case.stream_search(items_query, as_obj=False):
+    for case in ds.case.stream_search(items_query):
         related_case_id = case["case_id"]
         if related_case_id in case_ids:
             continue
 
-        related_case = ds.case.get(related_case_id)
-        if related_case:
-            hidden_ids: list[str] = []
-            for item in related_case.items:
-                if item.value in case_ids:
-                    item.visible = False
-                    hidden_ids.append(item.value)
+        hidden_ids: list[str] = []
+        for item in case.items:
+            if item.value in case_ids:
+                item.visible = False
+                hidden_ids.append(item.value)
 
-            if hidden_ids:
-                related_case.log.append(
-                    CaseLog(
-                        {
-                            "timestamp": "NOW",
-                            "user": user,
-                            "explanation": f"Referenced case(s) hidden: {', '.join(hidden_ids)}",
-                        }
-                    )
-                )
-                ds.case.save(related_case_id, related_case)
-
-    for case_id in case_ids:
-        case = ds.case.get(case_id)
-        if case:
-            case.visible = False
+        if hidden_ids:
             case.log.append(
                 CaseLog(
                     {
                         "timestamp": "NOW",
                         "user": user,
-                        "explanation": "Case set to hidden",
+                        "explanation": f"Referenced case(s) hidden: {', '.join(hidden_ids)}",
                     }
                 )
             )
-            ds.case.save(case_id, case)
-        else:
-            logger.warning(f"Case {case_id} not found when attempting to hide")
+            ds.case.save(related_case_id, case)
 
 
 def delete_cases(case_ids: set[str]) -> bool:
@@ -280,6 +261,16 @@ def append_case_item(  # noqa: C901
 
     if item.path.endswith("/"):
         raise InvalidDataException("item path must not end with a trailing '/'")
+
+    # Verify the case exists and deduplicate paths: if an existing item
+    # already occupies the same path, append the new item's unique value in
+    # parentheses to avoid a collision.
+    _case = datastore().case.get(case_id)
+    if _case is None:
+        raise NotFoundException(f"Case {case_id} does not exist")
+
+    if any(item.path == case_item.path for case_item in _case.items):
+        item.path = f"{item.path} ({item.value})"
 
     match item.type:
         case CaseItemTypes.HIT:

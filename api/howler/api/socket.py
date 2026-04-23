@@ -28,7 +28,12 @@ tracer = trace.get_tracer(__name__)
 @tracer.start_as_current_span(f"{__name__}.emit")
 @socket_api.route("/emit/<event>", methods=["POST"])
 def emit(event: str):
-    """Emit an event to all listening websockets"""
+    """Emit an event to all listening websockets.
+
+    .. deprecated::
+        This endpoint is deprecated. Events are now propagated via Redis pubsub
+        and no longer require a dedicated websocket pod.
+    """
     if "Authorization" not in request.headers:
         return unauthorized(err="Missing authorization header")
 

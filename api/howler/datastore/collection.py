@@ -1692,6 +1692,32 @@ class ESCollection(Generic[ModelType]):
 
         return ret_data
 
+    @overload
+    def stream_search(
+        self,
+        query: str,
+        fl: str | None = None,
+        filters: list[str] | str | None = None,
+        access_control: typing.Any = None,
+        item_buffer_size: int = 200,
+        *,
+        as_obj: Literal[True] = True,
+        use_archive: bool = False,
+    ) -> typing.Generator[ModelType, None, None]: ...
+
+    @overload
+    def stream_search(
+        self,
+        query: str,
+        fl: str | None = None,
+        filters: list[str] | str | None = None,
+        access_control: typing.Any = None,
+        item_buffer_size: int = 200,
+        *,
+        as_obj: Literal[False],
+        use_archive: bool = False,
+    ) -> typing.Generator[dict[str, typing.Any], None, None]: ...
+
     def stream_search(
         self,
         query,

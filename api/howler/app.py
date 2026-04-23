@@ -174,6 +174,11 @@ else:
 if HWL_USE_WEBSOCKET_API or DEBUG:
     logger.debug("Enabled Websocket API")
     app.register_blueprint(socket_api)
+
+    # Start the Redis pubsub watcher so this pod receives events from all pods
+    import howler.services.event_service as event_service
+
+    event_service.start_watcher()
 else:
     logger.info("Disabled Websocket API")
 
