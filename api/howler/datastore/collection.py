@@ -1365,6 +1365,7 @@ class ESCollection(Generic[ModelType]):
                     extra_fields["_index"] = result["_index"]
                 if "*" in fields:
                     fields = None
+
                 return self.model_class(source_data, mask=fields, docid=item_id, extra_fields=extra_fields)
             else:
                 source_data = recursive_update(source_data, extra_fields, allow_recursion=False)
@@ -1691,6 +1692,32 @@ class ESCollection(Generic[ModelType]):
             ret_data["next_deep_paging_id"] = new_deep_paging_id
 
         return ret_data
+
+    @overload
+    def stream_search(
+        self,
+        query: str,
+        fl: str | None = None,
+        filters: list[str] | str | None = None,
+        access_control: typing.Any = None,
+        item_buffer_size: int = 200,
+        *,
+        as_obj: Literal[True] = True,
+        use_archive: bool = False,
+    ) -> typing.Generator[ModelType, None, None]: ...
+
+    @overload
+    def stream_search(
+        self,
+        query: str,
+        fl: str | None = None,
+        filters: list[str] | str | None = None,
+        access_control: typing.Any = None,
+        item_buffer_size: int = 200,
+        *,
+        as_obj: Literal[False],
+        use_archive: bool = False,
+    ) -> typing.Generator[dict[str, typing.Any], None, None]: ...
 
     def stream_search(
         self,

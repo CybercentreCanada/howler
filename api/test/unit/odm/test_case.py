@@ -132,27 +132,124 @@ class TestCaseRule:
     """Tests for the CaseRule ODM model."""
 
     def test_create_case_rule(self):
-        """CaseRule can be created with destination and query."""
-        rule = CaseRule({"destination": "/alerts/critical", "query": "howler.score:>80"})
+        """CaseRule can be created with all required fields."""
+        rule = CaseRule(
+            {
+                "destination": "/alerts/critical",
+                "query": "howler.score:>80",
+                "author": "analyst1",
+            }
+        )
 
         assert rule.destination == "/alerts/critical"
         assert rule.query == "howler.score:>80"
+        assert rule.author == "analyst1"
+        assert rule.enabled is True
+        assert rule.timeframe is None
+        assert rule.rule_id is not None
+
+    def test_case_rule_uuid_auto_generated(self):
+        """CaseRule.id is a valid auto-generated ID when not provided."""
+        rule = CaseRule(
+            {
+                "destination": "/dest",
+                "query": "*:*",
+                "author": "user1",
+            }
+        )
+
+        assert rule.rule_id is not None
+
+    def test_case_rule_enabled_defaults_to_true(self):
+        """CaseRule.enabled defaults to True."""
+        rule = CaseRule(
+            {
+                "destination": "/dest",
+                "query": "*:*",
+                "author": "user1",
+            }
+        )
+
+        assert rule.enabled is True
+
+    def test_case_rule_enabled_can_be_false(self):
+        """CaseRule.enabled can be set to False."""
+        rule = CaseRule(
+            {
+                "destination": "/dest",
+                "query": "*:*",
+                "author": "user1",
+                "enabled": False,
+            }
+        )
+
+        assert rule.enabled is False
+
+    def test_case_rule_timeframe_is_optional(self):
+        """CaseRule.timeframe defaults to None (no expiry)."""
+        rule = CaseRule(
+            {
+                "destination": "/dest",
+                "query": "*:*",
+                "author": "user1",
+            }
+        )
+
+        assert rule.timeframe is None
+
+    def test_case_rule_timeframe_accepts_iso_date(self):
+        """CaseRule.timeframe can be set to a valid ISO date string."""
+        rule = CaseRule(
+            {
+                "destination": "/dest",
+                "query": "*:*",
+                "author": "user1",
+                "timeframe": "2026-05-06T00:00:00Z",
+            }
+        )
+
+        assert rule.timeframe is not None
+        assert rule.timeframe.year == 2026
+        assert rule.timeframe.month == 5
 
     def test_case_rule_as_primitives(self):
-        """as_primitives returns expected dict."""
-        rule = CaseRule({"destination": "/dest", "query": "*:*"})
+        """as_primitives returns expected dict with all fields."""
+        rule = CaseRule(
+            {
+                "destination": "/dest",
+                "query": "*:*",
+                "author": "admin",
+                "enabled": False,
+                "timeframe": "2026-06-01T12:00:00Z",
+            }
+        )
         primitives = rule.as_primitives()
 
         assert primitives["destination"] == "/dest"
         assert primitives["query"] == "*:*"
+        assert primitives["author"] == "admin"
+        assert primitives["enabled"] is False
+        assert "timeframe" in primitives
+        assert primitives["rule_id"] is not None
 
     def test_case_rule_missing_required_field(self):
         """CaseRule raises HowlerValueError when a required field is missing."""
         with pytest.raises(HowlerValueError):
-            CaseRule({"destination": "/dest"})  # missing 'query'
+            CaseRule({"destination": "/dest"})  # missing 'query' and 'author'
 
         with pytest.raises(HowlerValueError):
-            CaseRule({"query": "*:*"})  # missing 'destination'
+            CaseRule({"query": "*:*"})  # missing 'destination' and 'author'
+
+        with pytest.raises(HowlerValueError):
+            CaseRule({"destination": "/dest", "query": "*:*"})  # missing 'author'
+
+    def test_random_case_rule_model(self):
+        """random_model_obj can generate a valid CaseRule."""
+        rule = random_model_obj(CaseRule)
+        assert rule.destination is not None
+        assert rule.query is not None
+        assert rule.author is not None
+        assert rule.rule_id is not None
 
 
 class TestCaseTask:
@@ -352,13 +449,14 @@ class TestCase:
                 "overview": "O",
                 "escalation": "high",
                 "rules": [
-                    {"destination": "/critical", "query": "howler.score:>90"},
+                    {"destination": "/critical", "query": "howler.score:>90", "author": "analyst"},
                 ],
             }
         )
 
         assert len(case.rules) == 1
         assert case.rules[0].query == "howler.score:>90"
+        assert case.rules[0].author == "analyst"
 
     def test_create_case_with_tasks(self):
         """Case can contain nested CaseTask objects."""
@@ -414,7 +512,7 @@ class TestCase:
                 "escalation": "medium",
                 "targets": ["t1"],
                 "items": [{"path": "/a", "type": "hit", "value": "v1"}],
-                "rules": [{"destination": "/b", "query": "q"}],
+                "rules": [{"destination": "/b", "query": "q", "author": "admin"}],
                 "enrichments": [{"path": "/c", "annotations": ["x"]}],
                 "tasks": [
                     {
@@ -443,6 +541,7 @@ class TestCase:
         assert len(rebuilt.rules) == len(original.rules)
         assert rebuilt.rules[0].destination == original.rules[0].destination
         assert rebuilt.rules[0].query == original.rules[0].query
+        assert rebuilt.rules[0].author == original.rules[0].author
         assert len(rebuilt.enrichments) == len(original.enrichments)
         assert rebuilt.enrichments[0].path == original.enrichments[0].path
         assert rebuilt.enrichments[0].annotations == original.enrichments[0].annotations

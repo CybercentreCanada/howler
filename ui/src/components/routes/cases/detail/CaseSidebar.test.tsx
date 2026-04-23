@@ -177,6 +177,30 @@ describe('CaseSidebar', () => {
       renderSidebar();
       expect(screen.getByTestId('drag-overlay')).toBeInTheDocument();
     });
+
+    it('renders a Dashboard nav link pointing to the case route', () => {
+      renderSidebar();
+      const link = screen.getByText('page.cases.dashboard').closest('a');
+      expect(link).toHaveAttribute('href', '/cases/case-1');
+    });
+
+    it('renders an Assets nav link pointing to the case assets route', () => {
+      renderSidebar();
+      const link = screen.getByText('page.cases.assets').closest('a');
+      expect(link).toHaveAttribute('href', '/cases/case-1/assets');
+    });
+
+    it('renders a Timeline nav link pointing to the case timeline route', () => {
+      renderSidebar();
+      const link = screen.getByText('page.cases.timeline').closest('a');
+      expect(link).toHaveAttribute('href', '/cases/case-1/timeline');
+    });
+
+    it('renders a Rules nav link pointing to the case rules route', () => {
+      renderSidebar();
+      const rulesLink = screen.getByText('page.cases.rules').closest('a');
+      expect(rulesLink).toHaveAttribute('href', '/cases/case-1/rules');
+    });
   });
 
   describe('drag overlay', () => {

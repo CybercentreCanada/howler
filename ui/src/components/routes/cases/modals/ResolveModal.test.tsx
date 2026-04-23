@@ -157,39 +157,54 @@ describe('ResolveModal', () => {
   // -------------------------------------------------------------------------
 
   describe('initial render', () => {
-    it('shows the modal title', () => {
+    it('shows the modal title', async () => {
       render(<ResolveModal case={caseWithHits([])} onConfirm={mockOnConfirm} />, {
         wrapper: createWrapper()
       });
-      expect(screen.getByText(i18n.t('modal.cases.resolve'))).toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(screen.getByText(i18n.t('modal.cases.resolve'))).toBeInTheDocument();
+      });
     });
 
-    it('shows the modal description', () => {
+    it('shows the modal description', async () => {
       render(<ResolveModal case={caseWithHits([])} onConfirm={mockOnConfirm} />, {
         wrapper: createWrapper()
       });
-      expect(screen.getByText(i18n.t('modal.cases.resolve.description'))).toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(screen.getByText(i18n.t('modal.cases.resolve.description'))).toBeInTheDocument();
+      });
     });
 
-    it('renders a cancel button', () => {
+    it('renders a cancel button', async () => {
       render(<ResolveModal case={caseWithHits([])} onConfirm={mockOnConfirm} />, {
         wrapper: createWrapper()
       });
-      expect(screen.getByRole('button', { name: i18n.t('cancel') })).toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: i18n.t('cancel') })).toBeInTheDocument();
+      });
     });
 
-    it('renders a confirm button', () => {
+    it('renders a confirm button', async () => {
       render(<ResolveModal case={caseWithHits([])} onConfirm={mockOnConfirm} />, {
         wrapper: createWrapper()
       });
-      expect(screen.getByRole('button', { name: i18n.t('confirm') })).toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: i18n.t('confirm') })).toBeInTheDocument();
+      });
     });
 
-    it('shows the "Resolved Alerts" accordion', () => {
+    it('shows the "Resolved Alerts" accordion', async () => {
       render(<ResolveModal case={caseWithHits([])} onConfirm={mockOnConfirm} />, {
         wrapper: createWrapper()
       });
-      expect(screen.getByText(i18n.t('modal.cases.alerts.resolved'))).toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(screen.getByText(i18n.t('modal.cases.alerts.resolved'))).toBeInTheDocument();
+      });
     });
   });
 
