@@ -222,7 +222,7 @@ describe('CaseRules', () => {
 
     await waitFor(() => {
       expect(mockShowModal).toHaveBeenCalled();
-      expect(mockDispatchApi).toHaveBeenCalledWith('del-request');
+      expect(mockDispatchApi).toHaveBeenCalledWith('del-request', { throwError: false });
     });
   });
 
