@@ -85,9 +85,9 @@ def emit(event: str, data: Any):
     """
     logger.debug("Recieved emit request for event type %s", event)
 
-    if DEBUG:
-        # In debug/single-process mode, also call handlers directly for
-        # immediate feedback (the watcher may or may not be running).
+    if DEBUG and not _watcher_started:
+        # In debug/single-process mode without a watcher, call handlers
+        # directly for immediate feedback.
         if event in handlers:
             logger.debug("event:%s - emitting data (in-process)", event)
             for handler in handlers[event]:
