@@ -150,6 +150,46 @@ def delete_cases(case_ids: set[str]) -> bool:
     return ds.case.delete_by_query(f"case_id:({' OR '.join(case_ids)})")
 
 
+def _describe_field_change(
+    key: str, previous: Any, new: Any, compound_fields: set[str]
+) -> tuple[str, str | None, str | None]:
+    """Build a human-readable explanation and string snapshots for a field change.
+
+    Returns:
+        A tuple of (explanation, previous_value_str, new_value_str).
+    """
+    # Compound fields (items, rules, …) are too complex to diff meaningfully.
+    if key in compound_fields:
+        return f"Updated {key}", None, None
+
+    # List fields: show which entries were added / removed.
+    if isinstance(previous, list) and isinstance(new, list):
+        prev_set = {str(v) for v in previous}
+        new_set = {str(v) for v in new}
+        added = sorted(new_set - prev_set)
+        removed = sorted(prev_set - new_set)
+
+        parts: list[str] = []
+        if added:
+            parts.append(f"added [{', '.join(added)}]")
+        if removed:
+            parts.append(f"removed [{', '.join(removed)}]")
+
+        explanation = f"Updated {key}: {'; '.join(parts)}" if parts else f"Updated {key} (no changes)"
+        return (
+            explanation,
+            ", ".join(str(v) for v in previous) or None,
+            ", ".join(str(v) for v in new) or None,
+        )
+
+    # Scalar fields: simple before/after.
+    return (
+        f"Updated {key} from '{previous}' to '{new}'",
+        str(previous) if previous is not None else None,
+        str(new) if new is not None else None,
+    )
+
+
 def update_case(case_id: str, case_data: dict[str, Any], user: User) -> Case:
     """Update one or more properties of a case in the database.
 
@@ -188,29 +228,7 @@ def update_case(case_id: str, case_data: dict[str, Any], user: User) -> Case:
     for key, new_value in updatable.items():
         previous_value = getattr(case, key, None)
 
-        if key in compound_fields:
-            explanation = f"Updated {key}"
-            prev_str = None
-            new_str = None
-        elif isinstance(previous_value, list) and isinstance(new_value, list):
-            prev_set = set(str(v) for v in previous_value)
-            new_set = set(str(v) for v in new_value)
-            added = sorted(new_set - prev_set)
-            removed = sorted(prev_set - new_set)
-
-            parts: list[str] = []
-            if added:
-                parts.append(f"added [{', '.join(added)}]")
-            if removed:
-                parts.append(f"removed [{', '.join(removed)}]")
-
-            explanation = f"Updated {key}: {'; '.join(parts)}" if parts else f"Updated {key} (no changes)"
-            prev_str = ", ".join(str(v) for v in previous_value) or None
-            new_str = ", ".join(str(v) for v in new_value) or None
-        else:
-            explanation = f"Updated {key} from '{previous_value}' to '{new_value}'"
-            prev_str = str(previous_value) if previous_value is not None else None
-            new_str = str(new_value) if new_value is not None else None
+        explanation, prev_str, new_str = _describe_field_change(key, previous_value, new_value, compound_fields)
 
         case.log.append(
             CaseLog(
