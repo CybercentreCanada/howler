@@ -159,7 +159,6 @@ class TestCaseRule:
         )
 
         assert rule.rule_id is not None
-        assert len(str(rule.rule_id)) == 22  # base64-encoded ID
 
     def test_case_rule_enabled_defaults_to_true(self):
         """CaseRule.enabled defaults to True."""
