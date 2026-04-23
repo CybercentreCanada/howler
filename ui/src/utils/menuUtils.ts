@@ -1,6 +1,6 @@
+import { isNil } from 'lodash-es';
 import type { AppLeftNavElement, AppLeftNavGroup, AppLeftNavItem } from '../commons/components/app/AppConfigs';
 import { MainMenuInsertOperation } from '../plugins/store';
-import { isNil } from 'lodash-es';
 
 class AppMenuBuilder {
   private items: AppLeftNavElement[];

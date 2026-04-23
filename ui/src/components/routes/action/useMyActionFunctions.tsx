@@ -214,7 +214,10 @@ const useMyActionFunctions = () => {
             showInfoMessage(
               <Trans
                 i18nKey="actions.skipped"
-                values={{ action: actionName, messages: skipped.map(skippedAction => skippedAction.message).join(', ') }}
+                values={{
+                  action: actionName,
+                  messages: skipped.map(skippedAction => skippedAction.message).join(', ')
+                }}
               />
             );
           }
