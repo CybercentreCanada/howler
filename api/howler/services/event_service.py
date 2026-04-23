@@ -5,7 +5,7 @@ from opentelemetry import trace
 
 from howler.common.logging import get_logger
 from howler.config import DEBUG, config
-from howler.remote.datatypes.events import EventWatcher
+from howler.remote.datatypes.events import EventSender, EventWatcher
 
 logger = get_logger(__file__)
 tracer = trace.get_tracer(__name__)
@@ -15,8 +15,8 @@ handlers: dict[str, list[Callable]] = {}
 HWL_INTERPOD_COMMS_SECRET = os.getenv("HWL_INTERPOD_COMMS_SECRET", "secret")
 
 # Lazily initialised — call _get_sender() to obtain the singleton.
-_sender = None
-_watcher = None
+_sender: EventSender[dict[str, Any]] | None = None
+_watcher: EventWatcher[dict[str, Any]] | None = None
 _watcher_started = False
 
 
@@ -24,14 +24,13 @@ def _get_sender():
     """Return the shared EventSender, creating it on first use."""
     global _sender
     if _sender is None:
-        from howler.remote.datatypes.events import EventSender
-
         _sender = EventSender(
             "howler.events",
             host=config.core.redis.nonpersistent.host,
             port=config.core.redis.nonpersistent.port,
             private=False,
         )
+
     return _sender
 
 
