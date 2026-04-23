@@ -84,7 +84,7 @@ def emit(event: str, data: Any):
         event (str): The event id
         data (Any): A JSON-serializable package of data related to the event id
     """
-    logger.debug("Recieved emit request for event type %s", event)
+    logger.debug("Received emit request for event type %s", event)
 
     if DEBUG and not _watcher_started:
         # In debug/single-process mode without a watcher, call handlers

@@ -55,12 +55,17 @@ const CaseRules: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, c
         return;
       }
 
-      await new Promise<void>(resolve => {
-        showModal(<ConfirmDeleteModal onConfirm={resolve} />, { height: 'auto' });
-      });
-
-      const updatedCase = await dispatchApi(api.v2.case.rules.del(_case.case_id, ruleId));
-      update(updatedCase, false);
+      showModal(
+        <ConfirmDeleteModal
+          onConfirm={async () => {
+            const updatedCase = await dispatchApi(api.v2.case.rules.del(_case.case_id, ruleId), { throwError: false });
+            if (updatedCase) {
+              update(updatedCase, false);
+            }
+          }}
+        />,
+        { height: 'auto' }
+      );
     },
     [_case, dispatchApi, showModal, update]
   );
@@ -128,8 +133,7 @@ const CaseRules: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, c
                         <Typography
                           variant="body2"
                           sx={{
-                            fontFamily: 'monospace',
-                            whiteSpace: 'wrap'
+                            fontFamily: 'monospace'
                           }}
                         >
                           {rule.query}

@@ -840,7 +840,7 @@ class TestAddRule:
 
         mock_case_service.add_case_rule.return_value = {
             "case_id": "case-001",
-            "rules": [{"id": "rule-1", "query": "event.kind:alert", "destination": "alerts/incoming"}],
+            "rules": [{"rule_id": "rule-1", "query": "event.kind:alert", "destination": "alerts/incoming"}],
         }
 
         with request_context.test_request_context(
@@ -976,18 +976,18 @@ class TestDeleteRule:
 
 
 class TestUpdateRule:
-    """Tests for the PATCH rule endpoint."""
+    """Tests for the PUT rule endpoint."""
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
     def test_update_rule_success(self, mock_auth_service, mock_case_service, request_context: Flask):
-        """Returns 200 with the updated case when a rule is patched."""
+        """Returns 200 with the updated case when a rule is updated."""
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
         mock_case_service.update_case_rule.return_value = {
             "case_id": "case-001",
-            "rules": [{"id": "rule-1", "enabled": False}],
+            "rules": [{"rule_id": "rule-1", "enabled": False}],
         }
 
         with request_context.test_request_context(

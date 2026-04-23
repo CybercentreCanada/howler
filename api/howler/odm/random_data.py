@@ -866,7 +866,6 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
                 "enrichments": [],
                 "rules": [
                     {
-                        "id": str(uuid4()),
                         "destination": choice(
                             [
                                 "alerts/{{howler.analytic}}",
