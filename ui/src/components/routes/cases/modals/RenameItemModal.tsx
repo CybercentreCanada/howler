@@ -49,7 +49,7 @@ const RenameItemModal: FC<{ _case: Case; leaf: Item; onRenamed?: (updatedCase: C
     if (!isValid || !_case.case_id || !leaf.value) {
       return;
     }
-    const updatedCase = await dispatchApi(api.v2.case.items.patch(_case.case_id, leaf.value, newPath));
+    const updatedCase = await dispatchApi(api.v2.case.items.put(_case.case_id, leaf.value, newPath));
     if (updatedCase) {
       onRenamed?.(updatedCase);
       close();

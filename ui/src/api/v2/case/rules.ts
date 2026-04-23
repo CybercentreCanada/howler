@@ -1,5 +1,5 @@
 // eslint-disable-next-line import/no-cycle
-import { hdelete, hpatch, hpost, joinAllUri } from 'api';
+import { hdelete, hpost, hput, joinAllUri } from 'api';
 import { uri as parentUri } from 'api/v2/case';
 
 import type { Case } from 'models/entities/generated/Case';
@@ -21,6 +21,6 @@ export const del = (caseId: string, ruleId: string): Promise<Case> => {
   return hdelete(uri(caseId, ruleId));
 };
 
-export const patch = (caseId: string, ruleId: string, data: Partial<Rule>): Promise<Case> => {
-  return hpatch(uri(caseId, ruleId), data);
+export const put = (caseId: string, ruleId: string, data: Partial<Rule>): Promise<Case> => {
+  return hput(uri(caseId, ruleId), data);
 };

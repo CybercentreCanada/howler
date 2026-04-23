@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 const mockDispatchApi = vi.hoisted(() => vi.fn());
 const mockUpdate = vi.hoisted(() => vi.fn());
+const mockShowModal = vi.hoisted(() => vi.fn());
 const mockCase = vi.hoisted(() => ({
   current: {
     case_id: 'case-001',
@@ -18,6 +19,13 @@ const mockCase = vi.hoisted(() => ({
 vi.mock('components/hooks/useMyApi', () => ({
   default: () => ({ dispatchApi: mockDispatchApi })
 }));
+
+vi.mock('components/app/providers/ModalProvider', async () => {
+  const { createContext } = await import('react');
+  return {
+    ModalContext: createContext({ showModal: mockShowModal, close: vi.fn(), setContent: vi.fn() })
+  };
+});
 
 vi.mock('../hooks/useCase', () => ({
   default: ({ case: c }: { case?: Case }) => ({
@@ -39,15 +47,31 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-vi.mock('components/routes/advanced/QueryEditor', () => ({
-  default: ({ query, setQuery, id }: { query: string; setQuery: (q: string) => void; id?: string }) => (
-    <textarea
-      id={id ?? 'query-editor'}
-      value={query}
-      onChange={e => setQuery(e.target.value)}
-      data-testid={id ?? 'query-editor'}
-    />
-  )
+const mockOnSubmit = vi.hoisted(() => ({ current: null as ((data: any) => Promise<void>) | null }));
+
+vi.mock('./CreateRuleDialog', () => ({
+  default: ({
+    open,
+    onClose,
+    onSubmit
+  }: {
+    open: boolean;
+    onClose: () => void;
+    onSubmit: (data: any) => Promise<void>;
+  }) => {
+    mockOnSubmit.current = onSubmit;
+    return open ? (
+      <div id="create-rule-dialog">
+        <button
+          id="rule-submit-button"
+          onClick={() => onSubmit({ query: 'event.kind:alert', destination: 'alerts/incoming' })}
+        >
+          submit
+        </button>
+        <button onClick={onClose}>cancel</button>
+      </div>
+    ) : null;
+  }
 }));
 
 vi.mock('api', () => ({
@@ -57,7 +81,7 @@ vi.mock('api', () => ({
         rules: {
           post: vi.fn(),
           del: vi.fn(),
-          patch: vi.fn()
+          put: vi.fn()
         }
       }
     }
@@ -90,7 +114,7 @@ describe('CaseRules', () => {
   it('renders empty state when no rules exist', () => {
     render(<CaseRules />);
 
-    expect(screen.getByTestId('rules-empty-state')).toBeInTheDocument();
+    expect(screen.getByText('page.cases.rules.empty')).toBeInTheDocument();
   });
 
   it('renders rule list with destination, query, author, and timeframe', () => {
@@ -164,15 +188,6 @@ describe('CaseRules', () => {
       expect(screen.getByTestId('create-rule-dialog')).toBeInTheDocument();
     });
 
-    const queryEditor = screen.getByTestId('rule-query-editor');
-    const destinationInput = screen.getByTestId('rule-destination-input');
-
-    await act(async () => {
-      await user.clear(queryEditor);
-      await user.type(queryEditor, 'event.kind:alert');
-      await user.type(destinationInput, 'alerts/incoming');
-    });
-
     await act(async () => {
       await user.click(screen.getByTestId('rule-submit-button'));
     });
@@ -182,7 +197,7 @@ describe('CaseRules', () => {
     });
   });
 
-  it('calls delete API when delete is confirmed', async () => {
+  it('calls delete API when delete is confirmed via modal', async () => {
     const user = userEvent.setup();
 
     mockCase.current = createMockCase({
@@ -194,6 +209,11 @@ describe('CaseRules', () => {
     mockDispatchApi.mockResolvedValueOnce(updatedCase);
     (api.v2.case.rules.del as ReturnType<typeof vi.fn>).mockReturnValue('del-request');
 
+    // Make showModal immediately invoke the onConfirm callback
+    mockShowModal.mockImplementation((modal: any) => {
+      modal.props.onConfirm();
+    });
+
     render(<CaseRules />);
 
     await act(async () => {
@@ -201,19 +221,12 @@ describe('CaseRules', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('rule-confirm-delete-rule-001')).toBeInTheDocument();
-    });
-
-    await act(async () => {
-      await user.click(screen.getByTestId('rule-confirm-delete-rule-001'));
-    });
-
-    await waitFor(() => {
+      expect(mockShowModal).toHaveBeenCalled();
       expect(mockDispatchApi).toHaveBeenCalledWith('del-request');
     });
   });
 
-  it('calls patch API when enabled toggle is clicked', async () => {
+  it('calls put API when enabled toggle is clicked', async () => {
     const user = userEvent.setup();
 
     mockCase.current = createMockCase({
@@ -226,7 +239,7 @@ describe('CaseRules', () => {
       rules: [makeRule({ enabled: false })]
     }) as Case;
     mockDispatchApi.mockResolvedValueOnce(updatedCase);
-    (api.v2.case.rules.patch as ReturnType<typeof vi.fn>).mockReturnValue('patch-request');
+    vi.mocked(api.v2.case.rules.put).mockReturnValue('put-request' as any);
 
     render(<CaseRules />);
 
@@ -237,7 +250,7 @@ describe('CaseRules', () => {
     });
 
     await waitFor(() => {
-      expect(mockDispatchApi).toHaveBeenCalledWith('patch-request');
+      expect(mockDispatchApi).toHaveBeenCalledWith('put-request');
     });
   });
 

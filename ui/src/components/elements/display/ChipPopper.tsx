@@ -1,7 +1,7 @@
 import type { ChipProps, PaperProps, SxProps } from '@mui/material';
 import { Chip, ClickAwayListener, Collapse, Paper, Popper } from '@mui/material';
 import type { FC, ReactElement, ReactNode } from 'react';
-import { memo, useRef, useState } from 'react';
+import { memo, useState } from 'react';
 
 interface ChipPopperProps {
   icon?: ReactElement;
@@ -37,7 +37,7 @@ const ChipPopper: FC<ChipPopperProps> = ({
   slotProps = {}
 }) => {
   const [show, setShow] = useState(false);
-  const anchorEl = useRef<HTMLDivElement>(null);
+  const [anchorEl, setAnchorEl] = useState<HTMLDivElement | null>(null);
 
   const handleToggle = (newShow: boolean) => {
     setShow(newShow);
@@ -55,7 +55,7 @@ const ChipPopper: FC<ChipPopperProps> = ({
           e.stopPropagation();
         }}
         onDelete={onDelete ?? (toggleOnDelete ? () => handleToggle(!show) : null)}
-        ref={anchorEl}
+        ref={setAnchorEl}
         sx={[
           theme => ({
             position: 'relative',
@@ -69,13 +69,13 @@ const ChipPopper: FC<ChipPopperProps> = ({
       />
       <Popper
         placement={placement}
-        anchorEl={anchorEl.current}
+        anchorEl={anchorEl}
         disablePortal={disablePortal}
-        open
+        open={!!anchorEl}
         sx={{
           minWidth: Math.max(
             typeof minWidth === 'number' ? minWidth : parseInt((minWidth as string)?.replace('px', '')) || 0,
-            anchorEl.current?.clientWidth || 0
+            anchorEl?.clientWidth || 0
           ),
           zIndex: 1000
         }}
