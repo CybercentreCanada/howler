@@ -76,20 +76,23 @@ def hide_cases(case_ids: set[str], user: str) -> None:
     """
     ds = datastore()
 
-    items_query = f"items.value:({' OR '.join(case_ids)})"
-    for case in ds.case.stream_search(items_query):
-        related_case_id = case["case_id"]
-        if related_case_id in case_ids:
+    # First pass: find other cases that reference any of the cases being hidden
+    # and mark those reference items as not visible.
+    for related_case in ds.case.stream_search(f"items.value:({' OR '.join(case_ids)})"):
+        # Skip cases that are themselves being hidden — they're handled below.
+        if related_case.case_id in case_ids:
             continue
 
+        # Walk items and hide any that point to one of the target case IDs.
         hidden_ids: list[str] = []
-        for item in case.items:
+        for item in related_case.items:
             if item.value in case_ids:
                 item.visible = False
                 hidden_ids.append(item.value)
 
+        # Only persist the related case if we actually changed something.
         if hidden_ids:
-            case.log.append(
+            related_case.log.append(
                 CaseLog(
                     {
                         "timestamp": "NOW",
@@ -98,7 +101,26 @@ def hide_cases(case_ids: set[str], user: str) -> None:
                     }
                 )
             )
-            ds.case.save(related_case_id, case)
+            ds.case.save(related_case.case_id, related_case)
+
+    # Second pass: mark each target case itself as not visible.
+    for case_id in case_ids:
+        case = ds.case.get(case_id)
+        if case is None:
+            logger.warning("Case %s not found, skipping hide", case_id)
+            continue
+
+        case.visible = False
+        case.log.append(
+            CaseLog(
+                {
+                    "timestamp": "NOW",
+                    "user": user,
+                    "explanation": "Case hidden",
+                }
+            )
+        )
+        ds.case.save(case_id, case)
 
 
 def delete_cases(case_ids: set[str]) -> bool:
