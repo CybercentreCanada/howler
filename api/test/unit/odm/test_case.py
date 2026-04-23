@@ -149,7 +149,7 @@ class TestCaseRule:
         assert rule.rule_id is not None
 
     def test_case_rule_uuid_auto_generated(self):
-        """CaseRule.id is a valid UUID auto-generated when not provided."""
+        """CaseRule.id is a valid auto-generated ID when not provided."""
         rule = CaseRule(
             {
                 "destination": "/dest",
@@ -159,7 +159,7 @@ class TestCaseRule:
         )
 
         assert rule.rule_id is not None
-        assert len(str(rule.rule_id)) == 36  # UUID format
+        assert len(str(rule.rule_id)) == 22  # base64-encoded ID
 
     def test_case_rule_enabled_defaults_to_true(self):
         """CaseRule.enabled defaults to True."""
