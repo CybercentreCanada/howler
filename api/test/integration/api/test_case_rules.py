@@ -175,7 +175,7 @@ class TestUpdateRule:
             data=json.dumps({"enabled": False}),
         )
 
-        updated_rule = next(r for r in put_resp["rules"] if r["id"] == rule_id)
+        updated_rule = next(r for r in put_resp["rules"] if r["rule_id"] == rule_id)
         assert updated_rule["enabled"] is False
 
     def test_update_rule_change_query(self, test_case):
@@ -196,7 +196,7 @@ class TestUpdateRule:
             data=json.dumps({"query": "new:query"}),
         )
 
-        updated_rule = next(r for r in put_resp["rules"] if r["id"] == rule_id)
+        updated_rule = next(r for r in put_resp["rules"] if r["rule_id"] == rule_id)
         assert updated_rule["query"] == "new:query"
 
     def test_update_rule_not_found_returns_404(self, test_case):

@@ -159,7 +159,7 @@ class TestCaseRule:
         )
 
         assert rule.rule_id is not None
-        assert len(str(rule.id)) == 36  # UUID format
+        assert len(str(rule.rule_id)) == 36  # UUID format
 
     def test_case_rule_enabled_defaults_to_true(self):
         """CaseRule.enabled defaults to True."""
