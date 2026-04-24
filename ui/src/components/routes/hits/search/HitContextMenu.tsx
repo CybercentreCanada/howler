@@ -150,8 +150,12 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
 
       setAnchorEl(event.target as HTMLElement);
 
-      const _actions = (await dispatchApi(api.search.action.post({ query: 'action_id:*' }), { throwError: false }))
-        ?.items;
+      // TODO: Bumping the number of rows is a temporary fix - we'll need to improve this.
+      const _actions = (
+        await dispatchApi(api.search.action.post({ query: 'action_id:*', rows: 100, sort: 'name asc' }), {
+          throwError: false
+        })
+      )?.items;
 
       if (_actions) {
         setActions(_actions);
