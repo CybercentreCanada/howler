@@ -824,7 +824,10 @@ class ClassificationString(Keyword):
 
 
 class TypedList(list):
-    def __init__(self, type_p, *items, context=[], **kwargs):
+    def __init__(self, type_p, items, context=[], **kwargs):
+        if not isinstance(items, list):
+            raise HowlerTypeError(f"[{'.'.join(context)}] Expected a list, got {type(items).__name__}")
+
         self.context = context
         self.type = type_p
 
@@ -892,7 +895,7 @@ class List(_Field):
 
             return TypedList(
                 self.child_type,
-                *fixed_values,
+                fixed_values,
                 **kwargs,
             )
 
@@ -900,7 +903,7 @@ class List(_Field):
             logger.warning("Value is None, but optional is not set to True. Using an empty list to avoid errors.")
             value = []
 
-        return TypedList(self.child_type, *value, **kwargs)
+        return TypedList(self.child_type, value, **kwargs)
 
     def apply_defaults(self, index, store):
         """Initialize the default settings for the child field."""

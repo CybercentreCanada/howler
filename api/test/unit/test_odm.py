@@ -22,7 +22,7 @@ from howler.odm import (
     flat_to_nested,
     model,
 )
-from howler.odm.base import Long
+from howler.odm.base import Long, TypedList
 from howler.odm.models.ecs.client import Client
 from howler.odm.models.ecs.email import Email
 
@@ -252,11 +252,17 @@ def test_create_list():
     _ = Test(dict(values=[]))
     test = Test(dict(values=[0, 100]))
 
+    with pytest.raises(HowlerTypeError):
+        TypedList(Integer(), (0, 100))
+
     with pytest.raises(ValueError):
         Test(dict(values=["bugs"]))
 
-    with pytest.raises(ValueError):
+    with pytest.raises(HowlerTypeError):
         Test(dict(values="bugs"))
+
+    with pytest.raises(HowlerTypeError):
+        Test(dict(values=(0, 100)))
 
     assert test.values[0] == 0
     assert test.values[1] == 100

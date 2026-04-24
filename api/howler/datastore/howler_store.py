@@ -12,6 +12,7 @@ from howler.odm.models.config import ILMIndexConfig
 from howler.odm.models.dossier import Dossier
 from howler.odm.models.event import Event
 from howler.odm.models.hit import Hit
+from howler.odm.models.migration import MigrationRecord
 from howler.odm.models.overview import Overview
 from howler.odm.models.template import Template
 from howler.odm.models.user import User
@@ -29,6 +30,7 @@ INDEXES = {
     "overview": Overview,
     "analytic": Analytic,
     "action": Action,
+    "migration": MigrationRecord,
     "user": User,
     "view": View,
     "dossier": Dossier,
@@ -118,6 +120,10 @@ class HowlerDatastore(object):
     @property
     def action(self) -> ESCollection[Action]:
         return self.ds.action
+
+    @property
+    def migration(self) -> ESCollection[MigrationRecord]:
+        return self.ds.migration
 
     @property
     def user(self) -> ESCollection[User]:

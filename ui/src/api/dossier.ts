@@ -1,6 +1,8 @@
 // eslint-disable-next-line import/no-cycle
 import { hdelete, hget, hpost, hput, joinAllUri, joinUri, uri as parentUri, type HowlerRefreshParam } from 'api';
+import createPermissionsApi from 'api/utils/createPermissionsApi';
 import type { Dossier } from 'models/entities/generated/Dossier';
+import * as hit from './hit';
 
 export const uri = (id?: string) => {
   return id ? joinAllUri(parentUri(), 'dossier', id) : joinUri(parentUri(), 'dossier');
@@ -24,3 +26,7 @@ export const put = (id: string, dossier: Partial<Dossier>, refresh?: HowlerRefre
 export const del = (id: string, refresh?: HowlerRefreshParam) => {
   return hdelete(uri(id), undefined, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
+
+const permission = createPermissionsApi<Dossier>(uri);
+
+export { hit, permission };

@@ -119,9 +119,19 @@ describe('UserList', () => {
   it('does not open popover when disabled', async () => {
     const onChange = vi.fn();
 
-    render(<UserList i18nLabel="user.list.label" userIds={['analystA']} onChange={onChange} disabled />, {
-      wrapper: createWrapper(defaultUsers)
-    });
+    render(
+      <UserList
+        i18nLabel="user.list.label"
+        userIds={['analystA']}
+        onChange={onChange}
+        disabled
+        multiple
+        variant="list"
+      />,
+      {
+        wrapper: createWrapper(defaultUsers)
+      }
+    );
 
     const button = screen.getByRole('button');
     expect(button).toBeDisabled();

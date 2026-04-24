@@ -797,6 +797,10 @@ describe('HitContextMenu', () => {
         expect(screen.getByRole('menu')).toBeInTheDocument();
       });
 
+      await waitFor(() => {
+        expect(screen.getByText('Exclude By')).toBeInTheDocument();
+      });
+
       act(() => {
         const excludesMenuItem = screen.getByText('Exclude By');
         fireEvent.mouseEnter(excludesMenuItem);
@@ -981,6 +985,10 @@ describe('HitContextMenu', () => {
 
       await waitFor(() => {
         expect(screen.getByRole('menu')).toBeInTheDocument();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Include By')).toBeInTheDocument();
       });
 
       act(() => {

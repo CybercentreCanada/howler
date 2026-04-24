@@ -1,5 +1,103 @@
 # Migration Guides
 
+## Running datastore migrations
+
+Application imports, Gunicorn workers, readiness checks, and maintenance scripts do not execute datastore migrations.
+Run them as an explicit one-off operation with the same Howler image and configuration used by the API deployment.
+
+### Command
+
+```bash
+poetry run howler-migrate --list
+poetry run howler-migrate --all
+poetry run howler-migrate --migration-id action-owner-id-to-owner
+```
+
+`--migration-id` may be repeated. `--all` selects the complete registered migration set. `--timeout` (or its
+`--transport-timeout` alias) sets
+`HWL_DATASTORE_TRANSPORT_TIMEOUT` before Elasticsearch datastore modules are imported. There is no generic `--force`
+option: the migration runner's claim protection must not be bypassed.
+
+`--list` validates and prints the registered IDs without constructing a datastore. Unknown IDs are rejected before an
+Elasticsearch connection is opened. Exit status `0` means all selected migrations completed or were already applied;
+`1` means a migration, Elasticsearch, or datastore-close failure; `2` means invalid command-line input or selection.
+
+### Required configuration
+
+Use the exact configuration and data namespace used by the API:
+
+- Mount the API's `config.yml` and `mappings.yml`, or set the same `HWL_CONF_FOLDER`.
+- Set the exact same `HWL_DATASTORE_INDEX_PREFIX`.
+- Provide the same Elasticsearch credential variables and certificate mounts. API-key hosts use
+  `<HOST>_HOST_APIKEY_ID` and `<HOST>_HOST_APIKEY_SECRET`; basic-auth hosts use the corresponding username/password
+  variables.
+- Set `HWL_CERT_DIRECTORY` when certificates are mounted outside `/etc/howler/certs`.
+- Use `--timeout` or `HWL_DATASTORE_TRANSPORT_TIMEOUT` for the transport timeout. The timeout applies before datastore
+  imports and does not replace task polling bounds.
+- Set `HWL_MIGRATION_STALE_CLAIM_TIMEOUT` above the maximum expected migration duration. The default is four hours.
+  `HWL_MIGRATION_WAIT_TIMEOUT` and `HWL_MIGRATION_POLL_INTERVAL` control how a process waits for another active claim.
+- `HWL_DATASTORE_TASK_POLL_TIMEOUT` and `HWL_DATASTORE_TASK_POLL_INTERVAL` bound and pace asynchronous Elasticsearch
+  task polling.
+
+The `action-owner-id-legacy-field-cleanup` migration is a separate stable follow-up for environments where the original
+`action-owner-id-to-owner` record was already marked applied. It is safe to select on new installations as well; it
+records zero affected documents when no legacy field remains.
+
+### One-off Kubernetes operation
+
+Do not add a Helm migration Job or upgrade hook. Create an operator-run Job or pod using the exact REST image repository
+and tag. Override the image's Gunicorn entrypoint:
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: howler-migrate
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migration
+          image: cccs/howler-api:<exact-rest-image-tag>
+          command: ["python", "-m", "howler.external.run_migrations"]
+          args: ["--all"]
+          env:
+            - name: HWL_DATASTORE_INDEX_PREFIX
+              value: "<same-value-as-rest>"
+            # Copy the rendered REST deployment's credential and other env entries.
+          volumeMounts:
+            - name: conf
+              mountPath: /etc/howler/conf/
+            # Mount howler-certs when the REST deployment mounts it.
+      volumes:
+        - name: conf
+          configMap:
+            name: howler-server-conf
+        # Copy the optional howler-certs Secret mount from the REST deployment.
+```
+
+The Job must reuse the REST deployment's `howler-server-conf` ConfigMap, Elasticsearch credential Secret, optional
+certificate Secret, relevant environment variables, and index prefix. Copy the rendered deployment settings rather
+than relying on a different values path. Inspect Job logs and the migration records in the
+`<HWL_DATASTORE_INDEX_PREFIX>-migration` alias, for example:
+
+```bash
+kubectl logs job/howler-migrate
+curl -s "$ELASTICSEARCH/<prefix>-migration/_search?q=status:running" | jq
+curl -s "$ELASTICSEARCH/<prefix>-migration/_doc/action-owner-id-to-owner" | jq
+```
+
+Take an Elasticsearch snapshot and schedule a maintenance window before running the Job. Scale down REST, ingestion,
+correlation, and other datastore writers. Disable or suspend the REST HPA while the migration runs so it cannot restore
+writers after they are scaled down. Restore the HPA and workloads only after the command succeeds and the records and
+logs have been reviewed.
+
+If a process dies while a migration is running, a later invocation waits for an active claim and atomically replaces a
+stale claim using its version token. The old process cannot mark the replacement claim applied or delete it. Retry the
+same command after investigating a nonzero exit; do not manually delete a fresh active claim.
+
 ## Migrating Howler 2.12.0 to 3.0.0
 
 This guide will walk you through the process of migrating your Howler installation from version 2.12.0 to 3.0.0.
@@ -285,7 +383,10 @@ handling for large integer values in your Howler deployment.
 
 ## Migration: Legacy `_hot` Index to ILM Rollover
 
-When ILM is enabled for an index that was previously using the legacy `_hot` naming convention (e.g. `howler-hit_hot`), Howler **automatically migrates** it on startup. No manual steps are required.
+When ILM is enabled for an index that was previously using the legacy `_hot` naming convention (e.g. `howler-hit_hot`),
+Howler still performs its separate ILM collection bootstrap when the collection is first constructed. This is not a
+datastore data migration and is unrelated to `howler-migrate`; no registered data migration runs as an API startup side
+effect.
 
 ### What happens automatically
 

@@ -42,7 +42,8 @@ vi.mock('use-context-selector', () => ({
 }));
 
 vi.mock('utils/utils', () => ({
-  getProviderColor: (_provider: string | undefined) => '#000000'
+  getProviderColor: (_provider: string | undefined) => '#000000',
+  notNil: (value: unknown) => value !== null && value !== undefined
 }));
 
 vi.mock('utils/constants', () => ({

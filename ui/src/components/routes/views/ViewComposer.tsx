@@ -1,9 +1,9 @@
-import { AppListEmpty, PageCenter } from '@tui/core';
+import { AppListEmpty, PageCenter, useAppUser } from '@tui/core';
 import type { FC } from 'react';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { HelpOutline, Save, Settings } from '@mui/icons-material';
+import { HelpOutline, PersonAdd, Save, Settings } from '@mui/icons-material';
 import {
   Alert,
   Checkbox,
@@ -45,11 +45,13 @@ import useMySnackbar from 'components/hooks/useMySnackbar';
 import { uniq } from 'lodash-es';
 import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
+import type { HowlerUser } from 'models/entities/HowlerUser';
 import { useNavigate, useParams } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
 import { convertDateToLucene } from 'utils/utils';
 import { buildViewUrl } from 'utils/viewUtils';
+import { MembershipManagement } from '../../elements/MembershipManagement';
 import ErrorBoundary from '../ErrorBoundary';
 import RecordQuery from '../hits/search/RecordQuery';
 import HitSort from '../hits/search/shared/HitSort';
@@ -62,6 +64,7 @@ const ViewComposer: FC = () => {
   const { showSuccessMessage, showErrorMessage } = useMySnackbar();
   const routeParams = useParams();
   const navigate = useNavigate();
+  const { user } = useAppUser<HowlerUser>();
 
   const addView = useContextSelector(ViewContext, ctx => ctx.addView);
   const editView = useContextSelector(ViewContext, ctx => ctx.editView);
@@ -74,9 +77,11 @@ const ViewComposer: FC = () => {
   const loadRecords = useContextSelector(RecordContext, ctx => ctx.loadRecords);
 
   // view state
+  const [canManageMembership, setCanManageMembership] = useState(false);
   const [title, setTitle] = useState('');
   const [type, setType] = useState('global');
   const [advanceOnTriage, setAdvanceOnTriage] = useState(false);
+  const [memberModalOpen, setMemberModalOpen] = useState(false);
   const { columns, setColumns, columnWidths, isReady } = useContext(GridColumnsContext);
 
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
@@ -241,12 +246,13 @@ const ViewComposer: FC = () => {
 
       setTitle(viewToEdit.title ?? '');
       setAdvanceOnTriage(viewToEdit.settings?.advance_on_triage ?? false);
-      setDisplayType(
-        ((viewToEdit.settings?.display === 'grid' || viewToEdit.settings?.display === 'list'
-          ? viewToEdit.settings.display
-          : displayType) ?? 'list') as 'grid' | 'list'
-      );
+      setDisplayType(viewToEdit.settings?.display ?? 'list');
       setType(viewToEdit.type!);
+      setCanManageMembership(
+        viewToEdit.owner === user.username ||
+          viewToEdit.admins?.includes(user.username) ||
+          !!user.roles?.includes('admin')
+      );
 
       const loadedQuery = viewToEdit.query || DEFAULT_QUERY;
       const loadedIndexes = (viewToEdit.indexes as SearchIndex[] | undefined) || indexes || ['hit'];
@@ -320,6 +326,11 @@ const ViewComposer: FC = () => {
                   >
                     {t('save')}
                   </CustomButton>
+                  {canManageMembership && (
+                    <CustomButton variant="outlined" startIcon={<PersonAdd />} onClick={() => setMemberModalOpen(true)}>
+                      {t('membership.manage')}
+                    </CustomButton>
+                  )}
                 </Stack>
                 <Typography
                   sx={theme => ({
@@ -422,6 +433,7 @@ const ViewComposer: FC = () => {
               )}
             </VSBoxContent>
           </VSBox>
+          <MembershipManagement open={memberModalOpen} onClose={() => setMemberModalOpen(false)} />
         </PageCenter>
       </ErrorBoundary>
     </FlexPort>
