@@ -15,7 +15,7 @@ set -euo pipefail
 #
 # Steps:
 #   1. Verify current branch is `main` and up to date with remote.
-#   2. Rebase `develop` onto `main`.
+#   2. Rebase `main` onto `develop` (bring develop's commits into main).
 #   3. Check RELEASES.md for existing release notes for each component version.
 #   4. Prompt the user to write release notes if they are absent.
 #   5. Commit the release (staging RELEASES.md if updated; empty commit otherwise).
@@ -86,8 +86,21 @@ cd "$REPO_ROOT"
 echo "==> Checking branch..."
 CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 if [[ "$CURRENT_BRANCH" != "main" ]]; then
-    echo "Error: must be on 'main' to cut a release (currently on '$CURRENT_BRANCH')."
-    exit 1
+    if ! git diff --quiet || ! git diff --cached --quiet; then
+        echo "Error: must be on 'main' to cut a release (currently on '$CURRENT_BRANCH')."
+        echo "Your working tree has uncommitted changes — please commit or stash them first."
+        exit 1
+    fi
+    echo "  Currently on '$CURRENT_BRANCH'. Working tree is clean."
+    read -r -p "  Switch to 'main'? [Y/n]: " _DO_SWITCH
+    _DO_SWITCH="${_DO_SWITCH:-Y}"
+    if [[ "$_DO_SWITCH" =~ ^[Yy]$ ]]; then
+        git checkout main
+        CURRENT_BRANCH="main"
+    else
+        echo "Aborting."
+        exit 1
+    fi
 fi
 
 echo "==> Fetching from remote..."
@@ -109,15 +122,13 @@ fi
 echo "  main is up to date."
 
 # ---------------------------------------------------------------------------
-# Step 2: Rebase develop onto main
+# Step 2: Rebase main onto develop
 # ---------------------------------------------------------------------------
 echo ""
-echo "==> Rebasing 'develop' onto 'main'..."
-git checkout develop
-git rebase main
-git checkout main
+echo "==> Rebasing 'main' onto 'develop'..."
+git rebase develop
 
-echo "  develop rebased onto main."
+echo "  main rebased onto develop."
 
 # ---------------------------------------------------------------------------
 # Step 3: Read current versions for each component
@@ -204,18 +215,14 @@ done
 # Build commit message
 _VERSION_PARTS=()
 for _comp in "${COMPONENTS[@]}"; do
-    case "$_comp" in
-        api)    _VERSION_PARTS+=("Howler API v${VERSIONS[$_comp]}") ;;
-        ui)     _VERSION_PARTS+=("Howler UI v${VERSIONS[$_comp]}") ;;
-        client) _VERSION_PARTS+=("Howler Client v${VERSIONS[$_comp]}") ;;
-    esac
+    _VERSION_PARTS+=("${_comp}@v${VERSIONS[$_comp]}")
 done
 
-# Join with " / "
-_RELEASE_LABEL="$(printf '%s / ' "${_VERSION_PARTS[@]}")"
-_RELEASE_LABEL="${_RELEASE_LABEL% / }"
+# Join with ", "
+_RELEASE_LABEL="$(printf '%s, ' "${_VERSION_PARTS[@]}")"
+_RELEASE_LABEL="${_RELEASE_LABEL%, }"
 
-COMMIT_MSG="chore(release): ${_RELEASE_LABEL}"
+COMMIT_MSG="release: ${_RELEASE_LABEL}"
 
 echo ""
 echo "Proposed commit message:"
@@ -283,23 +290,22 @@ echo "Tags created: ${TAGS_CREATED[*]}"
 # ---------------------------------------------------------------------------
 # Step 7: Prompt to push
 # ---------------------------------------------------------------------------
-_REMOTE="$(git remote | head -n 1)"
 echo ""
 echo "Ready to push:"
-echo "  Branch: main  →  ${_REMOTE}/main"
+echo "  Branch: main  →  origin/main"
 echo "  Tags:   ${TAGS_CREATED[*]}"
 echo ""
-read -r -p "Push branch and tags to '${_REMOTE}'? [Y/n]: " _DO_PUSH
+read -r -p "Push branch and tags to 'origin'? [Y/n]: " _DO_PUSH
 _DO_PUSH="${_DO_PUSH:-Y}"
 
 if [[ "$_DO_PUSH" =~ ^[Yy]$ ]]; then
-    git push "$_REMOTE" main
-    git push "$_REMOTE" "${TAGS_CREATED[@]}"
+    git push origin main
+    git push origin "${TAGS_CREATED[@]}"
     echo ""
     echo "Done. Release pushed."
 else
     echo ""
     echo "Skipping push. To push manually:"
-    echo "  git push ${_REMOTE} main"
-    echo "  git push ${_REMOTE} ${TAGS_CREATED[*]}"
+    echo "  git push origin main"
+    echo "  git push origin ${TAGS_CREATED[*]}"
 fi
