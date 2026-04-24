@@ -29,6 +29,15 @@ class View(odm.Model):
         description="The person to whom this view belongs.",
         optional=True,
     )
+    # TODO: AG - Find how to allow multiple owners.
+    # From the docs, this is used to query data. We want to avoid
+    # heavy modifications so that search functionality remains intact,
+    # but we need to support more than one member.
+    admin: str = odm.Keyword(
+        description="group of person to whom can administer this view.",
+        optional=True,
+    )
+    user: str = odm.Keyword(description="group of person to whom can modify this view.", optional=True)
     settings: Settings = odm.Compound(
         Settings, description="Additional View Settings", default={"advance_on_triage": False}
     )
