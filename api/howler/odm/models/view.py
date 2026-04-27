@@ -60,7 +60,7 @@ class View(odm.Model):
         description="group of person to whom can administer this view.",
         optional=True,
     )
-    user: str = odm.Keyword(description="group of person to whom can modify this view.", optional=True)
+    member: str = odm.Keyword(description="group of person to whom can modify this view.", optional=True)
     settings: Settings = odm.Compound(
         Settings, description="Additional View Settings", default={"advance_on_triage": False}
     )

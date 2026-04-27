@@ -26,7 +26,7 @@ class Dossier(odm.Model):
     owner: str = odm.Keyword(description="The person to whom this dossier belongs.")
     admin: str = odm.Keyword(description="The group of person to whom this dossier is administer.")
     # TODO : AG find better language for them
-    user: str = odm.Keyword(description=("The group of person to whom this dossier is assigned."))
+    member: str = odm.Keyword(description=("The group of person to whom this dossier is assigned."))
     query: Optional[str] = odm.Keyword(
         description="The query that controls when this dossier should be shown in the UI.", optional=True, default=None
     )
