@@ -167,6 +167,7 @@
   "hit.header.bundlesize": "{{hits}} hits",
   "hit.header.escalation": "Escalation Level: ",
   "hit.header.indicators": "Indicators",
+  "hit.header.link": "Open Link",
   "hit.header.rationale": "Rationale",
   "hit.header.scrutiny": "Scrutiny: ",
   "hit.header.status": "Status: ",
