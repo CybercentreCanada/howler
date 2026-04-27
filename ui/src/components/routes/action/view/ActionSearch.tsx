@@ -1,16 +1,16 @@
 import { Delete, Engineering, Terminal } from '@mui/icons-material';
 import {
-    Autocomplete,
-    Card,
-    CardContent,
-    CardHeader,
-    Chip,
-    Grid,
-    IconButton,
-    Stack,
-    TextField,
-    Tooltip,
-    Typography
+  Autocomplete,
+  Card,
+  CardContent,
+  CardHeader,
+  Chip,
+  Grid,
+  IconButton,
+  Stack,
+  TextField,
+  Tooltip,
+  Typography
 } from '@mui/material';
 import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
