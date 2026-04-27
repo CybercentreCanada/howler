@@ -43,11 +43,11 @@ The script creates several predefined users for testing different scenarios:
 
 | Username | Password | Type | Description |
 |----------|----------|------|-------------|
-| `admin` | `admin` (or `$DEV_ADMIN_PASS`) | admin, user, automation_basic, automation_advanced | Full admin access with multiple API keys |
-| `user` | `user` (or `$DEV_USER_PASS`) | user | Standard user with impersonation keys |
+| `admin` | `admin` (or `$DEV_ADMIN_PASS`) | admin, user, automation_basic, automation_advanced, actionrunner_basic, actionrunner_advanced | Full admin access with multiple API keys |
+| `user` | `user` (or `$DEV_USER_PASS`) | user, actionrunner_basic | Standard user with impersonation keys |
 | `shawn-h` | `shawn-h` | admin, user | Admin user for testing |
 | `goose` | `goose` | admin, user | Admin user for testing |
-| `huey` | `huey` | user | Standard user for testing |
+| `huey` | `huey` | user, actionrunner_basic | Standard user for testing |
 
 <!-- markdownlint-disable -->
 ??? tip "Custom Passwords"

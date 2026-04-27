@@ -1,16 +1,16 @@
 import { Delete, Engineering, Terminal } from '@mui/icons-material';
 import {
-  Autocomplete,
-  Card,
-  CardContent,
-  CardHeader,
-  Chip,
-  Grid,
-  IconButton,
-  Stack,
-  TextField,
-  Tooltip,
-  Typography
+    Autocomplete,
+    Card,
+    CardContent,
+    CardHeader,
+    Chip,
+    Grid,
+    IconButton,
+    Stack,
+    TextField,
+    Tooltip,
+    Typography
 } from '@mui/material';
 import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
@@ -129,6 +129,8 @@ const ActionSearch: FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchModifiers]);
 
+  const editRoles = user.roles.includes('automation_basic') || user.roles.includes('automation_advanced');
+
   // Search result list item renderer.
   const renderer = useCallback(
     ({ item }: TuiListItemProps<Action>, classRenderer: () => string) => {
@@ -163,7 +165,7 @@ const ActionSearch: FC = () => {
                   </Tooltip>
                 )}
                 <FlexOne />
-                {(item.item.owner_id === user.username || user.roles?.includes('admin')) && (
+                {((item.item.owner_id === user.username && editRoles) || user.roles?.includes('admin')) && (
                   <IconButton
                     size="small"
                     onClick={async e => {
@@ -196,13 +198,13 @@ const ActionSearch: FC = () => {
         </Card>
       );
     },
-    [deleteAction, navigate, onSearch, t, user.roles, user.username]
+    [deleteAction, editRoles, navigate, onSearch, t, user.roles, user.username]
   );
 
   return (
     <ItemManager
       onSearch={onSearch}
-      onCreate={() => navigate('/action/execute')}
+      onCreate={editRoles ? () => navigate('/action/execute') : undefined}
       onPageChange={onPageChange}
       phrase={phrase}
       setPhrase={setPhrase}

@@ -331,6 +331,8 @@
   "outline.assemblyline.tags": "Tags",
   "overview.search": "Search Hit Data",
   "owner": "Owner",
+  "page.403.description": "You do not have permission to access this page.",
+  "page.403.title": "403: Access Forbidden",
   "page.404.description": "The page you are looking for cannot be found...",
   "page.404.title": "404: Not found",
   "page.dashboard.settings.edit": "Edit Dashboard",
