@@ -335,6 +335,8 @@
   "outline.assemblyline.tags": "Tags",
   "overview.search": "Recherche dans les champs du Hit",
   "owner": "Propriétaire",
+  "page.403.description": "Vous n'avez pas la permission d'accéder à cette page.",
+  "page.403.title": "403: Accès interdit",
   "page.404.description": "La page que vous recherchez est introuvable ...",
   "page.404.title": "404: Introuvable",
   "page.dashboard.settings.edit": "Modifier le tableau de bord",

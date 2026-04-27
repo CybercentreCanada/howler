@@ -1,19 +1,24 @@
 from typing import Optional
 
+from howler.actions import check_hit_limit
 from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
 from howler.datastore.operations import OdmHelper
 from howler.odm.models.action import VALID_TRIGGERS
 from howler.odm.models.hit import Hit
+from howler.odm.models.user import User
 from howler.services import hit_service
 from howler.utils.str_utils import sanitize_lucene_query
 
 hit_helper = OdmHelper(Hit)
 
 OPERATION_ID = "remove_from_bundle"
+MAX_HITS_BASIC = 10
+MAX_HITS_ADVANCED = 1000
+SKIP_CENTRAL_LIMIT = True  # This operation transforms the query, handles limit check locally
 
 
-def execute(query: str, bundle_id: Optional[str] = None, **kwargs):
+def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = None, **kwargs):
     """Remove a set of hits matching the query from the specified bundle.
 
     Args:
@@ -62,9 +67,15 @@ def execute(query: str, bundle_id: Optional[str] = None, **kwargs):
                 }
             )
 
-        safe_query = f"{query} AND (howler.bundles:{bundle_id})"
+        safe_query = f"{query} AND (howler.bundles:{sanitize_lucene_query(bundle_id)})"
 
-        matching_hits = ds.hit.search(safe_query)["items"]
+        # Check hit limit against the effective query (not raw query)
+        if user:
+            limit_error = check_hit_limit(safe_query, user, MAX_HITS_BASIC, MAX_HITS_ADVANCED)
+            if limit_error:
+                return [limit_error]
+
+        matching_hits = ds.hit.search(safe_query, rows=MAX_HITS_ADVANCED, fl="howler.id")["items"]
         if len(matching_hits) < 1:
             report.append(
                 {
@@ -83,7 +94,7 @@ def execute(query: str, bundle_id: Optional[str] = None, **kwargs):
 
         hit_service.update_hit(
             bundle_id,
-            [hit_helper.list_remove("howler.hits", h["howler"]["id"]) for h in ds.hit.search(safe_query)["items"]],
+            [hit_helper.list_remove("howler.hits", h["howler"]["id"]) for h in matching_hits],
         )
 
         if len(ds.hit.get(bundle_id).howler.hits) < 1:
@@ -121,7 +132,7 @@ def specification():
             "short": "Remove a set of hits from a bundle",
             "long": execute.__doc__,
         },
-        "roles": ["automation_basic"],
+        "roles": ["automation_basic", "actionrunner_basic"],
         "steps": [
             {
                 "args": {"bundle_id": []},

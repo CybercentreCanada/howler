@@ -65,7 +65,7 @@ def specification():
             "short": "Change one of the fields of a hit",
             "long": execute.__doc__,
         },
-        "roles": ["automation_advanced", "admin"],
+        "roles": ["automation_advanced", "actionrunner_advanced", "admin"],
         "steps": [
             {
                 "args": {"field": [], "value": []},

@@ -119,7 +119,14 @@ def create_users(ds):
             "email": "admin@howler.cyber.gc.ca",
             "password": admin_hash,
             "uname": "admin",
-            "type": ["admin", "user", "automation_basic", "automation_advanced"],
+            "type": [
+                "admin",
+                "user",
+                "automation_basic",
+                "automation_advanced",
+                "actionrunner_basic",
+                "actionrunner_advanced",
+            ],
             "groups": [
                 "group1",
                 "group2",
@@ -169,6 +176,11 @@ def create_users(ds):
                     "password": user_hash,
                 },
             },
+            "type": [
+                "user",
+                "automation_basic",
+                "actionrunner_basic",
+            ],
             "password": user_hash,
             "uname": "user",
             "favourite_views": [user_view.view_id],
