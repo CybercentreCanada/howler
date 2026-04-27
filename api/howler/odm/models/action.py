@@ -20,7 +20,7 @@ class Action(odm.Model):
     action_id: str = odm.UUID(description="A UUID for this action")
     owner_id: str = odm.Keyword(description="The id of the user that created this action")
     # TODO: AG here as well same as the other ones. This is a highlight. Will try and ask more question on monday.
-    user_id: list[str] = (
+    member_id: list[str] = (
         odm.Keyword(
             description="group of person to whom can modify this action.",
             optional=True,

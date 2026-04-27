@@ -200,7 +200,11 @@ def update_dossier(dossier_id: str, dossier_data: dict[str, Any], user: User) ->
 
     # Enforce access control for global dossiers
     # Only the owner or admin users can modify global dossiers
-    if existing_dossier.type == "global" and existing_dossier.owner != user.uname and "admin" not in user.type:
+    # TODO : AG : verify this work to only allow "member" to modify it
+    is_member: bool = existing_dossier.owner != (
+        user.uname or existing_dossier.admin != user.uname or existing_dossier.member != user.uname
+    )
+    if existing_dossier.type == "global" and (is_member) and "admin" not in user.type:
         raise ForbiddenException("Only the owner of a dossier and administrators can edit a global dossier.")
 
     # Validate pivot configurations if they're being updated

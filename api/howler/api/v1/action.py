@@ -136,6 +136,8 @@ def update_action(id: str, user: User, **_) -> Response:
     if not existing_action:
         return not_found(err="The specified automation does not exist")
 
+    # TODO: AG : This is clearly the section to modify actions
+    # to verify I should look how the user object work
     if "automation_advanced" not in user.type and updated_action.get("triggers", []) != existing_action.get(
         "triggers", []
     ):
@@ -187,7 +189,7 @@ def delete_action(id: str, user: User, **kwargs) -> Response:
     action: Action = result["items"][0]
 
     # TODO AG : verify if this work same as dossier and view
-    if (action.owner_id != user.uname or action.admin_id != user.uname ) and "admin" not in user.type:
+    if (action.owner_id != user.uname or action.admin_id != user.uname) and "admin" not in user.type:
         return forbidden(err="You do not have the permissions necessary to delete this action.")
 
     try:
