@@ -1,4 +1,4 @@
 #!/bin/bash
 cd $(dirname $(dirname $0))
 pwd
-npx prettier -c -w src --cache
+npx prettier -c -w src --cache --cache-strategy metadata
