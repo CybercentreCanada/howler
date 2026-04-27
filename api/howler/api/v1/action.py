@@ -103,7 +103,7 @@ def update_action(id: str, user: User, **_) -> Response:
     """Update an existing action
 
     Variables:
-    id  => id of the aciton to update
+    id  => id of the action to update
 
     Optional Arguments:
     None
@@ -155,7 +155,14 @@ def update_action(id: str, user: User, **_) -> Response:
     try:
         action_obj = Action(updated_action)
         action_obj.action_id = id
-
+        # TODO : AG : this I think is where I need to add the check for who is doing the change. Hopefully it is
+        # I would need to verify what format the variables here are. Probably by running it somehow
+        # since this one has a chance to always says its true since we recreate the object
+        is_member: bool = (
+            action_obj.owner_id != user.uname or action_obj.admin_id != user.uname or action_obj.member_id != user.uname
+        )
+        if not is_member and "admin" not in user.type:
+            return forbidden(err="Updating triggers requires the role 'automation_advanced'.")
         ds.action.save(action_obj.action_id, action_obj)
         ds.action.commit()
     except HowlerException as e:

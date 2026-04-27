@@ -204,8 +204,8 @@ def update_dossier(dossier_id: str, dossier_data: dict[str, Any], user: User) ->
     is_member: bool = existing_dossier.owner != (
         user.uname or existing_dossier.admin != user.uname or existing_dossier.member != user.uname
     )
-    if existing_dossier.type == "global" and (is_member) and "admin" not in user.type:
-        raise ForbiddenException("Only the owner of a dossier and administrators can edit a global dossier.")
+    if existing_dossier.type == "global" and not is_member and "admin" not in user.type:
+        raise ForbiddenException("Only the members of a dossier and administrators can edit a global dossier.")
 
     # Validate pivot configurations if they're being updated
     # Ensure no duplicate mapping keys exist within any pivot
