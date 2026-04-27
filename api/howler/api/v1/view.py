@@ -337,17 +337,18 @@ def __is_allowed_to_change(priv_request: str, user: User, existing_view: View) -
     user => The user requesting the change
     existing_view => The view that will be change
     """
+    if "admin" in user.type:
+        return None
+
     if priv_request not in existing_view.get_priviledge_mapping():
         return bad_request(err=f"Wrong request. This priviledge {priv_request} does not exist.")
 
-    is_view_admin: bool = user.uname in existing_view.admin or user.uname in existing_view.owner
-
-    if not is_view_admin and "admin" not in user.type:
+    is_view_admin: bool = (user.uname in existing_view.admin) or (user.uname in existing_view.owner)
+    if not is_view_admin:
         return bad_request(err="You cannot give administrative priviledge for this view.")
 
-    if priv_request == "owner" and user.uname not in existing_view.owner and not "admin" not in user.type:
+    if priv_request == "owner" and (user.uname not in existing_view.owner):
         return bad_request(err="You cannot give owner priviledge for this view.")
-    # use the maping to update the list to the proper priviledge
 
     return None
 
@@ -388,7 +389,7 @@ def give_priviledge(view_id: str, user: User, **kwargs):
         priv_request=priv_request, user=user, existing_view=existing_view
     )
 
-    if isinstance(result, Response):
+    if isinstance(is_allowed, Response):
         return is_allowed
 
     if user_add in priv_map[priv_request]:
@@ -399,7 +400,6 @@ def give_priviledge(view_id: str, user: User, **kwargs):
     storage.view.save(existing_view.view_id, existing_view)
 
     storage.view.commit()
-
     return ok(storage.view.get_if_exists(existing_view.view_id, as_obj=False))
 
 

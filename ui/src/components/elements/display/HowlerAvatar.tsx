@@ -11,11 +11,11 @@ type HowlerAvatarProps = AvatarProps & {
 };
 
 const HowlerAvatar: FC<HowlerAvatarProps> = ({ userId, ...avatarProps }) => {
+  userId = userId[0];
   const { t } = useTranslation();
   const { getAvatar } = useContext(AvatarContext);
   const theme = useTheme();
   const [props, setProps] = useState<{ sx?: SxProps<Theme>; children?: ReactNode | ReactNode[]; src?: string }>();
-
   const stringAvatar = useCallback(
     (name: string) => {
       return {

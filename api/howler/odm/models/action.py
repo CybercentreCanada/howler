@@ -46,3 +46,10 @@ class Action(odm.Model):
         default=[],
         description="A list of the operations this action consists of.",
     )
+
+    def get_priviledge_mapping(self) -> dict:
+        return {
+            "administrator": self.admin_id,
+            "member": self.member_id,
+            "owner": self.owner_id,
+        }

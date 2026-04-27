@@ -242,8 +242,6 @@ def give_priviledge(id: str, user: User, **kwargs):
     {
         "priviledge": "priviledge to give"  # [member, administrator, owner]
         "user_id": "user to give permission to"
-        "priviledge: member # need to be one of [member, administrator, owner]
-        "user_id": user_name # user id of the user to give persmission
     }
 
     """
@@ -282,8 +280,7 @@ def revoke_priviledge(id: str, user: User, **kwargs):
 
     Data Block:
     {
-        "priviledge: member # need to be one of [member, administrator, owner]
-        "user_id": user_name # user id of the user to give persmission
+
     }
 
     """

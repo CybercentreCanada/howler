@@ -47,6 +47,10 @@ const ActionDetails = () => {
     async e => {
       let newTriggers = action.triggers ?? [];
 
+      console.log('owner_id FULL:', action.owner_id);
+      console.log('isArray:', Array.isArray(action.owner_id));
+      console.log('OWNER DEBUG:', action.owner_id, typeof action.owner_id);
+
       if (e.target.checked && !newTriggers.includes(e.target.name)) {
         newTriggers.push(e.target.name);
       } else if (!e.target.checked && newTriggers.includes(e.target.name)) {

@@ -419,24 +419,19 @@ def __priviledge_value_verifications(
 
 
 def __is_allowed_to_change(priv_request: str, user: User, existing_action: Action) -> None | Response:
-    """Verify for privilege request if they are allowed to request the change or not.
+    if "admin" in user.type:
+        return None  # global override
 
-    Variables:
-    priv_request => The priviledge level requested base on the string from the object [administrator, member, owner]
-    user => The user requesting the change
-    existing_action => The Action that will be change
-    """
     if priv_request not in existing_action.get_priviledge_mapping():
-        return bad_request(err=f"Wrong request. This priviledge {priv_request} does not exist.")
+        return bad_request(err=f"Wrong request. This privilege {priv_request} does not exist.")
 
-    is_action_admin: bool = user.uname in existing_action.admin_id or user.uname in existing_action.owner_id
+    is_action_admin = user.uname in existing_action.admin_id or user.uname in existing_action.owner_id
 
-    if not is_action_admin and "admin" not in user.type:
-        return bad_request(err="You cannot give administrative priviledge for this Action.")
+    if not is_action_admin:
+        return bad_request(err="You cannot give administrative privilege for this Action.")
 
-    if priv_request == "owner" and user.uname not in existing_action.owner and not "admin" not in user.type:
-        return bad_request(err="You cannot give owner priviledge for this Action.")
-    # use the maping to update the list to the proper priviledge
+    if priv_request == "owner" and user.uname not in existing_action.owner_id:
+        return bad_request(err="You cannot give owner privilege for this Action.")
 
     return None
 
@@ -444,7 +439,7 @@ def __is_allowed_to_change(priv_request: str, user: User, existing_action: Actio
 @generate_swagger_docs()
 @action_api.route("/<id>/permission", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
-def give_priviledge(action_id: str, user: User, **kwargs):
+def give_priviledge(id: str, user: User, **kwargs):
     """give permission from one user to an other.
 
     The json object need to send "priviledge", "user_id" as a key.
@@ -463,7 +458,7 @@ def give_priviledge(action_id: str, user: User, **kwargs):
         "success": True     # If the operation succeeded
     }
     """
-    result = __priviledge_value_verifications(action_id)
+    result = __priviledge_value_verifications(id)
 
     if isinstance(result, Response):
         return result
@@ -477,13 +472,20 @@ def give_priviledge(action_id: str, user: User, **kwargs):
         priv_request=priv_request, user=user, existing_action=existing_action
     )
 
-    if isinstance(result, Response):
+    print(
+        f"User : {user.uname} was {is_allowed} to change the action with member ship : OWNERS : {existing_action.owner_id} | ADMINISTRATORS : {existing_action.admin_id} | MEMBER : {existing_action.member_id}"
+    )
+
+    if isinstance(is_allowed, Response):
         return is_allowed
 
     if user_add in priv_map[priv_request]:
         return bad_request(err=f"{user_add} already have the permission {priv_request}")
 
     priv_map[priv_request].append(str(user_add))
+    print(
+        f"actual ownership of the action : OWNERS : {existing_action.owner_id} | ADMINISTRATORS : {existing_action.admin_id} | MEMBER : {existing_action.member_id}"
+    )
 
     storage.action.save(existing_action.action_id, existing_action)
 
@@ -495,7 +497,7 @@ def give_priviledge(action_id: str, user: User, **kwargs):
 @generate_swagger_docs()
 @action_api.route("/<id>/permission", methods=["DELETE"])
 @api_login(required_priv=["R", "W"])
-def revoke_priviledge(action_id: str, user: User, **kwargs):
+def revoke_priviledge(id: str, user: User, **kwargs):
     """give permission from one user to an other.
 
     The json object need to send "priviledge", "user_id" as a key.
@@ -514,7 +516,7 @@ def revoke_priviledge(action_id: str, user: User, **kwargs):
         "success": True     # If the operation succeeded
     }
     """
-    result = __priviledge_value_verifications(action_id=action_id, is_adding=False)
+    result = __priviledge_value_verifications(action_id=id, is_adding=False)
 
     if isinstance(result, Response):
         return result

@@ -144,8 +144,12 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@firebase/util",
+      "@swc/core",
       "esbuild",
-      "msw"
+      "msw",
+      "protobufjs",
+      "rxdb"
     ]
   },
   "repository": {
