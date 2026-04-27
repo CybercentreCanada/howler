@@ -14,6 +14,7 @@ import AppSwitcher from 'commons/components/topnav/AppSwitcher';
 import { Notifications } from 'commons/components/topnav/Notifications';
 import ThemeSelectionIcon from 'commons/components/topnav/ThemeSelectionIcon';
 import UserProfile from 'commons/components/topnav/UserProfile';
+import SystemHealthStatus from 'components/elements/SystemHealthStatus';
 import { memo, useCallback, useLayoutEffect, useMemo } from 'react';
 
 export const AppBarBase = ({ children }) => {
@@ -122,6 +123,7 @@ const AppBar = () => {
       >
         {renderLeft()}
         <div style={{ flex: 1 }} />
+        <SystemHealthStatus />
         {rightBeforeSearch}
         {quicksearch.show && <AppSearch />}
         <Notifications />

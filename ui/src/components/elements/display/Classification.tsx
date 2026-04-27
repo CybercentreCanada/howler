@@ -23,7 +23,7 @@ const Classification: FC = () => {
     [config.c12nDef?.levels_styles_map, label]
   );
 
-  return <Chip label={t(label)} color={color} sx={{ mr: 1, fontSize: '.9rem', p: 2, textTransform: 'uppercase' }} />;
+  return <Chip label={t(label)} color={color} sx={{ ml: 1, mr: 1, fontSize: '.9rem', p: 2, textTransform: 'uppercase' }} />;
 };
 
 export default Classification;
