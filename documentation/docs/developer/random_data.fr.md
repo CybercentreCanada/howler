@@ -43,11 +43,11 @@ Le script crée plusieurs utilisateurs prédéfinis pour tester différents scé
 
 | Nom d'utilisateur | Mot de passe | Type | Description |
 |-------------------|--------------|------|-------------|
-| `admin` | `admin` (ou `$DEV_ADMIN_PASS`) | admin, user, automation_basic, automation_advanced | Accès admin complet avec plusieurs clés API |
-| `user` | `user` (ou `$DEV_USER_PASS`) | user | Utilisateur standard avec clés d'impersonnalisation |
+| `admin` | `admin` (ou `$DEV_ADMIN_PASS`) | admin, user, automation_basic, automation_advanced, actionrunner_basic, actionrunner_advanced | Accès admin complet avec plusieurs clés API |
+| `user` | `user` (ou `$DEV_USER_PASS`) | user, actionrunner_basic | Utilisateur standard avec clés d'usurpation d'identité |
 | `shawn-h` | `shawn-h` | admin, user | Utilisateur admin pour les tests |
 | `goose` | `goose` | admin, user | Utilisateur admin pour les tests |
-| `huey` | `huey` | user | Utilisateur standard pour les tests |
+| `huey` | `huey` | user, actionrunner_basic | Utilisateur standard pour les tests |
 
 <!-- markdownlint-disable -->
 ??? tip "Mots de passe personnalisés"

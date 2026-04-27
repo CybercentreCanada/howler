@@ -51,7 +51,7 @@ export interface APILookups {
   techniques: { [index: string]: { key: string; name: string; url: string } };
   tactics: { [index: string]: { key: string; name: string; url: string } };
   icons: string[];
-  roles: ['admin', 'automation_advanced', 'automation_basic', 'user'];
+  roles: ['admin', 'actionrunner_advanced', 'actionrunner_basic', 'automation_advanced', 'automation_basic', 'user'];
 }
 
 export interface APIConfiguration {

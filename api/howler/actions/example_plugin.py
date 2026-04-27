@@ -67,7 +67,7 @@ def specification():
         },
         # What roles should be necessary to run this action? In general, automation_basic should always be required,
         # while automation_advanced should be set when this action could be dangerous or costly in terms of resources.
-        "roles": ["automation_basic"],
+        "roles": ["automation_basic", "actionrunner_basic"],
         # What data should the user be required to provide? This is split intop steps, so arguments can depend on each
         # other, giving basic control flow for specifying arguments.
         "steps": [
