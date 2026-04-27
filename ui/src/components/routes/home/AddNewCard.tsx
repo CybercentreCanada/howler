@@ -96,7 +96,7 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard) =>
   }, []);
 
   const filteredAnalyticVisualizations = useMemo(() => {
-    const existingAnalyticCards = dashboard.filter(_card => _card.type === "analytic");
+    const existingAnalyticCards = dashboard.filter(_card => _card.type === 'analytic');
     return VISUALIZATIONS.filter(viz => {
       return !existingAnalyticCards.some(_card => {
         const parsedConfig = JSON.parse(_card.config);

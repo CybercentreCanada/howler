@@ -108,7 +108,6 @@
     "eslint-plugin-react-refresh": "^0.5.2",
     "glob": "^11.1.0",
     "http-proxy-middleware": "^2.0.9",
-    "lint-staged": "^15.5.2",
     "msw": "^2.13.4",
     "prettier": "^3.8.3",
     "prettier-plugin-organize-imports": "^3.2.4",
@@ -121,11 +120,6 @@
   "jest": {
     "transformIgnorePatterns": [
       "!node_modules/url-join"
-    ]
-  },
-  "lint-staged": {
-    "src/**/*.{ts,tsx,js,jsx}": [
-      "prettier --write"
     ]
   },
   "name": "@cccsaurora/howler-ui",

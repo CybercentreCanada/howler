@@ -69,7 +69,6 @@ The Howler UI is built with modern web technologies:
 - **Vitest** - Fast unit testing framework (Vite-native)
 - **ESLint** - Code linting with TypeScript, React, and Prettier integration
 - **Prettier** - Code formatting
-- **lint-staged** - Run linters on staged files
 
 ## Visual Studio Code
 
