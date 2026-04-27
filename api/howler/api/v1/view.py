@@ -137,7 +137,11 @@ def delete_view(view_id: str, user: User, **kwargs):
 
     # TODO: AG verify this work properly. Allowing the view admin to delete the branch as well.
     if (existing_view.owner != user.uname and "admin" not in user.type) or existing_view.admin != user.uname:
+<<<<<<< HEAD
         return forbidden(err="You cannot delete a view unless you are an administrator, or the owner.")
+=======
+        return forbidden(err="You cannot delete a view unless you are an administrator, the owner or the view admin.")
+>>>>>>> 208d5f3 (updated dossier to allow dossier admin to delete them as well)
 
     if existing_view.type == "readonly":
         return forbidden(err="You cannot delete built-in views.")

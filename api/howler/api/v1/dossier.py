@@ -170,8 +170,10 @@ def delete_dossier(id: str, user: User, **kwargs):
     if not existing_dossier:
         return not_found(err="This dossier does not exist")
 
-    if existing_dossier.owner != user.uname and "admin" not in user.type:
-        return forbidden(err="You cannot delete a dossier unless you are an administrator, or the owner.")
+    if (existing_dossier.owner != user.uname and "admin" not in user.type) or existing_dossier.admin != user.uname:
+        return forbidden(
+            err="You cannot delete a dossier unless you are an administrator, the owner or dossier administrator."
+        )
 
     success = storage.dossier.delete(id)
 
