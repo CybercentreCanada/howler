@@ -25,19 +25,26 @@ class View(odm.Model):
         values=["personal", "global", "readonly"],
         description="The type of view",
     )
-    owner: str = odm.Keyword(
-        description="The person to whom this view belongs.",
+
+    owner: list[str] = odm.List(
+        odm.Keyword(),
+        description="The group of person to whom this view belongs.",
+        default=[],
         optional=True,
     )
-    # TODO: AG - Find how to allow multiple owners.
-    # From the docs, this is used to query data. We want to avoid
-    # heavy modifications so that search functionality remains intact,
-    # but we need to support more than one member.
-    admin: str = odm.Keyword(
-        description="group of person to whom can administer this view.",
+
+    admin: str = odm.List(
+        odm.Keyword(),
+        description="The group of person to whom administer this view.",
+        default=[],
         optional=True,
     )
-    member: str = odm.Keyword(description="group of person to whom can modify this view.", optional=True)
+    member: str = odm.List(
+        odm.Keyword(),
+        description="The group of person to whom can modify the view.",
+        default=[],
+        optional=True,
+    )
     settings: Settings = odm.Compound(
         Settings, description="Additional View Settings", default={"advance_on_triage": False}
     )

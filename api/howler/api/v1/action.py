@@ -161,7 +161,7 @@ def update_action(id: str, user: User, **_) -> Response:
         is_member: bool = (
             action_obj.owner_id != user.uname or action_obj.admin_id != user.uname or action_obj.member_id != user.uname
         )
-        if not is_member and "admin" not in user.type:
+        if not is_member and "automation_advanced" not in user.type:
             return forbidden(err="Updating triggers requires the role 'automation_advanced'.")
         ds.action.save(action_obj.action_id, action_obj)
         ds.action.commit()

@@ -179,6 +179,7 @@ def update_view(view_id: str, user: User, **kwargs):
         return bad_request(err="Invalid data format")
 
     if set(new_data.keys()) & {"view_id", "owner"}:
+        # TODO : AG : Should I do this here insted ?
         return bad_request(err="You cannot change the owner or id of a view.")
 
     existing_view: View = storage.view.get_if_exists(view_id)
@@ -277,6 +278,7 @@ def remove_as_favourite(view_id: str, **kwargs):
     try:
         current_user = storage.user.get_if_exists(kwargs["user"]["uname"])
 
+        # TODO : AG : This is a good example on how to use the list[str] Adapt everything to this !!!!!!!!
         current_favourites: list[str] = current_user.favourite_views
 
         if view_id not in current_favourites:
@@ -289,3 +291,46 @@ def remove_as_favourite(view_id: str, **kwargs):
         return no_content()
     except ValueError as e:
         return bad_request(err=str(e))
+
+
+@generate_swagger_docs()
+@view_api.route("/<view_id>", methods=["PUT"])
+@api_login(required_priv=["R", "W"])
+# TODO : AG : find a better name
+def give_admin_priviledge(view_id: str, user: User, **kwargs):
+    """Transfer ownership from one user to an other.
+
+    Variables:
+    view_id => The id of the view to give administrative priviledge of
+
+
+    Optional Arguments:
+    None
+
+    Result Example:
+    {
+        "success": True     # If the operation succeeded
+    }
+    """
+    storage = datastore()
+    new_data = request.json
+    if not isinstance(new_data, dict):
+        return bad_request(err="Invalid data format")
+
+    # TODO : AG : will need to create that when calling the function ( the admin_uid value )
+    if not set(new_data.keys()) & {"admin_uid"}:
+        return bad_request(err="Invalid data format. Need new admin user_id")
+
+    existing_view: View = storage.view.get_if_exists(view_id)
+    if not existing_view:
+        return not_found(err="This view does not exist")
+
+    # TODO: Should admin be allowed to add other admin ? I assumed so ?
+    if (user.uname not in existing_view.owner) or (user.uname not in existing_view.admin):
+        return bad_request(err="You cannot give administrative priviledge of this view.")
+
+    # we give the new user admin priviledge
+    # TODO : AG : Tomorrow. Add it to the list once that's done generalise the function so we can call
+    # one when we change roles. They all where move to list so probably have to go back into the checks before.
+
+    return
