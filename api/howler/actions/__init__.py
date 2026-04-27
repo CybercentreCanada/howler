@@ -190,7 +190,8 @@ def execute(
                 "title": "Insufficient permissions",
                 "message": (
                     f"The operation ID provided ({operation_id}) requires permissions you do not have "
-                    f"(missing one of: {', '.join(sorted(required_roles))}). Contact HOWLER Support for more information."
+                    f"(missing one of: {', '.join(sorted(required_roles))}). "
+                    "Contact HOWLER Support for more information."
                 ),
             }
         ]
