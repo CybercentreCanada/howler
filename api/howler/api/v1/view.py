@@ -135,7 +135,8 @@ def delete_view(view_id: str, user: User, **kwargs):
     if not existing_view:
         return not_found(err="This view does not exist")
 
-    if existing_view.owner != user.uname and "admin" not in user.type:
+    # TODO: AG verify this work properly. Allowing the view admin to delete the branch as well.
+    if (existing_view.owner != user.uname and "admin" not in user.type) or existing_view.admin != user.uname:
         return forbidden(err="You cannot delete a view unless you are an administrator, or the owner.")
 
     if existing_view.type == "readonly":
