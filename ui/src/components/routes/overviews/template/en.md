@@ -31,9 +31,9 @@ Quoting from [handlebarsjs.com](https://handlebarsjs.com/guide/):
 >
 > It uses a template and an input object to generate HTML or other text formats. Handlebars templates look like regular text with embedded Handlebars expressions.
 >
->```html
+> ```html
 > <p>{{curly "firstname"}} {{curly "lastname"}}</p>
->```
+> ```
 >
 > A handlebars expression is a double curly bracket, some contents, followed by a set of closing double curly brackets. When the template is executed, these expressions are replaced with values from an input object.
 
@@ -59,17 +59,16 @@ For more information on handlebars, check out:
 You can use handlebars for template replacement throughout your markdown. Below is an example table using handlebars and markdown:
 
 ```markdown
-
-| Source IP | Destination IP |
-| --- | --- |
-| {{curly "source.ip"}} |{{curly "destination.ip"}} |
+| Source IP             | Destination IP             |
+| --------------------- | -------------------------- |
+| {{curly "source.ip"}} | {{curly "destination.ip"}} |
 ```
 
 renders as:
 
-| Source IP | Destination IP |
-| --- | --- |
-| {{source.ip}} |{{destination.ip}} |
+| Source IP     | Destination IP     |
+| ------------- | ------------------ |
+| {{source.ip}} | {{destination.ip}} |
 
 ## Advanced Handlebars
 

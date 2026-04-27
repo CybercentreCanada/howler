@@ -49,10 +49,6 @@ if "devDependencies" in package_json:
     print("\tRemoving devDependencies key")
     del package_json["devDependencies"]
 
-if "lint" in package_json:
-    print("\tRemoving lint-staged key")
-    del package_json["lint-staged"]
-
 if "scripts" in package_json:
     print("\tRemoving scripts key")
     del package_json["scripts"]
