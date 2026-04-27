@@ -131,12 +131,12 @@ coverage = { extras = ["toml"], version = "^7.6.1" }
 diff-cover = "^9.2.0"
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.6.8"
+ruff = ">=0.6.8,<0.16.0"
 pre-commit = "^3.8.0"
 mypy = "^1.11.2"
 
 [tool.poetry.group.test.dependencies]
-pytest = "^8.3.3"
+pytest = ">=8.3.3,<10.0.0"
 pytest-cov = "^5.0.0"
 passlib = "^1.7.4"
 

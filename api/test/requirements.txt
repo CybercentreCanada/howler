@@ -7,13 +7,13 @@ mock==5.2.0
 pyftpdlib==1.5.10
 pyopenssl==26.0.0
 mock==5.2.0
-mypy==1.20.1
+mypy==1.20.2
 mypy-extensions==1.1.0
 # assemblyline_client==4.5.0
-types-PyYAML==6.0.12.20250915
+types-PyYAML==6.0.12.20260408
 types-paramiko==3.5.0.20250801
 types-pyOpenSSL==23.3.0.20240106
 types-redis==4.6.0.20241004
-types-six==1.17.0.20251009
-types-requests==2.32.4.20260107
+types-six==1.17.0.20260408
+types-requests==2.33.0.20260408
 websocket-client==1.9.0

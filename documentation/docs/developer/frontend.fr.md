@@ -69,7 +69,6 @@ L'interface utilisateur Howler est construite avec des technologies web modernes
 - **Vitest** - Framework de tests unitaires rapide (natif Vite)
 - **ESLint** - Linting de code avec intégration TypeScript, React et Prettier
 - **Prettier** - Formatage de code
-- **lint-staged** - Exécuter les linters sur les fichiers mis en scène
 
 ## Visual Studio Code
 
