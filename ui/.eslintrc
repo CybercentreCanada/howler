@@ -33,6 +33,14 @@
     }
   ],
   "rules": {
+    "import/no-unresolved": [
+      "error",
+      {
+        "ignore": [
+          "uuid"
+        ]
+      }
+    ],
     "@typescript-eslint/consistent-type-imports": "error",
     "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
     "@typescript-eslint/no-explicit-any": "off",
