@@ -693,7 +693,7 @@ def test_update_action_success(datastore: HowlerDatastore, login_session):
     assert resp["name"] == "Test Update action"
 
 
-def test_update_action_failed(datastore: HowlerDatastore, login_session):
+def test_update_action_forbidden(datastore: HowlerDatastore, login_session):
     __, host = login_session
 
     session = requests.Session()
@@ -711,4 +711,25 @@ def test_update_action_failed(datastore: HowlerDatastore, login_session):
             data=json.dumps(req),
         )
 
-    assert "Updating triggers" in str(err)
+    assert "Updating triggers requires the role" in str(err)
+
+
+def test_update_action_failed(datastore: HowlerDatastore, login_session):
+    __, host = login_session
+
+    session = requests.Session()
+    session.headers.update({"Authorization": f"Basic {base64.b64encode(b'admin:admin').decode('utf-8')}"})
+
+    action_id = datastore.action.search("*:*", rows=1)["items"][0]["action_id"]
+
+    req = {"triggers": ["trigger no existy"]}
+
+    with pytest.raises(APIError) as err:
+        get_api_data(
+            session,
+            f"{host}/api/v1/action/{action_id}",
+            method="PUT",
+            data=json.dumps(req),
+        )
+
+    assert "Invalid trigger provided" in str(err)
