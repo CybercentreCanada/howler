@@ -49,9 +49,9 @@ repos:
         language: script
         stages: [pre-commit]
         files: ^plugins/sentinel/.*\.(toml|lock)
-      - id: lint-staged
-        name: UI Linting
-        entry: hooks/lint_staged.sh
+      - id: prettier
+        name: prettier
+        entry: hooks/prettier.sh
         language: script
         stages: [pre-commit]
         files: ^ui/.*

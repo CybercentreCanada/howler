@@ -46,8 +46,6 @@ datastore:
     - name: elasticsearch
       scheme: http
       host: elasticsearch:9200
-      username: elastic
-      password: devpass
 
 logging:
   log_level: INFO

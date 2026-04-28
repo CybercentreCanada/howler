@@ -1,6 +1,7 @@
 import inspect
 from typing import Optional, cast
 
+from howler.actions import check_hit_limit
 from howler.common.exceptions import InvalidDataException, NotFoundException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -17,6 +18,9 @@ from howler.services import event_service, hit_service
 from howler.utils.list_utils import flatten_list
 
 OPERATION_ID = "transition"
+MAX_HITS_BASIC = 10
+MAX_HITS_ADVANCED = 1000
+SKIP_CENTRAL_LIMIT = True  # This operation transforms the query, handles limit check locally
 
 log = get_logger(__file__)
 
@@ -70,8 +74,17 @@ def execute(
         status (str): The status from which to transition.
         transition (str): The transition to attempt to execute.
     """
-    rows = 1000 if "automation_advanced" in user.type else 10
-    hits = datastore().hit.search(f"({query}) AND howler.status:{status}", rows=rows, fl="howler.id")
+    # Build effective query with status filter
+    effective_query = f"({query}) AND howler.status:{status}"
+
+    # Check hit limit against the effective query (not raw query)
+    limit_error = check_hit_limit(effective_query, user, MAX_HITS_BASIC, MAX_HITS_ADVANCED)
+    if limit_error:
+        return [limit_error]
+
+    is_advanced = "automation_advanced" in user.type or "actionrunner_advanced" in user.type or "admin" in user.type
+    rows = MAX_HITS_ADVANCED if is_advanced else MAX_HITS_BASIC
+    hits = datastore().hit.search(effective_query, rows=rows, fl="howler.id")
 
     ids = [hit.howler.id for hit in hits["items"]]
 
@@ -176,7 +189,7 @@ def specification():
             "short": "Transition a hit",
             "long": execute.__doc__,
         },
-        "roles": ["automation_basic"],
+        "roles": ["automation_basic", "actionrunner_basic"],
         "steps": [
             {
                 "args": {"status": []},

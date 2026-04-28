@@ -29,7 +29,7 @@ const ActionIntroductionDocumentation: FC = () => {
   useEffect(() => {
     api.action.operations
       .get()
-      .then(_operations => _operations.filter(a => difference(a.roles, user.roles).length < 1))
+      .then(_operations => _operations.filter(a => difference(a.roles, user.roles).length < a.roles.length))
       .then(setOperations)
       // eslint-disable-next-line no-console
       .catch(console.debug);

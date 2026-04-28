@@ -5,6 +5,7 @@ from typing import Any, cast
 
 import pytest
 
+from howler.config import CLASSIFICATION
 from howler.datastore.collection import ESCollection
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm import Model
@@ -850,6 +851,7 @@ def test_overwrite_hit(datastore: HowlerDatastore, login_session):
     session, host = login_session
 
     hit_to_update: Hit = random_model_obj(cast(Model, Hit))
+    hit_to_update.classification = CLASSIFICATION.UNRESTRICTED
     datastore.hit.save(hit_to_update.howler.id, hit_to_update)
     datastore.hit.commit()
 
@@ -878,6 +880,7 @@ def test_update_hit(datastore: HowlerDatastore, login_session):
     session, host = login_session
 
     hit_to_update: Hit = random_model_obj(cast(Model, Hit))
+    hit_to_update.classification = CLASSIFICATION.UNRESTRICTED
     datastore.hit.save(hit_to_update.howler.id, hit_to_update)
     datastore.hit.commit()
 

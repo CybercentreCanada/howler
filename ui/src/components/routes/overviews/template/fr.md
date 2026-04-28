@@ -31,9 +31,9 @@ Citation de [handlebarsjs.com](https://handlebarsjs.com/guide/) :
 >
 > Il utilise un template et un objet d'entrée pour générer du HTML ou d'autres formats de texte. Les templates Handlebars ressemblent à du texte normal avec des expressions Handlebars intégrées.
 >
->```html
+> ```html
 > <p>{{curly "firstname"}} {{curly "lastname"}}</p>
->```
+> ```
 >
 > Une expression handlebars est une double accolade, du contenu, suivi d'un ensemble d'accolades fermantes doubles. Lorsque le template est exécuté, ces expressions sont remplacées par des valeurs d'un objet d'entrée.
 
@@ -59,17 +59,16 @@ Pour plus d'informations sur handlebars, consultez :
 Vous pouvez utiliser handlebars pour le remplacement de template dans tout votre markdown. Voici un exemple de tableau utilisant handlebars et markdown :
 
 ```markdown
-
-| IP Source | IP Destination |
-| --- | --- |
-| {{curly "source.ip"}} |{{curly "destination.ip"}} |
+| IP Source             | IP Destination             |
+| --------------------- | -------------------------- |
+| {{curly "source.ip"}} | {{curly "destination.ip"}} |
 ```
 
 s'affiche comme :
 
-| IP Source | IP Destination |
-| --- | --- |
-| {{source.ip}} |{{destination.ip}} |
+| IP Source     | IP Destination     |
+| ------------- | ------------------ |
+| {{source.ip}} | {{destination.ip}} |
 
 ## Handlebars avancés
 

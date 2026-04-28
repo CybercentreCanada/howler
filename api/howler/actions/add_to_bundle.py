@@ -2,16 +2,21 @@
 
 from typing import Optional
 
+from howler.actions import check_hit_limit
 from howler.common.exceptions import NotFoundException
 from howler.common.loader import datastore
 from howler.odm.models.action import VALID_TRIGGERS
+from howler.odm.models.user import User
 from howler.services import bundle_compat_service, case_service
 from howler.utils.str_utils import sanitize_lucene_query
 
 OPERATION_ID = "add_to_bundle"
+MAX_HITS_BASIC = 10
+MAX_HITS_ADVANCED = 1000
+SKIP_CENTRAL_LIMIT = True  # This operation transforms the query, handles limit check locally
 
 
-def execute(query: str, bundle_id: Optional[str] = None, **kwargs):
+def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = None, **kwargs):  # noqa: C901
     """Add a set of hits matching the query to the specified bundle (deprecated — uses cases).
 
     Args:
@@ -44,7 +49,14 @@ def execute(query: str, bundle_id: Optional[str] = None, **kwargs):
             return report
 
         ds = datastore()
-        matching_hits = ds.hit.search(query, rows=1000)["items"]
+
+        # Check hit limit against the query before searching
+        if user:
+            limit_error = check_hit_limit(query, user, MAX_HITS_BASIC, MAX_HITS_ADVANCED)
+            if limit_error:
+                return [limit_error]
+
+        matching_hits = ds.hit.search(query, rows=MAX_HITS_ADVANCED)["items"]
 
         if not matching_hits:
             report.append(
@@ -125,7 +137,7 @@ def specification():
             "short": "Add a set of hits to a bundle (deprecated — uses cases)",
             "long": execute.__doc__,
         },
-        "roles": ["automation_basic"],
+        "roles": ["automation_basic", "actionrunner_basic"],
         "steps": [
             {
                 "args": {"bundle_id": []},

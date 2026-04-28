@@ -28,8 +28,8 @@ def main():  # noqa: C901
             env={"TESTING": "true", **os.environ},
         )
 
+        time.sleep(5)
         print("Running pytest")
-        time.sleep(2)
         _path = sys.argv[1] if len(sys.argv) > 1 else "test"
 
         pytest = subprocess.Popen(

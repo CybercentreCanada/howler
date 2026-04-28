@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 APP_NAME = os.environ.get("APP_NAME", "howler")
 APP_PREFIX = os.environ.get("APP_PREFIX", "hwl")
-USER_TYPES = {"admin", "user", "automation_basic", "automation_advanced"}
+USER_TYPES = {"admin", "user", "automation_basic", "automation_advanced", "actionrunner_basic", "actionrunner_advanced"}
 
 
 def env_substitute(buffer):

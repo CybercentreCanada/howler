@@ -10,6 +10,7 @@ import pytest
 import requests
 
 from howler.common import loader
+from howler.config import CLASSIFICATION
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.helper import generate_useful_hit
 from howler.odm.models.action import Action
@@ -247,10 +248,12 @@ def test_valid_action_on_triage(datastore: HowlerDatastore, login_session):
     users = [user.uname for user in datastore.user.search("*:*")["items"]]
 
     test_hit_promote = generate_useful_hit(lookups, users, False)
+    test_hit_promote.classification = CLASSIFICATION.UNRESTRICTED
     test_hit_promote.howler.analytic = "test_triage_assess_promote"
     datastore.hit.save(test_hit_promote.howler.id, test_hit_promote)
 
     test_hit_demote = generate_useful_hit(lookups, users, False)
+    test_hit_demote.classification = CLASSIFICATION.UNRESTRICTED
     test_hit_demote.howler.analytic = "test_triage_assess_demote"
     datastore.hit.save(test_hit_demote.howler.id, test_hit_demote)
 
@@ -690,7 +693,7 @@ def test_update_action_success(datastore: HowlerDatastore, login_session):
     assert resp["name"] == "Test Update action"
 
 
-def test_update_action_failed(datastore: HowlerDatastore, login_session):
+def test_update_action_forbidden(datastore: HowlerDatastore, login_session):
     __, host = login_session
 
     session = requests.Session()
@@ -708,4 +711,25 @@ def test_update_action_failed(datastore: HowlerDatastore, login_session):
             data=json.dumps(req),
         )
 
-    assert "Updating triggers" in str(err)
+    assert "Updating triggers requires the role" in str(err)
+
+
+def test_update_action_failed(datastore: HowlerDatastore, login_session):
+    __, host = login_session
+
+    session = requests.Session()
+    session.headers.update({"Authorization": f"Basic {base64.b64encode(b'admin:admin').decode('utf-8')}"})
+
+    action_id = datastore.action.search("*:*", rows=1)["items"][0]["action_id"]
+
+    req = {"triggers": ["trigger no existy"]}
+
+    with pytest.raises(APIError) as err:
+        get_api_data(
+            session,
+            f"{host}/api/v1/action/{action_id}",
+            method="PUT",
+            data=json.dumps(req),
+        )
+
+    assert "Invalid trigger provided" in str(err)

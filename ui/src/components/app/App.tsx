@@ -15,6 +15,7 @@ import useMyTheme from 'components/hooks/useMyTheme';
 import useMyUser from 'components/hooks/useMyUser';
 import LoginScreen from 'components/logins/Login';
 import useLogin from 'components/logins/hooks/useLogin';
+import PermissionDeniedPage from 'components/routes/403';
 import NotFoundPage from 'components/routes/404';
 import ErrorBoundary from 'components/routes/ErrorBoundary';
 import Logout from 'components/routes/Logout';
@@ -98,14 +99,14 @@ dayjs.extend(localizedFormat);
 
 loader.config({ monaco });
 
-const RoleRoute = ({ role }) => {
+const RoleRoute = ({ roles }) => {
   const appUser = useAppUser<HowlerUser>();
 
-  if (appUser.user?.roles?.includes(role)) {
+  if (roles.some((role: string) => appUser.user?.roles?.includes(role))) {
     return <Outlet />;
   }
 
-  return <NotFoundPage />;
+  return <PermissionDeniedPage />;
 };
 
 // Your application's initialization flow.
@@ -425,7 +426,17 @@ const createRouter = () =>
         },
         {
           path: 'action',
-          element: <RoleRoute role="automation_basic" />,
+          element: (
+            <RoleRoute
+              roles={[
+                'admin',
+                'automation_basic',
+                'automation_advanced',
+                'actionrunner_basic',
+                'actionrunner_advanced'
+              ]}
+            />
+          ),
           children: [
             {
               index: true,

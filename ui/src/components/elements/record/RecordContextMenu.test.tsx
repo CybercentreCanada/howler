@@ -10,6 +10,19 @@ vi.mock('api', { spy: true });
 
 setupContextSelectorMock();
 
+// Mock useAppUser hook
+const mockUseAppUser = vi.hoisted(() =>
+  vi.fn(() => ({
+    user: {
+      username: 'test-user',
+      roles: ['automation_basic', 'actionrunner_basic']
+    }
+  }))
+);
+vi.mock('commons/components/app/hooks/useAppUser', () => ({
+  useAppUser: mockUseAppUser
+}));
+
 // Mock react-router-dom
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async () => {
@@ -1337,6 +1350,136 @@ describe('HitContextMenu', () => {
           expect.objectContaining({ type: expect.any(Function) }),
           expect.objectContaining({ maxHeight: expect.any(String) })
         );
+      });
+    });
+  });
+
+  describe('Role-Based Action Permissions', () => {
+    afterEach(() => {
+      // Reset to default user with required roles
+      mockUseAppUser.mockReturnValue({
+        user: {
+          username: 'test-user',
+          roles: ['automation_basic', 'actionrunner_basic']
+        }
+      });
+    });
+
+    it('should disable actions menu when user lacks required roles', async () => {
+      mockUseAppUser.mockReturnValue({
+        user: {
+          username: 'test-user',
+          roles: ['user', 'viewer']
+        }
+      });
+
+      const mockActions = [createMockAction({ action_id: 'action-1', name: 'Custom Action 1' })];
+      mockDispatchApi.mockResolvedValue({ items: mockActions });
+
+      rerender(
+        <Wrapper>
+          <RecordContextMenu getSelectedId={mockGetSelectedId}>
+            <div>Test Content</div>
+          </RecordContextMenu>
+        </Wrapper>
+      );
+
+      act(() => {
+        const contextMenuWrapper = screen.getByText('Test Content').parentElement;
+        fireEvent.contextMenu(contextMenuWrapper);
+      });
+
+      await waitFor(() => {
+        const actionsMenuItem = screen.getByTestId('actions-menu-item');
+        expect(actionsMenuItem).toHaveAttribute('aria-disabled', 'true');
+      });
+    });
+
+    it('should enable actions menu when user has automation_basic role', async () => {
+      mockUseAppUser.mockReturnValue({
+        user: {
+          username: 'test-user',
+          roles: ['automation_basic']
+        }
+      });
+
+      const mockActions = [createMockAction({ action_id: 'action-1', name: 'Custom Action 1' })];
+      mockDispatchApi.mockResolvedValue({ items: mockActions });
+
+      rerender(
+        <Wrapper>
+          <RecordContextMenu getSelectedId={mockGetSelectedId}>
+            <div>Test Content</div>
+          </RecordContextMenu>
+        </Wrapper>
+      );
+
+      act(() => {
+        const contextMenuWrapper = screen.getByText('Test Content').parentElement;
+        fireEvent.contextMenu(contextMenuWrapper);
+      });
+
+      await waitFor(() => {
+        const actionsMenuItem = screen.getByTestId('actions-menu-item');
+        expect(actionsMenuItem).not.toHaveAttribute('aria-disabled', 'true');
+      });
+    });
+
+    it('should enable actions menu when user has actionrunner_advanced role', async () => {
+      mockUseAppUser.mockReturnValue({
+        user: {
+          username: 'test-user',
+          roles: ['actionrunner_advanced']
+        }
+      });
+
+      const mockActions = [createMockAction({ action_id: 'action-1', name: 'Custom Action 1' })];
+      mockDispatchApi.mockResolvedValue({ items: mockActions });
+
+      rerender(
+        <Wrapper>
+          <RecordContextMenu getSelectedId={mockGetSelectedId}>
+            <div>Test Content</div>
+          </RecordContextMenu>
+        </Wrapper>
+      );
+
+      act(() => {
+        const contextMenuWrapper = screen.getByText('Test Content').parentElement;
+        fireEvent.contextMenu(contextMenuWrapper);
+      });
+
+      await waitFor(() => {
+        const actionsMenuItem = screen.getByTestId('actions-menu-item');
+        expect(actionsMenuItem).not.toHaveAttribute('aria-disabled', 'true');
+      });
+    });
+
+    it('should still disable actions menu when user has roles but no actions available', async () => {
+      mockUseAppUser.mockReturnValue({
+        user: {
+          username: 'test-user',
+          roles: ['automation_advanced']
+        }
+      });
+      mockDispatchApi.mockResolvedValue({ items: [] });
+
+      rerender(
+        <Wrapper>
+          <RecordContextMenu getSelectedId={mockGetSelectedId}>
+            <div>Test Content</div>
+          </RecordContextMenu>
+        </Wrapper>
+      );
+
+      act(() => {
+        const contextMenuWrapper = screen.getByText('Test Content').parentElement;
+        fireEvent.contextMenu(contextMenuWrapper);
+      });
+
+      await waitFor(() => {
+        const actionsMenuItem = screen.getByTestId('actions-menu-item');
+        expect(actionsMenuItem).toHaveAttribute('aria-disabled', 'true');
       });
     });
   });

@@ -12,6 +12,7 @@ import {
   Terminal
 } from '@mui/icons-material';
 import api from 'api';
+import { useAppUser } from 'commons/components/app/hooks/useAppUser';
 import useMatchers from 'components/app/hooks/useMatchers';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { ModalContext } from 'components/app/providers/ModalProvider';
@@ -29,6 +30,7 @@ import type { Action } from 'models/entities/generated/Action';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Template } from 'models/entities/generated/Template';
+import type { HowlerUser } from 'models/entities/HowlerUser';
 import howlerPluginStore from 'plugins/store';
 import type { FC, PropsWithChildren } from 'react';
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
@@ -77,6 +79,7 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
   const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
   const { executeAction } = useMyActionFunctions();
+  const appUser = useAppUser<HowlerUser>();
   const { config } = useContext(ApiConfigContext);
   const { showModal } = useContext(ModalContext);
   const pluginStore = usePluginStore();
@@ -109,6 +112,15 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
   const { availableTransitions, canVote, canAssess, assess, vote } = useHitActions(hits);
 
   /**
+   * Checks if the current user has permission to run actions.
+   * Users must have one of the automation or actionrunner roles, or be an admin.
+   */
+  const canRunActions = useCallback(() => {
+    const roles = ['admin', 'automation_advanced', 'automation_basic', 'actionrunner_advanced', 'actionrunner_basic'];
+    return roles.some((role: string) => appUser.user?.roles?.includes(role));
+  }, [appUser.user?.roles]);
+
+  /**
    * Called by ContextMenu after the menu is positioned and opened.
    * Identifies the clicked record and fetches available actions.
    */
@@ -117,8 +129,12 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
       const _id = getSelectedId(event as React.MouseEvent<HTMLDivElement, MouseEvent>);
       setId(_id);
 
-      const _actions = (await dispatchApi(api.search.action.post({ query: 'action_id:*' }), { throwError: false }))
-        ?.items;
+      // TODO: Bumping the number of rows is a temporary fix - we'll need to improve this.
+      const _actions = (
+        await dispatchApi(api.search.action.post({ query: 'action_id:*', rows: 100, sort: 'name asc' }), {
+          throwError: false
+        })
+      )?.items;
 
       if (_actions) {
         setActions(_actions);
@@ -236,7 +252,7 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
         id: 'actions',
         icon: <SettingsSuggest />,
         label: t('route.actions.change'),
-        disabled: actions.length < 1,
+        disabled: actions.length < 1 || !canRunActions(),
         items: actions.map(action => ({
           key: action.action_id,
           label: action.name,

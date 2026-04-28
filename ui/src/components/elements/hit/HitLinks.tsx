@@ -22,7 +22,7 @@ const HitLinks: FC<{ hit?: Hit; analytic?: Analytic; dossiers: Dossier[] }> = ({
             .slice(0, 3)
             .map(l => (
               <Grid item key={l.href}>
-                <RelatedLink compact {...l} />
+                <RelatedLink compact {...l} target="_blank" rel="noopener noreferrer" />
               </Grid>
             ))}
         {sortBy(

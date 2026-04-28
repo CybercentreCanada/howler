@@ -1,3 +1,4 @@
+import { OpenInNew } from '@mui/icons-material';
 import {
   Box,
   Chip,
@@ -7,6 +8,7 @@ import {
   Tooltip,
   Typography,
   avatarClasses,
+  chipClasses,
   iconButtonClasses,
   useTheme,
   type TypographyProps
@@ -187,7 +189,10 @@ const HitBanner: FC<HitBannerProps> = ({ hit, lazy = false, layout = HitLayout.N
       display="grid"
       gridTemplateColumns="minmax(0, auto) minmax(0, 1fr) minmax(0, auto)"
       alignItems="stretch"
-      sx={{ width: '100%', ml: 0, overflow: 'hidden' }}
+      sx={{ width: '100%', ml: 0, overflow: 'hidden', textDecoration: 'none', color: 'text.primary' }}
+      component="a"
+      href={`/hits/${hit?.howler.id}`}
+      onClick={e => e.preventDefault()}
     >
       {leftBox}
       <Stack
@@ -300,6 +305,21 @@ const HitBanner: FC<HitBannerProps> = ({ hit, lazy = false, layout = HitLayout.N
       >
         <HitTimestamp hit={hit} layout={layout} />
         {showAssigned && <Assigned hit={hit} layout={layout} />}
+        {hit.howler.links?.[0]?.href && (
+          <Chip
+            icon={<OpenInNew />}
+            label={hit.howler.links[0].title || t('hit.header.link')}
+            size={layout !== HitLayout.COMFY ? 'small' : 'medium'}
+            component="a"
+            href={hit.howler.links[0].href}
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{ [`.${chipClasses.label}`]: { cursor: 'pointer !important' } }}
+            onClick={e => {
+              e.stopPropagation();
+            }}
+          />
+        )}
         <Stack direction="row" spacing={layout !== HitLayout.COMFY ? 0.5 : 1}>
           <EscalationChip hit={hit} layout={layout} />
           {['in-progress', 'on-hold'].includes(hit.howler.status) && (

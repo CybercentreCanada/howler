@@ -3,6 +3,7 @@ from typing import Any, Optional
 
 import pytest
 
+from howler.config import CLASSIFICATION
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.helper import create_users_with_username
 from howler.odm.models.howler_data import Assessment, HitStatusTransition, Status
@@ -18,6 +19,7 @@ transition_test_hit = {
         "assignment": "unassigned",
         "hash": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bc",
         "score": "0",
+        "classification": CLASSIFICATION.UNRESTRICTED,
     },
 }
 

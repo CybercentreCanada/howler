@@ -47,7 +47,7 @@ from howler.odm.models.user import User
 from howler.odm.models.view import View
 from howler.odm.randomizer import get_random_string, get_random_user, get_random_word, random_model_obj
 from howler.security.utils import get_password_hash
-from howler.services import analytic_service
+from howler.services import analytic_service, user_service
 
 classification = loader.get_classification()
 
@@ -121,7 +121,14 @@ def create_users(ds):
             "email": "admin@howler.cyber.gc.ca",
             "password": admin_hash,
             "uname": "admin",
-            "type": ["admin", "user", "automation_basic", "automation_advanced"],
+            "type": [
+                "admin",
+                "user",
+                "automation_basic",
+                "automation_advanced",
+                "actionrunner_basic",
+                "actionrunner_advanced",
+            ],
             "groups": [
                 "group1",
                 "group2",
@@ -157,6 +164,7 @@ def create_users(ds):
         {
             "name": "Dwight Schrute",
             "email": "user@howler.cyber.gc.ca",
+            "classification": classification.RESTRICTED,
             "apikeys": {
                 "devkey": {"acl": ["R", "W"], "password": user_hash},
                 "impersonate_admin": {
@@ -170,11 +178,20 @@ def create_users(ds):
                     "password": user_hash,
                 },
             },
+            "type": [
+                "user",
+                "automation_basic",
+                "actionrunner_basic",
+            ],
             "password": user_hash,
             "uname": "user",
             "favourite_views": [user_view.view_id],
         }
     )
+
+    c12n = user_service.get_dynamic_classification(user_data.as_primitives())
+    if c12n:
+        user_data.classification = c12n
 
     user_view = run_modifications("view", user_view)
     user_data = run_modifications("user", user_data)
@@ -217,6 +234,7 @@ def create_users(ds):
                     "password": huey_hash,
                 },
             },
+            "classification": classification.UNRESTRICTED,
             "password": huey_hash,
             "uname": "huey",
             "favourite_views": [huey_view.view_id],
@@ -251,6 +269,7 @@ def create_users(ds):
             "apikeys": {},
             "type": ["admin", "user"],
             "groups": ["group1", "group2"],
+            "classification": classification.UNRESTRICTED,
             "password": get_password_hash(shawnh_pass),
             "uname": "shawn-h",
             "favourite_views": [shawnh_view.view_id],
@@ -281,6 +300,7 @@ def create_users(ds):
             "apikeys": {},
             "type": ["admin", "user"],
             "groups": ["group1", "group2"],
+            "classification": classification.RESTRICTED,
             "password": get_password_hash(goose_pass),
             "uname": "goose",
             "favourite_views": [goose_view.view_id],
@@ -538,6 +558,7 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
         obs["howler"]["id"] for obs in ds.observable.search("howler.id:*", rows=200, as_obj=False)["items"]
     ]
     created_hit_ids: list[str] = []
+    hit_idx = 0
     for hit_idx in range(hit_count):
         hit = generate_useful_hit(
             lookups,
@@ -546,6 +567,10 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
             hit_ids=created_hit_ids,
             observable_ids=observable_ids,
         )
+
+        # Ensure the first 20 hits have unrestricted classification for test access
+        if hit_idx < 20:
+            hit.classification = classification.UNRESTRICTED
 
         if hit_idx + 1 == hit_count:
             hit.howler.analytic = "SecretAnalytic"
@@ -979,6 +1004,7 @@ def create_analytics(ds: HowlerDatastore, num_analytics: int = 10):
 
     fields = Hit.flat_fields()
     key_list = [key for key in fields.keys() if isinstance(fields[key], Keyword)]
+    assessments = Assessment.list()
     for _ in range(num_analytics):
         a: Analytic = random_model_obj(cast(Any, Analytic))
         a.name = " ".join([get_random_word().capitalize() for _ in range(random.randint(1, 3))])
@@ -988,8 +1014,6 @@ def create_analytics(ds: HowlerDatastore, num_analytics: int = 10):
         a.rule = None
         a.rule_crontab = None
         a.rule_type = None
-
-        assessments = Assessment.list()
 
         cast(TriageOptions, a.triage_settings).valid_assessments = list(
             set(random.sample(assessments, counts=([3] * len(assessments)), k=random.randint(1, len(assessments) * 3)))

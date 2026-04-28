@@ -31,6 +31,8 @@ const AnalyticLink: FC<{ hit: Hit; lazy?: boolean; compressed?: boolean; alignSe
       {analyticId ? (
         <Link
           to={`/analytics/${analyticId}`}
+          target="_blank"
+          rel="noopener noreferrer"
           onAuxClick={e => {
             e.stopPropagation();
           }}
