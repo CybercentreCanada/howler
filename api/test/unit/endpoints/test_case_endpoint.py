@@ -1,3 +1,4 @@
+import uuid
 from typing import cast
 from unittest.mock import MagicMock, patch
 
@@ -20,6 +21,13 @@ def request_context():
 def _build_user(user_type: list[str] | None = None) -> User:
     user_data: User = random_model_obj(cast(Model, User))
     user_data.type = user_type or ["admin", "user"]
+
+    # The randomizer draws unames from ["admin", "user", "shawnh"], which are
+    # real fixture users whose Redis quota slots get exhausted by integration
+    # tests. Force a unique uname so this ephemeral test user never collides.
+    user_data.uname = f"test_{uuid.uuid4().hex[:12]}"
+    user_data.api_quota = 1000
+
     return user_data
 
 
