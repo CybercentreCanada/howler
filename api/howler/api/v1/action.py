@@ -382,3 +382,65 @@ def execute_operations(**kwargs) -> Response:
         reports[operation["operation_id"]].extend(report)
 
     return ok(reports)
+
+
+@generate_swagger_docs()
+@action_api.route("/<id>", methods=["PUT", "PATCH"])
+@api_login(
+    audit=False,
+    check_xsrf_token=False,
+    required_type=["automation_basic"],
+)
+def give_priviledge(action_id: str, user: User, **kwargs):
+    """Transfer ownership from one user to an other.
+
+    The json object need to send "priviledge", "user_id" as key.
+    The value need to be one of "administrator", "member" or "owner"
+
+    Variables:
+    action_id => The id of the action to give permission to
+
+    Optional Arguments:
+        None
+
+    Result Example:
+    {
+        "success": True     # If the operation succeeded
+    }
+    """
+    storage = datastore()
+    priv_change = request.json
+    if not isinstance(priv_change, dict):
+        return bad_request(err="Invalid data format")
+
+    if not set(priv_change.keys()) & {"priviledge", "user_id"}:
+        return bad_request(err="Invalid data format. Need new priviledge and user_id")
+
+    existing_action: Action = storage.action.get_if_exists(action_id)
+    if not existing_action:
+        return not_found(err="This view does not exist")
+
+    priv_map: dict = {
+        "administrator": existing_action.admin,
+        "member": existing_action.member,
+        "owner": existing_action.owner,
+    }
+    priv_request: str = priv_change["priviledge"]
+
+    if priv_request not in priv_map:
+        return bad_request(err=f"Wrong request. This priviledge {priv_request} does not exist.")
+
+    is_view_admin: bool = user.uname in existing_action.admin or user.uname in existing_action.owner
+    if not is_view_admin and "admin" not in user.type:
+        return bad_request(err="You cannot give administrative priviledge for this view.")
+
+    if priv_request == "owner" and user.uname not in existing_action.owner and not "admin" not in user.type:
+        return bad_request(err="You cannot give owner priviledge for this view.")
+    # use the maping to update the list to the proper priviledge
+    priv_map[priv_request].append(str(priv_change["user_id"]))
+
+    storage.view.save(existing_action.view_id, existing_action)
+
+    storage.view.commit()
+
+    return ok(storage.view.get_if_exists(existing_action.view_id, as_obj=False))
