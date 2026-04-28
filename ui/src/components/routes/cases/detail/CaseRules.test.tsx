@@ -98,6 +98,7 @@ const makeRule = (overrides?: Partial<Rule>): Rule => ({
   author: 'analyst1',
   enabled: true,
   timeframe: '2026-06-01T00:00:00.000Z',
+  indexes: ['hit'],
   ...overrides
 });
 
@@ -152,6 +153,29 @@ describe('CaseRules', () => {
 
     const toggle = screen.getByTestId('rule-toggle-rule-001');
     expect(toggle).toBeInTheDocument();
+  });
+
+  it('renders index chips for rule indexes', () => {
+    mockCase.current = createMockCase({
+      case_id: 'case-001',
+      rules: [makeRule({ indexes: ['hit', 'observable'] })]
+    }) as Case;
+
+    render(<CaseRules />);
+
+    expect(screen.getByText('hit')).toBeInTheDocument();
+    expect(screen.getByText('observable')).toBeInTheDocument();
+  });
+
+  it('defaults to hit chip when indexes is undefined', () => {
+    mockCase.current = createMockCase({
+      case_id: 'case-001',
+      rules: [makeRule({ indexes: undefined })]
+    }) as Case;
+
+    render(<CaseRules />);
+
+    expect(screen.getByText('hit')).toBeInTheDocument();
   });
 
   it('opens create rule dialog when create button is clicked', async () => {

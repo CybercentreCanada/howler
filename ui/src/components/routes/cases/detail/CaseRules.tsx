@@ -112,6 +112,7 @@ const CaseRules: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, c
                 <TableRow>
                   <TableCell>{t('page.cases.rules.destination')}</TableCell>
                   <TableCell>{t('page.cases.rules.query')}</TableCell>
+                  <TableCell>{t('hit.search.index')}</TableCell>
                   <TableCell>{t('page.cases.rules.timeframe')}</TableCell>
                   <TableCell>{t('page.cases.rules.author')}</TableCell>
                   <TableCell align="center">{t('enabled')}</TableCell>
@@ -138,6 +139,13 @@ const CaseRules: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, c
                         >
                           {rule.query}
                         </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Stack direction="row" spacing={0.5}>
+                          {(rule.indexes ?? ['hit']).map(idx => (
+                            <Chip key={idx} size="small" label={idx} variant="outlined" />
+                          ))}
+                        </Stack>
                       </TableCell>
                       <TableCell>
                         {_timeframe ? (

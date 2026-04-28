@@ -8,4 +8,5 @@ export interface Rule {
   author?: string;
   enabled?: boolean;
   timeframe?: string;
+  indexes?: ('hit' | 'observable')[];
 }

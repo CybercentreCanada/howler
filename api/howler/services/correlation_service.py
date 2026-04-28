@@ -1,9 +1,9 @@
-"""Correlation service — matches newly ingested alerts against active case rules.
+"""Correlation service — matches newly ingested records against active case rules.
 
 The public API consists of three functions:
 
 - ``get_active_rules()`` — fetch all enabled, non-expired case rules.
-- ``process_batch(hit_ids)`` — evaluate active rules against a batch of hit IDs.
+- ``process_batch(record_ids)`` — evaluate active rules against a batch of record IDs.
 - ``run_worker()`` — long-running loop that drains the ingestion queue and
   calls ``process_batch`` in debounced batches.
 """
@@ -16,10 +16,10 @@ from opentelemetry import trace
 from howler.common.exceptions import InvalidDataException, NotFoundException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
-from howler.odm.models.case import CaseRule
+from howler.odm.models.case import CaseRule, RuleIndexTypes
 from howler.odm.models.config import config
 from howler.remote.datatypes.queues.named import NamedQueue
-from howler.services import case_service
+from howler.services import case_service, search_service
 from howler.utils.str_utils import sanitize_lucene_query
 
 logger = get_logger(__file__)
@@ -60,20 +60,21 @@ def get_active_rules() -> list[tuple[str, CaseRule]]:
 
 
 @tracer.start_as_current_span(f"{__name__}.process_batch")
-def process_batch(hit_ids: list[str]) -> int:
-    """Evaluate all active case rules against a batch of hit IDs.
+def process_batch(record_ids: list[str]) -> int:
+    """Evaluate all active case rules against a batch of record IDs.
 
-    For each rule, a single Elasticsearch query is run to find which of the
-    given hits match.  Matching hits are appended to the owning case at the
-    rule's (Mustache-rendered) destination path.
+    For each rule, a single Elasticsearch query is run against the indexes
+    specified by the rule (hit, observable, or both) to find which of the
+    given records match. Matching records are appended to the owning case at
+    the rule's (Mustache-rendered) destination path.
 
     Args:
-        hit_ids: List of hit IDs to evaluate.
+        record_ids: List of record IDs (hit or observable) to evaluate.
 
     Returns:
-        The number of hits successfully added to cases.
+        The number of records successfully added to cases.
     """
-    if not hit_ids:
+    if not record_ids:
         return 0
 
     ds = datastore()
@@ -86,34 +87,42 @@ def process_batch(hit_ids: list[str]) -> int:
     if not rules:
         return 0
 
-    id_filter = f"howler.id:({' OR '.join(sanitize_lucene_query(h) for h in hit_ids)})"
+    id_filter = f"howler.id:({' OR '.join(sanitize_lucene_query(h) for h in record_ids)})"
     added = 0
 
     for case_id, rule in rules:
+        indexes: list[str] = list(rule.indexes) if rule.indexes else [RuleIndexTypes.HIT]
+
         try:
-            results = ds.hit.search(rule.query, filters=[id_filter], rows=len(hit_ids), as_obj=False)
+            results = search_service.search(
+                indexes=indexes,
+                query=rule.query,
+                filters=[id_filter],
+                rows=len(record_ids),
+            )
         except Exception:
             logger.exception("ES query failed for rule %s (case %s): %s", rule.rule_id, case_id, rule.query)
             continue
 
-        for hit_dict in results["items"]:
-            hit_id = hit_dict["howler"]["id"]
-            rendered_path = chevron.render(rule.destination, hit_dict)
+        for record in results["items"]:
+            record_id = record["howler"]["id"]
+            item_type = record.get("__index", "hit")
+            rendered_path = chevron.render(rule.destination, record)
 
             try:
                 case_service.append_case_item(
                     case_id,
-                    item_type="hit",
-                    item_value=hit_id,
+                    item_type=item_type,
+                    item_value=record_id,
                     item_path=rendered_path,
                 )
                 added += 1
             except InvalidDataException:
-                logger.debug("Hit %s already exists in case %s, skipping", hit_id, case_id)
+                logger.debug("Record %s already exists in case %s, skipping", record_id, case_id)
             except NotFoundException:
-                logger.warning("Case %s or hit %s not found during correlation", case_id, hit_id)
+                logger.warning("Case %s or record %s not found during correlation", case_id, record_id)
             except Exception:
-                logger.exception("Failed to add hit %s to case %s", hit_id, case_id)
+                logger.exception("Failed to add record %s to case %s", record_id, case_id)
 
     return added
 
@@ -129,7 +138,7 @@ def _build_queue() -> NamedQueue[str]:
 
 
 def run_worker() -> None:  # pragma: no cover – long-running loop, tested via process_batch
-    """Block on the ingestion queue and process batches of hit IDs.
+    """Block on the ingestion queue and process batches of record IDs.
 
     Accumulates up to ``BATCH_SIZE`` IDs or flushes after ``BATCH_TIMEOUT``
     seconds, whichever comes first.

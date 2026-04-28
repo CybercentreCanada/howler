@@ -84,6 +84,8 @@ describe('CreateRuleDialog', () => {
     expect(screen.getByTestId('rule-destination-input')).toBeInTheDocument();
     expect(screen.getByTestId('rule-timeframe-input')).toBeInTheDocument();
     expect(screen.getByTestId('rule-no-expiry-checkbox')).toBeInTheDocument();
+    expect(screen.getByTestId('rule-index-hit')).toBeInTheDocument();
+    expect(screen.getByTestId('rule-index-observable')).toBeInTheDocument();
   });
 
   it('disables submit when query is empty', () => {
@@ -156,7 +158,8 @@ describe('CreateRuleDialog', () => {
       expect(onSubmit).toHaveBeenCalledWith(
         expect.objectContaining({
           query: 'event.kind:alert',
-          destination: 'alerts/incoming'
+          destination: 'alerts/incoming',
+          indexes: ['hit']
         })
       );
     });
@@ -273,5 +276,79 @@ describe('CreateRuleDialog', () => {
         })
       );
     });
+  });
+
+  it('defaults to hit index checked', () => {
+    render(<CreateRuleDialog {...defaultProps} />);
+
+    const hitCheckbox = screen.getByTestId('rule-index-hit') as HTMLInputElement;
+    const observableCheckbox = screen.getByTestId('rule-index-observable') as HTMLInputElement;
+
+    expect(hitCheckbox).toBeChecked();
+    expect(observableCheckbox).not.toBeChecked();
+  });
+
+  it('includes both indexes when both are selected', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    mockDispatchApi.mockResolvedValueOnce({ items: [], total: 1, offset: 0, rows: 0 });
+    (api.search.hit.post as ReturnType<typeof vi.fn>).mockReturnValue('search-request');
+
+    render(<CreateRuleDialog {...defaultProps} onSubmit={onSubmit} />);
+
+    await act(async () => {
+      await user.click(screen.getByTestId('rule-index-observable'));
+    });
+
+    await act(async () => {
+      await user.type(screen.getByTestId('rule-query-editor'), 'event.kind:alert');
+    });
+
+    await act(async () => {
+      await user.click(screen.getByTestId('rule-search-button'));
+    });
+
+    await act(async () => {
+      await user.type(screen.getByTestId('rule-destination-input'), 'alerts/incoming');
+    });
+
+    await act(async () => {
+      await user.click(screen.getByTestId('rule-submit-button'));
+    });
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          indexes: expect.arrayContaining(['hit', 'observable'])
+        })
+      );
+    });
+  });
+
+  it('disables submit when no indexes are selected', async () => {
+    const user = userEvent.setup();
+    mockDispatchApi.mockResolvedValueOnce({ items: [], total: 1, offset: 0, rows: 0 });
+    (api.search.hit.post as ReturnType<typeof vi.fn>).mockReturnValue('search-request');
+
+    render(<CreateRuleDialog {...defaultProps} />);
+
+    await act(async () => {
+      await user.type(screen.getByTestId('rule-query-editor'), 'event.kind:alert');
+    });
+
+    await act(async () => {
+      await user.click(screen.getByTestId('rule-search-button'));
+    });
+
+    await act(async () => {
+      await user.type(screen.getByTestId('rule-destination-input'), 'alerts/incoming');
+    });
+
+    // Uncheck the default hit index
+    await act(async () => {
+      await user.click(screen.getByTestId('rule-index-hit'));
+    });
+
+    expect(screen.getByTestId('rule-submit-button')).toBeDisabled();
   });
 });

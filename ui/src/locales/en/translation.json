@@ -236,6 +236,7 @@
   "hit.search.filter.fields": "Fields",
   "hit.search.filter.label": "Lookup Filters",
   "hit.search.filter.values": "Values",
+  "hit.search.index": "Indexes",
   "hit.search.index.hit": "Hits",
   "hit.search.index.observable": "Observables",
   "hit.search.invalid": "Invalid Query",

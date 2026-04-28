@@ -236,6 +236,7 @@
   "hit.search.filter.fields": "Paramètres",
   "hit.search.filter.label": "Filtres de recherche",
   "hit.search.filter.values": "Valeurs",
+  "hit.search.index": "Indexes",
   "hit.search.index.hit": "Hits",
   "hit.search.index.observable": "Observables",
   "hit.search.invalid": "Requête invalide",

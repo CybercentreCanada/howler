@@ -1,6 +1,7 @@
 """Unit tests for the correlation service."""
 
 from datetime import datetime, timedelta, timezone
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 from howler.common.exceptions import InvalidDataException, NotFoundException
@@ -17,16 +18,20 @@ def _make_rule(
     timeframe: str | None = None,
     query: str = "*:*",
     destination: str = "related",
+    indexes: list[str] | None = None,
 ) -> CaseRule:
-    return CaseRule(
-        {
-            "query": query,
-            "destination": destination,
-            "author": "test_user",
-            "enabled": enabled,
-            "timeframe": timeframe,
-        }
-    )
+    data: dict[str, Any] = {
+        "query": query,
+        "destination": destination,
+        "author": "test_user",
+        "enabled": enabled,
+        "timeframe": timeframe,
+    }
+
+    if indexes is not None:
+        data["indexes"] = indexes
+
+    return CaseRule(data)
 
 
 def _make_case_obj(case_id: str, rules: list[CaseRule]) -> MagicMock:
@@ -135,10 +140,11 @@ class TestGetActiveRules:
 class TestProcessBatch:
     """Tests for correlation_service.process_batch."""
 
+    @patch("howler.services.correlation_service.search_service")
     @patch("howler.services.correlation_service.case_service")
     @patch("howler.services.correlation_service.get_active_rules")
     @patch("howler.services.correlation_service.datastore")
-    def test_adds_matching_hits(self, mock_ds_fn, mock_get_rules, mock_case_svc):
+    def test_adds_matching_hits(self, mock_ds_fn, mock_get_rules, mock_case_svc, mock_search_svc):
         """Matching hits are added to the case via append_case_item."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
@@ -146,8 +152,11 @@ class TestProcessBatch:
         rule = _make_rule(query="event.kind:alert", destination="alerts")
         mock_get_rules.return_value = [("case-1", rule)]
 
-        mock_ds.hit.search.return_value = {
-            "items": [{"howler": {"id": "hit-1"}}],
+        mock_search_svc.search.return_value = {
+            "items": [{"howler": {"id": "hit-1"}, "__index": "hit"}],
+            "total": 1,
+            "offset": 0,
+            "rows": 1,
         }
 
         added = correlation_service.process_batch(["hit-1"])
@@ -160,19 +169,23 @@ class TestProcessBatch:
             item_path="alerts",
         )
 
+    @patch("howler.services.correlation_service.search_service")
     @patch("howler.services.correlation_service.case_service")
     @patch("howler.services.correlation_service.get_active_rules")
     @patch("howler.services.correlation_service.datastore")
-    def test_skips_duplicates(self, mock_ds_fn, mock_get_rules, mock_case_svc):
-        """Duplicate hits (InvalidDataException) are silently skipped."""
+    def test_skips_duplicates(self, mock_ds_fn, mock_get_rules, mock_case_svc, mock_search_svc):
+        """Duplicate records (InvalidDataException) are silently skipped."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
         rule = _make_rule(query="*:*", destination="related")
         mock_get_rules.return_value = [("case-1", rule)]
 
-        mock_ds.hit.search.return_value = {
-            "items": [{"howler": {"id": "hit-1"}}],
+        mock_search_svc.search.return_value = {
+            "items": [{"howler": {"id": "hit-1"}, "__index": "hit"}],
+            "total": 1,
+            "offset": 0,
+            "rows": 1,
         }
         mock_case_svc.append_case_item.side_effect = InvalidDataException("already exists")
 
@@ -180,19 +193,23 @@ class TestProcessBatch:
 
         assert added == 0
 
+    @patch("howler.services.correlation_service.search_service")
     @patch("howler.services.correlation_service.case_service")
     @patch("howler.services.correlation_service.get_active_rules")
     @patch("howler.services.correlation_service.datastore")
-    def test_renders_destination_template(self, mock_ds_fn, mock_get_rules, mock_case_svc):
-        """Mustache templates in destination are rendered with hit data."""
+    def test_renders_destination_template(self, mock_ds_fn, mock_get_rules, mock_case_svc, mock_search_svc):
+        """Mustache templates in destination are rendered with record data."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
         rule = _make_rule(query="*:*", destination="alerts/{{howler.analytic}}")
         mock_get_rules.return_value = [("case-1", rule)]
 
-        mock_ds.hit.search.return_value = {
-            "items": [{"howler": {"id": "hit-1", "analytic": "My Detection"}}],
+        mock_search_svc.search.return_value = {
+            "items": [{"howler": {"id": "hit-1", "analytic": "My Detection"}, "__index": "hit"}],
+            "total": 1,
+            "offset": 0,
+            "rows": 1,
         }
 
         correlation_service.process_batch(["hit-1"])
@@ -207,8 +224,8 @@ class TestProcessBatch:
     @patch("howler.services.correlation_service.case_service")
     @patch("howler.services.correlation_service.get_active_rules")
     @patch("howler.services.correlation_service.datastore")
-    def test_returns_zero_when_no_hits(self, mock_ds_fn, mock_get_rules, mock_case_svc):
-        """An empty hit_ids list returns 0 without querying."""
+    def test_returns_zero_when_no_records(self, mock_ds_fn, mock_get_rules, mock_case_svc):
+        """An empty record_ids list returns 0 without querying."""
         added = correlation_service.process_batch([])
         assert added == 0
         mock_case_svc.append_case_item.assert_not_called()
@@ -225,10 +242,11 @@ class TestProcessBatch:
         assert added == 0
         mock_case_svc.append_case_item.assert_not_called()
 
+    @patch("howler.services.correlation_service.search_service")
     @patch("howler.services.correlation_service.case_service")
     @patch("howler.services.correlation_service.get_active_rules")
     @patch("howler.services.correlation_service.datastore")
-    def test_handles_not_found_gracefully(self, mock_ds_fn, mock_get_rules, mock_case_svc):
+    def test_handles_not_found_gracefully(self, mock_ds_fn, mock_get_rules, mock_case_svc, mock_search_svc):
         """NotFoundException from append_case_item is logged, not raised."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
@@ -236,8 +254,11 @@ class TestProcessBatch:
         rule = _make_rule(query="*:*", destination="related")
         mock_get_rules.return_value = [("case-1", rule)]
 
-        mock_ds.hit.search.return_value = {
-            "items": [{"howler": {"id": "hit-1"}}],
+        mock_search_svc.search.return_value = {
+            "items": [{"howler": {"id": "hit-1"}, "__index": "hit"}],
+            "total": 1,
+            "offset": 0,
+            "rows": 1,
         }
         mock_case_svc.append_case_item.side_effect = NotFoundException("gone")
 
@@ -245,10 +266,11 @@ class TestProcessBatch:
 
         assert added == 0
 
+    @patch("howler.services.correlation_service.search_service")
     @patch("howler.services.correlation_service.case_service")
     @patch("howler.services.correlation_service.get_active_rules")
     @patch("howler.services.correlation_service.datastore")
-    def test_continues_after_es_query_failure(self, mock_ds_fn, mock_get_rules, mock_case_svc):
+    def test_continues_after_es_query_failure(self, mock_ds_fn, mock_get_rules, mock_case_svc, mock_search_svc):
         """An ES query failure for one rule doesn't block subsequent rules."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
@@ -257,9 +279,9 @@ class TestProcessBatch:
         rule_good = _make_rule(query="*:*", destination="b")
         mock_get_rules.return_value = [("case-1", rule_bad), ("case-2", rule_good)]
 
-        mock_ds.hit.search.side_effect = [
+        mock_search_svc.search.side_effect = [
             Exception("parse error"),
-            {"items": [{"howler": {"id": "hit-1"}}]},
+            {"items": [{"howler": {"id": "hit-1"}, "__index": "hit"}], "total": 1, "offset": 0, "rows": 1},
         ]
 
         added = correlation_service.process_batch(["hit-1"])
@@ -272,11 +294,12 @@ class TestProcessBatch:
             item_path="b",
         )
 
+    @patch("howler.services.correlation_service.search_service")
     @patch("howler.services.correlation_service.case_service")
     @patch("howler.services.correlation_service.get_active_rules")
     @patch("howler.services.correlation_service.datastore")
-    def test_multiple_hits_multiple_rules(self, mock_ds_fn, mock_get_rules, mock_case_svc):
-        """Multiple hits can match across multiple rules."""
+    def test_multiple_records_multiple_rules(self, mock_ds_fn, mock_get_rules, mock_case_svc, mock_search_svc):
+        """Multiple records can match across multiple rules."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -284,11 +307,150 @@ class TestProcessBatch:
         rule_b = _make_rule(query="event.kind:event", destination="events")
         mock_get_rules.return_value = [("case-1", rule_a), ("case-2", rule_b)]
 
-        mock_ds.hit.search.side_effect = [
-            {"items": [{"howler": {"id": "hit-1"}}, {"howler": {"id": "hit-2"}}]},
-            {"items": [{"howler": {"id": "hit-3"}}]},
+        mock_search_svc.search.side_effect = [
+            {
+                "items": [
+                    {"howler": {"id": "hit-1"}, "__index": "hit"},
+                    {"howler": {"id": "hit-2"}, "__index": "hit"},
+                ],
+                "total": 2,
+                "offset": 0,
+                "rows": 2,
+            },
+            {
+                "items": [{"howler": {"id": "hit-3"}, "__index": "hit"}],
+                "total": 1,
+                "offset": 0,
+                "rows": 1,
+            },
         ]
 
         added = correlation_service.process_batch(["hit-1", "hit-2", "hit-3"])
 
         assert added == 3
+
+    @patch("howler.services.correlation_service.search_service")
+    @patch("howler.services.correlation_service.case_service")
+    @patch("howler.services.correlation_service.get_active_rules")
+    @patch("howler.services.correlation_service.datastore")
+    def test_adds_matching_observables(self, mock_ds_fn, mock_get_rules, mock_case_svc, mock_search_svc):
+        """Matching observables are added to the case with item_type='observable'."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        rule = _make_rule(
+            query="event.kind:enrichment",
+            destination="observables",
+            indexes=["observable"],
+        )
+        mock_get_rules.return_value = [("case-1", rule)]
+
+        mock_search_svc.search.return_value = {
+            "items": [{"howler": {"id": "obs-1"}, "__index": "observable"}],
+            "total": 1,
+            "offset": 0,
+            "rows": 1,
+        }
+
+        added = correlation_service.process_batch(["obs-1"])
+
+        assert added == 1
+        mock_case_svc.append_case_item.assert_called_once_with(
+            "case-1",
+            item_type="observable",
+            item_value="obs-1",
+            item_path="observables",
+        )
+
+    @patch("howler.services.correlation_service.search_service")
+    @patch("howler.services.correlation_service.case_service")
+    @patch("howler.services.correlation_service.get_active_rules")
+    @patch("howler.services.correlation_service.datastore")
+    def test_searches_both_indexes(self, mock_ds_fn, mock_get_rules, mock_case_svc, mock_search_svc):
+        """A rule targeting both hit and observable indexes searches across both."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        rule = _make_rule(
+            query="*:*",
+            destination="related",
+            indexes=["hit", "observable"],
+        )
+        mock_get_rules.return_value = [("case-1", rule)]
+
+        mock_search_svc.search.return_value = {
+            "items": [
+                {"howler": {"id": "hit-1"}, "__index": "hit"},
+                {"howler": {"id": "obs-1"}, "__index": "observable"},
+            ],
+            "total": 2,
+            "offset": 0,
+            "rows": 2,
+        }
+
+        added = correlation_service.process_batch(["hit-1", "obs-1"])
+
+        assert added == 2
+        mock_search_svc.search.assert_called_once()
+        call_kwargs = mock_search_svc.search.call_args
+        assert set(call_kwargs.kwargs["indexes"]) == {"hit", "observable"}
+
+        calls = mock_case_svc.append_case_item.call_args_list
+        types = {c.kwargs["item_type"] for c in calls}
+        assert types == {"hit", "observable"}
+
+    @patch("howler.services.correlation_service.search_service")
+    @patch("howler.services.correlation_service.case_service")
+    @patch("howler.services.correlation_service.get_active_rules")
+    @patch("howler.services.correlation_service.datastore")
+    def test_defaults_to_hit_index_when_indexes_empty(self, mock_ds_fn, mock_get_rules, mock_case_svc, mock_search_svc):
+        """When indexes is empty, the rule defaults to searching the hit index."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        rule = _make_rule(query="*:*", destination="related", indexes=[])
+        mock_get_rules.return_value = [("case-1", rule)]
+
+        mock_search_svc.search.return_value = {
+            "items": [{"howler": {"id": "hit-1"}, "__index": "hit"}],
+            "total": 1,
+            "offset": 0,
+            "rows": 1,
+        }
+
+        correlation_service.process_batch(["hit-1"])
+
+        call_kwargs = mock_search_svc.search.call_args
+        assert call_kwargs.kwargs["indexes"] == ["hit"]
+
+    @patch("howler.services.correlation_service.search_service")
+    @patch("howler.services.correlation_service.case_service")
+    @patch("howler.services.correlation_service.get_active_rules")
+    @patch("howler.services.correlation_service.datastore")
+    def test_item_type_derived_from_index(self, mock_ds_fn, mock_get_rules, mock_case_svc, mock_search_svc):
+        """The item_type passed to append_case_item matches the __index of the record."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        rule = _make_rule(query="*:*", destination="items", indexes=["hit", "observable"])
+        mock_get_rules.return_value = [("case-1", rule)]
+
+        mock_search_svc.search.return_value = {
+            "items": [
+                {"howler": {"id": "hit-1"}, "__index": "hit"},
+                {"howler": {"id": "obs-1"}, "__index": "observable"},
+            ],
+            "total": 2,
+            "offset": 0,
+            "rows": 2,
+        }
+
+        correlation_service.process_batch(["hit-1", "obs-1"])
+
+        calls = mock_case_svc.append_case_item.call_args_list
+        assert len(calls) == 2
+
+        hit_call = [c for c in calls if c.kwargs["item_value"] == "hit-1"][0]
+        obs_call = [c for c in calls if c.kwargs["item_value"] == "obs-1"][0]
+        assert hit_call.kwargs["item_type"] == "hit"
+        assert obs_call.kwargs["item_type"] == "observable"

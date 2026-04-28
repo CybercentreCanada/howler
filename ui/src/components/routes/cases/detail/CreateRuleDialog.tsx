@@ -10,6 +10,7 @@ import {
   DialogContent,
   DialogTitle,
   FormControlLabel,
+  FormGroup,
   IconButton,
   Stack,
   TextField,
@@ -62,6 +63,7 @@ const CreateRuleDialog: FC<CreateRuleDialogProps> = ({ open, onClose, onSubmit }
 
   const [query, setQuery] = useState('');
   const [destination, setDestination] = useState('');
+  const [indexes, setIndexes] = useState<('hit' | 'observable')[]>(['hit']);
   const [timeframe, setTimeframe] = useState<Dayjs>(dayjs().add(DEFAULT_TIMEFRAME_DAYS, 'day'));
   const [noExpiry, setNoExpiry] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -71,6 +73,7 @@ const CreateRuleDialog: FC<CreateRuleDialogProps> = ({ open, onClose, onSubmit }
   const handleOpen = useCallback(() => {
     setQuery('');
     setDestination('');
+    setIndexes(['hit']);
     setTimeframe(dayjs().add(DEFAULT_TIMEFRAME_DAYS, 'day'));
     setNoExpiry(false);
     setResponse(null);
@@ -107,14 +110,15 @@ const CreateRuleDialog: FC<CreateRuleDialogProps> = ({ open, onClose, onSubmit }
       await onSubmit({
         query: query.trim(),
         destination: destination.trim(),
-        timeframe: noExpiry ? undefined : timeframe.toISOString()
+        timeframe: noExpiry ? undefined : timeframe.toISOString(),
+        indexes
       });
 
       onClose();
     } finally {
       setLoading(false);
     }
-  }, [query, destination, noExpiry, timeframe, onSubmit, onClose]);
+  }, [query, destination, noExpiry, timeframe, indexes, onSubmit, onClose]);
 
   const onMount = useCallback((ed: editor.IStandaloneCodeEditor) => {
     ed.createContextKey('isRecordQuery', true);
@@ -241,6 +245,48 @@ const CreateRuleDialog: FC<CreateRuleDialogProps> = ({ open, onClose, onSubmit }
             size="small"
           />
 
+          <Box>
+            <Typography variant="subtitle2" gutterBottom>
+              {t('page.cases.rules.indexes')}
+            </Typography>
+            <FormGroup row>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    id="rule-index-hit"
+                    checked={indexes.includes('hit')}
+                    onChange={(_e, checked) => {
+                      setIndexes(prev => {
+                        if (checked) {
+                          return prev.includes('hit') ? prev : [...prev, 'hit'];
+                        }
+                        return prev.filter(i => i !== 'hit');
+                      });
+                    }}
+                  />
+                }
+                label={t('hit.search.index.hit')}
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    id="rule-index-observable"
+                    checked={indexes.includes('observable')}
+                    onChange={(_e, checked) => {
+                      setIndexes(prev => {
+                        if (checked) {
+                          return prev.includes('observable') ? prev : [...prev, 'observable'];
+                        }
+                        return prev.filter(i => i !== 'observable');
+                      });
+                    }}
+                  />
+                }
+                label={t('hit.search.index.observable')}
+              />
+            </FormGroup>
+          </Box>
+
           <Stack direction="row" spacing={2} alignItems="center">
             <LocalizationProvider dateAdapter={AdapterDayjs}>
               <DateTimePicker
@@ -283,7 +329,7 @@ const CreateRuleDialog: FC<CreateRuleDialogProps> = ({ open, onClose, onSubmit }
           id="rule-submit-button"
           variant="contained"
           onClick={handleSubmit}
-          disabled={!response || loading || !query.trim() || !destination.trim()}
+          disabled={!response || loading || !query.trim() || !destination.trim() || indexes.length === 0}
         >
           {t('page.cases.rules.create')}
         </Button>

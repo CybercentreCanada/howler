@@ -8,6 +8,19 @@ from howler.utils.compat import StrEnum
 
 CASE_ITEM_TYPES = {"observable", "hit", "case", "lead", "reference"}
 
+RULE_INDEX_TYPES = {"hit", "observable"}
+
+
+class RuleIndexTypes(StrEnum):
+    """Enumeration of valid index types for case rules.
+
+    Determines which Elasticsearch indexes a case rule query runs against
+    during correlation.
+    """
+
+    HIT = "hit"
+    OBSERVABLE = "observable"
+
 
 class CaseItemTypes(StrEnum):
     """Enumeration of valid case item types.
@@ -77,6 +90,11 @@ class CaseRule(odm.Model):
     timeframe: Optional[str] = odm.Optional(
         odm.Date(description="ISO datetime when rule expires. Null means no expiry."),
         default=None,
+    )
+    indexes: list[str] = odm.List(
+        odm.Enum(values=RuleIndexTypes),
+        default=[RuleIndexTypes.HIT],
+        description="Indexes to run this rule against (hit, observable, or both).",
     )
 
 
