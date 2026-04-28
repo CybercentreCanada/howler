@@ -1081,10 +1081,10 @@ class Model:
         Args:
             skip_mappings (bool): Skip over mappings where the real subfield names are unknown.
         """
-        if skip_mappings and "_odm_field_cache_skip" in cls.__dict__:
+        if not no_cache and skip_mappings and "_odm_field_cache_skip" in cls.__dict__:
             return cls._odm_field_cache_skip
 
-        if not skip_mappings and "_odm_field_cache" in cls.__dict__:
+        if not no_cache and not skip_mappings and "_odm_field_cache" in cls.__dict__:
             return cls._odm_field_cache
 
         out = dict()
@@ -1524,12 +1524,23 @@ def model(index=None, store=None, description=None, id_field=None):
 
     def _finish_model(cls):
         cls._Model__description = description
-        cls._Model__id_field = id_field
+        fields = cls.fields()
 
-        if cls._Model__id_field is None:
+        if id_field is None:
             cls._Model__id_field = f"{cls.__name__.lower()}_id"
+        else:
+            if not isinstance(id_field, str):
+                raise HowlerTypeError(f"id_field must be a str, got {type(id_field).__name__}")
 
-        for name, field_data in cls.fields().items():
+            if not FIELD_SANITIZER.match(id_field) or id_field in BANNED_FIELDS:
+                raise HowlerValueError(f"Illegal id_field name: {id_field}")
+
+            if id_field not in fields:
+                raise HowlerValueError(f"id_field must reference a declared field: {id_field}")
+
+            cls._Model__id_field = id_field
+
+        for name, field_data in fields.items():
             if not FIELD_SANITIZER.match(name) or name in BANNED_FIELDS:
                 raise HowlerValueError(f"Illegal variable name: {name}")
 

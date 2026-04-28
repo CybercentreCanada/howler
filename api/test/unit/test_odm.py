@@ -4,7 +4,7 @@ import os
 import pytest
 
 from howler.common.classification import InvalidClassification
-from howler.common.exceptions import HowlerException
+from howler.common.exceptions import HowlerException, HowlerTypeError
 from howler.odm import (
     UUID,
     Classification,
@@ -948,10 +948,11 @@ def test_model_id_field_default():
 
 
 def test_model_id_field_explicit():
-    """An explicit id_field value should be stored verbatim."""
+    """An explicit id_field value should be stored verbatim when it references a declared field."""
 
     @model(id_field="custom_id")
     class MyRecord(Model):
+        custom_id = Keyword()
         name = Keyword()
 
     assert MyRecord._Model__id_field == "custom_id"
@@ -972,13 +973,14 @@ def test_model_id_field_stored_on_class():
 
     @model(id_field="doc_id")
     class Document(Model):
+        doc_id = Keyword()
         body = Keyword()
 
     # Accessible on the class directly
     assert Document._Model__id_field == "doc_id"
 
     # Also consistent across instances (class attribute, not instance attribute)
-    instance = Document({"body": "hello"})
+    instance = Document({"doc_id": "abc", "body": "hello"})
     assert type(instance)._Model__id_field == "doc_id"
 
 
@@ -987,10 +989,12 @@ def test_model_id_field_independent_per_class():
 
     @model(id_field="alpha_key")
     class Alpha(Model):
+        alpha_key = Keyword()
         x = Keyword()
 
     @model(id_field="beta_key")
     class Beta(Model):
+        beta_key = Keyword()
         y = Keyword()
 
     @model()
@@ -1000,3 +1004,115 @@ def test_model_id_field_independent_per_class():
     assert Alpha._Model__id_field == "alpha_key"
     assert Beta._Model__id_field == "beta_key"
     assert Gamma._Model__id_field == "gamma_id"
+
+
+def test_model_id_field_not_a_string_raises():
+    """Passing a non-string id_field should raise HowlerTypeError."""
+
+    with pytest.raises(HowlerTypeError):
+
+        @model(id_field=123)
+        class BadType(Model):
+            value = Keyword()
+
+
+def test_model_id_field_illegal_name_raises():
+    """An id_field whose name fails FIELD_SANITIZER or is in BANNED_FIELDS should raise HowlerValueError."""
+
+    # Uppercase letters are not allowed by FIELD_SANITIZER (^[a-z][a-z0-9_-]*$)
+    with pytest.raises(ValueError):
+
+        @model(id_field="BadField")
+        class IllegalName(Model):
+            value = Keyword()
+
+    # _id is in BANNED_FIELDS
+    with pytest.raises(ValueError):
+
+        @model(id_field="_id")
+        class BannedName(Model):
+            value = Keyword()
+
+
+def test_model_id_field_not_in_fields_raises():
+    """An id_field that does not reference a declared field should raise HowlerValueError."""
+
+    with pytest.raises(ValueError):
+
+        @model(id_field="missing_field")
+        class MissingField(Model):
+            value = Keyword()
+
+    """Base model fields should be included in subclass fields()."""
+
+    @model(index=True, store=True, description="Base model")
+    class Base(Model):
+        base_field = Keyword()
+
+    @model(index=True, store=True, description="Child model")
+    class Child(Base):
+        child_field = Keyword()
+
+    fields = Child.fields()
+    assert "base_field" in fields, "base_field from Base should appear in Child.fields()"
+    assert "child_field" in fields, "child_field should appear in Child.fields()"
+
+
+def test_model_inheritance_subclass_overrides_base_field():
+    """A subclass that redeclares a field from the base should use the subclass version."""
+
+    @model(index=True, store=True, description="Base model")
+    class OverrideBase(Model):
+        shared_field = Keyword(default="base_default")
+
+    @model(index=True, store=True, description="Override child model")
+    class OverrideChild(OverrideBase):
+        shared_field = Keyword(default="child_default")
+
+    fields = OverrideChild.fields()
+    assert "shared_field" in fields
+    assert fields["shared_field"].default == "child_default", (
+        "Child's override of shared_field should shadow the base's version"
+    )
+
+
+def test_model_inheritance_cache_isolation():
+    """Subclass field cache must not bleed into or reuse the parent's cache."""
+
+    @model(index=True, store=True, description="Parent")
+    class ParentModel(Model):
+        parent_only = Keyword()
+
+    @model(index=True, store=True, description="Sub")
+    class SubModel(ParentModel):
+        sub_only = Keyword()
+
+    parent_fields = ParentModel.fields()
+    sub_fields = SubModel.fields()
+
+    # Parent cache should NOT contain the child-only field
+    assert "sub_only" not in parent_fields, "Parent cache should not include subclass fields"
+    # Child cache should contain both
+    assert "parent_only" in sub_fields
+    assert "sub_only" in sub_fields
+    # The two caches must be different objects
+    assert parent_fields is not sub_fields, "Parent and child field caches must be independent objects"
+
+
+def test_model_inheritance_no_cache_skips_cache():
+    """fields(no_cache=True) should bypass and not populate the field cache."""
+
+    @model(index=True, store=True, description="NoCacheTest")
+    class NoCacheModel(Model):
+        val = Keyword()
+
+    # Populate cache normally
+    _ = NoCacheModel.fields()
+    assert "_odm_field_cache" in NoCacheModel.__dict__
+
+    # Call with no_cache=True — result should be equivalent but cache unchanged
+    result = NoCacheModel.fields(no_cache=True)
+    assert "val" in result
+    # Cache object should not have been replaced by the no_cache call
+    cached = NoCacheModel.fields()
+    assert cached is not result, "no_cache=True result should be a fresh dict, not the stored cache"
