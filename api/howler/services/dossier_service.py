@@ -287,3 +287,55 @@ def get_matching_dossiers(
             matching_dossiers.append(dossier)
 
     return matching_dossiers
+
+
+# TODO : AG : find a better name
+def give_priviledge(dossier_id: str, user: User, level_requested: str, new_member: str):
+    """Transfer ownership from one user to an other.
+
+    The json object need to send "priviledge", "user_id" as key.
+    The value need to be one of "administrator", "member" or "owner"
+
+    Variables:
+    dossier_id => The id of the dossier to give memberships priviledge of
+    user => user requesting the change
+    level_requested => what level requested [member, administrator, owner]
+    new_member => uname of the user to add to the list of member ship
+
+    Optional Arguments:
+        None
+
+    Result Example:
+    {
+        "success": True     # If the operation succeeded
+    }
+    """
+    storage = datastore()
+
+    existing_dossier: Dossier = storage.dossier.get_if_exists(dossier_id)
+    if not existing_dossier:
+        return NotFoundException("This view does not exist")
+
+    priv_map: dict = {
+        "administrator": existing_dossier.admin,
+        "member": existing_dossier.member,
+        "owner": existing_dossier.owner,
+    }
+
+    if level_requested not in priv_map:
+        raise InvalidDataException("The requested level does not exist in dossier. Use member, administrator or owner.")
+
+    is_dossier_admin: bool = user.uname in existing_dossier.admin or user.uname in existing_dossier.owner
+    if not is_dossier_admin and "admin" not in user.type:
+        raise InvalidDataException("You cannot give administrative priviledge for this view.")
+
+    if level_requested == "owner" and user.uname not in existing_dossier.owner and not "admin" not in user.type:
+        raise InvalidDataException("You cannot give owner priviledge for this view.")
+    # use the maping to update the list to the proper priviledge
+    priv_map[level_requested].append(str(new_member))
+
+    storage.dossier.save(existing_dossier.dossier_id, existing_dossier)
+
+    storage.dossier.commit()
+
+    return existing_dossier
