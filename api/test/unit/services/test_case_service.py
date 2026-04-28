@@ -578,6 +578,44 @@ class TestAppendCaseItemRouting:
         with pytest.raises(NotImplementedError):
             case_service.append_case_item("case-001", item=item)
 
+    @patch("howler.services.case_service.append_observable")
+    @patch("howler.services.case_service.datastore")
+    def test_append_case_item_routes_observable(self, mock_ds_fn, mock_append_obs):
+        """append_case_item dispatches to append_observable for 'observable' type."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = MagicMock()
+        mock_case.items = []
+        mock_ds.case.get.return_value = mock_case
+
+        mock_append_obs.return_value = mock_case
+
+        item = CaseItem({"type": "observable", "value": "obs-001", "path": "observables/obs-001"})
+        result = case_service.append_case_item("case-001", item=item)
+
+        mock_append_obs.assert_called_once_with("case-001", item)
+        assert result is mock_case
+
+    @patch("howler.services.case_service.append_case")
+    @patch("howler.services.case_service.datastore")
+    def test_append_case_item_routes_case(self, mock_ds_fn, mock_append_case):
+        """append_case_item dispatches to append_case for 'case' type."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = MagicMock()
+        mock_case.items = []
+        mock_ds.case.get.return_value = mock_case
+
+        mock_append_case.return_value = mock_case
+
+        item = CaseItem({"type": "case", "value": "child-001", "path": "cases/child-001"})
+        result = case_service.append_case_item("case-001", item=item)
+
+        mock_append_case.assert_called_once_with("case-001", item)
+        assert result is mock_case
+
     @patch("howler.services.case_service.datastore")
     def test_append_case_item_raises_if_item_path_ends_with_slash(self, mock_ds_fn):
         """append_case_item raises InvalidDataException when the pre-built item's path ends with '/'."""
@@ -1206,6 +1244,48 @@ class TestSyncCaseMetadata:
         mock_ds.case.save.assert_called_once()
         assert mock_case.targets == []
         assert mock_case.threats == []
+        assert mock_case.indicators == []
+
+    @patch("howler.services.case_service.datastore")
+    def test_sync_case_metadata_collects_from_observables(self, mock_ds_fn):
+        """_sync_case_metadata collects indicators from observable items via their related data."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        obs_item = CaseItem({"type": "observable", "value": "obs-001", "path": "observables/obs-001"})
+
+        mock_case = MagicMock()
+        mock_case.items = [obs_item]
+        mock_ds.case.get.return_value = mock_case
+
+        mock_related = Related({"ip": ["10.0.0.1"], "hosts": ["host-x"]})
+        mock_obs = MagicMock()
+        mock_obs.related = mock_related
+        mock_ds.observable.get.return_value = mock_obs
+
+        case_service._sync_case_metadata("case-001")
+
+        mock_ds.case.save.assert_called_once()
+        assert "10.0.0.1" in mock_case.indicators
+        assert "host-x" in mock_case.indicators
+
+    @patch("howler.services.case_service.datastore")
+    def test_sync_case_metadata_skips_missing_observable(self, mock_ds_fn):
+        """_sync_case_metadata skips observable items whose backing object is None."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        obs_item = CaseItem({"type": "observable", "value": "obs-missing", "path": "observables/obs-missing"})
+
+        mock_case = MagicMock()
+        mock_case.items = [obs_item]
+        mock_ds.case.get.return_value = mock_case
+
+        mock_ds.observable.get.return_value = None
+
+        case_service._sync_case_metadata("case-001")
+
+        mock_ds.case.save.assert_called_once()
         assert mock_case.indicators == []
 
 

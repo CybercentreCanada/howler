@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask, Response
 
+from howler.common.exceptions import InvalidDataException
 from howler.common.loader import datastore
 from howler.odm import Model
 from howler.odm.models.user import User
@@ -345,6 +346,128 @@ class TestUpdateCaseEndpoint:
             from howler.api.v2.case import update_case
 
             result: Response = update_case("case-001", user=user)
+
+            assert result.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# POST /api/v2/case/<id>/items — append_item
+# ---------------------------------------------------------------------------
+
+
+class TestAppendItemEndpoint:
+    """Tests for the POST case/<id>/items endpoint."""
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_append_item_success(self, mock_auth_service, mock_case_service, request_context: Flask):
+        """Returns 200 when a valid item is appended."""
+        from howler.odm.models.case import Case
+
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        mock_case_service.append_case_item.return_value = Case({"case_id": "case-001", "title": "T", "summary": "S"})
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"type": "hit", "value": "hit-001", "path": "alerts/test"},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.case import append_item
+
+            result: Response = append_item("case-001", user=user)
+
+            assert result.status_code == 200
+            mock_case_service.append_case_item.assert_called_once()
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_append_item_invalid_json_returns_400(self, mock_auth_service, mock_case_service, request_context: Flask):
+        """Returns 400 when the body is not valid JSON."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        with request_context.test_request_context(
+            method="POST",
+            data=b"not json",
+            content_type="text/plain",
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.case import append_item
+
+            result: Response = append_item("case-001", user=user)
+
+            assert result.status_code == 400
+            mock_case_service.append_case_item.assert_not_called()
+
+    @pytest.mark.parametrize("missing_field", ["value", "type", "path"])
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_append_item_missing_field_returns_400(
+        self, mock_auth_service, mock_case_service, request_context: Flask, missing_field: str
+    ):
+        """Returns 400 when a required field is missing from the body."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        body = {"type": "hit", "value": "hit-001", "path": "alerts/test"}
+        del body[missing_field]
+
+        with request_context.test_request_context(
+            method="POST",
+            json=body,
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.case import append_item
+
+            result: Response = append_item("case-001", user=user)
+
+            assert result.status_code == 400
+            assert missing_field in result.get_json()["api_error_message"]
+            mock_case_service.append_case_item.assert_not_called()
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_append_item_datastore_error_returns_500(
+        self, mock_auth_service, mock_case_service, request_context: Flask
+    ):
+        """Returns 500 when case_service raises DataStoreException."""
+        from howler.datastore.exceptions import DataStoreException
+
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        mock_case_service.append_case_item.side_effect = DataStoreException("save failed")
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"type": "hit", "value": "hit-001", "path": "alerts/test"},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.case import append_item
+
+            result: Response = append_item("case-001", user=user)
+
+            assert result.status_code == 500
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_append_item_invalid_data_returns_400(self, mock_auth_service, mock_case_service, request_context: Flask):
+        """Returns 400 when case_service raises InvalidDataException."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        mock_case_service.append_case_item.side_effect = InvalidDataException("bad type")
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"type": "hit", "value": "hit-001", "path": "alerts/test"},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.case import append_item
+
+            result: Response = append_item("case-001", user=user)
 
             assert result.status_code == 400
 

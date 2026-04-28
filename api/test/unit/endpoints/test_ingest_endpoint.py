@@ -598,3 +598,171 @@ class TestIngestionQueueing:
             create(index="hit")
 
             mock_queue_fn.return_value.push.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# PATCH /api/v2/ingest/<index>/<id>/overwrite
+# ---------------------------------------------------------------------------
+
+
+class TestOverwrite:
+    """Tests for the overwrite endpoint."""
+
+    @patch("howler.api.v2.ingest.datastore")
+    @patch("howler.security.auth_service")
+    def test_overwrite_success(self, mock_auth_service, mock_ds, request_context: Flask):
+        """Returns 200 with the updated record on successful overwrite."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        existing = {"howler": {"id": "hit-001", "analytic": "A"}, "event": {"kind": "alert"}}
+        mock_ds.return_value.__getitem__.return_value.get.side_effect = [
+            existing,
+            ({"howler": {"id": "hit-001", "analytic": "B"}, "event": {"kind": "alert"}}, "v2"),
+        ]
+        mock_ds.return_value.__getitem__.return_value.save.return_value = True
+
+        with request_context.test_request_context(
+            method="PATCH",
+            json={"howler": {"analytic": "B"}},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.ingest import overwrite
+
+            result: Response = overwrite(index="hit", id="hit-001", server_version="v1", user=user)
+
+            assert result[0].status_code == 200
+
+    @patch("howler.api.v2.ingest.datastore")
+    @patch("howler.security.auth_service")
+    def test_overwrite_multi_index_returns_400(self, mock_auth_service, mock_ds, request_context: Flask):
+        """Returns 400 when index contains a comma."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        with request_context.test_request_context(
+            method="PATCH",
+            json={"howler": {"analytic": "B"}},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.ingest import overwrite
+
+            result: Response = overwrite(index="hit,observable", id="hit-001", server_version="v1", user=user)
+
+            assert result.status_code == 400
+
+    @patch("howler.api.v2.ingest.datastore")
+    @patch("howler.security.auth_service")
+    def test_overwrite_not_found(self, mock_auth_service, mock_ds, request_context: Flask):
+        """Returns 404 when the record does not exist."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        mock_ds.return_value.__getitem__.return_value.get.return_value = None
+
+        with request_context.test_request_context(
+            method="PATCH",
+            json={"howler": {"analytic": "B"}},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.ingest import overwrite
+
+            result: Response = overwrite(index="hit", id="hit-001", server_version="v1", user=user)
+
+            assert result.status_code == 404
+
+    @patch("howler.api.v2.ingest.datastore")
+    @patch("howler.security.auth_service")
+    def test_overwrite_non_dict_body_returns_400(self, mock_auth_service, mock_ds, request_context: Flask):
+        """Returns 400 when the JSON payload is not a dict."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        mock_ds.return_value.__getitem__.return_value.get.return_value = {"howler": {"id": "hit-001"}}
+
+        with request_context.test_request_context(
+            method="PATCH",
+            json=["not", "a", "dict"],
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.ingest import overwrite
+
+            result: Response = overwrite(index="hit", id="hit-001", server_version="v1", user=user)
+
+            assert result.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# PUT /api/v2/ingest/<indexes>/update
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateByQuery:
+    """Tests for the update_by_query endpoint."""
+
+    @patch("howler.api.v2.ingest.datastore")
+    @patch("howler.security.auth_service")
+    def test_update_by_query_success(self, mock_auth_service, mock_ds, request_context: Flask):
+        """Returns 200 with success=True on valid update."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        mock_ds.return_value.__getitem__.return_value.update_by_query.return_value = True
+
+        with request_context.test_request_context(
+            method="PUT",
+            json={
+                "query": "howler.id:*",
+                "operations": [["SET", "howler.assignment", "user"]],
+            },
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.ingest import update_by_query
+
+            result: Response = update_by_query(indexes="hit", user=user)
+
+            assert result.status_code == 200
+            body = result.get_json()
+            assert body["api_response"]["success"] is True
+
+    @patch("howler.api.v2.ingest.datastore")
+    @patch("howler.security.auth_service")
+    def test_update_by_query_bad_operation_returns_400(self, mock_auth_service, mock_ds, request_context: Flask):
+        """Returns 400 when an operation fails validation."""
+
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        with request_context.test_request_context(
+            method="PUT",
+            json={
+                "query": "howler.id:*",
+                "operations": [["INVALID_OP", "howler.assignment", "user"]],
+            },
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.ingest import update_by_query
+
+            result: Response = update_by_query(indexes="hit", user=user)
+
+            assert result.status_code == 400
+
+    @patch("howler.api.v2.ingest.datastore")
+    @patch("howler.security.auth_service")
+    def test_update_by_query_missing_query_returns_400(self, mock_auth_service, mock_ds, request_context: Flask):
+        """Returns 400 when the query key is missing from the body."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        with request_context.test_request_context(
+            method="PUT",
+            json={
+                "operations": [["SET", "howler.assignment", "user"]],
+            },
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.ingest import update_by_query
+
+            result: Response = update_by_query(indexes="hit", user=user)
+
+            assert result.status_code == 400
