@@ -162,8 +162,23 @@ def delete(indexes: str, user: User, **kwargs):
     if non_existing_hit_ids := [id for id in ids if all(not ds[index].exists(id) for index in index_list)]:
         return not_found(err=f"Record ids [{','.join(non_existing_hit_ids)}] do not exist.")
 
-    # TODO: Reimplement in a generic function
-    # hit_service.delete_hits(hit_ids, indexes=index_list)
+    try:
+        remaining = set(ids)
+        for index in index_list:
+            if not remaining:
+                break
+
+            existing = [record_id for record_id in remaining if ds[index].exists(record_id)]
+            if not existing:
+                continue
+
+            for record_id in existing:
+                ds[index].delete(record_id)
+
+            remaining -= set(existing)
+            ds[index].commit()
+    except DataStoreException as e:
+        return internal_error(err=str(e))
 
     return no_content()
 
