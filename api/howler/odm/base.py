@@ -1532,10 +1532,10 @@ def model(index=None, store=None, description=None, id_field=None):
             if not isinstance(id_field, str):
                 raise HowlerTypeError(f"id_field must be a str, got {type(id_field).__name__}")
 
-            if not FIELD_SANITIZER.match(id_field) or id_field in BANNED_FIELDS:
+            if not FLATTENED_OBJECT_SANITIZER.match(id_field) or id_field in BANNED_FIELDS:
                 raise HowlerValueError(f"Illegal id_field name: {id_field}")
 
-            if id_field not in fields:
+            if id_field not in fields and id_field not in cls.flat_fields():
                 raise HowlerValueError(f"id_field must reference a declared field: {id_field}")
 
             cls._Model__id_field = id_field
