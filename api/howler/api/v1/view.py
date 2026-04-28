@@ -297,8 +297,9 @@ def remove_as_favourite(view_id: str, **kwargs):
 # should ask if their is a reason and if I should avoid it or if their is a reason not too
 
 
+# TODO : Verify if two functions is better ? this is less code technically.
 @generate_swagger_docs()
-@view_api.route("/<view_id>", methods=["PUT"])
+@view_api.route("/<view_id>", methods=["PUT", "DELETE"])
 @api_login(required_priv=["R", "W"])
 # TODO : AG : find a better name
 def give_priviledge(view_id: str, user: User, **kwargs):

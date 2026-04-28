@@ -184,7 +184,7 @@ def delete_dossier(id: str, user: User, **kwargs):
 
 
 @generate_swagger_docs()
-@dossier_api.route("/<id>", methods=["PUT"])
+@dossier_api.route("/<id>", methods=["PUT", "DELETE"])
 @api_login(required_priv=["R", "W"])
 def update_dossier(id: str, user: User, **kwargs):
     """Update a dossier

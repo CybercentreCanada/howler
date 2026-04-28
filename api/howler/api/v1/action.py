@@ -394,7 +394,7 @@ def execute_operations(**kwargs) -> Response:
 def give_priviledge(action_id: str, user: User, **kwargs):
     """Transfer ownership from one user to an other.
 
-    The json object need to send "priviledge", "user_id" as key.
+    The json object need to send "priviledge", "user_id", "is_adding" as key.
     The value need to be one of "administrator", "member" or "owner"
 
     Variables:
@@ -413,13 +413,14 @@ def give_priviledge(action_id: str, user: User, **kwargs):
     if not isinstance(priv_change, dict):
         return bad_request(err="Invalid data format")
 
-    if not set(priv_change.keys()) & {"priviledge", "user_id"}:
+    if not set(priv_change.keys()) & {"priviledge", "user_id", "is_adding"}:
         return bad_request(err="Invalid data format. Need new priviledge and user_id")
 
     existing_action: Action = storage.action.get_if_exists(action_id)
     if not existing_action:
         return not_found(err="This view does not exist")
 
+    # This is use to simplify the checks.
     priv_map: dict = {
         "administrator": existing_action.admin,
         "member": existing_action.member,
@@ -436,8 +437,11 @@ def give_priviledge(action_id: str, user: User, **kwargs):
 
     if priv_request == "owner" and user.uname not in existing_action.owner and not "admin" not in user.type:
         return bad_request(err="You cannot give owner priviledge for this view.")
-    # use the maping to update the list to the proper priviledge
-    priv_map[priv_request].append(str(priv_change["user_id"]))
+
+    if priv_change["is_adding"]:
+        priv_map[priv_request].append(str(priv_change["user_id"]))
+    else:
+        priv_map[priv_request].remove(str(priv_change["user_id"]))
 
     storage.view.save(existing_action.view_id, existing_action)
 
