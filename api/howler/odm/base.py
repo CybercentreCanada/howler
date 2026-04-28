@@ -19,7 +19,7 @@ from datetime import datetime
 from enum import Enum as PyEnum
 from enum import EnumMeta
 from typing import Any as _Any
-from typing import Dict, Union
+from typing import Callable
 from venv import logger
 
 import arrow
@@ -29,6 +29,8 @@ from dateutil.tz import tzutc
 from howler.common import loader
 from howler.common.exceptions import HowlerKeyError, HowlerNotImplementedError, HowlerTypeError, HowlerValueError
 from howler.common.net import is_valid_domain, is_valid_ip
+from howler.odm.howler_enum import HowlerEnum
+from howler.utils.compat import StrEnum as PyStrEnum
 from howler.utils.dict_utils import flatten, recursive_update
 from howler.utils.isotime import now_as_iso
 from howler.utils.uid import get_random_id
@@ -549,15 +551,23 @@ class Processor(ValidatedKeyword):
 
 
 class Enum(Keyword):
-    """A field storing a short string that has predefined list of possible values"""
+    """A field storing a short string that has predefined list of possible values.
 
-    def __init__(self, values: PyEnum | list[typing.Any] | set[typing.Any], *args, **kwargs):
+    Accepts values from lists/sets, Enum classes, and StrEnum (PyStrEnum) members.
+    """
+
+    def __init__(
+        self,
+        values: type[HowlerEnum] | type[PyEnum] | type[PyStrEnum] | list[typing.Any] | set[typing.Any],
+        *args,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         if isinstance(values, set):
             self.values = values
         elif isinstance(values, (list, tuple)):
             self.values = set(values)
-        elif isinstance(values, (PyEnum, EnumMeta)):
+        elif isinstance(values, (PyEnum, PyStrEnum, EnumMeta)):
             self.values = set([e.value for e in values])  # type: ignore
         else:
             raise HowlerTypeError(f"Type unsupported for Enum odm: {type(values)}")
@@ -1063,7 +1073,7 @@ class Optional(_Field):
 
 class Model:
     @classmethod
-    def fields(cls, skip_mappings=False) -> dict[str, _Field]:
+    def fields(cls, skip_mappings=False, no_cache=False) -> dict[str, _Field]:
         """Describe the elements of the model.
 
         For compound fields return the field object.
@@ -1071,33 +1081,42 @@ class Model:
         Args:
             skip_mappings (bool): Skip over mappings where the real subfield names are unknown.
         """
-        if skip_mappings and hasattr(cls, "_odm_field_cache_skip"):
+        if not no_cache and skip_mappings and "_odm_field_cache_skip" in cls.__dict__:
             return cls._odm_field_cache_skip
 
-        if not skip_mappings and hasattr(cls, "_odm_field_cache"):
+        if not no_cache and not skip_mappings and "_odm_field_cache" in cls.__dict__:
             return cls._odm_field_cache
 
         out = dict()
+        # Iterate through inherited classes. If any of them are odm.Model (e.g., they expose fields())
+        # then include their fields as well. This allows for class inheritance.
+        for base in cls.__bases__:
+            _fields: Callable[..., dict[str, _Field]] | None = getattr(base, "fields", None)
+            if _fields and callable(_fields):
+                out.update(_fields(skip_mappings=skip_mappings, no_cache=True))
+
         for name, field_data in cls.__dict__.items():
             if isinstance(field_data, _Field):
                 if skip_mappings and isinstance(field_data, Mapping):
                     continue
                 out[name.rstrip("_")] = field_data
 
-        if skip_mappings:
-            cls._odm_field_cache_skip = out
-        else:
-            cls._odm_field_cache = out
+        if not no_cache:
+            if skip_mappings:
+                cls._odm_field_cache_skip = out
+            else:
+                cls._odm_field_cache = out
+
         return out
 
     @classmethod
     def add_namespace(cls, namespace: str, field: _Field, index=None, store=None, description=None):
         recursive_set_name(field, namespace)
 
-        if hasattr(cls, "_odm_field_cache_skip"):
+        if "_odm_field_cache_skip" in cls.__dict__:
             cls._odm_field_cache_skip[namespace.rstrip("_")] = field
 
-        if hasattr(cls, "_odm_field_cache"):
+        if "_odm_field_cache" in cls.__dict__:
             cls._odm_field_cache[namespace.rstrip("_")] = field
 
         setattr(cls, namespace, field)
@@ -1112,10 +1131,10 @@ class Model:
 
     @classmethod
     def remove_namespace(cls, namespace: str):
-        if hasattr(cls, "_odm_field_cache_skip"):
+        if "_odm_field_cache_skip" in cls.__dict__:
             del cls._odm_field_cache_skip[namespace.rstrip("_")]
 
-        if hasattr(cls, "_odm_field_cache"):
+        if "_odm_field_cache" in cls.__dict__:
             del cls._odm_field_cache[namespace.rstrip("_")]
 
         delattr(cls, namespace)
@@ -1147,8 +1166,11 @@ class Model:
             else:
                 out[name] = sub_field
 
-        if isinstance(field, Compound) and show_compound:
-            out[name] = field
+        if show_compound:
+            if isinstance(field, Compound):
+                out[name] = field
+            elif isinstance(field, List) and isinstance(field.child_type, Compound):
+                out[name] = field.child_type
 
         return out
 
@@ -1163,6 +1185,11 @@ class Model:
             skip_mappings (bool): Skip over mappings where the real subfield names are unknown.
         """
         out = dict()
+        for base in cls.__bases__:
+            _flat_fields: Callable[..., dict[str, _Field]] | None = getattr(base, "flat_fields", None)
+            if _flat_fields and callable(_flat_fields):
+                out.update(_flat_fields(show_compound=show_compound, skip_mappings=skip_mappings))
+
         for name, field in cls.__dict__.items():
             if isinstance(field, _Field):
                 if skip_mappings and isinstance(field, Mapping):
@@ -1185,7 +1212,7 @@ class Model:
         include_autogen_note=True,
         defaults=None,
         url_prefix="/howler/odm/class/",
-    ) -> Union[str, Dict]:
+    ) -> str:
         markdown_content = (
             (
                 '??? success "Auto-Generated Documentation"\n    '
@@ -1476,12 +1503,44 @@ def recursive_set_name(field, name, to_parent=False):
         recursive_set_name(field.child_type, name, to_parent=True)
 
 
-def model(index=None, store=None, description=None):
-    """Decorator to create model objects."""
+def model(index=None, store=None, description=None, id_field=None):
+    """Decorator that finalizes a Model subclass for use with the datastore.
+    Assigns metadata to the class (description, id field), validates that all
+    declared field names are legal, recursively sets each field's name, and
+    applies default index/store settings to every field.
+    If ``id_field`` is not provided, it defaults to ``<classname_lower>_id``.
+    Args:
+        index: Default index setting applied to all fields on the model.
+        store: Default store setting applied to all fields on the model.
+        description: Human-readable description of the model.
+        id_field: Name of the field used as the primary key. Defaults to
+            ``<classname_lower>_id`` when not specified.
+    Returns:
+        A class decorator that configures and returns the decorated Model subclass.
+    Raises:
+        HowlerValueError: If any field name fails the ``FIELD_SANITIZER`` regex
+            or appears in ``BANNED_FIELDS``.
+    """
 
     def _finish_model(cls):
         cls._Model__description = description
-        for name, field_data in cls.fields().items():
+        fields = cls.fields()
+
+        if id_field is None:
+            cls._Model__id_field = f"{cls.__name__.lower()}_id"
+        else:
+            if not isinstance(id_field, str):
+                raise HowlerTypeError(f"id_field must be a str, got {type(id_field).__name__}")
+
+            if not FIELD_SANITIZER.match(id_field) or id_field in BANNED_FIELDS:
+                raise HowlerValueError(f"Illegal id_field name: {id_field}")
+
+            if id_field not in fields:
+                raise HowlerValueError(f"id_field must reference a declared field: {id_field}")
+
+            cls._Model__id_field = id_field
+
+        for name, field_data in fields.items():
             if not FIELD_SANITIZER.match(name) or name in BANNED_FIELDS:
                 raise HowlerValueError(f"Illegal variable name: {name}")
 
