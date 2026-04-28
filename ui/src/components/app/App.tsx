@@ -31,6 +31,7 @@ import CaseViewer from 'components/routes/cases/CaseViewer';
 import Cases from 'components/routes/cases/Cases';
 import CaseAssets from 'components/routes/cases/detail/CaseAssets';
 import CaseDashboard from 'components/routes/cases/detail/CaseDashboard';
+import CaseRules from 'components/routes/cases/detail/CaseRules';
 import CaseTimeline from 'components/routes/cases/detail/CaseTimeline';
 import ItemPage from 'components/routes/cases/detail/ItemPage';
 import DossierEditor from 'components/routes/dossiers/DossierEditor';
@@ -279,6 +280,10 @@ const createRouter = () =>
             {
               path: 'timeline',
               element: <CaseTimeline />
+            },
+            {
+              path: 'rules',
+              element: <CaseRules />
             },
             {
               path: '*',

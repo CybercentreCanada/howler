@@ -129,7 +129,7 @@ const mockCase = {
 const Wrapper: FC<PropsWithChildren> = ({ children }) => (
   <ApiConfigContext.Provider value={{ config: mockConfig, setConfig: vi.fn() }}>
     <RecordContext.Provider value={{ records: {}, loadRecords: mockLoadRecords } as any}>
-      <MemoryRouter initialEntries={['/cases/case-001/timeline']}>{children}</MemoryRouter>{' '}
+      <MemoryRouter initialEntries={['/cases/case-001/timeline']}>{children}</MemoryRouter>
     </RecordContext.Provider>
   </ApiConfigContext.Provider>
 );

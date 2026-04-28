@@ -8,6 +8,19 @@ from howler.utils.compat import StrEnum
 
 CASE_ITEM_TYPES = {"observable", "hit", "case", "lead", "reference"}
 
+RULE_INDEX_TYPES = {"hit", "observable"}
+
+
+class RuleIndexTypes(StrEnum):
+    """Enumeration of valid index types for case rules.
+
+    Determines which Elasticsearch indexes a case rule query runs against
+    during correlation.
+    """
+
+    HIT = "hit"
+    OBSERVABLE = "observable"
+
 
 class CaseItemTypes(StrEnum):
     """Enumeration of valid case item types.
@@ -69,8 +82,20 @@ class CaseItem(odm.Model):
 
 @odm.model(index=True, store=True, description="Rule used to place/query data into case paths.")
 class CaseRule(odm.Model):
+    rule_id: str = odm.UUID(description="Unique rule identifier.")
     destination: str = odm.Keyword(description="Destination case path template.")
     query: str = odm.Keyword(description="Lucene query used by this rule.")
+    author: str = odm.Keyword(description="Username who created the rule.")
+    enabled: bool = odm.Boolean(default=True, description="Whether the rule is currently active.")
+    timeframe: Optional[str] = odm.Optional(
+        odm.Date(description="ISO datetime when rule expires. Null means no expiry."),
+        default=None,
+    )
+    indexes: list[str] = odm.List(
+        odm.Enum(values=RuleIndexTypes),
+        default=[RuleIndexTypes.HIT],
+        description="Indexes to run this rule against (hit, observable, or both).",
+    )
 
 
 @odm.model(index=True, store=True, description="Task associated with a case item path.")

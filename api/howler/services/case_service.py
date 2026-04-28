@@ -12,7 +12,7 @@ from howler.common.exceptions import HowlerValueError, InvalidDataException, Not
 from howler.common.loader import APP_NAME, datastore
 from howler.common.logging import get_logger
 from howler.datastore.exceptions import DataStoreException
-from howler.odm.models.case import Case, CaseItem, CaseItemTypes, CaseLog
+from howler.odm.models.case import Case, CaseItem, CaseItemTypes, CaseLog, CaseRule
 from howler.odm.models.ecs.related import Related
 from howler.odm.models.hit import Hit
 from howler.odm.models.observable import Observable
@@ -76,48 +76,51 @@ def hide_cases(case_ids: set[str], user: str) -> None:
     """
     ds = datastore()
 
-    items_query = f"items.value:({' OR '.join(case_ids)})"
-    for case in ds.case.stream_search(items_query, as_obj=False):
-        related_case_id = case["case_id"]
-        if related_case_id in case_ids:
+    # First pass: find other cases that reference any of the cases being hidden
+    # and mark those reference items as not visible.
+    for related_case in ds.case.stream_search(f"items.value:({' OR '.join(case_ids)})"):
+        # Skip cases that are themselves being hidden — they're handled below.
+        if related_case.case_id in case_ids:
             continue
 
-        related_case = ds.case.get(related_case_id)
-        if related_case:
-            hidden_ids: list[str] = []
-            for item in related_case.items:
-                if item.value in case_ids:
-                    item.visible = False
-                    hidden_ids.append(item.value)
+        # Walk items and hide any that point to one of the target case IDs.
+        hidden_ids: list[str] = []
+        for item in related_case.items:
+            if item.value in case_ids:
+                item.visible = False
+                hidden_ids.append(item.value)
 
-            if hidden_ids:
-                related_case.log.append(
-                    CaseLog(
-                        {
-                            "timestamp": "NOW",
-                            "user": user,
-                            "explanation": f"Referenced case(s) hidden: {', '.join(hidden_ids)}",
-                        }
-                    )
-                )
-                ds.case.save(related_case_id, related_case)
-
-    for case_id in case_ids:
-        case = ds.case.get(case_id)
-        if case:
-            case.visible = False
-            case.log.append(
+        # Only persist the related case if we actually changed something.
+        if hidden_ids:
+            related_case.log.append(
                 CaseLog(
                     {
                         "timestamp": "NOW",
                         "user": user,
-                        "explanation": "Case set to hidden",
+                        "explanation": f"Referenced case(s) hidden: {', '.join(hidden_ids)}",
                     }
                 )
             )
-            ds.case.save(case_id, case)
-        else:
-            logger.warning(f"Case {case_id} not found when attempting to hide")
+            ds.case.save(related_case.case_id, related_case)
+
+    # Second pass: mark each target case itself as not visible.
+    for case_id in case_ids:
+        case = ds.case.get(case_id)
+        if case is None:
+            logger.warning("Case %s not found, skipping hide", case_id)
+            continue
+
+        case.visible = False
+        case.log.append(
+            CaseLog(
+                {
+                    "timestamp": "NOW",
+                    "user": user,
+                    "explanation": "Case hidden",
+                }
+            )
+        )
+        ds.case.save(case_id, case)
 
 
 def delete_cases(case_ids: set[str]) -> bool:
@@ -133,9 +136,8 @@ def delete_cases(case_ids: set[str]) -> bool:
     """
     ds = datastore()
 
-    items_query = f"items.value:({' OR '.join(case_ids)})"
-    for case in ds.case.stream_search(items_query, as_obj=False):
-        related_case_id = case["case_id"]
+    for case in ds.case.stream_search(f"items.value:({' OR '.join(case_ids)})"):
+        related_case_id = case.case_id
         if related_case_id in case_ids:
             continue
 
@@ -145,6 +147,46 @@ def delete_cases(case_ids: set[str]) -> bool:
             ds.case.save(related_case_id, related_case)
 
     return ds.case.delete_by_query(f"case_id:({' OR '.join(case_ids)})")
+
+
+def _describe_field_change(
+    key: str, previous: Any, new: Any, compound_fields: set[str]
+) -> tuple[str, str | None, str | None]:
+    """Build a human-readable explanation and string snapshots for a field change.
+
+    Returns:
+        A tuple of (explanation, previous_value_str, new_value_str).
+    """
+    # Compound fields (items, rules, …) are too complex to diff meaningfully.
+    if key in compound_fields:
+        return f"Updated {key}", None, None
+
+    # List fields: show which entries were added / removed.
+    if isinstance(previous, list) and isinstance(new, list):
+        prev_set = {str(v) for v in previous}
+        new_set = {str(v) for v in new}
+        added = sorted(new_set - prev_set)
+        removed = sorted(prev_set - new_set)
+
+        parts: list[str] = []
+        if added:
+            parts.append(f"added [{', '.join(added)}]")
+        if removed:
+            parts.append(f"removed [{', '.join(removed)}]")
+
+        explanation = f"Updated {key}: {'; '.join(parts)}" if parts else f"Updated {key} (no changes)"
+        return (
+            explanation,
+            ", ".join(str(v) for v in previous) or None,
+            ", ".join(str(v) for v in new) or None,
+        )
+
+    # Scalar fields: simple before/after.
+    return (
+        f"Updated {key} from '{previous}' to '{new}'",
+        str(previous) if previous is not None else None,
+        str(new) if new is not None else None,
+    )
 
 
 def update_case(case_id: str, case_data: dict[str, Any], user: User) -> Case:
@@ -185,29 +227,7 @@ def update_case(case_id: str, case_data: dict[str, Any], user: User) -> Case:
     for key, new_value in updatable.items():
         previous_value = getattr(case, key, None)
 
-        if key in compound_fields:
-            explanation = f"Updated {key}"
-            prev_str = None
-            new_str = None
-        elif isinstance(previous_value, list) and isinstance(new_value, list):
-            prev_set = set(str(v) for v in previous_value)
-            new_set = set(str(v) for v in new_value)
-            added = sorted(new_set - prev_set)
-            removed = sorted(prev_set - new_set)
-
-            parts: list[str] = []
-            if added:
-                parts.append(f"added [{', '.join(added)}]")
-            if removed:
-                parts.append(f"removed [{', '.join(removed)}]")
-
-            explanation = f"Updated {key}: {'; '.join(parts)}" if parts else f"Updated {key} (no changes)"
-            prev_str = ", ".join(str(v) for v in previous_value) or None
-            new_str = ", ".join(str(v) for v in new_value) or None
-        else:
-            explanation = f"Updated {key} from '{previous_value}' to '{new_value}'"
-            prev_str = str(previous_value) if previous_value is not None else None
-            new_str = str(new_value) if new_value is not None else None
+        explanation, prev_str, new_str = _describe_field_change(key, previous_value, new_value, compound_fields)
 
         case.log.append(
             CaseLog(
@@ -280,6 +300,16 @@ def append_case_item(  # noqa: C901
 
     if item.path.endswith("/"):
         raise InvalidDataException("item path must not end with a trailing '/'")
+
+    # Verify the case exists and deduplicate paths: if an existing item
+    # already occupies the same path, append the new item's unique value in
+    # parentheses to avoid a collision.
+    _case = datastore().case.get(case_id)
+    if _case is None:
+        raise NotFoundException(f"Case {case_id} does not exist")
+
+    if any(item.path == case_item.path for case_item in _case.items):
+        item.path = f"{item.path} ({item.value})"
 
     match item.type:
         case CaseItemTypes.HIT:
@@ -480,7 +510,7 @@ def append_reference(case_id: str, item: CaseItem) -> Case:
     """
     ds = datastore()
 
-    _case = ds.case.get_if_exists(key=case_id, as_obj=True)
+    _case = ds.case.get(key=case_id)
 
     if _case is None:
         raise NotFoundException(f"Case {case_id} does not exist")
@@ -720,4 +750,156 @@ def rename_case_item(case_id: str, item_value: str, new_path: str) -> Case:
 
     event_service.emit("cases", {"case": _case.as_primitives()})
 
+    return _case
+
+
+def add_case_rule(case_id: str, rule_data: dict, user: User) -> Case:
+    """Add a correlation rule to a case.
+
+    Injects a unique id and the author from the current user, then appends
+    the rule to the case's rules list.
+
+    Args:
+        case_id: Unique identifier of the case.
+        rule_data: Dictionary with ``query``, ``destination``, and optionally ``timeframe``.
+        user: The user creating the rule.
+
+    Returns:
+        The updated Case object.
+
+    Raises:
+        NotFoundException: If the case does not exist.
+        InvalidDataException: If required rule fields are missing.
+    """
+    ds = datastore()
+
+    _case = ds.case.get(case_id)
+    if _case is None:
+        raise NotFoundException(f"Case {case_id} does not exist")
+
+    if not rule_data.get("query"):
+        raise InvalidDataException("Rule 'query' is required")
+
+    if not rule_data.get("destination"):
+        raise InvalidDataException("Rule 'destination' is required")
+
+    rule_data.pop("rule_id", None)
+    rule_data["author"] = user.uname
+    rule_data.setdefault("enabled", True)
+
+    rule = CaseRule(rule_data)
+    _case.rules.append(rule)
+
+    _case.log.append(
+        CaseLog(
+            {
+                "timestamp": "NOW",
+                "user": user.uname,
+                "explanation": f"Added correlation rule targeting '{rule.destination}'",
+            }
+        )
+    )
+
+    _case.updated = "NOW"
+    ds.case.save(case_id, _case)
+    event_service.emit("cases", {"case": _case.as_primitives()})
+    return _case
+
+
+def remove_case_rule(case_id: str, rule_id: str, user: User) -> Case:
+    """Remove a correlation rule from a case.
+
+    Args:
+        case_id: Unique identifier of the case.
+        rule_id: UUID of the rule to remove.
+        user: The user performing the deletion.
+
+    Returns:
+        The updated Case object.
+
+    Raises:
+        NotFoundException: If the case or rule does not exist.
+    """
+    ds = datastore()
+
+    _case = ds.case.get(case_id)
+    if _case is None:
+        raise NotFoundException(f"Case {case_id} does not exist")
+
+    original_len = len(_case.rules)
+    _case.rules = [r for r in _case.rules if r.rule_id != rule_id]
+
+    if len(_case.rules) == original_len:
+        raise NotFoundException(f"Rule {rule_id} not found in case {case_id}")
+
+    _case.log.append(
+        CaseLog(
+            {
+                "timestamp": "NOW",
+                "user": user.uname,
+                "explanation": f"Removed correlation rule {rule_id}",
+            }
+        )
+    )
+
+    _case.updated = "NOW"
+    ds.case.save(case_id, _case)
+    event_service.emit("cases", {"case": _case.as_primitives()})
+    return _case
+
+
+def update_case_rule(case_id: str, rule_id: str, update_data: dict, user: User) -> Case:
+    """Update fields on an existing correlation rule.
+
+    Allowed fields: ``enabled``, ``query``, ``destination``, ``timeframe``.
+
+    Args:
+        case_id: Unique identifier of the case.
+        rule_id: UUID of the rule to update.
+        update_data: Dictionary of fields to patch.
+        user: The user performing the update.
+
+    Returns:
+        The updated Case object.
+
+    Raises:
+        NotFoundException: If the case or rule does not exist.
+        InvalidDataException: If no valid fields are provided.
+    """
+    ds = datastore()
+
+    _case = ds.case.get(case_id)
+    if _case is None:
+        raise NotFoundException(f"Case {case_id} does not exist")
+
+    allowed_fields = {"enabled", "query", "destination", "timeframe"}
+    patch = {k: v for k, v in update_data.items() if k in allowed_fields}
+    if not patch:
+        raise InvalidDataException(
+            f"No valid fields provided for update. Allowed fields: {', '.join(sorted(allowed_fields))}"
+        )
+
+    rule = next((r for r in _case.rules if r.rule_id == rule_id), None)
+    if rule is None:
+        raise NotFoundException(f"Rule {rule_id} not found in case {case_id}")
+
+    changes: list[str] = []
+    for key, value in patch.items():
+        old_value = getattr(rule, key, None)
+        setattr(rule, key, value)
+        changes.append(f"{key}: '{old_value}' → '{value}'")
+
+    _case.log.append(
+        CaseLog(
+            {
+                "timestamp": "NOW",
+                "user": user.uname,
+                "explanation": f"Updated correlation rule {rule_id}: {'; '.join(changes)}",
+            }
+        )
+    )
+
+    _case.updated = "NOW"
+    ds.case.save(case_id, _case)
+    event_service.emit("cases", {"case": _case.as_primitives()})
     return _case
