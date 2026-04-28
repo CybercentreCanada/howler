@@ -240,8 +240,9 @@ def give_permission(id: str, user: User, **kwargs):
 
     Data Block:
     {
-        "priviledge": "priviledge to give" [member, administrator, owner]    # The name of this dossier
-        "user_id": "user to give permission to"      # The query to run
+        "priviledge": "priviledge to give"  # [member, administrator, owner]
+        "user_id": "user to give permission to"
+        "is_adding: True # True = add False = remove
     }
 
     Result Example:
@@ -253,7 +254,7 @@ def give_permission(id: str, user: User, **kwargs):
     if not isinstance(priv_change, dict):
         return bad_request(err="Invalid data format")
 
-    if not set(priv_change.keys()) & {"priviledge", "user_id"}:
+    if not set(priv_change.keys()) & {"priviledge", "user_id", "is_adding"}:
         return bad_request(err="Invalid data format. Need new priviledge and user_id")
 
     storage = datastore()
@@ -263,8 +264,12 @@ def give_permission(id: str, user: User, **kwargs):
         return not_found(err="This view does not exist")
 
     try:
-        update_dossier = dossier_service.give_priviledge(
-            dossier_id=id, level_requested=priv_change["priviledge"], new_member=priv_change["user_id"], user=user
+        update_dossier = dossier_service.change_priviledge(
+            dossier_id=id,
+            level_requested=priv_change["priviledge"],
+            new_member=priv_change["user_id"],
+            user=user,
+            is_adding=priv_change["is_adding"],
         )
         return ok(update_dossier)
     except ForbiddenException as e:

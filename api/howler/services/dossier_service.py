@@ -290,7 +290,7 @@ def get_matching_dossiers(
 
 
 # TODO : AG : find a better name
-def give_priviledge(dossier_id: str, user: User, level_requested: str, new_member: str):
+def change_priviledge(dossier_id: str, user: User, level_requested: str, new_member: str, is_adding: bool):
     """Transfer ownership from one user to an other.
 
     The json object need to send "priviledge", "user_id" as key.
@@ -338,7 +338,10 @@ def give_priviledge(dossier_id: str, user: User, level_requested: str, new_membe
     if level_requested == "owner" and user.uname not in existing_dossier.owner and not "admin" not in user.type:
         raise InvalidDataException("You cannot give owner priviledge for this view.")
     # use the maping to update the list to the proper priviledge
-    priv_map[level_requested].append(str(new_member))
+    if is_adding:
+        priv_map[level_requested].append(str(new_member))
+    else:
+        priv_map[level_requested].remove(str(new_member))
 
     storage.dossier.save(existing_dossier.dossier_id, existing_dossier)
 
