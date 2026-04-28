@@ -33,7 +33,7 @@ def main():  # noqa: C901
         _path = sys.argv[1] if len(sys.argv) > 1 else "test"
 
         pytest = subprocess.Popen(
-            prep_command(f"pytest --cov=howler --cov-branch --cov-config=.coveragerc.pytest -rP -vv {_path}"),
+            prep_command(f"pytest --cov=howler --cov-branch --cov-config=.coveragerc.pytest -rFE -v {_path}"),
             stdout=subprocess.PIPE,
         )
 
