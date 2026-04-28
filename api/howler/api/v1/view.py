@@ -301,12 +301,12 @@ def give_priviledge(view_id: str, user: User, **kwargs):
 
     The json object need to send "priviledge", "user_id" as key.
     The value need to be one of "administrator", "member" or "owner"
+
     Variables:
     view_id => The id of the view to give administrative priviledge of
 
-
     Optional Arguments:
-    None
+        None
 
     Result Example:
     {
@@ -314,13 +314,11 @@ def give_priviledge(view_id: str, user: User, **kwargs):
     }
     """
     storage = datastore()
-    new_data = request.json
-    if not isinstance(new_data, dict):
+    priv_change = request.json
+    if not isinstance(priv_change, dict):
         return bad_request(err="Invalid data format")
 
-    # TODO : AG : will need to create that when calling the function ( the admin_uid value )
-    # so when the user select the user he want to give admin it send the selected user
-    if not set(new_data.keys()) & {"priviledge", "user_id"}:
+    if not set(priv_change.keys()) & {"priviledge", "user_id"}:
         return bad_request(err="Invalid data format. Need new priviledge and user_id")
 
     existing_view: View = storage.view.get_if_exists(view_id)
@@ -332,7 +330,7 @@ def give_priviledge(view_id: str, user: User, **kwargs):
         "member": existing_view.member,
         "owner": existing_view.owner,
     }
-    priv_request: str = new_data["priviledge"]
+    priv_request: str = priv_change["priviledge"]
 
     if priv_request not in priv_map:
         return bad_request(err=f"Wrong request. This priviledge {priv_request} does not exist.")
@@ -343,7 +341,7 @@ def give_priviledge(view_id: str, user: User, **kwargs):
 
     if priv_request == "owner" and user.uname not in existing_view.owner and not "admin" not in user.type:
         return bad_request(err="You cannot give owner priviledge for this view.")
-    priv_map[priv_request].append(str(new_data["user_id"]))
+    priv_map[priv_request].append(str(priv_change["user_id"]))
 
     storage.view.save(existing_view.view_id, existing_view)
 
