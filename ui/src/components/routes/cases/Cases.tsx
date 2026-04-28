@@ -208,8 +208,6 @@ const CasesBase: FC = () => {
       renderer={({ item }: TuiListItemProps<Case>, classRenderer) => renderer(item.item, classRenderer())}
       response={response}
       onSelect={(item: TuiListItem<Case>) => navigate(`/cases/${item.id}`)}
-      onCreate={() => navigate('/cases/create')}
-      createPrompt="route.cases.create"
       searchPrompt="route.cases.manager.search"
       createIcon={<Topic sx={{ mr: 1 }} />}
     />

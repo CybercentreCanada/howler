@@ -104,7 +104,11 @@ const CaseCard: FC<{
             </>
           )}
           <Divider flexItem />
-          <Grid container spacing={1}>
+          <Grid
+            container
+            spacing={0.5}
+            sx={{ ml: `${theme.spacing(-0.5)} !important`, mt: `${theme.spacing(0.5)} !important` }}
+          >
             {_case.targets?.map(indicator => (
               <Grid key={indicator} item>
                 <PluginChip
