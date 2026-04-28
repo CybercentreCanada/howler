@@ -22,7 +22,6 @@ class Action(odm.Model):
     owner_id: str = odm.List(
         odm.Keyword(), description="The id of the user that created this action", default=[], optional=True
     )
-
     member_id: list[str] = odm.List(
         odm.Keyword(),
         description="group of person to whom can modify this action.",

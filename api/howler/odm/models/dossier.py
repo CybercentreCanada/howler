@@ -23,10 +23,27 @@ class Dossier(odm.Model):
         description="A list of the pivots to show when the query matches the given alert.",
     )
     title: str = odm.Keyword(description="The title of this dossier.")
-    owner: str = odm.Keyword(description="The person to whom this dossier belongs.")
-    admin: str = odm.Keyword(description="The group of person to whom this dossier is administer.")
+
     # TODO : AG find better language for them
-    member: str = odm.Keyword(description=("The group of person to whom this dossier is assigned."))
+    owner: list[str] = odm.List(
+        odm.Keyword(),
+        description="The group of person to whom this dossier belongs.",
+        default=[],
+        optional=True,
+    )
+    admin: list[str] = odm.List(
+        odm.Keyword(),
+        description="The group of person to whom this dossier is administer.",
+        default=[],
+        optional=True,
+    )
+    member: list[str] = odm.List(
+        odm.Keyword(),
+        description=("The group of person to whom this dossier is assigned."),
+        default=[],
+        optional=True,
+    )
+
     query: Optional[str] = odm.Keyword(
         description="The query that controls when this dossier should be shown in the UI.", optional=True, default=None
     )
