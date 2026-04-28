@@ -92,7 +92,7 @@ def create_view(**kwargs):
 
         view = View(view_data)
 
-        view.owner = kwargs["user"]["uname"]
+        view.owner = [kwargs["user"]["uname"]]
 
         if view.type == "personal":
             current_user = storage.user.get_if_exists(kwargs["user"]["uname"])
@@ -135,9 +135,9 @@ def delete_view(view_id: str, user: User, **kwargs):
     if not existing_view:
         return not_found(err="This view does not exist")
 
-    # TODO: AG verify this work properly. Allowing the view admin to delete the branch as well.
-    if (existing_view.owner != user.uname or existing_view.admin != user.uname) and "admin" not in user.type:
-        return forbidden(err="You cannot delete a view unless you are an administrator, the owner or the view admin.")
+    # TODO: AG verify this work properly.
+    if (user.uname not in existing_view.owner) and "admin" not in user.type:
+        return forbidden(err="You cannot delete a view unless you are an owner or a global admin.")
 
     if existing_view.type == "readonly":
         return forbidden(err="You cannot delete built-in views.")
@@ -189,10 +189,10 @@ def update_view(view_id: str, user: User, **kwargs):
     if existing_view.type == "readonly":
         return forbidden(err="You cannot edit a built-in view.")
 
-    if existing_view.type == "personal" and existing_view.owner != user.uname:
+    if existing_view.type == "personal" and user.uname in existing_view.owner:
         return forbidden(err="You cannot update a personal view that is not owned by you.")
 
-    if existing_view.type == "global" and existing_view.owner != user.uname and "admin" not in user.type:
+    if existing_view.type == "global" and user.uname not in existing_view.owner and "admin" not in user.type:
         return forbidden(err="Only the owner of a view and administrators can edit a global view.")
 
     new_view = View(cast(dict, merge({}, existing_view.as_primitives(), new_data)))
@@ -240,7 +240,7 @@ def set_as_favourite(view_id: str, **kwargs):
         return not_found(err="This view does not exist")
 
     if existing_view.type != "global" and (
-        existing_view.owner != kwargs["user"]["uname"] and existing_view.owner != "none"
+        kwargs["user"]["uname"] not in existing_view.owner and existing_view.owner != []
     ):
         return forbidden(err="You can only favourite global views, or views owned by you.")
 
@@ -341,6 +341,7 @@ def give_priviledge(view_id: str, user: User, **kwargs):
 
     if priv_request == "owner" and user.uname not in existing_view.owner and not "admin" not in user.type:
         return bad_request(err="You cannot give owner priviledge for this view.")
+    # use the maping to update the list to the proper priviledge
     priv_map[priv_request].append(str(priv_change["user_id"]))
 
     storage.view.save(existing_view.view_id, existing_view)
