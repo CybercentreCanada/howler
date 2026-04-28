@@ -33,13 +33,13 @@ class View(odm.Model):
         optional=True,
     )
 
-    admin: str = odm.List(
+    admin: list[str] = odm.List(
         odm.Keyword(),
         description="The group of person to whom administer this view.",
         default=[],
         optional=True,
     )
-    member: str = odm.List(
+    member: list[str] = odm.List(
         odm.Keyword(),
         description="The group of person to whom can modify the view.",
         default=[],

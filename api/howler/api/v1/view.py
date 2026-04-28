@@ -278,7 +278,6 @@ def remove_as_favourite(view_id: str, **kwargs):
     try:
         current_user = storage.user.get_if_exists(kwargs["user"]["uname"])
 
-        # TODO : AG : This is a good example on how to use the list[str] Adapt everything to this !!!!!!!!
         current_favourites: list[str] = current_user.favourite_views
 
         if view_id not in current_favourites:
@@ -297,9 +296,11 @@ def remove_as_favourite(view_id: str, **kwargs):
 @view_api.route("/<view_id>", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
 # TODO : AG : find a better name
-def give_admin_priviledge(view_id: str, user: User, **kwargs):
+def give_priviledge(view_id: str, user: User, **kwargs):
     """Transfer ownership from one user to an other.
 
+    The json object need to send "priviledge", "user_id" as key.
+    The value need to be one of "administrator", "member" or "owner"
     Variables:
     view_id => The id of the view to give administrative priviledge of
 
@@ -318,19 +319,34 @@ def give_admin_priviledge(view_id: str, user: User, **kwargs):
         return bad_request(err="Invalid data format")
 
     # TODO : AG : will need to create that when calling the function ( the admin_uid value )
-    if not set(new_data.keys()) & {"admin_uid"}:
-        return bad_request(err="Invalid data format. Need new admin user_id")
+    # so when the user select the user he want to give admin it send the selected user
+    if not set(new_data.keys()) & {"priviledge", "user_id"}:
+        return bad_request(err="Invalid data format. Need new priviledge and user_id")
 
     existing_view: View = storage.view.get_if_exists(view_id)
     if not existing_view:
         return not_found(err="This view does not exist")
 
-    # TODO: Should admin be allowed to add other admin ? I assumed so ?
-    if (user.uname not in existing_view.owner) or (user.uname not in existing_view.admin):
-        return bad_request(err="You cannot give administrative priviledge of this view.")
+    priv_map: dict = {
+        "administrator": existing_view.admin,
+        "member": existing_view.member,
+        "owner": existing_view.owner,
+    }
+    priv_request: str = new_data["priviledge"]
 
-    # we give the new user admin priviledge
-    # TODO : AG : Tomorrow. Add it to the list once that's done generalise the function so we can call
-    # one when we change roles. They all where move to list so probably have to go back into the checks before.
+    if priv_request not in priv_map:
+        return bad_request(err=f"Wrong request. This priviledge {priv_request} does not exist.")
 
-    return
+    is_view_admin: bool = user.uname in existing_view.admin or user.uname in existing_view.owner
+    if not is_view_admin and "admin" not in user.type:
+        return bad_request(err="You cannot give administrative priviledge for this view.")
+
+    if priv_request == "owner" and user.uname not in existing_view.owner and not "admin" not in user.type:
+        return bad_request(err="You cannot give owner priviledge for this view.")
+    priv_map[priv_request].append(str(new_data["user_id"]))
+
+    storage.view.save(existing_view.view_id, existing_view)
+
+    storage.view.commit()
+
+    return ok(storage.view.get_if_exists(existing_view.view_id, as_obj=False))
