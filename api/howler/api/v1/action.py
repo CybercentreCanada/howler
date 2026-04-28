@@ -159,7 +159,9 @@ def update_action(id: str, user: User, **_) -> Response:
         # I would need to verify what format the variables here are. Probably by running it somehow
         # since this one has a chance to always says its true since we recreate the object
         is_member: bool = (
-            action_obj.owner_id != user.uname or action_obj.admin_id != user.uname or action_obj.member_id != user.uname
+            user.uname not in action_obj.owner_id
+            or user.uname not in action_obj.admin_id
+            or user.uname not in action_obj.member_id
         )
         if not is_member and "automation_advanced" not in user.type:
             return forbidden(err="Updating triggers requires the role 'automation_advanced'.")
@@ -196,7 +198,7 @@ def delete_action(id: str, user: User, **kwargs) -> Response:
     action: Action = result["items"][0]
 
     # TODO AG : verify if this work same as dossier and view
-    if (action.owner_id != user.uname or action.admin_id != user.uname) and "admin" not in user.type:
+    if (user.uname not in action.owner_id or user.uname not in action.admin_id) and "admin" not in user.type:
         return forbidden(err="You do not have the permissions necessary to delete this action.")
 
     try:
