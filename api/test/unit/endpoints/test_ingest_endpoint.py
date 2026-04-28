@@ -608,6 +608,7 @@ class TestIngestionQueueing:
 class TestOverwrite:
     """Tests for the overwrite endpoint."""
 
+    @patch("howler.api.v2.ingest.INDEXES", {"hit": None})
     @patch("howler.api.v2.ingest.datastore")
     @patch("howler.security.auth_service")
     def test_overwrite_success(self, mock_auth_service, mock_ds, request_context: Flask):

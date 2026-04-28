@@ -5,7 +5,6 @@ from typing import Any
 from elasticsearch import BadRequestError
 from elasticsearch._sync.client.indices import IndicesClient
 from flask import Request, request
-from werkzeug.exceptions import BadRequest
 
 from howler.api import bad_request, make_subapi_blueprint, ok
 from howler.common.loader import datastore
@@ -30,10 +29,7 @@ def generate_params(request: Request, fields: list[str], multi_fields: list[str]
         params = {}
 
     if request.method == "POST":
-        try:
-            req_data = request.json
-        except BadRequest:
-            req_data = {"query": "*:*"}
+        req_data = request.get_json(silent=True) or {"query": "*:*"}
 
         params = {
             **params,
