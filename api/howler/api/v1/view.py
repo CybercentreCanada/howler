@@ -292,15 +292,22 @@ def remove_as_favourite(view_id: str, **kwargs):
         return bad_request(err=str(e))
 
 
+# TODO: AG : pretty sur they have a reason for it but I could make a function to simplify both
+# but the rest also have a lot of code duplicating from one an other.
+# should ask if their is a reason and if I should avoid it or if their is a reason not too
+
+
 @generate_swagger_docs()
 @view_api.route("/<view_id>", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
 # TODO : AG : find a better name
 def give_priviledge(view_id: str, user: User, **kwargs):
-    """Transfer ownership from one user to an other.
+    """give permission from one user to an other.
 
-    The json object need to send "priviledge", "user_id" as key.
-    The value need to be one of "administrator", "member" or "owner"
+    The json object need to send "priviledge", "user_id", "is_adding" as key.
+    priviledge : The value need to be one of "administrator", "member" or "owner"
+    user_id : the value need to be the user to add or remove from the permission
+    is_adding: The value neeed to be a boolean representing if we add or remove a user.
 
     Variables:
     view_id => The id of the view to give administrative priviledge of
@@ -318,7 +325,7 @@ def give_priviledge(view_id: str, user: User, **kwargs):
     if not isinstance(priv_change, dict):
         return bad_request(err="Invalid data format")
 
-    if not set(priv_change.keys()) & {"priviledge", "user_id"}:
+    if not set(priv_change.keys()) & {"priviledge", "user_id", "is_adding"}:
         return bad_request(err="Invalid data format. Need new priviledge and user_id")
 
     existing_view: View = storage.view.get_if_exists(view_id)
@@ -342,7 +349,11 @@ def give_priviledge(view_id: str, user: User, **kwargs):
     if priv_request == "owner" and user.uname not in existing_view.owner and not "admin" not in user.type:
         return bad_request(err="You cannot give owner priviledge for this view.")
     # use the maping to update the list to the proper priviledge
-    priv_map[priv_request].append(str(priv_change["user_id"]))
+
+    if priv_change["is_adding"]:
+        priv_map[priv_request].append(str(priv_change["user_id"]))
+    else:
+        priv_map[priv_request].remove(str(priv_change["user_id"]))
 
     storage.view.save(existing_view.view_id, existing_view)
 
