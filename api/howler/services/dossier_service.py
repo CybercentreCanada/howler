@@ -142,7 +142,7 @@ def create_dossier(dossier_data: Optional[Any], username: str) -> Dossier:  # no
                 raise InvalidDataException("One of your pivots has duplicate keys set.")
 
         # Ensure the owner is set to the current user (security measure)
-        dossier.owner = username
+        dossier.owner = [username]
 
         # Save the dossier to the datastore
         storage.dossier.save(dossier.dossier_id, dossier)
@@ -195,14 +195,17 @@ def update_dossier(dossier_id: str, dossier_data: dict[str, Any], user: User) ->
 
     # Enforce access control for personal dossiers
     # Only the owner or admin users can modify personal dossiers
-    if existing_dossier.type == "personal" and existing_dossier.owner != user.uname and "admin" not in user.type:
+    is_dossier_admin: bool = user.uname in existing_dossier.owner or user.name in existing_dossier.admin
+    if existing_dossier.type == "personal" and not is_dossier_admin and "admin" not in user.type:
         raise ForbiddenException("You cannot update a personal dossier that is not owned by you.")
 
     # Enforce access control for global dossiers
     # Only the owner or admin users can modify global dossiers
     # TODO : AG : verify this work to only allow "member" to modify it
-    is_member: bool = existing_dossier.owner != (
-        user.uname or existing_dossier.admin != user.uname or existing_dossier.member != user.uname
+    is_member: bool = (
+        user.uname in existing_dossier.owner
+        or user.uname in existing_dossier.admin
+        or user.uname in existing_dossier.member
     )
     if existing_dossier.type == "global" and not is_member and "admin" not in user.type:
         raise ForbiddenException("Only the members of a dossier and administrators can edit a global dossier.")
