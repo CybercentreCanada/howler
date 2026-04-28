@@ -19,6 +19,7 @@ else:
 
         def __format__(self, format_spec: str) -> str:
             return str.__format__(self, format_spec)
+
     # typing_extensions.TypedDict supports Generic[T] mixing on Python < 3.11;
     # the stdlib version does not gain that until 3.11.
     from typing_extensions import NotRequired, TypedDict  # noqa: F401
