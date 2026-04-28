@@ -835,3 +835,168 @@ def test_domain():
 
     with pytest.raises(HowlerException):
         Test({"domain": "foo", "strict_domain": "foo"})
+
+
+def test_flat_fields_show_compound_list_of_compound():
+    """flat_fields(show_compound=True) should include the compound child type for List[Compound] fields."""
+
+    @model()
+    class Inner(Model):
+        name = Keyword()
+        value = Integer()
+
+    @model()
+    class Outer(Model):
+        items = List(Compound(Inner))
+        label = Keyword()
+
+    flat = Outer.flat_fields(show_compound=True)
+
+    # The list field key should appear and map to the Inner compound child type
+    assert "items" in flat
+    items_field = flat["items"]
+    assert isinstance(items_field, Compound)
+    assert items_field.child_type is Inner
+
+    # Scalar field should still be present
+    assert "label" in flat
+
+    # Sub-fields of Inner should also be present
+    assert "items.name" in flat
+    assert "items.value" in flat
+
+
+def test_flat_fields_show_compound_false_excludes_list_compound_key():
+    """flat_fields(show_compound=False) should NOT add the top-level key for List[Compound] fields."""
+
+    @model()
+    class Inner(Model):
+        name = Keyword()
+
+    @model()
+    class Outer(Model):
+        items = List(Compound(Inner))
+
+    flat_without = Outer.flat_fields(show_compound=False)
+    flat_with = Outer.flat_fields(show_compound=True)
+
+    # With show_compound=False the 'items' key should not appear (only sub-fields)
+    assert "items" not in flat_without
+    assert "items.name" in flat_without
+
+    # With show_compound=True it should appear
+    assert "items" in flat_with
+
+
+def test_flat_fields_show_compound_list_compound_type_is_child():
+    """The value stored under the list key must be the Compound child type (not the List wrapper)."""
+
+    @model()
+    class Tag(Model):
+        key = Keyword()
+        count = Integer()
+
+    @model()
+    class Doc(Model):
+        tags = List(Compound(Tag))
+
+    flat = Doc.flat_fields(show_compound=True)
+
+    assert "tags" in flat
+    # Should be the Compound child type (Tag), not a List or Compound wrapper
+    tags_field = flat["tags"]
+    assert isinstance(tags_field, Compound)
+    assert tags_field.child_type is Tag
+
+
+def test_flat_fields_show_compound_nested_list_compound():
+    """Multiple List[Compound] fields are all included correctly."""
+
+    @model()
+    class Alpha(Model):
+        x = Keyword()
+
+    @model()
+    class Beta(Model):
+        y = Integer()
+
+    @model()
+    class Container(Model):
+        alphas = List(Compound(Alpha))
+        betas = List(Compound(Beta))
+
+    flat = Container.flat_fields(show_compound=True)
+
+    assert "alphas" in flat
+    alphas_field = flat["alphas"]
+    assert isinstance(alphas_field, Compound)
+    assert alphas_field.child_type is Alpha
+    assert "betas" in flat
+    betas_field = flat["betas"]
+    assert isinstance(betas_field, Compound)
+    assert betas_field.child_type is Beta
+
+
+def test_model_id_field_default():
+    """When id_field is not specified, it should default to '<classname_lower>_id'."""
+
+    @model()
+    class MyDocument(Model):
+        title = Keyword()
+
+    assert MyDocument._Model__id_field == "mydocument_id"
+
+
+def test_model_id_field_explicit():
+    """An explicit id_field value should be stored verbatim."""
+
+    @model(id_field="custom_id")
+    class MyRecord(Model):
+        name = Keyword()
+
+    assert MyRecord._Model__id_field == "custom_id"
+
+
+def test_model_id_field_none_uses_default():
+    """Passing id_field=None explicitly should also produce the default '<classname_lower>_id'."""
+
+    @model(id_field=None)
+    class SomeModel(Model):
+        value = Integer()
+
+    assert SomeModel._Model__id_field == "somemodel_id"
+
+
+def test_model_id_field_stored_on_class():
+    """The id_field should be accessible via cls._Model__id_field (not instance-level)."""
+
+    @model(id_field="doc_id")
+    class Document(Model):
+        body = Keyword()
+
+    # Accessible on the class directly
+    assert Document._Model__id_field == "doc_id"
+
+    # Also consistent across instances (class attribute, not instance attribute)
+    instance = Document({"body": "hello"})
+    assert type(instance)._Model__id_field == "doc_id"
+
+
+def test_model_id_field_independent_per_class():
+    """Each model class should store its own id_field independently."""
+
+    @model(id_field="alpha_key")
+    class Alpha(Model):
+        x = Keyword()
+
+    @model(id_field="beta_key")
+    class Beta(Model):
+        y = Keyword()
+
+    @model()
+    class Gamma(Model):
+        z = Keyword()
+
+    assert Alpha._Model__id_field == "alpha_key"
+    assert Beta._Model__id_field == "beta_key"
+    assert Gamma._Model__id_field == "gamma_id"
