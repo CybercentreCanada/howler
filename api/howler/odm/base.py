@@ -1212,7 +1212,7 @@ class Model:
         include_autogen_note=True,
         defaults=None,
         url_prefix="/howler/odm/class/",
-    ) -> dict | str:
+    ) -> str:
         markdown_content = (
             (
                 '??? success "Auto-Generated Documentation"\n    '
