@@ -223,3 +223,56 @@ def update_dossier(id: str, user: User, **kwargs):
     except HowlerException as e:
         logger.exception("Unknown error on dossier update:")
         return internal_error(err=e.message)
+
+
+@generate_swagger_docs()
+@dossier_api.route("/<id>", methods=["PUT"])
+@api_login(required_priv=["R", "W"])
+def give_permission(id: str, user: User, **kwargs):
+    """Update a dossier
+
+    Variables:
+    id => The id of the dossier to give new permission
+    user => user requesting the change
+
+    Optional Arguments:
+    None
+
+    Data Block:
+    {
+        "priviledge": "priviledge to give" [member, administrator, owner]    # The name of this dossier
+        "user_id": "user to give permission to"      # The query to run
+    }
+
+    Result Example:
+    {
+        ...dossier     # The updated dossier data
+    }
+    """
+    priv_change = request.json
+    if not isinstance(priv_change, dict):
+        return bad_request(err="Invalid data format")
+
+    if not set(priv_change.keys()) & {"priviledge", "user_id"}:
+        return bad_request(err="Invalid data format. Need new priviledge and user_id")
+
+    storage = datastore()
+
+    existing_dossier: Dossier = storage.dossier.get_if_exists(id)
+    if not existing_dossier:
+        return not_found(err="This view does not exist")
+
+    try:
+        update_dossier = dossier_service.give_priviledge(
+            dossier_id=id, level_requested=priv_change["priviledge"], new_member=priv_change["user_id"], user=user
+        )
+        return ok(update_dossier)
+    except ForbiddenException as e:
+        return forbidden(err=e.message)
+    except InvalidDataException as e:
+        return bad_request(err=e.message)
+    except NotFoundException as e:
+        return not_found(err=e.message)
+    except HowlerException as e:
+        logger.exception("Unknown error on dossier update:")
+        return internal_error(err=e.message)

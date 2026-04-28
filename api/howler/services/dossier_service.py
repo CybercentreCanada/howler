@@ -298,8 +298,14 @@ def give_priviledge(dossier_id: str, user: User, level_requested: str, new_membe
 
     Variables:
     dossier_id => The id of the dossier to give memberships priviledge of
+
+
     user => user requesting the change
+
+
     level_requested => what level requested [member, administrator, owner]
+
+
     new_member => uname of the user to add to the list of member ship
 
     Optional Arguments:
