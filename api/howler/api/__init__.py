@@ -25,7 +25,8 @@ logger = get_logger(__file__)
 
 def make_subapi_blueprint(name, api_version=1):
     """Create a flask Blueprint for a subapi in a standard way."""
-    return Blueprint(name, name, url_prefix="/".join([API_PREFIX, f"v{api_version}", name]))
+    full_name = f"v{api_version}_{name}"
+    return Blueprint(full_name, full_name, url_prefix="/".join([API_PREFIX, f"v{api_version}", name]))
 
 
 def _make_api_response(

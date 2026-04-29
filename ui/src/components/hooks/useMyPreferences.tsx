@@ -2,6 +2,7 @@ import {
   Api,
   Article,
   Book,
+  BookRounded,
   Code,
   Dashboard,
   Description,
@@ -49,6 +50,15 @@ const useMyPreferences = (): AppPreferenceConfigs => {
             i18nKey: 'route.home',
             route: '/',
             icon: <Dashboard />
+          }
+        },
+        {
+          type: 'item',
+          element: {
+            id: 'cases',
+            i18nKey: 'route.cases',
+            route: '/cases',
+            icon: <BookRounded />
           }
         },
         {

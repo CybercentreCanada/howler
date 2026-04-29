@@ -49,7 +49,6 @@ nav:
   - ingestion/client.md
   - ingestion/user.md
   - ingestion/authentication.md
-  - ingestion/bundles.md
   - ingestion/links.md
   - ingestion/example.md
 - Developer's Guide:

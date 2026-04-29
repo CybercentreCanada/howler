@@ -7,6 +7,6 @@ export const uri = () => {
   return joinUri(parentUri(), 'hit');
 };
 
-export const post = (request?: HowlerFacetSearchRequest): Promise<{ [index: string]: HowlerFacetSearchResponse }> => {
+export const post = (request?: HowlerFacetSearchRequest): Promise<HowlerFacetSearchResponse> => {
   return hpost(uri(), { ...(request || {}), query: request?.query || DEFAULT_QUERY });
 };

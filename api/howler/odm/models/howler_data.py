@@ -3,6 +3,7 @@ from typing import Optional
 
 from howler import odm
 from howler.common.exceptions import HowlerValueError
+from howler.odm.constants import Status
 from howler.odm.howler_enum import HowlerEnum
 from howler.odm.models.lead import Lead
 
@@ -13,16 +14,6 @@ class Scrutiny(str, HowlerEnum):
     SCANNED = "scanned"
     INSPECTED = "inspected"
     INVESTIGATED = "investigated"
-
-    def __str__(self) -> str:
-        return self.value
-
-
-class HitStatus(str, HowlerEnum):
-    OPEN = "open"
-    IN_PROGRESS = "in-progress"
-    ON_HOLD = "on-hold"
-    RESOLVED = "resolved"
 
     def __str__(self) -> str:
         return self.value
@@ -210,12 +201,6 @@ class HowlerData(odm.Model):
         description="Unique identifier of the assigned user.",
         default=DEFAULT_ASSIGNMENT,
     )
-    bundles: list[str] = odm.List(
-        odm.Keyword(
-            description="A list of bundle IDs this hit is a part of. Corresponds to the howler.id of the bundle."
-        ),
-        default=[],
-    )
     data: list[str] = odm.List(
         odm.Keyword(description="Raw telemetry records associated with this hit."),
         default=[],
@@ -235,21 +220,8 @@ class HowlerData(odm.Model):
             "and 64 characters long."
         )
     )
-    hits: list[str] = odm.List(
-        odm.Keyword(
-            description="A list of hit IDs this bundle represents. Corresponds to the howler.id of the child hit."
-        ),
-        default=[],
-    )
-    bundle_size: int = odm.Integer(
-        description="Number of hits in bundle",
-        default=0,
-    )
-    is_bundle: bool = odm.Boolean(description="Is this hit a bundle or a normal hit?", default=False)
     related: list[str] = odm.List(
-        odm.Keyword(
-            description="Related hits grouped by the enrichment that correlated them. Populated by enrichments."
-        ),
+        odm.Keyword(description="Related records."),
         default=[],
     )
     reliability: Optional[float] = odm.Optional(
@@ -267,7 +239,7 @@ class HowlerData(odm.Model):
     score: Optional[float] = odm.Optional(
         odm.Float(description="A score assigned by an enrichment to help prioritize triage.", default=0)
     )
-    status = odm.Enum(values=HitStatus, default=HitStatus.OPEN, description="Status of the hit.")
+    status = odm.Enum(values=Status, default=Status.OPEN, description="Status of the hit.")
     scrutiny = odm.Enum(
         values=Scrutiny,
         default=Scrutiny.UNSEEN,
@@ -320,8 +292,4 @@ class HowlerData(odm.Model):
     )
     dossier: list[Lead] = odm.List(
         odm.Compound(Lead), default=[], description="A list of leads forming the dossier associated with this hit"
-    )
-    viewers: list[str] = odm.List(
-        odm.Keyword(description="A list of users currently viewing the hit"),
-        default=[],
     )

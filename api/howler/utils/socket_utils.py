@@ -1,11 +1,7 @@
 from howler.common.logging import get_logger
-from howler.datastore.operations import OdmHelper
-from howler.odm.models.hit import Hit
-from howler.services import event_service, hit_service
+from howler.services import event_service, viewer_service
 
 logger = get_logger(__file__)
-
-hit_helper = OdmHelper(Hit)
 
 
 def check_action(
@@ -35,27 +31,10 @@ def check_action(
         outstanding_actions = [a for a in outstanding_actions if a[1] != "stop_typing"]
 
     elif action == "viewing":
-        if hit_service.exists(id):
-            outstanding_actions.append((id, "stop_viewing", False))
-            hit_service.update_hit(
-                id,
-                [
-                    hit_helper.list_add(
-                        "howler.viewers",
-                        kwargs["username"],
-                        silent=True,
-                        if_missing=True,
-                    )
-                ],
-                user=kwargs["username"],
-            )
+        outstanding_actions.append((id, "stop_viewing", False))
+        viewer_service.add_viewer(id, kwargs["username"])
     elif action == "stop_viewing":
-        if hit_service.exists(id):
-            hit_service.update_hit(
-                id,
-                [hit_helper.list_remove("howler.viewers", kwargs["username"], silent=True)],
-                user=kwargs["username"],
-            )
+        viewer_service.remove_viewer(id, kwargs["username"])
         outstanding_actions = [a for a in outstanding_actions if a[1] != "stop_viewing"]
 
     return outstanding_actions

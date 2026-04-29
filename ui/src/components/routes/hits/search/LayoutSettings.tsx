@@ -18,7 +18,7 @@ import {
   ToggleButtonGroup,
   Tooltip
 } from '@mui/material';
-import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
+import { RecordSearchContext } from 'components/app/providers/RecordSearchProvider';
 import ChipPopper from 'components/elements/display/ChipPopper';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
@@ -30,8 +30,8 @@ import { StorageKey } from 'utils/constants';
 const LayoutSettings: FC = () => {
   const { t } = useTranslation();
 
-  const displayType = useContextSelector(HitSearchContext, ctx => ctx.displayType);
-  const setDisplayType = useContextSelector(HitSearchContext, ctx => ctx.setDisplayType);
+  const displayType = useContextSelector(RecordSearchContext, ctx => ctx.displayType);
+  const setDisplayType = useContextSelector(RecordSearchContext, ctx => ctx.setDisplayType);
   const [hitLayout, setHitLayout] = useMyLocalStorageItem(StorageKey.HIT_LAYOUT, false);
   const [templateFieldCount, setTemplateFieldCount] = useMyLocalStorageItem(StorageKey.TEMPLATE_FIELD_COUNT, null);
 

@@ -1,16 +1,14 @@
+"""Deprecated remove_from_bundle action — delegates to case_service for item removal."""
+
 from typing import Optional
 
 from howler.actions import check_hit_limit
-from howler.common.exceptions import HowlerException
+from howler.common.exceptions import NotFoundException
 from howler.common.loader import datastore
-from howler.datastore.operations import OdmHelper
 from howler.odm.models.action import VALID_TRIGGERS
-from howler.odm.models.hit import Hit
 from howler.odm.models.user import User
-from howler.services import hit_service
+from howler.services import bundle_compat_service, case_service
 from howler.utils.str_utils import sanitize_lucene_query
-
-hit_helper = OdmHelper(Hit)
 
 OPERATION_ID = "remove_from_bundle"
 MAX_HITS_BASIC = 10
@@ -18,12 +16,12 @@ MAX_HITS_ADVANCED = 1000
 SKIP_CENTRAL_LIMIT = True  # This operation transforms the query, handles limit check locally
 
 
-def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = None, **kwargs):
-    """Remove a set of hits matching the query from the specified bundle.
+def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = None, **kwargs):  # noqa: C901
+    """Remove a set of hits matching the query from the specified bundle (deprecated — uses cases).
 
     Args:
         query (str): The query containing the matching hits
-        bundle_id (str): The `howler.id` of the bundle to remove the hits from.
+        bundle_id (str): The ``howler.id`` of the bundle to remove the hits from.
     """
     report = []
 
@@ -38,48 +36,32 @@ def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = 
         ]
 
     try:
-        bundle_hit = hit_service.get_hit(bundle_id, as_odm=True)
-        if not bundle_hit or not bundle_hit.howler.is_bundle:
+        case_id = bundle_compat_service.find_case_for_bundle(bundle_id)
+        if case_id is None:
             report.append(
                 {
                     "query": query,
                     "outcome": "error",
                     "title": "Invalid Bundle",
-                    "message": f"Either a hit with ID {bundle_id} does not exist, or it is not a bundle.",
+                    "message": f"Either a hit with ID {bundle_id} does not exist, or it has no associated case.",
                 }
             )
             return report
 
         ds = datastore()
 
-        skipped_hits = ds.hit.search(
-            f"({query}) AND -howler.bundles:{sanitize_lucene_query(bundle_id)}",
-            fl="howler.id",
-        )["items"]
-
-        if len(skipped_hits) > 0:
-            report.append(
-                {
-                    "query": f"howler.id:({' OR '.join(h.howler.id for h in skipped_hits)})",
-                    "outcome": "skipped",
-                    "title": "Skipped Hit not in Bundle",
-                    "message": "These hits already are not in the bundle.",
-                }
-            )
-
-        safe_query = f"{query} AND (howler.bundles:{sanitize_lucene_query(bundle_id)})"
-
-        # Check hit limit against the effective query (not raw query)
+        # Check hit limit against the query before searching
         if user:
-            limit_error = check_hit_limit(safe_query, user, MAX_HITS_BASIC, MAX_HITS_ADVANCED)
+            limit_error = check_hit_limit(query, user, MAX_HITS_BASIC, MAX_HITS_ADVANCED)
             if limit_error:
                 return [limit_error]
 
-        matching_hits = ds.hit.search(safe_query, rows=MAX_HITS_ADVANCED, fl="howler.id")["items"]
-        if len(matching_hits) < 1:
+        matching_hits = ds.hit.search(query, rows=MAX_HITS_ADVANCED)["items"]
+
+        if not matching_hits:
             report.append(
                 {
-                    "query": safe_query,
+                    "query": query,
                     "outcome": "skipped",
                     "title": "No Matching Hits",
                     "message": "There were no hits matching this query.",
@@ -87,18 +69,45 @@ def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = 
             )
             return report
 
-        ds.hit.update_by_query(
-            safe_query,
-            [hit_helper.list_remove("howler.bundles", bundle_id)],
-        )
+        # Get the case to check which hits are actually in it
+        case = ds.case.get(case_id)
+        if case is None:
+            report.append(
+                {
+                    "query": query,
+                    "outcome": "error",
+                    "title": "Case Not Found",
+                    "message": f"Associated case {case_id} no longer exists.",
+                }
+            )
+            return report
 
-        hit_service.update_hit(
-            bundle_id,
-            [hit_helper.list_remove("howler.hits", h["howler"]["id"]) for h in matching_hits],
-        )
+        case_item_values = {item.value for item in case.items}
+        values_to_remove = [h.howler.id for h in matching_hits if h.howler.id in case_item_values]
+        skipped_ids = [h.howler.id for h in matching_hits if h.howler.id not in case_item_values]
 
-        if len(ds.hit.get(bundle_id).howler.hits) < 1:
-            hit_service.update_hit(bundle_id, [hit_helper.update("howler.is_bundle", False)])
+        if skipped_ids:
+            report.append(
+                {
+                    "query": f"howler.id:({' OR '.join(sanitize_lucene_query(h) for h in skipped_ids)})",
+                    "outcome": "skipped",
+                    "title": "Skipped Hits Not in Bundle",
+                    "message": "These hits are not in the bundle.",
+                }
+            )
+
+        if not values_to_remove:
+            report.append(
+                {
+                    "query": query,
+                    "outcome": "skipped",
+                    "title": "No Matching Hits",
+                    "message": "None of the matching hits were found in the bundle.",
+                }
+            )
+            return report
+
+        case_service.remove_case_items(case_id, values_to_remove)
 
         report.append(
             {
@@ -108,7 +117,17 @@ def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = 
                 "message": f"Matching hits removed from bundle with id {bundle_id}",
             }
         )
-    except HowlerException as e:
+
+    except NotFoundException as e:
+        report.append(
+            {
+                "query": query,
+                "outcome": "error",
+                "title": "Failed to Execute",
+                "message": str(e),
+            }
+        )
+    except Exception as e:
         report.append(
             {
                 "query": query,
@@ -125,11 +144,11 @@ def specification():
     """Specify various properties of the action, such as title, descriptions, permissions and input steps."""
     return {
         "id": OPERATION_ID,
-        "title": "Remove from Bundle",
+        "title": "Remove from Bundle (Deprecated)",
         "priority": 5,
         "i18nKey": f"operations.{OPERATION_ID}",
         "description": {
-            "short": "Remove a set of hits from a bundle",
+            "short": "Remove a set of hits from a bundle (deprecated — uses cases)",
             "long": execute.__doc__,
         },
         "roles": ["automation_basic", "actionrunner_basic"],
@@ -137,7 +156,6 @@ def specification():
             {
                 "args": {"bundle_id": []},
                 "options": {},
-                "validation": {"error": {"query": "-howler.bundles:$bundle_id"}},
             }
         ],
         "triggers": VALID_TRIGGERS,

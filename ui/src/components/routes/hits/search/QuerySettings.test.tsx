@@ -25,6 +25,10 @@ vi.mock('./shared/SearchSpan', () => ({
   default: () => <div id="search-span">SearchSpan</div>
 }));
 
+vi.mock('./shared/IndexPicker', () => ({
+  default: () => <div id="index-picker">IndexPicker</div>
+}));
+
 vi.mock('./ViewLink', () => ({
   default: ({ id, viewId }: { id: number; viewId: string }) => (
     <div id={`view-link-${id}`} data-view-id={viewId}>
@@ -49,6 +53,7 @@ const mockFetchViews = vi.fn();
 let mockParameterContext = {
   filters: [] as string[],
   views: [] as string[],
+  indexes: [] as string[],
   addFilter: mockAddFilter,
   addView: mockAddView
 };
@@ -382,8 +387,8 @@ describe('QuerySettings', () => {
       const { container } = render(<QuerySettings />, { wrapper: Wrapper });
 
       const gridItems = container.querySelectorAll('[class*="MuiGrid-item"]');
-      // HitSort + SearchSpan + 1 view + 2 filters = 5 items
-      expect(gridItems.length).toBe(5);
+      // IndexPicker + HitSort + SearchSpan + 1 view + 2 filters = 5 items
+      expect(gridItems.length).toBe(6);
     });
 
     it('should render correct number of items with multiple views', () => {
@@ -393,8 +398,8 @@ describe('QuerySettings', () => {
       const { container } = render(<QuerySettings />, { wrapper: Wrapper });
 
       const gridItems = container.querySelectorAll('[class*="MuiGrid-item"]');
-      // HitSort + SearchSpan + 3 views + 1 filter = 6 items
-      expect(gridItems.length).toBe(6);
+      // IndexPicker + HitSort + SearchSpan + 3 views + 1 filter = 6 items
+      expect(gridItems.length).toBe(7);
     });
   });
 
@@ -712,11 +717,12 @@ describe('QuerySettings', () => {
 
       const gridItems = container.querySelectorAll('[class*="MuiGrid-item"]');
 
-      // Order: HitSort, SearchSpan, ViewLink(s), HitFilter(s)
-      expect(gridItems[0]).toContainElement(screen.getByTestId('hit-sort'));
-      expect(gridItems[1]).toContainElement(screen.getByTestId('search-span'));
-      expect(gridItems[2]).toContainElement(screen.getByTestId('view-link-0'));
-      expect(gridItems[3]).toContainElement(screen.getByTestId('hit-filter-0'));
+      // Order: IndexPicker, HitSort, SearchSpan, ViewLink(s), HitFilter(s)
+      expect(gridItems[0]).toContainElement(screen.getByTestId('index-picker'));
+      expect(gridItems[1]).toContainElement(screen.getByTestId('hit-sort'));
+      expect(gridItems[2]).toContainElement(screen.getByTestId('search-span'));
+      expect(gridItems[3]).toContainElement(screen.getByTestId('view-link-0'));
+      expect(gridItems[4]).toContainElement(screen.getByTestId('hit-filter-0'));
     });
 
     it('should pass correct props to ViewLink components', () => {

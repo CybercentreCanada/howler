@@ -13,26 +13,27 @@ import {
   useTheme,
   type TypographyProps
 } from '@mui/material';
-import useMatchers from 'components/app/hooks/useMatchers';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { uniq } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
 import howlerPluginStore from 'plugins/store';
-import { useCallback, useContext, useEffect, useMemo, useState, type FC } from 'react';
+import { useCallback, useContext, useMemo, type FC } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
-import { Link } from 'react-router-dom';
 import { ESCALATION_COLORS, PROVIDER_COLORS } from 'utils/constants';
 import { stringToColor } from 'utils/utils';
 import PluginTypography from '../PluginTypography';
+import AnalyticLink from './elements/AnalyticLink';
 import Assigned from './elements/Assigned';
 import EscalationChip from './elements/EscalationChip';
 import HitTimestamp from './elements/HitTimestamp';
 import HitBannerTooltip from './HitBannerTooltip';
 import { HitLayout } from './HitLayout';
+import RelatedRecords from './related/RelatedRecords';
 
 type HitBannerProps = {
   hit: Hit;
+  lazy?: boolean;
   layout?: HitLayout;
   showAssigned?: boolean;
   useListener?: boolean;
@@ -43,31 +44,22 @@ export interface StatusProps<T extends Hit = Hit> {
   layout: HitLayout;
 }
 
-const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAssigned = true }) => {
+const HitBanner: FC<HitBannerProps> = ({ hit, lazy = false, layout = HitLayout.NORMAL, showAssigned = true }) => {
   const { t } = useTranslation();
   const { config } = useContext(ApiConfigContext);
   const theme = useTheme();
   const pluginStore = usePluginStore();
-  const { getMatchingAnalytic } = useMatchers();
-
-  const [analyticId, setAnalyticId] = useState<string>();
 
   const compressed = useMemo(() => layout === HitLayout.DENSE, [layout]);
   const textVariant = useMemo(() => (layout === HitLayout.COMFY ? 'body1' : 'caption'), [layout]);
 
-  useEffect(() => {
-    if (!hit?.howler.analytic) {
-      return;
+  const providerColor = useMemo(() => {
+    if (!hit?.event.provider) {
+      return PROVIDER_COLORS.unknown;
     }
 
-    getMatchingAnalytic(hit).then(analytic => setAnalyticId(analytic?.analytic_id));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hit?.howler.analytic]);
-
-  const providerColor = useMemo(
-    () => PROVIDER_COLORS[hit.event?.provider ?? 'unknown'] ?? stringToColor(hit.event.provider),
-    [hit.event?.provider]
-  );
+    return PROVIDER_COLORS[hit?.event.provider] ?? stringToColor(hit?.event.provider);
+  }, [hit?.event.provider]);
 
   const mitreId = useMemo(() => {
     if (hit.threat?.framework?.toLowerCase().startsWith('mitre')) {
@@ -93,55 +85,43 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
     return `/api/static/mitre/${mitreId}.svg`;
   }, [mitreId]);
 
-  const leftBox = useMemo(() => {
-    if (hit.howler.is_bundle) {
-      return (
+  const leftBox = useMemo(
+    () => (
+      <HitBannerTooltip hit={hit}>
         <Box
           sx={{
-            alignSelf: 'stretch',
+            gridColumn: { xs: 'span 3', sm: 'span 1' },
+            minWidth: '90px',
             backgroundColor: providerColor,
+            color: theme.palette.getContrastText(providerColor),
+            alignSelf: 'start',
             borderRadius: theme.shape.borderRadius,
-            minWidth: '15px'
+            p: compressed ? 0.5 : 1,
+            pt: 2,
+            pl: 1
           }}
-        />
-      );
-    } else {
-      return (
-        <HitBannerTooltip hit={hit}>
-          <Box
-            sx={{
-              gridColumn: { xs: 'span 3', sm: 'span 1' },
-              minWidth: '90px',
-              backgroundColor: providerColor,
-              color: theme.palette.getContrastText(providerColor),
-              alignSelf: 'start',
-              borderRadius: theme.shape.borderRadius,
-              p: compressed ? 0.5 : 1,
-              pt: 2,
-              pl: 1
-            }}
-            display="flex"
-            flexDirection="column"
-          >
-            <Typography variant={compressed ? 'caption' : 'body1'} style={{ wordBreak: 'break-all' }}>
-              {hit.organization?.name ?? <Trans i18nKey="unknown" />}
-            </Typography>
-            {iconUrl && (
-              <Box
-                sx={{
-                  width: '40px',
-                  height: '40px',
-                  mask: `url("${iconUrl}")`,
-                  maskSize: 'cover',
-                  background: theme.palette.getContrastText(providerColor)
-                }}
-              />
-            )}
-          </Box>
-        </HitBannerTooltip>
-      );
-    }
-  }, [compressed, hit, iconUrl, providerColor, theme.palette, theme.shape.borderRadius]);
+          display="flex"
+          flexDirection="column"
+        >
+          <Typography variant={compressed ? 'caption' : 'body1'} style={{ wordBreak: 'break-all' }}>
+            {hit.organization?.name ?? <Trans i18nKey="unknown" />}
+          </Typography>
+          {iconUrl && (
+            <Box
+              sx={{
+                width: '40px',
+                height: '40px',
+                mask: `url("${iconUrl}")`,
+                maskSize: 'cover',
+                background: theme.palette.getContrastText(providerColor)
+              }}
+            />
+          )}
+        </Box>
+      </HitBannerTooltip>
+    ),
+    [compressed, hit, iconUrl, providerColor, theme.palette, theme.shape.borderRadius]
+  );
 
   /**
    * The tooltips are necessary only when in the most compressed format
@@ -173,7 +153,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
               {...typographyProps}
               value={val}
               field={field}
-              hit={hit}
+              obj={hit}
             />
           ))}
         </Stack>
@@ -232,28 +212,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
           />
         }
       >
-        <Typography
-          variant={compressed ? 'body1' : 'h6'}
-          fontWeight={compressed && 'bold'}
-          sx={{ alignSelf: 'start', '& a': { color: 'text.primary' } }}
-        >
-          {analyticId ? (
-            <Link
-              to={`/analytics/${analyticId}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={e => {
-                e.stopPropagation();
-              }}
-            >
-              {hit.howler.analytic}
-            </Link>
-          ) : (
-            hit.howler.analytic
-          )}
-          {hit.howler.detection && ': '}
-          {hit.howler.detection}
-        </Typography>
+        <AnalyticLink lazy={lazy} hit={hit} />
         {hit.howler?.rationale && (
           <Typography
             flex={1}
@@ -364,20 +323,10 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
         <Stack direction="row" spacing={layout !== HitLayout.COMFY ? 0.5 : 1}>
           <EscalationChip hit={hit} layout={layout} />
           {['in-progress', 'on-hold'].includes(hit.howler.status) && (
-            <Chip
-              sx={{ width: 'fit-content', display: 'inline-flex' }}
-              label={hit.howler.status}
-              size={layout !== HitLayout.COMFY ? 'small' : 'medium'}
-              color="primary"
-            />
-          )}
-          {hit.howler.is_bundle && (
-            <Chip
-              size={layout !== HitLayout.COMFY ? 'small' : 'medium'}
-              label={t('hit.header.bundlesize', { hits: hit.howler.hits.length })}
-            />
+            <Chip sx={{ width: 'fit-content', display: 'inline-flex' }} label={hit.howler.status} color="primary" />
           )}
         </Stack>
+        {hit.howler.related && <RelatedRecords hit={hit} />}
         {howlerPluginStore.plugins.flatMap(plugin => pluginStore.executeFunction(`${plugin}.status`, { hit, layout }))}
       </Stack>
     </Box>

@@ -4,7 +4,7 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.odm.models.action import VALID_TRIGGERS
 from howler.odm.models.hit import Hit
-from howler.odm.models.howler_data import Assessment, HitStatus
+from howler.odm.models.howler_data import Assessment, Status
 
 from sentinel.utils.tenant_utils import get_token
 
@@ -15,10 +15,10 @@ OPERATION_ID = "update_defender_xdr_incident"
 properties_map = {
     "graph": {
         "status": {
-            HitStatus.OPEN: "active",
-            HitStatus.IN_PROGRESS: "inProgress",
-            HitStatus.ON_HOLD: "inProgress",
-            HitStatus.RESOLVED: "resolved",
+            Status.OPEN: "active",
+            Status.IN_PROGRESS: "inProgress",
+            Status.ON_HOLD: "inProgress",
+            Status.RESOLVED: "resolved",
         },
         "classification": {
             Assessment.AMBIGUOUS: "unknown",

@@ -2,7 +2,7 @@ import type { Monaco } from '@monaco-editor/react';
 import { useMonaco } from '@monaco-editor/react';
 import { Box, useTheme } from '@mui/material';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
-import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
+import { RecordSearchContext } from 'components/app/providers/RecordSearchProvider';
 import ThemedEditor from 'components/elements/ThemedEditor';
 import type { editor } from 'monaco-editor';
 import { memo, useCallback, useContext, useEffect, useMemo, type FC } from 'react';
@@ -45,8 +45,8 @@ const QueryEditor: FC<QueryEditorProps> = ({
   const eqlCompletion = useEQLCompletionProvider();
   const historyCompletion = useHistoryCompletionProvider();
 
-  const fzfSearch = useContextSelector(HitSearchContext, ctx => ctx?.fzfSearch ?? false);
-  const setFzfSearch = useContextSelector(HitSearchContext, ctx => ctx?.setFzfSearch);
+  const fzfSearch = useContextSelector(RecordSearchContext, ctx => ctx?.fzfSearch ?? false);
+  const setFzfSearch = useContextSelector(RecordSearchContext, ctx => ctx?.setFzfSearch);
 
   const beforeEditorMount = useCallback((_monaco: Monaco) => {
     _monaco.languages.register({ id: 'lucene' });

@@ -149,7 +149,10 @@ class ESStore(object):
     def __str__(self):
         return "{0} - {1}".format(self.__class__.__name__, self._hosts)
 
-    def __getattr__(self, name) -> ESCollection:
+    def __getitem__(self, name: str):
+        return self.__getattr__(name)
+
+    def __getattr__(self, name: str) -> ESCollection:
         if not self.validate:
             return ESCollection(self, name, model_class=self._models[name], validate=self.validate)
 

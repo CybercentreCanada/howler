@@ -2,65 +2,75 @@ import { OpenInNew } from '@mui/icons-material';
 import { Card, CardContent, IconButton, Skeleton, Stack, Typography } from '@mui/material';
 import api from 'api';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
-import { useHitContextSelector } from 'components/app/providers/HitProvider';
+import { useHitContextSelector as useRecordContextSelector } from 'components/app/providers/RecordProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import HitBanner from 'components/elements/hit/HitBanner';
 import { HitLayout } from 'components/elements/hit/HitLayout';
+import ObservableCard from 'components/elements/observable/ObservableCard';
+import RecordContextMenu from 'components/elements/record/RecordContextMenu';
 import useMyApi from 'components/hooks/useMyApi';
-import HitContextMenu from 'components/routes/hits/search/HitContextMenu';
 import type { Hit } from 'models/entities/generated/Hit';
+import type { Observable } from 'models/entities/generated/Observable';
 import { useCallback, useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
+import { isObservable } from 'utils/typeUtils';
 import { buildViewUrl } from 'utils/viewUtils';
 
-// Custom hook to select hits by IDs with proper memoization
-const useSelectHitsByIds = (hitIds: string[]) => {
-  const hitIdsRef = useRef<string[]>(hitIds);
-  const prevResultRef = useRef<Hit[]>([]);
-  const prevHitIdsRef = useRef<string[]>([]);
+// Custom hook to select records by IDs with proper memoization
+const useSelectRecordsByIds = (recordIds: string[]): Hit[] | Observable[] => {
+  const recordIdsRef = useRef<string[]>(recordIds);
+  const prevResultRef = useRef<Hit[] | Observable[]>([]);
+  const prevRecordIdsRef = useRef<string[]>([]);
 
-  // Keep ref up to date with latest hitIds
-  hitIdsRef.current = hitIds;
+  // Keep ref up to date with latest recordIds
+  recordIdsRef.current = recordIds;
 
   const selector = useCallback(ctx => {
-    const currentHitIds = hitIdsRef.current;
+    const currentRecordIds = recordIdsRef.current;
 
-    // Fast path: if hitIds array didn't change, check if hit objects changed
+    // Fast path: if recordIds array didn't change, check if record objects changed
     if (
-      prevHitIdsRef.current.length === currentHitIds.length &&
-      currentHitIds.every((id, i) => id === prevHitIdsRef.current[i])
+      prevRecordIdsRef.current.length === currentRecordIds.length &&
+      currentRecordIds.every((id, i) => id === prevRecordIdsRef.current[i])
     ) {
-      // HitIds unchanged - check if any hit objects changed by reference
-      const anyHitChanged = currentHitIds.some((id, i) => ctx.hits[id] !== prevResultRef.current[i]);
-      if (!anyHitChanged) {
+      // RecordIds unchanged - check if any record objects changed by reference
+      const anyRecordChanged = currentRecordIds.some((id, i) => ctx.records[id] !== prevResultRef.current[i]);
+      if (!anyRecordChanged) {
         return prevResultRef.current;
       }
     }
 
     // Something changed - rebuild the array
-    const currentHits = currentHitIds.map(id => ctx.hits[id]).filter(Boolean);
-    prevHitIdsRef.current = currentHitIds;
-    prevResultRef.current = currentHits;
-    return currentHits;
+    const currentRecords = currentRecordIds.map(id => ctx.records[id]).filter(Boolean);
+    prevRecordIdsRef.current = currentRecordIds;
+    prevResultRef.current = currentRecords;
+    return currentRecords;
   }, []); // Empty deps - selector never changes
 
-  return useHitContextSelector(selector);
+  return useRecordContextSelector(selector);
 };
 
 // Utility functions
 const normalize = (val: any) => (val == null ? '' : String(val));
 
 // Have to normalize the fields as websockets and api return null and undefined respectively. This causes false positives when comparing signatures if not normalized to a consistent value. We also stringify non-primitive values to ensure changes are detected.
-const createHitSignature = (hit: Hit) => {
-  if (!hit) return '';
-  return `${hit.howler?.id}:${normalize(hit.howler?.status)}:${normalize(hit.howler?.assignment)}:${normalize(hit.howler?.assessment)}`;
+const createRecordSignature = (record: Hit | Observable) => {
+  if (!record) {
+    return '';
+  }
+
+  if (isObservable(record)) {
+    return record.howler?.id;
+  }
+
+  return `${record.howler?.id}:${normalize(record.howler?.status)}:${normalize(record.howler?.assignment)}:${normalize(record.howler?.assessment)}`;
 };
 
-const createSignatureFromHits = (hits: Hit[]) => {
-  if (hits.length === 0) return '';
-  return hits.map(createHitSignature).join('|');
+const createSignatureFromRecords = (records: Hit[] | Observable[]) => {
+  if (records.length === 0) return '';
+  return records.map(createRecordSignature).join('|');
 };
 
 const DEBOUNCE_TIME = 1000; // 1 second debounce for signature changes
@@ -77,7 +87,7 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
   const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
 
-  const [hitIds, setHitIds] = useState<string[]>([]);
+  const [recordIds, setRecordIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isRefreshing = useRef(false);
@@ -85,14 +95,14 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
 
   const view = useContextSelector(ViewContext, ctx => ctx.views[viewId]);
   const fetchViews = useContextSelector(ViewContext, ctx => ctx.fetchViews);
-  const loadHits = useHitContextSelector(ctx => ctx.loadHits);
+  const loadRecords = useRecordContextSelector(ctx => ctx.loadRecords);
 
   // Subscribe to hits from HitProvider cache based on current hitIds in the view
   // Uses memoized selector to avoid unnecessary re-renders on unrelated hit updates
-  const hits = useSelectHitsByIds(hitIds);
+  const records = useSelectRecordsByIds(recordIds);
 
   // Create a stable signature that only changes when relevant fields change
-  const hitsSignature = useMemo(() => createSignatureFromHits(hits), [hits]);
+  const recordsSignature = useMemo(() => createSignatureFromRecords(records), [records]);
 
   const refreshView = useCallback(async () => {
     if (!view?.query || isRefreshing.current) {
@@ -104,23 +114,23 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
 
     try {
       const res = await dispatchApi(
-        api.search.hit.post({
+        api.v2.search.post(view.indexes, {
           query: view.query,
           rows: limit,
           metadata: ['analytic']
         })
       );
 
-      const fetchedHits = res.items ?? [];
-      loadHits(fetchedHits);
-      setHitIds(fetchedHits.map(h => h.howler.id));
+      const fetchedRecords = res.items ?? [];
+      loadRecords(fetchedRecords);
+      setRecordIds(fetchedRecords.map(r => r.howler.id));
 
-      lastSignature.current = createSignatureFromHits(fetchedHits);
+      lastSignature.current = createSignatureFromRecords(fetchedRecords);
     } finally {
       isRefreshing.current = false;
       onRefreshComplete?.();
     }
-  }, [dispatchApi, limit, view?.query, loadHits, onRefreshComplete]);
+  }, [dispatchApi, limit, view?.query, view?.indexes, loadRecords, onRefreshComplete]);
 
   const debouncedRefresh = useCallback(() => {
     if (debounceTimerRef.current) {
@@ -162,18 +172,18 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
 
   // Monitor hits currently in the view for changes that might affect query results
   useEffect(() => {
-    if (!hitsSignature || hitIds.length === 0 || !lastSignature.current) {
-      lastSignature.current = hitsSignature;
+    if (!recordsSignature || recordIds.length === 0 || !lastSignature.current) {
+      lastSignature.current = recordsSignature;
       return;
     }
 
     // Check if signature actually changed
-    if (lastSignature.current === hitsSignature) {
+    if (lastSignature.current === recordsSignature) {
       return;
     }
 
     debouncedRefresh();
-  }, [hitsSignature, hitIds, debouncedRefresh]);
+  }, [recordsSignature, recordIds, debouncedRefresh]);
 
   useEffect(() => {
     return () => {
@@ -219,22 +229,26 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
             <Skeleton height={160} width="100%" variant="rounded" />
             <Skeleton height={140} width="100%" variant="rounded" />
           </>
-        ) : hits.length > 0 ? (
-          <HitContextMenu getSelectedId={getSelectedId}>
-            {hits.map(h => (
+        ) : records.length > 0 ? (
+          <RecordContextMenu getSelectedId={getSelectedId}>
+            {records.map((r: Observable | Hit) => (
               <Card
-                id={h.howler.id}
+                id={r.howler.id}
                 variant="outlined"
-                key={h.howler.id}
+                key={r.howler.id}
                 sx={{ cursor: 'pointer' }}
-                onClick={() => navigate((h.howler.is_bundle ? '/bundles/' : '/hits/') + h.howler.id)}
+                onClick={() => navigate(`/hits/${r.howler.id}`)}
               >
                 <CardContent>
-                  <HitBanner layout={HitLayout.DENSE} hit={h} />
+                  {r.__index == 'hit' ? (
+                    <HitBanner layout={HitLayout.DENSE} hit={r} />
+                  ) : (
+                    <ObservableCard observable={r}></ObservableCard>
+                  )}
                 </CardContent>
               </Card>
             ))}
-          </HitContextMenu>
+          </RecordContextMenu>
         ) : (
           <AppListEmpty />
         )}

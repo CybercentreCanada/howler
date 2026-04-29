@@ -2,11 +2,12 @@
 import { Stack, TableCell, type SxProps } from '@mui/material';
 import PluginTypography from 'components/elements/PluginTypography';
 import type { Hit } from 'models/entities/generated/Hit';
+import type { Observable } from 'models/entities/generated/Observable';
 import { memo, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 
-const EnhancedCell: FC<{ hit: Hit; value: string; sx?: SxProps; className: string; field: string }> = ({
-  hit,
+const EnhancedCell: FC<{ record: Hit | Observable; value: string; sx?: SxProps; className: string; field: string }> = ({
+  record,
   value: rawValue,
   sx = {},
   className,
@@ -40,7 +41,7 @@ const EnhancedCell: FC<{ hit: Hit; value: string; sx?: SxProps; className: strin
             sx={{ fontSize: 'inherit', textOverflow: 'ellipsis' }}
             value={value}
             field={field}
-            hit={hit}
+            obj={record}
           >
             {value}
           </PluginTypography>

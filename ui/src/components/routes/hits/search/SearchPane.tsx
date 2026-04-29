@@ -1,11 +1,11 @@
-import { Close, ErrorOutline, SavedSearch, Terminal } from '@mui/icons-material';
+import { ErrorOutline, SavedSearch, Terminal } from '@mui/icons-material';
 import { Box, IconButton, LinearProgress, Stack, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { grey } from '@mui/material/colors';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
 import PageCenter from 'commons/components/pages/PageCenter';
-import { HitContext } from 'components/app/providers/HitProvider';
-import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
+import { RecordContext } from 'components/app/providers/RecordProvider';
+import { RecordSearchContext } from 'components/app/providers/RecordSearchProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import FlexPort from 'components/elements/addons/layout/FlexPort';
 import VSBox from 'components/elements/addons/layout/vsbox/VSBox';
@@ -13,34 +13,33 @@ import VSBoxContent from 'components/elements/addons/layout/vsbox/VSBoxContent';
 import VSBoxHeader from 'components/elements/addons/layout/vsbox/VSBoxHeader';
 import SearchPagination from 'components/elements/addons/search/SearchPagination';
 import SearchTotal from 'components/elements/addons/search/SearchTotal';
-import HowlerCard from 'components/elements/display/HowlerCard';
-import HitBanner from 'components/elements/hit/HitBanner';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
-import useHitSelection from 'components/hooks/useHitSelection';
+import ObservableCard from 'components/elements/observable/ObservableCard';
+import RecordContextMenu from 'components/elements/record/RecordContextMenu';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
+import useRecordSelection from 'components/hooks/useRecordSelection';
 import type { Hit } from 'models/entities/generated/Hit';
+import type { Observable } from 'models/entities/generated/Observable';
 import type { FC } from 'react';
-import React, { memo, useCallback, useEffect, useMemo } from 'react';
+import React, { memo, useCallback, useMemo } from 'react';
 import { isMobile } from 'react-device-detect';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
-import BundleParentMenu from './BundleParentMenu';
-import { BundleScroller } from './BundleScroller';
-import HitContextMenu from './HitContextMenu';
-import HitQuery from './HitQuery';
+import { isHit, isObservable } from 'utils/typeUtils';
 import LayoutSettings from './LayoutSettings';
 import QuerySettings from './QuerySettings';
+import RecordQuery from './RecordQuery';
 
 const Item: FC<{
-  hit: Hit;
-  onClick: (event: React.MouseEvent<HTMLDivElement>, hit: Hit) => void;
-}> = memo(({ hit, onClick }) => {
+  record: Hit | Observable;
+  onClick: (event: React.MouseEvent<HTMLDivElement>, record: Hit | Observable) => void;
+}> = memo(({ record, onClick }) => {
   const theme = useTheme();
 
-  const selectedHits = useContextSelector(HitContext, ctx => ctx.selectedHits);
+  const selectedRecords = useContextSelector(RecordContext, ctx => ctx.selectedRecords);
 
   const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
 
@@ -59,9 +58,9 @@ const Item: FC<{
   // Search result list item renderer.
   return (
     <Box
-      id={hit.howler.id}
-      onAuxClick={e => checkMiddleClick(e, hit.howler.id)}
-      onClick={ev => onClick(ev, hit)}
+      id={record.howler.id}
+      onAuxClick={e => checkMiddleClick(e, record.howler.id)}
+      onClick={ev => onClick(ev, record)}
       sx={[
         {
           mb: 2,
@@ -69,7 +68,7 @@ const Item: FC<{
           '& span,p,h6': {
             cursor: 'text'
           },
-          '& .MuiPaper-root': {
+          '& > .MuiPaper-root': {
             border: '4px solid transparent',
             boxShadow: `0px 0px 0px 0px transparent`,
             transition: theme.transitions.create(['border-color', 'box-shadow'])
@@ -82,45 +81,35 @@ const Item: FC<{
             paddingBottom: 'inherit' // prevents slight height variation on selected card.
           }
         },
-        selectedHits.some(_hit => _hit.howler.id === hit.howler.id) && {
-          '& .MuiPaper-root': { borderColor: grey[500], boxShadow: `0px 0px 5px 2px ${grey[500]}` }
+        selectedRecords.some(_record => _record.howler.id === record.howler.id) && {
+          '& > .MuiPaper-root': { borderColor: grey[500], boxShadow: `0px 0px 5px 2px ${grey[500]}` }
         },
-        selected === hit.howler.id && {
-          '& .MuiPaper-root': {
+        selected === record.howler.id && {
+          '& > .MuiPaper-root': {
             borderColor: 'primary.main',
             boxShadow: `0px 0px 5px 2px ${theme.palette.primary.main}`
           }
         }
       ]}
     >
-      <HitCard id={hit.howler.id} layout={layout} />
+      {isHit(record) && <HitCard id={record.howler.id} layout={layout} />}
+      {isObservable(record) && <ObservableCard id={record.howler.id} observable={record} />}
     </Box>
   );
 });
 
 const SearchPane: FC = () => {
   const { t } = useTranslation();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const routeParams = useParams();
 
-  const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
-  const setSelected = useContextSelector(ParameterContext, ctx => ctx.setSelected);
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const setOffset = useContextSelector(ParameterContext, ctx => ctx.setOffset);
 
-  const triggerSearch = useContextSelector(HitSearchContext, ctx => ctx.search);
-  const searching = useContextSelector(HitSearchContext, ctx => ctx.searching);
-  const response = useContextSelector(HitSearchContext, ctx => ctx.response);
-  const error = useContextSelector(HitSearchContext, ctx => ctx.error);
+  const triggerSearch = useContextSelector(RecordSearchContext, ctx => ctx.search);
+  const searching = useContextSelector(RecordSearchContext, ctx => ctx.searching);
+  const response = useContextSelector(RecordSearchContext, ctx => ctx.response);
+  const error = useContextSelector(RecordSearchContext, ctx => ctx.error);
 
-  const { onClick } = useHitSelection();
-
-  const getHit = useContextSelector(HitContext, ctx => ctx.getHit);
-  const clearSelectedHits = useContextSelector(HitContext, ctx => ctx.clearSelectedHits);
-  const bundleHit = useContextSelector(HitContext, ctx =>
-    location.pathname.startsWith('/bundles') ? ctx.hits[routeParams.id] : null
-  );
+  const { onClick } = useRecordSelection();
 
   const searchPaneWidth = useMyLocalStorageItem(StorageKey.SEARCH_PANE_WIDTH, null)[0];
 
@@ -137,40 +126,11 @@ const SearchPane: FC = () => {
     return selectedElement.id;
   }, []);
 
-  useEffect(() => {
-    if (location.pathname.startsWith('/bundles')) {
-      getHit(routeParams.id);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, routeParams.id]);
-
   return (
     <FlexPort id="hitscrollbar">
       <PageCenter textAlign="left" mt={0} mb={6} ml={0} mr={0} maxWidth="1500px">
         <VSBox top={0}>
           <Stack ml={-1} mr={-1} sx={{ '& .overflowingContentWidgets > *': { zIndex: '2000 !important' } }} spacing={1}>
-            {bundleHit && (
-              <BundleScroller>
-                <HitContextMenu getSelectedId={() => bundleHit.howler.id}>
-                  <Stack spacing={1} sx={{ mx: -1 }}>
-                    <HowlerCard
-                      sx={[
-                        { p: 1, border: '4px solid transparent', cursor: 'pointer' },
-                        location.pathname.startsWith('/bundles') &&
-                          selected === routeParams.id && { borderColor: 'primary.main' }
-                      ]}
-                      onClick={() => {
-                        clearSelectedHits(bundleHit.howler.id);
-                        setSelected(bundleHit.howler.id);
-                      }}
-                    >
-                      <HitBanner hit={bundleHit} layout={HitLayout.DENSE} useListener />
-                    </HowlerCard>
-                  </Stack>
-                </HitContextMenu>
-              </BundleScroller>
-            )}
-
             <Stack direction="row" spacing={1} alignItems="center">
               <Typography
                 sx={{ color: 'text.secondary', fontSize: '0.9em', fontStyle: 'italic', mb: 0.5 }}
@@ -184,14 +144,6 @@ const SearchPane: FC = () => {
                 </Tooltip>
               )}
               <FlexOne />
-              {bundleHit?.howler.bundles.length > 0 && <BundleParentMenu bundle={bundleHit} />}
-              {bundleHit && (
-                <Tooltip title={t('hit.bundle.close')}>
-                  <IconButton size="small" onClick={() => navigate('/search')}>
-                    <Close />
-                  </IconButton>
-                </Tooltip>
-              )}
               <Tooltip title={t('route.views.save')}>
                 <IconButton component={Link} disabled={!query} to={`/views/create?query=${query}`}>
                   <SavedSearch />
@@ -209,7 +161,7 @@ const SearchPane: FC = () => {
           <VSBoxHeader ml={-3} mr={-3} px={2} pb={1} sx={{ zIndex: 989 }}>
             <Stack sx={{ pt: 1 }}>
               <Stack sx={{ position: 'relative', flex: 1 }}>
-                <HitQuery searching={searching} triggerSearch={triggerSearch} />
+                <RecordQuery searching={searching} triggerSearch={triggerSearch} />
                 {searching && (
                   <LinearProgress
                     sx={theme => ({
@@ -246,13 +198,13 @@ const SearchPane: FC = () => {
             )}
           </VSBoxHeader>
           <VSBoxContent mr={-1} ml={-1} mt={1}>
-            <HitContextMenu getSelectedId={getSelectedId}>
+            <RecordContextMenu getSelectedId={getSelectedId}>
               {!response ? (
                 <AppListEmpty />
               ) : (
-                response.items.map(hit => <Item key={hit.howler.id} hit={hit} onClick={onClick} />)
+                response.items.map(record => <Item key={record.howler.id} record={record} onClick={onClick} />)
               )}
-            </HitContextMenu>
+            </RecordContextMenu>
           </VSBoxContent>
         </VSBox>
       </PageCenter>

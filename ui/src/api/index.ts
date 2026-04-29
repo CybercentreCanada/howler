@@ -8,8 +8,10 @@ import * as hit from 'api/hit';
 import * as notebook from 'api/notebook';
 import * as overview from 'api/overview';
 import * as search from 'api/search';
+import * as socket from 'api/socket';
 import * as template from 'api/template';
 import * as user from 'api/user';
+import * as v2 from 'api/v2';
 import * as view from 'api/view';
 import AxiosClient from 'rest/AxiosClient';
 import urlJoin from 'url-join';
@@ -42,10 +44,12 @@ const api = {
   hit,
   overview,
   search,
+  socket,
   template,
   user,
   view,
-  notebook
+  notebook,
+  v2
 };
 
 /**
@@ -76,7 +80,12 @@ export const uri = () => {
  * @returns `string` - properly formatted howler uri.
  */
 const format = (_uri: string): string => {
-  return _uri.startsWith(uri()) ? _uri : `${uri()}/${_uri.replace(/\/$/, '')}`;
+  // skip validation if we're hitting the socket endpoints
+  if (_uri.startsWith('/socket')) {
+    return _uri;
+  }
+
+  return _uri.startsWith('/api') ? _uri : `${uri()}/${_uri.replace(/\/$/, '')}`;
 };
 
 /**

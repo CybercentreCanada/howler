@@ -16,9 +16,9 @@ import {
 } from '@mui/material';
 import useMatchers from 'components/app/hooks/useMatchers';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
-import { HitContext } from 'components/app/providers/HitProvider';
-import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
+import { RecordContext } from 'components/app/providers/RecordProvider';
+import { RecordSearchContext } from 'components/app/providers/RecordSearchProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import useHitActions from 'components/hooks/useHitActions';
 import { useMyLocalStorageProvider } from 'components/hooks/useMyLocalStorage';
@@ -54,8 +54,8 @@ const HitActions: FC<{
 
   const selected = useContextSelector(ParameterContext, ctx => ctx?.selected);
   const setSelected = useContextSelector(ParameterContext, ctx => ctx?.setSelected);
-  const clearSelectedHits = useContextSelector(HitContext, ctx => ctx.clearSelectedHits);
-  const nextHit = useContextSelector(HitSearchContext, ctx => {
+  const clearSelectedHits = useContextSelector(RecordContext, ctx => ctx.clearSelectedRecords);
+  const nextHit = useContextSelector(RecordSearchContext, ctx => {
     if (!ctx?.response || !selected) {
       return null;
     }

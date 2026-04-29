@@ -6,9 +6,11 @@ from howler.datastore.collection import ESCollection, logger
 from howler.odm.base import Compound
 from howler.odm.models.action import Action
 from howler.odm.models.analytic import Analytic
+from howler.odm.models.case import Case
 from howler.odm.models.clue import Clue
 from howler.odm.models.dossier import Dossier
 from howler.odm.models.hit import Hit
+from howler.odm.models.observable import Observable
 from howler.odm.models.overview import Overview
 from howler.odm.models.template import Template
 from howler.odm.models.user import User
@@ -18,25 +20,27 @@ from howler.plugins import get_plugins
 if TYPE_CHECKING:
     from howler.datastore.store import ESStore
 
-INDEXES = [
-    ("hit", Hit),
-    ("template", Template),
-    ("overview", Overview),
-    ("analytic", Analytic),
-    ("action", Action),
-    ("user", User),
-    ("view", View),
-    ("dossier", Dossier),
-    ("user_avatar", None),
-]
+INDEXES = {
+    "hit": Hit,
+    "observable": Observable,
+    "case": Case,
+    "template": Template,
+    "overview": Overview,
+    "analytic": Analytic,
+    "action": Action,
+    "user": User,
+    "view": View,
+    "dossier": Dossier,
+    "user_avatar": None,
+}
 
 
 class HowlerDatastore(object):
     def __init__(self, datastore_object: "ESStore"):
-        self.ds = datastore_object
+        self.ds: "ESStore" = datastore_object
 
         for plugin in get_plugins():
-            for _index, _odm in INDEXES:
+            for _index, _odm in INDEXES.items():
                 if _odm is None:
                     continue
 
@@ -50,7 +54,7 @@ class HowlerDatastore(object):
                 Compound(Clue, description="Clue-specific overrides for this alert", default=None, optional=True),
             )
 
-        for _index, _odm in INDEXES:
+        for _index, _odm in INDEXES.items():
             self.ds.register(_index, _odm)
 
     def __enter__(self):
@@ -58,6 +62,9 @@ class HowlerDatastore(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.ds.close()
+
+    def __getitem__(self, key: str):
+        return self.ds[key]
 
     def stop_model_validation(self):
         self.ds.validate = False
@@ -74,6 +81,14 @@ class HowlerDatastore(object):
     @property
     def hit(self) -> ESCollection[Hit]:
         return self.ds.hit
+
+    @property
+    def observable(self) -> ESCollection[Observable]:
+        return self.ds.observable
+
+    @property
+    def case(self) -> ESCollection[Case]:
+        return self.ds.case
 
     @property
     def template(self) -> ESCollection[Template]:

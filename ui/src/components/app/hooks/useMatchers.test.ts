@@ -6,7 +6,7 @@ import type { Template } from 'models/entities/generated/Template';
 import type { WithMetadata } from 'models/WithMetadata';
 import { useContextSelector } from 'use-context-selector';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { HitContext } from '../providers/HitProvider';
+import { RecordContext } from '../providers/RecordProvider';
 import useMatchers from './useMatchers';
 
 // Mock the useContextSelector hook
@@ -53,7 +53,7 @@ const mockHitWithMetadata: WithMetadata<Hit> = {
   __dossiers: mockDossiers
 };
 
-const mockGetHit = vi.fn();
+const mockGetRecord = vi.fn();
 
 describe('useMatchers', () => {
   beforeEach(() => {
@@ -61,8 +61,8 @@ describe('useMatchers', () => {
 
     // Mock useContextSelector to return our mock getHit function
     (useContextSelector as any).mockImplementation((context: any, selector: any) => {
-      if (context === HitContext) {
-        return selector({ getHit: mockGetHit });
+      if (context === RecordContext) {
+        return selector({ getRecord: mockGetRecord });
       }
       return null;
     });
@@ -94,7 +94,7 @@ describe('useMatchers', () => {
       const template = await result.current.getMatchingTemplate(mockHitWithMetadata);
 
       expect(template).toBe(mockTemplate);
-      expect(mockGetHit).not.toHaveBeenCalled();
+      expect(mockGetRecord).not.toHaveBeenCalled();
     });
 
     it('should fetch hit with metadata when template is not present', async () => {
@@ -102,26 +102,26 @@ describe('useMatchers', () => {
       (has as any).mockReturnValue(false);
 
       const hitWithFetchedMetadata = { ...mockHit, __template: mockTemplate };
-      mockGetHit.mockResolvedValue(hitWithFetchedMetadata);
+      mockGetRecord.mockResolvedValue(hitWithFetchedMetadata);
 
       const { result } = renderHook(() => useMatchers());
 
       const template = await result.current.getMatchingTemplate(mockHit);
 
       expect(template).toBe(mockTemplate);
-      expect(mockGetHit).toHaveBeenCalledWith('test-hit-id', true);
+      expect(mockGetRecord).toHaveBeenCalledWith('test-hit-id', true);
     });
 
     it('should handle getHit rejection gracefully', async () => {
       const { has } = await import('lodash-es');
       (has as any).mockReturnValue(false);
 
-      mockGetHit.mockRejectedValue(new Error('Failed to fetch hit'));
+      mockGetRecord.mockRejectedValue(new Error('Failed to fetch hit'));
 
       const { result } = renderHook(() => useMatchers());
 
       await expect(result.current.getMatchingTemplate(mockHit)).resolves.toBeNull();
-      expect(mockGetHit).toHaveBeenCalledWith('test-hit-id', true);
+      expect(mockGetRecord).toHaveBeenCalledWith('test-hit-id', true);
     });
   });
 
@@ -151,7 +151,7 @@ describe('useMatchers', () => {
       const overview = await result.current.getMatchingOverview(mockHitWithMetadata);
 
       expect(overview).toBe(mockOverview);
-      expect(mockGetHit).not.toHaveBeenCalled();
+      expect(mockGetRecord).not.toHaveBeenCalled();
     });
 
     it('should fetch hit with metadata when overview is not present', async () => {
@@ -159,26 +159,26 @@ describe('useMatchers', () => {
       (has as any).mockReturnValue(false);
 
       const hitWithFetchedMetadata = { ...mockHit, __overview: mockOverview };
-      mockGetHit.mockResolvedValue(hitWithFetchedMetadata);
+      mockGetRecord.mockResolvedValue(hitWithFetchedMetadata);
 
       const { result } = renderHook(() => useMatchers());
 
       const overview = await result.current.getMatchingOverview(mockHit);
 
       expect(overview).toBe(mockOverview);
-      expect(mockGetHit).toHaveBeenCalledWith('test-hit-id', true);
+      expect(mockGetRecord).toHaveBeenCalledWith('test-hit-id', true);
     });
 
     it('should handle getHit rejection gracefully', async () => {
       const { has } = await import('lodash-es');
       (has as any).mockReturnValue(false);
 
-      mockGetHit.mockRejectedValue(new Error('Failed to fetch hit'));
+      mockGetRecord.mockRejectedValue(new Error('Failed to fetch hit'));
 
       const { result } = renderHook(() => useMatchers());
 
       await expect(result.current.getMatchingOverview(mockHit)).resolves.toBeNull();
-      expect(mockGetHit).toHaveBeenCalledWith('test-hit-id', true);
+      expect(mockGetRecord).toHaveBeenCalledWith('test-hit-id', true);
     });
   });
 
@@ -208,7 +208,7 @@ describe('useMatchers', () => {
       const dossiers = await result.current.getMatchingDossiers(mockHitWithMetadata);
 
       expect(dossiers).toBe(mockDossiers);
-      expect(mockGetHit).not.toHaveBeenCalled();
+      expect(mockGetRecord).not.toHaveBeenCalled();
     });
 
     it('should fetch hit with metadata when dossiers are not present', async () => {
@@ -216,26 +216,26 @@ describe('useMatchers', () => {
       (has as any).mockReturnValue(false);
 
       const hitWithFetchedMetadata = { ...mockHit, __dossiers: mockDossiers };
-      mockGetHit.mockResolvedValue(hitWithFetchedMetadata);
+      mockGetRecord.mockResolvedValue(hitWithFetchedMetadata);
 
       const { result } = renderHook(() => useMatchers());
 
       const dossiers = await result.current.getMatchingDossiers(mockHit);
 
       expect(dossiers).toBe(mockDossiers);
-      expect(mockGetHit).toHaveBeenCalledWith('test-hit-id', true);
+      expect(mockGetRecord).toHaveBeenCalledWith('test-hit-id', true);
     });
 
     it('should handle getHit rejection gracefully', async () => {
       const { has } = await import('lodash-es');
       (has as any).mockReturnValue(false);
 
-      mockGetHit.mockRejectedValue(new Error('Failed to fetch hit'));
+      mockGetRecord.mockRejectedValue(new Error('Failed to fetch hit'));
 
       const { result } = renderHook(() => useMatchers());
 
       await expect(result.current.getMatchingDossiers(mockHit)).resolves.toEqual([]);
-      expect(mockGetHit).toHaveBeenCalledWith('test-hit-id', true);
+      expect(mockGetRecord).toHaveBeenCalledWith('test-hit-id', true);
     });
   });
 
@@ -253,7 +253,7 @@ describe('useMatchers', () => {
         __template: mockTemplate
       };
 
-      mockGetHit.mockResolvedValue({
+      mockGetRecord.mockResolvedValue({
         ...mockHit,
         __overview: mockOverview,
         __dossiers: mockDossiers
@@ -283,7 +283,7 @@ describe('useMatchers', () => {
       const { has } = await import('lodash-es');
       (has as any).mockReturnValue(false);
 
-      mockGetHit.mockResolvedValue({
+      mockGetRecord.mockResolvedValue({
         ...mockHit,
         __template: undefined,
         __overview: null,
@@ -299,7 +299,7 @@ describe('useMatchers', () => {
       expect(template).toBeUndefined();
       expect(overview).toBeNull();
       expect(dossiers).toEqual([]);
-      expect(mockGetHit).toHaveBeenCalledTimes(3);
+      expect(mockGetRecord).toHaveBeenCalledTimes(3);
     });
 
     it('should maintain referential equality of returned functions', () => {

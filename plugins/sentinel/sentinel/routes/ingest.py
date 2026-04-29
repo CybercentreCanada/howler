@@ -7,7 +7,7 @@ from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
-from howler.services import action_service, analytic_service, hit_service
+from howler.services import action_service, analytic_service, case_service, hit_service
 
 from sentinel.mapping.sentinel_incident import SentinelIncident
 from sentinel.mapping.xdr_alert import XDRAlert
@@ -115,33 +115,50 @@ def _update_existing_incident(
 ) -> tuple[dict[str, Any], int]:
     """Update an existing incident and its underlying alerts in Howler.
 
+    Finds the associated case via ``howler.related`` on the root hit, then
+    updates the status on the root hit and all child hits referenced by the case.
+
     Args:
-        existing_bundle: The existing Howler bundle object.
+        existing_bundle: The existing Howler root hit object.
         xdr_incident: The incoming XDR incident data.
         incident_mapper: The incident mapper instance.
 
     Returns:
         Tuple containing response dictionary and HTTP status code.
     """
+    ds = datastore()
     new_status = xdr_incident.get("status")
+
+    # Find child hit IDs via the case items
+    child_hit_ids: list[str] = []
+    for related_id in getattr(existing_bundle.howler, "related", []):
+        case = ds.case.get(related_id)
+        if case is not None:
+            child_hit_ids = [
+                item.value for item in case.items if item.type == "hit" and item.value != existing_bundle.howler.id
+            ]
+            break
+
     if new_status:
         existing_bundle.howler.status = incident_mapper.map_sentinel_status_to_howler(new_status)
-        datastore().hit.save(existing_bundle.howler.id, existing_bundle)
-    for child_id in getattr(existing_bundle.howler, "hits", []):
-        child_hit = datastore().hit.get(child_id, as_obj=True)
-        if child_hit:
-            child_hit.howler.status = incident_mapper.map_sentinel_status_to_howler(new_status)
-            datastore().hit.save(child_id, child_hit)
-    datastore().hit.commit()
-    logger.info("Updated status for existing bundle %s and its child hits", existing_bundle.howler.id)
+        ds.hit.save(existing_bundle.howler.id, existing_bundle)
+
+        for child_id in child_hit_ids:
+            child_hit = ds.hit.get(child_id, as_obj=True)
+            if child_hit:
+                child_hit.howler.status = incident_mapper.map_sentinel_status_to_howler(new_status)
+                ds.hit.save(child_id, child_hit)
+
+    ds.hit.commit()
+    logger.info("Updated status for existing incident %s and its child hits", existing_bundle.howler.id)
     return ok(
         {
             "success": True,
             "bundle_hit_id": existing_bundle.howler.id,
             "bundle_id": existing_bundle.sentinel.id if hasattr(existing_bundle, "sentinel") else None,
-            "individual_hit_ids": getattr(existing_bundle.howler, "hits", []),
-            "total_hits_updated": 1 + len(getattr(existing_bundle.howler, "hits", [])),
-            "bundle_size": len(getattr(existing_bundle.howler, "hits", [])),
+            "individual_hit_ids": child_hit_ids,
+            "total_hits_updated": 1 + len(child_hit_ids),
+            "bundle_size": len(child_hit_ids),
             "organization": getattr(existing_bundle, "organization", {}).get("name", ""),
             "updated": True,
         }
@@ -180,33 +197,13 @@ def _create_alert_hits(alerts: list[dict[str, Any]], tenant_id: str, alert_mappe
     return child_hit_ids
 
 
-def _link_child_hits_to_bundle(bundle_odm: Any, child_hit_ids: list[str]) -> None:
-    """Link child hits to the bundle and update their bundle references.
-
-    Args:
-        bundle_odm: The bundle ODM object.
-        child_hit_ids: List of child hit IDs to link.
-    """
-    for hit_id in bundle_odm.howler.hits:
-        child_hit = hit_service.get_hit(hit_id, as_odm=True)
-
-        if child_hit.howler.is_bundle:
-            logger.warning("Child hit %s is a bundle - skipping bundle assignment", child_hit.howler.id)
-            continue
-
-        new_bundle_list = child_hit.howler.get("bundles", [])
-        new_bundle_list.append(bundle_odm.howler.id)
-        child_hit.howler.bundles = new_bundle_list
-        datastore().hit.save(child_hit.howler.id, child_hit)
-
-
 def _create_new_incident(
     bundle_hit: dict[str, Any], xdr_incident: dict[str, Any], tenant_mapping: dict[str, str]
 ) -> tuple[dict[str, Any], int]:
-    """Create a new incident bundle and its underlying alerts in Howler.
+    """Create a new incident as a root hit plus a case with child alert items.
 
     Args:
-        bundle_hit: The mapped Howler bundle data.
+        bundle_hit: The mapped Howler hit data for the root incident hit.
         xdr_incident: The incoming XDR incident data.
         tenant_mapping: The tenant mapping dictionary.
 
@@ -218,32 +215,59 @@ def _create_new_incident(
     alert_mapper = XDRAlert(tid_mapping=tenant_mapping)
     child_hit_ids = _create_alert_hits(alerts, tenant_id, alert_mapper)
     try:
-        bundle_odm, _ = hit_service.convert_hit(bundle_hit, unique=True)
-        # If there are no alerts, do not treat as bundle
-        if child_hit_ids:
-            bundle_odm.howler.is_bundle = True
-            if not hasattr(bundle_odm.howler, "hits") or not isinstance(bundle_odm.howler.hits, list):
-                bundle_odm.howler.hits = []
-            for hit_id in child_hit_ids:
-                if hit_id not in bundle_odm.howler.hits:
-                    bundle_odm.howler.hits.append(hit_id)
-            bundle_odm.howler.bundle_size = len(bundle_odm.howler.hits)
-        else:
-            bundle_odm.howler.is_bundle = False
-            bundle_odm.howler.hits = []
-            bundle_odm.howler.bundle_size = 0
+        # Strip legacy bundle fields so convert_hit doesn't choke
+        if isinstance(bundle_hit.get("howler"), dict):
+            bundle_hit["howler"].pop("is_bundle", None)
+            bundle_hit["howler"].pop("hits", None)
+            bundle_hit["howler"].pop("bundle_size", None)
+            bundle_hit["howler"].pop("bundles", None)
+
+        bundle_odm, _ = hit_service.convert_hit(bundle_hit, unique=True, ignore_extra_values=True)
 
         if bundle_odm.event is not None:
             bundle_odm.event.id = bundle_odm.howler.id
 
         logger.info("Creating incident hit with ID %s", bundle_odm.howler.id)
         hit_service.create_hit(bundle_odm.howler.id, bundle_odm, user="system")
-        analytic_service.save_from_hit(bundle_odm, {"uname": "system"})
+        analytic_service.save_from_hit(bundle_odm, {"uname": "system"})  # type: ignore[arg-type]
+
+        # Create a case linking root hit and children
         if child_hit_ids:
-            _link_child_hits_to_bundle(bundle_odm, child_hit_ids)
+            analytic = bundle_odm.howler.analytic or "Sentinel"
+            detection = bundle_odm.howler.detection or "XDR Incident"
+            case = case_service.create_case(
+                {"title": f"{analytic} - {detection}", "summary": f"Sentinel incident {bundle_odm.howler.id}"},
+                user="system",
+            )
+
+            case_service.append_case_item(
+                case.case_id,
+                item_type="hit",
+                item_value=bundle_odm.howler.id,
+                item_path=analytic,
+            )
+
+            for child_id in child_hit_ids:
+                child_hit = hit_service.get_hit(child_id, as_odm=True)
+                if child_hit:
+                    child_label = f"hits/{child_hit.howler.analytic} ({child_id})"
+                    try:
+                        case_service.append_case_item(
+                            case.case_id,
+                            item_type="hit",
+                            item_value=child_id,
+                            item_path=child_label,
+                        )
+                    except Exception:
+                        logger.exception("Failed to add child hit %s to case", child_id)
+
+            datastore().case.commit()
+
         datastore().hit.commit()
+
         if child_hit_ids:
             action_service.bulk_execute_on_query(f"howler.id:{bundle_odm.howler.id}", user={"uname": "system"})
+
         logger.info("Successfully completed XDR incident ingestion")
         response_body = {
             "success": True,
@@ -256,5 +280,5 @@ def _create_new_incident(
         }
         return created(response_body)
     except HowlerException as e:
-        logger.exception("Failed to create bundle")
-        return internal_error(err=f"Failed to create bundle: {str(e)}")
+        logger.exception("Failed to create incident")
+        return internal_error(err=f"Failed to create incident: {str(e)}")

@@ -15,6 +15,7 @@ from howler.odm.models.dossier import Dossier
 from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import Escalation, Link
 from howler.odm.models.lead import Lead
+from howler.odm.models.observable import Observable
 from howler.odm.models.pivot import Pivot
 from howler.odm.models.user import User
 from howler.odm.randomizer import (
@@ -38,7 +39,13 @@ EXAMPLE_ANALYTICS = ["Password Checker", "Bad Guy Finder", "Exploit Patcher"]
 logger = get_logger(__file__)
 
 
-def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[str], prune_hit: bool = True) -> Hit:  # noqa: C901
+def generate_useful_hit(  # noqa: C901
+    lookups: dict[str, dict[str, Any]],
+    users: list[str],
+    prune_hit: bool = True,
+    hit_ids: list[str] | None = None,
+    observable_ids: list[str] | None = None,
+) -> Hit:
     "Create a random, useful/cogent hit for synthetic data"
     hit: Hit = random_model_obj(cast(Model, Hit))
 
@@ -242,12 +249,6 @@ def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[str], pr
     except IndexError:
         pass
 
-    hit.howler.viewers = []
-    hit.howler.hits = []
-    hit.howler.bundle_size = 0
-    hit.howler.bundles = []
-    hit.howler.is_bundle = False
-
     hit.howler.dossier = [
         Lead(
             {
@@ -338,7 +339,112 @@ def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[str], pr
             if round(rand_seed * 4) < 3:
                 hit[key] = empty_hit[key]
 
+    related: list[str] = []
+    if hit_ids:
+        related.extend(sample(hit_ids, k=randint(0, min(3, len(hit_ids)))))
+    if observable_ids:
+        related.extend(sample(observable_ids, k=randint(0, min(5, len(observable_ids)))))
+    hit.howler.related = related
+
     return hit
+
+
+def generate_useful_observable(  # noqa: C901
+    lookups: dict[str, dict[str, Any]], users: list[str], prune: bool = True
+) -> Observable:
+    "Create a random, useful/cogent observable for synthetic data"
+    observable: Observable = random_model_obj(cast(Model, Observable))
+
+    rand_seed = random.random()
+
+    timestamp = datetime.now() - timedelta(
+        days=round(rand_seed * 30),
+        hours=min(max(round(random.gauss(14, 3)), 0), 23),
+        minutes=random.randint(0, 59),
+        seconds=random.randint(0, 59),
+    )
+
+    observable.event.created = timestamp.isoformat() + "Z"
+    observable.event.provider = choice(["HBS", "NBS", "CBS", "AssemblyLine"])
+    observable.timestamp = timestamp.isoformat() + "Z"
+
+    observable.organization.name, observable.organization.id = random_department()
+    observable.threat.framework = choice(["MITRE ATT&CK", "Custom"])
+    tactic_id = choice(
+        [
+            *list(lookups.get("tactics", {}).keys()),
+            *[icon for icon in lookups["icons"] if icon.startswith("TA")],
+        ]
+    )
+    technique_id = choice(
+        [
+            *list(lookups.get("techniques", {}).keys()),
+            *[icon for icon in lookups["icons"] if not icon.startswith("TA")],
+        ]
+    )
+    observable.threat.tactic.id = tactic_id
+    observable.threat.tactic.name = lookups.get("tactics", {}).get(tactic_id, {}).get("name", "Unknown")
+    observable.threat.technique.id = technique_id
+    observable.threat.technique.name = lookups.get("techniques", {}).get(technique_id, {}).get("name", "Unknown")
+
+    observable.cloud.service.name = choice(
+        [
+            "Azure",
+            "Amazon AWS",
+            "Office365",
+            "Google Drive",
+            "Google Docs",
+            "Microsoft Teams",
+        ]
+    )
+    observable.aws.account.id = get_random_id()
+    observable.aws.organization.id = get_random_id()
+    observable.azure.subscription_id = get_random_id()
+    observable.azure.tenant_id = get_random_id()
+    observable.azure.resource_id = get_random_id()
+    observable.gcp.project_id = get_random_id()
+    observable.gcp.network_id = get_random_id()
+    observable.gcp.service_account_id = get_random_id()
+    observable.gcp.resource_id = get_random_id()
+    observable.user.name = get_random_word()
+    observable.user_agent.original = get_random_user_agent()
+
+    for i in range(len(observable.howler.comment)):
+        observable.howler.comment[i].user = choice(users)
+
+    observable.event.id = observable.howler.id
+
+    observable.howler.escalation = choice([Escalation.HIT, Escalation.ALERT])
+
+    if randint(1, 10) > 9:
+        observable.howler.expiry = datetime.now() + timedelta(days=randint(1, 60))
+    else:
+        observable.howler.expiry = None
+
+    observable.howler.data = [
+        json.dumps(
+            {
+                "key": "value",
+                "boolean": True,
+                "number": 5,
+                "float": 10.456,
+                "array": ["a", "b", "c"],
+            }
+        ),
+        json.dumps({"key": "value1", "boolean": False, "number": 34, "float": 10678.098}),
+        "not json just a string",
+        json.dumps(
+            {
+                "KQLQuery": (
+                    "\n    let ioc_lookBack = 14d;\n    let deviceActionAllowed = datatable (action:string) [\n"
+                    'NetworkIP\n    | parse kind=regex flags = U SourceZoneURI_CF with * "[\\\\s\\\\S-]+/" Department '
+                    "summarize Summary=make_list(Source_Overview) by Indicator\n"
+                ),
+            }
+        ),
+    ]
+
+    return observable
 
 
 def create_users_with_username(ds: HowlerDatastore, usernames: list[str]):

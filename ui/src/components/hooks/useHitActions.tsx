@@ -4,8 +4,8 @@ import { useAppUser } from 'commons/components/app/hooks';
 import AssignUserDrawer from 'components/app/drawers/AssignUserDrawer';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { AppDrawerContext } from 'components/app/providers/AppDrawerProvider';
-import { HitContext } from 'components/app/providers/HitProvider';
 import { ModalContext } from 'components/app/providers/ModalProvider';
+import { RecordContext } from 'components/app/providers/RecordProvider';
 import RationaleModal from 'components/elements/display/modals/RationaleModal';
 import type { ActionButton } from 'components/elements/hit/actions/SharedComponents';
 import type { HowlerUser } from 'models/entities/HowlerUser';
@@ -39,7 +39,7 @@ const useHitActions = (_hits: Hit | Hit[]) => {
   const { showWarningMessage } = useMySnackbar();
   const { dispatchApi } = useMyApi();
 
-  const updateHit = useContextSelector(HitContext, ctx => ctx.updateHit);
+  const updateHit = useContextSelector(RecordContext, ctx => ctx.updateRecord);
 
   const [loading, setLoading] = useState(false);
 
@@ -141,9 +141,9 @@ const useHitActions = (_hits: Hit | Hit[]) => {
   );
 
   const assess = useCallback(
-    async (assessment: string, skipRationale = false) => {
+    async (assessment: string, skipRationale = false, providedRationale = null) => {
       const rationale = skipRationale
-        ? t('rationale.default', { assessment })
+        ? (providedRationale ?? t('rationale.default', { assessment }))
         : await new Promise<string>(res => {
             showModal(
               <RationaleModal

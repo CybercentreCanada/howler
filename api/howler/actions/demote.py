@@ -9,7 +9,7 @@ from howler.odm.models.howler_data import (
     Assessment,
     AssessmentEscalationMap,
     Escalation,
-    HitStatus,
+    Status,
 )
 from howler.odm.models.user import User
 from howler.utils.str_utils import sanitize_lucene_query
@@ -98,7 +98,7 @@ def execute(
                         "howler.assignment",
                         user.get("uname", "automation") if user else "automation",
                     ),
-                    odm_helper.update("howler.status", HitStatus.RESOLVED),
+                    odm_helper.update("howler.status", Status.RESOLVED),
                 ],
             )
 

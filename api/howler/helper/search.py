@@ -16,6 +16,8 @@ INDEX_MAP: dict[str, Callable[[], ESCollection]] = {
     "analytic": lambda: datastore().analytic,
     "dossier": lambda: datastore().dossier,
     "hit": lambda: datastore().hit,
+    "observable": lambda: datastore().observable,
+    "case": lambda: datastore().case,
     "overview": lambda: datastore().overview,
     "template": lambda: datastore().template,
     "user": lambda: datastore().user,
@@ -27,6 +29,8 @@ INDEX_ORDER_MAP: dict[str, str] = {
     "analytic": "name asc",
     "dossier": "title asc",
     "hit": "event.created desc",
+    "observable": "event.created desc",
+    "case": "created desc",
     "overview": "overview_id asc",
     "template": "template_id asc",
     "user": "id asc",
@@ -63,7 +67,7 @@ def get_default_sort(index: str, user: Union[User, dict[str, Any]]) -> Optional[
     )
 
 
-def has_access_control(index: str) -> bool:
+def has_access_control(index: str | list[str]) -> bool:
     """Check if the given index has access control enabled
 
     Args:
@@ -72,7 +76,13 @@ def has_access_control(index: str) -> bool:
     Returns:
         bool: Does the index have access control
     """
-    return index in ACCESS_CONTROLLED_INDICES
+    if isinstance(index, str):
+        if "," in index:
+            index = index.split(",")
+        else:
+            index = [index]
+
+    return any(_index in ACCESS_CONTROLLED_INDICES for _index in index)
 
 
 def list_all_fields(is_admin: bool = False) -> dict[str, dict]:

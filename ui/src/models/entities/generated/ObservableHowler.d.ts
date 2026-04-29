@@ -1,0 +1,42 @@
+import type { HowlerComment } from './HowlerComment';
+import type { HowlerDossier } from './HowlerDossier';
+import type { Incident } from './Incident';
+import type { Labels } from './Labels';
+import type { Link } from './Link';
+import type { Log } from './Log';
+import type { Outline } from './Outline';
+import type { Votes } from './Votes';
+
+/**
+ * NOTE: This is an auto-generated file. Don't edit this manually.
+ */
+export interface ObservableHowler {
+  analytic: string;
+  assessment?: string;
+  comment?: HowlerComment[];
+  confidence?: number;
+  data?: string[];
+  detection?: string;
+  dossier?: HowlerDossier[];
+  escalation?: string;
+  expiry?: string;
+  hash: string;
+  id: string;
+  incidents?: Incident[];
+  labels?: Labels;
+  links?: Link[];
+  log?: Log[];
+  mitigated?: string;
+  monitored?: string;
+  outline?: Outline;
+  rationale?: string;
+  related?: string[];
+  reliability?: number;
+  reported?: string;
+  score?: number;
+  scrutiny?: string;
+  severity?: number;
+  status?: string;
+  volume?: number;
+  votes?: Votes;
+}

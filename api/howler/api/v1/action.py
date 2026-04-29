@@ -239,8 +239,7 @@ def execute_action(id: str, **kwargs) -> Response:
     if not isinstance(execute_req, dict):
         return bad_request(err="Incorrect data structure!")
 
-    action: Action = datastore().action.get(id)
-
+    action = datastore().action.get(id)
     if not action:
         return not_found(err="The specified action does not exist")
 

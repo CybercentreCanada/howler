@@ -25,24 +25,25 @@ import {
   useTheme
 } from '@mui/material';
 import useMatchers from 'components/app/hooks/useMatchers';
-import { HitContext } from 'components/app/providers/HitProvider';
-import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
+import { RecordContext } from 'components/app/providers/RecordProvider';
+import { RecordSearchContext } from 'components/app/providers/RecordSearchProvider';
 import SearchTotal from 'components/elements/addons/search/SearchTotal';
 import DevelopmentBanner from 'components/elements/display/features/DevelopmentBanner';
-import useHitSelection from 'components/hooks/useHitSelection';
+import RecordContextMenu from 'components/elements/record/RecordContextMenu';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
+import useRecordSelection from 'components/hooks/useRecordSelection';
 import { uniq } from 'lodash-es';
 import { useCallback, useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
-import HitContextMenu from '../HitContextMenu';
-import HitQuery from '../HitQuery';
+import { isHit } from 'utils/typeUtils';
 import QuerySettings from '../QuerySettings';
+import RecordQuery from '../RecordQuery';
 import AddColumnModal from './AddColumnModal';
 import ColumnHeader from './ColumnHeader';
-import HitRow from './HitRow';
+import RecordRow from './RecordRow';
 
 const HitGrid: FC = () => {
   const { t } = useTranslation();
@@ -51,16 +52,16 @@ const HitGrid: FC = () => {
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
-  const { onClick } = useHitSelection();
+  const { onClick } = useRecordSelection();
   const { getMatchingAnalytic } = useMatchers();
 
-  const search = useContextSelector(HitSearchContext, ctx => ctx.search);
-  const displayType = useContextSelector(HitSearchContext, ctx => ctx.displayType);
-  const setDisplayType = useContextSelector(HitSearchContext, ctx => ctx.setDisplayType);
-  const response = useContextSelector(HitSearchContext, ctx => ctx.response);
-  const searching = useContextSelector(HitSearchContext, ctx => ctx.searching);
+  const search = useContextSelector(RecordSearchContext, ctx => ctx.search);
+  const displayType = useContextSelector(RecordSearchContext, ctx => ctx.displayType);
+  const setDisplayType = useContextSelector(RecordSearchContext, ctx => ctx.setDisplayType);
+  const response = useContextSelector(RecordSearchContext, ctx => ctx.response);
+  const searching = useContextSelector(RecordSearchContext, ctx => ctx.searching);
 
-  const selectedHits = useContextSelector(HitContext, ctx => ctx.selectedHits);
+  const selectedHits = useContextSelector(RecordContext, ctx => ctx.selectedRecords);
 
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
@@ -94,12 +95,14 @@ const HitGrid: FC = () => {
   }, [selected, selectedHits]);
 
   useEffect(() => {
-    response?.items.forEach(hit => {
-      if (!analyticIds[hit.howler.analytic]) {
-        getMatchingAnalytic(hit).then(_analytic =>
-          setAnalyticIds(_analyticIds => ({ ..._analyticIds, [hit.howler.analytic]: _analytic.analytic_id }))
-        );
+    response?.items.forEach(record => {
+      if (!isHit(record) || analyticIds[record.howler.analytic]) {
+        return;
       }
+
+      getMatchingAnalytic(record).then(_analytic =>
+        setAnalyticIds(_analyticIds => ({ ..._analyticIds, [record.howler.analytic]: _analytic.analytic_id }))
+      );
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analyticIds, response]);
@@ -213,7 +216,7 @@ const HitGrid: FC = () => {
       </Stack>
       <Stack direction="row" spacing={1}>
         <Stack position="relative" flex={1}>
-          <HitQuery searching={searching} triggerSearch={search} compact />
+          <RecordQuery searching={searching} triggerSearch={search} compact />
           {searching && (
             <LinearProgress
               sx={{
@@ -281,11 +284,11 @@ const HitGrid: FC = () => {
               <TableCell sx={{ width: '100%' }} />
             </TableRow>
           </TableHead>
-          <HitContextMenu Component={TableBody} getSelectedId={getSelectedId}>
+          <RecordContextMenu Component={TableBody} getSelectedId={getSelectedId}>
             {response?.items.map(hit => (
-              <HitRow
+              <RecordRow
                 key={hit.howler.id}
-                hit={hit}
+                record={hit}
                 analyticIds={analyticIds}
                 columns={columns}
                 columnWidths={columnWidths}
@@ -302,7 +305,7 @@ const HitGrid: FC = () => {
                 </Stack>
               </TableCell>
             </TableRow>
-          </HitContextMenu>
+          </RecordContextMenu>
         </Table>
 
         {(response?.total ?? 0) < 1 && (

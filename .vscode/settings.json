@@ -43,8 +43,10 @@
   },
   "git.enableCommitSigning": true,
   "editor.formatOnSave": true,
-  "editor.rulers": [120],
-  "editor.tabSize": 4,
+  "editor.rulers": [
+    120
+  ],
+  "editor.tabSize": 2,
   "files.insertFinalNewline": true,
   "files.trimFinalNewlines": true,
   "files.trimTrailingWhitespace": true,
@@ -90,7 +92,10 @@
   "editor.formatOnSaveMode": "modificationsIfAvailable",
   "mypy-type-checker.cwd": "${nearestConfig}",
   "eslint.workingDirectories": [
-    { "directory": "./ui", "changeProcessCWD": true }
+    {
+      "directory": "./ui",
+      "changeProcessCWD": true
+    }
   ],
   "prettier.configPath": "ui/.prettierrc",
   "search.exclude": {
@@ -108,5 +113,6 @@
       "tables": false
     }
   },
+  "editor.autoIndentOnPaste": true,
   "python-envs.defaultEnvManager": "ms-python.python:system"
 }

@@ -2,11 +2,11 @@ import sys
 
 from howler_client.common.utils import walk_api_path
 from howler_client.connection import Connection
-from howler_client.module.bundle import Bundle
 from howler_client.module.help import Help
 from howler_client.module.hit import Hit
 from howler_client.module.search import Search
 from howler_client.module.user import User
+from howler_client.module.v2 import V2
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -23,8 +23,8 @@ class Client(object):
         self.help = Help(self._connection)
         self.search = Search(self._connection)
         self.hit = Hit(self._connection, self.search)
-        self.bundle = Bundle(self._connection, self.hit)
         self.user = User(self._connection)
+        self.v2 = V2(self._connection)
 
         paths: list[str] = []
         walk_api_path(self, [""], paths)

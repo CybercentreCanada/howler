@@ -1,0 +1,203 @@
+import { Check, FormatListBulleted, HourglassBottom, Pause, People, WarningRounded } from '@mui/icons-material';
+import {
+  Autocomplete,
+  AvatarGroup,
+  Card,
+  Chip,
+  Divider,
+  LinearProgress,
+  Skeleton,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableRow,
+  TextField,
+  Typography
+} from '@mui/material';
+import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
+import { ModalContext } from 'components/app/providers/ModalProvider';
+import { SocketContext } from 'components/app/providers/SocketProvider';
+import HowlerAvatar from 'components/elements/display/HowlerAvatar';
+import SocketBadge from 'components/elements/display/icons/SocketBadge';
+import UserList from 'components/elements/UserList';
+import dayjs from 'dayjs';
+import type { Case } from 'models/entities/generated/Case';
+import { useContext, useState, type FC } from 'react';
+import { useTranslation } from 'react-i18next';
+import useCase from '../hooks/useCase';
+import ResolveModal from '../modals/ResolveModal';
+import SourceAggregate from './aggregates/SourceAggregate';
+
+const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
+  const { t } = useTranslation();
+  const { case: _case, update: updateCase } = useCase({ case: providedCase });
+  const { showModal } = useContext(ModalContext);
+  const { viewers } = useContext(SocketContext);
+
+  const { config } = useContext(ApiConfigContext);
+  const [loading, setLoading] = useState(false);
+
+  const caseViewers = _case?.case_id ? (viewers[_case.case_id] ?? []) : [];
+
+  const wrappedUpdate = async (subset: Partial<Case>) => {
+    try {
+      setLoading(true);
+      await updateCase(subset);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStatus = (status: string) => {
+    if (status === 'resolved') {
+      const onConfirm = () => wrappedUpdate({ status });
+      showModal(<ResolveModal case={_case} onConfirm={onConfirm} />, { maxHeight: '80vh' });
+    } else {
+      wrappedUpdate({ status });
+    }
+  };
+
+  if (!_case) {
+    return (
+      <Card
+        sx={{
+          borderRadius: 0,
+          width: '300px',
+          maxHeight: 'calc(100vh - 64px)',
+          display: 'flex',
+          flexDirection: 'column',
+          p: 1
+        }}
+      >
+        <Skeleton variant="rounded" height={50} />
+      </Card>
+    );
+  }
+
+  return (
+    <Card
+      elevation={1}
+      sx={{
+        borderRadius: 0,
+        width: '300px',
+        maxHeight: 'calc(100vh - 64px)',
+        display: 'flex',
+        flexDirection: 'column',
+        p: 1,
+        position: 'relative'
+      }}
+    >
+      <LinearProgress sx={{ opacity: +loading, position: 'absolute', top: 0, left: 0, right: 0 }} />
+      <Stack spacing={2}>
+        <Stack spacing={1}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            {{
+              'in-progress': <HourglassBottom color="warning" />,
+              'on-hold': <Pause color="disabled" />,
+              resolved: <Check color="success" />
+            }[_case.status] ?? <WarningRounded fontSize="small" />}
+            <Typography variant="body1">{t('page.cases.detail.status')}</Typography>
+          </Stack>
+          <Autocomplete
+            size="small"
+            disabled={loading}
+            value={_case.status}
+            options={config.lookups['howler.status']}
+            renderInput={params => <TextField {...params} size="small" />}
+            onChange={(_ev, status) => handleStatus(status)}
+          />
+        </Stack>
+        <Divider />
+        <Stack spacing={1}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <People />
+            <Typography variant="body1">{t('page.cases.detail.participants')}</Typography>
+          </Stack>
+
+          <Stack direction="row" spacing={0.5} alignItems="center">
+            <UserList
+              buttonSx={{ alignSelf: 'start' }}
+              multiple
+              i18nLabel="page.cases.detail.assignment"
+              userIds={_case.participants ?? []}
+              onChange={participants => wrappedUpdate({ participants })}
+              disabled={loading}
+            />
+            <div style={{ flex: 1 }} />
+          </Stack>
+
+          {caseViewers.length > 0 && (
+            <>
+              <Divider />
+              <Stack direction="row" alignItems="center">
+                <SocketBadge size="medium" />
+                <Typography variant="body1">{t('page.cases.detail.viewers')}</Typography>
+              </Stack>
+              <AvatarGroup
+                max={4}
+                sx={{ alignSelf: 'start' }}
+                componentsProps={{
+                  additionalAvatar: {
+                    sx: { height: 32, width: 32, fontSize: '12px' }
+                  }
+                }}
+              >
+                {caseViewers.map(viewer => (
+                  <HowlerAvatar key={viewer} userId={viewer} sx={{ height: 32, width: 32 }} />
+                ))}
+              </AvatarGroup>
+            </>
+          )}
+        </Stack>
+        <Divider />
+        <Stack spacing={1}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <FormatListBulleted />
+            <Typography variant="body1">{t('page.cases.detail.properties')}</Typography>
+          </Stack>
+          <Table sx={{ '& td': { p: 1 } }}>
+            <TableBody>
+              <TableRow>
+                <TableCell>
+                  <Typography variant="caption">{t('page.cases.escalation')}</Typography>
+                </TableCell>
+                <TableCell>
+                  <Chip size="small" label={_case.escalation} />
+                </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>
+                  <Typography variant="caption">{t('page.cases.created')}</Typography>
+                </TableCell>
+                <TableCell>
+                  <Typography variant="caption">{dayjs(_case.created).toString()}</Typography>
+                </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>
+                  <Typography variant="caption">{t('page.cases.updated')}</Typography>
+                </TableCell>
+                <TableCell>
+                  <Typography variant="caption">{dayjs(_case.updated).toString()}</Typography>
+                </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>
+                  <Typography variant="caption">{t('page.cases.sources')}</Typography>
+                </TableCell>
+                <TableCell>
+                  <Typography variant="caption">
+                    <SourceAggregate case={_case} />
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </Stack>
+      </Stack>
+    </Card>
+  );
+};
+
+export default CaseDetails;

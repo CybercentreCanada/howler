@@ -15,11 +15,9 @@ from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
-from howler.cronjobs.rules import register_rules
 from howler.datastore.exceptions import DataStoreException
 from howler.datastore.operations import OdmHelper
 from howler.odm.models.analytic import Analytic, Comment, Notebook, TriageOptions
-from howler.odm.models.template import Template
 from howler.odm.models.user import User
 from howler.security import api_login
 from howler.services import analytic_service, user_service
@@ -104,7 +102,8 @@ def update_analytic(id: str, user: User, **kwargs):
     """
     storage = datastore()
 
-    if not storage.analytic.exists(id):
+    existing_analytic = storage.analytic.get(id)
+    if not existing_analytic:
         return not_found(err="This analytic does not exist")
 
     new_data = request.json
@@ -113,8 +112,6 @@ def update_analytic(id: str, user: User, **kwargs):
         return bad_request(err="You must provide updated data.")
 
     try:
-        existing_analytic: Analytic = storage.analytic.get_if_exists(id)
-
         existing_analytic.description = new_data.get("description", existing_analytic.description)
 
         if existing_analytic.triage_settings is not None:
@@ -126,20 +123,7 @@ def update_analytic(id: str, user: User, **kwargs):
             {**existing_triage_data, **new_data.get("triage_settings", {})}
         )
 
-        updated_rule = False
-        if existing_analytic.rule_type:
-            updated_rule = existing_analytic.rule != new_data.get(
-                "rule", existing_analytic.rule
-            ) or existing_analytic.rule_crontab != new_data.get("rule_crontab", existing_analytic.rule_crontab)
-
-            existing_analytic.rule = new_data.get("rule", existing_analytic.rule)
-            existing_analytic.rule_crontab = new_data.get("rule_crontab", existing_analytic.rule_crontab)
-
         storage.analytic.save(existing_analytic.analytic_id, existing_analytic)
-
-        if updated_rule:
-            # The registration process automatically deletes and resets the rule cronjob
-            register_rules(existing_analytic)
 
         return ok(existing_analytic)
     except HowlerException as e:
@@ -169,62 +153,7 @@ def create_rule(user: User, **kwargs):
         ...analytic     # The created analytic rule
     }
     """
-    storage = datastore()
-
-    new_data: Optional[dict[str, Any]] = request.json
-
-    if not new_data:
-        return bad_request(err="You must provide rule data.")
-
-    required_keys = {
-        "name",
-        "description",
-        "rule",
-        "rule_type",
-        "rule_crontab",
-    }
-
-    for key in required_keys:
-        if key not in new_data or not new_data[key]:
-            return bad_request(err=f"You must provide a {key} for your rule.")
-
-    extra_keys = set(new_data.keys()) - required_keys
-
-    if len(extra_keys) > 0:
-        return bad_request(err=f"Additional fields ({', '.join(extra_keys)}) are not permitted.")
-
-    new_analytic = Analytic(
-        {
-            **new_data,
-            "tags": ["rule"],
-            "owner": user["uname"],
-            "contributors": [user["uname"]],
-            "detections": ["Rule"],
-        }
-    )
-
-    new_template = Template(
-        {
-            "analytic": new_data["name"],
-            "detection": "Rule",
-            "type": "global",
-            "owner": user["uname"],
-            # TODO: Allow custom keys
-            "keys": ["event.kind", "event.module", "event.reason", "event.type"],
-        }
-    )
-
-    try:
-        storage.analytic.save(new_analytic.analytic_id, new_analytic)
-        # Have to commit so the analytic is available during registration
-        storage.analytic.commit()
-        register_rules(new_analytic)
-
-        storage.template.save(new_template.template_id, new_template)
-
-        return ok(new_analytic)
-    except HowlerException as e:
-        return bad_request(err=str(e))
+    raise NotImplementedError()
 
 
 @generate_swagger_docs()
@@ -248,23 +177,7 @@ def delete_rule(id: str, user: User, **kwargs):
     {
     }
     """
-    if not analytic_service.does_analytic_exist(id):
-        return not_found(err=f"Analytic {id} does not exist")
-
-    analytic = analytic_service.get_analytic(id, as_odm=True)
-
-    if not analytic.rule:
-        return bad_request(err="This is not a rule analytic, and cannot be deleted.")
-
-    if user["uname"] != analytic.owner and "admin" not in user["type"]:
-        return forbidden(err="You cannot delete this analytic.")
-
-    try:
-        datastore().analytic.delete(analytic.analytic_id)
-    except DataStoreException as e:
-        return bad_request(err=str(e))
-
-    return no_content()
+    raise NotImplementedError()
 
 
 @generate_swagger_docs()
@@ -557,7 +470,7 @@ def set_analytic_owner(id: str, user: dict[str, Any], **kwargs):
 @generate_swagger_docs()
 @analytic_api.route("/<id>/favourite", methods=["POST"])
 @api_login(required_priv=["R", "W"])
-def set_as_favourite(id, **kwargs):
+def set_as_favourite(id: str, user: User | None, **kwargs):
     """Add an analytic to a list of the user's favourites
 
     Variables:
@@ -576,16 +489,17 @@ def set_as_favourite(id, **kwargs):
     """
     storage = datastore()
 
-    existing_analytic: Analytic = storage.analytic.get_if_exists(id)
+    existing_analytic = storage.analytic.get(id)
     if not existing_analytic:
         return not_found(err="This analytic does not exist")
 
+    if not user:
+        return forbidden(err="User was not found.")
+
     try:
-        current_user = storage.user.get_if_exists(kwargs["user"]["uname"])
+        user.favourite_analytics.append(id)
 
-        current_user.favourite_analytics.append(id)
-
-        storage.user.save(current_user["uname"], current_user)
+        storage.user.save(user.uname, user)
 
         return ok()
     except ValueError as e:
@@ -595,7 +509,7 @@ def set_as_favourite(id, **kwargs):
 @generate_swagger_docs()
 @analytic_api.route("/<id>/favourite", methods=["DELETE"])
 @api_login(required_priv=["R", "W"])
-def remove_as_favourite(id, **kwargs):
+def remove_as_favourite(id: str, user: User | None, **kwargs):
     """Remove an analytic from a list of the user's favourites
 
     Variables:
@@ -614,12 +528,13 @@ def remove_as_favourite(id, **kwargs):
     if not storage.analytic.exists(id):
         return not_found(err="This analytic does not exist")
 
+    if not user:
+        return forbidden(err="User was not found.")
+
     try:
-        current_user = storage.user.get_if_exists(kwargs["user"]["uname"])
+        user.favourite_analytics = list(filter(lambda f: f != id, user.favourite_analytics))
 
-        current_user["favourite_analytics"] = list(filter(lambda f: f != id, current_user.favourite_analytics))
-
-        storage.user.save(current_user["uname"], current_user)
+        storage.user.save(user.uname, user)
 
         return no_content()
     except ValueError as e:

@@ -11,9 +11,17 @@ class Settings(odm.Model):
     )
 
 
+DEFAULT_INDEXES = ["hit"]
+
+
 @odm.model(index=True, store=True, description="Model of views")
 class View(odm.Model):
     view_id: str = odm.UUID(description="A UUID for this view")
+    indexes: list[str] = odm.List(
+        odm.Keyword(),
+        default=DEFAULT_INDEXES,
+        description="What indexes this view applies to.",
+    )
     title: str = odm.CaseInsensitiveKeyword(description="The name of this view.")
     query: str = odm.Keyword(description="The query to run in this view.")
     sort: str = odm.Keyword(description="The sorting to use with this view.", optional=True)

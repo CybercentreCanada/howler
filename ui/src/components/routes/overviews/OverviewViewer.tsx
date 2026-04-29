@@ -33,7 +33,7 @@ import type { Overview } from 'models/entities/generated/Overview';
 import { useSearchParams } from 'react-router-dom';
 import hitsData from 'utils/hit.json';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
-import OverviewEditor from './OverviewEditor';
+import MarkdownEditor from '../../elements/MarkdownEditor';
 import { useStartingTemplate } from './startingTemplate';
 
 const OverviewViewer = () => {
@@ -334,7 +334,7 @@ const OverviewViewer = () => {
                   pr: 1.5
                 }}
               >
-                <OverviewEditor height="100%" content={content} setContent={setContent} />
+                <MarkdownEditor height="100%" content={content} setContent={setContent} />
               </Box>
             </Box>
             <Box

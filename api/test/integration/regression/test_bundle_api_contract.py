@@ -1,17 +1,16 @@
 """Cross-branch API contract tests for bundle endpoints.
 
-These tests validate ONLY the HTTP status codes, response envelope structure,
+These tests validate HTTP status codes, response envelope structure,
 and common response fields of the bundle API.  They are designed to pass on
 **both** the ``develop`` branch (native bundle ODM) and the feature branch
 (case-backed compatibility shim), so they intentionally avoid:
 
 * Case-related assertions (``_case_id``, ``howler.related``, case items).
 * Deprecation-header assertions (only present on the feature branch).
-* ``bundle_size`` exact-value assertions (semantics differ between branches).
-* ``is_bundle`` assertions after a wildcard remove-all (``True`` on feature,
-  ``False`` on develop).
-* ``howler.bundles`` (removed from the ODM on the feature branch).
-* Creating a bundle with zero children (returns 400 on develop, 201 on feature).
+
+The ``TestBundleDiscrepancies`` class pins down develop-specific edge-case
+behavior.  One test (``howler.bundles`` back-reference) is marked ``xfail``
+on the feature branch because the ODM field has been removed.
 """
 
 import json
@@ -735,7 +734,14 @@ class TestBundleDiscrepancies:
         assert resp.status_code == 400
 
     # -- Children get howler.bundles back-reference on develop --------------
+    # On the feature branch the howler.bundles field has been removed from
+    # the ODM entirely, so children use howler.related (case back-refs)
+    # instead.  This test cannot pass on the feature branch.
 
+    @pytest.mark.xfail(
+        reason="howler.bundles ODM field removed on feature branch; children use howler.related instead",
+        strict=False,
+    )
     def test_children_have_bundles_backref(self, datastore: HowlerDatastore, login_session):
         """develop: each child hit has the bundle ID in howler.bundles."""
         session, host = login_session

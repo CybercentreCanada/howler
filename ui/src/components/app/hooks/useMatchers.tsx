@@ -4,10 +4,10 @@ import type { Hit } from 'models/entities/generated/Hit';
 import type { WithMetadata } from 'models/WithMetadata';
 import { useCallback } from 'react';
 import { useContextSelector } from 'use-context-selector';
-import { HitContext } from '../providers/HitProvider';
+import { RecordContext } from '../providers/RecordProvider';
 
-const useMatchers = () => {
-  const getHit = useContextSelector(HitContext, ctx => ctx.getHit);
+const useMatchers = (lazy = false) => {
+  const getRecord = useContextSelector(RecordContext, ctx => ctx.getRecord);
 
   const getMatchingTemplate = useCallback(
     async (hit: WithMetadata<Hit>) => {
@@ -19,15 +19,19 @@ const useMatchers = () => {
         return hit.__template;
       }
 
+      if (lazy) {
+        return null;
+      }
+
       // This is a fallback in case metadata is not included. In most cases templates are shown, the template metadata
       // should also exist
       try {
-        return (await getHit(hit.howler.id, true)).__template;
+        return (await getRecord(hit.howler.id, true)).__template;
       } catch (e) {
         return null;
       }
     },
-    [getHit]
+    [getRecord, lazy]
   );
 
   const getMatchingOverview = useCallback(
@@ -40,15 +44,19 @@ const useMatchers = () => {
         return hit.__overview;
       }
 
+      if (lazy) {
+        return null;
+      }
+
       // This is a fallback in case metadata is not included. In most cases templates are shown, the template metadata
       // should also exist
       try {
-        return (await getHit(hit.howler.id, true)).__overview;
+        return (await getRecord(hit.howler.id, true)).__overview;
       } catch (e) {
         return null;
       }
     },
-    [getHit]
+    [getRecord, lazy]
   );
 
   const getMatchingDossiers = useCallback(
@@ -61,15 +69,19 @@ const useMatchers = () => {
         return hit.__dossiers;
       }
 
+      if (lazy) {
+        return null;
+      }
+
       // This is a fallback in case metadata is not included. In most cases templates are shown, the template metadata
       // should also exist
       try {
-        return (await getHit(hit.howler.id, true)).__dossiers ?? [];
+        return (await getRecord(hit.howler.id, true)).__dossiers ?? [];
       } catch (e) {
         return [];
       }
     },
-    [getHit]
+    [getRecord, lazy]
   );
 
   const getMatchingAnalytic = useCallback(
@@ -82,14 +94,18 @@ const useMatchers = () => {
         return hit.__analytic;
       }
 
+      if (lazy) {
+        return null;
+      }
+
       // This is a fallback in case metadata is not included.
       try {
-        return (await getHit(hit.howler.id, true)).__analytic;
+        return (await getRecord(hit.howler.id, true)).__analytic;
       } catch (e) {
         return null;
       }
     },
-    [getHit]
+    [getRecord, lazy]
   );
 
   return {

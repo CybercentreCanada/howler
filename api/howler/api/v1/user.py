@@ -319,7 +319,7 @@ def get_user_avatar(username, **_):
     "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD..."
     """
     storage = datastore()
-    avatar: str = storage.user_avatar.get(username)
+    avatar = storage.user_avatar.get(username)
 
     if avatar:
         resp = ok(avatar)

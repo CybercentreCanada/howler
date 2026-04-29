@@ -27,7 +27,7 @@ from howler.odm.models.ecs.url import URL
 from howler.odm.models.ecs.user import User
 from howler.odm.models.ecs.user_agent import UserAgent
 from howler.odm.models.ecs.vulnerability import Vulnerability
-from howler.odm.models.hit import ECSVersion
+from howler.odm.models.record import ECSVersion
 
 
 @odm.model(

@@ -19,9 +19,10 @@ import importlib
 import json
 import random
 import textwrap
-from datetime import datetime
+from datetime import datetime, timedelta
 from random import choice, randint, sample
 from typing import Any, Callable, cast
+from uuid import uuid4
 
 import yaml
 
@@ -33,12 +34,13 @@ from howler.datastore.operations import OdmHelper
 from howler.helper.hit import assess_hit
 from howler.helper.oauth import VALID_CHARS
 from howler.odm.base import Keyword
-from howler.odm.helper import generate_useful_dossier, generate_useful_hit
+from howler.odm.helper import generate_useful_dossier, generate_useful_hit, generate_useful_observable
 from howler.odm.models.action import Action
 from howler.odm.models.analytic import Analytic, Comment, Notebook, TriageOptions
+from howler.odm.models.case import Case
 from howler.odm.models.ecs.event import EVENT_CATEGORIES
 from howler.odm.models.hit import Hit
-from howler.odm.models.howler_data import Assessment, Escalation, HitStatus, Scrutiny
+from howler.odm.models.howler_data import Assessment, Escalation, Scrutiny, Status
 from howler.odm.models.overview import Overview
 from howler.odm.models.template import Template
 from howler.odm.models.user import User
@@ -323,6 +325,8 @@ def wipe_users(ds):
     """Wipe the users index"""
     ds.user.wipe()
     ds.user_avatar.wipe()
+    ds.user.commit()
+    ds.user_avatar.commit()
 
 
 def create_templates(ds: HowlerDatastore):
@@ -496,22 +500,6 @@ def create_views(ds: HowlerDatastore):
         view,
     )
 
-    view = View(
-        {
-            "title": "Howler Bundles",
-            "query": "howler.is_bundle:true",
-            "type": "readonly",
-            "owner": "none",
-        }
-    )
-
-    view = run_modifications("view", view)
-
-    ds.view.save(
-        view.view_id,
-        view,
-    )
-
     fields = Hit.flat_fields()
     key_list = [key for key in fields.keys() if isinstance(fields[key], Keyword)]
     for _ in range(10):
@@ -540,12 +528,45 @@ def wipe_views(ds):
     ds.view.wipe()
 
 
-def create_hits(ds: HowlerDatastore, hit_count: int = 200):
-    """Create some random hits"""
+def create_observables(ds: HowlerDatastore, observable_count: int = 200):
+    """Create random observables in the datastore.
+
+    Args:
+        ds (HowlerDatastore): The datastore instance to save observables to.
+        observable_count (int, optional): Number of observables to create. Defaults to 200.
+    """
     lookups = loader.get_lookups()
     users = ds.user.search("*:*")["items"]
+    for observable_index in range(observable_count):
+        observable = generate_useful_observable(lookups, [user.uname for user in users], prune=False)
+        ds.observable.save(observable.howler.id, observable)
+
+        if observable_index % 25 == 0 and "pytest" not in sys.modules:
+            logger.info("\tCreated %s/%s", observable_index, observable_count)
+
+    logger.info(
+        "%s total observables in datastore",
+        ds.observable.search(query="howler.id:*", track_total_hits=True, rows=0)["total"],
+    )
+
+
+def create_hits(ds: HowlerDatastore, hit_count: int = 200):
+    """Create some random records"""
+    lookups = loader.get_lookups()
+    users = ds.user.search("*:*")["items"]
+    observable_ids = [
+        obs["howler"]["id"] for obs in ds.observable.search("howler.id:*", rows=200, as_obj=False)["items"]
+    ]
+    created_hit_ids: list[str] = []
+    hit_idx = 0
     for hit_idx in range(hit_count):
-        hit = generate_useful_hit(lookups, [user.uname for user in users], prune_hit=False)
+        hit = generate_useful_hit(
+            lookups,
+            [user.uname for user in users],
+            prune_hit=False,
+            hit_ids=created_hit_ids,
+            observable_ids=observable_ids,
+        )
 
         # Ensure the first 20 hits have unrestricted classification for test access
         if hit_idx < 20:
@@ -568,6 +589,7 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
             )
 
         ds.hit.save(hit.howler.id, hit)
+        created_hit_ids.append(hit.howler.id)
         analytic_service.save_from_hit(hit, random.choice(users))
         ds.analytic.commit()
 
@@ -585,7 +607,7 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
                         "howler.assignment",
                         user.get("uname", user.get("username", None)),
                     ),
-                    hit_helper.update("howler.status", HitStatus.RESOLVED),
+                    hit_helper.update("howler.status", Status.RESOLVED),
                 ],
             )
 
@@ -602,38 +624,327 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
     )
 
 
-def create_bundles(ds: HowlerDatastore):
-    """Create some random bundles"""
-    lookups = loader.get_lookups()
-    users = [user.uname for user in ds.user.search("*:*")["items"]]
-
-    hits = {}
-
-    for i in range(3):
-        bundle_hit: Hit = generate_useful_hit(lookups, users)
-        bundle_hit.howler.is_bundle = True
-        bundle_hit.classification = classification.UNRESTRICTED
-
-        for hit in ds.hit.search("howler.is_bundle:false", rows=randint(3, 10), offset=(i * 2))["items"]:
-            if hit.howler.id not in hits:
-                hits[hit.howler.id] = hit
-
-            bundle_hit.howler.hits.append(hit.howler.id)
-            hits[hit.howler.id].howler.bundles.append(bundle_hit.howler.id)
-
-        analytic_service.save_from_hit(bundle_hit, random.choice(ds.user.search("*:*")["items"]))
-        bundle_hit.howler.bundle_size = len(bundle_hit.howler.hits)
-        ds.hit.save(bundle_hit.howler.id, bundle_hit)
-
-    for hit in hits.values():
-        ds.hit.save(hit.howler.id, hit)
-
-    ds.hit.commit()
-
-
 def wipe_hits(ds):
     """Wipe the hits index"""
     ds.hit.wipe()
+
+
+def wipe_observables(ds):
+    """Wipe the observables index"""
+    ds.observable.wipe()
+
+
+def create_cases(ds: HowlerDatastore, num_cases: int = 5):
+    """Create random cases using references to random alerts and observables."""
+    users = ds.user.search("uname:*", rows=200, as_obj=False)["items"]
+    hits = ds.hit.search("howler.id:*", rows=200, as_obj=False)["items"]
+    observables = ds.observable.search("howler.id:*", rows=200, as_obj=False)["items"]
+    existing_case_ids = [case.get("case_id") for case in ds.case.search("case_id:*", rows=200, as_obj=False)["items"]]
+    generated_case_ids: list[str] = []
+
+    case_titles = [
+        "Suspicious Domain Investigation",
+        "Credential Abuse Review",
+        "Potential Lateral Movement",
+        "Malware Activity Follow-up",
+        "Phishing Campaign Triage",
+        "Command-and-Control Infrastructure Review",
+        "Account Takeover Investigation",
+        "Data Exfiltration Assessment",
+        "Endpoint Persistence Hunt",
+        "Cloud Identity Abuse Case",
+        "Ransomware Precursor Analysis",
+        "Privileged Access Misuse Inquiry",
+        "Suspicious Authentication Wave",
+        "Infrastructure Reconnaissance Tracking",
+        "Incident Correlation Workup",
+        "Unusual Process Chain Investigation",
+        "Network Beaconing Validation",
+    ]
+    case_summaries = [
+        "Correlate alerts and observables tied to suspicious infrastructure.",
+        "Track and validate activity linked to potential credential misuse.",
+        "Review telemetry associated with suspicious movement indicators.",
+        "Aggregate related detections to determine likely attack progression.",
+        "Evaluate whether suspicious events represent coordinated malicious activity.",
+        "Document impacted entities and prioritize response and containment actions.",
+        "Identify high-confidence indicators and map likely attacker objectives.",
+        "Assess scope and confidence of signals before escalation decisions.",
+        "Compare observed behaviors with known threat tradecraft patterns.",
+        "Triangulate evidence from endpoint, network, and identity sources.",
+        "Validate detections and eliminate benign explanations where possible.",
+        "Build a concise evidence trail to support investigation handoff.",
+        "Track suspicious artifacts and define follow-up hunting pivots.",
+    ]
+    target_pool = [
+        "victim1",
+        "victim2",
+        "workstation-22",
+        "server-01",
+        "mail-gateway",
+        "domain-controller-01",
+        "vpn-gateway",
+        "finance-laptop-07",
+        "hr-workstation-03",
+        "prod-k8s-node-2",
+        "jump-host-1",
+        "db-cluster-primary",
+    ]
+    threat_pool = [
+        "evildomain.com",
+        "badc2.example",
+        "evilcomputer1",
+        "198.51.100.42",
+        "malicious-user",
+        "stealth-update.net",
+        "cdn-sync-check.com",
+        "45.77.11.90",
+        "dropbox-mirror.app",
+        "backup-telemetry.co",
+        "ntp-anomaly.host",
+        "88.198.22.17",
+    ]
+    reference_name_pool = [
+        "Initial Report",
+        "Incident Timeline",
+        "Executive Summary",
+        "Technical Notes",
+        "Containment Plan",
+        "External Advisory",
+        "Threat Brief",
+        "Stakeholder Update",
+        "Evidence Index",
+        "Detection Review",
+    ]
+
+    def _parse_timestamp(value: str | None) -> datetime | None:
+        if not value:
+            return None
+
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+
+    for _ in range(num_cases):
+        case_id = f"case-{get_random_string(12).lower()}"
+
+        selected_hits = sample(hits, k=min(len(hits), randint(5, 15))) if hits else []
+        selected_observables = sample(observables, k=min(len(observables), randint(3, 9))) if observables else []
+
+        items: list[dict[str, str]] = []
+
+        for idx, hit in enumerate(selected_hits, start=1):
+            hit_id = hit.get("howler", {}).get("id")
+            if not hit_id:
+                continue
+
+            items.append(
+                {
+                    "path": f"alerts/{hit['howler']['analytic']} ({hit['howler']['id']})",
+                    "type": "hit",
+                    "value": hit_id,
+                }
+            )
+
+        for idx, observable in enumerate(selected_observables, start=1):
+            observable_id = observable.get("howler", {}).get("id")
+            if not observable_id:
+                continue
+
+            items.append(
+                {
+                    "path": f"observable/{observable['howler']['id']}",
+                    "type": "observable",
+                    "value": observable_id,
+                }
+            )
+
+        # Add a few additional deeply nested paths for existing hits/observables
+        nested_hit_candidates = sample(selected_hits, k=min(len(selected_hits), randint(1, 3))) if selected_hits else []
+        for nested_hit in nested_hit_candidates:
+            nested_hit_id = nested_hit.get("howler", {}).get("id")
+            if not nested_hit_id:
+                continue
+
+            items.append(
+                {
+                    "path": f"alerts/{get_random_word()}/{get_random_word()}",
+                    "type": "hit",
+                    "value": nested_hit_id,
+                }
+            )
+
+        nested_observable_candidates = (
+            sample(
+                selected_observables,
+                k=min(len(selected_observables), randint(1, 2)),
+            )
+            if selected_observables
+            else []
+        )
+        for nested_observable in nested_observable_candidates:
+            nested_observable_id = nested_observable.get("howler", {}).get("id")
+            if not nested_observable_id:
+                continue
+
+            items.append(
+                {
+                    "path": f"alerts/{get_random_word()}/{get_random_word()}/{get_random_word()}",
+                    "type": "observable",
+                    "value": nested_observable_id,
+                }
+            )
+
+        available_related_case_ids = [
+            cid for cid in [*existing_case_ids, *generated_case_ids] if isinstance(cid, str) and cid != case_id
+        ]
+        selected_related_case_ids = (
+            sample(available_related_case_ids, k=min(len(available_related_case_ids), randint(0, 3)))
+            if available_related_case_ids
+            else []
+        )
+
+        for idx, related_case_id in enumerate(selected_related_case_ids, start=1):
+            items.append(
+                {
+                    "path": f"cases/Related Case {idx}",
+                    "type": "case",
+                    "value": related_case_id,
+                }
+            )
+
+        selected_reference_names = sample(reference_name_pool, k=randint(1, 3))
+        for idx, reference_name in enumerate(selected_reference_names, start=1):
+            items.append({"path": f"references/{reference_name}", "type": "reference", "value": "https://example.com"})
+
+        selected_targets = sample(target_pool, k=randint(1, min(3, len(target_pool))))
+        selected_threats = sample(threat_pool, k=randint(1, min(3, len(threat_pool))))
+        selected_participants = [
+            user.get("uname") for user in sample(users, k=min(len(users), randint(1, 3))) if user.get("uname")
+        ]
+
+        timeline_datetimes = [
+            parsed
+            for parsed in (
+                _parse_timestamp(record.get("timestamp")) for record in [*selected_hits, *selected_observables]
+            )
+            if parsed is not None
+        ]
+
+        case_start = min(timeline_datetimes).isoformat() if timeline_datetimes else None
+        case_end = max(timeline_datetimes).isoformat() if timeline_datetimes else None
+        case_created = case_start or datetime.now().isoformat()
+        case_updated = choice(
+            [
+                None,
+                datetime.now().isoformat(),
+                case_end,
+            ]
+        )
+
+        task_count = randint(3, 7)
+        tasks = []
+        for _ in range(task_count):
+            tasks.append(
+                {
+                    "id": str(uuid4()),
+                    "complete": choice([True, False]),
+                    "assignment": choice(selected_participants or ["admin"]),
+                    "status": choice(Status.list()),
+                    "summary": choice(
+                        [
+                            "Review related indicators and determine additional pivots.",
+                            "Validate observable context and identify correlations.",
+                            "Confirm scope and impacted entities for this thread.",
+                            "Assess whether this path supports active compromise.",
+                            "Collect supporting evidence and update confidence level.",
+                            "Compare this artifact against recent detection patterns.",
+                            "Identify additional systems requiring triage for this lead.",
+                            "Map this task output to containment or remediation actions.",
+                            "Verify timeline consistency with known suspicious activity.",
+                            "Check for related user and host activity across the same window.",
+                            "Validate whether this indicator appears in prior incidents.",
+                            "Document findings and propose next investigation pivots.",
+                        ]
+                    ),
+                    "path": choice([item["path"] for item in items]) if items else "alerts/alert1",
+                }
+            )
+
+        case_data = Case(
+            {
+                "case_id": case_id,
+                "title": choice(case_titles),
+                "escalation": choice(["normal", "focus", "crisis"]),
+                "summary": choice(case_summaries),
+                "overview": f"# {choice(case_titles)}\n\n{choice(case_summaries)}",
+                "created": case_created,
+                "updated": case_updated,
+                "start": case_start,
+                "end": case_end,
+                "targets": selected_targets,
+                "threats": selected_threats,
+                "indicators": list(set(selected_targets + selected_threats))[:5],
+                "participants": selected_participants,
+                "items": items,
+                "enrichments": [],
+                "rules": [
+                    {
+                        "destination": choice(
+                            [
+                                "alerts/{{howler.analytic}}",
+                                "incoming/{{event.kind}}",
+                                "alerts/{{howler.analytic}}/{{event.category}}",
+                                "correlated/{{source.ip}}",
+                                "triage/{{howler.escalation}}",
+                            ]
+                        ),
+                        "query": choice(
+                            [
+                                f"destination.domain:{choice(threat_pool)}",
+                                "source.ip:10.0.0.0/8 AND howler.analytic:Suspicious*",
+                                "event.category:authentication AND event.outcome:failure",
+                                "howler.escalation:focus OR howler.escalation:crisis",
+                                f"destination.domain:{choice(threat_pool)} AND event.kind:alert",
+                            ]
+                        ),
+                        "author": choice(selected_participants or ["admin"]),
+                        "enabled": choice([True, True, True, False]),
+                        "timeframe": choice(
+                            [
+                                (datetime.now() + timedelta(days=randint(7, 28))).isoformat(),
+                                (datetime.now() + timedelta(days=randint(7, 28))).isoformat(),
+                                None,
+                            ]
+                        ),
+                    }
+                    for _ in range(randint(1, 3))
+                ],
+                "tasks": tasks,
+            }
+        )
+
+        case_data = run_modifications("case", case_data)
+
+        ds.case.save(case_id, case_data)
+        generated_case_ids.append(case_id)
+
+        case_hit_ids = list({item["value"] for item in items if item.get("type") == "hit"})
+        case_observable_ids = list({item["value"] for item in items if item.get("type") == "observable"})
+
+        for hit_id in case_hit_ids:
+            ds.hit.update(hit_id, [hit_helper.list_add("howler.related", case_id)])
+
+        for observable_id in case_observable_ids:
+            ds.observable.update(observable_id, [hit_helper.list_add("howler.related", case_id)])
+
+    ds.case.commit()
+
+
+def wipe_cases(ds):
+    """Wipe the cases index"""
+    ds.case.wipe()
 
 
 def random_escalations() -> list[Escalation]:
@@ -693,6 +1004,7 @@ def create_analytics(ds: HowlerDatastore, num_analytics: int = 10):
 
     fields = Hit.flat_fields()
     key_list = [key for key in fields.keys() if isinstance(fields[key], Keyword)]
+    assessments = Assessment.list()
     for _ in range(num_analytics):
         a: Analytic = random_model_obj(cast(Any, Analytic))
         a.name = " ".join([get_random_word().capitalize() for _ in range(random.randint(1, 3))])
@@ -702,8 +1014,6 @@ def create_analytics(ds: HowlerDatastore, num_analytics: int = 10):
         a.rule = None
         a.rule_crontab = None
         a.rule_type = None
-
-        assessments = Assessment.list()
 
         cast(TriageOptions, a.triage_settings).valid_assessments = list(
             set(random.sample(assessments, counts=([3] * len(assessments)), k=random.randint(1, len(assessments) * 3)))
@@ -804,7 +1114,7 @@ def create_actions(ds: HowlerDatastore, num_actions: int = 30):
 
             for step in available_operations[operation_id].specification()["steps"]:
                 for key in step["args"].keys():
-                    potential_values = step["options"].get(key, None)
+                    potential_values = step.get("options", {}).get(key, None)
                     if potential_values:
                         if isinstance(potential_values, dict):
                             try:
@@ -865,6 +1175,14 @@ def setup_hits(ds):
     ds.hit.fix_replicas()
 
 
+def setup_observables(ds):
+    "Set up hits index"
+    os.environ["ELASTIC_HIT_SHARDS"] = "1"
+    os.environ["ELASTIC_HIT_REPLICAS"] = "1"
+    ds.observable.fix_shards()
+    ds.observable.fix_replicas()
+
+
 def setup_users(ds):
     "Set up users index"
     os.environ["ELASTIC_USER_REPLICAS"] = "1"
@@ -878,12 +1196,13 @@ INDEXES: dict[str, tuple[Callable, list[Callable]]] = {
     "templates": (wipe_templates, [create_templates]),
     "overviews": (wipe_overviews, [create_overviews]),
     "views": (wipe_views, [create_views]),
-    "hits": (wipe_hits, [create_hits, create_bundles]),
+    "observables": (wipe_observables, [create_observables]),
+    "hits": (wipe_hits, [create_hits]),
+    "cases": (wipe_cases, [create_cases]),
     "analytics": (wipe_analytics, [create_analytics]),
     "actions": (wipe_actions, [create_actions]),
     "dossiers": (wipe_dossiers, [create_dossiers]),
 }
-
 
 if __name__ == "__main__":
     # TODO: Implement a solid command line interface for running this
@@ -912,6 +1231,9 @@ if __name__ == "__main__":
     logger.info("Running setup steps.")
     if "hits" in args:
         setup_hits(ds)
+
+    if "observables" in args:
+        setup_observables(ds)
 
     if "users" in args:
         setup_users(ds)

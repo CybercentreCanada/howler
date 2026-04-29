@@ -12,9 +12,9 @@ export const MY_LOCAL_STORAGE_PREFIX = 'howler.ui';
 export const MY_SESSION_STORAGE_PREFIX = `${MY_LOCAL_STORAGE_PREFIX}.cache`;
 
 export const ESCALATION_COLORS = {
-  alert: 'warning',
-  evidence: 'error',
-  hit: 'primary'
+  alert: 'warning' as const,
+  evidence: 'error' as const,
+  hit: 'primary' as const
 };
 
 export const STATUS_COLORS = {
@@ -115,6 +115,13 @@ export const DATE_RANGES = [
   'date.range.all',
   'date.range.custom'
 ];
+
+export const DATE_RANGE_LUCENE: Partial<Record<(typeof DATE_RANGES)[number], string>> = {
+  'date.range.1.day': 'now-1d/d',
+  'date.range.3.day': 'now-3d/d',
+  'date.range.1.week': 'now-7d/d',
+  'date.range.1.month': 'now-1M/M'
+};
 
 interface LabelData {
   icon?: ReactElement;

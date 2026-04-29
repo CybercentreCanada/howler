@@ -4,29 +4,28 @@ import TuiIconButton from 'components/elements/addons/buttons/CustomIconButton';
 
 import { Icon } from '@iconify/react';
 import useMatchers from 'components/app/hooks/useMatchers';
-import { HitContext } from 'components/app/providers/HitProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
+import { RecordContext } from 'components/app/providers/RecordProvider';
 import { SocketContext } from 'components/app/providers/SocketProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import VSBox from 'components/elements/addons/layout/vsbox/VSBox';
 import VSBoxContent from 'components/elements/addons/layout/vsbox/VSBoxContent';
 import VSBoxHeader from 'components/elements/addons/layout/vsbox/VSBoxHeader';
 import Phrase from 'components/elements/addons/search/phrase/Phrase';
-import BundleButton from 'components/elements/display/icons/BundleButton';
 import SocketBadge from 'components/elements/display/icons/SocketBadge';
 import JSONViewer from 'components/elements/display/json/JSONViewer';
 import HitActions from 'components/elements/hit/HitActions';
 import HitBanner from 'components/elements/hit/HitBanner';
-import HitComments from 'components/elements/hit/HitComments';
-import HitDetails from 'components/elements/hit/HitDetails';
 import HitLabels from 'components/elements/hit/HitLabels';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import HitLinks from 'components/elements/hit/HitLinks';
 import HitOutline from 'components/elements/hit/HitOutline';
 import HitOverview from 'components/elements/hit/HitOverview';
-import HitRelated from 'components/elements/hit/HitRelated';
 import HitSummary from 'components/elements/hit/HitSummary';
-import HitWorklog from 'components/elements/hit/HitWorklog';
+import ObjectDetails from 'components/elements/ObjectDetails';
+import RecordComments from 'components/elements/record/RecordComments';
+import RecordRelated from 'components/elements/record/RecordRelated';
+import RecordWorklog from 'components/elements/record/RecordWorklog';
 import useMyUserList from 'components/hooks/useMyUserList';
 import ErrorBoundary from 'components/routes/ErrorBoundary';
 import type { Analytic } from 'models/entities/generated/Analytic';
@@ -40,19 +39,20 @@ import { useLocation } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { getUserList } from 'utils/hitFunctions';
 import { validateRegex } from 'utils/stringUtils';
+import { isHit } from 'utils/typeUtils';
 import { tryParse } from 'utils/utils';
 import LeadRenderer from '../view/LeadRenderer';
 
-const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
+const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onClose, selected: _selected }) => {
   const { t, i18n } = useTranslation();
   const theme = useTheme();
   const location = useLocation();
-  const { emit, isOpen } = useContext(SocketContext);
+  const { emit, open } = useContext(SocketContext);
   const { getMatchingOverview, getMatchingDossiers, getMatchingAnalytic } = useMatchers();
-  const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
+  const selected = useContextSelector(ParameterContext, ctx => ctx?.selected) ?? _selected;
   const pluginStore = usePluginStore();
 
-  const getHit = useContextSelector(HitContext, ctx => ctx.getHit);
+  const getRecord = useContextSelector(RecordContext, ctx => ctx.getRecord);
 
   const [userIds, setUserIds] = useState<Set<string>>(new Set());
   const [analytic, setAnalytic] = useState<Analytic>();
@@ -67,7 +67,7 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
 
   const users = useMyUserList(userIds);
 
-  const hit = useContextSelector(HitContext, ctx => ctx.hits[selected]);
+  const record = useContextSelector(RecordContext, ctx => ctx.records[selected]);
 
   howlerPluginStore.plugins.forEach(plugin => {
     pluginStore.executeFunction(`${plugin}.on`, 'viewing');
@@ -78,16 +78,16 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
       return;
     }
 
-    if (!hit?.howler.data) {
+    if (!record?.howler.data) {
       setLoading(true);
-      getHit(selected, true).finally(() => setLoading(false));
+      getRecord(selected, true).finally(() => setLoading(false));
       return;
     }
 
-    setUserIds(getUserList(hit));
+    setUserIds(getUserList(record));
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getHit, selected]);
+  }, [getRecord, selected]);
 
   useEffect(() => {
     if (selected) {
@@ -98,29 +98,25 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
   }, [selected]);
 
   useEffect(() => {
-    if (hit && !analytic) {
-      getMatchingAnalytic(hit).then(setAnalytic);
+    if (isHit(record) && !analytic) {
+      getMatchingAnalytic(record).then(setAnalytic);
     }
-  }, [analytic, getMatchingAnalytic, hit]);
+  }, [analytic, getMatchingAnalytic, record]);
 
   useEffect(() => {
-    if (hit && !_dossiers) {
-      getMatchingDossiers(hit).then(setDossiers);
+    if (isHit(record) && !_dossiers) {
+      getMatchingDossiers(record).then(setDossiers);
     }
-  }, [_dossiers, getMatchingDossiers, hit]);
+  }, [_dossiers, getMatchingDossiers, record]);
 
   useEffect(() => {
-    getMatchingOverview(hit).then(_overview => setHasOverview(!!_overview));
-  }, [getMatchingOverview, hit]);
-
-  useEffect(() => {
-    if (tab === 'hit_aggregate' && !hit?.howler.is_bundle) {
-      setTab('overview');
+    if (isHit(record)) {
+      getMatchingOverview(record).then(_overview => setHasOverview(!!_overview));
     }
-  }, [hit?.howler.is_bundle, tab]);
+  }, [getMatchingOverview, record]);
 
   useEffect(() => {
-    if (selected && isOpen()) {
+    if (selected && open) {
       emit({
         broadcast: false,
         action: 'viewing',
@@ -134,7 +130,7 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
           id: selected
         });
     }
-  }, [emit, selected, isOpen]);
+  }, [emit, selected, open]);
 
   useEffect(() => {
     if (hasOverview && tab === 'details') {
@@ -145,71 +141,62 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasOverview]);
 
-  /**
-   * What to show as the header? If loading a skeleton, then it depends on bundle or not. Bundles don't
-   * show anything while normal hits do
-   */
-  const header = useMemo(() => {
-    if (loading && !hit?.howler?.is_bundle) {
-      return <Skeleton variant="rounded" height={152} />;
-    } else if (!!hit && !hit.howler.is_bundle) {
-      return <HitBanner layout={HitLayout.DENSE} hit={hit} />;
-    } else {
-      return null;
-    }
-  }, [hit, loading]);
-
   const tabContent = useMemo(() => {
     if (!tab) {
       return;
     }
 
-    return {
-      overview: () => <HitOverview hit={hit} />,
-      details: () => <HitDetails hit={hit} />,
-      hit_comments: () => <HitComments hit={hit} users={users} />,
-      hit_raw: () => <JSONViewer data={!loading && hit} hideSearch filter={filter} />,
-      hit_data: () => (
+    const defaultContent = {
+      details: () => (
+        <Box pr={2}>
+          <ObjectDetails obj={record} />
+        </Box>
+      ),
+      comments: () => <RecordComments record={record} users={users} />,
+      raw: () => <JSONViewer data={!loading && record} hideSearch filter={filter} />,
+      data: () => (
         <JSONViewer
-          data={!loading && hit?.howler?.data?.map(entry => tryParse(entry))}
+          data={!loading && record?.howler?.data?.map(entry => tryParse(entry))}
           collapse={false}
           hideSearch
           filter={filter}
         />
       ),
-      hit_worklog: () => <HitWorklog hit={!loading && hit} users={users} />,
+      related: () => <RecordRelated record={record} />,
+      worklog: () => <RecordWorklog record={!loading && record} users={users} />
+    };
+
+    if (!isHit(record)) {
+      return defaultContent[tab]?.();
+    }
+
+    return {
+      ...defaultContent,
+      overview: () => <HitOverview hit={record} />,
       hit_aggregate: () => <HitSummary />,
-      hit_related: () => <HitRelated hit={hit} />,
       ...Object.fromEntries(
-        (hit?.howler.dossier ?? []).map((lead, index) => [
+        (record?.howler.dossier ?? []).map((lead, index) => [
           'lead:' + index,
-          () => <LeadRenderer lead={lead} hit={hit} />
+          () => <LeadRenderer lead={lead} hit={record} />
         ])
       ),
       ...Object.fromEntries(
         dossiers.flatMap((_dossier, dossierIndex) =>
           (_dossier.leads ?? []).map((_lead, leadIndex) => [
             `external-lead:${dossierIndex}:${leadIndex}`,
-            () => <LeadRenderer lead={_lead} hit={hit} />
+            () => <LeadRenderer lead={_lead} hit={record} />
           ])
         )
       )
     }[tab]?.();
-  }, [dossiers, filter, hit, loading, tab, users]);
+  }, [dossiers, filter, record, loading, tab, users]);
 
   const hasError = useMemo(() => !validateRegex(filter), [filter]);
 
   return (
     <VSBox top={10} sx={{ height: '100%', flex: 1 }}>
       <Stack direction="column" flex={1} sx={{ overflowY: 'auto', flexGrow: 1 }} position="relative" spacing={1} ml={2}>
-        <Stack
-          direction="row"
-          alignItems="center"
-          spacing={0.5}
-          flexShrink={0}
-          pr={2}
-          sx={[hit?.howler?.is_bundle && { position: 'absolute', top: 1, right: 0, zIndex: 1100 }]}
-        >
+        <Stack direction="row" alignItems="center" spacing={0.5} flexShrink={0} pr={2}>
           <FlexOne />
           {onClose && !location.pathname.startsWith('/bundles') && (
             <TuiIconButton size="small" onClick={onClose} tooltip={t('hit.panel.details.exit')}>
@@ -220,19 +207,18 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
           {analytic && (
             <TuiIconButton
               size="small"
-              tooltip={t('hit.panel.analytic.open')}
+              tooltip={t('analytic.open')}
               disabled={!analytic || loading}
               route={`/analytics/${analytic.analytic_id}`}
             >
               <QueryStats />
             </TuiIconButton>
           )}
-          {hit?.howler.bundles?.length > 0 && <BundleButton ids={hit.howler.bundles} disabled={loading} />}
-          {!!hit && !hit.howler.is_bundle && (
+          {!!record && (
             <TuiIconButton
-              tooltip={t('hit.panel.open')}
-              href={`/hits/${selected}`}
-              disabled={!hit || loading}
+              tooltip={t(`${record.__index}.open`)}
+              href={`/${record.__index}s/${selected}`}
+              disabled={!record || loading}
               size="small"
               target="_blank"
             >
@@ -240,18 +226,26 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
             </TuiIconButton>
           )}
         </Stack>
-        <Box pr={2}>{header}</Box>
-        {!!hit &&
-          !hit.howler.is_bundle &&
-          (!loading ? (
-            <>
-              <HitOutline hit={hit} layout={HitLayout.DENSE} forceAllFields />
-              <HitLabels hit={hit} />
-            </>
-          ) : (
+        {isHit(record) && (
+          <>
+            <Box pr={2}>
+              <HitBanner layout={HitLayout.DENSE} hit={record} />
+            </Box>
+            {!loading && (
+              <>
+                <HitOutline hit={record} layout={HitLayout.DENSE} forceAllFields />
+                <HitLabels hit={record} />
+              </>
+            )}
+            <HitLinks hit={record} analytic={analytic} dossiers={dossiers} />
+          </>
+        )}
+        {loading && (
+          <>
+            <Skeleton variant="rounded" height={152} />
             <Skeleton height={124} />
-          ))}
-        <HitLinks hit={hit} analytic={analytic} dossiers={dossiers} />
+          </>
+        )}
         <VSBoxHeader ml={-1} mr={-1} pb={1} sx={{ top: '0px' }}>
           <Tabs
             value={tab === 'overview' && !hasOverview ? 'details' : tab}
@@ -283,7 +277,7 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
             <Tab
               sx={{ px: 2, minWidth: 0 }}
               label={
-                <Tooltip title={t('hit.viewer.comments')}>
+                <Tooltip title={t('viewer.comments')}>
                   <Badge
                     sx={{
                       '& > .MuiBadge-badge': {
@@ -293,36 +287,34 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
                       },
                       '& > svg': { zIndex: 2 }
                     }}
-                    badgeContent={hit?.howler.comment?.length ?? 0}
+                    badgeContent={record?.howler.comment?.length ?? 0}
                   >
                     <Comment />
                   </Badge>
                 </Tooltip>
               }
-              value="hit_comments"
-              onClick={() => setTab('hit_comments')}
+              value="comments"
+              onClick={() => setTab('comments')}
             />
-            {hit?.howler?.is_bundle && (
-              <Tab label={t('hit.viewer.aggregate')} value="hit_aggregate" onClick={() => setTab('hit_aggregate')} />
-            )}
-            {hasOverview && (
+            {isHit(record) && hasOverview && (
               <Tab label={t('hit.viewer.overview')} value="overview" onClick={() => setTab('overview')} />
             )}
             <Tab label={t('hit.viewer.details')} value="details" onClick={() => setTab('details')} />
-            {hit?.howler.dossier?.map((lead, index) => (
-              <Tab
-                // eslint-disable-next-line react/no-array-index-key
-                key={'lead:' + index}
-                label={
-                  <Stack direction="row" spacing={0.5}>
-                    {lead.icon && <Icon icon={lead.icon} />}
-                    <span>{i18n.language === 'en' ? lead.label.en : lead.label.fr}</span>
-                  </Stack>
-                }
-                value={'lead:' + index}
-                onClick={() => setTab('lead:' + index)}
-              />
-            ))}
+            {isHit(record) &&
+              record?.howler.dossier?.map((lead, index) => (
+                <Tab
+                  // eslint-disable-next-line react/no-array-index-key
+                  key={'lead:' + index}
+                  label={
+                    <Stack direction="row" spacing={0.5}>
+                      {lead.icon && <Icon icon={lead.icon} />}
+                      <span>{i18n.language === 'en' ? lead.label.en : lead.label.fr}</span>
+                    </Stack>
+                  }
+                  value={'lead:' + index}
+                  onClick={() => setTab('lead:' + index)}
+                />
+              ))}
             {dossiers.flatMap((_dossier, dossierIndex) =>
               (_dossier.leads ?? []).map((_lead, leadIndex) => (
                 <Tab
@@ -347,9 +339,9 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
                   <DataObject />
                 </Tooltip>
               }
-              value="hit_data"
-              onClick={() => setTab('hit_data')}
-              disabled={!hit?.howler?.data}
+              value="data"
+              onClick={() => setTab('data')}
+              disabled={!record?.howler?.data}
             />
             <Tab
               sx={{ px: 2, minWidth: 0 }}
@@ -358,8 +350,8 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
                   <Code />
                 </Tooltip>
               }
-              value="hit_raw"
-              onClick={() => setTab('hit_raw')}
+              value="raw"
+              onClick={() => setTab('raw')}
             />
             <Tab
               sx={{ px: 2, minWidth: 0 }}
@@ -368,8 +360,8 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
                   <History />
                 </Tooltip>
               }
-              value="hit_worklog"
-              onClick={() => setTab('hit_worklog')}
+              value="worklog"
+              onClick={() => setTab('worklog')}
             />
             <Tab
               sx={{ px: 2, minWidth: 0 }}
@@ -378,11 +370,11 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
                   <LinkSharp />
                 </Tooltip>
               }
-              value="hit_related"
-              onClick={() => setTab('hit_related')}
+              value="related"
+              onClick={() => setTab('related')}
             />
           </Tabs>
-          {['hit_raw', 'hit_data'].includes(tab) && (
+          {['raw', 'data'].includes(tab) && (
             <Phrase
               sx={{ mt: 1, pr: 1 }}
               value={filter}
@@ -406,10 +398,10 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
           </VSBoxContent>
         </ErrorBoundary>
       </Stack>
-      {!!hit && hit?.howler && (
+      {isHit(record) && (
         <Box pr={2} bgcolor={theme.palette.background.default} position="relative">
           <Divider orientation="horizontal" />
-          <HitActions hit={hit} />
+          <HitActions hit={record} />
         </Box>
       )}
     </VSBox>

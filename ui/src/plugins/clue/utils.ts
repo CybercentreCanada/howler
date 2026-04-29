@@ -1,9 +1,10 @@
 import { useClueEnrichSelector } from '@cccsaurora/clue-ui';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import type { Hit } from 'models/entities/generated/Hit';
+import type { Observable } from 'models/entities/generated/Observable';
 import { useContext } from 'react';
 
-export const useType = (hit?: Hit, field?: string, value?: string) => {
+export const useType = (hit?: Hit | Observable, field?: string, value?: string) => {
   const guessType = useClueEnrichSelector(ctx => ctx.guessType);
 
   const { config } = useContext(ApiConfigContext);

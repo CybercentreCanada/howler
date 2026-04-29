@@ -761,7 +761,7 @@ def test_add_labels(datastore: HowlerDatastore, login_session):
 
     for hit in valid_hit_data[:2]:
         # get current hit
-        current_hit: Hit = datastore.hit.get(hit["howler"]["id"])
+        current_hit = datastore.hit.get(hit["howler"]["id"])
 
         for label_set in current_hit.howler.labels.fields().keys():
             new_labels = ["apa2b", "cccs"]
@@ -775,7 +775,7 @@ def test_add_labels(datastore: HowlerDatastore, login_session):
 
             assert response["howler"]
 
-            updated_hit: Hit = datastore.hit.get(hit["howler"]["id"])
+            updated_hit = datastore.hit.get(hit["howler"]["id"])
             for label in new_labels:
                 assert label in updated_hit.howler.labels[label_set]
                 assert label in [log.new_value for log in updated_hit.howler.log]
@@ -786,7 +786,7 @@ def test_add_labels_existing(datastore: HowlerDatastore, login_session):
 
     hit = valid_hit_data[0]
     # get current hit
-    current_hit: Hit = datastore.hit.get(hit["howler"]["id"])
+    current_hit = datastore.hit.get(hit["howler"]["id"])
 
     for label_set in current_hit.howler.labels.fields().keys():
         existing_labels = current_hit[f"howler.labels.{label_set}"]
@@ -808,7 +808,7 @@ def test_remove_labels(datastore: HowlerDatastore, login_session):
 
     for hit in valid_hit_data[:2]:
         # get current hit
-        current_hit: Hit = datastore.hit.get(hit["howler"]["id"])
+        current_hit = datastore.hit.get(hit["howler"]["id"])
 
         for label_set in current_hit.howler.labels.fields().keys():
             remove_labels = current_hit[f"howler.labels.{label_set}"]
@@ -823,7 +823,7 @@ def test_remove_labels(datastore: HowlerDatastore, login_session):
 
                 assert response["howler"]
 
-                updated_hit: Hit = datastore.hit.get(hit["howler"]["id"])
+                updated_hit = datastore.hit.get(hit["howler"]["id"])
                 assert len(updated_hit.howler.labels[label_set]) == 0
                 for removed_label in remove_labels:
                     assert removed_label in [log.new_value for log in updated_hit.howler.log]
@@ -906,7 +906,7 @@ def test_update_hit(datastore: HowlerDatastore, login_session):
 
 def test_update_hit_fails(datastore: HowlerDatastore, login_session):
     session, host = login_session
-    hit_to_update: Hit = datastore.hit.search("howler.id:*", rows=2)["items"][0]
+    hit_to_update = datastore.hit.search("howler.id:*", rows=2)["items"][0]
 
     with pytest.raises(APIError):
         get_api_data(
@@ -952,7 +952,7 @@ def test_update_by_query(datastore: HowlerDatastore, login_session):
 
     datastore.hit.commit()
 
-    hit_to_check_after: Hit = datastore.hit.get(hit_to_check.howler.id)
+    hit_to_check_after = datastore.hit.get(hit_to_check.howler.id)
 
     assert hit_to_check_after.howler.score == (hit_to_check.howler.score or 0) + 100
 
@@ -1046,6 +1046,8 @@ def test_delete_hit(datastore: HowlerDatastore, login_session):
         data=json.dumps(hit_ids),
         method="DELETE",
     )
+
+    datastore.hit.commit()
 
     # Assert that hits do not exist
     for id in hit_ids:
@@ -1155,7 +1157,7 @@ def test_delete_existing_and_non_existing_hits(datastore: HowlerDatastore, login
             method="DELETE",
         )
 
-    assert err.value.args[0].startswith("404: Hit ids")
+    assert err.value.args[0].startswith("404: Hit id(s)")
     assert err.value.args[0].endswith("not exist.")
 
 
@@ -1180,7 +1182,7 @@ def test_hit_worklog(datastore: HowlerDatastore, login_session):
         },
     )
 
-    updated_hit: Hit = datastore.hit.get(current_hit["howler"]["id"])
+    updated_hit = datastore.hit.get(current_hit["howler"]["id"])
     assert len(updated_hit.howler.log) > current_worklog_len
 
 
