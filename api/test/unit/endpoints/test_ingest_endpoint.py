@@ -630,9 +630,10 @@ class TestOverwrite:
         ):
             from howler.api.v2.ingest import overwrite
 
-            result: Response = overwrite(index="hit", id="hit-001", server_version="v1", user=user)[0]
+            result: Response = overwrite(index="hit", id="hit-001", server_version="v1", user=user)
 
             assert result.status_code == 200
+            assert result.headers.get("ETag") == "v2"
 
     @patch("howler.api.v2.ingest.datastore")
     @patch("howler.security.auth_service")
