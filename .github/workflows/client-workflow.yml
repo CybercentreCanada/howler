@@ -107,19 +107,35 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Build Howler API Docker image from current branch
-        uses: docker/build-push-action@v3
-        with:
-          context: api
-          file: api/Dockerfile
-          push: false
-          tags: cccs/howler-api:nightly
+      - name: Install Poetry
+        uses: abatilo/actions-poetry@v4
+      - name: Setup Howler API environment
+        working-directory: api
+        run: |
+          sudo mkdir -p /etc/howler/conf/
+          sudo mkdir -p /etc/howler/lookups/
+          sudo mkdir -p /var/log/howler
+          sudo chmod a+rw /etc/howler/conf/
+          sudo chmod a+rw /etc/howler/lookups/
+          sudo chmod a+rw /var/log/howler
+          cp build_scripts/classification.yml /etc/howler/conf/classification.yml
+          cp build_scripts/mappings.yml /etc/howler/conf/mappings.yml
+          cp ../client/test/config/config.ci.yml /etc/howler/conf/config.yml
+      - name: Install API Dependencies
+        working-directory: api
+        run: |
+          poetry install --verbose --with test,dev
+          poetry run mitre /etc/howler/lookups
+          poetry run sigma
       - name: Spin up test dependencies
         uses: hoverkraft-tech/compose-action@v2.6.0
         with:
           compose-file: "client/test/docker-compose.yml"
-      - name: Install Poetry
-        uses: abatilo/actions-poetry@v4
+      - name: Start Howler API server
+        working-directory: api
+        run: |
+          TESTING=true poetry run flask --app howler.app run --no-reload &
+          curl --fail-with-body --retry 15 --retry-delay 2 --retry-all-errors http://localhost:5000/api/apispec_v1.json
       - uses: actions/cache@v3
         name: Define a cache for the virtual environment based on the dependencies lock file
         with:
@@ -129,12 +145,9 @@ jobs:
         run: |
           poetry install --verbose --with test
       - name: Generate random data, user accounts
+        working-directory: api
         run: |
-          docker ps
-          docker exec $(docker ps -aqf "name=howler-api") python -m howler.odm.random_data
-          docker logs $(docker ps -aqf "name=howler-api")
-
-          curl --fail-with-body http://localhost:5000/api/apispec_v1.json
+          poetry run python -m howler.odm.random_data
       - name: Run tests
         id: tests
         continue-on-error: true
