@@ -13,7 +13,7 @@ def _random_hash() -> str:
 
 def _create_hit(client: Client, analytic: str = "Search Integration Test") -> str:
     """Create a hit and return its howler.id."""
-    result = client.v2.ingest.create(
+    result: list[str] = client.v2.ingest.create(
         "hit",
         {
             "howler": {
@@ -24,7 +24,7 @@ def _create_hit(client: Client, analytic: str = "Search Integration Test") -> st
             },
         },
     )
-    return result["valid"][0]["howler"]["id"]
+    return result[0]
 
 
 # ---------------------------------------------------------------------------

@@ -19,7 +19,7 @@ def _create_hit_id(client: Client) -> str:
     import random
 
     _hash = hashlib.sha256(random.randbytes(128)).hexdigest()
-    result = client.v2.ingest.create(
+    result: list[str] = client.v2.ingest.create(
         "hit",
         {
             "howler": {
@@ -30,8 +30,8 @@ def _create_hit_id(client: Client) -> str:
             },
         },
     )
-    assert len(result["valid"]) == 1
-    hit_id = result["valid"][0]["howler"]["id"]
+    assert len(result) == 1
+    hit_id = result[0]
     time.sleep(1)
     return hit_id
 
@@ -70,6 +70,8 @@ def test_delete_case(client: Client):
     case = _create_case(client)
 
     client.v2.case.delete([case["case_id"]])
+
+    time.sleep(1)
 
     with pytest.raises(ClientError):
         client.v2.case(case["case_id"])

@@ -42,7 +42,7 @@ class Ingest(object):
         self: Self,
         index: str,
         data: Union[dict[str, Any], list[dict[str, Any]]],
-    ) -> dict[str, list[dict[str, Any]]]:
+    ) -> list[str]:
         """Create one or more records in the given index.
 
         Args:
@@ -50,7 +50,7 @@ class Ingest(object):
             data: A single record dict or a list of record dicts.
 
         Returns:
-            Dictionary with ``valid`` and ``invalid`` lists.
+            List of created record IDs.
         """
         if not isinstance(data, list):
             data = [data]

@@ -35,9 +35,7 @@ def _sample_hit(**overrides) -> dict:
 def test_create_single_hit(client: Client):
     result = client.v2.ingest.create("hit", _sample_hit())
 
-    assert len(result["valid"]) == 1
-    assert len(result["invalid"]) == 0
-    assert result["valid"][0]["howler"]["id"]
+    assert len(result) == 1
 
 
 def test_create_multiple_hits(client: Client):
@@ -45,12 +43,12 @@ def test_create_multiple_hits(client: Client):
 
     result = client.v2.ingest.create("hit", hits)
 
-    assert len(result["valid"]) == 2
+    assert len(result) == 2
 
 
 def test_create_invalid_hit(client: Client):
     with pytest.raises(ClientError) as exc_info:
-        client.v2.ingest.create("hit", {"howler": {"analytic": "no score"}})
+        client.v2.ingest.create("hit", {})
 
     assert exc_info.value.api_response is not None
 
@@ -68,7 +66,7 @@ def test_validate_valid_hit(client: Client):
 
 
 def test_validate_invalid_hit(client: Client):
-    result = client.v2.ingest.validate("hit", {"howler": {"analytic": "missing score"}})
+    result = client.v2.ingest.validate("hit", {})
 
     assert len(result["invalid"]) == 1
     assert result["invalid"][0]["error"]
@@ -82,7 +80,7 @@ def test_validate_invalid_hit(client: Client):
 def test_overwrite_hit(client: Client):
     hit = _sample_hit()
     result = client.v2.ingest.create("hit", hit)
-    hit_id = result["valid"][0]["howler"]["id"]
+    hit_id = result[0]
 
     time.sleep(1)
 
@@ -99,7 +97,7 @@ def test_overwrite_hit(client: Client):
 def test_update_by_query(client: Client):
     hit = _sample_hit()
     result = client.v2.ingest.create("hit", hit)
-    hit_id = result["valid"][0]["howler"]["id"]
+    hit_id = result[0]
 
     time.sleep(1)
 
@@ -119,7 +117,7 @@ def test_update_by_query(client: Client):
 
 def test_delete_hits(client: Client):
     result = client.v2.ingest.create("hit", _sample_hit())
-    hit_id = result["valid"][0]["howler"]["id"]
+    hit_id = result[0]
 
     time.sleep(1)
 
