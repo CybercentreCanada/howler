@@ -2,7 +2,7 @@ import { OpenInNew } from '@mui/icons-material';
 import { Card, CardContent, IconButton, Skeleton, Stack, Typography } from '@mui/material';
 import api from 'api';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
-import { useHitContextSelector as useRecordContextSelector } from 'components/app/providers/RecordProvider';
+import { useRecordContextSelector } from 'components/app/providers/RecordProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import HitBanner from 'components/elements/hit/HitBanner';
 import { HitLayout } from 'components/elements/hit/HitLayout';

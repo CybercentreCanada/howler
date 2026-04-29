@@ -161,7 +161,7 @@ const RecordProvider: FC<PropsWithChildren> = ({ children }) => {
   );
 };
 
-export const useHitContextSelector = <Selected,>(selector: (value: RecordContextType) => Selected): Selected => {
+export const useRecordContextSelector = <Selected,>(selector: (value: RecordContextType) => Selected): Selected => {
   return useContextSelector<RecordContextType, Selected>(RecordContext, selector);
 };
 
