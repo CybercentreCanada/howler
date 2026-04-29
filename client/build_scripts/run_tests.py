@@ -1,4 +1,5 @@
 import os
+import platform
 import re
 import shlex
 import subprocess
@@ -49,24 +50,31 @@ def main():
         if return_code is not None and return_code > 0:
             if output and os.environ.get("WRITE_MARKDOWN", ""):
                 markdown_output = textwrap.dedent(
-                    """
-                ![Static Badge](https://img.shields.io/badge/build-failing-red)
+                    f"""
+                ![Static Badge](https://img.shields.io/badge/build%20(Python%20{platform.python_version()})-failing-red)
 
                 <details>
                     <summary>Error Output</summary>
                 """
                 ).strip()
 
-                markdown_output += "\n".join(
-                    ("    " + line)
-                    for line in re.sub(
-                        r"[\s\S]+=+ FAILURES =+([\S\s]+)-+ coverage[\s\S]+",
-                        r"\n\1",
-                        output,
-                    ).splitlines()
+                raw_failures = re.sub(
+                    r"[\s\S]+=+ FAILURES =+([\S\s]+)-+ coverage[\s\S]+",
+                    r"\n\1",
+                    output,
                 )
 
+                markdown_output += "\n".join(("    " + line) for line in raw_failures.splitlines())
+
                 markdown_output += "\n</details>"
+
+                print("Markdown result:")
+                print(markdown_output)
+
+                summary_file = os.getenv("GITHUB_STEP_SUMMARY")
+                if summary_file:
+                    print(f"Writing to {summary_file}")
+                    Path(summary_file).write_text(f"```\n{raw_failures}\n```")
 
                 (Path(__file__).parent.parent / "test-results.md").write_text(markdown_output)
 
