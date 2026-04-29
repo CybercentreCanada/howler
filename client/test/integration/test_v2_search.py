@@ -109,7 +109,7 @@ def test_explain_valid_query(client: Client):
 
 def test_facet_single_field(client: Client):
     _create_hit(client, analytic="FacetAnalytic")
-    time.sleep(1)
+    time.sleep(3)
 
     result = client.v2.search.facet("hit", ["howler.analytic"], "*:*")
 

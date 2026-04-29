@@ -117,7 +117,7 @@ class SearchV2(object):
         if use_archive:
             body["use_archive"] = True
 
-        return self._connection.post(api_path_v2("search", "count", index), json=body)
+        return self._connection.post(api_path_v2("search", "count", index), json=body)["count"]
 
     def facet(
         self: Self,

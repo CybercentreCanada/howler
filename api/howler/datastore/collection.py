@@ -1922,7 +1922,7 @@ class ESCollection(Generic[ModelType]):
         search result object that consists of the following:
 
             {
-                "total": 123456,  # Total number of documents matching the query
+                "count": 123456,  # Total number of documents matching the query
             }
 
         :param query: lucene query to search for

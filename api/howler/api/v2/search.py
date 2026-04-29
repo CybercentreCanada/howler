@@ -233,7 +233,7 @@ def count(index, **kwargs):
 
     Result Example:
     {
-        "total": 201,                          # Total results found
+        "count": 201,                          # Total results found
     }
     """
     user = kwargs["user"]
