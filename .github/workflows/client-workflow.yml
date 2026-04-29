@@ -107,11 +107,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Pull Dependent Docker Images
-        run: |
-          docker pull cccs/howler-api:nightly
-          docker pull docker.elastic.co/elasticsearch/elasticsearch:8.3.3
-          docker pull redis
+      - name: Build Howler API Docker image from current branch
+        uses: docker/build-push-action@v3
+        with:
+          context: api
+          file: api/Dockerfile
+          push: false
+          tags: cccs/howler-api:nightly
       - name: Spin up test dependencies
         uses: hoverkraft-tech/compose-action@v2.6.0
         with:

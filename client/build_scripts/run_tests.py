@@ -28,7 +28,7 @@ def main():
             )
         else:
             pytest = subprocess.Popen(
-                prep_command("pytest --cov=howler_client --cov-branch -rP -vv test"),
+                prep_command("pytest --cov=howler_client --cov-branch -rFE -v test"),
                 stdout=subprocess.PIPE,
             )
 
