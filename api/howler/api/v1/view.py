@@ -299,14 +299,14 @@ def remove_as_favourite(view_id: str, **kwargs):
 
 # TODO : Verify if two functions is better ? this is less code technically.
 @generate_swagger_docs()
-@view_api.route("/<view_id>", methods=["PUT", "DELETE"])
+@view_api.route("/<view_id>/permission", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
 # TODO : AG : find a better name
 def give_priviledge(view_id: str, user: User, **kwargs):
     """give permission from one user to an other.
 
-    The json object need to send "priviledge", "user_id", "is_adding" as key.
-    priviledge : The value need to be one of "administrator", "member" or "owner"
+    The json object need to send "priviledge", "user_id" as a key.
+    priviledge : The value need to be one of ["administrator", "member", "owner"]
     user_id : the value need to be the user to add or remove from the permission
     is_adding: The value neeed to be a boolean representing if we add or remove a user.
 
@@ -325,9 +325,11 @@ def give_priviledge(view_id: str, user: User, **kwargs):
     priv_change = request.json
     if not isinstance(priv_change, dict):
         return bad_request(err="Invalid data format")
-
-    if not set(priv_change.keys()) & {"priviledge", "user_id", "is_adding"}:
+    if not set(priv_change.keys()) & {"priviledge", "user_id"}:
         return bad_request(err="Invalid data format. Need new priviledge and user_id")
+    user_name: User = storage.user.get_if_exists(priv_change["user_id"])
+    if not user_name:
+        return bad_request(err=f"Invalid data format. user id {priv_change['user_id']} does not exist")
 
     existing_view: View = storage.view.get_if_exists(view_id)
     if not existing_view:
@@ -351,10 +353,10 @@ def give_priviledge(view_id: str, user: User, **kwargs):
         return bad_request(err="You cannot give owner priviledge for this view.")
     # use the maping to update the list to the proper priviledge
 
-    if priv_change["is_adding"]:
-        priv_map[priv_request].append(str(priv_change["user_id"]))
-    else:
-        priv_map[priv_request].remove(str(priv_change["user_id"]))
+    if user_name.uname in priv_map[priv_request]:
+        return bad_request(err=f"{user_name.uname} already have the permission {priv_request}")
+
+    priv_map[priv_request].append(str(user_name.uname))
 
     storage.view.save(existing_view.view_id, existing_view)
 
