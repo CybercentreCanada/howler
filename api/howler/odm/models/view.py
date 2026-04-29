@@ -49,7 +49,7 @@ class View(odm.Model):
         Settings, description="Additional View Settings", default={"advance_on_triage": False}
     )
 
-    def get_priv_map(self) -> dict:
+    def get_priviledge_mapping(self) -> dict:
         return {
             "administrator": self.admin,
             "member": self.member,
