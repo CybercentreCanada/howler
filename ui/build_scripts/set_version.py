@@ -45,6 +45,15 @@ with open(Path(__file__).parent.parent / "package.json") as package_json:
 
         sys.exit(0)
 
+    if git_branch == "cases":
+        print("Current branch is cases, updating version")
+
+        subprocess.check_call(
+            shlex.split(f"npm version --no-git-tag-version {base_version}-cases.{tag}")
+        )
+
+        sys.exit(0)
+
     if git_branch != "main":
         print("Current branch is not main, marking as a development release")
 

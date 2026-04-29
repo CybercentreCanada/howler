@@ -12,6 +12,7 @@ on:
       - develop
       - rc/*
       - patch/*
+      - cases
     paths:
       # Only run when UI-related files change
       - "ui/**"
@@ -26,6 +27,7 @@ on:
       - develop
       - rc/*
       - patch/*
+      - cases
     paths:
       # Same path filters as push events
       - "ui/**"
@@ -185,6 +187,10 @@ jobs:
             echo "is_prerelease=true" >> $GITHUB_OUTPUT
             echo "npm_tag=patch-prerelease" >> $GITHUB_OUTPUT
             echo "Detected patch prerelease version: $VERSION (will publish with --tag patch-prerelease)"
+          elif echo "$VERSION" | grep -qE '\-cases'; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            echo "npm_tag=cases" >> $GITHUB_OUTPUT
+            echo "Detected cases version: $VERSION (will publish with --tag cases)"
           else
             echo "is_prerelease=false" >> $GITHUB_OUTPUT
             echo "npm_tag=latest" >> $GITHUB_OUTPUT
