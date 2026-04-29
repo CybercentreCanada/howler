@@ -2,7 +2,7 @@
 
 from unittest.mock import MagicMock
 
-from howler_client.module.case import Case
+from howler_client.module.v2.case import Case
 
 
 def _make_case_module() -> tuple[Case, MagicMock]:

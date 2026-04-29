@@ -6,9 +6,9 @@ Provides access to v2-only endpoints: ``case``, ``ingest``, and ``search``.
 import sys
 from typing import TYPE_CHECKING
 
-from howler_client.module.case import Case
-from howler_client.module.ingest import Ingest
-from howler_client.module.search_v2 import SearchV2
+from howler_client.module.v2.case import Case
+from howler_client.module.v2.ingest import Ingest
+from howler_client.module.v2.search import SearchV2
 
 if sys.version_info >= (3, 11):
     from typing import Self

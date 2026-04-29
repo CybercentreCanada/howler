@@ -3,10 +3,10 @@
 from unittest.mock import MagicMock
 
 from howler_client.common.utils import api_path_v2
-from howler_client.module.case import Case
-from howler_client.module.ingest import Ingest
-from howler_client.module.search_v2 import SearchV2
 from howler_client.module.v2 import V2
+from howler_client.module.v2.case import Case
+from howler_client.module.v2.ingest import Ingest
+from howler_client.module.v2.search import SearchV2
 
 
 class TestApiPathV2:

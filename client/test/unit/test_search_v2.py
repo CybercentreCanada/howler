@@ -3,7 +3,7 @@
 import json
 from unittest.mock import MagicMock
 
-from howler_client.module.search_v2 import SearchV2
+from howler_client.module.v2.search import SearchV2
 
 
 def _make_search_module() -> tuple[SearchV2, MagicMock]:

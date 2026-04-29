@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from howler_client.common.utils import ClientError
-from howler_client.module.ingest import Ingest
+from howler_client.module.v2.ingest import Ingest
 
 
 def _make_ingest_module() -> tuple[Ingest, MagicMock]:
@@ -81,7 +81,7 @@ class TestIngestOverwrite:
         ingest, _ = _make_ingest_module()
 
         with pytest.raises(TypeError, match="dict"):
-            ingest.overwrite("hit", "h1", ["not", "a", "dict"])
+            ingest.overwrite("hit", "h1", ["not", "a", "dict"])  # type: ignore
 
     def test_overwrite_with_replace_flag(self):
         ingest, conn = _make_ingest_module()
@@ -111,13 +111,13 @@ class TestIngestUpdateByQuery:
         ingest, _ = _make_ingest_module()
 
         with pytest.raises(TypeError, match="list"):
-            ingest.update_by_query("hit", "*:*", "not a list")
+            ingest.update_by_query("hit", "*:*", "not a list")  # type: ignore
 
     def test_update_by_query_raises_on_non_tuple_entry(self):
         ingest, _ = _make_ingest_module()
 
         with pytest.raises(TypeError, match="tuple"):
-            ingest.update_by_query("hit", "*:*", [["SET", "key", "val"]])
+            ingest.update_by_query("hit", "*:*", [["SET", "key", "val"]])  # type: ignore
 
     def test_update_by_query_raises_on_invalid_operation(self):
         ingest, _ = _make_ingest_module()
