@@ -136,7 +136,7 @@ class TestSearchExplain:
 class TestSearchCount:
     def test_count_returns_integer(self):
         search, conn = _make_search_module()
-        conn.post.return_value = 42
+        conn.post.return_value = {"count": 42}
 
         result = search.count("hit", "howler.id:*")
 
@@ -147,7 +147,7 @@ class TestSearchCount:
 
     def test_count_with_filters(self):
         search, conn = _make_search_module()
-        conn.post.return_value = 10
+        conn.post.return_value = {"count": 10}
 
         search.count("hit", "howler.id:*", filters=["howler.status:open"])
 
@@ -156,7 +156,7 @@ class TestSearchCount:
 
     def test_count_with_timeout(self):
         search, conn = _make_search_module()
-        conn.post.return_value = 0
+        conn.post.return_value = {"count": 0}
 
         search.count("hit", "howler.id:*", timeout=1000)
 
@@ -165,7 +165,7 @@ class TestSearchCount:
 
     def test_count_with_archive(self):
         search, conn = _make_search_module()
-        conn.post.return_value = 0
+        conn.post.return_value = {"count": 0}
 
         search.count("hit", "howler.id:*", use_archive=True)
 
@@ -174,7 +174,7 @@ class TestSearchCount:
 
     def test_count_omits_optional_when_not_set(self):
         search, conn = _make_search_module()
-        conn.post.return_value = 0
+        conn.post.return_value = {"count": 0}
 
         search.count("hit", "howler.id:*")
 
