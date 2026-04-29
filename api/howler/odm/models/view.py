@@ -48,3 +48,10 @@ class View(odm.Model):
     settings: Settings = odm.Compound(
         Settings, description="Additional View Settings", default={"advance_on_triage": False}
     )
+
+    def get_priv_map(self) -> dict:
+        return {
+            "administrator": self.admin,
+            "member": self.member,
+            "owner": self.owner,
+        }
