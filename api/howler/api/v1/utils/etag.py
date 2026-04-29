@@ -13,7 +13,7 @@ from flask import Response, request
 from howler.api import not_modified
 
 
-def add_etag(getter, check_if_match=True):
+def add_etag(getter=None, check_if_match=True):
     """Decorator to add ETag handling to a Flask response.
 
     This decorator implements HTTP ETag functionality for API endpoints, enabling:
@@ -21,9 +21,20 @@ def add_etag(getter, check_if_match=True):
     - Cache validation to prevent unnecessary data transfers
     - Version tracking for resources
 
+    When ``getter`` is provided, the decorator pre-fetches the object and its
+    version, injects ``server_version`` into kwargs, caches the object, and
+    supports ``If-Match`` conditional requests.
+
+    When ``getter`` is ``None``, the decorator only handles converting
+    ``(Response, version)`` return tuples into a single Response with the
+    ``ETag`` header set.  This is useful for endpoints that manage their own
+    version retrieval (e.g. v2 endpoints).
+
     Args:
-        getter: Function that retrieves the object and its version
-        check_if_match (bool): Whether to check If-Match headers for conditional requests
+        getter: Optional function that retrieves the object and its version.
+                When None, the decorator only handles ETag header setting.
+        check_if_match (bool): Whether to check If-Match headers for conditional requests.
+                               Only used when getter is provided.
 
     Returns:
         Decorated function with ETag support
@@ -35,49 +46,60 @@ def add_etag(getter, check_if_match=True):
         @functools.wraps(f)
         def generate_etag(*args, **kwargs):
             """Generate and handle ETags for the HTTP response."""
-            # Retrieve the object and its version using the provided getter function
-            # The getter should return (object, version) tuple
-            obj, version = getter(
-                kwargs.get("id", kwargs.get("username", None)),
-                as_odm=True,
-                version=True,
-            )
+            if getter is not None:
+                # Retrieve the object and its version using the provided getter function
+                # The getter should return (object, version) tuple
+                obj, version = getter(
+                    kwargs.get("id", kwargs.get("username", None)),
+                    as_odm=True,
+                    version=True,
+                )
 
-            # Handle conditional requests with If-Match header
-            # If the client's version matches the current version and it's a GET request
-            # without metadata parameter, return 304 Not Modified to save bandwidth
-            if (
-                check_if_match
-                and "If-Match" in request.headers
-                and request.headers["If-Match"] == version
-                and request.method == "GET"
-                and "metadata" not in request.args
-            ):
-                return not_modified()
+                # Handle conditional requests with If-Match header
+                # If the client's version matches the current version and it's a GET request
+                # without metadata parameter, return 304 Not Modified to save bandwidth
+                if (
+                    check_if_match
+                    and "If-Match" in request.headers
+                    and request.headers["If-Match"] == version
+                    and request.method == "GET"
+                    and "metadata" not in request.args
+                ):
+                    return not_modified()
 
-            # Extract the resource type from the API path and create a cache key
-            # e.g., "/api/v1/users/123" becomes "cached_users"
-            key = re.sub(r"^\/api\/v\d+\/(\w+)\/.+$", r"cached_\1", request.path)
-            kwargs[key] = obj
+                # Extract the resource type from the API path and create a cache key
+                # e.g., "/api/v1/users/123" becomes "cached_users"
+                key = re.sub(r"^\/api\/v\d+\/(\w+)\/.+$", r"cached_\1", request.path)
+                kwargs[key] = obj
 
-            # Call the original function with the cached object and version
-            values = f(*args, server_version=version, **kwargs)
+                # Call the original function with the cached object and version
+                values = f(*args, server_version=version, **kwargs)
 
-            # Handle different return value formats from the decorated function
-            # If there is only one return, it's just the response
+                # Handle different return value formats from the decorated function
+                # If there is only one return, it's just the response
+                if isinstance(values, Response):
+                    # Only add ETag header for successful responses (not 409 Conflict or 400 Bad Request)
+                    if values.status_code != 409 and values.status_code != 400:
+                        values.headers["ETag"] = version
+                    return values
+
+                # If there are two returns, it's the response and the new version
+                # This happens when the function modifies the resource and returns an updated version
+                else:
+                    if values[0].status_code != 409 and values[0].status_code != 400:
+                        # Add the new ETag version to successful responses
+                        values[0].headers["ETag"] = values[1]
+                    return values[0]
+
+            # No getter: just call the function and handle (Response, version) tuples
+            values = f(*args, **kwargs)
+
             if isinstance(values, Response):
-                # Only add ETag header for successful responses (not 409 Conflict or 400 Bad Request)
-                if values.status_code != 409 and values.status_code != 400:
-                    values.headers["ETag"] = version
                 return values
 
-            # If there are two returns, it's the response and the new version
-            # This happens when the function modifies the resource and returns an updated version
-            else:
-                if values[0].status_code != 409 and values[0].status_code != 400:
-                    # Add the new ETag version to successful responses
-                    values[0].headers["ETag"] = values[1]
-                return values[0]
+            if values[0].status_code != 409 and values[0].status_code != 400:
+                values[0].headers["ETag"] = values[1]
+            return values[0]
 
         return generate_etag
 

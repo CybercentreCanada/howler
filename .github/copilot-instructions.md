@@ -337,3 +337,22 @@ Always set `id="..."` on elements you need to query by test ID. Do not use `data
 The correct test command for the API is `poetry run test <path>` (not `pytest` directly), run from the `api/` directory.
 
 ---
+
+### Flask: Never Return `(Response, version_string)` Tuples Without `@add_etag`
+
+Flask interprets `return response, value` as `(Response, status_code)`. If the second element is an ES version string like `"344---1"`, Flask uses it as the HTTP status code, producing a malformed response (e.g. `HTTP/1.1 0 344---1`) that causes `BadStatusLine` errors on the client side. The error manifests as `ConnectionError('Connection aborted.', BadStatusLine(...))` with retries exhausted — **not** as a clear server-side traceback — making it difficult to diagnose.
+
+The v1 endpoints avoid this because `@add_etag(getter=...)` intercepts the tuple and moves the version into the `ETag` header. For v2 endpoints (or any endpoint without a getter), use `@add_etag()` (no getter) which handles the `(Response, version)` → `ETag` header conversion without the pre-fetch/caching/If-Match logic.
+
+```python
+# Correct — decorator handles the tuple
+@add_etag()
+def my_endpoint(...):
+    return ok(data), version
+
+# Wrong — Flask interprets version as status code
+def my_endpoint(...):
+    return ok(data), version
+```
+
+---

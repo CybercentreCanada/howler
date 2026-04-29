@@ -5,6 +5,7 @@ from flask import request
 from mergedeep import Strategy, merge
 
 from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
+from howler.api.v1.utils.etag import add_etag
 from howler.common.exceptions import HowlerException, HowlerValueError
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -254,6 +255,7 @@ def validate(index: str, **kwargs):
 @generate_swagger_docs()
 @ingest_api.route("/<index>/<id>/overwrite", methods=["PATCH"])
 @api_login(audit=False, required_priv=["W"])
+@add_etag()
 def overwrite(index: str, id: str, **kwargs):
     """Overwrite a record.
 
