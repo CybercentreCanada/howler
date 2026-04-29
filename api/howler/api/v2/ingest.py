@@ -254,7 +254,7 @@ def validate(index: str, **kwargs):
 @generate_swagger_docs()
 @ingest_api.route("/<index>/<id>/overwrite", methods=["PATCH"])
 @api_login(audit=False, required_priv=["W"])
-def overwrite(index: str, id: str, server_version: str, **kwargs):
+def overwrite(index: str, id: str, **kwargs):
     """Overwrite a record.
 
     Variables:
@@ -301,7 +301,7 @@ def overwrite(index: str, id: str, server_version: str, **kwargs):
             ),
         )
 
-        ds[index].save(id, odm(new_record) if odm else new_record, version=server_version)
+        ds[index].save(id, odm(new_record) if odm else new_record, version=kwargs.get("server_version"))
 
         new_record, new_version = ds[index].get(id, as_obj=False, version=True)
 

@@ -127,7 +127,8 @@ def search(indexes: str, **kwargs):
         return bad_request(err="There was no search query.")
 
     metadata = params.pop("metadata", [])
-    result = search_service.search(indexes, query, **params)
+    access_control = params.pop("access_control", None)
+    result = search_service.search(indexes, query, access_control=access_control, **params)
 
     if metadata and any(idx in index_list for idx in ["hit"]):
         hit_service.augment_metadata(result["items"], metadata, user)
@@ -241,7 +242,7 @@ def count(index, **kwargs):
     if collection is None:
         return bad_request(err=f"Not a valid index to search in: {index}")
 
-    params, req_data = generate_params(request, [], [])
+    params, req_data = generate_params(request, ["timeout"], ["filters"])
 
     boolean_fields = ["use_archive"]
     params.update(
@@ -252,15 +253,15 @@ def count(index, **kwargs):
         }
     )
 
-    if has_access_control(index):
-        params.update({"access_control": user["access_control"]})
+    access_control = user["access_control"] if has_access_control(index) else None
 
     query = req_data.get("query", None)
     if not query:
         return bad_request(err="There was no search query.")
 
+    filters = params.pop("filters", [])
     try:
-        return ok(collection().count(query, **params))
+        return ok(collection().count(query, filters, access_control=access_control))
     except (SearchException, BadRequestError) as e:
         return bad_request(err=f"SearchException: {e}")
 

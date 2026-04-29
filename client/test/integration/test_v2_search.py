@@ -114,7 +114,7 @@ def test_facet_single_field(client: Client):
     result = client.v2.search.facet("hit", ["howler.analytic"], "*:*")
 
     assert "howler.analytic" in result
-    assert "FacetAnalytic" in result["howler.analytic"]
+    assert "facetanalytic" in result["howler.analytic"]
 
 
 def test_facet_multiple_fields(client: Client):

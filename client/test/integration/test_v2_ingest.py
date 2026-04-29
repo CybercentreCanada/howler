@@ -121,6 +121,5 @@ def test_delete_hits(client: Client):
 
     time.sleep(1)
 
-    delete_result = client.v2.ingest.delete("hit", [hit_id])
-
-    assert delete_result["success"] is True
+    # delete returns no_content (204) → None
+    client.v2.ingest.delete("hit", [hit_id])

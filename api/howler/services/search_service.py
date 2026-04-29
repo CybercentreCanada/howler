@@ -99,6 +99,7 @@ def search(  # noqa: C901
     timeout: int | None = None,
     track_total_hits: bool = False,
     metadata: list[str] | None = None,
+    access_control: str | None = None,
 ) -> SearchResult[dict[str, Any]]:
     """Search through specified index for a given query. Uses lucene search syntax for query.
 
@@ -135,6 +136,9 @@ def search(  # noqa: C901
         parsed_filters = [filters]
     else:
         parsed_filters = filters
+
+    if access_control:
+        parsed_filters.append(access_control)
 
     if query is None:
         query = "id:*"
