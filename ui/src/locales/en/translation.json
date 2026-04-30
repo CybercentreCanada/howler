@@ -706,6 +706,8 @@
   "rule.interval.thirty.minutes": "Every thirty minutes",
   "rule.interval.three.hours": "Every three hours",
   "save": "Save",
+  "healthcheck.healthy": "Plugins are healthy",
+  "healthcheck.unhealthy": "Plugins are unhealthy",
   "search.open": "Open Search",
   "search.result.showing": "Showing {{offset}} to {{length}} of {{total}} results",
   "search.result.showing.single": "No results",

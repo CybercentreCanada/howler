@@ -1,7 +1,8 @@
 import logging
-from typing import Any
+from enum import Enum
+from typing import Any, Optional
 
-from pydantic import BaseModel, ImportString, model_validator
+from pydantic import BaseModel, ImportString, field_validator, model_validator
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, YamlConfigSettingsSource
 
 from howler.common.logging import HWL_DATE_FORMAT, HWL_LOG_FORMAT
@@ -27,8 +28,17 @@ class Modules(BaseModel):
     routes: list[ImportString] = []
     operations: list[ImportString] = []
     token_functions: dict[str, ImportString] = {}
+    health_check: Optional[ImportString] = None
 
     odm: ODMModules = ODMModules()
+
+
+class PluginImportance(Enum):
+    "Enum to signify importance of a plugin, for use in plugin healthcheck"
+
+    CRITICAL = "critical"
+    IMPORTANT = "important"
+    OPTIONAL = "optional"
 
 
 class BasePluginConfig(BaseSettings):
@@ -36,8 +46,27 @@ class BasePluginConfig(BaseSettings):
 
     name: str
     features: dict[str, bool] = {}
-
+    importance: PluginImportance = PluginImportance.OPTIONAL
     modules: Modules = Modules()
+
+    @field_validator("importance", mode="before")
+    @classmethod
+    def parse_importance(cls, v):
+        """Parse the importance field into a PluginImportance enum.
+
+        If the value is already a PluginImportance, preserve it as-is.
+        If the value is not a valid PluginImportance string, default to
+        PluginImportance.OPTIONAL.
+        """
+        if isinstance(v, PluginImportance):
+            return v
+
+        if isinstance(v, str):
+            try:
+                return PluginImportance(v)
+            except ValueError:
+                return PluginImportance.OPTIONAL
+        return PluginImportance.OPTIONAL
 
     @model_validator(mode="before")
     @classmethod
@@ -83,6 +112,13 @@ class BasePluginConfig(BaseSettings):
                     new_token_functions_dict[application] = value
 
             data["modules"]["token_functions"] = new_token_functions_dict
+
+        if "health_check" in data["modules"]:
+            value = data["modules"]["health_check"]
+            if value is True:
+                data["modules"]["health_check"] = f"{plugin_name}.health:check_health"
+            elif value is False or value is None:
+                data["modules"]["health_check"] = None
 
         if "odm" not in data["modules"] or not isinstance(data["modules"]["odm"], dict):
             return data
