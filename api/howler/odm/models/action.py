@@ -19,7 +19,7 @@ class Operation(odm.Model):
 class Action(odm.Model):
     action_id: str = odm.UUID(description="A UUID for this action")
     # TODO: AG : here as well same as the other ones. This is a highlight. Will try and ask more question on monday.
-    owner_id: str = odm.List(
+    owner_id: list[str] = odm.List(
         odm.Keyword(), description="The id of the user that created this action", default=[], optional=True
     )
     member_id: list[str] = odm.List(
