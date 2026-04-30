@@ -489,7 +489,7 @@ def generate_useful_dossier(users: list[User]) -> Dossier:
             "title": f"{get_random_word()} {get_random_word()}",
             "query": f'howler.analytic:"{choice(EXAMPLE_ANALYTICS)}"',
             "type": type,
-            "owner": choice(users).uname,
+            "owner": [choice(users).uname],
         }
     )
 
