@@ -293,20 +293,34 @@ def remove_as_favourite(view_id: str, **kwargs):
         return bad_request(err=str(e))
 
 
-# TODO: AG : pretty sur they have a reason for it but I could make a function to simplify both
-# but the rest also have a lot of code duplicating from one an other.
-# should ask if their is a reason and if I should avoid it or if their is a reason not too
-def __priviledge_value_verifications(view_id: str) -> tuple[HowlerDatastore, dict, User, View] | Response:
-    """Verify base value for privilege request are usable. If they are it return them else it return the error."""
+# Region: Permission
+
+
+def __priviledge_value_verifications(
+    view_id: str, is_adding: bool = True
+) -> tuple[HowlerDatastore, dict, str, View] | Response:
+    """Verify base value for privilege request are usable.
+
+    If they are it return them else it return the error.
+    give permission from one user to an other.
+
+    Variables:
+    view_id => The id of the view to give administrative priviledge of
+    is_adding => is the verification to remove or to add someone to a group
+    """
     storage = datastore()
     priv_change = request.json
     if not isinstance(priv_change, dict):
         return bad_request(err="Invalid data format")
     if not set(priv_change.keys()) & {"priviledge", "user_id"}:
         return bad_request(err="Invalid data format. Need new priviledge and user_id")
-    user_name: User = storage.user.get_if_exists(priv_change["user_id"])
-    if not user_name:
-        return bad_request(err=f"Invalid data format. user id {priv_change['user_id']} does not exist")
+    user_name: str = priv_change["user_id"]
+
+    if is_adding:
+        temp_user = storage.user.get_if_exists(user_name)
+        if not temp_user:
+            return bad_request(err=f"Invalid data format. user id {priv_change['user_id']} does not exist")
+        user_name = temp_user.uname
 
     existing_view: View = storage.view.get_if_exists(view_id)
     if not existing_view:
@@ -315,11 +329,15 @@ def __priviledge_value_verifications(view_id: str) -> tuple[HowlerDatastore, dic
     return storage, priv_change, user_name, existing_view
 
 
-def __is_allowed_to_change(
-    priv_request: str, priv_map: dict, user: User, existing_view: View, user_add: User
-) -> None | Response:
-    """Verify for privilege request if they are allowed to request the change or not."""
-    if priv_request not in priv_map:
+def __is_allowed_to_change(priv_request: str, user: User, existing_view: View) -> None | Response:
+    """Verify for privilege request if they are allowed to request the change or not.
+
+    Variables:
+    priv_request => The priviledge level requested base on the string from the object [administrator, member, owner]
+    user => The user requesting the change
+    existing_view => The view that will be change
+    """
+    if priv_request not in existing_view.get_priviledge_mapping():
         return bad_request(err=f"Wrong request. This priviledge {priv_request} does not exist.")
 
     is_view_admin: bool = user.uname in existing_view.admin or user.uname in existing_view.owner
@@ -363,20 +381,20 @@ def give_priviledge(view_id: str, user: User, **kwargs):
 
     storage, priv_change, user_add, existing_view = result
 
-    priv_map = existing_view.get_priviledge_mapping()
+    priv_map: dict = existing_view.get_priviledge_mapping()
 
     priv_request: str = priv_change["priviledge"]
     is_allowed: None | Response = __is_allowed_to_change(
-        priv_request=priv_request, priv_map=priv_map, user=user, existing_view=existing_view, user_add=user_add
+        priv_request=priv_request, user=user, existing_view=existing_view
     )
 
     if isinstance(result, Response):
         return is_allowed
 
-    if user_add.uname in priv_map[priv_request]:
-        return bad_request(err=f"{user_add.uname} already have the permission {priv_request}")
+    if user_add in priv_map[priv_request]:
+        return bad_request(err=f"{user_add} already have the permission {priv_request}")
 
-    priv_map[priv_request].append(str(user_add.uname))
+    priv_map[priv_request].append(str(user_add))
 
     storage.view.save(existing_view.view_id, existing_view)
 
@@ -407,7 +425,7 @@ def revoke_priviledge(view_id: str, user: User, **kwargs):
         "success": True     # If the operation succeeded
     }
     """
-    result = __priviledge_value_verifications(view_id)
+    result = __priviledge_value_verifications(view_id=view_id, is_adding=False)
 
     if isinstance(result, Response):
         return result
@@ -418,19 +436,22 @@ def revoke_priviledge(view_id: str, user: User, **kwargs):
 
     priv_request: str = priv_change["priviledge"]
     is_allowed: None | Response = __is_allowed_to_change(
-        priv_request=priv_request, priv_map=priv_map, user=user, existing_view=existing_view, user_add=user_add
+        priv_request=priv_request, user=user, existing_view=existing_view
     )
 
     if isinstance(result, Response):
         return is_allowed
 
-    if user_add.uname not in priv_map[priv_request]:
-        return bad_request(err=f"{user_add.uname} is not in the {priv_request} premission group")
+    if user_add not in priv_map[priv_request]:
+        return bad_request(err=f"{user_add} is not in the {priv_request} premission group")
 
-    priv_map[priv_request].removel(str(user_add.uname))
+    priv_map[priv_request].remove(str(user_add))
 
     storage.view.save(existing_view.view_id, existing_view)
 
     storage.view.commit()
 
     return ok(storage.view.get_if_exists(existing_view.view_id, as_obj=False))
+
+
+# endRegion
