@@ -209,14 +209,9 @@ def update_dossier(  # noqa: C901
 
     # Enforce access control for global dossiers
     # Only the owner or admin users can modify global dossiers
-    # TODO : AG : verify this work to only allow "member" to modify it
-    is_member: bool = (
-        user.uname in existing_dossier.owner
-        or user.uname in existing_dossier.admin
-        or user.uname in existing_dossier.member
-    )
-    if existing_dossier.type == "global" and (is_member) and "admin" not in user.type:
-        raise ForbiddenException("Only the owner of a dossier and administrators can edit a global dossier.")
+    is_member: bool = user.uname in (existing_dossier.owner + existing_dossier.admin + existing_dossier.member)
+    if not is_member and "admin" not in user.type:
+        raise ForbiddenException("Only the members of a dossier and administrators can edit a global dossier.")
 
     # Validate pivot configurations if they're being updated
     # Ensure no duplicate mapping keys exist within any pivot
