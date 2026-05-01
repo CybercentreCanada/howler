@@ -137,8 +137,6 @@ def update_action(id: str, user: User, **_) -> Response:
     if not existing_action:
         return not_found(err="The specified automation does not exist")
 
-    # TODO: AG : This is clearly the section to modify actions
-    # to verify I should look how the user object work
     if "automation_advanced" not in user.type and updated_action.get("triggers", []) != existing_action.get(
         "triggers", []
     ):
@@ -159,13 +157,12 @@ def update_action(id: str, user: User, **_) -> Response:
         # TODO : AG : this I think is where I need to add the check for who is doing the change. Hopefully it is
         # I would need to verify what format the variables here are. Probably by running it somehow
         # since this one has a chance to always says its true since we recreate the object
-        is_member: bool = (
-            user.uname not in action_obj.owner_id
-            or user.uname not in action_obj.admin_id
-            or user.uname not in action_obj.member_id
-        )
-        if not is_member and "automation_advanced" not in user.type:
+
+        allowed_list: list[str] = action_obj.owner + action_obj.admin + action_obj.member
+
+        if (user.uname not in allowed_list) or "automation_advanced" not in user.type:
             return forbidden(err="Updating triggers requires the role 'automation_advanced'.")
+
         ds.action.save(action_obj.action_id, action_obj)
         ds.action.commit()
     except HowlerException as e:

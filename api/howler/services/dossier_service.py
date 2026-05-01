@@ -5,7 +5,7 @@ dossiers - collections of security alerts and investigation data organized by an
 Dossiers can be personal (private to the creator) or global (shared with the team).
 """
 
-from typing import Any, Literal, Optional, cast, overload
+from typing import Any, Literal, Optional, Tuple, cast, overload
 
 from mergedeep.mergedeep import merge
 
@@ -13,6 +13,7 @@ from howler.common.exceptions import ForbiddenException, HowlerException, Invali
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.datastore.exceptions import SearchException
+from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.models.dossier import Dossier
 from howler.odm.models.user import User
 from howler.services import lucene_service
@@ -320,7 +321,7 @@ def change_priviledge(dossier_id: str, user: User, level_requested: str, new_mem
 
     existing_dossier: Dossier = storage.dossier.get_if_exists(dossier_id)
     if not existing_dossier:
-        return NotFoundException("This view does not exist")
+        return NotFoundException("This dossier does not exist")
 
     priv_map: dict = {
         "administrator": existing_dossier.admin,
@@ -333,10 +334,10 @@ def change_priviledge(dossier_id: str, user: User, level_requested: str, new_mem
 
     is_dossier_admin: bool = user.uname in existing_dossier.admin or user.uname in existing_dossier.owner
     if not is_dossier_admin and "admin" not in user.type:
-        raise InvalidDataException("You cannot give administrative priviledge for this view.")
+        raise InvalidDataException("You cannot give administrative priviledge for this dossier.")
 
     if level_requested == "owner" and user.uname not in existing_dossier.owner and not "admin" not in user.type:
-        raise InvalidDataException("You cannot give owner priviledge for this view.")
+        raise InvalidDataException("You cannot give owner priviledge for this dossier.")
     # use the maping to update the list to the proper priviledge
     if is_adding:
         priv_map[level_requested].append(str(new_member))
@@ -348,3 +349,156 @@ def change_priviledge(dossier_id: str, user: User, level_requested: str, new_mem
     storage.dossier.commit()
 
     return existing_dossier
+
+
+# Region : Permissions
+
+
+def __priviledge_value_verifications(
+    dossier_id: str, level_requested: str, member_to_add: str, is_adding: bool = True
+) -> tuple[HowlerDatastore, Dossier] | Exception:
+    """Verify base value for privilege request are usable.
+
+    If they are it return them else it return the error.
+    give permission from one user to an other.
+
+    Variables:
+    dossier_id => The id of the dossier to give administrative priviledge of
+    is_adding => is the verification to remove or to add someone to a group
+    """
+    storage = datastore()
+
+    if is_adding:
+        temp_user = storage.user.get_if_exists(member_to_add)
+        if not temp_user:
+            return ForbiddenException(f"Invalid data format. user id {member_to_add} does not exist")
+
+    existing_dossier: Dossier = storage.dossier.get_if_exists(dossier_id)
+    if not existing_dossier:
+        return ForbiddenException("This dossier does not exist")
+    if level_requested not in existing_dossier.get_priviledge_mapping().keys():
+        return ForbiddenException(
+            f"Permission {level_requested} does not exist options are \
+            {existing_dossier.get_priviledge_mapping().keys()}"
+        )
+
+    return storage, existing_dossier
+
+
+def __is_allowed_to_change(level_requested: str, user: User, existing_dossier: Dossier) -> None | Exception:
+    """Verify for privilege request if they are allowed to request the change or not.
+
+    Variables:
+    level_requested => The priviledge level requested base on the string from the object [administrator, member, owner]
+    user => The user requesting the change
+    existing_dossier => The dossier that will be change
+    """
+    is_dossier_admin: bool = user.uname in existing_dossier.admin or user.uname in existing_dossier.owner
+
+    if not is_dossier_admin and "admin" not in user.type:
+        return ForbiddenException("You cannot give administrative priviledge for this dossier.")
+
+    if level_requested == "owner" and user.uname not in existing_dossier.owner and not "admin" not in user.type:
+        return ForbiddenException("You cannot give owner priviledge for this dossier.")
+    # use the maping to update the list to the proper priviledge
+
+    return None
+
+
+def give_priviledge(dossier_id: str, user: User, level_requested: str, new_member: str) -> None | Exception:
+    """give permission from one user to an other.
+
+    The json object need to send "priviledge", "user_id" as a key.
+    priviledge : The value need to be one of ["administrator", "member", "owner"]
+    user_id : the value need to be the user to add or remove from the permission
+    is_adding: The value neeed to be a boolean representing if we add or remove a user.
+
+    Variables:
+    dossier_id => The id of the dossier to give administrative priviledge of
+
+    Optional Arguments:
+        None
+
+    Result Example:
+    {
+        "success": True     # If the operation succeeded
+    }
+    """
+    result = __priviledge_value_verifications(dossier_id, level_requested, new_member)
+
+    if isinstance(result, Exception):
+        return result
+
+    storage, existing_dossier = result
+
+    priv_map: dict = existing_dossier.get_priviledge_mapping()
+
+    is_allowed: None | Exception = __is_allowed_to_change(
+        level_requested=level_requested, user=user, existing_dossier=existing_dossier
+    )
+
+    if isinstance(result, Exception):
+        return is_allowed
+
+    if new_member in priv_map[level_requested]:
+        return ForbiddenException(f"{new_member} already have the permission {level_requested}")
+
+    priv_map[level_requested].append(str(new_member))
+
+    storage.dossier.save(existing_dossier.dossier_id, existing_dossier)
+
+    storage.dossier.commit()
+
+    return None
+
+
+def revoke_priviledge(dossier_id: str, user: User, level_requested: str, new_member: str) -> None | Exception:
+    """give permission from one user to an other.
+
+    The json object need to send "priviledge", "user_id" as a key.
+    priviledge : The value need to be one of ["administrator", "member", "owner"]
+    user_id : the value need to be the user to add or remove from the permission
+    is_adding: The value neeed to be a boolean representing if we add or remove a user.
+
+    Variables:
+    dossier_id => The id of the dossier to give administrative priviledge of
+
+    Optional Arguments:
+        None
+
+    Result Example:
+    {
+        "success": True     # If the operation succeeded
+    }
+    """
+    result: Tuple[HowlerDatastore, Dossier] | Exception = __priviledge_value_verifications(
+        level_requested=level_requested, dossier_id=dossier_id, member_to_add=new_member, is_adding=False
+    )
+
+    if isinstance(result, Exception):
+        return result
+
+    storage, existing_dossier = result
+
+    priv_map = existing_dossier.get_priviledge_mapping()
+
+    is_allowed: None | Exception = __is_allowed_to_change(
+        level_requested=level_requested, user=user, existing_dossier=existing_dossier
+    )
+
+    if isinstance(result, Exception):
+        return is_allowed
+
+    if new_member not in priv_map[level_requested]:
+        return ForbiddenException(f"{new_member} is not in the {level_requested} premission group")
+
+    priv_map[level_requested].remove(str(new_member))
+
+    storage.dossier.save(existing_dossier.dossier_id, existing_dossier)
+
+    storage.dossier.commit()
+
+    return None
+
+
+# endregion

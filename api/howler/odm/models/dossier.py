@@ -51,3 +51,10 @@ class Dossier(odm.Model):
         values=["personal", "global"],
         description="The type of dossier - personal or global.",
     )
+
+    def get_priviledge_mapping(self) -> dict:
+        return {
+            "administrator": self.admin,
+            "member": self.member,
+            "owner": self.owner,
+        }
