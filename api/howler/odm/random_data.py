@@ -83,7 +83,7 @@ def create_users(ds):
             "title": "view.assigned_to_me",
             "query": "howler.assignment:admin",
             "type": "readonly",
-            "owner": "admin",
+            "owner": ["admin"],
         }
     )
 
@@ -147,7 +147,7 @@ def create_users(ds):
             "title": "view.assigned_to_me",
             "query": "howler.assignment:user",
             "type": "readonly",
-            "owner": "user",
+            "owner": ["user"],
         }
     )
 
@@ -199,7 +199,7 @@ def create_users(ds):
             "title": "view.assigned_to_me",
             "query": "howler.assignment:huey",
             "type": "readonly",
-            "owner": "huey",
+            "owner": ["huey"],
         }
     )
 
@@ -245,7 +245,7 @@ def create_users(ds):
             "title": "view.assigned_to_me",
             "query": "howler.assignment:shawnh",
             "type": "readonly",
-            "owner": "shawn-h",
+            "owner": ["shawn-h"],
         }
     )
     shawn_data = User(
@@ -276,7 +276,7 @@ def create_users(ds):
             "title": "view.assigned_to_me",
             "query": "howler.assignment:goose",
             "type": "readonly",
-            "owner": "goose",
+            "owner": ["goose"],
         }
     )
     goose_data = User(
@@ -473,7 +473,7 @@ def create_views(ds: HowlerDatastore):
             "title": "CMT Hits",
             "query": "howler.analytic:cmt.*",
             "type": "global",
-            "owner": "admin",
+            "owner": ["admin"],
         }
     )
 
@@ -489,7 +489,7 @@ def create_views(ds: HowlerDatastore):
             "title": "Howler Bundles",
             "query": "howler.is_bundle:true",
             "type": "readonly",
-            "owner": "none",
+            "owner": ["none"],
         }
     )
 
@@ -509,7 +509,7 @@ def create_views(ds: HowlerDatastore):
                 "title": get_random_word(),
                 "query": query,
                 "type": "global",
-                "owner": get_random_user(),
+                "owner": [get_random_user()],
             }
         )
 
@@ -808,18 +808,15 @@ def create_actions(ds: HowlerDatastore, num_actions: int = 30):
                 action_data["value"] = float(random.randint(0, 10000)) / 10
 
             operations.append({"operation_id": operation_id, "data_json": json.dumps((action_data))})
-
         action = Action(
             {
                 "name": get_random_word(),
-                "owner_id": choice([user["uname"] for user in users]),
+                "owner_id": [choice([user["uname"] for user in users])],
                 "query": f"{choice(key_list)}:*{choice(VALID_CHARS)}* OR {choice(key_list)}:*{choice(VALID_CHARS)}*",
                 "operations": operations,
             }
         )
-
         action = run_modifications("action", action)
-
         ds.action.save(action.action_id, action)
 
     ds.action.commit()

@@ -180,7 +180,6 @@ def update_view(view_id: str, user: User, **kwargs):
         return bad_request(err="Invalid data format")
 
     if set(new_data.keys()) & {"view_id", "owner"}:
-        # TODO : AG : Should I do this here insted ?
         return bad_request(err="You cannot change the owner or id of a view.")
 
     existing_view: View = storage.view.get_if_exists(view_id)
@@ -193,7 +192,8 @@ def update_view(view_id: str, user: User, **kwargs):
     if existing_view.type == "personal" and user.uname in existing_view.owner:
         return forbidden(err="You cannot update a personal view that is not owned by you.")
 
-    if existing_view.type == "global" and user.uname not in existing_view.owner and "admin" not in user.type:
+    allowed_list: list[str] = existing_view.owner + existing_view.admin + existing_view.member
+    if existing_view.type == "global" and (user.uname not in allowed_list) and "admin" not in user.type:
         return forbidden(err="Only the owner of a view and administrators can edit a global view.")
 
     new_view = View(cast(dict, merge({}, existing_view.as_primitives(), new_data)))
