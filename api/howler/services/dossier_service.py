@@ -356,7 +356,7 @@ def change_priviledge(dossier_id: str, user: User, level_requested: str, new_mem
 
 def __priviledge_value_verifications(
     dossier_id: str, level_requested: str, member_to_add: str, is_adding: bool = True
-) -> tuple[HowlerDatastore, Dossier] | Exception:
+) -> tuple[HowlerDatastore, Dossier] | str:
     """Verify base value for privilege request are usable.
 
     If they are it return them else it return the error.
@@ -371,21 +371,19 @@ def __priviledge_value_verifications(
     if is_adding:
         temp_user = storage.user.get_if_exists(member_to_add)
         if not temp_user:
-            return ForbiddenException(f"Invalid data format. user id {member_to_add} does not exist")
+            return f"Invalid data format. user id {member_to_add} does not exist"
 
     existing_dossier: Dossier = storage.dossier.get_if_exists(dossier_id)
     if not existing_dossier:
-        return ForbiddenException("This dossier does not exist")
+        return "This dossier does not exist"
     if level_requested not in existing_dossier.get_priviledge_mapping().keys():
-        return ForbiddenException(
-            f"Permission {level_requested} does not exist options are \
+        return f"Permission {level_requested} does not exist options are \
             {existing_dossier.get_priviledge_mapping().keys()}"
-        )
 
     return storage, existing_dossier
 
 
-def __is_allowed_to_change(level_requested: str, user: User, existing_dossier: Dossier) -> None | Exception:
+def __is_allowed_to_change(level_requested: str, user: User, existing_dossier: Dossier) -> None | str:
     """Verify for privilege request if they are allowed to request the change or not.
 
     Variables:
@@ -396,16 +394,16 @@ def __is_allowed_to_change(level_requested: str, user: User, existing_dossier: D
     is_dossier_admin: bool = user.uname in existing_dossier.admin or user.uname in existing_dossier.owner
 
     if not is_dossier_admin and "admin" not in user.type:
-        return ForbiddenException("You cannot give administrative priviledge for this dossier.")
+        return "You cannot give administrative priviledge for this dossier."
 
     if level_requested == "owner" and user.uname not in existing_dossier.owner and not "admin" not in user.type:
-        return ForbiddenException("You cannot give owner priviledge for this dossier.")
+        return "You cannot give owner priviledge for this dossier."
     # use the maping to update the list to the proper priviledge
 
     return None
 
 
-def give_priviledge(dossier_id: str, user: User, level_requested: str, new_member: str) -> None | Exception:
+def give_priviledge(dossier_id: str, user: User, level_requested: str, new_member: str) -> None | str:
     """give permission from one user to an other.
 
     The json object need to send "priviledge", "user_id" as a key.
@@ -424,24 +422,26 @@ def give_priviledge(dossier_id: str, user: User, level_requested: str, new_membe
         "success": True     # If the operation succeeded
     }
     """
-    result = __priviledge_value_verifications(dossier_id, level_requested, new_member)
+    result: tuple[HowlerDatastore, Dossier] | str = __priviledge_value_verifications(
+        dossier_id, level_requested, new_member
+    )
 
-    if isinstance(result, Exception):
+    if isinstance(result, str):
         return result
 
     storage, existing_dossier = result
 
     priv_map: dict = existing_dossier.get_priviledge_mapping()
 
-    is_allowed: None | Exception = __is_allowed_to_change(
+    is_allowed: None | str = __is_allowed_to_change(
         level_requested=level_requested, user=user, existing_dossier=existing_dossier
     )
 
-    if isinstance(result, Exception):
+    if isinstance(result, str):
         return is_allowed
 
     if new_member in priv_map[level_requested]:
-        return ForbiddenException(f"{new_member} already have the permission {level_requested}")
+        return f"{new_member} already have the permission {level_requested}"
 
     priv_map[level_requested].append(str(new_member))
 
@@ -452,7 +452,7 @@ def give_priviledge(dossier_id: str, user: User, level_requested: str, new_membe
     return None
 
 
-def revoke_priviledge(dossier_id: str, user: User, level_requested: str, new_member: str) -> None | Exception:
+def revoke_priviledge(dossier_id: str, user: User, level_requested: str, new_member: str) -> None | str:
     """give permission from one user to an other.
 
     The json object need to send "priviledge", "user_id" as a key.
@@ -471,26 +471,26 @@ def revoke_priviledge(dossier_id: str, user: User, level_requested: str, new_mem
         "success": True     # If the operation succeeded
     }
     """
-    result: Tuple[HowlerDatastore, Dossier] | Exception = __priviledge_value_verifications(
+    result: Tuple[HowlerDatastore, Dossier] | str = __priviledge_value_verifications(
         level_requested=level_requested, dossier_id=dossier_id, member_to_add=new_member, is_adding=False
     )
 
-    if isinstance(result, Exception):
+    if isinstance(result, str):
         return result
 
     storage, existing_dossier = result
 
     priv_map = existing_dossier.get_priviledge_mapping()
 
-    is_allowed: None | Exception = __is_allowed_to_change(
+    is_allowed: None | str = __is_allowed_to_change(
         level_requested=level_requested, user=user, existing_dossier=existing_dossier
     )
 
-    if isinstance(result, Exception):
+    if isinstance(result, str):
         return is_allowed
 
     if new_member not in priv_map[level_requested]:
-        return ForbiddenException(f"{new_member} is not in the {level_requested} premission group")
+        return f"{new_member} is not in the {level_requested} premission group"
 
     priv_map[level_requested].remove(str(new_member))
 

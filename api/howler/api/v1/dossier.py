@@ -259,12 +259,12 @@ def give_priviledge(id: str, user: User, **kwargs):
     if not existing_dossier:
         return not_found(err="This view does not exist")
 
-    success: None | Exception = dossier_service.give_priviledge(
+    success: None | str = dossier_service.give_priviledge(
         dossier_id=id, user=user, level_requested=priv_change["priviledge"], new_member=priv_change["user_id"]
     )
-    if isinstance(success, Exception):
+    if isinstance(success, str):
         return bad_request(success)
-    return
+    return ok(storage.action.get_if_exists(existing_dossier.dossier_id, as_obj=False))
 
 
 @generate_swagger_docs()
@@ -299,9 +299,10 @@ def revoke_priviledge(id: str, user: User, **kwargs):
     if not existing_dossier:
         return not_found(err="This view does not exist")
 
-    success: None | Exception = dossier_service.revoke_priviledge(
+    success: None | str = dossier_service.revoke_priviledge(
         dossier_id=id, user=user, level_requested=priv_change["priviledge"], new_member=priv_change["user_id"]
     )
-    if isinstance(success, Exception):
+    if isinstance(success, str):
         return bad_request(success)
-    return
+
+    return ok(storage.action.get_if_exists(existing_dossier.dossier_id, as_obj=False))
