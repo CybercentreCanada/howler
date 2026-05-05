@@ -264,11 +264,11 @@ const createRouter = () =>
 
         {
           path: 'cases',
-          element: <ParameterProvider><Cases /></ParameterProvider>
+          element: <Cases />
         },
         {
           path: 'cases/:id',
-          element: <CaseViewer />,
+          element: <ParameterProvider><CaseViewer /></ParameterProvider>,
           children: [
             {
               index: true,
