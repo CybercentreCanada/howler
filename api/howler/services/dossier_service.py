@@ -433,7 +433,7 @@ def give_priviledge(dossier_id: str, user: User, level_requested: str, new_membe
         level_requested=level_requested, user=user, existing_dossier=existing_dossier
     )
 
-    if isinstance(result, str):
+    if isinstance(is_allowed, str):
         return is_allowed
 
     if new_member in priv_map[level_requested]:
@@ -482,7 +482,7 @@ def revoke_priviledge(dossier_id: str, user: User, level_requested: str, new_mem
         level_requested=level_requested, user=user, existing_dossier=existing_dossier
     )
 
-    if isinstance(result, str):
+    if isinstance(is_allowed, str):
         return is_allowed
 
     if new_member not in priv_map[level_requested]:

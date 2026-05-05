@@ -472,10 +472,6 @@ def give_priviledge(id: str, user: User, **kwargs):
         priv_request=priv_request, user=user, existing_action=existing_action
     )
 
-    print(
-        f"User : {user.uname} was {is_allowed} to change the action with member ship : OWNERS : {existing_action.owner_id} | ADMINISTRATORS : {existing_action.admin_id} | MEMBER : {existing_action.member_id}"
-    )
-
     if isinstance(is_allowed, Response):
         return is_allowed
 
@@ -483,9 +479,6 @@ def give_priviledge(id: str, user: User, **kwargs):
         return bad_request(err=f"{user_add} already have the permission {priv_request}")
 
     priv_map[priv_request].append(str(user_add))
-    print(
-        f"actual ownership of the action : OWNERS : {existing_action.owner_id} | ADMINISTRATORS : {existing_action.admin_id} | MEMBER : {existing_action.member_id}"
-    )
 
     storage.action.save(existing_action.action_id, existing_action)
 

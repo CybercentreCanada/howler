@@ -439,7 +439,7 @@ def revoke_priviledge(view_id: str, user: User, **kwargs):
         priv_request=priv_request, user=user, existing_view=existing_view
     )
 
-    if isinstance(result, Response):
+    if isinstance(is_allowed, Response):
         return is_allowed
 
     if user_add not in priv_map[priv_request]:
