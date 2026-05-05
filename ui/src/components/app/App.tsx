@@ -264,7 +264,7 @@ const createRouter = () =>
 
         {
           path: 'cases',
-          element: <Cases />
+          element: <ParameterProvider><Cases /></ParameterProvider>
         },
         {
           path: 'cases/:id',
