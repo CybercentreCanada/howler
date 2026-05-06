@@ -11,7 +11,6 @@ type HowlerAvatarProps = AvatarProps & {
 };
 
 const HowlerAvatar: FC<HowlerAvatarProps> = ({ userId, ...avatarProps }) => {
-  userId = userId[0];
   const { t } = useTranslation();
   const { getAvatar } = useContext(AvatarContext);
   const theme = useTheme();
@@ -28,7 +27,9 @@ const HowlerAvatar: FC<HowlerAvatarProps> = ({ userId, ...avatarProps }) => {
     },
     [theme.palette]
   );
-
+  if (Array.isArray(userId)) {
+    userId = userId[0];
+  }
   useEffect(() => {
     if (!userId || userId.toLowerCase() === 'unassigned') {
       setProps({});

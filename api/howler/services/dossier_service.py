@@ -286,7 +286,6 @@ def get_matching_dossiers(
     return matching_dossiers
 
 
-# TODO : AG : find a better name
 def change_priviledge(dossier_id: str, user: User, level_requested: str, new_member: str, is_adding: bool):
     """Transfer ownership from one user to an other.
 
@@ -387,12 +386,15 @@ def __is_allowed_to_change(level_requested: str, user: User, existing_dossier: D
     user => The user requesting the change
     existing_dossier => The dossier that will be change
     """
+    if "admin" in user.type:
+        return None
+
     is_dossier_admin: bool = user.uname in existing_dossier.admin or user.uname in existing_dossier.owner
 
     if not is_dossier_admin and "admin" not in user.type:
         return "You cannot give administrative priviledge for this dossier."
 
-    if level_requested == "owner" and user.uname not in existing_dossier.owner and not "admin" not in user.type:
+    if level_requested == "owner" and user.uname not in existing_dossier.owner:
         return "You cannot give owner priviledge for this dossier."
     # use the maping to update the list to the proper priviledge
 

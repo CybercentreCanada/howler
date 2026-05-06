@@ -141,7 +141,11 @@ def update_action(id: str, user: User, **_) -> Response:
         "triggers", []
     ):
         return forbidden(err="Updating triggers requires the role 'automation_advanced'.")
-
+    allowed_list = (
+        existing_action["owner_id"] or [] + existing_action["admin_id"] or [] + existing_action["member_id"] or []
+    )
+    if user.uname not in allowed_list and "admin" not in user.type:
+        return forbidden(err="You do not have the permission to update this action")
     updated_action = {
         **existing_action,
         **updated_action,
@@ -154,15 +158,6 @@ def update_action(id: str, user: User, **_) -> Response:
     try:
         action_obj = Action(updated_action)
         action_obj.action_id = id
-        # TODO : AG : this I think is where I need to add the check for who is doing the change. Hopefully it is
-        # I would need to verify what format the variables here are. Probably by running it somehow
-        # since this one has a chance to always says its true since we recreate the object
-
-        allowed_list: list[str] = action_obj.owner + action_obj.admin + action_obj.member
-
-        if (user.uname not in allowed_list) or "automation_advanced" not in user.type:
-            return forbidden(err="Updating triggers requires the role 'automation_advanced'.")
-
         ds.action.save(action_obj.action_id, action_obj)
         ds.action.commit()
     except HowlerException as e:
@@ -523,7 +518,7 @@ def revoke_priviledge(id: str, user: User, **kwargs):
         priv_request=priv_request, user=user, existing_action=existing_action
     )
 
-    if isinstance(result, Response):
+    if isinstance(is_allowed, Response):
         return is_allowed
 
     if user_add not in priv_map[priv_request]:
