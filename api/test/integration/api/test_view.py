@@ -186,33 +186,41 @@ def test_favourite(datastore: HowlerDatastore, login_session):
 
 
 def add_permission_every_role(member_to_add: str, member_requesting, create_res, host, view):
-    for membership in view.get_priviledge_mapping.keys():
-        get_api_data(
-            member_requesting,
-            f"{host}/api/v1/view/{create_res['view_id']}/permission",
-            method="PUT",
-            data=json.dumps(
-                {
-                    "user_id": member_to_add,
-                    "priviledge": membership,
-                }
-            ),
-        )
+    try:
+        for membership in view.get_priviledge_mapping().keys():
+            get_api_data(
+                member_requesting,
+                f"{host}/api/v1/view/{create_res['view_id']}/permission",
+                method="PUT",
+                data=json.dumps(
+                    {
+                        "user_id": member_to_add,
+                        "priviledge": membership,
+                    }
+                ),
+            )
+    # Error is intended sometime.
+    except APIError:
+        return
 
 
 def remove_permission_every_role(member_to_remove: str, member_requesting, create_res, host, view):
-    for membership in view.get_priviledge_mapping.keys():
-        get_api_data(
-            member_requesting,
-            f"{host}/api/v1/view/{create_res['view_id']}/permission",
-            method="DELETE",
-            data=json.dumps(
-                {
-                    "user_id": member_to_remove,
-                    "priviledge": membership,
-                }
-            ),
-        )
+    try:
+        for membership in view.get_priviledge_mapping().keys():
+            get_api_data(
+                member_requesting,
+                f"{host}/api/v1/view/{create_res['view_id']}/permission",
+                method="DELETE",
+                data=json.dumps(
+                    {
+                        "user_id": member_to_remove,
+                        "priviledge": membership,
+                    }
+                ),
+            )
+    # Error is intended sometime.
+    except APIError:
+        return
 
 
 def modifying_view(member_requesting, create_res, host, view_name: str = "renamed_view"):
@@ -224,7 +232,7 @@ def modifying_view(member_requesting, create_res, host, view_name: str = "rename
         member_requesting,
         f"{host}/api/v1/view/{create_res['view_id']}",
         method="PUT",
-        data=payload,
+        data=json.dumps(payload),
     )
 
 
@@ -289,15 +297,20 @@ def test_owner_priviledge(datastore: HowlerDatastore, user_sessions: dict):
         method="POST",
         data=json.dumps({"title": "test_membership", "type": "global", "query": "howler.hash:*"}),
     )
+    datastore.view.commit()
     view: View = datastore.view.get(create_res["view_id"], as_obj=True)
     # adding|remove user to admin, member and owner
-    add_permission_every_role(member_to_add=member_uname, create_res=create_res, member_requesting=owner_session)
+    add_permission_every_role(
+        member_to_add=member_uname, create_res=create_res, member_requesting=owner_session, host=host, view=view
+    )
 
     view = datastore.view.get(create_res["view_id"], as_obj=True)
     for membership in view.get_priviledge_mapping().keys():
         assert member_uname in view.get_priviledge_mapping()[membership]
 
-    remove_permission_every_role(member_to_remove=member_uname, create_res=create_res, member_requesting=owner_session)
+    remove_permission_every_role(
+        member_to_remove=member_uname, create_res=create_res, member_requesting=owner_session, host=host, view=view
+    )
 
     view = datastore.view.get(create_res["view_id"], as_obj=True)
     for membership in view.get_priviledge_mapping().keys():
@@ -318,6 +331,7 @@ def test_owner_priviledge(datastore: HowlerDatastore, user_sessions: dict):
         method="POST",
         data=json.dumps({"title": "testremove", "type": "global", "query": "howler.hash:*"}),
     )
+    datastore.view.commit()
     # Verify created properly
     assert total + 1 == datastore.view.search("view_id:*")["total"]
 
@@ -371,20 +385,25 @@ def test_owner_priviledge(datastore: HowlerDatastore, user_sessions: dict):
     assert owner_uname not in view.get_priviledge_mapping()["owner"]
 
     # Owner should not be able to remove self if no other owner exist
-    get_api_data(
-        user_sessions,
-        f"{host}/api/v1/view/{create_res['view_id']}/permission",
-        method="DELETE",
-        data=json.dumps(
-            {
-                "user_id": member_uname,
-                "priviledge": "owner",
-            }
-        ),
-    )
+    try:
+        get_api_data(
+            member_session,
+            f"{host}/api/v1/view/{create_res['view_id']}/permission",
+            method="DELETE",
+            data=json.dumps(
+                {
+                    "user_id": member_uname,
+                    "priviledge": "owner",
+                }
+            ),
+        )
+    except Exception:
+        # The error is intentional
+        pass
+
     datastore.view.commit()
 
-    assert owner_uname in view.get_priviledge_mapping()["owner"]
+    assert member_uname in view.get_priviledge_mapping()["owner"]
 
     return
 
@@ -404,10 +423,11 @@ def test_admin(datastore: HowlerDatastore, user_sessions: dict, login_session):
         method="POST",
         data=json.dumps({"title": "test_membership", "type": "global", "query": "howler.hash:*"}),
     )
+    datastore.view.commit()
     view: View = datastore.view.get(create_res["view_id"], as_obj=True)
     # giving admin to admin
     get_api_data(
-        admin_session,
+        owner_session,
         f"{host}/api/v1/view/{create_res['view_id']}/permission",
         method="PUT",
         data=json.dumps(
@@ -440,47 +460,60 @@ def test_admin(datastore: HowlerDatastore, user_sessions: dict, login_session):
         assert member_uname not in view.get_priviledge_mapping()["administrator"]
 
     # Admin should not be able to add|remove owner
-    get_api_data(
-        admin_session,
-        f"{host}/api/v1/view/{create_res['view_id']}/permission",
-        method="PUT",
-        data=json.dumps(
-            {
-                "user_id": member_uname,
-                "priviledge": "owner",
-            }
-        ),
-    )
+    try:
+        get_api_data(
+            admin_session,
+            f"{host}/api/v1/view/{create_res['view_id']}/permission",
+            method="PUT",
+            data=json.dumps(
+                {
+                    "user_id": member_uname,
+                    "priviledge": "owner",
+                }
+            ),
+        )
+    except Exception:
+        # intended to fail
+        pass
     datastore.view.commit()
     view = datastore.view.get(create_res["view_id"], as_obj=True)
     assert member_uname not in view.get_priviledge_mapping()["owner"]
-
-    get_api_data(
-        admin_session,
-        f"{host}/api/v1/view/{create_res['view_id']}/permission",
-        method="DELETE",
-        data=json.dumps(
-            {
-                "user_id": admin_uname,
-                "priviledge": "owner",
-            }
-        ),
-    )
+    try:
+        get_api_data(
+            admin_session,
+            f"{host}/api/v1/view/{create_res['view_id']}/permission",
+            method="DELETE",
+            data=json.dumps(
+                {
+                    "user_id": admin_uname,
+                    "priviledge": "owner",
+                }
+            ),
+        )
+    except Exception:
+        # intended failed
+        pass
     datastore.view.commit()
     view = datastore.view.get(create_res["view_id"], as_obj=True)
     assert admin_uname not in view.get_priviledge_mapping()["owner"]
 
     # Admin should not be able to delete view
     total = datastore.view.search("view_id:*")["total"]
-    get_api_data(
-        owner_session,
-        f"{host}/api/v1/view/{create_res['view_id']}",
-        method="DELETE",
-    )
+    try:
+        get_api_data(
+            admin_session,
+            f"{host}/api/v1/view/{create_res['view_id']}",
+            method="DELETE",
+        )
+    except Exception:
+        # intended fail
+        pass
+    datastore.view.commit()
     assert total == datastore.view.search("view_id:*")["total"]  # Should not have deleted
 
     # Admin should be able to modify the view
     modifying_view(member_requesting=admin_session, create_res=create_res, host=host, view_name="ADMIN_CHANGED_NAME")
+    datastore.view.commit()
     view = datastore.view.get(create_res["view_id"], as_obj=True)
     assert view.title == "ADMIN_CHANGED_NAME"
 
@@ -505,11 +538,81 @@ def test_admin(datastore: HowlerDatastore, user_sessions: dict, login_session):
 
 
 def test_member(datastore: HowlerDatastore, user_sessions: dict):
-    # Member should not be able to add admin/owner
-    # Member should not be able to remove admin/owner
-    # Adding owner to admin to verify
+    owner_session, host = user_sessions["user"]
+    member_session, _ = user_sessions["huey"]
+    member_uname = get_api_data(member_session, f"{host}/api/v1/user/whoami", method="GET")["username"]
+    owner_uname = get_api_data(owner_session, f"{host}/api/v1/user/whoami", method="GET")["username"]
+    # Create the view
+    create_res = get_api_data(
+        owner_session,
+        f"{host}/api/v1/view/",
+        method="POST",
+        data=json.dumps({"title": "test_membership", "type": "global", "query": "howler.hash:*"}),
+    )
+    # Giving membership to member
+    datastore.view.commit()
+    get_api_data(
+        owner_session,
+        f"{host}/api/v1/view/{create_res['view_id']}/permission",
+        method="PUT",
+        data=json.dumps(
+            {
+                "user_id": member_uname,
+                "priviledge": "member",
+            }
+        ),
+    )
+    datastore.view.commit()
+    view = datastore.view.get(create_res["view_id"], as_obj=True)
+    assert member_uname in view.get_priviledge_mapping()["member"]  # ensure the membership was given
+
+    # Member should not be able to add admin/owner/member
+    add_permission_every_role(
+        create_res=create_res, host=host, member_requesting=member_session, member_to_add=member_uname, view=view
+    )
+    datastore.view.commit()
+    view = datastore.view.get(create_res["view_id"], as_obj=True)
+    for membership in ["owner", "administrator"]:
+        assert member_uname not in view.get_priviledge_mapping()[membership]
+
+    # Member should not be able to remove admin/owner/member
+    # adding owner into every role
+    add_permission_every_role(
+        create_res=create_res, host=host, member_requesting=owner_session, member_to_add=owner_uname, view=view
+    )
+    # verify owner is in every role
+    datastore.view.commit()
+    view = datastore.view.get(create_res["view_id"], as_obj=True)
+    for membership in view.get_priviledge_mapping().keys():
+        assert owner_uname in view.get_priviledge_mapping()[membership]
+
+    remove_permission_every_role(
+        create_res=create_res, host=host, member_requesting=member_session, member_to_remove=member_uname, view=view
+    )
+    # ensure owner is still in every role
+    datastore.view.commit()
+    view = datastore.view.get(create_res["view_id"], as_obj=True)
+    for membership in view.get_priviledge_mapping().keys():
+        assert owner_uname in view.get_priviledge_mapping()[membership]
     # Member should not be able to delete view
+    total = datastore.view.search("view_id:*")["total"]
+    try:
+        get_api_data(
+            member_session,
+            f"{host}/api/v1/view/{create_res['view_id']}",
+            method="DELETE",
+        )
+    except Exception:
+        # intended fail
+        pass
+
+    assert total == datastore.view.search("view_id:*")["total"]  # Should not have deleted
+
     # Member should be able to update view
+    modifying_view(member_requesting=member_session, create_res=create_res, host=host, view_name="MEMBER_CHANGED_NAME")
+    datastore.view.commit()
+    view = datastore.view.get(create_res["view_id"], as_obj=True)
+    assert view.title == "MEMBER_CHANGED_NAME"
     return
 
 

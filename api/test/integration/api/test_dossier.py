@@ -4,6 +4,7 @@ from typing import Any
 import pytest
 
 from howler.datastore.howler_store import HowlerDatastore
+from howler.odm.models.dossier import Dossier
 from howler.odm.random_data import create_dossiers, wipe_dossiers
 from test.conftest import APIError, get_api_data
 
@@ -295,3 +296,454 @@ def test_get_dossier_for_hit_user_scoping(datastore: HowlerDatastore, login_sess
         datastore.dossier.delete(personal_admin_dossier_id)
         datastore.dossier.delete(other_user_dossier_id)
         datastore.dossier.commit()
+
+
+# region : Testing Permissions
+
+# region : Permission helper
+
+
+def add_permission_every_role(member_to_add: str, member_requesting, create_res, host, dossier):
+    try:
+        for membership in dossier.get_priviledge_mapping().keys():
+            get_api_data(
+                member_requesting,
+                f"{host}/api/v1/dossier/{create_res['dossier_id']}/permission",
+                method="PUT",
+                data=json.dumps(
+                    {
+                        "user_id": member_to_add,
+                        "priviledge": membership,
+                    }
+                ),
+            )
+    # Error is intended sometime.
+    except APIError:
+        return
+
+
+def remove_permission_every_role(member_to_remove: str, member_requesting, create_res, host, dossier):
+    try:
+        for membership in dossier.get_priviledge_mapping().keys():
+            get_api_data(
+                member_requesting,
+                f"{host}/api/v1/dossier/{create_res['dossier_id']}/permission",
+                method="DELETE",
+                data=json.dumps(
+                    {
+                        "user_id": member_to_remove,
+                        "priviledge": membership,
+                    }
+                ),
+            )
+    # Error is intended sometime.
+    except APIError:
+        return
+
+
+def modifying_dossier(member_requesting, create_res, host, dossier_name: str = "renamed_dossier"):
+    payload = {
+        "title": f"{dossier_name}",  # The name of this dossier
+        "query": "howler.id:*",  # The query to run
+    }
+    get_api_data(
+        member_requesting,
+        f"{host}/api/v1/dossier/{create_res['dossier_id']}",
+        method="PUT",
+        data=json.dumps(payload),
+    )
+
+
+# endregion
+
+
+def test_give_remove_membership(
+    datastore: HowlerDatastore,
+    user_sessions,
+):
+    """
+    Test adding a user and removing a user from a dossier
+    """
+    owner_session, host = user_sessions["user"]
+    member_session, _ = user_sessions["huey"]
+
+    member_uname = get_api_data(member_session, f"{host}/api/v1/user/whoami", method="GET")["username"]
+    # Create the dossier
+    create_res = get_api_data(
+        owner_session,
+        f"{host}/api/v1/dossier/",
+        method="POST",
+        data=json.dumps({"title": "testremove", "type": "global", "query": "howler.hash:*"}),
+    )
+    dossier: Dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
+
+    # Give|Remove every possible membership
+    for request in ("PUT", "DELETE"):
+        for membership in dossier.get_priviledge_mapping().keys():
+            get_api_data(
+                owner_session,
+                f"{host}/api/v1/dossier/{create_res['dossier_id']}/permission",
+                method=request,
+                data=json.dumps(
+                    {
+                        "user_id": member_uname,
+                        "priviledge": membership,
+                    }
+                ),
+            )
+            # updating the dossier for testing
+            dossier: Dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
+            if request == "PUT":
+                assert member_uname in dossier.get_priviledge_mapping()[membership]
+                continue
+            assert member_uname not in dossier.get_priviledge_mapping()[membership]
+
+    # Delete the dossier
+    get_api_data(owner_session, f"{host}/api/v1/dossier/{create_res['dossier_id']}/", method="DELETE")
+
+
+def test_owner_priviledge(datastore: HowlerDatastore, user_sessions: dict):
+    owner_session, host = user_sessions["user"]
+    member_session, _ = user_sessions["huey"]
+
+    member_uname = get_api_data(member_session, f"{host}/api/v1/user/whoami", method="GET")["username"]
+    owner_uname = get_api_data(owner_session, f"{host}/api/v1/user/whoami", method="GET")["username"]
+    # Create the dossier
+    create_res = get_api_data(
+        owner_session,
+        f"{host}/api/v1/dossier/",
+        method="POST",
+        data=json.dumps({"title": "test_membership", "type": "global", "query": "howler.hash:*"}),
+    )
+    datastore.dossier.commit()
+    dossier: Dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
+    # adding|remove user to admin, member and owner
+    add_permission_every_role(
+        member_to_add=member_uname, create_res=create_res, member_requesting=owner_session, host=host, dossier=dossier
+    )
+
+    dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
+    for membership in dossier.get_priviledge_mapping().keys():
+        assert member_uname in dossier.get_priviledge_mapping()[membership]
+
+    remove_permission_every_role(
+        member_to_remove=member_uname,
+        create_res=create_res,
+        member_requesting=owner_session,
+        host=host,
+        dossier=dossier,
+    )
+
+    dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
+    for membership in dossier.get_priviledge_mapping().keys():
+        assert member_uname not in dossier.get_priviledge_mapping()[membership]
+
+    # Owner should be able to modify the dossier
+    modifying_dossier(member_requesting=owner_session, create_res=create_res, host=host)
+    dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
+    assert dossier.title == "renamed_dossier"
+
+    # Owner should be able to delete the dossier
+    # Create an other temporary dossier
+    total = datastore.dossier.search("dossier_id:*")["total"]
+
+    create_res_copy = get_api_data(
+        owner_session,
+        f"{host}/api/v1/dossier/",
+        method="POST",
+        data=json.dumps({"title": "testremove", "type": "global", "query": "howler.hash:*"}),
+    )
+    datastore.dossier.commit()
+    # Verify created properly
+    assert total + 1 == datastore.dossier.search("dossier_id:*")["total"]
+
+    # Giving ownership to an other user
+    get_api_data(
+        owner_session,
+        f"{host}/api/v1/dossier/{create_res_copy['dossier_id']}/permission",
+        method="PUT",
+        data=json.dumps(
+            {
+                "user_id": member_uname,
+                "priviledge": "owner",
+            }
+        ),
+    )
+    datastore.dossier.commit()
+    get_api_data(
+        owner_session,
+        f"{host}/api/v1/dossier/{create_res_copy['dossier_id']}",
+        method="DELETE",
+    )
+    datastore.dossier.commit()
+    assert total == datastore.dossier.search("dossier_id:*")["total"]
+
+    # Owner should be able to remove self if other owner exist
+    get_api_data(
+        owner_session,
+        f"{host}/api/v1/dossier/{create_res['dossier_id']}/permission",
+        method="PUT",
+        data=json.dumps(
+            {
+                "user_id": member_uname,
+                "priviledge": "owner",
+            }
+        ),
+    )
+    datastore.dossier.commit()
+    get_api_data(
+        owner_session,
+        f"{host}/api/v1/dossier/{create_res['dossier_id']}/permission",
+        method="DELETE",
+        data=json.dumps(
+            {
+                "user_id": owner_uname,
+                "priviledge": "owner",
+            }
+        ),
+    )
+    datastore.dossier.commit()
+    dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
+    assert owner_uname not in dossier.get_priviledge_mapping()["owner"]
+
+    # Owner should not be able to remove self if no other owner exist
+    try:
+        get_api_data(
+            member_session,
+            f"{host}/api/v1/dossier/{create_res['dossier_id']}/permission",
+            method="DELETE",
+            data=json.dumps(
+                {
+                    "user_id": member_uname,
+                    "priviledge": "owner",
+                }
+            ),
+        )
+    except Exception:
+        # The error is intentional
+        pass
+
+    datastore.dossier.commit()
+
+    assert member_uname in dossier.get_priviledge_mapping()["owner"]
+
+    return
+
+
+def test_admin(datastore: HowlerDatastore, user_sessions: dict, login_session):
+    admin_session, host = user_sessions["user"]
+    member_session, _ = user_sessions["huey"]
+    owner_session, _ = login_session
+
+    member_uname = get_api_data(member_session, f"{host}/api/v1/user/whoami", method="GET")["username"]
+    owner_uname = get_api_data(owner_session, f"{host}/api/v1/user/whoami", method="GET")["username"]
+    admin_uname = get_api_data(admin_session, f"{host}/api/v1/user/whoami", method="GET")["username"]
+    # Create the dossier
+    create_res = get_api_data(
+        owner_session,
+        f"{host}/api/v1/dossier/",
+        method="POST",
+        data=json.dumps({"title": "test_membership", "type": "global", "query": "howler.hash:*"}),
+    )
+    datastore.dossier.commit()
+    dossier: Dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
+    # giving admin to admin
+    get_api_data(
+        owner_session,
+        f"{host}/api/v1/dossier/{create_res['dossier_id']}/permission",
+        method="PUT",
+        data=json.dumps(
+            {
+                "user_id": admin_uname,
+                "priviledge": "administrator",
+            }
+        ),
+    )
+    assert owner_uname not in dossier.get_priviledge_mapping()["administrator"]  # ensure user is admin
+
+    # Admin should be able to add|remove member and other admin
+    for method in ["PUT", "DELETE"]:
+        get_api_data(
+            admin_session,
+            f"{host}/api/v1/dossier/{create_res['dossier_id']}/permission",
+            method=method,
+            data=json.dumps(
+                {
+                    "user_id": member_uname,
+                    "priviledge": "administrator",
+                }
+            ),
+        )
+        datastore.dossier.commit()
+        dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
+        if method == "PUT":
+            assert member_uname in dossier.get_priviledge_mapping()["administrator"]
+            continue
+        assert member_uname not in dossier.get_priviledge_mapping()["administrator"]
+
+    # Admin should not be able to add|remove owner
+    try:
+        get_api_data(
+            admin_session,
+            f"{host}/api/v1/dossier/{create_res['dossier_id']}/permission",
+            method="PUT",
+            data=json.dumps(
+                {
+                    "user_id": member_uname,
+                    "priviledge": "owner",
+                }
+            ),
+        )
+    except Exception:
+        # intended to fail
+        pass
+    datastore.dossier.commit()
+    dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
+    assert member_uname not in dossier.get_priviledge_mapping()["owner"]
+    try:
+        get_api_data(
+            admin_session,
+            f"{host}/api/v1/dossier/{create_res['dossier_id']}/permission",
+            method="DELETE",
+            data=json.dumps(
+                {
+                    "user_id": admin_uname,
+                    "priviledge": "owner",
+                }
+            ),
+        )
+    except Exception:
+        # intended failed
+        pass
+    datastore.dossier.commit()
+    dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
+    assert admin_uname not in dossier.get_priviledge_mapping()["owner"]
+
+    # Admin should not be able to delete dossier
+    total = datastore.dossier.search("dossier_id:*")["total"]
+    try:
+        get_api_data(
+            admin_session,
+            f"{host}/api/v1/dossier/{create_res['dossier_id']}",
+            method="DELETE",
+        )
+    except Exception:
+        # intended fail
+        pass
+    datastore.dossier.commit()
+    assert total == datastore.dossier.search("dossier_id:*")["total"]  # Should not have deleted
+
+    # Admin should be able to modify the dossier
+    modifying_dossier(
+        member_requesting=admin_session, create_res=create_res, host=host, dossier_name="ADMIN_CHANGED_NAME"
+    )
+    datastore.dossier.commit()
+    dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
+    assert dossier.title == "ADMIN_CHANGED_NAME"
+
+    # Admin should be able to remove self even if only admin
+    get_api_data(
+        admin_session,
+        f"{host}/api/v1/dossier/{create_res['dossier_id']}/permission",
+        method="DELETE",
+        data=json.dumps(
+            {
+                "user_id": admin_uname,
+                "priviledge": "administrator",
+            }
+        ),
+    )
+    datastore.dossier.commit()
+    dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
+    assert admin_uname not in dossier.get_priviledge_mapping()["administrator"]
+    assert dossier.get_priviledge_mapping()["administrator"] == []
+
+    return
+
+
+def test_member(datastore: HowlerDatastore, user_sessions: dict):
+    owner_session, host = user_sessions["user"]
+    member_session, _ = user_sessions["huey"]
+    member_uname = get_api_data(member_session, f"{host}/api/v1/user/whoami", method="GET")["username"]
+    owner_uname = get_api_data(owner_session, f"{host}/api/v1/user/whoami", method="GET")["username"]
+    # Create the dossier
+    create_res = get_api_data(
+        owner_session,
+        f"{host}/api/v1/dossier/",
+        method="POST",
+        data=json.dumps({"title": "test_membership", "type": "global", "query": "howler.hash:*"}),
+    )
+    # Giving membership to member
+    datastore.dossier.commit()
+    get_api_data(
+        owner_session,
+        f"{host}/api/v1/dossier/{create_res['dossier_id']}/permission",
+        method="PUT",
+        data=json.dumps(
+            {
+                "user_id": member_uname,
+                "priviledge": "member",
+            }
+        ),
+    )
+    datastore.dossier.commit()
+    dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
+    assert member_uname in dossier.get_priviledge_mapping()["member"]  # ensure the membership was given
+
+    # Member should not be able to add admin/owner/member
+    add_permission_every_role(
+        create_res=create_res, host=host, member_requesting=member_session, member_to_add=member_uname, dossier=dossier
+    )
+    datastore.dossier.commit()
+    dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
+    for membership in ["owner", "administrator"]:
+        assert member_uname not in dossier.get_priviledge_mapping()[membership]
+
+    # Member should not be able to remove admin/owner/member
+    # adding owner into every role
+    add_permission_every_role(
+        create_res=create_res, host=host, member_requesting=owner_session, member_to_add=owner_uname, dossier=dossier
+    )
+    # verify owner is in every role
+    datastore.dossier.commit()
+    dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
+    for membership in dossier.get_priviledge_mapping().keys():
+        assert owner_uname in dossier.get_priviledge_mapping()[membership]
+
+    remove_permission_every_role(
+        create_res=create_res,
+        host=host,
+        member_requesting=member_session,
+        member_to_remove=member_uname,
+        dossier=dossier,
+    )
+    # ensure owner is still in every role
+    datastore.dossier.commit()
+    dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
+    for membership in dossier.get_priviledge_mapping().keys():
+        assert owner_uname in dossier.get_priviledge_mapping()[membership]
+    # Member should not be able to delete dossier
+    total = datastore.dossier.search("dossier_id:*")["total"]
+    try:
+        get_api_data(
+            member_session,
+            f"{host}/api/v1/dossier/{create_res['dossier_id']}",
+            method="DELETE",
+        )
+    except Exception:
+        # intended fail
+        pass
+
+    assert total == datastore.dossier.search("dossier_id:*")["total"]  # Should not have deleted
+
+    # Member should be able to update dossier
+    modifying_dossier(
+        member_requesting=member_session, create_res=create_res, host=host, dossier_name="MEMBER_CHANGED_NAME"
+    )
+    datastore.dossier.commit()
+    dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
+    assert dossier.title == "MEMBER_CHANGED_NAME"
+    return
+
+
+# endregion
