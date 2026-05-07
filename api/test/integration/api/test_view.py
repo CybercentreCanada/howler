@@ -68,7 +68,7 @@ def test_add_view(datastore: HowlerDatastore, login_session):
         data=json.dumps(view_data),
     )
 
-    assert resp["owner"] == "admin"
+    assert resp["owner"] == ["admin"]
 
     view_data["type"] = "global"
     resp = get_api_data(
@@ -78,7 +78,7 @@ def test_add_view(datastore: HowlerDatastore, login_session):
         data=json.dumps(view_data),
     )
 
-    assert resp["owner"] == "admin"
+    assert resp["owner"] == ["admin"]
 
 
 # noinspection PyUnusedLocal
@@ -87,7 +87,7 @@ def test_get_views(datastore, login_session):
 
     resp = get_api_data(session, f"{host}/api/v1/view/")
 
-    assert all(t["type"] == "global" or t["owner"] in ["admin", "none"] for t in resp)
+    assert all(t["type"] == "global" or t["owner"] in [["admin"], ["none"]] for t in resp)
 
 
 # noinspection PyUnusedLocal
@@ -118,7 +118,9 @@ def test_remove_view(datastore: HowlerDatastore, login_session):
 def test_set_view(datastore: HowlerDatastore, login_session):
     session, host = login_session
 
-    id = datastore.view.search("owner:admin AND type:(-readonly)")["items"][0]["view_id"]
+    id = datastore.view.search("owner:admin AND type:(-readonly)")["items"][0][
+        "view_id"
+    ]  # TODO: AG : This here break for some reason
 
     resp = get_api_data(
         session,

@@ -67,7 +67,7 @@ def test_add_dossier(datastore: HowlerDatastore, login_session):
         data=json.dumps(dossier_data),
     )
 
-    assert resp["owner"] == "admin"
+    assert resp["owner"] == ["admin"]
 
     dossier_data["type"] = "global"
     resp = get_api_data(
@@ -77,7 +77,7 @@ def test_add_dossier(datastore: HowlerDatastore, login_session):
         data=json.dumps(dossier_data),
     )
 
-    assert resp["owner"] == "admin"
+    assert resp["owner"] == ["admin"]
 
 
 # noinspection PyUnusedLocal
@@ -86,7 +86,7 @@ def test_get_dossiers(datastore, login_session):
 
     resp = get_api_data(session, f"{host}/api/v1/dossier/")
 
-    assert all(t["type"] == "global" or t["owner"] in ["admin", "none"] for t in resp)
+    assert all(t["type"] == "global" or t["owner"] in [["admin"], ["none"]] for t in resp)
 
 
 # noinspection PyUnusedLocal
@@ -255,8 +255,10 @@ def test_get_dossier_for_hit_user_scoping(datastore: HowlerDatastore, login_sess
             "title": "Other User Personal Dossier",
             "query": matching_query,
             "type": "personal",
-            "owner": "other_user",
+            "owner": ["other_user"],
             "leads": [],
+            "administrator": [],
+            "member": [],
         }
     )
     other_user_dossier_id = other_user_dossier.dossier_id
@@ -282,9 +284,9 @@ def test_get_dossier_for_hit_user_scoping(datastore: HowlerDatastore, login_sess
 
         # All returned dossiers must be either global or owned by admin
         for dossier in resp:
-            assert (
-                dossier["type"] == "global" or dossier["owner"] == "admin"
-            ), f"Unexpected dossier in results: {dossier}"
+            assert dossier["type"] == "global" or dossier["owner"] == ["admin"], (
+                f"Unexpected dossier in results: {dossier}"
+            )
 
     finally:
         datastore.hit.delete(test_hit_id)

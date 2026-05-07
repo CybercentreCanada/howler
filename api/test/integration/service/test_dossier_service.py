@@ -68,20 +68,20 @@ def test_update_dossier_fails(datastore: HowlerDatastore):
     user = datastore.user.search("uname:admin")["items"][0]
 
     with pytest.raises(NotFoundException):
-        dossier_service.update_dossier("potatopotatopotato", {"owner": "test"}, user).owner == "test"
+        dossier_service.update_dossier("potatopotatopotato", {"owner": ["test"]}, user).owner[0] == "test"
 
     existing_dossier: Dossier = datastore.dossier.search("type:personal", as_obj=True)["items"][0]
 
     with pytest.raises(ForbiddenException):
-        other_user = datastore.user.search(f"-uname:{existing_dossier.owner} AND -type:admin")["items"][0]
-        dossier_service.update_dossier(existing_dossier.dossier_id, {"owner": other_user.uname}, other_user)
+        other_user = datastore.user.search(f"-uname:{existing_dossier.owner[0]} AND -type:admin")["items"][0]
+        dossier_service.update_dossier(existing_dossier.dossier_id, {"owner": [other_user.uname]}, other_user)
 
     existing_dossier = datastore.dossier.search("type:global", as_obj=True)["items"][0]
     with pytest.raises(ForbiddenException):
-        other_user = datastore.user.search(f"-uname:{existing_dossier.owner} AND -type:admin")["items"][0]
-        dossier_service.update_dossier(existing_dossier.dossier_id, {"owner": other_user.uname}, other_user)
+        other_user = datastore.user.search(f"-uname:{existing_dossier.owner[0]} AND -type:admin")["items"][0]
+        dossier_service.update_dossier(existing_dossier.dossier_id, {"owner": [other_user.uname]}, other_user)
 
-    user = datastore.user.search(f"uname:{existing_dossier.owner}")["items"][0]
+    user = datastore.user.search(f"uname:{existing_dossier.owner[0]}")["items"][0]
     with pytest.raises(InvalidDataException):
         dossier_service.update_dossier(
             existing_dossier.dossier_id, {"query": "sdklfjnasdvrtvybnuiseybuniosertv897890['['[/]['/]"}, user
@@ -97,7 +97,7 @@ def test_update_dossier(datastore: HowlerDatastore):
     user = datastore.user.search("uname:admin")["items"][0]
     existing_dossier_id = datastore.dossier.search("type:global", as_obj=True)["items"][0].dossier_id
 
-    assert dossier_service.update_dossier(existing_dossier_id, {"owner": "test"}, user).owner == "test"
+    assert dossier_service.update_dossier(existing_dossier_id, {"owner": ["test"]}, user).owner[0] == "test"
 
 
 def test_pivot_with_duplicates(datastore: HowlerDatastore):

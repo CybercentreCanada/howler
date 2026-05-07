@@ -229,14 +229,18 @@ def update_dossier(id: str, user: User, **kwargs):
 @dossier_api.route("/<id>/permission", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
 def give_priviledge(id: str, user: User, **kwargs):
-    """Give membership permissions to a user
+    """give permission from one user to an other.
+
+    The json object need to send "priviledge", "user_id" as a key.
+    priviledge : The value need to be one of ["administrator", "member", "owner"]
+    user_id : the value need to be the user to add or remove from the permission
+    is_adding: The value neeed to be a boolean representing if we add or remove a user.
 
     Variables:
-    id => The id of the dossier to give new permission
-    user => user requesting the change
+    action_id => The id of the action to give administrative priviledge of
 
     Optional Arguments:
-    None
+        None
 
     Data Block:
     {
@@ -244,6 +248,10 @@ def give_priviledge(id: str, user: User, **kwargs):
         "user_id": "user to give permission to"
     }
 
+    Result Example:
+    {
+        "success": True     # If the operation succeeded
+    }
     """
     priv_change: dict = request.json
     if not isinstance(priv_change, dict):
@@ -269,20 +277,27 @@ def give_priviledge(id: str, user: User, **kwargs):
 @dossier_api.route("/<id>/permission", methods=["DELETE"])
 @api_login(required_priv=["R", "W"])
 def revoke_priviledge(id: str, user: User, **kwargs):
-    """Revoke membership permissions to a user
+    """Give permission from one user to another.
 
     Variables:
-    id => The id of the dossier to remove new permission
-    user => user requesting the change
+        action_id => The id of the Action to give administrative privilege of
+
+    Arguments:
+        None
 
     Optional Arguments:
-    None
+        None
 
     Data Block:
-    {
+        {
+            "priviledge": "priviledge to give",  # [member, administrator, owner]
+            "user_id": "user to remove permission from",
+        }
 
-    }
-
+    Result Example:
+        {
+            "success": True
+        }
     """
     priv_change: dict = request.json
     if not isinstance(priv_change, dict):

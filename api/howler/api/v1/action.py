@@ -448,6 +448,12 @@ def give_priviledge(id: str, user: User, **kwargs):
     Optional Arguments:
         None
 
+    Data Block:
+    {
+        "priviledge": "priviledge to give"  # [member, administrator, owner]
+        "user_id": "user to give permission to"
+    }
+
     Result Example:
     {
         "success": True     # If the operation succeeded
@@ -486,23 +492,28 @@ def give_priviledge(id: str, user: User, **kwargs):
 @action_api.route("/<id>/permission", methods=["DELETE"])
 @api_login(required_priv=["R", "W"])
 def revoke_priviledge(id: str, user: User, **kwargs):
-    """give permission from one user to an other.
-
-    The json object need to send "priviledge", "user_id" as a key.
-    priviledge : The value need to be one of ["administrator", "member", "owner"]
-    user_id : the value need to be the user to add or remove from the permission
-    is_adding: The value neeed to be a boolean representing if we add or remove a user.
+    """Give permission from one user to another.
 
     Variables:
-    action_id => The id of the Action to give administrative priviledge of
+        action_id => The id of the Action to give administrative privilege of
+
+    Arguments:
+        None
 
     Optional Arguments:
         None
 
+    Data Block:
+        {
+            "priviledge": "priviledge to give",  # [member, administrator, owner]
+            "user_id": "user to remove permission from",
+            "is_adding": true
+        }
+
     Result Example:
-    {
-        "success": True     # If the operation succeeded
-    }
+        {
+            "success": True
+        }
     """
     result = __priviledge_value_verifications(action_id=id, is_adding=False)
 
