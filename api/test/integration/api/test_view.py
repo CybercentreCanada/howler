@@ -178,3 +178,55 @@ def test_favourite(datastore: HowlerDatastore, login_session):
     datastore.user.commit()
 
     assert view.view_id not in datastore.user.search(f"uname:{uname}")["items"][0]["favourite_views"]
+
+
+def test_give_remove_membership(
+    datastore: HowlerDatastore,
+    user_sessions,
+):
+    """
+    Test adding a user and removing a user from a view
+    """
+    owner_session, host = user_sessions["user"]
+    member_session, _ = user_sessions["huey"]
+
+    member_uname = get_api_data(member_session, f"{host}/api/v1/user/whoami", method="GET")["username"]
+    # Create the view
+    create_res = get_api_data(
+        owner_session,
+        f"{host}/api/v1/view/",
+        method="POST",
+        data=json.dumps({"title": "testremove", "type": "global", "query": "howler.hash:*"}),
+    )
+    view: View = datastore.view.get(create_res["view_id"], as_obj=True)
+
+    # Give|Remove every possible membership
+    for request in ("PUT", "DELETE"):
+        for membership in view.get_priviledge_mapping().keys():
+            get_api_data(
+                owner_session,
+                f"{host}/api/v1/view/{create_res['view_id']}/permission",
+                method=request,
+                data=json.dumps(
+                    {
+                        "user_id": member_uname,
+                        "priviledge": membership,
+                    }
+                ),
+            )
+            # updating the view for testing
+            view: View = datastore.view.get(create_res["view_id"], as_obj=True)
+            if request == "PUT":
+                assert member_uname in view.get_priviledge_mapping()[membership]
+                continue
+            assert member_uname not in view.get_priviledge_mapping()[membership]
+
+    # Delete the view
+    get_api_data(owner_session, f"{host}/api/v1/view/{create_res['view_id']}/", method="DELETE")
+
+
+def test_permission_membership_validation(
+    datastore: HowlerDatastore,
+    user_sessions,
+):
+    pass
