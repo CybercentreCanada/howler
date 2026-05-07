@@ -428,7 +428,6 @@ def revoke_priviledge(view_id: str, user: User, **kwargs):
         {
             "priviledge": "priviledge to give",  # [member, administrator, owner]
             "user_id": "user to remove permission from",
-            "is_adding": true
         }
 
     Result Example:
@@ -455,7 +454,10 @@ def revoke_priviledge(view_id: str, user: User, **kwargs):
 
     if user_add not in priv_map[priv_request]:
         return bad_request(err=f"{user_add} is not in the {priv_request} premission group")
-
+    if priv_request == "owner" and len(priv_map[priv_request]) <= 1:
+        return bad_request(
+            err=f"{user_add} is the last owner in the {priv_request} premission group. Can not be remove"
+        )
     priv_map[priv_request].remove(str(user_add))
 
     storage.view.save(existing_view.view_id, existing_view)
