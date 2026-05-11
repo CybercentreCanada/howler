@@ -164,7 +164,7 @@ def create_users(ds):
             "email": "user@howler.cyber.gc.ca",
             "classification": classification.RESTRICTED,
             "apikeys": {
-                "devkey": {"acl": ["R", "W"], "password": user_hash},
+                "devkey": {"acl": ["R", "W", "E"], "password": user_hash},
                 "impersonate_admin": {
                     "acl": ["R", "W", "I"],
                     "agents": ["admin", "goose"],
@@ -220,7 +220,7 @@ def create_users(ds):
             "name": "Huey Guy",
             "email": "huey@howler.cyber.gc.ca",
             "apikeys": {
-                "devkey": {"acl": ["R", "W"], "password": huey_hash},
+                "devkey": {"acl": ["R", "W", "E"], "password": huey_hash},
                 "impersonate_admin": {
                     "acl": ["R", "W", "I"],
                     "agents": ["admin", "goose"],
@@ -236,6 +236,7 @@ def create_users(ds):
             "password": huey_hash,
             "uname": "huey",
             "favourite_views": [huey_view.view_id],
+            "type": ["user", "automation_basic"],
         }
     )
 
