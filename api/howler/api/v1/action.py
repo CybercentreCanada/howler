@@ -142,8 +142,9 @@ def update_action(id: str, user: User, **_) -> Response:
     ):
         return forbidden(err="Updating triggers requires the role 'automation_advanced'.")
     allowed_list = (
-        existing_action["owner_id"] or [] + existing_action["admin_id"] or [] + existing_action["member_id"] or []
+        (existing_action["owner_id"] or []) + (existing_action["admin_id"] or []) + (existing_action["member_id"] or [])
     )
+
     if user.uname not in allowed_list and "admin" not in user.type:
         return forbidden(err="You do not have the permission to update this action")
     updated_action = {
@@ -377,7 +378,7 @@ def execute_operations(**kwargs) -> Response:
     return ok(reports)
 
 
-# Region: Permission
+# region: Permission
 
 
 def __priviledge_value_verifications(
@@ -433,7 +434,7 @@ def __is_allowed_to_change(priv_request: str, user: User, existing_action: Actio
 
 @generate_swagger_docs()
 @action_api.route("/<id>/permission", methods=["PUT"])
-@api_login(required_priv=["R", "W"])
+@api_login(required_priv=["R", "W"], required_type=["automation_basic"])
 def give_priviledge(id: str, user: User, **kwargs):
     """give permission from one user to an other.
 
@@ -490,7 +491,7 @@ def give_priviledge(id: str, user: User, **kwargs):
 
 @generate_swagger_docs()
 @action_api.route("/<id>/permission", methods=["DELETE"])
-@api_login(required_priv=["R", "W"])
+@api_login(required_priv=["R", "W"], required_type=["automation_basic"])
 def revoke_priviledge(id: str, user: User, **kwargs):
     """Give permission from one user to another.
 
@@ -544,4 +545,4 @@ def revoke_priviledge(id: str, user: User, **kwargs):
     return ok(storage.action.get_if_exists(existing_action.action_id, as_obj=False))
 
 
-# endRegion
+# endregion
