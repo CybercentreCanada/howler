@@ -1,5 +1,19 @@
 # Howler Releases
 
+## Howler UI `v2.18.0`
+
+- **Action Outcome Messages** *(new feature)*: Actions now display an appropriate success or failure message according to the outcome of the operation.
+- **Right-click Menu Action Count** *(improvement)*: Increased the number of actions available in the hit right-click context menu.
+- **Plugin Route Registration Fix** *(bugfix)*: Fixed a race condition where plugin routes were not fully registered before the router was created, causing navigation failures for plugin-defined routes.
+- **Embedded Related Link Target Fix** *(bugfix)*: Fixed embedded related links inside alert content so they open in a new tab instead of navigating in-place.
+
+## Howler API `v3.3.0`
+
+- **OpenTelemetry Tracing** *(new feature)*: Replaced ElasticAPM with OpenTelemetry for distributed tracing across the API, enabling vendor-neutral observability ([#297](https://github.com/CybercentreCanada/howler/pull/297)).
+- **OAuth Group Role Resolution** *(new feature)*: Added role resolution from OAuth provider groups so that group membership is translated into Howler roles at login ([#233](https://github.com/CybercentreCanada/howler/pull/233)).
+- **Chainguard Base Image** *(infrastructure update)*: Migrated the API Docker image from `python:3.12-alpine` to a Chainguard hardened image, and updated ownership to the `nonroot` user for improved supply-chain security.
+- **Hit Graph Filter Fix** *(bugfix)*: Added a filter so the hit graph query is correctly bounded to the same number of hits as the main search, preventing count mismatches ([#277](https://github.com/CybercentreCanada/howler/pull/277)).
+
 ## Howler UI `v2.17.3`
 
 - **Append-Results Null Crash Fix** *(bugfix)*: Fixed a crash (`can't access property "offset", q is null`) that occurred when a load-more (append) search response resolved after the component had remounted with a null response state (e.g., after a page refresh); the updater now falls back to replacing the response instead of merging into null.

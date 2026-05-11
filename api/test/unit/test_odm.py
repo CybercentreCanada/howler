@@ -4,7 +4,7 @@ import os
 import pytest
 
 from howler.common.classification import InvalidClassification
-from howler.common.exceptions import HowlerException
+from howler.common.exceptions import HowlerException, HowlerTypeError
 from howler.odm import (
     UUID,
     Classification,
@@ -835,3 +835,284 @@ def test_domain():
 
     with pytest.raises(HowlerException):
         Test({"domain": "foo", "strict_domain": "foo"})
+
+
+def test_flat_fields_show_compound_list_of_compound():
+    """flat_fields(show_compound=True) should include the compound child type for List[Compound] fields."""
+
+    @model()
+    class Inner(Model):
+        name = Keyword()
+        value = Integer()
+
+    @model()
+    class Outer(Model):
+        items = List(Compound(Inner))
+        label = Keyword()
+
+    flat = Outer.flat_fields(show_compound=True)
+
+    # The list field key should appear and map to the Inner compound child type
+    assert "items" in flat
+    items_field = flat["items"]
+    assert isinstance(items_field, Compound)
+    assert items_field.child_type is Inner
+
+    # Scalar field should still be present
+    assert "label" in flat
+
+    # Sub-fields of Inner should also be present
+    assert "items.name" in flat
+    assert "items.value" in flat
+
+
+def test_flat_fields_show_compound_false_excludes_list_compound_key():
+    """flat_fields(show_compound=False) should NOT add the top-level key for List[Compound] fields."""
+
+    @model()
+    class Inner(Model):
+        name = Keyword()
+
+    @model()
+    class Outer(Model):
+        items = List(Compound(Inner))
+
+    flat_without = Outer.flat_fields(show_compound=False)
+    flat_with = Outer.flat_fields(show_compound=True)
+
+    # With show_compound=False the 'items' key should not appear (only sub-fields)
+    assert "items" not in flat_without
+    assert "items.name" in flat_without
+
+    # With show_compound=True it should appear
+    assert "items" in flat_with
+
+
+def test_flat_fields_show_compound_list_compound_type_is_child():
+    """The value stored under the list key must be the Compound child type (not the List wrapper)."""
+
+    @model()
+    class Tag(Model):
+        key = Keyword()
+        count = Integer()
+
+    @model()
+    class Doc(Model):
+        tags = List(Compound(Tag))
+
+    flat = Doc.flat_fields(show_compound=True)
+
+    assert "tags" in flat
+    # Should be the Compound child type (Tag), not a List or Compound wrapper
+    tags_field = flat["tags"]
+    assert isinstance(tags_field, Compound)
+    assert tags_field.child_type is Tag
+
+
+def test_flat_fields_show_compound_nested_list_compound():
+    """Multiple List[Compound] fields are all included correctly."""
+
+    @model()
+    class Alpha(Model):
+        x = Keyword()
+
+    @model()
+    class Beta(Model):
+        y = Integer()
+
+    @model()
+    class Container(Model):
+        alphas = List(Compound(Alpha))
+        betas = List(Compound(Beta))
+
+    flat = Container.flat_fields(show_compound=True)
+
+    assert "alphas" in flat
+    alphas_field = flat["alphas"]
+    assert isinstance(alphas_field, Compound)
+    assert alphas_field.child_type is Alpha
+    assert "betas" in flat
+    betas_field = flat["betas"]
+    assert isinstance(betas_field, Compound)
+    assert betas_field.child_type is Beta
+
+
+def test_model_id_field_default():
+    """When id_field is not specified, it should default to '<classname_lower>_id'."""
+
+    @model()
+    class MyDocument(Model):
+        title = Keyword()
+
+    assert MyDocument._Model__id_field == "mydocument_id"
+
+
+def test_model_id_field_explicit():
+    """An explicit id_field value should be stored verbatim when it references a declared field."""
+
+    @model(id_field="custom_id")
+    class MyRecord(Model):
+        custom_id = Keyword()
+        name = Keyword()
+
+    assert MyRecord._Model__id_field == "custom_id"
+
+
+def test_model_id_field_none_uses_default():
+    """Passing id_field=None explicitly should also produce the default '<classname_lower>_id'."""
+
+    @model(id_field=None)
+    class SomeModel(Model):
+        value = Integer()
+
+    assert SomeModel._Model__id_field == "somemodel_id"
+
+
+def test_model_id_field_stored_on_class():
+    """The id_field should be accessible via cls._Model__id_field (not instance-level)."""
+
+    @model(id_field="doc_id")
+    class Document(Model):
+        doc_id = Keyword()
+        body = Keyword()
+
+    # Accessible on the class directly
+    assert Document._Model__id_field == "doc_id"
+
+    # Also consistent across instances (class attribute, not instance attribute)
+    instance = Document({"doc_id": "abc", "body": "hello"})
+    assert type(instance)._Model__id_field == "doc_id"
+
+
+def test_model_id_field_independent_per_class():
+    """Each model class should store its own id_field independently."""
+
+    @model(id_field="alpha_key")
+    class Alpha(Model):
+        alpha_key = Keyword()
+        x = Keyword()
+
+    @model(id_field="beta_key")
+    class Beta(Model):
+        beta_key = Keyword()
+        y = Keyword()
+
+    @model()
+    class Gamma(Model):
+        z = Keyword()
+
+    assert Alpha._Model__id_field == "alpha_key"
+    assert Beta._Model__id_field == "beta_key"
+    assert Gamma._Model__id_field == "gamma_id"
+
+
+def test_model_id_field_not_a_string_raises():
+    """Passing a non-string id_field should raise HowlerTypeError."""
+
+    with pytest.raises(HowlerTypeError):
+
+        @model(id_field=123)
+        class BadType(Model):
+            value = Keyword()
+
+
+def test_model_id_field_illegal_name_raises():
+    """An id_field whose name fails FIELD_SANITIZER or is in BANNED_FIELDS should raise HowlerValueError."""
+
+    # Uppercase letters are not allowed by FIELD_SANITIZER (^[a-z][a-z0-9_-]*$)
+    with pytest.raises(ValueError):
+
+        @model(id_field="BadField")
+        class IllegalName(Model):
+            value = Keyword()
+
+    # _id is in BANNED_FIELDS
+    with pytest.raises(ValueError):
+
+        @model(id_field="_id")
+        class BannedName(Model):
+            value = Keyword()
+
+
+def test_model_id_field_not_in_fields_raises():
+    """An id_field that does not reference a declared field should raise HowlerValueError."""
+
+    with pytest.raises(ValueError):
+
+        @model(id_field="missing_field")
+        class MissingField(Model):
+            value = Keyword()
+
+    """Base model fields should be included in subclass fields()."""
+
+    @model(index=True, store=True, description="Base model")
+    class Base(Model):
+        base_field = Keyword()
+
+    @model(index=True, store=True, description="Child model")
+    class Child(Base):
+        child_field = Keyword()
+
+    fields = Child.fields()
+    assert "base_field" in fields, "base_field from Base should appear in Child.fields()"
+    assert "child_field" in fields, "child_field should appear in Child.fields()"
+
+
+def test_model_inheritance_subclass_overrides_base_field():
+    """A subclass that redeclares a field from the base should use the subclass version."""
+
+    @model(index=True, store=True, description="Base model")
+    class OverrideBase(Model):
+        shared_field = Keyword(default="base_default")
+
+    @model(index=True, store=True, description="Override child model")
+    class OverrideChild(OverrideBase):
+        shared_field = Keyword(default="child_default")
+
+    fields = OverrideChild.fields()
+    assert "shared_field" in fields
+    assert fields["shared_field"].default == "child_default", (
+        "Child's override of shared_field should shadow the base's version"
+    )
+
+
+def test_model_inheritance_cache_isolation():
+    """Subclass field cache must not bleed into or reuse the parent's cache."""
+
+    @model(index=True, store=True, description="Parent")
+    class ParentModel(Model):
+        parent_only = Keyword()
+
+    @model(index=True, store=True, description="Sub")
+    class SubModel(ParentModel):
+        sub_only = Keyword()
+
+    parent_fields = ParentModel.fields()
+    sub_fields = SubModel.fields()
+
+    # Parent cache should NOT contain the child-only field
+    assert "sub_only" not in parent_fields, "Parent cache should not include subclass fields"
+    # Child cache should contain both
+    assert "parent_only" in sub_fields
+    assert "sub_only" in sub_fields
+    # The two caches must be different objects
+    assert parent_fields is not sub_fields, "Parent and child field caches must be independent objects"
+
+
+def test_model_inheritance_no_cache_skips_cache():
+    """fields(no_cache=True) should bypass and not populate the field cache."""
+
+    @model(index=True, store=True, description="NoCacheTest")
+    class NoCacheModel(Model):
+        val = Keyword()
+
+    # Populate cache normally
+    _ = NoCacheModel.fields()
+    assert "_odm_field_cache" in NoCacheModel.__dict__
+
+    # Call with no_cache=True — result should be equivalent but cache unchanged
+    result = NoCacheModel.fields(no_cache=True)
+    assert "val" in result
+    # Cache object should not have been replaced by the no_cache call
+    cached = NoCacheModel.fields()
+    assert cached is not result, "no_cache=True result should be a fresh dict, not the stored cache"

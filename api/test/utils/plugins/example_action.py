@@ -28,7 +28,7 @@ def specification():
             "short": "Example Action",
             "long": execute.__doc__,
         },
-        "roles": ["automation_basic"],
+        "roles": ["automation_basic", "actionrunner_basic"],
         "steps": [],
         "triggers": VALID_TRIGGERS,
     }

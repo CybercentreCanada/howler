@@ -43,10 +43,10 @@ Les administrateurs peuvent configurer les paramètres de rétention dans la con
 system:
   type: staging
   retention:
-    limit_amount: 120      # Durée de la période de rétention
-    limit_unit: days       # Unité de temps (days, hours, etc.)
-    crontab: "0 0 * * *"    # Calendrier (nocturne à minuit)
-    enabled: true          # Si la rétention est active
+    limit_amount: 120 # Durée de la période de rétention
+    limit_unit: days # Unité de temps (days, hours, etc.)
+    crontab: '0 0 * * *' # Calendrier (nocturne à minuit)
+    enabled: true # Si la rétention est active
 ```
 
 ## Interface utilisateur

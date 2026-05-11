@@ -15,7 +15,7 @@ commit_msg = commit_file.read_text()
 
 commit = ConventionalCommit(
     commit_msg=commit_msg,
-    types=ConventionalCommit.DEFAULT_TYPES,
+    types=ConventionalCommit.DEFAULT_TYPES + ["release"],
     scope_optional=True,
     scopes=["api", "client", "ui", "ci", "demo"],
 )

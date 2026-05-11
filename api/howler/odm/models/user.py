@@ -63,7 +63,7 @@ class User(odm.Model):
     access_control: str = odm.Keyword(index=False, store=False, optional=True, description="Access control filter")
     type: list[str] = odm.List(
         odm.Enum(values=loader.USER_TYPES),
-        default=["user", "automation_basic"],
+        default=["user", "actionrunner_basic"],
         description="Type of user",
     )
     uname: str = odm.Keyword(copyto="__text__", description="Username")

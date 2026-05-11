@@ -23,6 +23,7 @@ import {
   type SxProps
 } from '@mui/material';
 import api from 'api';
+import { useAppUser } from 'commons/components/app/hooks';
 import useMatchers from 'components/app/hooks/useMatchers';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { HitContext } from 'components/app/providers/HitProvider';
@@ -35,6 +36,7 @@ import { capitalize, get, groupBy, isEmpty, toString } from 'lodash-es';
 import type { Action } from 'models/entities/generated/Action';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Template } from 'models/entities/generated/Template';
+import type { HowlerUser } from 'models/entities/HowlerUser';
 import howlerPluginStore from 'plugins/store';
 import type { FC, MouseEventHandler, PropsWithChildren } from 'react';
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
@@ -90,6 +92,7 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
   const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
   const { executeAction } = useMyActionFunctions();
+  const appUser = useAppUser<HowlerUser>();
   const { config } = useContext(ApiConfigContext);
   const pluginStore = usePluginStore();
   const { getMatchingAnalytic, getMatchingTemplate } = useMatchers();
@@ -116,6 +119,15 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
   );
 
   const { availableTransitions, canVote, canAssess, assess, vote } = useHitActions(hits);
+
+  /**
+   * Checks if the current user has permission to run actions.
+   * Users must have one of the automation or actionrunner roles, or be an admin.
+   */
+  const canRunActions = useCallback(() => {
+    const roles = ['admin', 'automation_advanced', 'automation_basic', 'actionrunner_advanced', 'actionrunner_basic'];
+    return roles.some((role: string) => appUser.user?.roles?.includes(role));
+  }, [appUser.user?.roles]);
 
   /**
    * Handles right-click context menu events.
@@ -150,8 +162,12 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
 
       setAnchorEl(event.target as HTMLElement);
 
-      const _actions = (await dispatchApi(api.search.action.post({ query: 'action_id:*' }), { throwError: false }))
-        ?.items;
+      // TODO: Bumping the number of rows is a temporary fix - we'll need to improve this.
+      const _actions = (
+        await dispatchApi(api.search.action.post({ query: 'action_id:*', rows: 100, sort: 'name asc' }), {
+          throwError: false
+        })
+      )?.items;
 
       if (_actions) {
         setActions(_actions);
@@ -316,7 +332,7 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
           sx={{ position: 'relative' }}
           onMouseEnter={ev => setShow(_show => ({ ..._show, actions: ev.target as EventTarget & HTMLLIElement }))}
           onMouseLeave={() => setShow(_show => ({ ..._show, actions: null }))}
-          disabled={actions.length < 1}
+          disabled={actions.length < 1 || !canRunActions()}
         >
           <ListItemIcon>
             <SettingsSuggest />

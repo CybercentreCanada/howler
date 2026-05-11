@@ -198,4 +198,6 @@ auth:
                     admin: howler_admin
                     automation_basic: howler_admin
                     automation_advanced: howler_admin
+                    actionrunner_basic: howler_user
+                    actionrunner_advanced: howler_admin
 ```

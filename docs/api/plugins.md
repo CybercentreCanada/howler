@@ -106,6 +106,13 @@ logger = get_logger(__file__)
 
 OPERATION_ID = "your_action_name"
 
+# Hit limits for role-based access control (optional but recommended)
+# Basic users (actionrunner_basic, automation_basic) are limited to MAX_HITS_BASIC
+# Advanced users (actionrunner_advanced, automation_advanced, admin) use MAX_HITS_ADVANCED
+# Set to None for no limit (not recommended for destructive actions)
+MAX_HITS_BASIC = 10
+MAX_HITS_ADVANCED = 1000
+
 def execute(query: str, **kwargs) -> list[dict[str, Any]]:
     """Execute your custom action.
 
@@ -170,7 +177,7 @@ def specification():
             "short": "Brief description of your action",
             "long": execute.__doc__,
         },
-        "roles": ["automation_basic"],  # Required roles to execute this action
+        "roles": ["automation_basic", "actionrunner_basic"],  # Required roles to execute this action
         "steps": [
             {
                 "args": {"url": [], "field": []},  # Arguments the action accepts
@@ -185,6 +192,23 @@ def specification():
         "triggers": VALID_TRIGGERS,  # When this action can be triggered
     }
 ```
+
+#### Hit Limits
+
+Actions can define optional hit limits to prevent users from accidentally (or maliciously) affecting too many hits at once. Define these as module-level constants:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `MAX_HITS_BASIC` | Maximum hits for basic users (`actionrunner_basic`, `automation_basic`) | `None` (no limit) |
+| `MAX_HITS_ADVANCED` | Maximum hits for advanced users (`actionrunner_advanced`, `automation_advanced`, `admin`) | `None` (no limit) |
+
+If a user's query matches more hits than their limit allows, the action returns an error before execution.
+
+**Recommended limits for built-in actions:**
+
+- Destructive actions (transition, promote, demote): `MAX_HITS_BASIC = 10`
+- Low-risk actions (add_label, remove_label): `MAX_HITS_BASIC = 20`
+- All actions: `MAX_HITS_ADVANCED = 1000`
 
 ### 2. API Routes (`routes/`)
 
