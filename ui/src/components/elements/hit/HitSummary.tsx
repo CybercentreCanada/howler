@@ -48,6 +48,7 @@ const HitSummary: FC<{
   const { hitFields } = useContext(FieldContext);
   const { showErrorMessage } = useMySnackbar();
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
+  const [showHitSummaryGraph] = useMyLocalStorageItem(StorageKey.SHOW_HIT_SUMMARY_GRAPH, true);
   const { getMatchingTemplate } = useMatchers();
 
   const searching = useContextSelector(HitSearchContext, ctx => ctx.searching);
@@ -186,9 +187,13 @@ const HitSummary: FC<{
   return (
     <Stack sx={{ mx: 2, height: '100%' }} spacing={1}>
       <Typography variant="h6">{t('hit.summary.aggregate.title')}</Typography>
-      <Divider flexItem />
-      <HitGraph />
-      <Divider flexItem />
+      {showHitSummaryGraph && (
+        <>
+          <Divider flexItem />
+          <HitGraph />
+          <Divider flexItem />
+        </>
+      )}
       <Stack sx={{ overflow: 'auto', marginTop: '0 !important' }} pt={1} spacing={1}>
         <Stack direction="row" spacing={2} mb={2} alignItems="stretch">
           <Autocomplete
