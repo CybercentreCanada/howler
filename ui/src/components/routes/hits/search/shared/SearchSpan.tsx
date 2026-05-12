@@ -63,6 +63,7 @@ const SearchSpan: FC<{
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getCurrentViews, views]);
 
+  // TODO : AG : here rely the bug
   return (
     <ChipPopper
       icon={<AvTimer fontSize="small" />}
