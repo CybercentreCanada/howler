@@ -109,7 +109,7 @@ const SearchSpan: FC<{
               // If they actually want custom, let the provider handle it
               setSpan(value);
             }
-          }}
+          }} // Got to find a way to clear the url
           disableClearable
         />
 
