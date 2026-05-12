@@ -1742,12 +1742,30 @@ class ESCollection(Generic[ModelType]):
             track_total_hits=track_total_hits,
         )
 
-        ret_data: SearchResult = {
+        ret_data: SearchResult | AggSearchResult
+        search_ret_data: SearchResult = {
             "offset": int(offset),
             "rows": int(rows),
             "total": int(result["hits"]["total"]["value"]),
             "items": [self._format_output(doc, field_list, as_obj=as_obj) for doc in result["hits"]["hits"]],
         }
+
+        if aggs:
+            agg_ret_data: AggSearchResult = {
+                "offset": search_ret_data["offset"],
+                "rows": search_ret_data["rows"],
+                "total": search_ret_data["total"],
+                "items": search_ret_data["items"],
+                "agg_result": {
+                    k[len(self.CUSTOM_AGG_PREFIX) :]: v
+                    for k, v in result["aggregations"].items()
+                    if k.startswith(self.CUSTOM_AGG_PREFIX)
+                },
+            }
+            ret_data = agg_ret_data
+
+        else:
+            ret_data = search_ret_data
 
         new_deep_paging_id = result.get("_scroll_id", None)
 
@@ -1774,18 +1792,6 @@ class ESCollection(Generic[ModelType]):
 
         if new_deep_paging_id is not None:
             ret_data["next_deep_paging_id"] = new_deep_paging_id
-
-        if aggs:
-            agg_ret_data: AggSearchResult = {
-                **SearchResult(ret_data),
-                "agg_result": {
-                    k[len(self.CUSTOM_AGG_PREFIX) :]: v
-                    for k, v in result["aggregations"].items()
-                    if k.startswith(self.CUSTOM_AGG_PREFIX)
-                },
-            }
-
-            return agg_ret_data
 
         return ret_data
 
