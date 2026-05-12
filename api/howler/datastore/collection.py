@@ -38,7 +38,7 @@ from howler.datastore.support.schemas import (
     default_index,
     default_mapping,
 )
-from howler.datastore.types import SearchResult
+from howler.datastore.types import AggSearchResult, SearchResult
 from howler.odm.base import (
     BANNED_FIELDS,
     IP,
@@ -211,9 +211,11 @@ class ESCollection(Generic[ModelType]):
         "sort": DEFAULT_SORT,
         "df": None,
         "script_fields": [],
+        "aggs": None,
     }
     IGNORE_ENSURE_COLLECTION: bool = False
     ENSURE_COLLECTION_WARNED: bool = False
+    CUSTOM_AGG_PREFIX: str = "_custom_agg__"
 
     def __init__(self, datastore: ESStore, name, model_class=None, validate=True, max_attempts=10):
         self.replicas = int(
@@ -1503,6 +1505,12 @@ class ESCollection(Generic[ModelType]):
                 },
             }
 
+        # Add any arbitrary aggregations
+        if parsed_values["aggs"]:
+            query_body.setdefault("aggregations", {})
+            for agg_name, agg_args in parsed_values["aggs"]:
+                query_body["aggregations"][f"{self.CUSTOM_AGG_PREFIX}{agg_name}"] = agg_args
+
         try:
             if deep_paging_id is not None and not deep_paging_id == "*":
                 # Get the next page
@@ -1543,6 +1551,7 @@ class ESCollection(Generic[ModelType]):
         self,
         query: str | None,
         as_obj: Literal[True] = True,
+        aggs: None = None,
         offset: int = 0,
         rows: int | None = None,
         sort: typing.Any = None,
@@ -1561,6 +1570,7 @@ class ESCollection(Generic[ModelType]):
         self,
         query: str | None,
         as_obj: Literal[False],
+        aggs: None = None,
         offset: int = 0,
         rows: int | None = None,
         sort: typing.Any = None,
@@ -1574,10 +1584,51 @@ class ESCollection(Generic[ModelType]):
         script_fields: list[str] = [],
     ) -> SearchResult[dict[str, typing.Any]]: ...
 
+    @overload
+    def search(
+        self,
+        query: str | None,
+        *,
+        as_obj: Literal[True] = True,
+        aggs: list[tuple[str, dict]],
+        offset: int = 0,
+        rows: int | None = None,
+        sort: typing.Any = None,
+        fl: str | None = None,
+        timeout: int | None = None,
+        filters: list[str] | str | None = None,
+        access_control: typing.Any = None,
+        deep_paging_id: str | None = None,
+        use_archive: bool = False,
+        track_total_hits: bool = False,
+        script_fields: list[str] = [],
+    ) -> AggSearchResult[ModelType]: ...
+
+    @overload
+    def search(
+        self,
+        query: str | None,
+        *,
+        as_obj: Literal[False],
+        aggs: list[tuple[str, dict]],
+        offset: int = 0,
+        rows: int | None = None,
+        sort: typing.Any = None,
+        fl: str | None = None,
+        timeout: int | None = None,
+        filters: list[str] | str | None = None,
+        access_control: typing.Any = None,
+        deep_paging_id: str | None = None,
+        use_archive: bool = False,
+        track_total_hits: bool = False,
+        script_fields: list[str] = [],
+    ) -> AggSearchResult[dict[str, typing.Any]]: ...
+
     def search(
         self,
         query,
         as_obj=True,
+        aggs=None,
         offset=0,
         rows=None,
         sort=None,
@@ -1605,6 +1656,14 @@ class ESCollection(Generic[ModelType]):
                     }, ...]
             }
 
+        If aggregations are provided the search result will include an additional field::
+
+            {
+                "agg_result": {         # Dictionary where the keys are the keys of the `aggs` parameter
+                    "agg_name": {...}   #   and the values are the results of the aggregations
+                }
+            }
+
         :param script_fields: List of name/script tuple of fields to be evaluated at runtime
         :param track_total_hits: Return to total matching document count
         :param use_archive: Query also the archive
@@ -1618,6 +1677,8 @@ class ESCollection(Generic[ModelType]):
         :param timeout: maximum time of execution
         :param filters: additional queries to run on the original query to reduce the scope
         :param access_control: access control parameters to limiti the scope of the query
+        :param aggs: optional list of arbitrary aggregations to run alongside the query
+            structured the same way as the es rest query aggs field
         :return: a search result object
         """
         if offset is None:
@@ -1660,6 +1721,9 @@ class ESCollection(Generic[ModelType]):
         if script_fields:
             args.append(("script_fields", script_fields))
 
+        if aggs:
+            args.append(("aggs", aggs))
+
         result = self._search(
             args,
             deep_paging_id=deep_paging_id,
@@ -1699,6 +1763,18 @@ class ESCollection(Generic[ModelType]):
 
         if new_deep_paging_id is not None:
             ret_data["next_deep_paging_id"] = new_deep_paging_id
+
+        if aggs:
+            agg_ret_data: AggSearchResult = {
+                **SearchResult(ret_data),
+                "agg_result": {
+                    k[len(self.CUSTOM_AGG_PREFIX) :]: v
+                    for k, v in result["aggregations"].items()
+                    if k.startswith(self.CUSTOM_AGG_PREFIX)
+                },
+            }
+
+            return agg_ret_data
 
         return ret_data
 

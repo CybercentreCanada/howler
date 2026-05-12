@@ -16,3 +16,7 @@ class SearchResult(TypedDict, Generic[SearchResultType]):
     total: int
     items: list[SearchResultType]
     next_deep_paging_id: NotRequired[str | None]
+
+
+class AggSearchResult(SearchResult[SearchResultType]):
+    agg_result: dict[str, dict]

@@ -542,6 +542,32 @@ def _test_stats(c: ESCollection):
         assert v > 0
 
 
+def _test_agg_search(c: ESCollection):
+    """
+    Test submitting arbitrary aggregations with search.
+
+    Apply a bucket agg (terms) and a metrics agg (cardinality)
+    and verify the structure of the result.
+    """
+    terms_agg: dict = {"terms": {"field": "lvl_i"}}
+    cardinality_agg: dict = {"cardinality": {"field": "lvl_i"}}
+    aggs: list = [
+        ("terms_agg_name", terms_agg),
+        ("cardinality_agg_name", cardinality_agg),
+    ]
+
+    result = c.search("id:*", aggs=aggs)
+
+    assert "agg_result" in result
+    assert result["agg_result"].keys() == {"terms_agg_name", "cardinality_agg_name"}
+    assert result["agg_result"]["terms_agg_name"].keys() == {
+        "doc_count_error_upper_bound",
+        "sum_other_doc_count",
+        "buckets",
+    }
+    assert result["agg_result"]["cardinality_agg_name"].keys() == {"value"}
+
+
 TEST_FUNCTIONS = [
     (_test_exists, "exists"),
     (_test_get, "get"),
@@ -561,6 +587,7 @@ TEST_FUNCTIONS = [
     (_test_histogram, "histogram"),
     (_test_facet, "facet"),
     (_test_stats, "stats"),
+    (_test_agg_search, "agg"),
 ]
 
 
