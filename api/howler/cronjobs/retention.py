@@ -8,6 +8,7 @@ from pytz import timezone
 
 from howler.common.logging import get_logger
 from howler.config import DEBUG, config
+from howler.datastore.howler_store import HowlerDatastore
 
 logger = get_logger(__file__)
 
@@ -29,6 +30,42 @@ def execute():
     ds.hit.commit()
 
     logger.debug("Deletion complete")
+
+    logger.debug("Cleaning analytics with no matching hits")
+    _remove_analytics_without_hits(ds)
+
+
+def _remove_analytics_without_hits(ds: HowlerDatastore):
+
+    matched_analytics = _find_analytics_with_hits(ds)
+
+    ds.analytic.delete_by_search_object({"bool": {"must_not": [{"terms": {"name": matched_analytics}}]}})
+    ds.analytic.commit()
+
+
+def _find_analytics_with_hits(ds: HowlerDatastore) -> list[str]:
+
+    total_analytics = ds.analytic.count("id:*", filters=None)["count"]
+    matched_analytics = ds.hit.search(
+        "howler.id:*",
+        aggs=[
+            (
+                "matched_analytics",
+                {
+                    "terms": {
+                        "field": "howler.analytic",
+                        "size": total_analytics,
+                    }
+                },
+            )
+        ],
+    )
+
+    matched_analytic_names = [
+        bucket["key"] for bucket in matched_analytics["agg_result"]["matched_analytics"]["buckets"]
+    ]
+
+    return matched_analytic_names
 
 
 def setup_job(sched: BaseScheduler):
