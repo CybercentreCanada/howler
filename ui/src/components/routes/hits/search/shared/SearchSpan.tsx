@@ -7,7 +7,7 @@ import dayjs from 'dayjs';
 import type { FC } from 'react';
 import { memo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { convertLuceneToDate } from 'utils/utils';
 import CustomSpan from './CustomSpan';
@@ -27,7 +27,7 @@ const SearchSpan: FC<{
 }> = ({ omitCustom = false, size }) => {
   const { t } = useTranslation();
   const location = useLocation();
-
+  const [params, setParams] = useSearchParams(); // Add this at the top of the component
   const views = useContextSelector(ParameterContext, ctx => ctx.views);
   const span = useContextSelector(ParameterContext, ctx => ctx.span);
   const setSpan = useContextSelector(ParameterContext, ctx => ctx.setSpan);
@@ -39,6 +39,7 @@ const SearchSpan: FC<{
     ctx.startDate ? dayjs(ctx.startDate) : defaultStartDate
   );
   const endDate = useContextSelector(ParameterContext, ctx => (ctx.endDate ? dayjs(ctx.endDate) : defaultEndDate));
+  const setCustomSpan = useContextSelector(ParameterContext, ctx => ctx.setCustomSpan); // Add this
 
   const getCurrentViews = useContextSelector(ViewContext, ctx => ctx.getCurrentViews);
 
@@ -64,6 +65,8 @@ const SearchSpan: FC<{
   }, [getCurrentViews, views]);
 
   // TODO : AG : here rely the bug
+  // I think its looking at the url or a variable and see something is already there thus custom
+  // I'll try that in next update
   return (
     <ChipPopper
       icon={<AvTimer fontSize="small" />}
@@ -84,9 +87,29 @@ const SearchSpan: FC<{
           size={size ?? 'small'}
           value={span}
           options={omitCustom ? DATE_RANGES.slice(0, DATE_RANGES.length - 1) : DATE_RANGES}
-          renderInput={_params => <TextField {..._params} label={t('hit.search.span')} />}
+          renderInput={_params => <TextField {..._params} label={t('hit.search.span')} />} // here ?
           getOptionLabel={option => t(option)}
-          onChange={(_, value) => setSpan(value)}
+          onChange={(_, value) => {
+            if (!value) return;
+
+            if (value !== 'date.range.custom') {
+              // 1. Create a fresh copy of current params
+              const newParams = new URLSearchParams(params);
+
+              // 2. Set the span to the relative value (1 day, 1 week, etc.)
+              newParams.set('span', value);
+
+              // 3. EXPLICITLY REMOVE the custom dates from the URL
+              newParams.delete('start_date');
+              newParams.delete('end_date');
+
+              // 4. Push the clean URL back to the browser
+              setParams(newParams);
+            } else {
+              // If they actually want custom, let the provider handle it
+              setSpan(value);
+            }
+          }}
           disableClearable
         />
 
