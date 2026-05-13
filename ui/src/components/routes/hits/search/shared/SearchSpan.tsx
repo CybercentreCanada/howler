@@ -89,17 +89,16 @@ const SearchSpan: FC<{
             if (!value) return;
 
             if (value !== 'date.range.custom') {
-              // 1. Create a fresh copy of current params
+              // Create a fresh copy of current params
               const newParams = new URLSearchParams(params);
               newParams.set('span', value);
               newParams.delete('start_date');
               newParams.delete('end_date');
               setParams(newParams);
             } else {
-              // If they actually want custom, let the provider handle it
               setSpan(value);
             }
-          }} // Got to find a way to clear the url
+          }}
           disableClearable
         />
 
