@@ -1,4 +1,5 @@
 from flask import request
+from markupsafe import escape
 
 from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
 from howler.common.exceptions import ForbiddenException, HowlerException, InvalidDataException, NotFoundException
@@ -266,7 +267,10 @@ def give_priviledge(id: str, user: User, **kwargs):
         return not_found(err="This view does not exist")
 
     success: None | str = dossier_service.give_priviledge(
-        dossier_id=id, user=user, level_requested=priv_change["priviledge"], new_member=priv_change["user_id"]
+        dossier_id=id,
+        user=user,
+        level_requested=priv_change["priviledge"],
+        new_member=escape(str(priv_change["user_id"])),
     )
     if isinstance(success, str):
         return bad_request(success)
@@ -312,7 +316,10 @@ def revoke_priviledge(id: str, user: User, **kwargs):
         return not_found(err="This view does not exist")
 
     success: None | str = dossier_service.revoke_priviledge(
-        dossier_id=id, user=user, level_requested=priv_change["priviledge"], new_member=priv_change["user_id"]
+        dossier_id=id,
+        user=user,
+        level_requested=priv_change["priviledge"],
+        new_member=escape(str(priv_change["user_id"])),
     )
     if isinstance(success, str):
         return bad_request(success)

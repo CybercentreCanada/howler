@@ -1,6 +1,7 @@
 import json
 
 from flask import Response, request
+from markupsafe import escape
 
 import howler.actions as actions
 from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
@@ -415,12 +416,12 @@ def __priviledge_value_verifications(
         return bad_request(err="Invalid data format")
     if not set(priv_change.keys()) & {"priviledge", "user_id"}:
         return bad_request(err="Invalid data format. Need new priviledge and user_id")
-    user_name: str = priv_change["user_id"]
+    user_name: str = escape(str(priv_change["user_id"]))
 
     if is_adding:
         temp_user = storage.user.get_if_exists(user_name)
         if not temp_user:
-            return bad_request(err=f"Invalid data format. user id {priv_change['user_id']} does not exist")
+            return bad_request(err=f"Invalid data format. user id {user_name} does not exist")
         user_name = temp_user.uname
 
     existing_action: Action = storage.action.get_if_exists(action_id)
