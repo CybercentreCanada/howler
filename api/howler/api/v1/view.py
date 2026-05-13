@@ -382,7 +382,7 @@ def give_priviledge(view_id: str, user: User, **kwargs):
         "success": True     # If the operation succeeded
     }
     """
-    result = __priviledge_value_verifications(view_id)
+    result = __priviledge_value_verifications(escape(str(view_id)))
 
     if isinstance(result, Response):
         return result
@@ -391,7 +391,7 @@ def give_priviledge(view_id: str, user: User, **kwargs):
 
     priv_map: dict = existing_view.get_priviledge_mapping()
 
-    priv_request: str = priv_change["priviledge"]
+    priv_request: str = escape(str(priv_change["priviledge"]))
     is_allowed: None | Response = __is_allowed_to_change(
         priv_request=priv_request, user=user, existing_view=existing_view
     )
@@ -445,7 +445,7 @@ def revoke_priviledge(view_id: str, user: User, **kwargs):
 
     priv_map = existing_view.get_priviledge_mapping()
 
-    priv_request: str = priv_change["priviledge"]
+    priv_request: str = escape(str(priv_change["priviledge"]))
     is_allowed: None | Response = __is_allowed_to_change(
         priv_request=priv_request, user=user, existing_view=existing_view
     )

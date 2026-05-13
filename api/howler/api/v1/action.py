@@ -486,7 +486,7 @@ def give_priviledge(id: str, user: User, **kwargs):
 
     priv_map: dict = existing_action.get_priviledge_mapping()
 
-    priv_request: str = priv_change["priviledge"]
+    priv_request: str = escape(str(priv_change["priviledge"]))
     is_allowed: None | Response = __is_allowed_to_change(
         priv_request=priv_request, user=user, existing_action=existing_action
     )

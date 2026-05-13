@@ -269,7 +269,7 @@ def give_priviledge(id: str, user: User, **kwargs):
     success: None | str = dossier_service.give_priviledge(
         dossier_id=id,
         user=user,
-        level_requested=priv_change["priviledge"],
+        level_requested=escape(str(priv_change["priviledge"])),
         new_member=escape(str(priv_change["user_id"])),
     )
     if isinstance(success, str):
@@ -318,7 +318,7 @@ def revoke_priviledge(id: str, user: User, **kwargs):
     success: None | str = dossier_service.revoke_priviledge(
         dossier_id=id,
         user=user,
-        level_requested=priv_change["priviledge"],
+        level_requested=escape(str(priv_change["priviledge"])),
         new_member=escape(str(priv_change["user_id"])),
     )
     if isinstance(success, str):
