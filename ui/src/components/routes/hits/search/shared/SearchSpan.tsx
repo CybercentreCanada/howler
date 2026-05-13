@@ -64,9 +64,6 @@ const SearchSpan: FC<{
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getCurrentViews, views]);
 
-  // TODO : AG : here rely the bug
-  // I think its looking at the url or a variable and see something is already there thus custom
-  // I'll try that in next update
   return (
     <ChipPopper
       icon={<AvTimer fontSize="small" />}
@@ -87,7 +84,7 @@ const SearchSpan: FC<{
           size={size ?? 'small'}
           value={span}
           options={omitCustom ? DATE_RANGES.slice(0, DATE_RANGES.length - 1) : DATE_RANGES}
-          renderInput={_params => <TextField {..._params} label={t('hit.search.span')} />} // here ?
+          renderInput={_params => <TextField {..._params} label={t('hit.search.span')} />}
           getOptionLabel={option => t(option)}
           onChange={(_, value) => {
             if (!value) return;
