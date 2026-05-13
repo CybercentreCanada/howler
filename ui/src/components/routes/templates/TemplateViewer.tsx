@@ -193,11 +193,16 @@ const TemplateViewer = () => {
         setSelectedTemplate(result);
         const newList = [result, ...templateList];
         setTemplateList(newList.filter((v1, i) => newList.findIndex(v2 => v1.template_id === v2.template_id) === i));
+
+        const updatedSessionList = sessionTemplateList.filter(
+          v => v.analytic !== result.analytic || v.detection !== result.detection || v.type !== result.type
+        );
+        setSessionTemplateList(updatedSessionList);
       } finally {
         setTemplateLoading(false);
       }
     }
-  }, [analytic, detection, dispatchApi, displayFields, selectedTemplate, templateList, type]);
+  }, [analytic, detection, dispatchApi, displayFields, selectedTemplate, sessionTemplateList, templateList, type]);
 
   const analyticOrDetectionMissing = useMemo(() => !analytic || !detection, [analytic, detection]);
   const noFieldChange = useMemo(
