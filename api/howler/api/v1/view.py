@@ -299,7 +299,7 @@ def remove_as_favourite(view_id: str, **kwargs):
 
 def __priviledge_value_verifications(
     view_id: str, is_adding: bool = True
-) -> tuple[HowlerDatastore, dict, str, View] | Response:
+) -> tuple[HowlerDatastore, str, str, View] | Response:
     """Verify base value for privilege request are usable.
 
     If they are it return them else it return the error.
@@ -316,7 +316,7 @@ def __priviledge_value_verifications(
     if not set(priv_change.keys()) & {"priviledge", "user_id"}:
         return bad_request(err="Invalid data format. Need new priviledge and user_id")
     user_name: str = escape(str(priv_change["user_id"]))
-
+    priviledge_request: str = escape(str(priv_change["priviledge"]))
     if is_adding:
         temp_user = storage.user.get_if_exists(user_name)
         if not temp_user:
@@ -327,7 +327,7 @@ def __priviledge_value_verifications(
     if not existing_view:
         return not_found(err="This view does not exist")
 
-    return storage, priv_change, user_name, existing_view
+    return storage, priviledge_request, user_name, existing_view
 
 
 def __is_allowed_to_change(priv_request: str, user: User, existing_view: View) -> None | Response:
@@ -387,11 +387,11 @@ def give_priviledge(view_id: str, user: User, **kwargs):
     if isinstance(result, Response):
         return result
 
-    storage, priv_change, user_add, existing_view = result
+    storage, priv_requested, user_add, existing_view = result
 
     priv_map: dict = existing_view.get_priviledge_mapping()
 
-    priv_request: str = escape(str(priv_change["priviledge"]))
+    priv_request: str = escape(str(priv_requested))
     is_allowed: None | Response = __is_allowed_to_change(
         priv_request=priv_request, user=user, existing_view=existing_view
     )
@@ -441,11 +441,11 @@ def revoke_priviledge(view_id: str, user: User, **kwargs):
     if isinstance(result, Response):
         return result
 
-    storage, priv_change, user_add, existing_view = result
+    storage, priv_requested, user_add, existing_view = result
 
     priv_map = existing_view.get_priviledge_mapping()
 
-    priv_request: str = escape(str(priv_change["priviledge"]))
+    priv_request: str = escape(str(priv_requested))
     is_allowed: None | Response = __is_allowed_to_change(
         priv_request=priv_request, user=user, existing_view=existing_view
     )
