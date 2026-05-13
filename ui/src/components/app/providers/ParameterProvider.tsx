@@ -147,8 +147,8 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
         }
 
         if (key === 'span' && typeof value === 'string' && !value.endsWith('custom')) {
-          pendingChanges.current.startDate = undefined;
-          pendingChanges.current.endDate = undefined;
+          pendingChanges.current.startDate = null;
+          pendingChanges.current.endDate = null;
         }
 
         WRITE_THROTTLER.debounce(() => {
@@ -157,8 +157,8 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
             ...pendingChanges.current,
             ...(key === 'span' && typeof value === 'string' && !value.endsWith('custom')
               ? {
-                  startDate: undefined,
-                  endDate: undefined
+                  startDate: null,
+                  endDate: null
                 }
               : {})
           }));
@@ -363,7 +363,7 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
     const changes: Partial<SearchValues> = {};
 
     PARAM_MAPPINGS.forEach(([urlKey, stateKey]) => {
-      const urlValue = params.has(urlKey) ? params.get(urlKey) : (DEFAULT_VALUES[stateKey] ?? undefined);
+      const urlValue = params.has(urlKey) ? params.get(urlKey) : (DEFAULT_VALUES[stateKey] ?? null);
 
       if (urlValue !== values[stateKey]) {
         (changes as any)[stateKey] = urlValue;
