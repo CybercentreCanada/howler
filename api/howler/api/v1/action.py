@@ -400,7 +400,7 @@ def execute_operations(**kwargs) -> Response:
 
 def __priviledge_value_verifications(
     action_id: str, is_adding: bool = True
-) -> tuple[HowlerDatastore, dict, str, Action] | Response:
+) -> tuple[HowlerDatastore, str, str, Action] | Response:
     """Verify base value for privilege request are usable.
 
     If they are it return them else it return the error.
@@ -417,18 +417,19 @@ def __priviledge_value_verifications(
     if not set(priv_change.keys()) & {"priviledge", "user_id"}:
         return bad_request(err="Invalid data format. Need new priviledge and user_id")
     user_name: str = escape(str(priv_change["user_id"]))
+    priviledge_requested: str = escape(str(priv_change["priviledge"]))
 
     if is_adding:
         temp_user = storage.user.get_if_exists(user_name)
         if not temp_user:
-            return bad_request(err=f"Invalid data format. user id {user_name} does not exist")
+            return bad_request(err="Invalid data format. user does not exist")
         user_name = temp_user.uname
 
     existing_action: Action = storage.action.get_if_exists(action_id)
     if not existing_action:
         return not_found(err="This Action does not exist")
 
-    return storage, priv_change, user_name, existing_action
+    return storage, priviledge_requested, user_name, existing_action
 
 
 def __is_allowed_to_change(priv_request: str, user: User, existing_action: Action) -> None | Response:
@@ -482,11 +483,11 @@ def give_priviledge(id: str, user: User, **kwargs):
     if isinstance(result, Response):
         return result
 
-    storage, priv_change, user_add, existing_action = result
+    storage, priviledge_requested, user_add, existing_action = result
 
     priv_map: dict = existing_action.get_priviledge_mapping()
 
-    priv_request: str = escape(str(priv_change["priviledge"]))
+    priv_request: str = escape(str(priviledge_requested))
     is_allowed: None | Response = __is_allowed_to_change(
         priv_request=priv_request, user=user, existing_action=existing_action
     )
@@ -533,16 +534,16 @@ def revoke_priviledge(id: str, user: User, **kwargs):
             "success": True
         }
     """
-    result = __priviledge_value_verifications(action_id=id, is_adding=False)
+    result = __priviledge_value_verifications(action_id=escape(str(id)), is_adding=False)
 
     if isinstance(result, Response):
         return result
 
-    storage, priv_change, user_add, existing_action = result
+    storage, priviledge_requested, user_add, existing_action = result
 
     priv_map = existing_action.get_priviledge_mapping()
 
-    priv_request: str = priv_change["priviledge"]
+    priv_request: str = priviledge_requested
     is_allowed: None | Response = __is_allowed_to_change(
         priv_request=priv_request, user=user, existing_action=existing_action
     )
