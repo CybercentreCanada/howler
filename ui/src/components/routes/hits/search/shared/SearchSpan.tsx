@@ -27,7 +27,7 @@ const SearchSpan: FC<{
 }> = ({ omitCustom = false, size }) => {
   const { t } = useTranslation();
   const location = useLocation();
-  const [params, setParams] = useSearchParams(); // Add this at the top of the component
+  const [params, setParams] = useSearchParams();
   const views = useContextSelector(ParameterContext, ctx => ctx.views);
   const span = useContextSelector(ParameterContext, ctx => ctx.span);
   const setSpan = useContextSelector(ParameterContext, ctx => ctx.setSpan);
