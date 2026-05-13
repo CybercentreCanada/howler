@@ -64,11 +64,8 @@ const DEFAULT_VALUES: Partial<SearchValues> = {
 const PARAM_MAPPINGS: [string, keyof SearchValues][] = [
   ['query', 'query'],
   ['sort', 'sort'],
-  ['span', 'span'],
-  ['start_date', 'startDate'],
-  ['end_date', 'endDate']
+  ['span', 'span']
 ];
-
 const WRITE_THROTTLER = new Throttler(100);
 
 /**
@@ -150,12 +147,22 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
         }
 
         if (key === 'span' && typeof value === 'string' && !value.endsWith('custom')) {
-          pendingChanges.current.startDate = null;
-          pendingChanges.current.endDate = null;
+          pendingChanges.current.startDate = undefined;
+          pendingChanges.current.endDate = undefined;
         }
 
         WRITE_THROTTLER.debounce(() => {
-          _setValues(_current => ({ ..._current, ...pendingChanges.current }));
+          _setValues(current => ({
+            ...current,
+            ...pendingChanges.current,
+            ...(key === 'span' && typeof value === 'string' && !value.endsWith('custom')
+              ? {
+                  startDate: undefined,
+                  endDate: undefined
+                }
+              : {})
+          }));
+
           pendingChanges.current = {};
         });
       },
@@ -286,6 +293,28 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
         }
       }
     });
+    const spanValue = values.span;
+    const isCustomSpan = spanValue === 'date.range.custom';
+
+    const urlSpan = params.get('span');
+
+    if (spanValue !== urlSpan) {
+      (changes as any).span = spanValue;
+    }
+
+    // Only emit dates if custom
+    if (isCustomSpan) {
+      if (values.startDate) {
+        (changes as any).start_date = values.startDate;
+      }
+
+      if (values.endDate) {
+        (changes as any).end_date = values.endDate;
+      }
+    } else {
+      (changes as any).start_date = null;
+      (changes as any).end_date = null;
+    }
 
     // Handle filters: compare arrays with isEqual
     const urlFilters = params.getAll('filter');
@@ -340,6 +369,20 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
         (changes as any)[stateKey] = urlValue;
       }
     });
+    const isCustomSpan = params.get('span') === 'date.range.custom';
+
+    if (isCustomSpan) {
+      const start = params.get('start_date');
+      const end = params.get('end_date');
+
+      if (start && start !== values.startDate) {
+        (changes as any).startDate = start;
+      }
+
+      if (end && end !== values.endDate) {
+        (changes as any).endDate = end;
+      }
+    }
 
     // Handle filters: compare arrays with isEqual
     const urlFilters = uniq(params.getAll('filter'));

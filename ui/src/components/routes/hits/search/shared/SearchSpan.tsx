@@ -95,15 +95,9 @@ const SearchSpan: FC<{
             if (value !== 'date.range.custom') {
               // 1. Create a fresh copy of current params
               const newParams = new URLSearchParams(params);
-
-              // 2. Set the span to the relative value (1 day, 1 week, etc.)
               newParams.set('span', value);
-
-              // 3. EXPLICITLY REMOVE the custom dates from the URL
               newParams.delete('start_date');
               newParams.delete('end_date');
-
-              // 4. Push the clean URL back to the browser
               setParams(newParams);
             } else {
               // If they actually want custom, let the provider handle it
