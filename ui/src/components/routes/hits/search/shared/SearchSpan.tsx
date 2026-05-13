@@ -39,7 +39,6 @@ const SearchSpan: FC<{
     ctx.startDate ? dayjs(ctx.startDate) : defaultStartDate
   );
   const endDate = useContextSelector(ParameterContext, ctx => (ctx.endDate ? dayjs(ctx.endDate) : defaultEndDate));
-  const setCustomSpan = useContextSelector(ParameterContext, ctx => ctx.setCustomSpan); // Add this
 
   const getCurrentViews = useContextSelector(ViewContext, ctx => ctx.getCurrentViews);
 
