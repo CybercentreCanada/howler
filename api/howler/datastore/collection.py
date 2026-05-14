@@ -1385,6 +1385,8 @@ class ESCollection(Generic[ModelType]):
 
         if isinstance(fields, str):
             fields = [fields]
+        if source_data is None:
+            source_data = {}
 
         if fields is None or "*" in fields or "id" in fields:
             source_data["id"] = [item_id]
