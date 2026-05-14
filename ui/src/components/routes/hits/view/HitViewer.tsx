@@ -239,7 +239,9 @@ const HitViewer: FC = () => {
               <Tab label={t('hit.viewer.overview')} value="overview" onClick={() => setTab('overview')} />
             )}
             <Tab label={t('hit.viewer.details')} value="details" onClick={() => setTab('details')} />
+
             {hit?.howler.dossier?.map((lead, index) => (
+              // TODO : AG : HERE RELY THE GOAL.
               <Tab
                 // eslint-disable-next-line react/no-array-index-key
                 key={'lead:' + index}
