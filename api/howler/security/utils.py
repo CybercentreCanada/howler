@@ -5,7 +5,7 @@ from typing import List, Optional
 from urllib.parse import urlparse
 
 from opentelemetry import trace
-from passlib.hash import bcrypt
+from passlib.hash import bcrypt  # type: ignore
 
 from howler.common.exceptions import HowlerValueError
 from howler.config import config
