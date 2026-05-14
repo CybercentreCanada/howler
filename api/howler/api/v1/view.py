@@ -190,7 +190,7 @@ def update_view(view_id: str, user: User, **kwargs):
     if existing_view.type == "readonly":
         return forbidden(err="You cannot edit a built-in view.")
 
-    if existing_view.type == "personal" and user.uname in existing_view.owner:
+    if existing_view.type == "personal" and user.uname not in existing_view.owner:
         return forbidden(err="You cannot update a personal view that is not owned by you.")
 
     allowed_list: list[str] = existing_view.owner + existing_view.admin + existing_view.member
