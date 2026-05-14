@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 from authlib.integrations.base_client import OAuthError
 from flask import current_app, request
-from passlib.hash import bcrypt
+from passlib.hash import bcrypt  # type: ignore
 
 import howler.services.auth_service as auth_service
 import howler.services.user_service as user_service
