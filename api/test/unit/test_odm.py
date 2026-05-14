@@ -512,6 +512,10 @@ def test_classification():
 
     assert str(r.cl) == "RESTRICTED//ADMIN//ANY/GROUP 1"
 
+    # Add these two lines to "narrow" the types
+    assert u.cl is not None
+    assert r.cl is not None
+
     assert u.cl < r.cl
     assert u.cl <= u.cl
     assert u.cl >= u.cl
