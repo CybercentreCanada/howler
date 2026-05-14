@@ -478,7 +478,7 @@ def give_priviledge(id: str, user: User, **kwargs):
         "success": True     # If the operation succeeded
     }
     """
-    result = __priviledge_value_verifications(id)
+    result = __priviledge_value_verifications(escape(str(id)))
 
     if isinstance(result, Response):
         return result
