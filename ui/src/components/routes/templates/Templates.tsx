@@ -3,6 +3,7 @@ import { Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/materia
 import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
 import { useAppUser } from 'commons/components/app/hooks';
+import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
 import { TuiListProvider, type TuiListItem, type TuiListItemProps } from 'components/elements/addons/lists';
 import { TuiListMethodContext, type TuiListMethodsState } from 'components/elements/addons/lists/TuiListProvider';
 import ItemManager from 'components/elements/display/ItemManager';
@@ -24,6 +25,8 @@ const TemplatesBase: FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { load } = useContext<TuiListMethodsState<Template>>(TuiListMethodContext);
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
+
+  const { analytics } = useContext(AnalyticContext);
 
   const [phrase, setPhrase] = useState<string>('');
   const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
@@ -74,7 +77,13 @@ const TemplatesBase: FC = () => {
           id: item.template_id,
           item,
           selected: false,
-          cursor: false
+          cursor: false,
+          disabled:
+            item.detection &&
+            !analytics
+              .find(v => v.name === item.analytic)
+              ?.detections?.map((s: string) => s.toLowerCase())
+              ?.includes(item.detection?.toLowerCase())
         }))
       );
     }
