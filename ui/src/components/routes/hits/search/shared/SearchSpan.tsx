@@ -7,7 +7,7 @@ import dayjs from 'dayjs';
 import type { FC } from 'react';
 import { memo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { convertLuceneToDate } from 'utils/utils';
 import CustomSpan from './CustomSpan';
@@ -27,7 +27,7 @@ const SearchSpan: FC<{
 }> = ({ omitCustom = false, size }) => {
   const { t } = useTranslation();
   const location = useLocation();
-  const [params, setParams] = useSearchParams();
+
   const views = useContextSelector(ParameterContext, ctx => ctx.views);
   const span = useContextSelector(ParameterContext, ctx => ctx.span);
   const setSpan = useContextSelector(ParameterContext, ctx => ctx.setSpan);
@@ -85,20 +85,7 @@ const SearchSpan: FC<{
           options={omitCustom ? DATE_RANGES.slice(0, DATE_RANGES.length - 1) : DATE_RANGES}
           renderInput={_params => <TextField {..._params} label={t('hit.search.span')} />}
           getOptionLabel={option => t(option)}
-          onChange={(_, value) => {
-            if (!value) return;
-
-            if (value !== 'date.range.custom') {
-              // Create a fresh copy of current params
-              const newParams = new URLSearchParams(params);
-              newParams.set('span', value);
-              newParams.delete('start_date');
-              newParams.delete('end_date');
-              setParams(newParams);
-            } else {
-              setSpan(value);
-            }
-          }}
+          onChange={(_, value) => setSpan(value)}
           disableClearable
         />
 
