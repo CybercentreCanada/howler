@@ -64,7 +64,9 @@ const DEFAULT_VALUES: Partial<SearchValues> = {
 const PARAM_MAPPINGS: [string, keyof SearchValues][] = [
   ['query', 'query'],
   ['sort', 'sort'],
-  ['span', 'span']
+  ['span', 'span'],
+  ['start_date', 'startDate'],
+  ['end_date', 'endDate']
 ];
 const WRITE_THROTTLER = new Throttler(100);
 
@@ -154,13 +156,7 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
         WRITE_THROTTLER.debounce(() => {
           _setValues(current => ({
             ...current,
-            ...pendingChanges.current,
-            ...(key === 'span' && typeof value === 'string' && !value.endsWith('custom')
-              ? {
-                  startDate: null,
-                  endDate: null
-                }
-              : {})
+            ...pendingChanges.current
           }));
 
           pendingChanges.current = {};
@@ -375,12 +371,20 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
       const start = params.get('start_date');
       const end = params.get('end_date');
 
-      if (start && start !== values.startDate) {
-        (changes as any).startDate = start;
+      if (start !== values.startDate) {
+        changes.startDate = start;
       }
 
-      if (end && end !== values.endDate) {
-        (changes as any).endDate = end;
+      if (end !== values.endDate) {
+        changes.endDate = end;
+      }
+    } else {
+      if (values.startDate !== null) {
+        changes.startDate = null;
+      }
+
+      if (values.endDate !== null) {
+        changes.endDate = null;
       }
     }
 
