@@ -46,24 +46,29 @@ def _remove_analytics_without_hits(ds: HowlerDatastore):
 def _find_analytics_with_hits(ds: HowlerDatastore) -> list[str]:
 
     total_analytics = ds.analytic.count("id:*", filters=None)["count"]
-    matched_analytics = ds.hit.search(
-        "howler.id:*",
-        aggs=[
-            (
-                "matched_analytics",
-                {
-                    "terms": {
-                        "field": "howler.analytic",
-                        "size": total_analytics,
-                    }
-                },
-            )
-        ],
-    )
 
-    matched_analytic_names = [
-        bucket["key"] for bucket in matched_analytics["agg_result"]["matched_analytics"]["buckets"]
-    ]
+    if total_analytics:
+        matched_analytics = ds.hit.search(
+            "howler.id:*",
+            aggs=[
+                (
+                    "matched_analytics",
+                    {
+                        "terms": {
+                            "field": "howler.analytic",
+                            "size": total_analytics,
+                        }
+                    },
+                )
+            ],
+        )
+
+        matched_analytic_names = [
+            bucket["key"] for bucket in matched_analytics["agg_result"]["matched_analytics"]["buckets"]
+        ]
+
+    else:
+        matched_analytic_names = []
 
     return matched_analytic_names
 
