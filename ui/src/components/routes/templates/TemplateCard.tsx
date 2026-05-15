@@ -1,5 +1,5 @@
 import { Language, Lock, Person, ReportProblem } from '@mui/icons-material';
-import { Box, Button, Card, Divider, Stack, Tooltip, Typography } from '@mui/material';
+import { Button, Card, Divider, Stack, Tooltip, Typography } from '@mui/material';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import ConfirmDeleteModal from 'components/elements/display/modals/ConfirmDeleteModal';
 import type { Template } from 'models/entities/generated/Template';
@@ -52,8 +52,8 @@ const TemplateCard: FC<{
           ))}
         </Stack>
         {error && (
-          <Box sx={{ width: '100%', display: 'flex', justifyContent: 'end' }}>
-            <Box sx={{ height: 'fitContent' }}>
+          <Stack direction="row" justifyContent="end" width="100%">
+            <Stack>
               <Tooltip title={t('route.templates.manager.error.action')}>
                 <Button
                   startIcon={<ReportProblem />}
@@ -65,8 +65,8 @@ const TemplateCard: FC<{
                   {t('route.templates.manager.error.message')}
                 </Button>
               </Tooltip>
-            </Box>
-          </Box>
+            </Stack>
+          </Stack>
         )}
       </Stack>
     </Card>
