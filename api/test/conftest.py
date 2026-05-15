@@ -82,19 +82,6 @@ def datastore_connection(config, auth_fail_queue):
         random_data.wipe_users(ds)
 
 
-@pytest.fixture(scope="session")
-def datastore_connection_with_hits(datastore_connection):
-    try:
-        random_data.wipe_hits(datastore_connection)
-        random_data.wipe_analytics(datastore_connection)
-        random_data.create_hits(datastore_connection)
-        random_data.create_analytics(datastore_connection)
-        yield datastore_connection
-    finally:
-        random_data.wipe_hits(datastore_connection)
-        random_data.wipe_analytics(datastore_connection)
-
-
 # Under different test setups, the host may have a different address
 POSSIBLE_HOSTS = [
     "https://localhost:443",
