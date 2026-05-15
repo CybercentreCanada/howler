@@ -127,7 +127,9 @@ const TemplatesBase: FC = () => {
   }, [offset]);
 
   const renderer = useCallback(
-    (item: Template, className?: string) => <TemplateCard template={item} className={className} />,
+    (item: Template, error?: boolean, className?: string) => (
+      <TemplateCard template={item} error={error} className={className} />
+    ),
     []
   );
 
@@ -168,7 +170,9 @@ const TemplatesBase: FC = () => {
           {t('route.templates.search.prompt')}
         </Typography>
       }
-      renderer={({ item }: TuiListItemProps<Template>, classRenderer) => renderer(item.item, classRenderer())}
+      renderer={({ item }: TuiListItemProps<Template>, classRenderer) =>
+        renderer(item.item, !!item.disabled, classRenderer())
+      }
       response={response}
       onSelect={(item: TuiListItem<Template>) =>
         navigate(

@@ -1,11 +1,44 @@
-import { Language, Lock, Person } from '@mui/icons-material';
-import { Card, Divider, Stack, Tooltip, Typography } from '@mui/material';
+import { Language, Lock, Person, ReportProblem } from '@mui/icons-material';
+import { Box, Button, Card, Divider, Stack, Tooltip, Typography } from '@mui/material';
+import api from 'api';
+import { ModalContext } from 'components/app/providers/ModalProvider';
+import ConfirmDeleteModal from 'components/elements/display/modals/ConfirmDeleteModal';
+import useMyApi from 'components/hooks/useMyApi';
 import type { Template } from 'models/entities/generated/Template';
-import type { FC } from 'react';
+import { useContext, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 
-const TemplateCard: FC<{ template: Template; className?: string }> = ({ template, className }) => {
+const DeleteTemplateModal: FC<{ templateId: string }> = ({ templateId }) => {
+  const { dispatchApi } = useMyApi();
   const { t } = useTranslation();
+
+  const onDelete = async () => {
+    await dispatchApi(api.template.del(templateId), {
+      logError: false,
+      showError: true,
+      throwError: false
+    });
+
+    window.location.reload();
+  };
+
+  return (
+    <ConfirmDeleteModal
+      onConfirm={onDelete}
+      title={t('route.templates.manager.error.modal.title')}
+      description={t('route.templates.manager.error.modal.description')}
+      preferDelete
+    />
+  );
+};
+
+const TemplateCard: FC<{ template: Template; error?: boolean; className?: string }> = ({
+  template,
+  error,
+  className
+}) => {
+  const { t } = useTranslation();
+  const { showModal } = useContext(ModalContext);
 
   return (
     <Card key={template.template_id} variant="outlined" sx={{ p: 1, mb: 1 }} className={className}>
@@ -30,6 +63,21 @@ const TemplateCard: FC<{ template: Template; className?: string }> = ({ template
             </Typography>
           ))}
         </Stack>
+        {error && (
+          <Box sx={{ width: '100%', display: 'flex', justifyContent: 'end' }}>
+            <Box sx={{ height: 'fitContent' }}>
+              <Tooltip title={t('route.templates.manager.error.action')}>
+                <Button
+                  startIcon={<ReportProblem />}
+                  color="warning"
+                  onClick={() => showModal(<DeleteTemplateModal templateId={template.template_id} />)}
+                >
+                  {t('route.templates.manager.error.message')}
+                </Button>
+              </Tooltip>
+            </Box>
+          </Box>
+        )}
       </Stack>
     </Card>
   );
