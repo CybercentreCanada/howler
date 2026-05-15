@@ -121,7 +121,6 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
     offset: parseOffset(params.get('offset')),
     trackTotalHits: (params.get('track_total_hits') ?? 'false') !== 'false'
   });
-  const syncSource = useRef<'state' | 'url' | null>(null);
   const prevSpanRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -355,8 +354,6 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
   useEffect(() => {
     const changes = getUrlFromState();
     if (isEmpty(changes)) return;
-
-    syncSource.current = 'state';
 
     setParams(_params => {
       const newParams = new URLSearchParams(_params);
