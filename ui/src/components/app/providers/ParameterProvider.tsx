@@ -68,6 +68,7 @@ const PARAM_MAPPINGS: [string, keyof SearchValues][] = [
   ['start_date', 'startDate'],
   ['end_date', 'endDate']
 ];
+
 const WRITE_THROTTLER = new Throttler(100);
 
 /**
@@ -120,9 +121,14 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
     offset: parseOffset(params.get('offset')),
     trackTotalHits: (params.get('track_total_hits') ?? 'false') !== 'false'
   });
+  const syncSource = useRef<'state' | 'url' | null>(null);
+  const prevSpanRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    prevSpanRef.current = values.span;
+  }, [values.span]);
 
   // TODO: SELECTING A BUNDLE STILL CAUSES A FREAKOUT
-
   const set: <K extends Exclude<keyof SearchValues, 'filters'>>(key: K) => (value: SearchValues[K]) => void =
     useCallback(
       key => value => {
@@ -148,17 +154,33 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
           (pendingChanges.current as any)[key] = value ?? DEFAULT_VALUES[key] ?? null;
         }
 
-        if (key === 'span' && typeof value === 'string' && !value.endsWith('custom')) {
-          pendingChanges.current.startDate = null;
-          pendingChanges.current.endDate = null;
+        if (key === 'span' && typeof value === 'string') {
+          const prevSpan = prevSpanRef.current;
+          const isNowCustom = value === 'date.range.custom';
+          const wasCustom = prevSpan === 'date.range.custom';
+
+          // Clear custom dates
+          if (wasCustom && !isNowCustom) {
+            _setValues(current => ({
+              ...current,
+              span: value,
+              startDate: null as any,
+              endDate: null as any
+            }));
+
+            pendingChanges.current.startDate = null;
+            pendingChanges.current.endDate = null;
+
+            prevSpanRef.current = value;
+            // state updated leave
+            return;
+          }
+
+          prevSpanRef.current = value;
         }
 
         WRITE_THROTTLER.debounce(() => {
-          _setValues(current => ({
-            ...current,
-            ...pendingChanges.current
-          }));
-
+          _setValues(_current => ({ ..._current, ...pendingChanges.current }));
           pendingChanges.current = {};
         });
       },
@@ -289,28 +311,6 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
         }
       }
     });
-    const spanValue = values.span;
-    const isCustomSpan = spanValue === 'date.range.custom';
-
-    const urlSpan = params.get('span');
-
-    if (spanValue !== urlSpan) {
-      (changes as any).span = spanValue;
-    }
-
-    // Only emit dates if custom
-    if (isCustomSpan) {
-      if (values.startDate) {
-        (changes as any).start_date = values.startDate;
-      }
-
-      if (values.endDate) {
-        (changes as any).end_date = values.endDate;
-      }
-    } else {
-      (changes as any).start_date = null;
-      (changes as any).end_date = null;
-    }
 
     // Handle filters: compare arrays with isEqual
     const urlFilters = params.getAll('filter');
@@ -352,6 +352,27 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
     });
   }, [values, params, location.pathname]);
 
+  useEffect(() => {
+    const changes = getUrlFromState();
+    if (isEmpty(changes)) return;
+
+    syncSource.current = 'state';
+
+    setParams(_params => {
+      const newParams = new URLSearchParams(_params);
+
+      Object.entries(changes).forEach(([key, value]) => {
+        if (value === null || value === undefined) {
+          newParams.delete(key);
+        } else {
+          newParams.set(key, String(value));
+        }
+      });
+
+      return newParams;
+    });
+  }, [getUrlFromState, setParams, values]);
+
   /**
    * Get state changes needed to sync URL parameters to internal state.
    */
@@ -359,34 +380,12 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
     const changes: Partial<SearchValues> = {};
 
     PARAM_MAPPINGS.forEach(([urlKey, stateKey]) => {
-      const urlValue = params.has(urlKey) ? params.get(urlKey) : (DEFAULT_VALUES[stateKey] ?? null);
+      const urlValue = params.has(urlKey) ? params.get(urlKey) : (DEFAULT_VALUES[stateKey] ?? undefined);
 
       if (urlValue !== values[stateKey]) {
         (changes as any)[stateKey] = urlValue;
       }
     });
-    const isCustomSpan = params.get('span') === 'date.range.custom';
-
-    if (isCustomSpan) {
-      const start = params.get('start_date');
-      const end = params.get('end_date');
-
-      if (start !== values.startDate) {
-        changes.startDate = start;
-      }
-
-      if (end !== values.endDate) {
-        changes.endDate = end;
-      }
-    } else {
-      if (values.startDate !== null) {
-        changes.startDate = null;
-      }
-
-      if (values.endDate !== null) {
-        changes.endDate = null;
-      }
-    }
 
     // Handle filters: compare arrays with isEqual
     const urlFilters = uniq(params.getAll('filter'));
@@ -419,13 +418,14 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
   /**
    * Effect to synchronize the context's state with the address bar
    */
+  const lastUpdateSource = useRef<'url' | 'state' | null>(null);
   useEffect(() => {
     const changes = getUrlFromState();
 
     if (isEmpty(changes)) {
       return;
     }
-
+    lastUpdateSource.current = 'state';
     setParams(
       _params => {
         // Build fresh URLSearchParams from existing params
@@ -455,18 +455,24 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [values]);
-
+  const syncLock = useRef(false);
   useEffect(() => {
+    if (syncLock.current) return; // IMPORTANT GUARD
+
     const changes = getStateFromUrl();
 
     if (isEmpty(changes)) {
       return;
     }
+    syncLock.current = true;
 
     _setValues(_current => ({
       ..._current,
       ...changes
     }));
+    requestAnimationFrame(() => {
+      lastUpdateSource.current = null;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search, location.pathname, routeParams.id]);
 
