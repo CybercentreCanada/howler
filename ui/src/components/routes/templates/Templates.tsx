@@ -23,7 +23,7 @@ const TemplatesBase: FC = () => {
   const navigate = useNavigate();
   const { dispatchApi } = useMyApi();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { load } = useContext<TuiListMethodsState<Template>>(TuiListMethodContext);
+  const { load, remove } = useContext<TuiListMethodsState<Template>>(TuiListMethodContext);
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
   const { analytics } = useContext(AnalyticContext);
@@ -126,11 +126,24 @@ const TemplatesBase: FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offset]);
 
+  const removeTemplate = useCallback(
+    async (templateId: string) => {
+      await dispatchApi(api.template.del(templateId), {
+        logError: false,
+        showError: true,
+        throwError: false
+      });
+
+      remove(templateId);
+    },
+    [dispatchApi, remove]
+  );
+
   const renderer = useCallback(
     (item: Template, error?: boolean, className?: string) => (
-      <TemplateCard template={item} error={error} className={className} />
+      <TemplateCard template={item} error={error} onRemove={removeTemplate} className={className} />
     ),
-    []
+    [removeTemplate]
   );
 
   return (
@@ -174,13 +187,13 @@ const TemplatesBase: FC = () => {
         renderer(item.item, !!item.disabled, classRenderer())
       }
       response={response}
-      onSelect={(item: TuiListItem<Template>) =>
+      onSelect={(item: TuiListItem<Template>) => {
         navigate(
           `/templates/view?type=${item.item.type}&analytic=${item.item.analytic}${
             item.item.detection ? '&detection=' + item.item.detection : ''
           }`
-        )
-      }
+        );
+      }}
       onCreate={() => navigate('/templates/view')}
       createPrompt="route.templates.create"
       searchPrompt="route.templates.manager.search"

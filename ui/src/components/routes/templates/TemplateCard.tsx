@@ -1,30 +1,17 @@
 import { Language, Lock, Person, ReportProblem } from '@mui/icons-material';
 import { Box, Button, Card, Divider, Stack, Tooltip, Typography } from '@mui/material';
-import api from 'api';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import ConfirmDeleteModal from 'components/elements/display/modals/ConfirmDeleteModal';
-import useMyApi from 'components/hooks/useMyApi';
 import type { Template } from 'models/entities/generated/Template';
 import { useContext, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 
-const DeleteTemplateModal: FC<{ templateId: string }> = ({ templateId }) => {
-  const { dispatchApi } = useMyApi();
+const DeleteTemplateModal: FC<{ onRemove?: () => void }> = ({ onRemove }) => {
   const { t } = useTranslation();
-
-  const onDelete = async () => {
-    await dispatchApi(api.template.del(templateId), {
-      logError: false,
-      showError: true,
-      throwError: false
-    });
-
-    window.location.reload();
-  };
 
   return (
     <ConfirmDeleteModal
-      onConfirm={onDelete}
+      onConfirm={onRemove}
       title={t('route.templates.manager.error.modal.title')}
       description={t('route.templates.manager.error.modal.description')}
       preferDelete
@@ -32,11 +19,12 @@ const DeleteTemplateModal: FC<{ templateId: string }> = ({ templateId }) => {
   );
 };
 
-const TemplateCard: FC<{ template: Template; error?: boolean; className?: string }> = ({
-  template,
-  error,
-  className
-}) => {
+const TemplateCard: FC<{
+  template: Template;
+  onRemove?: (templateId: string) => void;
+  error?: boolean;
+  className?: string;
+}> = ({ template, onRemove, error, className }) => {
   const { t } = useTranslation();
   const { showModal } = useContext(ModalContext);
 
@@ -70,7 +58,9 @@ const TemplateCard: FC<{ template: Template; error?: boolean; className?: string
                 <Button
                   startIcon={<ReportProblem />}
                   color="warning"
-                  onClick={() => showModal(<DeleteTemplateModal templateId={template.template_id} />)}
+                  onClick={() =>
+                    showModal(<DeleteTemplateModal onRemove={() => onRemove && onRemove(template.template_id)} />)
+                  }
                 >
                   {t('route.templates.manager.error.message')}
                 </Button>
