@@ -28,6 +28,7 @@ const INTERNAL_FUNCTIONS = [
   'addLead',
   'addPivot',
   'addUserMenuItem',
+  'addAppBarItem',
   'addAdminMenuItem',
   'addRoute',
   'addSitemap',
@@ -132,6 +133,15 @@ abstract class HowlerPlugin implements IPlugin {
       route: route,
       icon: icon
     });
+  }
+
+  /**
+   * Adds a single element to the App Bar (i.e., top navigation bar).
+   * Items are added in the center of the App Bar.
+   * @param element JSX Element to be added to the App Bar
+   */
+  addAppBarItem(element: JSX.Element) {
+    howlerPluginStore.addAppBarItem(this.name, element);
   }
 
   /**

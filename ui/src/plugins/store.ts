@@ -29,6 +29,7 @@ class HowlerPluginStore {
   private _pivotFormats: string[] = [];
   private _operations: string[] = [];
   private _userMenuItems: { i18nKey: string; route: string; icon: JSX.Element }[] = [];
+  private _appBarItems: { key: string; element: JSX.Element }[] = [];
   private _adminMenuItems: { i18nKey: string; route: string; icon: JSX.Element }[] = [];
   private _mainMenuOperations: { operation: string; targetId: string; item: AppLeftNavElement }[] = [];
   private _routes: { path: string; element: JSX.Element; children?: [] }[] = [];
@@ -77,6 +78,10 @@ class HowlerPluginStore {
 
   addUserMenuItem(menuItem: { i18nKey: string; route: string; icon: JSX.Element }) {
     this._userMenuItems.push(menuItem);
+  }
+
+  addAppBarItem(key: string, element: JSX.Element) {
+    this._appBarItems.push({ key, element });
   }
 
   addAdminMenuItem(menuItem: { i18nKey: string; route: string; icon: JSX.Element }) {
@@ -132,6 +137,10 @@ class HowlerPluginStore {
 
   public get adminMenuItems() {
     return this._adminMenuItems;
+  }
+
+  public get appBarItems() {
+    return this._appBarItems;
   }
 
   public get mainMenuOperations() {
