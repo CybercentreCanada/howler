@@ -8,7 +8,8 @@ import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-
+// HERE are the thing to modify. I will test with the other stuff and implement it here. I will need to verify the JSON
+// Object
 const HitLinks: FC<{ hit?: Hit; analytic?: Analytic; dossiers: Dossier[] }> = ({ hit, analytic, dossiers = [] }) => {
   const { i18n } = useTranslation();
 
