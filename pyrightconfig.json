@@ -63,6 +63,7 @@
             "reportOperatorIssue": "none",
             "reportOptionalIterable": "none",
             "reportOptionalMemberAccess": "none",
+            "reportOptionalOperand": "none",
             "reportOptionalSubscript": "none",
             "reportPossiblyUnboundVariable": "none",
             "reportReturnType": "none",
