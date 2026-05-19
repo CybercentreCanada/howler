@@ -7,7 +7,7 @@ import type { Analytic } from 'models/entities/generated/Analytic';
 import type { FC } from 'react';
 import { memo, useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import Assessment from '../analytics/widgets/Assessment';
 import Created from '../analytics/widgets/Created';
 import Detection from '../analytics/widgets/Detection';
@@ -24,7 +24,7 @@ const AnalyticCard: FC<AnalyticSettings> = ({ analyticId, type }) => {
   const [analytic, setAnalytic] = useState<Analytic>(null);
   const { getAnalyticFromId } = useContext(AnalyticContext);
 
-  const chartRef = useRef<Chart>();
+  const chartRef = useRef<Chart>(undefined);
 
   useEffect(() => {
     void getAnalyticFromId(analyticId).then(setAnalytic);

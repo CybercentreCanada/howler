@@ -1,7 +1,8 @@
 /* eslint-disable no-console */
+import type { LeftNavMenuItem } from '@tui/core';
 import type { Hit } from 'models/entities/generated/Hit';
+import type { ReactElement } from 'react';
 import { createPluginStore, Event } from 'react-pluggable';
-import type { AppLeftNavElement } from '../commons/components/app/AppConfigs';
 import type HowlerPlugin from './HowlerPlugin';
 
 export class HitEvent extends Event {
@@ -14,11 +15,23 @@ export class HitEvent extends Event {
   }
 }
 
-export enum MainMenuInsertOperation {
-  Insert = 'INSERT',
-  InsertAfter = 'AFTER',
-  InsertBefore = 'BEFORE'
-}
+export type MainMenuOperation =
+  | { type: 'append'; parentId: string; item: LeftNavMenuItem }
+  | { type: 'insertRelative'; anchorId: string; position: 'before' | 'after'; item: LeftNavMenuItem }
+  | { type: 'remove'; targetId: string };
+
+export type MainMenuItemOperation = Exclude<MainMenuOperation, { type: 'remove' }>;
+
+export type SiteMapRoute = {
+  path: string;
+  title: string;
+  icon?: ReactElement;
+  isRoot?: boolean;
+  isLeaf?: boolean;
+  excluded?: boolean;
+  breadcrumbs?: string[];
+  textWidth?: number;
+};
 
 class HowlerPluginStore {
   private _pluginStore = createPluginStore();
@@ -28,20 +41,11 @@ class HowlerPluginStore {
   private _leadFormats: string[] = [];
   private _pivotFormats: string[] = [];
   private _operations: string[] = [];
-  private _userMenuItems: { i18nKey: string; route: string; icon: JSX.Element }[] = [];
-  private _adminMenuItems: { i18nKey: string; route: string; icon: JSX.Element }[] = [];
-  private _mainMenuOperations: { operation: string; targetId: string; item: AppLeftNavElement }[] = [];
-  private _routes: { path: string; element: JSX.Element; children?: [] }[] = [];
-  private _sitemaps: {
-    path: string;
-    title: string;
-    icon?: JSX.Element;
-    isRoot?: boolean;
-    isLeaf?: boolean;
-    excluded?: boolean;
-    breadcrumbs?: string[];
-    textWidth?: number;
-  }[] = [];
+  private _userMenuItems: { i18nKey: string; route: string; icon: ReactElement }[] = [];
+  private _adminMenuItems: { i18nKey: string; route: string; icon: ReactElement }[] = [];
+  private _mainMenuOperations: MainMenuOperation[] = [];
+  private _routes: { path: string; element: ReactElement; children?: [] }[] = [];
+  private _sitemaps: SiteMapRoute[] = [];
 
   install(plugin: HowlerPlugin) {
     if (this.plugins.includes(plugin.name)) {
@@ -75,32 +79,23 @@ class HowlerPluginStore {
     return true;
   }
 
-  addUserMenuItem(menuItem: { i18nKey: string; route: string; icon: JSX.Element }) {
+  addUserMenuItem(menuItem: { i18nKey: string; route: string; icon: ReactElement }) {
     this._userMenuItems.push(menuItem);
   }
 
-  addAdminMenuItem(menuItem: { i18nKey: string; route: string; icon: JSX.Element }) {
+  addAdminMenuItem(menuItem: { i18nKey: string; route: string; icon: ReactElement }) {
     this._adminMenuItems.push(menuItem);
   }
 
-  addMainMenuItem(menuOperation: { operation: string; targetId: string; item: AppLeftNavElement }) {
+  addMainMenuOperation(menuOperation: MainMenuOperation) {
     this._mainMenuOperations.push(menuOperation);
   }
 
-  addRoute(route: { path: string; element: JSX.Element; children?: [] }) {
+  addRoute(route: { path: string; element: ReactElement; children?: [] }) {
     this._routes.push(route);
   }
 
-  addSitemap(sitemap: {
-    path: string;
-    title: string;
-    icon?: JSX.Element;
-    isRoot?: boolean;
-    isLeaf?: boolean;
-    excluded?: boolean;
-    breadcrumbs?: string[];
-    textWidth?: number;
-  }) {
+  addSitemap(sitemap: SiteMapRoute) {
     this._sitemaps.push(sitemap);
   }
 
@@ -134,8 +129,8 @@ class HowlerPluginStore {
     return this._adminMenuItems;
   }
 
-  public get mainMenuOperations() {
-    return this._mainMenuOperations;
+  public get mainMenuOperations(): readonly MainMenuOperation[] {
+    return [...this._mainMenuOperations];
   }
 
   public get routes() {

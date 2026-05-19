@@ -37,27 +37,23 @@ const QuerySettings: FC<{ verticalSorters?: boolean; boxSx?: SxProps }> = ({ box
   return (
     <Box sx={boxSx ?? { position: 'relative', maxWidth: '1200px' }}>
       <Stack direction="row" spacing={1}>
-        <Grid
-          container
-          spacing={1}
-          sx={theme => ({ ml: `${theme.spacing(-1)} !important`, mt: `${theme.spacing(-1)} !important` })}
-        >
-          <Grid item>
+        <Grid container spacing={1}>
+          <Grid>
             <IndexPicker />
           </Grid>
-          <Grid item>
+          <Grid>
             <HitSort />
           </Grid>
-          <Grid item>
+          <Grid>
             <SearchSpan />
           </Grid>
           {currentViews?.map((view, id) => (
-            <Grid item key={view}>
+            <Grid key={view}>
               <ViewLink id={id} viewId={view} />
             </Grid>
           ))}
           {filters?.map((filter, id) => (
-            <Grid item key={filter}>
+            <Grid key={filter}>
               <HitFilter id={id} value={filter} />
             </Grid>
           ))}

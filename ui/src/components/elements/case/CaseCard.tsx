@@ -99,7 +99,7 @@ const CaseCard: FC<{
             sx={{ ml: `${theme.spacing(-0.5)} !important`, mt: `${theme.spacing(0.5)} !important` }}
           >
             {_case.targets?.map(indicator => (
-              <Grid key={indicator} item>
+              <Grid key={indicator}>
                 <PluginChip
                   size="small"
                   color="primary"
@@ -112,25 +112,25 @@ const CaseCard: FC<{
             ))}
 
             {_case.targets?.length > 0 && (_case.indicators?.length > 0 || _case.threats?.length > 0) && (
-              <Grid item>
+              <Grid>
                 <Divider orientation="vertical" />
               </Grid>
             )}
 
             {_case.indicators?.map(indicator => (
-              <Grid item key={indicator}>
+              <Grid key={indicator}>
                 <PluginChip variant="outlined" context="casecard" value={indicator} label={indicator} />
               </Grid>
             ))}
 
             {_case.indicators?.length > 0 && _case.threats?.length > 0 && (
-              <Grid item>
+              <Grid>
                 <Divider orientation="vertical" />
               </Grid>
             )}
 
             {_case.threats?.map(indicator => (
-              <Grid item key={indicator}>
+              <Grid key={indicator}>
                 <PluginChip
                   size="small"
                   color="warning"

@@ -11,7 +11,7 @@ import {
   useTheme
 } from '@mui/material';
 import { type HTMLAttributeAnchorTarget, type ReactNode, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { isMuiButtonColor, type MuiButtonColorType } from '.';
 
 export type CustomIconButtonProps = Omit<IconButtonProps, 'color'> & {

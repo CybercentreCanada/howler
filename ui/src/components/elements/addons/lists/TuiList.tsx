@@ -1,4 +1,4 @@
-import AppListEmpty from 'commons/components/display/AppListEmpty';
+import { AppListEmpty } from '@tui/core';
 import { memo } from 'react';
 import type { TuiListItemOnSelect, TuiListItemRenderer } from '.';
 import TuiListBase from './TuiListBase';

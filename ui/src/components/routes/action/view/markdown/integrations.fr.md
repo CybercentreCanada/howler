@@ -7,7 +7,7 @@ Les plugins Howler permettent d’étendre le comportement de l’interface et l
 ## Fonctionnement du système de plugins
 
 - `HowlerPlugin` est la classe de base qui définit les points d’extension.
-- `howlerPluginStore` conserve l’état global (plugins installés, formats de lead, formats de pivot, opérations, routes, menus, sitemap).
+- `howlerPluginStore` conserve l’état global (plugins installés, formats de lead, formats de pivot, opérations, routes, menus).
 - À l’activation, un plugin enregistre des fonctions nommées dans le magasin de plugins.
 - L’application exécute ensuite ces fonctions via `pluginStore.executeFunction(...)` à des endroits précis.
 
@@ -32,7 +32,7 @@ D’après `HowlerPlugin.ts` et les usages du store, un plugin peut fournir :
   - insertions/séparateurs dans le menu principal
 - **Routage/navigation** :
   - routes
-  - entrées de sitemap et logique de fil d’Ariane
+  - logique de fil d’Ariane via `handle.breadcrumb` des routes
 - **Points d’extension globaux** :
   - `provider()` pour injecter un contexte global
   - `setup()` au démarrage

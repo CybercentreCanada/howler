@@ -1,5 +1,5 @@
+import { PageCenter } from '@tui/core';
 import { Stack, Tab, Tabs } from '@mui/material';
-import PageCenter from 'commons/components/pages/PageCenter';
 import Markdown from 'components/elements/display/Markdown';
 import { isEmpty } from 'lodash-es';
 import howlerPluginStore from 'plugins/store';
@@ -7,7 +7,7 @@ import type { FC } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 import { default as INTEGRATIONS_EN, default as INTEGRATIONS_FR } from './markdown/integrations.en.md';
 
 const Integrations: FC = () => {

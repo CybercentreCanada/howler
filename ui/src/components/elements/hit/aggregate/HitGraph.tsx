@@ -64,7 +64,7 @@ const HitGraph: FC = () => {
   const response = useContextSelector(RecordSearchContext, ctx => ctx.response);
   const getFilters = useContextSelector(RecordSearchContext, ctx => ctx.getFilters);
 
-  const chartRef = useRef<Chart<'scatter'>>();
+  const chartRef = useRef<Chart<'scatter'>>(undefined);
 
   const [loading, setLoading] = useState(false);
   const [filterField, setFilterField] = useState<string>(FILTER_FIELDS[0]);

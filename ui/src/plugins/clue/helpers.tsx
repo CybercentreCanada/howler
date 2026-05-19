@@ -37,19 +37,13 @@ interface ClueCell {
 
 const MarkdownTypography: FC<EnrichedTypographyProps & TypographyProps> = ({ type, value, ...props }) => {
   const { t } = useTranslation();
+  const guessType = useClueEnrichSelector(ctx => ctx?.guessType);
+  let enrichedType = type;
 
   try {
-    const guessType = useClueEnrichSelector(ctx => ctx.guessType);
-
     if (!type || type?.toString().toLowerCase() === 'guess') {
-      type = guessType(value.toString());
+      enrichedType = guessType?.(value.toString());
     }
-
-    if (!type) {
-      return <span>{value}</span>;
-    }
-
-    return <EnrichedTypography {...props} type={type} value={value} />;
   } catch (err) {
     return (
       <Stack>
@@ -61,6 +55,12 @@ const MarkdownTypography: FC<EnrichedTypographyProps & TypographyProps> = ({ typ
       </Stack>
     );
   }
+
+  if (!enrichedType) {
+    return <span>{value}</span>;
+  }
+
+  return <EnrichedTypography {...props} type={enrichedType} value={value} />;
 };
 
 const ClueGroup: FC<PropsWithChildren<{ type: string; enabled?: boolean }>> = props => {

@@ -32,7 +32,7 @@ const SourceAggregate: FC<{ case: Case }> = ({ case: providedCase }) => {
   return (
     <Grid container spacing={1}>
       {analytics.map(_analytic => (
-        <Grid key={_analytic} item>
+        <Grid key={_analytic}>
           <Chip size="small" label={_analytic} />
         </Grid>
       ))}

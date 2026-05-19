@@ -1,7 +1,7 @@
+import { useAppUser } from '@tui/core';
 import { Article } from '@mui/icons-material';
 import { Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
 import api from 'api';
-import { useAppUser } from 'commons/components/app/hooks';
 import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
 import SearchResponseProvider, {
   SearchResponseContext,
@@ -17,7 +17,7 @@ import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Template } from 'models/entities/generated/Template';
 import { useCallback, useContext, useEffect, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router';
 import { StorageKey } from 'utils/constants';
 import TemplateCard from './TemplateCard';
 
@@ -192,7 +192,7 @@ const TemplatesBase: FC = () => {
       }
       response={response}
       onSelect={(item: TuiListItem<Template>) => {
-        navigate(
+        void navigate(
           `/templates/view?type=${item.item.type}&analytic=${item.item.analytic}${
             item.item.detection ? '&detection=' + item.item.detection : ''
           }`

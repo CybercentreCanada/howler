@@ -1,3 +1,4 @@
+import { PageCenter, AppInfoPanel } from '@tui/core';
 import {
   Autocomplete,
   Button,
@@ -12,13 +13,11 @@ import {
   Tooltip
 } from '@mui/material';
 import api from 'api';
-import PageCenter from 'commons/components/pages/PageCenter';
 import TemplateEditor from 'components/routes/templates/TemplateEditor';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Check, Delete, SsidChart } from '@mui/icons-material';
-import AppInfoPanel from 'commons/components/display/AppInfoPanel';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import { DEFAULT_FIELDS } from 'components/elements/hit/HitOutline';
 import useMyApi from 'components/hooks/useMyApi';
@@ -27,7 +26,7 @@ import isEqual from 'lodash-es/isEqual';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Template } from 'models/entities/generated/Template';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 import hitsData from 'utils/hit.json';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
 

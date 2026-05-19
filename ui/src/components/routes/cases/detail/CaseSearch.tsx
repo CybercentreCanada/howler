@@ -1,8 +1,8 @@
+import { PageCenter } from '@tui/core';
 import { Box, Skeleton, Stack, Typography } from '@mui/material';
 import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
 import type { FuzzySearchItem } from 'api/v2/fuzzy';
-import PageCenter from 'commons/components/pages/PageCenter';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import SearchPagination from 'components/elements/addons/search/SearchPagination';
 import SearchTotal from 'components/elements/addons/search/SearchTotal';
@@ -15,7 +15,7 @@ import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import type { Case } from 'models/entities/generated/Case';
 import type { FC } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
 import { isCase, isEvent, isHit } from 'utils/typeUtils';

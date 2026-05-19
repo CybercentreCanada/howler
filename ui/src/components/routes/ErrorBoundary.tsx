@@ -1,7 +1,7 @@
 import { ExpandMore } from '@mui/icons-material';
 import { Accordion, AccordionDetails, AccordionSummary, Box, Typography } from '@mui/material';
 import React, { type PropsWithChildren } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router';
 import ErrorOccured from './ErrorOccured';
 
 type ErrorBoundaryProps = PropsWithChildren<{

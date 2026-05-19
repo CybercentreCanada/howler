@@ -3,7 +3,7 @@ import { IconButton, Tooltip } from '@mui/material';
 import type { FC } from 'react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router';
 
 const DocumentationButton: FC = () => {
   const { t } = useTranslation();

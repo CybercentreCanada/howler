@@ -1,5 +1,5 @@
+import type { AppSearchItemRendererOption } from '@tui/core';
 import { Box, Chip, Divider, Stack, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
-import type { AppSearchItemRendererOption } from 'commons/components/app/AppSearchService';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { FC } from 'react';
 import { memo, useMemo } from 'react';

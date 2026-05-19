@@ -1,6 +1,6 @@
+import { useAppUser } from '@tui/core';
 import api from 'api';
 import type { HitTransitionBody } from 'api/hit';
-import { useAppUser } from 'commons/components/app/hooks';
 import AssignUserDrawer from 'components/app/drawers/AssignUserDrawer';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { AppDrawerContext } from 'components/app/providers/AppDrawerProvider';
@@ -252,6 +252,7 @@ const useHitActions = (_hits: Hit | Hit[]) => {
         option =>
           ({
             ...option,
+
             actionFunction: () => {
               if (!loading) {
                 void manage(option.name.toLowerCase());

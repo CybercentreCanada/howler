@@ -35,7 +35,7 @@ import type { FC } from 'react';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
 import { getUserList } from 'utils/recordFunctions';
 import { validateRegex } from 'utils/stringUtils';

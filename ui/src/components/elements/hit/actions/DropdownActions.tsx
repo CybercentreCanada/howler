@@ -40,13 +40,13 @@ const DropdownActions: FC<DropdownActionProps> = ({
   if (!config.config.lookups) {
     return (
       <Grid container justifyContent="end" spacing={4} p={2}>
-        <Grid item sm="auto" xs={12}>
+        <Grid size={{ sm: 'auto', xs: 12 }}>
           <Skeleton variant="rounded" width="200px" height={orientation === 'horizontal' ? '40px' : '56px'}></Skeleton>
         </Grid>
-        <Grid item sm="auto" xs={12}>
+        <Grid size={{ sm: 'auto', xs: 12 }}>
           <Skeleton variant="rounded" width="200px" height={orientation === 'horizontal' ? '40px' : '56px'}></Skeleton>
         </Grid>
-        <Grid item sm="auto" xs={12}>
+        <Grid size={{ sm: 'auto', xs: 12 }}>
           <Skeleton variant="rounded" width="200px" height={orientation === 'horizontal' ? '40px' : '56px'}></Skeleton>
         </Grid>
       </Grid>
@@ -61,7 +61,7 @@ const DropdownActions: FC<DropdownActionProps> = ({
       p={2}
       sx={[isHorizontal && { [`& .${formControlClasses.root}`]: { minWidth: '140px' } }]}
     >
-      <Grid item sm={!isHorizontal ? true : 'auto'} xs={12}>
+      <Grid size={{ sm: !isHorizontal ? 'grow' : 'auto', xs: 12 }}>
         <FormControl disabled={loading} fullWidth>
           <InputLabel id="transition-label" htmlFor="transition">
             {t('hit.details.actions.action')}
@@ -86,7 +86,7 @@ const DropdownActions: FC<DropdownActionProps> = ({
           </Select>
         </FormControl>
       </Grid>
-      <Grid item sm={!isHorizontal ? true : 'auto'} xs={12}>
+      <Grid size={{ sm: !isHorizontal ? 'grow' : 'auto', xs: 12 }}>
         <FormControl disabled={loading || !actions.some(action => action.type === 'assessment')} fullWidth>
           <InputLabel id="assess-label" htmlFor="assess">
             {t('hit.details.actions.assessment')}
@@ -125,7 +125,7 @@ const DropdownActions: FC<DropdownActionProps> = ({
           </Select>
         </FormControl>
       </Grid>
-      <Grid item sm={!isHorizontal ? true : 'auto'} xs={12}>
+      <Grid size={{ sm: !isHorizontal ? 'grow' : 'auto', xs: 12 }}>
         <FormControl disabled={loading || !actions.some(action => action.type === 'vote')} fullWidth>
           <InputLabel id="vote-label" htmlFor="vote">
             {t('hit.details.actions.vote')}

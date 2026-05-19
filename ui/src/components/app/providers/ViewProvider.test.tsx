@@ -14,12 +14,12 @@ let mockUser = {
 setupReactRouterMock();
 const mockLocalStorage = setupLocalStorageMock();
 
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 
 vi.mocked(useSearchParams).mockReturnValue([new URLSearchParams('?view=searched_view_id')] as any);
 
 vi.mock('api', { spy: true });
-vi.mock('commons/components/app/hooks', () => ({
+vi.mock('@tui/core', () => ({
   useAppUser: () => ({
     user: mockUser,
     setUser: _user => (mockUser = _user)

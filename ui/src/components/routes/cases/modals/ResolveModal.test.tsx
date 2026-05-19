@@ -8,7 +8,7 @@ import i18n from 'i18n';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { FC, PropsWithChildren } from 'react';
 import { I18nextProvider } from 'react-i18next';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { createMockCase, createMockHit } from 'tests/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ResolveModal from './ResolveModal';
@@ -57,10 +57,6 @@ vi.mock('api', () => ({
   }
 }));
 
-vi.mock('commons/components/app/hooks/useAppUser', () => ({
-  useAppUser: () => ({ user: { username: 'test-user' } })
-}));
-
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
@@ -84,7 +80,13 @@ const HIT_RESOLVED = makeResolvedHit('hit-resolved');
 const caseWithHits = (hitIds: string[]) =>
   createMockCase({
     case_id: 'case-1',
-    items: hitIds.map(id => ({ type: 'hit', value: id }) as any)
+    items: hitIds.map(
+      id =>
+        ({
+          type: 'hit',
+          value: id
+        }) as any
+    )
   });
 
 // ---------------------------------------------------------------------------

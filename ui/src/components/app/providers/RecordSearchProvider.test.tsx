@@ -14,7 +14,7 @@ vi.mock('api', { spy: true });
 setupContextSelectorMock();
 const mockLocalStorage = setupLocalStorageMock();
 
-import { useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useParams, useSearchParams } from 'react-router';
 
 const mockSetParams = vi.fn();
 const mockParams = vi.mocked(useParams);

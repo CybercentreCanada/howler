@@ -9,10 +9,10 @@ import { createMockDossier } from 'tests/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import DossierCard from './DossierCard';
 
-// Mock react-router-dom
+// Mock react-router
 const mockNavigate = vi.hoisted(() => vi.fn());
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
+vi.mock('react-router', async () => {
+  const actual = await vi.importActual('react-router');
   return {
     ...actual,
     useNavigate: () => mockNavigate,

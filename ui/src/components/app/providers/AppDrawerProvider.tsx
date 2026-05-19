@@ -1,5 +1,5 @@
+import { PageContent } from '@tui/core';
 import { Drawer, Typography } from '@mui/material';
-import PageContent from 'commons/components/pages/PageContent';
 import type { FC, PropsWithChildren } from 'react';
 import { createContext, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

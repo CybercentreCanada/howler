@@ -1,3 +1,4 @@
+import { PageCenter } from '@tui/core';
 import { OpenInNew } from '@mui/icons-material';
 import {
   Autocomplete,
@@ -13,7 +14,6 @@ import {
   useTheme
 } from '@mui/material';
 import api from 'api';
-import PageCenter from 'commons/components/pages/PageCenter';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { UserListContext } from 'components/app/providers/UserListProvider';
 import UserList from 'components/elements/UserList';
@@ -22,7 +22,7 @@ import useMyApi from 'components/hooks/useMyApi';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router';
 import AnalyticComments from './AnalyticComments';
 import AnalyticHitComments from './AnalyticHitComments';
 import AnalyticNotebooks from './AnalyticNotebooks';
@@ -182,7 +182,7 @@ const AnalyticDetails = () => {
           )}
         </Stack>
         <Grid container>
-          <Grid item xs={12} md={9}>
+          <Grid size={{ xs: 12, md: 9 }}>
             <Tabs value={tab} onChange={(_, _tab) => setTab(_tab)}>
               <Tab label={t('route.analytics.tab.overview')} value="overview" />
               <Tab label={t('route.analytics.tab.comments')} value="comments" />
@@ -197,7 +197,7 @@ const AnalyticDetails = () => {
           </Grid>
 
           {['comments', 'hit_comments'].includes(tab) && (
-            <Grid item xs={12} md={3}>
+            <Grid size={{ xs: 12, md: 3 }}>
               <Autocomplete
                 options={analytic?.detections ?? []}
                 renderInput={param => <TextField {...param} label={t('route.analytics.dropdown.detection')} />}

@@ -48,7 +48,7 @@ vi.mock('components/app/providers/RecordProvider', async () => ({
   RecordContext: createContext({ records: mockRecords.current })
 }));
 
-import { MemoryRouter, useParams } from 'react-router-dom';
+import { MemoryRouter, useParams } from 'react-router';
 import CaseFolder from './CaseFolder';
 
 const makeCase = (id: string, items: Item[] = []): Case =>

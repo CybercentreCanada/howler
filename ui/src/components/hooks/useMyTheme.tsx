@@ -1,15 +1,18 @@
-import type { AppThemeConfigs } from 'commons/components/app/AppConfigs';
+import type { AppThemeConfigs } from '@tui/core';
 
 const DEFAULT_THEME: AppThemeConfigs = {
-  components: {
-    MuiChip: {
-      defaultProps: {
-        size: 'small'
+  global: {
+    components: {
+      MuiChip: {
+        defaultProps: {
+          size: 'small'
+        }
       }
     }
   },
-  palette: {
-    dark: {
+  dark: {
+    palette: {
+      mode: 'dark',
       background: {
         default: '#181818',
         paper: '#181818'
@@ -20,8 +23,10 @@ const DEFAULT_THEME: AppThemeConfigs = {
       secondary: {
         main: '#C0DEEC'
       }
-    },
-    light: {
+    }
+  },
+  light: {
+    palette: {
       primary: {
         main: '#0062BF'
       },

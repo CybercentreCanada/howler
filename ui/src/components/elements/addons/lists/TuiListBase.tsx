@@ -1,5 +1,5 @@
 import { emphasize, styled } from '@mui/material';
-import { useAppBar, useAppBarHeight, useAppLayout } from 'commons/components/app/hooks';
+import { useAppBar, useAppBarHeight, useAppLayout } from '@tui/core';
 import useTuiListKeyboard from 'components/elements/addons/lists/hooks/useTuiListKeyboard';
 import { memo, useCallback, useContext, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
 import type { TuiListItem, TuiListItemOnSelect } from '.';
@@ -56,7 +56,7 @@ type TuiListBaseProps<T> = {
 };
 
 const TuiListBase = <T,>({ keyboard = false, onSelect, children }: TuiListBaseProps<T>) => {
-  const listEl = useRef<HTMLDivElement>();
+  const listEl = useRef<HTMLDivElement>(undefined);
   const appbar = useAppBar();
   const appbarHeight = useAppBarHeight();
   const layout = useAppLayout();

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { Case } from 'models/entities/generated/Case';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { createMockCase } from 'tests/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -20,8 +20,8 @@ vi.mock('react-i18next', () => ({
   })
 }));
 
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
+vi.mock('react-router', async () => {
+  const actual = await vi.importActual('react-router');
   return {
     ...actual,
     Link: ({ to, children, ...props }: any) => (
