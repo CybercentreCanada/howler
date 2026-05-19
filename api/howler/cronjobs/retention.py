@@ -50,7 +50,7 @@ def _find_analytics_with_hits(ds: HowlerDatastore) -> list[str]:
     if total_analytics:
         matched_analytics = ds.hit.search(
             "howler.id:*",
-            aggs=[
+            aggregations=[
                 (
                     "matched_analytics",
                     {

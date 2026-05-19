@@ -211,7 +211,7 @@ class ESCollection(Generic[ModelType]):
         "sort": DEFAULT_SORT,
         "df": None,
         "script_fields": [],
-        "aggs": None,
+        "aggregations": None,
     }
     IGNORE_ENSURE_COLLECTION: bool = False
     ENSURE_COLLECTION_WARNED: bool = False
@@ -1517,9 +1517,9 @@ class ESCollection(Generic[ModelType]):
             }
 
         # Add any arbitrary aggregations
-        if parsed_values["aggs"]:
+        if parsed_values["aggregations"]:
             query_body.setdefault("aggregations", {})
-            for agg_name, agg_args in parsed_values["aggs"]:
+            for agg_name, agg_args in parsed_values["aggregations"]:
                 query_body["aggregations"][f"{self.CUSTOM_AGG_PREFIX}{agg_name}"] = agg_args
 
         try:
@@ -1562,7 +1562,7 @@ class ESCollection(Generic[ModelType]):
         self,
         query: str | None,
         as_obj: Literal[True] = True,
-        aggs: None = None,
+        aggregations: None = None,
         offset: int = 0,
         rows: int | None = None,
         sort: typing.Any = None,
@@ -1581,7 +1581,7 @@ class ESCollection(Generic[ModelType]):
         self,
         query: str | None,
         as_obj: Literal[False],
-        aggs: None = None,
+        aggregations: None = None,
         offset: int = 0,
         rows: int | None = None,
         sort: typing.Any = None,
@@ -1601,7 +1601,7 @@ class ESCollection(Generic[ModelType]):
         query: str | None,
         *,
         as_obj: Literal[True] = True,
-        aggs: list[tuple[str, dict]],
+        aggregations: list[tuple[str, dict]],
         offset: int = 0,
         rows: int | None = None,
         sort: typing.Any = None,
@@ -1621,7 +1621,7 @@ class ESCollection(Generic[ModelType]):
         query: str | None,
         *,
         as_obj: Literal[False],
-        aggs: list[tuple[str, dict]],
+        aggregations: list[tuple[str, dict]],
         offset: int = 0,
         rows: int | None = None,
         sort: typing.Any = None,
@@ -1639,7 +1639,7 @@ class ESCollection(Generic[ModelType]):
         self,
         query,
         as_obj=True,
-        aggs=None,
+        aggregations=None,
         offset=0,
         rows=None,
         sort=None,
@@ -1670,7 +1670,7 @@ class ESCollection(Generic[ModelType]):
         If aggregations are provided the search result will include an additional field::
 
             {
-                "agg_result": {         # Dictionary where the keys are the keys of the `aggs` parameter
+                "agg_result": {         # Dictionary where the keys are the keys of the `aggregations` parameter
                     "agg_name": {...}   #   and the values are the results of the aggregations
                 }
             }
@@ -1688,7 +1688,7 @@ class ESCollection(Generic[ModelType]):
         :param timeout: maximum time of execution
         :param filters: additional queries to run on the original query to reduce the scope
         :param access_control: access control parameters to limiti the scope of the query
-        :param aggs: optional list of arbitrary aggregations to run alongside the query
+        :param aggregations: optional list of arbitrary aggregations to run alongside the query
             structured the same way as the es rest query aggs field
         :return: a search result object
         """
@@ -1732,8 +1732,8 @@ class ESCollection(Generic[ModelType]):
         if script_fields:
             args.append(("script_fields", script_fields))
 
-        if aggs:
-            args.append(("aggs", aggs))
+        if aggregations:
+            args.append(("aggregations", aggregations))
 
         result = self._search(
             args,
@@ -1750,7 +1750,7 @@ class ESCollection(Generic[ModelType]):
             "items": [self._format_output(doc, field_list, as_obj=as_obj) for doc in result["hits"]["hits"]],
         }
 
-        if aggs:
+        if aggregations:
             agg_ret_data: AggSearchResult = {
                 "offset": search_ret_data["offset"],
                 "rows": search_ret_data["rows"],

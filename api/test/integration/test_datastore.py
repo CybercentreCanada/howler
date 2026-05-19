@@ -556,7 +556,7 @@ def _test_agg_search(c: ESCollection):
         ("cardinality_agg_name", cardinality_agg),
     ]
 
-    result = c.search("id:*", aggs=aggs)
+    result = c.search("id:*", aggregations=aggs)
 
     assert "agg_result" in result
     assert result["agg_result"].keys() == {"terms_agg_name", "cardinality_agg_name"}
@@ -587,7 +587,7 @@ TEST_FUNCTIONS = [
     (_test_histogram, "histogram"),
     (_test_facet, "facet"),
     (_test_stats, "stats"),
-    (_test_agg_search, "agg"),
+    (_test_agg_search, "aggregations"),
 ]
 
 
