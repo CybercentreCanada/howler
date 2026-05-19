@@ -6,19 +6,6 @@ import type { Template } from 'models/entities/generated/Template';
 import { useContext, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 
-const DeleteTemplateModal: FC<{ onRemove?: () => void }> = ({ onRemove }) => {
-  const { t } = useTranslation();
-
-  return (
-    <ConfirmDeleteModal
-      onConfirm={onRemove}
-      title={t('route.templates.manager.error.modal.title')}
-      description={t('route.templates.manager.error.modal.description')}
-      preferDelete
-    />
-  );
-};
-
 const TemplateCard: FC<{
   template: Template;
   onRemove?: (templateId: string) => void;
@@ -59,7 +46,14 @@ const TemplateCard: FC<{
                   startIcon={<ReportProblem />}
                   color="warning"
                   onClick={() =>
-                    showModal(<DeleteTemplateModal onRemove={() => onRemove && onRemove(template.template_id)} />)
+                    showModal(
+                      <ConfirmDeleteModal
+                        onConfirm={() => onRemove && onRemove(template.template_id)}
+                        title={t('route.templates.manager.error.modal.title')}
+                        description={t('route.templates.manager.error.modal.description')}
+                        preferDelete
+                      />
+                    )
                   }
                 >
                   {t('route.templates.manager.error.message')}
