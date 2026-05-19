@@ -12,17 +12,13 @@ const CustomSpan: FC<{}> = () => {
   const { t } = useTranslation();
 
   const span = useContextSelector(ParameterContext, ctx => ctx.span);
-  const defaultStartDate = dayjs().subtract(2, 'days');
-  const defaultEndDate = dayjs().subtract(1, 'day');
-  const startDate = useContextSelector(ParameterContext, ctx =>
-    ctx.startDate ? dayjs(ctx.startDate) : defaultStartDate
-  );
   const setCustomSpan = useContextSelector(ParameterContext, ctx => ctx.setCustomSpan);
-  const endDate = useContextSelector(ParameterContext, ctx => (ctx.endDate ? dayjs(ctx.endDate) : defaultEndDate));
+  const startDate = useContextSelector(ParameterContext, ctx => (ctx.startDate ? dayjs(ctx.startDate) : null));
+  const endDate = useContextSelector(ParameterContext, ctx => (ctx.endDate ? dayjs(ctx.endDate) : null));
 
   useEffect(() => {
-    if (span?.endsWith('custom')) {
-      setCustomSpan(startDate.toISOString(), endDate.toISOString());
+    if (span?.endsWith('custom') && !startDate) {
+      setCustomSpan(dayjs().subtract(2, 'day').toISOString(), dayjs().subtract(1, 'day').toISOString());
     }
   }, [endDate, setCustomSpan, span, startDate]);
 
