@@ -261,6 +261,7 @@ types-requests = "<2.33.0.20260519"
 websocket-client = "1.9.0"
 types-pytz = "^2024.1.0.20240417"
 types-mock = "^5.2.0.20250306"
+types-passlib = "^1.7.7.20260211"
 
 [tool.poetry.group.pre-commit.dependencies]
 rich = "^14.2.0"

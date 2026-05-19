@@ -3246,6 +3246,18 @@ files = [
 cryptography = ">=37.0.0"
 
 [[package]]
+name = "types-passlib"
+version = "1.7.7.20260211"
+description = "Typing stubs for passlib"
+optional = false
+python-versions = ">=3.10"
+groups = ["types"]
+files = [
+    {file = "types_passlib-1.7.7.20260211-py3-none-any.whl", hash = "sha256:c0f1ad440c513a6c07f333b28249530686056fd54a7b3ac6128ae31fd46305d3"},
+    {file = "types_passlib-1.7.7.20260211.tar.gz", hash = "sha256:af73afffe1ce94c95c7f6072bd261572c29845de74fdffa3a265fc7634bca056"},
+]
+
+[[package]]
 name = "types-pyopenssl"
 version = "23.3.0.20240106"
 description = "Typing stubs for pyOpenSSL"
@@ -3688,4 +3700,4 @@ testing = ["coverage[toml]", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "56659ffffdfe609e7a90f2af563fc72443058211e5b118a3073bd055e8bc5d03"
+content-hash = "d65a7863c4cb1b6281393281a1eead6f7282b52302b2fb6ec713629d32a3e6eb"
