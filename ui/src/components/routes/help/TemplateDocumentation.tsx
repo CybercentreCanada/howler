@@ -1,5 +1,5 @@
+import { PageCenter } from '@tui/core';
 import { Card, CardContent, Stack } from '@mui/material';
-import PageCenter from 'commons/components/pages/PageCenter';
 import Markdown from 'components/elements/display/Markdown';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import HitOutline from 'components/elements/hit/HitOutline';

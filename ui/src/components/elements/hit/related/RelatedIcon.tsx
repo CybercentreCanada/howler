@@ -1,6 +1,6 @@
+import { useAppTheme } from '@tui/core';
 import { Icon } from '@iconify/react';
 import Avatar from '@mui/material/Avatar';
-import { useAppTheme } from 'commons/components/app/hooks';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { useContext, type FC } from 'react';
 

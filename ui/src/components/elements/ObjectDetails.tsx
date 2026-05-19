@@ -91,7 +91,7 @@ const ListRenderer: FC<{
         {uniqueEntries.map((entry, index) => {
           if (Array.isArray(entry)) {
             return (
-              <Grid item xs="auto" maxWidth="100%" key={index}>
+              <Grid size={'auto'} maxWidth="100%" key={index}>
                 <ListRenderer obj={obj} objKey={`${key}.${index}`} entries={entry} />
               </Grid>
             );
@@ -99,7 +99,7 @@ const ListRenderer: FC<{
 
           if (isPlainObject(entry)) {
             return (
-              <Grid item xs={'auto'} maxWidth="100%" minWidth="350px" key={index}>
+              <Grid size={'auto'} maxWidth="100%" minWidth="350px" key={index}>
                 <ObjectRenderer parentKey={`${key}.${index}`} indent data={entry} />
               </Grid>
             );
@@ -107,7 +107,6 @@ const ListRenderer: FC<{
 
           return (
             <Grid
-              item
               maxWidth="100%"
               key={entry}
               className={`${key}_${index}`.replace(/\./g, '_')}
@@ -131,7 +130,7 @@ const ListRenderer: FC<{
           );
         })}
         {omittedDuplicates && (
-          <Grid item display="flex" alignItems="center">
+          <Grid display="flex" alignItems="center">
             <Tooltip title={t('duplicates.omitted')}>
               <InfoOutlined sx={{ fontSize: '20px', ml: 1 }} color="disabled" />
             </Tooltip>

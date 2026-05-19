@@ -1,6 +1,6 @@
 import FlexVertical from 'components/elements/addons/layout/FlexVertical';
 import type { FC } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet } from 'react-router';
 import useTitle from './hooks/useTitle';
 import AppDrawerProvider from './providers/AppDrawerProvider';
 

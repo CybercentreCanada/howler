@@ -200,7 +200,7 @@ README.md, LICENSE, .gitignore, .pre-commit-config.yaml, pyrightconfig.json
 - **Shared test helpers** live in `ui/src/tests/`:
   - `setupLocalStorageMock()` — replaces `window.localStorage` with a `MockLocalStorage` instance whose `getItem`/`setItem`/`removeItem`/`clear` methods are Vitest spies. Call `mockLocalStorage.clear()` and clear the spies in `beforeEach`.
   - `setupContextSelectorMock()` — re-wires `use-context-selector` to use React's native context so providers work without the full library in tests.
-  - `setupReactRouterMock()` — stubs `react-router-dom` (location, params, navigate, etc.).
+  - `setupReactRouterMock()` — stubs `react-router` (location, params, navigate, etc.).
 - **`MockLocalStorage` caveat**: `setItem` stores values as strings (`this[key] = \`${val}\``). The key `'key'`is a reserved property name on the object and is read-only — **do not use`'key'`as a storage key in tests**; use descriptive names like`'testkey'`.
 - **Cross-tab events**: jsdom does not propagate `StorageEvent` automatically. Dispatch them manually:
   ```ts
@@ -282,6 +282,7 @@ README.md, LICENSE, .gitignore, .pre-commit-config.yaml, pyrightconfig.json
 
 - In `ui/`, `@fontsource/roboto` may fail TypeScript side-effect import resolution at the package root even when the dependency is installed; prefer importing the explicit CSS entry `@fontsource/roboto/index.css` from the app entrypoint.
 - When ILM indices coexist with a legacy `_hot` index, alias existence alone is insufficient: remove the legacy alias and ensure the latest ILM index is the only write index. Maintenance commands that skip collection bootstrap must resolve the latest ILM index before reindexing; recovery must restore only aliases actually present on its source index.
+- UI tests must mock the router package imported by the component (`react-router` versus `react-router-dom`); mocking the other package does not intercept hooks such as `useNavigate`.
 
 ---
 

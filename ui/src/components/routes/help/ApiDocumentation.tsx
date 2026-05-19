@@ -1,3 +1,4 @@
+import { useAppUser, PageCenter } from '@tui/core';
 import { Help } from '@mui/icons-material';
 import {
   Chip,
@@ -16,8 +17,6 @@ import {
 } from '@mui/material';
 import api from 'api';
 import type { HelpResponse } from 'api/help';
-import { useAppUser } from 'commons/components/app/hooks';
-import PageCenter from 'commons/components/pages/PageCenter';
 import Markdown from 'components/elements/display/Markdown';
 import useMyApi from 'components/hooks/useMyApi';
 import { useScrollRestoration } from 'components/hooks/useScrollRestoration';

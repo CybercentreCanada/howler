@@ -1,5 +1,5 @@
+import { useAppTheme } from '@tui/core';
 import { darken, lighten } from '@mui/material';
-import { useAppTheme } from 'commons/components/app/hooks';
 import { useCallback } from 'react';
 
 const useMyUtils = () => {

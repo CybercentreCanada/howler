@@ -89,7 +89,11 @@ const HitActions: FC<{
       _actions = [
         ..._actions,
         ...VOTE_OPTIONS.map(
-          option => ({ ...option, actionFunction: () => vote(option.name.toLowerCase()) }) as ActionButton
+          option =>
+            ({
+              ...option,
+              actionFunction: () => vote(option.name.toLowerCase())
+            }) as ActionButton
         )
       ];
     }

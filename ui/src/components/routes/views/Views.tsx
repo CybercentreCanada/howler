@@ -1,3 +1,4 @@
+import { useAppUser } from '@tui/core';
 import { Clear, Edit, SavedSearch, Star, StarBorder } from '@mui/icons-material';
 import {
   Autocomplete,
@@ -13,7 +14,6 @@ import {
   Typography
 } from '@mui/material';
 import api from 'api';
-import { useAppUser } from 'commons/components/app/hooks';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import SearchResponseProvider, {
   SearchResponseContext,
@@ -33,7 +33,7 @@ import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { View } from 'models/entities/generated/View';
 import React, { useCallback, useContext, useEffect, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';

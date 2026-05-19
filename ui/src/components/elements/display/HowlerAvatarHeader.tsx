@@ -10,9 +10,9 @@ const AvatarContainer = styled(Grid)(({ theme }) => ({
 const HowlerAvatarHeader: FC<{ user: HowlerUser }> = ({ user }) => {
   const theme = useTheme();
   return (
-    <AvatarContainer item sm={12} md={2}>
+    <AvatarContainer size={{ sm: 12, md: 2 }}>
       <Grid container spacing={2} justifyContent="center">
-        <Grid item>
+        <Grid>
           <HowlerAvatar
             userId={user?.username}
             sx={{
@@ -26,7 +26,7 @@ const HowlerAvatarHeader: FC<{ user: HowlerUser }> = ({ user }) => {
             }}
           />
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Typography textAlign="center">{user?.name ?? ''}</Typography>
         </Grid>
       </Grid>

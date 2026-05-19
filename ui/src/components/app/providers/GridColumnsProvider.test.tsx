@@ -11,7 +11,7 @@ setupContextSelectorMock();
 setupReactRouterMock();
 const mockLocalStorage = setupLocalStorageMock();
 
-import { useParams } from 'react-router-dom';
+import { useParams } from 'react-router';
 
 const mockParams = vi.mocked(useParams);
 const mockGetCurrentViews = vi.fn();

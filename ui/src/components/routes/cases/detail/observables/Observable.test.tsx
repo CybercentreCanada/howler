@@ -1,6 +1,6 @@
 /// <reference types="vitest" />
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { createMockCase } from 'tests/utils';
 import { describe, expect, it } from 'vitest';
 import type { ObservableEntry } from '../types';

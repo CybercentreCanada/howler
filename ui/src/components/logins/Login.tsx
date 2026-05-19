@@ -1,6 +1,6 @@
 import { Box, CircularProgress, Container, Stack, styled } from '@mui/material';
-import { useAppBanner } from 'commons/components/app/hooks';
-import PageCardCentered from 'commons/components/pages/PageCardCentered';
+import { PageCardCentered } from '@tui/core';
+import { AppBrand } from 'branding/AppBrand';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import TextDivider from 'components/elements/display/TextDivider';
 import { useContext } from 'react';
@@ -26,7 +26,6 @@ const InjectCss = styled(Stack)(({ theme }) => ({
 }));
 
 const LoginScreen = () => {
-  const banner = useAppBanner();
   const { config } = useContext(ApiConfigContext);
   const loading = config.configuration === null;
 
@@ -35,7 +34,7 @@ const LoginScreen = () => {
       <InjectCss direction="column" alignItems="center">
         <PageCardCentered>
           <LogWrap>
-            {banner}
+            <AppBrand application="howler" variant="banner-vertical" size="large" />
             <Box m={2} />
             {loading && (
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>

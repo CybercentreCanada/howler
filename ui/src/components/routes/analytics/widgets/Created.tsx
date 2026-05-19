@@ -14,7 +14,7 @@ const Created = forwardRef<any, { analytic: Analytic }>(({ analytic }, ref) => {
   const [loading, setLoading] = useState(false);
   const [ingestionData, setIngestionData] = useState<{ [timestamp: string]: number }>({});
 
-  const queryRef = useRef<Promise<HowlerHistogramSearchResponse>>();
+  const queryRef = useRef<Promise<HowlerHistogramSearchResponse>>(undefined);
 
   useEffect(() => {
     if (!analytic) {

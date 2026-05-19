@@ -25,10 +25,11 @@ import {
   Topic,
   Work
 } from '@mui/icons-material';
-import type { AppSiteMapConfigs } from 'commons/components/app/AppConfigs';
-import howlerPluginStore from 'plugins/store';
+import howlerPluginStore, { type SiteMapRoute } from 'plugins/store';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+
+type SiteMapConfigs = { routes: SiteMapRoute[] };
 
 // SiteMapContextProps configuration properties.
 // exceptLast: boolean = false (default) -> render all breadcrumb except the current route.
@@ -47,7 +48,7 @@ import { useTranslation } from 'react-i18next';
 // excluded?: boolean = false -> when true, indicates to breadcrumbs component to not render this route.
 // breadcrumbs?: string[] -> a static list of breadcrumb paths to be rendered for the given route.
 // textWidth?: number -> the max width of the text when rendering the breadcrumb.
-const useMySitemap = (): AppSiteMapConfigs => {
+const useMySitemap = (): SiteMapConfigs => {
   const { t } = useTranslation();
   return useMemo(
     () => ({

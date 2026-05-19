@@ -9,7 +9,7 @@ import {
   TextField,
   type TextFieldProps
 } from '@mui/material';
-import { parseEvent } from 'commons/components/utils/keyboard';
+import { parseEvent } from '@tui/core';
 import { type ChangeEvent, type KeyboardEvent, type ReactElement, useEffect, useRef, useState } from 'react';
 import type { PhraseAnalysis, PhraseSuggester } from '.';
 import type PhraseLexer from './PhraseLexer';
@@ -42,11 +42,11 @@ const Phrase = ({
   onKeyDown,
   ...props
 }: PhraseProps) => {
-  const containerRef = useRef<HTMLDivElement>();
-  const inputRef = useRef<HTMLDivElement>();
-  const menuRef = useRef<HTMLUListElement>();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLUListElement>(null);
   const lexerRef = useRef<PhraseLexer>(lexer || new WordLexer());
-  const analysisRef = useRef<PhraseAnalysis>();
+  const analysisRef = useRef<PhraseAnalysis>(null);
   const suggesterRef = useRef<PhraseSuggester>(suggester || new WordSuggestor(suggestions));
   const [optionsOpen, setOptionsOpen] = useState<boolean>(false);
   const [options, setOptions] = useState<string[]>(suggestions);

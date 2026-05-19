@@ -1,4 +1,4 @@
-import usePageProps from 'commons/components/pages/hooks/usePageProps';
+import { usePageProps } from '@tui/core';
 import { memo } from 'react';
 
 type FlexPortProps = {

@@ -20,6 +20,7 @@ export const createMockHit = (overrides?: RecursivePartial<Hit>): Hit =>
   ({
     ...overrides,
     __index: 'hit',
+
     howler: {
       id: 'test-hit-1',
       analytic: 'test-analytic',
@@ -29,6 +30,7 @@ export const createMockHit = (overrides?: RecursivePartial<Hit>): Hit =>
       outline: { indicators: ['a', 'b', 'c'] },
       ...overrides?.howler
     },
+
     event: {
       id: 'event-123',
       ...overrides?.event
@@ -39,6 +41,7 @@ export const createMockEvent = (overrides?: RecursivePartial<Event>): Event =>
   ({
     ...overrides,
     __index: 'event',
+
     howler: {
       id: 'test-event-1',
       analytic: 'test-analytic',

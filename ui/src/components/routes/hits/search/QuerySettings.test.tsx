@@ -383,7 +383,8 @@ describe('QuerySettings', () => {
 
       const { container } = render(<QuerySettings />, { wrapper: Wrapper });
 
-      const gridItems = container.querySelectorAll('[class*="MuiGrid-item"]');
+      const gridContainer = container.querySelector('[class*="MuiGrid-container"]');
+      const gridItems = gridContainer?.children ?? [];
       // IndexPicker + HitSort + SearchSpan + 1 view + 2 filters = 5 items
       expect(gridItems.length).toBe(6);
     });
@@ -394,7 +395,8 @@ describe('QuerySettings', () => {
 
       const { container } = render(<QuerySettings />, { wrapper: Wrapper });
 
-      const gridItems = container.querySelectorAll('[class*="MuiGrid-item"]');
+      const gridContainer = container.querySelector('[class*="MuiGrid-container"]');
+      const gridItems = gridContainer?.children ?? [];
       // IndexPicker + HitSort + SearchSpan + 3 views + 1 filter = 6 items
       expect(gridItems.length).toBe(7);
     });
@@ -712,7 +714,8 @@ describe('QuerySettings', () => {
 
       const { container } = render(<QuerySettings />, { wrapper: Wrapper });
 
-      const gridItems = container.querySelectorAll('[class*="MuiGrid-item"]');
+      const gridContainer = container.querySelector('[class*="MuiGrid-container"]');
+      const gridItems = gridContainer?.children ?? [];
 
       // Order: IndexPicker, HitSort, SearchSpan, ViewLink(s), HitFilter(s)
       expect(gridItems[0]).toContainElement(screen.getByTestId('index-picker'));
@@ -760,7 +763,8 @@ describe('QuerySettings', () => {
 
       const { container } = render(<QuerySettings />, { wrapper: Wrapper });
 
-      const gridItems = Array.from(container.querySelectorAll('[class*="MuiGrid-item"]'));
+      const gridContainer = container.querySelector('[class*="MuiGrid-container"]');
+      const gridItems = Array.from(gridContainer?.children ?? []);
       const viewLink0Index = gridItems.findIndex(item => item.querySelector('#view-link-0'));
       const viewLink1Index = gridItems.findIndex(item => item.querySelector('#view-link-1'));
       const filterIndex = gridItems.findIndex(item => item.querySelector('#hit-filter-0'));

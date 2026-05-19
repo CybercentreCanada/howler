@@ -1,6 +1,6 @@
+import { AppListEmpty } from '@tui/core';
 /* eslint-disable no-console */
 import { Paper, Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
-import AppListEmpty from 'commons/components/display/AppListEmpty';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import { flatten } from 'flat';

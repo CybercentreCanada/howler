@@ -26,8 +26,8 @@ vi.mock('api', () => ({
   }
 }));
 
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
+vi.mock('react-router', async () => {
+  const actual = await vi.importActual('react-router');
   return {
     ...actual,
     // Provide a parent case via outlet context for CaseSearch

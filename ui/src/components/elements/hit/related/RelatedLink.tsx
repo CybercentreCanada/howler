@@ -2,7 +2,7 @@ import { Stack, Tooltip, Typography } from '@mui/material';
 import HowlerCard from 'components/elements/display/HowlerCard';
 import RelatedLinkTooltip from 'components/elements/hit/RelatedLinkTooltip';
 import React, { type PropsWithChildren } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import RelatedIcon from './RelatedIcon';
 
 const RelatedLink: React.FC<

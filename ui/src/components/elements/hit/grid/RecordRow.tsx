@@ -12,7 +12,7 @@ import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
 import { memo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
 import { isHit } from 'utils/typeUtils';
 import EnhancedCell from './EnhancedCell';

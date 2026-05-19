@@ -1,5 +1,5 @@
+import { useAppUser } from '@tui/core';
 import api from 'api';
-import { useAppUser } from 'commons/components/app/hooks';
 import UserPageWrapper from 'components/elements/display/UserPageWrapper';
 import useMyApi from 'components/hooks/useMyApi';
 import useMyUserFunctions from 'components/hooks/useMyUserFunctions';
@@ -7,7 +7,7 @@ import ProfileSection from 'components/routes/settings/ProfileSection';
 import SecuritySection from 'components/routes/settings/SecuritySection';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import { useCallback, useEffect, useState, type FC } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams } from 'react-router';
 
 const UserEditor: FC = () => {
   const { dispatchApi } = useMyApi();

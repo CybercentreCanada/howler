@@ -1,5 +1,5 @@
+import { AppListEmpty } from '@tui/core';
 import { Collapse } from '@mui/material';
-import AppListEmpty from 'commons/components/display/AppListEmpty';
 import { get } from 'lodash-es';
 import { useCallback } from 'react';
 import type { TuiTableCellRenderer, TuiTableColumn, TuiTableRowDetailRenderer } from '.';

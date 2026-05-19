@@ -50,7 +50,7 @@ const SecuritySection: FC<{
           <TableCell width="100%">
             <Grid container spacing={1}>
               {user?.apikeys?.map(apiKey => (
-                <Grid item key={apiKey[0]}>
+                <Grid key={apiKey[0]}>
                   <Chip
                     label={
                       apiKey[0].toLocaleLowerCase() +
@@ -64,7 +64,7 @@ const SecuritySection: FC<{
                 </Grid>
               ))}
               {user?.apikeys?.length < 1 && (
-                <Grid item>
+                <Grid>
                   <Trans i18nKey="none" />
                 </Grid>
               )}

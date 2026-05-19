@@ -3,7 +3,7 @@ import api from 'api';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import { useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 import { StorageKey } from 'utils/constants';
 import useLogin from '../hooks/useLogin';
 

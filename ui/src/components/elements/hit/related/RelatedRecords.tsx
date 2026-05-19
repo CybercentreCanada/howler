@@ -8,7 +8,7 @@ import { identity, uniq } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
 import { memo, useMemo, useState, type FC, type PropsWithChildren } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { isCase, isEvent, isHit } from 'utils/typeUtils';
 import HitPreview from '../HitPreview';
 
