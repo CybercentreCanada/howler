@@ -73,7 +73,7 @@ def test_remove_analytics_without_hits(datastore_connection_with_hits: HowlerDat
 
 
 def test_no_hits_find_analytics_with_hits(datastore_connection_no_hits):
-    """Test that if there are no analytics the search returns an empty list"""
+    """Test that if there are no hits the search returns an empty list"""
 
     matched_analytics = _find_analytics_with_hits(datastore_connection_no_hits)
 
