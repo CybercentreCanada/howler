@@ -166,9 +166,29 @@ const TemplateViewer = () => {
       showError: true,
       throwError: false
     });
-    setSelectedTemplate(null);
-    setDisplayFields(DEFAULT_FIELDS);
-  }, [dispatchApi, selectedTemplate?.template_id]);
+    setSessionTemplateList(l =>
+      l.filter(
+        v =>
+          v.analytic != selectedTemplate.analytic ||
+          v.detection != selectedTemplate.detection ||
+          v.type != selectedTemplate.type
+      )
+    );
+    setTemplateList(l =>
+      l.filter(
+        v =>
+          v.analytic != selectedTemplate.analytic ||
+          v.detection != selectedTemplate.detection ||
+          v.type != selectedTemplate.type
+      )
+    );
+  }, [
+    dispatchApi,
+    selectedTemplate?.analytic,
+    selectedTemplate?.detection,
+    selectedTemplate?.template_id,
+    selectedTemplate?.type
+  ]);
 
   const onSave = useCallback(async () => {
     if (analytic && detection) {
