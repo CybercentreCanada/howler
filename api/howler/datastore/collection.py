@@ -1670,7 +1670,7 @@ class ESCollection(Generic[ModelType]):
         If aggregations are provided the search result will include an additional field::
 
             {
-                "agg_result": {         # Dictionary where the keys are the keys of the `aggregations` parameter
+                "aggregations": {       # Dictionary where the keys are the keys of the `aggregations` parameter
                     "agg_name": {...}   #   and the values are the results of the aggregations
                 }
             }
@@ -1756,7 +1756,7 @@ class ESCollection(Generic[ModelType]):
                 "rows": search_ret_data["rows"],
                 "total": search_ret_data["total"],
                 "items": search_ret_data["items"],
-                "agg_result": {
+                "aggregations": {
                     k[len(self.CUSTOM_AGG_PREFIX) :]: v
                     for k, v in result["aggregations"].items()
                     if k.startswith(self.CUSTOM_AGG_PREFIX)

@@ -558,14 +558,14 @@ def _test_agg_search(c: ESCollection):
 
     result = c.search("id:*", aggregations=aggs)
 
-    assert "agg_result" in result
-    assert result["agg_result"].keys() == {"terms_agg_name", "cardinality_agg_name"}
-    assert result["agg_result"]["terms_agg_name"].keys() == {
+    assert "aggregations" in result
+    assert result["aggregations"].keys() == {"terms_agg_name", "cardinality_agg_name"}
+    assert result["aggregations"]["terms_agg_name"].keys() == {
         "doc_count_error_upper_bound",
         "sum_other_doc_count",
         "buckets",
     }
-    assert result["agg_result"]["cardinality_agg_name"].keys() == {"value"}
+    assert result["aggregations"]["cardinality_agg_name"].keys() == {"value"}
 
 
 TEST_FUNCTIONS = [

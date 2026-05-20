@@ -64,7 +64,7 @@ def _find_analytics_with_hits(ds: HowlerDatastore) -> list[str]:
         )
 
         matched_analytic_names = [
-            bucket["key"] for bucket in matched_analytics["agg_result"]["matched_analytics"]["buckets"]
+            bucket["key"] for bucket in matched_analytics["aggregations"]["matched_analytics"]["buckets"]
         ]
 
     else:

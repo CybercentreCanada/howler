@@ -19,4 +19,4 @@ class SearchResult(TypedDict, Generic[SearchResultType]):
 
 
 class AggSearchResult(SearchResult[SearchResultType]):
-    agg_result: dict[str, dict]
+    aggregations: dict[str, dict]
