@@ -48,7 +48,7 @@ const TemplateCard: FC<{
                   onClick={() =>
                     showModal(
                       <ConfirmDeleteModal
-                        onConfirm={() => onRemove && onRemove(template.template_id)}
+                        onConfirm={() => onRemove?.(template.template_id)}
                         title={t('route.templates.manager.error.modal.title')}
                         description={t('route.templates.manager.error.modal.description')}
                         preferDelete
