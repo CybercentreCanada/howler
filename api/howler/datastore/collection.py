@@ -1562,7 +1562,6 @@ class ESCollection(Generic[ModelType]):
         self,
         query: str | None,
         as_obj: Literal[True] = True,
-        aggregations: None = None,
         offset: int = 0,
         rows: int | None = None,
         sort: typing.Any = None,
@@ -1574,6 +1573,8 @@ class ESCollection(Generic[ModelType]):
         use_archive: bool = False,
         track_total_hits: bool = False,
         script_fields: list[str] = [],
+        *,
+        aggregations: None = None,
     ) -> SearchResult[ModelType]: ...
 
     @overload
@@ -1581,7 +1582,6 @@ class ESCollection(Generic[ModelType]):
         self,
         query: str | None,
         as_obj: Literal[False],
-        aggregations: None = None,
         offset: int = 0,
         rows: int | None = None,
         sort: typing.Any = None,
@@ -1593,15 +1593,15 @@ class ESCollection(Generic[ModelType]):
         use_archive: bool = False,
         track_total_hits: bool = False,
         script_fields: list[str] = [],
+        *,
+        aggregations: None = None,
     ) -> SearchResult[dict[str, typing.Any]]: ...
 
     @overload
     def search(
         self,
         query: str | None,
-        *,
         as_obj: Literal[True] = True,
-        aggregations: list[tuple[str, dict]],
         offset: int = 0,
         rows: int | None = None,
         sort: typing.Any = None,
@@ -1613,15 +1613,15 @@ class ESCollection(Generic[ModelType]):
         use_archive: bool = False,
         track_total_hits: bool = False,
         script_fields: list[str] = [],
+        *,
+        aggregations: list[tuple[str, dict]],
     ) -> AggSearchResult[ModelType]: ...
 
     @overload
     def search(
         self,
         query: str | None,
-        *,
         as_obj: Literal[False],
-        aggregations: list[tuple[str, dict]],
         offset: int = 0,
         rows: int | None = None,
         sort: typing.Any = None,
@@ -1633,13 +1633,14 @@ class ESCollection(Generic[ModelType]):
         use_archive: bool = False,
         track_total_hits: bool = False,
         script_fields: list[str] = [],
+        *,
+        aggregations: list[tuple[str, dict]],
     ) -> AggSearchResult[dict[str, typing.Any]]: ...
 
     def search(
         self,
         query,
         as_obj=True,
-        aggregations=None,
         offset=0,
         rows=None,
         sort=None,
@@ -1651,6 +1652,8 @@ class ESCollection(Generic[ModelType]):
         use_archive=False,
         track_total_hits=None,
         script_fields=[],
+        *,
+        aggregations=None,
     ):
         """This function should perform a search through the datastore and return a
         search result object that consist on the following::
