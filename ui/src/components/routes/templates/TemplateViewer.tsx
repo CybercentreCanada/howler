@@ -212,25 +212,27 @@ const TemplateViewer = () => {
 
   const onTypeToggle = useCallback(
     (_type: string) => {
-      if (!noFieldChange) {
-        const sessionTemplate = {
-          analytic: analytic,
-          detection: detection !== 'ANY' ? detection : null,
-          type: type,
-          keys: displayFields
-        };
-        const newList = [sessionTemplate, ...sessionTemplateList];
-        setSessionTemplateList(
-          newList.filter(
-            (v1, i) =>
-              newList.findIndex(
-                v2 => v1.analytic === v2.analytic && v1.detection === v2.detection && v1.type === v2.type
-              ) === i
-          )
-        );
+      setType(_type);
+
+      if (noFieldChange) {
+        return;
       }
 
-      setType(_type);
+      const sessionTemplate = {
+        analytic: analytic,
+        detection: detection !== 'ANY' ? detection : null,
+        type: type,
+        keys: displayFields
+      };
+      const newList = [sessionTemplate, ...sessionTemplateList];
+      setSessionTemplateList(
+        newList.filter(
+          (v1, i) =>
+            newList.findIndex(
+              v2 => v1.analytic === v2.analytic && v1.detection === v2.detection && v1.type === v2.type
+            ) === i
+        )
+      );
     },
     [analytic, detection, displayFields, noFieldChange, sessionTemplateList, type]
   );
