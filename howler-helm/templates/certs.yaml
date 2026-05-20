@@ -1,0 +1,22 @@
+{{- $hasCerts := false -}}
+{{- range .Values.rest.datastore.hosts -}}
+  {{- if .cert -}}
+    {{- $hasCerts = true -}}
+  {{- end -}}
+{{- end -}}
+{{- if $hasCerts }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: howler-certs
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "howler.labels" . | nindent 4 }}
+type: Opaque
+stringData:
+  {{- range .Values.rest.datastore.hosts }}
+  {{- if .cert }}
+  {{ .name }}.crt: {{ .cert | quote }}
+  {{- end }}
+  {{- end }}
+{{- end }}
