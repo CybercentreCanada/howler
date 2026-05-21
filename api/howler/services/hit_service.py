@@ -738,10 +738,10 @@ def transition_hit(
 
         # Build query for all processed hits (primary + children)
         all_processed_hits = [primary_hit] + child_hits
-        hit_query = f"howler.id:({' OR '.join(h['howler']['id'] for h in all_processed_hits)})"
+        hit_ids = [h["howler"]["id"] for h in all_processed_hits]
 
-        # Execute bulk actions on all hits
-        action_service.bulk_execute_on_query(hit_query, trigger=trigger, user=user)
+        # Enqueue action execution for all hits
+        action_service.enqueue_action_execution(hit_ids, trigger=trigger, user=user)
 
         # Emit events for all processed hits to notify other systems
         for processed_hit in all_processed_hits:
