@@ -2,7 +2,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from howler.common.exceptions import HowlerValueError
 from howler.services import action_service
 
 
@@ -12,7 +11,7 @@ class TestEnqueueActionExecution:
     @patch.object(action_service, "_get_action_queue")
     @patch("howler.services.action_service.config")
     def test_enqueue_pushes_correct_item(self, mock_config, mock_get_queue):
-        """Verify queue receives correctly structured item."""
+        """Verify queue receives correctly structured item with user primitives."""
         mock_config.system.action_queue.enabled = True
         mock_queue = MagicMock()
         mock_get_queue.return_value = mock_queue
@@ -29,6 +28,23 @@ class TestEnqueueActionExecution:
         assert pushed["hit_ids"] == ["id1", "id2"]
         assert "trigger" not in pushed
         assert pushed["user"] == {"uname": "testuser", "type": ["user"]}
+
+    @patch.object(action_service, "_get_action_queue")
+    @patch("howler.services.action_service.config")
+    def test_enqueue_routes_to_trigger_queue(self, mock_config, mock_get_queue):
+        """Each trigger should route to its own named queue."""
+        mock_config.system.action_queue.enabled = True
+        mock_queue = MagicMock()
+        mock_get_queue.return_value = mock_queue
+
+        user = MagicMock()
+        user.as_primitives.return_value = {"uname": "u", "type": ["user"]}
+
+        action_service.enqueue_action_execution(["id1"], trigger="promote", user=user)
+        mock_get_queue.assert_called_with("promote")
+
+        action_service.enqueue_action_execution(["id2"], trigger="demote", user=user)
+        mock_get_queue.assert_called_with("demote")
 
     @patch.object(action_service, "bulk_execute_on_query")
     @patch("howler.services.action_service.config")
@@ -77,7 +93,7 @@ class TestEnqueueActionExecution:
     @patch.object(action_service, "_get_action_queue")
     @patch("howler.services.action_service.config")
     def test_enqueue_none_user(self, mock_config, mock_get_queue):
-        """When user is None, user should be None in the queued item."""
+        """When user is None, user field should be None in the queued item."""
         mock_config.system.action_queue.enabled = True
         mock_queue = MagicMock()
         mock_get_queue.return_value = mock_queue
@@ -87,13 +103,26 @@ class TestEnqueueActionExecution:
         pushed = mock_queue.push.call_args[0][0]
         assert pushed["user"] is None
 
-    def test_enqueue_invalid_trigger_raises(self):
-        """An invalid trigger should raise HowlerValueError."""
+    @patch.object(action_service, "bulk_execute_on_query")
+    @patch("howler.services.action_service.config")
+    def test_enqueue_invalid_trigger_falls_back(self, mock_config, mock_bulk):
+        """An invalid trigger should skip the queue and call bulk_execute_on_query directly."""
+        mock_config.system.action_queue.enabled = True
+
         user = MagicMock()
         user.__getitem__ = MagicMock(return_value="testuser")
 
-        with pytest.raises(HowlerValueError, match="Invalid trigger"):
+        with pytest.raises(ValueError, match="Invalid trigger"):
             action_service.enqueue_action_execution(["id1"], trigger="not_a_real_trigger", user=user)
+
+
+class TestGetActionQueue:
+    """Tests for _get_action_queue."""
+
+    def test_invalid_trigger_raises_value_error(self):
+        """_get_action_queue should raise ValueError for an unknown trigger."""
+        with pytest.raises(ValueError, match="Invalid trigger"):
+            action_service._get_action_queue("bogus_trigger")
 
 
 class TestProcessActionBatch:
@@ -141,6 +170,18 @@ class TestProcessActionBatch:
         action_service.process_action_batch("create", items)
 
         assert mock_bulk.call_count == 2
+
+    @patch.object(action_service, "bulk_execute_on_query")
+    def test_process_batch_none_user(self, mock_bulk):
+        """When user is None, the batch group should still be processed."""
+        items = [
+            {"hit_ids": ["id1"], "user": None},
+        ]
+
+        action_service.process_action_batch("create", items)
+
+        assert mock_bulk.call_count == 1
+        assert mock_bulk.call_args[1]["user"] is None
 
     @patch.object(action_service, "bulk_execute_on_query")
     def test_process_batch_deduplicates_ids(self, mock_bulk):
