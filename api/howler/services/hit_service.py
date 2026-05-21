@@ -736,8 +736,8 @@ def transition_hit(
         # Commit database changes before executing bulk actions
         datastore().hit.commit()
 
-        # Build query for all processed hits (primary + children)
-        all_processed_hits = [primary_hit] + child_hits
+        # Build query for all processed hits (primary + children), excluding missing hits
+        all_processed_hits = [primary_hit] + [ch for ch in child_hits if ch]
         hit_ids = [h["howler"]["id"] for h in all_processed_hits]
 
         # Enqueue action execution for all hits

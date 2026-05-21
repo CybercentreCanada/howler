@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from howler.services import action_service
 
 
@@ -100,6 +102,27 @@ class TestEnqueueActionExecution:
 
         pushed = mock_queue.push.call_args[0][0]
         assert pushed["user"] is None
+
+    @patch.object(action_service, "bulk_execute_on_query")
+    @patch("howler.services.action_service.config")
+    def test_enqueue_invalid_trigger_falls_back(self, mock_config, mock_bulk):
+        """An invalid trigger should skip the queue and call bulk_execute_on_query directly."""
+        mock_config.system.action_queue.enabled = True
+
+        user = MagicMock()
+        user.__getitem__ = MagicMock(return_value="testuser")
+
+        with pytest.raises(ValueError, match="Invalid trigger"):
+            action_service.enqueue_action_execution(["id1"], trigger="not_a_real_trigger", user=user)
+
+
+class TestGetActionQueue:
+    """Tests for _get_action_queue."""
+
+    def test_invalid_trigger_raises_value_error(self):
+        """_get_action_queue should raise ValueError for an unknown trigger."""
+        with pytest.raises(ValueError, match="Invalid trigger"):
+            action_service._get_action_queue("bogus_trigger")
 
 
 class TestProcessActionBatch:

@@ -23,7 +23,14 @@ _action_queues: dict[str, NamedQueue[dict]] = {}
 
 
 def _get_action_queue(trigger: str) -> NamedQueue[dict]:
-    """Return the action queue for *trigger*, creating it on first use."""
+    """Return the action queue for *trigger*, creating it on first use.
+
+    Raises:
+        ValueError: If *trigger* is not in ``VALID_TRIGGERS``.
+    """
+    if trigger not in VALID_TRIGGERS:
+        raise HowlerValueError(f"Invalid trigger {trigger!r}. Must be one of {VALID_TRIGGERS}")
+
     if trigger not in _action_queues:
         _action_queues[trigger] = NamedQueue(
             f"howler.action_queue.{trigger}",
@@ -48,6 +55,9 @@ def enqueue_action_execution(hit_ids: list[str], trigger: str = "create", user: 
     """
     if not hit_ids:
         return
+
+    if trigger not in VALID_TRIGGERS:
+        raise HowlerValueError(f"Invalid trigger {trigger!r}. Must be one of {VALID_TRIGGERS}")
 
     if not config.system.action_queue.enabled:
         query = f"howler.id:({' OR '.join(sanitize_lucene_query(h) for h in hit_ids)})"
