@@ -17,7 +17,7 @@ def get_apps_list(discovery_url: Optional[str]) -> list[dict[str, str]]:
     Returns:
         list[dict[str, str]]: A list of other apps
     """
-    if config.core.disable_eureka_discovery:
+    if not config.core.enable_eureka_discovery or discovery_url is None:
         return []
 
     if discovery_url not in DISCO_CACHE:
