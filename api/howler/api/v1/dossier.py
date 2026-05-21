@@ -1,11 +1,11 @@
 from flask import request
-from markupsafe import escape
 
 from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
 from howler.common.exceptions import ForbiddenException, HowlerException, InvalidDataException, NotFoundException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
+from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.models.dossier import Dossier
 from howler.odm.models.user import User
 from howler.security import api_login
@@ -229,23 +229,23 @@ def update_dossier(id: str, user: User, **kwargs):
 @generate_swagger_docs()
 @dossier_api.route("/<id>/permission", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
-def give_priviledge(id: str, user: User, **kwargs):
+def give_privilege(id: str, user: User, **kwargs):
     """give permission from one user to an other.
 
-    The json object need to send "priviledge", "user_id" as a key.
-    priviledge : The value need to be one of ["administrator", "member", "owner"]
+    The json object need to send "privilege", "user_id" as a key.
+    privilege : The value need to be one of ["administrator", "member", "owner"]
     user_id : the value need to be the user to add or remove from the permission
     is_adding: The value neeed to be a boolean representing if we add or remove a user.
 
     Variables:
-    action_id => The id of the action to give administrative priviledge of
+    action_id => The id of the action to give administrative privilege of
 
     Optional Arguments:
         None
 
     Data Block:
     {
-        "priviledge": "priviledge to give"  # [member, administrator, owner]
+        "privilege": "privilege to give"  # [member, administrator, owner]
         "user_id": "user to give permission to"
     }
 
@@ -257,30 +257,23 @@ def give_priviledge(id: str, user: User, **kwargs):
     priv_change: dict = request.json
     if not isinstance(priv_change, dict):
         return bad_request(err="Invalid data format")
-    if not set(priv_change.keys()) & {"priviledge", "user_id"}:
-        return bad_request(err="Invalid data format. Need new priviledge and user_id")
 
-    storage = datastore()
+    if not set(priv_change.keys()) & {"privilege", "user_id"}:
+        return bad_request(err="Invalid data format. Need new privilege and user_id")
 
-    existing_dossier: Dossier = storage.dossier.get_if_exists(id)
-    if not existing_dossier:
-        return not_found(err="This view does not exist")
-
-    success: None | str = dossier_service.give_priviledge(
-        dossier_id=id,
-        user=user,
-        level_requested=escape(str(priv_change["priviledge"])),
-        new_member=escape(str(priv_change["user_id"])),
+    success: tuple[Dossier, HowlerDatastore] | str = dossier_service.give_privilege(
+        dossier_id=id, received_data=priv_change, user=user
     )
     if isinstance(success, str):
         return bad_request(success)
+    existing_dossier, storage = success
     return ok(storage.action.get_if_exists(existing_dossier.dossier_id, as_obj=False))
 
 
 @generate_swagger_docs()
 @dossier_api.route("/<id>/permission", methods=["DELETE"])
 @api_login(required_priv=["R", "W"])
-def revoke_priviledge(id: str, user: User, **kwargs):
+def revoke_privilege(id: str, user: User, **kwargs):
     """Give permission from one user to another.
 
     Variables:
@@ -294,7 +287,7 @@ def revoke_priviledge(id: str, user: User, **kwargs):
 
     Data Block:
         {
-            "priviledge": "priviledge to give",  # [member, administrator, owner]
+            "privilege": "privilege to give",  # [member, administrator, owner]
             "user_id": "user to remove permission from",
         }
 
@@ -306,22 +299,14 @@ def revoke_priviledge(id: str, user: User, **kwargs):
     priv_change: dict = request.json
     if not isinstance(priv_change, dict):
         return bad_request(err="Invalid data format")
-    if not set(priv_change.keys()) & {"priviledge", "user_id"}:
-        return bad_request(err="Invalid data format. Need new priviledge and user_id")
+    if not set(priv_change.keys()) & {"privilege", "user_id"}:
+        return bad_request(err="Invalid data format. Need new privilege and user_id")
 
-    storage = datastore()
-
-    existing_dossier: Dossier = storage.dossier.get_if_exists(id)
-    if not existing_dossier:
-        return not_found(err="This view does not exist")
-
-    success: None | str = dossier_service.revoke_priviledge(
-        dossier_id=id,
-        user=user,
-        level_requested=escape(str(priv_change["priviledge"])),
-        new_member=escape(str(priv_change["user_id"])),
+    success: tuple[Dossier, HowlerDatastore] | str = dossier_service.revoke_privilege(
+        dossier_id=id, received_data=priv_change, user=user
     )
+
     if isinstance(success, str):
         return bad_request(success)
-
+    existing_dossier, storage = success
     return ok(storage.action.get_if_exists(existing_dossier.dossier_id, as_obj=False))

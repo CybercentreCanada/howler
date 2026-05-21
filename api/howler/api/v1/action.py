@@ -15,6 +15,11 @@ from howler.odm.models.action import Action
 from howler.odm.models.user import User
 from howler.security import api_login
 from howler.services import action_service
+from howler.services.permission_service import (
+    get_require_data_helper,
+    is_allowed_to_change,
+    privilege_value_verifications,
+)
 
 SUB_API = "action"
 classification_definition = CLASSIFICATION.get_parsed_classification_definition()
@@ -398,78 +403,26 @@ def execute_operations(**kwargs) -> Response:
 # region: Permission
 
 
-def __priviledge_value_verifications(
-    action_id: str, is_adding: bool = True
-) -> tuple[HowlerDatastore, str, str, Action] | Response:
-    """Verify base value for privilege request are usable.
-
-    If they are it return them else it return the error.
-    give permission from one user to an other.
-
-    Variables:
-    action_id => The id of the Action to give administrative priviledge of
-    is_adding => is the verification to remove or to add someone to a group
-    """
-    storage = datastore()
-    priv_change = request.json
-    if not isinstance(priv_change, dict):
-        return bad_request(err="Invalid data format")
-    if not set(priv_change.keys()) & {"priviledge", "user_id"}:
-        return bad_request(err="Invalid data format. Need new priviledge and user_id")
-    user_name: str = escape(str(priv_change["user_id"]))
-    priviledge_requested: str = escape(str(priv_change["priviledge"]))
-
-    if is_adding:
-        temp_user = storage.user.get_if_exists(user_name)
-        if not temp_user:
-            return bad_request(err="Invalid data format. user does not exist")
-        user_name = temp_user.uname
-
-    existing_action: Action = storage.action.get_if_exists(action_id)
-    if not existing_action:
-        return not_found(err="This Action does not exist")
-
-    return storage, priviledge_requested, user_name, existing_action
-
-
-def __is_allowed_to_change(priv_request: str, user: User, existing_action: Action) -> None | Response:
-    if "admin" in user.type:
-        return None  # global override
-
-    if priv_request not in existing_action.get_priviledge_mapping():
-        return bad_request(err=f"Wrong request. This privilege {priv_request} does not exist.")
-
-    is_action_admin = user.uname in existing_action.admin_id or user.uname in existing_action.owner_id
-
-    if not is_action_admin:
-        return bad_request(err="You cannot give administrative privilege for this Action.")
-
-    if priv_request == "owner" and user.uname not in existing_action.owner_id:
-        return bad_request(err="You cannot give owner privilege for this Action.")
-
-    return None
-
-
 @generate_swagger_docs()
 @action_api.route("/<id>/permission", methods=["PUT"])
 @api_login(required_priv=["R", "W"], required_type=["automation_basic"])
-def give_priviledge(id: str, user: User, **kwargs):
+def give_privilege(id: str, user: User, **kwargs):
     """give permission from one user to an other.
 
-    The json object need to send "priviledge", "user_id" as a key.
-    priviledge : The value need to be one of ["administrator", "member", "owner"]
+    The json object need to send "privilege", "user_id" as a key.
+    privilege : The value need to be one of ["administrator", "member", "owner"]
     user_id : the value need to be the user to add or remove from the permission
     is_adding: The value neeed to be a boolean representing if we add or remove a user.
 
     Variables:
-    action_id => The id of the action to give administrative priviledge of
+    action_id => The id of the action to give administrative privilege of
 
     Optional Arguments:
         None
 
     Data Block:
     {
-        "priviledge": "priviledge to give"  # [member, administrator, owner]
+        "privilege": "privilege to give"  # [member, administrator, owner]
         "user_id": "user to give permission to"
     }
 
@@ -478,27 +431,36 @@ def give_priviledge(id: str, user: User, **kwargs):
         "success": True     # If the operation succeeded
     }
     """
-    result = __priviledge_value_verifications(escape(str(id)))
+    temp_value: tuple[HowlerDatastore, str, str] | str = get_require_data_helper(request.json)
 
-    if isinstance(result, Response):
-        return result
+    if isinstance(temp_value, str):
+        return bad_request(err=temp_value)
 
-    storage, priviledge_requested, user_add, existing_action = result
-
-    priv_map: dict = existing_action.get_priviledge_mapping()
-
-    priv_request: str = escape(str(priviledge_requested))
-    is_allowed: None | Response = __is_allowed_to_change(
-        priv_request=priv_request, user=user, existing_action=existing_action
+    storage, priv_requested, user_to_add = temp_value
+    result = privilege_value_verifications(
+        item_id=escape(str(id)), level_requested=priv_requested, member_to_modify=user_to_add, item_type=Action
     )
+
+    if isinstance(result, str):
+        return bad_request(err=result)
+
+    if not isinstance(result[1], Action):
+        return bad_request(err=f"Wrong request type. Object of type {type(result[1])} was requested insted of View")
+
+    storage, existing_action = result
+
+    priv_map = existing_action.get_privilege_mapping()
+
+    priv_request: str = escape(str(priv_requested))
+    is_allowed: bool = is_allowed_to_change(level_requested=priv_request, user=user, existing_item=existing_action)
 
     if isinstance(is_allowed, Response):
         return is_allowed
 
-    if user_add in priv_map[priv_request]:
-        return bad_request(err=f"{user_add} already have the permission {priv_request}")
+    if user_to_add in priv_map[priv_request]:
+        return bad_request(err=f"{user_to_add} already have the permission {priv_request}")
 
-    priv_map[priv_request].append(str(user_add))
+    priv_map[priv_request].append(str(user_to_add))
 
     storage.action.save(existing_action.action_id, existing_action)
 
@@ -510,7 +472,7 @@ def give_priviledge(id: str, user: User, **kwargs):
 @generate_swagger_docs()
 @action_api.route("/<id>/permission", methods=["DELETE"])
 @api_login(required_priv=["R", "W"], required_type=["automation_basic"])
-def revoke_priviledge(id: str, user: User, **kwargs):
+def revoke_privilege(id: str, user: User, **kwargs):
     """Give permission from one user to another.
 
     Variables:
@@ -524,7 +486,7 @@ def revoke_priviledge(id: str, user: User, **kwargs):
 
     Data Block:
         {
-            "priviledge": "priviledge to give",  # [member, administrator, owner]
+            "privilege": "privilege to give",  # [member, administrator, owner]
             "user_id": "user to remove permission from",
             "is_adding": true
         }
@@ -534,27 +496,42 @@ def revoke_priviledge(id: str, user: User, **kwargs):
             "success": True
         }
     """
-    result = __priviledge_value_verifications(action_id=escape(str(id)), is_adding=False)
+    temp_value: tuple[HowlerDatastore, str, str] | str = get_require_data_helper(request.json)
 
-    if isinstance(result, Response):
-        return result
+    if isinstance(temp_value, str):
+        return bad_request(err=temp_value)
 
-    storage, priviledge_requested, user_add, existing_action = result
+    storage, priv_requested, user_to_remove = temp_value
+    result = privilege_value_verifications(
+        item_id=escape(str(id)),
+        level_requested=priv_requested,
+        member_to_modify=user_to_remove,
+        is_adding=False,
+        item_type=Action,
+    )
 
-    priv_map = existing_action.get_priviledge_mapping()
+    if isinstance(result, str):
+        return bad_request(err=result)
 
-    priv_request: str = priviledge_requested
-    is_allowed: None | Response = __is_allowed_to_change(
-        priv_request=priv_request, user=user, existing_action=existing_action
+    if not isinstance(result[1], Action):
+        return bad_request(err=f"Wrong request type. Object of type {type(result[1])} was requested insted of View")
+
+    storage, existing_action = result
+
+    priv_map = existing_action.get_privilege_mapping()
+    is_allowed: bool = is_allowed_to_change(
+        level_requested=priv_requested,
+        user=user,
+        existing_item=existing_action,
     )
 
     if isinstance(is_allowed, Response):
         return is_allowed
 
-    if user_add not in priv_map[priv_request]:
-        return bad_request(err=f"{user_add} is not in the {priv_request} premission group")
+    if user_to_remove not in priv_map[priv_requested]:
+        return bad_request(err=f"{user_to_remove} is not in the {priv_requested} premission group")
 
-    priv_map[priv_request].remove(str(user_add))
+    priv_map[priv_requested].remove(str(user_to_remove))
 
     storage.action.save(existing_action.action_id, existing_action)
 

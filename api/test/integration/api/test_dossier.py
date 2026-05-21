@@ -1,7 +1,9 @@
 import json
+from collections.abc import Callable
 from typing import Any
 
 import pytest
+import requests
 
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.models.dossier import Dossier
@@ -305,7 +307,7 @@ def test_get_dossier_for_hit_user_scoping(datastore: HowlerDatastore, login_sess
 
 def add_permission_every_role(member_to_add: str, member_requesting, create_res, host, dossier):
     try:
-        for membership in dossier.get_priviledge_mapping().keys():
+        for membership in dossier.get_privilege_mapping().keys():
             get_api_data(
                 member_requesting,
                 f"{host}/api/v1/dossier/{create_res['dossier_id']}/permission",
@@ -313,7 +315,7 @@ def add_permission_every_role(member_to_add: str, member_requesting, create_res,
                 data=json.dumps(
                     {
                         "user_id": member_to_add,
-                        "priviledge": membership,
+                        "privilege": membership,
                     }
                 ),
             )
@@ -324,7 +326,7 @@ def add_permission_every_role(member_to_add: str, member_requesting, create_res,
 
 def remove_permission_every_role(member_to_remove: str, member_requesting, create_res, host, dossier):
     try:
-        for membership in dossier.get_priviledge_mapping().keys():
+        for membership in dossier.get_privilege_mapping().keys():
             get_api_data(
                 member_requesting,
                 f"{host}/api/v1/dossier/{create_res['dossier_id']}/permission",
@@ -332,7 +334,7 @@ def remove_permission_every_role(member_to_remove: str, member_requesting, creat
                 data=json.dumps(
                     {
                         "user_id": member_to_remove,
-                        "priviledge": membership,
+                        "privilege": membership,
                     }
                 ),
             )
@@ -359,13 +361,13 @@ def modifying_dossier(member_requesting, create_res, host, dossier_name: str = "
 
 def test_give_remove_membership(
     datastore: HowlerDatastore,
-    user_sessions,
+    user_session,
 ):
     """
     Test adding a user and removing a user from a dossier
     """
-    owner_session, host = user_sessions["user"]
-    member_session, _ = user_sessions["huey"]
+    owner_session, host = user_session["user"]
+    member_session, _ = user_session["huey"]
 
     member_uname = get_api_data(member_session, f"{host}/api/v1/user/whoami", method="GET")["username"]
     # Create the dossier
@@ -379,7 +381,7 @@ def test_give_remove_membership(
 
     # Give|Remove every possible membership
     for request in ("PUT", "DELETE"):
-        for membership in dossier.get_priviledge_mapping().keys():
+        for membership in dossier.get_privilege_mapping().keys():
             get_api_data(
                 owner_session,
                 f"{host}/api/v1/dossier/{create_res['dossier_id']}/permission",
@@ -387,24 +389,24 @@ def test_give_remove_membership(
                 data=json.dumps(
                     {
                         "user_id": member_uname,
-                        "priviledge": membership,
+                        "privilege": membership,
                     }
                 ),
             )
             # updating the dossier for testing
             dossier: Dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
             if request == "PUT":
-                assert member_uname in dossier.get_priviledge_mapping()[membership]
+                assert member_uname in dossier.get_privilege_mapping()[membership]
                 continue
-            assert member_uname not in dossier.get_priviledge_mapping()[membership]
+            assert member_uname not in dossier.get_privilege_mapping()[membership]
 
     # Delete the dossier
     get_api_data(owner_session, f"{host}/api/v1/dossier/{create_res['dossier_id']}/", method="DELETE")
 
 
-def test_owner_priviledge(datastore: HowlerDatastore, user_sessions: dict):
-    owner_session, host = user_sessions["user"]
-    member_session, _ = user_sessions["huey"]
+def test_owner_privilege(datastore: HowlerDatastore, user_session: dict):
+    owner_session, host = user_session["user"]
+    member_session, _ = user_session["huey"]
 
     member_uname = get_api_data(member_session, f"{host}/api/v1/user/whoami", method="GET")["username"]
     owner_uname = get_api_data(owner_session, f"{host}/api/v1/user/whoami", method="GET")["username"]
@@ -423,8 +425,8 @@ def test_owner_priviledge(datastore: HowlerDatastore, user_sessions: dict):
     )
 
     dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
-    for membership in dossier.get_priviledge_mapping().keys():
-        assert member_uname in dossier.get_priviledge_mapping()[membership]
+    for membership in dossier.get_privilege_mapping().keys():
+        assert member_uname in dossier.get_privilege_mapping()[membership]
 
     remove_permission_every_role(
         member_to_remove=member_uname,
@@ -435,8 +437,8 @@ def test_owner_priviledge(datastore: HowlerDatastore, user_sessions: dict):
     )
 
     dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
-    for membership in dossier.get_priviledge_mapping().keys():
-        assert member_uname not in dossier.get_priviledge_mapping()[membership]
+    for membership in dossier.get_privilege_mapping().keys():
+        assert member_uname not in dossier.get_privilege_mapping()[membership]
 
     # Owner should be able to modify the dossier
     modifying_dossier(member_requesting=owner_session, create_res=create_res, host=host)
@@ -465,7 +467,7 @@ def test_owner_priviledge(datastore: HowlerDatastore, user_sessions: dict):
         data=json.dumps(
             {
                 "user_id": member_uname,
-                "priviledge": "owner",
+                "privilege": "owner",
             }
         ),
     )
@@ -486,7 +488,7 @@ def test_owner_priviledge(datastore: HowlerDatastore, user_sessions: dict):
         data=json.dumps(
             {
                 "user_id": member_uname,
-                "priviledge": "owner",
+                "privilege": "owner",
             }
         ),
     )
@@ -498,13 +500,13 @@ def test_owner_priviledge(datastore: HowlerDatastore, user_sessions: dict):
         data=json.dumps(
             {
                 "user_id": owner_uname,
-                "priviledge": "owner",
+                "privilege": "owner",
             }
         ),
     )
     datastore.dossier.commit()
     dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
-    assert owner_uname not in dossier.get_priviledge_mapping()["owner"]
+    assert owner_uname not in dossier.get_privilege_mapping()["owner"]
 
     # Owner should not be able to remove self if no other owner exist
     try:
@@ -515,7 +517,7 @@ def test_owner_priviledge(datastore: HowlerDatastore, user_sessions: dict):
             data=json.dumps(
                 {
                     "user_id": member_uname,
-                    "priviledge": "owner",
+                    "privilege": "owner",
                 }
             ),
         )
@@ -525,14 +527,18 @@ def test_owner_priviledge(datastore: HowlerDatastore, user_sessions: dict):
 
     datastore.dossier.commit()
 
-    assert member_uname in dossier.get_priviledge_mapping()["owner"]
+    assert member_uname in dossier.get_privilege_mapping()["owner"]
 
     return
 
 
-def test_admin(datastore: HowlerDatastore, user_sessions: dict, login_session):
-    admin_session, host = user_sessions["user"]
-    member_session, _ = user_sessions["huey"]
+def test_admin(datastore: HowlerDatastore, user_session: Callable[[str], tuple[requests.Session, str]], login_session):
+    """
+    Test Admin privilege on view dossier and actions. This will attempt on adding, removing member from positions and
+    verify that the permission an admin have are the intended ones.
+    """
+    admin_session, host = user_session("user")
+    member_session, _ = user_session("huey")
     owner_session, _ = login_session
 
     member_uname = get_api_data(member_session, f"{host}/api/v1/user/whoami", method="GET")["username"]
@@ -555,11 +561,11 @@ def test_admin(datastore: HowlerDatastore, user_sessions: dict, login_session):
         data=json.dumps(
             {
                 "user_id": admin_uname,
-                "priviledge": "administrator",
+                "privilege": "administrator",
             }
         ),
     )
-    assert owner_uname not in dossier.get_priviledge_mapping()["administrator"]  # ensure user is admin
+    assert owner_uname not in dossier.get_privilege_mapping()["administrator"]  # ensure user is admin
 
     # Admin should be able to add|remove member and other admin
     for method in ["PUT", "DELETE"]:
@@ -570,16 +576,16 @@ def test_admin(datastore: HowlerDatastore, user_sessions: dict, login_session):
             data=json.dumps(
                 {
                     "user_id": member_uname,
-                    "priviledge": "administrator",
+                    "privilege": "administrator",
                 }
             ),
         )
         datastore.dossier.commit()
         dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
         if method == "PUT":
-            assert member_uname in dossier.get_priviledge_mapping()["administrator"]
+            assert member_uname in dossier.get_privilege_mapping()["administrator"]
             continue
-        assert member_uname not in dossier.get_priviledge_mapping()["administrator"]
+        assert member_uname not in dossier.get_privilege_mapping()["administrator"]
 
     # Admin should not be able to add|remove owner
     try:
@@ -590,7 +596,7 @@ def test_admin(datastore: HowlerDatastore, user_sessions: dict, login_session):
             data=json.dumps(
                 {
                     "user_id": member_uname,
-                    "priviledge": "owner",
+                    "privilege": "owner",
                 }
             ),
         )
@@ -599,7 +605,7 @@ def test_admin(datastore: HowlerDatastore, user_sessions: dict, login_session):
         pass
     datastore.dossier.commit()
     dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
-    assert member_uname not in dossier.get_priviledge_mapping()["owner"]
+    assert member_uname not in dossier.get_privilege_mapping()["owner"]
     try:
         get_api_data(
             admin_session,
@@ -608,7 +614,7 @@ def test_admin(datastore: HowlerDatastore, user_sessions: dict, login_session):
             data=json.dumps(
                 {
                     "user_id": admin_uname,
-                    "priviledge": "owner",
+                    "privilege": "owner",
                 }
             ),
         )
@@ -617,7 +623,7 @@ def test_admin(datastore: HowlerDatastore, user_sessions: dict, login_session):
         pass
     datastore.dossier.commit()
     dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
-    assert admin_uname not in dossier.get_priviledge_mapping()["owner"]
+    assert admin_uname not in dossier.get_privilege_mapping()["owner"]
 
     # Admin should not be able to delete dossier
     total = datastore.dossier.search("dossier_id:*")["total"]
@@ -649,21 +655,21 @@ def test_admin(datastore: HowlerDatastore, user_sessions: dict, login_session):
         data=json.dumps(
             {
                 "user_id": admin_uname,
-                "priviledge": "administrator",
+                "privilege": "administrator",
             }
         ),
     )
     datastore.dossier.commit()
     dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
-    assert admin_uname not in dossier.get_priviledge_mapping()["administrator"]
-    assert dossier.get_priviledge_mapping()["administrator"] == []
+    assert admin_uname not in dossier.get_privilege_mapping()["administrator"]
+    assert dossier.get_privilege_mapping()["administrator"] == []
 
     return
 
 
-def test_member(datastore: HowlerDatastore, user_sessions: dict):
-    owner_session, host = user_sessions["user"]
-    member_session, _ = user_sessions["huey"]
+def test_member(datastore: HowlerDatastore, user_session: dict):
+    owner_session, host = user_session["user"]
+    member_session, _ = user_session["huey"]
     member_uname = get_api_data(member_session, f"{host}/api/v1/user/whoami", method="GET")["username"]
     owner_uname = get_api_data(owner_session, f"{host}/api/v1/user/whoami", method="GET")["username"]
     # Create the dossier
@@ -682,13 +688,13 @@ def test_member(datastore: HowlerDatastore, user_sessions: dict):
         data=json.dumps(
             {
                 "user_id": member_uname,
-                "priviledge": "member",
+                "privilege": "member",
             }
         ),
     )
     datastore.dossier.commit()
     dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
-    assert member_uname in dossier.get_priviledge_mapping()["member"]  # ensure the membership was given
+    assert member_uname in dossier.get_privilege_mapping()["member"]  # ensure the membership was given
 
     # Member should not be able to add admin/owner/member
     add_permission_every_role(
@@ -697,7 +703,7 @@ def test_member(datastore: HowlerDatastore, user_sessions: dict):
     datastore.dossier.commit()
     dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
     for membership in ["owner", "administrator"]:
-        assert member_uname not in dossier.get_priviledge_mapping()[membership]
+        assert member_uname not in dossier.get_privilege_mapping()[membership]
 
     # Member should not be able to remove admin/owner/member
     # adding owner into every role
@@ -707,8 +713,8 @@ def test_member(datastore: HowlerDatastore, user_sessions: dict):
     # verify owner is in every role
     datastore.dossier.commit()
     dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
-    for membership in dossier.get_priviledge_mapping().keys():
-        assert owner_uname in dossier.get_priviledge_mapping()[membership]
+    for membership in dossier.get_privilege_mapping().keys():
+        assert owner_uname in dossier.get_privilege_mapping()[membership]
 
     remove_permission_every_role(
         create_res=create_res,
@@ -720,8 +726,8 @@ def test_member(datastore: HowlerDatastore, user_sessions: dict):
     # ensure owner is still in every role
     datastore.dossier.commit()
     dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
-    for membership in dossier.get_priviledge_mapping().keys():
-        assert owner_uname in dossier.get_priviledge_mapping()[membership]
+    for membership in dossier.get_privilege_mapping().keys():
+        assert owner_uname in dossier.get_privilege_mapping()[membership]
     # Member should not be able to delete dossier
     total = datastore.dossier.search("dossier_id:*")["total"]
     try:

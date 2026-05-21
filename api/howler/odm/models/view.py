@@ -26,10 +26,8 @@ class View(odm.Model):
         description="The type of view",
     )
 
-    owner: list[str] = odm.List(
-        odm.Keyword(),
-        description="The group of person to whom this view belongs.",
-        default=[],
+    owner: str = odm.Keyword(
+        description="The person to whom this view belongs.",
         optional=True,
     )
 
@@ -49,7 +47,7 @@ class View(odm.Model):
         Settings, description="Additional View Settings", default={"advance_on_triage": False}
     )
 
-    def get_priviledge_mapping(self) -> dict[str, list[str]]:
+    def get_privilege_mapping(self) -> dict[str, list[str]]:
         return {
             "administrator": self.admin,
             "member": self.member,

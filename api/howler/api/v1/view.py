@@ -1,6 +1,6 @@
 from typing import cast
 
-from flask import Response, request
+from flask import request
 from markupsafe import escape
 from mergedeep.mergedeep import merge
 
@@ -14,6 +14,11 @@ from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.models.user import User
 from howler.odm.models.view import View
 from howler.security import api_login
+from howler.services.permission_service import (
+    get_require_data_helper,
+    is_allowed_to_change,
+    privilege_value_verifications,
+)
 
 SUB_API = "view"
 view_api = make_subapi_blueprint(SUB_API, api_version=1)
@@ -94,7 +99,7 @@ def create_view(**kwargs):
 
         view = View(view_data)
 
-        view.owner = [kwargs["user"]["uname"]]
+        view.owner = kwargs["user"]["uname"]
 
         if view.type == "personal":
             current_user = storage.user.get_if_exists(kwargs["user"]["uname"])
@@ -137,8 +142,7 @@ def delete_view(view_id: str, user: User, **kwargs):
     if not existing_view:
         return not_found(err="This view does not exist")
 
-    # TODO: AG verify this work properly.
-    if (user.uname not in existing_view.owner) and "admin" not in user.type:
+    if (user.uname != existing_view.owner) and "admin" not in user.type:
         return forbidden(err="You cannot delete a view unless you are an owner or a global admin.")
 
     if existing_view.type == "readonly":
@@ -190,10 +194,10 @@ def update_view(view_id: str, user: User, **kwargs):
     if existing_view.type == "readonly":
         return forbidden(err="You cannot edit a built-in view.")
 
-    if existing_view.type == "personal" and user.uname not in existing_view.owner:
+    if existing_view.type == "personal" and user.uname != existing_view.owner:
         return forbidden(err="You cannot update a personal view that is not owned by you.")
 
-    allowed_list: list[str] = existing_view.owner + existing_view.admin + existing_view.member
+    allowed_list: list[str] = [existing_view.owner] + existing_view.admins + existing_view.member
     if existing_view.type == "global" and (user.uname not in allowed_list) and "admin" not in user.type:
         return forbidden(err="Only the owner of a view and administrators can edit a global view.")
 
@@ -242,7 +246,7 @@ def set_as_favourite(view_id: str, **kwargs):
         return not_found(err="This view does not exist")
 
     if existing_view.type != "global" and (
-        kwargs["user"]["uname"] not in existing_view.owner and existing_view.owner != []
+        kwargs["user"]["uname"] != existing_view.owner and existing_view.owner != ""
     ):
         return forbidden(err="You can only favourite global views, or views owned by you.")
 
@@ -294,86 +298,29 @@ def remove_as_favourite(view_id: str, **kwargs):
         return bad_request(err=str(e))
 
 
-# Region: Permission
-
-
-def __priviledge_value_verifications(
-    view_id: str, is_adding: bool = True
-) -> tuple[HowlerDatastore, str, str, View] | Response:
-    """Verify base value for privilege request are usable.
-
-    If they are it return them else it return the error.
-    give permission from one user to an other.
-
-    Variables:
-    view_id => The id of the view to give administrative priviledge of
-    is_adding => is the verification to remove or to add someone to a group
-    """
-    storage = datastore()
-    priv_change = request.json
-    if not isinstance(priv_change, dict):
-        return bad_request(err="Invalid data format")
-    if not set(priv_change.keys()) & {"priviledge", "user_id"}:
-        return bad_request(err="Invalid data format. Need new priviledge and user_id")
-    user_name: str = escape(str(priv_change["user_id"]))
-    priviledge_request: str = escape(str(priv_change["priviledge"]))
-    if is_adding:
-        temp_user = storage.user.get_if_exists(user_name)
-        if not temp_user:
-            return bad_request(err=f"Invalid data format. user id {user_name} does not exist")
-        user_name = temp_user.uname
-
-    existing_view: View = storage.view.get_if_exists(view_id)
-    if not existing_view:
-        return not_found(err="This view does not exist")
-
-    return storage, priviledge_request, user_name, existing_view
-
-
-def __is_allowed_to_change(priv_request: str, user: User, existing_view: View) -> None | Response:
-    """Verify for privilege request if they are allowed to request the change or not.
-
-    Variables:
-    priv_request => The priviledge level requested base on the string from the object [administrator, member, owner]
-    user => The user requesting the change
-    existing_view => The view that will be change
-    """
-    if "admin" in user.type:
-        return None
-
-    if priv_request not in existing_view.get_priviledge_mapping():
-        return bad_request(err=f"Wrong request. This priviledge {priv_request} does not exist.")
-
-    is_view_admin: bool = (user.uname in existing_view.admin) or (user.uname in existing_view.owner)
-    if not is_view_admin:
-        return bad_request(err="You cannot give administrative priviledge for this view.")
-
-    if priv_request == "owner" and (user.uname not in existing_view.owner):
-        return bad_request(err="You cannot give owner priviledge for this view.")
-
-    return None
+# region: Permission
 
 
 @generate_swagger_docs()
 @view_api.route("/<view_id>/permission", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
-def give_priviledge(view_id: str, user: User, **kwargs):
+def give_privilege(view_id: str, user: User, **kwargs):
     """give permission from one user to an other.
 
-    The json object need to send "priviledge", "user_id" as a key.
-    priviledge : The value need to be one of ["administrator", "member", "owner"]
+    The json object need to send "privilege", "user_id" as a key.
+    privilege : The value need to be one of ["administrator", "member", "owner"]
     user_id : the value need to be the user to add or remove from the permission
     is_adding: The value neeed to be a boolean representing if we add or remove a user.
 
     Variables:
-    action_id => The id of the action to give administrative priviledge of
+    action_id => The id of the action to give administrative privilege of
 
     Optional Arguments:
         None
 
     Data Block:
     {
-        "priviledge": "priviledge to give"  # [member, administrator, owner]
+        "privilege": "privilege to give"  # [member, administrator, owner]
         "user_id": "user to give permission to"
     }
 
@@ -382,27 +329,39 @@ def give_priviledge(view_id: str, user: User, **kwargs):
         "success": True     # If the operation succeeded
     }
     """
-    result = __priviledge_value_verifications(escape(str(view_id)))
+    temp_value: tuple[HowlerDatastore, str, str] | str = get_require_data_helper(request.json)
 
-    if isinstance(result, Response):
-        return result
+    if isinstance(temp_value, str):
+        return bad_request(err=temp_value)
 
-    storage, priv_requested, user_add, existing_view = result
+    storage, priv_requested, user_to_add = temp_value
 
-    priv_map: dict = existing_view.get_priviledge_mapping()
-
-    priv_request: str = escape(str(priv_requested))
-    is_allowed: None | Response = __is_allowed_to_change(
-        priv_request=priv_request, user=user, existing_view=existing_view
+    result = privilege_value_verifications(
+        item_id=escape(str(view_id)),
+        level_requested=priv_requested,
+        member_to_modify=user_to_add,
     )
 
-    if isinstance(is_allowed, Response):
-        return is_allowed
+    if isinstance(result, str):
+        return bad_request(err=result)
 
-    if user_add in priv_map[priv_request]:
-        return bad_request(err=f"{user_add} already have the permission {priv_request}")
+    if not isinstance(result[1], View):
+        return bad_request(err=f"Wrong request type. Object of type {type(result[1])} was requested insted of View")
 
-    priv_map[priv_request].append(str(user_add))
+    storage, existing_view = result
+
+    priv_map: dict = existing_view.get_privilege_mapping()
+
+    priv_request: str = escape(str(priv_requested))
+    is_allowed: bool = is_allowed_to_change(level_requested=priv_request, user=user, existing_item=existing_view)
+
+    if not is_allowed:
+        return bad_request(err=f'You are not allowed to give the privilege "{priv_request}" for this view ')
+
+    if user_to_add in priv_map[priv_request]:
+        return bad_request(err=f"{user_to_add} already have the permission {priv_request}")
+
+    priv_map[priv_request].append(str(user_to_add))
 
     storage.view.save(existing_view.view_id, existing_view)
 
@@ -413,7 +372,7 @@ def give_priviledge(view_id: str, user: User, **kwargs):
 @generate_swagger_docs()
 @view_api.route("/<view_id>/permission", methods=["DELETE"])
 @api_login(required_priv=["R", "W"])
-def revoke_priviledge(view_id: str, user: User, **kwargs):
+def revoke_privilege(view_id: str, user: User, **kwargs):
     """Give permission from one user to another.
 
     Variables:
@@ -427,7 +386,7 @@ def revoke_priviledge(view_id: str, user: User, **kwargs):
 
     Data Block:
         {
-            "priviledge": "priviledge to give",  # [member, administrator, owner]
+            "privilege": "privilege to give",  # [member, administrator, owner]
             "user_id": "user to remove permission from",
         }
 
@@ -436,30 +395,43 @@ def revoke_priviledge(view_id: str, user: User, **kwargs):
             "success": True
         }
     """
-    result = __priviledge_value_verifications(view_id=view_id, is_adding=False)
+    temp_value: tuple[HowlerDatastore, str, str] | str = get_require_data_helper(request.json)
 
-    if isinstance(result, Response):
-        return result
+    if isinstance(temp_value, str):
+        return bad_request(err=temp_value)
 
-    storage, priv_requested, user_add, existing_view = result
-
-    priv_map = existing_view.get_priviledge_mapping()
-
-    priv_request: str = escape(str(priv_requested))
-    is_allowed: None | Response = __is_allowed_to_change(
-        priv_request=priv_request, user=user, existing_view=existing_view
+    storage, priv_requested, user_to_remove = temp_value
+    result = privilege_value_verifications(
+        item_id=escape(str(view_id)),
+        level_requested=priv_requested,
+        member_to_modify=user_to_remove,
+        is_adding=False,
+        item_type=View,
     )
 
-    if isinstance(is_allowed, Response):
-        return is_allowed
+    if isinstance(result, str):
+        return bad_request(err=result)
 
-    if user_add not in priv_map[priv_request]:
-        return bad_request(err=f"{user_add} is not in the {priv_request} premission group")
+    if not isinstance(result[1], View):
+        return bad_request(err=f"Wrong request type. Object of type {type(result[1])} was requested insted of View")
+
+    storage, existing_view = result
+
+    priv_map = existing_view.get_privilege_mapping()
+
+    priv_request: str = escape(str(priv_requested))
+    is_allowed: bool = is_allowed_to_change(level_requested=priv_request, user=user, existing_item=existing_view)
+
+    if not is_allowed:
+        return bad_request(err=f"You are not allowed to give {priv_request} on view {view_id}")
+
+    if user_to_remove not in priv_map[priv_request]:
+        return bad_request(err=f"{user_to_remove} is not in the {priv_request} premission group")
     if priv_request == "owner" and len(priv_map[priv_request]) <= 1:
         return bad_request(
-            err=f"{user_add} is the last owner in the {priv_request} premission group. Can not be remove"
+            err=f"{user_to_remove} is the last owner in the {priv_request} premission group. Can not be remove"
         )
-    priv_map[priv_request].remove(str(user_add))
+    priv_map[priv_request].remove(str(user_to_remove))
 
     storage.view.save(existing_view.view_id, existing_view)
 
@@ -468,4 +440,4 @@ def revoke_priviledge(view_id: str, user: User, **kwargs):
     return ok(storage.view.get_if_exists(existing_view.view_id, as_obj=False))
 
 
-# endRegion
+# endregion

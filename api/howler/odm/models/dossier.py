@@ -25,19 +25,17 @@ class Dossier(odm.Model):
     title: str = odm.Keyword(description="The title of this dossier.")
 
     # TODO : AG find better language for them
-    owner: list[str] = odm.List(
-        odm.Keyword(),
-        description="The group of person to whom this dossier belongs.",
-        default=[],
+    owner: str = odm.Keyword(
+        description="The person to whom this dossier belongs.",
         optional=True,
     )
-    admin: list[str] = odm.List(
+    admins: list[str] = odm.List(
         odm.Keyword(),
         description="The group of person to whom this dossier is administer.",
         default=[],
         optional=True,
     )
-    member: list[str] = odm.List(
+    members: list[str] = odm.List(
         odm.Keyword(),
         description=("The group of person to whom this dossier is assigned."),
         default=[],
@@ -52,7 +50,7 @@ class Dossier(odm.Model):
         description="The type of dossier - personal or global.",
     )
 
-    def get_priviledge_mapping(self) -> dict:
+    def get_privilege_mapping(self) -> dict:
         return {
             "administrator": self.admin,
             "member": self.member,

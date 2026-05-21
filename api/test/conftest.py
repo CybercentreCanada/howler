@@ -163,30 +163,18 @@ def login_session(host):
 
 
 @pytest.fixture(scope="function")
-def user_sessions(host) -> dict[str, tuple]:
+def user_session(host):
     """
-    Return a Tuple object containing two connected user (user and huey)
+    Return a function name build_session which take the parameter "user". Base return will be the string 'user'.
     """
-    try:
 
-        def build_session(auth: bytes):
-            session = requests.Session()
-            session.headers.update({"Authorization": f"Basic {base64.b64encode(auth).decode('utf-8')}"})
-            return session
+    def build_session(user: str = "user"):
+        auth = f"{user}:devkey:{user}".encode()
+        session = requests.Session()
+        session.headers.update({"Authorization": f"Basic {base64.b64encode(auth).decode('utf-8')}"})
+        return session, host
 
-        return {
-            "user": (
-                build_session(b"user:devkey:user"),
-                host,
-            ),
-            "huey": (
-                build_session(b"huey:devkey:huey"),
-                host,
-            ),
-        }
-
-    except requests.ConnectionError as err:
-        pytest.skip(str(err))
+    return build_session
 
 
 def get_api_data(  # noqa: C901
