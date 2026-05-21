@@ -10,6 +10,7 @@ export type TuiListItem<T> = {
   details?: boolean;
   cursor?: boolean;
   selected?: boolean;
+  disabled?: boolean;
   item: T;
 };
 

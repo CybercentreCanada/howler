@@ -14,7 +14,7 @@ const TuiListElement = <T,>({ position, item, onSelect: onClick, children }: Tui
 
   const onItemClick = useCallback(
     _event => {
-      if (onClick) {
+      if (onClick && !item.disabled) {
         onClick(item, position);
       }
     },
@@ -22,6 +22,10 @@ const TuiListElement = <T,>({ position, item, onSelect: onClick, children }: Tui
   );
 
   const classRenderer = useCallback(() => {
+    if (item.disabled) {
+      return 'elementDisabled';
+    }
+
     const _classes = ['elementHover'];
     if (item.cursor) {
       _classes.push('elementFocus');
@@ -30,7 +34,7 @@ const TuiListElement = <T,>({ position, item, onSelect: onClick, children }: Tui
       _classes.push('elementSelected');
     }
     return _classes.join(' ');
-  }, [item.cursor, item.selected]);
+  }, [item.cursor, item.selected, item.disabled]);
 
   return (
     <VSBoxElement focus={!!item.cursor}>
@@ -40,6 +44,7 @@ const TuiListElement = <T,>({ position, item, onSelect: onClick, children }: Tui
         data-tuilist-id={item.id}
         data-tuilist-focus={!!item.cursor}
         data-tuilist-selected={!!item.selected}
+        aria-disabled={item.disabled}
         onClick={onItemClick}
       >
         {children({ item, position }, classRenderer)}
