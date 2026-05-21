@@ -40,7 +40,23 @@ def _remove_analytics_without_hits(ds: HowlerDatastore):
     matched_analytics = _find_analytics_with_hits(ds)
 
     if matched_analytics is not None:
-        ds.analytic.delete_by_search_object({"bool": {"must_not": [{"terms": {"name": matched_analytics}}]}})
+        ds.analytic.delete_by_search_object(
+            {
+                "bool": {
+                    "filter": [
+                        {
+                            "bool": {
+                                "must_not": [
+                                    {"exists": {"field": "rule"}},
+                                    {"exists": {"field": "rule_type"}},
+                                ]
+                            }
+                        }
+                    ],
+                    "must_not": [{"terms": {"name": matched_analytics}}],
+                }
+            }
+        )
         ds.analytic.commit()
     else:
         logger.warning("No matched analytics aggregation result. Skipping cleanup.")
