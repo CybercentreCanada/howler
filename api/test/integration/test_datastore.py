@@ -568,6 +568,26 @@ def _test_agg_search(c: ESCollection):
     assert result["aggregations"]["cardinality_agg_name"].keys() == {"value"}
 
 
+def _test_oversized_agg_search(c: ESCollection):
+    """
+    Test that submitting an aggregation that exceeds the configured size limit emits a warning.
+
+    This test attempts to run a terms aggregation with a size larger than the allowed maximum,
+    and verifies that the appropriate warning is given and the aggregation is ignored.
+    """
+    terms_agg: dict = {"terms": {"field": "lvl_i", "size": 65537}}
+    aggs: list = [("oversized_terms_agg", terms_agg)]
+
+    with pytest.warns(
+        UserWarning,
+        match="Aggregation oversized_terms_agg has a size argument "
+        "higher than the maximum allowed buckets of the cluster",
+    ):
+        result = c.search("id:*", aggregations=aggs)
+
+    assert "aggregations" not in result or "oversized_terms_agg" not in result["aggregations"]
+
+
 TEST_FUNCTIONS = [
     (_test_exists, "exists"),
     (_test_get, "get"),
@@ -588,6 +608,7 @@ TEST_FUNCTIONS = [
     (_test_facet, "facet"),
     (_test_stats, "stats"),
     (_test_agg_search, "aggregations"),
+    (_test_oversized_agg_search, "oversized_aggregations"),
 ]
 
 

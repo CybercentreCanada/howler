@@ -100,3 +100,18 @@ def test_no_hits_remove_analytics_without_hits(datastore_connection_no_hits):
 
     analytic_names = get_analytic_names(datastore_connection_no_hits)
     assert analytic_names == []
+
+
+def test_too_many_analytics_does_not_run_cleanup(monkeypatch, datastore_connection):
+    """Test that if the analytics aggregation fails, the cleanup does not run and no analytics are deleted"""
+
+    # simulate large number of analytics
+    monkeypatch.setattr(datastore_connection.analytic, "count", lambda *args, **kwargs: {"count": 65537})
+
+    before_delete = get_analytic_names(datastore_connection)
+
+    with pytest.warns(UserWarning, match="size argument higher than the maximum allowed"):
+        _remove_analytics_without_hits(datastore_connection)
+
+    after_delete = get_analytic_names(datastore_connection)
+    assert lists_equivalent(after_delete, before_delete)

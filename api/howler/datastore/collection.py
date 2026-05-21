@@ -1519,7 +1519,21 @@ class ESCollection(Generic[ModelType]):
         # Add any arbitrary aggregations
         if parsed_values["aggregations"]:
             query_body.setdefault("aggregations", {})
+            cluster_settings = self.datastore.client.cluster.get_settings(include_defaults=True, flat_settings=True)
+            flattened_settings = {
+                **cluster_settings["defaults"],
+                **cluster_settings["transient"],
+                **cluster_settings["persistent"],
+            }
+            max_buckets = int(flattened_settings["search.max_buckets"])
             for agg_name, agg_args in parsed_values["aggregations"]:
+                if any("size" in agg_def and agg_def["size"] > max_buckets for agg_def in agg_args.values()):
+                    # verify the size of the agg query doesn't exceed the max
+                    warnings.warn(
+                        f"Aggregation {agg_name} has a size argument higher than the maximum allowed "
+                        f"buckets of the cluster ({max_buckets}). Skipping aggregation."
+                    )
+                    continue
                 query_body["aggregations"][f"{self.CUSTOM_AGG_PREFIX}{agg_name}"] = agg_args
 
         try:
@@ -1761,7 +1775,7 @@ class ESCollection(Generic[ModelType]):
                 "items": search_ret_data["items"],
                 "aggregations": {
                     k[len(self.CUSTOM_AGG_PREFIX) :]: v
-                    for k, v in result["aggregations"].items()
+                    for k, v in result.get("aggregations", {}).items()
                     if k.startswith(self.CUSTOM_AGG_PREFIX)
                 },
             }

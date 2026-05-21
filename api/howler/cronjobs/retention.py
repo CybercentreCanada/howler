@@ -39,11 +39,14 @@ def _remove_analytics_without_hits(ds: HowlerDatastore):
 
     matched_analytics = _find_analytics_with_hits(ds)
 
-    ds.analytic.delete_by_search_object({"bool": {"must_not": [{"terms": {"name": matched_analytics}}]}})
-    ds.analytic.commit()
+    if matched_analytics is not None:
+        ds.analytic.delete_by_search_object({"bool": {"must_not": [{"terms": {"name": matched_analytics}}]}})
+        ds.analytic.commit()
+    else:
+        logger.warning("No matched analytics aggregation result. Skipping cleanup.")
 
 
-def _find_analytics_with_hits(ds: HowlerDatastore) -> list[str]:
+def _find_analytics_with_hits(ds: HowlerDatastore) -> list[str] | None:
 
     total_analytics = ds.analytic.count("id:*", filters=None)["count"]
 
@@ -61,11 +64,15 @@ def _find_analytics_with_hits(ds: HowlerDatastore) -> list[str]:
                     },
                 )
             ],
+            rows=0,
         )
 
-        matched_analytic_names = [
-            bucket["key"] for bucket in matched_analytics["aggregations"]["matched_analytics"]["buckets"]
-        ]
+        if "matched_analytics" in matched_analytics["aggregations"]:
+            matched_analytic_names = [
+                bucket["key"] for bucket in matched_analytics["aggregations"]["matched_analytics"]["buckets"]
+            ]
+        else:
+            return None
 
     else:
         matched_analytic_names = []
