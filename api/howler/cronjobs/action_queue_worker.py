@@ -29,6 +29,10 @@ def run_worker(trigger: str) -> None:  # pragma: no cover – long-running loop,
     Accumulates up to ``BATCH_SIZE`` items or flushes after ``BATCH_TIMEOUT``
     seconds, whichever comes first.
     """
+    if not config.system.action_queue.enabled:
+        logger.info("Action queue worker disabled by configuration, not starting for trigger=%s", trigger)
+        return
+
     queue = _get_action_queue(trigger)
     logger.info(
         "Action queue worker started for trigger=%s (batch_size=%d, timeout=%ds)",
