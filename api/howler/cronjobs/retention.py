@@ -59,7 +59,10 @@ def _remove_analytics_without_hits(ds: HowlerDatastore):
         )
         ds.analytic.commit()
     else:
-        logger.warning("No matched analytics aggregation result. Skipping cleanup.")
+        logger.warning(
+            "Aggregation search for matched analytics did not run or returned no results. "
+            "There is likely an issue with the query. Skipping cleanup."
+        )
 
 
 def _find_analytics_with_hits(ds: HowlerDatastore) -> list[str] | None:

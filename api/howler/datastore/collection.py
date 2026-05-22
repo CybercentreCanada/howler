@@ -1760,7 +1760,7 @@ class ESCollection(Generic[ModelType]):
         )
 
         ret_data: SearchResult | AggSearchResult
-        search_ret_data: SearchResult = {
+        ret_data = {
             "offset": int(offset),
             "rows": int(rows),
             "total": int(result["hits"]["total"]["value"]),
@@ -1768,21 +1768,14 @@ class ESCollection(Generic[ModelType]):
         }
 
         if aggregations:
-            agg_ret_data: AggSearchResult = {
-                "offset": search_ret_data["offset"],
-                "rows": search_ret_data["rows"],
-                "total": search_ret_data["total"],
-                "items": search_ret_data["items"],
+            ret_data = {
+                **ret_data,
                 "aggregations": {
                     k[len(self.CUSTOM_AGG_PREFIX) :]: v
                     for k, v in result.get("aggregations", {}).items()
                     if k.startswith(self.CUSTOM_AGG_PREFIX)
                 },
             }
-            ret_data = agg_ret_data
-
-        else:
-            ret_data = search_ret_data
 
         new_deep_paging_id = result.get("_scroll_id", None)
 
