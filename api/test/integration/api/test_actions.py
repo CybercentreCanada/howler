@@ -312,6 +312,14 @@ def test_valid_action_on_triage(datastore: HowlerDatastore, login_session):
         },
     )
 
+    # Action execution is queued asynchronously; poll until the label appears
+    deadline = time.time() + 15
+    while time.time() < deadline:
+        datastore.hit.commit()
+        if "demoted" in (datastore.hit.get(test_hit_demote.howler.id).howler.labels.generic or []):
+            break
+        time.sleep(0.5)
+
     assert "demoted" in datastore.hit.get(test_hit_demote.howler.id).howler.labels.generic
 
     get_api_data(
@@ -328,6 +336,14 @@ def test_valid_action_on_triage(datastore: HowlerDatastore, login_session):
             "content-type": "application/json",
         },
     )
+
+    # Action execution is queued asynchronously; poll until the label appears
+    deadline = time.time() + 15
+    while time.time() < deadline:
+        datastore.hit.commit()
+        if "promoted" in (datastore.hit.get(test_hit_promote.howler.id).howler.labels.generic or []):
+            break
+        time.sleep(0.5)
 
     assert "promoted" in datastore.hit.get(test_hit_promote.howler.id).howler.labels.generic
 
