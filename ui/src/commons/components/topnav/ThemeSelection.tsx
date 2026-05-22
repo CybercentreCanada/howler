@@ -21,8 +21,7 @@ import {
   useAppTheme
 } from 'commons/components/app/hooks';
 import useLocalStorage from 'commons/components/utils/hooks/useLocalStorage';
-import dayjs from 'dayjs';
-import { memo, useCallback } from 'react';
+import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 const ThemeSelection = () => {
@@ -31,14 +30,12 @@ const ThemeSelection = () => {
   const configs = useAppConfigs();
   const layout = useAppLayout();
   const breadcrumbs = useAppBreadcrumbs();
+  const language = useAppLanguage();
   const appbar = useAppBar();
   const appTheme = useAppTheme();
   const quicksearch = useAppQuickSearch();
   const localStorage = useLocalStorage(APP_STORAGE_PREFIX);
   const isSmDown = useMediaQuery(theme.breakpoints.down('sm'));
-
-  const onLanguageChange = useCallback((language: 'en' | 'fr') => dayjs.locale(language === 'en' ? 'en' : 'fr-ca'), []);
-  const language = useAppLanguage(onLanguageChange);
 
   const clearStorage = () => {
     localStorage.clear();

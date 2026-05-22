@@ -63,7 +63,7 @@ import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Hit } from 'models/entities/generated/Hit';
 import * as monaco from 'monaco-editor';
 import howlerPluginStore from 'plugins/store';
-import { useContext, useEffect, useMemo, type FC, type PropsWithChildren } from 'react';
+import { useCallback, useContext, useEffect, useMemo, type FC, type PropsWithChildren } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { PluginProvider, usePluginStore } from 'react-pluggable';
 import { createBrowserRouter, Outlet, RouterProvider, useLocation, useNavigate } from 'react-router-dom';
@@ -117,6 +117,15 @@ const MyApp: FC = () => {
   const { setItems } = useAppSwitcher();
   const { get, set, remove } = useMyLocalStorage();
   const pluginStore = usePluginStore();
+
+  const onLanguageChange = useCallback((language: 'en' | 'fr') => dayjs.locale(language === 'en' ? 'en' : 'fr-ca'), []);
+
+  useEffect(() => {
+    i18n.on('languageChanged', onLanguageChange);
+    return () => {
+      i18n.off('languageChanged', onLanguageChange);
+    };
+  }, [onLanguageChange]);
 
   // Simulate app loading time...
   // e.g. fetching initial app data, etc.
