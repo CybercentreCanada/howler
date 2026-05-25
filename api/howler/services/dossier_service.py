@@ -202,14 +202,14 @@ def update_dossier(dossier_id: str, dossier_data: dict[str, Any], user: User) ->
 
     # Enforce access control for personal dossiers
     # Only the owner or admin users can modify personal dossiers
-    is_dossier_admin: bool = user.uname == existing_dossier.owner or user.name in existing_dossier.admin
+    is_dossier_admin: bool = user.uname == existing_dossier.owner or user.name in existing_dossier.admins
     if existing_dossier.type == "personal" and not is_dossier_admin and "admin" not in user.type:
         raise ForbiddenException("You cannot update a personal dossier that is not owned by you.")
 
     # Enforce access control for global dossiers
     # Only the owner or admin users can modify global dossiers
     # TODO : AG : verify this work to only allow "member" to modify it
-    is_member: bool = user.uname in ([existing_dossier.owner] + existing_dossier.admin + existing_dossier.member)
+    is_member: bool = user.uname in ([existing_dossier.owner] + existing_dossier.admins + existing_dossier.members)
     if not is_member and "admin" not in user.type:
         raise ForbiddenException("Only the members of a dossier and administrators can edit a global dossier.")
 
@@ -334,7 +334,7 @@ def change_privilege(
     if level_requested not in priv_map:
         raise InvalidDataException("The requested level does not exist in dossier. Use member, administrator or owner.")
 
-    is_dossier_admin: bool = user.uname in existing_dossier.admin or user.uname != existing_dossier.owner
+    is_dossier_admin: bool = user.uname in existing_dossier.admins or user.uname != existing_dossier.owner
     if not is_dossier_admin and "admin" not in user.type:
         raise InvalidDataException("You cannot give administrative privilege for this dossier.")
 

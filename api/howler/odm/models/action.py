@@ -49,7 +49,7 @@ class Action(odm.Model):
 
     def get_privilege_mapping(self) -> dict:
         return {
-            "administrator": self.admin_id,
-            "member": self.member_id,
+            "administrator": self.admins,
+            "member": self.members,
             "owner": self.owner_id,
         }

@@ -49,7 +49,7 @@ class View(odm.Model):
 
     def get_privilege_mapping(self) -> dict[str, list[str]]:
         return {
-            "administrator": self.admin,
-            "member": self.member,
+            "administrator": self.admins,
+            "member": self.members,
             "owner": self.owner,
         }

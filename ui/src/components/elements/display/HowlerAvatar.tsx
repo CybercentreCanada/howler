@@ -15,6 +15,7 @@ const HowlerAvatar: FC<HowlerAvatarProps> = ({ userId, ...avatarProps }) => {
   const { getAvatar } = useContext(AvatarContext);
   const theme = useTheme();
   const [props, setProps] = useState<{ sx?: SxProps<Theme>; children?: ReactNode | ReactNode[]; src?: string }>();
+
   const stringAvatar = useCallback(
     (name: string) => {
       return {
@@ -27,9 +28,7 @@ const HowlerAvatar: FC<HowlerAvatarProps> = ({ userId, ...avatarProps }) => {
     },
     [theme.palette]
   );
-  if (Array.isArray(userId)) {
-    userId = userId[0];
-  }
+
   useEffect(() => {
     if (!userId || userId.toLowerCase() === 'unassigned') {
       setProps({});

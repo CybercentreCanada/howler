@@ -197,7 +197,7 @@ def update_view(view_id: str, user: User, **kwargs):
     if existing_view.type == "personal" and user.uname != existing_view.owner:
         return forbidden(err="You cannot update a personal view that is not owned by you.")
 
-    allowed_list: list[str] = [existing_view.owner] + existing_view.admins + existing_view.member
+    allowed_list: list[str] = [existing_view.owner] + existing_view.admins + existing_view.members
     if existing_view.type == "global" and (user.uname not in allowed_list) and "admin" not in user.type:
         return forbidden(err="Only the owner of a view and administrators can edit a global view.")
 

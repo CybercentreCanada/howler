@@ -19,7 +19,7 @@ def is_allowed_to_change(level_requested: str, user: User, existing_item: Dossie
     if "admin" in user.type:
         return False
 
-    is_dossier_admin: bool = user.uname in existing_item.admin or user.uname != existing_item.owner
+    is_dossier_admin: bool = user.uname in existing_item.admins or user.uname != existing_item.owner
 
     if not is_dossier_admin and "admin" not in user.type:
         return False

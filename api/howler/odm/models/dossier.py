@@ -52,7 +52,7 @@ class Dossier(odm.Model):
 
     def get_privilege_mapping(self) -> dict:
         return {
-            "administrator": self.admin,
-            "member": self.member,
+            "administrator": self.admins,
+            "member": self.members,
             "owner": self.owner,
         }
