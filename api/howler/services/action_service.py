@@ -9,12 +9,107 @@ from howler.common.exceptions import HowlerValueError
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.logging.audit import audit
+from howler.config import config
 from howler.odm.models.action import VALID_TRIGGERS, Action
 from howler.odm.models.user import User
+from howler.remote.datatypes.queues.named import NamedQueue
 from howler.utils.constants import TESTING
 from howler.utils.str_utils import sanitize_lucene_query
 
 logger = get_logger(__file__)
+
+# Per-trigger persistent queues for buffering action execution requests.
+_action_queues: dict[str, NamedQueue[dict]] = {}
+
+
+def _get_action_queue(trigger: str) -> NamedQueue[dict]:
+    """Return the action queue for *trigger*, creating it on first use.
+
+    Raises:
+        ValueError: If *trigger* is not in ``VALID_TRIGGERS``.
+    """
+    if trigger not in VALID_TRIGGERS:
+        raise HowlerValueError(f"Invalid trigger {trigger!r}. Must be one of {VALID_TRIGGERS}")
+
+    if trigger not in _action_queues:
+        _action_queues[trigger] = NamedQueue(
+            f"howler.action_queue.{trigger}",
+            host=config.core.redis.persistent.host,
+            port=config.core.redis.persistent.port,
+            private=False,
+        )
+
+    return _action_queues[trigger]
+
+
+def enqueue_action_execution(hit_ids: list[str], trigger: str = "create", user: Optional[User] = None) -> None:
+    """Buffer action execution by pushing to a Redis queue.
+
+    When the action queue is disabled in configuration, falls back to
+    calling ``bulk_execute_on_query`` directly for backwards compatibility.
+
+    Args:
+        hit_ids: List of hit IDs to execute actions against.
+        trigger: The trigger type (create, promote, demote, add_label, remove_label).
+        user: The user initiating the action.
+    """
+    if not hit_ids:
+        return
+
+    if trigger not in VALID_TRIGGERS:
+        raise HowlerValueError(f"Invalid trigger {trigger!r}. Must be one of {VALID_TRIGGERS}")
+
+    if not config.system.action_queue.enabled:
+        query = f"howler.id:({' OR '.join(sanitize_lucene_query(h) for h in hit_ids)})"
+        bulk_execute_on_query(query, trigger=trigger, user=user)
+        return
+
+    try:
+        _get_action_queue(trigger).push(
+            {
+                "hit_ids": hit_ids,
+                "user": user.as_primitives() if user is not None and hasattr(user, "as_primitives") else user,
+            }
+        )
+    except Exception:
+        logger.exception("Failed to enqueue action execution, falling back to direct execution")
+        query = f"howler.id:({' OR '.join(sanitize_lucene_query(h) for h in hit_ids)})"
+        bulk_execute_on_query(query, trigger=trigger, user=user)
+
+
+def process_action_batch(trigger: str, items: list[dict]) -> None:
+    """Process a batch of queued action execution requests for a single trigger.
+
+    Groups items by user and issues a single coalesced
+    ``bulk_execute_on_query`` call per group, reducing Elasticsearch load.
+
+    Args:
+        trigger: The trigger type this batch belongs to.
+        items: List of dicts with keys ``hit_ids`` and ``user``.
+    """
+    if not items:
+        return
+
+    groups: dict[str | None, tuple[list[str], Any]] = {}
+
+    for item in items:
+        user_data = item.get("user")
+        user_key = user_data["uname"] if isinstance(user_data, dict) and "uname" in user_data else None
+
+        if user_key not in groups:
+            groups[user_key] = ([], user_data)
+
+        groups[user_key][0].extend(item["hit_ids"])
+
+    for user_key, (hit_ids, user_data) in groups.items():
+        # Deduplicate IDs within a batch group
+        unique_ids = list(dict.fromkeys(hit_ids))
+        query = f"howler.id:({' OR '.join(sanitize_lucene_query(h) for h in unique_ids)})"
+
+        try:
+            bulk_execute_on_query(query, trigger=trigger, user=user_data)
+        except Exception:
+            logger.exception("Error processing action batch for trigger=%s user=%s", trigger, user_key)
 
 
 def validate_action(new_action: Any) -> Optional[Response]:  # noqa: C901
