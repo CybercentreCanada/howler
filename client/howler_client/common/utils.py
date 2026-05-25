@@ -92,7 +92,7 @@ def walk_api_path(obj, path, paths):
             doc = doc.split("\n\n", 1)[0]
             doc = re.sub(r"\s+", " ", doc.strip())
             if doc != "For internal use.":
-                paths.append(f'{".".join(path)}(): {doc}')
+                paths.append(f"{'.'.join(path)}(): {doc}")
 
             continue
         elif m.startswith(("_", "im_")):

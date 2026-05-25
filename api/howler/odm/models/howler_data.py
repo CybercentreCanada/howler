@@ -113,11 +113,10 @@ class AssessmentEscalationMap(str, HowlerEnum):
 @odm.model(index=True, store=True, description="Howler Link definition.")
 class Link(odm.Model):
     href = odm.Keyword(description="Timestamp at which the comment was last edited.")
-    title = odm.Text(description="The title to use for the link.", optional=True)
+    title = odm.Keyword(description="The title to use for the link.", optional=True)
     icon = odm.Keyword(
         description=(
-            "The icon to show. Either an ID corresponding to an "
-            "analytical platform application, or an external link."
+            "The icon to show. Either an ID corresponding to an analytical platform application, or an external link."
         ),
         optional=True,
     )
@@ -125,11 +124,11 @@ class Link(odm.Model):
 
 @odm.model(index=True, store=True, description="Comment definition.")
 class Comment(odm.Model):
-    id = odm.UUID(description="A unique ID for the comment.")
+    id: str = odm.UUID(description="A unique ID for the comment.")
     timestamp = odm.Date(description="Timestamp at which the comment took place.", default="NOW")
     modified = odm.Date(description="Timestamp at which the comment was last edited.", default="NOW")
-    value = odm.Text(description="The comment itself.")
-    user = odm.Keyword(description="User ID who created the comment.")
+    value: str = odm.Text(description="The comment itself.")
+    user: str = odm.Keyword(description="User ID who created the comment.")
     reactions: dict[str, str] = odm.Mapping(
         odm.Keyword(),
         default={},
@@ -161,10 +160,10 @@ class Log(odm.Model):
 
 @odm.model(index=True, store=True, description="Hit outline header.")
 class Header(odm.Model):
-    threat: Optional[str] = odm.Optional(odm.Text(description="The IP of the threat."))
-    target: Optional[str] = odm.Optional(odm.Text(description="The target of the hit."))
-    indicators: list[str] = odm.List(odm.Text(description="Indicators of the hit."), default=[])
-    summary: Optional[str] = odm.Optional(odm.Text(description="Summary of the hit."))
+    threat: Optional[str] = odm.Optional(odm.Keyword(description="The IP of the threat."))
+    target: Optional[str] = odm.Optional(odm.Keyword(description="The target of the hit."))
+    indicators: list[str] = odm.List(odm.Keyword(description="Indicators of the hit."), default=[])
+    summary: Optional[str] = odm.Optional(odm.Keyword(description="Summary of the hit."))
 
 
 @odm.model(index=True, store=True, description="Fields describing the location where this alert has been retained.")
@@ -176,15 +175,15 @@ class Incident(odm.Model):
 
 @odm.model(index=True, store=True, description="Labels for the hit")
 class Label(odm.Model):
-    assignments = odm.List(odm.Text(description="List of assignments for the hit."), default=[])
-    generic = odm.List(odm.Text(description="List of generic labels for the hit."), default=[])
-    insight = odm.List(odm.Text(description="List of insight labels for the hit."), default=[])
-    mitigation = odm.List(odm.Text(description="List of mitigation labels for the hit."), default=[])
-    victim = odm.List(odm.Text(description="List of victim labels for the hit."), default=[])
-    campaign = odm.List(odm.Text(description="List of campaign labels for the hit."), default=[])
-    threat = odm.List(odm.Text(description="List of threat labels for the hit."), default=[])
-    tuning = odm.List(odm.Text(description="List of tuning labels for the hit."), default=[])
-    operation = odm.List(odm.Text(description="List of operation labels for the hit."), default=[])
+    assignments = odm.List(odm.Keyword(description="List of assignments for the hit."), default=[])
+    generic = odm.List(odm.Keyword(description="List of generic labels for the hit."), default=[])
+    insight = odm.List(odm.Keyword(description="List of insight labels for the hit."), default=[])
+    mitigation = odm.List(odm.Keyword(description="List of mitigation labels for the hit."), default=[])
+    victim = odm.List(odm.Keyword(description="List of victim labels for the hit."), default=[])
+    campaign = odm.List(odm.Keyword(description="List of campaign labels for the hit."), default=[])
+    threat = odm.List(odm.Keyword(description="List of threat labels for the hit."), default=[])
+    tuning = odm.List(odm.Keyword(description="List of tuning labels for the hit."), default=[])
+    operation = odm.List(odm.Keyword(description="List of operation labels for the hit."), default=[])
 
 
 @odm.model(index=True, store=True, description="Votes for the hit")
@@ -289,9 +288,9 @@ class HowlerData(odm.Model):
     )
     assessment: Optional[str] = odm.Optional(odm.Enum(values=Assessment, description="Assessment of the hit."))
     rationale: Optional[str] = odm.Optional(
-        odm.Text(
+        odm.Keyword(
             description=(
-                "The rationale behind the hit assessment. Allows it to be understood and" " verified by other analysts."
+                "The rationale behind the hit assessment. Allows it to be understood and verified by other analysts."
             )
         )
     )

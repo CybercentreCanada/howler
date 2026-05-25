@@ -3,6 +3,7 @@ from typing import Optional
 
 from howler import odm
 from howler.common.logging import get_logger
+from howler.config import CLASSIFICATION
 from howler.odm.models.assemblyline import AssemblyLine
 from howler.odm.models.aws import AWS
 from howler.odm.models.azure import Azure
@@ -66,6 +67,12 @@ class Hit(odm.Model):
         default={},
         description="Custom key/value pairs.",
         reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-base.html",
+    )
+    classification: str = odm.Classification(
+        is_user_classification=False,
+        copyto="__text__",
+        default=CLASSIFICATION.UNRESTRICTED,
+        description="Maximum classification for the hit",
     )
     tags: list[str] = odm.List(
         odm.Keyword(),

@@ -14,7 +14,7 @@ import {
   Title,
   Tooltip
 } from 'chart.js';
-import 'chartjs-adapter-moment';
+import 'chartjs-adapter-dayjs-4';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';

@@ -9,7 +9,7 @@ import type { ActionOperation } from 'models/ActionTypes';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import { useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { VALID_ACTION_TRIGGERS } from 'utils/constants';
+import { DEFAULT_QUERY, VALID_ACTION_TRIGGERS } from 'utils/constants';
 import QueryResultText from '../../elements/display/QueryResultText';
 import ActionReportDisplay from '../action/shared/ActionReportDisplay';
 import OperationStep from '../action/shared/OperationStep';
@@ -29,7 +29,7 @@ const ActionIntroductionDocumentation: FC = () => {
   useEffect(() => {
     api.action.operations
       .get()
-      .then(_operations => _operations.filter(a => difference(a.roles, user.roles).length < 1))
+      .then(_operations => _operations.filter(a => difference(a.roles, user.roles).length < a.roles.length))
       .then(setOperations)
       // eslint-disable-next-line no-console
       .catch(console.debug);
@@ -101,13 +101,13 @@ const ActionIntroductionDocumentation: FC = () => {
             report={{
               add_label: [
                 {
-                  query: 'howler.id:*',
+                  query: DEFAULT_QUERY,
                   outcome: 'skipped',
                   title: 'Skipped Hit with Label',
                   message: `These hits already have the label ${OPERATION_VALUES.label}.`
                 },
                 {
-                  query: 'howler.id:*',
+                  query: DEFAULT_QUERY,
                   outcome: 'success',
                   title: 'Executed Successfully',
                   message: `Label '${OPERATION_VALUES.label}' added to category '${OPERATION_VALUES.category}' for all matching hits.`

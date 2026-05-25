@@ -2,11 +2,11 @@ import api from 'api';
 import { useAppUser } from 'commons/components/app/hooks';
 import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
-import { has, omit } from 'lodash-es';
+import { has, omit, uniq } from 'lodash-es';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { View } from 'models/entities/generated/View';
 import { useCallback, useEffect, useState, type FC, type PropsWithChildren } from 'react';
-import { useLocation, useParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
 
@@ -20,7 +20,7 @@ export interface ViewContextType {
   addView: (v: View) => Promise<View>;
   editView: (id: string, newView: Partial<Omit<View, 'view_id' | 'owner'>>) => Promise<View>;
   removeView: (id: string) => Promise<void>;
-  getCurrentView: (lazy?: boolean) => Promise<View>;
+  getCurrentViews: (config?: { views?: string[]; lazy?: boolean; ignoreParams?: boolean }) => Promise<View[]>;
 }
 
 export const ViewContext = createContext<ViewContextType>(null);
@@ -29,8 +29,7 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
   const { dispatchApi } = useMyApi();
   const appUser = useAppUser<HowlerUser>();
   const [defaultView, setDefaultView] = useMyLocalStorageItem<string>(StorageKey.DEFAULT_VIEW);
-  const location = useLocation();
-  const routeParams = useParams();
+  const [searchParams] = useSearchParams();
 
   const [views, setViews] = useState<{ [viewId: string]: View }>({});
 
@@ -47,7 +46,7 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
         return newViews;
       }
 
-      const missingIds = ids.filter(_id => !views[_id]);
+      const missingIds = ids.filter(_id => !!_id && !has(views, _id));
 
       if (missingIds.length < 1) {
         return ids.map(id => views[id]);
@@ -57,7 +56,8 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
         const response = await dispatchApi(
           api.search.view.post({
             query: `view_id:(${missingIds.join(' OR ')})`,
-            rows: missingIds.length
+            rows: missingIds.length,
+            sort: 'title asc'
           })
         );
 
@@ -94,20 +94,28 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
     })();
   }, [defaultView, fetchViews, setDefaultView, views]);
 
-  const getCurrentView: ViewContextType['getCurrentView'] = useCallback(
-    async (lazy = false) => {
-      const id = location.pathname.startsWith('/views') ? routeParams.id : defaultView;
-      if (!id) {
-        return null;
+  const getCurrentViews: ViewContextType['getCurrentViews'] = useCallback(
+    async ({ views: _views, lazy = false, ignoreParams = false } = {}) => {
+      const currentViews = uniq([...(_views ?? []), ...(ignoreParams ? [] : searchParams.getAll('view'))]);
+
+      if (currentViews.length < 1) {
+        return [];
       }
 
-      if (!has(views, id) && !lazy) {
-        return (await fetchViews([id]))[0];
-      }
+      const results: View[] = [];
+      const missing: string[] = [];
 
-      return views[id];
+      currentViews.forEach(_view => {
+        if (has(views, _view)) {
+          results.push(views[_view]);
+        } else if (!lazy) {
+          missing.push(_view);
+        }
+      });
+
+      return [...results, ...(await fetchViews(missing))];
     },
-    [defaultView, fetchViews, location.pathname, routeParams.id, views]
+    [fetchViews, searchParams, views]
   );
 
   const editView: ViewContextType['editView'] = useCallback(
@@ -163,13 +171,13 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
 
   const removeView: ViewContextType['removeView'] = useCallback(
     async (id: string) => {
+      if (appUser.user?.favourite_views.includes(id)) {
+        await removeFavourite(id);
+      }
+
       const result = await dispatchApi(api.view.del(id));
 
       setViews(_views => omit(_views, id));
-
-      if (appUser.user?.favourite_views.includes(id)) {
-        removeFavourite(id);
-      }
 
       return result;
     },
@@ -188,7 +196,7 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
         removeView,
         defaultView,
         setDefaultView,
-        getCurrentView
+        getCurrentViews
       }}
     >
       {children}

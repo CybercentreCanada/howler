@@ -1,6 +1,6 @@
 import requests
 
-from howler.common.exceptions import HowlerException
+from howler.common.exceptions import HowlerAttributeError, HowlerException
 from howler.common.logging import get_logger
 from howler.config import config
 from howler.utils.str_utils import default_string_value
@@ -20,7 +20,12 @@ def azure_obo(token: str) -> str:
     Returns:
         str: The new access token with updated privileges
     """
-    azure_provider_config = config.auth.oauth.providers["azure"]
+    if "azure" in config.auth.oauth.providers:
+        azure_provider_config = config.auth.oauth.providers["azure"]
+    elif "entraid" in config.auth.oauth.providers:
+        azure_provider_config = config.auth.oauth.providers["entraid"]
+    else:
+        raise HowlerAttributeError("No azure/entraid-based provider configured!")
 
     logger.debug("OBOing to MS Graph")
     # Azure is a special case here, as we need to OBO to MS Graph

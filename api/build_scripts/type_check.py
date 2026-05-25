@@ -12,7 +12,7 @@ def main() -> None:
     "Main type checking script"
     result = subprocess.check_output(prep_command('find howler -type f -name "*.py"')).decode().strip().split("\n")
 
-    subprocess.check_call(prep_command(f'python -m mypy {" ".join(result)}'))
+    subprocess.check_call(prep_command(f"python -m mypy {' '.join(result)}"))
 
 
 if __name__ == "__main__":

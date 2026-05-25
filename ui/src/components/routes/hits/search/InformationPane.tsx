@@ -1,8 +1,8 @@
 import { Clear, Code, Comment, DataObject, History, LinkSharp, OpenInNew, QueryStats } from '@mui/icons-material';
-import { Badge, Box, Divider, Skeleton, Stack, Tab, Tabs, Tooltip, useTheme } from '@mui/material';
+import { Badge, Box, Divider, IconButton, Skeleton, Stack, Tab, Tabs, Tooltip, useTheme } from '@mui/material';
 import TuiIconButton from 'components/elements/addons/buttons/CustomIconButton';
 
-import { Icon } from '@iconify/react/dist/iconify.js';
+import { Icon } from '@iconify/react';
 import useMatchers from 'components/app/hooks/useMatchers';
 import { HitContext } from 'components/app/providers/HitProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
@@ -11,6 +11,7 @@ import FlexOne from 'components/elements/addons/layout/FlexOne';
 import VSBox from 'components/elements/addons/layout/vsbox/VSBox';
 import VSBoxContent from 'components/elements/addons/layout/vsbox/VSBoxContent';
 import VSBoxHeader from 'components/elements/addons/layout/vsbox/VSBoxHeader';
+import Phrase from 'components/elements/addons/search/phrase/Phrase';
 import BundleButton from 'components/elements/display/icons/BundleButton';
 import SocketBadge from 'components/elements/display/icons/SocketBadge';
 import JSONViewer from 'components/elements/display/json/JSONViewer';
@@ -20,17 +21,14 @@ import HitComments from 'components/elements/hit/HitComments';
 import HitDetails from 'components/elements/hit/HitDetails';
 import HitLabels from 'components/elements/hit/HitLabels';
 import { HitLayout } from 'components/elements/hit/HitLayout';
-import HitNotebooks from 'components/elements/hit/HitNotebooks';
+import HitLinks from 'components/elements/hit/HitLinks';
 import HitOutline from 'components/elements/hit/HitOutline';
 import HitOverview from 'components/elements/hit/HitOverview';
 import HitRelated from 'components/elements/hit/HitRelated';
 import HitSummary from 'components/elements/hit/HitSummary';
 import HitWorklog from 'components/elements/hit/HitWorklog';
-import PivotLink from 'components/elements/hit/related/PivotLink';
-import RelatedLink from 'components/elements/hit/related/RelatedLink';
 import useMyUserList from 'components/hooks/useMyUserList';
 import ErrorBoundary from 'components/routes/ErrorBoundary';
-import { uniqBy } from 'lodash-es';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import howlerPluginStore from 'plugins/store';
@@ -41,6 +39,7 @@ import { usePluginStore } from 'react-pluggable';
 import { useLocation } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { getUserList } from 'utils/hitFunctions';
+import { validateRegex } from 'utils/stringUtils';
 import { tryParse } from 'utils/utils';
 import LeadRenderer from '../view/LeadRenderer';
 
@@ -60,7 +59,11 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
   const [hasOverview, setHasOverview] = useState(false);
   const [tab, setTab] = useState<string>('overview');
   const [loading, setLoading] = useState<boolean>(false);
-  const [dossiers, setDossiers] = useState<Dossier[]>([]);
+  const [filter, setFilter] = useState('');
+
+  // In order to properly check for dossiers, we split dossiers into two
+  const [_dossiers, setDossiers] = useState<Dossier[] | null>(null);
+  const dossiers: Dossier[] = useMemo(() => _dossiers ?? [], [_dossiers]);
 
   const users = useMyUserList(userIds);
 
@@ -69,10 +72,6 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
   howlerPluginStore.plugins.forEach(plugin => {
     pluginStore.executeFunction(`${plugin}.on`, 'viewing');
   });
-
-  useEffect(() => {
-    getMatchingOverview(hit).then(_overview => setHasOverview(!!_overview));
-  }, [getMatchingOverview, hit]);
 
   useEffect(() => {
     if (!selected) {
@@ -86,11 +85,33 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
     }
 
     setUserIds(getUserList(hit));
-    getMatchingAnalytic(hit).then(setAnalytic);
-    getMatchingDossiers(hit).then(setDossiers);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getHit, selected]);
+
+  useEffect(() => {
+    if (selected) {
+      setAnalytic(null);
+      setDossiers(null);
+      setHasOverview(false);
+    }
+  }, [selected]);
+
+  useEffect(() => {
+    if (hit && !analytic) {
+      getMatchingAnalytic(hit).then(setAnalytic);
+    }
+  }, [analytic, getMatchingAnalytic, hit]);
+
+  useEffect(() => {
+    if (hit && !_dossiers) {
+      getMatchingDossiers(hit).then(setDossiers);
+    }
+  }, [_dossiers, getMatchingDossiers, hit]);
+
+  useEffect(() => {
+    getMatchingOverview(hit).then(_overview => setHasOverview(!!_overview));
+  }, [getMatchingOverview, hit]);
 
   useEffect(() => {
     if (tab === 'hit_aggregate' && !hit?.howler.is_bundle) {
@@ -147,26 +168,36 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
       overview: () => <HitOverview hit={hit} />,
       details: () => <HitDetails hit={hit} />,
       hit_comments: () => <HitComments hit={hit} users={users} />,
-      hit_raw: () => <JSONViewer data={!loading && hit} />,
+      hit_raw: () => <JSONViewer data={!loading && hit} hideSearch filter={filter} />,
       hit_data: () => (
-        <JSONViewer data={!loading && hit?.howler?.data?.map(entry => tryParse(entry))} collapse={false} />
+        <JSONViewer
+          data={!loading && hit?.howler?.data?.map(entry => tryParse(entry))}
+          collapse={false}
+          hideSearch
+          filter={filter}
+        />
       ),
       hit_worklog: () => <HitWorklog hit={!loading && hit} users={users} />,
-      hit_aggregate: () => <HitSummary query={`howler.bundles:(${hit?.howler?.id})`} />,
+      hit_aggregate: () => <HitSummary />,
       hit_related: () => <HitRelated hit={hit} />,
       ...Object.fromEntries(
-        hit?.howler.dossier?.map((lead, index) => ['lead:' + index, () => <LeadRenderer lead={lead} />]) ?? []
+        (hit?.howler.dossier ?? []).map((lead, index) => [
+          'lead:' + index,
+          () => <LeadRenderer lead={lead} hit={hit} />
+        ])
       ),
       ...Object.fromEntries(
         dossiers.flatMap((_dossier, dossierIndex) =>
-          _dossier.leads?.map((_lead, leadIndex) => [
+          (_dossier.leads ?? []).map((_lead, leadIndex) => [
             `external-lead:${dossierIndex}:${leadIndex}`,
             () => <LeadRenderer lead={_lead} hit={hit} />
           ])
         )
       )
     }[tab]?.();
-  }, [dossiers, hit, loading, tab, users]);
+  }, [dossiers, filter, hit, loading, tab, users]);
+
+  const hasError = useMemo(() => !validateRegex(filter), [filter]);
 
   return (
     <VSBox top={10} sx={{ height: '100%', flex: 1 }}>
@@ -214,29 +245,13 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
           !hit.howler.is_bundle &&
           (!loading ? (
             <>
-              <HitOutline hit={hit} layout={HitLayout.DENSE} />
+              <HitOutline hit={hit} layout={HitLayout.DENSE} forceAllFields />
               <HitLabels hit={hit} />
             </>
           ) : (
             <Skeleton height={124} />
           ))}
-        {(hit?.howler?.links?.length > 0 ||
-          analytic?.notebooks?.length > 0 ||
-          dossiers.filter(_dossier => _dossier.pivots?.length > 0).length > 0) && (
-          <Stack direction="row" spacing={1} pr={2}>
-            {analytic?.notebooks?.length > 0 && <HitNotebooks analytic={analytic} hit={hit} />}
-            {hit?.howler?.links?.length > 0 &&
-              uniqBy(hit.howler.links, 'href')
-                .slice(0, 3)
-                .map(l => <RelatedLink key={l.href} compact {...l} />)}
-            {dossiers.flatMap(_dossier =>
-              (_dossier.pivots ?? []).map((_pivot, index) => (
-                // eslint-disable-next-line react/no-array-index-key
-                <PivotLink key={_dossier.dossier_id + index} pivot={_pivot} hit={hit} compact />
-              ))
-            )}
-          </Stack>
-        )}
+        <HitLinks hit={hit} analytic={analytic} dossiers={dossiers} />
         <VSBoxHeader ml={-1} mr={-1} pb={1} sx={{ top: '0px' }}>
           <Tabs
             value={tab === 'overview' && !hasOverview ? 'details' : tab}
@@ -309,7 +324,7 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
               />
             ))}
             {dossiers.flatMap((_dossier, dossierIndex) =>
-              _dossier.leads?.map((_lead, leadIndex) => (
+              (_dossier.leads ?? []).map((_lead, leadIndex) => (
                 <Tab
                   // eslint-disable-next-line react/no-array-index-key
                   key={`external-lead:${dossierIndex}:${leadIndex}`}
@@ -367,6 +382,21 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
               onClick={() => setTab('hit_related')}
             />
           </Tabs>
+          {['hit_raw', 'hit_data'].includes(tab) && (
+            <Phrase
+              sx={{ mt: 1, pr: 1 }}
+              value={filter}
+              onChange={setFilter}
+              error={hasError}
+              label={t('json.viewer.search.label')}
+              placeholder={t('json.viewer.search.prompt')}
+              endAdornment={
+                <IconButton onClick={() => setFilter('')}>
+                  <Clear />
+                </IconButton>
+              }
+            />
+          )}
         </VSBoxHeader>
         <ErrorBoundary>
           <VSBoxContent mr={-1} ml={-1} height="100%">

@@ -1,7 +1,7 @@
 ---
 # --------------------------------------------------------------------------------
 # Ansible Playbook to Set Up Docker, Minikube, kubectl, Helm, K9s, NVM, Node.js,
-# npm, Python 3.9, and Howler Repositories
+# npm, Python 3.12, and Howler Repositories
 #
 # This playbook performs the following tasks:
 # 1. Ensures Python 3 is installed and updates the apt package index.
@@ -10,7 +10,7 @@
 # 4. Downloads and verifies kubectl.
 # 5. Installs Helm and k9s.
 # 6. Installs NVM, Node.js, npm, and build programs.
-# 7. Adds the deadsnakes PPA and installs Python 3.9.
+# 7. Adds the deadsnakes PPA and installs Python 3.12.
 # 8. Installs Poetry and adds it to the PATH.
 # 9. Creates the repos directory, clones the howler-api and howler-ui repositories.
 # 10. Installs Poetry and builds the howler-api Docker image.
@@ -23,7 +23,7 @@
 # Created as part of Guild 6.2's efforts during GeekWeek 9
 # --------------------------------------------------------------------------------
 
-- name: Setup Docker, Minikube, kubectl, Helm, K9s, NVM, Node.js, npm, Python 3.9, and Howler repositories
+- name: Setup Docker, Minikube, kubectl, Helm, K9s, NVM, Node.js, npm, Python 3.12, and Howler repositories
   hosts: howler
   become: yes
   vars:
@@ -189,23 +189,23 @@
       apt:
         update_cache: yes
 
-    - name: Install Python 3.9 and related packages
+    - name: Install Python 3.12 and related packages
       apt:
         name:
-          - python3.9
-          - python3.9-distutils
-          - python3.9-venv
+          - python3.12
+          - python3.12-distutils
+          - python3.12-venv
         state: present
 
-    - name: Update alternatives to use Python 3.9
-      command: update-alternatives --install /usr/bin/python python /usr/bin/python3.9 1
+    - name: Update alternatives to use Python 3.12
+      command: update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1
 
     - name: Ensure pip is installed
-      command: python3.9 -m ensurepip
+      command: python3.12 -m ensurepip
 
     - name: Install Poetry using the recommended installation script
       shell: |
-        curl -sSL https://install.python-poetry.org | python3.9 -
+        curl -sSL https://install.python-poetry.org | python3.12 -
       environment:
         POETRY_HOME: "/opt/poetry"
       args:
@@ -240,7 +240,7 @@
         export NVM_DIR="$HOME/.nvm" && \
         [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && \
         nvm use v20 && \
-        curl -sSL https://install.python-poetry.org | python3.9 - && \
+        curl -sSL https://install.python-poetry.org | python3.12 - && \
         export PATH="$HOME/.local/bin:$PATH" && \
         cd /root/repos/howler-api/docker && \
         yarn config set network-timeout 600000 && \

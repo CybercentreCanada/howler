@@ -258,10 +258,18 @@
     "id": "do",
     "image": {
       "hash": {
-        "all": ["BCIP", "us"]
+        "all": [
+          "BCIP",
+          "us"
+        ]
       },
       "name": "feedback_from_engaging.pdf",
-      "tag": ["Build", "invite", "goods", "about"]
+      "tag": [
+        "Build",
+        "invite",
+        "goods",
+        "about"
+      ]
     },
     "labels": {
       "key_a": "this"
@@ -346,7 +354,11 @@
       "hash": "key",
       "id": "in",
       "name": "them_participating.xls",
-      "roles": ["complex", "examine", "supports"]
+      "roles": [
+        "complex",
+        "examine",
+        "supports"
+      ]
     }
   },
   "dns": {
@@ -380,7 +392,12 @@
         "type": "open"
       }
     ],
-    "header_flags": ["collaborating", "Canada", "country", "The"],
+    "header_flags": [
+      "collaborating",
+      "Canada",
+      "country",
+      "The"
+    ],
     "id": "certain",
     "op_code": "do",
     "question": {
@@ -509,7 +526,12 @@
   },
   "event": {
     "action": "experts",
-    "category": ["registry", "email", "malware", "process"],
+    "category": [
+      "registry",
+      "email",
+      "malware",
+      "process"
+    ],
     "code": "Canada",
     "count": 3326,
     "created": "2025-03-26T17:26:51.486109Z",
@@ -532,7 +554,12 @@
     "severity": 1685,
     "start": "2025-04-10T18:22:29.472524Z",
     "timezone": "engaging",
-    "type": ["info", "error", "connection", "change"],
+    "type": [
+      "info",
+      "error",
+      "connection",
+      "change"
+    ],
     "url": "marketplace"
   },
   "faas": {
@@ -548,7 +575,9 @@
   },
   "file": {
     "accessed": "2025-03-16T20:16:15.476292Z",
-    "attributes": ["For"],
+    "attributes": [
+      "For"
+    ],
     "code_signature": {
       "digest_algorithm": "sha384",
       "exists": false,
@@ -570,7 +599,11 @@
       "byte_order": "companies",
       "cpu_type": "with",
       "creation_date": "to",
-      "exports": ["from", "but", "all"],
+      "exports": [
+        "from",
+        "but",
+        "all"
+      ],
       "header": {
         "abi_version": "5.1.5",
         "class": "them",
@@ -581,7 +614,11 @@
         "type": "selling",
         "version": "4.4.3"
       },
-      "imports": ["feedback", "across", "provide"],
+      "imports": [
+        "feedback",
+        "across",
+        "provide"
+      ],
       "sections": [
         {
           "chi2": 930,
@@ -652,7 +689,11 @@
           "virtual_size": 654
         }
       ],
-      "shared_libraries": ["invite", "cyber", "evaluate"],
+      "shared_libraries": [
+        "invite",
+        "cyber",
+        "evaluate"
+      ],
       "telfhash": "cyber"
     },
     "extension": "partners",
@@ -705,8 +746,16 @@
   "host": {
     "domain": "bringing.biz",
     "id": "tools",
-    "ip": ["161.116.87.1", "68.204.157.108", "192.102.172.45"],
-    "mac": ["A96478C053D2", "D80316C5F363", "2EFB41C3C8D9"],
+    "ip": [
+      "161.116.87.1",
+      "68.204.157.108",
+      "192.102.172.45"
+    ],
+    "mac": [
+      "A96478C053D2",
+      "D80316C5F363",
+      "2EFB41C3C8D9"
+    ],
     "name": "but_potential_support.doc",
     "type": "complex"
   },
@@ -758,26 +807,6 @@
           "en": "Example Lead",
           "fr": "Exemple d'un lead"
         }
-      },
-      {
-        "content": "test-plugin.image",
-        "format": "borealis",
-        "icon": "material-symbols:image",
-        "label": {
-          "en": "Borealis",
-          "fr": "Borealis"
-        },
-        "metadata": "{\"type\": \"ip\", \"value\": \"127.0.01\", \"classification\": \"TLP:CLEAR\"}"
-      },
-      {
-        "content": "test-plugin.json",
-        "format": "borealis",
-        "icon": "material-symbols:code-rounded",
-        "label": {
-          "en": "Borealis",
-          "fr": "Borealis"
-        },
-        "metadata": "{\"type\": \"ip\", \"value\": \"127.0.01\", \"classification\": \"TLP:CLEAR\"}"
       }
     ],
     "escalation": "hit",
@@ -793,12 +822,19 @@
     ],
     "is_bundle": false,
     "labels": {
-      "assignments": ["APA1B"],
+      "assignments": [
+        "APA1B"
+      ],
       "campaign": [],
-      "generic": ["Outlook", "Documentation"],
+      "generic": [
+        "Outlook",
+        "Documentation"
+      ],
       "insight": [],
       "mitigation": [],
-      "operation": ["OP_HOWLER"],
+      "operation": [
+        "OP_HOWLER"
+      ],
       "threat": [],
       "tuning": [],
       "victim": []
@@ -860,7 +896,11 @@
       "target": "with.ca",
       "threat": "21.231.204.139"
     },
-    "related": ["Cyber", "work", "Innovation"],
+    "related": [
+      "Cyber",
+      "work",
+      "Innovation"
+    ],
     "reliability": 1535.22,
     "reported": "enhanced",
     "score": 2257.82,
@@ -870,9 +910,19 @@
     "viewers": [],
     "volume": 171.69,
     "votes": {
-      "benign": ["levels", "also", "laboratory", "an"],
-      "malicious": ["Innovation"],
-      "obscure": ["environment", "Build"]
+      "benign": [
+        "levels",
+        "also",
+        "laboratory",
+        "an"
+      ],
+      "malicious": [
+        "Innovation"
+      ],
+      "obscure": [
+        "environment",
+        "Build"
+      ]
     }
   },
   "http": {
@@ -928,8 +978,12 @@
       "id": 716,
       "name": "partnerships.gif"
     },
-    "ip": ["67.117.188.192"],
-    "mac": ["7914601F28D4"],
+    "ip": [
+      "67.117.188.192"
+    ],
+    "mac": [
+      "7914601F28D4"
+    ],
     "name": "cyber_cutting.ppt",
     "product": "supports",
     "serial_number": "examine",
@@ -942,7 +996,10 @@
     "name": "CED"
   },
   "process": {
-    "args": ["To", "Build"],
+    "args": [
+      "To",
+      "Build"
+    ],
     "args_count": 3729,
     "code_signature": {
       "digest_algorithm": "sha384",
@@ -979,7 +1036,12 @@
     "interactive": false,
     "name": "problems.ppt",
     "parent": {
-      "args": ["across", "work", "innovation", "collaborating"],
+      "args": [
+        "across",
+        "work",
+        "innovation",
+        "collaborating"
+      ],
       "args_count": 1663,
       "code_signature": {
         "digest_algorithm": "sha1",
@@ -1019,7 +1081,12 @@
       "interactive": false,
       "name": "partnerships_visit_from.exe",
       "parent": {
-        "args": ["certain", "website", "sizes", "determine"],
+        "args": [
+          "certain",
+          "website",
+          "sizes",
+          "determine"
+        ],
         "args_count": 544,
         "code_signature": {
           "digest_algorithm": "sha1",
@@ -1127,7 +1194,12 @@
   "registry": {
     "data": {
       "bytes": "programs",
-      "strings": ["To", "goods", "government", "but"],
+      "strings": [
+        "To",
+        "goods",
+        "government",
+        "but"
+      ],
       "type": "stays"
     },
     "hive": "innovation",
@@ -1136,18 +1208,40 @@
     "value": "vendors"
   },
   "related": {
-    "hash": ["product", "emerging"],
-    "hosts": ["emerging.ca", "technical.ca"],
+    "hash": [
+      "product",
+      "emerging"
+    ],
+    "hosts": [
+      "emerging.ca",
+      "technical.ca"
+    ],
     "id": "do",
-    "ids": ["cyber", "academia", "defence"],
-    "ip": ["218.6.241.250", "199.62.243.193", "46.245.168.5", "105.5.112.175"],
-    "signature": ["performs", "across"],
+    "ids": [
+      "cyber",
+      "academia",
+      "defence"
+    ],
+    "ip": [
+      "218.6.241.250",
+      "199.62.243.193",
+      "46.245.168.5",
+      "105.5.112.175"
+    ],
+    "signature": [
+      "performs",
+      "across"
+    ],
     "uri": [
       "http://innovative.ca/Build/working",
       "http://bcip.ca/levels/about/engaging/services/performs/complex",
       "https://new.ca/across/across/bringing/art/working"
     ],
-    "user": ["shawnh", "user", "admin"]
+    "user": [
+      "shawnh",
+      "user",
+      "admin"
+    ]
   },
   "rule": {
     "author": "us",
@@ -1243,10 +1337,14 @@
       "hash": "technology",
       "id": "government",
       "name": "levels_do_visit.xls",
-      "roles": ["edge"]
+      "roles": [
+        "edge"
+      ]
     }
   },
-  "tags": ["One"],
+  "tags": [
+    "One"
+  ],
   "threat": {
     "enrichments": [
       {
@@ -1258,7 +1356,10 @@
           },
           "file": {
             "accessed": "2025-04-01T15:27:49.478487Z",
-            "attributes": ["state", "complex"],
+            "attributes": [
+              "state",
+              "complex"
+            ],
             "code_signature": {
               "digest_algorithm": "sha384",
               "exists": false,
@@ -1280,7 +1381,11 @@
               "byte_order": "problems",
               "cpu_type": "them",
               "creation_date": "examine",
-              "exports": ["authority", "helps", "For"],
+              "exports": [
+                "authority",
+                "helps",
+                "For"
+              ],
               "header": {
                 "abi_version": "5.2.6",
                 "class": "new",
@@ -1291,7 +1396,9 @@
                 "type": "invite",
                 "version": "5.2.6"
               },
-              "imports": ["other"],
+              "imports": [
+                "other"
+              ],
               "sections": [
                 {
                   "chi2": 2501,
@@ -1318,7 +1425,10 @@
                   "virtual_size": 2939
                 }
               ],
-              "shared_libraries": ["Innovation", "Innovation"],
+              "shared_libraries": [
+                "Innovation",
+                "Innovation"
+              ],
               "telfhash": "on"
             },
             "extension": "enhanced",
@@ -1379,7 +1489,11 @@
     },
     "framework": "Custom",
     "group": {
-      "alias": ["The", "from", "cutting"],
+      "alias": [
+        "The",
+        "from",
+        "cutting"
+      ],
       "id": "collaborating",
       "name": "laboratory.xls",
       "reference": "work"
@@ -1392,7 +1506,10 @@
       },
       "file": {
         "accessed": "2025-03-31T19:20:44.479135Z",
-        "attributes": ["stays", "order"],
+        "attributes": [
+          "stays",
+          "order"
+        ],
         "code_signature": {
           "digest_algorithm": "sha256",
           "exists": false,
@@ -1414,7 +1531,9 @@
           "byte_order": "private",
           "cpu_type": "cyber",
           "creation_date": "problems",
-          "exports": ["companies"],
+          "exports": [
+            "companies"
+          ],
           "header": {
             "abi_version": "7.5.3",
             "class": "evaluate",
@@ -1425,7 +1544,10 @@
             "type": "innovation",
             "version": "8.0.5"
           },
-          "imports": ["private", "open"],
+          "imports": [
+            "private",
+            "open"
+          ],
           "sections": [
             {
               "chi2": 1451,
@@ -1507,7 +1629,9 @@
               "virtual_size": 1812
             }
           ],
-          "shared_libraries": ["tools"],
+          "shared_libraries": [
+            "tools"
+          ],
           "telfhash": "laboratory"
         },
         "extension": "authority",
@@ -1556,10 +1680,17 @@
       "type": "tools"
     },
     "software": {
-      "alias": ["certain", "technology"],
+      "alias": [
+        "certain",
+        "technology"
+      ],
       "id": "but",
       "name": "invite.ppt",
-      "platform": ["an", "defence", "other"],
+      "platform": [
+        "an",
+        "defence",
+        "other"
+      ],
       "reference": "supports",
       "type": "collaborating"
     },
@@ -1614,7 +1745,11 @@
     "hash": "key",
     "id": "on",
     "name": "government",
-    "roles": ["from", "levels", "website"]
+    "roles": [
+      "from",
+      "levels",
+      "website"
+    ]
   },
   "user_agent": {
     "device": {
@@ -1634,7 +1769,10 @@
     "version": "6.3.3"
   },
   "vulnerability": {
-    "category": ["technology", "participating"],
+    "category": [
+      "technology",
+      "participating"
+    ],
     "classification": "innovative",
     "description": "feedback",
     "enumeration": "survey",

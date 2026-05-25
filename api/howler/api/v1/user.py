@@ -1,6 +1,6 @@
 import re
 from hashlib import sha256
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from flask import request
 
@@ -25,7 +25,7 @@ from howler.security.utils import check_password_requirements, get_password_hash
 
 SUB_API = "user"
 user_api = make_subapi_blueprint(SUB_API, api_version=1)
-user_api._doc = "Manage the different users of the system"
+user_api._doc = "Manage the different users of the system"  # type: ignore
 
 logger = get_logger(__file__)
 
@@ -128,7 +128,7 @@ def add_user_account(username, **_):
         data["name"] = data["uname"]
 
     # Add dynamic classification group
-    data["classification"] = user_service.get_dynamic_classification(data.get("classification", None), data["email"])
+    data["classification"] = user_service.get_dynamic_classification(data)
 
     # Clear non user account data
     avatar = data.pop("avatar", None)
@@ -169,20 +169,20 @@ def get_user_account(username: str, server_version: Optional[str] = None, **kwar
     if username != kwargs["user"]["uname"] and "admin" not in kwargs["user"]["type"]:
         return forbidden(err="You are not allow to view other users then yourself.")
 
-    user: Optional[User] = kwargs.get("cached_user")
+    user = cast(User, kwargs.get("cached_user"))
     if not user:
         return not_found(err=f"User {username} does not exist")
 
-    user: dict[str, Any] = user.as_primitives()
-    user["apikeys"] = [(k, []) for k in user.get("apikeys", {}).keys()]
-    user["has_password"] = user.pop("password", "") != ""
-    user["roles"] = user.pop("type", [])
-    user["username"] = user["uname"]
+    user_dict: dict[str, Any] = user.as_primitives()
+    user_dict["apikeys"] = [(k, []) for k in user_dict.get("apikeys", {}).keys()]
+    user_dict["has_password"] = user_dict.pop("password", "") != ""
+    user_dict["roles"] = user_dict.pop("type", [])
+    user_dict["username"] = user_dict["uname"]
 
     if "load_avatar" in request.args:
-        user["avatar"] = datastore().user_avatar.get(username)
+        user_dict["avatar"] = datastore().user_avatar.get(username)
 
-    return ok(user), server_version
+    return ok(user_dict), server_version
 
 
 @generate_swagger_docs()
@@ -288,7 +288,7 @@ def set_user_account(username: str, **kwargs):  # noqa: C901
             data.pop("new_pass_confirm", None)
 
         # Apply dynamic classification
-        data["classification"] = user_service.get_dynamic_classification(data["classification"], data["email"])
+        data["classification"] = user_service.get_dynamic_classification(data)
 
         ret_val = user_service.save_user_account(username, data, kwargs["user"])
         return ok({"success": ret_val})
@@ -356,8 +356,8 @@ def set_user_avatar(username, **kwargs):
     data = request.data
     storage = datastore()
     if data:
-        data: str = data.decode("utf-8")
-        if not isinstance(data, str) or not storage.user_avatar.save(username, data):
+        decoded: str = data.decode("utf-8")
+        if not storage.user_avatar.save(username, decoded):
             bad_request(
                 err="Data block should be a base64 encoded image that starts with 'data:image/<format>;base64,'"
             )

@@ -120,7 +120,7 @@ describe('useMatchers', () => {
 
       const { result } = renderHook(() => useMatchers());
 
-      await expect(result.current.getMatchingTemplate(mockHit)).rejects.toThrow('Failed to fetch hit');
+      await expect(result.current.getMatchingTemplate(mockHit)).resolves.toBeNull();
       expect(mockGetHit).toHaveBeenCalledWith('test-hit-id', true);
     });
   });
@@ -177,7 +177,7 @@ describe('useMatchers', () => {
 
       const { result } = renderHook(() => useMatchers());
 
-      await expect(result.current.getMatchingOverview(mockHit)).rejects.toThrow('Failed to fetch hit');
+      await expect(result.current.getMatchingOverview(mockHit)).resolves.toBeNull();
       expect(mockGetHit).toHaveBeenCalledWith('test-hit-id', true);
     });
   });
@@ -234,7 +234,7 @@ describe('useMatchers', () => {
 
       const { result } = renderHook(() => useMatchers());
 
-      await expect(result.current.getMatchingDossiers(mockHit)).rejects.toThrow('Failed to fetch hit');
+      await expect(result.current.getMatchingDossiers(mockHit)).resolves.toEqual([]);
       expect(mockGetHit).toHaveBeenCalledWith('test-hit-id', true);
     });
   });

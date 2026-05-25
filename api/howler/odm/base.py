@@ -19,7 +19,7 @@ from datetime import datetime
 from enum import Enum as PyEnum
 from enum import EnumMeta
 from typing import Any as _Any
-from typing import Dict, Tuple, Union
+from typing import Callable
 from venv import logger
 
 import arrow
@@ -29,6 +29,8 @@ from dateutil.tz import tzutc
 from howler.common import loader
 from howler.common.exceptions import HowlerKeyError, HowlerNotImplementedError, HowlerTypeError, HowlerValueError
 from howler.common.net import is_valid_domain, is_valid_ip
+from howler.odm.howler_enum import HowlerEnum
+from howler.utils.compat import StrEnum as PyStrEnum
 from howler.utils.dict_utils import flatten, recursive_update
 from howler.utils.isotime import now_as_iso
 from howler.utils.uid import get_random_id
@@ -202,7 +204,7 @@ class _Field:
 
     def check(self, value, **kwargs):
         raise HowlerNotImplementedError(
-            "This function is not defined in the default field. " "Each fields has to have their own definition"
+            "This function is not defined in the default field. Each fields has to have their own definition"
         )
 
     def __repr__(self) -> str:
@@ -469,7 +471,7 @@ class Email(Keyword):
         match = self.validation_regex.match(value)
         if not is_valid_domain(match.group(1)):
             raise HowlerValueError(
-                f"[{'.'.join(context) or self.name}] '{match.group(1)}' in email '{value}'" " is not a valid Domain."
+                f"[{'.'.join(context) or self.name}] '{match.group(1)}' in email '{value}' is not a valid Domain."
             )
 
         return value.lower()
@@ -487,14 +489,12 @@ class URI(Keyword):
         match = self.validation_regex.match(value)
         if not match:
             raise HowlerValueError(
-                f"[{'.'.join(context) or self.name}] '{value}' not match the "
-                f"validator: {self.validation_regex.pattern}"
+                f"[{'.'.join(context) or self.name}] '{value}' not match the validator: {self.validation_regex.pattern}"
             )
 
         if not is_valid_domain(match.group(2)) and not is_valid_ip(match.group(2)):
             raise HowlerValueError(
-                f"[{'.'.join(context) or self.name}] '{match.group(2)}' in URI '{value}'"
-                " is not a valid Domain or IP."
+                f"[{'.'.join(context) or self.name}] '{match.group(2)}' in URI '{value}' is not a valid Domain or IP."
             )
 
         return match.group(0).replace(match.group(1), match.group(1).lower())
@@ -551,16 +551,24 @@ class Processor(ValidatedKeyword):
 
 
 class Enum(Keyword):
-    """A field storing a short string that has predefined list of possible values"""
+    """A field storing a short string that has predefined list of possible values.
 
-    def __init__(self, values: PyEnum | list[typing.Any] | set[typing.Any], *args, **kwargs):
+    Accepts values from lists/sets, Enum classes, and StrEnum (PyStrEnum) members.
+    """
+
+    def __init__(
+        self,
+        values: type[HowlerEnum] | type[PyEnum] | type[PyStrEnum] | list[typing.Any] | set[typing.Any],
+        *args,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         if isinstance(values, set):
             self.values = values
         elif isinstance(values, (list, tuple)):
             self.values = set(values)
-        elif isinstance(values, (PyEnum, EnumMeta)):
-            self.values = set([e.value for e in values])
+        elif isinstance(values, (PyEnum, PyStrEnum, EnumMeta)):
+            self.values = set([e.value for e in values])  # type: ignore
         else:
             raise HowlerTypeError(f"Type unsupported for Enum odm: {type(values)}")
 
@@ -628,6 +636,27 @@ class IndexText(_Field):
 
 class Integer(_Field):
     """A field storing an integer value."""
+
+    def check(self, value, context=[], **kwargs):
+        if self.optional and value is None:
+            return None
+
+        if value is None or value == "":
+            if self.default_set:
+                return self.default
+
+        try:
+            return int(value)
+        except ValueError as e:
+            raise HowlerValueError(f"[{'.'.join(context)}]: {str(e)}")
+
+
+class Long(_Field):
+    """
+    A field storing a long value. Equivalent to Integer in python, but sets the ES datatype to long.
+
+    In Elasticsearch, Integer supports values from -2^31 to 2^31-1, while Long supports values from -2^63 to 2^63-1.
+    """
 
     def check(self, value, context=[], **kwargs):
         if self.optional and value is None:
@@ -1044,7 +1073,7 @@ class Optional(_Field):
 
 class Model:
     @classmethod
-    def fields(cls, skip_mappings=False) -> dict[str, _Field]:
+    def fields(cls, skip_mappings=False, no_cache=False) -> dict[str, _Field]:
         """Describe the elements of the model.
 
         For compound fields return the field object.
@@ -1052,36 +1081,63 @@ class Model:
         Args:
             skip_mappings (bool): Skip over mappings where the real subfield names are unknown.
         """
-        if skip_mappings and hasattr(cls, "_odm_field_cache_skip"):
+        if not no_cache and skip_mappings and "_odm_field_cache_skip" in cls.__dict__:
             return cls._odm_field_cache_skip
 
-        if not skip_mappings and hasattr(cls, "_odm_field_cache"):
+        if not no_cache and not skip_mappings and "_odm_field_cache" in cls.__dict__:
             return cls._odm_field_cache
 
         out = dict()
+        # Iterate through inherited classes. If any of them are odm.Model (e.g., they expose fields())
+        # then include their fields as well. This allows for class inheritance.
+        for base in cls.__bases__:
+            _fields: Callable[..., dict[str, _Field]] | None = getattr(base, "fields", None)
+            if _fields and callable(_fields):
+                out.update(_fields(skip_mappings=skip_mappings, no_cache=True))
+
         for name, field_data in cls.__dict__.items():
             if isinstance(field_data, _Field):
                 if skip_mappings and isinstance(field_data, Mapping):
                     continue
                 out[name.rstrip("_")] = field_data
 
-        if skip_mappings:
-            cls._odm_field_cache_skip = out
-        else:
-            cls._odm_field_cache = out
+        if not no_cache:
+            if skip_mappings:
+                cls._odm_field_cache_skip = out
+            else:
+                cls._odm_field_cache = out
+
         return out
 
     @classmethod
-    def add_namespace(cls, namespace: str, field: _Field):
-        field.name = namespace
+    def add_namespace(cls, namespace: str, field: _Field, index=None, store=None, description=None):
+        recursive_set_name(field, namespace)
 
-        if hasattr(cls, "_odm_field_cache_skip"):
+        if "_odm_field_cache_skip" in cls.__dict__:
             cls._odm_field_cache_skip[namespace.rstrip("_")] = field
 
-        if hasattr(cls, "_odm_field_cache"):
+        if "_odm_field_cache" in cls.__dict__:
             cls._odm_field_cache[namespace.rstrip("_")] = field
 
-        return setattr(cls, namespace, field)
+        setattr(cls, namespace, field)
+
+        field._Model__description = description
+        for name, field_data in field.fields().items():
+            if not FIELD_SANITIZER.match(name) or name in BANNED_FIELDS:
+                raise HowlerValueError(f"Illegal variable name: {name}")
+
+            recursive_set_name(field_data, name)
+            field_data.apply_defaults(index=index, store=store)
+
+    @classmethod
+    def remove_namespace(cls, namespace: str):
+        if "_odm_field_cache_skip" in cls.__dict__:
+            del cls._odm_field_cache_skip[namespace.rstrip("_")]
+
+        if "_odm_field_cache" in cls.__dict__:
+            del cls._odm_field_cache[namespace.rstrip("_")]
+
+        delattr(cls, namespace)
 
     @staticmethod
     def _recurse_fields(name, field, show_compound, skip_mappings, multivalued=False):
@@ -1110,8 +1166,11 @@ class Model:
             else:
                 out[name] = sub_field
 
-        if isinstance(field, Compound) and show_compound:
-            out[name] = field
+        if show_compound:
+            if isinstance(field, Compound):
+                out[name] = field
+            elif isinstance(field, List) and isinstance(field.child_type, Compound):
+                out[name] = field.child_type
 
         return out
 
@@ -1126,6 +1185,11 @@ class Model:
             skip_mappings (bool): Skip over mappings where the real subfield names are unknown.
         """
         out = dict()
+        for base in cls.__bases__:
+            _flat_fields: Callable[..., dict[str, _Field]] | None = getattr(base, "flat_fields", None)
+            if _flat_fields and callable(_flat_fields):
+                out.update(_flat_fields(show_compound=show_compound, skip_mappings=skip_mappings))
+
         for name, field in cls.__dict__.items():
             if isinstance(field, _Field):
                 if skip_mappings and isinstance(field, Mapping):
@@ -1147,8 +1211,8 @@ class Model:
         toc_depth=1,
         include_autogen_note=True,
         defaults=None,
-        url_prefix="/howler-docs/odm/class/",
-    ) -> Union[str, Dict]:
+        url_prefix="/howler/odm/class/",
+    ) -> str:
         markdown_content = (
             (
                 '??? success "Auto-Generated Documentation"\n    '
@@ -1160,14 +1224,14 @@ class Model:
         )
 
         # Header
-        markdown_content += f"{'#'*toc_depth} {cls.__name__}\n\n> {cls.__description}\n\n"
+        markdown_content += f"{'#' * toc_depth} {cls.__name__}\n\n> {cls.__description}\n\n"
 
         # Table
         table = "| Field | Type | Description | Required | Default |\n| :--- | :--- | :--- | :--- | :--- |\n"
 
         # Determine the type of Field we're dealing with
         # if possible return the Model class if wrapped in Compound
-        def get_type(field_class: _Field) -> Tuple[str, Model]:
+        def get_type(field_class: _Field) -> tuple[str, Model | None]:
             if field_class.__class__ == Optional:
                 return get_type(field_class.child_type)
             elif field_class.__class__ == Compound:
@@ -1212,7 +1276,7 @@ class Model:
 
                 values = [f'"{v}"' if v else str(v) for v in sorted(values)]
                 values.append("None") if none_value else None
-                description = f'{description}<br>Values:<br>`{", ".join(values)}`'
+                description = f"{description}<br>Values:<br>`{', '.join(values)}`"
 
             # Is this a required field?
             if info.__class__ != Optional and not info.optional:
@@ -1301,7 +1365,7 @@ class Model:
         extra_keys = set(extra_fields.keys()) - set(data.keys())
         if self.unused_keys and not ignore_extra_values:
             raise HowlerValueError(
-                f"[{'.'.join(context)}]: object was created with invalid parameters: " f"{', '.join(self.unused_keys)}"
+                f"[{'.'.join(context)}]: object was created with invalid parameters: {', '.join(self.unused_keys)}"
             )
 
         # Pass each value through it's respective validator, and store it
@@ -1439,12 +1503,44 @@ def recursive_set_name(field, name, to_parent=False):
         recursive_set_name(field.child_type, name, to_parent=True)
 
 
-def model(index=None, store=None, description=None):
-    """Decorator to create model objects."""
+def model(index=None, store=None, description=None, id_field=None):
+    """Decorator that finalizes a Model subclass for use with the datastore.
+    Assigns metadata to the class (description, id field), validates that all
+    declared field names are legal, recursively sets each field's name, and
+    applies default index/store settings to every field.
+    If ``id_field`` is not provided, it defaults to ``<classname_lower>_id``.
+    Args:
+        index: Default index setting applied to all fields on the model.
+        store: Default store setting applied to all fields on the model.
+        description: Human-readable description of the model.
+        id_field: Name of the field used as the primary key. Defaults to
+            ``<classname_lower>_id`` when not specified.
+    Returns:
+        A class decorator that configures and returns the decorated Model subclass.
+    Raises:
+        HowlerValueError: If any field name fails the ``FIELD_SANITIZER`` regex
+            or appears in ``BANNED_FIELDS``.
+    """
 
     def _finish_model(cls):
         cls._Model__description = description
-        for name, field_data in cls.fields().items():
+        fields = cls.fields()
+
+        if id_field is None:
+            cls._Model__id_field = f"{cls.__name__.lower()}_id"
+        else:
+            if not isinstance(id_field, str):
+                raise HowlerTypeError(f"id_field must be a str, got {type(id_field).__name__}")
+
+            if not FLATTENED_OBJECT_SANITIZER.match(id_field) or id_field in BANNED_FIELDS:
+                raise HowlerValueError(f"Illegal id_field name: {id_field}")
+
+            if id_field not in fields and id_field not in cls.flat_fields():
+                raise HowlerValueError(f"id_field must reference a declared field: {id_field}")
+
+            cls._Model__id_field = id_field
+
+        for name, field_data in fields.items():
             if not FIELD_SANITIZER.match(name) or name in BANNED_FIELDS:
                 raise HowlerValueError(f"Illegal variable name: {name}")
 

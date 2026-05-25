@@ -178,20 +178,53 @@ const useMyActionFunctions = () => {
             }
           );
 
-          setReport(
-            await dispatchApi(
-              api.action.execute.post({
-                request_id: reqId,
-                query,
-                action_id: actionId
-              }),
-              { throwError: false, showError: true }
-            )
+          const result = await dispatchApi(
+            api.action.execute.post({
+              request_id: reqId,
+              query,
+              action_id: actionId
+            }),
+            { throwError: false, showError: false }
           );
 
-          showSuccessMessage(
-            <Trans i18nKey="actions.succeeded" values={{ action: (await action).items[0]?.name || t('unknown') }} />
-          );
+          setReport(result);
+
+          const actionName = (await action).items[0]?.name || t('unknown');
+
+          if (!result) {
+            showErrorMessage(<Trans i18nKey="actions.error" values={{ action: actionName, message: t('unknown') }} />);
+            return;
+          }
+
+          const allItems = Object.values(result).flat();
+          const errors = allItems.filter(item => item.outcome === 'error');
+          const skipped = allItems.filter(item => item.outcome === 'skipped');
+          const succeeded = allItems.filter(item => item.outcome === 'success');
+
+          if (errors.length > 0) {
+            showErrorMessage(
+              <Trans
+                i18nKey="actions.error"
+                values={{ action: actionName, messages: errors.map(error => error.message).join(', ') }}
+              />
+            );
+          }
+
+          if (skipped.length > 0) {
+            showInfoMessage(
+              <Trans
+                i18nKey="actions.skipped"
+                values={{
+                  action: actionName,
+                  messages: skipped.map(skippedAction => skippedAction.message).join(', ')
+                }}
+              />
+            );
+          }
+
+          if (succeeded.length > 0) {
+            showSuccessMessage(<Trans i18nKey="actions.succeeded" values={{ action: actionName }} />);
+          }
         } finally {
           if (key) {
             closeSnackbar(key);
@@ -201,7 +234,7 @@ const useMyActionFunctions = () => {
           setProgress([0, 0]);
         }
       },
-      [closeSnackbar, dispatchApi, showInfoMessage, showSuccessMessage, t]
+      [closeSnackbar, dispatchApi, showInfoMessage, showSuccessMessage, showErrorMessage, t]
     ),
     deleteAction: useCallback(
       async (actionId: string) => {

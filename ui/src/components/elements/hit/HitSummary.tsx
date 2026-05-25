@@ -33,32 +33,31 @@ import { memo, useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
-import { convertCustomDateRangeToLucene, convertDateToLucene, getTimeRange } from 'utils/utils';
+import { getTimeRange } from 'utils/utils';
 import PluginChip from '../PluginChip';
 import HitGraph from './aggregate/HitGraph';
 
 const HitSummary: FC<{
-  query: string;
   response?: HowlerSearchResponse<WithMetadata<Hit>>;
   execute?: boolean;
   onStart?: () => void;
   onComplete?: () => void;
-}> = ({ query, response, onStart, onComplete }) => {
+}> = ({ response, onStart, onComplete }) => {
   const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
   const { hitFields } = useContext(FieldContext);
   const { showErrorMessage } = useMySnackbar();
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
+  const [showHitSummaryGraph] = useMyLocalStorageItem(StorageKey.SHOW_HIT_SUMMARY_GRAPH, true);
   const { getMatchingTemplate } = useMatchers();
 
-  const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
-  const viewId = useContextSelector(HitSearchContext, ctx => ctx.viewId);
   const searching = useContextSelector(HitSearchContext, ctx => ctx.searching);
   const error = useContextSelector(HitSearchContext, ctx => ctx.error);
+  const getFilters = useContextSelector(HitSearchContext, ctx => ctx.getFilters);
 
-  const span = useContextSelector(ParameterContext, ctx => ctx.span);
-  const startDate = useContextSelector(ParameterContext, ctx => ctx.startDate);
-  const endDate = useContextSelector(ParameterContext, ctx => ctx.endDate);
+  const query = useContextSelector(ParameterContext, ctx => ctx.query);
+  const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
+  const views = useContextSelector(ParameterContext, ctx => ctx.views);
 
   const [loading, setLoading] = useState(false);
   const [customKeys, setCustomKeys] = useState<string[]>([]);
@@ -70,13 +69,6 @@ const HitSummary: FC<{
   const performAggregation = useCallback(async () => {
     if (onStart) {
       onStart();
-    }
-
-    const filters: string[] = [];
-    if (span && !span.endsWith('custom')) {
-      filters.push(`event.created:${convertDateToLucene(span)}`);
-    } else if (startDate && endDate) {
-      filters.push(`event.created:${convertCustomDateRangeToLucene(startDate, endDate)}`);
     }
 
     try {
@@ -137,7 +129,7 @@ const HitSummary: FC<{
             fields: sortedKeys,
             query,
             rows: pageCount,
-            filters
+            filters: await getFilters()
           }),
           {
             throwError: false,
@@ -165,7 +157,7 @@ const HitSummary: FC<{
   }, [
     customKeys,
     dispatchApi,
-    endDate,
+    getFilters,
     getMatchingTemplate,
     onComplete,
     onStart,
@@ -173,8 +165,6 @@ const HitSummary: FC<{
     query,
     response?.items,
     showErrorMessage,
-    span,
-    startDate,
     t
   ]);
 
@@ -186,20 +176,24 @@ const HitSummary: FC<{
   );
 
   useEffect(() => {
-    if ((!query && !viewId) || searching || error) {
+    if ((!query && views?.length < 1) || searching || error) {
       return;
     }
 
     performAggregation();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, viewId, searching, error]);
+  }, [query, views, searching, error]);
 
   return (
     <Stack sx={{ mx: 2, height: '100%' }} spacing={1}>
       <Typography variant="h6">{t('hit.summary.aggregate.title')}</Typography>
       <Divider flexItem />
-      <HitGraph query={query} />
-      <Divider flexItem />
+      {showHitSummaryGraph && (
+        <>
+          <HitGraph />
+          <Divider flexItem />
+        </>
+      )}
       <Stack sx={{ overflow: 'auto', marginTop: '0 !important' }} pt={1} spacing={1}>
         <Stack direction="row" spacing={2} mb={2} alignItems="stretch">
           <Autocomplete
@@ -242,7 +236,7 @@ const HitSummary: FC<{
                   </Typography>
                 ) : (
                   <Typography variant="caption" color="text.secondary">
-                    ({keyCounts[key]?.count} {t('references')})
+                    ({keyCounts[key]?.count ?? '?'} {t('references')})
                   </Typography>
                 )}
 
@@ -250,11 +244,11 @@ const HitSummary: FC<{
                   title={
                     <Stack>
                       <Typography variant="caption">{t('hit.summary.aggregate.sources')}</Typography>
-                      {keyCounts[key].sources.map(source => (
+                      {keyCounts[key]?.sources.map(source => (
                         <Typography key={source} variant="caption">
                           {source}
                         </Typography>
-                      ))}
+                      )) ?? '?'}
                     </Stack>
                   }
                 >
@@ -266,15 +260,16 @@ const HitSummary: FC<{
               {hitFields.find(f => f.key === key)?.type !== 'date' ? (
                 <Box sx={theme => ({ ml: `${theme.spacing(1)} !important`, alignSelf: 'start' })}>
                   <Grid container key={key + '-list'} sx={theme => ({ mr: 1, mt: theme.spacing(-1) })} spacing={1}>
-                    {Object.keys(aggregateResults[key]).map(_key => (
-                      <Grid key={_key} item xs="auto">
+                    {Object.keys(aggregateResults[key]).map(item => (
+                      <Grid key={item} item xs="auto">
                         <PluginChip
                           context="summary"
                           size="small"
                           variant="filled"
-                          value={_key}
-                          label={`${_key} (${aggregateResults[key][_key]})`}
-                          onClick={() => setSearch(key, `"${_key}"`)}
+                          value={item}
+                          label={`${item} (${aggregateResults[key][item]})`}
+                          onClick={() => setSearch(key, `"${item}"`)}
+                          field={key}
                         />
                       </Grid>
                     ))}

@@ -21,7 +21,7 @@ def test_builtin_config():
 def test_builtin_config_mapping():
     from howler.config import config
 
-    assert config.mapping
+    assert isinstance(config.mapping, dict)
 
 
 def test_custom_config():

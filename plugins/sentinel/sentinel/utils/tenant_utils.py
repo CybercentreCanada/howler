@@ -16,7 +16,7 @@ def skip_cache(*args):
 
 @cache.memoize(15 * 60, unless=skip_cache)
 def get_token(tenant_id: str, scope: str) -> Optional[str]:
-    """Get a borealis token based on the current howler token"""
+    """Get a sentinel token based on the current howler token"""
     from sentinel.config import config
 
     token = None

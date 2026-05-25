@@ -4,7 +4,7 @@ La bibliothèque cliente Howler facilite l'envoi de requêtes à Howler.
 
 ## Configuration requise
 
-1. Python 3.9 et versions ultérieures
+1. Python 3.10 et versions ultérieures
 
 ## Exécution des tests
 

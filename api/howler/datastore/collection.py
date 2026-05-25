@@ -11,11 +11,12 @@ from copy import deepcopy
 from datetime import datetime
 from os import environ
 from random import random
-from typing import Any, Dict, Generic, Optional, TypeVar, Union
+from typing import Any, Dict, Generic, Literal, Optional, TypeVar, Union, overload
 
 import elasticsearch
 from datemath import dm
 from datemath.helpers import DateMathException
+from opentelemetry import trace
 
 from howler import odm
 from howler.common.exceptions import HowlerRuntimeError, HowlerValueError, NonRecoverableError
@@ -37,6 +38,7 @@ from howler.datastore.support.schemas import (
     default_index,
     default_mapping,
 )
+from howler.datastore.types import AggSearchResult, SearchResult
 from howler.odm.base import (
     BANNED_FIELDS,
     IP,
@@ -65,7 +67,11 @@ console.setLevel(logging.INFO)
 console.setFormatter(logging.Formatter(HWL_LOG_FORMAT, HWL_DATE_FORMAT))
 logger.addHandler(console)
 
+tracer = trace.get_tracer(__name__)
+
 ModelType = TypeVar("ModelType", bound=Model)
+
+
 write_block_settings = {"index.blocks.write": True}
 write_unblock_settings = {"index.blocks.write": None}
 
@@ -205,8 +211,11 @@ class ESCollection(Generic[ModelType]):
         "sort": DEFAULT_SORT,
         "df": None,
         "script_fields": [],
+        "aggregations": None,
     }
-    IGNORE_ENSURE_COLLECTION = False
+    IGNORE_ENSURE_COLLECTION: bool = False
+    ENSURE_COLLECTION_WARNED: bool = False
+    CUSTOM_AGG_PREFIX: str = "_custom_agg__"
 
     def __init__(self, datastore: ESStore, name, model_class=None, validate=True, max_attempts=10):
         self.replicas = int(
@@ -227,9 +236,10 @@ class ESCollection(Generic[ModelType]):
 
         if not ESCollection.IGNORE_ENSURE_COLLECTION:
             self._ensure_collection()
-        elif "pytest" not in sys.modules:
+        elif "pytest" not in sys.modules and not ESCollection.ENSURE_COLLECTION_WARNED:
             logger.warning("Skipping ensure collection! This is dangerous. Waiting five seconds before continuing.")
             time.sleep(5)
+            ESCollection.ENSURE_COLLECTION_WARNED = True
 
         self.stored_fields = {}
         if model_class:
@@ -265,14 +275,17 @@ class ESCollection(Generic[ModelType]):
         if index is None:
             index = self.index_name
 
+        client = self.datastore.client
+        if request_timeout is not None:
+            client = client.options(request_timeout=request_timeout)
+
         # initial search
         resp = self.with_retries(
-            self.datastore.client.search,
+            client.search,
             index=index,
             query=query,
             scroll=scroll,
             size=size,
-            request_timeout=request_timeout,
             sort=sort,
             _source=source,
         )
@@ -300,16 +313,18 @@ class ESCollection(Generic[ModelType]):
 
         finally:
             if scroll_id:
-                resp = self.with_retries(
-                    self.datastore.client.clear_scroll,
-                    scroll_id=[scroll_id],
-                    ignore=(404,),
-                )
-                if not resp.get("succeeded", False):
-                    logger.warning(
-                        f"Could not clear scroll ID {scroll_id}, there is potential "
-                        "memory leak in you Elastic cluster..."
+                try:
+                    resp = self.with_retries(
+                        self.datastore.client.clear_scroll,
+                        scroll_id=[scroll_id],
                     )
+                    if not resp.get("succeeded", False):
+                        logger.warning(
+                            f"Could not clear scroll ID {scroll_id}, there is potential "
+                            "memory leak in your Elastic cluster..."
+                        )
+                except elasticsearch.exceptions.NotFoundError:
+                    pass
 
     def with_retries(self, func, *args, raise_conflicts=False, **kwargs):
         """This function performs the passed function with the given args and kwargs and reconnect if it fails
@@ -375,10 +390,10 @@ class ESCollection(Generic[ModelType]):
                 elasticsearch.exceptions.AuthenticationException,
             ) as e:
                 if not isinstance(e, SearchRetryException):
-                    logger.warning(
+                    logger.exception(
                         f"No connection to Elasticsearch server(s): "
                         f"{' | '.join(self.datastore.get_hosts(safe=True))}"
-                        f", because [{e}] retrying {func.__name__}..."
+                        f", because [{str(e)}] retrying {func.__name__}..."  # noqa: TRY401
                     )
 
                 time.sleep(min(retries, self.MAX_RETRY_BACKOFF))
@@ -388,20 +403,21 @@ class ESCollection(Generic[ModelType]):
             except elasticsearch.exceptions.TransportError as e:
                 err_code, msg, cause = e.args
                 if err_code == 503 or err_code == "503":
-                    logger.warning(f"Looks like index {self.name} is not ready yet, retrying...")
+                    logger.warning("Looks like index %s is not ready yet, retrying...", self.name)
                     time.sleep(min(retries, self.MAX_RETRY_BACKOFF))
                     self.datastore.connection_reset()
                     retries += 1
                 elif err_code == 429 or err_code == "429":
                     logger.warning(
-                        "Elasticsearch is too busy to perform the requested " f"task on index {self.name}, retrying..."
+                        f"Elasticsearch is too busy to perform the requested task on index {self.name}, retrying..."
                     )
                     time.sleep(min(retries, self.MAX_RETRY_BACKOFF))
                     self.datastore.connection_reset()
                     retries += 1
                 elif err_code == 403 or err_code == "403":
                     logger.warning(
-                        "Elasticsearch cluster is preventing writing operations " f"on index {self.name}, retrying..."
+                        "Elasticsearch cluster is preventing writing operations on index %s, retrying...",
+                        self.name,
                     )
                     time.sleep(min(retries, self.MAX_RETRY_BACKOFF))
                     self.datastore.connection_reset()
@@ -416,8 +432,10 @@ class ESCollection(Generic[ModelType]):
         #   - update_by_query
         #   - delete_by_query
         #   - reindex ...
+        attempt = 0
         res = None
         while res is None:
+            attempt = attempt + 1
             try:
                 res = self.with_retries(
                     self.datastore.client.tasks.get,
@@ -425,7 +443,7 @@ class ESCollection(Generic[ModelType]):
                     wait_for_completion=True,
                     timeout="10s",
                 )
-            except elasticsearch.exceptions.TransportError as e:
+            except (elasticsearch.exceptions.TransportError, elasticsearch.exceptions.ApiError) as e:
                 err_code, msg, _ = e.args
                 if (err_code == 500 or err_code == "500") and msg in [
                     "timeout_exception",
@@ -433,9 +451,12 @@ class ESCollection(Generic[ModelType]):
                 ]:
                     pass
                 else:
+                    logger.exception("Unexpected error on task check")
                     raise
 
-        return res.get("response", res["task"]["status"])
+        result = res.get("response", res["task"]["status"])
+
+        return result
 
     def _get_current_alias(self, index: str) -> typing.Optional[str]:
         if self.with_retries(self.datastore.client.indices.exists_alias, name=index):
@@ -455,12 +476,14 @@ class ESCollection(Generic[ModelType]):
             except elasticsearch.exceptions.TransportError as e:
                 err_code, _, _ = e.args
                 if err_code == 408 or err_code == "408":
-                    logger.warning(f"Waiting for index {index} to get to status {min_status}...")
+                    logger.warning("Waiting for index %s to get to status %s...", index, min_status)
                 else:
                     raise
 
     def _safe_index_copy(self, copy_function, src, target, settings=None, min_status="yellow"):
-        ret = copy_function(index=src, target=target, settings=settings, request_timeout=60)
+        options_client = self.datastore.client.options(request_timeout=60)
+        timed_function = getattr(options_client.indices, copy_function.__name__)
+        ret = timed_function(index=src, target=target, settings=settings)
         if not ret["acknowledged"]:
             raise DataStoreException(f"Failed to create index {target} from {src}.")
 
@@ -506,6 +529,7 @@ class ESCollection(Generic[ModelType]):
             else:
                 updated += res["updated"]
 
+    @tracer.start_as_current_span(f"{__name__}.commit")
     def commit(self):
         """This function should be overloaded to perform a commit of the index data of all the different hosts
         specified in self.datastore.hosts.
@@ -559,8 +583,9 @@ class ESCollection(Generic[ModelType]):
 
         if cur_shards > target_shards:
             logger.info(
-                f"Current shards ({cur_shards}) is bigger then target shards ({target_shards}), "
-                "we will be shrinking the index."
+                "Current shards (%s) is bigger then target shards (%s), we will be shrinking the index.",
+                cur_shards,
+                target_shards,
             )
             if cur_shards % target_shards != 0:
                 logger.info("The target shards is not a factor of the current shards, aborting...")
@@ -574,8 +599,9 @@ class ESCollection(Generic[ModelType]):
                 method = self.datastore.client.indices.shrink
         elif cur_shards < target_shards:
             logger.info(
-                f"Current shards ({cur_shards}) is smaller then target shards ({target_shards}), "
-                "we will be splitting the index."
+                "Current shards (%s) is smaller then target shards (%s), we will be splitting the index.",
+                cur_shards,
+                target_shards,
             )
             if target_shards % cur_shards != 0:
                 logger.warning("The current shards is not a factor of the target shards, aborting...")
@@ -584,13 +610,15 @@ class ESCollection(Generic[ModelType]):
                 method = self.datastore.client.indices.split
         else:
             logger.info(
-                f"Current shards ({cur_shards}) is equal to the target shards ({target_shards}), "
-                "only house keeping operations will be performed."
+                "Current shards (%s) is equal to the target shards (%s), only housekeeping operations will be "
+                "performed.",
+                cur_shards,
+                target_shards,
             )
 
         if method:
             # Before we do anything, we should make sure the source index is in a good state
-            logger.info(f"Waiting for {self.name.upper()} status to be GREEN.")
+            logger.info("Waiting for %s status to be GREEN.", self.name.upper())
             self._wait_for_status(self.name, min_status="green")
 
             # Block all indexes to be written to
@@ -601,7 +629,7 @@ class ESCollection(Generic[ModelType]):
             if not self.with_retries(self.datastore.client.indices.exists, index=temp_name):
                 # if there are specific settings to be applied to the index, apply them
                 if clone_setup_settings:
-                    logger.info(f"Rellocating index to node {target_node.upper()}.")
+                    logger.info("Relocating index to node %s.", target_node.upper())
                     self.with_retries(
                         self.datastore.client.indices.put_settings,
                         index=self.index_name,
@@ -613,7 +641,7 @@ class ESCollection(Generic[ModelType]):
                         time.sleep(1)
 
                 # Make a clone of the current index
-                logger.info(f"Cloning {self.index_name.upper()} into {temp_name.upper()}.")
+                logger.info("Cloning %s into %s.", self.index_name.upper(), temp_name.upper())
                 self._safe_index_copy(
                     self.datastore.client.indices.clone,
                     self.index_name,
@@ -623,14 +651,16 @@ class ESCollection(Generic[ModelType]):
                 )
 
             # Make 100% sure temporary index is ready
-            logger.info(f"Waiting for {temp_name.upper()} status to be GREEN.")
+            logger.info("Waiting for %s status to be GREEN.", temp_name.upper())
             self._wait_for_status(temp_name, "green")
 
             # Make sure temporary index is the alias if not already
             if self._get_current_alias(self.name) != temp_name:
                 logger.info(
-                    f"Make {temp_name.upper()} the current alias for {self.name.upper()} "
-                    f"and delete {self.index_name.upper()}."
+                    "Make %s the current alias for %s and delete %s.",
+                    temp_name.upper(),
+                    self.name.upper(),
+                    self.index_name.upper(),
                 )
                 # Make the hot index the temporary index while deleting the original index
                 alias_actions = [
@@ -641,17 +671,19 @@ class ESCollection(Generic[ModelType]):
 
             # Make sure the original index is deleted
             if self.with_retries(self.datastore.client.indices.exists, index=self.index_name):
-                logger.info(f"Delete extra {self.index_name.upper()} index.")
+                logger.info("Delete extra %s index.", self.index_name.upper())
                 self.with_retries(self.datastore.client.indices.delete, index=self.index_name)
 
             # Shrink/split the temporary index into the original index
-            logger.info(f"Perform shard fix operation from {temp_name.upper()} to {self.index_name.upper()}.")
+            logger.info("Perform shard fix operation from %s to %s.", temp_name.upper(), self.index_name.upper())
             self._safe_index_copy(method, temp_name, self.index_name, settings=settings)
 
             # Make the original index the new alias
             logger.info(
-                f"Make {self.index_name.upper()} the current alias for {self.name.upper()} "
-                f"and delete {temp_name.upper()}."
+                "Make %s the current alias for %s and delete %s.",
+                self.index_name.upper(),
+                self.name.upper(),
+                temp_name.upper(),
             )
             alias_actions = [
                 {"add": {"index": self.index_name, "alias": self.name}},
@@ -664,7 +696,7 @@ class ESCollection(Generic[ModelType]):
         self.with_retries(self.datastore.client.indices.put_settings, settings=write_unblock_settings)
 
         # Restore normal routing and replicas
-        logger.debug(f"Restore original routing table for {self.name.upper()}.")
+        logger.debug("Restore original routing table for %s.", self.name.upper())
         self.with_retries(
             self.datastore.client.indices.put_settings,
             index=self.name,
@@ -677,6 +709,7 @@ class ESCollection(Generic[ModelType]):
 
         :return: Should return True of the commit was successful on all hosts
         """
+        logger.warning("Beginning Reindex")
         for index in self.index_list:
             new_name = f"{index}__reindex"
             index_data = None
@@ -687,6 +720,7 @@ class ESCollection(Generic[ModelType]):
                 index_data = self.with_retries(self.datastore.client.indices.get, index=index)[index]
 
                 # Create reindex target
+                logger.warning("Creating new index with name %s", new_name)
                 self.with_retries(
                     self.datastore.client.indices.create,
                     index=new_name,
@@ -717,36 +751,39 @@ class ESCollection(Generic[ModelType]):
                     else:
                         alias_actions = [{"add": {"index": new_name, "alias": alias}}]
 
+                    logger.warning("Updating alias %s", alias)
                     self.with_retries(self.datastore.client.indices.update_aliases, actions=alias_actions)
 
                 # Reindex data into target
+                logger.warning("Beginning reindex from %s to %s", index, new_name)
                 r_task = self.with_retries(
                     self.datastore.client.reindex,
                     source={"index": index},
                     dest={"index": new_name},
                     wait_for_completion=False,
                 )
+                logger.warning("Reindex taskId: %s", r_task["task"])
                 self._get_task_results(r_task)
 
             if self.with_retries(self.datastore.client.indices.exists, index=new_name):
                 if index_data is None:
                     index_data = self.with_retries(self.datastore.client.indices.get, index=index)[index]
 
-                # Commit reindexed data
+                logger.warning("Committing reindexed data in index %s", new_name)
                 self.with_retries(self.datastore.client.indices.refresh, index=new_name)
                 self.with_retries(self.datastore.client.indices.clear_cache, index=new_name)
 
-                # Delete old index
+                logger.warning("Deleting old index %s", index)
                 if self.with_retries(self.datastore.client.indices.exists, index=index):
                     self.with_retries(self.datastore.client.indices.delete, index=index)
 
-                # Block write to the index
+                logger.warning("Block write to index")
                 self.with_retries(
                     self.datastore.client.indices.put_settings,
                     settings=write_block_settings,
                 )
 
-                # Rename reindexed index
+                logger.warning("Renaming reindexed index from %s to %s", new_name, index)
                 try:
                     self._safe_index_copy(
                         self.datastore.client.indices.clone,
@@ -774,11 +811,11 @@ class ESCollection(Generic[ModelType]):
                                 actions=alias_actions,
                             )
 
-                    # Delete the reindex target if it still exists
                     if self.with_retries(self.datastore.client.indices.exists, index=new_name):
+                        logger.warning("Deleting reindex target %s", new_name)
                         self.with_retries(self.datastore.client.indices.delete, index=new_name)
                 finally:
-                    # Unblock write to the index
+                    logger.warning("Unblock write to the index")
                     self.with_retries(
                         self.datastore.client.indices.put_settings,
                         settings=write_unblock_settings,
@@ -827,14 +864,23 @@ class ESCollection(Generic[ModelType]):
                     key_list.remove(row["_id"])
                     add_to_output(row["_source"], row["_id"])
                 except ValueError:
-                    logger.exception(f'MGet returned multiple documents for id: {row["_id"]}')
+                    logger.exception("MGet returned multiple documents for id: %s", row["_id"])
 
         if key_list and error_on_missing:
             raise MultiKeyError(key_list, out)
 
         return out
 
-    def normalize(self, data, as_obj=True) -> Union[ModelType, dict[str, Any], None]:
+    @overload
+    def normalize(self, data) -> ModelType | None: ...
+
+    @overload
+    def normalize(self, data, as_obj: Literal[True]) -> ModelType | None: ...
+
+    @overload
+    def normalize(self, data, as_obj: Literal[False]) -> dict[str, Any] | None: ...
+
+    def normalize(self, data, as_obj=True):
         """Normalize the data using the model class
 
         :param as_obj: Return an object instead of a dictionary
@@ -856,6 +902,12 @@ class ESCollection(Generic[ModelType]):
         :return: true/false depending if the document exists or not
         """
         return self.with_retries(self.datastore.client.exists, index=self.name, id=key, _source=False)
+
+    @overload
+    def _get(self, key, retries, version: Literal[False]) -> dict[str, Any]: ...
+
+    @overload
+    def _get(self, key, retries, version: Literal[True]) -> tuple[dict[str, Any], str]: ...
 
     def _get(self, key, retries, version=False):
         """Versioned get-save for atomic update has two paths:
@@ -903,6 +955,27 @@ class ESCollection(Generic[ModelType]):
 
         return None
 
+    @overload
+    def get(self, key, as_obj: Literal[True], version: Literal[True]) -> tuple[ModelType, str]: ...
+
+    @overload
+    def get(self, key, as_obj: Literal[True], version: Literal[False]) -> ModelType: ...
+
+    @overload
+    def get(self, key, as_obj: Literal[True]) -> ModelType: ...
+
+    @overload
+    def get(self, key) -> ModelType: ...
+
+    @overload
+    def get(self, key, as_obj: Literal[False], version: Literal[True]) -> tuple[dict[str, Any], str]: ...
+
+    @overload
+    def get(self, key, as_obj: Literal[False], version: Literal[False]) -> dict[str, Any]: ...
+
+    @overload
+    def get(self, key, as_obj: Literal[False]) -> dict[str, Any]: ...
+
     def get(self, key, as_obj=True, version=False):
         """Get a document from the datastore, retry a few times if not found and normalize the
         document with the model provided with the collection.
@@ -921,7 +994,28 @@ class ESCollection(Generic[ModelType]):
             return self.normalize(data, as_obj=as_obj), version
         return self.normalize(data, as_obj=as_obj)
 
-    def get_if_exists(self, key, as_obj=True, version=False):
+    @overload
+    def get_if_exists(self, key: str, as_obj: Literal[True], version: Literal[True]) -> tuple[ModelType, str]: ...
+
+    @overload
+    def get_if_exists(self, key: str, as_obj: Literal[True], version: Literal[False]) -> ModelType: ...
+
+    @overload
+    def get_if_exists(self, key: str, as_obj: Literal[True]) -> ModelType: ...
+
+    @overload
+    def get_if_exists(self, key: str) -> ModelType: ...
+
+    @overload
+    def get_if_exists(self, key: str, as_obj: Literal[False], version: Literal[True]) -> tuple[dict[str, Any], str]: ...
+
+    @overload
+    def get_if_exists(self, key: str, as_obj: Literal[False], version: Literal[False]) -> dict[str, Any]: ...
+
+    @overload
+    def get_if_exists(self, key: str, as_obj: Literal[False]) -> dict[str, Any]: ...
+
+    def get_if_exists(self, key: str, as_obj=True, version=False):
         """Get a document from the datastore but do not retry if not found.
 
         Use this more in caching scenarios because eventually consistent database may lead
@@ -937,6 +1031,7 @@ class ESCollection(Generic[ModelType]):
         if version:
             data, version = data
             return self.normalize(data, as_obj=as_obj), version
+
         return self.normalize(data, as_obj=as_obj)
 
     def require(
@@ -976,7 +1071,7 @@ class ESCollection(Generic[ModelType]):
 
         data = self.normalize(data)
 
-        if self.model_class:
+        if self.model_class and data:
             saved_data = data.as_primitives(hidden_fields=True)
         else:
             if not isinstance(data, dict):
@@ -1026,7 +1121,7 @@ class ESCollection(Generic[ModelType]):
         except elasticsearch.NotFoundError:
             return False
 
-    def delete_by_query(self, query, workers=20, sort=None, max_docs=None):
+    def delete_by_query(self, query: str, sort=None, max_docs=None):
         """This function should delete the underlying documents referenced by the query.
         It should return true if the documents were in fact properly deleted.
 
@@ -1034,7 +1129,18 @@ class ESCollection(Generic[ModelType]):
         :param workers: Number of workers used for deletion if basic currency delete is used
         :return: True is delete successful
         """
-        query = {"bool": {"must": {"query_string": {"query": query}}}}
+        query_obj = {"bool": {"must": {"query_string": {"query": query}}}}
+        success = self.delete_by_search_object(query=query_obj, sort=sort, max_docs=max_docs)
+        return success
+
+    def delete_by_search_object(self, query: dict, sort=None, max_docs=None):
+        """Delete the underlying documents matching the query object.
+        Returns true if the documents were in fact properly deleted.
+
+        :param query: Query object following elasticsearch request structure
+        :param workers: Number of workers used for deletion if basic currency delete is used
+        :return: True is delete successful
+        """
         info = self._delete_async(self.name, query=query, sort=sort_str(parse_sort(sort)), max_docs=max_docs)
         return info.get("deleted", 0) != 0
 
@@ -1110,7 +1216,7 @@ class ESCollection(Generic[ModelType]):
         """
         if self.model_class:
             fields = self.model_class.flat_fields(show_compound=True)
-            if "classification in fields":
+            if "classification" in fields:
                 fields.update(
                     {
                         "__access_lvl__": Integer(),
@@ -1197,7 +1303,7 @@ class ESCollection(Generic[ModelType]):
                 script=script,
                 if_seq_no=seq_no,
                 if_primary_term=primary_term,
-                raise_conflicts=seq_no and primary_term,
+                raise_conflicts=bool(seq_no and primary_term),
             )
             return (
                 res["result"] == "updated",
@@ -1293,7 +1399,7 @@ class ESCollection(Generic[ModelType]):
         if isinstance(fields, str):
             fields = [fields]
 
-        if fields is None or "*" in fields or "id" in fields:
+        if source_data is not None and (fields is None or "*" in fields or "id" in fields):
             source_data["id"] = [item_id]
 
         if fields is None or "*" in fields:
@@ -1305,7 +1411,7 @@ class ESCollection(Generic[ModelType]):
         if args is None:
             args = []
 
-        params = {}
+        params: dict[str, Any] = {}
         if deep_paging_id is not None:
             params = {"scroll": self.SCROLL_TIMEOUT}
         elif track_total_hits:
@@ -1323,7 +1429,7 @@ class ESCollection(Generic[ModelType]):
 
         # This is our minimal query, the following sections will fill it out
         # with whatever extra options the search has been given.
-        query_body = {
+        query_body: dict[str, Any] = {
             "query": {
                 "bool": {
                     "must": {"query_string": {"query": parsed_values["query"]}},
@@ -1410,6 +1516,26 @@ class ESCollection(Generic[ModelType]):
                 },
             }
 
+        # Add any arbitrary aggregations
+        if parsed_values["aggregations"]:
+            query_body.setdefault("aggregations", {})
+            cluster_settings = self.datastore.client.cluster.get_settings(include_defaults=True, flat_settings=True)
+            flattened_settings = {
+                **cluster_settings["defaults"],
+                **cluster_settings["transient"],
+                **cluster_settings["persistent"],
+            }
+            max_buckets = int(flattened_settings["search.max_buckets"])
+            for agg_name, agg_args in parsed_values["aggregations"]:
+                if any("size" in agg_def and agg_def["size"] > max_buckets for agg_def in agg_args.values()):
+                    # verify the size of the agg query doesn't exceed the max
+                    warnings.warn(
+                        f"Aggregation {agg_name} has a size argument higher than the maximum allowed "
+                        f"buckets of the cluster ({max_buckets}). Skipping aggregation."
+                    )
+                    continue
+                query_body["aggregations"][f"{self.CUSTOM_AGG_PREFIX}{agg_name}"] = agg_args
+
         try:
             if deep_paging_id is not None and not deep_paging_id == "*":
                 # Get the next page
@@ -1445,9 +1571,90 @@ class ESCollection(Generic[ModelType]):
         except Exception as error:
             raise SearchException("collection: %s, query: %s, error: %s" % (self.name, query_body, str(error)))
 
+    @overload
+    def search(
+        self,
+        query: str | None,
+        as_obj: Literal[True] = True,
+        offset: int = 0,
+        rows: int | None = None,
+        sort: typing.Any = None,
+        fl: str | None = None,
+        timeout: int | None = None,
+        filters: list[str] | str | None = None,
+        access_control: typing.Any = None,
+        deep_paging_id: str | None = None,
+        use_archive: bool = False,
+        track_total_hits: bool = False,
+        script_fields: list[str] = [],
+        *,
+        aggregations: None = None,
+    ) -> SearchResult[ModelType]: ...
+
+    @overload
+    def search(
+        self,
+        query: str | None,
+        as_obj: Literal[False],
+        offset: int = 0,
+        rows: int | None = None,
+        sort: typing.Any = None,
+        fl: str | None = None,
+        timeout: int | None = None,
+        filters: list[str] | str | None = None,
+        access_control: typing.Any = None,
+        deep_paging_id: str | None = None,
+        use_archive: bool = False,
+        track_total_hits: bool = False,
+        script_fields: list[str] = [],
+        *,
+        aggregations: None = None,
+    ) -> SearchResult[dict[str, typing.Any]]: ...
+
+    @overload
+    def search(
+        self,
+        query: str | None,
+        as_obj: Literal[True] = True,
+        offset: int = 0,
+        rows: int | None = None,
+        sort: typing.Any = None,
+        fl: str | None = None,
+        timeout: int | None = None,
+        filters: list[str] | str | None = None,
+        access_control: typing.Any = None,
+        deep_paging_id: str | None = None,
+        use_archive: bool = False,
+        track_total_hits: bool = False,
+        script_fields: list[str] = [],
+        *,
+        aggregations: list[tuple[str, dict]],
+    ) -> AggSearchResult[ModelType]: ...
+
+    @overload
+    def search(
+        self,
+        query: str | None,
+        as_obj: Literal[False],
+        offset: int = 0,
+        rows: int | None = None,
+        sort: typing.Any = None,
+        fl: str | None = None,
+        timeout: int | None = None,
+        filters: list[str] | str | None = None,
+        access_control: typing.Any = None,
+        deep_paging_id: str | None = None,
+        use_archive: bool = False,
+        track_total_hits: bool = False,
+        script_fields: list[str] = [],
+        *,
+        aggregations: list[tuple[str, dict]],
+    ) -> AggSearchResult[dict[str, typing.Any]]: ...
+
     def search(
         self,
         query,
+        as_obj=True,
         offset=0,
         rows=None,
         sort=None,
@@ -1456,10 +1663,11 @@ class ESCollection(Generic[ModelType]):
         filters=None,
         access_control=None,
         deep_paging_id=None,
-        as_obj=True,
         use_archive=False,
         track_total_hits=None,
         script_fields=[],
+        *,
+        aggregations=None,
     ):
         """This function should perform a search through the datastore and return a
         search result object that consist on the following::
@@ -1476,6 +1684,14 @@ class ESCollection(Generic[ModelType]):
                     }, ...]
             }
 
+        If aggregations are provided the search result will include an additional field::
+
+            {
+                "aggregations": {       # Dictionary where the keys are the keys of the `aggregations` parameter
+                    "agg_name": {...}   #   and the values are the results of the aggregations
+                }
+            }
+
         :param script_fields: List of name/script tuple of fields to be evaluated at runtime
         :param track_total_hits: Return to total matching document count
         :param use_archive: Query also the archive
@@ -1489,6 +1705,8 @@ class ESCollection(Generic[ModelType]):
         :param timeout: maximum time of execution
         :param filters: additional queries to run on the original query to reduce the scope
         :param access_control: access control parameters to limiti the scope of the query
+        :param aggregations: optional list of arbitrary aggregations to run alongside the query
+            structured the same way as the es rest query aggs field
         :return: a search result object
         """
         if offset is None:
@@ -1531,6 +1749,9 @@ class ESCollection(Generic[ModelType]):
         if script_fields:
             args.append(("script_fields", script_fields))
 
+        if aggregations:
+            args.append(("aggregations", aggregations))
+
         result = self._search(
             args,
             deep_paging_id=deep_paging_id,
@@ -1538,30 +1759,45 @@ class ESCollection(Generic[ModelType]):
             track_total_hits=track_total_hits,
         )
 
-        ret_data: dict[str, Any] = {
+        ret_data: SearchResult | AggSearchResult
+        ret_data = {
             "offset": int(offset),
             "rows": int(rows),
             "total": int(result["hits"]["total"]["value"]),
             "items": [self._format_output(doc, field_list, as_obj=as_obj) for doc in result["hits"]["hits"]],
         }
 
+        if aggregations:
+            ret_data = {
+                **ret_data,
+                "aggregations": {
+                    k[len(self.CUSTOM_AGG_PREFIX) :]: v
+                    for k, v in result.get("aggregations", {}).items()
+                    if k.startswith(self.CUSTOM_AGG_PREFIX)
+                },
+            }
+
         new_deep_paging_id = result.get("_scroll_id", None)
 
         # Check if the scroll is finished and close it
         if deep_paging_id is not None and new_deep_paging_id is None:
-            self.with_retries(
-                self.datastore.client.clear_scroll,
-                scroll_id=[deep_paging_id],
-                ignore=(404,),
-            )
+            try:
+                self.with_retries(
+                    self.datastore.client.clear_scroll,
+                    scroll_id=[deep_paging_id],
+                )
+            except elasticsearch.exceptions.NotFoundError:
+                pass
 
         # Check if we can tell from inspection that we have finished the scroll
         if new_deep_paging_id is not None and len(ret_data["items"]) < ret_data["rows"]:
-            self.with_retries(
-                self.datastore.client.clear_scroll,
-                scroll_id=[new_deep_paging_id],
-                ignore=(404,),
-            )
+            try:
+                self.with_retries(
+                    self.datastore.client.clear_scroll,
+                    scroll_id=[new_deep_paging_id],
+                )
+            except elasticsearch.exceptions.NotFoundError:
+                pass
             new_deep_paging_id = None
 
         if new_deep_paging_id is not None:
@@ -1709,6 +1945,9 @@ class ESCollection(Generic[ModelType]):
         :return: a generator of keys
         """
         for item in self.stream_search("id:*", fl="id", access_control=access_control):
+            if item is None:
+                continue
+
             try:
                 yield item._id
             except AttributeError:
@@ -1765,6 +2004,7 @@ class ESCollection(Generic[ModelType]):
     def count(
         self,
         query,
+        filters,
         access_control=None,
     ):
         """This function should perform a count operation through the datastore and return a
@@ -1778,7 +2018,21 @@ class ESCollection(Generic[ModelType]):
         :param access_control: access control parameters to limit the scope of the query
         :return: a count result object
         """
-        result = self.with_retries(self.datastore.client.count, index=self.name, q=query)
+        if filters is None:
+            filters = []
+        elif isinstance(filters, str):
+            filters = [filters]
+
+        query_body: dict[str, Any] = {
+            "query": {
+                "bool": {
+                    "must": {"query_string": {"query": query}},
+                    "filter": [{"query_string": {"query": ff}} for ff in filters],
+                }
+            }
+        }
+
+        result = self.with_retries(self.datastore.client.count, index=self.name, **query_body)
 
         ret_data: dict[str, Any] = {
             "count": result["count"],
@@ -2060,13 +2314,16 @@ class ESCollection(Generic[ModelType]):
                             "description": (field_model.description if field_model else ""),
                             "regex": (
                                 field_model.child_type.validation_regex.pattern
-                                if issubclass(type(field_model.child_type), ValidatedKeyword)
-                                or issubclass(type(field_model.child_type), IP)
+                                if field_model
+                                and (
+                                    issubclass(type(field_model.child_type), ValidatedKeyword)
+                                    or issubclass(type(field_model.child_type), IP)
+                                )
                                 else None
                             ),
                             "values": (
                                 list(field_model.child_type.values)
-                                if issubclass(type(field_model.child_type), Enum)
+                                if field_model and issubclass(type(field_model.child_type), Enum)
                                 else None
                             ),
                             "deprecated_description": (field_model.deprecated_description if field_model else ""),
@@ -2088,10 +2345,11 @@ class ESCollection(Generic[ModelType]):
                 "description": field_model.description if field_model else "",
                 "regex": (
                     field_model.validation_regex.pattern
-                    if issubclass(type(field_model), ValidatedKeyword) or issubclass(type(field_model), IP)
+                    if field_model
+                    and (issubclass(type(field_model), ValidatedKeyword) or issubclass(type(field_model), IP))
                     else None
                 ),
-                "values": list(field_model.values) if issubclass(type(field_model), Enum) else None,
+                "values": list(field_model.values) if field_model and issubclass(type(field_model), Enum) else None,
                 "deprecated_description": (field_model.deprecated_description if field_model else ""),
             }
 
@@ -2181,6 +2439,10 @@ class ESCollection(Generic[ModelType]):
         if model is None:
             if self.model_class:
                 return self._check_fields(self.model_class)
+
+            return
+
+        if self.model_class is None:
             return
 
         fields = self.fields()
@@ -2231,7 +2493,7 @@ class ESCollection(Generic[ModelType]):
         """
         # Create HOT index
         if not self.with_retries(self.datastore.client.indices.exists, index=self.name):
-            logger.debug(f"Index {self.name.upper()} does not exists. Creating it now...")
+            logger.debug("Index %s does not exist. Creating it now...", self.name.upper())
             try:
                 self.with_retries(
                     self.datastore.client.indices.create,
@@ -2242,7 +2504,7 @@ class ESCollection(Generic[ModelType]):
             except elasticsearch.exceptions.RequestError as e:
                 if "resource_already_exists_exception" not in str(e):
                     raise
-                logger.warning(f"Tried to create an index template that already exists: {self.name.upper()}")
+                logger.warning("Tried to create an index template that already exists: %s", self.name.upper())
 
             self.with_retries(
                 self.datastore.client.indices.put_alias,
@@ -2292,7 +2554,7 @@ class ESCollection(Generic[ModelType]):
         # simply raise an exception
         if no_fix:
             raise HowlerValueError(
-                f"Can't update database mapping for {self.name}, " f"couldn't safely amend mapping for {no_fix}"
+                f"Can't update database mapping for {self.name}, couldn't safely amend mapping for {no_fix}"
             )
 
         # If we got this far, the missing fields have been described in properties, upload them to the

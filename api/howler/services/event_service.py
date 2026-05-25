@@ -2,18 +2,21 @@ import os
 from typing import Any, Callable
 
 import requests
+from opentelemetry import trace
 from requests.auth import HTTPBasicAuth
 
 from howler.common.logging import get_logger
 from howler.config import DEBUG, HWL_USE_WEBSOCKET_API, config
 
 logger = get_logger(__file__)
+tracer = trace.get_tracer(__name__)
 
 handlers: dict[str, list[Callable]] = {}
 
 HWL_INTERPOD_COMMS_SECRET = os.getenv("HWL_INTERPOD_COMMS_SECRET", "secret")
 
 
+@tracer.start_as_current_span(f"{__name__}.emit")
 def emit(event: str, data: Any):
     """Emit a new instance of the specified event, with additional data related to that event
 
@@ -54,7 +57,7 @@ def emit(event: str, data: Any):
         if event not in handlers:
             return
 
-        logger.debug(f"event:{event} - emitting data")
+        logger.debug("event:%s - emitting data", event)
 
         for handler in handlers[event]:
             handler(data)
@@ -72,7 +75,7 @@ def on(event: str, handler: Callable):
 
     handlers[event].append(handler)
 
-    logger.debug(f"event:{event} - added listener")
+    logger.debug("event:%s - added listener", event)
 
 
 def off(event: str, handler: Callable):
@@ -90,4 +93,4 @@ def off(event: str, handler: Callable):
 
     handlers[event] = [h for h in handlers[event] if h != handler]
 
-    logger.debug(f"event:{event} - removed listener")
+    logger.debug("event:%s - removed listener", event)

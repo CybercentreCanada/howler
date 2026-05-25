@@ -53,10 +53,3 @@ with open(Path(__file__).parent.parent / "package.json") as package_json:
         )
 
         sys.exit(0)
-
-    print("Current branch is main, appending build information")
-    subprocess.check_call(
-        shlex.split(f"npm version --no-git-tag-version {base_version}+{tag}")
-    )
-
-    sys.exit(0)

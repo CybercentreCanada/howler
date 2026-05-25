@@ -1,11 +1,12 @@
 import { QueryStats, SavedSearch } from '@mui/icons-material';
 import type { AppLeftNavElement, AppLeftNavGroup } from 'commons/components/app/AppConfigs';
 import { useAppLeftNav, useAppUser } from 'commons/components/app/hooks';
-import { uniq } from 'lodash-es';
+import { sortBy, uniq } from 'lodash-es';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import { createContext, useCallback, useContext, useEffect, type FC, type PropsWithChildren } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
+import { buildViewUrl } from 'utils/viewUtils';
 import { AnalyticContext } from './AnalyticProvider';
 import { ViewContext } from './ViewProvider';
 
@@ -33,25 +34,20 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
       return null;
     }
 
-    // The favourite list is fully represented, skip
-    if (favourites.length === (viewElement?.element as AppLeftNavGroup)?.items?.length) {
-      return viewElement;
-    }
-
     const savedViews = await fetchViews(favourites);
 
-    const items = savedViews
+    const items = sortBy(savedViews, 'title')
       .filter(view => !!view)
       .map(view => ({
         id: view.view_id,
         text: t(view.title),
-        route: `/views/${view.view_id}`,
+        route: buildViewUrl(view),
         nested: true
       }));
 
     if (viewElement) {
-      const newViewElement = {
-        ...viewElement,
+      const newViewElement: AppLeftNavElement = {
+        type: 'group',
         element: {
           ...viewElement.element,
           items
@@ -107,7 +103,7 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
 
     if (analyticElement) {
       return {
-        ...analyticElement,
+        type: 'group',
         element: {
           ...analyticElement.element,
           items

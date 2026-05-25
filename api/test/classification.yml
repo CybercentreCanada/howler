@@ -1,4 +1,5 @@
 enforce: true
+dynamic_groups: false
 groups:
 - aliases: [DEPTS, ANY]
   description: Users of department 1.

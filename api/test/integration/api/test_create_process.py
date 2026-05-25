@@ -1,7 +1,7 @@
 import json
 from typing import Any
 
-from conftest import get_api_data
+from test.conftest import get_api_data
 
 
 def test_create_valid_hits(datastore_connection, login_session):

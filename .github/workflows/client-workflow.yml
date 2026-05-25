@@ -90,7 +90,7 @@ jobs:
         working-directory: client
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12"]
     steps:
       - name: Get base depth of PR
         if: github.event_name == 'pull_request'
@@ -107,20 +107,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Check for valid merge base
-        run: |
-          git status
-          git diff $BASE_SHA..$HEAD_SHA
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       - name: Pull Dependent Docker Images
         run: |
-          docker pull cccsaurora/howler-api:develop
+          docker pull cccs/howler-api:nightly
           docker pull docker.elastic.co/elasticsearch/elasticsearch:8.3.3
           docker pull redis
       - name: Spin up test dependencies
-        uses: hoverkraft-tech/compose-action@v2.2.0
+        uses: hoverkraft-tech/compose-action@v2.6.0
         with:
           compose-file: "client/test/docker-compose.yml"
       - name: Install Poetry
@@ -136,7 +129,7 @@ jobs:
       - name: Generate random data, user accounts
         run: |
           docker ps
-          docker exec $(docker ps -aqf "name=howler-api") python /var/lib/howler/.local/lib/python3.12/site-packages/howler/odm/random_data.py
+          docker exec $(docker ps -aqf "name=howler-api") python -m howler.odm.random_data
           docker logs $(docker ps -aqf "name=howler-api")
 
           curl --fail-with-body http://localhost:5000/api/apispec_v1.json
@@ -160,8 +153,8 @@ jobs:
       - name: Coverage Results
         if: steps.tests.outcome == 'success'
         run: |
-          git diff --name-only $BASE_SHA..$HEAD_SHA
-          git diff $BASE_SHA..$HEAD_SHA > diff.txt
+          git diff --name-only $(git merge-base $BASE_SHA $HEAD_SHA)..$HEAD_SHA
+          git diff $(git merge-base $BASE_SHA $HEAD_SHA)..$HEAD_SHA > diff.txt
           poetry run coverage_report
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}

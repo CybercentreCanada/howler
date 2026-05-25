@@ -12,7 +12,7 @@ from howler.services import dossier_service
 
 SUB_API = "dossier"
 dossier_api = make_subapi_blueprint(SUB_API, api_version=1)
-dossier_api._doc = "Manage the different dossiers created for filtering hits"
+dossier_api._doc = "Manage the different dossiers created for filtering hits"  # type: ignore
 
 logger = get_logger(__file__)
 
@@ -139,7 +139,7 @@ def get_dossier_for_hit(id: str, user: User, **kwargs):
 
         hit = response["items"][0]
 
-        return ok(dossier_service.get_matching_dossiers(hit))
+        return ok(dossier_service.get_matching_dossiers(hit, username=user.uname))
     except ValueError as e:
         return bad_request(err=str(e))
 

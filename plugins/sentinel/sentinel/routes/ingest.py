@@ -14,7 +14,7 @@ from sentinel.mapping.xdr_alert import XDRAlert
 
 SUB_API = "sentinel"
 sentinel_api = make_subapi_blueprint(SUB_API, api_version=1)
-sentinel_api._doc = "Ingest Microsoft Sentinel XDR incidents into Howler"
+sentinel_api._doc = "Ingest Microsoft Sentinel XDR incidents into Howler"  # type: ignore
 
 logger = get_logger(__file__)
 

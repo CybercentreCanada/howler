@@ -1,54 +1,103 @@
 import {
+  AddCircleOutline,
   Assignment,
   Edit,
   HowToVote,
   KeyboardArrowRight,
   OpenInNew,
   QueryStats,
+  RemoveCircleOutline,
   SettingsSuggest,
   Terminal
 } from '@mui/icons-material';
-import { Box, Divider, Fade, ListItemIcon, ListItemText, Menu, MenuItem, MenuList, Paper } from '@mui/material';
+import {
+  Box,
+  Divider,
+  Fade,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
+  MenuList,
+  Paper,
+  type SxProps
+} from '@mui/material';
 import api from 'api';
+import { useAppUser } from 'commons/components/app/hooks';
 import useMatchers from 'components/app/hooks/useMatchers';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { HitContext } from 'components/app/providers/HitProvider';
+import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { TOP_ROW, VOTE_OPTIONS, type ActionButton } from 'components/elements/hit/actions/SharedComponents';
 import useHitActions from 'components/hooks/useHitActions';
 import useMyApi from 'components/hooks/useMyApi';
 import useMyActionFunctions from 'components/routes/action/useMyActionFunctions';
-import { capitalize, groupBy } from 'lodash-es';
+import { capitalize, get, groupBy, isEmpty, toString } from 'lodash-es';
 import type { Action } from 'models/entities/generated/Action';
 import type { Analytic } from 'models/entities/generated/Analytic';
+import type { Template } from 'models/entities/generated/Template';
+import type { HowlerUser } from 'models/entities/HowlerUser';
 import howlerPluginStore from 'plugins/store';
 import type { FC, MouseEventHandler, PropsWithChildren } from 'react';
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
 import { Link } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
+import { DEFAULT_QUERY } from 'utils/constants';
+import { sanitizeLuceneQuery } from 'utils/stringUtils';
 
-// TODO: Eventually make this more generic
-
+/**
+ * Props for the HitContextMenu component
+ */
 interface HitContextMenuProps {
+  /**
+   * Function to extract the hit ID from a mouse event
+   */
   getSelectedId: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => string;
+
+  /**
+   * Optional component to wrap the children, defaults to Box
+   */
   Component?: React.ElementType;
 }
 
+/**
+ * Order in which action types should be displayed in the context menu
+ */
 const ORDER = ['assessment', 'vote', 'action'];
+
+/**
+ * The margin at the bottom of the screen by which the context menu should be inverted.
+ * That is, if right clicking within this many pixels of the bottom, render the context menu to the top right
+ * of the pointer instead of the bottom right.
+ */
+const CONTEXTMENU_MARGIN = 350;
+
+/**
+ * Icon mapping for different action types
+ */
 const ICON_MAP = {
   assessment: <Assignment />,
   vote: <HowToVote />,
   action: <Edit />
 };
 
+/**
+ * Context menu component for hit operations.
+ * Provides quick access to common hit actions including assessment, voting,
+ * transitions, and exclusion filters based on template fields.
+ */
 const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, getSelectedId, Component = Box }) => {
   const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
   const { executeAction } = useMyActionFunctions();
+  const appUser = useAppUser<HowlerUser>();
   const { config } = useContext(ApiConfigContext);
   const pluginStore = usePluginStore();
-  const { getMatchingAnalytic } = useMatchers();
+  const { getMatchingAnalytic, getMatchingTemplate } = useMatchers();
+  const query = useContextSelector(ParameterContext, ctx => ctx?.query);
+  const setQuery = useContextSelector(ParameterContext, ctx => ctx?.setQuery);
 
   const [id, setId] = useState<string>(null);
 
@@ -56,12 +105,13 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
   const selectedHits = useContextSelector(HitContext, ctx => ctx.selectedHits);
 
   const [analytic, setAnalytic] = useState<Analytic>(null);
+  const [template, setTemplate] = useState<Template>(null);
 
   const [anchorEl, setAnchorEl] = useState<HTMLElement>();
-  const [clickLocation, setClickLocation] = useState<[number, number]>([-1, -1]);
+  const [transformProps, setTransformProps] = useState<SxProps>({});
   const [actions, setActions] = useState<Action[]>([]);
 
-  const [show, setShow] = useState<{ [index: string]: boolean }>({});
+  const [show, setShow] = useState<{ [index: string]: EventTarget & HTMLElement }>({});
 
   const hits = useMemo(
     () => (selectedHits.some(_hit => _hit.howler.id === hit?.howler.id) ? selectedHits : [hit]),
@@ -70,6 +120,19 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
 
   const { availableTransitions, canVote, canAssess, assess, vote } = useHitActions(hits);
 
+  /**
+   * Checks if the current user has permission to run actions.
+   * Users must have one of the automation or actionrunner roles, or be an admin.
+   */
+  const canRunActions = useCallback(() => {
+    const roles = ['admin', 'automation_advanced', 'automation_basic', 'actionrunner_advanced', 'actionrunner_basic'];
+    return roles.some((role: string) => appUser.user?.roles?.includes(role));
+  }, [appUser.user?.roles]);
+
+  /**
+   * Handles right-click context menu events.
+   * Opens the context menu at the click location and loads available actions.
+   */
   const onContextMenu: MouseEventHandler<HTMLDivElement> = useCallback(
     async event => {
       if (anchorEl) {
@@ -82,13 +145,29 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
       const _id = getSelectedId(event);
       setId(_id);
 
-      const clientRect = (event.target as HTMLElement).getBoundingClientRect();
-      setClickLocation([event.clientX - clientRect.x, event.clientY - clientRect.y]);
+      if (window.innerHeight - event.clientY < 300) {
+        setTransformProps({
+          position: 'fixed',
+          bottom: `${window.innerHeight - event.clientY}px !important`,
+          top: 'unset !important',
+          left: `${event.clientX}px !important`
+        });
+      } else {
+        setTransformProps({
+          position: 'fixed',
+          top: `${event.clientY}px !important`,
+          left: `${event.clientX}px !important`
+        });
+      }
 
       setAnchorEl(event.target as HTMLElement);
 
-      const _actions = (await dispatchApi(api.search.action.post({ query: 'action_id:*' }), { throwError: false }))
-        ?.items;
+      // TODO: Bumping the number of rows is a temporary fix - we'll need to improve this.
+      const _actions = (
+        await dispatchApi(api.search.action.post({ query: 'action_id:*', rows: 100, sort: 'name asc' }), {
+          throwError: false
+        })
+      )?.items;
 
       if (_actions) {
         setActions(_actions);
@@ -109,6 +188,10 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
     pluginStore.executeFunction(`${plugin}.actions`, hits)
   );
 
+  /**
+   * Generates grouped action entries for the context menu.
+   * Combines transitions, plugin actions, votes, and assessments based on permissions.
+   */
   const entries = useMemo<[string, ActionButton[]][]>(() => {
     let _actions: ActionButton[] = [...availableTransitions, ...pluginActions];
 
@@ -144,18 +227,41 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
     return Object.entries(groupBy(_actions, 'type')).sort(([a], [b]) => ORDER.indexOf(a) - ORDER.indexOf(b));
   }, [analytic, assess, availableTransitions, canAssess, canVote, config.lookups, vote, pluginActions]);
 
+  /**
+   * Calculates appropriate styles for submenu positioning.
+   * Adjusts position based on available screen space to prevent overflow.
+   */
+  const calculateSubMenuStyles = useCallback((parent: HTMLElement) => {
+    const baseStyles = { position: 'absolute', maxHeight: '300px', overflow: 'auto' };
+    const defaultStyles = { ...baseStyles, top: 0, left: '100%' };
+
+    if (!parent) {
+      return defaultStyles;
+    }
+
+    const parentBounds = parent.getBoundingClientRect();
+
+    if (window.innerHeight - parentBounds.y < CONTEXTMENU_MARGIN) {
+      return { ...baseStyles, bottom: 0, left: '100%' };
+    }
+
+    return defaultStyles;
+  }, []);
+
+  // Load analytic and template data when a hit is selected
   useEffect(() => {
     if (!hit?.howler.analytic) {
       return;
     }
 
     getMatchingAnalytic(hit).then(setAnalytic);
+    getMatchingTemplate(hit).then(setTemplate);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hit?.howler.analytic]);
+  }, [hit]);
 
+  // Reset menu state when context menu is closed
   useEffect(() => {
     if (!anchorEl) {
-      setClickLocation([-1, -1]);
       setShow({});
       setAnalytic(null);
     }
@@ -172,7 +278,7 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
         slotProps={{
           paper: {
             sx: {
-              transform: `translate(${clickLocation[0]}px, ${clickLocation[1]}px) !important`,
+              ...transformProps,
               overflow: 'visible !important'
             }
           }
@@ -197,9 +303,10 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
         {entries.map(([type, items]) => (
           <MenuItem
             key={type}
+            id={`${type}-menu-item`}
             sx={{ position: 'relative' }}
-            onMouseEnter={() => setShow(_show => ({ ..._show, [type]: true }))}
-            onMouseLeave={() => setShow(_show => ({ ..._show, [type]: false }))}
+            onMouseEnter={ev => setShow(_show => ({ ..._show, [type]: ev.target as EventTarget & HTMLLIElement }))}
+            onMouseLeave={() => setShow(_show => ({ ..._show, [type]: null }))}
             disabled={rowStatus[type] === false}
           >
             <ListItemIcon>{ICON_MAP[type] ?? <Terminal />}</ListItemIcon>
@@ -207,12 +314,9 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
             {rowStatus[type] !== false && (
               <KeyboardArrowRight fontSize="small" sx={{ color: 'text.secondary', mr: -1 }} />
             )}
-            <Fade in={show[type]} unmountOnExit>
-              <Paper
-                sx={{ position: 'absolute', top: 0, left: '100%', maxHeight: '300px', overflow: 'auto' }}
-                elevation={8}
-              >
-                <MenuList sx={{ p: 0, borderTopLeftRadius: 0 }} dense>
+            <Fade in={!!show[type]} unmountOnExit>
+              <Paper id={`${type}-submenu`} sx={calculateSubMenuStyles(show[type])} elevation={8}>
+                <MenuList sx={{ p: 0, borderTopLeftRadius: 0 }} dense role="group">
                   {items.map(a => (
                     <MenuItem value={a.name} onClick={a.actionFunction} key={a.name}>
                       {a.i18nKey ? t(a.i18nKey) : capitalize(a.name)}
@@ -224,22 +328,20 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
           </MenuItem>
         ))}
         <MenuItem
+          id="actions-menu-item"
           sx={{ position: 'relative' }}
-          onMouseEnter={() => setShow(_show => ({ ..._show, actions: true }))}
-          onMouseLeave={() => setShow(_show => ({ ..._show, actions: false }))}
-          disabled={actions.length < 1}
+          onMouseEnter={ev => setShow(_show => ({ ..._show, actions: ev.target as EventTarget & HTMLLIElement }))}
+          onMouseLeave={() => setShow(_show => ({ ..._show, actions: null }))}
+          disabled={actions.length < 1 || !canRunActions()}
         >
           <ListItemIcon>
             <SettingsSuggest />
           </ListItemIcon>
           <ListItemText sx={{ flex: 1 }}>{t('route.actions.change')}</ListItemText>
           {actions.length > 0 && <KeyboardArrowRight fontSize="small" sx={{ color: 'text.secondary', mr: -1 }} />}
-          <Fade in={show.actions} unmountOnExit>
-            <Paper
-              sx={{ position: 'absolute', top: 0, left: '100%', maxHeight: '300px', overflow: 'auto' }}
-              elevation={8}
-            >
-              <MenuList sx={{ p: 0 }} dense>
+          <Fade in={!!show.actions} unmountOnExit>
+            <Paper id="actions-submenu" sx={calculateSubMenuStyles(show.actions)} elevation={8}>
+              <MenuList sx={{ p: 0 }} dense role="group">
                 {actions.map(action => (
                   <MenuItem
                     key={action.action_id}
@@ -252,6 +354,114 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
             </Paper>
           </Fade>
         </MenuItem>
+        {!isEmpty(template?.keys ?? []) && setQuery && (
+          <>
+            <Divider />
+            <MenuItem
+              id="excludes-menu-item"
+              sx={{ position: 'relative' }}
+              onMouseEnter={ev => setShow(_show => ({ ..._show, excludes: ev.target as EventTarget & HTMLLIElement }))}
+              onMouseLeave={() => setShow(_show => ({ ..._show, excludes: null }))}
+            >
+              <ListItemIcon>
+                <RemoveCircleOutline />
+              </ListItemIcon>
+              <ListItemText sx={{ flex: 1 }}>{t('hit.panel.exclude')}</ListItemText>
+              <KeyboardArrowRight fontSize="small" sx={{ color: 'text.secondary', mr: -1 }} />
+              <Fade in={!!show.excludes} unmountOnExit>
+                <Paper id="excludes-submenu" sx={calculateSubMenuStyles(show.excludes)} elevation={8}>
+                  <MenuList sx={{ p: 0 }} dense role="group">
+                    {template?.keys.map(key => {
+                      // Build exclusion query based on current query and field value
+                      let newQuery = '';
+
+                      if (query !== DEFAULT_QUERY) {
+                        newQuery = `(${query}) AND `;
+                      }
+
+                      const value = get(hit, key);
+                      if (!value) {
+                        return null;
+                      } else if (Array.isArray(value)) {
+                        // Handle array values by excluding all items
+                        const sanitizedValues = value
+                          .map(toString)
+                          .filter(val => !!val)
+                          .map(val => `"${sanitizeLuceneQuery(val)}"`);
+
+                        if (sanitizedValues.length < 1) {
+                          return null;
+                        }
+
+                        newQuery += `-${key}:(${sanitizedValues.join(' OR ')})`;
+                      } else {
+                        // Handle single value
+                        newQuery += `-${key}:"${sanitizeLuceneQuery(value.toString())}"`;
+                      }
+
+                      return (
+                        <MenuItem key={key} onClick={() => setQuery(newQuery)}>
+                          <ListItemText>{key}</ListItemText>
+                        </MenuItem>
+                      );
+                    })}
+                  </MenuList>
+                </Paper>
+              </Fade>
+            </MenuItem>
+
+            <MenuItem
+              id="includes-menu-item"
+              sx={{ position: 'relative' }}
+              onMouseEnter={ev => setShow(_show => ({ ..._show, includes: ev.target as EventTarget & HTMLLIElement }))}
+              onMouseLeave={() => setShow(_show => ({ ..._show, includes: null }))}
+            >
+              <ListItemIcon>
+                <AddCircleOutline />
+              </ListItemIcon>
+              <ListItemText sx={{ flex: 1 }}>{t('hit.panel.include')}</ListItemText>
+              <KeyboardArrowRight fontSize="small" sx={{ color: 'text.secondary', mr: -1 }} />
+              <Fade in={!!show.includes} unmountOnExit>
+                <Paper id="includes-submenu" sx={calculateSubMenuStyles(show.includes)} elevation={8}>
+                  <MenuList sx={{ p: 0 }} dense role="group">
+                    {template?.keys.map(key => {
+                      // Build inclusion query based on current query and field
+                      // If default, we include default query
+                      let newQuery = `(${query}) AND `;
+
+                      const value = get(hit, key);
+
+                      if (!value) {
+                        return null;
+                      } else if (Array.isArray(value)) {
+                        // Handle array values by including all items
+                        const sanitizedValues = value
+                          .map(toString)
+                          .filter(val => !!val)
+                          .map(val => `"${sanitizeLuceneQuery(val)}"`);
+
+                        if (sanitizedValues.length < 1) {
+                          return null;
+                        }
+
+                        newQuery += `${key}:(${sanitizedValues.join(' OR ')})`;
+                      } else {
+                        // Handle single value
+                        newQuery += `${key}:"${sanitizeLuceneQuery(value.toString())}"`;
+                      }
+
+                      return (
+                        <MenuItem key={key} onClick={() => setQuery(newQuery)}>
+                          <ListItemText>{key}</ListItemText>
+                        </MenuItem>
+                      );
+                    })}
+                  </MenuList>
+                </Paper>
+              </Fade>
+            </MenuItem>
+          </>
+        )}
       </Menu>
     </Component>
   );

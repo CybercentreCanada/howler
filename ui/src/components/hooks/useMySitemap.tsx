@@ -25,6 +25,7 @@ import {
   Work
 } from '@mui/icons-material';
 import type { AppSiteMapConfigs } from 'commons/components/app/AppConfigs';
+import howlerPluginStore from 'plugins/store';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -236,7 +237,8 @@ const useMySitemap = (): AppSiteMapConfigs => {
         },
         { path: '/home', title: t('route.home'), isRoot: true, icon: <Dashboard /> },
         { path: '/settings', title: t('page.settings.sitemap'), isRoot: true, icon: <Settings /> },
-        { path: '/advanced', title: t('route.advanced'), isRoot: true, icon: <Code /> }
+        { path: '/advanced', title: t('route.advanced'), isRoot: true, icon: <Code /> },
+        ...howlerPluginStore.sitemaps
       ]
     }),
     [t]

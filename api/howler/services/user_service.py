@@ -1,8 +1,8 @@
-from typing import Any, Optional, Union
+from typing import Any, Literal, Optional, overload
 
-import elasticapm
 from authlib.integrations.flask_client import OAuth
 from flask import current_app, request
+from opentelemetry import trace
 
 from howler.common.exceptions import AccessDeniedException, HowlerValueError, InvalidDataException
 from howler.common.loader import datastore
@@ -13,16 +13,37 @@ from howler.odm.models.user import User
 from howler.odm.models.view import View
 from howler.utils.str_utils import safe_str
 
-ACCOUNT_USER_MODIFIABLE = ["name", "email", "avatar", "password", "dashboard"]
+ACCOUNT_USER_MODIFIABLE = ["name", "email", "avatar", "password", "dashboard", "refresh_rate"]
 
 logger = get_logger(__file__)
+tracer = trace.get_tracer(__name__)
+
+
+@overload
+def get_user(id: str, as_odm: Literal[True], version: Literal[True]) -> tuple[User, str]: ...
+
+
+@overload
+def get_user(id: str, as_odm: Literal[True], version: Literal[False]) -> User: ...
+
+
+@overload
+def get_user(id: str, as_odm: Literal[False], version: Literal[True]) -> tuple[dict[str, Any], str]: ...
+
+
+@overload
+def get_user(id: str, as_odm: Literal[False], version: Literal[False]) -> dict[str, Any]: ...
+
+
+@overload
+def get_user(id: str) -> dict[str, Any]: ...
 
 
 def get_user(
     id: str,
-    as_odm: bool = False,
-    version: bool = False,
-) -> Union[User, dict[str, Any]]:
+    as_odm=False,
+    version=False,
+):
     """Return hit object as either an ODM or Dict"""
     return datastore().user.get_if_exists(key=id, as_obj=as_odm, version=version)
 
@@ -52,15 +73,16 @@ def convert_user(user: User) -> dict[str, Any]:
             "favourite_views",
             "favourite_analytics",
             "dashboard",
+            "refresh_rate",
         ]
     }
 
     user_data["apikeys"] = [
         (key, value["acl"], value["expiry_date"])
-        for key, value in datastore().user.get_if_exists(user["uname"]).apikeys.items()
+        for key, value in datastore().user.get_if_exists(user.uname).apikeys.items()
     ]
 
-    user_data["avatar"] = datastore().user_avatar.get_if_exists(user["uname"])
+    user_data["avatar"] = datastore().user_avatar.get_if_exists(user.uname)
     user_data["username"] = user_data.pop("uname")
     user_data["is_admin"] = "admin" in user_data["type"]
     user_data["roles"] = list(set(user_data.pop("type")))
@@ -68,7 +90,7 @@ def convert_user(user: User) -> dict[str, Any]:
     return user_data
 
 
-@elasticapm.capture_span(span_type="authentication")
+@tracer.start_as_current_span(f"{__name__}.parse_user_data")
 def parse_user_data(  # noqa: C901
     data: dict,
     oauth_provider: str,
@@ -102,14 +124,14 @@ def parse_user_data(  # noqa: C901
 
     provider: OAuth = oauth.create_client(oauth_provider)
 
-    if "id_token" in data:
+    if "id_token" in data and provider.parse_id_token:
         data = provider.parse_id_token(
             data, nonce=request.args.get("nonce", data.get("userinfo", {}).get("nonce", None))
         )
 
     oauth_provider_config = config.auth.oauth.providers[oauth_provider]
 
-    if not data and oauth_provider_config.user_get:
+    if not data and oauth_provider_config.user_get and provider.get:
         response = provider.get(oauth_provider_config.user_get)
         if response.ok:
             data = response.json()
@@ -154,7 +176,7 @@ def parse_user_data(  # noqa: C901
         username = user_data["uname"]
 
         # Add add dynamic classification group
-        user_data["classification"] = get_dynamic_classification(user_data["classification"], user_data["email"])
+        user_data["classification"] = get_dynamic_classification(user_data)
 
         # Make sure the user exists in howler and is in sync
         if (not current_user and oauth_provider_config.auto_create) or (
@@ -171,20 +193,26 @@ def parse_user_data(  # noqa: C901
             avatar = current_user.pop("avatar", None)
 
             # Save updated user if there are changes to sync or it doesn't exist
+            log_id: str | None = user_id if not isinstance(user_id, list) else user_id[0]
             if old_user != current_user:
-                if user_id:
-                    logger.info("Updating %s with new data", user_id if not isinstance(user_id, list) else user_id[0])
+                if log_id:
+                    logger.info("Updating %s with new data", log_id)
+                    current_user["id"] = log_id
                 else:
                     logger.info("Creating new user %s", username)
-
-                if user_id:
-                    current_user["id"] = user_id
 
                 if avatar:
                     current_user["avatar"] = avatar
 
+                add_access_control(current_user)
                 storage.user.save(username, current_user)
-                storage.user.commit()
+            # Ensure access_control is always present, even if user data hasn't changed
+            elif "access_control" not in current_user:
+                logger.info("Adding access control for user %s", log_id or username)
+                add_access_control(current_user)
+                storage.user.save(username, current_user)
+            else:
+                logger.debug("User is up to date!")
 
             if not skip_setup:
                 if avatar:
@@ -262,7 +290,7 @@ def add_access_control(user: dict[str, Any]):
     if req_query:
         req_query = f"-({req_query}) AND "
 
-    lvl_query = f'__access_lvl__:[0 TO {user["__access_lvl__"]}]'
+    lvl_query = f"__access_lvl__:[0 TO {user['__access_lvl__']}]"
 
     query = f"{gl2_query}{gl1_query}{req_query}{lvl_query}"
     user["access_control"] = safe_str(query)
@@ -314,17 +342,36 @@ def save_user_account(username: str, data: dict[str, Any], user: dict[str, Any])
     return storage.user.save(username, data)
 
 
-def get_dynamic_classification(current_c12n: str, email: str) -> str:
+def get_dynamic_classification(user_info: dict[str, Any]) -> str | None:
     """Get the classification of the user
 
     Args:
         current_c12n (str): The current classification of the user
-        email (str): The user's email
+        user_info (dict): The user definition
 
     Returns:
-        str: The classification
+        str: The normalized classification with dynamic groups applied
     """
-    if CLASSIFICATION.dynamic_groups and email:
-        dyn_group = email.upper().split("@")[1]
-        return CLASSIFICATION.build_user_classification(current_c12n, f"{CLASSIFICATION.UNRESTRICTED}//{dyn_group}")
-    return current_c12n
+    new_c12n = CLASSIFICATION.normalize_classification(
+        user_info.get("classification", CLASSIFICATION.UNRESTRICTED),
+        skip_auto_select=True,
+        get_dynamic_groups=False,
+        ignore_unused=True,
+    )
+
+    if CLASSIFICATION.dynamic_groups:
+        email = user_info.get("email", None)
+        groups = user_info.get("groups", [])
+
+        if CLASSIFICATION.dynamic_groups_type in ["email", "all"] and email:
+            dyn_group = email.upper().split("@")[1]
+            new_c12n = CLASSIFICATION.build_user_classification(
+                new_c12n, f"{CLASSIFICATION.UNRESTRICTED}//REL {dyn_group}"
+            )
+
+        if CLASSIFICATION.dynamic_groups_type in ["group", "all"] and groups:
+            new_c12n = CLASSIFICATION.build_user_classification(
+                new_c12n, f"{CLASSIFICATION.UNRESTRICTED}//REL {', '.join(groups)}"
+            )
+
+    return new_c12n

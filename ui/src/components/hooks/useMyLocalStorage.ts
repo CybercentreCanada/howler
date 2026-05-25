@@ -1,9 +1,9 @@
-import useLocalStorage from 'commons/components/utils/hooks/useLocalStorage';
-import useLocalStorageItem from 'commons/components/utils/hooks/useLocalStorageItem';
 import { LocalStorageContext, type LocalStorageContextType } from 'components/app/providers/LocalStorageProvider';
 import { useContext } from 'react';
 import type { StorageKey } from 'utils/constants';
 import { MY_LOCAL_STORAGE_PREFIX } from 'utils/constants';
+import useLocalStorage from './useLocalStorage';
+import useLocalStorageItem from './useLocalStorageItem';
 
 const useMyLocalStorage = () => {
   return useLocalStorage(MY_LOCAL_STORAGE_PREFIX);

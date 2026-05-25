@@ -1,8 +1,6 @@
 import functools
-import sys
 from typing import Optional
 
-import elasticapm
 import requests
 from flask import request
 from flask import session as flsk_session
@@ -24,6 +22,7 @@ from howler.common.logging import get_logger
 from howler.common.logging.audit import audit
 from howler.config import AUDIT, QUOTA_TRACKER, config
 from howler.odm.models.user import User
+from howler.utils.constants import TESTING
 
 logger = get_logger(__file__)
 
@@ -137,8 +136,9 @@ class api_login(object):  # noqa: D101, N801
                 # to the second user. The login format must be of type (2) above, with the added caveat that the apikey
                 # provided MUST be authorized for impersonation (i.e. "I" in priv == True). See validate_apikey for more
                 # on this.
-                impersonator: Optional[User] = None
-                impersonated_user: Optional[User] = None
+                impersonator: User | None = None
+                impersonated_user: User | None = None
+                impersonated_priv: list[str] | None = None
                 impersonation = request.headers.get("X-Impersonating", None)
                 if impersonation:
                     [auth_type, data] = impersonation.split(" ")
@@ -184,8 +184,8 @@ class api_login(object):  # noqa: D101, N801
                     )
 
                 ip = request.headers.get("X-Forwarded-For", request.remote_addr)
-                if "pytest" not in sys.modules:
-                    logger.info(f"Logged in as {user['uname']} from {ip} for path {request.path}")
+                if not TESTING:
+                    logger.info("Logged in as %s from %s for path %s", user["uname"], ip, request.path)
 
                 # If auditing is enabled, write this successful access to the audit logs
                 if self.audit:
@@ -213,15 +213,8 @@ class api_login(object):  # noqa: D101, N801
                 FAILED_ATTEMPTS.labels("500").inc()
                 return internal_error(err=e.message)
 
-            if config.core.metrics.apm_server.server_url is not None:
-                elasticapm.set_user_context(
-                    username=user.get("name", None),
-                    email=user.get("email", None),
-                    user_id=user.get("uname", None),
-                )
-
-            if request.path.startswith("/api/v1/borealis"):
-                logger.debug("Bypassing quota limits for borealis enrichment")
+            if request.path.startswith("/api/v1/clue"):
+                logger.debug("Bypassing quota limits for clue enrichment")
             elif self.enforce_quota:
                 # Check current user quota
                 flsk_session["quota_user"] = user["uname"]
@@ -230,13 +223,13 @@ class api_login(object):  # noqa: D101, N801
                 quota = user.get("api_quota", 25)
                 if not QUOTA_TRACKER.begin(user["uname"], quota):
                     if config.ui.enforce_quota:
-                        logger.warning(f"{user['uname']} was prevented from using the api due to exceeded quota.")
+                        logger.warning("%s was prevented from using the api due to exceeded quota.", user["uname"])
                         FAILED_ATTEMPTS.labels("429").inc()
                         return too_many_requests(err=f"You've exceeded your maximum quota of {quota}")
                     else:
-                        logger.debug(f"Quota of {quota} exceeded for user {user['uname']}.")
+                        logger.debug("Quota of %s exceeded for user %s.", quota, user["uname"])
             else:
-                logger.debug(f"Quota not enforced for {user['uname']}")
+                logger.debug("Quota not enforced for %s", user["uname"])
 
             # Save user data in kwargs for future reference in the wrapped method
             kwargs["user"] = user

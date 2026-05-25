@@ -6,7 +6,7 @@ import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { FieldContext } from 'components/app/providers/FieldProvider';
 import Phrase from 'components/elements/addons/search/phrase/Phrase';
 import { get, isObject } from 'lodash-es';
-import { type Hit } from 'models/entities/generated/Hit';
+import type { Hit } from 'models/entities/generated/Hit';
 import { memo, useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import TemplateDnD from './TemplateDnD';

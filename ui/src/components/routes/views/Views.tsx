@@ -33,6 +33,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
+import { buildViewUrl } from 'utils/viewUtils';
 
 const FIELDS_TO_SEARCH = ['title', 'query', 'sort', 'type', 'owner'];
 
@@ -322,7 +323,7 @@ const ViewsBase: FC = () => {
             spacing={1}
             sx={{ color: 'inherit', textDecoration: 'none' }}
             component={Link}
-            to={`/views/${item.item.view_id}`}
+            to={buildViewUrl(item.item)}
           >
             <ViewTitle {...item.item} />
             <FlexOne />

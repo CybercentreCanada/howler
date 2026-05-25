@@ -36,7 +36,9 @@ def test_route_hook(caplog):
 
     from howler.plugins import PLUGINS
 
-    PLUGINS["test-plugin"].modules.routes.append(importlib.import_module("utils.plugins.example_route").example_route)  # type: ignore[union-attr]
+    PLUGINS["test-plugin"].modules.routes.append(
+        importlib.import_module("test.utils.plugins.example_route").example_route
+    )  # type: ignore[union-attr]
 
     with caplog.at_level(logging.INFO):
         app = importlib.import_module("howler.app")

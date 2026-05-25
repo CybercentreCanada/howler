@@ -40,10 +40,11 @@ const FETCH_OPTIONS: RequestInit = {
 
 type Envs = { name: string; url: string; default: boolean; user_interface: string };
 
-const HitNotebooks: FC<{ analytic: Analytic; selectedNotebook?: string; hit?: Hit }> = ({
+const HitNotebooks: FC<{ analytic: Analytic; selectedNotebook?: string; hit?: Hit; compact?: boolean }> = ({
   analytic,
   selectedNotebook,
-  hit
+  hit,
+  compact
 }) => {
   const { t } = useTranslation();
   const { config } = useContext(ApiConfigContext);
@@ -224,16 +225,20 @@ const HitNotebooks: FC<{ analytic: Analytic; selectedNotebook?: string; hit?: Hi
             )}
           </Popper>
           <HowlerCard
-            variant="elevation"
+            variant={compact ? 'outlined' : 'elevation'}
             onClick={handleToggle}
             sx={[
               theme => ({
                 cursor: 'pointer',
                 backgroundColor: 'transparent',
                 transition: theme.transitions.create(['border-color']),
-                '&:hover': { borderColor: 'primary.main' }
+                '&:hover': { borderColor: 'primary.main', '& a': { textDecoration: 'underline' } },
+                '& > div': {
+                  height: '100%'
+                },
+                '& a': { textDecoration: 'none', color: 'text.primary' }
               }),
-              { border: 'thin solid', borderColor: 'transparent' }
+              !compact && { border: 'thin solid', borderColor: 'transparent' }
             ]}
           >
             <Stack direction="row" p={1} spacing={1} alignItems="center">

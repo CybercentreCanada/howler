@@ -10,6 +10,7 @@ from howler import odm
 from howler.common.loader import APP_NAME
 from howler.common.logging import get_logger, log_with_traceback
 from howler.config import QUOTA_TRACKER, get_version
+from howler.utils.constants import TESTING
 from howler.utils.str_utils import safe_str
 
 API_PREFIX = "/api"
@@ -28,11 +29,18 @@ def make_subapi_blueprint(name, api_version=1):
 
 
 def _make_api_response(
-    data: Any, err: Union[str, Exception] = "", warnings: list[str] = [], status_code: int = 200, cookies: Any = None
+    data: Any,
+    err: Union[str, Exception] = "",
+    warnings: list[str] | None = None,
+    status_code: int = 200,
+    cookies: Any = None,
 ) -> Response:
+    if not warnings:
+        warnings = []
+
     quota_user = flsk_session.pop("quota_user", None)
     quota_set = flsk_session.pop("quota_set", False)
-    if quota_user and quota_set and not request.path.startswith("/api/v1/borealis"):
+    if quota_user and quota_set and not request.path.startswith("/api/v1/clue"):
         QUOTA_TRACKER.end(quota_user)
 
     if type(err) is Exception:  # pragma: no cover
@@ -65,7 +73,8 @@ def _make_api_response(
             resp.set_cookie(k, v, secure=True, httponly=True, samesite="Lax")
 
     RAW_API_COUNTER.labels(request.method, str(request.url_rule), status_code).inc()
-    logger.info("%s %s - %s", request.method, request.path, status_code)
+    if not TESTING:
+        logger.info("%s %s - %s", request.method, request.path, status_code)
 
     return resp
 
@@ -100,7 +109,7 @@ def not_modified(data=DEFAULT_DATA[True], cookies=None):
     return _make_api_response(data, status_code=304, cookies=cookies)
 
 
-def bad_request(data=DEFAULT_DATA[False], err="", cookies=None, warnings=None):
+def bad_request(data: Any = DEFAULT_DATA[False], err: str = "", cookies: Any = None, warnings: list[str] | None = None):
     """Returns response with status code ies"""
     return _make_api_response(data, err, status_code=400, cookies=cookies, warnings=warnings)
 

@@ -1,42 +1,128 @@
-name: howler
-howlerRest:
-  name: howler-rest
-  image:
-    repository: cccs/howler-api
-    tag: latest
-    pullPolicy: "Never"
-  oauth:
-    providers: []
-
-  datastore:
-    hosts: []
-
-  filestore:
-    storage:
-      - name: minio
-        secret:
-          name: minio-credentials
-          usernameKey: root-user
-          passwordKey: root-password
-
-  service:
-    type: ""
-
-howlerUi:
-  name: howler-ui
-  image:
+# Container image configuration for the UI and REST API components.
+images:
+  ui:
     repository: cccs/howler-ui
     tag: latest
-    pullPolicy: "Never"
+    pullPolicy: IfNotPresent
+  rest:
+    repository: cccs/howler-api
+    tag: latest
+    pullPolicy: IfNotPresent
+
+ui:
+  # Name used for the UI Deployment and related resources.
+  name: howler-ui
+
+  resources:
+    limits:
+      cpu: 1
+      memory: 2Gi
+    requests:
+      cpu: 1
+      memory: 1Gi
+
+  affinity: {}
+  nodeSelectors: {}
+  tolerations: []
+
+rest:
+  # Name used for the REST API Deployment and related resources.
+  name: howler-rest
+
+  # Shard and replica counts for each Elasticsearch index created by the application.
+  elasticsearch:
+    hit:
+      shards: 4
+      replicas: 2
+    user:
+      shards: 1
+      replicas: 1
+    action:
+      shards: 1
+      replicas: 1
+    dossier:
+      shards: 1
+      replicas: 1
+    overview:
+      shards: 1
+      replicas: 1
+    view:
+      shards: 1
+      replicas: 1
+    analytic:
+      shards: 1
+      replicas: 1
+
+  resources:
+    limits:
+      cpu: 2
+      memory: 6Gi
+    requests:
+      cpu: 1
+      memory: 2Gi
+
+  # Run the REST API container as a non-root user.
+  securityContext:
+    runAsUser: 65532
+    runAsGroup: 65532
+
+  affinity: {}
+  nodeSelectors: {}
+  tolerations: []
 
 ingress:
   enabled: true
 
-  annotations:
-    kubernetes.io/ingress.class: nginx
-    kubernetes.io/tls-acme: "false"
-    nginx.ingress.kubernetes.io/proxy-body-size: 128m
+  # Set to true to create a dedicated Gateway for this release.
+  # Set to false when attaching to a shared platform Gateway instead.
+  #
+  # Dedicated gateway (createGateway: true):
+  #   Both a Gateway and an HTTPRoute are deployed. The Gateway provisions
+  #   its own load balancer. Use gatewayClassName and infrastructure to
+  #   control how the gateway controller creates the underlying Service.
+  #
+  # Shared gateway (createGateway: false):
+  #   Only an HTTPRoute is deployed. Set parentRefs to point at the
+  #   existing Gateway. No Gateway or cloud load balancer is created.
+  createGateway: true
 
+  # The GatewayClass to use when createGateway is true.
+  # Must match a GatewayClass present in the cluster (kubectl get gatewayclasses).
+  # gatewayClassName: kgateway
+
+  # Explicit parentRefs for the HTTPRoute.
+  # Required when createGateway is false.
+  # When createGateway is true and this is empty, parentRefs are auto-generated
+  # from the Gateway listeners created above.
+  parentRefs: []
+
+  # infrastructure.annotations and infrastructure.labels are applied by the
+  # gateway controller to the Service (load balancer) it provisions for the
+  # Gateway proxy. Only relevant when createGateway is true.
+  # Required on AKS: the cluster Kyverno policy blocks public load balancers.
+  infrastructure:
+    annotations:
+      service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+
+  # Hostnames the HTTPRoute will match on. Must be covered by the parent Gateway's listeners.
+  # hosts: []
+  # Example:
+  #   hosts:
+  #     - howler.example.com
+
+  # TLS configuration. Only relevant when createGateway: true.
+  # Each entry maps one or more hostnames to a TLS certificate Secret. A separate
+  # HTTPS listener is created on the Gateway for each hostname.
+  # tls: []
+  # Example:
+  #   tls:
+  #     - hosts:
+  #         - howler.example.com
+  #       secretName: howler-tls
+
+  # Path prefixes for the three backend services.
+  # These are matched in order: /api and /socket are evaluated before /
+  # to prevent REST/WebSocket traffic from reaching the web frontend.
   rest:
     path: /api
   websocket:
@@ -50,18 +136,11 @@ ingress:
     - name: logger.level
       value: "WARN"
 
-minio:
-  auth:
-    existingSecret: minio-credentials
-
-  service:
-    ports:
-      console: 40337
-
-  persistence:
-    enabled: false
-
 redis-persistent:
+  # Set to false to skip deploying the persistent Redis subchart entirely.
+  # When disabled, update config.core.redis.persistent.host to point at an external Redis instance.
+  enabled: true
+
   architecture: standalone
 
   auth:
@@ -71,12 +150,19 @@ redis-persistent:
     persistence:
       enabled: false
 
-    service:
-      type: NodePort
-      nodePorts:
-        redis: 30379
+    resources:
+      requests:
+        cpu: 1
+        memory: 2Gi
+      limits:
+        cpu: 2
+        memory: 4Gi
 
 redis-nonpersistent:
+  # Set to false to skip deploying the non-persistent Redis subchart entirely.
+  # When disabled, update config.core.redis.nonpersistent.host to point at an external Redis instance.
+  enabled: true
+
   architecture: standalone
 
   auth:
@@ -84,82 +170,163 @@ redis-nonpersistent:
 
   master:
     persistence:
-      enabled: true
+      enabled: false
 
-    service:
-      type: NodePort
-      nodePorts:
-        redis: 30380
+    resources:
+      requests:
+        cpu: 1
+        memory: 2Gi
+      limits:
+        cpu: 2
+        memory: 4Gi
+
+apm:
+  enabled: false
+  # APM has its own logging levels.
+  loggingLevel: info
+  # When Flask is in debug mode apm defaults to not shipping its metrics.
+  # This enables it to work still.
+  workWithDebug: "True"
+  tokenSecret: howler-apm-credentials
+  tokenKey: token
 
 config:
   auth:
+    # Built-in username/password authentication.
     internal:
       enabled: true
+    # OAuth 2.0 / OIDC authentication.
     oauth:
-      enabled: false
-      providers: {}
+      enabled: true
+      providers: {} # This must be overridden
 
   core:
+    # metrics:
+    #   apm_server:
+    #     server_url: http://apm-server-apm-http.logging.svc.cluster.local:8200
+    # Connection details for the two Redis instances.
+    # Defaults point at the subcharts deployed by this chart.
+    # Override when using external Redis (and set redis-persistent/redis-nonpersistent.enabled: false).
     redis:
       persistent:
-        host: howler-redis-persistent-master.default.svc.cluster.local
+        host: howler-redis-persistent-master.howler.svc.cluster.local
         port: 6379
       nonpersistent:
-        host: howler-redis-nonpersistent-master.default.svc.cluster.local
+        host: howler-redis-nonpersistent-master.howler.svc.cluster.local
         port: 6379
 
+    # Names of application plugins to load at startup.
+    plugins: []
+
   datastore:
+    # Elasticsearch Index Lifecycle Management configuration.
     ilm:
       enabled: false
       indexes: {}
 
-    hosts:
-      - name: elasticsearch
-        username: elastic
-        password: devpass
-        host: "elasticsearch.default.svc.cluster.local:30200"
-
-  filestore:
-    storage:
-      - name: minio
-        scheme: s3
-        host: "howler-minio.default.svc.cluster.local:9000?s3_bucket=hwl-store&use_ssl=False"
-
   logging:
+    # Application log level. One of: DEBUG, INFO, WARNING, ERROR, CRITICAL.
     log_level: DEBUG
+    # Emit logs as JSON for structured log ingestion pipelines.
     log_as_json: false
 
   system:
+    # Deployment environment. Affects application behaviour and retention defaults.
+    # One of: development, staging, production.
     type: development
 
   ui:
+    # Record an audit trail of user actions.
     audit: true
+    # Enable Flask debug mode. Never set to true in production.
     debug: false
+    # Enforce per-user quotas on API requests.
     enforce_quota: true
+    # Reject requests whose User-Agent header changes mid-session.
     validate_session_useragent: false
+    # discover_url: ""  # URL of the service discovery endpoint (e.g. Eureka)
+    # Path inside the container where the built UI static assets are mounted.
     static_folder: /etc/howler/static
-    websocket_url: http://howler-rest-websocket.default.svc.cluster.local:5000/socket/v1/emit
+    # URL of the internal WebSocket service, used for server-to-server emit calls.
+    websocket_url: http://howler-rest-websocket.howler.svc.cluster.local:5000/socket/v1/emit
+
+# Reference to the Kubernetes Secret containing the Flask session signing key.
+flaskSecret:
+  name: flask-secret-key
+  key: key
+
+# Plugin configuration files mounted in the server config directory alongside config.yml.
+# Each key becomes a <key>.yml file in the ConfigMap, loaded by the application at startup.
+# Example:
+#   plugins:
+#     myplugin:
+#       setting: value
+plugins: {}
 
 classification:
-  dynamic_groups: false
-  enforce: false
+  enforce: true
+  dynamic_groups: true
+  dynamic_groups_type: group
   levels:
+    # List of alternate names for the current marking
     - aliases:
-        - U
         - UNCLASSIFIED
+        - U
+        - TLP:W
+        - TLP:WHITE
+      # Stylesheet applied in the UI for the different levels
+      css:
+        # Name of the color scheme used for display (default, primary, secondary, success, info, warning, error)
+        color: default
+      # Description of the classification level
+      description:
+        Subject to standard copyright rules, TLP:CLEAR information may be
+        distributed without restriction.
+      # Interger value of the Classification level (higher is more classified)
+      lvl: 100
+      # Long name of the classification item
+      name: TLP:CLEAR
+      # Short name of the classification item
+      short_name: TLP:C
+    - aliases: []
       css:
         color: success
-      description: Unclassified Data
-      lvl: 100
-      name: Unclassified
-      short_name: U
+      description:
+        Recipients may share TLP:GREEN information with peers and partner
+        organizations within their sector or community, but not via publicly
+        accessible channels. Information in this category can be circulated
+        widely within a particular community. TLP:GREEN information may not be
+        released outside of the community.
+      lvl: 110
+      name: TLP:GREEN
+      short_name: TLP:G
+    - aliases: []
+      css:
+        color: warning
+      description:
+        Recipients may only share TLP:AMBER information with members of
+        their own organization and with clients or customers who need to know
+        the information to protect themselves or prevent further harm.
+      lvl: 120
+      name: TLP:AMBER
+      short_name: TLP:A
+    - css:
+        color: warning
+      description:
+        Recipients may only share TLP:AMBER+STRICT information with members
+        of their own organization.
+      lvl: 125
+      name: TLP:AMBER+STRICT
+      short_name: TLP:A+S
     - aliases:
         - PA
         - PROTECTED A
       css:
         color: info
-      description: Protected A Data
-      lvl: 110
+      description:
+        Applies to information or assets that, if compromised, could cause
+        injury to an individual, organization or government.
+      lvl: 140
       name: Protected A
       short_name: PA
     - aliases:
@@ -167,58 +334,130 @@ classification:
         - PROTECTED B
       css:
         color: info
-      description: Protected B Data
-      lvl: 120
+      description:
+        Applies to information or assets that, if compromised, could cause
+        serious injury to an individual, organization or government.
+      lvl: 150
       name: Protected B
       short_name: PB
-    - aliases:
-        - PC
-        - PROTECTED C
-      css:
-        color: info
-      description: Protected C Data
-      lvl: 130
-      name: Protected C
-      short_name: PC
-    - aliases:
-        - S
-        - SECRET
-      css:
-        color: warning
-      description: Secret Data
-      lvl: 140
-      name: Secret
-      short_name: S
-    - aliases:
-        - TS
-        - TOP SECRET
-      css:
-        color: error
-      description: Top Secret Data
-      lvl: 150
-      name: Top Secret
-      short_name: TS
-  required:
-    - aliases:
-        - OFFICIAL USE ONLY
-      description: Official (Internal) use only
-      name: Official Use Only
-      short_name: OUO
+  required: []
 
   groups: []
+  # Example:
+  #   groups:
+  #     - aliases: []
+  #       auto_select: true
+  #       description: Members of Example Org
+  #       name: EXAMPLE
+  #       short_name: EX
 
   subgroups: []
+  # Example:
+  #   subgroups:
+  #     - aliases: []
+  #       description: Example subgroup requiring group membership
+  #       require_group: EXAMPLE
+  #       name: SUBGROUP
+  #       short_name: SG
 
-  restricted: Unclassified//Official Use Only
-  unrestricted: Unclassified//Official Use Only
-
+# HorizontalPodAutoscaler configuration for the REST API Deployment.
 autoscaling:
-  enabled: false
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 100
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
+    # - type: Pod
+    #   pods:
 
-apm:
-  enabled: false
+  behavior:
+    scaleUp:
+      #     policies:
+      #       # Only spawn an extra 2 pods in a 1 minute window
+      #       - type: Pods
+      #         value: 2
+      #         periodSeconds: 60
+      #     #
+      stabilizationWindowSeconds: 120
+  #   scaleDown:
+  #     stabilizationWindowSeconds: 60
 
 websocket:
+  # Reference to the Kubernetes Secret used for authenticating inter-pod WebSocket communication.
   commSecret:
     name: howler-interpod-comms-secret
     key: secret
+
+# Prometheus metrics scraping configuration.
+metrics:
+  enabled: true
+  podMonitor:
+    enabled: true
+    additionalLabels:
+      release: prometheus
+
+# Maps ESC/Howler Schema fields to clue types.
+# Used to drive clue enrichment with more certainty than guessing.
+mappings:
+  destination.address: domain
+  destination.domain: domain
+  dns.answers.name: domain
+  dns.question.registered_domain: domain
+  dns.question.subdomain: domain
+  dns.question.top_level_domain: domain
+  host.domain: domain
+  server.address: domain
+  server.domain: domain
+  source.address: domain
+  source.domain: domain
+  url.domain: domain
+  url.registered_domain: domain
+  url.subdomain: domain
+  url.top_level_domain: domain
+  azure.upn: email_address
+  howler.outline.indicators: email_address
+  destination.user.email: email_address
+  email.bcc.address: email_address
+  email.cc.address: email_address
+  email.from.address: email_address
+  email.parent.bcc.address: email_address
+  email.parent.cc.address: email_address
+  email.parent.from.address: email_address
+  email.parent.to.address: email_address
+  email.reply_to.address: email_address
+  email.sender.address: email_address
+  email.to.address: email_address
+  process.parent.parent.user.email: email_address
+  process.parent.user.email: email_address
+  process.user.email: email_address
+  source.user.email: email_address
+  threat.indicator.email.address: email_address
+  destination.ip: ip
+  destination.nat.ip: ip
+  dns.resolved_ip: ip
+  email.parent.destination: ip
+  email.parent.source: ip
+  host.ip: ip
+  related.ip: ip
+  server.ip: ip
+  source.ip: ip
+  source.nat.ip: ip
+  threat.indicator.ip: ip
+  email.attachments.file.hash.md5: md5
+  file.hash.md5: md5
+  destination.nat.port: port
+  destination.port: port
+  source.nat.port: port
+  source.port: port
+  url.port: port
+  email.attachments.file.hash.sha256: sha256
+  file.hash.sha256: sha256
+  tls.client.ja3: sha256
+  tls.server.ja3s: sha256
+  event.url: url
+  process.command_line: command_line

@@ -164,7 +164,7 @@ class Indicator(odm.Model):
     description = odm.Optional(odm.Text(description="Describes the type of action conducted by the threat."))
     email: Email = odm.Optional(odm.Compound(Email))
     file: File = odm.Optional(odm.Compound(File))
-    provider = odm.Optional(odm.Keyword(description="The name of the indicator’s provider."))
+    provider = odm.Optional(odm.Keyword(description="The name of the indicator's provider."))
     reference = odm.Optional(
         odm.Keyword(description="Reference URL linking to additional information about this indicator.")
     )

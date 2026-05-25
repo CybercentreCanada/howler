@@ -15,21 +15,22 @@ import {
 } from '@mui/material';
 import api from 'api';
 import type { Chart, ChartDataset, ChartOptions } from 'chart.js';
-import 'chartjs-adapter-moment';
+import 'chartjs-adapter-dayjs-4';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { HitContext } from 'components/app/providers/HitProvider';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import useMyApi from 'components/hooks/useMyApi';
 import useMyChart from 'components/hooks/useMyChart';
+import dayjs from 'dayjs';
 import { capitalize } from 'lodash-es';
-import moment from 'moment';
 import type { FC } from 'react';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Scatter } from 'react-chartjs-2';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
-import { convertCustomDateRangeToLucene, convertDateToLucene, stringToColor } from 'utils/utils';
+import { DEFAULT_QUERY } from 'utils/constants';
+import { stringToColor } from 'utils/utils';
 
 const MAX_ROWS = 2500;
 const OVERRIDE_ROWS = 10000;
@@ -42,7 +43,7 @@ const FILTER_FIELDS = [
   'howler.detection'
 ];
 
-const HitGraph: FC<{ query: string }> = ({ query }) => {
+const HitGraph: FC = () => {
   const { t } = useTranslation();
   const theme = useTheme();
   const { dispatchApi } = useMyApi();
@@ -50,17 +51,18 @@ const HitGraph: FC<{ query: string }> = ({ query }) => {
   const { config } = useContext(ApiConfigContext);
 
   const setSelected = useContextSelector(ParameterContext, ctx => ctx.setSelected);
+  const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
   const span = useContextSelector(ParameterContext, ctx => ctx.span);
-  const startDate = useContextSelector(ParameterContext, ctx => ctx.startDate);
-  const endDate = useContextSelector(ParameterContext, ctx => ctx.endDate);
+  const views = useContextSelector(ParameterContext, ctx => ctx.views);
 
   const selectedHits = useContextSelector(HitContext, ctx => ctx.selectedHits);
   const addHitToSelection = useContextSelector(HitContext, ctx => ctx.addHitToSelection);
   const removeHitFromSelection = useContextSelector(HitContext, ctx => ctx.removeHitFromSelection);
 
-  const viewId = useContextSelector(HitSearchContext, ctx => ctx.viewId);
   const error = useContextSelector(HitSearchContext, ctx => ctx.error);
+  const response = useContextSelector(HitSearchContext, ctx => ctx.response);
+  const getFilters = useContextSelector(HitSearchContext, ctx => ctx.getFilters);
 
   const chartRef = useRef<Chart<'scatter'>>();
 
@@ -79,12 +81,7 @@ const HitGraph: FC<{ query: string }> = ({ query }) => {
     setSearchTotal(0);
 
     try {
-      const filters: string[] = [];
-      if (span && !span.endsWith('custom')) {
-        filters.push(`event.created:${convertDateToLucene(span)}`);
-      } else if (startDate && endDate) {
-        filters.push(`event.created:${convertCustomDateRangeToLucene(startDate, endDate)}`);
-      }
+      const filters: string[] = await getFilters();
 
       if (escalationFilter) {
         filters.push(`howler.escalation:${escalationFilter}`);
@@ -109,7 +106,7 @@ const HitGraph: FC<{ query: string }> = ({ query }) => {
 
       const _data = await dispatchApi(
         api.search.grouped.hit.post(filterField, {
-          query: query || 'howler.id:*',
+          query: query || DEFAULT_QUERY,
           fl: 'event.created,howler.assessment,howler.analytic,howler.detection,howler.outline.threat,howler.outline.target,howler.outline.summary,howler.id',
           // We want a generally random sample across all date ranges, so we use hash.
           // If we used event.created instead, when 1 million hits/hour are created, you'd only see hits from this past minute
@@ -131,11 +128,11 @@ const HitGraph: FC<{ query: string }> = ({ query }) => {
         return {
           label: `${label} (${category.total})`,
           data: category.items.map(hit => {
-            const createdMoment = moment(hit.event?.created ?? hit.timestamp);
+            const createdDate = dayjs(hit.event?.created ?? hit.timestamp);
 
             return {
-              x: createdMoment.clone().hour(0).minute(0).second(0).toISOString(),
-              y: createdMoment.hour() + createdMoment.minute() / 60 + createdMoment.second() / 3600,
+              x: createdDate.clone().hour(0).minute(0).second(0).toISOString(),
+              y: createdDate.hour() + createdDate.minute() / 60 + createdDate.second() / 3600,
               hit,
               label
             };
@@ -147,16 +144,16 @@ const HitGraph: FC<{ query: string }> = ({ query }) => {
     } finally {
       setLoading(false);
     }
-  }, [dispatchApi, endDate, escalationFilter, filterField, override, query, span, startDate]);
+  }, [dispatchApi, escalationFilter, filterField, getFilters, override, query]);
 
   useEffect(() => {
-    if ((!query && !viewId) || error) {
+    if ((!query && views?.length < 1) || error || !response) {
       return;
     }
 
     performQuery();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, viewId, error, span]);
+  }, [query, views, error, span, response, escalationFilter, filterField]);
 
   const options: ChartOptions<'scatter'> = useMemo(() => {
     const parentOptions = scatter('hit.summary.title', 'hit.summary.subtitle');
@@ -197,7 +194,7 @@ const HitGraph: FC<{ query: string }> = ({ query }) => {
           callbacks: {
             title: entries => `${entries.length} ${t('hits')}`,
             label: entry =>
-              `${(entry.raw as any).hit.howler.analytic}: ${(entry.raw as any).hit.howler.detection} (${moment(
+              `${(entry.raw as any).hit.howler.analytic}: ${(entry.raw as any).hit.howler.detection} (${dayjs(
                 (entry.raw as any).hit.event.created
               ).format('MMM D HH:mm:ss')})`,
             afterLabel: entry =>
@@ -227,7 +224,7 @@ const HitGraph: FC<{ query: string }> = ({ query }) => {
             callback: (value: number) => {
               const [hour, minute] = [Math.floor(value), Math.floor((value - Math.floor(value)) * 60)];
 
-              return moment().hour(hour).minute(minute).format('HH:mm');
+              return dayjs().hour(hour).minute(minute).format('HH:mm');
             }
           }
         }

@@ -375,11 +375,58 @@ def test_get_matching_dossiers_datastore_integration(mock_datastore, datastore: 
         # Test the function with no dossiers provided (should fetch from datastore)
         matching_dossiers = dossier_service.get_matching_dossiers(test_hit)
 
-        # Verify datastore was called correctly
-        mock_dossier_collection.search.assert_called_once_with("dossier_id:*", as_obj=False, rows=1000)
+        # Verify datastore was called with global-only query when no username provided
+        mock_dossier_collection.search.assert_called_once_with("type:global", as_obj=False, rows=1000)
 
         # Verify results
         assert len(matching_dossiers) == 2
         matching_ids = [d["dossier_id"] for d in matching_dossiers]
         assert "ds_1" in matching_ids
         assert "ds_2" in matching_ids
+
+
+@patch("howler.services.dossier_service.datastore")
+def test_get_matching_dossiers_username_scopes_datastore_query(mock_datastore, datastore: HowlerDatastore):
+    """Test that the username parameter changes the datastore query to include owner-scoped dossiers."""
+    test_hit = {"howler": {"analytic": "scoped_test", "id": "scoped_hit"}}
+
+    mock_dossier_collection = MagicMock()
+    mock_datastore.return_value.dossier = mock_dossier_collection
+    mock_dossier_collection.search.return_value = {"items": []}
+
+    # Without username: only global dossiers should be fetched
+    dossier_service.get_matching_dossiers(test_hit, username=None)
+    mock_dossier_collection.search.assert_called_once_with("type:global", as_obj=False, rows=1000)
+
+    mock_dossier_collection.reset_mock()
+
+    # With username: global AND owner-specific dossiers should be fetched
+    dossier_service.get_matching_dossiers(test_hit, username="alice")
+    mock_dossier_collection.search.assert_called_once_with("type:global OR owner:alice", as_obj=False, rows=1000)
+
+
+@patch("howler.services.dossier_service.datastore")
+def test_get_matching_dossiers_username_filters_personal_dossiers(mock_datastore, datastore: HowlerDatastore):
+    """Test that with a username, only the user's own personal dossiers are visible (not others')."""
+    test_hit = {"howler": {"analytic": "personal_filter_test", "id": "personal_filter_hit"}}
+
+    mock_dossier_collection = MagicMock()
+    mock_datastore.return_value.dossier = mock_dossier_collection
+
+    # Simulate datastore returning dossiers scoped to username="alice" (global + alice's personal)
+    mock_dossier_collection.search.return_value = {
+        "items": [
+            {"dossier_id": "global_1", "title": "Global Dossier", "query": None, "type": "global"},
+            {"dossier_id": "alice_1", "title": "Alice Personal Dossier", "query": None, "type": "personal"},
+        ]
+    }
+
+    matching = dossier_service.get_matching_dossiers(test_hit, username="alice")
+
+    # Verify the query fetched only alice's scope
+    mock_dossier_collection.search.assert_called_once_with("type:global OR owner:alice", as_obj=False, rows=1000)
+
+    # Both returned dossiers (None query = match-all) should be in results
+    matching_ids = [d["dossier_id"] for d in matching]
+    assert "global_1" in matching_ids
+    assert "alice_1" in matching_ids

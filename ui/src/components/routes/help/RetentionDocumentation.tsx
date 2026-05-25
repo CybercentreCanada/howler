@@ -10,20 +10,25 @@ import api from 'api';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
+import howlerPluginStore from 'plugins/store';
+import { usePluginStore } from 'react-pluggable';
+import { modifyDocumentation } from 'utils/utils';
 import AUTH_EN from './markdown/en/retention.md';
 import AUTH_FR from './markdown/fr/retention.md';
 
 const RetentionDocumentation: FC = () => {
   const { i18n } = useTranslation();
   const { config } = useContext(ApiConfigContext);
+  const pluginStore = usePluginStore();
   useScrollRestoration();
 
   const [hitId, setHitId] = useState<string>();
 
-  const md = useMemo(
-    () => (i18n.language === 'en' ? AUTH_EN : AUTH_FR).replace(/\$CURRENT_URL/g, window.location.origin),
-    [i18n.language]
-  );
+  const md = useMemo(() => {
+    let original = (i18n.language === 'en' ? AUTH_EN : AUTH_FR).replace(/\$CURRENT_URL/g, window.location.origin);
+
+    return modifyDocumentation(original, howlerPluginStore, pluginStore);
+  }, [i18n.language, pluginStore]);
 
   useEffect(() => {
     api.search.hit

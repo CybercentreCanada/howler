@@ -2,16 +2,7 @@
 from typing import Optional
 
 from howler import odm
-from howler.odm.howler_enum import HowlerEnum
 from howler.odm.models.localized_label import LocalizedLabel
-
-
-class Formats(str, HowlerEnum):
-    BOREALIS = "borealis"
-    LINK = "link"
-
-    def __str__(self) -> str:
-        return self.value
 
 
 @odm.model(
@@ -40,8 +31,8 @@ class Pivot(odm.Model):
         description="An optional icon to use in the tab display for this dossier.", optional=True
     )
     label: LocalizedLabel = odm.Compound(LocalizedLabel, description="Labels for the pivot in the UI.")
-    value: str = odm.Keyword(description="The link/borealis id to pivot on.")
-    format: str = odm.Enum(values=Formats, description="The format of the pivot.")
+    value: str = odm.Keyword(description="The link/plugin information to pivot on.")
+    format: str = odm.Keyword(description="The format of the pivot.")
     mappings: list[Mapping] = odm.List(
         odm.Compound(Mapping),
         default=[],

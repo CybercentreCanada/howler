@@ -18,7 +18,7 @@ def main():
 
     print("Copying files")
     for network_yaml in (git_dir / "rules" / "network").glob("**/*.yml"):
-        print(f"  {network_yaml.relative_to(((git_dir / 'rules' / 'network')))}")
+        print(f"  {network_yaml.relative_to((git_dir / 'rules' / 'network'))}")
         new_file = output_dir / network_yaml.name
         shutil.copyfile(network_yaml, new_file)
 

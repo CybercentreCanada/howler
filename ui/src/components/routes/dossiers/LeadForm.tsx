@@ -1,11 +1,12 @@
-import { Icon } from '@iconify/react/dist/iconify.js';
+import { Icon } from '@iconify/react';
 import { Add } from '@mui/icons-material';
 import { Alert, Button, Paper, Stack, Tab, Tabs } from '@mui/material';
 import isNull from 'lodash-es/isNull';
 import merge from 'lodash-es/merge';
 import type { Dossier } from 'models/entities/generated/Dossier';
-import { useState, type Dispatch, type FC, type SetStateAction } from 'react';
+import { useEffect, useState, type Dispatch, type FC, type SetStateAction } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import LeadEditor from './LeadEditor';
 
 const LeadForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Partial<Dossier>>>; loading: boolean }> = ({
@@ -14,14 +15,26 @@ const LeadForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Parti
   loading
 }) => {
   const { t, i18n } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [tab, setTab] = useState(0);
+  const [tab, setTab] = useState(parseInt(searchParams.get('lead') ?? '0'));
+
+  useEffect(() => {
+    searchParams.delete('pivot');
+    if (searchParams.get('lead') !== tab.toString()) {
+      searchParams.set('lead', tab.toString());
+    }
+
+    setSearchParams(searchParams, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setSearchParams, tab]);
 
   return (
-    <Paper sx={{ p: 1, display: 'flex', flexDirection: 'column', flex: 1 }}>
+    <Paper sx={{ p: 1, display: 'flex', flexDirection: 'column', flex: 1 }} id="lead-form">
       <Stack direction="row">
         {!dossier?.leads || dossier.leads.length < 1 ? (
           <Alert
+            id="create-lead-alert"
             variant="outlined"
             severity="warning"
             sx={{
@@ -48,7 +61,7 @@ const LeadForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Parti
               <Tab
                 disabled={!dossier || loading}
                 sx={{ py: 1, minHeight: '0 !important' }}
-                key={lead.content}
+                key={lead.label?.en + lead.content}
                 label={
                   <Stack direction="row" spacing={0.5}>
                     {lead.icon && <Icon icon={lead.icon} />}
@@ -61,6 +74,7 @@ const LeadForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Parti
           </Tabs>
         )}
         <Button
+          id="add-lead"
           sx={{ ml: 'auto', alignSelf: 'end', minWidth: '0 !important' }}
           size="small"
           variant="contained"
@@ -74,6 +88,7 @@ const LeadForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Parti
               ]
             }));
           }}
+          disabled={!dossier || loading}
         >
           <Add />
         </Button>

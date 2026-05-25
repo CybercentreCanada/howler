@@ -10,7 +10,6 @@ import {
   useMediaQuery,
   useTheme
 } from '@mui/material';
-import useLocalStorage from 'commons/components//utils/hooks/useLocalStorage';
 import { APP_STORAGE_PREFIX } from 'commons/components/app/AppConstants';
 import {
   useAppBar,
@@ -21,6 +20,7 @@ import {
   useAppQuickSearch,
   useAppTheme
 } from 'commons/components/app/hooks';
+import useLocalStorage from 'commons/components/utils/hooks/useLocalStorage';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 

@@ -1,4 +1,4 @@
-import { Button, type ButtonProps } from '@mui/material';
+import { Button, Stack, type ButtonProps } from '@mui/material';
 import api from 'api';
 import useMyApi from 'components/hooks/useMyApi';
 import useMyActionFunctions from 'components/routes/action/useMyActionFunctions';
@@ -24,6 +24,16 @@ const ActionButton: FC<{ actionId: string; hitId: string; label: string } & Butt
       setAction(result.items[0])
     );
   }, [actionId, dispatchApi]);
+
+  if (!actionId || !hitId) {
+    return (
+      <Stack spacing={1}>
+        <strong style={{ color: 'red' }}>{t('markdown.error')}</strong>
+        {/* eslint-disable-next-line react/jsx-no-literals */}
+        <code style={{ fontSize: '0.8rem' }}>{t('markdown.actionbutton.error')}</code>
+      </Stack>
+    );
+  }
 
   return (
     <Button

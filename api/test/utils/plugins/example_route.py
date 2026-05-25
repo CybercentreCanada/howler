@@ -5,7 +5,7 @@ from howler.common.logging import get_logger
 
 SUB_API = "test"
 example_route = make_subapi_blueprint(SUB_API, api_version=1)
-example_route._doc = "Test Endpoint"
+example_route._doc = "Test Endpoint"  # type: ignore
 
 logger = get_logger(__file__)
 

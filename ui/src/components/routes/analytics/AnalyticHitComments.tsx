@@ -9,6 +9,7 @@ import type { FC } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { StorageKey } from 'utils/constants';
+import { sanitizeLuceneQuery } from 'utils/stringUtils';
 import { compareTimestamp } from 'utils/utils';
 
 interface CommentData {
@@ -40,7 +41,7 @@ const AnalyticHitComments: FC<{ analytic: Analytic }> = ({ analytic }) => {
     setLoading(true);
     api.search.hit
       .post({
-        query: `howler.analytic:${analytic.name} AND _exists_:howler.comment`,
+        query: `howler.analytic:"${sanitizeLuceneQuery(analytic.name)}" AND _exists_:howler.comment`,
         rows: pageCount
       })
       .then(response => {
@@ -65,7 +66,7 @@ const AnalyticHitComments: FC<{ analytic: Analytic }> = ({ analytic }) => {
         <LinearProgress />
       ) : (
         comments
-          .filter(c => !searchParams.get('filter') || c.detection === searchParams.get('filter'))
+          .filter(c => !searchParams.has('filter') || c.detection === searchParams.get('filter'))
           .sort((a, b) => compareTimestamp(b.comment.timestamp, a.comment.timestamp))
           .map(c => (
             <Comment

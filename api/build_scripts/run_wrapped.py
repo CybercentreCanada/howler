@@ -20,7 +20,7 @@ def main() -> None:
     cmd.pop(0)
 
     mypy = subprocess.Popen(
-        prep_command(f'python -m {" ".join(cmd)}'),
+        prep_command(f"python -m {' '.join(cmd)}"),
         stdout=subprocess.PIPE,
     )
 

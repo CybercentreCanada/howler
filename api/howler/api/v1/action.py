@@ -18,12 +18,16 @@ SUB_API = "action"
 classification_definition = CLASSIFICATION.get_parsed_classification_definition()
 
 action_api = make_subapi_blueprint(SUB_API, api_version=1)
-action_api._doc = "Endpoints relating to bulk actions and automation"
+action_api._doc = "Endpoints relating to bulk actions and automation"  # type: ignore
 
 
 @generate_swagger_docs()
 @action_api.route("/")
-@api_login(audit=False, check_xsrf_token=False, required_type=["automation_basic"])
+@api_login(
+    audit=False,
+    check_xsrf_token=False,
+    required_type=["admin", "automation_basic", "automation_advanced", "actionrunner_basic", "actionrunner_advanced"],
+)
 def get_actions(**_) -> Response:
     """Get a list of existing actions
 
@@ -43,7 +47,7 @@ def get_actions(**_) -> Response:
 
 @generate_swagger_docs()
 @action_api.route("/", methods=["POST"])
-@api_login(audit=False, check_xsrf_token=False, required_type=["automation_basic"])
+@api_login(audit=False, check_xsrf_token=False, required_type=["admin", "automation_basic", "automation_advanced"])
 def add_action(user: User, **_) -> Response:
     """Create a new action
 
@@ -97,7 +101,7 @@ def add_action(user: User, **_) -> Response:
 @api_login(
     audit=False,
     check_xsrf_token=False,
-    required_type=["automation_basic"],
+    required_type=["admin", "automation_basic", "automation_advanced"],
 )
 def update_action(id: str, user: User, **_) -> Response:
     """Update an existing action
@@ -164,7 +168,7 @@ def update_action(id: str, user: User, **_) -> Response:
 
 @generate_swagger_docs()
 @action_api.route("/<id>", methods=["DELETE"])
-@api_login(audit=True, check_xsrf_token=False, required_type=["automation_basic"])
+@api_login(audit=True, check_xsrf_token=False, required_type=["admin", "automation_basic", "automation_advanced"])
 def delete_action(id: str, user: User, **kwargs) -> Response:
     """Delete an existing action
 
@@ -200,7 +204,11 @@ def delete_action(id: str, user: User, **kwargs) -> Response:
 
 @generate_swagger_docs()
 @action_api.route("/<id>/execute", methods=["POST"])
-@api_login(audit=True, check_xsrf_token=False, required_type=["automation_basic"])
+@api_login(
+    audit=True,
+    check_xsrf_token=False,
+    required_type=["admin", "automation_basic", "automation_advanced", "actionrunner_basic", "actionrunner_advanced"],
+)
 def execute_action(id: str, **kwargs) -> Response:
     """Execute one or more actions on a given query
 
@@ -237,10 +245,10 @@ def execute_action(id: str, **kwargs) -> Response:
         return not_found(err="The specified action does not exist")
 
     reports: dict[str, list[dict]] = {}
-    current_user = kwargs.get("user", None)
+    current_user: User | None = kwargs.get("user", None)
 
     for operation in action.operations:
-        op_data = json.loads(operation["data_json"])
+        op_data = json.loads(operation.data_json) if operation.data_json else {}
 
         query = execute_req.get("query", action.query) or action.query
 
@@ -275,7 +283,11 @@ def execute_action(id: str, **kwargs) -> Response:
 
 @generate_swagger_docs()
 @action_api.route("/operations")
-@api_login(audit=False, check_xsrf_token=False, required_type=["automation_basic"])
+@api_login(
+    audit=False,
+    check_xsrf_token=False,
+    required_type=["admin", "automation_basic", "automation_advanced", "actionrunner_basic", "actionrunner_advanced"],
+)
 def get_operations(**_) -> Response:
     """Get a list of operations the user can run on a query
 
@@ -295,7 +307,11 @@ def get_operations(**_) -> Response:
 
 @generate_swagger_docs()
 @action_api.route("/execute", methods=["POST"])
-@api_login(audit=True, check_xsrf_token=False, required_type=["automation_basic"])
+@api_login(
+    audit=True,
+    check_xsrf_token=False,
+    required_type=["admin", "automation_basic", "automation_advanced", "actionrunner_basic", "actionrunner_advanced"],
+)
 def execute_operations(**kwargs) -> Response:
     """Execute one or more operations on a given query
 
@@ -333,7 +349,7 @@ def execute_operations(**kwargs) -> Response:
         return bad_request(err="Incorrect data structure!")
 
     reports: dict[str, list[dict]] = {}
-    current_user = kwargs.get("user", None)
+    current_user: User | None = kwargs.get("user", None)
     operations = execute_req["operations"]
 
     operation_ids = [o["operation_id"] for o in operations]

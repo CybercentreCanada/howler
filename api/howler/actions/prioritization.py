@@ -6,11 +6,13 @@ from howler.odm.models.hit import Hit
 hit_helper = OdmHelper(Hit)
 
 OPERATION_ID = "prioritization"
+MAX_HITS_BASIC = 10
+MAX_HITS_ADVANCED = 1000
 
 VALID_FIELDS = ["reliability", "severity", "volume", "confidence", "score"]
 
 
-def execute(query: str, field: str = "score", value: str = "0.0", **kwargs):
+def execute(query: str, field: str = "score", value: str | float = "0.0", **kwargs):
     """Change one of the priorization fields of a hit
 
     Args:
@@ -34,7 +36,7 @@ def execute(query: str, field: str = "score", value: str = "0.0", **kwargs):
     report = []
 
     try:
-        value: float = float(value)
+        value = float(value)
 
         datastore().hit.update_by_query(
             query,
@@ -82,7 +84,7 @@ def specification():
             "short": "Change one of the prioritization fields of a hit",
             "long": execute.__doc__,
         },
-        "roles": ["automation_basic"],
+        "roles": ["automation_basic", "actionrunner_basic"],
         "steps": [
             {
                 "args": {"field": [], "value": []},

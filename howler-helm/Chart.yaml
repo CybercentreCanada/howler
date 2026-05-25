@@ -26,20 +26,17 @@ dependencies:
     tags:
       - bitnami-common
     version: 2.x.x
-  - name: minio
-    repository: https://charts.bitnami.com/bitnami
-    tags:
-      - bitnami-common
-    version: 11.10.7
   - name: redis
     repository: https://charts.bitnami.com/bitnami
     tags:
       - bitnami-common
     version: 17.3.5
     alias: redis-persistent
+    condition: redis-persistent.enabled
   - name: redis
     repository: https://charts.bitnami.com/bitnami
     tags:
       - bitnami-common
     version: 17.3.5
     alias: redis-nonpersistent
+    condition: redis-nonpersistent.enabled

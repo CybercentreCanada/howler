@@ -7,6 +7,6 @@ You also need to run the [Howler API](https://github.com/CybercentreCanada/howle
 ```bash
 git clone git@github.com:CybercentreCanada/howler.git
 cd howler/ui
-yarn install
-yarn start
+pnpm install
+pnpm start
 ```

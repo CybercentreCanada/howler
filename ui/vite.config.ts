@@ -16,21 +16,26 @@ export default defineConfig(({ mode }) => {
       ws: true,
       configure: (proxy, _options) => {
         proxy.on('error', (err, _req, _res) => {
-          if (_req.url?.includes('borealis')) {
-            console.error('[borealis]', err);
+          if (_req.url?.includes('clue')) {
+            console.error('[clue]', err);
           } else {
             console.error('[howler]', err);
           }
         });
 
-        proxy.on('proxyRes', (proxyRes, req, _res) => {
-          if (req.url?.includes('borealis')) {
-            console.log('[borealis]', proxyRes.statusCode, req.url);
+        proxy.on('proxyRes', (proxyRes, _req, _res) => {
+          if (_req.url?.includes('clue')) {
+            console.log('[clue]', proxyRes.statusCode, _req.url);
           } else {
-            console.log('[howler]', proxyRes.statusCode, req.url);
+            console.log('[howler]', proxyRes.statusCode, _req.url);
           }
         });
       }
+    },
+    '/socket': {
+      target: apiTarget,
+      changeOrigin: true,
+      ws: true
     }
   };
 

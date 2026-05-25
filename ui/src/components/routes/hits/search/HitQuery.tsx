@@ -1,18 +1,18 @@
 import { useMonaco } from '@monaco-editor/react';
-import { Height, History, Search } from '@mui/icons-material';
+import { Clear, Height, History, Search } from '@mui/icons-material';
 import { Badge, Box, Card, Skeleton, Tooltip, alpha, useTheme } from '@mui/material';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import TuiIconButton from 'components/elements/addons/buttons/CustomIconButton';
 import QueryEditor from 'components/routes/advanced/QueryEditor';
 import type { IDisposable, editor } from 'monaco-editor';
 
-import ClearIcon from '@mui/icons-material/Clear';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import type { FC } from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
+import { DEFAULT_QUERY } from 'utils/constants';
 import { sanitizeMultilineLucene } from 'utils/stringUtils';
 
 const DEFAULT_MULTILINE_HEIGHT = 250;
@@ -39,11 +39,11 @@ const HitQuery: FC<HitQueryProps> = ({
   const theme = useTheme();
   const monaco = useMonaco();
 
-  const savedQuery = useContextSelector(ParameterContext, ctx => ctx.query || 'howler.id:*');
+  const savedQuery = useContextSelector(ParameterContext, ctx => ctx.query || DEFAULT_QUERY);
 
   const prevQuery = useRef<string | null>(null);
 
-  const [query, setQuery] = useState(new URLSearchParams(window.location.search).get('query') || 'howler.id:*');
+  const [query, setQuery] = useState(new URLSearchParams(window.location.search).get('query') || DEFAULT_QUERY);
   const fzfSearch = useContextSelector(HitSearchContext, ctx => ctx?.fzfSearch ?? false);
   const [loaded, setLoaded] = useState(false);
   const [multiline, setMultiline] = useState(false);
@@ -191,6 +191,7 @@ const HitQuery: FC<HitQueryProps> = ({
         <Height sx={{ fontSize: '20px' }} />
       </TuiIconButton>
       <QueryEditor
+        id="hit-query"
         query={preppedQuery}
         setQuery={setQuery}
         language="lucene"
@@ -205,12 +206,12 @@ const HitQuery: FC<HitQueryProps> = ({
       )}
       <TuiIconButton
         disabled={searching || disabled}
-        onClick={() => setQuery('howler.id:*')}
+        onClick={() => setQuery(DEFAULT_QUERY)}
         sx={{ ml: 1, alignSelf: 'start', flexShrink: 0 }}
         size={compact ? 'small' : 'medium'}
       >
         <Tooltip title={t('route.clear')}>
-          <ClearIcon sx={{ fontSize: '20px' }} />
+          <Clear sx={{ fontSize: '20px' }} />
         </Tooltip>
       </TuiIconButton>
 

@@ -22,7 +22,7 @@ from howler.utils.str_utils import sanitize_lucene_query
 
 SUB_API = "template"
 template_api = make_subapi_blueprint(SUB_API, api_version=1)
-template_api._doc = "Manage the different templates created for viewing hits"
+template_api._doc = "Manage the different templates created for viewing hits"  # type: ignore
 
 logger = get_logger(__file__)
 

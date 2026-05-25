@@ -5,12 +5,12 @@ from urllib.parse import urlsplit
 
 import pytest
 import requests
-from conftest import APIError, get_api_data
 from flask import json
-from utils.oauth_credentials import get_token
 
 from howler.odm.models.config import Config
 from howler.security.utils import get_random_password
+from test.conftest import APIError, get_api_data
+from test.utils.oauth_credentials import get_token
 
 ALPHABET = [chr(x + 65) for x in range(26)] + [str(x) for x in range(10)]
 

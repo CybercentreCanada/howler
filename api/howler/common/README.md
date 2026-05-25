@@ -44,25 +44,6 @@ This file provides utility functions to merge dictionaries together, find the di
 
     Where as the unflatten does the invert by taking the dotted notation and transforming it back to it's original multiple level dictionary.
 
-## hexdump.py
-
-This file provide functions to take a binary data blob and transform it into and hexadecimal dump of its bytes. The `dump(buf)` function only outputs the bytes where as the `hexdump(buf)` function outputs also the offsets and some trimmed down ascii representation.
-
-`dump("HTTP/1.1 404 Not\r\nCont")`
-
-    48 54 54 50 2F 31 2E 31 20 34 30 34 20 4E 6F 74 20 46 6F 75 6E 64 0D 0A 43 6F 6E 74
-
-`hexdump("HTTP/1.1 404 Not\r\nCont")`
-
-    00000000:  48 54 54 50 2F 31 2E 31 20 34 30 34 20 4E 6F 74  HTTP/1.1 404 Not
-    00000010:  20 46 6F 75 6E 64 0D 0A 43 6F 6E 74              Found..Cont
-
-## iprange.py
-
-This file provides you with a RangeTable class that let's you determine if and IP is part of a certain CIDR definition. It also provides to quick function that let you determine if an IP is in a private CIDR (`is_private(ip)`) or if an IP is in a reserved CIDR (`is_reserved(ip)`).
-
-*Note*: only IPV4 IPs are supported.
-
 ## isotime.py
 
 This file provides you which methods to transform date into strings or epoch values. It support local, ISO and epoch time. It also makes sure that the local and ISO time get up to a microsecond precision.

@@ -159,6 +159,16 @@ const useMyUserFunctions = () => {
         });
       },
       [currentUser.username, dispatchApi]
+    ),
+
+    setRefreshRate: useCallback(
+      async (refresh_rate: number) => {
+        await dispatchApi(api.user.put(currentUser.username, { refresh_rate }), {
+          throwError: true,
+          showError: true
+        });
+      },
+      [currentUser.username, dispatchApi]
     )
   };
 };

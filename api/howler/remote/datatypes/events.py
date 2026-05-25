@@ -8,7 +8,7 @@ from howler.common.logging import get_logger
 from howler.remote.datatypes import get_client, retry_call
 
 if TYPE_CHECKING:
-    from redis import Redis
+    pass
 
 
 logger = get_logger(__name__)
@@ -21,12 +21,12 @@ class EventSender(Generic[MessageType]):
     def __init__(
         self,
         prefix: str,
-        host=None,
-        port=None,
-        private=None,
+        host: str | None = None,
+        port: int | None = None,
+        private: bool | None = None,
         serializer: Callable[[MessageType], str] = json.dumps,
     ):
-        self.client: Redis[Any] = get_client(host, port, private)
+        self.client = get_client(host, port, bool(private))
         self.prefix = prefix.lower()
         if not self.prefix.endswith("."):
             self.prefix += "."
@@ -40,12 +40,12 @@ class EventSender(Generic[MessageType]):
 class EventWatcher(Generic[MessageType]):
     def __init__(
         self,
-        host=None,
-        port=None,
+        host: str | None = None,
+        port: int | None = None,
         private=None,
         deserializer: Callable[[str], MessageType] = json.loads,
     ):
-        client: Redis[Any] = get_client(host, port, private)
+        client = get_client(host, port, bool(private))
         self.pubsub = retry_call(client.pubsub)
         self.worker: Optional[threading.Thread] = None
         self.deserializer = deserializer

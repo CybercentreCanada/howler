@@ -39,11 +39,11 @@ def test_validation(caplog):
     result = CustomTestConfig.initialize_plugin_configuration(  # type: ignore[operator]
         {
             "name": "test",
-            "modules": {"token_functions": {"borealis": True, "other": "custom.module.example", "false": False}},
+            "modules": {"token_functions": {"clue": True, "other": "custom.module.example", "false": False}},
         }
     )
 
-    assert result["modules"]["token_functions"]["borealis"] == "test.token.borealis:get_token"
+    assert result["modules"]["token_functions"]["clue"] == "test.token.clue:get_token"
     assert result["modules"]["token_functions"]["other"] == "custom.module.example"
     assert "false" not in result["modules"]["token_functions"]
 

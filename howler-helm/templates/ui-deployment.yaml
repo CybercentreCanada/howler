@@ -1,7 +1,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Values.howlerUi.name }}
+  name: {{ .Values.ui.name }}
+  namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/component: ui
 {{ include "howler.labels" . | indent 4 }}
@@ -21,19 +22,19 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
       nodeSelector:
-{{ toYaml .Values.howlerUi.nodeSelector | indent 8 }}
+{{ toYaml .Values.ui.nodeSelector | indent 8 }}
       affinity:
-{{ toYaml .Values.howlerUi.affinity | indent 8 }}
+{{ toYaml .Values.ui.affinity | indent 8 }}
       tolerations:
-{{ toYaml .Values.howlerUi.tolerations | indent 8 }}
+{{ toYaml .Values.ui.tolerations | indent 8 }}
       containers:
       - name: {{ include "howler.name" . }}
-        image: "{{ .Values.howlerUi.image.repository }}:{{ .Values.howlerUi.image.tag }}"
-        imagePullPolicy: {{ .Values.howlerUi.image.pullPolicy | quote }}
+        image: "{{ .Values.images.ui.repository }}:{{ .Values.images.ui.tag }}"
+        imagePullPolicy: {{ .Values.images.ui.pullPolicy | quote }}
         ports:
         - containerPort: 3000
         env:
         - name: REACT_APP_HOWLER_API
           value: "REST"
         resources:
-          {{- toYaml .Values.howlerUi.resources | nindent 12 }}
+          {{- toYaml .Values.ui.resources | nindent 12 }}

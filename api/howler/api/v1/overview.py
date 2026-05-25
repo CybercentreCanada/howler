@@ -21,7 +21,7 @@ from howler.utils.str_utils import sanitize_lucene_query
 
 SUB_API = "overview"
 overview_api = make_subapi_blueprint(SUB_API, api_version=1)
-overview_api._doc = "Manage the different overviews created for viewing hits"
+overview_api._doc = "Manage the different overviews created for viewing hits"  # type: ignore
 
 logger = get_logger(__file__)
 

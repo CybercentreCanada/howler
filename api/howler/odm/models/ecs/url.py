@@ -27,12 +27,10 @@ class URL(odm.Model):
     path = odm.Optional(odm.Keyword(description='Path of the request, such as "/search".'))
     port = odm.Optional(odm.Integer(description="Port of the request, such as 443."))
     query = odm.Optional(
-        odm.Keyword(
-            description="The query field describes the query string of the " 'request, such as "q=elasticsearch".'
-        )
+        odm.Keyword(description='The query field describes the query string of the request, such as "q=elasticsearch".')
     )
     registered_domain = odm.Optional(
-        odm.Keyword(description="The highest registered url domain, " "stripped of the subdomain.")
+        odm.Keyword(description="The highest registered url domain, stripped of the subdomain.")
     )
     scheme = odm.Optional(odm.Keyword(description='Scheme of the request, such as "https".'))
     subdomain = odm.Optional(

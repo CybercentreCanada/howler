@@ -1,4 +1,4 @@
-import { iconExists } from '@iconify/react/dist/iconify.js';
+import { iconExists } from '@iconify/react';
 import { Language, Person, Save } from '@mui/icons-material';
 import {
   Box,
@@ -19,11 +19,12 @@ import api from 'api';
 import PageCenter from 'commons/components/pages/PageCenter';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import useMyApi from 'components/hooks/useMyApi';
+import useMySnackbar from 'components/hooks/useMySnackbar';
 import { isEqual, omit, uniqBy } from 'lodash-es';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import { memo, useCallback, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import QueryResultText from '../../elements/display/QueryResultText';
 import HitQuery from '../hits/search/HitQuery';
@@ -34,7 +35,9 @@ const DossierEditor: FC = () => {
   const { t, i18n } = useTranslation();
   const params = useParams();
   const { dispatchApi } = useMyApi();
+  const { showSuccessMessage } = useMySnackbar();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
 
@@ -42,64 +45,126 @@ const DossierEditor: FC = () => {
 
   const [originalDossier, setOriginalDossier] = useState<Dossier>();
   const [dossier, setDossier] = useState<Partial<Dossier>>({
-    type: 'global'
+    type: 'global',
+    leads: [],
+    pivots: []
   });
-  const [tab, setTab] = useState<'leads' | 'pivots'>('leads');
+  const [tab, setTab] = useState<'leads' | 'pivots'>((searchParams.get('tab') as 'leads' | 'pivots') ?? 'leads');
   const [searchTotal, setSearchTotal] = useState(-1);
   const [searchDirty, setSearchDirty] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const dirty = useMemo(() => !isEqual(originalDossier, dossier), [dossier, originalDossier]);
   const validationError = useMemo(() => {
-    if (!dossier || !dossier.query || !dossier.type || !dossier.title) {
+    if (!dossier) {
       return t('route.dossiers.manager.validation.error');
     }
 
+    if (!dossier.title) {
+      return t('route.dossiers.manager.validation.error.missing', { field: t('route.dossiers.manager.field.title') });
+    }
+
+    if (searchTotal < 0 || searchDirty) {
+      return t('route.dossiers.manager.validation.search');
+    }
+
     if (!dossier.query) {
-      return t('route.dossiers.manager.validation.error.missing', { field: 'query' });
+      return t('route.dossiers.manager.validation.error.missing', { field: t('route.dossiers.manager.field.query') });
     }
 
     if (!dossier.type) {
-      return t('route.dossiers.manager.validation.error.missing', { field: 'type' });
-    }
-
-    if (!dossier.title) {
-      return t('route.dossiers.manager.validation.error.missing', { field: 'title' });
+      return t('route.dossiers.manager.validation.error.missing', { field: t('route.dossiers.manager.field.type') });
     }
 
     if ((dossier.leads ?? []).length < 1 && (dossier.pivots ?? []).length < 1) {
       return t('route.dossiers.manager.validation.error.items');
     }
 
-    if (
-      !(dossier.leads ?? [])?.every(
-        lead =>
-          lead.icon &&
-          iconExists(lead.icon) &&
-          lead.label?.en &&
-          lead.label?.fr &&
-          lead.label &&
-          lead.format &&
-          lead.content
-      )
-    ) {
-      return t('route.dossiers.manager.validation.error.leads');
+    for (const lead of dossier.leads ?? []) {
+      if (!lead.label) {
+        // You have not configured a lead label.
+        return t('route.dossiers.manager.validation.error.leads.label');
+      }
+
+      if (!lead.label.en) {
+        // You have not configured an english lead label.
+        return t('route.dossiers.manager.validation.error.leads.label.en');
+      }
+
+      if (!lead.label.fr) {
+        // You have not configured a french lead label.
+        return t('route.dossiers.manager.validation.error.leads.label.fr');
+      }
+
+      if (!lead.format) {
+        // You have not set the format for the lead with label <label>
+        return t('route.dossiers.manager.validation.error.leads.format', { label: lead.label[i18n.language] });
+      }
+
+      if (!lead.content) {
+        // You have not set the content for the lead with label <label>
+        return t('route.dossiers.manager.validation.error.leads.content', { label: lead.label[i18n.language] });
+      }
+
+      if (!lead.icon || !iconExists(lead.icon)) {
+        // You are missing an icon, or the specified icon does not exist for lead with label <label>
+        return t('route.dossiers.manager.validation.error.leads.icon', { label: lead.label[i18n.language] });
+      }
     }
 
-    if (
-      !(dossier.pivots ?? []).every(
-        pivot => pivot.icon && iconExists(pivot.icon) && pivot.label && pivot.label.en && pivot.label.fr && pivot.format
-      )
-    ) {
-      return t('route.dossiers.manager.validation.error.pivots');
-    }
+    for (const pivot of dossier.pivots ?? []) {
+      if (!pivot.label) {
+        // You have not configured a pivot label.
+        return t('route.dossiers.manager.validation.error.pivots.label');
+      }
 
-    if (!dossier.pivots?.every(pivot => (pivot.mappings ?? []).length === uniqBy(pivot.mappings ?? [], 'key').length)) {
-      return t('route.dossiers.manager.validation.error.pivots.duplicate');
+      if (!pivot.label.en) {
+        // You have not configured an english pivot label.
+        return t('route.dossiers.manager.validation.error.pivots.label.en');
+      }
+
+      if (!pivot.label.fr) {
+        // You have not configured a french pivot label.
+        return t('route.dossiers.manager.validation.error.pivots.label.fr');
+      }
+
+      if (!pivot.format) {
+        // You have not set the format for the pivot with label <label>
+        return t('route.dossiers.manager.validation.error.pivots.format', { label: pivot.label[i18n.language] });
+      }
+
+      if (!pivot.value) {
+        // You have not set the value for the pivot with label <label>
+        return t('route.dossiers.manager.validation.error.pivots.value', { label: pivot.label[i18n.language] });
+      }
+
+      if (!pivot.icon || !iconExists(pivot.icon)) {
+        // You are missing an icon, or the specified icon does not exist for pivot with label <label>
+        return t('route.dossiers.manager.validation.error.pivots.icon', { label: pivot.label[i18n.language] });
+      }
+
+      if (!pivot.mappings || pivot.mappings.length < 1) {
+        continue;
+      }
+
+      if ((pivot.mappings ?? []).length !== uniqBy(pivot.mappings ?? [], 'key').length) {
+        // You have a duplicate for pivot with label <label>
+        return t('route.dossiers.manager.validation.error.pivots.duplicate', { label: pivot.label[i18n.language] });
+      }
+
+      if (pivot.mappings?.some(mapping => !mapping.key)) {
+        // You have not configured a key for a mapping for pivot with label <label>
+        return t('route.dossiers.manager.validation.error.pivots.key', { label: pivot.label[i18n.language] });
+      }
+
+      if (pivot.mappings?.some(mapping => !mapping.field || (mapping.field === 'custom' && !mapping.custom_value))) {
+        // You have not configured a field or custom value for a mapping for pivot with label <label>
+        return t('route.dossiers.manager.validation.error.pivots.field', { label: pivot.label[i18n.language] });
+      }
     }
 
     return null;
-  }, [dossier, t]);
+  }, [dossier, i18n.language, searchDirty, searchTotal, t]);
 
   const save = useCallback(async () => {
     setLoading(true);
@@ -108,14 +173,16 @@ const DossierEditor: FC = () => {
       if (!params.id) {
         const result = await dispatchApi(api.dossier.post(dossier));
 
+        showSuccessMessage(t('route.dossiers.manager.create.success'));
         navigate(`/dossiers/${result.dossier_id}/edit`);
       } else {
         setDossier(await dispatchApi(api.dossier.put(dossier.dossier_id, omit(dossier, ['dossier_id', 'id']))));
+        showSuccessMessage(t('route.dossiers.manager.edit.success'));
       }
     } finally {
       setLoading(false);
     }
-  }, [dispatchApi, dossier, navigate, params.id]);
+  }, [dispatchApi, dossier, navigate, params.id, showSuccessMessage, t]);
 
   useEffect(() => {
     if (!params.id) {
@@ -152,6 +219,15 @@ const DossierEditor: FC = () => {
     })();
   }, [dispatchApi, dossier.query, setQuery]);
 
+  useEffect(() => {
+    if (searchParams.get('tab') !== tab) {
+      searchParams.set('tab', tab);
+    }
+
+    setSearchParams(searchParams, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setSearchParams, tab]);
+
   return (
     <PageCenter maxWidth="1000px" width="100%" textAlign="left" height="97%">
       <Box position="relative" height="100%">
@@ -161,7 +237,7 @@ const DossierEditor: FC = () => {
               variant="extended"
               size="large"
               color="primary"
-              disabled={!dirty || searchDirty || !!validationError || loading}
+              disabled={!dirty || !!validationError || loading}
               sx={theme => ({
                 textTransform: 'none',
                 position: 'absolute',
@@ -182,6 +258,7 @@ const DossierEditor: FC = () => {
             <Stack spacing={1}>
               <Stack spacing={1} direction="row">
                 <TextField
+                  id="dossier-title"
                   disabled={!dossier || loading}
                   label="Title"
                   size="small"

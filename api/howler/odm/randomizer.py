@@ -32,6 +32,7 @@ from howler.odm import (
     Json,
     Keyword,
     List,
+    Long,
     LowerKeyword,
     Mapping,
     Model,
@@ -378,7 +379,7 @@ def get_random_mapping(field: _Field) -> dict[str, _Any]:
 def get_random_phone() -> str:
     """Get a random phone"""
     return (
-        f'{random.choice(["", "+1 "])}{"-".join([str(random.randint(100, 999)) for _ in range(3)])}'
+        f"{random.choice(['', '+1 '])}{'-'.join([str(random.randint(100, 999)) for _ in range(3)])}"
         f"{str(random.randint(0, 9))}"
     )
 
@@ -453,7 +454,7 @@ def random_data_for_field(field: _Field, name: str, minimal: bool = False) -> _A
         return random.choice([True, False])
     elif isinstance(field, Classification):
         if field.engine.enforce:
-            possible_classifications = list(field.engine._classification_cache)
+            possible_classifications = list(field.engine.list_all_classification_combinations(normalized=True))
             possible_classifications.extend([field.engine.UNRESTRICTED, field.engine.RESTRICTED])
         else:
             possible_classifications = [field.engine.UNRESTRICTED]
@@ -489,9 +490,13 @@ def random_data_for_field(field: _Field, name: str, minimal: bool = False) -> _A
     elif isinstance(field, Date):
         return get_random_iso_date()
     elif isinstance(field, Integer):
-        return random.randint(128, 4096)
+        return random.randint(-2_147_483_648, 2_147_483_647)
+    elif isinstance(field, Long):
+        # Generate a random 64-bit signed integer
+        return random.randint(-9_223_372_036_854_775_808, 9_223_372_036_854_775_807)
     elif isinstance(field, Float):
-        return random.randint(12800, 409600) / 100.0
+        # Generate a random float in a reasonable range
+        return random.uniform(-1e6, 1e6)
     elif isinstance(field, MD5):
         return get_random_hash(32)
     elif isinstance(field, SHA1):

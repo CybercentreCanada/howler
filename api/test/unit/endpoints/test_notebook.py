@@ -5,9 +5,9 @@ from authlib.integrations.flask_client import OAuth
 from flask import Flask
 from flask import Response as FlaskResponse
 from mock import patch
-from utils.oauth_credentials import get_token
 
 from howler.config import cache
+from test.utils.oauth_credentials import get_token
 
 
 @pytest.fixture(scope="module", autouse=True)

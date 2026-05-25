@@ -15,6 +15,7 @@ import useMyTheme from 'components/hooks/useMyTheme';
 import useMyUser from 'components/hooks/useMyUser';
 import LoginScreen from 'components/logins/Login';
 import useLogin from 'components/logins/hooks/useLogin';
+import PermissionDeniedPage from 'components/routes/403';
 import NotFoundPage from 'components/routes/404';
 import ErrorBoundary from 'components/routes/ErrorBoundary';
 import Logout from 'components/routes/Logout';
@@ -51,12 +52,18 @@ import TemplateViewer from 'components/routes/templates/TemplateViewer';
 import Templates from 'components/routes/templates/Templates';
 import ViewComposer from 'components/routes/views/ViewComposer';
 import Views from 'components/routes/views/Views';
+import dayjs from 'dayjs';
+import 'dayjs/locale/fr-ca';
+import duration from 'dayjs/plugin/duration';
+import localizedFormat from 'dayjs/plugin/localizedFormat';
+import relativeTime from 'dayjs/plugin/relativeTime';
+import utc from 'dayjs/plugin/utc';
 import i18n from 'i18n';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Hit } from 'models/entities/generated/Hit';
 import * as monaco from 'monaco-editor';
 import howlerPluginStore from 'plugins/store';
-import { useContext, useEffect, type FC, type PropsWithChildren } from 'react';
+import { useCallback, useContext, useEffect, useMemo, type FC, type PropsWithChildren } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { PluginProvider, usePluginStore } from 'react-pluggable';
 import { createBrowserRouter, Outlet, RouterProvider, useLocation, useNavigate } from 'react-router-dom';
@@ -65,6 +72,7 @@ import useMySearch from '../hooks/useMySearch';
 import AppContainer from './AppContainer';
 import AnalyticProvider from './providers/AnalyticProvider';
 import ApiConfigProvider, { ApiConfigContext } from './providers/ApiConfigProvider';
+import AppBarProvider from './providers/AppBarProvider';
 import AvatarProvider from './providers/AvatarProvider';
 import CustomPluginProvider from './providers/CustomPluginProvider';
 import FavouriteProvider from './providers/FavouritesProvider';
@@ -78,16 +86,22 @@ import SocketProvider from './providers/SocketProvider';
 import UserListProvider from './providers/UserListProvider';
 import ViewProvider from './providers/ViewProvider';
 
+dayjs.extend(utc);
+dayjs.extend(duration);
+dayjs.extend(relativeTime);
+dayjs.extend(localizedFormat);
+dayjs.locale(i18n.language === 'en' ? 'en' : 'fr-ca');
+
 loader.config({ monaco });
 
-const RoleRoute = ({ role }) => {
+const RoleRoute = ({ roles }) => {
   const appUser = useAppUser<HowlerUser>();
 
-  if (appUser.user?.roles?.includes(role)) {
+  if (roles.some((role: string) => appUser.user?.roles?.includes(role))) {
     return <Outlet />;
   }
 
-  return <NotFoundPage />;
+  return <PermissionDeniedPage />;
 };
 
 // Your application's initialization flow.
@@ -103,6 +117,15 @@ const MyApp: FC = () => {
   const { setItems } = useAppSwitcher();
   const { get, set, remove } = useMyLocalStorage();
   const pluginStore = usePluginStore();
+
+  const onLanguageChange = useCallback((language: 'en' | 'fr') => dayjs.locale(language === 'en' ? 'en' : 'fr-ca'), []);
+
+  useEffect(() => {
+    i18n.on('languageChanged', onLanguageChange);
+    return () => {
+      i18n.off('languageChanged', onLanguageChange);
+    };
+  }, [onLanguageChange]);
 
   // Simulate app loading time...
   // e.g. fetching initial app data, etc.
@@ -200,233 +223,244 @@ const AppProviderWrapper = () => {
     <I18nextProvider i18n={i18n as any} defaultNS="translation">
       <ApiConfigProvider>
         <PluginProvider pluginStore={howlerPluginStore.pluginStore}>
-          <MyAppProvider>
-            <MyApp />
-            <Modal />
-          </MyAppProvider>
+          <AppBarProvider>
+            <MyAppProvider>
+              <MyApp />
+              <Modal />
+            </MyAppProvider>
+          </AppBarProvider>
         </PluginProvider>
       </ApiConfigProvider>
     </I18nextProvider>
   );
 };
 
-const router = createBrowserRouter([
-  {
-    path: '/',
-    element: <AppProviderWrapper />,
-    children: [
-      {
-        path: 'login',
-        element: <LoginScreen />
-      },
-      {
-        path: 'logout',
-        element: <Logout />
-      },
-      {
-        index: true,
-        element: <Home />
-      },
-      {
-        path: 'hits',
-        element: <HitBrowser />
-      },
-      {
-        path: 'search',
-        element: <HitBrowser />
-      },
-      {
-        path: 'hits/:id',
-        element: <HitViewer />
-      },
-      {
-        path: 'bundles/:id',
-        element: <HitBrowser />
-      },
-      {
-        path: 'templates',
-        element: <Templates />
-      },
-      {
-        path: 'templates/view',
-        element: <TemplateViewer />
-      },
-      {
-        path: 'overviews',
-        element: <Overviews />
-      },
-      {
-        path: 'overviews/view',
-        element: <OverviewViewer />
-      },
-      {
-        path: 'dossiers',
-        element: <Dossiers />
-      },
-      {
-        path: 'dossiers/create',
-        element: (
-          <ParameterProvider>
-            <DossierEditor />
-          </ParameterProvider>
-        )
-      },
-      {
-        path: 'dossiers/:id/edit',
-        element: (
-          <ParameterProvider>
-            <DossierEditor />
-          </ParameterProvider>
-        )
-      },
-      {
-        path: 'views',
-        element: <Views />
-      },
-      {
-        path: 'views/create',
-        element: (
-          <ParameterProvider>
-            <ViewComposer />
-          </ParameterProvider>
-        )
-      },
-      {
-        path: 'views/:id',
-        element: <HitBrowser />
-      },
-      {
-        path: 'views/:id/edit',
-        element: (
-          <ParameterProvider>
-            <ViewComposer />
-          </ParameterProvider>
-        )
-      },
-      {
-        path: 'admin/users',
-        element: <UserSearchProvider />
-      },
-      {
-        path: 'admin/users/:id',
-        element: <UserEditor />
-      },
-      {
-        path: 'analytics',
-        element: <AnalyticSearch />
-      },
-      {
-        path: 'analytics/:id',
-        element: <AnalyticDetails />
-      },
-      {
-        path: 'help',
-        element: <HelpDashboard />
-      },
-      {
-        path: 'help/search',
-        element: <SearchDocumentation />
-      },
-      {
-        path: 'help/api',
-        element: <ApiDocumentation />
-      },
-      {
-        path: 'help/auth',
-        element: <AuthDocumentation />
-      },
-      {
-        path: 'help/client',
-        element: <ClientDocumentation />
-      },
-      {
-        path: 'help/hit',
-        element: <HitDocumentation />
-      },
-      {
-        path: 'help/retention',
-        element: <RetentionDocumentation />
-      },
-      {
-        path: 'help/templates',
-        element: <TemplateDocumentation />
-      },
-      {
-        path: 'help/actions',
-        element: <ActionDocumentation />
-      },
-      {
-        path: 'help/notebook',
-        element: <NotebookDocumentation />
-      },
-      {
-        path: 'help/overviews',
-        element: <OverviewDocumentation />
-      },
-      {
-        path: 'help/views',
-        element: <ViewDocumentation />
-      },
-      {
-        path: 'settings',
-        element: <Settings />
-      },
-      {
-        path: 'advanced',
-        element: <QueryBuilder />
-      },
-      {
-        path: 'settings',
-        element: <Settings />
-      },
-      {
-        path: 'action',
-        element: <RoleRoute role="automation_basic" />,
-        children: [
-          {
-            index: true,
-            element: <ActionSearchProvider />
-          },
-          {
-            path: 'integrations',
-            element: <Integrations />
-          },
-          {
-            path: 'execute',
-            element: (
-              <ParameterProvider>
-                <ActionEditor />
-              </ParameterProvider>
-            )
-          },
-          {
-            path: ':id',
-            children: [
-              {
-                index: true,
-                element: <ActionDetails />
-              },
-              {
-                path: 'edit',
-                element: (
-                  <ParameterProvider>
-                    <ActionEditor />
-                  </ParameterProvider>
-                )
-              }
-            ]
-          }
-        ]
-      },
-      {
-        path: '*',
-        element: <NotFoundPage />
-      }
-    ]
-  }
-]);
+const createRouter = () =>
+  createBrowserRouter([
+    {
+      path: '/',
+      element: <AppProviderWrapper />,
+      children: [
+        {
+          path: 'login',
+          element: <LoginScreen />
+        },
+        {
+          path: 'logout',
+          element: <Logout />
+        },
+        {
+          index: true,
+          element: <Home />
+        },
+        {
+          path: 'hits',
+          element: <HitBrowser />
+        },
+        {
+          path: 'search',
+          element: <HitBrowser />
+        },
+        {
+          path: 'hits/:id',
+          element: <HitViewer />
+        },
+        {
+          path: 'bundles/:id',
+          element: <HitBrowser />
+        },
+        {
+          path: 'templates',
+          element: <Templates />
+        },
+        {
+          path: 'templates/view',
+          element: <TemplateViewer />
+        },
+        {
+          path: 'overviews',
+          element: <Overviews />
+        },
+        {
+          path: 'overviews/view',
+          element: <OverviewViewer />
+        },
+        {
+          path: 'dossiers',
+          element: <Dossiers />
+        },
+        {
+          path: 'dossiers/create',
+          element: (
+            <ParameterProvider>
+              <DossierEditor />
+            </ParameterProvider>
+          )
+        },
+        {
+          path: 'dossiers/:id/edit',
+          element: (
+            <ParameterProvider>
+              <DossierEditor />
+            </ParameterProvider>
+          )
+        },
+        {
+          path: 'views',
+          element: <Views />
+        },
+        {
+          path: 'views/create',
+          element: (
+            <ParameterProvider>
+              <ViewComposer />
+            </ParameterProvider>
+          )
+        },
+        {
+          path: 'views/:id',
+          element: <HitBrowser />
+        },
+        {
+          path: 'views/:id/edit',
+          element: (
+            <ParameterProvider>
+              <ViewComposer />
+            </ParameterProvider>
+          )
+        },
+        {
+          path: 'admin/users',
+          element: <UserSearchProvider />
+        },
+        {
+          path: 'admin/users/:id',
+          element: <UserEditor />
+        },
+        {
+          path: 'analytics',
+          element: <AnalyticSearch />
+        },
+        {
+          path: 'analytics/:id',
+          element: <AnalyticDetails />
+        },
+        {
+          path: 'help',
+          element: <HelpDashboard />
+        },
+        {
+          path: 'help/search',
+          element: <SearchDocumentation />
+        },
+        {
+          path: 'help/api',
+          element: <ApiDocumentation />
+        },
+        {
+          path: 'help/auth',
+          element: <AuthDocumentation />
+        },
+        {
+          path: 'help/client',
+          element: <ClientDocumentation />
+        },
+        {
+          path: 'help/hit',
+          element: <HitDocumentation />
+        },
+        {
+          path: 'help/retention',
+          element: <RetentionDocumentation />
+        },
+        {
+          path: 'help/templates',
+          element: <TemplateDocumentation />
+        },
+        {
+          path: 'help/actions',
+          element: <ActionDocumentation />
+        },
+        {
+          path: 'help/notebook',
+          element: <NotebookDocumentation />
+        },
+        {
+          path: 'help/overviews',
+          element: <OverviewDocumentation />
+        },
+        {
+          path: 'help/views',
+          element: <ViewDocumentation />
+        },
+        {
+          path: 'settings',
+          element: <Settings />
+        },
+        {
+          path: 'advanced',
+          element: <QueryBuilder />
+        },
+        {
+          path: 'action',
+          element: (
+            <RoleRoute
+              roles={[
+                'admin',
+                'automation_basic',
+                'automation_advanced',
+                'actionrunner_basic',
+                'actionrunner_advanced'
+              ]}
+            />
+          ),
+          children: [
+            {
+              index: true,
+              element: <ActionSearchProvider />
+            },
+            {
+              path: 'integrations',
+              element: <Integrations />
+            },
+            {
+              path: 'execute',
+              element: (
+                <ParameterProvider>
+                  <ActionEditor />
+                </ParameterProvider>
+              )
+            },
+            {
+              path: ':id',
+              children: [
+                {
+                  index: true,
+                  element: <ActionDetails />
+                },
+                {
+                  path: 'edit',
+                  element: (
+                    <ParameterProvider>
+                      <ActionEditor />
+                    </ParameterProvider>
+                  )
+                }
+              ]
+            }
+          ]
+        },
+        ...howlerPluginStore.routes,
+        {
+          path: '*',
+          element: <NotFoundPage />
+        }
+      ]
+    }
+  ]);
 
 const App: FC = () => {
+  const router = useMemo(() => createRouter(), []);
   return <RouterProvider router={router} />;
 };
 

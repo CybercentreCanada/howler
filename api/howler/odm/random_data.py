@@ -4,7 +4,9 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from howler.odm.models.clue import Clue
 from howler.plugins import get_plugins
+from howler.utils.constants import TESTING
 
 load_dotenv()
 
@@ -43,7 +45,7 @@ from howler.odm.models.user import User
 from howler.odm.models.view import View
 from howler.odm.randomizer import get_random_string, get_random_user, get_random_word, random_model_obj
 from howler.security.utils import get_password_hash
-from howler.services import analytic_service
+from howler.services import analytic_service, user_service
 
 classification = loader.get_classification()
 
@@ -117,7 +119,14 @@ def create_users(ds):
             "email": "admin@howler.cyber.gc.ca",
             "password": admin_hash,
             "uname": "admin",
-            "type": ["admin", "user", "automation_basic", "automation_advanced"],
+            "type": [
+                "admin",
+                "user",
+                "automation_basic",
+                "automation_advanced",
+                "actionrunner_basic",
+                "actionrunner_advanced",
+            ],
             "groups": [
                 "group1",
                 "group2",
@@ -135,8 +144,8 @@ def create_users(ds):
     )
     ds.view.save(admin_view.view_id, admin_view)
 
-    if "pytest" not in sys.modules:
-        logger.info(f"\t{user_data.uname}:{admin_pass}")
+    if not TESTING:
+        logger.info("\t%s:%s", user_data.uname, admin_pass)
 
     user_hash = get_password_hash(user_pass)
 
@@ -153,6 +162,7 @@ def create_users(ds):
         {
             "name": "Dwight Schrute",
             "email": "user@howler.cyber.gc.ca",
+            "classification": classification.RESTRICTED,
             "apikeys": {
                 "devkey": {"acl": ["R", "W"], "password": user_hash},
                 "impersonate_admin": {
@@ -166,11 +176,20 @@ def create_users(ds):
                     "password": user_hash,
                 },
             },
+            "type": [
+                "user",
+                "automation_basic",
+                "actionrunner_basic",
+            ],
             "password": user_hash,
             "uname": "user",
             "favourite_views": [user_view.view_id],
         }
     )
+
+    c12n = user_service.get_dynamic_classification(user_data.as_primitives())
+    if c12n:
+        user_data.classification = c12n
 
     user_view = run_modifications("view", user_view)
     user_data = run_modifications("user", user_data)
@@ -182,8 +201,8 @@ def create_users(ds):
     )
     ds.view.save(user_view.view_id, user_view)
 
-    if "pytest" not in sys.modules:
-        logger.info(f"\t{user_data.uname}:{user_pass}")
+    if not TESTING:
+        logger.info("\t%s:%s", user_data.uname, user_pass)
 
     huey_hash = get_password_hash(huey_pass)
 
@@ -213,6 +232,7 @@ def create_users(ds):
                     "password": huey_hash,
                 },
             },
+            "classification": classification.UNRESTRICTED,
             "password": huey_hash,
             "uname": "huey",
             "favourite_views": [huey_view.view_id],
@@ -229,8 +249,8 @@ def create_users(ds):
     )
     ds.view.save(huey_view.view_id, huey_view)
 
-    if "pytest" not in sys.modules:
-        logger.info(f"\t{huey_data.uname}:{huey_pass}")
+    if not TESTING:
+        logger.info("\t%s:%s", huey_data.uname, huey_pass)
 
     shawnh_view = View(
         {
@@ -247,6 +267,7 @@ def create_users(ds):
             "apikeys": {},
             "type": ["admin", "user"],
             "groups": ["group1", "group2"],
+            "classification": classification.UNRESTRICTED,
             "password": get_password_hash(shawnh_pass),
             "uname": "shawn-h",
             "favourite_views": [shawnh_view.view_id],
@@ -259,8 +280,8 @@ def create_users(ds):
     ds.user.save("shawn-h", shawn_data)
     ds.view.save(shawnh_view.view_id, shawnh_view)
 
-    if "pytest" not in sys.modules:
-        logger.info(f"\t{shawn_data.uname}:{shawnh_pass}")
+    if not TESTING:
+        logger.info("\t%s:%s", shawn_data.uname, shawnh_pass)
 
     goose_view = View(
         {
@@ -277,6 +298,7 @@ def create_users(ds):
             "apikeys": {},
             "type": ["admin", "user"],
             "groups": ["group1", "group2"],
+            "classification": classification.RESTRICTED,
             "password": get_password_hash(goose_pass),
             "uname": "goose",
             "favourite_views": [goose_view.view_id],
@@ -289,8 +311,8 @@ def create_users(ds):
     ds.user.save("goose", goose_data)
     ds.view.save(goose_view.view_id, goose_view)
 
-    if "pytest" not in sys.modules:
-        logger.info(f"\t{goose_data.uname}:{goose_pass}")
+    if not TESTING:
+        logger.info("\t%s:%s", goose_data.uname, goose_pass)
 
     ds.user.commit()
     ds.user_avatar.commit()
@@ -523,11 +545,27 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
     lookups = loader.get_lookups()
     users = ds.user.search("*:*")["items"]
     for hit_idx in range(hit_count):
-        hit = generate_useful_hit(lookups, [user["uname"] for user in users], prune_hit=False)
+        hit = generate_useful_hit(lookups, [user.uname for user in users], prune_hit=False)
+
+        # Ensure the first 20 hits have unrestricted classification for test access
+        if hit_idx < 20:
+            hit.classification = classification.UNRESTRICTED
 
         if hit_idx + 1 == hit_count:
             hit.howler.analytic = "SecretAnalytic"
             hit.howler.detection = None
+
+        if config.core.clue.enabled:
+            hit.clue = Clue(
+                {
+                    "types": [
+                        {"field": "destination.user.group.id", "type": "domain"},
+                        {"field": "dns.response_code", "type": "url"},
+                        {"field": "file.name", "type": "url"},
+                        {"field": "faas.name", "type": "domain"},
+                    ]
+                }
+            )
 
         ds.hit.save(hit.howler.id, hit)
         analytic_service.save_from_hit(hit, random.choice(users))
@@ -553,10 +591,10 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
 
         ds.hit.commit()
 
-        if hit_idx % 25 == 0 and "pytest" not in sys.modules:
+        if hit_idx % 25 == 0 and not TESTING:
             logger.info("\tCreated %s/%s", hit_idx, hit_count)
 
-    if "pytest" not in sys.modules:
+    if not TESTING:
         logger.info("\tCreated %s/%s", hit_idx + 1, hit_count)
 
     logger.info(
@@ -574,6 +612,7 @@ def create_bundles(ds: HowlerDatastore):
     for i in range(3):
         bundle_hit: Hit = generate_useful_hit(lookups, users)
         bundle_hit.howler.is_bundle = True
+        bundle_hit.classification = classification.UNRESTRICTED
 
         for hit in ds.hit.search("howler.is_bundle:false", rows=randint(3, 10), offset=(i * 2))["items"]:
             if hit.howler.id not in hits:
@@ -820,7 +859,7 @@ def wipe_dossiers(ds: HowlerDatastore):
 
 def setup_hits(ds):
     "Set up hits index"
-    os.environ["ELASTIC_HIT_SHARDS"] = "12"
+    os.environ["ELASTIC_HIT_SHARDS"] = "1"
     os.environ["ELASTIC_HIT_REPLICAS"] = "1"
     ds.hit.fix_shards()
     ds.hit.fix_replicas()
@@ -879,7 +918,7 @@ if __name__ == "__main__":
 
     for index, operations in INDEXES.items():
         if index in args:
-            logger.info(f"Creating {index}...")
+            logger.info("Creating %s...", index)
 
             # Create functions
             for create_fn in operations[1]:

@@ -17,6 +17,7 @@ from howler.common.exceptions import InvalidDataException
 from howler.common.loader import datastore
 from howler.config import redis
 from howler.remote.datatypes.hash import Hash
+from howler.utils.constants import TESTING
 from howler.utils.dict_utils import flatten_deep
 from howler.utils.lucene import coerce, normalize_phrase, try_parse_date, try_parse_ip, try_parse_number
 
@@ -28,7 +29,7 @@ TRANSPORT_TIMEOUT = int(os.environ.get("HWL_DATASTORE_TRANSPORT_TIMEOUT", "10"))
 class LuceneProcessor(TreeVisitor):
     "Tree visitor that evaluates a query on a given object"
 
-    def visit(self, tree: Any, context: dict[str, Any]) -> bool:
+    def visit(self, tree: Any, context: dict[str, Any]) -> bool:  # pyright: ignore[reportIncompatibleMethodOverride]
         "Visit each node in a tree"
         return super().visit(tree, context)[0]
 
@@ -60,12 +61,14 @@ class LuceneProcessor(TreeVisitor):
         for child in node.children:
             child_context = self.child_context(node, child, context)
             for result in self.visit_iter(child, context=child_context):
-                # If we run across a MUST or MUST NOT (plus, probhit) object and the value doesn't match, we immediately
-                # shortcircuit and return false.
+                # If we run across a MUST or MUST NOT (plus, prohibit) object and the value doesn't match, we
+                # immediately shortcircuit and return false.
+                # NOTE: visit_prohibit already negates the inner result, so a violated MUST NOT arrives here as
+                # False (not True). We therefore short-circuit on `not result` rather than `result`.
                 if isinstance(child, Plus) and not result:
                     yield False
                     return
-                elif isinstance(child, Prohibit) and result:
+                elif isinstance(child, Prohibit) and not result:
                     yield False
                     return
 
@@ -148,6 +151,11 @@ class LuceneProcessor(TreeVisitor):
         # Unescape escaped colons in value
         sanitized_value = sanitized_value.replace("\\:", ":")
 
+        # Unescape Lucene-escaped spaces so fnmatch can match them correctly
+        # (fnmatch does not treat \ as an escape character, so *\ foo\ * would require
+        # a literal backslash in the candidate rather than matching a space)
+        sanitized_value = sanitized_value.replace("\\ ", " ")
+
         return sanitized_value
 
     @staticmethod
@@ -228,7 +236,7 @@ def match(lucene: str, obj: dict[str, Any]):
     hash_key = sha256(lucene.encode()).hexdigest()
 
     # We cache the results back from ES, since we will frequently run the same validation queries over and over again.
-    if (normalized_query := NORMALIZED_QUERY_CACHE.get(hash_key)) is None or "pytest" in sys.modules:
+    if (normalized_query := NORMALIZED_QUERY_CACHE.get(hash_key)) is None or TESTING:
         # This regex checks for lucene phrases (i.e. the "Example Analytic" part of howler.analytic:"Example Analytic")
         # And then escapes them.
         # https://regex101.com/r/8u5F6a/1
@@ -251,6 +259,8 @@ def match(lucene: str, obj: dict[str, Any]):
         #   +(server.address:supports server.address:their) +(howler.votes.benign:edge howler.votes.benign:also)
         # which means the two are equivalent in elastic, but the second one is a lot less ambiguous to parse.
         normalized_query = cast(str, result["explanations"][0]["explanation"])
+
+        normalized_query = re.sub(r"IndexOrDocValuesQuery *\(indexQuery=(.+?), dvQuery=.+?\)", r"\1", normalized_query)
 
         # Elastic's explanation mangles exists queries. Since we will handle them the normal way, reset their changes
         normalized_query = re.sub(r"FieldExistsQuery *\[.*?field=(.+?)]", r"_exists_:\1", normalized_query)

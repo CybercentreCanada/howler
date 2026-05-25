@@ -2,6 +2,7 @@ import type { AvatarProps, SxProps, Theme } from '@mui/material';
 import { Avatar, Tooltip, useTheme } from '@mui/material';
 import { AvatarContext } from 'components/app/providers/AvatarProvider';
 import { memo, useCallback, useContext, useEffect, useState, type FC, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { nameToInitials } from 'utils/stringUtils';
 import { stringToColor } from 'utils/utils';
 
@@ -10,9 +11,13 @@ type HowlerAvatarProps = AvatarProps & {
 };
 
 const HowlerAvatar: FC<HowlerAvatarProps> = ({ userId, ...avatarProps }) => {
+  const { t } = useTranslation();
   const { getAvatar } = useContext(AvatarContext);
   const theme = useTheme();
   const [props, setProps] = useState<{ sx?: SxProps<Theme>; children?: ReactNode | ReactNode[]; src?: string }>();
+
+  const displayId =
+    userId && userId.toLowerCase() !== 'unassigned' ? userId : t('app.drawer.hit.assignment.unassigned.name');
 
   const stringAvatar = useCallback(
     (name: string) => {
@@ -48,8 +53,9 @@ const HowlerAvatar: FC<HowlerAvatarProps> = ({ userId, ...avatarProps }) => {
 
   if (userId) {
     return (
-      <Tooltip title={userId}>
+      <Tooltip title={displayId}>
         <Avatar
+          aria-label={displayId}
           {...avatarProps}
           {...props}
           sx={{ ...(avatarProps?.sx || {}), ...(props?.sx || {}) } as SxProps<Theme>}
@@ -58,7 +64,12 @@ const HowlerAvatar: FC<HowlerAvatarProps> = ({ userId, ...avatarProps }) => {
     );
   } else {
     return (
-      <Avatar {...avatarProps} {...props} sx={{ ...(avatarProps?.sx || {}), ...(props?.sx || {}) } as SxProps<Theme>} />
+      <Avatar
+        aria-label={t('unknown')}
+        {...avatarProps}
+        {...props}
+        sx={{ ...(avatarProps?.sx || {}), ...(props?.sx || {}) } as SxProps<Theme>}
+      />
     );
   }
 };

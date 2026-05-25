@@ -1,3 +1,4 @@
+import { OpenInNew } from '@mui/icons-material';
 import {
   Box,
   Chip,
@@ -7,6 +8,7 @@ import {
   Tooltip,
   Typography,
   avatarClasses,
+  chipClasses,
   iconButtonClasses,
   useTheme,
   type TypographyProps
@@ -58,7 +60,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
       return;
     }
 
-    getMatchingAnalytic(hit).then(analytic => setAnalyticId(analytic.analytic_id));
+    getMatchingAnalytic(hit).then(analytic => setAnalyticId(analytic?.analytic_id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hit?.howler.analytic]);
 
@@ -144,8 +146,8 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
   /**
    * The tooltips are necessary only when in the most compressed format
    */
-  const Wrapper: FC<{ i18nKey: string; value: string | string[] } & TypographyProps> = useCallback(
-    ({ i18nKey, value, ...typographyProps }) => {
+  const Wrapper: FC<{ i18nKey: string; value: string | string[]; field: string } & TypographyProps> = useCallback(
+    ({ i18nKey, value, field, ...typographyProps }) => {
       const _children = (
         <Stack direction="row" spacing={1} flex={1}>
           <Typography
@@ -170,6 +172,8 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
               textOverflow={compressed ? 'ellipsis' : 'wrap'}
               {...typographyProps}
               value={val}
+              field={field}
+              hit={hit}
             />
           ))}
         </Stack>
@@ -197,7 +201,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
         _children
       );
     },
-    [compressed, t, textVariant]
+    [compressed, hit, t, textVariant]
   );
 
   return (
@@ -205,7 +209,10 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
       display="grid"
       gridTemplateColumns="minmax(0, auto) minmax(0, 1fr) minmax(0, auto)"
       alignItems="stretch"
-      sx={{ width: '100%', ml: 0, overflow: 'hidden' }}
+      sx={{ width: '100%', ml: 0, overflow: 'hidden', textDecoration: 'none', color: 'text.primary' }}
+      component="a"
+      href={`/hits/${hit?.howler.id}`}
+      onClick={e => e.preventDefault()}
     >
       {leftBox}
       <Stack
@@ -233,9 +240,8 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
           {analyticId ? (
             <Link
               to={`/analytics/${analyticId}`}
-              onAuxClick={e => {
-                e.stopPropagation();
-              }}
+              target="_blank"
+              rel="noopener noreferrer"
               onClick={e => {
                 e.stopPropagation();
               }}
@@ -263,12 +269,20 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
             <Grid container spacing={layout !== HitLayout.COMFY ? 1 : 2} sx={{ ml: `${theme.spacing(-1)} !important` }}>
               {hit.howler.outline.threat && (
                 <Grid item>
-                  <Wrapper i18nKey="hit.header.threat" value={hit.howler.outline.threat} />
+                  <Wrapper
+                    i18nKey="hit.header.threat"
+                    value={hit.howler.outline.threat}
+                    field="howler.outline.threat"
+                  />
                 </Grid>
               )}
               {hit.howler.outline.target && (
                 <Grid item>
-                  <Wrapper i18nKey="hit.header.target" value={hit.howler.outline.target} />
+                  <Wrapper
+                    i18nKey="hit.header.target"
+                    value={hit.howler.outline.target}
+                    field="howler.outline.target"
+                  />
                 </Grid>
               )}
             </Grid>
@@ -306,6 +320,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
                 paragraph
                 textOverflow="wrap"
                 sx={[compressed && { marginTop: `0 !important` }]}
+                field="howler.outline.summary"
               />
             )}
           </>
@@ -331,6 +346,21 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
       >
         <HitTimestamp hit={hit} layout={layout} />
         {showAssigned && <Assigned hit={hit} layout={layout} />}
+        {hit.howler.links?.[0]?.href && (
+          <Chip
+            icon={<OpenInNew />}
+            label={hit.howler.links[0].title || t('hit.header.link')}
+            size={layout !== HitLayout.COMFY ? 'small' : 'medium'}
+            component="a"
+            href={hit.howler.links[0].href}
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{ [`.${chipClasses.label}`]: { cursor: 'pointer !important' } }}
+            onClick={e => {
+              e.stopPropagation();
+            }}
+          />
+        )}
         <Stack direction="row" spacing={layout !== HitLayout.COMFY ? 0.5 : 1}>
           <EscalationChip hit={hit} layout={layout} />
           {['in-progress', 'on-hold'].includes(hit.howler.status) && (

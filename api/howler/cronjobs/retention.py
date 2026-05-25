@@ -8,6 +8,7 @@ from pytz import timezone
 
 from howler.common.logging import get_logger
 from howler.config import DEBUG, config
+from howler.datastore.howler_store import HowlerDatastore
 
 logger = get_logger(__file__)
 
@@ -30,6 +31,73 @@ def execute():
 
     logger.debug("Deletion complete")
 
+    logger.debug("Cleaning analytics with no matching hits")
+    _remove_analytics_without_hits(ds)
+
+
+def _remove_analytics_without_hits(ds: HowlerDatastore):
+
+    matched_analytics = _find_analytics_with_hits(ds)
+
+    if matched_analytics is not None:
+        ds.analytic.delete_by_search_object(
+            {
+                "bool": {
+                    "filter": [
+                        {
+                            "bool": {
+                                "must_not": [
+                                    {"exists": {"field": "rule"}},
+                                    {"exists": {"field": "rule_type"}},
+                                ]
+                            }
+                        }
+                    ],
+                    "must_not": [{"terms": {"name": matched_analytics}}],
+                }
+            }
+        )
+        ds.analytic.commit()
+    else:
+        logger.warning(
+            "Aggregation search for matched analytics did not run or returned no results. "
+            "There is likely an issue with the query. Skipping cleanup."
+        )
+
+
+def _find_analytics_with_hits(ds: HowlerDatastore) -> list[str] | None:
+
+    total_analytics = ds.analytic.count("id:*", filters=None)["count"]
+
+    if total_analytics:
+        matched_analytics = ds.hit.search(
+            "howler.id:*",
+            aggregations=[
+                (
+                    "matched_analytics",
+                    {
+                        "terms": {
+                            "field": "howler.analytic",
+                            "size": total_analytics,
+                        }
+                    },
+                )
+            ],
+            rows=0,
+        )
+
+        if "matched_analytics" in matched_analytics["aggregations"]:
+            matched_analytic_names = [
+                bucket["key"] for bucket in matched_analytics["aggregations"]["matched_analytics"]["buckets"]
+            ]
+        else:
+            return None
+
+    else:
+        matched_analytic_names = []
+
+    return matched_analytic_names
+
 
 def setup_job(sched: BaseScheduler):
     """Initialize the retention job"""
@@ -39,7 +107,7 @@ def setup_job(sched: BaseScheduler):
 
         return
 
-    logger.debug(f"Initializing retention cronjob with cron {config.system.retention.crontab}")
+    logger.debug("Initializing retention cronjob with cron %s", config.system.retention.crontab)
 
     if DEBUG:
         _kwargs: dict[str, Any] = {"next_run_time": datetime.now()}

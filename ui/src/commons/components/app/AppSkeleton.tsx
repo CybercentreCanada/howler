@@ -1,6 +1,5 @@
 import { Apps } from '@mui/icons-material';
 import { Divider, List, Skeleton, Toolbar, styled, useMediaQuery, useTheme } from '@mui/material';
-import { AppUserAvatar } from 'commons/components//topnav/UserProfile';
 import type { AppLeftNavElement } from 'commons/components/app/AppConfigs';
 import {
   useAppBreadcrumbs,
@@ -10,6 +9,7 @@ import {
   useAppQuickSearch
 } from 'commons/components/app/hooks';
 import { AppBarBase } from 'commons/components/topnav/AppBar';
+import { AppUserAvatar } from 'commons/components/topnav/UserProfile';
 
 /**
  * Utility component to render the  skeleton of the left navigation menu elements.

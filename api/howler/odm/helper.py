@@ -1,6 +1,5 @@
 import json
 import random
-import sys
 from datetime import datetime, timedelta
 from hashlib import md5
 from math import ceil
@@ -29,6 +28,7 @@ from howler.odm.randomizer import (
 )
 from howler.plugins import get_plugins
 from howler.security.utils import get_password_hash
+from howler.utils.constants import TESTING
 from howler.utils.uid import get_random_id
 
 APPS = get_apps_list(discovery_url=config.ui.discover_url)
@@ -38,7 +38,7 @@ EXAMPLE_ANALYTICS = ["Password Checker", "Bad Guy Finder", "Exploit Patcher"]
 logger = get_logger(__file__)
 
 
-def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[User], prune_hit: bool = True) -> Hit:  # noqa: C901
+def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[str], prune_hit: bool = True) -> Hit:  # noqa: C901
     "Create a random, useful/cogent hit for synthetic data"
     hit: Hit = random_model_obj(cast(Model, Hit))
 
@@ -259,13 +259,13 @@ def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[User], p
         ),
     ]
 
-    if config.core.borealis.enabled:
+    if config.core.clue.enabled:
         hit.howler.dossier.append(
             Lead(
                 {
                     "icon": "material-symbols:image",
-                    "label": {"en": "Borealis", "fr": "Borealis"},
-                    "format": "borealis",
+                    "label": {"en": "Clue", "fr": "Clue"},
+                    "format": "clue",
                     "content": "test-plugin.image",
                     "metadata": {"type": "ip", "value": "127.0.01", "classification": "TLP:CLEAR"},
                 }
@@ -276,8 +276,8 @@ def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[User], p
             Lead(
                 {
                     "icon": "material-symbols:code-rounded",
-                    "label": {"en": "Borealis", "fr": "Borealis"},
-                    "format": "borealis",
+                    "label": {"en": "Clue", "fr": "Clue"},
+                    "format": "clue",
                     "content": "test-plugin.json",
                     "metadata": {"type": "ip", "value": "127.0.01", "classification": "TLP:CLEAR"},
                 }
@@ -360,8 +360,8 @@ def create_users_with_username(ds: HowlerDatastore, usernames: list[str]):
         )
         ds.user.save(username, user_data)
 
-        if "pytest" not in sys.modules:
-            logger.info(f"{username}:{username}")
+        if not TESTING:
+            logger.info("%s:%s", username, username)
 
     ds.user.commit()
     ds.user_avatar.commit()

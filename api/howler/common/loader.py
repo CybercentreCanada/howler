@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 APP_NAME = os.environ.get("APP_NAME", "howler")
 APP_PREFIX = os.environ.get("APP_PREFIX", "hwl")
-USER_TYPES = {"admin", "user", "automation_basic", "automation_advanced"}
+USER_TYPES = {"admin", "user", "automation_basic", "automation_advanced", "actionrunner_basic", "actionrunner_advanced"}
 
 
 def env_substitute(buffer):
@@ -39,7 +39,9 @@ def get_classification(yml_config: Optional[str] = None):  # noqa: C901
     log = logging.getLogger(f"{APP_NAME}.common.loader")
 
     if not yml_config:
-        yml_config_path = Path("/etc") / APP_NAME.replace("-dev", "") / "conf" / "classification.yml"
+        root_path = Path("/etc") / APP_NAME.replace("-dev", "").replace("-stg", "") / "conf"
+        yml_config_path = Path(os.environ.get("HWL_CONF_FOLDER", root_path)) / "classification.yml"
+
         if yml_config_path.is_symlink():
             log.info("%s is a symbolic link!", yml_config_path)
             if str(yml_config_path.readlink()).startswith("..data"):
@@ -56,9 +58,9 @@ def get_classification(yml_config: Optional[str] = None):  # noqa: C901
                 )
 
         if not yml_config_path.exists():
-            log.warning(f"{yml_config_path} does not exist!")
+            log.warning("%s does not exist!", yml_config_path)
             yml_config_path = Path("/etc") / APP_NAME.replace("-dev", "") / "classification.yml"
-            log.warning(f"Checking at {yml_config_path} instead.")
+            log.warning("Checking at %s instead.", yml_config_path)
     else:
         yml_config_path = Path(yml_config)
 

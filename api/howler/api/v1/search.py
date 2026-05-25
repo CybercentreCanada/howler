@@ -1,29 +1,35 @@
-from typing import Any, Union
+import re
+from copy import deepcopy
+from typing import Any
 
 from elasticsearch import BadRequestError
-from flask import request
+from elasticsearch._sync.client.indices import IndicesClient
+from flask import Request, request
 from sigma.backends.elasticsearch import LuceneBackend
 from sigma.rule import SigmaRule
 from werkzeug.exceptions import BadRequest
 from yaml.scanner import ScannerError
 
-from howler.api import bad_request, make_subapi_blueprint, ok
+from howler.api import bad_request, forbidden, make_subapi_blueprint, ok
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import SearchException
 from howler.helper.search import get_collection, get_default_sort, has_access_control, list_all_fields
+from howler.odm.models.user import User
 from howler.security import api_login
-from howler.services import hit_service
+from howler.services import hit_service, lucene_service
 
 SUB_API = "search"
 search_api = make_subapi_blueprint(SUB_API, api_version=1)
-search_api._doc = "Perform search queries"
+search_api._doc = "Perform search queries"  # type: ignore
 
 logger = get_logger(__file__)
 
+SENSITIVE_USER_FIELDS = ["password", "apikeys", "*"]
 
-def generate_params(request, fields, multi_fields, params=None):
+
+def generate_params(request: Request, fields: list[str], multi_fields: list[str], params: dict[str, Any] | None = None):
     """Generate a list of parameters, combining the request data and the query arguments"""
     # I hate you, python
     if params is None:
@@ -46,7 +52,7 @@ def generate_params(request, fields, multi_fields, params=None):
         params = {
             **params,
             **{k: req_data[k] for k in fields if k in req_data},
-            **{k: req_data.getlist(k, None) for k in multi_fields if k in req_data},
+            **{k: req_data.getlist(k) for k in multi_fields if k in req_data},
         }
 
     return params, req_data
@@ -95,7 +101,7 @@ def search(index, **kwargs):
      "next_deep_paging_id": "asX3f...342",  # ID to pass back for the next page during deep paging
      "items": []}                           # List of results
     """
-    user = kwargs["user"]
+    user: User = kwargs["user"]
     collection = get_collection(index, user)
     default_sort = get_default_sort(index, user)
 
@@ -127,16 +133,22 @@ def search(index, **kwargs):
     if has_access_control(index):
         params.update({"access_control": user["access_control"]})
 
-    params["as_obj"] = False
     params.update({"sort": (params.get("sort", None) or default_sort).split(",")})
 
     query = req_data.get("query", None)
     if not query:
         return bad_request(err="There was no search query.")
 
+    if (
+        "fl" in params
+        and index == "user"
+        and any(sensitive_field in params["fl"] for sensitive_field in SENSITIVE_USER_FIELDS)
+    ):
+        return forbidden(err="Invalid fields to retrieve.")
+
     try:
         metadata = params.pop("metadata", [])
-        result = collection().search(query, **params)
+        result = collection().search(query, as_obj=False, **params)
 
         if index == "hit" and len(metadata) > 0:
             hit_service.augment_metadata(result["items"], metadata, user)
@@ -144,6 +156,76 @@ def search(index, **kwargs):
         return ok(result)
     except (SearchException, BadRequestError) as e:
         return bad_request(err=f"SearchException: {e}")
+
+
+@generate_swagger_docs()
+@search_api.route("/<index>/explain", methods=["GET", "POST"])
+@api_login(required_priv=["R"])
+def explain_query(index, **kwargs):
+    """Search through specified index for a given Lucene query. Uses Lucene search syntax for query.
+
+    Variables:
+    index  =>   Index to explain against (hit, user,...)
+
+    Arguments:
+    query   =>   Lucene Query to explain
+
+    Data Block:
+    # Note that the data block is for POST requests only!
+    {
+        "query": "id:*", # Lucene Query to explain
+    }
+
+
+    Result Example:
+    {
+        'valid': True,
+        'explanations': [
+            {
+                'valid': True,
+                'explanation': 'ConstantScore(FieldExistsQuery [field=id])'
+            }
+        ]
+    }
+    """
+    user = kwargs["user"]
+    collection = get_collection(index, user)
+
+    if collection is None:
+        return bad_request(err=f"Not a valid index to explain: {index}")
+
+    fields = ["query"]
+    multi_fields: list[str] = []
+
+    params, req_data = generate_params(request, fields, multi_fields)
+
+    params["as_obj"] = False
+
+    query = req_data.get("query", None)
+    if not query:
+        return bad_request(err="There was no query.")
+
+    # This regex checks for lucene phrases (i.e. the "Example Analytic" part of howler.analytic:"Example Analytic")
+    # And then escapes them.
+    # https://regex101.com/r/8u5F6a/1
+    escaped_lucene = re.sub(r'((:\()?(".+?")(\)?))', lucene_service.replace_lucene_phrase, query)
+
+    try:
+        indices_client = IndicesClient(datastore().hit.datastore.client)
+
+        result = deepcopy(
+            indices_client.validate_query(q=escaped_lucene, explain=True, index=collection().index_name).body
+        )
+
+        del result["_shards"]
+
+        for explanation in result["explanations"]:
+            del explanation["index"]
+
+        return ok(result)
+    except Exception as e:
+        logger.exception("Exception on query explanation")
+        return bad_request(err=f"Exception: {e}")
 
 
 @generate_swagger_docs()
@@ -203,6 +285,13 @@ def eql_search(index, **kwargs):
     eql_query = req_data.get("eql_query", None)
     if not eql_query:
         return bad_request(err="There was no EQL search query.")
+
+    if (
+        "fl" in params
+        and index == "user"
+        and any(sensitive_field in params["fl"] for sensitive_field in SENSITIVE_USER_FIELDS)
+    ):
+        return forbidden(err="Invalid fields to retrieve.")
 
     try:
         return ok(collection().raw_eql_search(**params))
@@ -292,6 +381,13 @@ def sigma_search(index, **kwargs):
 
     lucene_queries = LuceneBackend(index_names=[es_collection.index_name]).convert_rule(rule)
 
+    if (
+        "fl" in params
+        and index == "user"
+        and any(sensitive_field in params["fl"] for sensitive_field in SENSITIVE_USER_FIELDS)
+    ):
+        return forbidden(err="Invalid fields to retrieve.")
+
     try:
         return ok(es_collection.search("*:*", **params, filters=[*params.get("filters", []), *lucene_queries]))
     except (SearchException, BadRequestError) as e:
@@ -359,6 +455,13 @@ def group_search(index, group_field, **kwargs):
 
     if not group_field:
         return bad_request(err="The field to group on was not specified.")
+
+    if (
+        "fl" in params
+        and index == "user"
+        and any(sensitive_field in params["fl"] for sensitive_field in SENSITIVE_USER_FIELDS)
+    ):
+        return forbidden(err="Invalid fields to retrieve.")
 
     try:
         return ok(collection().grouped_search(group_field, **params))
@@ -453,11 +556,13 @@ def count(index, **kwargs):
         params.update({"access_control": user["access_control"]})
 
     query = req_data.get("query", None)
+    filters = req_data.get("filters", [])
+
     if not query:
         return bad_request(err="There was no search query.")
 
     try:
-        return ok(collection().count(query, **params))
+        return ok(collection().count(query, filters=filters, **params))
     except (SearchException, BadRequestError) as e:
         return bad_request(err=f"SearchException: {e}")
 
@@ -520,6 +625,9 @@ def facet(index, **kwargs):
                 logger.warning("Invalid field %s requested for faceting, skipping", field)
                 continue
 
+            if index == "user" and any(sensitive_field in field for sensitive_field in SENSITIVE_USER_FIELDS):
+                return forbidden(err="Invalid fields to facet on.")
+
             facet_result[field] = collection().facet(field, **params)
 
         return ok(facet_result)
@@ -569,6 +677,9 @@ def facet_field(index, field, **kwargs):
     field_info = collection().fields().get(field, None)
     if field_info is None:
         return bad_request(err=f"Field '{field}' is not a valid field in index: {index}")
+
+    if index == "user" and any(sensitive_field in field for sensitive_field in SENSITIVE_USER_FIELDS):
+        return forbidden(err="Invalid field to facet on.")
 
     fields = ["query", "mincount", "rows"]
     multi_fields = ["filters"]
@@ -630,7 +741,7 @@ def histogram(index, field, **kwargs):
 
     # Get fields default values
     field_info = collection().fields().get(field, None)
-    params: dict[str, Union[str, int]] = {}
+    params: dict[str, Any] = {}
     if field_info is None:
         return bad_request(err=f"Field '{field}' is not a valid field in index: {index}")
     elif field_info["type"] == "integer":

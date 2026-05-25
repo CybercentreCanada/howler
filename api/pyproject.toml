@@ -38,7 +38,7 @@ exclude_also = [
     "if TYPE_CHECKING:",
     "@(abc\\.)?abstractmethod]",
     "if \"pytest\" in sys.modules:",
-    "from typing_extensions"
+    "from typing_extensions",
 ]
 
 #################
@@ -74,6 +74,10 @@ disable_error_code = "assignment"
 [[tool.mypy.overrides]]
 module = "requests"
 ignore_missing_imports = true
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
 
 [tool.ruff]
 line-length = 120
@@ -148,7 +152,7 @@ suppress-none-returning = true
 [tool.poetry]
 package-mode = true
 name = "howler-api"
-version = "2.11.0"
+version = "3.4.0"
 description = "Howler - API server"
 authors = [
     "Canadian Centre for Cyber Security <howler@cyber.gc.ca>",
@@ -186,75 +190,82 @@ include = [
     ] },
 ]
 packages = [{ include = "howler" }]
-documentation = "https://cybercentrecanada.github.io/howler-docs/developer/backend/"
-homepage = "https://cybercentrecanada.github.io/howler-docs/"
+documentation = "https://cybercentrecanada.github.io/howler/developer/backend/"
+homepage = "https://cybercentrecanada.github.io/howler/"
 repository = "https://github.com/CybercentreCanada/howler-api"
 
 [tool.poetry.dependencies]
-python = "^3.9.17"
-apscheduler = "3.10.4"
+python = "^3.10"
+apscheduler = "3.11.2"
 authlib = "^1.6.0"
-azure-identity = "1.16.1"
-azure-storage-blob = "12.14.1"
-chardet = "5.1.0"
-elastic-apm = { extras = ["flask"], version = "^6.22.0" }
-elasticsearch = "8.6.1"
-flask = "2.2.5"
-flask-caching = "2.0.2"
+chardet = "5.2.0"
+elasticsearch = "8.19.3"
+flask = "3.1.3"
+flask-caching = "2.4.0"
 gevent = "23.9.1"
 gunicorn = "23.0.0"
 packaging = "<25.0"
 passlib = "1.7.4"
-prometheus-client = "0.17.1"
-pyjwt = "2.6.0"
-pyroute2-core = "0.6.13"
-pysftp = "0.2.9"
+prometheus-client = "0.25.0"
+pyjwt = "2.12.1"
 python-baseconv = "1.2.2"
 python-datemath = "3.0.3"
-pyyaml = "6.0.2"
-redis = "4.5.4"
-requests = "2.32.4"
-wsproto = "1.2.0"
+pyyaml = "6.0.3"
+redis = "4.6.0"
+requests = "2.34.2"
+wsproto = "1.3.2"
 chevron = "0.14.0"
-typing-extensions = "^4.12.2"
 flasgger = "^0.9.7.1"
-pysigma = "0.11.17"
+pysigma = "0.11.23"
 pysigma-backend-elasticsearch = "^1.1.2"
 mergedeep = "^1.3.4"
-validators = "^0.34.0"
+validators = ">=0.34,<0.36"
 python-dotenv = "^1.1.0"
 pydantic = "^2.11.4"
 pydantic-settings = { extras = ["yaml"], version = "^2.9.1" }
 luqum = "^1.0.0"
 pydash = "^8.0.5"
+pytz = "^2025.2"
+bcrypt = "4.3.0"
+tzdata = "^2026.1"
+opentelemetry-sdk = "1.40.0"
+opentelemetry-exporter-otlp-proto-http = "1.40.0"
+opentelemetry-instrumentation-flask = "0.61b0"
+azure-monitor-opentelemetry = "^1.8.7"
 
 [tool.poetry.group.dev.dependencies]
-flake8 = "^7.0.0"
 pre-commit = "^3.7.0"
+ruff = ">=0.8,<0.16"
+pyright = {extras = ["nodejs"], version = "^1.1.408"}
+mypy = "^1.6.1"
 
 [tool.poetry.group.test.dependencies]
-pytest = "^8.1.1"
+pytest = "9.0.3"
 retrying = "^1.3.4"
 pyftpdlib = "^1.5.9"
-pyopenssl = "^24.1.0"
-mypy = "^1.6.1"
+pyopenssl = ">=24.1,<27.0"
 diff-cover = "^9.2.4"
 pytest-cov = "^4.1.0"
 mock = "^5.1.0"
 mypy-extensions = "^1.0.0"
 coverage = { extras = ["toml"], version = "^7.4.4" }
-ruff = "^0.8.0"
 
 [tool.poetry.group.types.dependencies]
-types-PyYAML = "6.0.12.12"
-types-paramiko = "3.3.0.0"
-types-pyOpenSSL = "23.3.0.0"
-types-redis = "4.6.0.9"
-types-six = "1.16.21.9"
-types-requests = "<2.31.0.7"
-websocket-client = "1.5.1"
+typing-extensions = "^4.12.2"
+types-PyYAML = "6.0.12.20260518"
+types-paramiko = "3.5.0.20250801"
+types-pyOpenSSL = "23.3.0.20240106"
+types-redis = "4.6.0.20241004"
+types-six = "1.17.0.20260518"
+types-requests = "<2.33.0.20260519"
+websocket-client = "1.9.0"
 types-pytz = "^2024.1.0.20240417"
 types-mock = "^5.2.0.20250306"
+types-passlib = "^1.7.7.20260211"
+
+[tool.poetry.group.pre-commit.dependencies]
+rich = "^14.2.0"
+conventional-pre-commit = "^4.3.0"
 
 [tool.poetry.scripts]
 server = "howler.app:main"

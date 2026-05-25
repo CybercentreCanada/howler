@@ -24,7 +24,6 @@ import logging
 from typing import Any, cast
 
 from authlib.integrations.flask_client import OAuth
-from elasticapm.contrib.flask import ElasticAPM
 from flasgger import Swagger
 from flask import Flask
 from flask.blueprints import Blueprint
@@ -62,14 +61,19 @@ from howler.config import (
 from howler.cronjobs import setup_jobs
 from howler.error import errors
 from howler.healthz import healthz
+from howler.telemetry import setup_telemetry
 
 logger = get_logger(__file__)
+
 
 app = Flask(
     "howler-api",
     static_url_path="/api/static",
     static_folder=config.ui.static_folder,
 )
+if config.core.telemetry.enabled:
+    setup_telemetry(app)
+
 # Disable strict check on trailing slashes for endpoints
 app.url_map.strict_slashes = False
 app.config["JSON_SORT_KEYS"] = False
@@ -138,11 +142,11 @@ if HWL_USE_REST_API or DEBUG:
         logger.debug("Enabled Notebook Integration")
         app.register_blueprint(notebook_api)
 
-    if config.core.borealis.enabled:
-        from howler.api.v1.borealis import borealis_api
+    if config.core.clue.enabled:
+        from howler.api.v1.clue import clue_api
 
-        logger.debug("Enabled Borealis Integration")
-        app.register_blueprint(borealis_api)
+        logger.debug("Enabled Clue Integration")
+        app.register_blueprint(clue_api)
 
     logger.info("Checking plugins for additional routes")
     for plugin in get_plugins():
@@ -203,15 +207,6 @@ app.logger.removeHandler(default_handler)
 if logger.parent:
     for ph in logger.parent.handlers:
         app.logger.addHandler(ph)
-
-# Setup APMs
-if config.core.metrics.apm_server.server_url is not None:
-    logger.info(f"Exporting application metrics to: {config.core.metrics.apm_server.server_url}")
-    ElasticAPM(
-        app,
-        server_url=config.core.metrics.apm_server.server_url,
-        service_name="howler_api",
-    )
 
 wlog = logging.getLogger("werkzeug")
 wlog.setLevel(logging.WARNING)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import time
-from typing import Generic, Optional, TypeVar, Union
+from typing import Any, Generic, Optional, TypeVar, Union
 
 from howler.common.exceptions import HowlerTypeError
 from howler.remote.datatypes import decode, get_client, retry_call
@@ -36,7 +36,7 @@ T = TypeVar("T")
 
 class PriorityQueue(Generic[T]):
     def __init__(self, name, host=None, port=None, private=False):
-        self.c = get_client(host, port, private)
+        self.c: Any = get_client(host, port, private)
         self._deque_range = self.c.register_script(pq_dequeue_range_script)
         self.name = name
 
@@ -99,7 +99,7 @@ class PriorityQueue(Generic[T]):
 
     def push(self, priority: int, data: T, vip=None):
         vip = 0 if vip else 9
-        value = f"{vip}{f'{int(time.time()*1000000):020}'}{json.dumps(data)}"
+        value = f"{vip}{f'{int(time.time() * 1000000):020}'}{json.dumps(data)}"
         retry_call(self.c.zadd, self.name, {value: -priority})
         return value
 

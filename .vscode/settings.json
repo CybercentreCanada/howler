@@ -12,10 +12,10 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[json]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "vscode.json-language-features"
   },
   "[jsonc]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "vscode.json-language-features"
   },
   "[javascript]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
@@ -28,6 +28,18 @@
   },
   "[typescriptreact]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[yaml]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2,
+    "editor.autoIndent": "keep",
+    "diffEditor.ignoreTrimWhitespace": false,
+    "editor.defaultColorDecorators": "never",
+    "editor.quickSuggestions": {
+      "strings": true,
+      "other": true,
+      "comments": false
+    }
   },
   "git.enableCommitSigning": true,
   "editor.formatOnSave": true,
@@ -44,7 +56,7 @@
     "**/.DS_Store": true,
     "**/Thumbs.db": true,
     "**/build": true,
-    "**/dist": true,
+    // "**/dist": true,
     "**/.pytest_cache": true,
     "**/.idea": true,
     "**/__pycache__": true,
@@ -67,7 +79,6 @@
   },
   "python.defaultInterpreterPath": "${workspaceFolder}/api/.venv/bin/python",
   "python.analysis.autoImportCompletions": true,
-  "python.analysis.exclude": ["**/build", "plugins/*/.venv"],
   "python.analysis.autoFormatStrings": true,
   "python.analysis.completeFunctionParens": true,
   "mypy-type-checker.ignorePatterns": [
@@ -76,21 +87,26 @@
     "plugins/*/test/**/*.py"
   ],
   "ruff.configurationPreference": "filesystemFirst",
-  "python.analysis.extraPaths": [
-    "./api/test",
-    "./client/test",
-    "./plugins/sentinel",
-    "./plugins/evidence"
-  ],
-  // "flake8.cwd": "${workspaceFolder}/api",
-  "flake8.cwd": "${fileDirname}",
   "editor.formatOnSaveMode": "modificationsIfAvailable",
   "mypy-type-checker.cwd": "${nearestConfig}",
-  "python.analysis.typeEvaluation.strictListInference": true,
-  "python.analysis.typeEvaluation.strictDictionaryInference": true,
   "eslint.workingDirectories": [
     { "directory": "./ui", "changeProcessCWD": true }
   ],
-  "flake8.args": ["--max-line-length=120"],
-  "prettier.configPath": "ui/.prettierrc"
+  "prettier.configPath": "ui/.prettierrc",
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/bower_components": true,
+    "**/*.code-search": true,
+    "ui/target": true,
+    "ui/pnpm-lock.yaml": true
+  },
+  "markdownlint.config": {
+    "MD024": false,
+    "MD013": {
+      "line_length": 120,
+      "code_blocks": false,
+      "tables": false
+    }
+  },
+  "python-envs.defaultEnvManager": "ms-python.python:system"
 }

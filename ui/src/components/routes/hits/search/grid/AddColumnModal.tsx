@@ -1,20 +1,18 @@
-import { Add, Check } from '@mui/icons-material';
-import { Autocomplete, Chip, Divider, Grid, IconButton, Popover, Stack, TextField } from '@mui/material';
+import { Add, Check, Settings, TableChart } from '@mui/icons-material';
+import { Autocomplete, Chip, Divider, Grid, IconButton, Stack, TextField } from '@mui/material';
 import useMatchers from 'components/app/hooks/useMatchers';
 import { FieldContext } from 'components/app/providers/FieldProvider';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
+import ChipPopper from 'components/elements/display/ChipPopper';
 import { has, sortBy, uniq } from 'lodash-es';
 import { memo, useContext, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 
 const AddColumnModal: FC<{
-  open: boolean;
-  onClose: () => void;
-  anchorEl: HTMLElement;
   addColumn: (key: string) => void;
   columns: string[];
-}> = ({ open, onClose, anchorEl, addColumn, columns }) => {
+}> = ({ addColumn, columns }) => {
   const { t } = useTranslation();
   const { hitFields } = useContext(FieldContext);
   const response = useContextSelector(HitSearchContext, ctx => ctx.response);
@@ -43,12 +41,7 @@ const AddColumnModal: FC<{
   }, [getMatchingTemplate, response?.items]);
 
   return (
-    <Popover
-      open={open}
-      onClose={onClose}
-      anchorEl={anchorEl}
-      anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-    >
+    <ChipPopper icon={<TableChart />} deleteIcon={<Settings />} toggleOnDelete slotProps={{ chip: { size: 'small' } }}>
       <Stack spacing={1} p={1} width="500px">
         <Stack direction="row" spacing={1}>
           <Autocomplete
@@ -91,7 +84,7 @@ const AddColumnModal: FC<{
           })}
         </Grid>
       </Stack>
-    </Popover>
+    </ChipPopper>
   );
 };
 

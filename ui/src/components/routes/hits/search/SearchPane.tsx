@@ -1,23 +1,11 @@
-import { Close, ErrorOutline, List, SavedSearch, TableChart, Terminal } from '@mui/icons-material';
-import {
-  Box,
-  IconButton,
-  LinearProgress,
-  Stack,
-  ToggleButton,
-  ToggleButtonGroup,
-  Tooltip,
-  Typography,
-  useMediaQuery,
-  useTheme
-} from '@mui/material';
+import { Close, ErrorOutline, SavedSearch, Terminal } from '@mui/icons-material';
+import { Box, IconButton, LinearProgress, Stack, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { grey } from '@mui/material/colors';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
 import PageCenter from 'commons/components/pages/PageCenter';
 import { HitContext } from 'components/app/providers/HitProvider';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
-import { ViewContext } from 'components/app/providers/ViewProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import FlexPort from 'components/elements/addons/layout/FlexPort';
 import VSBox from 'components/elements/addons/layout/vsbox/VSBox';
@@ -33,7 +21,8 @@ import useHitSelection from 'components/hooks/useHitSelection';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { FC } from 'react';
-import React, { memo, useCallback, useEffect } from 'react';
+import React, { memo, useCallback, useEffect, useMemo } from 'react';
+import { isMobile } from 'react-device-detect';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
@@ -42,8 +31,8 @@ import BundleParentMenu from './BundleParentMenu';
 import { BundleScroller } from './BundleScroller';
 import HitContextMenu from './HitContextMenu';
 import HitQuery from './HitQuery';
-import ViewLink from './ViewLink';
-import QuerySettings from './shared/QuerySettings';
+import LayoutSettings from './LayoutSettings';
+import QuerySettings from './QuerySettings';
 
 const Item: FC<{
   hit: Hit;
@@ -55,8 +44,6 @@ const Item: FC<{
 
   const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
 
-  const layout = useContextSelector(HitSearchContext, ctx => ctx.layout);
-
   const checkMiddleClick = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>, id: string | number) => {
     if (e.button === 1) {
       window.open(`${window.origin}/hits/${id}`, '_blank');
@@ -64,6 +51,10 @@ const Item: FC<{
       e.preventDefault();
     }
   }, []);
+
+  const [hitLayout] = useMyLocalStorageItem(StorageKey.HIT_LAYOUT, HitLayout.NORMAL);
+
+  const layout: HitLayout = useMemo(() => (isMobile ? HitLayout.COMFY : hitLayout), [hitLayout]);
 
   // Search result list item renderer.
   return (
@@ -118,13 +109,10 @@ const SearchPane: FC = () => {
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const setOffset = useContextSelector(ParameterContext, ctx => ctx.setOffset);
 
-  const displayType = useContextSelector(HitSearchContext, ctx => ctx.displayType);
-  const setDisplayType = useContextSelector(HitSearchContext, ctx => ctx.setDisplayType);
   const triggerSearch = useContextSelector(HitSearchContext, ctx => ctx.search);
   const searching = useContextSelector(HitSearchContext, ctx => ctx.searching);
   const response = useContextSelector(HitSearchContext, ctx => ctx.response);
   const error = useContextSelector(HitSearchContext, ctx => ctx.error);
-  const viewId = useContextSelector(HitSearchContext, ctx => ctx.viewId);
 
   const { onClick } = useHitSelection();
 
@@ -137,8 +125,6 @@ const SearchPane: FC = () => {
   const searchPaneWidth = useMyLocalStorageItem(StorageKey.SEARCH_PANE_WIDTH, null)[0];
 
   const verticalSorters = useMediaQuery('(max-width: 1919px)') || (searchPaneWidth ?? Number.MAX_SAFE_INTEGER) < 900;
-
-  const selectedView = useContextSelector(ViewContext, ctx => ctx.views[viewId]);
 
   const getSelectedId = useCallback((event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     const target = event.target as HTMLElement;
@@ -163,8 +149,6 @@ const SearchPane: FC = () => {
       <PageCenter textAlign="left" mt={0} mb={6} ml={0} mr={0} maxWidth="1500px">
         <VSBox top={0}>
           <Stack ml={-1} mr={-1} sx={{ '& .overflowingContentWidgets > *': { zIndex: '2000 !important' } }} spacing={1}>
-            <ViewLink />
-
             {bundleHit && (
               <BundleScroller>
                 <HitContextMenu getSelectedId={() => bundleHit.howler.id}>
@@ -218,26 +202,14 @@ const SearchPane: FC = () => {
                   <Terminal />
                 </IconButton>
               </Tooltip>
-              <ToggleButtonGroup
-                exclusive
-                value={displayType}
-                onChange={(__, value) => setDisplayType(value)}
-                size="small"
-              >
-                <ToggleButton value="list">
-                  <List />
-                </ToggleButton>
-                <ToggleButton value="grid">
-                  <TableChart />
-                </ToggleButton>
-              </ToggleButtonGroup>
+              <LayoutSettings />
             </Stack>
           </Stack>
 
-          <VSBoxHeader ml={-3} mr={-3} px={2} pb={1} sx={{ zIndex: 999 }}>
+          <VSBoxHeader ml={-3} mr={-3} px={2} pb={1} sx={{ zIndex: 989 }}>
             <Stack sx={{ pt: 1 }}>
               <Stack sx={{ position: 'relative', flex: 1 }}>
-                <HitQuery disabled={viewId && !selectedView} searching={searching} triggerSearch={triggerSearch} />
+                <HitQuery searching={searching} triggerSearch={triggerSearch} />
                 {searching && (
                   <LinearProgress
                     sx={theme => ({

@@ -29,7 +29,7 @@ def test_safe_str():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         test_str = "helloÌ\x02Í\udcf9"
-        test_bytes = b"hello\xc3\x8c\x02\xc3\x8d\udcf9"
+        test_bytes = b"hello\xc3\x8c\x02\xc3\x8d\\udcf9"
         expected_result = "hello\xcc\\x02\xcd\\udcf9"
 
     assert str_utils.safe_str(test_bytes) == expected_result
@@ -73,8 +73,8 @@ def test_wrap_bidir_unicode_string():
         a = str_utils.wrap_bidir_unicode_string(test_str)
         assert a == "\u202aa\u202db\u202acde\u202efg\u202b\u202c\u202c\u202c\u202c\u202c"
 
-        byte_str = b"\u202Dabcdefg"
-        assert str_utils.wrap_bidir_unicode_string(byte_str) == b"\u202Dabcdefg"
+        byte_str = b"\\u202Dabcdefg"
+        assert str_utils.wrap_bidir_unicode_string(byte_str) == b"\\u202Dabcdefg"
 
         fail_search_str = "abcdefg"
         assert str_utils.wrap_bidir_unicode_string(fail_search_str) == "abcdefg"

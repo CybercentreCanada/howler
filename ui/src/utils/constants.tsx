@@ -1,6 +1,6 @@
 import { LocalPolice, MoodBad, NewReleases, PsychologyAlt, Star, Timeline } from '@mui/icons-material';
 import { blue, grey, indigo, orange, pink, red, teal, yellow } from '@mui/material/colors';
-import moment from 'moment';
+import dayjs from 'dayjs';
 import type { ReactElement } from 'react';
 
 export const HOWLER_API = import.meta.env.VITE_API;
@@ -59,11 +59,15 @@ export enum StorageKey {
   COMPACT_JSON = 'compact_json_view',
   FLATTEN_JSON = 'flatten_json_view',
   FORCE_DRAWER = 'force_drawer',
+  SHOW_HIT_SUMMARY_GRAPH = 'show_hit_summary_graph',
   LAST_VIEW = 'last_view',
   ONLY_RULES = 'only_rules',
   PAGE_COUNT = 'page_count',
   SEARCH_PANE_WIDTH = 'search_pane_width',
+  TEMPLATE_FIELD_COUNT = 'template_field_count',
   GRID_COLLAPSE_COLUMN = 'grid_collapse_column',
+  GRID_COLUMNS = 'grid_columns',
+  GRID_COLUMN_WIDTHS = 'grid_column_widths',
   QUERY_HISTORY = 'query_history',
   LOGIN_NONCE = 'login_nonce',
   DISPLAY_TYPE = 'display_type'
@@ -74,7 +78,7 @@ export const MOCK_FAVOURITES_STORE = `${MY_LOCAL_STORAGE_PREFIX}.${StorageKey.MO
 
 export const VALID_ACTION_TRIGGERS = ['create', 'promote', 'demote'];
 
-const CURRENT_TIME = moment();
+const CURRENT_TIME = dayjs();
 
 export const minutes = [CURRENT_TIME.get('minute'), CURRENT_TIME.add(30, 'minute').get('minute')].sort();
 export const hours = [
@@ -129,3 +133,5 @@ export const LABEL_TYPES: Record<string, LabelData> = {
   assignments: {},
   tuning: {}
 };
+
+export const DEFAULT_QUERY = 'howler.id:*';

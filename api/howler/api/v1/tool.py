@@ -20,7 +20,7 @@ from howler.utils.uid import get_random_id
 
 SUB_API = "tools"
 tool_api = make_subapi_blueprint(SUB_API, api_version=1)
-tool_api._doc = "Manage the tools"
+tool_api._doc = "Manage the tools"  # type: ignore
 
 logger = get_logger(__file__)
 
@@ -67,7 +67,7 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
     field_map = data.pop("map", None)
     hits = data.pop("hits", None)
     ignore_extra_values: bool = bool(request.args.get("ignore_extra_values", False, type=lambda v: v.lower() == "true"))
-    logger.debug(f"ignore_extra_values = {ignore_extra_values}")
+    logger.debug("ignore_extra_values = %s", ignore_extra_values)
     # Check data type
     if not isinstance(field_map, dict):
         return bad_request(err="Invalid: 'map' field is missing or invalid.")
@@ -115,7 +115,7 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
                     try:
                         field_data: Optional[_Field] = hit_fields[target]
                     except KeyError:
-                        logger.debug(f"`{target}` not in hit fields")
+                        logger.debug("`%s` not in hit fields", target)
                         field_data = next(
                             (v for k, v in hit_fields.items() if get_parent_key(k) == target),
                             None,
@@ -153,7 +153,7 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
                 }
             )
         except HowlerException as e:
-            logger.warning(f"{type(e).__name__} when saving {cur_id}!")
+            logger.warning("%s when saving %s!", type(e).__name__, cur_id)
             logger.warning(e)
 
             out.append({"id": None, "error": str(e)})
@@ -167,12 +167,12 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
                 bundle_hit.howler.bundle_size += 1
                 odm.howler.bundles.append(bundle_hit.howler.id)
 
-            hit_service.create_hit(odm.howler.id, odm, user=user["uname"])
+            hit_service.create_hit(odm.howler.id, odm, user=user.uname)
 
             analytic_service.save_from_hit(odm, user)
 
         if bundle_hit:
-            hit_service.create_hit(bundle_hit.howler.id, bundle_hit, user=user["uname"])
+            hit_service.create_hit(bundle_hit.howler.id, bundle_hit, user=user.uname)
 
             analytic_service.save_from_hit(bundle_hit, user)
 

@@ -20,10 +20,10 @@ Howler allows triage analysts and detection engineers to do more by refining and
 
 ## Documentation
 
-For documentation, see <https://cybercentrecanada.github.io/howler-docs/>
+For documentation, see <https://cybercentrecanada.github.io/howler/>
 
 ## Contributing
 
 ### Development
 
-If you'd like to contribute to Howler, follow the [developer's guide](https://cybercentrecanada.github.io/howler-docs/developer/getting_started/), create a branch and get coding!
+If you'd like to contribute to Howler, follow the [developer's guide](https://cybercentrecanada.github.io/howler/developer/getting_started/), create a branch and get coding!

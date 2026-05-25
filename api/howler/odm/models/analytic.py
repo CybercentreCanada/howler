@@ -23,7 +23,7 @@ class Comment(odm.Model):
     )
 
 
-DEFAULT_TRIAGE = {"skip_rationale": False, "valid_assessments": Assessment.list()}
+DEFAULT_TRIAGE = {"skip_rationale": False, "valid_assessments": Assessment.list(), "rationales": []}
 
 
 @odm.model(index=True, store=True, description="Settings for triaging this analytic.")
@@ -40,6 +40,11 @@ class TriageOptions(odm.Model):
     dossiers: list[str] = odm.List(
         odm.Keyword(), description="A list of dossiers to present to the user when triaging alerts.", default=[]
     )
+    rationales: list[str] = odm.List(
+        odm.Keyword(),
+        default=DEFAULT_TRIAGE["rationales"],
+        description="A provided list of rationales that will be suggested when triaging alerts.",
+    )
 
 
 @odm.model(index=True, store=True, description="Notebook data")
@@ -49,8 +54,8 @@ class Notebook(odm.Model):
         description="The detection the notebook applies to, if it applies to a particular detection",
         optional=True,
     )
-    value = odm.Text(description="The link to the notebook")
-    name = odm.Text(description="Name for the analytic")
+    value = odm.Keyword(description="The link to the notebook")
+    name = odm.Keyword(description="Name for the analytic")
     user = odm.Keyword(description="User ID who added the notebook.")
 
 
@@ -62,7 +67,7 @@ class Analytic(odm.Model):
         default=[],
         description="A list of useful notebooks for the analytic",
     )
-    name: str = odm.Keyword(description="The name of the analytic.")
+    name: str = odm.CaseInsensitiveKeyword(description="The name of the analytic.")
     owner: Optional[str] = odm.Keyword(description="The username of the user who owns this analytic.", optional=True)
     contributors: list[str] = odm.List(
         odm.Keyword(),
@@ -71,7 +76,7 @@ class Analytic(odm.Model):
     )
     description: Optional[str] = odm.Text(description="A markdown description of the analytic", optional=True)
     detections: list[str] = odm.List(
-        odm.Keyword(),
+        odm.CaseInsensitiveKeyword(),
         description="The detections which this analytic contains.",
         default=[],
     )

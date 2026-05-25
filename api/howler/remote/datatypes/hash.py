@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import time
-from typing import TYPE_CHECKING, Generic, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar
+
+from redis import RedisCluster
 
 from howler.common.exceptions import HowlerValueError
 from howler.remote.datatypes import get_client, retry_call
@@ -71,10 +73,10 @@ class Hash(Generic[T]):
     def __init__(
         self,
         name: str,
-        host: Optional[Union[str, Redis]] = None,
+        host: str | Redis[Any] | RedisCluster[Any] | None = None,
         port: Optional[int] = None,
     ):
-        self.c = get_client(host, port, False)
+        self.c: Any = get_client(host, port, False)
         self.name = name
         self._pop = self.c.register_script(h_pop_script)
         self._limited_add = self.c.register_script(_limited_add)

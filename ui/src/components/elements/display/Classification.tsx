@@ -12,11 +12,11 @@ const Classification: FC = () => {
 
   const label = useMemo(() => {
     if (isSm) {
-      return config.c12nDef?.UNRESTRICTED?.replace(/[a-z]/g, '').replace(/ /g, '') ?? '???';
+      return config.c12nDef?.RESTRICTED?.replace(/[a-z]/g, '').replace(/ /g, '') ?? '???';
     } else {
-      return config.c12nDef?.UNRESTRICTED ?? 'Unknown';
+      return config.c12nDef?.RESTRICTED ?? 'Unknown';
     }
-  }, [config.c12nDef?.UNRESTRICTED, isSm]);
+  }, [config.c12nDef?.RESTRICTED, isSm]);
 
   const color = useMemo(
     () => config.c12nDef?.levels_styles_map?.[label.replace(/\/\/.+/, '')]?.color ?? 'default',
