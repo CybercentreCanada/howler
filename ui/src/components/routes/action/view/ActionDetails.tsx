@@ -123,7 +123,7 @@ const ActionDetails = () => {
               color="error"
               onClick={() => deleteAction(action?.action_id)}
             >
-              {t('delete')}
+              {t('button.delete')}
             </Button>
           )}
           {execRoles && (
