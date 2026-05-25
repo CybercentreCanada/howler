@@ -4,7 +4,13 @@ import type { FC } from 'react';
 import { useCallback, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 
-const ConfirmDeleteModal: FC<{ onConfirm: () => void }> = ({ onConfirm }) => {
+const ConfirmDeleteModal: FC<{
+  onConfirm: () => void;
+  title?: string;
+  description?: string;
+  preferDelete?: boolean;
+  preferCancel?: boolean;
+}> = ({ onConfirm, title, description, preferDelete, preferCancel }) => {
   const { t } = useTranslation();
   const { close } = useContext(ModalContext);
 
@@ -13,16 +19,19 @@ const ConfirmDeleteModal: FC<{ onConfirm: () => void }> = ({ onConfirm }) => {
     close();
   }, [close, onConfirm]);
 
+  const modalTitle = title ?? t('modal.confirm.delete.title');
+  const modalDesc = description ?? t('modal.confirm.delete.description');
+
   return (
     <Stack spacing={2} p={2} alignItems="start" sx={{ minWidth: '500px' }}>
-      <Typography variant="h4">{t('modal.confirm.delete.title')}</Typography>
-      <Typography>{t('modal.confirm.delete.description')}</Typography>
+      <Typography variant="h4">{modalTitle}</Typography>
+      <Typography>{modalDesc}</Typography>
       <Stack direction="row" spacing={1} alignSelf="end">
-        <Button variant="outlined" onClick={close}>
-          {t('cancel')}
+        <Button variant={preferCancel ? 'contained' : 'outlined'} onClick={close}>
+          {t('button.cancel')}
         </Button>
-        <Button variant="outlined" onClick={handleConfirm}>
-          {t('confirm')}
+        <Button variant={preferDelete ? 'contained' : 'outlined'} onClick={handleConfirm}>
+          {t('button.delete')}
         </Button>
       </Stack>
     </Stack>
