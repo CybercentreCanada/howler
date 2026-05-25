@@ -1386,7 +1386,7 @@ class ESCollection(Generic[ModelType]):
         if isinstance(fields, str):
             fields = [fields]
 
-        if fields is None or "*" in fields or "id" in fields:
+        if source_data is not None and (fields is None or "*" in fields or "id" in fields):
             source_data["id"] = [item_id]
 
         if fields is None or "*" in fields:
@@ -1842,6 +1842,9 @@ class ESCollection(Generic[ModelType]):
         :return: a generator of keys
         """
         for item in self.stream_search("id:*", fl="id", access_control=access_control):
+            if item is None:
+                continue
+
             try:
                 yield item._id
             except AttributeError:

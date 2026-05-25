@@ -66,14 +66,14 @@ sharedEnv
 */}}
 
 {{- define "sharedEnv" -}}
-{{- range .Values.howlerRest.oauth.providers }}
+{{- range .Values.rest.oauth.providers }}
 - name: {{ upper .name }}_CLIENT_SECRET
   valueFrom:
     secretKeyRef:
       name: {{ .secret.name }}
       key: {{ .secret.key }}
 {{- end }}
-{{- range .Values.howlerRest.datastore.hosts }}
+{{- range .Values.rest.datastore.hosts }}
 - name: {{ upper .name }}_HOST_APIKEY_ID
   valueFrom:
     secretKeyRef:
@@ -92,6 +92,10 @@ sharedEnv
       name: {{ .Values.apm.tokenSecret }}
       key: {{ .Values.apm.tokenKey | default "token" }}
 {{- end }}
+{{- range $key, $val := .Values.rest.env }}
+- name: {{ $key }}
+  value: {{ $val | quote }}
+{{- end }}
 - name: ELASTIC_APM_DEBUG
   value: {{ .Values.apm.workWithDebug | quote }}
 - name: ELASTIC_APM_LOG_LEVEL
@@ -101,4 +105,41 @@ sharedEnv
     secretKeyRef:
       name: {{ .Values.websocket.commSecret.name | default "howler-interpod-comms-secret" }}
       key: {{ .Values.websocket.commSecret.key | default "secret" }}
+- name: FLASK_SECRET_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.flaskSecret.name | default "flask-secret-key" }}
+      key: {{ .Values.flaskSecret.key | default "key" }}
+- name: LIMIT_REQUEST_FIELD_SIZE
+  value: "16380"
+- name: ELASTIC_DEFAULT_SHARDS
+  value: "1"
+- name: ELASTIC_HIT_SHARDS
+  value: {{ if .Values.rest.elasticsearch }}{{ .Values.rest.elasticsearch.hit.shards | default 4 | quote }}{{ else }}"4"{{ end }}
+- name: ELASTIC_HIT_REPLICAS
+  value: {{ if .Values.rest.elasticsearch }}{{ .Values.rest.elasticsearch.hit.replicas | default 2 | quote }}{{ else }}"2"{{ end }}
+- name: ELASTIC_USER_SHARDS
+  value: {{ if .Values.rest.elasticsearch }}{{ .Values.rest.elasticsearch.user.shards | default 1 | quote }}{{ else }}"1"{{ end }}
+- name: ELASTIC_USER_REPLICAS
+  value: {{ if .Values.rest.elasticsearch }}{{ .Values.rest.elasticsearch.user.replicas | default 1 | quote }}{{ else }}"1"{{ end }}
+- name: ELASTIC_ACTION_SHARDS
+  value: {{ if .Values.rest.elasticsearch }}{{ .Values.rest.elasticsearch.action.shards | default 1 | quote }}{{ else }}"1"{{ end }}
+- name: ELASTIC_ACTION_REPLICAS
+  value: {{ if .Values.rest.elasticsearch }}{{ .Values.rest.elasticsearch.action.replicas | default 1 | quote }}{{ else }}"1"{{ end }}
+- name: ELASTIC_DOSSIER_SHARDS
+  value: {{ if .Values.rest.elasticsearch }}{{ .Values.rest.elasticsearch.dossier.shards | default 1 | quote }}{{ else }}"1"{{ end }}
+- name: ELASTIC_DOSSIER_REPLICAS
+  value: {{ if .Values.rest.elasticsearch }}{{ .Values.rest.elasticsearch.dossier.replicas | default 1 | quote }}{{ else }}"1"{{ end }}
+- name: ELASTIC_OVERVIEW_SHARDS
+  value: {{ if .Values.rest.elasticsearch }}{{ .Values.rest.elasticsearch.overview.shards | default 1 | quote }}{{ else }}"1"{{ end }}
+- name: ELASTIC_OVERVIEW_REPLICAS
+  value: {{ if .Values.rest.elasticsearch }}{{ .Values.rest.elasticsearch.overview.replicas | default 1 | quote }}{{ else }}"1"{{ end }}
+- name: ELASTIC_VIEW_SHARDS
+  value: {{ if .Values.rest.elasticsearch }}{{ .Values.rest.elasticsearch.view.shards | default 1 | quote }}{{ else }}"1"{{ end }}
+- name: ELASTIC_VIEW_REPLICAS
+  value: {{ if .Values.rest.elasticsearch }}{{ .Values.rest.elasticsearch.view.replicas | default 1 | quote }}{{ else }}"1"{{ end }}
+- name: ELASTIC_ANALYTIC_SHARDS
+  value: {{ if .Values.rest.elasticsearch }}{{ .Values.rest.elasticsearch.analytic.shards | default 1 | quote }}{{ else }}"1"{{ end }}
+- name: ELASTIC_ANALYTIC_REPLICAS
+  value: {{ if .Values.rest.elasticsearch }}{{ .Values.rest.elasticsearch.analytic.replicas | default 1 | quote }}{{ else }}"1"{{ end }}
 {{- end -}}

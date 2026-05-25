@@ -39,6 +39,11 @@ const TuiListBaseRoot = styled('div')(({ theme }) => ({
       display: 'flex',
       backgroundColor: emphasize(theme.palette.background.default, 0.04)
     }
+  },
+
+  '.elementDisabled': {
+    color: theme.palette.text.disabled,
+    cursor: 'default'
   }
 }));
 

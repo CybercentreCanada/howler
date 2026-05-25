@@ -178,8 +178,15 @@ const Markdown: FC<MarkdownProps> = ({ md, components = {}, disableLinks = false
             return <a {...props}>{children}</a>;
           }
 
-          const parsed = new URL(props.href);
-          if (parsed.hostname.endsWith('gc.ca')) {
+          let parsed: URL | null = null;
+          try {
+            parsed = new URL(props.href);
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.warn('error when parsing URL:', e);
+          }
+
+          if (parsed?.hostname.endsWith('gc.ca')) {
             return <a {...props}>{children}</a>;
           }
 
