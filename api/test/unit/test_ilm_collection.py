@@ -249,6 +249,9 @@ class TestEnsureCollectionILM:
             mock_datastore.client.indices.create.assert_not_called()
             mock_datastore.client.indices.clone.assert_not_called()
 
+        # index_name should be updated to the latest ILM index
+        assert col.index_name == f"{col.name}-000002"
+
     def test_existing_ilm_indices_without_alias_creates_alias(self, mock_datastore, ilm_global):
         """When ILM indices exist but alias is missing, creates the alias."""
         ilm_index = ILMIndexConfig(warm="30d")
@@ -273,6 +276,9 @@ class TestEnsureCollectionILM:
             assert put_alias_kwargs["index"] == f"{col.name}-000002"
             assert put_alias_kwargs["name"] == col.name
             assert put_alias_kwargs["is_write_index"] is True
+
+        # index_name should be updated to the latest ILM index
+        assert col.index_name == f"{col.name}-000002"
 
     def test_legacy_hot_index_migration(self, mock_datastore, ilm_global):
         """Legacy _hot index gets cloned to -000001 and alias is swapped."""

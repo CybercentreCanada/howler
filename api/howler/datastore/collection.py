@@ -2524,15 +2524,17 @@ class ESCollection(Generic[ModelType]):
 
         if existing_ilm_indices:
             # ILM already bootstrapped — ensure the alias exists
+            latest = sorted(existing_ilm_indices)[-1]
             if not self.with_retries(self.datastore.client.indices.exists_alias, name=self.name):
                 # Find the latest index to set as write index
-                latest = sorted(existing_ilm_indices)[-1]
                 self.with_retries(
                     self.datastore.client.indices.put_alias,
                     index=latest,
                     name=self.name,
                     is_write_index=True,
                 )
+
+            self.index_name = latest
             logger.debug("ILM collection %s already bootstrapped", self.name.upper())
         elif self.with_retries(self.datastore.client.indices.exists, index=self.index_name):
             # Legacy _hot index exists — migrate to ILM

@@ -12,11 +12,11 @@ import time
 
 import pytest
 
-log = logging.getLogger(__name__)
-
 from howler.datastore.collection import ESCollection
 from howler.datastore.store import ESStore
 from howler.odm.models.config import ILMIndexConfig
+
+logger = logging.getLogger(__name__)
 
 
 def _random_name():
@@ -46,44 +46,44 @@ def ilm_collection(es_store, request):
     collection: ESCollection = getattr(es_store, name)
 
     def cleanup():
-        log.info("Cleaning up ILM collection %r", name)
+        logger.info("Cleaning up ILM collection %r", name)
         client = es_store.client
 
         # Delete all indices matching the collection name
         try:
             client.indices.delete(index=f"howler-{name}-*", ignore_unavailable=True)
-            log.debug("Deleted indices howler-%s-*", name)
+            logger.debug("Deleted indices howler-%s-*", name)
         except Exception:
-            log.warning("Failed to delete indices howler-%s-*", name, exc_info=True)
+            logger.warning("Failed to delete indices howler-%s-*", name, exc_info=True)
 
         try:
             client.indices.delete(index=f"howler-{name}_hot", ignore_unavailable=True)
-            log.debug("Deleted index howler-%s_hot", name)
+            logger.debug("Deleted index howler-%s_hot", name)
         except Exception:
-            log.warning("Failed to delete index howler-%s_hot", name, exc_info=True)
+            logger.warning("Failed to delete index howler-%s_hot", name, exc_info=True)
 
         # Delete alias if it exists
         try:
             client.indices.delete_alias(index="_all", name=f"howler-{name}")
-            log.debug("Deleted alias howler-%s", name)
+            logger.debug("Deleted alias howler-%s", name)
         except Exception:
-            log.warning("Failed to delete alias howler-%s", name, exc_info=True)
+            logger.warning("Failed to delete alias howler-%s", name, exc_info=True)
 
         # Delete ILM policy
         try:
             client.ilm.delete_lifecycle(name=f"howler-{name}_policy")
-            log.debug("Deleted ILM policy howler-%s_policy", name)
+            logger.debug("Deleted ILM policy howler-%s_policy", name)
         except Exception:
-            log.warning("Failed to delete ILM policy howler-%s_policy", name, exc_info=True)
+            logger.warning("Failed to delete ILM policy howler-%s_policy", name, exc_info=True)
 
         # Delete index template
         try:
             client.indices.delete_index_template(name=f"howler-{name}_template")
-            log.debug("Deleted index template howler-%s_template", name)
+            logger.debug("Deleted index template howler-%s_template", name)
         except Exception:
-            log.warning("Failed to delete index template howler-%s_template", name, exc_info=True)
+            logger.warning("Failed to delete index template howler-%s_template", name, exc_info=True)
 
-        log.info("Cleanup complete for ILM collection %r", name)
+        logger.info("Cleanup complete for ILM collection %r", name)
 
     request.addfinalizer(cleanup)
     return collection
@@ -98,22 +98,22 @@ def non_ilm_collection(es_store, request):
     collection: ESCollection = getattr(es_store, name)
 
     def cleanup():
-        log.info("Cleaning up non-ILM collection %r", name)
+        logger.info("Cleaning up non-ILM collection %r", name)
         client = es_store.client
         # Delete all indices matching the collection name
         try:
             client.indices.delete(index=f"howler-{name}_hot", ignore_unavailable=True)
-            log.debug("Deleted index howler-%s_hot", name)
+            logger.debug("Deleted index howler-%s_hot", name)
         except Exception:
-            log.warning("Failed to delete index howler-%s_hot", name, exc_info=True)
+            logger.warning("Failed to delete index howler-%s_hot", name, exc_info=True)
 
         try:
             client.indices.delete_alias(index="_all", name=f"howler-{name}")
-            log.debug("Deleted alias howler-%s", name)
+            logger.debug("Deleted alias howler-%s", name)
         except Exception:
-            log.warning("Failed to delete alias howler-%s", name, exc_info=True)
+            logger.warning("Failed to delete alias howler-%s", name, exc_info=True)
 
-        log.info("Cleanup complete for non-ILM collection %r", name)
+        logger.info("Cleanup complete for non-ILM collection %r", name)
 
     request.addfinalizer(cleanup)
     return collection
@@ -336,30 +336,30 @@ class TestILMLegacyMigration:
         ilm_initial = f"{full_name}-000001"
 
         def cleanup():
-            log.info("Cleaning up migration test collection %r", full_name)
+            logger.info("Cleaning up migration test collection %r", full_name)
             client = es_store.client
             for idx in [hot_index, ilm_initial]:
                 try:
                     client.indices.delete(index=idx, ignore_unavailable=True)
-                    log.debug("Deleted index %s", idx)
+                    logger.debug("Deleted index %s", idx)
                 except Exception:
-                    log.warning("Failed to delete index %s", idx, exc_info=True)
+                    logger.warning("Failed to delete index %s", idx, exc_info=True)
             try:
                 client.indices.delete_alias(index="_all", name=full_name)
-                log.debug("Deleted alias %s", full_name)
+                logger.debug("Deleted alias %s", full_name)
             except Exception:
-                log.warning("Failed to delete alias %s", full_name, exc_info=True)
+                logger.warning("Failed to delete alias %s", full_name, exc_info=True)
             try:
                 client.ilm.delete_lifecycle(name=f"{full_name}_policy")
-                log.debug("Deleted ILM policy %s_policy", full_name)
+                logger.debug("Deleted ILM policy %s_policy", full_name)
             except Exception:
-                log.warning("Failed to delete ILM policy %s_policy", full_name, exc_info=True)
+                logger.warning("Failed to delete ILM policy %s_policy", full_name, exc_info=True)
             try:
                 client.indices.delete_index_template(name=f"{full_name}_template")
-                log.debug("Deleted index template %s_template", full_name)
+                logger.debug("Deleted index template %s_template", full_name)
             except Exception:
-                log.warning("Failed to delete index template %s_template", full_name, exc_info=True)
-            log.info("Cleanup complete for migration test collection %r", full_name)
+                logger.warning("Failed to delete index template %s_template", full_name, exc_info=True)
+            logger.info("Cleanup complete for migration test collection %r", full_name)
 
         request.addfinalizer(cleanup)
 
