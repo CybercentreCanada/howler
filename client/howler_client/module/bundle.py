@@ -1,5 +1,5 @@
 import sys
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from howler_client.common.utils import api_path
 from howler_client.logger import get_logger
@@ -50,7 +50,7 @@ class Bundle(object):
         map: dict[str, list[str]],
         documents: list[dict[str, Any]],
         ignore_extra_values: bool = False,
-    ) -> dict[str, Union[str, list[str], None]]:
+    ) -> dict[str, str | list[str] | None]:
         """Create a bundle using a format similar to the hit.create_from_map function
 
         Args:
@@ -63,7 +63,7 @@ class Bundle(object):
                     Defaults to False.
 
         Returns:
-            list[dict[str, Optional[str]]]: The list of IDs of the created hits
+            list[dict[str, str | None]]: The list of IDs of the created hits
         """
         map = {**map, "bundle": ["howler.is_bundle"]}
         bundle_hit = {**bundle_hit, "bundle": True}
@@ -74,7 +74,7 @@ class Bundle(object):
     def create(
         self: Self,
         bundle_hit: dict[str, Any],
-        data: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = [],
+        data: dict[str, Any] | list[dict[str, Any]] | None = [],
         ignore_extra_values: bool = False,
     ) -> dict[str, Any]:
         """Create a bundle using a format similar to the hit.create function
@@ -107,24 +107,24 @@ class Bundle(object):
 
         return self._connection.post(api_path("hit/bundle"), json={"bundle": bundle_hit, "hits": hit_ids})
 
-    def add(self: Self, bundle_id: str, hit_ids: Union[str, list[str]]):
+    def add(self: Self, bundle_id: str, hit_ids: str | list[str]):
         """Add a list of hits to a bundle by their IDs
 
         Args:
             bundle_id (str): The ID of the bundle we want to add the hits to
-            hit_ids (Union[str, list[str]]): The list of hit IDs to add to the bundle
+            hit_ids (str | list[str]): The list of hit IDs to add to the bundle
         """
         if not isinstance(hit_ids, list):
             hit_ids = [hit_ids]
 
         return self._connection.put(api_path("hit/bundle", bundle_id), json=hit_ids)
 
-    def remove(self: Self, bundle_id: str, hit_ids: Union[str, list[str]]):
+    def remove(self: Self, bundle_id: str, hit_ids: str | list[str]):
         """Remove a list of hits from a bundle by their IDs
 
         Args:
             bundle_id (str): The bundle ID from which to remove the hits
-            hit_ids (Union[str, list[str]]): A list of hit IDs to remove from the bundle
+            hit_ids (str | list[str]): A list of hit IDs to remove from the bundle
         """
         if not isinstance(hit_ids, list):
             hit_ids = [hit_ids]

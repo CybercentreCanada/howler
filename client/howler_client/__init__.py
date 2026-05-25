@@ -26,6 +26,7 @@ def get_client(
     throw_on_bad_request=True,
     throw_on_max_retries=True,
     token=None,
+    authenticate=None,
 ):
     "Initialize a howler client object"
     connection = Connection(
@@ -42,5 +43,6 @@ def get_client(
         throw_on_bad_request,
         throw_on_max_retries,
         token,
+        authenticate,
     )
     return Client(connection)

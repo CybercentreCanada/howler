@@ -1,7 +1,7 @@
 import json
 import sys
 from hashlib import sha256
-from typing import TYPE_CHECKING, Any, Literal, Optional, Union
+from typing import TYPE_CHECKING, Any, Literal
 
 from howler_client.common.dict_utils import flatten
 from howler_client.common.utils import ClientError, api_path
@@ -68,7 +68,7 @@ class Hit(object):
         map: dict[str, list[str]],
         documents: list[dict[str, Any]],
         ignore_extra_values: bool = False,
-    ) -> dict[str, Union[Optional[str], list[str]]]:
+    ) -> dict[str, str | list[str] | None]:
         """Create hits for a given tool using the raw documents and a map of the document fields to howler's fields.
 
         Args:
@@ -79,7 +79,7 @@ class Hit(object):
             ignore_extra_values (bool, optional): Whether to allow extra fields, or raise an error. Defaults to False.
 
         Returns:
-            dict[str, Union[Optional[str], list[str]]]: A list of IDs/Errors in the same order as the original documents
+            dict[str, str | list[str] | None]: A list of IDs/Errors in the same order as the original documents
         """
         data = {"map": map, "hits": documents}
 
@@ -135,13 +135,13 @@ class Hit(object):
 
     def create(  # noqa: C901
         self: Self,
-        data: Union[dict[str, Any], list[dict[str, Any]]],
+        data: dict[str, Any] | list[dict[str, Any]],
         ignore_extra_values: bool = False,
     ):
         """Create one or many hits using the howler schema.
 
         Args:
-            data (Union[dict[str, Any], list[dict[str, Any]]]): The hit or list of hits to create
+            data (dict[str, Any] | list[dict[str, Any]]): The hit or list of hits to create
             ignore_extra_values (bool, optional): Whtether to ignore extra values, or throw an exception.
                 Defaults to False.
 
