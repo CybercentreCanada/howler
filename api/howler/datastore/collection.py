@@ -1121,7 +1121,7 @@ class ESCollection(Generic[ModelType]):
         except elasticsearch.NotFoundError:
             return False
 
-    def delete_by_query(self, query: str, workers=20, sort=None, max_docs=None):
+    def delete_by_query(self, query: str, sort=None, max_docs=None):
         """This function should delete the underlying documents referenced by the query.
         It should return true if the documents were in fact properly deleted.
 
@@ -1130,10 +1130,10 @@ class ESCollection(Generic[ModelType]):
         :return: True is delete successful
         """
         query_obj = {"bool": {"must": {"query_string": {"query": query}}}}
-        success = self.delete_by_search_object(query=query_obj, workers=workers, sort=sort, max_docs=max_docs)
+        success = self.delete_by_search_object(query=query_obj, sort=sort, max_docs=max_docs)
         return success
 
-    def delete_by_search_object(self, query: dict, workers=20, sort=None, max_docs=None):
+    def delete_by_search_object(self, query: dict, sort=None, max_docs=None):
         """Delete the underlying documents matching the query object.
         Returns true if the documents were in fact properly deleted.
 
