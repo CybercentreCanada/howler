@@ -353,6 +353,19 @@ class ViewCleanup(BaseModel):
     )
 
 
+class ActionQueue(BaseModel):
+    """Action queue worker configuration.
+
+    Controls the background worker that buffers action execution requests
+    via a Redis queue, coalescing them into batches to reduce Elasticsearch
+    query load during ingestion spikes.
+    """
+
+    enabled: bool = Field(default=True, description="Enable the action queue worker?")
+    batch_size: int = Field(default=100, description="Max action items per batch.")
+    batch_timeout: int = Field(default=10, description="Seconds to wait before flushing a partial batch.")
+
+
 class System(BaseModel):
     """System-level configuration for Howler.
 
@@ -366,6 +379,8 @@ class System(BaseModel):
     "Retention Configuration"
     view_cleanup: ViewCleanup = ViewCleanup()
     "View Cleanup Configuration"
+    action_queue: ActionQueue = ActionQueue()
+    "Action Queue Worker Configuration"
 
 
 class UI(BaseModel):

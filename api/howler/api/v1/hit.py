@@ -123,7 +123,7 @@ def create_hits(user: User, **kwargs):
 
             datastore().hit.commit()
 
-            action_service.bulk_execute_on_query(f"howler.id:({' OR '.join(odm.howler.id for odm in odms)})", user=user)
+            action_service.enqueue_action_execution([odm.howler.id for odm in odms], trigger="create", user=user)
 
         response_body["warnings"] = warnings
 
@@ -551,11 +551,7 @@ def add_label(id, label_set, user, **kwargs):
 
     datastore().hit.commit()
 
-    action_service.bulk_execute_on_query(
-        f"howler.id:{id}",
-        trigger="add_label",
-        user=user,
-    )
+    action_service.enqueue_action_execution([id], trigger="add_label", user=user)
 
     hit, version = hit_service.get_hit(id, as_odm=False, version=True)
 
@@ -609,11 +605,7 @@ def remove_labels(id, label_set, user, **kwargs):
 
     datastore().hit.commit()
 
-    action_service.bulk_execute_on_query(
-        f"howler.id:{id}",
-        trigger="remove_label",
-        user=user,
-    )
+    action_service.enqueue_action_execution([id], trigger="remove_label", user=user)
 
     hit, version = hit_service.get_hit(id, as_odm=False, version=True)
 
