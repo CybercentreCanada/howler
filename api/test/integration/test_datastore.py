@@ -542,6 +542,52 @@ def _test_stats(c: ESCollection):
         assert v > 0
 
 
+def _test_agg_search(c: ESCollection):
+    """
+    Test submitting arbitrary aggregations with search.
+
+    Apply a bucket agg (terms) and a metrics agg (cardinality)
+    and verify the structure of the result.
+    """
+    terms_agg: dict = {"terms": {"field": "lvl_i"}}
+    cardinality_agg: dict = {"cardinality": {"field": "lvl_i"}}
+    aggs: list = [
+        ("terms_agg_name", terms_agg),
+        ("cardinality_agg_name", cardinality_agg),
+    ]
+
+    result = c.search("id:*", aggregations=aggs)
+
+    assert "aggregations" in result
+    assert result["aggregations"].keys() == {"terms_agg_name", "cardinality_agg_name"}
+    assert result["aggregations"]["terms_agg_name"].keys() == {
+        "doc_count_error_upper_bound",
+        "sum_other_doc_count",
+        "buckets",
+    }
+    assert result["aggregations"]["cardinality_agg_name"].keys() == {"value"}
+
+
+def _test_oversized_agg_search(c: ESCollection):
+    """
+    Test that submitting an aggregation that exceeds the configured size limit emits a warning.
+
+    This test attempts to run a terms aggregation with a size larger than the allowed maximum,
+    and verifies that the appropriate warning is given and the aggregation is ignored.
+    """
+    terms_agg: dict = {"terms": {"field": "lvl_i", "size": 65537}}
+    aggs: list = [("oversized_terms_agg", terms_agg)]
+
+    with pytest.warns(
+        UserWarning,
+        match="Aggregation oversized_terms_agg has a size argument "
+        "higher than the maximum allowed buckets of the cluster",
+    ):
+        result = c.search("id:*", aggregations=aggs)
+
+    assert "aggregations" not in result or "oversized_terms_agg" not in result["aggregations"]
+
+
 TEST_FUNCTIONS = [
     (_test_exists, "exists"),
     (_test_get, "get"),
@@ -561,6 +607,8 @@ TEST_FUNCTIONS = [
     (_test_histogram, "histogram"),
     (_test_facet, "facet"),
     (_test_stats, "stats"),
+    (_test_agg_search, "aggregations"),
+    (_test_oversized_agg_search, "oversized_aggregations"),
 ]
 
 

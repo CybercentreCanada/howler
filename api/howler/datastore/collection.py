@@ -38,7 +38,7 @@ from howler.datastore.support.schemas import (
     default_index,
     default_mapping,
 )
-from howler.datastore.types import SearchResult
+from howler.datastore.types import AggSearchResult, SearchResult
 from howler.odm.base import (
     BANNED_FIELDS,
     IP,
@@ -211,9 +211,11 @@ class ESCollection(Generic[ModelType]):
         "sort": DEFAULT_SORT,
         "df": None,
         "script_fields": [],
+        "aggregations": None,
     }
     IGNORE_ENSURE_COLLECTION: bool = False
     ENSURE_COLLECTION_WARNED: bool = False
+    CUSTOM_AGG_PREFIX: str = "_custom_agg__"
 
     def __init__(self, datastore: ESStore, name, model_class=None, validate=True, max_attempts=10):
         self.replicas = int(
@@ -1119,7 +1121,7 @@ class ESCollection(Generic[ModelType]):
         except elasticsearch.NotFoundError:
             return False
 
-    def delete_by_query(self, query, workers=20, sort=None, max_docs=None):
+    def delete_by_query(self, query: str, sort=None, max_docs=None):
         """This function should delete the underlying documents referenced by the query.
         It should return true if the documents were in fact properly deleted.
 
@@ -1127,7 +1129,18 @@ class ESCollection(Generic[ModelType]):
         :param workers: Number of workers used for deletion if basic currency delete is used
         :return: True is delete successful
         """
-        query = {"bool": {"must": {"query_string": {"query": query}}}}
+        query_obj = {"bool": {"must": {"query_string": {"query": query}}}}
+        success = self.delete_by_search_object(query=query_obj, sort=sort, max_docs=max_docs)
+        return success
+
+    def delete_by_search_object(self, query: dict, sort=None, max_docs=None):
+        """Delete the underlying documents matching the query object.
+        Returns true if the documents were in fact properly deleted.
+
+        :param query: Query object following elasticsearch request structure
+        :param workers: Number of workers used for deletion if basic currency delete is used
+        :return: True is delete successful
+        """
         info = self._delete_async(self.name, query=query, sort=sort_str(parse_sort(sort)), max_docs=max_docs)
         return info.get("deleted", 0) != 0
 
@@ -1503,6 +1516,26 @@ class ESCollection(Generic[ModelType]):
                 },
             }
 
+        # Add any arbitrary aggregations
+        if parsed_values["aggregations"]:
+            query_body.setdefault("aggregations", {})
+            cluster_settings = self.datastore.client.cluster.get_settings(include_defaults=True, flat_settings=True)
+            flattened_settings = {
+                **cluster_settings["defaults"],
+                **cluster_settings["transient"],
+                **cluster_settings["persistent"],
+            }
+            max_buckets = int(flattened_settings["search.max_buckets"])
+            for agg_name, agg_args in parsed_values["aggregations"]:
+                if any("size" in agg_def and agg_def["size"] > max_buckets for agg_def in agg_args.values()):
+                    # verify the size of the agg query doesn't exceed the max
+                    warnings.warn(
+                        f"Aggregation {agg_name} has a size argument higher than the maximum allowed "
+                        f"buckets of the cluster ({max_buckets}). Skipping aggregation."
+                    )
+                    continue
+                query_body["aggregations"][f"{self.CUSTOM_AGG_PREFIX}{agg_name}"] = agg_args
+
         try:
             if deep_paging_id is not None and not deep_paging_id == "*":
                 # Get the next page
@@ -1554,6 +1587,8 @@ class ESCollection(Generic[ModelType]):
         use_archive: bool = False,
         track_total_hits: bool = False,
         script_fields: list[str] = [],
+        *,
+        aggregations: None = None,
     ) -> SearchResult[ModelType]: ...
 
     @overload
@@ -1572,7 +1607,49 @@ class ESCollection(Generic[ModelType]):
         use_archive: bool = False,
         track_total_hits: bool = False,
         script_fields: list[str] = [],
+        *,
+        aggregations: None = None,
     ) -> SearchResult[dict[str, typing.Any]]: ...
+
+    @overload
+    def search(
+        self,
+        query: str | None,
+        as_obj: Literal[True] = True,
+        offset: int = 0,
+        rows: int | None = None,
+        sort: typing.Any = None,
+        fl: str | None = None,
+        timeout: int | None = None,
+        filters: list[str] | str | None = None,
+        access_control: typing.Any = None,
+        deep_paging_id: str | None = None,
+        use_archive: bool = False,
+        track_total_hits: bool = False,
+        script_fields: list[str] = [],
+        *,
+        aggregations: list[tuple[str, dict]],
+    ) -> AggSearchResult[ModelType]: ...
+
+    @overload
+    def search(
+        self,
+        query: str | None,
+        as_obj: Literal[False],
+        offset: int = 0,
+        rows: int | None = None,
+        sort: typing.Any = None,
+        fl: str | None = None,
+        timeout: int | None = None,
+        filters: list[str] | str | None = None,
+        access_control: typing.Any = None,
+        deep_paging_id: str | None = None,
+        use_archive: bool = False,
+        track_total_hits: bool = False,
+        script_fields: list[str] = [],
+        *,
+        aggregations: list[tuple[str, dict]],
+    ) -> AggSearchResult[dict[str, typing.Any]]: ...
 
     def search(
         self,
@@ -1589,6 +1666,8 @@ class ESCollection(Generic[ModelType]):
         use_archive=False,
         track_total_hits=None,
         script_fields=[],
+        *,
+        aggregations=None,
     ):
         """This function should perform a search through the datastore and return a
         search result object that consist on the following::
@@ -1605,6 +1684,14 @@ class ESCollection(Generic[ModelType]):
                     }, ...]
             }
 
+        If aggregations are provided the search result will include an additional field::
+
+            {
+                "aggregations": {       # Dictionary where the keys are the keys of the `aggregations` parameter
+                    "agg_name": {...}   #   and the values are the results of the aggregations
+                }
+            }
+
         :param script_fields: List of name/script tuple of fields to be evaluated at runtime
         :param track_total_hits: Return to total matching document count
         :param use_archive: Query also the archive
@@ -1618,6 +1705,8 @@ class ESCollection(Generic[ModelType]):
         :param timeout: maximum time of execution
         :param filters: additional queries to run on the original query to reduce the scope
         :param access_control: access control parameters to limiti the scope of the query
+        :param aggregations: optional list of arbitrary aggregations to run alongside the query
+            structured the same way as the es rest query aggs field
         :return: a search result object
         """
         if offset is None:
@@ -1660,6 +1749,9 @@ class ESCollection(Generic[ModelType]):
         if script_fields:
             args.append(("script_fields", script_fields))
 
+        if aggregations:
+            args.append(("aggregations", aggregations))
+
         result = self._search(
             args,
             deep_paging_id=deep_paging_id,
@@ -1667,12 +1759,23 @@ class ESCollection(Generic[ModelType]):
             track_total_hits=track_total_hits,
         )
 
-        ret_data: SearchResult = {
+        ret_data: SearchResult | AggSearchResult
+        ret_data = {
             "offset": int(offset),
             "rows": int(rows),
             "total": int(result["hits"]["total"]["value"]),
             "items": [self._format_output(doc, field_list, as_obj=as_obj) for doc in result["hits"]["hits"]],
         }
+
+        if aggregations:
+            ret_data = {
+                **ret_data,
+                "aggregations": {
+                    k[len(self.CUSTOM_AGG_PREFIX) :]: v
+                    for k, v in result.get("aggregations", {}).items()
+                    if k.startswith(self.CUSTOM_AGG_PREFIX)
+                },
+            }
 
         new_deep_paging_id = result.get("_scroll_id", None)
 
