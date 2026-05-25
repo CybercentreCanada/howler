@@ -2,6 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: howler-server-conf
+  namespace: {{ .Release.Namespace }}
 {{- $Global := . }}
 data:
   config.yml: |-
@@ -10,3 +11,11 @@ data:
   classification.yml: |-
     {{- toYaml .Values.classification | nindent 4 }}
 
+  {{- range $name, $config := .Values.plugins }}
+  {{ $name }}.yml: |-
+    {{- toYaml $config | nindent 4 }}
+  {{- end }}
+
+  mappings.yml: |-
+    mapping:
+    {{- toYaml .Values.mappings | nindent 6 }}
