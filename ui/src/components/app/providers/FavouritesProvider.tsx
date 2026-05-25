@@ -34,11 +34,6 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
       return null;
     }
 
-    // The favourite list is fully represented, skip
-    if (favourites.length === (viewElement?.element as AppLeftNavGroup)?.items?.length) {
-      return viewElement;
-    }
-
     const savedViews = await fetchViews(favourites);
 
     const items = sortBy(savedViews, 'title')
