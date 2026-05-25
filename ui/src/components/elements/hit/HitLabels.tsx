@@ -42,6 +42,7 @@ import { LABEL_TYPES } from 'utils/constants';
  * - Providing a drawer UI to add and remove labels
  * - Calling backend APIs to persist label changes
  * - Keeping local UI state in sync with backend updates
+
  */
 
 type LabelState = {

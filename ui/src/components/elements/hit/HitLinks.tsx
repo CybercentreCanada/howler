@@ -68,7 +68,7 @@ const PivotTooltip: FC<{ dossier: Dossier; resolvedUrl: string }> = ({ dossier, 
       </Typography>
       <Box sx={{ mt: 2, wordBreak: 'break-all' }}>
         <Typography variant="caption" display="block">
-          {'URL'}
+          {'URL : '}
         </Typography>
         <Link href={resolvedUrl} target="_blank" rel="noopener noreferrer" underline="hover">
           {resolvedUrl}
