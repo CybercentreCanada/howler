@@ -210,8 +210,11 @@ class HowlerData(odm.Model):
         description="Unique identifier of the assigned user.",
         default=DEFAULT_ASSIGNMENT,
     )
-    assessor: str = odm.Keyword(
-        description="The most recent person to assess a hit",
+    assessor: Optional[str] = odm.Optional(
+        odm.Keyword(
+            description="The most recent person to assess a hit",
+            default=None,
+        )
     )
     bundles: list[str] = odm.List(
         odm.Keyword(

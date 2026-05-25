@@ -586,6 +586,7 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
                         user.get("uname", user.get("username", None)),
                     ),
                     hit_helper.update("howler.status", HitStatus.RESOLVED),
+                    hit_helper.update("howler.assessor", user.get("uname", user.get("username", None))),
                 ],
             )
 
