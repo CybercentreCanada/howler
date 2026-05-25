@@ -217,7 +217,8 @@ def update_dossier(dossier_id: str, dossier_data: dict[str, Any], user: User) ->
     # Ensure no duplicate mapping keys exist within any pivot
     if "pivots" in dossier_data:
         for pivot in dossier_data["pivots"]:
-            if len(pivot["mappings"]) != len(set(mapping["key"] for mapping in pivot["mappings"])):
+            mappings = pivot.get("mappings") or []
+            if len(mappings) != len(set(mapping.get("key") for mapping in mappings)):
                 raise InvalidDataException("One of your pivots has duplicate keys set.")
 
     try:

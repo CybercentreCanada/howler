@@ -312,7 +312,7 @@ const AnalyticDetails = () => {
             <Grid item xs={12} md={3}>
               <Autocomplete
                 options={analytic?.detections ?? []}
-                renderInput={param => <TextField {...param} label="Detection" />}
+                renderInput={param => <TextField {...param} label={t('route.analytics.dropdown.detection')} />}
                 value={filter}
                 onChange={(_, v) => setFilter(v)}
               />
