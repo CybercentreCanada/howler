@@ -30,7 +30,7 @@ export const AppDefaultsPreferencesConfigs: AppPreferenceConfigs = {
 // AppLeftNavConfigs defaults.
 export const AppDefaultsLeftNavConfigs: AppLeftNavConfigs = {
   elements: [],
-  width: 280,
+  width: 240,
   hideNestedIcons: false
 };
 
