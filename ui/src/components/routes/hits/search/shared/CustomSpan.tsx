@@ -17,8 +17,11 @@ const CustomSpan: FC<{}> = () => {
   const endDate = useContextSelector(ParameterContext, ctx => (ctx.endDate ? dayjs(ctx.endDate) : null));
 
   useEffect(() => {
-    if (span?.endsWith('custom') && !startDate) {
-      setCustomSpan(dayjs().subtract(2, 'day').toISOString(), dayjs().subtract(1, 'day').toISOString());
+    if (span?.endsWith('custom') && (!startDate || !endDate)) {
+      const _startDate = startDate ?? dayjs().subtract(2, 'day');
+      const _endDate = endDate ?? dayjs().subtract(1, 'day');
+
+      setCustomSpan(dayjs.min(_startDate, _endDate).toISOString(), dayjs.max(_startDate, _endDate).toISOString());
     }
   }, [endDate, setCustomSpan, span, startDate]);
 
@@ -30,7 +33,7 @@ const CustomSpan: FC<{}> = () => {
           slotProps={{ textField: { size: 'small' } }}
           label={t('date.select.start')}
           value={startDate ? dayjs(startDate) : dayjs().subtract(1, 'days')}
-          maxDate={endDate}
+          maxDateTime={endDate}
           onChange={(newStartDate: dayjs.Dayjs) => setCustomSpan(newStartDate.toISOString(), endDate.toISOString())}
           ampm={false}
           disableFuture
@@ -41,7 +44,7 @@ const CustomSpan: FC<{}> = () => {
           slotProps={{ textField: { size: 'small' } }}
           label={t('date.select.end')}
           value={endDate}
-          minDate={startDate}
+          minDateTime={startDate}
           onChange={(newEndDate: dayjs.Dayjs) => setCustomSpan(startDate.toISOString(), newEndDate.toISOString())}
           ampm={false}
           disableFuture
