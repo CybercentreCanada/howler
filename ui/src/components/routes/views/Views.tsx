@@ -15,12 +15,14 @@ import {
 import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
 import { useAppUser } from 'commons/components/app/hooks';
+import { ModalContext } from 'components/app/providers/ModalProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import { TuiListProvider, type TuiListItemProps } from 'components/elements/addons/lists';
 import { TuiListMethodContext, type TuiListMethodsState } from 'components/elements/addons/lists/TuiListProvider';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
 import ItemManager from 'components/elements/display/ItemManager';
+import ConfirmDeleteModal from 'components/elements/display/modals/ConfirmDeleteModal';
 import { ViewTitle } from 'components/elements/view/ViewTitle';
 import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
@@ -42,6 +44,7 @@ const ViewsBase: FC = () => {
   const { user } = useAppUser<HowlerUser>();
   const navigate = useNavigate();
   const { dispatchApi } = useMyApi();
+  const { showModal } = useContext(ModalContext);
 
   const fetchViews = useContextSelector(ViewContext, ctx => ctx.fetchViews);
   const addFavourite = useContextSelector(ViewContext, ctx => ctx.addFavourite);
@@ -140,15 +143,20 @@ const ViewsBase: FC = () => {
   );
 
   const onDelete = useCallback(
-    async (event: React.MouseEvent<HTMLButtonElement, MouseEvent>, id: string) => {
+    (event: React.MouseEvent<HTMLButtonElement, MouseEvent>, id: string) => {
       event.preventDefault();
       event.stopPropagation();
 
-      await removeView(id);
-
-      onSearch();
+      showModal(
+        <ConfirmDeleteModal
+          onConfirm={async () => {
+            await removeView(id);
+            onSearch();
+          }}
+        />
+      );
     },
-    [onSearch, removeView]
+    [onSearch, removeView, showModal]
   );
 
   const onFavourite = useCallback(

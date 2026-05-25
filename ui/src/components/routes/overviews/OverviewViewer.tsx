@@ -23,7 +23,9 @@ import { Check, DarkMode, Delete, SsidChart, WbSunny } from '@mui/icons-material
 import { useApp } from 'commons/components/app/hooks';
 import AppInfoPanel from 'commons/components/display/AppInfoPanel';
 import useThemeBuilder from 'commons/components/utils/hooks/useThemeBuilder';
+import { ModalContext } from 'components/app/providers/ModalProvider';
 import { OverviewContext } from 'components/app/providers/OverviewProvider';
+import ConfirmDeleteModal from 'components/elements/display/modals/ConfirmDeleteModal';
 import HitOverview from 'components/elements/hit/HitOverview';
 import useMyApi from 'components/hooks/useMyApi';
 import useMyTheme from 'components/hooks/useMyTheme';
@@ -44,6 +46,7 @@ const OverviewViewer = () => {
   const [params, setParams] = useSearchParams();
   const { getOverviews } = useContext(OverviewContext);
   const { dispatchApi } = useMyApi();
+  const { showModal } = useContext(ModalContext);
 
   const [overviewList, setOverviewList] = useState<Overview[]>([]);
   const [selectedOverview, setSelectedOverview] = useState<Overview>(null);
@@ -272,7 +275,11 @@ const OverviewViewer = () => {
             </Tooltip>
           )}
           {selectedOverview && (
-            <Button variant="outlined" startIcon={<Delete />} onClick={onDelete}>
+            <Button
+              variant="outlined"
+              startIcon={<Delete />}
+              onClick={() => showModal(<ConfirmDeleteModal onConfirm={onDelete} />)}
+            >
               {t('button.delete')}
             </Button>
           )}

@@ -2,9 +2,11 @@ import { Topic } from '@mui/icons-material';
 import { Typography } from '@mui/material';
 import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
+import { ModalContext } from 'components/app/providers/ModalProvider';
 import { TuiListProvider, type TuiListItem, type TuiListItemProps } from 'components/elements/addons/lists';
 import { TuiListMethodContext, type TuiListMethodsState } from 'components/elements/addons/lists/TuiListProvider';
 import ItemManager from 'components/elements/display/ItemManager';
+import ConfirmDeleteModal from 'components/elements/display/modals/ConfirmDeleteModal';
 import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useMySnackbar from 'components/hooks/useMySnackbar';
@@ -20,6 +22,7 @@ const DossiersBase: FC = () => {
   const navigate = useNavigate();
   const { dispatchApi } = useMyApi();
   const { showSuccessMessage } = useMySnackbar();
+  const { showModal } = useContext(ModalContext);
   const [searchParams, setSearchParams] = useSearchParams();
   const { load } = useContext<TuiListMethodsState<Dossier>>(TuiListMethodContext);
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
@@ -89,20 +92,26 @@ const DossiersBase: FC = () => {
   );
 
   const onDelete = useCallback(
-    async (e: React.MouseEvent<HTMLButtonElement, MouseEvent>, id: string) => {
+    (e: React.MouseEvent<HTMLButtonElement, MouseEvent>, id: string) => {
       e.preventDefault();
       e.stopPropagation();
 
-      try {
-        await dispatchApi(api.dossier.del(id), { throwError: false, showError: true });
-        await onSearch();
-        showSuccessMessage(t('route.dossiers.manager.delete.success'));
-      } catch (_err) {
-        // eslint-disable-next-line no-console
-        console.warn(_err);
-      }
+      showModal(
+        <ConfirmDeleteModal
+          onConfirm={async () => {
+            try {
+              await dispatchApi(api.dossier.del(id), { throwError: false, showError: true });
+              await onSearch();
+              showSuccessMessage(t('route.dossiers.manager.delete.success'));
+            } catch (_err) {
+              // eslint-disable-next-line no-console
+              console.warn(_err);
+            }
+          }}
+        />
+      );
     },
-    [dispatchApi, onSearch, showSuccessMessage, t]
+    [dispatchApi, onSearch, showModal, showSuccessMessage, t]
   );
 
   useEffect(() => {

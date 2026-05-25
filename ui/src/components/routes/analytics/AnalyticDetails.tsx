@@ -22,9 +22,11 @@ import api from 'api';
 import { useAppUser } from 'commons/components/app/hooks';
 import PageCenter from 'commons/components/pages/PageCenter';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
+import { ModalContext } from 'components/app/providers/ModalProvider';
 import { UserListContext } from 'components/app/providers/UserListProvider';
 import UserList from 'components/elements/UserList';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
+import ConfirmDeleteModal from 'components/elements/display/modals/ConfirmDeleteModal';
 import useMyApi from 'components/hooks/useMyApi';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import type { HowlerUser } from 'models/entities/HowlerUser';
@@ -51,6 +53,7 @@ const AnalyticDetails = () => {
   const { dispatchApi } = useMyApi();
   const theme = useTheme();
   const { showSuccessMessage } = useMySnackbar();
+  const { showModal } = useContext(ModalContext);
   const { users, searchUsers } = useContext(UserListContext);
   const { config } = useContext(ApiConfigContext);
 
@@ -169,7 +172,7 @@ const AnalyticDetails = () => {
                   <SsidChart fontSize="large" color="info" />
                 </Tooltip>
                 {(analytic?.owner === user.username || user.roles.includes('admin')) && (
-                  <IconButton onClick={onDelete}>
+                  <IconButton onClick={() => showModal(<ConfirmDeleteModal onConfirm={onDelete} />)}>
                     <Delete />
                   </IconButton>
                 )}

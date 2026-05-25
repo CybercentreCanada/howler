@@ -14,11 +14,13 @@ import {
 import api from 'api';
 import PageCenter from 'commons/components/pages/PageCenter';
 import TemplateEditor from 'components/routes/templates/TemplateEditor';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Check, Delete, SsidChart } from '@mui/icons-material';
 import AppInfoPanel from 'commons/components/display/AppInfoPanel';
+import { ModalContext } from 'components/app/providers/ModalProvider';
+import ConfirmDeleteModal from 'components/elements/display/modals/ConfirmDeleteModal';
 import { DEFAULT_FIELDS } from 'components/elements/hit/HitOutline';
 import useMyApi from 'components/hooks/useMyApi';
 import isEqual from 'lodash-es/isEqual';
@@ -33,6 +35,7 @@ const TemplateViewer = () => {
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
   const { dispatchApi } = useMyApi();
+  const { showModal } = useContext(ModalContext);
 
   const [templateList, setTemplateList] = useState<Template[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<Template>(null);
@@ -318,7 +321,11 @@ const TemplateViewer = () => {
             </ToggleButton>
           </ToggleButtonGroup>
           {selectedTemplate && (
-            <Button variant="outlined" startIcon={<Delete />} onClick={onDelete}>
+            <Button
+              variant="outlined"
+              startIcon={<Delete />}
+              onClick={() => showModal(<ConfirmDeleteModal onConfirm={onDelete} />)}
+            >
               {t('button.delete')}
             </Button>
           )}
