@@ -56,6 +56,7 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/fr-ca';
 import duration from 'dayjs/plugin/duration';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
+import minMax from 'dayjs/plugin/minMax';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import utc from 'dayjs/plugin/utc';
 import i18n from 'i18n';
@@ -90,6 +91,7 @@ dayjs.extend(utc);
 dayjs.extend(duration);
 dayjs.extend(relativeTime);
 dayjs.extend(localizedFormat);
+dayjs.extend(minMax);
 dayjs.locale(i18n.language === 'en' ? 'en' : 'fr-ca');
 
 loader.config({ monaco });

@@ -12,17 +12,16 @@ const CustomSpan: FC<{}> = () => {
   const { t } = useTranslation();
 
   const span = useContextSelector(ParameterContext, ctx => ctx.span);
-  const defaultStartDate = dayjs().subtract(2, 'days');
-  const defaultEndDate = dayjs().subtract(1, 'day');
-  const startDate = useContextSelector(ParameterContext, ctx =>
-    ctx.startDate ? dayjs(ctx.startDate) : defaultStartDate
-  );
   const setCustomSpan = useContextSelector(ParameterContext, ctx => ctx.setCustomSpan);
-  const endDate = useContextSelector(ParameterContext, ctx => (ctx.endDate ? dayjs(ctx.endDate) : defaultEndDate));
+  const startDate = useContextSelector(ParameterContext, ctx => (ctx.startDate ? dayjs(ctx.startDate) : null));
+  const endDate = useContextSelector(ParameterContext, ctx => (ctx.endDate ? dayjs(ctx.endDate) : null));
 
   useEffect(() => {
-    if (span?.endsWith('custom')) {
-      setCustomSpan(startDate.toISOString(), endDate.toISOString());
+    if (span?.endsWith('custom') && (!startDate || !endDate)) {
+      const _startDate = startDate ?? dayjs().subtract(2, 'day');
+      const _endDate = endDate ?? dayjs().subtract(1, 'day');
+
+      setCustomSpan(dayjs.min(_startDate, _endDate).toISOString(), dayjs.max(_startDate, _endDate).toISOString());
     }
   }, [endDate, setCustomSpan, span, startDate]);
 
@@ -34,7 +33,7 @@ const CustomSpan: FC<{}> = () => {
           slotProps={{ textField: { size: 'small' } }}
           label={t('date.select.start')}
           value={startDate ? dayjs(startDate) : dayjs().subtract(1, 'days')}
-          maxDate={endDate}
+          maxDateTime={endDate}
           onChange={(newStartDate: dayjs.Dayjs) => setCustomSpan(newStartDate.toISOString(), endDate.toISOString())}
           ampm={false}
           disableFuture
@@ -45,7 +44,7 @@ const CustomSpan: FC<{}> = () => {
           slotProps={{ textField: { size: 'small' } }}
           label={t('date.select.end')}
           value={endDate}
-          minDate={startDate}
+          minDateTime={startDate}
           onChange={(newEndDate: dayjs.Dayjs) => setCustomSpan(startDate.toISOString(), newEndDate.toISOString())}
           ampm={false}
           disableFuture
