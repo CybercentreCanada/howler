@@ -17,7 +17,7 @@ import type { HowlerSearchResponse } from 'api/search';
 import { useAppUser } from 'commons/components/app/hooks';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
-import { TuiListProvider, type TuiListItem, type TuiListItemProps } from 'components/elements/addons/lists';
+import { TuiListProvider, type TuiListItemProps } from 'components/elements/addons/lists';
 import { TuiListMethodContext } from 'components/elements/addons/lists/TuiListProvider';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
 import ItemManager from 'components/elements/display/ItemManager';
@@ -98,12 +98,20 @@ const ActionSearch: FC = () => {
     [offset, searchParams, setSearchParams]
   );
 
-  const onDeleteAction = useCallback(
-    async (item: TuiListItem<Action>) => {
-      await deleteAction(item.item.action_id);
-      onSearch();
+  const onDelete = useCallback(
+    (e: MouseEvent, actionId: string) => {
+      e.preventDefault();
+      e.stopPropagation();
+      showModal(
+        <ConfirmDeleteModal
+          onConfirm={async () => {
+            await deleteAction(actionId);
+            onSearch();
+          }}
+        />
+      );
     },
-    [deleteAction, onSearch]
+    [deleteAction, onSearch, showModal]
   );
 
   // Effect to initialize list of users.
@@ -177,14 +185,7 @@ const ActionSearch: FC = () => {
                 )}
                 <FlexOne />
                 {((item.item.owner_id === user.username && editRoles) || user.roles?.includes('admin')) && (
-                  <IconButton
-                    size="small"
-                    onClick={(e: MouseEvent) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      showModal(<ConfirmDeleteModal onConfirm={() => onDeleteAction(item)} />);
-                    }}
-                  >
+                  <IconButton size="small" onClick={e => onDelete(e, item.item.action_id)}>
                     <Delete />
                   </IconButton>
                 )}
@@ -208,7 +209,7 @@ const ActionSearch: FC = () => {
         </Card>
       );
     },
-    [editRoles, navigate, onDeleteAction, showModal, t, user.roles, user.username]
+    [editRoles, navigate, onDelete, t, user.roles, user.username]
   );
 
   return (

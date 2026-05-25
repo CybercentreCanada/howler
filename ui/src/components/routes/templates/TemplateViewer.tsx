@@ -163,34 +163,41 @@ const TemplateViewer = () => {
     return { ..._hit };
   }, [analytic]);
 
-  const onDelete = useCallback(async () => {
-    await dispatchApi(api.template.del(selectedTemplate.template_id), {
-      logError: false,
-      showError: true,
-      throwError: false
-    });
-    setSessionTemplateList(l =>
-      l.filter(
-        v =>
-          v.analytic != selectedTemplate.analytic ||
-          v.detection != selectedTemplate.detection ||
-          v.type != selectedTemplate.type
-      )
-    );
-    setTemplateList(l =>
-      l.filter(
-        v =>
-          v.analytic != selectedTemplate.analytic ||
-          v.detection != selectedTemplate.detection ||
-          v.type != selectedTemplate.type
-      )
+  const onDelete = useCallback(() => {
+    showModal(
+      <ConfirmDeleteModal
+        onConfirm={async () => {
+          await dispatchApi(api.template.del(selectedTemplate.template_id), {
+            logError: false,
+            showError: true,
+            throwError: false
+          });
+          setSessionTemplateList(l =>
+            l.filter(
+              v =>
+                v.analytic != selectedTemplate.analytic ||
+                v.detection != selectedTemplate.detection ||
+                v.type != selectedTemplate.type
+            )
+          );
+          setTemplateList(l =>
+            l.filter(
+              v =>
+                v.analytic != selectedTemplate.analytic ||
+                v.detection != selectedTemplate.detection ||
+                v.type != selectedTemplate.type
+            )
+          );
+        }}
+      />
     );
   }, [
     dispatchApi,
     selectedTemplate?.analytic,
     selectedTemplate?.detection,
     selectedTemplate?.template_id,
-    selectedTemplate?.type
+    selectedTemplate?.type,
+    showModal
   ]);
 
   const onSave = useCallback(async () => {
@@ -321,11 +328,7 @@ const TemplateViewer = () => {
             </ToggleButton>
           </ToggleButtonGroup>
           {selectedTemplate && (
-            <Button
-              variant="outlined"
-              startIcon={<Delete />}
-              onClick={() => showModal(<ConfirmDeleteModal onConfirm={onDelete} />)}
-            >
+            <Button variant="outlined" startIcon={<Delete />} onClick={onDelete}>
               {t('button.delete')}
             </Button>
           )}

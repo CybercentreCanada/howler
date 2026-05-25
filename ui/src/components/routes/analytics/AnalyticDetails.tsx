@@ -96,12 +96,18 @@ const AnalyticDetails = () => {
     [analytic?.analytic_id, dispatchApi]
   );
 
-  const onDelete = useCallback(async () => {
-    await dispatchApi(api.analytic.del(analytic?.analytic_id));
+  const onDelete = useCallback(() => {
+    showModal(
+      <ConfirmDeleteModal
+        onConfirm={async () => {
+          await dispatchApi(api.analytic.del(analytic?.analytic_id));
 
-    showSuccessMessage(t('route.analytics.deleted'));
-    navigate('/analytics');
-  }, [analytic?.analytic_id, dispatchApi, navigate, showSuccessMessage, t]);
+          showSuccessMessage(t('route.analytics.deleted'));
+          navigate('/analytics');
+        }}
+      />
+    );
+  }, [analytic?.analytic_id, dispatchApi, navigate, showModal, showSuccessMessage, t]);
 
   const onEdit = useCallback(async () => {
     if (editingInterval) {
@@ -172,7 +178,7 @@ const AnalyticDetails = () => {
                   <SsidChart fontSize="large" color="info" />
                 </Tooltip>
                 {(analytic?.owner === user.username || user.roles.includes('admin')) && (
-                  <IconButton onClick={() => showModal(<ConfirmDeleteModal onConfirm={onDelete} />)}>
+                  <IconButton onClick={onDelete}>
                     <Delete />
                   </IconButton>
                 )}

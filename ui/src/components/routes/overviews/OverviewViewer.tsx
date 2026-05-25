@@ -178,15 +178,21 @@ const OverviewViewer = () => {
     });
   }, [analytic, detection, params, setParams]);
 
-  const onDelete = useCallback(async () => {
-    await dispatchApi(api.overview.del(selectedOverview.overview_id), {
-      logError: false,
-      showError: true,
-      throwError: false
-    });
-    setSelectedOverview(null);
-    setContent('');
-  }, [dispatchApi, selectedOverview?.overview_id]);
+  const onDelete = useCallback(() => {
+    showModal(
+      <ConfirmDeleteModal
+        onConfirm={async () => {
+          await dispatchApi(api.overview.del(selectedOverview.overview_id), {
+            logError: false,
+            showError: true,
+            throwError: false
+          });
+          setSelectedOverview(null);
+          setContent('');
+        }}
+      />
+    );
+  }, [dispatchApi, selectedOverview?.overview_id, showModal]);
 
   const onSave = useCallback(async () => {
     if (analytic && detection) {
@@ -275,11 +281,7 @@ const OverviewViewer = () => {
             </Tooltip>
           )}
           {selectedOverview && (
-            <Button
-              variant="outlined"
-              startIcon={<Delete />}
-              onClick={() => showModal(<ConfirmDeleteModal onConfirm={onDelete} />)}
-            >
+            <Button variant="outlined" startIcon={<Delete />} onClick={onDelete}>
               {t('button.delete')}
             </Button>
           )}
