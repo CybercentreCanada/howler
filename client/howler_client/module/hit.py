@@ -69,7 +69,7 @@ class Hit(object):
         map: dict[str, list[str]],
         documents: list[dict[str, Any]],
         ignore_extra_values: bool = False,
-    ) -> dict[str, str | list[str] | None]:
+    ) -> list[dict[str, str | list[str] | None]]:
         """Create hits for a given tool using the raw documents and a map of the document fields to howler's fields.
 
         Args:
@@ -80,7 +80,8 @@ class Hit(object):
             ignore_extra_values (bool, optional): Whether to allow extra fields, or raise an error. Defaults to False.
 
         Returns:
-            dict[str, str | list[str] | None]: A list of IDs/Errors in the same order as the original documents
+            list[dict[str, str | list[str] | None]]: One entry per document, each with keys ``id``, ``error``,
+                and ``warn``.
 
         .. deprecated::
             Use the regular create() function instead, mapping the record before ingestion.

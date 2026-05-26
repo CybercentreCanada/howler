@@ -187,24 +187,24 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
     # If there are any errors...
     if any([obj["error"] for obj in out]):
         return bad_request(out, warnings=warnings, err="No valid hits were provided")
-    else:
-        for odm in odms:
-            if bundle_hit is not None:
-                bundle_hit.howler.hits.append(odm.howler.id)
-                bundle_hit.howler.bundle_size += 1
-                odm.howler.bundles.append(bundle_hit.howler.id)
 
-            hit_service.create_hit(odm.howler.id, odm, user=user.uname)
+    for odm in odms:
+        if bundle_hit is not None:
+            bundle_hit.howler.hits.append(odm.howler.id)
+            bundle_hit.howler.bundle_size += 1
+            odm.howler.bundles.append(bundle_hit.howler.id)
 
-            analytic_service.save_from_hit(odm, user)
+        hit_service.create_hit(odm.howler.id, odm, user=user.uname)
 
-        if bundle_hit:
-            hit_service.create_hit(bundle_hit.howler.id, bundle_hit, user=user.uname)
+        analytic_service.save_from_hit(odm, user)
 
-            analytic_service.save_from_hit(bundle_hit, user)
+    if bundle_hit:
+        hit_service.create_hit(bundle_hit.howler.id, bundle_hit, user=user.uname)
 
-        datastore().hit.commit()
+        analytic_service.save_from_hit(bundle_hit, user)
 
-        action_service.bulk_execute_on_query(f"howler.id:({' OR '.join(entry['id'] for entry in out)})", user=user)
+    datastore().hit.commit()
 
-        return created(out, warnings=warnings)
+    action_service.bulk_execute_on_query(f"howler.id:({' OR '.join(entry['id'] for entry in out)})", user=user)
+
+    return created(out, warnings=warnings)

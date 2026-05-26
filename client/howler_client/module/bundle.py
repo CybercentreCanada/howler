@@ -50,7 +50,7 @@ class Bundle(object):
         map: dict[str, list[str]],
         documents: list[dict[str, Any]],
         ignore_extra_values: bool = False,
-    ) -> dict[str, str | list[str] | None]:
+    ) -> list[dict[str, str | list[str] | None]]:
         """Create a bundle using a format similar to the hit.create_from_map function
 
         Args:
@@ -74,9 +74,9 @@ class Bundle(object):
     def create(
         self: Self,
         bundle_hit: dict[str, Any],
-        data: dict[str, Any] | list[dict[str, Any]] | None = [],
+        data: dict[str, Any] | list[dict[str, Any]] | None = None,
         ignore_extra_values: bool = False,
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | None:
         """Create a bundle using a format similar to the hit.create function
 
         Args:
