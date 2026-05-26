@@ -2383,17 +2383,21 @@ class ESCollection(Generic[ModelType]):
         }
 
         if self.ilm_config and self.ilm_config.warm:
+            warm_actions: dict[str, Any] = {}
+            if self.ilm_config.warm_forcemerge_segments is not None:
+                warm_actions["forcemerge"] = {"max_num_segments": self.ilm_config.warm_forcemerge_segments}
             phases["warm"] = {
                 "min_age": self.ilm_config.warm,
-                "actions": {
-                    "forcemerge": {"max_num_segments": 1},
-                },
+                "actions": warm_actions,
             }
 
         if self.ilm_config and self.ilm_config.cold:
+            cold_actions: dict[str, Any] = {}
+            if self.ilm_config.cold_forcemerge_segments is not None:
+                cold_actions["forcemerge"] = {"max_num_segments": self.ilm_config.cold_forcemerge_segments}
             phases["cold"] = {
                 "min_age": self.ilm_config.cold,
-                "actions": {},
+                "actions": cold_actions,
             }
 
         policy = {"phases": phases}
@@ -2648,30 +2652,70 @@ class ESCollection(Generic[ModelType]):
                 settings=write_block_settings,
             )
 
-            # Clone the _hot index to the new ILM initial index
-            self._safe_index_copy(self.datastore.client.indices.clone, self.index_name, ilm_initial_index)
+            # Everything after write-block must be wrapped in try/except to ensure
+            # we unblock writes if migration fails — otherwise ingestion is stuck.
+            try:
+                # Clone the _hot index to the new ILM initial index
+                self._safe_index_copy(self.datastore.client.indices.clone, self.index_name, ilm_initial_index)
 
-            # Apply ILM settings to the new index
-            self.with_retries(
-                self.datastore.client.indices.put_settings,
-                index=ilm_initial_index,
-                settings={
-                    "index.lifecycle.name": f"{self.name}_policy",
-                    "index.lifecycle.rollover_alias": self.name,
-                    "index.blocks.write": None,
-                },
-            )
+                # Apply ILM settings to the new index
+                self.with_retries(
+                    self.datastore.client.indices.put_settings,
+                    index=ilm_initial_index,
+                    settings={
+                        "index.lifecycle.name": f"{self.name}_policy",
+                        "index.lifecycle.rollover_alias": self.name,
+                        "index.blocks.write": None,
+                    },
+                )
 
-            # Swap alias: remove old _hot, add new ILM index as write index
-            actions = [
-                {"add": {"index": ilm_initial_index, "alias": self.name, "is_write_index": True}},
-            ]
+                # Swap alias: remove old _hot, add new ILM index as write index
+                actions = [
+                    {"add": {"index": ilm_initial_index, "alias": self.name, "is_write_index": True}},
+                ]
 
-            # Remove old alias if it points to _hot
-            if self.with_retries(self.datastore.client.indices.exists_alias, index=self.index_name, name=self.name):
-                actions.append({"remove": {"index": self.index_name, "alias": self.name}})
+                # Remove old alias if it points to _hot
+                if self.with_retries(self.datastore.client.indices.exists_alias, index=self.index_name, name=self.name):
+                    actions.append({"remove": {"index": self.index_name, "alias": self.name}})
 
-            self.with_retries(self.datastore.client.indices.update_aliases, actions=actions)
+                self.with_retries(self.datastore.client.indices.update_aliases, actions=actions)
+
+            except Exception:
+                # Migration failed — rollback to restore ingestion to the old index
+                logger.exception(
+                    "Migration of %s to ILM failed. Rolling back write-block on %s.",
+                    self.name.upper(),
+                    self.index_name,
+                )
+
+                # Unblock writes on the old index so ingestion can resume
+                try:
+                    self.with_retries(
+                        self.datastore.client.indices.put_settings,
+                        index=self.index_name,
+                        settings=write_unblock_settings,
+                    )
+                    logger.info("Rollback successful: writes restored to %s", self.index_name)
+                except Exception as rollback_err:
+                    logger.critical(
+                        "CRITICAL: Rollback failed for %s — index may be write-blocked! Error: %s",
+                        self.index_name,
+                        str(rollback_err),
+                    )
+
+                # Clean up partially-created ILM index if it exists
+                try:
+                    if self.with_retries(self.datastore.client.indices.exists, index=ilm_initial_index):
+                        self.with_retries(self.datastore.client.indices.delete, index=ilm_initial_index)
+                        logger.info("Cleaned up partial ILM index %s", ilm_initial_index)
+                except Exception:
+                    logger.warning(
+                        "Could not clean up partial ILM index %s — manual cleanup may be needed",
+                        ilm_initial_index,
+                    )
+
+                # Re-raise the original exception so startup fails clearly
+                raise
 
             # Unblock writes on the old index (it stays around until manually removed)
             self.with_retries(

@@ -13,7 +13,9 @@ class TestILMIndexConfig:
     def test_defaults(self):
         cfg = ILMIndexConfig()
         assert cfg.warm is None
+        assert cfg.warm_forcemerge_segments == 3  # Default for warm
         assert cfg.cold is None
+        assert cfg.cold_forcemerge_segments == 1  # Default for cold
 
     def test_warm_only(self):
         cfg = ILMIndexConfig(warm="30d")
@@ -29,6 +31,16 @@ class TestILMIndexConfig:
         cfg = ILMIndexConfig(warm="14d", cold="60d")
         assert cfg.warm == "14d"
         assert cfg.cold == "60d"
+
+    def test_custom_forcemerge_segments(self):
+        cfg = ILMIndexConfig(warm="30d", warm_forcemerge_segments=3, cold="90d", cold_forcemerge_segments=1)
+        assert cfg.warm_forcemerge_segments == 3
+        assert cfg.cold_forcemerge_segments == 1
+
+    def test_skip_forcemerge_with_none(self):
+        cfg = ILMIndexConfig(warm="30d", warm_forcemerge_segments=None, cold="90d", cold_forcemerge_segments=None)
+        assert cfg.warm_forcemerge_segments is None
+        assert cfg.cold_forcemerge_segments is None
 
 
 class TestILMConfig:
