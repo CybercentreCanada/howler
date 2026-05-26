@@ -1,5 +1,6 @@
 import json
 import sys
+import warnings
 from hashlib import sha256
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -80,7 +81,15 @@ class Hit(object):
 
         Returns:
             dict[str, str | list[str] | None]: A list of IDs/Errors in the same order as the original documents
+
+        .. deprecated::
+            Use the regular create() function instead, mapping the record before ingestion.
         """
+        warnings.warn(
+            "create_from_map is deprecated and will be removed in a future version.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         data = {"map": map, "hits": documents}
 
         try:
@@ -178,22 +187,20 @@ class Hit(object):
 
             final_hit_list.append(hit)
 
-        search_result = self._search.grouped.hit(
+        hashes = [hit["howler.hash"] for hit in final_hit_list]
+        existing_hashes: dict[str, int] = self._search.facet.hit(
             "howler.hash",
-            limit=1,
-            filters=[f"howler.hash:{' '.join(list_hit['howler.hash'] for list_hit in final_hit_list)}"],
-        )["items"]
+            query=f"howler.hash:({' OR '.join(hashes)})",
+            rows=len(hashes),
+        )
 
-        for hit in final_hit_list:
-            for match in search_result:
-                if hit["howler.hash"] == match["value"]:
-                    matched_hit = match["items"][0]
-
-                    logger.warning(
-                        f"Hit with hash {hit['howler.hash']} already exists in the DB at "
-                        f"id {matched_hit['howler']['id']}, reusing"
-                    )
-                    final_hit_list.remove(hit)
+        for hit in list(final_hit_list):
+            if hit["howler.hash"] in existing_hashes:
+                logger.warning(
+                    "Hit with hash %s already exists in the DB, reusing",
+                    hit["howler.hash"],
+                )
+                final_hit_list.remove(hit)
 
         if len(final_hit_list) < 1:
             logger.info("No hits to submit.")
@@ -211,9 +218,6 @@ class Hit(object):
 
         for invalid_hit in result["invalid"]:
             logger.error(invalid_hit["error"])
-
-        for entry in search_result:
-            result["valid"].append(entry["items"][0])
 
         return result
 

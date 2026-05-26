@@ -59,6 +59,9 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
             {'id': None, 'error': "Error message"},
         ]
     }
+
+    .. deprecated::
+        Use POST /api/v1/hit/ directly with pre-mapped hit data instead.
     """
     data = request.json
     if not isinstance(data, dict):
@@ -74,7 +77,10 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
 
     if not isinstance(hits, list):
         return bad_request(err="Invalid: 'hits' field is missing or invalid.")
-    warnings = []
+    warnings = [
+        "This endpoint is deprecated and will be removed in a future version. "
+        "Use POST /api/v1/hit/ directly with pre-mapped hit data instead."
+    ]
     # Validate field_map targets
     hit_fields = Hit.flat_fields()
     for targets in field_map.values():
@@ -157,6 +163,27 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
             logger.warning(e)
 
             out.append({"id": None, "error": str(e)})
+
+    # Deduplicate by hash: skip hits whose hash already exists in the datastore
+    if odms:
+        hashes = [odm.howler.hash for odm in odms]
+        existing_hashes: dict[str, int] = datastore().hit.facet(
+            "howler.hash",
+            query=f"howler.hash:({' OR '.join(hashes)})",
+            rows=len(hashes),
+        )
+
+        deduplicated_odms = []
+        for odm in odms:
+            if odm.howler.hash in existing_hashes:
+                logger.warning("Hit with hash %s already exists in the DB, skipping", odm.howler.hash)
+                warnings.append(f"Hit with hash {odm.howler.hash} already exists in the DB and was skipped.")
+                out[:] = [entry for entry in out if entry["id"] != odm.howler.id]
+            else:
+                deduplicated_odms.append(odm)
+
+        odms = deduplicated_odms
+
     # If there are any errors...
     if any([obj["error"] for obj in out]):
         return bad_request(out, warnings=warnings, err="No valid hits were provided")
