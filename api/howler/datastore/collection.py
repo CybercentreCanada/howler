@@ -1056,7 +1056,7 @@ class ESCollection(Generic[ModelType]):
             return self.normalize(data, as_obj=as_obj), version
         return self.normalize(data, as_obj=as_obj)
 
-    def save(self, key, data, version=None):
+    def save(self, key, data, version=None, refresh=None):
         """Save to document to the datastore using the key as its document id.
 
         The document data will be normalized before being saved in the datastore.
@@ -1099,6 +1099,7 @@ class ESCollection(Generic[ModelType]):
                 if_seq_no=seq_no,
                 if_primary_term=primary_term,
                 raise_conflicts=True,
+                refresh=refresh,
             )
         except elasticsearch.BadRequestError as e:
             raise NonRecoverableError(
@@ -1108,7 +1109,7 @@ class ESCollection(Generic[ModelType]):
 
         return True
 
-    def delete(self, key):
+    def delete(self, key, refresh=None):
         """This function should delete the underlying document referenced by the key.
         It should return true if the document was in fact properly deleted.
 
@@ -1116,7 +1117,7 @@ class ESCollection(Generic[ModelType]):
         :return: True is delete successful
         """
         try:
-            info = self.with_retries(self.datastore.client.delete, id=key, index=self.name)
+            info = self.with_retries(self.datastore.client.delete, id=key, index=self.name, refresh=refresh)
             return info["result"] == "deleted"
         except elasticsearch.NotFoundError:
             return False
