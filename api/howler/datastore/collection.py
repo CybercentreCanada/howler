@@ -2368,7 +2368,12 @@ class ESCollection(Generic[ModelType]):
         and optional cold phases. No delete phase — retention is handled by
         the retention cronjob.
 
-        :param ilm_config: The global ILMConfig with rollover settings.
+        The ``ilm_config`` parameter (global :class:`ILMConfig`) is used **only**
+        for the hot phase rollover settings (``rollover_max_age`` and
+        ``rollover_max_size``). Warm and cold phase configuration is sourced
+        exclusively from ``self.ilm_config`` (the per-index :class:`ILMIndexConfig`).
+
+        :param ilm_config: The global ILMConfig with rollover settings (hot phase only).
         """
         phases: dict[str, Any] = {
             "hot": {
