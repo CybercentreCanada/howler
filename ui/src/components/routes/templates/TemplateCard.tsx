@@ -1,11 +1,19 @@
-import { Language, Lock, Person } from '@mui/icons-material';
-import { Card, Divider, Stack, Tooltip, Typography } from '@mui/material';
+import { Language, Lock, Person, ReportProblem } from '@mui/icons-material';
+import { Button, Card, Divider, Stack, Tooltip, Typography } from '@mui/material';
+import { ModalContext } from 'components/app/providers/ModalProvider';
+import ConfirmDeleteModal from 'components/elements/display/modals/ConfirmDeleteModal';
 import type { Template } from 'models/entities/generated/Template';
-import type { FC } from 'react';
+import { useContext, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 
-const TemplateCard: FC<{ template: Template; className?: string }> = ({ template, className }) => {
+const TemplateCard: FC<{
+  template: Template;
+  onRemove?: (templateId: string) => void;
+  error?: boolean;
+  className?: string;
+}> = ({ template, onRemove, error, className }) => {
   const { t } = useTranslation();
+  const { showModal } = useContext(ModalContext);
 
   return (
     <Card key={template.template_id} variant="outlined" sx={{ p: 1, mb: 1 }} className={className}>
@@ -30,6 +38,30 @@ const TemplateCard: FC<{ template: Template; className?: string }> = ({ template
             </Typography>
           ))}
         </Stack>
+        {error && (
+          <Stack direction="row" justifyContent="end" width="100%">
+            <Stack>
+              <Tooltip title={t('route.templates.manager.error.action')}>
+                <Button
+                  startIcon={<ReportProblem />}
+                  color="warning"
+                  onClick={() =>
+                    showModal(
+                      <ConfirmDeleteModal
+                        onConfirm={() => onRemove?.(template.template_id)}
+                        title={t('route.templates.manager.error.modal.title')}
+                        description={t('route.templates.manager.error.modal.description')}
+                        preferDelete
+                      />
+                    )
+                  }
+                >
+                  {t('route.templates.manager.error.message')}
+                </Button>
+              </Tooltip>
+            </Stack>
+          </Stack>
+        )}
       </Stack>
     </Card>
   );

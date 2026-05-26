@@ -178,6 +178,6 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
 
         datastore().hit.commit()
 
-        action_service.bulk_execute_on_query(f"howler.id:({' OR '.join(entry['id'] for entry in out)})", user=user)
+        action_service.enqueue_action_execution([entry["id"] for entry in out], trigger="create", user=user)
 
         return created(out, warnings=warnings)

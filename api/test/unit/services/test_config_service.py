@@ -29,3 +29,23 @@ def test_config_service_config_on_oauth():
 
         assert result["configuration"]["auth"]["max_apikey_duration_amount"] <= 10
         assert result["configuration"]["auth"]["max_apikey_duration_unit"] <= "seconds"
+
+
+def test_config_service_apps_empty_when_eureka_disabled():
+    config.discovery.enabled = False
+
+    jwt_service.decode = MagicMock(return_value={"exp": time.timestamp()})
+
+    request = MagicMock()
+    request.headers = {"Authorization": "Bearer ."}
+
+    with mock.patch("howler.services.config_service.request", request):
+        from howler.services import config_service
+
+        result = config_service.get_configuration(
+            user=cast(User, None), discovery_url="https://discover.example.com/eureka/apps"
+        )
+
+        assert result["configuration"]["ui"]["apps"] == []
+
+    config.discovery.enabled = True

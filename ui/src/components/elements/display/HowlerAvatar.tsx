@@ -16,6 +16,9 @@ const HowlerAvatar: FC<HowlerAvatarProps> = ({ userId, ...avatarProps }) => {
   const theme = useTheme();
   const [props, setProps] = useState<{ sx?: SxProps<Theme>; children?: ReactNode | ReactNode[]; src?: string }>();
 
+  const displayId =
+    userId && userId.toLowerCase() !== 'unassigned' ? userId : t('app.drawer.hit.assignment.unassigned.name');
+
   const stringAvatar = useCallback(
     (name: string) => {
       return {
@@ -50,9 +53,9 @@ const HowlerAvatar: FC<HowlerAvatarProps> = ({ userId, ...avatarProps }) => {
 
   if (userId) {
     return (
-      <Tooltip title={userId}>
+      <Tooltip title={displayId}>
         <Avatar
-          aria-label={userId}
+          aria-label={displayId}
           {...avatarProps}
           {...props}
           sx={{ ...(avatarProps?.sx || {}), ...(props?.sx || {}) } as SxProps<Theme>}
