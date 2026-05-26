@@ -1,8 +1,10 @@
 /// <reference types="vitest" />
 import type { AppLeftNavElement, AppLeftNavGroup, AppLeftNavItem } from 'commons/components/app/AppConfigs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import AppMenuBuilder from './menuUtils';
 
 // Avoid pulling in react-pluggable (and its transitive React deps) by mocking the store module.
+// vi.mock is hoisted by Vitest before any imports, so the mock is applied even though this call appears below the imports.
 vi.mock('plugins/store', () => ({
   MainMenuInsertOperation: {
     Insert: 'INSERT',
@@ -10,9 +12,6 @@ vi.mock('plugins/store', () => ({
     InsertBefore: 'BEFORE'
   }
 }));
-
-// Import after the mock is in place.
-import AppMenuBuilder from './menuUtils';
 
 // ---------------------------------------------------------------------------
 // Helpers
