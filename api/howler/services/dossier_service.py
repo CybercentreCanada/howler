@@ -293,7 +293,7 @@ def get_matching_dossiers(
     return matching_dossiers
 
 
-# region Priviledge
+# region privilege
 
 
 def change_privilege(
