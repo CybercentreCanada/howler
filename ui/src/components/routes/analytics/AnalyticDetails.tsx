@@ -26,7 +26,6 @@ import { ModalContext } from 'components/app/providers/ModalProvider';
 import { UserListContext } from 'components/app/providers/UserListProvider';
 import UserList from 'components/elements/UserList';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
-import ConfirmDeleteModal from 'components/elements/display/modals/ConfirmDeleteModal';
 import useMyApi from 'components/hooks/useMyApi';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import type { HowlerUser } from 'models/entities/HowlerUser';
@@ -53,7 +52,7 @@ const AnalyticDetails = () => {
   const { dispatchApi } = useMyApi();
   const theme = useTheme();
   const { showSuccessMessage } = useMySnackbar();
-  const { showModal } = useContext(ModalContext);
+  const { withConfirmDeleteModal } = useContext(ModalContext);
   const { users, searchUsers } = useContext(UserListContext);
   const { config } = useContext(ApiConfigContext);
 
@@ -97,17 +96,13 @@ const AnalyticDetails = () => {
   );
 
   const onDelete = useCallback(() => {
-    showModal(
-      <ConfirmDeleteModal
-        onConfirm={async () => {
-          await dispatchApi(api.analytic.del(analytic?.analytic_id));
+    withConfirmDeleteModal(async () => {
+      await dispatchApi(api.analytic.del(analytic?.analytic_id));
 
-          showSuccessMessage(t('route.analytics.deleted'));
-          navigate('/analytics');
-        }}
-      />
-    );
-  }, [analytic?.analytic_id, dispatchApi, navigate, showModal, showSuccessMessage, t]);
+      showSuccessMessage(t('route.analytics.deleted'));
+      navigate('/analytics');
+    });
+  }, [analytic?.analytic_id, dispatchApi, navigate, withConfirmDeleteModal, showSuccessMessage, t]);
 
   const onEdit = useCallback(async () => {
     if (editingInterval) {

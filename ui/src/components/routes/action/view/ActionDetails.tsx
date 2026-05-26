@@ -16,7 +16,6 @@ import { ModalContext } from 'components/app/providers/ModalProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import Phrase from 'components/elements/addons/search/phrase/Phrase';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
-import ConfirmDeleteModal from 'components/elements/display/modals/ConfirmDeleteModal';
 import useMyApi from 'components/hooks/useMyApi';
 import OperationEntry from 'components/routes/action/shared/OperationEntry';
 import type { ActionOperation } from 'models/ActionTypes';
@@ -45,7 +44,7 @@ const ActionDetails = () => {
   const [operations, setOperations] = useState<ActionOperation[]>([]);
   const [action, setAction] = useState<Action>();
 
-  const { showModal } = useContext(ModalContext);
+  const { withConfirmDeleteModal } = useContext(ModalContext);
 
   const onTriggerChange: ChangeEventHandler<HTMLInputElement> = useCallback(
     async e => {
@@ -125,7 +124,7 @@ const ActionDetails = () => {
               size="small"
               variant="outlined"
               color="error"
-              onClick={() => showModal(<ConfirmDeleteModal onConfirm={() => deleteAction(action?.action_id)} />)}
+              onClick={() => withConfirmDeleteModal(() => deleteAction(action?.action_id))}
             >
               {t('button.delete')}
             </Button>

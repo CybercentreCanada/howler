@@ -21,7 +21,6 @@ import { TuiListProvider, type TuiListItemProps } from 'components/elements/addo
 import { TuiListMethodContext } from 'components/elements/addons/lists/TuiListProvider';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
 import ItemManager from 'components/elements/display/ItemManager';
-import ConfirmDeleteModal from 'components/elements/display/modals/ConfirmDeleteModal';
 import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import type { HowlerUser } from 'models/entities/HowlerUser';
@@ -39,7 +38,7 @@ const ActionSearch: FC = () => {
   const { user } = useAppUser<HowlerUser>();
   const { dispatchApi } = useMyApi();
   const { load } = useContext(TuiListMethodContext);
-  const { showModal } = useContext(ModalContext);
+  const { withConfirmDeleteModal } = useContext(ModalContext);
   const [searchParams, setSearchParams] = useSearchParams();
   const { deleteAction } = useMyActionFunctions();
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
@@ -102,16 +101,12 @@ const ActionSearch: FC = () => {
     (e: MouseEvent, actionId: string) => {
       e.preventDefault();
       e.stopPropagation();
-      showModal(
-        <ConfirmDeleteModal
-          onConfirm={async () => {
-            await deleteAction(actionId);
-            onSearch();
-          }}
-        />
-      );
+      withConfirmDeleteModal(async () => {
+        await deleteAction(actionId);
+        onSearch();
+      });
     },
-    [deleteAction, onSearch, showModal]
+    [deleteAction, onSearch, withConfirmDeleteModal]
   );
 
   // Effect to initialize list of users.

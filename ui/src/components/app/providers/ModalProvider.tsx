@@ -1,3 +1,4 @@
+import ConfirmDeleteModal from 'components/elements/display/modals/ConfirmDeleteModal';
 import type { FC, PropsWithChildren, ReactNode } from 'react';
 import { createContext, useCallback, useEffect, useState } from 'react';
 
@@ -13,6 +14,7 @@ const defaultOptions: ModalOptions = {
 
 interface ModalContextType {
   showModal: (children: ReactNode, options?: ModalOptions) => () => void;
+  withConfirmDeleteModal: (onConfirm: () => void, preferDelete?: boolean, preferCancel?: boolean) => () => void;
   content?: ReactNode;
   setContent: (children: ReactNode) => void;
   options?: ModalOptions;
@@ -49,8 +51,19 @@ const ModalProvider: FC<PropsWithChildren> = ({ children }) => {
 
   const close = useCallback(() => setContent(null), []);
 
+  const withConfirmDeleteModal = useCallback(
+    (onConfirm: () => void, preferDelete?: boolean, preferCancel?: boolean) => {
+      return showModal(
+        <ConfirmDeleteModal onConfirm={onConfirm} preferDelete={preferDelete} preferCancel={preferCancel} />
+      );
+    },
+    [showModal]
+  );
+
   return (
-    <ModalContext.Provider value={{ showModal, content, setContent, options, close }}>{children}</ModalContext.Provider>
+    <ModalContext.Provider value={{ showModal, withConfirmDeleteModal, content, setContent, options, close }}>
+      {children}
+    </ModalContext.Provider>
   );
 };
 

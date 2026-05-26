@@ -20,7 +20,6 @@ import { useTranslation } from 'react-i18next';
 import { Check, Delete, SsidChart } from '@mui/icons-material';
 import AppInfoPanel from 'commons/components/display/AppInfoPanel';
 import { ModalContext } from 'components/app/providers/ModalProvider';
-import ConfirmDeleteModal from 'components/elements/display/modals/ConfirmDeleteModal';
 import { DEFAULT_FIELDS } from 'components/elements/hit/HitOutline';
 import useMyApi from 'components/hooks/useMyApi';
 import isEqual from 'lodash-es/isEqual';
@@ -35,7 +34,7 @@ const TemplateViewer = () => {
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
   const { dispatchApi } = useMyApi();
-  const { showModal } = useContext(ModalContext);
+  const { withConfirmDeleteModal } = useContext(ModalContext);
 
   const [templateList, setTemplateList] = useState<Template[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<Template>(null);
@@ -164,40 +163,36 @@ const TemplateViewer = () => {
   }, [analytic]);
 
   const onDelete = useCallback(() => {
-    showModal(
-      <ConfirmDeleteModal
-        onConfirm={async () => {
-          await dispatchApi(api.template.del(selectedTemplate.template_id), {
-            logError: false,
-            showError: true,
-            throwError: false
-          });
-          setSessionTemplateList(l =>
-            l.filter(
-              v =>
-                v.analytic != selectedTemplate.analytic ||
-                v.detection != selectedTemplate.detection ||
-                v.type != selectedTemplate.type
-            )
-          );
-          setTemplateList(l =>
-            l.filter(
-              v =>
-                v.analytic != selectedTemplate.analytic ||
-                v.detection != selectedTemplate.detection ||
-                v.type != selectedTemplate.type
-            )
-          );
-        }}
-      />
-    );
+    withConfirmDeleteModal(async () => {
+      await dispatchApi(api.template.del(selectedTemplate.template_id), {
+        logError: false,
+        showError: true,
+        throwError: false
+      });
+      setSessionTemplateList(l =>
+        l.filter(
+          v =>
+            v.analytic != selectedTemplate.analytic ||
+            v.detection != selectedTemplate.detection ||
+            v.type != selectedTemplate.type
+        )
+      );
+      setTemplateList(l =>
+        l.filter(
+          v =>
+            v.analytic != selectedTemplate.analytic ||
+            v.detection != selectedTemplate.detection ||
+            v.type != selectedTemplate.type
+        )
+      );
+    });
   }, [
     dispatchApi,
     selectedTemplate?.analytic,
     selectedTemplate?.detection,
     selectedTemplate?.template_id,
     selectedTemplate?.type,
-    showModal
+    withConfirmDeleteModal
   ]);
 
   const onSave = useCallback(async () => {

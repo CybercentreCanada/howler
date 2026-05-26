@@ -6,7 +6,6 @@ import { ModalContext } from 'components/app/providers/ModalProvider';
 import { TuiListProvider, type TuiListItem, type TuiListItemProps } from 'components/elements/addons/lists';
 import { TuiListMethodContext, type TuiListMethodsState } from 'components/elements/addons/lists/TuiListProvider';
 import ItemManager from 'components/elements/display/ItemManager';
-import ConfirmDeleteModal from 'components/elements/display/modals/ConfirmDeleteModal';
 import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useMySnackbar from 'components/hooks/useMySnackbar';
@@ -22,7 +21,7 @@ const OverviewsBase: FC = () => {
   const navigate = useNavigate();
   const { dispatchApi } = useMyApi();
   const { showSuccessMessage } = useMySnackbar();
-  const { showModal } = useContext(ModalContext);
+  const { withConfirmDeleteModal } = useContext(ModalContext);
   const [searchParams, setSearchParams] = useSearchParams();
   const { load } = useContext<TuiListMethodsState<Overview>>(TuiListMethodContext);
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
@@ -96,22 +95,18 @@ const OverviewsBase: FC = () => {
       e.preventDefault();
       e.stopPropagation();
 
-      showModal(
-        <ConfirmDeleteModal
-          onConfirm={async () => {
-            try {
-              await dispatchApi(api.overview.del(id), { throwError: false, showError: true });
-              await onSearch();
-              showSuccessMessage(t('route.overviews.manager.delete.success'));
-            } catch (_err) {
-              // eslint-disable-next-line no-console
-              console.warn(_err);
-            }
-          }}
-        />
-      );
+      withConfirmDeleteModal(async () => {
+        try {
+          await dispatchApi(api.overview.del(id), { throwError: false, showError: true });
+          await onSearch();
+          showSuccessMessage(t('route.overviews.manager.delete.success'));
+        } catch (_err) {
+          // eslint-disable-next-line no-console
+          console.warn(_err);
+        }
+      });
     },
-    [dispatchApi, onSearch, showModal, showSuccessMessage, t]
+    [dispatchApi, onSearch, withConfirmDeleteModal, showSuccessMessage, t]
   );
 
   useEffect(() => {

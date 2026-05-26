@@ -25,7 +25,6 @@ import AppInfoPanel from 'commons/components/display/AppInfoPanel';
 import useThemeBuilder from 'commons/components/utils/hooks/useThemeBuilder';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import { OverviewContext } from 'components/app/providers/OverviewProvider';
-import ConfirmDeleteModal from 'components/elements/display/modals/ConfirmDeleteModal';
 import HitOverview from 'components/elements/hit/HitOverview';
 import useMyApi from 'components/hooks/useMyApi';
 import useMyTheme from 'components/hooks/useMyTheme';
@@ -46,7 +45,7 @@ const OverviewViewer = () => {
   const [params, setParams] = useSearchParams();
   const { getOverviews } = useContext(OverviewContext);
   const { dispatchApi } = useMyApi();
-  const { showModal } = useContext(ModalContext);
+  const { withConfirmDeleteModal } = useContext(ModalContext);
 
   const [overviewList, setOverviewList] = useState<Overview[]>([]);
   const [selectedOverview, setSelectedOverview] = useState<Overview>(null);
@@ -179,20 +178,16 @@ const OverviewViewer = () => {
   }, [analytic, detection, params, setParams]);
 
   const onDelete = useCallback(() => {
-    showModal(
-      <ConfirmDeleteModal
-        onConfirm={async () => {
-          await dispatchApi(api.overview.del(selectedOverview.overview_id), {
-            logError: false,
-            showError: true,
-            throwError: false
-          });
-          setSelectedOverview(null);
-          setContent('');
-        }}
-      />
-    );
-  }, [dispatchApi, selectedOverview?.overview_id, showModal]);
+    withConfirmDeleteModal(async () => {
+      await dispatchApi(api.overview.del(selectedOverview.overview_id), {
+        logError: false,
+        showError: true,
+        throwError: false
+      });
+      setSelectedOverview(null);
+      setContent('');
+    });
+  }, [dispatchApi, selectedOverview?.overview_id, withConfirmDeleteModal]);
 
   const onSave = useCallback(async () => {
     if (analytic && detection) {
