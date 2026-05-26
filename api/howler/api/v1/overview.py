@@ -10,6 +10,7 @@ from howler.api import (
     not_found,
     ok,
 )
+from howler.api.v1.utils.string_utils import parse_wait_flag
 from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -119,7 +120,7 @@ def delete_overview(id: str, user: User, **kwargs):
     id => The id of the overview to delete
 
     Optional Arguments:
-    None
+    wait    =>  Flag wait for change to be available for search before returning
 
     Data Block:
     None
@@ -139,7 +140,7 @@ def delete_overview(id: str, user: User, **kwargs):
     if existing_overview.owner != user.uname and "admin" not in user.type:
         return forbidden(err="You cannot delete an overview that is not owned by you.")
 
-    result = storage.overview.delete(id)
+    result = storage.overview.delete(id, refresh=parse_wait_flag())
     if result:
         return no_content()
     else:

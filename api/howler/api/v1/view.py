@@ -4,6 +4,7 @@ from flask import request
 from mergedeep.mergedeep import merge
 
 from howler.api import bad_request, created, forbidden, make_subapi_blueprint, no_content, not_found, ok
+from howler.api.v1.utils.string_utils import parse_wait_flag
 from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -119,7 +120,7 @@ def delete_view(view_id: str, user: User, **kwargs):
     view_id => The id of the view to delete
 
     Optional Arguments:
-    None
+    wait    =>  Flag wait for change to be available for search before returning
 
     Data Block:
     None
@@ -141,7 +142,7 @@ def delete_view(view_id: str, user: User, **kwargs):
     if existing_view.type == "readonly":
         return forbidden(err="You cannot delete built-in views.")
 
-    success = storage.view.delete(view_id)
+    success = storage.view.delete(view_id, refresh=parse_wait_flag())
 
     storage.view.commit()
 

@@ -11,6 +11,7 @@ from howler.api import (
     not_found,
     ok,
 )
+from howler.api.v1.utils.string_utils import parse_wait_flag
 from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -237,7 +238,7 @@ def delete_rule(id: str, user: User, **kwargs):
     id  => id of the analytic whose comments we are deleting
 
     Optional Arguments:
-    None
+    wait    =>  Flag wait for change to be available for search before returning
 
     Data Block:
     [
@@ -260,7 +261,7 @@ def delete_rule(id: str, user: User, **kwargs):
         return forbidden(err="You cannot delete this analytic.")
 
     try:
-        datastore().analytic.delete(analytic.analytic_id)
+        datastore().analytic.delete(analytic.analytic_id, refresh=parse_wait_flag())
     except DataStoreException as e:
         return bad_request(err=str(e))
 

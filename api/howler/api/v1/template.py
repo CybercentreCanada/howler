@@ -10,6 +10,7 @@ from howler.api import (
     not_found,
     ok,
 )
+from howler.api.v1.utils.string_utils import parse_wait_flag
 from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -129,7 +130,7 @@ def delete_template(id: str, user: User, **kwargs):
     id => The id of the template to delete
 
     Optional Arguments:
-    None
+    wait    =>  Flag wait for change to be available for search before returning
 
     Data Block:
     None
@@ -152,7 +153,7 @@ def delete_template(id: str, user: User, **kwargs):
     if existing_template.type == "global" and "admin" not in user.type:
         return forbidden(err="You cannot delete a global template unless you are an administrator.")
 
-    result = storage.template.delete(id)
+    result = storage.template.delete(id, refresh=parse_wait_flag())
     if result:
         return no_content()
     else:

@@ -1,6 +1,7 @@
 from flask import request
 
 from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
+from howler.api.v1.utils.string_utils import parse_wait_flag
 from howler.common.exceptions import ForbiddenException, HowlerException, InvalidDataException, NotFoundException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -154,7 +155,7 @@ def delete_dossier(id: str, user: User, **kwargs):
     id => The id of the dossier to delete
 
     Optional Arguments:
-    None
+    wait    =>  Flag wait for change to be available for search before returning
 
     Data Block:
     None
@@ -173,9 +174,7 @@ def delete_dossier(id: str, user: User, **kwargs):
     if existing_dossier.owner != user.uname and "admin" not in user.type:
         return forbidden(err="You cannot delete a dossier unless you are an administrator, or the owner.")
 
-    success = storage.dossier.delete(id)
-
-    storage.dossier.commit()
+    success = storage.dossier.delete(id, refresh=parse_wait_flag())
 
     return no_content({"success": success})
 

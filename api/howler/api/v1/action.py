@@ -4,6 +4,7 @@ from flask import Response, request
 
 import howler.actions as actions
 from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
+from howler.api.v1.utils.string_utils import parse_wait_flag
 from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
 from howler.common.logging.audit import audit
@@ -176,7 +177,7 @@ def delete_action(id: str, user: User, **kwargs) -> Response:
     id  => The id of the action to delete
 
     Optional Arguments:
-    None
+    wait    =>  Flag wait for change to be available for search before returning
 
     Result Example:
     None
@@ -194,8 +195,7 @@ def delete_action(id: str, user: User, **kwargs) -> Response:
         return forbidden(err="You do not have the permissions necessary to delete this action.")
 
     try:
-        ds.action.delete(id)
-        ds.action.commit()
+        ds.action.delete(id, refresh=parse_wait_flag())
 
         return no_content()
     except HowlerException as e:
