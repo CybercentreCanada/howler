@@ -456,6 +456,18 @@ class Telemetry(BaseModel):
     )
 
 
+class Discovery(BaseModel):
+    """Service discovery configuration for Howler.
+
+    Defines settings for enabling and configuring service discovery,
+    allowing Howler instances to locate and communicate with each other
+    in distributed deployments.
+    """
+
+    url: Optional[str] = Field(default=None, description="Discovery URL")
+    enabled: bool = Field(default=False, description="Should discovery be enabled?")
+
+
 class Core(BaseModel):
     """Core application configuration for Howler.
 
@@ -540,6 +552,8 @@ class Config(BaseSettings):
     logging: Logging = Logging()
     system: System = System()
     ui: UI = UI()
+    discovery: Discovery = Discovery()
+
     mapping: dict[str, str] = Field(description="Mapping of alert keys to clue types", default={})
 
     model_config = SettingsConfigDict(

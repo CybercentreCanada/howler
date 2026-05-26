@@ -17,7 +17,7 @@ def get_apps_list(discovery_url: Optional[str]) -> list[dict[str, str]]:
     Returns:
         list[dict[str, str]]: A list of other apps
     """
-    if not config.core.enable_eureka_discovery or discovery_url is None:
+    if not config.discovery.enabled or discovery_url is None:
         return []
 
     if discovery_url not in DISCO_CACHE:
@@ -28,7 +28,7 @@ def get_apps_list(discovery_url: Optional[str]) -> list[dict[str, str]]:
 
         try:
             resp = requests.get(
-                typing.cast(str, discovery_url or config.ui.discover_url),
+                typing.cast(str, discovery_url or config.discovery.url),
                 headers={"accept": "application/json"},
                 timeout=5,
             )

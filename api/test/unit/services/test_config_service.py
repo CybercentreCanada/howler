@@ -32,7 +32,7 @@ def test_config_service_config_on_oauth():
 
 
 def test_config_service_apps_empty_when_eureka_disabled():
-    config.core.enable_eureka_discovery = False
+    config.discovery.enabled = False
 
     jwt_service.decode = MagicMock(return_value={"exp": time.timestamp()})
 
@@ -48,4 +48,4 @@ def test_config_service_apps_empty_when_eureka_disabled():
 
         assert result["configuration"]["ui"]["apps"] == []
 
-    config.core.enable_eureka_discovery = True
+    config.discovery.enabled = True
