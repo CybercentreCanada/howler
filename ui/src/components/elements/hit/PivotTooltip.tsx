@@ -26,7 +26,7 @@ const PivotTooltip: FC<{ dossier: Dossier; resolvedUrl: string }> = ({ dossier, 
       </Box>
       <Box sx={{ mt: 2 }}>
         <Link href={dossierUrl} target="_blank" rel="noopener noreferrer" underline="hover">
-          {t('pivot.openDossier')}
+          {t('pivot.dossier.open')}
         </Link>
       </Box>
     </Box>

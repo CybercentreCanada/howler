@@ -9,7 +9,7 @@ const NotebookTooltip: FC = () => {
     <Box sx={{ maxWidth: 300 }}>
       <Typography variant="subtitle2">{t('notebook.title')}</Typography>
       <Typography variant="body2" color="text.secondary">
-        {t('notebook.opensPanel')}
+        {t('notebook.opens.panel')}
       </Typography>
     </Box>
   );

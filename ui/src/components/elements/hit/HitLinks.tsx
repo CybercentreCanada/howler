@@ -4,18 +4,17 @@ import type { FC } from 'react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import HitNotebooks from 'components/elements/hit/HitNotebooks';
-import PivotLink from 'components/elements/hit/related/PivotLink';
-import RelatedLink from 'components/elements/hit/related/RelatedLink';
-
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Hit } from 'models/entities/generated/Hit';
 
-import NotebookTooltip from 'utils/notebookToolTip';
-import PivotTooltip from 'utils/pivotTooltips';
-import RelatedLinkTooltip from 'utils/relatedLinkTooltip';
-import resolvePivotUrl from 'utils/resolvePivotUrl';
+import HitNotebooks from 'components/elements/hit/HitNotebooks';
+import NotebookTooltip from 'components/elements/hit/NotebookTooltip';
+import PivotTooltip from 'components/elements/hit/PivotTooltip';
+import RelatedLinkTooltip from 'components/elements/hit/RelatedLinkTooltip';
+import ResolvePivotUrl from 'components/elements/hit/ResolvePivotUrl';
+import PivotLink from 'components/elements/hit/related/PivotLink';
+import RelatedLink from 'components/elements/hit/related/RelatedLink';
 
 interface HitLinksProps {
   hit?: Hit;
@@ -58,7 +57,7 @@ const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
         })}
 
       {displayPivots.map(({ pivot, dossier }) => {
-        const resolvedUrl = resolvePivotUrl(pivot, hit);
+        const resolvedUrl = ResolvePivotUrl(pivot, hit);
         return (
           <Grid item key={`${dossier.dossier_id}-${pivot.value}`}>
             <Tooltip title={<PivotTooltip dossier={dossier} resolvedUrl={resolvedUrl} />}>
