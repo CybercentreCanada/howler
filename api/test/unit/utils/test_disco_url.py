@@ -21,4 +21,4 @@ def test_local_url():
 
     converted_url = get_disco_url(url)
 
-    assert converted_url == config.ui.discover_url
+    assert converted_url == config.discovery.url
