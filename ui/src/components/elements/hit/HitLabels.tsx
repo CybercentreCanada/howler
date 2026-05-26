@@ -243,7 +243,6 @@ const HitLabels: FC<{ hit: Hit; readOnly?: boolean }> = ({ hit, readOnly = false
       </Drawer>
       {labels.map(label => {
         const category = label.category.toLowerCase();
-        // TODO : AG : Found how we do it now we copy this into HitLinks
         return (
           <Tooltip title={t(`hit.label.category.${category}`)} key={label.category + label.label + hit.howler.id}>
             <Chip
