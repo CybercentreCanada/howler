@@ -7,12 +7,14 @@ import {
   convertDateToLucene,
   convertLuceneToDate,
   flattenDeep,
+  formatDate,
   getTimeRange,
   hashCode,
   humanReadableNumber,
   removeEmpty,
   searchObject,
   sortByTimestamp,
+  twitterShort,
   tryParse
 } from './utils';
 
@@ -323,5 +325,61 @@ describe('flattenDeep', () => {
 
   it('handles an empty object', () => {
     expect(flattenDeep({})).toEqual({});
+  });
+});
+
+describe('formatDate', () => {
+  it('returns "?" for a falsy value', () => {
+    expect(formatDate(null as any)).toBe('?');
+  });
+
+  it('returns "?" for an empty string', () => {
+    expect(formatDate('')).toBe('?');
+  });
+
+  it('formats an ISO string as UTC in YYYY/MM/DD HH:mm:ss format', () => {
+    // 2021-06-15T12:30:45Z → UTC → "2021/06/15 12:30:45"
+    expect(formatDate('2021-06-15T12:30:45Z')).toBe('2021/06/15 12:30:45');
+  });
+
+  it('formats a Date object correctly', () => {
+    const date = new Date('2023-01-01T00:00:00Z');
+    expect(formatDate(date)).toBe('2023/01/01 00:00:00');
+  });
+
+  it('formats a unix timestamp (ms) correctly', () => {
+    // 1000ms = 1970-01-01T00:00:01Z
+    expect(formatDate(1000)).toBe('1970/01/01 00:00:01');
+  });
+
+  it('returns "?" for a numeric 0 (treated as falsy by the guard)', () => {
+    expect(formatDate(0 as any)).toBe('?');
+  });
+});
+
+describe('twitterShort', () => {
+  it('returns "?" for a falsy value', () => {
+    expect(twitterShort(null as any)).toBe('?');
+  });
+
+  it('returns "?" for the literal string "?"', () => {
+    expect(twitterShort('?' as any)).toBe('?');
+  });
+
+  it('returns a non-empty relative string for a recent date', () => {
+    const result = twitterShort(new Date().toISOString());
+    expect(result).toBeTruthy();
+    expect(typeof result).toBe('string');
+  });
+
+  it('returns "a few seconds ago" for a date just in the past', () => {
+    const recent = new Date(Date.now() - 2000).toISOString();
+    expect(twitterShort(recent)).toBe('a few seconds ago');
+  });
+
+  it('returns a sensible relative string for a date one year in the past', () => {
+    const oneYearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString();
+    const result = twitterShort(oneYearAgo);
+    expect(result).toMatch(/year/);
   });
 });
