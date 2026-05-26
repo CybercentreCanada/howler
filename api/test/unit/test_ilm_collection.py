@@ -87,12 +87,12 @@ class TestCreateILMPolicy:
         assert policy["phases"]["warm"]["actions"]["forcemerge"]["max_num_segments"] == 3  # default
         assert "cold" in policy["phases"]
         assert policy["phases"]["cold"]["min_age"] == "90d"
-        assert policy["phases"]["cold"]["actions"]["forcemerge"]["max_num_segments"] == 1  # default
+        assert policy["phases"]["cold"]["actions"] == {}  # no forcemerge allowed in cold
         assert "delete" not in policy["phases"]
 
     def test_custom_forcemerge_segments(self, mock_datastore, ilm_global):
-        """Custom forcemerge segment counts in warm and cold phases."""
-        ilm_index = ILMIndexConfig(warm="30d", warm_forcemerge_segments=3, cold="90d", cold_forcemerge_segments=2)
+        """Custom forcemerge segment count in warm phase."""
+        ilm_index = ILMIndexConfig(warm="30d", warm_forcemerge_segments=5, cold="90d")
         col = _make_collection(mock_datastore, ilm_config=ilm_index)
 
         col._create_ilm_policy(ilm_global)
@@ -100,12 +100,12 @@ class TestCreateILMPolicy:
         call_kwargs = mock_datastore.client.ilm.put_lifecycle.call_args
         policy = call_kwargs.kwargs["policy"]
 
-        assert policy["phases"]["warm"]["actions"]["forcemerge"]["max_num_segments"] == 3
-        assert policy["phases"]["cold"]["actions"]["forcemerge"]["max_num_segments"] == 2
+        assert policy["phases"]["warm"]["actions"]["forcemerge"]["max_num_segments"] == 5
+        assert policy["phases"]["cold"]["actions"] == {}  # no forcemerge in cold
 
     def test_skip_forcemerge_with_none(self, mock_datastore, ilm_global):
-        """Setting forcemerge segments to None skips forcemerge action."""
-        ilm_index = ILMIndexConfig(warm="30d", warm_forcemerge_segments=None, cold="90d", cold_forcemerge_segments=None)
+        """Setting forcemerge segments to None skips forcemerge action in warm."""
+        ilm_index = ILMIndexConfig(warm="30d", warm_forcemerge_segments=None, cold="90d")
         col = _make_collection(mock_datastore, ilm_config=ilm_index)
 
         col._create_ilm_policy(ilm_global)
@@ -116,7 +116,7 @@ class TestCreateILMPolicy:
         assert "warm" in policy["phases"]
         assert "forcemerge" not in policy["phases"]["warm"]["actions"]
         assert "cold" in policy["phases"]
-        assert "forcemerge" not in policy["phases"]["cold"]["actions"]
+        assert policy["phases"]["cold"]["actions"] == {}
 
     def test_warm_only_no_cold(self, mock_datastore, ilm_global):
         """Warm phase configured but no cold phase."""

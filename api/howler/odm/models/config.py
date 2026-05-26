@@ -113,10 +113,6 @@ class ILMIndexConfig(BaseModel):
         default=None,
         description="Min age before the index enters the cold phase (e.g. '90d'). None to skip.",
     )
-    cold_forcemerge_segments: Optional[int] = Field(
-        default=1,
-        description="Max segments after forcemerge in cold phase. Use 1 for fully read-only. None to skip forcemerge.",
-    )
 
 
 class ILMConfig(BaseModel):

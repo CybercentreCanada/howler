@@ -2392,12 +2392,11 @@ class ESCollection(Generic[ModelType]):
             }
 
         if self.ilm_config and self.ilm_config.cold:
-            cold_actions: dict[str, Any] = {}
-            if self.ilm_config.cold_forcemerge_segments is not None:
-                cold_actions["forcemerge"] = {"max_num_segments": self.ilm_config.cold_forcemerge_segments}
+            # Note: forcemerge is NOT allowed in the cold phase by ES.
+            # Cold phase is typically just for storage tier allocation.
             phases["cold"] = {
                 "min_age": self.ilm_config.cold,
-                "actions": cold_actions,
+                "actions": {},
             }
 
         policy = {"phases": phases}
