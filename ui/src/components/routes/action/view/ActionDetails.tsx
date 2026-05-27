@@ -12,6 +12,7 @@ import {
 import api from 'api';
 import { useAppUser } from 'commons/components/app/hooks';
 import PageCenter from 'commons/components/pages/PageCenter';
+import { ModalContext } from 'components/app/providers/ModalProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import Phrase from 'components/elements/addons/search/phrase/Phrase';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
@@ -21,7 +22,7 @@ import type { ActionOperation } from 'models/ActionTypes';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Action } from 'models/entities/generated/Action';
 import howlerPluginStore from 'plugins/store';
-import { useCallback, useEffect, useState, type ChangeEventHandler } from 'react';
+import { useCallback, useContext, useEffect, useState, type ChangeEventHandler } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
 import { Link, useParams } from 'react-router-dom';
@@ -42,6 +43,8 @@ const ActionDetails = () => {
 
   const [operations, setOperations] = useState<ActionOperation[]>([]);
   const [action, setAction] = useState<Action>();
+
+  const { withConfirmDeleteModal } = useContext(ModalContext);
 
   const onTriggerChange: ChangeEventHandler<HTMLInputElement> = useCallback(
     async e => {
@@ -121,7 +124,7 @@ const ActionDetails = () => {
               size="small"
               variant="outlined"
               color="error"
-              onClick={() => deleteAction(action?.action_id)}
+              onClick={() => withConfirmDeleteModal(() => deleteAction(action?.action_id))}
             >
               {t('button.delete')}
             </Button>
