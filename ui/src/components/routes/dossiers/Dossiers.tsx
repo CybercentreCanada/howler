@@ -1,8 +1,11 @@
 import { Topic } from '@mui/icons-material';
 import { Typography } from '@mui/material';
 import api from 'api';
-import type { HowlerSearchResponse } from 'api/search';
 import { ModalContext } from 'components/app/providers/ModalProvider';
+import SearchResponseProvider, {
+  SearchResponseContext,
+  type SearchResponseContextType
+} from 'components/app/providers/SearchResponseProvider';
 import { TuiListProvider, type TuiListItem, type TuiListItemProps } from 'components/elements/addons/lists';
 import { TuiListMethodContext, type TuiListMethodsState } from 'components/elements/addons/lists/TuiListProvider';
 import ItemManager from 'components/elements/display/ItemManager';
@@ -26,9 +29,10 @@ const DossiersBase: FC = () => {
   const { load } = useContext<TuiListMethodsState<Dossier>>(TuiListMethodContext);
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
+  const { response, request, remove } = useContext<SearchResponseContextType<Dossier>>(SearchResponseContext);
+
   const [phrase, setPhrase] = useState<string>('');
   const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
-  const [response, setResponse] = useState<HowlerSearchResponse<Dossier>>(null);
   const [hasError, setHasError] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -47,21 +51,19 @@ const DossiersBase: FC = () => {
       // Check for the actual search query
       const query = phrase ? `*:*${phrase}*` : '*:*';
       // Ensure the overview should be visible and/or matches the type we are filtering for
-      setResponse(
-        await dispatchApi(
-          api.search.dossier.post({
-            query,
-            rows: pageCount,
-            offset
-          })
-        )
+      await request(
+        api.search.dossier.post({
+          query,
+          rows: pageCount,
+          offset
+        })
       );
     } catch (e) {
       setHasError(true);
     } finally {
       setLoading(false);
     }
-  }, [phrase, setSearchParams, searchParams, dispatchApi, pageCount, offset]);
+  }, [phrase, setSearchParams, searchParams, request, pageCount, offset]);
 
   // Load the items into list when response changes.
   // This hook should only trigger when the 'response' changes.
@@ -98,7 +100,7 @@ const DossiersBase: FC = () => {
       withConfirmDeleteModal(async () => {
         try {
           await dispatchApi(api.dossier.del(id), { throwError: false, showError: true });
-          await onSearch();
+          remove(id);
           showSuccessMessage(t('route.dossiers.manager.delete.success'));
         } catch (_err) {
           // eslint-disable-next-line no-console
@@ -106,7 +108,7 @@ const DossiersBase: FC = () => {
         }
       });
     },
-    [dispatchApi, onSearch, withConfirmDeleteModal, showSuccessMessage, t]
+    [dispatchApi, remove, withConfirmDeleteModal, showSuccessMessage, t]
   );
 
   useEffect(() => {
@@ -169,7 +171,9 @@ const DossiersBase: FC = () => {
 const Dossiers = () => {
   return (
     <TuiListProvider>
-      <DossiersBase />
+      <SearchResponseProvider id_field="dossier_id">
+        <DossiersBase />
+      </SearchResponseProvider>
     </TuiListProvider>
   );
 };

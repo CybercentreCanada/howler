@@ -1,9 +1,12 @@
 import { Article } from '@mui/icons-material';
 import { Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
 import api from 'api';
-import type { HowlerSearchResponse } from 'api/search';
 import { useAppUser } from 'commons/components/app/hooks';
 import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
+import SearchResponseProvider, {
+  SearchResponseContext,
+  type SearchResponseContextType
+} from 'components/app/providers/SearchResponseProvider';
 import { TuiListProvider, type TuiListItem, type TuiListItemProps } from 'components/elements/addons/lists';
 import { TuiListMethodContext, type TuiListMethodsState } from 'components/elements/addons/lists/TuiListProvider';
 import ItemManager from 'components/elements/display/ItemManager';
@@ -23,14 +26,14 @@ const TemplatesBase: FC = () => {
   const navigate = useNavigate();
   const { dispatchApi } = useMyApi();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { load, remove } = useContext<TuiListMethodsState<Template>>(TuiListMethodContext);
+  const { load } = useContext<TuiListMethodsState<Template>>(TuiListMethodContext);
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
   const { analytics } = useContext(AnalyticContext);
+  const { response, request, remove } = useContext<SearchResponseContextType<Template>>(SearchResponseContext);
 
   const [phrase, setPhrase] = useState<string>('');
   const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
-  const [response, setResponse] = useState<HowlerSearchResponse<Template>>(null);
   const [types, setTypes] = useState<('personal' | 'global')[]>([]);
   const [hasError, setHasError] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -52,21 +55,19 @@ const TemplatesBase: FC = () => {
       // Ensure the template should be visible and/or matches the type we are filtering for
       const typeQuery = `(type:global OR owner:(${user.username} OR none)) AND type:(${types.join(' ') || '*'})`;
 
-      setResponse(
-        await dispatchApi(
-          api.search.template.post({
-            query: `${phraseQuery} AND ${typeQuery}`,
-            rows: pageCount,
-            offset
-          })
-        )
+      request(
+        api.search.template.post({
+          query: `${phraseQuery} AND ${typeQuery}`,
+          rows: pageCount,
+          offset
+        })
       );
     } catch (e) {
       setHasError(true);
     } finally {
       setSearching(false);
     }
-  }, [phrase, setSearchParams, searchParams, user.username, types, dispatchApi, pageCount, offset]);
+  }, [phrase, setSearchParams, searchParams, user.username, types, request, pageCount, offset]);
 
   // Load the items into list when response changes.
   // This hook should only trigger when the 'response' changes.
@@ -205,7 +206,9 @@ const TemplatesBase: FC = () => {
 const Templates = () => {
   return (
     <TuiListProvider>
-      <TemplatesBase />
+      <SearchResponseProvider id_field="template_id">
+        <TemplatesBase />
+      </SearchResponseProvider>
     </TuiListProvider>
   );
 };

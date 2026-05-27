@@ -184,6 +184,7 @@ const OverviewViewer = () => {
         showError: true,
         throwError: false
       });
+      setOverviewList(l => l.filter(v => v.overview_id !== selectedOverview.overview_id));
       setSelectedOverview(null);
       setContent('');
     });

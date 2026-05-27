@@ -13,9 +13,12 @@ import {
   Typography
 } from '@mui/material';
 import api from 'api';
-import type { HowlerSearchResponse } from 'api/search';
 import { useAppUser } from 'commons/components/app/hooks';
 import { ModalContext } from 'components/app/providers/ModalProvider';
+import SearchResponseProvider, {
+  SearchResponseContext,
+  type SearchResponseContextType
+} from 'components/app/providers/SearchResponseProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import { TuiListProvider, type TuiListItemProps } from 'components/elements/addons/lists';
@@ -23,7 +26,6 @@ import { TuiListMethodContext, type TuiListMethodsState } from 'components/eleme
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
 import ItemManager from 'components/elements/display/ItemManager';
 import { ViewTitle } from 'components/elements/view/ViewTitle';
-import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import { isNull, omitBy, size } from 'lodash-es';
 import type { HowlerUser } from 'models/entities/HowlerUser';
@@ -42,7 +44,6 @@ const ViewsBase: FC = () => {
   const { t } = useTranslation();
   const { user } = useAppUser<HowlerUser>();
   const navigate = useNavigate();
-  const { dispatchApi } = useMyApi();
   const { withConfirmDeleteModal } = useContext(ModalContext);
 
   const fetchViews = useContextSelector(ViewContext, ctx => ctx.fetchViews);
@@ -56,10 +57,10 @@ const ViewsBase: FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { load } = useContext<TuiListMethodsState<View>>(TuiListMethodContext);
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
+  const { response, request, remove } = useContext<SearchResponseContextType<View>>(SearchResponseContext);
 
   const [phrase, setPhrase] = useState<string>('');
   const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
-  const [response, setResponse] = useState<HowlerSearchResponse<View>>(null);
   const [type, setType] = useState<'personal' | 'global'>((searchParams.get('type') as 'personal' | 'global') || null);
   const [hasError, setHasError] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -87,14 +88,12 @@ const ViewsBase: FC = () => {
       const favouritesQuery =
         favouritesOnly && user.favourite_views.length > 0 ? ` AND view_id:(${user.favourite_views.join(' OR ')})` : '';
 
-      setResponse(
-        await dispatchApi(
-          api.search.view.post({
-            query: `(${phraseQuery}) AND ${typeQuery}${favouritesQuery}`,
-            rows: pageCount,
-            offset
-          })
-        )
+      await request(
+        api.search.view.post({
+          query: `(${phraseQuery}) AND ${typeQuery}${favouritesQuery}`,
+          rows: pageCount,
+          offset
+        })
       );
     } catch (e) {
       setHasError(true);
@@ -109,7 +108,7 @@ const ViewsBase: FC = () => {
     user.favourite_views,
     type,
     favouritesOnly,
-    dispatchApi,
+    request,
     pageCount,
     offset
   ]);
@@ -148,10 +147,10 @@ const ViewsBase: FC = () => {
 
       withConfirmDeleteModal(async () => {
         await removeView(id);
-        onSearch();
+        remove(id);
       });
     },
-    [onSearch, removeView, withConfirmDeleteModal]
+    [remove, removeView, withConfirmDeleteModal]
   );
 
   const onFavourite = useCallback(
@@ -375,7 +374,9 @@ const ViewsBase: FC = () => {
 const Views = () => {
   return (
     <TuiListProvider>
-      <ViewsBase />
+      <SearchResponseProvider id_field="view_id">
+        <ViewsBase />
+      </SearchResponseProvider>
     </TuiListProvider>
   );
 };

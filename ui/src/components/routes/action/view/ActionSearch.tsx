@@ -13,15 +13,17 @@ import {
   Typography
 } from '@mui/material';
 import api from 'api';
-import type { HowlerSearchResponse } from 'api/search';
 import { useAppUser } from 'commons/components/app/hooks';
 import { ModalContext } from 'components/app/providers/ModalProvider';
+import SearchResponseProvider, {
+  SearchResponseContext,
+  type SearchResponseContextType
+} from 'components/app/providers/SearchResponseProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import { TuiListProvider, type TuiListItemProps } from 'components/elements/addons/lists';
 import { TuiListMethodContext } from 'components/elements/addons/lists/TuiListProvider';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
 import ItemManager from 'components/elements/display/ItemManager';
-import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Action } from 'models/entities/generated/Action';
@@ -36,18 +38,18 @@ const ActionSearch: FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { user } = useAppUser<HowlerUser>();
-  const { dispatchApi } = useMyApi();
   const { load } = useContext(TuiListMethodContext);
   const { withConfirmDeleteModal } = useContext(ModalContext);
   const [searchParams, setSearchParams] = useSearchParams();
   const { deleteAction } = useMyActionFunctions();
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
+  const { response, request, remove } = useContext<SearchResponseContextType<Action>>(SearchResponseContext);
+
   const [searching, setSearching] = useState<boolean>(false);
   const [hasError, setHasError] = useState(false);
   const [phrase, setPhrase] = useState(searchParams.get('phrase') || '');
   const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
-  const [response, setResponse] = useState<HowlerSearchResponse<Action>>(null);
   const [searchModifiers, setSearchModifiers] = useState<string[]>([]);
 
   // Search Handler.
@@ -70,21 +72,25 @@ const ActionSearch: FC = () => {
         query = `(${query}) AND (triggers:(${searchModifiers.join(' OR ')}))`;
       }
 
-      const _response = await dispatchApi(
+      await request(
         api.search.action.post({
           query,
           rows: pageCount,
           offset
         })
       );
-      setResponse(_response);
-      load(_response.items.map(u => ({ id: u.action_id, item: u })));
     } catch (e) {
       setHasError(true);
     } finally {
       setSearching(false);
     }
-  }, [dispatchApi, load, offset, pageCount, phrase, searchModifiers, searchParams, setSearchParams]);
+  }, [phrase, setSearchParams, searchParams, searchModifiers, request, pageCount, offset]);
+
+  useEffect(() => {
+    if (response) {
+      load(response.items.map((item: Action) => ({ id: item.action_id, item: item })));
+    }
+  }, [response, load]);
 
   const onPageChange = useCallback(
     (_offset: number) => {
@@ -103,10 +109,10 @@ const ActionSearch: FC = () => {
       e.stopPropagation();
       withConfirmDeleteModal(async () => {
         await deleteAction(actionId);
-        onSearch();
+        remove(actionId);
       });
     },
-    [deleteAction, onSearch, withConfirmDeleteModal]
+    [deleteAction, remove, withConfirmDeleteModal]
   );
 
   // Effect to initialize list of users.
@@ -249,7 +255,9 @@ const ActionSearch: FC = () => {
 const ActionSearchProvider: FC = () => {
   return (
     <TuiListProvider>
-      <ActionSearch />
+      <SearchResponseProvider id_field="action_id">
+        <ActionSearch />
+      </SearchResponseProvider>
     </TuiListProvider>
   );
 };
