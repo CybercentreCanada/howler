@@ -97,7 +97,7 @@ const AnalyticDetails = () => {
 
   const onDelete = useCallback(() => {
     withConfirmDeleteModal(async () => {
-      await dispatchApi(api.analytic.del(analytic?.analytic_id));
+      await dispatchApi(api.analytic.del(analytic?.analytic_id, true));
 
       showSuccessMessage(t('route.analytics.deleted'));
       navigate('/analytics');
