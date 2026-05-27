@@ -14,8 +14,8 @@ import {
   removeEmpty,
   searchObject,
   sortByTimestamp,
-  twitterShort,
-  tryParse
+  tryParse,
+  twitterShort
 } from './utils';
 
 describe('bytesToSize', () => {

@@ -7,7 +7,10 @@ import { checkArgsAreFilled, getArgsByContext, getOptionsByContext, operationRea
 // Helpers
 // ---------------------------------------------------------------------------
 
-const makeStep = (args: ActionOperationStep['args'], options: ActionOperationStep['options'] = {}): ActionOperationStep =>
+const makeStep = (
+  args: ActionOperationStep['args'],
+  options: ActionOperationStep['options'] = {}
+): ActionOperationStep =>
   ({
     args,
     options,
