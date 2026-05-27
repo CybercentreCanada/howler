@@ -291,8 +291,13 @@ export const hpatch = <R = any>(_uri: string, body: any, headers: HeadersInit = 
  * @param _uri - the uri to fetch.
  * @returns the `api_response` object of the returned {@link HowlerResponse}.
  */
-export const hdelete = <R = any>(_uri: string, body = null, headers: HeadersInit = {}): Promise<R> => {
-  return hfetch(_uri, 'delete', body, undefined, headers);
+export const hdelete = <R = any>(
+  _uri: string,
+  body = null,
+  headers: HeadersInit = {},
+  searchParams?: URLSearchParams
+): Promise<R> => {
+  return hfetch(_uri, 'delete', body, searchParams, headers);
 };
 
 /**

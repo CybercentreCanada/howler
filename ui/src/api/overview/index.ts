@@ -17,6 +17,10 @@ export const put = (id: string, content: string): Promise<Overview> => {
   return hput(uri(id), { content });
 };
 
-export const del = (id: string): Promise<void> => {
-  return hdelete(uri(id));
+export const del = (id: string, wait?: boolean): Promise<void> => {
+  const params = new URLSearchParams();
+  if (wait) {
+    params.append('wait', 'true');
+  }
+  return hdelete(uri(id), undefined, undefined, params);
 };

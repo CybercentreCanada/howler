@@ -20,8 +20,12 @@ export const put = (id: string, editData: EditOptions): Promise<Analytic> => {
   return hput(uri(id), editData);
 };
 
-export const del = (id: string) => {
-  return hdelete(uri(id));
+export const del = (id: string, wait?: boolean): Promise<void> => {
+  const params = new URLSearchParams();
+  if (wait) {
+    params.append('wait', 'true');
+  }
+  return hdelete(uri(id), undefined, undefined, params);
 };
 
 export { comments, favourite, notebooks, owner, rules };

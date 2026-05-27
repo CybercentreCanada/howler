@@ -18,8 +18,12 @@ export const put = (id: string, partialView: Partial<Omit<View, 'view_id'>>): Pr
   return hput(uri(id), partialView);
 };
 
-export const del = (id: string): Promise<void> => {
-  return hdelete(uri(id));
+export const del = (id: string, wait?: boolean): Promise<void> => {
+  const params = new URLSearchParams();
+  if (wait) {
+    params.append('wait', 'true');
+  }
+  return hdelete(uri(id), undefined, undefined, params);
 };
 
 export { favourite };

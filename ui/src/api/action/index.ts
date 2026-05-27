@@ -29,8 +29,12 @@ export const patch = (id: string, data: Action): Promise<Action> => {
   return hpatch(uri(id), data);
 };
 
-export const del = (id: string): Promise<void> => {
-  return hdelete(uri(id));
+export const del = (id: string, wait?: boolean): Promise<void> => {
+  const params = new URLSearchParams();
+  if (wait) {
+    params.append('wait', 'true');
+  }
+  return hdelete(uri(id), undefined, undefined, params);
 };
 
 export { execute, operations };
