@@ -144,8 +144,6 @@ def delete_view(view_id: str, user: User, **kwargs):
 
     success = storage.view.delete(view_id, refresh=parse_wait_flag())
 
-    storage.view.commit()
-
     return no_content({"success": success})
 
 
