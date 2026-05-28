@@ -12,6 +12,7 @@ import { TuiListMethodContext, type TuiListMethodsState } from 'components/eleme
 import ItemManager from 'components/elements/display/ItemManager';
 import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
+import useMySnackbar from 'components/hooks/useMySnackbar';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Template } from 'models/entities/generated/Template';
 import { useCallback, useContext, useEffect, useState, type FC } from 'react';
@@ -28,6 +29,7 @@ const TemplatesBase: FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { load } = useContext<TuiListMethodsState<Template>>(TuiListMethodContext);
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
+  const { showSuccessMessage } = useMySnackbar();
 
   const { analytics } = useContext(AnalyticContext);
   const { response, request, remove } = useContext<SearchResponseContextType<Template>>(SearchResponseContext);
@@ -136,8 +138,9 @@ const TemplatesBase: FC = () => {
       });
 
       remove(templateId);
+      showSuccessMessage(t('route.templates.manager.delete.success'));
     },
-    [dispatchApi, remove]
+    [dispatchApi, remove, showSuccessMessage, t]
   );
 
   const renderer = useCallback(

@@ -27,6 +27,7 @@ import HowlerAvatar from 'components/elements/display/HowlerAvatar';
 import ItemManager from 'components/elements/display/ItemManager';
 import { ViewTitle } from 'components/elements/view/ViewTitle';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
+import useMySnackbar from 'components/hooks/useMySnackbar';
 import { isNull, omitBy, size } from 'lodash-es';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { View } from 'models/entities/generated/View';
@@ -45,6 +46,7 @@ const ViewsBase: FC = () => {
   const { user } = useAppUser<HowlerUser>();
   const navigate = useNavigate();
   const { withConfirmDeleteModal } = useContext(ModalContext);
+  const { showSuccessMessage } = useMySnackbar();
 
   const fetchViews = useContextSelector(ViewContext, ctx => ctx.fetchViews);
   const addFavourite = useContextSelector(ViewContext, ctx => ctx.addFavourite);
@@ -148,9 +150,10 @@ const ViewsBase: FC = () => {
       withConfirmDeleteModal(async () => {
         await removeView(id);
         remove(id);
+        showSuccessMessage(t('route.views.manager.delete.success'));
       });
     },
-    [remove, removeView, withConfirmDeleteModal]
+    [remove, removeView, withConfirmDeleteModal, showSuccessMessage, t]
   );
 
   const onFavourite = useCallback(

@@ -25,6 +25,7 @@ import { TuiListMethodContext } from 'components/elements/addons/lists/TuiListPr
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
 import ItemManager from 'components/elements/display/ItemManager';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
+import useMySnackbar from 'components/hooks/useMySnackbar';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Action } from 'models/entities/generated/Action';
 import { useCallback, useContext, useEffect, useState, type FC, type MouseEvent } from 'react';
@@ -40,6 +41,7 @@ const ActionSearch: FC = () => {
   const { user } = useAppUser<HowlerUser>();
   const { load } = useContext(TuiListMethodContext);
   const { withConfirmDeleteModal } = useContext(ModalContext);
+  const { showSuccessMessage } = useMySnackbar();
   const [searchParams, setSearchParams] = useSearchParams();
   const { deleteAction } = useMyActionFunctions();
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
@@ -110,9 +112,10 @@ const ActionSearch: FC = () => {
       withConfirmDeleteModal(async () => {
         await deleteAction(actionId);
         remove(actionId);
+        showSuccessMessage(t('route.actions.manager.delete.success'));
       });
     },
-    [deleteAction, remove, withConfirmDeleteModal]
+    [deleteAction, remove, withConfirmDeleteModal, showSuccessMessage, t]
   );
 
   // Effect to initialize list of users.
