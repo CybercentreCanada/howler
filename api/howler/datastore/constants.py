@@ -81,6 +81,9 @@ NORMALIZER_MAPPING = {
     HowlerHash: "lowercase_normalizer",
     MD5: "lowercase_normalizer",
     CaseInsensitiveKeyword: "lowercase_normalizer",
+    UUID: "lowercase_normalizer",
+    Keyword: "lowercase_normalizer",
+    Text: "lowercase_normalizer",
 }
 
 # TODO: We might want to use custom analyzers for Classification and Enum and not create special backmapping cases
