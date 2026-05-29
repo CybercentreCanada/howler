@@ -26,6 +26,24 @@ def _flatten_test_data(test_data: tuple[tuple[str, tuple[str]]]):
     return tuple(flattened)
 
 
+def _get_rw_model(model_class):
+    model_obj = random_model_obj(model_class)
+
+    # do not create read only objects
+    if model_class == Analytic:
+        model_obj.rule = "some rule"
+        model_obj.rule_type = "lucene"
+        model_obj.detections = ["Rule"]
+
+    elif model_class == View:
+        model_obj.type = "global"
+
+    if model_obj.get("owner") is not None:
+        model_obj.owner = "admin"
+
+    return model_obj
+
+
 WAIT_SUPPORTING_ENDPOINTS = (
     ("/action/{id}", ("DELETE",)),
     ("/analytic/{id}", ("DELETE",)),
@@ -69,17 +87,8 @@ def entity_ids(entity_names, datastore_connection):
     for entity_name, entity_class in entity_names:
         try:
             c: ESCollection = datastore_connection.get_collection(entity_name)
-            model_obj = random_model_obj(entity_class)
+            model_obj = _get_rw_model(entity_class)
             entity_id = model_obj[f"{entity_name}_id"]
-
-            if model_obj.get("owner") is not None:
-                model_obj.owner = "admin"
-
-            if entity_name == "analytic":
-                model_obj.rule = "some rule"
-                model_obj.rule_type = "lucene"
-                model_obj.detections = ["Rule"]
-
             c.save(entity_id, model_obj)
             c.commit()
             ids[entity_name] = entity_id
