@@ -1,6 +1,5 @@
 /// <reference types="vitest" />
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent, { type UserEvent } from '@testing-library/user-event';
 import i18n from 'i18n';
 import React from 'react';
 import { I18nextProvider } from 'react-i18next';
@@ -46,11 +45,9 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
 );
 
 describe('AddNewCard', () => {
-  let user: UserEvent;
   const mockAddCard = vi.fn();
 
   beforeEach(() => {
-    user = userEvent.setup();
     vi.clearAllMocks();
     mockApiSearchAnalyticPost.mockResolvedValue({
       items: [{ analytic_id: 'analytic-1', name: 'Test Analytic', description: 'Test description' }],

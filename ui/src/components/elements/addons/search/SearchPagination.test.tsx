@@ -34,7 +34,6 @@ describe('SearchPagination', () => {
     it('calculates correct page count', () => {
       render(<SearchPagination {...defaultProps} total={100} limit={25} />);
       // 100/25 = 4 pages
-      const buttons = screen.getAllByRole('button');
       // MUI Pagination renders prev, page buttons, next
       expect(screen.getByText('4')).toBeInTheDocument();
     });
