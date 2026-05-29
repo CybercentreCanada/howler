@@ -13,5 +13,11 @@ class Host(odm.Model):
     ip: list[str] = odm.List(odm.IP(), default=[], description="Host ip addresses.")
     mac: list[str] = odm.List(odm.Keyword(), default=[], description="Host MAC addresses.")
     name: Optional[str] = odm.Optional(odm.Keyword(description="Name of the host."))
+    hostname: Optional[str] = odm.Optional(
+        odm.Keyword(
+            description="Hostname of the host. It normally contains what the hostname "
+            "command returns on the host machine"
+        )
+    )
     domain: Optional[str] = odm.Optional(odm.Keyword(description="Domain the host is a member of."))
     type: Optional[str] = odm.Optional(odm.Keyword(description="As described by CSP."))
