@@ -505,8 +505,6 @@ class Core(BaseModel):
     notebook: Notebook = Notebook()
     "Configuration for Notebook Integration"
 
-    enable_eureka_discovery: bool = Field(default=True, description="Should Eureka discovery be disabled?")
-
 
 root_path = Path("/etc") / APP_NAME.replace("-dev", "").replace("-stg", "")
 
