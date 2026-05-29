@@ -184,7 +184,7 @@ const OverviewViewer = () => {
       await dispatchApi(api.overview.del(selectedOverview.overview_id), {
         logError: false,
         showError: true,
-        throwError: false
+        throwError: true
       });
       setOverviewList(l => l.filter(v => v.overview_id !== selectedOverview.overview_id));
       setSelectedOverview(null);

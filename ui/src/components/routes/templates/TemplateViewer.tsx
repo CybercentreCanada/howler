@@ -169,7 +169,7 @@ const TemplateViewer = () => {
       await dispatchApi(api.template.del(selectedTemplate.template_id), {
         logError: false,
         showError: true,
-        throwError: false
+        throwError: true
       });
       setSessionTemplateList(l =>
         l.filter(

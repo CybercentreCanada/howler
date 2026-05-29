@@ -57,7 +57,7 @@ const TemplatesBase: FC = () => {
       // Ensure the template should be visible and/or matches the type we are filtering for
       const typeQuery = `(type:global OR owner:(${user.username} OR none)) AND type:(${types.join(' ') || '*'})`;
 
-      request(
+      await request(
         api.search.template.post({
           query: `${phraseQuery} AND ${typeQuery}`,
           rows: pageCount,
@@ -134,7 +134,7 @@ const TemplatesBase: FC = () => {
       await dispatchApi(api.template.del(templateId), {
         logError: false,
         showError: true,
-        throwError: false
+        throwError: true
       });
 
       remove(templateId);

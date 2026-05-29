@@ -99,7 +99,7 @@ const OverviewsBase: FC = () => {
 
       withConfirmDeleteModal(async () => {
         try {
-          await dispatchApi(api.overview.del(id), { throwError: false, showError: true });
+          await dispatchApi(api.overview.del(id), { throwError: true, showError: true });
           remove(id);
           showSuccessMessage(t('route.overviews.manager.delete.success'));
         } catch (_err) {

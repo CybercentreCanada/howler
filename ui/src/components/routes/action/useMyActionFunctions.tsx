@@ -243,7 +243,7 @@ const useMyActionFunctions = () => {
         try {
           const detailedActionView = location.pathname.endsWith(actionId);
 
-          await dispatchApi(api.action.del(actionId, detailedActionView));
+          await dispatchApi(api.action.del(actionId, detailedActionView), { throwError: true });
 
           if (detailedActionView) {
             navigate('/action');

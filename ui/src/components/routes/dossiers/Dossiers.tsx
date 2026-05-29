@@ -99,7 +99,7 @@ const DossiersBase: FC = () => {
 
       withConfirmDeleteModal(async () => {
         try {
-          await dispatchApi(api.dossier.del(id), { throwError: false, showError: true });
+          await dispatchApi(api.dossier.del(id), { throwError: true, showError: true });
           remove(id);
           showSuccessMessage(t('route.dossiers.manager.delete.success'));
         } catch (_err) {
