@@ -22,13 +22,14 @@ export type SearchResponseContextType<T> = {
 
 export const SearchResponseContext = createContext<SearchResponseContextType<any>>(null);
 
-type SearchResponseProviderProps = PropsWithChildren<{
+type SearchResponseProviderProps<T> = PropsWithChildren<{
   id_field: string;
+  initialResponse?: SearchResponseState<T>;
 }>;
 
-const SearchResponseProvider = <T,>({ children, id_field }: SearchResponseProviderProps) => {
+const SearchResponseProvider = <T,>({ children, id_field, initialResponse = null }: SearchResponseProviderProps<T>) => {
   const { dispatchApi } = useMyApi();
-  const [response, setResponse] = useState<SearchResponseState<T>>(null);
+  const [response, setResponse] = useState<SearchResponseState<T>>(initialResponse);
 
   const request = useCallback(
     async (
@@ -65,6 +66,10 @@ const SearchResponseProvider = <T,>({ children, id_field }: SearchResponseProvid
   const push = useCallback(
     (item: T) => {
       setResponse(_response => {
+        if (_response === null) {
+          return _response;
+        }
+
         const filteredItems = _response.items.filter(v => v[id_field] !== item[id_field]);
         const itemExists = filteredItems.length < _response.items.length;
         filteredItems.push(item);
@@ -74,7 +79,7 @@ const SearchResponseProvider = <T,>({ children, id_field }: SearchResponseProvid
           offset: _response.offset,
           rows: _response.rows,
           total: itemExists ? _response.total : _response.total + 1,
-          removeCount: itemExists ? _response.removeCount : _response.removeCount - 1
+          removeCount: itemExists ? _response.removeCount : Math.max(_response.removeCount - 1, 0)
         };
       });
     },
@@ -83,9 +88,21 @@ const SearchResponseProvider = <T,>({ children, id_field }: SearchResponseProvid
 
   const replace = useCallback(
     (id: string, item: T) => {
+      if (item[id_field] !== undefined && id !== item[id_field]) {
+        throw new Error('Item id is defined but id does not match the id provided to replace function');
+      }
+
+      const newItem = {
+        ...item,
+        [id_field]: item[id_field] !== undefined ? item[id_field] : id
+      };
+
       setResponse(_response => {
+        if (_response === null) {
+          return _response;
+        }
         return {
-          items: _response.items.map(v => (v[id_field] === id ? item : v)),
+          items: _response.items.map(v => (v[id_field] === id ? newItem : v)),
           offset: _response.offset,
           rows: _response.rows,
           total: _response.total,
@@ -99,6 +116,9 @@ const SearchResponseProvider = <T,>({ children, id_field }: SearchResponseProvid
   const remove = useCallback(
     (id: string) => {
       setResponse(_response => {
+        if (_response === null) {
+          return _response;
+        }
         const filteredItems = _response.items.filter(v => v[id_field] !== id);
         const itemExists = filteredItems.length < _response.items.length;
 
