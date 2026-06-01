@@ -377,7 +377,7 @@ const ViewsBase: FC = () => {
 const Views = () => {
   return (
     <TuiListProvider>
-      <SearchResponseProvider id_field="view_id">
+      <SearchResponseProvider idField="view_id">
         <ViewsBase />
       </SearchResponseProvider>
     </TuiListProvider>

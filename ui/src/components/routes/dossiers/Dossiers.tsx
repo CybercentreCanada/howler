@@ -171,7 +171,7 @@ const DossiersBase: FC = () => {
 const Dossiers = () => {
   return (
     <TuiListProvider>
-      <SearchResponseProvider id_field="dossier_id">
+      <SearchResponseProvider idField="dossier_id">
         <DossiersBase />
       </SearchResponseProvider>
     </TuiListProvider>

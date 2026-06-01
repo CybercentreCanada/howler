@@ -294,7 +294,7 @@ const AnalyticSearchBase: FC = () => {
 const AnalyticSearch: FC = () => {
   return (
     <TuiListProvider>
-      <SearchResponseProvider id_field="analytic_id">
+      <SearchResponseProvider idField="analytic_id">
         <AnalyticSearchBase />
       </SearchResponseProvider>
     </TuiListProvider>

@@ -177,7 +177,7 @@ const OverviewsBase: FC = () => {
 const Overviews = () => {
   return (
     <TuiListProvider>
-      <SearchResponseProvider id_field="overview_id">
+      <SearchResponseProvider idField="overview_id">
         <OverviewsBase />
       </SearchResponseProvider>
     </TuiListProvider>

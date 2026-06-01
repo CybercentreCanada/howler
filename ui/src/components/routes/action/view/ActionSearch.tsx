@@ -258,7 +258,7 @@ const ActionSearch: FC = () => {
 const ActionSearchProvider: FC = () => {
   return (
     <TuiListProvider>
-      <SearchResponseProvider id_field="action_id">
+      <SearchResponseProvider idField="action_id">
         <ActionSearch />
       </SearchResponseProvider>
     </TuiListProvider>

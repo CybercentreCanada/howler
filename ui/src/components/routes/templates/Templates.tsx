@@ -209,7 +209,7 @@ const TemplatesBase: FC = () => {
 const Templates = () => {
   return (
     <TuiListProvider>
-      <SearchResponseProvider id_field="template_id">
+      <SearchResponseProvider idField="template_id">
         <TemplatesBase />
       </SearchResponseProvider>
     </TuiListProvider>

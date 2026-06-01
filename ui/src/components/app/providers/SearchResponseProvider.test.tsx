@@ -12,7 +12,7 @@ const TEST_TOTAL_COUNT = 100;
 
 const makeWrapper = (initialResponse?: SearchResponseState<Item>) => {
   const Wrapper = ({ children }: { children: React.ReactNode }) => (
-    <SearchResponseProvider<Item> id_field="id" initialResponse={initialResponse}>
+    <SearchResponseProvider<Item> idField="id" initialResponse={initialResponse}>
       {children}
     </SearchResponseProvider>
   );

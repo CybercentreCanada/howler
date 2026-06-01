@@ -13,31 +13,35 @@ export type SearchResponseContextType<T> = {
   replace: (id: string, item: T) => void;
   request: (
     endpoint: (request: HowlerSearchRequest) => Promise<HowlerSearchResponse<T>>,
-    request_data: HowlerSearchRequest,
+    requestData: HowlerSearchRequest,
     config?: DispatchApiConfig
   ) => Promise<HowlerSearchResponse<T>>;
-  getSearchRequestData: (request_data: Partial<HowlerSearchRequest>) => Partial<HowlerSearchRequest>;
+  getSearchRequestData: (requestData: Partial<HowlerSearchRequest>) => Partial<HowlerSearchRequest>;
   response: SearchResponseState<T>;
 };
 
 export const SearchResponseContext = createContext<SearchResponseContextType<any>>(null);
 
 type SearchResponseProviderProps<T> = PropsWithChildren<{
-  id_field: string;
+  idField: string;
   initialResponse?: SearchResponseState<T>;
 }>;
 
-const SearchResponseProvider = <T,>({ children, id_field, initialResponse = null }: SearchResponseProviderProps<T>) => {
+const SearchResponseProvider = <T,>({
+  children,
+  idField: idField,
+  initialResponse = null
+}: SearchResponseProviderProps<T>) => {
   const { dispatchApi } = useMyApi();
   const [response, setResponse] = useState<SearchResponseState<T>>(initialResponse);
 
   const request = useCallback(
     async (
       endpoint: (request: HowlerSearchRequest) => Promise<HowlerSearchResponse<T>>,
-      request_data: HowlerSearchRequest,
+      requestData: HowlerSearchRequest,
       config?: DispatchApiConfig
     ) => {
-      const _response = await dispatchApi(endpoint(request_data), config);
+      const _response = await dispatchApi(endpoint(requestData), config);
 
       setResponse({
         ..._response,
@@ -49,8 +53,8 @@ const SearchResponseProvider = <T,>({ children, id_field, initialResponse = null
   );
 
   const getSearchRequestData = useCallback(
-    (request_data: Partial<HowlerSearchRequest>) => {
-      const modifiedRequest = { ...request_data };
+    (requestData: Partial<HowlerSearchRequest>) => {
+      const modifiedRequest = { ...requestData };
 
       if (response?.removeCount) {
         if (response.offset < modifiedRequest.offset) {
@@ -70,7 +74,7 @@ const SearchResponseProvider = <T,>({ children, id_field, initialResponse = null
           return _response;
         }
 
-        const filteredItems = _response.items.filter(v => v[id_field] !== item[id_field]);
+        const filteredItems = _response.items.filter(v => v[idField] !== item[idField]);
         const itemExists = filteredItems.length < _response.items.length;
         filteredItems.push(item);
 
@@ -83,18 +87,18 @@ const SearchResponseProvider = <T,>({ children, id_field, initialResponse = null
         };
       });
     },
-    [id_field]
+    [idField]
   );
 
   const replace = useCallback(
     (id: string, item: T) => {
-      if (item[id_field] !== undefined && id !== item[id_field]) {
+      if (item[idField] !== undefined && id !== item[idField]) {
         throw new Error('Item id is defined but id does not match the id provided to replace function');
       }
 
       const newItem = {
         ...item,
-        [id_field]: item[id_field] !== undefined ? item[id_field] : id
+        [idField]: item[idField] !== undefined ? item[idField] : id
       };
 
       setResponse(_response => {
@@ -102,7 +106,7 @@ const SearchResponseProvider = <T,>({ children, id_field, initialResponse = null
           return _response;
         }
         return {
-          items: _response.items.map(v => (v[id_field] === id ? newItem : v)),
+          items: _response.items.map(v => (v[idField] === id ? newItem : v)),
           offset: _response.offset,
           rows: _response.rows,
           total: _response.total,
@@ -110,7 +114,7 @@ const SearchResponseProvider = <T,>({ children, id_field, initialResponse = null
         };
       });
     },
-    [id_field]
+    [idField]
   );
 
   const remove = useCallback(
@@ -119,7 +123,7 @@ const SearchResponseProvider = <T,>({ children, id_field, initialResponse = null
         if (_response === null) {
           return _response;
         }
-        const filteredItems = _response.items.filter(v => v[id_field] !== id);
+        const filteredItems = _response.items.filter(v => v[idField] !== id);
         const itemExists = filteredItems.length < _response.items.length;
 
         return {
@@ -131,7 +135,7 @@ const SearchResponseProvider = <T,>({ children, id_field, initialResponse = null
         };
       });
     },
-    [id_field]
+    [idField]
   );
 
   return (
