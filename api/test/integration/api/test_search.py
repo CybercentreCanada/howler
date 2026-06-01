@@ -695,3 +695,71 @@ def test_explain_query_edge_cases(datastore, login_session):
         session, f"{host}/api/v1/search/hit/explain", params={"query": "howler.timestamp:[2023-01-01 TO 2024-01-01]"}
     )
     assert resp_range["valid"] is True
+
+
+def test_search_fl_wildcard_expands_prefix(datastore: HowlerDatastore, login_session):
+    """Wildcard patterns in the fl parameter must be expanded to matching fields."""
+    session, host = login_session
+
+    # Request only the howler sub-fields
+    resp = get_api_data(
+        session,
+        f"{host}/api/v1/search/hit/",
+        params={"query": "id:*", "rows": 1, "fl": "howler.*"},
+    )
+
+    assert resp["total"] > 0
+    item = resp["items"][0]
+
+    # All returned keys must start with "howler." (or "id" which is always added)
+    howler_fields = set(datastore.hit.model_class.flat_fields().keys())
+    for key in item:
+        if key == "id":
+            continue
+        assert key == "howler" or key.startswith("howler."), (
+            f"Unexpected key {key!r} returned when fl='howler.*'"
+        )
+
+    # At least howler.id and howler.status should be present in the nested dict
+    assert "howler" in item
+    assert "id" in item["howler"] or "status" in item["howler"]
+
+
+def test_search_fl_wildcard_mixed(datastore: HowlerDatastore, login_session):
+    """Combining a wildcard pattern with an exact field name must work correctly."""
+    session, host = login_session
+
+    resp = get_api_data(
+        session,
+        f"{host}/api/v1/search/hit/",
+        params={"query": "id:*", "rows": 1, "fl": "howler.id,event.*"},
+    )
+
+    assert resp["total"] > 0
+    item = resp["items"][0]
+
+    # The response must include howler.id ...
+    assert "howler" in item
+    assert "id" in item["howler"]
+
+    # ... and at least some event sub-fields
+    event_fields = {k for k in datastore.hit.model_class.flat_fields() if k.startswith("event.")}
+    assert "event" in item or any(k.startswith("event.") for k in item), (
+        "Expected event fields to be present when fl includes 'event.*'"
+    )
+
+
+def test_search_fl_wildcard_exact_match_fallback(datastore: HowlerDatastore, login_session):
+    """A non-wildcard fl value must continue to work as before."""
+    session, host = login_session
+
+    resp = get_api_data(
+        session,
+        f"{host}/api/v1/search/hit/",
+        params={"query": "id:*", "rows": 1, "fl": "howler.id"},
+    )
+
+    assert resp["total"] > 0
+    item = resp["items"][0]
+    assert "howler" in item
+    assert "id" in item["howler"]
