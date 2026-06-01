@@ -94,15 +94,13 @@ const AnalyticSearchBase: FC = () => {
 
     try {
       const sanitizedPhrase = sanitizeLuceneQuery(phrase);
-      const _response = await request(
-        api.search.analytic.post({
-          query:
-            `name:*${sanitizedPhrase}* OR detections:*${sanitizedPhrase}*` +
-            (onlyRules > 0 ? ' AND _exists_:rule_type' : onlyRules < 0 ? ' AND -_exists_:rule_type' : ''),
-          rows: pageCount,
-          offset
-        })
-      );
+      const _response = await request(api.search.analytic.post, {
+        query:
+          `name:*${sanitizedPhrase}* OR detections:*${sanitizedPhrase}*` +
+          (onlyRules > 0 ? ' AND _exists_:rule_type' : onlyRules < 0 ? ' AND -_exists_:rule_type' : ''),
+        rows: pageCount,
+        offset
+      });
       load(_response.items.map(u => ({ id: u.analytic_id, item: u })));
     } catch (e) {
       setHasError(true);

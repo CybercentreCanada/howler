@@ -32,7 +32,8 @@ const TemplatesBase: FC = () => {
   const { showSuccessMessage } = useMySnackbar();
 
   const { analytics } = useContext(AnalyticContext);
-  const { response, request, remove } = useContext<SearchResponseContextType<Template>>(SearchResponseContext);
+  const { response, request, remove, getSearchRequestData } =
+    useContext<SearchResponseContextType<Template>>(SearchResponseContext);
 
   const [phrase, setPhrase] = useState<string>('');
   const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
@@ -57,13 +58,11 @@ const TemplatesBase: FC = () => {
       // Ensure the template should be visible and/or matches the type we are filtering for
       const typeQuery = `(type:global OR owner:(${user.username} OR none)) AND type:(${types.join(' ') || '*'})`;
 
-      await request(
-        api.search.template.post({
-          query: `${phraseQuery} AND ${typeQuery}`,
-          rows: pageCount,
-          offset
-        })
-      );
+      await request(api.search.template.post, {
+        query: `${phraseQuery} AND ${typeQuery}`,
+        rows: pageCount,
+        offset
+      });
     } catch (e) {
       setHasError(true);
     } finally {
@@ -96,12 +95,13 @@ const TemplatesBase: FC = () => {
   const onPageChange = useCallback(
     (_offset: number) => {
       if (_offset !== offset) {
-        searchParams.set('offset', _offset.toString());
+        const modifiedRequest = getSearchRequestData({ offset: _offset });
+        searchParams.set('offset', modifiedRequest.offset.toString());
         setSearchParams(searchParams, { replace: true });
-        setOffset(_offset);
+        setOffset(modifiedRequest.offset);
       }
     },
-    [offset, searchParams, setSearchParams]
+    [offset, searchParams, setSearchParams, getSearchRequestData]
   );
 
   useEffect(() => {

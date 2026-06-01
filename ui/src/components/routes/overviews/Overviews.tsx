@@ -34,7 +34,8 @@ const OverviewsBase: FC = () => {
   const [hasError, setHasError] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const { response, request, remove } = useContext<SearchResponseContextType<Overview>>(SearchResponseContext);
+  const { response, request, remove, getSearchRequestData } =
+    useContext<SearchResponseContextType<Overview>>(SearchResponseContext);
 
   const onSearch = useCallback(async () => {
     try {
@@ -51,13 +52,11 @@ const OverviewsBase: FC = () => {
       // Check for the actual search query
       const query = phrase ? `*:*${phrase}*` : '*:*';
       // Ensure the overview should be visible and/or matches the type we are filtering for
-      await request(
-        api.search.overview.post({
-          query,
-          rows: pageCount,
-          offset
-        })
-      );
+      await request(api.search.overview.post, {
+        query,
+        rows: pageCount,
+        offset
+      });
     } catch (e) {
       setHasError(true);
     } finally {
@@ -84,12 +83,13 @@ const OverviewsBase: FC = () => {
   const onPageChange = useCallback(
     (_offset: number) => {
       if (_offset !== offset) {
-        searchParams.set('offset', _offset.toString());
+        const modifiedRequest = getSearchRequestData({ offset: _offset });
+        searchParams.set('offset', modifiedRequest.offset.toString());
         setSearchParams(searchParams, { replace: true });
-        setOffset(_offset);
+        setOffset(modifiedRequest.offset);
       }
     },
-    [offset, searchParams, setSearchParams]
+    [offset, searchParams, setSearchParams, getSearchRequestData]
   );
 
   const onDelete = useCallback(

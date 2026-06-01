@@ -29,7 +29,8 @@ const DossiersBase: FC = () => {
   const { load } = useContext<TuiListMethodsState<Dossier>>(TuiListMethodContext);
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
-  const { response, request, remove } = useContext<SearchResponseContextType<Dossier>>(SearchResponseContext);
+  const { response, request, remove, getSearchRequestData } =
+    useContext<SearchResponseContextType<Dossier>>(SearchResponseContext);
 
   const [phrase, setPhrase] = useState<string>('');
   const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
@@ -51,13 +52,11 @@ const DossiersBase: FC = () => {
       // Check for the actual search query
       const query = phrase ? `*:*${phrase}*` : '*:*';
       // Ensure the overview should be visible and/or matches the type we are filtering for
-      await request(
-        api.search.dossier.post({
-          query,
-          rows: pageCount,
-          offset
-        })
-      );
+      await request(api.search.dossier.post, {
+        query,
+        rows: pageCount,
+        offset
+      });
     } catch (e) {
       setHasError(true);
     } finally {
@@ -84,12 +83,13 @@ const DossiersBase: FC = () => {
   const onPageChange = useCallback(
     (_offset: number) => {
       if (_offset !== offset) {
-        searchParams.set('offset', _offset.toString());
+        const modifiedRequest = getSearchRequestData({ offset: _offset });
+        searchParams.set('offset', modifiedRequest.offset.toString());
         setSearchParams(searchParams, { replace: true });
-        setOffset(_offset);
+        setOffset(modifiedRequest.offset);
       }
     },
-    [offset, searchParams, setSearchParams]
+    [offset, searchParams, setSearchParams, getSearchRequestData]
   );
 
   const onDelete = useCallback(

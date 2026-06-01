@@ -59,7 +59,8 @@ const ViewsBase: FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { load } = useContext<TuiListMethodsState<View>>(TuiListMethodContext);
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
-  const { response, request, remove } = useContext<SearchResponseContextType<View>>(SearchResponseContext);
+  const { response, request, remove, getSearchRequestData } =
+    useContext<SearchResponseContextType<View>>(SearchResponseContext);
 
   const [phrase, setPhrase] = useState<string>('');
   const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
@@ -90,13 +91,11 @@ const ViewsBase: FC = () => {
       const favouritesQuery =
         favouritesOnly && user.favourite_views.length > 0 ? ` AND view_id:(${user.favourite_views.join(' OR ')})` : '';
 
-      await request(
-        api.search.view.post({
-          query: `(${phraseQuery}) AND ${typeQuery}${favouritesQuery}`,
-          rows: pageCount,
-          offset
-        })
-      );
+      await request(api.search.view.post, {
+        query: `(${phraseQuery}) AND ${typeQuery}${favouritesQuery}`,
+        rows: pageCount,
+        offset
+      });
     } catch (e) {
       setHasError(true);
     } finally {
@@ -134,12 +133,13 @@ const ViewsBase: FC = () => {
   const onPageChange = useCallback(
     (_offset: number) => {
       if (_offset !== offset) {
-        searchParams.set('offset', _offset.toString());
+        const modifiedRequest = getSearchRequestData({ offset: _offset });
+        searchParams.set('offset', modifiedRequest.offset.toString());
         setSearchParams(searchParams, { replace: true });
-        setOffset(_offset);
+        setOffset(modifiedRequest.offset);
       }
     },
-    [offset, searchParams, setSearchParams]
+    [offset, searchParams, setSearchParams, getSearchRequestData]
   );
 
   const onDelete = useCallback(

@@ -46,7 +46,8 @@ const ActionSearch: FC = () => {
   const { deleteAction } = useMyActionFunctions();
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
-  const { response, request, remove } = useContext<SearchResponseContextType<Action>>(SearchResponseContext);
+  const { response, request, remove, getSearchRequestData } =
+    useContext<SearchResponseContextType<Action>>(SearchResponseContext);
 
   const [searching, setSearching] = useState<boolean>(false);
   const [hasError, setHasError] = useState(false);
@@ -74,13 +75,11 @@ const ActionSearch: FC = () => {
         query = `(${query}) AND (triggers:(${searchModifiers.join(' OR ')}))`;
       }
 
-      await request(
-        api.search.action.post({
-          query,
-          rows: pageCount,
-          offset
-        })
-      );
+      await request(api.search.action.post, {
+        query,
+        rows: pageCount,
+        offset
+      });
     } catch (e) {
       setHasError(true);
     } finally {
@@ -97,12 +96,13 @@ const ActionSearch: FC = () => {
   const onPageChange = useCallback(
     (_offset: number) => {
       if (_offset !== offset) {
-        searchParams.set('offset', _offset.toString());
+        const modifiedRequest = getSearchRequestData({ offset: _offset });
+        searchParams.set('offset', modifiedRequest.offset.toString());
         setSearchParams(searchParams, { replace: true });
-        setOffset(_offset);
+        setOffset(modifiedRequest.offset);
       }
     },
-    [offset, searchParams, setSearchParams]
+    [offset, searchParams, setSearchParams, getSearchRequestData]
   );
 
   const onDelete = useCallback(

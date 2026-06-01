@@ -6,19 +6,27 @@ type SearchPaginationProps = Omit<PaginationProps, 'onChange'> & {
   limit: number;
   offset: number;
   total: number;
+  removeCount?: number;
   onChange: (nextOffset: number) => void;
 };
 
-const SearchPagination = ({ limit, offset, total, onChange, ...paginationProps }: SearchPaginationProps) => {
+const SearchPagination = ({
+  limit,
+  offset,
+  total,
+  removeCount,
+  onChange,
+  ...paginationProps
+}: SearchPaginationProps) => {
   const onPageChange = useCallback(
     (_event, nextPage) => {
       onChange(nextPage === 1 ? 0 : (nextPage - 1) * limit);
     },
     [limit, onChange]
   );
-  const count = Math.ceil(total / limit);
-  const page = Math.floor((offset + 1) / limit) + 1;
-  return limit && total && limit < total ? (
+  const count = Math.ceil((total + (removeCount ?? 0)) / limit);
+  const page = Math.floor((offset + 1 + (removeCount ?? 0)) / limit) + 1;
+  return limit && total && count > 1 ? (
     <Pagination count={count} page={page} onChange={onPageChange} {...paginationProps} />
   ) : null;
 };
