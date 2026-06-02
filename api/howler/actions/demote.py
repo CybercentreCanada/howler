@@ -93,7 +93,7 @@ def execute(
             ds.hit.update_by_query(
                 query,
                 [
-                    *hit_helper.assess_hit(assessment, rationale),
+                    *hit_helper.assess_hit(assessment, rationale, user=(user if user else "automation")),
                     odm_helper.update(
                         "howler.assignment",
                         user.get("uname", "automation") if user else "automation",
