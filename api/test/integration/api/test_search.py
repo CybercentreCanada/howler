@@ -712,7 +712,6 @@ def test_search_fl_wildcard_expands_prefix(datastore: HowlerDatastore, login_ses
     item = resp["items"][0]
 
     # All returned keys must start with "howler." (or "id" which is always added)
-    howler_fields = set(datastore.hit.model_class.flat_fields().keys())
     for key in item:
         if key == "id":
             continue
