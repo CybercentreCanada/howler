@@ -1387,7 +1387,11 @@ class ESCollection(Generic[ModelType]):
         expanded: list[str] = []
         for pattern in fl.split(","):
             pattern = pattern.strip()
-            if "*" not in pattern:
+            if not pattern:
+                # Skip empty entries (e.g. from trailing commas).
+                continue
+            if "*" not in pattern or pattern == "*":
+                # Exact names and the bare '*' (meaning "all fields") are kept as-is.
                 expanded.append(pattern)
             else:
                 # Convert the glob-style wildcard to a full regex pattern.

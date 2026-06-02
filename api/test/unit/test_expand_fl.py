@@ -81,12 +81,10 @@ def test_expand_fl_mixed_wildcard_and_exact():
 
 
 def test_expand_fl_global_wildcard():
-    """A bare '*' should expand to every field in the model."""
+    """A bare '*' must be preserved unchanged so that existing 'all fields' semantics are maintained."""
     coll = _make_collection()
     result = coll._expand_fl("*")
-    expanded = set(result.split(","))
-    all_fields = set(_TestModel.flat_fields().keys())
-    assert all_fields == expanded
+    assert result == "*"
 
 
 def test_expand_fl_unmatched_wildcard_kept_as_is():
