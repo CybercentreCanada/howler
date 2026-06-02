@@ -743,7 +743,6 @@ def test_search_fl_wildcard_mixed(datastore: HowlerDatastore, login_session):
     assert "id" in item["howler"]
 
     # ... and at least some event sub-fields
-    event_fields = {k for k in datastore.hit.model_class.flat_fields() if k.startswith("event.")}
     assert "event" in item or any(k.startswith("event.") for k in item), (
         "Expected event fields to be present when fl includes 'event.*'"
     )
