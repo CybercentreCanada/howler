@@ -66,13 +66,16 @@ def assess_hit(
         escalation,
     )
 
-    user_id = user.get("uname", user.get("username", None)) if isinstance(user, User) else user
+    if assessment is None:
+        assessor_id = None
+    else:
+        assessor_id = user.get("uname", user.get("username", None)) if isinstance(user, User) else user
 
     return [
         odm_helper.update("howler.assessment", assessment),
         odm_helper.update("howler.escalation", escalation),
         odm_helper.update("howler.rationale", rationale, silent=True),
-        odm_helper.update("howler.assessor", user_id, silent=True),
+        odm_helper.update("howler.assessor", assessor_id, silent=True),
     ]
 
 
