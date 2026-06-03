@@ -1,5 +1,5 @@
 import type { Comment } from './Comment';
-import type { Notebooks } from './Notebooks';
+import type { Notebook } from './Notebook';
 import type { TriageSettings } from './TriageSettings';
 
 /**
@@ -12,7 +12,7 @@ export interface Analytic {
   description?: string;
   detections?: string[];
   name?: string;
-  notebooks?: Notebooks;
+  notebooks?: Notebook[];
   owner?: string;
   rule?: string;
   rule_crontab?: string;
