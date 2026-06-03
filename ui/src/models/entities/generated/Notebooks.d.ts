@@ -1,7 +1,7 @@
 /**
  * NOTE: This is an auto-generated file. Don't edit this manually.
  */
-export interface Notebook {
+export interface Notebooks {
   detection?: string;
   id?: string;
   name?: string;
