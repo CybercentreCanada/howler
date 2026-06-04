@@ -4,7 +4,6 @@ import string
 import time
 import uuid
 import warnings
-from typing import Any
 
 import pytest
 from datemath import dm
@@ -12,7 +11,7 @@ from retrying import retry
 
 from howler import odm
 from howler.datastore.collection import ESCollection
-from howler.datastore.exceptions import VersionConflictException
+from howler.datastore.exceptions import DataStoreException, VersionConflictException
 from howler.datastore.store import ESStore
 
 with warnings.catch_warnings():
@@ -919,67 +918,161 @@ class ReindexModel2(odm.Model):
     field_3 = odm.Integer(default=1)
 
 
-def test_reindex(es_connection: ESCollection):
-    # Create a unique test collection name to avoid conflicts
-    test_collection_name = f"test_fix_replicas_{uuid.uuid4().hex[:8]}"
+def _register_model(es_connection: ESCollection, name: str, model) -> ESCollection:
+    """(Re)register a collection name with the given model and return the collection."""
+    es_connection.datastore._collections.pop(name, None)
+    es_connection.datastore.register(name, model)
+    return getattr(es_connection.datastore, name)
 
-    # Register and create a new collection instance using ReindexModel1 model
-    es_connection.datastore.register(test_collection_name, ReindexModel1)
-    test_collection: ESCollection = getattr(es_connection.datastore, test_collection_name)
 
-    # Add two documents using ReindexModel1 model
-    test_data: Any = ReindexModel1({"field_1": "example", "field_2": "example", "field_3": "example"})
-    test_collection.save("example", test_data)
-    test_data = ReindexModel1({"field_1": "example2", "field_2": "example2"})
-    test_collection.save("example2", test_data)
-    test_collection.commit()
+def _delete_reindex_test_indexes(es_connection: ESCollection, collection_name: str) -> None:
+    """Remove any indexes/aliases created by the reindex tests for the given collection name."""
+    try:
+        if es_connection.with_retries(es_connection.datastore.client.indices.exists_alias, name=collection_name):
+            es_connection.with_retries(
+                es_connection.datastore.client.indices.delete_alias, index="_all", name=collection_name
+            )
 
-    # Ensure both documents are present
-    assert test_collection.search("field_2:*")["total"] == 2
+        all_indices = es_connection.with_retries(
+            es_connection.datastore.client.indices.get, index=f"{collection_name}*"
+        )
+        for index_name in all_indices.keys():
+            if index_name.startswith(collection_name):
+                es_connection.with_retries(
+                    es_connection.datastore.client.indices.put_settings,
+                    index=index_name,
+                    settings={"index.blocks.write": None},
+                )
+                es_connection.with_retries(es_connection.datastore.client.indices.delete, index=index_name)
+    except Exception:
+        # Silently ignore cleanup errors to avoid masking the real test result
+        pass
 
-    # Remove the collection from the registry to simulate a model change
-    es_connection.datastore._collections.pop(test_collection_name)
 
-    # Register the same collection name with a new model (ReindexModel2)
-    es_connection.datastore.register(test_collection_name, ReindexModel2)
-    ESCollection.IGNORE_ENSURE_COLLECTION = True  # Temporarily ignore collection checks
-    test_collection: ESCollection = getattr(es_connection.datastore, test_collection_name)
+def test_reindex_success(es_connection: ESCollection):
+    """A reindex that does not lose or conflict on any document should succeed and keep all data."""
+    test_collection_name = f"test_reindex_success_{uuid.uuid4().hex[:8]}"
+    test_collection = None
+    try:
+        # Register a collection and add two documents
+        test_collection = _register_model(es_connection, test_collection_name, ReindexModel1)
+        test_collection.save("example", ReindexModel1({"field_1": "example", "field_2": "example", "field_3": "1"}))
+        test_collection.save("example2", ReindexModel1({"field_1": "example2", "field_2": "example2"}))
+        test_collection.commit()
 
-    # Reindex the collection to migrate data to the new model
-    test_collection.reindex()
-    test_collection._ensure_collection()
-    ESCollection.IGNORE_ENSURE_COLLECTION = False  # Restore collection checks
+        assert test_collection.search("field_2:*")["total"] == 2
 
-    # Add a new document using ReindexModel2 model
-    test_data = ReindexModel2({"field_2": "example3", "field_3": 2})
-    test_collection.save("example3", test_data)
-    test_collection.commit()
+        # Reindex using the same model: every document converts cleanly, counts match
+        ESCollection.IGNORE_ENSURE_COLLECTION = True
+        try:
+            assert test_collection.reindex() is True
+        finally:
+            ESCollection.IGNORE_ENSURE_COLLECTION = False
 
-    # Only two documents should remain after reindex (old model docs may be dropped)
-    assert test_collection.search("field_2:*")["total"] == 2
+        test_collection.commit()
 
-    # The first document ("example") should be gone, "example2" should remain
-    assert test_collection.get("example", as_obj=False) is None
-    assert test_collection.get("example2", as_obj=False) is not None
+        # All documents survived the reindex
+        assert test_collection.search("field_2:*")["total"] == 2
+        assert test_collection.get("example", as_obj=False) is not None
+        assert test_collection.get("example2", as_obj=False) is not None
+    finally:
+        if test_collection is not None:
+            _delete_reindex_test_indexes(es_connection, test_collection.name)
 
-    # "example2" should still have field_1 (from old model), "example3" should not (new model)
-    assert "field_1" in test_collection.get("example2", as_obj=False)
-    assert "field_1" not in test_collection.get("example3", as_obj=False)
 
-    # Check field values for "example2" and "example3"
-    assert test_collection.get("example2", as_obj=False)["field_2"] == "example2"
-    assert test_collection.get("example2")["field_3"] == 1  # default value from ReindexModel2
+def test_reindex_failure_preserves_data(es_connection: ESCollection):
+    """A reindex that would drop documents must abort and leave the source data intact."""
+    test_collection_name = f"test_reindex_fail_{uuid.uuid4().hex[:8]}"
+    test_collection = None
+    try:
+        # "example" has a non-integer field_3 that cannot be converted to ReindexModel2
+        test_collection = _register_model(es_connection, test_collection_name, ReindexModel1)
+        test_collection.save(
+            "example", ReindexModel1({"field_1": "example", "field_2": "example", "field_3": "not-an-int"})
+        )
+        test_collection.save("example2", ReindexModel1({"field_1": "example2", "field_2": "example2"}))
+        test_collection.commit()
 
-    assert test_collection.get("example3", as_obj=False)["field_2"] == "example3"
-    assert test_collection.get("example3", as_obj=False)["field_3"] == 2
+        assert test_collection.search("field_2:*")["total"] == 2
 
-    # "example1" should not exist
-    assert test_collection.get("example1") is None
+        # Switch to an incompatible model so the conversion of "example" fails
+        test_collection = _register_model(es_connection, test_collection_name, ReindexModel2)
 
-    # Returned objects should be instances of ReindexModel2
-    assert isinstance(test_collection.get("example2"), ReindexModel2)
-    assert isinstance(test_collection.get("example3"), ReindexModel2)
+        ESCollection.IGNORE_ENSURE_COLLECTION = True
+        try:
+            # The reindex must abort instead of silently dropping the un-convertible document
+            with pytest.raises(DataStoreException):
+                test_collection.reindex()
 
-    # Accessing field_1 on ReindexModel2 model should raise, since it's not defined
-    with pytest.raises(Exception):
-        test_collection.get("example2").field_1
+            # The source index (and all of its data) must still be present after the failure
+            test_collection.commit()
+            assert test_collection.search("field_2:*")["total"] == 2
+            assert test_collection.get("example", as_obj=False) is not None
+            assert test_collection.get("example2", as_obj=False) is not None
+
+            # The leftover reindex index should exist so it can be cleaned up
+            new_name = f"{test_collection.index_name}__reindex"
+            assert test_collection.with_retries(test_collection.datastore.client.indices.exists, index=new_name)
+
+            # Cleanup must remove the leftover index and keep the source data usable
+            assert test_collection.reindex_cleanup() is True
+            assert not test_collection.with_retries(test_collection.datastore.client.indices.exists, index=new_name)
+
+            test_collection.with_retries(
+                test_collection.datastore.client.index,
+                index=test_collection.name,
+                id="post_cleanup_write",
+                document={"field_1": "example3", "field_2": "example3"},
+            )
+            test_collection.commit()
+            assert test_collection.search("field_2:*")["total"] == 3
+        finally:
+            ESCollection.IGNORE_ENSURE_COLLECTION = False
+    finally:
+        if test_collection is not None:
+            _delete_reindex_test_indexes(es_connection, test_collection.name)
+
+
+def test_reindex_allow_failures(es_connection: ESCollection):
+    """With allow_failures the reindex proceeds despite un-convertible documents being dropped."""
+    test_collection_name = f"test_reindex_allow_{uuid.uuid4().hex[:8]}"
+    test_collection = None
+    try:
+        test_collection = _register_model(es_connection, test_collection_name, ReindexModel1)
+        test_collection.save(
+            "example", ReindexModel1({"field_1": "example", "field_2": "example", "field_3": "not-an-int"})
+        )
+        test_collection.save("example2", ReindexModel1({"field_1": "example2", "field_2": "example2"}))
+        test_collection.commit()
+
+        assert test_collection.search("field_2:*")["total"] == 2
+
+        test_collection = _register_model(es_connection, test_collection_name, ReindexModel2)
+
+        ESCollection.IGNORE_ENSURE_COLLECTION = True
+        try:
+            # Explicitly opting in to a lossy migration succeeds and drops the bad document
+            assert test_collection.reindex(allow_failures=True) is True
+            test_collection._ensure_collection()
+        finally:
+            ESCollection.IGNORE_ENSURE_COLLECTION = False
+
+        test_collection.save("example3", ReindexModel2({"field_2": "example3", "field_3": 2}))
+        test_collection.commit()
+
+        # "example" was dropped (could not convert), "example2" and "example3" remain
+        assert test_collection.search("field_2:*")["total"] == 2
+        assert test_collection.get("example", as_obj=False) is None
+        assert test_collection.get("example2", as_obj=False) is not None
+        assert test_collection.get("example3", as_obj=False) is not None
+
+        # field_3 default from ReindexModel2 is applied to the migrated document
+        assert test_collection.get("example2")["field_3"] == 1
+        assert test_collection.get("example3", as_obj=False)["field_3"] == 2
+
+        # Returned objects use the new model
+        assert isinstance(test_collection.get("example2"), ReindexModel2)
+        assert isinstance(test_collection.get("example3"), ReindexModel2)
+    finally:
+        if test_collection is not None:
+            _delete_reindex_test_indexes(es_connection, test_collection.name)

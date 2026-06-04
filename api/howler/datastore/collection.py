@@ -480,8 +480,8 @@ class ESCollection(Generic[ModelType]):
                 else:
                     raise
 
-    def _safe_index_copy(self, copy_function, src, target, settings=None, min_status="yellow"):
-        options_client = self.datastore.client.options(request_timeout=60)
+    def _safe_index_copy(self, copy_function, src, target, settings=None, min_status="yellow", request_timeout=60):
+        options_client = self.datastore.client.options(request_timeout=request_timeout)
         timed_function = getattr(options_client.indices, copy_function.__name__)
         ret = timed_function(index=src, target=target, settings=settings)
         if not ret["acknowledged"]:
@@ -703,123 +703,299 @@ class ESCollection(Generic[ModelType]):
             settings=clone_finish_settings,
         )
 
-    def reindex(self):
-        """This function should be overloaded to perform a reindex of all the data of the different hosts
-        specified in self.datastore.hosts.
+    def _index_doc_count(self, index: str) -> int:
+        """Return the number of documents in a physical index.
 
-        :return: Should return True of the commit was successful on all hosts
+        :param index: the name of the physical index to count documents in
+        :return: the number of documents currently stored in the index
+        """
+        self.with_retries(self.datastore.client.indices.refresh, index=index)
+        return self.with_retries(self.datastore.client.count, index=index)["count"]
+
+    def reindex(self, allow_failures: bool = False, request_timeout: int = 60):
+        """Reindex all the data of the collection into a freshly mapped index.
+
+        For every index in ``self.index_list`` the data is copied into a temporary
+        ``__reindex`` index that uses the current mappings/settings. Writes to the source
+        index are blocked while the copy runs so the reindex result and document counts can
+        be validated before the original index is deleted. The temporary index is only
+        collapsed back onto the original name once those checks pass.
+
+        :param allow_failures: when ``True``, proceed even if the reindex reported document
+            failures or version conflicts, or if the document counts do not match. This is
+            DESTRUCTIVE: documents that could not be converted to the new mappings will be
+            permanently dropped. Only use this for intentional lossy migrations.
+        :param request_timeout: transport timeout in seconds for synchronous index-copy
+            operations. Defaults to 60 seconds.
+        :return: ``True`` when the reindex (and validation) completed successfully on all
+            indexes.
+        :raises DataStoreException: if a reindex reported failures/conflicts, or if the
+            document count of the reindexed data does not match the source, and
+            ``allow_failures`` is ``False``. The ``__reindex`` index is left in place so the
+            operation can be recovered with :meth:`reindex_cleanup`.
         """
         logger.warning("Beginning Reindex")
         for index in self.index_list:
             new_name = f"{index}__reindex"
             index_data = None
-            if self.with_retries(self.datastore.client.indices.exists, index=index) and not self.with_retries(
-                self.datastore.client.indices.exists, index=new_name
-            ):
-                # Get information about the index to reindex
-                index_data = self.with_retries(self.datastore.client.indices.get, index=index)[index]
-
-                # Create reindex target
-                logger.warning("Creating new index with name %s", new_name)
-                self.with_retries(
-                    self.datastore.client.indices.create,
-                    index=new_name,
-                    mappings=self._get_index_mappings(),
-                    settings=self._get_index_settings(),
-                )
-
-                # For all aliases related to the index, add a new alias to the reindex index
-                for alias, alias_data in index_data["aliases"].items():
-                    # Make the reindex index the new write index if the original index was
-                    if alias_data.get("is_write_index", True):
-                        alias_actions = [
-                            {
-                                "add": {
-                                    "index": new_name,
-                                    "alias": alias,
-                                    "is_write_index": True,
-                                }
-                            },
-                            {
-                                "add": {
-                                    "index": index,
-                                    "alias": alias,
-                                    "is_write_index": False,
-                                }
-                            },
-                        ]
-                    else:
-                        alias_actions = [{"add": {"index": new_name, "alias": alias}}]
-
-                    logger.warning("Updating alias %s", alias)
-                    self.with_retries(self.datastore.client.indices.update_aliases, actions=alias_actions)
-
-                # Reindex data into target
-                logger.warning("Beginning reindex from %s to %s", index, new_name)
-                r_task = self.with_retries(
-                    self.datastore.client.reindex,
-                    source={"index": index},
-                    dest={"index": new_name},
-                    wait_for_completion=False,
-                )
-                logger.warning("Reindex taskId: %s", r_task["task"])
-                self._get_task_results(r_task)
-
-            if self.with_retries(self.datastore.client.indices.exists, index=new_name):
-                if index_data is None:
+            source_count = None
+            source_writes_blocked = False
+            try:
+                if self.with_retries(self.datastore.client.indices.exists, index=index) and not self.with_retries(
+                    self.datastore.client.indices.exists, index=new_name
+                ):
+                    # Get information about the index to reindex
                     index_data = self.with_retries(self.datastore.client.indices.get, index=index)[index]
 
-                logger.warning("Committing reindexed data in index %s", new_name)
-                self.with_retries(self.datastore.client.indices.refresh, index=new_name)
-                self.with_retries(self.datastore.client.indices.clear_cache, index=new_name)
+                    logger.warning("Block writes to source index %s", index)
+                    self.with_retries(
+                        self.datastore.client.indices.put_settings,
+                        index=index,
+                        settings=write_block_settings,
+                    )
+                    source_writes_blocked = True
 
-                logger.warning("Deleting old index %s", index)
-                if self.with_retries(self.datastore.client.indices.exists, index=index):
-                    self.with_retries(self.datastore.client.indices.delete, index=index)
+                    # Record the number of documents we expect to migrate after writes are blocked.
+                    source_count = self._index_doc_count(index)
+                    logger.warning("Source index %s contains %s document(s)", index, source_count)
 
-                logger.warning("Block write to index")
-                self.with_retries(
-                    self.datastore.client.indices.put_settings,
-                    settings=write_block_settings,
-                )
-
-                logger.warning("Renaming reindexed index from %s to %s", new_name, index)
-                try:
-                    self._safe_index_copy(
-                        self.datastore.client.indices.clone,
-                        new_name,
-                        index,
+                    # Create reindex target
+                    logger.warning("Creating new index with name %s", new_name)
+                    self.with_retries(
+                        self.datastore.client.indices.create,
+                        index=new_name,
+                        mappings=self._get_index_mappings(),
                         settings=self._get_index_settings(),
                     )
 
-                    # Restore original aliases for the index
-                    for alias, alias_data in index_data["aliases"].items():
-                        # Make the reindex index the new write index if the original index was
-                        if alias_data.get("is_write_index", True):
-                            alias_actions = [
-                                {
-                                    "add": {
-                                        "index": index,
-                                        "alias": alias,
-                                        "is_write_index": True,
-                                    }
-                                },
-                                {"remove_index": {"index": new_name}},
-                            ]
-                            self.with_retries(
-                                self.datastore.client.indices.update_aliases,
-                                actions=alias_actions,
-                            )
+                    # Reindex data into target
+                    logger.warning("Beginning reindex from %s to %s", index, new_name)
+                    r_task = self.with_retries(
+                        self.datastore.client.reindex,
+                        source={"index": index},
+                        dest={"index": new_name},
+                        wait_for_completion=False,
+                    )
+                    logger.warning("Reindex taskId: %s", r_task["task"])
+                    reindex_result = self._get_task_results(r_task)
 
-                    if self.with_retries(self.datastore.client.indices.exists, index=new_name):
-                        logger.warning("Deleting reindex target %s", new_name)
-                        self.with_retries(self.datastore.client.indices.delete, index=new_name)
-                finally:
-                    logger.warning("Unblock write to the index")
+                    # Validate the reindex did not silently drop or conflict on documents before
+                    # we commit to deleting the source index further down.
+                    self._validate_reindex_result(index, new_name, reindex_result, allow_failures)
+
+                if self.with_retries(self.datastore.client.indices.exists, index=new_name):
+                    if index_data is None:
+                        if self.with_retries(self.datastore.client.indices.exists, index=index):
+                            index_data = self.with_retries(self.datastore.client.indices.get, index=index)[index]
+                        else:
+                            index_data = {"aliases": {self.name: {"is_write_index": True}}}
+
+                    logger.warning("Committing reindexed data in index %s", new_name)
+                    self.with_retries(self.datastore.client.indices.refresh, index=new_name)
+                    self.with_retries(self.datastore.client.indices.clear_cache, index=new_name)
+
+                    # Compare the document counts of the source and reindexed indexes. If the
+                    # source no longer exists (a previous run already deleted it) we cannot
+                    # compare, so we trust the already-validated reindex target.
+                    if self.with_retries(self.datastore.client.indices.exists, index=index):
+                        if source_count is None:
+                            source_count = self._index_doc_count(index)
+                        target_count = self._index_doc_count(new_name)
+                        self._validate_reindex_counts(index, new_name, source_count, target_count, allow_failures)
+
+                    logger.warning("Deleting old index %s", index)
+                    if self.with_retries(self.datastore.client.indices.exists, index=index):
+                        self.with_retries(self.datastore.client.indices.delete, index=index)
+                    source_writes_blocked = False
+
+                    logger.warning("Block writes to reindex target %s", new_name)
                     self.with_retries(
                         self.datastore.client.indices.put_settings,
+                        index=new_name,
+                        settings=write_block_settings,
+                    )
+
+                    logger.warning("Renaming reindexed index from %s to %s", new_name, index)
+                    try:
+                        self._safe_index_copy(
+                            self.datastore.client.indices.clone,
+                            new_name,
+                            index,
+                            settings=self._get_index_settings(),
+                            request_timeout=request_timeout,
+                        )
+
+                        alias_actions = []
+                        aliases = index_data.get("aliases", {}) or {self.name: {"is_write_index": True}}
+                        for alias, alias_data in aliases.items():
+                            alias_action = {"index": index, "alias": alias}
+                            alias_action.update(alias_data)
+                            if alias == self.name or alias_data.get("is_write_index", False):
+                                alias_action["is_write_index"] = True
+                            alias_actions.append({"add": alias_action})
+                        alias_actions.append({"remove_index": {"index": new_name}})
+                        self.with_retries(self.datastore.client.indices.update_aliases, actions=alias_actions)
+
+                        if self.with_retries(self.datastore.client.indices.exists, index=new_name):
+                            logger.warning("Deleting reindex target %s", new_name)
+                            self.with_retries(self.datastore.client.indices.delete, index=new_name)
+                    finally:
+                        if self.with_retries(self.datastore.client.indices.exists, index=index):
+                            logger.warning("Unblock writes to the index")
+                            self.with_retries(
+                                self.datastore.client.indices.put_settings,
+                                index=index,
+                                settings=write_unblock_settings,
+                            )
+            except Exception:
+                if source_writes_blocked and self.with_retries(self.datastore.client.indices.exists, index=index):
+                    logger.warning("Unblock writes to source index %s after failed reindex", index)
+                    self.with_retries(
+                        self.datastore.client.indices.put_settings,
+                        index=index,
                         settings=write_unblock_settings,
                     )
+                raise
+
+        return True
+
+    def _validate_reindex_result(self, index, new_name, reindex_result, allow_failures):
+        """Validate the result of an Elasticsearch reindex task.
+
+        :param index: the source index being reindexed
+        :param new_name: the temporary ``__reindex`` index being written to
+        :param reindex_result: the ``response``/``status`` payload returned by the reindex task
+        :param allow_failures: when ``True``, log the problems but do not abort
+        :raises DataStoreException: if the reindex reported failures or version conflicts and
+            ``allow_failures`` is ``False``
+        """
+        failures = reindex_result.get("failures", []) if reindex_result else []
+        version_conflicts = reindex_result.get("version_conflicts", 0) if reindex_result else 0
+
+        if not failures and not version_conflicts:
+            return
+
+        # Summarize the failures so the operator understands what went wrong
+        summary = (
+            f"Reindex of {index} into {new_name} reported {len(failures)} document failure(s) "
+            f"and {version_conflicts} version conflict(s)."
+        )
+        for failure in failures[:10]:
+            cause = failure.get("cause", failure)
+            logger.error(
+                "Reindex failure on document %s: %s - %s",
+                failure.get("id", "<unknown>"),
+                cause.get("type", "<unknown>"),
+                cause.get("reason", cause),
+            )
+        if len(failures) > 10:
+            logger.error("... and %s additional failure(s) not shown.", len(failures) - 10)
+
+        if allow_failures:
+            logger.warning("%s Proceeding anyway because allow_failures is set (DESTRUCTIVE).", summary)
+            return
+
+        raise DataStoreException(
+            f"{summary} Aborting before deleting the source index to prevent data loss. "
+            f"The '{new_name}' index has been left in place; run the reindex script with "
+            f"--cleanup to recover, or with --allow-failures to proceed despite the failures."
+        )
+
+    def _validate_reindex_counts(self, index, new_name, source_count, target_count, allow_failures):
+        """Validate that the reindexed index contains the same number of documents as the source.
+
+        :param index: the source index being reindexed
+        :param new_name: the temporary ``__reindex`` index being written to
+        :param source_count: the number of documents in the source index
+        :param target_count: the number of documents in the reindexed index
+        :param allow_failures: when ``True``, log the mismatch but do not abort
+        :raises DataStoreException: if the counts differ and ``allow_failures`` is ``False``
+        """
+        if source_count == target_count:
+            logger.warning("Document count validated: %s document(s) in both %s and %s", source_count, index, new_name)
+            return
+
+        summary = (
+            f"Document count mismatch reindexing {index} into {new_name}: "
+            f"source has {source_count} document(s) but reindex target has {target_count}."
+        )
+
+        if allow_failures:
+            logger.warning("%s Proceeding anyway because allow_failures is set (DESTRUCTIVE).", summary)
+            return
+
+        raise DataStoreException(
+            f"{summary} Aborting before deleting the source index to prevent data loss. "
+            f"The '{new_name}' index has been left in place; run the reindex script with "
+            f"--cleanup to recover, or with --allow-failures to proceed despite the mismatch."
+        )
+
+    def reindex_cleanup(self):
+        """Recover from a failed or interrupted :meth:`reindex` run.
+
+        For every index that still has a leftover ``__reindex`` index, restore the original
+        index as the writable target (removing the temporary index from the aliases) and
+        delete the orphaned ``__reindex`` index. Write blocks set during reindexing are
+        cleared so the collection is usable again.
+
+        :return: ``True`` when cleanup completed on all indexes
+        """
+        logger.warning("Beginning reindex cleanup")
+        for index in self.index_list:
+            new_name = f"{index}__reindex"
+
+            if not self.with_retries(self.datastore.client.indices.exists, index=new_name):
+                logger.info("No leftover reindex index found for %s, nothing to clean up.", index)
+                continue
+
+            if not self.with_retries(self.datastore.client.indices.exists, index=index):
+                logger.error(
+                    "Source index %s is missing but %s exists. Refusing to delete the only copy of the data; "
+                    "promote %s manually if it is known good.",
+                    index,
+                    new_name,
+                    new_name,
+                )
+                continue
+
+            logger.warning("Restoring aliases for %s and removing leftover index %s", index, new_name)
+            index_data = self.with_retries(self.datastore.client.indices.get, index=index)[index]
+            new_index_data = self.with_retries(self.datastore.client.indices.get, index=new_name)[new_name]
+            source_aliases = index_data.get("aliases", {})
+            reindex_aliases = new_index_data.get("aliases", {})
+
+            alias_actions = []
+            for alias in sorted(set(source_aliases) | set(reindex_aliases) | {self.name}):
+                source_alias_data = source_aliases.get(alias, {})
+                reindex_alias_data = reindex_aliases.get(alias, {})
+
+                add_alias_data = {"index": index, "alias": alias}
+                add_alias_data.update(source_alias_data)
+                if (
+                    alias == self.name
+                    or source_alias_data.get("is_write_index", False)
+                    or reindex_alias_data.get("is_write_index", False)
+                ):
+                    add_alias_data["is_write_index"] = True
+
+                alias_actions.append({"add": add_alias_data})
+
+            for alias in reindex_aliases:
+                alias_actions.append({"remove": {"index": new_name, "alias": alias}})
+
+            if alias_actions:
+                logger.warning("Restoring aliases to %s", index)
+                self.with_retries(self.datastore.client.indices.update_aliases, actions=alias_actions)
+
+            logger.warning("Deleting leftover reindex index %s", new_name)
+            self.with_retries(self.datastore.client.indices.delete, index=new_name)
+
+            logger.warning("Unblock write to the index")
+            self.with_retries(
+                self.datastore.client.indices.put_settings,
+                index=index,
+                settings=write_unblock_settings,
+            )
 
         return True
 
