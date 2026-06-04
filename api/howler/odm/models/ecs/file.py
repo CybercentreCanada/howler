@@ -75,7 +75,7 @@ class File(odm.Model):
     hash: Hashes | None = odm.Optional(
         odm.Compound(
             Hashes,
-            description="These fields contain Windows Portable Executable (PE) metadata.",
+            description="Hashes, usually file hashes.",
         )
     )
     pe: PE | None = odm.Optional(odm.Compound(PE, description="These fields contain Windows Portable Executable (PE) metadata."))
