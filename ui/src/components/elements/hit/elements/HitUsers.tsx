@@ -43,7 +43,7 @@ const AvatarChip = ({ userId, noUser, placeholder, layout, hideLabel }: AvatarCh
         }
       }}
       icon={userAvatar()}
-      label={!hideLabel && (userId && userId !== noUser ? userId : placeholder)}
+      label={userId && userId !== noUser ? userId : placeholder}
       size={layout !== HitLayout.COMFY ? 'small' : 'medium'}
     />
   );
@@ -67,7 +67,7 @@ const HitUsers: AssignedProps = ({ hit, layout, hideLabel = false, showAssigned 
             />
           </>
         )}
-        {(showAssessor || hit.howler.status === 'resolved') && (
+        {(showAssessor || hit.howler.assessment !== null) && (
           <>
             {!hideLabel && <Typography variant="caption">{t('app.drawer.hit.assessment.assessor')}:</Typography>}
             <AvatarChip
