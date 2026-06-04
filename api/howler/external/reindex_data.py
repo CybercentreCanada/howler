@@ -20,7 +20,8 @@ if __name__ == "__main__":
         "--cleanup",
         action="store_true",
         help="Recover from a failed or interrupted reindex by restoring the source index and "
-        "deleting leftover '__reindex' indexes.",
+        "deleting leftover '__reindex' indexes. If the source index is missing, cleanup fails "
+        "to avoid deleting the only remaining copy of the data.",
     )
     parser.add_argument(
         "--allow-failures",
@@ -53,6 +54,7 @@ if __name__ == "__main__":
     os.environ["HWL_DATASTORE_TRANSPORT_TIMEOUT"] = str(args.timeout)
 
     from howler.datastore.collection import ESCollection
+    from howler.datastore.exceptions import DataStoreException
 
     ESCollection.IGNORE_ENSURE_COLLECTION = True
 
@@ -77,7 +79,11 @@ if __name__ == "__main__":
         for index_name in selected:
             collection: ESCollection = getattr(ds, index_name)
             print(f"Cleaning up leftover reindex state for '{index_name}'.")
-            collection.reindex_cleanup()
+            try:
+                collection.reindex_cleanup()
+            except DataStoreException as e:
+                print(f"ERROR: Cleanup of '{index_name}' failed: {e}", file=sys.stderr)
+                sys.exit(1)
             print(f"Cleanup of '{index_name}' complete.")
         sys.exit(0)
 
@@ -116,9 +122,11 @@ if __name__ == "__main__":
         except Exception as e:  # noqa: BLE001
             print(f"ERROR: Reindex of '{index_name}' failed: {e}", file=sys.stderr)
             print(
-                "The source index has been preserved. Run this script with --cleanup to remove any "
-                "leftover '__reindex' index and restore the original, then investigate the failure "
-                "before retrying.",
+                "Run this script with --cleanup to recover before retrying: if the source index is "
+                "still present it will be restored and any leftover '__reindex' index removed. If the "
+                "source was already deleted but '__reindex' exists, cleanup will fail to avoid deleting "
+                "the only remaining copy of the data; recover or delete that index manually. Investigate "
+                "the failure before retrying.",
                 file=sys.stderr,
             )
             sys.exit(1)
