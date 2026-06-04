@@ -21,7 +21,7 @@
 | interactive | Boolean | Whether the process is connected to an interactive shell. | :material-minus-box-outline: Optional | `None` |
 | name | Keyword | Process name. | :material-minus-box-outline: Optional | `None` |
 | pe | [PE](/howler/odm/class/pe) | Windows Portable Executable (PE) metadata. | :material-minus-box-outline: Optional | `None` |
-| pid | Integer | Process id. | :material-minus-box-outline: Optional | `None` |
+| pid | Long | Process id. | :material-minus-box-outline: Optional | `None` |
 | same_as_process | Boolean | This boolean is used to identify if a leader process is the same as the top level process. | :material-minus-box-outline: Optional | `None` |
 | start | Date | The time the process started. | :material-minus-box-outline: Optional | `None` |
 | title | Keyword | Process title. | :material-minus-box-outline: Optional | `None` |
