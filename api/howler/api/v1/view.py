@@ -4,7 +4,7 @@ from flask import request
 from mergedeep.mergedeep import merge
 
 from howler.api import bad_request, created, forbidden, make_subapi_blueprint, no_content, not_found, ok
-from howler.api.v1.utils.string_utils import parse_wait_flag
+from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -51,6 +51,7 @@ def get_views(user: User, **kwargs):
 @generate_swagger_docs()
 @view_api.route("/", methods=["POST"])
 @api_login(required_priv=["R", "W"])
+@parse_parameters(refresh=parse_refresh)
 def create_view(**kwargs):
     """Create a new view
 
@@ -58,7 +59,8 @@ def create_view(**kwargs):
     None
 
     Optional Arguments:
-    None
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     {
@@ -85,6 +87,8 @@ def create_view(**kwargs):
     if "type" not in view_data:
         return bad_request(err="You must specify a type when creating a view.")
 
+    refresh = kwargs.get("refresh")
+
     storage = datastore()
 
     try:
@@ -102,7 +106,7 @@ def create_view(**kwargs):
 
             storage.user.save(current_user["uname"], current_user)
 
-        storage.view.save(view.view_id, view)
+        storage.view.save(view.view_id, view, refresh=refresh)
         return created(view)
     except SearchException:
         return bad_request(err="You must use a valid query when creating a view.")
@@ -113,6 +117,7 @@ def create_view(**kwargs):
 @generate_swagger_docs()
 @view_api.route("/<view_id>", methods=["DELETE"])
 @api_login(required_priv=["W"])
+@parse_parameters(refresh=parse_refresh)
 def delete_view(view_id: str, user: User, **kwargs):
     """Delete a view
 
@@ -120,7 +125,8 @@ def delete_view(view_id: str, user: User, **kwargs):
     view_id => The id of the view to delete
 
     Optional Arguments:
-    wait    =>  Flag wait for change to be available for search before returning
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     None
@@ -130,6 +136,8 @@ def delete_view(view_id: str, user: User, **kwargs):
         "success": true     # Did the deletion succeed?
     }
     """
+    refresh = kwargs.get("refresh")
+
     storage = datastore()
 
     existing_view: View = storage.view.get_if_exists(view_id)
@@ -142,7 +150,7 @@ def delete_view(view_id: str, user: User, **kwargs):
     if existing_view.type == "readonly":
         return forbidden(err="You cannot delete built-in views.")
 
-    success = storage.view.delete(view_id, refresh=parse_wait_flag())
+    success = storage.view.delete(view_id, refresh=refresh)
 
     return no_content({"success": success})
 
@@ -150,6 +158,7 @@ def delete_view(view_id: str, user: User, **kwargs):
 @generate_swagger_docs()
 @view_api.route("/<view_id>", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
+@parse_parameters(refresh=parse_refresh)
 def update_view(view_id: str, user: User, **kwargs):
     """Update a view
 
@@ -157,7 +166,8 @@ def update_view(view_id: str, user: User, **kwargs):
     view_id => The view_id of the view to modify
 
     Optional Arguments:
-    None
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     {
@@ -170,6 +180,8 @@ def update_view(view_id: str, user: User, **kwargs):
         ...view     # The updated view data
     }
     """
+    refresh = kwargs.get("refresh")
+
     storage = datastore()
 
     new_data = request.json
@@ -194,9 +206,7 @@ def update_view(view_id: str, user: User, **kwargs):
 
     new_view = View(cast(dict, merge({}, existing_view.as_primitives(), new_data)))
 
-    storage.view.save(new_view.view_id, new_view)
-
-    storage.view.commit()
+    storage.view.save(new_view.view_id, new_view, refresh=refresh)
 
     try:
         if "query" in new_data:

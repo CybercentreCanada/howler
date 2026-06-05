@@ -10,7 +10,7 @@ from howler.api import (
     not_found,
     ok,
 )
-from howler.api.v1.utils.string_utils import parse_wait_flag
+from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -62,6 +62,7 @@ def get_templates(**kwargs):
 @generate_swagger_docs()
 @template_api.route("/", methods=["POST"])
 @api_login(required_priv=["R", "W"])
+@parse_parameters(refresh=parse_refresh)
 def create_template(**kwargs):
     """Create a new template
 
@@ -69,7 +70,8 @@ def create_template(**kwargs):
     None
 
     Optional Arguments:
-    None
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     {
@@ -90,6 +92,8 @@ def create_template(**kwargs):
 
     if "keys" not in template_data:
         return bad_request(err="You must specify a list of keys when creating a template!")
+
+    refresh = kwargs.get("refresh")
 
     storage = datastore()
 
@@ -114,7 +118,7 @@ def create_template(**kwargs):
         if storage.template.search(query_str)["total"] > 0:
             return conflict(err="A template covering this case already exists.")
 
-        storage.template.save(template.template_id, template)
+        storage.template.save(template.template_id, template, refresh=refresh)
         return created(template)
     except HowlerException as e:
         return bad_request(err=str(e))
@@ -123,6 +127,7 @@ def create_template(**kwargs):
 @generate_swagger_docs()
 @template_api.route("/<id>", methods=["DELETE"])
 @api_login(required_priv=["W"])
+@parse_parameters(refresh=parse_refresh)
 def delete_template(id: str, user: User, **kwargs):
     """Delete a template
 
@@ -140,6 +145,8 @@ def delete_template(id: str, user: User, **kwargs):
         "success": true     # Did the deletion succeed?
     }
     """
+    refresh = kwargs.get("refresh")
+
     storage = datastore()
 
     if not storage.template.exists(id):
@@ -153,7 +160,7 @@ def delete_template(id: str, user: User, **kwargs):
     if existing_template.type == "global" and "admin" not in user.type:
         return forbidden(err="You cannot delete a global template unless you are an administrator.")
 
-    result = storage.template.delete(id, refresh=parse_wait_flag())
+    result = storage.template.delete(id, refresh=refresh)
     if result:
         return no_content()
     else:
@@ -163,6 +170,7 @@ def delete_template(id: str, user: User, **kwargs):
 @generate_swagger_docs()
 @template_api.route("/<id>", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
+@parse_parameters(refresh=parse_refresh)
 def update_template_fields(id: str, user: User, **kwargs):
     """Update a template's keys
 
@@ -170,7 +178,8 @@ def update_template_fields(id: str, user: User, **kwargs):
     id => The id of the template to modify
 
     Optional Arguments:
-    None
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     [
@@ -183,6 +192,8 @@ def update_template_fields(id: str, user: User, **kwargs):
         ...template     # The updated template data
     }
     """
+    refresh = kwargs.get("refresh")
+
     storage = datastore()
 
     if not storage.template.exists(id):
@@ -199,7 +210,7 @@ def update_template_fields(id: str, user: User, **kwargs):
 
     existing_template.keys = new_fields
 
-    storage.template.save(existing_template.template_id, existing_template)
+    storage.template.save(existing_template.template_id, existing_template, refresh=refresh)
 
     try:
         return ok(storage.template.get_if_exists(existing_template.template_id, as_obj=False))

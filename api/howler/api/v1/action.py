@@ -4,7 +4,7 @@ from flask import Response, request
 
 import howler.actions as actions
 from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
-from howler.api.v1.utils.string_utils import parse_wait_flag
+from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
 from howler.common.logging.audit import audit
@@ -49,14 +49,16 @@ def get_actions(**_) -> Response:
 @generate_swagger_docs()
 @action_api.route("/", methods=["POST"])
 @api_login(audit=False, check_xsrf_token=False, required_type=["admin", "automation_basic", "automation_advanced"])
-def add_action(user: User, **_) -> Response:
+@parse_parameters(refresh=parse_refresh)
+def add_action(user: User, **kwargs) -> Response:
     """Create a new action
 
     Variables:
     None
 
     Optional Arguments:
-    None
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     {
@@ -80,6 +82,8 @@ def add_action(user: User, **_) -> Response:
     if new_action is None:
         return bad_request(err="You must specify an action")
 
+    refresh = kwargs.get("refresh")
+
     if error := action_service.validate_action(new_action):
         return error
 
@@ -89,8 +93,7 @@ def add_action(user: User, **_) -> Response:
         action_obj = Action(new_action)
 
         ds = datastore()
-        ds.action.save(action_obj.action_id, action_obj)
-        ds.action.commit()
+        ds.action.save(action_obj.action_id, action_obj, refresh=refresh)
     except HowlerException as e:
         return bad_request(err=str(e))
 
@@ -104,14 +107,16 @@ def add_action(user: User, **_) -> Response:
     check_xsrf_token=False,
     required_type=["admin", "automation_basic", "automation_advanced"],
 )
-def update_action(id: str, user: User, **_) -> Response:
+@parse_parameters(refresh=parse_refresh)
+def update_action(id: str, user: User, **kwargs) -> Response:
     """Update an existing action
 
     Variables:
     id  => id of the aciton to update
 
     Optional Arguments:
-    None
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     {
@@ -133,6 +138,8 @@ def update_action(id: str, user: User, **_) -> Response:
     updated_action = request.json
     if not isinstance(updated_action, dict):
         return bad_request(err="Incorrect data structure!")
+
+    refresh = kwargs.get("refresh")
 
     ds = datastore()
 
@@ -159,8 +166,7 @@ def update_action(id: str, user: User, **_) -> Response:
         action_obj = Action(updated_action)
         action_obj.action_id = id
 
-        ds.action.save(action_obj.action_id, action_obj)
-        ds.action.commit()
+        ds.action.save(action_obj.action_id, action_obj, refresh=refresh)
     except HowlerException as e:
         return bad_request(err=str(e))
 
@@ -170,6 +176,7 @@ def update_action(id: str, user: User, **_) -> Response:
 @generate_swagger_docs()
 @action_api.route("/<id>", methods=["DELETE"])
 @api_login(audit=True, check_xsrf_token=False, required_type=["admin", "automation_basic", "automation_advanced"])
+@parse_parameters(refresh=parse_refresh)
 def delete_action(id: str, user: User, **kwargs) -> Response:
     """Delete an existing action
 
@@ -177,11 +184,14 @@ def delete_action(id: str, user: User, **kwargs) -> Response:
     id  => The id of the action to delete
 
     Optional Arguments:
-    wait    =>  Flag wait for change to be available for search before returning
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Result Example:
     None
     """
+    refresh = kwargs.get("refresh")
+
     ds = datastore()
 
     result = ds.action.search(f"action_id:{id}", rows=1)
@@ -195,7 +205,7 @@ def delete_action(id: str, user: User, **kwargs) -> Response:
         return forbidden(err="You do not have the permissions necessary to delete this action.")
 
     try:
-        ds.action.delete(id, refresh=parse_wait_flag())
+        ds.action.delete(id, refresh=refresh)
 
         return no_content()
     except HowlerException as e:

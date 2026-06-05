@@ -17,7 +17,12 @@ from howler.api import (
     ok,
 )
 from howler.api.v1.utils.etag import add_etag
-from howler.common.exceptions import HowlerException, HowlerValueError, InvalidDataException
+from howler.api.v1.utils.params import parse_parameters, parse_refresh
+from howler.common.exceptions import (
+    HowlerException,
+    HowlerValueError,
+    InvalidDataException,
+)
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
@@ -48,6 +53,7 @@ hit_helper = OdmHelper(Hit)
 @generate_swagger_docs()
 @hit_api.route("/", methods=["POST"])
 @api_login(required_priv=["W"])
+@parse_parameters(refresh=parse_refresh)
 def create_hits(user: User, **kwargs):
     """Create hits.
 
@@ -56,6 +62,10 @@ def create_hits(user: User, **kwargs):
 
     Arguments:
     None
+
+    Optional Arguments:
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     {
@@ -93,6 +103,8 @@ def create_hits(user: User, **kwargs):
     """
     hits = request.json
 
+    refresh = kwargs.get("refresh")
+
     if hits is None:
         return bad_request(err="No hits were sent.")
 
@@ -114,14 +126,19 @@ def create_hits(user: User, **kwargs):
 
     if len(response_body["invalid"]) == 0:
         if len(odms) > 0:
-            for odm in odms:
+            for odm in odms[:-1]:  # Save all but the last hit without refreshing
                 # Ensure all ids are consistent
                 if odm.event is not None:
                     odm.event.id = odm.howler.id
                 hit_service.create_hit(odm.howler.id, odm, user=user.uname)
                 analytic_service.save_from_hit(odm, user)
 
-            datastore().hit.commit()
+            # Save the last hit passing the refresh param
+            last_odm = odms[-1]
+            if last_odm.event is not None:
+                last_odm.event.id = last_odm.howler.id
+            hit_service.create_hit(last_odm.howler.id, last_odm, user=user.uname, refresh=refresh)
+            analytic_service.save_from_hit(last_odm, user)
 
             action_service.enqueue_action_execution([odm.howler.id for odm in odms], trigger="create", user=user)
 
@@ -137,6 +154,7 @@ def create_hits(user: User, **kwargs):
 @generate_swagger_docs()
 @hit_api.route("/", methods=["DELETE"])
 @api_login(required_priv=["W"])
+@parse_parameters(refresh=parse_refresh)
 def delete_hits(user: User, **kwargs):
     """Delete hits.
 
@@ -145,6 +163,10 @@ def delete_hits(user: User, **kwargs):
 
     Arguments:
     None
+
+    Optional Arguments:
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     {
@@ -159,6 +181,7 @@ def delete_hits(user: User, **kwargs):
     }
     """
     hit_ids = request.json
+    refresh = kwargs.get("refresh")
 
     if hit_ids is None:
         return bad_request(err="No hit ids were sent.")
@@ -178,7 +201,7 @@ def delete_hits(user: User, **kwargs):
         if not hit_service.exists(hit_id):
             return not_found(err=f"Hit id {hit_id} does not exist.")
 
-    hit_service.delete_hits(hit_ids)
+    hit_service.delete_hits(hit_ids, refresh=refresh)
 
     return no_content()
 
@@ -281,6 +304,7 @@ def get_hit(id: str, server_version: str, **kwargs):
 @hit_api.route("/<id>/overwrite", methods=["PUT"])
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=False)
+@parse_parameters(refresh=parse_refresh)
 def overwrite_hit(id: str, server_version: str, **kwargs):
     """Overwrite a hit.
 
@@ -292,6 +316,10 @@ def overwrite_hit(id: str, server_version: str, **kwargs):
     Arguments:
     replace => Should lists of values be replaced or merged?
 
+    Optional Arguments:
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
+
     Data Block:
     {
         ...hit
@@ -301,6 +329,7 @@ def overwrite_hit(id: str, server_version: str, **kwargs):
     https://github.com/CybercentreCanada/howler-api/blob/main/howler/odm/models/hit.py
     """
     hit = cast(Optional[Hit], kwargs.get("cached_hit"))
+    refresh = kwargs.get("refresh")
 
     if not hit:
         return not_found(err="Hit %s does not exist" % id)
@@ -322,7 +351,7 @@ def overwrite_hit(id: str, server_version: str, **kwargs):
             ),
         )
 
-        new_hit, new_version = hit_service.save_hit(Hit(new_hit), server_version)
+        new_hit, new_version = hit_service.save_hit(Hit(new_hit), server_version, refresh=refresh)
 
         return ok(new_hit), new_version
     except HowlerValueError as e:
@@ -399,6 +428,7 @@ def update_hit(id: str, server_version: str, **kwargs):
 @generate_swagger_docs()
 @hit_api.route("/update", methods=["PUT"])
 @api_login(audit=False, required_priv=["W"])
+@parse_parameters(refresh=parse_refresh)
 def update_by_query(**kwargs):
     """Update a set of hits using a query.
 
@@ -423,6 +453,7 @@ def update_by_query(**kwargs):
     }
     """
     data = cast(dict[str, Any], request.json)
+    refresh = kwargs.get("refresh")
 
     try:
         query = cast(str, data["query"])
@@ -446,7 +477,7 @@ def update_by_query(**kwargs):
             )
         )
 
-        datastore().hit.update_by_query(query, operations)
+        datastore().hit.update_by_query(query, operations, refresh=refresh)
 
         return ok({"success": True})
     except (HowlerValueError, KeyError, DataStoreException) as e:
@@ -502,6 +533,7 @@ def get_assigned_hits(user, **kwargs):
 @hit_api.route("/<id>/labels/<label_set>", methods=["PUT"])
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=False)
+@parse_parameters(refresh=parse_refresh)
 def add_label(id, label_set, user, **kwargs):
     """Add labels to a hit.
 
@@ -522,6 +554,8 @@ def add_label(id, label_set, user, **kwargs):
         "success": True             # Adding the label succeeded
     }
     """
+    refresh = kwargs.get("refresh")
+
     if not hit_service.does_hit_exist(id):
         return not_found(err=f"Hit {id} does not exist")
 
@@ -547,9 +581,8 @@ def add_label(id, label_set, user, **kwargs):
         id,
         [hit_helper.list_add(f"howler.labels.{label_set}", label) for label in labels],
         user["uname"],
+        refresh=refresh,
     )
-
-    datastore().hit.commit()
 
     action_service.enqueue_action_execution([id], trigger="add_label", user=user)
 
@@ -562,6 +595,7 @@ def add_label(id, label_set, user, **kwargs):
 @hit_api.route("/<id>/labels/<label_set>", methods=["DELETE"])
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=False)
+@parse_parameters(refresh=parse_refresh)
 def remove_labels(id, label_set, user, **kwargs):
     """Remove labels from a hit.
 
@@ -582,6 +616,8 @@ def remove_labels(id, label_set, user, **kwargs):
         "success": True             # Removing the labels succeeded
     }
     """
+    refresh = kwargs.get("refresh")
+
     if not hit_service.does_hit_exist(id):
         return not_found(err=f"Hit {id} does not exist")
 
@@ -601,9 +637,8 @@ def remove_labels(id, label_set, user, **kwargs):
         id,
         [hit_helper.list_remove(f"howler.labels.{label_set}", label) for label in labels],
         user["uname"],
+        refresh=refresh,
     )
-
-    datastore().hit.commit()
 
     action_service.enqueue_action_execution([id], trigger="remove_label", user=user)
 
@@ -616,6 +651,7 @@ def remove_labels(id, label_set, user, **kwargs):
 @hit_api.route("/<id>/transition", methods=["POST"])
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=True)
+@parse_parameters(refresh=parse_refresh)
 def transition(id: str, user: User, **kwargs):
     """Transition a hit
 
@@ -636,6 +672,8 @@ def transition(id: str, user: User, **kwargs):
         ...hit            # The new data for the hit
     }
     """
+    refresh = kwargs.get("refresh")
+
     if not kwargs.get("cached_hit"):
         return not_found(err="Hit %s does not exist" % id)
 
@@ -659,7 +697,9 @@ def transition(id: str, user: User, **kwargs):
                 )
             )
 
-        hit_service.transition_hit(id, transition, user, version, **kwargs, **transition_data.get("data", {}))
+        hit_service.transition_hit(
+            id, transition, user, version, refresh=refresh, **kwargs, **transition_data.get("data", {})
+        )
     except (WorkflowException, DataStoreException, InvalidDataException) as e:
         return bad_request(err=str(e))
     except VersionConflictException as e:
