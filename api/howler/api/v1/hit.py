@@ -131,15 +131,14 @@ def create_hits(user: User, **kwargs):
                 if odm.event is not None:
                     odm.event.id = odm.howler.id
                 hit_service.create_hit(odm.howler.id, odm, user=user.uname)
-                analytic_service.save_from_hit(odm, user)
 
             # Save the last hit passing the refresh param
             last_odm = odms[-1]
             if last_odm.event is not None:
                 last_odm.event.id = last_odm.howler.id
             hit_service.create_hit(last_odm.howler.id, last_odm, user=user.uname, refresh=refresh)
-            analytic_service.save_from_hit(last_odm, user)
 
+            analytic_service.save_from_hits(odms, user, refresh=refresh)
             action_service.enqueue_action_execution([odm.howler.id for odm in odms], trigger="create", user=user)
 
         response_body["warnings"] = warnings
@@ -362,6 +361,7 @@ def overwrite_hit(id: str, server_version: str, **kwargs):
 @hit_api.route("/<id>/update", methods=["PUT"])
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=False)
+@parse_parameters(refresh=parse_refresh)
 def update_hit(id: str, server_version: str, **kwargs):
     """Update a hit.
 
@@ -381,6 +381,7 @@ def update_hit(id: str, server_version: str, **kwargs):
     https://github.com/CybercentreCanada/howler-api/blob/main/howler/odm/models/hit.py
     """
     hit = cast(Optional[Hit], kwargs.get("cached_hit"))
+    refresh = kwargs.get("refresh")
 
     if not hit:
         return not_found(err="Hit %s does not exist" % id)
@@ -415,7 +416,7 @@ def update_hit(id: str, server_version: str, **kwargs):
         )
 
         new_hit, new_version = hit_service.update_hit(
-            hit.howler.id, operations, kwargs["user"]["uname"], server_version
+            hit.howler.id, operations, kwargs["user"]["uname"], server_version, refresh=refresh
         )
 
         event_service.emit("hits", {"hit": new_hit, "version": new_version})
@@ -1021,6 +1022,7 @@ def remove_react_comment(id: str, comment_id: str, user: dict[str, Any], **kwarg
 @generate_swagger_docs()
 @hit_api.route("/bundle", methods=["POST"])
 @api_login(audit=False, required_priv=["W"])
+@parse_parameters(refresh=parse_refresh)
 def create_bundle(user: User, **kwargs):
     """Create a new bundle
 
@@ -1044,6 +1046,7 @@ def create_bundle(user: User, **kwargs):
     }
     """
     data = request.json
+    refresh = kwargs.get("refresh")
     if not isinstance(data, dict):
         return bad_request(err="Invalid data format")
 
@@ -1066,8 +1069,9 @@ def create_bundle(user: User, **kwargs):
                 odm.howler.hits.append(hit_id)
 
         hit_service.create_hit(odm.howler.id, odm, user=user.uname)
-        analytic_service.save_from_hit(odm, user)
+        analytic_service.save_from_hits(odm, user, refresh=refresh)
 
+        child_hits = []
         for hit_id in odm.howler.hits:
             child_hit: Hit = hit_service.get_hit(hit_id, as_odm=True)
 
@@ -1077,7 +1081,13 @@ def create_bundle(user: User, **kwargs):
                 )
 
             child_hit.howler.bundles.append(odm.howler.id)
+            child_hits.append(child_hit)
+
+        # only pass the refresh arg for the last request
+        for child_hit in child_hits[:-1]:
             datastore().hit.save(child_hit.howler.id, child_hit)
+        if child_hits:
+            datastore().hit.save(child_hits[-1].howler.id, child_hits[-1], refresh=refresh)
 
         return created(odm)
     except HowlerException as e:
@@ -1088,6 +1098,7 @@ def create_bundle(user: User, **kwargs):
 @hit_api.route("/bundle/<id>", methods=["PUT"])
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=False)
+@parse_parameters(refresh=parse_refresh)
 def update_bundle(id, **kwargs):
     """Update a hit's child hits. Can be used to convert an existing hit into a bundle, or to update an existing bundle.
 
@@ -1107,6 +1118,7 @@ def update_bundle(id, **kwargs):
         ...hit      # The updated bundle
     }
     """
+    refresh = kwargs.get("refresh")
     bundle_hit: Hit = cast(Hit, kwargs.get("cached_hit", None))
     if not bundle_hit:
         return not_found(err="This bundle does not exist.")
@@ -1142,7 +1154,7 @@ def update_bundle(id, **kwargs):
             child_hit.howler.bundles = new_bundle_list
             datastore().hit.save(child_hit.howler.id, child_hit)
 
-        datastore().hit.save(bundle_hit.howler.id, bundle_hit)
+        datastore().hit.save(bundle_hit.howler.id, bundle_hit, refresh=refresh)
 
         return ok(bundle_hit)
     except HowlerException as e:
@@ -1153,6 +1165,7 @@ def update_bundle(id, **kwargs):
 @hit_api.route("/bundle/<id>", methods=["DELETE"])
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=False)
+@parse_parameters(refresh=parse_refresh)
 def remove_bundle_children(id, **kwargs):
     """Remove a bundle's child hits.
 
@@ -1175,6 +1188,7 @@ def remove_bundle_children(id, **kwargs):
         ...hit      # The updated hit
     }
     """
+    refresh = kwargs.get("refresh")
     bundle_hit = kwargs.get("cached_hit", None)
     if not bundle_hit:
         return not_found(err="This bundle does not exist.")
@@ -1207,7 +1221,7 @@ def remove_bundle_children(id, **kwargs):
 
             datastore().hit.save(child_hit.howler.id, child_hit)
 
-        datastore().hit.save(bundle_hit.howler.id, bundle_hit)
+        datastore().hit.save(bundle_hit.howler.id, bundle_hit, refresh=refresh)
 
         return ok(bundle_hit)
     except HowlerException as e:

@@ -9,6 +9,7 @@ import pytest
 from werkzeug.test import EnvironBuilder
 
 from howler.app import app
+from howler.common import loader
 from howler.common.exceptions import HowlerInvalidParameterException
 from howler.datastore.collection import ESCollection
 from howler.datastore.store import ESStore
@@ -16,6 +17,7 @@ from howler.odm import random_data
 from howler.odm.models.action import Action
 from howler.odm.models.analytic import Analytic
 from howler.odm.models.dossier import Dossier
+from howler.odm.models.hit import Hit
 from howler.odm.models.overview import Overview
 from howler.odm.models.template import Template
 from howler.odm.models.user import User
@@ -26,7 +28,7 @@ from howler.odm.randomizer import random_model_obj
 def _flatten_test_data(test_data: tuple[tuple[str, tuple[str]]]):
     flattened = []
     for name, keys in test_data:
-        flattened.extend((name, key, name.split("/")[1]) for key in keys)
+        flattened.extend((name.split("/")[1], name, key) for key in keys)
     return tuple(flattened)
 
 
@@ -48,7 +50,11 @@ def _get_rw_model(model_class):
     return model_obj
 
 
-def _get_request_data_obj(index, method, entity_obj):
+def _get_request_data_obj(endpoint, index, method, entity_obj):
+    # overrides for weird endpoints
+    if endpoint == "/analytic/{id}/owner":
+        return json.dumps({"username": "admin"})
+
     if method == "POST":
         if index == "analytic":
             return json.dumps(
@@ -87,8 +93,20 @@ REFRESH_SUPPORTING_ENDPOINTS = (
     ("/action", ("POST",)),
     ("/analytic/{id}", ("DELETE", "PUT")),
     ("/analytic/rules", ("POST",)),
+    ("/analytic/{id}/owner", ("POST",)),
     ("/dossier/{id}", ("DELETE", "PUT")),
     ("/dossier", ("POST",)),
+    ("/overview/{id}", ("DELETE", "PUT")),
+    ("/overview", ("POST",)),
+    ("/template/{id}", ("DELETE", "PUT")),
+    ("/template", ("POST",)),
+    ("/user/{id}", ("DELETE", "PUT", "POST")),
+    ("/view/{id}", ("DELETE", "PUT")),
+    ("/view", ("POST",)),
+)
+
+# hit endpoints tested separately because they don't have the same request structure as the other entities
+REFRESH_SUPPORTING_HIT_ENDPOINTS = (
     ("/hit", ("POST", "DELETE")),
     ("/hit/update", ("PUT",)),
     ("/hit/bundle", ("POST",)),
@@ -97,14 +115,7 @@ REFRESH_SUPPORTING_ENDPOINTS = (
     ("/hit/{id}/transition", ("PUT",)),
     ("/hit/{id}/update", ("PUT",)),
     ("/hit/{id}/labels/{label_set}", ("PUT", "DELETE")),
-    ("/overview/{id}", ("DELETE", "PUT")),
-    ("/overview", ("POST",)),
-    ("/template/{id}", ("DELETE", "PUT")),
-    ("/template", ("POST",)),
     ("/tool/{id}/hits", ("POST", "PUT")),
-    ("/user/{id}", ("DELETE", "PUT", "POST")),
-    ("/view/{id}", ("DELETE", "PUT")),
-    ("/view", ("POST",)),
 )
 
 
@@ -138,6 +149,7 @@ def entity_names():
         ("template", Template),
         ("view", View),
         ("user", User),
+        ("hit", Hit),
     )
 
 
@@ -150,6 +162,13 @@ def entity_id(request, entity_names, datastore_connection):
         random_data.wipe_users(datastore_connection)
         random_data.create_users(datastore_connection)
         entity_id = "shawn-h"
+    elif entity_name == "hit":
+        lookups = loader.get_lookups()
+        users = datastore_connection.user.search("*:*")["items"]
+        hit = random_data.generate_useful_hit(lookups=lookups, users=users, prune_hit=False)
+        datastore_connection.hit.save(hit.howler.id, hit)
+        datastore_connection.hit.commit()
+        entity_id = hit.howler.id
     else:
         try:
             c: ESCollection = datastore_connection.get_collection(entity_name)
@@ -245,7 +264,9 @@ def test_parse_wait_flag_invalid(test_client):
 
 
 @pytest.mark.parametrize(
-    "endpoint,method,entity_id", _flatten_test_data(REFRESH_SUPPORTING_ENDPOINTS), indirect=["entity_id"]
+    "entity_id,endpoint,method",
+    _flatten_test_data(REFRESH_SUPPORTING_ENDPOINTS),
+    indirect=["entity_id"],
 )
 def test_wait_param_forwarded_to_es(
     test_client, endpoint: str, method: str, datastore_connection, entity_id, entity_names
@@ -260,19 +281,24 @@ def test_wait_param_forwarded_to_es(
 
     entity_obj = _get_rw_model(entity_class)
 
+    templated_endpoint = endpoint
     if "{id}" in endpoint:
         if not entity_id:
             pytest.skip("No test entity created for this endpoint")
 
-        endpoint = endpoint.format(id=entity_id)
+        if index == "user" and method == "POST":
+            # new user to test creation
+            entity_id = "new-test-user"
+
+        templated_endpoint = endpoint.format(id=entity_id)
         entity_obj["uname" if index == "user" else f"{index}_id"] = entity_id
 
     request = EnvironBuilder(
-        path=f"/api/v1{endpoint}",
+        path=f"/api/v1{templated_endpoint}",
         method=method,
         query_string={"refresh": "wait_for"},
         content_type="application/json",
-        data=_get_request_data_obj(index, method, entity_obj),
+        data=_get_request_data_obj(endpoint, index, method, entity_obj),
         headers={"Authorization": f"Basic {base64.b64encode(b'admin:devkey:admin').decode('utf-8')}"},
     )
 
@@ -280,27 +306,3 @@ def test_wait_param_forwarded_to_es(
 
     assert response.status_code in (200, 201, 204)
     assert datastore_connection.get_collection(index).write_call_args_history[-1]["refresh"] == "wait_for"
-
-
-@pytest.mark.parametrize(
-    "endpoint,method,entity_id", _flatten_test_data(REFRESH_SUPPORTING_ENDPOINTS), indirect=["entity_id"]
-)
-def test_no_wait_no_refresh_arg(test_client, endpoint: str, method: str, datastore_connection, entity_id):
-    index = endpoint.split("/")[1]
-
-    if "{id}" in endpoint:
-        if not entity_id:
-            pytest.skip("No test entity created for this endpoint")
-
-        endpoint = endpoint.format(id=entity_id)
-
-    request = EnvironBuilder(
-        path=f"/api/v1{endpoint}",
-        method=method,
-        headers={"Authorization": f"Basic {base64.b64encode(b'admin:devkey:admin').decode('utf-8')}"},
-    )
-
-    response = test_client.open(request)
-
-    assert response.status_code == 204
-    assert datastore_connection.get_collection(index).write_call_args_history[-1]["refresh"] is None

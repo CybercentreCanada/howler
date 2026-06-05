@@ -568,7 +568,7 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
             )
 
         ds.hit.save(hit.howler.id, hit)
-        analytic_service.save_from_hit(hit, random.choice(users))
+        analytic_service.save_from_hits(hit, random.choice(users))
         ds.analytic.commit()
 
         if choice([True, False, False, False]):
@@ -621,7 +621,7 @@ def create_bundles(ds: HowlerDatastore):
             bundle_hit.howler.hits.append(hit.howler.id)
             hits[hit.howler.id].howler.bundles.append(bundle_hit.howler.id)
 
-        analytic_service.save_from_hit(bundle_hit, random.choice(ds.user.search("*:*")["items"]))
+        analytic_service.save_from_hits(bundle_hit, random.choice(ds.user.search("*:*")["items"]))
         bundle_hit.howler.bundle_size = len(bundle_hit.howler.hits)
         ds.hit.save(bundle_hit.howler.id, bundle_hit)
 

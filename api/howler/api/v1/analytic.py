@@ -224,12 +224,12 @@ def create_rule(user: User, **kwargs):
     )
 
     try:
-        storage.analytic.save(new_analytic.analytic_id, new_analytic)
-        # Have to commit so the analytic is available during registration
-        storage.analytic.commit()
+        storage.analytic.save(new_analytic.analytic_id, new_analytic, refresh=refresh)
+
+        # note that passing a rule will only register that rule without querying for all existing rules
         register_rules(new_analytic)
 
-        storage.template.save(new_template.template_id, new_template)
+        storage.template.save(new_template.template_id, new_template, refresh=refresh)
 
         return ok(new_analytic)
     except HowlerException as e:
@@ -530,6 +530,7 @@ def delete_comments(id: str, user: User, **kwargs):
 @generate_swagger_docs()
 @analytic_api.route("/<id>/owner", methods=["POST"])
 @api_login(required_priv=["W"])
+@parse_parameters(refresh=parse_refresh)
 def set_analytic_owner(id: str, user: dict[str, Any], **kwargs):
     """Set the analytic's owner
 
@@ -549,6 +550,8 @@ def set_analytic_owner(id: str, user: dict[str, Any], **kwargs):
         ...analytic            # The claimed analytic
     }
     """
+    refresh = kwargs.get("refresh")
+
     if not analytic_service.does_analytic_exist(id):
         return not_found(err=f"Analytic {id} does not exist")
 
@@ -561,8 +564,7 @@ def set_analytic_owner(id: str, user: dict[str, Any], **kwargs):
     analytic.owner = data["username"]
 
     ds = datastore()
-    ds.analytic.save(analytic.analytic_id, analytic)
-    ds.analytic.commit()
+    ds.analytic.save(analytic.analytic_id, analytic, refresh=refresh)
 
     return ok(analytic)
 

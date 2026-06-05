@@ -169,12 +169,12 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
 
             hit_service.create_hit(odm.howler.id, odm, user=user.uname)
 
-            analytic_service.save_from_hit(odm, user)
+        analytic_service.save_from_hits(odms, user)
 
         if bundle_hit:
             hit_service.create_hit(bundle_hit.howler.id, bundle_hit, user=user.uname)
 
-            analytic_service.save_from_hit(bundle_hit, user)
+            analytic_service.save_from_hits(bundle_hit, user)
 
         datastore().hit.commit()
 
