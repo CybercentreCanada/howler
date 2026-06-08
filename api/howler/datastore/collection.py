@@ -1133,7 +1133,7 @@ class ESCollection(Generic[ModelType]):
         :return: True is delete successful
         """
         query_obj = {"bool": {"must": {"query_string": {"query": query}}}}
-        success = self.delete_by_search_object(query=query_obj, sort=sort, max_docs=max_docs)
+        success = self.delete_by_search_object(query=query_obj, sort=sort, max_docs=max_docs, refresh=refresh)
         return success
 
     def delete_by_search_object(self, query: dict, sort=None, max_docs=None, refresh=None):
