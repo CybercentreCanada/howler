@@ -1,4 +1,4 @@
-import { hdelete, hget, hpost, hput, joinAllUri, joinUri, uri as parentUri } from 'api';
+import { hdelete, hget, hpost, hput, joinAllUri, joinUri, uri as parentUri, type HowlerRefreshParam } from 'api';
 import type { Template } from 'models/entities/generated/Template';
 
 export const uri = (id?: string) => {
@@ -9,18 +9,14 @@ export const get = (): Promise<Template[]> => {
   return hget(uri());
 };
 
-export const post = (newData: Partial<Template>): Promise<Template> => {
-  return hpost(uri(), newData);
+export const post = (newData: Partial<Template>, refresh?: HowlerRefreshParam): Promise<Template> => {
+  return hpost(uri(), newData, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
-export const put = (id: string, newFields: string[]): Promise<Template> => {
-  return hput(uri(id), newFields);
+export const put = (id: string, newFields: string[], refresh?: HowlerRefreshParam): Promise<Template> => {
+  return hput(uri(id), newFields, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
-export const del = (id: string, wait?: boolean): Promise<void> => {
-  const params = new URLSearchParams();
-  if (wait) {
-    params.append('wait', 'true');
-  }
-  return hdelete(uri(id), undefined, undefined, params);
+export const del = (id: string, refresh?: HowlerRefreshParam): Promise<void> => {
+  return hdelete(uri(id), undefined, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
