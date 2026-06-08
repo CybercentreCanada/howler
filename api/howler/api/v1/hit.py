@@ -673,7 +673,7 @@ def transition(id: str, user: User, **kwargs):
         ...hit            # The new data for the hit
     }
     """
-    refresh = kwargs.get("refresh")
+    refresh = kwargs.pop("refresh")
 
     if not kwargs.get("cached_hit"):
         return not_found(err="Hit %s does not exist" % id)

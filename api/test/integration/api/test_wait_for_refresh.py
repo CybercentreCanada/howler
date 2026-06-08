@@ -24,12 +24,18 @@ from howler.odm.models.user import User
 from howler.odm.models.view import View
 from howler.odm.randomizer import random_model_obj
 
+_TEST_TOKEN = f"Basic {base64.b64encode(b'admin:devkey:admin').decode('utf-8')}"
+
 
 def _flatten_test_data(test_data: tuple[tuple[str, tuple[str]]]):
     flattened = []
     for name, keys in test_data:
-        flattened.extend((name.split("/")[1], name, key) for key in keys)
+        flattened.extend((name, key) for key in keys)
     return tuple(flattened)
+
+
+def _add_entity_name(flattened_test_data: list[tuple[str, str]]):
+    return [(endpoint.split("/")[1], endpoint, method) for endpoint, method in flattened_test_data]
 
 
 def _get_rw_model(model_class):
@@ -106,17 +112,24 @@ REFRESH_SUPPORTING_ENDPOINTS = (
 )
 
 # hit endpoints tested separately because they don't have the same request structure as the other entities
-REFRESH_SUPPORTING_HIT_ENDPOINTS = (
-    ("/hit", ("POST", "DELETE")),
-    ("/hit/update", ("PUT",)),
+REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_HITS = (("/hit", ("POST",)),)
+
+REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_SINGLE_HIT = (("/hit/{id}/overwrite", ("PUT",)),)
+
+REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_IDS = (
+    ("/hit", ("DELETE",)),
     ("/hit/bundle", ("POST",)),
     ("/hit/bundle/{id}", ("DELETE", "PUT")),
-    ("/hit/{id}/overwrite", ("PUT",)),
-    ("/hit/{id}/transition", ("PUT",)),
-    ("/hit/{id}/update", ("PUT",)),
-    ("/hit/{id}/labels/{label_set}", ("PUT", "DELETE")),
-    ("/tool/{id}/hits", ("POST", "PUT")),
 )
+
+REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_OPERATIONS = (
+    ("/hit/update", ("PUT",)),
+    ("/hit/{id}/update", ("PUT",)),
+)
+
+REFRESH_SUPPORTING_HIT_TRANSITION_ENDPOINTS = (("/hit/{id}/transition", ("POST",)),)
+
+REFRESH_SUPPORTING_HIT_LABEL_ENDPOINTS = (("/hit/{id}/labels/{label_set}", ("PUT", "DELETE")),)
 
 
 class MockCollection(ESCollection):
@@ -137,6 +150,27 @@ class MockCollection(ESCollection):
             {"key": key, "operations": operations, "version": version, "refresh": refresh}
         )
         return super().update(key, operations, version, refresh)
+
+    def delete_by_query(self, query: str, sort=None, max_docs=None, refresh=None):
+        self.write_call_args_history.append({"query": query, "sort": sort, "max_docs": max_docs, "refresh": refresh})
+        return super().delete_by_query(query, sort, max_docs, refresh)
+
+    def delete_by_search_object(self, query: dict, sort=None, max_docs=None, refresh=None):
+        self.write_call_args_history.append({"query": query, "sort": sort, "max_docs": max_docs, "refresh": refresh})
+        return super().delete_by_search_object(query, sort, max_docs, refresh)
+
+    def update_by_query(self, query, operations, filters=None, access_control=None, max_docs=None, refresh=None):
+        self.write_call_args_history.append(
+            {
+                "query": query,
+                "operations": operations,
+                "filters": filters,
+                "access_control": access_control,
+                "max_docs": max_docs,
+                "refresh": refresh,
+            }
+        )
+        return super().update_by_query(query, operations, filters, access_control, max_docs, refresh)
 
 
 @pytest.fixture(scope="module")
@@ -162,13 +196,6 @@ def entity_id(request, entity_names, datastore_connection):
         random_data.wipe_users(datastore_connection)
         random_data.create_users(datastore_connection)
         entity_id = "shawn-h"
-    elif entity_name == "hit":
-        lookups = loader.get_lookups()
-        users = datastore_connection.user.search("*:*")["items"]
-        hit = random_data.generate_useful_hit(lookups=lookups, users=users, prune_hit=False)
-        datastore_connection.hit.save(hit.howler.id, hit)
-        datastore_connection.hit.commit()
-        entity_id = hit.howler.id
     else:
         try:
             c: ESCollection = datastore_connection.get_collection(entity_name)
@@ -191,10 +218,87 @@ def entity_id(request, entity_names, datastore_connection):
 
 
 @pytest.fixture(scope="function")
+def hit_operations():
+    return [
+        ("SET", "howler.assignment", "user"),
+    ]
+
+
+@pytest.fixture(scope="function")
+def hit_model(datastore_connection):
+    lookups = loader.get_lookups()
+    users = datastore_connection.user.search("*:*")["items"]
+    hit = random_data.generate_useful_hit(lookups=lookups, users=users, prune_hit=False)
+    hit.howler.labels = {"generic": ["initial_label"]}
+    return hit
+
+
+@pytest.fixture(scope="function")
+def hit_id(hit_model: Hit, datastore_connection):
+    datastore_connection.hit.save(hit_model.howler.id, hit_model)
+    datastore_connection.hit.commit()
+    yield hit_model.howler.id
+    try:
+        datastore_connection.hit.delete(hit_model.howler.id)
+        datastore_connection.hit.commit()
+    except Exception as e:
+        warn(f"Cleanup: failed to delete test hit with id {hit_model.howler.id}: {e!r}")
+
+
+@pytest.fixture(scope="function")
+def hit_list(datastore_connection):
+    hits = []
+    for _ in range(5):
+        lookups = loader.get_lookups()
+        users = datastore_connection.user.search("*:*")["items"]
+        hit = random_data.generate_useful_hit(lookups=lookups, users=users, prune_hit=False)
+        hits.append(hit)
+    return hits
+
+
+@pytest.fixture(scope="function")
+def hit_ids(hit_list: list[Hit], datastore_connection):
+    for hit in hit_list:
+        datastore_connection.hit.save(hit.howler.id, hit)
+    datastore_connection.hit.commit()
+    yield [hit.howler.id for hit in hit_list]
+    for hit in hit_list:
+        try:
+            datastore_connection.hit.delete(hit.howler.id)
+        except Exception as e:
+            warn(f"Cleanup: failed to delete test hit with id {hit.howler.id}: {e!r}")
+    datastore_connection.hit.commit()
+
+
+@pytest.fixture(scope="function")
+def hit_bundle(hit_ids, datastore_connection):
+    lookups = loader.get_lookups()
+    users = datastore_connection.user.search("*:*")["items"]
+    bundle = random_data.generate_useful_hit(lookups=lookups, users=users, prune_hit=False)
+    bundle.howler.is_bundle = True
+    bundle.howler.hits = hit_ids
+    bundle.howler.bundle_size = len(hit_ids)
+    return bundle
+
+
+@pytest.fixture(scope="function")
+def hit_bundle_id(hit_bundle: Hit, datastore_connection):
+    datastore_connection.hit.save(hit_bundle.howler.id, hit_bundle)
+    datastore_connection.hit.commit()
+    yield hit_bundle.howler.id
+    try:
+        datastore_connection.hit.delete(hit_bundle.howler.id)
+        datastore_connection.hit.commit()
+    except Exception as e:
+        warn(f"Cleanup: failed to delete test hit bundle with id {hit_bundle.howler.id}: {e!r}")
+
+
+@pytest.fixture(scope="function")
 def namespaces_for_patch(entity_names):
     return [f"howler.api.v1.{entity_name}" for entity_name, _ in entity_names] + [
         "howler.services.dossier_service",
         "howler.services.user_service",
+        "howler.services.hit_service",
     ]
 
 
@@ -265,7 +369,7 @@ def test_parse_wait_flag_invalid(test_client):
 
 @pytest.mark.parametrize(
     "entity_id,endpoint,method",
-    _flatten_test_data(REFRESH_SUPPORTING_ENDPOINTS),
+    _add_entity_name(_flatten_test_data(REFRESH_SUPPORTING_ENDPOINTS)),
     indirect=["entity_id"],
 )
 def test_wait_param_forwarded_to_es(
@@ -299,10 +403,163 @@ def test_wait_param_forwarded_to_es(
         query_string={"refresh": "wait_for"},
         content_type="application/json",
         data=_get_request_data_obj(endpoint, index, method, entity_obj),
-        headers={"Authorization": f"Basic {base64.b64encode(b'admin:devkey:admin').decode('utf-8')}"},
+        headers={"Authorization": _TEST_TOKEN},
     )
 
     response = test_client.open(request)
 
     assert response.status_code in (200, 201, 204)
     assert datastore_connection.get_collection(index).write_call_args_history[-1]["refresh"] == "wait_for"
+
+
+@pytest.mark.parametrize(
+    "endpoint,method",
+    _flatten_test_data(REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_HITS),
+)
+def test_wait_param_forwarded_to_es_hits_expect_hits(
+    endpoint: str, method: str, test_client, datastore_connection, hit_list
+):
+    request = EnvironBuilder(
+        path=f"/api/v1{endpoint}",
+        method=method,
+        query_string={"refresh": "wait_for"},
+        content_type="application/json",
+        data=json.dumps([hit.as_primitives() for hit in hit_list]),
+        headers={"Authorization": _TEST_TOKEN},
+    )
+
+    response = test_client.open(request)
+
+    assert response.status_code in (200, 201, 204)
+    assert datastore_connection.hit.write_call_args_history[-1]["refresh"] == "wait_for"
+
+
+@pytest.mark.parametrize(
+    "endpoint,method",
+    _flatten_test_data(REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_SINGLE_HIT),
+)
+def test_wait_param_forwarded_to_es_hits_expect_single_hit(
+    endpoint: str, method: str, test_client, datastore_connection, hit_id, hit_model
+):
+    request = EnvironBuilder(
+        path=f"/api/v1{endpoint.format(id=hit_id) if '{id}' in endpoint else endpoint}",
+        method=method,
+        query_string={"refresh": "wait_for"},
+        content_type="application/json",
+        data=hit_model.json(),
+        headers={"Authorization": _TEST_TOKEN},
+    )
+
+    response = test_client.open(request)
+
+    assert response.status_code in (200, 201, 204)
+    assert datastore_connection.hit.write_call_args_history[-1]["refresh"] == "wait_for"
+
+
+@pytest.mark.parametrize(
+    "endpoint,method",
+    _flatten_test_data(REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_IDS),
+)
+def test_wait_param_forwarded_to_es_hits_expect_ids(
+    endpoint: str, method: str, test_client, datastore_connection, hit_ids, hit_bundle_id, hit_model
+):
+
+    if "bundle" in endpoint:
+        if "{id}" in endpoint:
+            endpoint = endpoint.format(id=hit_bundle_id)
+            request_data = []
+
+        else:
+            request_data = {
+                "bundle": hit_model.as_primitives(),
+                "hits": hit_ids,
+            }
+    else:
+        request_data = hit_ids
+
+    request = EnvironBuilder(
+        path=f"/api/v1{endpoint}",
+        method=method,
+        query_string={"refresh": "wait_for"},
+        content_type="application/json",
+        data=json.dumps(request_data),
+        headers={"Authorization": _TEST_TOKEN},
+    )
+
+    response = test_client.open(request)
+
+    assert response.status_code in (200, 201, 204)
+    assert datastore_connection.hit.write_call_args_history[-1]["refresh"] == "wait_for"
+
+
+@pytest.mark.parametrize(
+    "endpoint,method",
+    _flatten_test_data(REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_OPERATIONS),
+)
+def test_wait_param_forwarded_to_es_hits_expect_operations(
+    endpoint: str, method: str, test_client, datastore_connection, hit_id, hit_operations
+):
+    if "{id}" in endpoint:
+        endpoint = endpoint.format(id=hit_id)
+        request_data = hit_operations
+    else:
+        request_data = {"query": {"ids": hit_id}, "operations": hit_operations}
+
+    request = EnvironBuilder(
+        path=f"/api/v1{endpoint}",
+        method=method,
+        query_string={"refresh": "wait_for"},
+        content_type="application/json",
+        data=json.dumps(request_data),
+        headers={"Authorization": _TEST_TOKEN},
+    )
+
+    response = test_client.open(request)
+
+    assert response.status_code in (200, 201, 204)
+    assert datastore_connection.hit.write_call_args_history[-1]["refresh"] == "wait_for"
+
+
+@pytest.mark.parametrize(
+    "endpoint,method",
+    _flatten_test_data(REFRESH_SUPPORTING_HIT_TRANSITION_ENDPOINTS),
+)
+def test_wait_param_forwarded_to_es_hits_transition(
+    endpoint: str, method: str, test_client, datastore_connection, hit_id
+):
+    request_data = {"transition": "assign_to_me", "data": {}}
+
+    request = EnvironBuilder(
+        path=f"/api/v1{endpoint.format(id=hit_id)}",
+        method=method,
+        query_string={"refresh": "wait_for"},
+        content_type="application/json",
+        data=json.dumps(request_data),
+        headers={"Authorization": _TEST_TOKEN},
+    )
+
+    response = test_client.open(request)
+
+    assert response.status_code in (200, 201, 204)
+    assert datastore_connection.hit.write_call_args_history[-1]["refresh"] == "wait_for"
+
+
+@pytest.mark.parametrize(
+    "endpoint,method",
+    _flatten_test_data(REFRESH_SUPPORTING_HIT_LABEL_ENDPOINTS),
+)
+def test_wait_param_forwarded_to_es_hits_labels(endpoint: str, method: str, test_client, datastore_connection, hit_id):
+
+    request = EnvironBuilder(
+        path=f"/api/v1{endpoint.format(id=hit_id, label_set='generic')}",
+        method=method,
+        query_string={"refresh": "wait_for"},
+        content_type="application/json",
+        data=json.dumps({"value": ["initial_label" if method == "DELETE" else "test_label"]}),
+        headers={"Authorization": _TEST_TOKEN},
+    )
+
+    response = test_client.open(request)
+
+    assert response.status_code in (200, 201, 204)
+    assert datastore_connection.hit.write_call_args_history[-1]["refresh"] == "wait_for"
