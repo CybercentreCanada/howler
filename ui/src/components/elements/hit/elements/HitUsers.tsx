@@ -52,10 +52,13 @@ const HitUsers: AssignedProps = ({ hit, layout, hideLabel = false, showAssigned 
   const { t } = useTranslation();
   const { user } = useAppUser<HowlerUser>();
 
+  const assessorVisible = showAssessor || hit.howler.assessment != null;
+  const assigneeVisible = !hit.howler.assessor && (showAssigned || hit.howler.assignment !== 'unassigned');
+
   return (
     <Stack direction={hideLabel ? 'row' : 'column'} spacing={0.5} alignItems="flex-start">
       <Stack display="grid" gridTemplateColumns="repeat(2, 1fr)" alignItems="center" columnGap={0.5} rowGap={0.25}>
-        {(showAssigned || hit.howler.assignment !== 'unassigned') && (
+        {assigneeVisible && (
           <>
             {!hideLabel && <Typography variant="caption">{t('app.drawer.hit.assignment.assignee')}:</Typography>}
             <AvatarChip
@@ -67,7 +70,7 @@ const HitUsers: AssignedProps = ({ hit, layout, hideLabel = false, showAssigned 
             />
           </>
         )}
-        {(showAssessor || hit.howler.assessment !== null) && (
+        {assessorVisible && (
           <>
             {!hideLabel && <Typography variant="caption">{t('app.drawer.hit.assessment.assessor')}:</Typography>}
             <AvatarChip
