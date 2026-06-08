@@ -24,7 +24,7 @@ type AvatarChipProps = {
 };
 
 const AvatarChip = ({ userId, noUser, placeholder, layout, hideLabel }: AvatarChipProps) => {
-  const userAvatar = () => (
+  const userAvatar = (
     <HowlerAvatar
       userId={userId}
       sx={{ height: layout !== HitLayout.COMFY ? 24 : 32, width: layout !== HitLayout.COMFY ? 24 : 32 }}
@@ -32,7 +32,7 @@ const AvatarChip = ({ userId, noUser, placeholder, layout, hideLabel }: AvatarCh
   );
 
   return hideLabel ? (
-    userAvatar()
+    userAvatar
   ) : (
     <Chip
       variant="outlined"
@@ -42,7 +42,7 @@ const AvatarChip = ({ userId, noUser, placeholder, layout, hideLabel }: AvatarCh
           marginLeft: 0
         }
       }}
-      icon={userAvatar()}
+      icon={userAvatar}
       label={userId && userId !== noUser ? userId : placeholder}
       size={layout !== HitLayout.COMFY ? 'small' : 'medium'}
     />
