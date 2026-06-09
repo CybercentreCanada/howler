@@ -42,6 +42,7 @@ def parse_parameters(**requested_params: Callable[[str | None], str | None] | Li
                 for param_name, parser in requested_params.items():
                     raw_value = request.args.get(param_name, None)
 
+                    parsed_value: str | None
                     if parser == "required":
                         if raw_value is None:
                             return bad_request(err=f"Missing required parameter: [{param_name}]")
