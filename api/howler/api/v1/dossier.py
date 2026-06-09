@@ -238,7 +238,7 @@ def give_privilege(id: str, user: User, **kwargs):
     is_adding: The value neeed to be a boolean representing if we add or remove a user.
 
     Variables:
-    action_id => The id of the action to give administrative privilege of
+    dossier_id => The id of the dossier to give administrative privilege of
 
     Optional Arguments:
         None
@@ -265,9 +265,9 @@ def give_privilege(id: str, user: User, **kwargs):
         dossier_id=id, received_data=priv_change, user=user
     )
     if isinstance(success, str):
-        return bad_request(success)
+        return bad_request(err=success)
     existing_dossier, storage = success
-    return ok(storage.action.get_if_exists(existing_dossier.dossier_id, as_obj=False))
+    return ok(storage.dossier.get_if_exists(existing_dossier.dossier_id, as_obj=False))
 
 
 @generate_swagger_docs()
@@ -277,7 +277,7 @@ def revoke_privilege(id: str, user: User, **kwargs):
     """Give permission from one user to another.
 
     Variables:
-        action_id => The id of the Action to give administrative privilege of
+        dossier_id => The id of the dossier to give administrative privilege of
 
     Arguments:
         None
@@ -307,6 +307,6 @@ def revoke_privilege(id: str, user: User, **kwargs):
     )
 
     if isinstance(success, str):
-        return bad_request(success)
+        return bad_request(err=success)
     existing_dossier, storage = success
-    return ok(storage.action.get_if_exists(existing_dossier.dossier_id, as_obj=False))
+    return ok(storage.dossier.get_if_exists(existing_dossier.dossier_id, as_obj=False))

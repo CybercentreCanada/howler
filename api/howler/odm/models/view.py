@@ -25,7 +25,7 @@ class View(odm.Model):
         values=["personal", "global", "readonly"],
         description="The type of view",
     )
-
+    # Kept as owner id for backwards compatibility, but should be owner to match other models
     owner: str = odm.Keyword(
         description="The person to whom this view belongs.",
         optional=True,
@@ -47,9 +47,11 @@ class View(odm.Model):
         Settings, description="Additional View Settings", default={"advance_on_triage": False}
     )
 
-    def get_privilege_mapping(self) -> dict[str, list[str]]:
+    # use in every object to help with the owner_id problem in this object and to match the other models,but kept owner_
+    # id for backwards compatibility
+    def get_privilege_mapping(self) -> dict:
         return {
             "administrator": self.admins,
             "member": self.members,
-            "owner": self.owner,
+            "owner": self.owner_id,
         }

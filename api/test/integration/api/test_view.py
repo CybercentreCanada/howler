@@ -68,7 +68,7 @@ def test_add_view(datastore: HowlerDatastore, login_session):
         data=json.dumps(view_data),
     )
 
-    assert resp["owner"] == ["admin"]
+    assert resp["owner"] == "admin"
 
     view_data["type"] = "global"
     resp = get_api_data(
@@ -78,7 +78,7 @@ def test_add_view(datastore: HowlerDatastore, login_session):
         data=json.dumps(view_data),
     )
 
-    assert resp["owner"] == ["admin"]
+    assert resp["owner"] == "admin"
 
 
 # noinspection PyUnusedLocal

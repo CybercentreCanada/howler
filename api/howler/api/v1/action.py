@@ -152,7 +152,7 @@ def update_action(id: str, user: User, **_) -> Response:
     ):
         return forbidden(err="Updating triggers requires the role 'automation_advanced'.")
     allowed_list = (
-        (existing_action["owner_id"] or []) + (existing_action["admin_id"] or []) + (existing_action["member_id"] or [])
+        ([existing_action["owner_id"]] or []) + (existing_action["admins"] or []) + (existing_action["members"] or [])
     )
 
     if user.uname not in allowed_list and "admin" not in user.type:

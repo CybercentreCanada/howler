@@ -83,7 +83,7 @@ def create_users(ds):
             "title": "view.assigned_to_me",
             "query": "howler.assignment:admin",
             "type": "readonly",
-            "owner": ["admin"],
+            "owner": "admin",
         }
     )
 
@@ -154,7 +154,7 @@ def create_users(ds):
             "title": "view.assigned_to_me",
             "query": "howler.assignment:user",
             "type": "readonly",
-            "owner": ["user"],
+            "owner": "user",
         }
     )
 
@@ -207,7 +207,7 @@ def create_users(ds):
             "title": "view.assigned_to_me",
             "query": "howler.assignment:huey",
             "type": "readonly",
-            "owner": ["huey"],
+            "owner": "huey",
         }
     )
 
@@ -254,7 +254,7 @@ def create_users(ds):
             "title": "view.assigned_to_me",
             "query": "howler.assignment:shawnh",
             "type": "readonly",
-            "owner": ["shawn-h"],
+            "owner": "shawn-h",
         }
     )
     shawn_data = User(
@@ -285,7 +285,7 @@ def create_users(ds):
             "title": "view.assigned_to_me",
             "query": "howler.assignment:goose",
             "type": "readonly",
-            "owner": ["goose"],
+            "owner": "goose",
         }
     )
     goose_data = User(
@@ -482,7 +482,7 @@ def create_views(ds: HowlerDatastore):
             "title": "CMT Hits",
             "query": "howler.analytic:cmt.*",
             "type": "global",
-            "owner": ["admin"],
+            "owner": "admin",
         }
     )
 
@@ -498,7 +498,7 @@ def create_views(ds: HowlerDatastore):
             "title": "Howler Bundles",
             "query": "howler.is_bundle:true",
             "type": "readonly",
-            "owner": ["none"],
+            "owner": "none",
         }
     )
 
@@ -518,7 +518,7 @@ def create_views(ds: HowlerDatastore):
                 "title": get_random_word(),
                 "query": query,
                 "type": "global",
-                "owner": [get_random_user()],
+                "owner": get_random_user(),
             }
         )
 

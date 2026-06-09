@@ -17,19 +17,16 @@ def is_allowed_to_change(level_requested: str, user: User, existing_item: Dossie
     existing_dossier => The dossier that will be change
     """
     if "admin" in user.type:
+        return True
+    conversion: dict = existing_item.get_privilege_mapping()
+
+    is_admin: bool = user.uname in conversion.get("administrator", []) or user.uname == conversion.get("owner", "")
+
+    if not is_admin:
         return False
 
-    is_dossier_admin: bool = user.uname in existing_item.admins or user.uname != existing_item.owner
-
-    if not is_dossier_admin and "admin" not in user.type:
+    if level_requested == "owner" and user.uname != conversion.get("owner", ""):
         return False
-
-    owner_username: str = existing_item.owner if not isinstance(existing_item, Action) else existing_item.owner_id
-
-    if level_requested == "owner" and user.uname != owner_username:
-        return False
-    # use the maping to update the list to the proper privilege
-
     return True
 
 

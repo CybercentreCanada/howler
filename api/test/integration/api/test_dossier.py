@@ -70,7 +70,7 @@ def test_add_dossier(datastore: HowlerDatastore, login_session):
         data=json.dumps(dossier_data),
     )
 
-    assert resp["owner"] == ["admin"]
+    assert resp["owner"] == "admin"
 
     dossier_data["type"] = "global"
     resp = get_api_data(
@@ -80,7 +80,7 @@ def test_add_dossier(datastore: HowlerDatastore, login_session):
         data=json.dumps(dossier_data),
     )
 
-    assert resp["owner"] == ["admin"]
+    assert resp["owner"] == "admin"
 
 
 # noinspection PyUnusedLocal
@@ -89,7 +89,7 @@ def test_get_dossiers(datastore, login_session):
 
     resp = get_api_data(session, f"{host}/api/v1/dossier/")
 
-    assert all(t["type"] == "global" or t["owner"] in [["admin"], ["none"]] for t in resp)
+    assert all(t["type"] == "global" or t["owner"] in ["admin", "none"] for t in resp)
 
 
 # noinspection PyUnusedLocal
@@ -287,7 +287,7 @@ def test_get_dossier_for_hit_user_scoping(datastore: HowlerDatastore, login_sess
 
         # All returned dossiers must be either global or owned by admin
         for dossier in resp:
-            assert dossier["type"] == "global" or dossier["owner"] == ["admin"], (
+            assert dossier["type"] == "global" or dossier["owner"] == "admin", (
                 f"Unexpected dossier in results: {dossier}"
             )
 
@@ -366,8 +366,8 @@ def test_give_remove_membership(
     """
     Test adding a user and removing a user from a dossier
     """
-    owner_session, host = user_session["user"]
-    member_session, _ = user_session["huey"]
+    owner_session, host = user_session("user")
+    member_session, _ = user_session("huey")
 
     member_uname = get_api_data(member_session, f"{host}/api/v1/user/whoami", method="GET")["username"]
     # Create the dossier
@@ -393,6 +393,7 @@ def test_give_remove_membership(
                     }
                 ),
             )
+            datastore.dossier.commit()
             # updating the dossier for testing
             dossier: Dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
             if request == "PUT":
@@ -402,11 +403,12 @@ def test_give_remove_membership(
 
     # Delete the dossier
     get_api_data(owner_session, f"{host}/api/v1/dossier/{create_res['dossier_id']}/", method="DELETE")
+    datastore.dossier.commit()
 
 
 def test_owner_privilege(datastore: HowlerDatastore, user_session: dict):
-    owner_session, host = user_session["user"]
-    member_session, _ = user_session["huey"]
+    owner_session, host = user_session("user")
+    member_session, _ = user_session("huey")
 
     member_uname = get_api_data(member_session, f"{host}/api/v1/user/whoami", method="GET")["username"]
     owner_uname = get_api_data(owner_session, f"{host}/api/v1/user/whoami", method="GET")["username"]
@@ -668,8 +670,8 @@ def test_admin(datastore: HowlerDatastore, user_session: Callable[[str], tuple[r
 
 
 def test_member(datastore: HowlerDatastore, user_session: dict):
-    owner_session, host = user_session["user"]
-    member_session, _ = user_session["huey"]
+    owner_session, host = user_session("user")
+    member_session, _ = user_session("huey")
     member_uname = get_api_data(member_session, f"{host}/api/v1/user/whoami", method="GET")["username"]
     owner_uname = get_api_data(owner_session, f"{host}/api/v1/user/whoami", method="GET")["username"]
     # Create the dossier

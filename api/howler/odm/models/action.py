@@ -18,8 +18,8 @@ class Operation(odm.Model):
 @odm.model(index=True, store=True, description="Model of actions")
 class Action(odm.Model):
     action_id: str = odm.UUID(description="A UUID for this action")
-    owner: str = odm.Keyword(
-        description="The person to whom this view belongs.",
+    owner_id: str = odm.Keyword(
+        description="The person to whom this action belongs.",
         optional=True,
     )
     members: list[str] = odm.List(

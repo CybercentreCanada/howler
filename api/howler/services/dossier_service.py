@@ -412,7 +412,10 @@ def give_privilege(received_data: dict, dossier_id: str, user: User) -> tuple[Do
     if user_to_add in priv_map[priv_requested]:
         return f"{user_to_add} already have the permission {priv_requested}"
 
-    priv_map[priv_requested].append(str(user_to_add))
+    if priv_requested == "owner":
+        priv_map["owner"] = str(user_to_add)
+    else:
+        priv_map[priv_requested].append(str(user_to_add))
 
     storage.dossier.save(existing_dossier.dossier_id, existing_dossier)
 

@@ -97,7 +97,7 @@ def test_update_dossier(datastore: HowlerDatastore):
     user = datastore.user.search("uname:admin")["items"][0]
     existing_dossier_id = datastore.dossier.search("type:global", as_obj=True)["items"][0].dossier_id
 
-    assert dossier_service.update_dossier(existing_dossier_id, {"owner": ["test"]}, user).owner == "test"
+    assert dossier_service.update_dossier(existing_dossier_id, {"owner": "test"}, user).owner == "test"
 
 
 def test_pivot_with_duplicates(datastore: HowlerDatastore):
