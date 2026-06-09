@@ -1079,9 +1079,7 @@ def create_bundle(user: User, **kwargs):
         if len(odm.howler.hits) < 1 and len(child_hits) < 1:
             return bad_request(err="You did not provide any child hits.")
 
-        for hit_id in child_hits:
-            if hit_id not in odm.howler.hits:
-                odm.howler.hits.append(hit_id)
+        odm.howler.hits.extend(hit_id for hit_id in child_hits if hit_id not in odm.howler.hits)
 
         hit_service.create_hit(odm.howler.id, odm, user=user.uname)
         analytic_service.save_from_hits(odm, user, refresh=refresh)
