@@ -427,7 +427,7 @@
   "personalization.showbreadcrumbs": "Afficher fils d'ariane",
   "personalization.sticky": "Barre supérieure collante",
   "pivot.description.none": "Aucune description",
-  "pivot.openDossier": "Ouvrir le dossier",
+  "pivot.dossier.open": "Ouvrir le dossier",
   "pivot.url": "URL :",
   "query": "Requête",
   "query.invalid": "Requête invalide",

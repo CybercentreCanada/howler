@@ -427,7 +427,7 @@
   "personalization.showbreadcrumbs": "Show Breadcrumbs",
   "personalization.sticky": "Sticky Topbar",
   "pivot.description.none": "No description",
-  "pivot.openDossier": "Open Dossier",
+  "pivot.dossier.open": "Open Dossier",
   "pivot.url": "URL:",
   "query": "Query",
   "query.invalid": "Invalid query",
