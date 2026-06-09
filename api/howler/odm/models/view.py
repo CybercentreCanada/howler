@@ -1,5 +1,5 @@
 # mypy: ignore-errors
-from typing import Literal, Union
+from typing import Literal, Optional, Union
 
 from howler import odm
 
@@ -8,6 +8,18 @@ from howler import odm
 class Settings(odm.Model):
     advance_on_triage: bool = odm.Boolean(
         description="Should the user advance to the next alert when triage is complete?", default=False
+    )
+    display: Optional[Union[Literal["list"], Literal["grid"]]] = odm.Optional(
+        odm.Enum(
+            values=["list", "grid"],
+            description="The layout to use when opening this view",
+        )
+    )
+    columns: Optional[dict[str, int]] = odm.Optional(
+        odm.Mapping(
+            odm.Integer("The width of this column in pixels"),
+            description="The columns to display in this view as a mapping of howler field keys to widths",
+        )
     )
 
 
