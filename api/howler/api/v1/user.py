@@ -247,6 +247,10 @@ def set_user_account(username: str, **kwargs):  # noqa: C901
     Arguments:
     None
 
+    Optional Arguments:
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
+
     Data Block:
     {
      "name": "Test user",        # Name of the user

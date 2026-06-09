@@ -371,6 +371,10 @@ def update_hit(id: str, server_version: str, **kwargs):
     Arguments:
     None
 
+    Optional Arguments:
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
+
     Data Block:
     [
         ("SET", "howler.assignment", "user"),
@@ -438,6 +442,10 @@ def update_by_query(**kwargs):
 
     Arguments:
     None
+
+    Optional Arguments:
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     {
@@ -543,7 +551,8 @@ def add_label(id, label_set, user, **kwargs):
     label_set   => the label set to add to
 
     Optional Arguments:
-    None
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     {
@@ -605,7 +614,8 @@ def remove_labels(id, label_set, user, **kwargs):
     label_set   => label_set the label set to remove from
 
     Optional Arguments:
-    None
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     {
@@ -660,7 +670,8 @@ def transition(id: str, user: User, **kwargs):
     id          => id of the hit to transition
 
     Optional Arguments:
-    None
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     {
@@ -1032,6 +1043,10 @@ def create_bundle(user: User, **kwargs):
     Arguments:
     None
 
+    Optional Arguments:
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
+
     Data Block:
     {
         "bundle": {
@@ -1108,6 +1123,10 @@ def update_bundle(id, **kwargs):
     Arguments:
     None
 
+    Optional Arguments:
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
+
     Data Block:
     [
         ...ids
@@ -1177,6 +1196,10 @@ def remove_bundle_children(id, **kwargs):
 
     Arguments:
     None
+
+    Optional Arguments:
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     [

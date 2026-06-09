@@ -135,7 +135,8 @@ def delete_template(id: str, user: User, **kwargs):
     id => The id of the template to delete
 
     Optional Arguments:
-    wait    =>  Flag wait for change to be available for search before returning
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     None

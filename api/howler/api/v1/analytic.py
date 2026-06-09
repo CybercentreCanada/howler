@@ -540,6 +540,10 @@ def set_analytic_owner(id: str, user: dict[str, Any], **kwargs):
     Arguments:
     None
 
+    Optional Arguments:
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
+
     Data Block:
     {
         "username": "admin"     # The username to set the owner as
