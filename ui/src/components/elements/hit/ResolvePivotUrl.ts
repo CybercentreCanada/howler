@@ -26,4 +26,4 @@ const resolvePivotUrl = (pivot: NonNullable<Dossier['pivots']>[number], currentH
   }
 };
 
-export default ResolvePivotUrl;
+export default resolvePivotUrl;

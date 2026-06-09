@@ -27,9 +27,18 @@ const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
   const displayLinks = useMemo(() => uniqBy(hit?.howler?.links ?? [], 'href').slice(0, 3), [hit?.howler?.links]);
 
   const displayPivots = useMemo(() => {
-    const flattened = dossiers.flatMap(dossier => (dossier.pivots ?? []).map(pivot => ({ pivot, dossier })));
+    const flattened = dossiers.flatMap(dossier =>
+      (dossier.pivots ?? []).map(pivot => {
+        const pivotUrl = pivot.format === 'link' ? ResolvePivotUrl(pivot, hit) : undefined;
+        return {
+          pivot,
+          dossier,
+          resolvedUrl: pivotUrl || `/dossier/${dossier.dossier_id}`
+        };
+      })
+    );
     return sortBy(flattened, item => item.pivot.label?.[i18n.language]);
-  }, [dossiers, i18n.language]);
+  }, [dossiers, i18n.language, hit]);
 
   const hasNotebooks = (analytic?.notebooks?.length ?? 0) > 0;
 
@@ -55,8 +64,7 @@ const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
           );
         })}
 
-      {displayPivots.map(({ pivot, dossier }) => {
-        const resolvedUrl = resolvePivotUrl(pivot, hit);
+      {displayPivots.map(({ pivot, dossier, resolvedUrl }) => {
         return (
           <Grid item key={`${dossier.dossier_id}-${pivot.value}`}>
             <Tooltip title={<PivotTooltip dossier={dossier} resolvedUrl={resolvedUrl} />}>
