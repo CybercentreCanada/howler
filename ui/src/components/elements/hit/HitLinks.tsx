@@ -9,7 +9,6 @@ import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Hit } from 'models/entities/generated/Hit';
 
 import HitNotebooks from 'components/elements/hit/HitNotebooks';
-import NotebookTooltip from 'components/elements/hit/NotebookTooltip';
 import PivotTooltip from 'components/elements/hit/PivotTooltip';
 import RelatedLinkTooltip from 'components/elements/hit/RelatedLinkTooltip';
 import ResolvePivotUrl from 'components/elements/hit/ResolvePivotUrl';
@@ -70,11 +69,7 @@ const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
       })}
       {hasNotebooks && (
         <Grid item>
-          <Tooltip title={<NotebookTooltip />}>
-            <span>
-              <HitNotebooks analytic={analytic} hit={hit} compact />
-            </span>
-          </Tooltip>
+          <HitNotebooks analytic={analytic} hit={hit} compact />
         </Grid>
       )}
     </Grid>
