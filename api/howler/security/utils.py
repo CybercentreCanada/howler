@@ -182,6 +182,6 @@ def get_disco_url(host_url: Optional[str]):
 
             return f"https://{hostname}/eureka/apps"
         else:
-            return config.ui.discover_url
+            return config.discovery.url
     else:
-        return config.ui.discover_url
+        return config.discovery.url

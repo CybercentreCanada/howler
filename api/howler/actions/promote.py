@@ -10,6 +10,7 @@ from howler.odm.models.howler_data import (
     AssessmentEscalationMap,
     Escalation,
 )
+from howler.odm.models.user import User
 from howler.utils.str_utils import sanitize_lucene_query
 
 OPERATION_ID = "promote"
@@ -26,6 +27,7 @@ def execute(
     escalation: Escalation = Escalation.ALERT,
     assessment: Optional[str] = None,
     rationale: Optional[str] = None,
+    user: Optional[User] = None,
     **kwargs,
 ):
     """Promote a hit.
@@ -73,6 +75,7 @@ def execute(
                     *hit_helper.promote_hit(escalation=escalation),
                     odm_helper.update("howler.assessment", None),
                     odm_helper.update("howler.rationale", None),
+                    odm_helper.update("howler.assignment", None),
                 ],
             )
         else:
@@ -87,7 +90,9 @@ def execute(
                 )
                 return report
 
-            ds.hit.update_by_query(query, hit_helper.assess_hit(assessment, rationale))
+            ds.hit.update_by_query(
+                query, hit_helper.assess_hit(assessment, rationale, user=(user if user else "automation"))
+            )
 
         report.append(
             {

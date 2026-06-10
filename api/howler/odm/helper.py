@@ -31,7 +31,7 @@ from howler.security.utils import get_password_hash
 from howler.utils.constants import TESTING
 from howler.utils.uid import get_random_id
 
-APPS = get_apps_list(discovery_url=config.ui.discover_url)
+APPS = get_apps_list(discovery_url=config.discovery.url)
 ESCALATIONS = Escalation.list()
 EXAMPLE_ANALYTICS = ["Password Checker", "Bad Guy Finder", "Exploit Patcher"]
 
@@ -168,6 +168,7 @@ def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[str], pr
     hit.howler.status = "open"
     hit.howler.assignment = "unassigned"
     hit.howler.escalation = choice([Escalation.HIT, Escalation.ALERT])
+    hit.howler.assessor = None
 
     if randint(1, 10) > 9:
         hit.howler.expiry = datetime.now() + timedelta(days=randint(1, 60))

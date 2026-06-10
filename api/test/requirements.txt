@@ -1,4 +1,4 @@
-coverage==7.14.0
+coverage==7.14.1
 diff-cover==8.0.2
 pytest==9.0.3
 pytest-cov==4.1.0
