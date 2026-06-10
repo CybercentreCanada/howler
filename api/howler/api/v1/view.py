@@ -246,7 +246,7 @@ def set_as_favourite(view_id: str, **kwargs):
         return not_found(err="This view does not exist")
 
     if existing_view.type != "global" and (
-        kwargs["user"]["uname"] not in existing_view.owner and len(existing_view.owner) > 0
+        kwargs["user"]["uname"] not in existing_view.owner and existing_view.owner
     ):
         return forbidden(err="You can only favourite global views, or views owned by you.")
 
