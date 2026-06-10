@@ -25,11 +25,8 @@ class View(odm.Model):
         values=["personal", "global", "readonly"],
         description="The type of view",
     )
-    # Supports multiple owners; kept as a list for multi-owner support
-    owner: list[str] = odm.List(
-        odm.Keyword(),
+    owner: str = odm.Keyword(
         description="The person(s) to whom this view belongs.",
-        default=[],
         optional=True,
     )
 
@@ -58,7 +55,9 @@ class View(odm.Model):
 
     def set_privilege_mapping(self, level: str, users: str | list[str]):
         if level == "owner":
-            self.owner = users if isinstance(users, list) else [users]
+            if isinstance(users, list) and len(users) > 1:
+                raise ValueError("Owner level can only have one user. a list was given with multiple users.")
+            self.owner = users if isinstance(users, str) else users[0]
         elif level == "administrator":
             self.admin = users if isinstance(users, list) else [users]
         elif level == "member":
@@ -66,10 +65,9 @@ class View(odm.Model):
 
     def remove_privilege_mapping(self, level: str, users: str | list[str]):
         if level == "owner":
-            if isinstance(users, list):
-                self.owner = [o for o in self.owner if o not in users]
-            else:
-                self.owner = [o for o in self.owner if o != users]
+            if isinstance(users, list) and len(users) > 1:
+                raise ValueError("Owner level can only have one user. a list was given with multiple users.")
+            self.owner = ""
         elif level == "administrator":
             if isinstance(users, list):
                 self.admin = [a for a in self.admin if a not in users]

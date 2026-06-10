@@ -68,7 +68,7 @@ def test_add_view(datastore: HowlerDatastore, login_session):
         data=json.dumps(view_data),
     )
 
-    assert resp["owner"] == ["admin"]
+    assert resp["owner"] == "admin"
 
     view_data["type"] = "global"
     resp = get_api_data(
@@ -78,7 +78,7 @@ def test_add_view(datastore: HowlerDatastore, login_session):
         data=json.dumps(view_data),
     )
 
-    assert resp["owner"] == ["admin"]
+    assert resp["owner"] == "admin"
 
 
 # noinspection PyUnusedLocal
@@ -87,7 +87,7 @@ def test_get_views(datastore, login_session):
 
     resp = get_api_data(session, f"{host}/api/v1/view/")
 
-    assert all(t["type"] == "global" or t["owner"] in [["admin"], ["none"]] for t in resp)
+    assert all(t["type"] == "global" or t["owner"] in ["admin", "none"] for t in resp)
 
 
 # noinspection PyUnusedLocal
@@ -148,7 +148,7 @@ def test_set_view_error(datastore: HowlerDatastore, login_session):
         )
 
     updated_view = datastore.view.get(id, as_obj=True)
-    assert "someoneelse" not in updated_view.owner
+    assert updated_view.owner != "someoneelse"
 
 
 def test_favourite(datastore: HowlerDatastore, login_session):
@@ -188,7 +188,7 @@ def test_favourite(datastore: HowlerDatastore, login_session):
 def add_permission_every_role(member_to_add: str, member_requesting, create_res, host, view):
     try:
         for membership in view.get_privilege_mapping().keys():
-            get_api_data(
+            resp = get_api_data(
                 member_requesting,
                 f"{host}/api/v1/view/{create_res['view_id']}/permission",
                 method="PUT",
@@ -199,6 +199,10 @@ def add_permission_every_role(member_to_add: str, member_requesting, create_res,
                     }
                 ),
             )
+            if membership == "owner":
+                assert resp["owner"] == member_to_add
+                continue
+            assert member_to_add in resp[membership]
     # Error is intended sometime.
     except APIError:
         return
@@ -262,6 +266,21 @@ def test_give_remove_membership(
     # Give|Remove every possible membership
     for request in ("PUT", "DELETE"):
         for membership in view.get_privilege_mapping().keys():
+            if membership == "owner" and request == "DELETE":
+                with pytest.raises(APIError):
+                    get_api_data(
+                        owner_session,
+                        f"{host}/api/v1/view/{create_res['view_id']}/permission",
+                        method=request,
+                        data=json.dumps(
+                            {
+                                "user_id": member_uname,
+                                "privilege": membership,
+                            }
+                        ),
+                    )
+                return
+
             get_api_data(
                 owner_session,
                 f"{host}/api/v1/view/{create_res['view_id']}/permission",
@@ -276,7 +295,10 @@ def test_give_remove_membership(
             # updating the view for testing
             view: View = datastore.view.get(create_res["view_id"], as_obj=True)
             if request == "PUT":
-                assert member_uname in view.get_privilege_mapping()[membership]
+                if membership == "owner":
+                    assert view.owner == member_uname
+                else:
+                    assert member_uname in view.get_privilege_mapping()[membership]
                 continue
             assert member_uname not in view.get_privilege_mapping()[membership]
 
@@ -305,16 +327,22 @@ def test_owner_privilege(datastore: HowlerDatastore, user_session: dict):
     )
 
     view = datastore.view.get(create_res["view_id"], as_obj=True)
-    for membership in view.get_privilege_mapping().keys():
-        assert member_uname in view.get_privilege_mapping()[membership]
+    for membership, value in view.get_privilege_mapping().items():
+        if membership == "owner":
+            assert value == member_uname
+        else:
+            assert member_uname in value
 
     remove_permission_every_role(
         member_to_remove=member_uname, create_res=create_res, member_requesting=owner_session, host=host, view=view
     )
 
     view = datastore.view.get(create_res["view_id"], as_obj=True)
-    for membership in view.get_privilege_mapping().keys():
-        assert member_uname not in view.get_privilege_mapping()[membership]
+    for membership, value in view.get_privilege_mapping().items():
+        if membership == "owner":
+            assert value != member_uname
+        else:
+            assert member_uname not in value
 
     # Owner should be able to modify the view
     modifying_view(member_requesting=owner_session, create_res=create_res, host=host)
@@ -335,7 +363,7 @@ def test_owner_privilege(datastore: HowlerDatastore, user_session: dict):
     # Verify created properly
     assert total + 1 == datastore.view.search("view_id:*")["total"]
 
-    # Giving ownership to an other user
+    # Giving ownership to another user
     get_api_data(
         owner_session,
         f"{host}/api/v1/view/{create_res_copy['view_id']}/permission",
@@ -348,6 +376,23 @@ def test_owner_privilege(datastore: HowlerDatastore, user_session: dict):
         ),
     )
     datastore.view.commit()
+    view = datastore.view.get(create_res_copy["view_id"], as_obj=True)
+    assert view.owner == member_uname
+
+    with pytest.raises(APIError):
+        get_api_data(
+            owner_session,
+            f"{host}/api/v1/view/{create_res_copy['view_id']}/permission",
+            method="DELETE",
+            data=json.dumps(
+                {
+                    "user_id": member_uname,
+                    "privilege": "owner",
+                }
+            ),
+        )
+
+    datastore.view.commit()
     get_api_data(
         owner_session,
         f"{host}/api/v1/view/{create_res_copy['view_id']}",
@@ -356,7 +401,7 @@ def test_owner_privilege(datastore: HowlerDatastore, user_session: dict):
     datastore.view.commit()
     assert total == datastore.view.search("view_id:*")["total"]
 
-    # Owner should be able to remove self if other owner exist
+    # Ownership can be transferred, but the current owner cannot be removed
     get_api_data(
         owner_session,
         f"{host}/api/v1/view/{create_res['view_id']}/permission",
@@ -369,41 +414,21 @@ def test_owner_privilege(datastore: HowlerDatastore, user_session: dict):
         ),
     )
     datastore.view.commit()
-    get_api_data(
-        owner_session,
-        f"{host}/api/v1/view/{create_res['view_id']}/permission",
-        method="DELETE",
-        data=json.dumps(
-            {
-                "user_id": owner_uname,
-                "privilege": "owner",
-            }
-        ),
-    )
-    datastore.view.commit()
-    view = datastore.view.get(create_res["view_id"], as_obj=True)
-    assert owner_uname not in view.get_privilege_mapping()["owner"]
-
-    # Owner should not be able to remove self if no other owner exist
-    try:
+    with pytest.raises(APIError):
         get_api_data(
-            member_session,
+            owner_session,
             f"{host}/api/v1/view/{create_res['view_id']}/permission",
             method="DELETE",
             data=json.dumps(
                 {
-                    "user_id": member_uname,
+                    "user_id": owner_uname,
                     "privilege": "owner",
                 }
             ),
         )
-    except Exception:
-        # The error is intentional
-        pass
 
-    datastore.view.commit()
-
-    assert member_uname in view.get_privilege_mapping()["owner"]
+    view = datastore.view.get(create_res["view_id"], as_obj=True)
+    assert view.owner == member_uname
 
     return
 
@@ -477,7 +502,7 @@ def test_admin(datastore: HowlerDatastore, user_session: dict, login_session):
         pass
     datastore.view.commit()
     view = datastore.view.get(create_res["view_id"], as_obj=True)
-    assert member_uname not in view.get_privilege_mapping()["owner"]
+    assert view.owner != member_uname
     try:
         get_api_data(
             admin_session,
@@ -495,7 +520,7 @@ def test_admin(datastore: HowlerDatastore, user_session: dict, login_session):
         pass
     datastore.view.commit()
     view = datastore.view.get(create_res["view_id"], as_obj=True)
-    assert admin_uname not in view.get_privilege_mapping()["owner"]
+    assert view.owner != admin_uname
 
     # Admin should not be able to delete view
     total = datastore.view.search("view_id:*")["total"]
@@ -573,7 +598,11 @@ def test_member(datastore: HowlerDatastore, user_session: dict):
     datastore.view.commit()
     view = datastore.view.get(create_res["view_id"], as_obj=True)
     for membership in ["owner", "administrator"]:
-        assert member_uname not in view.get_privilege_mapping()[membership]
+        value = view.get_privilege_mapping()[membership]
+        if membership == "owner":
+            assert value != member_uname
+        else:
+            assert member_uname not in value
 
     # Member should not be able to remove admin/owner/member
     # adding owner into every role
@@ -583,8 +612,11 @@ def test_member(datastore: HowlerDatastore, user_session: dict):
     # verify owner is in every role
     datastore.view.commit()
     view = datastore.view.get(create_res["view_id"], as_obj=True)
-    for membership in view.get_privilege_mapping().keys():
-        assert owner_uname in view.get_privilege_mapping()[membership]
+    for membership, value in view.get_privilege_mapping().items():
+        if membership == "owner":
+            assert value == owner_uname
+        else:
+            assert owner_uname in value
 
     remove_permission_every_role(
         create_res=create_res, host=host, member_requesting=member_session, member_to_remove=member_uname, view=view
@@ -592,8 +624,11 @@ def test_member(datastore: HowlerDatastore, user_session: dict):
     # ensure owner is still in every role
     datastore.view.commit()
     view = datastore.view.get(create_res["view_id"], as_obj=True)
-    for membership in view.get_privilege_mapping().keys():
-        assert owner_uname in view.get_privilege_mapping()[membership]
+    for membership, value in view.get_privilege_mapping().items():
+        if membership == "owner":
+            assert value == owner_uname
+        else:
+            assert owner_uname in value
     # Member should not be able to delete view
     total = datastore.view.search("view_id:*")["total"]
     try:
