@@ -361,7 +361,7 @@ def give_privilege(view_id: str, user: User, **kwargs):
     if user_to_add in priv_map[priv_request]:
         return bad_request(err=f"{user_to_add} already have the permission {priv_request}")
 
-    priv_map[priv_request].append(str(user_to_add))
+    existing_view.set_privilege_mapping(priv_request, priv_map[priv_request])
 
     storage.view.save(existing_view.view_id, existing_view)
 
@@ -431,7 +431,7 @@ def revoke_privilege(view_id: str, user: User, **kwargs):
         return bad_request(
             err=f"{user_to_remove} is the last owner in the {priv_request} premission group. Can not be remove"
         )
-    priv_map[priv_request].remove(str(user_to_remove))
+    existing_view.remove_privilege_mapping(priv_request, user_to_remove)
 
     storage.view.save(existing_view.view_id, existing_view)
 

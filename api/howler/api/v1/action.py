@@ -460,7 +460,7 @@ def give_privilege(id: str, user: User, **kwargs):
     if user_to_add in priv_map[priv_request]:
         return bad_request(err=f"{user_to_add} already have the permission {priv_request}")
 
-    priv_map[priv_request].append(str(user_to_add))
+    existing_action.set_privilege_mapping(priv_request, user_to_add)
 
     storage.action.save(existing_action.action_id, existing_action)
 
@@ -531,7 +531,7 @@ def revoke_privilege(id: str, user: User, **kwargs):
     if user_to_remove not in priv_map[priv_requested]:
         return bad_request(err=f"{user_to_remove} is not in the {priv_requested} premission group")
 
-    priv_map[priv_requested].remove(str(user_to_remove))
+    existing_action.remove_privilege_mapping(priv_requested, user_to_remove)
 
     storage.action.save(existing_action.action_id, existing_action)
 

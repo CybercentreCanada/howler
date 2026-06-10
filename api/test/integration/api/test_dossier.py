@@ -393,17 +393,21 @@ def test_give_remove_membership(
                     }
                 ),
             )
-            datastore.dossier.commit()
             # updating the dossier for testing
             dossier: Dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
             if request == "PUT":
+                if membership == "owner":
+                    # Owner membership is a list but should only have one owner,
+                    # so we check that the member is in the list but not necessarily the only one
+                    assert member_uname == dossier.get_privilege_mapping()[membership]
+                    continue
+
                 assert member_uname in dossier.get_privilege_mapping()[membership]
                 continue
             assert member_uname not in dossier.get_privilege_mapping()[membership]
 
     # Delete the dossier
     get_api_data(owner_session, f"{host}/api/v1/dossier/{create_res['dossier_id']}/", method="DELETE")
-    datastore.dossier.commit()
 
 
 def test_owner_privilege(datastore: HowlerDatastore, user_session: dict):

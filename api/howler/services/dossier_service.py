@@ -346,9 +346,9 @@ def change_privilege(
         pass
 
     elif is_adding:
-        priv_map[level_requested].append(str(new_member))
+        existing_dossier.set_privilege_mapping(level_requested, new_member)
     else:
-        priv_map[level_requested].remove(str(new_member))
+        existing_dossier.remove_privilege_mapping(level_requested, new_member)
 
     storage.dossier.save(existing_dossier.dossier_id, existing_dossier)
 
@@ -370,6 +370,8 @@ def give_privilege(received_data: dict, dossier_id: str, user: User) -> tuple[Do
 
     Variables:
     dossier_id => The id of the dossier to give administrative privilege of
+    received_data => The data received from the request containing the privilege change information
+    user => user requesting the change
 
     Optional Arguments:
         None
@@ -413,9 +415,9 @@ def give_privilege(received_data: dict, dossier_id: str, user: User) -> tuple[Do
         return f"{user_to_add} already have the permission {priv_requested}"
 
     if priv_requested == "owner":
-        priv_map["owner"] = str(user_to_add)
+        existing_dossier.set_privilege_mapping("owner", user_to_add)
     else:
-        priv_map[priv_requested].append(str(user_to_add))
+        existing_dossier.set_privilege_mapping(priv_requested, user_to_add)
 
     storage.dossier.save(existing_dossier.dossier_id, existing_dossier)
 
@@ -477,7 +479,7 @@ def revoke_privilege(received_data: dict, dossier_id: str, user: User) -> tuple[
     if user_to_remove not in priv_map[priv_requested]:
         return f"{user_to_remove} is not in the {priv_requested} premission group"
 
-    priv_map[priv_requested].remove(str(priv_requested))
+    existing_dossier.remove_privilege_mapping(priv_requested, user_to_remove)
 
     storage.dossier.save(existing_dossier.dossier_id, existing_dossier)
 

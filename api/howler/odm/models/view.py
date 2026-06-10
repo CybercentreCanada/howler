@@ -55,3 +55,29 @@ class View(odm.Model):
             "member": self.members,
             "owner": self.owner_id,
         }
+
+    def set_privilege_mapping(self, level: str, users: str | list[str]):
+        if level == "owner":
+            if isinstance(users, list) and len(users) > 1:
+                raise ValueError("Owner level can only have one user. a list was given with multiple users.")
+            self.owner = users if isinstance(users, str) else users[0]
+        elif level == "administrator":
+            self.admins = users if isinstance(users, list) else [users]
+        elif level == "member":
+            self.members = users if isinstance(users, list) else [users]
+
+    def remove_privilege_mapping(self, level: str, users: str | list[str]):
+        if level == "owner":
+            if isinstance(users, list) and len(users) > 1:
+                raise ValueError("Owner level can only have one user. a list was given with multiple users.")
+            self.owner = ""  # TODO: Verify if we should allow removing owner and leaving it empty
+        elif level == "administrator":
+            if isinstance(users, list):
+                self.admins = [admin for admin in self.admins if admin not in users]
+            else:
+                self.admins = [admin for admin in self.admins if admin != users]
+        elif level == "member":
+            if isinstance(users, list):
+                self.members = [member for member in self.members if member not in users]
+            else:
+                self.members = [member for member in self.members if member != users]
