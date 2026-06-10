@@ -20,12 +20,18 @@ def is_allowed_to_change(level_requested: str, user: User, existing_item: Dossie
         return True
     conversion: dict = existing_item.get_privilege_mapping()
 
-    is_admin: bool = user.uname in conversion.get("administrator", []) or user.uname == conversion.get("owner", "")
+    is_admin: bool = user.uname in conversion.get("administrator", []) or (
+        user.uname in conversion["owner"]
+        if isinstance(conversion.get("owner"), list)
+        else user.uname == conversion.get("owner", "")
+    )
 
     if not is_admin:
         return False
 
-    if level_requested == "owner" and user.uname != conversion.get("owner", ""):
+    owner_val = conversion.get("owner", "")
+    in_owner = user.uname in owner_val if isinstance(owner_val, list) else user.uname == owner_val
+    if level_requested == "owner" and not in_owner:
         return False
     return True
 
@@ -58,7 +64,7 @@ def privilege_value_verifications(
         existing_item = storage.view.get_if_exists(item_id)
 
     elif item_type == Action:
-        existing_item = storage.view.get_if_exists(item_id)
+        existing_item = storage.action.get_if_exists(item_id)
 
     # Making sur we never continue with empty
     if existing_item is None:

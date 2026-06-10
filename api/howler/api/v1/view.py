@@ -99,7 +99,7 @@ def create_view(**kwargs):
 
         view = View(view_data)
 
-        view.owner = kwargs["user"]["uname"]
+        view.owner = [kwargs["user"]["uname"]]
 
         if view.type == "personal":
             current_user = storage.user.get_if_exists(kwargs["user"]["uname"])
@@ -142,7 +142,7 @@ def delete_view(view_id: str, user: User, **kwargs):
     if not existing_view:
         return not_found(err="This view does not exist")
 
-    if (user.uname != existing_view.owner) and "admin" not in user.type:
+    if (user.uname not in existing_view.owner) and "admin" not in user.type:
         return forbidden(err="You cannot delete a view unless you are an owner or a global admin.")
 
     if existing_view.type == "readonly":
@@ -194,10 +194,10 @@ def update_view(view_id: str, user: User, **kwargs):
     if existing_view.type == "readonly":
         return forbidden(err="You cannot edit a built-in view.")
 
-    if existing_view.type == "personal" and user.uname != existing_view.owner:
+    if existing_view.type == "personal" and user.uname not in existing_view.owner:
         return forbidden(err="You cannot update a personal view that is not owned by you.")
 
-    allowed_list: list[str] = [existing_view.owner] + existing_view.admins + existing_view.members
+    allowed_list: list[str] = existing_view.owner + existing_view.admin + existing_view.member
     if existing_view.type == "global" and (user.uname not in allowed_list) and "admin" not in user.type:
         return forbidden(err="Only the owner of a view and administrators can edit a global view.")
 
@@ -246,7 +246,7 @@ def set_as_favourite(view_id: str, **kwargs):
         return not_found(err="This view does not exist")
 
     if existing_view.type != "global" and (
-        kwargs["user"]["uname"] != existing_view.owner and existing_view.owner != ""
+        kwargs["user"]["uname"] not in existing_view.owner and len(existing_view.owner) > 0
     ):
         return forbidden(err="You can only favourite global views, or views owned by you.")
 
@@ -340,6 +340,7 @@ def give_privilege(view_id: str, user: User, **kwargs):
         item_id=escape(str(view_id)),
         level_requested=priv_requested,
         member_to_modify=user_to_add,
+        item_type=View,
     )
 
     if isinstance(result, str):
@@ -361,7 +362,7 @@ def give_privilege(view_id: str, user: User, **kwargs):
     if user_to_add in priv_map[priv_request]:
         return bad_request(err=f"{user_to_add} already have the permission {priv_request}")
 
-    existing_view.set_privilege_mapping(priv_request, priv_map[priv_request])
+    existing_view.set_privilege_mapping(priv_request, priv_map[priv_request] + [user_to_add])
 
     storage.view.save(existing_view.view_id, existing_view)
 

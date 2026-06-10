@@ -25,9 +25,11 @@ class View(odm.Model):
         values=["personal", "global", "readonly"],
         description="The type of view",
     )
-    # Kept as owner id for backwards compatibility, but should be owner to match other models
-    owner: str = odm.Keyword(
-        description="The person to whom this view belongs.",
+    # Supports multiple owners; kept as a list for multi-owner support
+    owner: list[str] = odm.List(
+        odm.Keyword(),
+        description="The person(s) to whom this view belongs.",
+        default=[],
         optional=True,
     )
 
@@ -47,37 +49,34 @@ class View(odm.Model):
         Settings, description="Additional View Settings", default={"advance_on_triage": False}
     )
 
-    # use in every object to help with the owner_id problem in this object and to match the other models,but kept owner_
-    # id for backwards compatibility
     def get_privilege_mapping(self) -> dict:
         return {
-            "administrator": self.admins,
-            "member": self.members,
-            "owner": self.owner_id,
+            "administrator": self.admin,
+            "member": self.member,
+            "owner": self.owner,
         }
 
     def set_privilege_mapping(self, level: str, users: str | list[str]):
         if level == "owner":
-            if isinstance(users, list) and len(users) > 1:
-                raise ValueError("Owner level can only have one user. a list was given with multiple users.")
-            self.owner = users if isinstance(users, str) else users[0]
+            self.owner = users if isinstance(users, list) else [users]
         elif level == "administrator":
-            self.admins = users if isinstance(users, list) else [users]
+            self.admin = users if isinstance(users, list) else [users]
         elif level == "member":
-            self.members = users if isinstance(users, list) else [users]
+            self.member = users if isinstance(users, list) else [users]
 
     def remove_privilege_mapping(self, level: str, users: str | list[str]):
         if level == "owner":
-            if isinstance(users, list) and len(users) > 1:
-                raise ValueError("Owner level can only have one user. a list was given with multiple users.")
-            self.owner = ""  # TODO: Verify if we should allow removing owner and leaving it empty
+            if isinstance(users, list):
+                self.owner = [o for o in self.owner if o not in users]
+            else:
+                self.owner = [o for o in self.owner if o != users]
         elif level == "administrator":
             if isinstance(users, list):
-                self.admins = [admin for admin in self.admins if admin not in users]
+                self.admin = [a for a in self.admin if a not in users]
             else:
-                self.admins = [admin for admin in self.admins if admin != users]
+                self.admin = [a for a in self.admin if a != users]
         elif level == "member":
             if isinstance(users, list):
-                self.members = [member for member in self.members if member not in users]
+                self.member = [m for m in self.member if m not in users]
             else:
-                self.members = [member for member in self.members if member != users]
+                self.member = [m for m in self.member if m != users]
