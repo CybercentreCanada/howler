@@ -762,5 +762,6 @@
   "view.open": "Open View Query",
   "view.refresh": "Refresh View",
   "view.settings.advance_on_triage": "Advance to next hit on triage",
-  "view.settings.advance_on_triage.description": "If this is enabled, triaging a hit on this view will automatically move to the next hit in line, making rapid triage of hits easier."
+  "view.settings.advance_on_triage.description": "If this is enabled, triaging a hit on this view will automatically move to the next hit in line, making rapid triage of hits easier.",
+  "view.settings.layout": "Default layout in search"
 }

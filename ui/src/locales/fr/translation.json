@@ -762,5 +762,6 @@
   "view.open": "Ouvrir requête de la vue",
   "view.refresh": "Rafraîchir la vue",
   "view.settings.advance_on_triage": "Passer à la hit suivant lors du triage",
-  "view.settings.advance_on_triage.description": "Si cette option est activée, le triage d'une hit sur cette vue passera automatiquement à la hit suivant, ce qui facilitera le triage rapide des résultats."
+  "view.settings.advance_on_triage.description": "Si cette option est activée, le triage d'une hit sur cette vue passera automatiquement à la hit suivant, ce qui facilitera le triage rapide des résultats.",
+  "view.settings.layout": "Mise en page par défaut dans la recherche"
 }

@@ -23,6 +23,7 @@ import { HitContext } from 'components/app/providers/HitProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import CustomButton from 'components/elements/addons/buttons/CustomButton';
+import FlexOne from 'components/elements/addons/layout/FlexOne';
 import FlexPort from 'components/elements/addons/layout/FlexPort';
 import VSBox from 'components/elements/addons/layout/vsbox/VSBox';
 import VSBoxContent from 'components/elements/addons/layout/vsbox/VSBoxContent';
@@ -30,6 +31,7 @@ import VSBoxHeader from 'components/elements/addons/layout/vsbox/VSBoxHeader';
 import SearchTotal from 'components/elements/addons/search/SearchTotal';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
+import LayoutToggle, { type HowlerViewLayoutType } from 'components/elements/view/LayoutToggle';
 import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useMySnackbar from 'components/hooks/useMySnackbar';
@@ -63,6 +65,7 @@ const ViewComposer: FC = () => {
   const [title, setTitle] = useState('');
   const [type, setType] = useState('global');
   const [advanceOnTriage, setAdvanceOnTriage] = useState(false);
+  const [displayType, setDisplayType] = useState<HowlerViewLayoutType>('list');
 
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
@@ -268,21 +271,28 @@ const ViewComposer: FC = () => {
                   <HitSort />
                   <SearchSpan omitCustom />
                   <div style={{ flex: 1 }} />
-                  <Stack
-                    spacing={1}
-                    direction="row"
-                    alignItems="center"
-                    sx={{ flex: '0 !important', minWidth: '300px' }}
-                  >
-                    <Typography component="span">{t('view.settings.advance_on_triage')}</Typography>
-                    <Tooltip title={t('view.settings.advance_on_triage.description')}>
-                      <HelpOutline sx={{ fontSize: '16px' }} />
-                    </Tooltip>
-                    <Checkbox
-                      size="small"
-                      checked={advanceOnTriage}
-                      onChange={(_event, checked) => setAdvanceOnTriage(checked)}
-                    />
+                  <Stack direction="column" spacing={1}>
+                    <Stack
+                      spacing={1}
+                      direction="row"
+                      alignItems="center"
+                      sx={{ flex: '0 !important', minWidth: '300px' }}
+                    >
+                      <Typography component="span">{t('view.settings.advance_on_triage')}</Typography>
+                      <Tooltip title={t('view.settings.advance_on_triage.description')}>
+                        <HelpOutline sx={{ fontSize: '16px' }} />
+                      </Tooltip>
+                      <FlexOne />
+                      <Checkbox
+                        size="small"
+                        checked={advanceOnTriage}
+                        onChange={(_event, checked) => setAdvanceOnTriage(checked)}
+                      />
+                    </Stack>
+                    <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+                      <Typography component="span">{t('view.settings.layout')}</Typography>
+                      <LayoutToggle displayType={displayType} setDisplayType={setDisplayType} />
+                    </Stack>
                   </Stack>
                 </Stack>
                 {response?.total ? (
@@ -297,12 +307,16 @@ const ViewComposer: FC = () => {
               </Stack>
             </VSBoxHeader>
             <VSBoxContent>
-              <Stack spacing={1}>
-                {!response?.total && <AppListEmpty />}
-                {response?.items.map(hit => (
-                  <HitCard key={hit.howler.id} id={hit.howler.id} layout={HitLayout.DENSE} />
-                ))}
-              </Stack>
+              {displayType === 'list' ? (
+                <Stack spacing={1}>
+                  {!response?.total && <AppListEmpty />}
+                  {response?.items.map(hit => (
+                    <HitCard key={hit.howler.id} id={hit.howler.id} layout={HitLayout.DENSE} />
+                  ))}
+                </Stack>
+              ) : (
+                <div>Grid view coming soon</div>
+              )}
             </VSBoxContent>
           </VSBox>
         </PageCenter>
