@@ -23,6 +23,7 @@ import { Check, DarkMode, Delete, SsidChart, WbSunny } from '@mui/icons-material
 import { useApp } from 'commons/components/app/hooks';
 import AppInfoPanel from 'commons/components/display/AppInfoPanel';
 import useThemeBuilder from 'commons/components/utils/hooks/useThemeBuilder';
+import { ModalContext } from 'components/app/providers/ModalProvider';
 import { OverviewContext } from 'components/app/providers/OverviewProvider';
 import HitOverview from 'components/elements/hit/HitOverview';
 import useMyApi from 'components/hooks/useMyApi';
@@ -44,6 +45,7 @@ const OverviewViewer = () => {
   const [params, setParams] = useSearchParams();
   const { getOverviews } = useContext(OverviewContext);
   const { dispatchApi } = useMyApi();
+  const { withConfirmDeleteModal } = useContext(ModalContext);
 
   const [overviewList, setOverviewList] = useState<Overview[]>([]);
   const [selectedOverview, setSelectedOverview] = useState<Overview>(null);
@@ -175,15 +177,17 @@ const OverviewViewer = () => {
     });
   }, [analytic, detection, params, setParams]);
 
-  const onDelete = useCallback(async () => {
-    await dispatchApi(api.overview.del(selectedOverview.overview_id), {
-      logError: false,
-      showError: true,
-      throwError: false
+  const onDelete = useCallback(() => {
+    withConfirmDeleteModal(async () => {
+      await dispatchApi(api.overview.del(selectedOverview.overview_id), {
+        logError: false,
+        showError: true,
+        throwError: false
+      });
+      setSelectedOverview(null);
+      setContent('');
     });
-    setSelectedOverview(null);
-    setContent('');
-  }, [dispatchApi, selectedOverview?.overview_id]);
+  }, [dispatchApi, selectedOverview?.overview_id, withConfirmDeleteModal]);
 
   const onSave = useCallback(async () => {
     if (analytic && detection) {
