@@ -8,7 +8,7 @@ import {
   type DragEndEvent
 } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import { FormatIndentDecrease, FormatIndentIncrease, Info, List, Search, TableChart } from '@mui/icons-material';
+import { FormatIndentDecrease, FormatIndentIncrease, Info, Search } from '@mui/icons-material';
 import {
   IconButton,
   LinearProgress,
@@ -19,8 +19,6 @@ import {
   TableCell,
   TableHead,
   TableRow,
-  ToggleButton,
-  ToggleButtonGroup,
   Typography,
   useTheme
 } from '@mui/material';
@@ -40,6 +38,7 @@ import { StorageKey } from 'utils/constants';
 import HitContextMenu from '../HitContextMenu';
 import HitQuery from '../HitQuery';
 import QuerySettings from '../QuerySettings';
+import SearchActionMenu from '../shared/SearchActionMenu';
 import AddColumnModal from './AddColumnModal';
 import ColumnHeader from './ColumnHeader';
 import HitRow from './HitRow';
@@ -55,8 +54,6 @@ const HitGrid: FC = () => {
   const { getMatchingAnalytic } = useMatchers();
 
   const search = useContextSelector(HitSearchContext, ctx => ctx.search);
-  const displayType = useContextSelector(HitSearchContext, ctx => ctx.displayType);
-  const setDisplayType = useContextSelector(HitSearchContext, ctx => ctx.setDisplayType);
   const response = useContextSelector(HitSearchContext, ctx => ctx.response);
   const searching = useContextSelector(HitSearchContext, ctx => ctx.searching);
 
@@ -194,22 +191,14 @@ const HitGrid: FC = () => {
       sx={{ overflow: 'hidden', height: `calc(100vh - ${theme.spacing(showSelectBar ? 13 : 8)})` }}
     >
       <DevelopmentBanner />
-      <Stack direction="row" justifyContent="space-between">
+      <Stack direction="row" justifyContent="space-between" alignItems="center">
         <Typography
           sx={{ color: 'text.secondary', fontSize: '0.9em', fontStyle: 'italic', mb: 0.5, textAlign: 'left' }}
           variant="body2"
         >
           {t('hit.search.prompt')}
         </Typography>
-        {response && (
-          <SearchTotal
-            sx={{ color: 'text.secondary', fontSize: '0.9em', fontStyle: 'italic', mb: 0.5 }}
-            variant="body2"
-            offset={response.offset}
-            pageLength={response.rows}
-            total={response.total}
-          />
-        )}
+        <SearchActionMenu query={query} />
       </Stack>
       <Stack direction="row" spacing={1}>
         <Stack position="relative" flex={1}>
@@ -227,19 +216,20 @@ const HitGrid: FC = () => {
             />
           )}
         </Stack>
-        <ToggleButtonGroup exclusive value={displayType} onChange={(__, value) => setDisplayType(value)} size="small">
-          <ToggleButton value="list">
-            <List />
-          </ToggleButton>
-          <ToggleButton value="grid">
-            <TableChart />
-          </ToggleButton>
-        </ToggleButtonGroup>
       </Stack>
       <Stack direction="row" spacing={1} width="100%" alignItems="center">
         <QuerySettings boxSx={{ flex: 1 }} />
         <AddColumnModal columns={columns} addColumn={key => setColumns(uniq([...columns, key]))} />
       </Stack>
+      {response && (
+        <SearchTotal
+          sx={{ color: 'text.secondary', fontSize: '0.9em', fontStyle: 'italic', mb: 0.5 }}
+          variant="body2"
+          offset={response.offset}
+          pageLength={response.rows}
+          total={response.total}
+        />
+      )}
       <Stack
         component={Paper}
         spacing={1}
