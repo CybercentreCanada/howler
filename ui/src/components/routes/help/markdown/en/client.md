@@ -138,7 +138,6 @@ Querying hits using the howler python client is done using the `howler.search.hi
   - `rows`: Number of records to return (integer)
   - `sort`: Field used for sorting with direction (string: ex. 'id desc')
   - `timeout`: Max amount of milliseconds the query will run (integer)
-  - `use_archive`: Also query the archive
   - `track_total_hits`: Number of hits to track (default: 10k)
 
 Here are some example queries:
@@ -151,7 +150,7 @@ howler.search.hit("howler.analytic:assemblyline", fl="howler.id", rows=50)
 howler.search.hit("howler.status:resolved", filters=['event.created:[now-5d TO now]'] fl="howler.id,howler.analytic", rows=10, offset=40)
 
 # Search for all hits, timeout if the query takes more than 100ms
-howler.search.hit("howler.id:*", track_total_hits=100000000, timeout=100, use_archive=True)
+howler.search.hit("howler.id:*", track_total_hits=100000000, timeout=100)
 ```
 
 ### Updating Hits

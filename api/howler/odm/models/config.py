@@ -93,6 +93,52 @@ class Host(BaseModel):
         return self.__repr__()
 
 
+class ILMIndexConfig(BaseModel):
+    """Per-index ILM phase configuration.
+
+    Controls when an index transitions to warm and cold phases.
+    Values are Elasticsearch age strings (e.g. "30d", "90d").
+    """
+
+    warm: Optional[str] = Field(
+        default=None,
+        description="Min age before the index enters the warm phase (e.g. '30d'). None to skip.",
+    )
+    warm_forcemerge_segments: Optional[int] = Field(
+        default=3,
+        description="Max segments after forcemerge in warm phase. Use 2-3 if writes still occur. "
+        "None to skip forcemerge.",
+    )
+    cold: Optional[str] = Field(
+        default=None,
+        description="Min age before the index enters the cold phase (e.g. '90d'). None to skip.",
+    )
+
+
+class ILMConfig(BaseModel):
+    """Index Lifecycle Management configuration.
+
+    When enabled, Howler uses Elasticsearch ILM policies and rollover aliases
+    to split large indices into time-based segments. This cooperates with the
+    existing retention cronjob — ILM handles rollover and phase transitions,
+    while the retention job handles document deletion.
+    """
+
+    enabled: bool = Field(default=False, description="Enable ILM-based index rollover")
+    rollover_max_age: str = Field(
+        default="30d",
+        description="Maximum age of the write index before rollover (e.g. '30d')",
+    )
+    rollover_max_size: str = Field(
+        default="50gb",
+        description="Maximum primary shard size before rollover (e.g. '50gb')",
+    )
+    indices: dict[str, ILMIndexConfig] = Field(
+        default={},
+        description="Per-index ILM configuration, keyed by collection name (e.g. 'hit')",
+    )
+
+
 class Datastore(BaseModel):
     """Datastore configuration for Howler.
 
@@ -106,6 +152,10 @@ class Datastore(BaseModel):
     )
     type: Literal["elasticsearch"] = Field(
         default="elasticsearch", description="Type of application used for the datastore"
+    )
+    ilm: ILMConfig = Field(
+        default_factory=ILMConfig,
+        description="Index Lifecycle Management configuration",
     )
 
 

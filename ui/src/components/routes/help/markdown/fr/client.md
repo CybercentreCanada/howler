@@ -134,7 +134,6 @@ L'interrogation des hits avec le client python howler se fait en utilisant la fo
   - `rows`: Nombre d'enregistrements à retourner (entier)
   - `sort`: Champ utilisé pour le tri avec direction (chaîne: ex. 'id desc')
   - `timeout`: Nombre maximum de millisecondes d'exécution de la requête (entier)
-  - `use_archive`: Interroge également l'archive
   - `track_total_hits`: Nombre de hits à suivre (par défaut: 10k)
 
 Voici quelques exemples de requêtes:
@@ -147,7 +146,7 @@ howler.search.hit("howler.analytic:assemblyline", fl="howler.id", rows=50)
 howler.search.hit("howler.status:resolved", filters=['event.created:[now-5d TO now]'] fl="howler.id,howler.analytic", rows=10, offset=40)
 
 # Recherche de tous les résultats, délai d'attente si la requête prend plus de 100 ms
-howler.search.hit("howler.id:*", track_total_hits=100000000, timeout=100, use_archive=True)
+howler.search.hit("howler.id:*", track_total_hits=100000000, timeout=100)
 ```
 
 ### Mise à jour des résultats

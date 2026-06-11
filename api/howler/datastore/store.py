@@ -166,10 +166,14 @@ class ESStore(object):
             KeyError: If *name* has not been registered via ``register``.
         """
         if not self.validate:
-            return ESCollection(self, name, model_class=self._models[name], validate=self.validate)
+            ilm_cfg = self.__dict__.get("_ilm_configs", {}).get(name)
+            return ESCollection(self, name, model_class=self._models[name], validate=self.validate, ilm_config=ilm_cfg)
 
         if name not in self._collections:
-            self._collections[name] = ESCollection(self, name, model_class=self._models[name], validate=self.validate)
+            ilm_cfg = self.__dict__.get("_ilm_configs", {}).get(name)
+            self._collections[name] = ESCollection(
+                self, name, model_class=self._models[name], validate=self.validate, ilm_config=ilm_cfg
+            )
 
         return self._collections[name]
 
@@ -307,7 +311,7 @@ class ESStore(object):
         """
         return self.client.ping()
 
-    def register(self, name: str, model_class=None):
+    def register(self, name: str, model_class=None, ilm_config=None):
         """Register a collection (index) name and its optional ODM model class.
 
         Args:
@@ -315,6 +319,7 @@ class ESStore(object):
                 and underscores.
             model_class: ODM model class used for validation and serialisation.
                 ``None`` disables model-level validation for this collection.
+            ilm_config: Optional per-index ILM configuration (ILMIndexConfig).
 
         Raises:
             DataStoreException: If *name* contains invalid characters.
@@ -326,6 +331,10 @@ class ESStore(object):
             )
 
         self._models[name] = model_class
+        if ilm_config is not None:
+            if "_ilm_configs" not in self.__dict__:
+                self._ilm_configs: dict = {}
+            self._ilm_configs[name] = ilm_config
 
     def to_pydatemath(self, value):
         """Convert an internal date-math expression to ES date-math syntax.
