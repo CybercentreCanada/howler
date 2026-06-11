@@ -56,7 +56,7 @@ const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
         })}
 
       {displayPivots.map(({ pivot, dossier }) => {
-        const resolvedUrl = ResolvePivotUrl(pivot, hit);
+        const resolvedUrl = resolvePivotUrl(pivot, hit);
         return (
           <Grid item key={`${dossier.dossier_id}-${pivot.value}`}>
             <Tooltip title={<PivotTooltip dossier={dossier} resolvedUrl={resolvedUrl} />}>
