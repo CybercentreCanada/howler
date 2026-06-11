@@ -1,55 +1,28 @@
-import {
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  pointerWithin,
-  useSensor,
-  useSensors,
-  type DragEndEvent
-} from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import { FormatIndentDecrease, FormatIndentIncrease, Info, Search } from '@mui/icons-material';
-import {
-  IconButton,
-  LinearProgress,
-  Paper,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Typography,
-  useTheme
-} from '@mui/material';
+import { Info } from '@mui/icons-material';
+import { LinearProgress, Paper, Stack, TableBody, Typography, useTheme } from '@mui/material';
 import useMatchers from 'components/app/hooks/useMatchers';
 import { HitContext } from 'components/app/providers/HitProvider';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import SearchTotal from 'components/elements/addons/search/SearchTotal';
 import DevelopmentBanner from 'components/elements/display/features/DevelopmentBanner';
+import AddColumnModal from 'components/elements/hit/grid/AddColumnModal';
+import HitTable from 'components/elements/hit/grid/HitTable';
+import HitContextMenu from 'components/elements/hit/HitContextMenu';
 import useHitSelection from 'components/hooks/useHitSelection';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import { uniq } from 'lodash-es';
-import { useCallback, useEffect, useMemo, useRef, useState, type FC } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
-import HitContextMenu from '../HitContextMenu';
 import HitQuery from '../HitQuery';
 import QuerySettings from '../QuerySettings';
 import SearchActionMenu from '../shared/SearchActionMenu';
-import AddColumnModal from './AddColumnModal';
-import ColumnHeader from './ColumnHeader';
-import HitRow from './HitRow';
 
 const HitGrid: FC = () => {
   const { t } = useTranslation();
   const theme = useTheme();
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
   const { onClick } = useHitSelection();
   const { getMatchingAnalytic } = useMatchers();
 
@@ -62,21 +35,14 @@ const HitGrid: FC = () => {
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
 
-  const [collapseMainColumn, setCollapseMainColumn] = useMyLocalStorageItem(StorageKey.GRID_COLLAPSE_COLUMN, false);
   const [columns, setColumns] = useMyLocalStorageItem(StorageKey.GRID_COLUMNS, [
     'howler.outline.threat',
     'howler.outline.target',
     'howler.outline.indicators',
     'howler.outline.summary'
   ]);
-  const [columnWidths, setColumnWidths] = useMyLocalStorageItem<Record<string, string>>(
-    StorageKey.GRID_COLUMN_WIDTHS,
-    {}
-  );
 
   const [analyticIds, setAnalyticIds] = useState<Record<string, string>>({});
-
-  const resizingCol = useRef<[string, HTMLElement]>();
 
   const showSelectBar = useMemo(() => {
     if (selectedHits.length > 1) {
@@ -101,52 +67,6 @@ const HitGrid: FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analyticIds, response]);
 
-  const onMouseMove = useCallback((event: MouseEvent) => {
-    event.stopPropagation();
-    event.preventDefault();
-
-    const [col, element] = resizingCol.current;
-    const rect = element.getBoundingClientRect();
-
-    document.querySelectorAll<HTMLElement>(`.col-${col.replaceAll('.', '-')}`).forEach(el => {
-      el.style.maxWidth = rect.width + event.movementX + 'px';
-      el.style.width = rect.width + event.movementX + 'px';
-    });
-  }, []);
-
-  const onMouseUp = useCallback(() => {
-    const [col, element] = resizingCol.current;
-
-    setColumnWidths({
-      ...columnWidths,
-      [col]: element.style.width
-    });
-
-    element.style.width = null;
-    element.style.maxWidth = null;
-
-    document.querySelectorAll<HTMLElement>(`.col-${col.replaceAll('.', '-')}`).forEach(el => {
-      el.style.maxWidth = null;
-      el.style.width = null;
-    });
-
-    window.removeEventListener('mousemove', onMouseMove);
-    window.removeEventListener('mouseup', onMouseUp);
-  }, [columnWidths, onMouseMove, setColumnWidths]);
-
-  const onMouseDown = useCallback(
-    (col: string, event: React.MouseEvent<HTMLElement, MouseEvent>) => {
-      event.stopPropagation();
-      event.preventDefault();
-
-      resizingCol.current = [col, (event.target as HTMLElement).parentElement];
-
-      window.addEventListener('mousemove', onMouseMove);
-      window.addEventListener('mouseup', onMouseUp);
-    },
-    [onMouseMove, onMouseUp]
-  );
-
   const onScroll = useCallback(
     (event: React.UIEvent<HTMLDivElement, UIEvent>) => {
       const target = event.target as HTMLDivElement;
@@ -156,20 +76,6 @@ const HitGrid: FC = () => {
       }
     },
     [query, search]
-  );
-
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      const { active, over } = event;
-
-      if (over && active.id !== over.id) {
-        const oldIndex = (columns ?? []).findIndex(entry => entry === active.id);
-        const newIndex = (columns ?? []).findIndex(entry => entry === over.id);
-
-        setColumns(arrayMove(columns, oldIndex, newIndex));
-      }
-    },
-    [columns, setColumns]
   );
 
   const getSelectedId = useCallback((event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
@@ -238,63 +144,17 @@ const HitGrid: FC = () => {
         sx={{ overflow: 'auto', flex: 1 }}
         onScroll={onScroll}
       >
-        <Table sx={{ '& td,th': { px: 1, py: 0.25, whiteSpace: 'nowrap' } }}>
-          <TableHead>
-            <TableRow>
-              <TableCell
-                sx={{
-                  borderRight: 'thin solid',
-                  borderRightColor: 'divider'
-                }}
-              >
-                <IconButton onClick={() => setCollapseMainColumn(!collapseMainColumn)}>
-                  {collapseMainColumn ? (
-                    <FormatIndentIncrease fontSize="small" />
-                  ) : (
-                    <FormatIndentDecrease fontSize="small" />
-                  )}
-                </IconButton>
-              </TableCell>
-              <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragEnd={handleDragEnd}>
-                <SortableContext items={columns}>
-                  {columns.map(col => (
-                    <ColumnHeader
-                      key={col}
-                      col={col}
-                      width={columnWidths[col]}
-                      onMouseDown={onMouseDown}
-                      setColumns={setColumns}
-                    />
-                  ))}
-                </SortableContext>
-              </DndContext>
-              <TableCell sx={{ width: '100%' }} />
-            </TableRow>
-          </TableHead>
-          <HitContextMenu Component={TableBody} getSelectedId={getSelectedId}>
-            {response?.items.map(hit => (
-              <HitRow
-                key={hit.howler.id}
-                hit={hit}
-                analyticIds={analyticIds}
-                columns={columns}
-                columnWidths={columnWidths}
-                collapseMainColumn={collapseMainColumn}
-                onClick={onClick}
-              />
-            ))}
-            <TableRow>
-              <TableCell colSpan={columns.length + 2}>
-                <Stack alignItems="center" justifyContent="center" py={0.5} px={1}>
-                  <IconButton onClick={() => search(query, true)}>
-                    <Search />
-                  </IconButton>
-                </Stack>
-              </TableCell>
-            </TableRow>
-          </HitContextMenu>
-        </Table>
-
+        <HitTable
+          query={query}
+          items={response?.items ?? []}
+          refreshItems={search}
+          columns={columns}
+          onColumnChange={setColumns}
+          analyticIds={analyticIds}
+          ContextMenu={HitContextMenu}
+          contextMenuProps={{ Component: TableBody, getSelectedId: getSelectedId }}
+          onItemClick={onClick}
+        />
         {(response?.total ?? 0) < 1 && (
           <Stack direction="row" spacing={1} alignItems="center" p={1} justifyContent="center" flex={1}>
             <Typography variant="h3" color="text.secondary" display="flex" flexDirection="row" alignItems="center">
