@@ -715,7 +715,7 @@ def histogram(index, field, **kwargs):
     params: dict[str, Any] = {}
     if field_info is None:
         return bad_request(err=f"Field '{field}' is not a valid field in index: {index}")
-    elif field_info["type"] == "integer":
+    elif field_info["type"] in ("integer", "long"):
         params = {"start": 0, "end": 2000, "gap": 100}
     elif field_info["type"] == "date":
         storage = datastore()
