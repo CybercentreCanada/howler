@@ -5,20 +5,25 @@ from typing import Union
 
 from howler.common.net_static import TLDS_ALPHA_BY_DOMAIN
 
-# Special-use TLDs per RFC 6761 and RFC 7686
-# These are reserved by IANA for specific purposes and not in the standard TLD list
-SPECIAL_USE_TLDS = {
-    "LOCAL",      # RFC 6762 - mDNS/Bonjour local network names
+# IANA Special-Use Domain Names Registry
+# https://www.iana.org/assignments/special-use-domain-names/special-use-domain-names.xhtml
+IANA_SPECIAL_USE_TLDS = {
     "LOCALHOST",  # RFC 6761 - loopback address
     "TEST",       # RFC 6761 - testing
     "EXAMPLE",    # RFC 6761 - documentation examples
     "INVALID",    # RFC 6761 - invalid domain names
+    "LOCAL",      # RFC 6762 - mDNS/Bonjour local network names
     "ONION",      # RFC 7686 - Tor hidden services
-    "INTERNAL",   # Common internal network TLD
-    "LAN",        # Common internal network TLD
-    "HOME",       # Common internal network TLD
-    "CORP",       # Common internal network TLD
-    "LOCALDOMAIN",  # Common internal network TLD
+}
+
+# Common private network suffixes used in enterprise environments
+# These are NOT IANA-registered but are widely used organizational conventions
+PRIVATE_NETWORK_SUFFIXES = {
+    "INTERNAL",
+    "LAN",
+    "HOME",
+    "CORP",
+    "LOCALDOMAIN",
 }
 
 
@@ -33,14 +38,29 @@ def is_valid_port(value: Union[int, str, float]) -> bool:
     return False
 
 
-def is_valid_domain(domain: str) -> bool:
-    "Check if a domain is valid"
+def is_valid_domain(domain: str, allow_private_suffixes: bool = True) -> bool:
+    """Check if a domain is valid.
+
+    Args:
+        domain: The domain to validate.
+        allow_private_suffixes: If True, accepts common private network suffixes
+            (.internal, .lan, .home, .corp, .localdomain) in addition to IANA
+            special-use TLDs. Set to False for stricter validation in
+            security-sensitive contexts (e.g., SSRF protection).
+            Defaults to True for backward compatibility.
+
+    Returns:
+        True if the domain has a valid TLD, False otherwise.
+    """
     if "@" in domain:
         return False
 
     if "." in domain:
         tld = domain.split(".")[-1].upper()
-        return tld in TLDS_ALPHA_BY_DOMAIN or tld in SPECIAL_USE_TLDS
+        if tld in TLDS_ALPHA_BY_DOMAIN or tld in IANA_SPECIAL_USE_TLDS:
+            return True
+        if allow_private_suffixes and tld in PRIVATE_NETWORK_SUFFIXES:
+            return True
 
     return False
 

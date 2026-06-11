@@ -25,16 +25,53 @@ def test_valid_domain():
     assert not is_valid_domain("user@cyber.gc.ca")
     assert not is_valid_domain("user")
 
-    # Special-use TLDs (RFC 6761, RFC 7686)
-    assert is_valid_domain("server.local")
+
+def test_valid_domain_iana_special_use():
+    """Test IANA Special-Use Domain Names Registry entries.
+
+    These are always valid regardless of allow_private_suffixes setting.
+    See: https://www.iana.org/assignments/special-use-domain-names/
+    """
+    # RFC 6761 - Special-Use Domain Names
     assert is_valid_domain("machine.localhost")
     assert is_valid_domain("example.test")
     assert is_valid_domain("site.example")
+    assert is_valid_domain("bad.invalid")
+
+    # RFC 6762 - mDNS/Bonjour
+    assert is_valid_domain("server.local")
+
+    # RFC 7686 - Tor hidden services
     assert is_valid_domain("hidden.onion")
+
+    # IANA special-use TLDs remain valid even with allow_private_suffixes=False
+    assert is_valid_domain("machine.localhost", allow_private_suffixes=False)
+    assert is_valid_domain("example.test", allow_private_suffixes=False)
+    assert is_valid_domain("site.example", allow_private_suffixes=False)
+    assert is_valid_domain("bad.invalid", allow_private_suffixes=False)
+    assert is_valid_domain("server.local", allow_private_suffixes=False)
+    assert is_valid_domain("hidden.onion", allow_private_suffixes=False)
+
+
+def test_valid_domain_private_suffixes():
+    """Test common private network suffixes.
+
+    These are NOT IANA-registered but are widely used organizational conventions.
+    They are accepted by default but can be rejected with allow_private_suffixes=False.
+    """
+    # Private network suffixes - valid by default (allow_private_suffixes=True)
     assert is_valid_domain("server.internal")
     assert is_valid_domain("pc.lan")
     assert is_valid_domain("router.home")
-    assert is_valid_domain("domain.localdomain")
+    assert is_valid_domain("domain.corp")
+    assert is_valid_domain("host.localdomain")
+
+    # Private suffixes rejected when allow_private_suffixes=False
+    assert not is_valid_domain("server.internal", allow_private_suffixes=False)
+    assert not is_valid_domain("pc.lan", allow_private_suffixes=False)
+    assert not is_valid_domain("router.home", allow_private_suffixes=False)
+    assert not is_valid_domain("domain.corp", allow_private_suffixes=False)
+    assert not is_valid_domain("host.localdomain", allow_private_suffixes=False)
 
 
 def test_valid_ip():
