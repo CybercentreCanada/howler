@@ -25,6 +25,17 @@ def test_valid_domain():
     assert not is_valid_domain("user@cyber.gc.ca")
     assert not is_valid_domain("user")
 
+    # Special-use TLDs (RFC 6761, RFC 7686)
+    assert is_valid_domain("server.local")
+    assert is_valid_domain("machine.localhost")
+    assert is_valid_domain("example.test")
+    assert is_valid_domain("site.example")
+    assert is_valid_domain("hidden.onion")
+    assert is_valid_domain("server.internal")
+    assert is_valid_domain("pc.lan")
+    assert is_valid_domain("router.home")
+    assert is_valid_domain("domain.localdomain")
+
 
 def test_valid_ip():
     assert is_valid_ip("5.5.5.5")

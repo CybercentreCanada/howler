@@ -5,6 +5,22 @@ from typing import Union
 
 from howler.common.net_static import TLDS_ALPHA_BY_DOMAIN
 
+# Special-use TLDs per RFC 6761 and RFC 7686
+# These are reserved by IANA for specific purposes and not in the standard TLD list
+SPECIAL_USE_TLDS = {
+    "LOCAL",      # RFC 6762 - mDNS/Bonjour local network names
+    "LOCALHOST",  # RFC 6761 - loopback address
+    "TEST",       # RFC 6761 - testing
+    "EXAMPLE",    # RFC 6761 - documentation examples
+    "INVALID",    # RFC 6761 - invalid domain names
+    "ONION",      # RFC 7686 - Tor hidden services
+    "INTERNAL",   # Common internal network TLD
+    "LAN",        # Common internal network TLD
+    "HOME",       # Common internal network TLD
+    "CORP",       # Common internal network TLD
+    "LOCALDOMAIN",  # Common internal network TLD
+}
+
 
 def is_valid_port(value: Union[int, str, float]) -> bool:
     "Check if a port is valid"
@@ -23,8 +39,8 @@ def is_valid_domain(domain: str) -> bool:
         return False
 
     if "." in domain:
-        tld = domain.split(".")[-1]
-        return tld.upper() in TLDS_ALPHA_BY_DOMAIN
+        tld = domain.split(".")[-1].upper()
+        return tld in TLDS_ALPHA_BY_DOMAIN or tld in SPECIAL_USE_TLDS
 
     return False
 
