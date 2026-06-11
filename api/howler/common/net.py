@@ -9,11 +9,11 @@ from howler.common.net_static import TLDS_ALPHA_BY_DOMAIN
 # https://www.iana.org/assignments/special-use-domain-names/special-use-domain-names.xhtml
 IANA_SPECIAL_USE_TLDS = {
     "LOCALHOST",  # RFC 6761 - loopback address
-    "TEST",       # RFC 6761 - testing
-    "EXAMPLE",    # RFC 6761 - documentation examples
-    "INVALID",    # RFC 6761 - invalid domain names
-    "LOCAL",      # RFC 6762 - mDNS/Bonjour local network names
-    "ONION",      # RFC 7686 - Tor hidden services
+    "TEST",  # RFC 6761 - testing
+    "EXAMPLE",  # RFC 6761 - documentation examples
+    "INVALID",  # RFC 6761 - invalid domain names
+    "LOCAL",  # RFC 6762 - mDNS/Bonjour local network names
+    "ONION",  # RFC 7686 - Tor hidden services
 }
 
 # Common private network suffixes used in enterprise environments
@@ -38,16 +38,27 @@ def is_valid_port(value: Union[int, str, float]) -> bool:
     return False
 
 
-def is_valid_domain(domain: str, allow_private_suffixes: bool = True) -> bool:
+def is_valid_domain(
+    domain: str,
+    allow_special_use_tlds: bool = True,
+    allow_private_suffixes: bool = True,
+) -> bool:
     """Check if a domain is valid.
 
     Args:
         domain: The domain to validate.
-        allow_private_suffixes: If True, accepts common private network suffixes
-            (.internal, .lan, .home, .corp, .localdomain) in addition to IANA
-            special-use TLDs. Set to False for stricter validation in
-            security-sensitive contexts (e.g., SSRF protection).
+        allow_special_use_tlds: If True, accepts IANA special-use TLDs
+            (.localhost, .local, .onion, .test, .example, .invalid).
+            Set to False to reject these domains.
             Defaults to True for backward compatibility.
+        allow_private_suffixes: If True, accepts common private network suffixes
+            (.internal, .lan, .home, .corp, .localdomain).
+            Set to False to reject these domains.
+            Defaults to True for backward compatibility.
+
+    Note:
+        To validate public internet domains only (e.g., for SSRF protection),
+        set both allow_special_use_tlds=False and allow_private_suffixes=False.
 
     Returns:
         True if the domain has a valid TLD, False otherwise.
@@ -57,7 +68,9 @@ def is_valid_domain(domain: str, allow_private_suffixes: bool = True) -> bool:
 
     if "." in domain:
         tld = domain.split(".")[-1].upper()
-        if tld in TLDS_ALPHA_BY_DOMAIN or tld in IANA_SPECIAL_USE_TLDS:
+        if tld in TLDS_ALPHA_BY_DOMAIN:
+            return True
+        if allow_special_use_tlds and tld in IANA_SPECIAL_USE_TLDS:
             return True
         if allow_private_suffixes and tld in PRIVATE_NETWORK_SUFFIXES:
             return True

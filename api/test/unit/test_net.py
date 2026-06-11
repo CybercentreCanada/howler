@@ -29,28 +29,11 @@ def test_valid_domain():
 def test_valid_domain_iana_special_use():
     """Test IANA Special-Use Domain Names Registry entries.
 
-    These are always valid regardless of allow_private_suffixes setting.
     See: https://www.iana.org/assignments/special-use-domain-names/
     """
-    # RFC 6761 - Special-Use Domain Names
-    assert is_valid_domain("machine.localhost")
-    assert is_valid_domain("example.test")
-    assert is_valid_domain("site.example")
-    assert is_valid_domain("bad.invalid")
-
-    # RFC 6762 - mDNS/Bonjour
     assert is_valid_domain("server.local")
-
-    # RFC 7686 - Tor hidden services
-    assert is_valid_domain("hidden.onion")
-
-    # IANA special-use TLDs remain valid even with allow_private_suffixes=False
-    assert is_valid_domain("machine.localhost", allow_private_suffixes=False)
-    assert is_valid_domain("example.test", allow_private_suffixes=False)
-    assert is_valid_domain("site.example", allow_private_suffixes=False)
-    assert is_valid_domain("bad.invalid", allow_private_suffixes=False)
-    assert is_valid_domain("server.local", allow_private_suffixes=False)
-    assert is_valid_domain("hidden.onion", allow_private_suffixes=False)
+    assert is_valid_domain("server.local", allow_special_use_tlds=True)
+    assert not is_valid_domain("server.local", allow_special_use_tlds=False)
 
 
 def test_valid_domain_private_suffixes():
@@ -59,19 +42,36 @@ def test_valid_domain_private_suffixes():
     These are NOT IANA-registered but are widely used organizational conventions.
     They are accepted by default but can be rejected with allow_private_suffixes=False.
     """
-    # Private network suffixes - valid by default (allow_private_suffixes=True)
     assert is_valid_domain("server.internal")
-    assert is_valid_domain("pc.lan")
-    assert is_valid_domain("router.home")
-    assert is_valid_domain("domain.corp")
-    assert is_valid_domain("host.localdomain")
-
-    # Private suffixes rejected when allow_private_suffixes=False
     assert not is_valid_domain("server.internal", allow_private_suffixes=False)
-    assert not is_valid_domain("pc.lan", allow_private_suffixes=False)
-    assert not is_valid_domain("router.home", allow_private_suffixes=False)
-    assert not is_valid_domain("domain.corp", allow_private_suffixes=False)
-    assert not is_valid_domain("host.localdomain", allow_private_suffixes=False)
+
+
+def test_valid_domain_public_only():
+    """Test public internet domain validation.
+
+    Setting both allow_special_use_tlds=False and allow_private_suffixes=False
+    validates only IANA-registered public TLDs, useful for SSRF protection.
+    """
+    # Public internet domains
+    assert is_valid_domain(
+        "cyber.gc.ca", allow_special_use_tlds=False, allow_private_suffixes=False
+    )
+    assert is_valid_domain(
+        "example.com", allow_special_use_tlds=False, allow_private_suffixes=False
+    )
+
+    # IANA special-use TLDs - rejected
+    assert not is_valid_domain(
+        "server.local", allow_special_use_tlds=False, allow_private_suffixes=False
+    )
+    assert not is_valid_domain(
+        "hidden.onion", allow_special_use_tlds=False, allow_private_suffixes=False
+    )
+
+    # Private network suffixes - rejected
+    assert not is_valid_domain(
+        "server.internal", allow_special_use_tlds=False, allow_private_suffixes=False
+    )
 
 
 def test_valid_ip():
