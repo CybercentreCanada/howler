@@ -10,4 +10,6 @@ export interface Action {
   owner_id?: string;
   query?: string;
   triggers?: string[];
+  admins?: string[];
+  members?: string[];
 }
