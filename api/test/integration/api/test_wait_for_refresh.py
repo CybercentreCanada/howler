@@ -3,6 +3,7 @@
 import base64
 import importlib
 import json
+from typing import Any, Callable
 from warnings import warn
 
 import pytest
@@ -56,42 +57,99 @@ def _get_rw_model(model_class):
     return model_obj
 
 
-def _get_request_data_obj(endpoint, index, method, entity_obj):
-    # overrides for weird endpoints
-    if endpoint == "/analytic/{id}/owner":
-        return json.dumps({"username": "admin"})
+RequestFactory = Callable[[dict[str, Any]], str]
 
-    if method == "POST":
-        if index == "analytic":
-            return json.dumps(
-                {
-                    "name": entity_obj["name"],
-                    "description": entity_obj["description"],
-                    "rule": entity_obj["rule"],
-                    "rule_type": entity_obj["rule_type"],
-                    "rule_crontab": entity_obj["rule_crontab"],
-                }
-            )
-    elif method in ("PUT", "PATCH"):
-        if index == "template":
-            return json.dumps(entity_obj["keys"])
-        elif index == "dossier":
-            return json.dumps(
-                {
-                    "title": entity_obj["title"],
-                    "query": entity_obj["query"],
-                }
-            )
-        elif index == "view":
-            return json.dumps({k: v for k, v in entity_obj.as_primitives().items() if k not in ("owner", "view_id")})
-        elif index == "user":
-            return json.dumps(
-                {
-                    "is_active": entity_obj["is_active"],
-                }
-            )
 
-    return entity_obj.json()
+def _entity_default_request_factory(ctx: dict[str, Any]) -> str:
+    return ctx["entity_obj"].json()
+
+
+def _analytic_rules_post_request_factory(ctx: dict[str, Any]) -> str:
+    entity_obj = ctx["entity_obj"]
+    return json.dumps(
+        {
+            "name": entity_obj["name"],
+            "description": entity_obj["description"],
+            "rule": entity_obj["rule"],
+            "rule_type": entity_obj["rule_type"],
+            "rule_crontab": entity_obj["rule_crontab"],
+        }
+    )
+
+
+def _analytic_owner_post_request_factory(_: dict[str, Any]) -> str:
+    return json.dumps({"username": "admin"})
+
+
+def _template_put_request_factory(ctx: dict[str, Any]) -> str:
+    return json.dumps(ctx["entity_obj"]["keys"])
+
+
+def _dossier_put_request_factory(ctx: dict[str, Any]) -> str:
+    entity_obj = ctx["entity_obj"]
+    return json.dumps(
+        {
+            "title": entity_obj["title"],
+            "query": entity_obj["query"],
+        }
+    )
+
+
+def _view_put_request_factory(ctx: dict[str, Any]) -> str:
+    entity_obj = ctx["entity_obj"]
+    return json.dumps({k: v for k, v in entity_obj.as_primitives().items() if k not in ("owner", "view_id")})
+
+
+def _user_put_request_factory(ctx: dict[str, Any]) -> str:
+    return json.dumps({"is_active": ctx["entity_obj"]["is_active"]})
+
+
+def _hit_post_request_factory(ctx: dict[str, Any]) -> str:
+    return json.dumps([hit.as_primitives() for hit in ctx["hit_list"]])
+
+
+def _hit_overwrite_put_request_factory(ctx: dict[str, Any]) -> str:
+    return ctx["hit_model"].json()
+
+
+def _hit_delete_request_factory(ctx: dict[str, Any]) -> str:
+    return json.dumps(ctx["hit_ids"])
+
+
+def _hit_bundle_post_request_factory(ctx: dict[str, Any]) -> str:
+    return json.dumps({"bundle": ctx["hit_model"].as_primitives(), "hits": ctx["hit_ids"]})
+
+
+def _hit_bundle_item_request_factory(_: dict[str, Any]) -> str:
+    return json.dumps([])
+
+
+def _hit_update_query_request_factory(ctx: dict[str, Any]) -> str:
+    return json.dumps({"query": {"ids": ctx["hit_id"]}, "operations": ctx["hit_operations"]})
+
+
+def _hit_update_item_request_factory(ctx: dict[str, Any]) -> str:
+    return json.dumps(ctx["hit_operations"])
+
+
+def _hit_transition_request_factory(_: dict[str, Any]) -> str:
+    return json.dumps({"transition": "assign_to_me", "data": {}})
+
+
+def _hit_labels_request_factory(ctx: dict[str, Any]) -> str:
+    return json.dumps({"value": ["initial_label" if ctx["method"] == "DELETE" else "test_label"]})
+
+
+def _build_request(test_client, endpoint: str, method: str, data: str):
+    request = EnvironBuilder(
+        path=f"/api/v1{endpoint}",
+        method=method,
+        query_string={"refresh": "wait_for"},
+        content_type="application/json",
+        data=data,
+        headers={"Authorization": _TEST_TOKEN},
+    )
+    return test_client.open(request)
 
 
 REFRESH_SUPPORTING_ENDPOINTS = (
@@ -130,6 +188,36 @@ REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_OPERATIONS = (
 REFRESH_SUPPORTING_HIT_TRANSITION_ENDPOINTS = (("/hit/{id}/transition", ("POST",)),)
 
 REFRESH_SUPPORTING_HIT_LABEL_ENDPOINTS = (("/hit/{id}/labels/{label_set}", ("PUT", "DELETE")),)
+
+ENTITY_REQUEST_FACTORIES: dict[tuple[str, str], RequestFactory] = {
+    (endpoint, method): _entity_default_request_factory
+    for endpoint, methods in REFRESH_SUPPORTING_ENDPOINTS
+    for method in methods
+}
+ENTITY_REQUEST_FACTORIES.update(
+    {
+        ("/analytic/rules", "POST"): _analytic_rules_post_request_factory,
+        ("/analytic/{id}/owner", "POST"): _analytic_owner_post_request_factory,
+        ("/template/{id}", "PUT"): _template_put_request_factory,
+        ("/dossier/{id}", "PUT"): _dossier_put_request_factory,
+        ("/view/{id}", "PUT"): _view_put_request_factory,
+        ("/user/{id}", "PUT"): _user_put_request_factory,
+    }
+)
+
+HIT_REQUEST_FACTORIES: dict[tuple[str, str], RequestFactory] = {
+    ("/hit", "POST"): _hit_post_request_factory,
+    ("/hit/{id}/overwrite", "PUT"): _hit_overwrite_put_request_factory,
+    ("/hit", "DELETE"): _hit_delete_request_factory,
+    ("/hit/bundle", "POST"): _hit_bundle_post_request_factory,
+    ("/hit/bundle/{id}", "DELETE"): _hit_bundle_item_request_factory,
+    ("/hit/bundle/{id}", "PUT"): _hit_bundle_item_request_factory,
+    ("/hit/update", "PUT"): _hit_update_query_request_factory,
+    ("/hit/{id}/update", "PUT"): _hit_update_item_request_factory,
+    ("/hit/{id}/transition", "POST"): _hit_transition_request_factory,
+    ("/hit/{id}/labels/{label_set}", "PUT"): _hit_labels_request_factory,
+    ("/hit/{id}/labels/{label_set}", "DELETE"): _hit_labels_request_factory,
+}
 
 
 class MockCollection(ESCollection):
@@ -372,7 +460,7 @@ def test_parse_wait_flag_invalid(test_client):
     _add_entity_name(_flatten_test_data(REFRESH_SUPPORTING_ENDPOINTS)),
     indirect=["entity_id"],
 )
-def test_wait_param_forwarded_to_es(
+def test_refresh_param_forwarded_to_es(
     test_client, endpoint: str, method: str, datastore_connection, entity_id, entity_names
 ):
     entity_name_dict = dict(entity_names)
@@ -384,6 +472,7 @@ def test_wait_param_forwarded_to_es(
         pytest.skip(f"Unimplemented mock collection for index {index}")
 
     entity_obj = _get_rw_model(entity_class)
+    request_factory = ENTITY_REQUEST_FACTORIES[(endpoint, method)]
 
     templated_endpoint = endpoint
     if "{id}" in endpoint:
@@ -397,16 +486,20 @@ def test_wait_param_forwarded_to_es(
         templated_endpoint = endpoint.format(id=entity_id)
         entity_obj["uname" if index == "user" else f"{index}_id"] = entity_id
 
-    request = EnvironBuilder(
-        path=f"/api/v1{templated_endpoint}",
+    response = _build_request(
+        test_client,
+        endpoint=templated_endpoint,
         method=method,
-        query_string={"refresh": "wait_for"},
-        content_type="application/json",
-        data=_get_request_data_obj(endpoint, index, method, entity_obj),
-        headers={"Authorization": _TEST_TOKEN},
+        data=request_factory(
+            {
+                "endpoint": endpoint,
+                "method": method,
+                "index": index,
+                "entity_obj": entity_obj,
+                "entity_id": entity_id,
+            }
+        ),
     )
-
-    response = test_client.open(request)
 
     assert response.status_code in (200, 201, 204)
     assert datastore_connection.get_collection(index).write_call_args_history[-1]["refresh"] == "wait_for"
@@ -416,19 +509,21 @@ def test_wait_param_forwarded_to_es(
     "endpoint,method",
     _flatten_test_data(REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_HITS),
 )
-def test_wait_param_forwarded_to_es_hits_expect_hits(
+def test_refresh_param_forwarded_to_es_hits_expect_hits(
     endpoint: str, method: str, test_client, datastore_connection, hit_list
 ):
-    request = EnvironBuilder(
-        path=f"/api/v1{endpoint}",
+    response = _build_request(
+        test_client,
+        endpoint=endpoint,
         method=method,
-        query_string={"refresh": "wait_for"},
-        content_type="application/json",
-        data=json.dumps([hit.as_primitives() for hit in hit_list]),
-        headers={"Authorization": _TEST_TOKEN},
+        data=HIT_REQUEST_FACTORIES[(endpoint, method)](
+            {
+                "endpoint": endpoint,
+                "method": method,
+                "hit_list": hit_list,
+            }
+        ),
     )
-
-    response = test_client.open(request)
 
     assert response.status_code in (200, 201, 204)
     assert datastore_connection.hit.write_call_args_history[-1]["refresh"] == "wait_for"
@@ -438,19 +533,21 @@ def test_wait_param_forwarded_to_es_hits_expect_hits(
     "endpoint,method",
     _flatten_test_data(REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_SINGLE_HIT),
 )
-def test_wait_param_forwarded_to_es_hits_expect_single_hit(
+def test_refresh_param_forwarded_to_es_hits_expect_single_hit(
     endpoint: str, method: str, test_client, datastore_connection, hit_id, hit_model
 ):
-    request = EnvironBuilder(
-        path=f"/api/v1{endpoint.format(id=hit_id) if '{id}' in endpoint else endpoint}",
+    response = _build_request(
+        test_client,
+        endpoint=endpoint.format(id=hit_id) if "{id}" in endpoint else endpoint,
         method=method,
-        query_string={"refresh": "wait_for"},
-        content_type="application/json",
-        data=hit_model.json(),
-        headers={"Authorization": _TEST_TOKEN},
+        data=HIT_REQUEST_FACTORIES[(endpoint, method)](
+            {
+                "endpoint": endpoint,
+                "method": method,
+                "hit_model": hit_model,
+            }
+        ),
     )
-
-    response = test_client.open(request)
 
     assert response.status_code in (200, 201, 204)
     assert datastore_connection.hit.write_call_args_history[-1]["refresh"] == "wait_for"
@@ -460,33 +557,24 @@ def test_wait_param_forwarded_to_es_hits_expect_single_hit(
     "endpoint,method",
     _flatten_test_data(REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_IDS),
 )
-def test_wait_param_forwarded_to_es_hits_expect_ids(
+def test_refresh_param_forwarded_to_es_hits_expect_ids(
     endpoint: str, method: str, test_client, datastore_connection, hit_ids, hit_bundle_id, hit_model
 ):
+    templated_endpoint = endpoint.format(id=hit_bundle_id) if "{id}" in endpoint else endpoint
 
-    if "bundle" in endpoint:
-        if "{id}" in endpoint:
-            endpoint = endpoint.format(id=hit_bundle_id)
-            request_data = []
-
-        else:
-            request_data = {
-                "bundle": hit_model.as_primitives(),
-                "hits": hit_ids,
-            }
-    else:
-        request_data = hit_ids
-
-    request = EnvironBuilder(
-        path=f"/api/v1{endpoint}",
+    response = _build_request(
+        test_client,
+        endpoint=templated_endpoint,
         method=method,
-        query_string={"refresh": "wait_for"},
-        content_type="application/json",
-        data=json.dumps(request_data),
-        headers={"Authorization": _TEST_TOKEN},
+        data=HIT_REQUEST_FACTORIES[(endpoint, method)](
+            {
+                "endpoint": endpoint,
+                "method": method,
+                "hit_ids": hit_ids,
+                "hit_model": hit_model,
+            }
+        ),
     )
-
-    response = test_client.open(request)
 
     assert response.status_code in (200, 201, 204)
     assert datastore_connection.hit.write_call_args_history[-1]["refresh"] == "wait_for"
@@ -496,25 +584,24 @@ def test_wait_param_forwarded_to_es_hits_expect_ids(
     "endpoint,method",
     _flatten_test_data(REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_OPERATIONS),
 )
-def test_wait_param_forwarded_to_es_hits_expect_operations(
+def test_refresh_param_forwarded_to_es_hits_expect_operations(
     endpoint: str, method: str, test_client, datastore_connection, hit_id, hit_operations
 ):
-    if "{id}" in endpoint:
-        endpoint = endpoint.format(id=hit_id)
-        request_data = hit_operations
-    else:
-        request_data = {"query": {"ids": hit_id}, "operations": hit_operations}
+    templated_endpoint = endpoint.format(id=hit_id) if "{id}" in endpoint else endpoint
 
-    request = EnvironBuilder(
-        path=f"/api/v1{endpoint}",
+    response = _build_request(
+        test_client,
+        endpoint=templated_endpoint,
         method=method,
-        query_string={"refresh": "wait_for"},
-        content_type="application/json",
-        data=json.dumps(request_data),
-        headers={"Authorization": _TEST_TOKEN},
+        data=HIT_REQUEST_FACTORIES[(endpoint, method)](
+            {
+                "endpoint": endpoint,
+                "method": method,
+                "hit_id": hit_id,
+                "hit_operations": hit_operations,
+            }
+        ),
     )
-
-    response = test_client.open(request)
 
     assert response.status_code in (200, 201, 204)
     assert datastore_connection.hit.write_call_args_history[-1]["refresh"] == "wait_for"
@@ -524,21 +611,20 @@ def test_wait_param_forwarded_to_es_hits_expect_operations(
     "endpoint,method",
     _flatten_test_data(REFRESH_SUPPORTING_HIT_TRANSITION_ENDPOINTS),
 )
-def test_wait_param_forwarded_to_es_hits_transition(
+def test_refresh_param_forwarded_to_es_hits_transition(
     endpoint: str, method: str, test_client, datastore_connection, hit_id
 ):
-    request_data = {"transition": "assign_to_me", "data": {}}
-
-    request = EnvironBuilder(
-        path=f"/api/v1{endpoint.format(id=hit_id)}",
+    response = _build_request(
+        test_client,
+        endpoint=endpoint.format(id=hit_id),
         method=method,
-        query_string={"refresh": "wait_for"},
-        content_type="application/json",
-        data=json.dumps(request_data),
-        headers={"Authorization": _TEST_TOKEN},
+        data=HIT_REQUEST_FACTORIES[(endpoint, method)](
+            {
+                "endpoint": endpoint,
+                "method": method,
+            }
+        ),
     )
-
-    response = test_client.open(request)
 
     assert response.status_code in (200, 201, 204)
     assert datastore_connection.hit.write_call_args_history[-1]["refresh"] == "wait_for"
@@ -548,18 +634,40 @@ def test_wait_param_forwarded_to_es_hits_transition(
     "endpoint,method",
     _flatten_test_data(REFRESH_SUPPORTING_HIT_LABEL_ENDPOINTS),
 )
-def test_wait_param_forwarded_to_es_hits_labels(endpoint: str, method: str, test_client, datastore_connection, hit_id):
-
-    request = EnvironBuilder(
-        path=f"/api/v1{endpoint.format(id=hit_id, label_set='generic')}",
+def test_refresh_param_forwarded_to_es_hits_labels(
+    endpoint: str, method: str, test_client, datastore_connection, hit_id
+):
+    response = _build_request(
+        test_client,
+        endpoint=endpoint.format(id=hit_id, label_set="generic"),
         method=method,
-        query_string={"refresh": "wait_for"},
-        content_type="application/json",
-        data=json.dumps({"value": ["initial_label" if method == "DELETE" else "test_label"]}),
-        headers={"Authorization": _TEST_TOKEN},
+        data=HIT_REQUEST_FACTORIES[(endpoint, method)](
+            {
+                "endpoint": endpoint,
+                "method": method,
+            }
+        ),
     )
-
-    response = test_client.open(request)
 
     assert response.status_code in (200, 201, 204)
     assert datastore_connection.hit.write_call_args_history[-1]["refresh"] == "wait_for"
+
+
+def test_invalid_refresh_param(test_client):
+    endpoint, methods = next(
+        (endpoint, methods) for endpoint, methods in REFRESH_SUPPORTING_ENDPOINTS if "{id}" not in endpoint
+    )
+    method = methods[0]
+
+    request = EnvironBuilder(
+        path=f"/api/v1{endpoint}",
+        method=method,
+        query_string={"refresh": "invalid"},
+        content_type="application/json",
+        data={},
+        headers={"Authorization": _TEST_TOKEN},
+    )
+    response = test_client.open(request)
+
+    assert response.status_code == 400
+    assert b"Invalid refresh option" in response.data
