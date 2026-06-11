@@ -400,7 +400,7 @@ def execute_operations(**kwargs) -> Response:
     return ok(reports)
 
 
-# region: Permission
+# region Permission
 
 
 @generate_swagger_docs()
@@ -538,6 +538,25 @@ def revoke_privilege(id: str, user: User, **kwargs):
     storage.action.commit()
 
     return ok(storage.action.get_if_exists(existing_action.action_id, as_obj=False))
+
+
+@generate_swagger_docs()
+@action_api.route("/<id>/permission_options", methods=["GET"])
+@api_login(required_priv=["R", "W"], required_type=["automation_basic"])
+def get_permission_option(id: str):
+    """Get the permission options for a given action
+
+    Variables:
+        action_id => The id of the Action to get permissions for
+    returns a dict with the possible permissions for the action and the users that have them.
+    """
+    ds = datastore()
+    action: Action = ds.action.get(id)
+
+    if not action:
+        return not_found(err="The specified action does not exist")
+
+    return ok(action.get_privilege_mapping())
 
 
 # endregion

@@ -1,12 +1,16 @@
-import { Delete, Edit, PlayCircleOutline, Search } from '@mui/icons-material';
+import { Delete, Edit, PersonAdd, PlayCircleOutline, Search } from '@mui/icons-material';
 import {
   Button,
   Checkbox,
+  Dialog,
+  DialogContent,
+  DialogTitle,
   FormControlLabel,
   FormGroup,
   IconButton,
   LinearProgress,
   Stack,
+  TextField,
   Typography
 } from '@mui/material';
 import api from 'api';
@@ -31,6 +35,27 @@ import type { CustomActionProps } from '../edit/ActionEditor';
 import ActionReportDisplay from '../shared/ActionReportDisplay';
 import useMyActionFunctions from '../useMyActionFunctions';
 
+interface AddMemberModalProps {
+  open: boolean;
+  onClose: () => void;
+}
+
+const AddMemberModal = ({ open, onClose }: AddMemberModalProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <Dialog open={open} onClose={onClose}>
+      <DialogTitle>{t('route.actions.edit')}</DialogTitle>
+      <DialogContent>
+        <TextField label="Username" fullWidth sx={{ mt: 1 }} />
+        <Button onClick={onClose} sx={{ mt: 2 }} variant="contained">
+          {t('add')}
+        </Button>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const ActionDetails = () => {
   const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
@@ -43,7 +68,9 @@ const ActionDetails = () => {
 
   const [operations, setOperations] = useState<ActionOperation[]>([]);
   const [action, setAction] = useState<Action>();
+  const [memberModalOpen, setMemberModalOpen] = useState(false);
 
+  // CLEANUP: Removed 'showModal' since we are using local state instead
   const { withConfirmDeleteModal } = useContext(ModalContext);
 
   const onTriggerChange: ChangeEventHandler<HTMLInputElement> = useCallback(
@@ -86,7 +113,6 @@ const ActionDetails = () => {
     if (action?.query) {
       onSearch(action?.query);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [action?.query]);
 
   const editRoles = user.roles.includes('automation_basic') || user.roles.includes('automation_advanced');
@@ -118,6 +144,7 @@ const ActionDetails = () => {
         <Stack direction="row" alignItems="center" spacing={1}>
           {response && <QueryResultText count={response.total} query={action?.query} />}
           <FlexOne />
+
           {((action?.owner_id === user.username && editRoles) || user.roles?.includes('admin')) && (
             <Button
               startIcon={<Delete />}
@@ -140,7 +167,11 @@ const ActionDetails = () => {
               {t('route.actions.execute')}
             </Button>
           )}
-          {((action?.owner_id === user.username && editRoles) || user.roles?.includes('admin')) && (
+
+          {((action?.owner_id === user.username && editRoles) ||
+            (user.roles?.includes('admin') && editRoles) ||
+            (action?.admins?.includes(user.username) && editRoles) ||
+            (action?.members?.includes(user.username) && editRoles)) && (
             <Button
               startIcon={<Edit />}
               size="small"
@@ -151,7 +182,22 @@ const ActionDetails = () => {
               {t('route.actions.edit')}
             </Button>
           )}
+
+          {/* Only the owner and Admins should be able to add members */}
+          {(action?.owner_id === user.username ||
+            action?.admins?.includes(user.username) ||
+            user.roles?.includes('admin')) && (
+            <Button
+              startIcon={<PersonAdd />} // Updated icon to make sense contextually
+              size="small"
+              variant="outlined"
+              onClick={() => setMemberModalOpen(true)}
+            >
+              {t('route.actions.permission')}
+            </Button>
+          )}
         </Stack>
+
         {user.roles.includes('automation_advanced') && (
           <FormGroup>
             <Stack direction="row" spacing={1}>
@@ -174,6 +220,7 @@ const ActionDetails = () => {
             </Stack>
           </FormGroup>
         )}
+
         {loading &&
           (progress[1] > 0 ? (
             <LinearProgress
@@ -184,7 +231,9 @@ const ActionDetails = () => {
           ) : (
             <LinearProgress />
           ))}
+
         {report && <ActionReportDisplay report={report} operations={operations} />}
+
         {operations.length > 0 &&
           action &&
           action.operations.map(a => {
@@ -210,6 +259,9 @@ const ActionDetails = () => {
             );
           })}
       </Stack>
+
+      {/* FIX: Explicitly mounted the dialog so it listens to the state change safely */}
+      <AddMemberModal open={memberModalOpen} onClose={() => setMemberModalOpen(false)} />
     </PageCenter>
   );
 };
