@@ -217,7 +217,7 @@ class ESCollection(Generic[ModelType]):
     ENSURE_COLLECTION_WARNED: bool = False
     CUSTOM_AGG_PREFIX: str = "_custom_agg__"
 
-    def __init__(self, datastore: ESStore, name, model_class=None, validate=True, max_attempts=10):
+    def __init__(self, datastore: ESStore, name, model_class=None, validate=True, max_attempts=10, ilm_config=None):
         self.replicas = int(
             environ.get(
                 f"ELASTIC_{name.upper()}_REPLICAS",
@@ -229,6 +229,7 @@ class ESCollection(Generic[ModelType]):
 
         self.datastore = datastore
         self.name = f"{APP_NAME}-{name}"
+        self.ilm_config = ilm_config
         self.index_name = f"{self.name}_hot"
         self.model_class = model_class
         self.validate = validate
@@ -1627,7 +1628,7 @@ class ESCollection(Generic[ModelType]):
 
         return prune(source_data, fields, self.stored_fields, mapping_class=Mapping)
 
-    def _search(self, args=None, deep_paging_id=None, use_archive=False, track_total_hits=None):
+    def _search(self, args=None, deep_paging_id=None, track_total_hits=None):
         if args is None:
             args = []
 
@@ -1804,7 +1805,6 @@ class ESCollection(Generic[ModelType]):
         filters: list[str] | str | None = None,
         access_control: typing.Any = None,
         deep_paging_id: str | None = None,
-        use_archive: bool = False,
         track_total_hits: bool = False,
         script_fields: list[str] = [],
         *,
@@ -1824,7 +1824,6 @@ class ESCollection(Generic[ModelType]):
         filters: list[str] | str | None = None,
         access_control: typing.Any = None,
         deep_paging_id: str | None = None,
-        use_archive: bool = False,
         track_total_hits: bool = False,
         script_fields: list[str] = [],
         *,
@@ -1844,7 +1843,6 @@ class ESCollection(Generic[ModelType]):
         filters: list[str] | str | None = None,
         access_control: typing.Any = None,
         deep_paging_id: str | None = None,
-        use_archive: bool = False,
         track_total_hits: bool = False,
         script_fields: list[str] = [],
         *,
@@ -1864,7 +1862,6 @@ class ESCollection(Generic[ModelType]):
         filters: list[str] | str | None = None,
         access_control: typing.Any = None,
         deep_paging_id: str | None = None,
-        use_archive: bool = False,
         track_total_hits: bool = False,
         script_fields: list[str] = [],
         *,
@@ -1883,7 +1880,6 @@ class ESCollection(Generic[ModelType]):
         filters=None,
         access_control=None,
         deep_paging_id=None,
-        use_archive=False,
         track_total_hits=None,
         script_fields=[],
         *,
@@ -1914,7 +1910,6 @@ class ESCollection(Generic[ModelType]):
 
         :param script_fields: List of name/script tuple of fields to be evaluated at runtime
         :param track_total_hits: Return to total matching document count
-        :param use_archive: Query also the archive
         :param deep_paging_id: ID of the next page during deep paging searches
         :param as_obj: Return objects instead of dictionaries
         :param query: lucene query to search for
@@ -1976,7 +1971,6 @@ class ESCollection(Generic[ModelType]):
         result = self._search(
             args,
             deep_paging_id=deep_paging_id,
-            use_archive=use_archive,
             track_total_hits=track_total_hits,
         )
 
@@ -2034,7 +2028,6 @@ class ESCollection(Generic[ModelType]):
         access_control=None,
         item_buffer_size=200,
         as_obj=True,
-        use_archive=False,
     ):
         """This function should perform a search through the datastore and stream
         all related results as a dictionary of key value pair where each keys
@@ -2047,7 +2040,6 @@ class ESCollection(Generic[ModelType]):
         >>>     fl[x]: value
         >>> }
 
-        :param use_archive: Query also the archive
         :param as_obj: Return objects instead of dictionaries
         :param query: lucene query to search for
         :param fl: list of fields to return from the search
@@ -2274,7 +2266,6 @@ class ESCollection(Generic[ModelType]):
         mincount=None,
         filters=None,
         access_control=None,
-        use_archive=False,
     ):
         type_modifier = self._validate_steps_count(start, end, gap)
         start = type_modifier(start)
@@ -2313,7 +2304,7 @@ class ESCollection(Generic[ModelType]):
         if filters:
             args.append(("filters", filters))
 
-        result = self._search(args, use_archive=use_archive)
+        result = self._search(args)
 
         # Convert the histogram into a dictionary
         return {
@@ -2333,7 +2324,6 @@ class ESCollection(Generic[ModelType]):
         mincount=None,
         filters=None,
         access_control=None,
-        use_archive=False,
         field_script=None,
     ):
         if not query:
@@ -2366,7 +2356,7 @@ class ESCollection(Generic[ModelType]):
         if field_script:
             args.append(("field_script", field_script))
 
-        result = self._search(args, use_archive=use_archive)
+        result = self._search(args)
 
         # Convert the histogram into a dictionary
         return {
@@ -2379,7 +2369,6 @@ class ESCollection(Generic[ModelType]):
         query="id:*",
         filters=None,
         access_control=None,
-        use_archive=False,
         field_script=None,
     ):
         if filters is None:
@@ -2403,7 +2392,7 @@ class ESCollection(Generic[ModelType]):
         if field_script:
             args.append(("field_script", field_script))
 
-        result = self._search(args, use_archive=use_archive)
+        result = self._search(args)
         return result["aggregations"][f"{field}_stats"]
 
     def grouped_search(
@@ -2419,7 +2408,6 @@ class ESCollection(Generic[ModelType]):
         filters=None,
         access_control=None,
         as_obj=True,
-        use_archive=False,
         track_total_hits=False,
     ):
         if rows is None:
@@ -2462,7 +2450,7 @@ class ESCollection(Generic[ModelType]):
         if filters:
             args.append(("filters", filters))
 
-        result = self._search(args, use_archive=use_archive, track_total_hits=track_total_hits)
+        result = self._search(args, track_total_hits=track_total_hits)
 
         return {
             "offset": offset,
@@ -2598,6 +2586,83 @@ class ESCollection(Generic[ModelType]):
         else:
             return True
 
+    def _create_ilm_policy(self, ilm_config):
+        """Create or update the ILM policy for this collection.
+
+        Builds an ILM policy with hot (rollover), optional warm (forcemerge),
+        and optional cold phases. No delete phase — retention is handled by
+        the retention cronjob.
+
+        The ``ilm_config`` parameter (global :class:`ILMConfig`) is used **only**
+        for the hot phase rollover settings (``rollover_max_age`` and
+        ``rollover_max_size``). Warm and cold phase configuration is sourced
+        exclusively from ``self.ilm_config`` (the per-index :class:`ILMIndexConfig`).
+
+        :param ilm_config: The global ILMConfig with rollover settings (hot phase only).
+        """
+        phases: dict[str, Any] = {
+            "hot": {
+                "min_age": "0ms",
+                "actions": {
+                    "rollover": {
+                        "max_age": ilm_config.rollover_max_age,
+                        "max_primary_shard_size": ilm_config.rollover_max_size,
+                    }
+                },
+            }
+        }
+
+        if self.ilm_config and self.ilm_config.warm:
+            warm_actions: dict[str, Any] = {}
+            if self.ilm_config.warm_forcemerge_segments is not None:
+                warm_actions["forcemerge"] = {"max_num_segments": self.ilm_config.warm_forcemerge_segments}
+            phases["warm"] = {
+                "min_age": self.ilm_config.warm,
+                "actions": warm_actions,
+            }
+
+        if self.ilm_config and self.ilm_config.cold:
+            # Note: forcemerge is NOT allowed in the cold phase by ES.
+            # Cold phase is typically just for storage tier allocation.
+            phases["cold"] = {
+                "min_age": self.ilm_config.cold,
+                "actions": {},
+            }
+
+        policy = {"phases": phases}
+
+        self.with_retries(
+            self.datastore.client.ilm.put_lifecycle,
+            name=f"{self.name}_policy",
+            policy=policy,
+        )
+        logger.info("ILM policy %s_policy created/updated", self.name)
+
+    def _create_index_template(self, ilm_config):
+        """Create or update a composable index template for ILM-managed rollover.
+
+        The template matches '{name}-*' and includes the full ODM mappings
+        so that rollover indices inherit the correct schema.
+
+        :param ilm_config: The global ILMConfig (unused directly but kept for symmetry).
+        """
+        settings = self._get_index_settings()
+        settings["index"]["lifecycle.name"] = f"{self.name}_policy"
+        settings["index"]["lifecycle.rollover_alias"] = self.name
+
+        mappings = self._get_index_mappings()
+
+        self.with_retries(
+            self.datastore.client.indices.put_index_template,
+            name=f"{self.name}_template",
+            index_patterns=[f"{self.name}-*"],
+            template={
+                "settings": settings,
+                "mappings": mappings,
+            },
+        )
+        logger.info("Index template %s_template created/updated", self.name)
+
     def _get_index_settings(self) -> dict:
         default_stub: dict = deepcopy(default_index)
         settings: dict = default_stub.pop("settings", {})
@@ -2714,8 +2779,15 @@ class ESCollection(Generic[ModelType]):
         """This function should test if the collection that you are trying to access does indeed exist
         and should create it if it does not.
 
+        When ILM is configured for this collection, it sets up the ILM policy,
+        composable index template, and bootstraps a rollover alias instead of
+        using the legacy _hot index naming.
+
         :return:
         """
+        if self.ilm_config:
+            return self._ensure_collection_ilm()
+
         # Create HOT index
         if not self.with_retries(self.datastore.client.indices.exists, index=self.name):
             logger.debug("Index %s does not exist. Creating it now...", self.name.upper())
@@ -2758,6 +2830,158 @@ class ESCollection(Generic[ModelType]):
 
         self._check_fields()
 
+    def _ensure_collection_ilm(self):
+        """Bootstrap an ILM-managed collection with rollover alias.
+
+        1. Create/update the ILM policy and composable index template.
+        2. Bootstrap the initial index if needed:
+           - If ILM indices already exist (pattern {name}-0*), skip.
+           - If a legacy _hot index exists, migrate it to {name}-000001.
+           - Otherwise, create {name}-000001 from scratch.
+        """
+        from howler.odm.models.config import config as _config
+
+        ilm_global = _config.datastore.ilm
+
+        # Idempotent: create/update ILM policy and index template
+        self._create_ilm_policy(ilm_global)
+        self._create_index_template(ilm_global)
+
+        ilm_initial_index = f"{self.name}-000001"
+
+        # Check if any ILM-managed index already exists
+        existing_ilm_indices = list(
+            self.with_retries(
+                self.datastore.client.indices.get, index=f"{self.name}-0*", ignore_unavailable=True
+            ).keys()
+        )
+
+        if existing_ilm_indices:
+            # ILM already bootstrapped — ensure the alias exists
+            latest = sorted(existing_ilm_indices)[-1]
+            if not self.with_retries(self.datastore.client.indices.exists_alias, name=self.name):
+                # Find the latest index to set as write index
+                self.with_retries(
+                    self.datastore.client.indices.put_alias,
+                    index=latest,
+                    name=self.name,
+                    is_write_index=True,
+                )
+
+            self.index_name = latest
+            logger.debug("ILM collection %s already bootstrapped", self.name.upper())
+        elif self.with_retries(self.datastore.client.indices.exists, index=self.index_name):
+            # Legacy _hot index exists — migrate to ILM
+            logger.info("Migrating %s from legacy _hot index to ILM-managed rollover", self.name.upper())
+
+            # Block writes on the old index
+            self.with_retries(
+                self.datastore.client.indices.put_settings,
+                index=self.index_name,
+                settings=write_block_settings,
+            )
+
+            # Everything after write-block must be wrapped in try/except to ensure
+            # we unblock writes if migration fails — otherwise ingestion is stuck.
+            try:
+                # Clone the _hot index to the new ILM initial index
+                self._safe_index_copy(self.datastore.client.indices.clone, self.index_name, ilm_initial_index)
+
+                # Apply ILM settings to the new index
+                self.with_retries(
+                    self.datastore.client.indices.put_settings,
+                    index=ilm_initial_index,
+                    settings={
+                        "index.lifecycle.name": f"{self.name}_policy",
+                        "index.lifecycle.rollover_alias": self.name,
+                        "index.blocks.write": None,
+                    },
+                )
+
+                # Swap alias: remove old _hot, add new ILM index as write index
+                actions = [
+                    {"add": {"index": ilm_initial_index, "alias": self.name, "is_write_index": True}},
+                ]
+
+                # Remove old alias if it points to _hot
+                if self.with_retries(self.datastore.client.indices.exists_alias, index=self.index_name, name=self.name):
+                    actions.append({"remove": {"index": self.index_name, "alias": self.name}})
+
+                self.with_retries(self.datastore.client.indices.update_aliases, actions=actions)
+
+            except Exception:
+                # Migration failed — rollback to restore ingestion to the old index
+                logger.exception(
+                    "Migration of %s to ILM failed. Rolling back write-block on %s.",
+                    self.name.upper(),
+                    self.index_name,
+                )
+
+                # Unblock writes on the old index so ingestion can resume
+                try:
+                    self.with_retries(
+                        self.datastore.client.indices.put_settings,
+                        index=self.index_name,
+                        settings=write_unblock_settings,
+                    )
+                    logger.info("Rollback successful: writes restored to %s", self.index_name)
+                except Exception as rollback_err:
+                    logger.critical(
+                        "CRITICAL: Rollback failed for %s — index may be write-blocked! Error: %s",
+                        self.index_name,
+                        str(rollback_err),
+                    )
+
+                # Clean up partially-created ILM index if it exists
+                try:
+                    if self.with_retries(self.datastore.client.indices.exists, index=ilm_initial_index):
+                        self.with_retries(self.datastore.client.indices.delete, index=ilm_initial_index)
+                        logger.info("Cleaned up partial ILM index %s", ilm_initial_index)
+                except Exception:
+                    logger.warning(
+                        "Could not clean up partial ILM index %s — manual cleanup may be needed",
+                        ilm_initial_index,
+                    )
+
+                # Re-raise the original exception so startup fails clearly
+                raise
+
+            # Unblock writes on the old index (it stays around until manually removed)
+            self.with_retries(
+                self.datastore.client.indices.put_settings,
+                index=self.index_name,
+                settings=write_unblock_settings,
+            )
+
+            # Update index_name to point to the ILM initial index
+            self.index_name = ilm_initial_index
+
+            logger.info("Migration of %s to ILM complete", self.name.upper())
+        else:
+            # Fresh install — create the initial ILM index with alias
+            logger.debug("Creating ILM-managed index %s...", ilm_initial_index)
+            settings = self._get_index_settings()
+            settings["index"]["lifecycle.name"] = f"{self.name}_policy"
+            settings["index"]["lifecycle.rollover_alias"] = self.name
+
+            try:
+                self.with_retries(
+                    self.datastore.client.indices.create,
+                    index=ilm_initial_index,
+                    mappings=self._get_index_mappings(),
+                    settings=settings,
+                    aliases={self.name: {"is_write_index": True}},
+                )
+            except elasticsearch.exceptions.RequestError as e:
+                if "resource_already_exists_exception" not in str(e):
+                    raise
+                logger.warning("ILM index already exists: %s", ilm_initial_index)
+
+            # Update index_name to point to the ILM initial index
+            self.index_name = ilm_initial_index
+
+        self._check_fields()
+
     def _add_fields(self, missing_fields: Dict):
         no_fix = []
         properties = {}
@@ -2794,6 +3018,13 @@ class ESCollection(Generic[ModelType]):
                 name=self.name,
                 **recursive_update(current_template, {"mappings": {"properties": properties}}),
             )
+
+        # When ILM is enabled, also update the composable index template so
+        # future rollover indices inherit the new field mappings.
+        if self.ilm_config:
+            from howler.odm.models.config import config as _config
+
+            self._create_index_template(_config.datastore.ilm)
 
     def wipe(self):
         """This function should completely delete the collection

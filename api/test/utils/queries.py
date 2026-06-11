@@ -21,7 +21,7 @@ def get_value(_value) -> Optional[str]:
             if isinstance(value, bool):
                 return str(value).lower()
             elif isinstance(value, (int, float)):
-                return str(abs(value))
+                return str(value).replace("-", "\\-")
             else:
                 return f'"{str(value)}"'
         else:
