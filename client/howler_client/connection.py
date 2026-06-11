@@ -3,7 +3,7 @@ import json
 import sys
 import time
 import warnings
-from typing import Any, Callable, MutableMapping, Optional, Union
+from typing import Callable, MutableMapping
 
 import requests
 
@@ -36,21 +36,21 @@ class Connection(object):
     def __init__(  # pylint: disable=R0913
         self: Self,
         server: str,
-        auth: Optional[Union[str, tuple[str, str]]],
-        cert: Optional[Union[str, tuple[str, str]]],
+        auth: str | tuple[str, str] | None,
+        cert: str | tuple[str, str] | None,
         debug: Callable[[str], None],
-        headers: Optional[MutableMapping[str, Union[str, bytes]]],
+        headers: MutableMapping[str, str | bytes] | None,
         retries: int,
         silence_warnings: bool,
-        apikey: Optional[tuple[str, str]],
+        apikey: tuple[str, str] | None,
         verify: bool,
-        timeout: Optional[int],
+        timeout: int | None,
         throw_on_bad_request: bool,
         throw_on_max_retries: bool,
-        # TODO: Not sure what this argument is for (if used at all)
-        token: Optional[Any],
+        authenticate: Callable[[str | tuple[str, str] | None, tuple[str, str] | None], str] | None = None,
     ):
         self.apikey = apikey
+        self.authenticate = authenticate
         self.debug = debug
         self.max_retries = retries
         self.server = server
@@ -58,13 +58,14 @@ class Connection(object):
         self.default_timeout = timeout
         self.throw_on_bad_request = throw_on_bad_request
         self.throw_on_max_retries = throw_on_max_retries
-        self.token = token
 
         session = requests.Session()
 
         session.headers.update({"Content-Type": "application/json"})
 
-        if auth:
+        if self.authenticate:
+            session.headers.update({"Authorization": f"Bearer {self.authenticate(auth, apikey)}"})
+        elif auth:
             if not isinstance(auth, str):
                 auth = base64.b64encode(":".join(auth).encode("utf-8")).decode("utf-8")
 

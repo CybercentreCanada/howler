@@ -27,8 +27,9 @@ def generate_badge(title, percentage, color):
 def main():
     print(f"Running on branch {os.environ.get('GIT_BRANCH', 'unknown')}")
 
-    develop = "develop" in os.environ.get("GIT_BRANCH", "unknown")
-    rc_or_main = any(x in os.environ.get("GIT_BRANCH", "unknown") for x in ["patch", "rc", "main", "master", "sync"])
+    diff_exists = Path(__file__).parents[1] / "diff.txt"
+
+    print("Has Diff:", diff_exists)
 
     try:
         report_result = subprocess.check_output(shlex.split("coverage report --data-file=.coverage")).decode()
@@ -37,7 +38,8 @@ def main():
 
         print(report_result)
 
-        if not develop and not rc_or_main:
+        diff_report_result = ""
+        if diff_exists:
             diff_report_result = subprocess.check_output(
                 shlex.split("diff-cover coverage.xml --diff-file=diff.txt --markdown-report diff-cover-report.md")
             ).decode()
@@ -47,15 +49,19 @@ def main():
         total_percentage_int = int(total_percentage.replace("%", ""))
         total_color = get_color(total_percentage_int)
 
-        if not develop and not rc_or_main:
+        diff_badge = ""
+        diff_result = ""
+        diff_percentage = "NA%"
+        diff_percentage_int = 0
+        diff_color = "grey"
+        if diff_exists:
             try:
                 diff_percentage = (
                     [line for line in diff_report_result.splitlines() if "Coverage:" in line].pop().split(" ").pop()
                 )
                 diff_percentage_int = int(diff_percentage.replace("%", ""))
             except IndexError:
-                diff_percentage = "NA%"
-                diff_percentage_int = 0
+                pass
 
             diff_color = get_color(diff_percentage_int)
 
@@ -67,7 +73,7 @@ def main():
 
                 diff_result += "\n</details>"
 
-        badge = generate_badge("Diff Coverage", diff_percentage, diff_color) if (not develop and not rc_or_main) else ""
+            diff_badge = generate_badge("Diff Coverage", diff_percentage, diff_color)
 
         newline = "\n"
         markdown_output = textwrap.dedent(
@@ -75,15 +81,15 @@ def main():
         ![Static Badge](https://img.shields.io/badge/Build%20(Python%20{platform.python_version()})-passing-brightgreen)
 
         # Howler Client - Coverage Results
-        {generate_badge('Total Coverage', total_percentage, total_color)} {badge}
+        {generate_badge("Total Coverage", total_percentage, total_color)} {diff_badge}
 
-{newline.join([(' ' * 8) + line for line in diff_result.splitlines()]) if (not develop and not rc_or_main) else ''}
+{newline.join([(" " * 8) + line for line in diff_result.splitlines()]) if diff_result else ""}
 
         ## Full Coverage Report
         <details>
             <summary>Expand</summary>
 
-{newline.join([(' ' * 12) + line for line in report_result.splitlines()])}
+{newline.join([(" " * 12) + line for line in report_result.splitlines()])}
         </details>
         """
         ).strip()
