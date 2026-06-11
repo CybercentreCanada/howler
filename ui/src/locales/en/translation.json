@@ -597,6 +597,7 @@
   "route.actions.name": "Action Name",
   "route.actions.open": "Open Query",
   "route.actions.operation.add": "Add New Operation",
+  "route.actions.permission": "Add a new member",
   "route.actions.query.empty": "Query cannot be empty.",
   "route.actions.report": "Action Report",
   "route.actions.restart": "Restart",
