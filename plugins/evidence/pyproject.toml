@@ -5,7 +5,7 @@ description = "A howler plugin to add additional nested ECS fields to the Howler
 authors = [{ name = "CCCS", email = "analysis-development@cyber.gc.ca" }]
 license = { text = "MIT" }
 readme = "README.md"
-requires-python = ">=3.9.17, <4.0"
+requires-python = ">=3.10, <4.0"
 
 ######################
 # autoflake settings #
@@ -77,7 +77,7 @@ ignore_missing_imports = true
 [tool.ruff]
 line-length = 120
 indent-width = 4
-target-version = "py39"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = [
@@ -131,7 +131,7 @@ packages = [{ include = "evidence" }]
 
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.15.14"
+ruff = "^0.15.16"
 mypy = "^1.19.1"
 pre-commit = "^4.3.0"
 howler-api = { path = "../../api" }
@@ -139,7 +139,7 @@ pytest = "^8.4.2"
 mock = "^5.2.0"
 pytest-cov = "^6.3.0"
 coverage = { extras = ["toml"], version = "^7.10.7" }
-diff-cover = "^9.7.2"
+diff-cover = "^10.3.0"
 python-dotenv = "^1.2.1"
 
 
@@ -148,7 +148,8 @@ types-mock = "^5.2.0.20250924"
 
 
 [tool.poetry.dependencies]
-opentelemetry-sdk = "1.41.1"
+opentelemetry-sdk = "1.40.0"
+
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
