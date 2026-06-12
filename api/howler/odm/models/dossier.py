@@ -51,6 +51,18 @@ class Dossier(odm.Model):
     )
 
     def get_privilege_mapping(self) -> dict:
+        """
+        This function is use to uniformize the call for owner or other component that may have different name due to
+        backward compatibility.
+
+        It can also be use in the future for other component that may have different level of privilege
+
+        Returns a dictionary mapping privilege levels to their respective users. of format : {
+        "administrator": [list of administrators],
+        "member": [list of members],
+        "owner": owner_id
+        }
+        """
         return {
             "administrator": self.admins,
             "member": self.members,
@@ -58,6 +70,14 @@ class Dossier(odm.Model):
         }
 
     def set_privilege_mapping(self, level: str, users: str | list[str]):
+        """
+        Sets the users for a given privilege level.
+        level: requested level based on priviledge mapping (owner, administrator, member)
+        [based on the privilege mapping]
+        users: a single user or list of users to assign to the specified level
+
+        return : none
+        """
         if level == "owner":
             if isinstance(users, list) and len(users) > 1:
                 raise ValueError("Owner level can only have one user. a list was given with multiple users.")
@@ -68,6 +88,13 @@ class Dossier(odm.Model):
             self.members = users if isinstance(users, list) else [users]
 
     def remove_privilege_mapping(self, level: str, users: str | list[str]):
+        """
+        Removes the specified users from a given privilege level.
+        level: requested level based on priviledge mapping (owner, administrator, member)
+        [based on the privilege mapping]
+        users: a single user or list of users to remove from the specified level
+        return : none
+        """
         if level == "owner":
             if isinstance(users, list) and len(users) > 1:
                 raise ValueError("Owner level can only have one user. a list was given with multiple users.")
