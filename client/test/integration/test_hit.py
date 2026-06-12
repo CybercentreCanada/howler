@@ -13,6 +13,7 @@ TOOL_NAME = "test"
 MAP = {
     "file.sha256": ["file.hash.sha256", "howler.hash"],
     "file.name": ["file.name"],
+    "file.size": ["file.size"],
     "src_ip": ["source.ip", "related.ip"],
     "dest_ip": ["destination.ip", "related.ip"],
     "time.created": ["event.start"],
@@ -30,6 +31,7 @@ HITS = [
         "file": {
             "name": "cool_file.exe",
             "sha256": random_hash(),
+            "size": 1024,
         },
         "time": {
             "created": datetime.datetime(2020, 5, 17).isoformat() + "Z",
@@ -43,6 +45,7 @@ HITS = [
         "file": {
             "name": "lame_file.exe",
             "sha256": random_hash(),
+            "size": 2048,
         },
         "time": {
             "created": datetime.datetime(2022, 5, 17).isoformat() + "Z",
@@ -102,7 +105,7 @@ def test_deprecated_data(client, caplog):
             "dest_ip": "148.252.23.152",
             "file": {
                 "name": "lame_file.exe",
-                "sha256": "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+                "sha256": random_hash(),
             },
             "time": {
                 "created": datetime.datetime(2022, 5, 17).isoformat() + "Z",
