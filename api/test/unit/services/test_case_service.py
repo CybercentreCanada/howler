@@ -892,6 +892,104 @@ class TestAppendCase:
         with pytest.raises(InvalidDataException):
             case_service.append_case("parent-001", item)
 
+    @patch("howler.services.case_service.datastore")
+    def test_append_case_normalizes_nested_path_to_root(self, mock_ds_fn):
+        """append_case strips folder segments from a case item path, keeping only the last component."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_parent = MagicMock()
+        mock_parent.case_id = "parent-001"
+        mock_parent.items = []
+        mock_parent.log = []
+
+        mock_child = MagicMock()
+        mock_child.case_id = "child-001"
+
+        mock_ds.case.get.side_effect = lambda key, as_obj=False: mock_parent if key == "parent-001" else mock_child
+        mock_ds.case.save.return_value = True
+
+        item = CaseItem({"type": "case", "value": "child-001", "path": "folder/subfolder/child-case"})
+        case_service.append_case("parent-001", item)
+
+        # The path should be normalized to just the last component
+        assert item.path == "child-case"
+
+    @patch("howler.services.case_service.datastore")
+    def test_append_case_normalized_path_logs_explanation(self, mock_ds_fn):
+        """append_case records a log entry when the case item path is normalized."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_parent = MagicMock()
+        mock_parent.case_id = "parent-001"
+        mock_parent.items = []
+        mock_parent.log = []
+
+        mock_child = MagicMock()
+        mock_child.case_id = "child-001"
+
+        mock_ds.case.get.side_effect = lambda key, as_obj=False: mock_parent if key == "parent-001" else mock_child
+        mock_ds.case.save.return_value = True
+
+        original_path = "folder/child-case"
+        item = CaseItem({"type": "case", "value": "child-001", "path": original_path})
+        case_service.append_case("parent-001", item)
+
+        # A log entry must have been appended documenting the normalization
+        assert len(mock_parent.log) == 1
+        log_entry = mock_parent.log[0]
+        assert original_path in log_entry["explanation"]
+        assert "child-case" in log_entry["explanation"]
+
+    @patch("howler.services.case_service.datastore")
+    def test_append_case_root_path_not_modified(self, mock_ds_fn):
+        """append_case leaves a root-level path (no folder segments) unchanged."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_parent = MagicMock()
+        mock_parent.case_id = "parent-001"
+        mock_parent.items = []
+        mock_parent.log = []
+
+        mock_child = MagicMock()
+        mock_child.case_id = "child-001"
+
+        mock_ds.case.get.side_effect = lambda key, as_obj=False: mock_parent if key == "parent-001" else mock_child
+        mock_ds.case.save.return_value = True
+
+        item = CaseItem({"type": "case", "value": "child-001", "path": "child-case"})
+        case_service.append_case("parent-001", item)
+
+        # No folder segments → path must remain as supplied
+        assert item.path == "child-case"
+        # No normalization log entry should have been added
+        assert len(mock_parent.log) == 0
+
+    @patch("howler.services.case_service.datastore")
+    def test_append_case_single_segment_path_not_modified(self, mock_ds_fn):
+        """append_case does not alter a path consisting of a single segment without slashes."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_parent = MagicMock()
+        mock_parent.case_id = "parent-001"
+        mock_parent.items = []
+        mock_parent.log = []
+
+        mock_child = MagicMock()
+        mock_child.case_id = "child-001"
+
+        mock_ds.case.get.side_effect = lambda key, as_obj=False: mock_parent if key == "parent-001" else mock_child
+        mock_ds.case.save.return_value = True
+
+        item = CaseItem({"type": "case", "value": "child-001", "path": "my-child"})
+        case_service.append_case("parent-001", item)
+
+        assert item.path == "my-child"
+        assert len(mock_parent.log) == 0
+
 
 # ---------------------------------------------------------------------------
 # append_reference()
