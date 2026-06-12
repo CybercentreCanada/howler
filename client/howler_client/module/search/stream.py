@@ -53,7 +53,8 @@ class Stream(object):
         items: list[Any] = []
         lock = threading.Lock()
         sf_t = threading.Thread(target=self._auto_fill, args=[items, lock, index, query], kwargs=kwargs)
-        sf_t.setDaemon(True)
+        # setDaemon is deprecated; set the daemon attribute instead
+        sf_t.daemon = True
         sf_t.start()
         while not yield_done:
             try:
