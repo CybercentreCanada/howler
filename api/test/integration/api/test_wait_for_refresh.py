@@ -503,7 +503,7 @@ def test_refresh_param_forwarded_to_es(
         ),
     )
 
-    assert response.status_code in (200, 201, 204)
+    assert response.status_code in (200, 201, 204), entity_obj.json()
     assert datastore_connection.get_collection(index).write_call_args_history[-1]["refresh"] == "wait_for"
 
 
