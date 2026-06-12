@@ -779,7 +779,7 @@ def stats(index, int_field, **kwargs):
     if field_info is None:
         return bad_request(err=f"Field '{int_field}' is not a valid field in index: {index}")
 
-    if field_info["type"] not in ["integer", "float"]:
+    if field_info["type"] not in ["integer", "float", "long"]:
         return bad_request(err=f"Field '{int_field}' is not a numeric field.")
 
     fields = ["query"]
