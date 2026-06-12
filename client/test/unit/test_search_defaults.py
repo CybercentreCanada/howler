@@ -19,7 +19,7 @@ def test_facet_default_query_uses_howler_id_star():
     search.facet.hit("file.hash.md5")
 
     assert conn.last_path is not None
-    assert "query=howler.id:%2A" in conn.last_path
+    assert "query=howler.id%3A%2A" in conn.last_path
 
 
 def test_grouped_default_query_uses_howler_id_star():
@@ -30,7 +30,7 @@ def test_grouped_default_query_uses_howler_id_star():
     search.grouped.hit("file.hash.sha256")
 
     assert conn.last_path is not None
-    assert "query=howler.id:%2A" in conn.last_path
+    assert "query=howler.id%3A%2A" in conn.last_path
 
 
 def test_stats_default_query_uses_howler_id_star():
@@ -41,4 +41,4 @@ def test_stats_default_query_uses_howler_id_star():
     search.stats.hit("file.size")
 
     assert conn.last_path is not None
-    assert "query=howler.id:%2A" in conn.last_path
+    assert "query=howler.id%3A%2A" in conn.last_path
