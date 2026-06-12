@@ -3,7 +3,7 @@ import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Hit } from 'models/entities/generated/Hit';
 import { flattenDeep } from 'utils/utils';
 
-const ResolvePivotUrl = (pivot: NonNullable<Dossier['pivots']>[number], currentHit?: Hit): string => {
+const resolvePivotUrl = (pivot: NonNullable<Dossier['pivots']>[number], currentHit?: Hit): string => {
   const flatHit = flattenDeep(currentHit ?? {});
 
   const templateObject = Object.fromEntries(
