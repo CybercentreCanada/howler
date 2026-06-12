@@ -71,6 +71,8 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false, dossier, r
     try {
       return handlebars.compile(pivot.value)(templateObject);
     } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error(`Failed to compile pivot template for value "${pivot.value}":`, e);
       return pivot.value;
     }
   }, [flatHit, pivot, handlebars, helpers]);
