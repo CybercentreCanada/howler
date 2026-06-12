@@ -31,20 +31,6 @@ import { Trans, useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { LABEL_TYPES } from 'utils/constants';
 
-/**
- * HitLabels.tsx
- *
- * Purpose:
- * This component manages and displays labels attached to a Hit.
- *
- * - Transforming hit.howler.labels into a flat label structure
- * - Rendering labels as MUI Chips (read-only and editable views)
- * - Providing a drawer UI to add and remove labels
- * - Calling backend APIs to persist label changes
- * - Keeping local UI state in sync with backend updates
-
- */
-
 type LabelState = {
   category: keyof Labels;
   label: string;
