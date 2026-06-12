@@ -342,6 +342,8 @@
   "modal.cases.rename_item.folder_path": "Dossier : {{path}}",
   "modal.cases.rename_item.new_name": "Nouveau nom",
   "modal.cases.resolve": "Résoudre le cas",
+  "modal.cases.resolve.allow_unresolved": "Resoudre ce cas meme si certaines alertes ne sont pas resolues.",
+  "modal.cases.resolve.allow_unresolved.aria_label": "Autoriser des alertes non resolues",
   "modal.cases.resolve.description": "Lors de la résolution d'un cas, vous devez soit évaluer toutes les alertes ouvertes, soit ajouter une évaluation aux alertes.",
   "modal.confirm.delete.description": "Êtes-vous sûr de vouloir supprimer cet élément ?",
   "modal.confirm.delete.title": "Confirmer la suppression",

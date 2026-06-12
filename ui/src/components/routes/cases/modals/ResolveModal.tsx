@@ -98,6 +98,7 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
   const [loading, setLoading] = useState(true);
   const [rationale, setRationale] = useState('');
   const [assessment, setAssessment] = useState(null);
+  const [allowUnresolvedHits, setAllowUnresolvedHits] = useState(false);
   const [selectedHitIds, setSelectedHitIds] = useState<Set<string>>(new Set());
 
   const hitIds = useMemo(
@@ -136,9 +137,17 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
   const handleConfirm = async () => {
     setLoading(true);
     try {
-      await assess(assessment, true, rationale);
+      if (selectedHitIds.size > 0) {
+        await assess(assessment, true, rationale);
 
-      setSelectedHitIds(new Set());
+        setSelectedHitIds(new Set());
+      }
+
+      if (unresolvedHits.length === 0 || allowUnresolvedHits) {
+        await updateCase({ status: 'resolved' });
+        onConfirm();
+        close();
+      }
     } finally {
       setLoading(false);
     }
@@ -172,17 +181,6 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
       }
     })();
   }, [dispatchApi, hitIds, loadRecords]);
-
-  useEffect(() => {
-    if (loading || unresolvedHits.length > 0) {
-      return;
-    }
-
-    updateCase({ status: 'resolved' }).then(() => {
-      onConfirm();
-      close();
-    });
-  }, [close, loading, onConfirm, unresolvedHits.length, updateCase]);
 
   return (
     <Stack
@@ -227,6 +225,15 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
           <Divider />
           <LinearProgress sx={{ opacity: +loading }} />
         </Stack>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <Checkbox
+            size="small"
+            checked={allowUnresolvedHits}
+            onChange={(_ev, checked) => setAllowUnresolvedHits(checked)}
+            inputProps={{ 'aria-label': t('modal.cases.resolve.allow_unresolved.aria_label') }}
+          />
+          <Typography>{t('modal.cases.resolve.allow_unresolved')}</Typography>
+        </Stack>
         {hits
           .filter(hit => unresolvedHits.includes(hit.howler.id))
           .map(hit => (
@@ -257,7 +264,11 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
         <Button
           variant="outlined"
           color="success"
-          disabled={loading || !assessment || !rationale || selectedHitIds.size === 0}
+          disabled={
+            loading ||
+            (selectedHitIds.size > 0 && (!assessment || !rationale)) ||
+            (selectedHitIds.size === 0 && unresolvedHits.length > 0 && !allowUnresolvedHits)
+          }
           startIcon={loading ? <CircularProgress size={16} color="inherit" /> : undefined}
           onClick={handleConfirm}
         >

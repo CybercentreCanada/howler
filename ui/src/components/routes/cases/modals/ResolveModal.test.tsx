@@ -119,6 +119,13 @@ const clickCheckbox = (checkbox: HTMLElement) => {
   fireEvent.click(checkbox.parentElement!);
 };
 
+const getHitCheckboxes = () =>
+  screen
+    .getAllByRole('checkbox')
+    .filter(
+      checkbox => checkbox.getAttribute('aria-label') !== i18n.t('modal.cases.resolve.allow_unresolved.aria_label')
+    );
+
 /** Fills in assessment and rationale so the confirm button becomes enabled. */
 const fillForm = async (user: UserEvent, assessment = 'legitimate', rationale = 'Test rationale') => {
   const rationaleInput = screen.getByPlaceholderText(i18n.t('modal.rationale.label'));
@@ -269,7 +276,7 @@ describe('ResolveModal', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getAllByRole('checkbox')).toHaveLength(2);
+        expect(getHitCheckboxes()).toHaveLength(2);
       });
     });
 
@@ -280,7 +287,7 @@ describe('ResolveModal', () => {
 
       await waitFor(() => {
         // only the single unresolved hit gets a checkbox
-        expect(screen.getAllByRole('checkbox')).toHaveLength(1);
+        expect(getHitCheckboxes()).toHaveLength(1);
       });
     });
 
@@ -309,7 +316,9 @@ describe('ResolveModal', () => {
       });
 
       // Wait for the hit to load (checkbox appears) but don't select it
-      await screen.findAllByRole('checkbox');
+      await waitFor(() => {
+        expect(getHitCheckboxes()).toHaveLength(1);
+      });
 
       await fillForm(user);
 
@@ -322,7 +331,10 @@ describe('ResolveModal', () => {
         wrapper: createWrapper({ 'hit-1': HIT_1 })
       });
 
-      const [checkbox] = await screen.findAllByRole('checkbox');
+      await waitFor(() => {
+        expect(getHitCheckboxes()).toHaveLength(1);
+      });
+      const [checkbox] = getHitCheckboxes();
       clickCheckbox(checkbox);
       await waitFor(() => expect(checkbox).toBeChecked());
 
@@ -338,7 +350,10 @@ describe('ResolveModal', () => {
         wrapper: createWrapper({ 'hit-1': HIT_1 })
       });
 
-      const [checkbox] = await screen.findAllByRole('checkbox');
+      await waitFor(() => {
+        expect(getHitCheckboxes()).toHaveLength(1);
+      });
+      const [checkbox] = getHitCheckboxes();
       clickCheckbox(checkbox);
       await waitFor(() => expect(checkbox).toBeChecked());
 
@@ -356,11 +371,33 @@ describe('ResolveModal', () => {
         wrapper: createWrapper({ 'hit-1': HIT_1 })
       });
 
-      const [checkbox] = await screen.findAllByRole('checkbox');
+      await waitFor(() => {
+        expect(getHitCheckboxes()).toHaveLength(1);
+      });
+      const [checkbox] = getHitCheckboxes();
       clickCheckbox(checkbox);
       await waitFor(() => expect(checkbox).toBeChecked());
 
       await fillForm(user);
+
+      expect(screen.getByRole('button', { name: i18n.t('confirm') })).toBeEnabled();
+    });
+
+    it('is enabled when unresolved override is selected with no hits selected', async () => {
+      render(<ResolveModal case={caseWithHits(['hit-1'])} onConfirm={mockOnConfirm} />, {
+        wrapper: createWrapper({ 'hit-1': HIT_1 })
+      });
+
+      await waitFor(() => {
+        expect(getHitCheckboxes()).toHaveLength(1);
+      });
+
+      expect(screen.getByRole('button', { name: i18n.t('confirm') })).toBeDisabled();
+
+      const unresolvedOverride = screen.getByRole('checkbox', {
+        name: i18n.t('modal.cases.resolve.allow_unresolved.aria_label')
+      });
+      await user.click(unresolvedOverride);
 
       expect(screen.getByRole('button', { name: i18n.t('confirm') })).toBeEnabled();
     });
@@ -376,7 +413,10 @@ describe('ResolveModal', () => {
         wrapper: createWrapper({ 'hit-1': HIT_1 })
       });
 
-      const [checkbox] = await screen.findAllByRole('checkbox');
+      await waitFor(() => {
+        expect(getHitCheckboxes()).toHaveLength(1);
+      });
+      const [checkbox] = getHitCheckboxes();
       expect(checkbox).not.toBeChecked();
 
       clickCheckbox(checkbox);
@@ -389,7 +429,10 @@ describe('ResolveModal', () => {
         wrapper: createWrapper({ 'hit-1': HIT_1 })
       });
 
-      const [checkbox] = await screen.findAllByRole('checkbox');
+      await waitFor(() => {
+        expect(getHitCheckboxes()).toHaveLength(1);
+      });
+      const [checkbox] = getHitCheckboxes();
 
       clickCheckbox(checkbox);
       await waitFor(() => expect(checkbox).toBeChecked());
@@ -403,7 +446,10 @@ describe('ResolveModal', () => {
         wrapper: createWrapper({ 'hit-1': HIT_1, 'hit-2': HIT_2 })
       });
 
-      const checkboxes = await screen.findAllByRole('checkbox');
+      await waitFor(() => {
+        expect(getHitCheckboxes()).toHaveLength(2);
+      });
+      const checkboxes = getHitCheckboxes();
       expect(checkboxes).toHaveLength(2);
 
       clickCheckbox(checkboxes[0]);
@@ -425,7 +471,10 @@ describe('ResolveModal', () => {
         wrapper: createWrapper({ 'hit-1': HIT_1 })
       });
 
-      const [checkbox] = await screen.findAllByRole('checkbox');
+      await waitFor(() => {
+        expect(getHitCheckboxes()).toHaveLength(1);
+      });
+      const [checkbox] = getHitCheckboxes();
       clickCheckbox(checkbox);
       await waitFor(() => expect(checkbox).toBeChecked());
       await fillForm(user, 'legitimate', 'My rationale');
@@ -442,7 +491,10 @@ describe('ResolveModal', () => {
         wrapper: createWrapper({ 'hit-1': HIT_1 })
       });
 
-      const [checkbox] = await screen.findAllByRole('checkbox');
+      await waitFor(() => {
+        expect(getHitCheckboxes()).toHaveLength(1);
+      });
+      const [checkbox] = getHitCheckboxes();
       clickCheckbox(checkbox);
       await waitFor(() => expect(checkbox).toBeChecked());
 
@@ -468,7 +520,9 @@ describe('ResolveModal', () => {
       });
 
       // Wait for loading to finish so no unexpected state transitions happen mid-click
-      await screen.findAllByRole('checkbox');
+      await waitFor(() => {
+        expect(getHitCheckboxes()).toHaveLength(1);
+      });
 
       await user.click(screen.getByRole('button', { name: i18n.t('cancel') }));
 
@@ -477,39 +531,61 @@ describe('ResolveModal', () => {
   });
 
   // -------------------------------------------------------------------------
-  // Auto-resolve when all hits are already resolved
+  // Case resolution behavior
   // -------------------------------------------------------------------------
 
-  describe('auto-resolve', () => {
-    it('calls updateCase, onConfirm, and close when no unresolved hits remain after loading', async () => {
-      // All hits in the case are already resolved
+  describe('case resolution behavior', () => {
+    it('does NOT auto-resolve when all hits are already resolved', async () => {
       render(<ResolveModal case={caseWithHits(['hit-resolved'])} onConfirm={mockOnConfirm} />, {
         wrapper: createWrapper({ 'hit-resolved': HIT_RESOLVED })
       });
 
-      // dispatchApi resolves → loading becomes false → unresolvedHits.length === 0 → auto-close
       await waitFor(() => {
-        expect(mockUpdateCase).toHaveBeenCalledWith({ status: 'resolved' });
+        expect(screen.getByRole('button', { name: i18n.t('confirm') })).toBeEnabled();
+      });
+
+      expect(mockUpdateCase).not.toHaveBeenCalled();
+      expect(mockClose).not.toHaveBeenCalled();
+    });
+
+    it('resolves case when confirm is clicked and all hits are already resolved', async () => {
+      render(<ResolveModal case={caseWithHits(['hit-resolved'])} onConfirm={mockOnConfirm} />, {
+        wrapper: createWrapper({ 'hit-resolved': HIT_RESOLVED })
       });
 
       await waitFor(() => {
+        expect(screen.getByRole('button', { name: i18n.t('confirm') })).toBeEnabled();
+      });
+
+      await user.click(screen.getByRole('button', { name: i18n.t('confirm') }));
+
+      await waitFor(() => {
+        expect(mockUpdateCase).toHaveBeenCalledWith({ status: 'resolved' });
         expect(mockOnConfirm).toHaveBeenCalledTimes(1);
         expect(mockClose).toHaveBeenCalledTimes(1);
       });
     });
 
-    it('does NOT auto-resolve while hits are still unresolved', async () => {
+    it('resolves case with unresolved hits when override option is selected', async () => {
       render(<ResolveModal case={caseWithHits(['hit-1'])} onConfirm={mockOnConfirm} />, {
         wrapper: createWrapper({ 'hit-1': HIT_1 })
       });
 
-      // Wait for loading to complete: the unresolved hit's checkbox appears once the
-      // dispatchApi call settles and the LinearProgress opacity drops to 0.
-      await screen.findAllByRole('checkbox');
+      await waitFor(() => {
+        expect(getHitCheckboxes()).toHaveLength(1);
+      });
 
-      // Should not have auto-resolved
-      expect(mockUpdateCase).not.toHaveBeenCalled();
-      expect(mockClose).not.toHaveBeenCalled();
+      await user.click(
+        screen.getByRole('checkbox', { name: i18n.t('modal.cases.resolve.allow_unresolved.aria_label') })
+      );
+      await user.click(screen.getByRole('button', { name: i18n.t('confirm') }));
+
+      await waitFor(() => {
+        expect(mockAssess).not.toHaveBeenCalled();
+        expect(mockUpdateCase).toHaveBeenCalledWith({ status: 'resolved' });
+        expect(mockOnConfirm).toHaveBeenCalledTimes(1);
+        expect(mockClose).toHaveBeenCalledTimes(1);
+      });
     });
   });
 });
