@@ -64,8 +64,7 @@ def create_hits(user: User, **kwargs):
     None
 
     Optional Arguments:
-    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
-        'wait_for' will wait for the change to be visible in search.
+    refresh =>  ('true') Whether to refresh (commit) the datastore before returning.
 
     Data Block:
     {
@@ -126,17 +125,16 @@ def create_hits(user: User, **kwargs):
 
     if len(response_body["invalid"]) == 0:
         if len(odms) > 0:
-            for odm in odms[:-1]:  # Save all but the last hit without refreshing
+            for odm in odms:  # Save all but the last hit without refreshing
                 # Ensure all ids are consistent
                 if odm.event is not None:
                     odm.event.id = odm.howler.id
-                hit_service.create_hit(odm.howler.id, odm, user=user.uname)
+                # TODO keeping the commit approach until we can batch create hits
+                # passing refresh to each one is potentially even more inefficient
+                hit_service.create_hit(odm.howler.id, odm, user=user.uname, refresh="false")
 
-            # Save the last hit passing the refresh param
-            last_odm = odms[-1]
-            if last_odm.event is not None:
-                last_odm.event.id = last_odm.howler.id
-            hit_service.create_hit(last_odm.howler.id, last_odm, user=user.uname, refresh=refresh)
+            if refresh == "true":
+                datastore().hit.commit()
 
             analytic_service.save_from_hits(odms, user, refresh=refresh)
             action_service.enqueue_action_execution([odm.howler.id for odm in odms], trigger="create", user=user)
@@ -1044,8 +1042,7 @@ def create_bundle(user: User, **kwargs):
     None
 
     Optional Arguments:
-    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
-        'wait_for' will wait for the change to be visible in search.
+    refresh =>  ('true') Whether to refresh (commit) the datastore before returning.
 
     Data Block:
     {
@@ -1081,10 +1078,10 @@ def create_bundle(user: User, **kwargs):
 
         odm.howler.hits.extend(hit_id for hit_id in child_hits if hit_id not in odm.howler.hits)
 
-        hit_service.create_hit(odm.howler.id, odm, user=user.uname)
+        # TODO see comment above about batch creating hits
+        hit_service.create_hit(odm.howler.id, odm, user=user.uname, refresh="false")
         analytic_service.save_from_hits(odm, user, refresh=refresh)
 
-        child_hits = []
         for hit_id in odm.howler.hits:
             child_hit: Hit = hit_service.get_hit(hit_id, as_odm=True)
 
@@ -1094,13 +1091,10 @@ def create_bundle(user: User, **kwargs):
                 )
 
             child_hit.howler.bundles.append(odm.howler.id)
-            child_hits.append(child_hit)
+            datastore().hit.save(child_hit.howler.id, child_hit, refresh="false")
 
-        # only pass the refresh arg for the last request
-        for child_hit in child_hits[:-1]:
-            datastore().hit.save(child_hit.howler.id, child_hit)
-        if child_hits:
-            datastore().hit.save(child_hits[-1].howler.id, child_hits[-1], refresh=refresh)
+        if refresh == "true":
+            datastore().hit.commit()
 
         return created(odm)
     except HowlerException as e:

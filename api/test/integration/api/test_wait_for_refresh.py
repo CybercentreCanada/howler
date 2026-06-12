@@ -170,13 +170,15 @@ REFRESH_SUPPORTING_ENDPOINTS = (
 )
 
 # hit endpoints tested separately because they don't have the same request structure as the other entities
-REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_HITS = (("/hit", ("POST",)),)
+REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_HITS = (
+    # ("/hit", ("POST",)),  --refresh param not supported until we can batch create hits
+)
 
 REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_SINGLE_HIT = (("/hit/{id}/overwrite", ("PUT",)),)
 
 REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_IDS = (
     ("/hit", ("DELETE",)),
-    ("/hit/bundle", ("POST",)),
+    # ("/hit/bundle", ("POST",)),   --refresh param not supported until we can batch create hits
     ("/hit/bundle/{id}", ("DELETE", "PUT")),
 )
 
