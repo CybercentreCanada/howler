@@ -38,4 +38,8 @@ class Facet(object):
 
         Returns all results.
         """
+        # Default the query to include all hits if none provided
+        if query is None:
+            query = "howler.id:*"
+
         return self._do_facet("hit", field, query=query, mincount=mincount, filters=filters, rows=rows)

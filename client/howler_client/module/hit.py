@@ -113,9 +113,9 @@ class Hit(object):
                 warn = res["warn"]
                 if isinstance(warn, list):
                     for w in warn:
-                        logger.warn(w)
+                        logger.warning(w)
                 else:
-                    logger.warn(warn)
+                    logger.warning(warn)
 
         return result
 

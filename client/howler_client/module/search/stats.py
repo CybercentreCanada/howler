@@ -36,4 +36,8 @@ class Stats(object):
 
         Returns statistics about the field.
         """
+        # Default the query to include all hits if none provided
+        if query is None:
+            query = "howler.id:*"
+
         return self._do_stats("hit", field, query=query, filters=filters)
