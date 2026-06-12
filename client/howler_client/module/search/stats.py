@@ -31,7 +31,7 @@ class Stats(object):
         field   : field to create the stats on (only work on number fields)
 
         Optional:
-        query    : Initial query to filter the data (default: 'id:*')
+        query    : Initial query to filter the data (default: 'howler.id:*')
         filters  : Additional lucene queries used to filter the data (list of strings)
 
         Returns statistics about the field.
