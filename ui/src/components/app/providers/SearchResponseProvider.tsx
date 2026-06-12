@@ -24,7 +24,7 @@ export const SearchResponseContext = createContext<SearchResponseContextType<any
 
 type SearchResponseProviderProps<T> = PropsWithChildren<{
   idField: string;
-  initialResponse?: SearchResponseState<T> | null;
+  initialResponse?: SearchResponseState<T>;
 }>;
 
 const SearchResponseProvider = <T,>({
