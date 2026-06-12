@@ -38,7 +38,7 @@ from howler.datastore.support.schemas import (
     default_index,
     default_mapping,
 )
-from howler.datastore.types import SearchResult
+from howler.datastore.types import AggSearchResult, SearchResult
 from howler.odm.base import (
     BANNED_FIELDS,
     IP,
@@ -212,11 +212,13 @@ class ESCollection(Generic[ModelType]):
         "sort": DEFAULT_SORT,
         "df": None,
         "script_fields": [],
+        "aggregations": None,
     }
     IGNORE_ENSURE_COLLECTION: bool = False
     ENSURE_COLLECTION_WARNED: bool = False
+    CUSTOM_AGG_PREFIX: str = "_custom_agg__"
 
-    def __init__(self, datastore: ESStore, name, model_class=None, validate=True, max_attempts=10):
+    def __init__(self, datastore: ESStore, name, model_class=None, validate=True, max_attempts=10, ilm_config=None):
         self.replicas = int(
             environ.get(
                 f"ELASTIC_{name.upper()}_REPLICAS",
@@ -228,6 +230,7 @@ class ESCollection(Generic[ModelType]):
 
         self.datastore = datastore
         self.name = f"{APP_NAME}-{name}"
+        self.ilm_config = ilm_config
         self.index_name = f"{self.name}_hot"
         self.model_class = model_class
         self.validate = validate
@@ -469,8 +472,8 @@ class ESCollection(Generic[ModelType]):
                 else:
                     raise
 
-    def _safe_index_copy(self, copy_function, src, target, settings=None, min_status="yellow"):
-        options_client = self.datastore.client.options(request_timeout=60)
+    def _safe_index_copy(self, copy_function, src, target, settings=None, min_status="yellow", request_timeout=60):
+        options_client = self.datastore.client.options(request_timeout=request_timeout)
         timed_function = getattr(options_client.indices, copy_function.__name__)
         ret = timed_function(index=src, target=target, settings=settings)
         if not ret["acknowledged"]:
@@ -692,21 +695,79 @@ class ESCollection(Generic[ModelType]):
             settings=clone_finish_settings,
         )
 
-    def reindex(self):
-        """This function should be overloaded to perform a reindex of all the data of the different hosts
-        specified in self.datastore.hosts.
+    def _index_doc_count(self, index: str) -> int:
+        """Return the number of documents in a physical index.
 
-        :return: Should return True of the commit was successful on all hosts
+        :param index: the name of the physical index to count documents in
+        :return: the number of documents currently stored in the index
+        """
+        self.with_retries(self.datastore.client.indices.refresh, index=index)
+        return self.with_retries(self.datastore.client.count, index=index)["count"]
+
+    def reindex(self, allow_failures: bool = False, request_timeout: int = 60):
+        """Reindex all the data of the collection into a freshly mapped index.
+
+        For every index in ``self.index_list`` the data is copied into a temporary
+        ``__reindex`` index that uses the current mappings/settings. Writes to the source
+        index are blocked while the copy runs so the reindex result and document counts can
+        be validated before the original index is deleted. The temporary index is only
+        collapsed back onto the original name once those checks pass.
+
+        :param allow_failures: when ``True``, proceed even if the reindex reported document
+            failures or version conflicts, or if the document counts do not match. This is
+            DESTRUCTIVE: documents that could not be converted to the new mappings will be
+            permanently dropped. Only use this for intentional lossy migrations.
+        :param request_timeout: transport timeout in seconds for synchronous index-copy
+            operations. Defaults to 60 seconds.
+        :return: ``True`` when the reindex (and validation) completed successfully on all
+            indexes.
+        :raises DataStoreException: if a reindex reported failures/conflicts, or if the
+            document count of the reindexed data does not match the source, and
+            ``allow_failures`` is ``False``. The ``__reindex`` index is left in place so the
+            operation can be recovered with :meth:`reindex_cleanup`.
         """
         logger.warning("Beginning Reindex")
         for index in self.index_list:
             new_name = f"{index}__reindex"
             index_data = None
-            if self.with_retries(self.datastore.client.indices.exists, index=index) and not self.with_retries(
-                self.datastore.client.indices.exists, index=new_name
-            ):
+            source_count = None
+            source_writes_blocked = False
+
+            source_exists = self.with_retries(self.datastore.client.indices.exists, index=index)
+            target_exists = self.with_retries(self.datastore.client.indices.exists, index=new_name)
+
+            # Never reindex while a '__reindex' index already exists. Its presence means a previous
+            # reindex was interrupted, and the leftover may be stale or incomplete. Committing it
+            # could silently replace live data, so force the operator to reconcile the state with
+            # --cleanup before any new reindex is attempted.
+            if target_exists:
+                raise DataStoreException(
+                    f"A leftover reindex index '{new_name}' already exists. This usually means a previous "
+                    f"reindex was interrupted. Refusing to reindex because '{new_name}' may contain stale "
+                    f"or incomplete data. Run the reindex script with --cleanup to reconcile the state "
+                    f"if '{index}' still exists, or manually recover '{new_name}' if the source index is "
+                    f"missing, then retry the reindex."
+                )
+
+            if not source_exists:
+                logger.warning("Neither %s nor %s exist, nothing to reindex.", index, new_name)
+                continue
+
+            try:
                 # Get information about the index to reindex
                 index_data = self.with_retries(self.datastore.client.indices.get, index=index)[index]
+
+                logger.warning("Block writes to source index %s", index)
+                self.with_retries(
+                    self.datastore.client.indices.put_settings,
+                    index=index,
+                    settings=write_block_settings,
+                )
+                source_writes_blocked = True
+
+                # Record the number of documents we expect to migrate after writes are blocked.
+                source_count = self._index_doc_count(index)
+                logger.warning("Source index %s contains %s document(s)", index, source_count)
 
                 # Create reindex target
                 logger.warning("Creating new index with name %s", new_name)
@@ -717,32 +778,6 @@ class ESCollection(Generic[ModelType]):
                     settings=self._get_index_settings(),
                 )
 
-                # For all aliases related to the index, add a new alias to the reindex index
-                for alias, alias_data in index_data["aliases"].items():
-                    # Make the reindex index the new write index if the original index was
-                    if alias_data.get("is_write_index", True):
-                        alias_actions = [
-                            {
-                                "add": {
-                                    "index": new_name,
-                                    "alias": alias,
-                                    "is_write_index": True,
-                                }
-                            },
-                            {
-                                "add": {
-                                    "index": index,
-                                    "alias": alias,
-                                    "is_write_index": False,
-                                }
-                            },
-                        ]
-                    else:
-                        alias_actions = [{"add": {"index": new_name, "alias": alias}}]
-
-                    logger.warning("Updating alias %s", alias)
-                    self.with_retries(self.datastore.client.indices.update_aliases, actions=alias_actions)
-
                 # Reindex data into target
                 logger.warning("Beginning reindex from %s to %s", index, new_name)
                 r_task = self.with_retries(
@@ -752,23 +787,29 @@ class ESCollection(Generic[ModelType]):
                     wait_for_completion=False,
                 )
                 logger.warning("Reindex taskId: %s", r_task["task"])
-                self._get_task_results(r_task)
+                reindex_result = self._get_task_results(r_task)
 
-            if self.with_retries(self.datastore.client.indices.exists, index=new_name):
-                if index_data is None:
-                    index_data = self.with_retries(self.datastore.client.indices.get, index=index)[index]
+                # Validate the reindex did not silently drop or conflict on documents before
+                # we commit to deleting the source index further down.
+                self._validate_reindex_result(index, new_name, reindex_result, allow_failures)
 
                 logger.warning("Committing reindexed data in index %s", new_name)
                 self.with_retries(self.datastore.client.indices.refresh, index=new_name)
                 self.with_retries(self.datastore.client.indices.clear_cache, index=new_name)
 
-                logger.warning("Deleting old index %s", index)
-                if self.with_retries(self.datastore.client.indices.exists, index=index):
-                    self.with_retries(self.datastore.client.indices.delete, index=index)
+                # Compare the document counts of the source and reindexed indexes before deleting
+                # the source so a silent document drop is caught.
+                target_count = self._index_doc_count(new_name)
+                self._validate_reindex_counts(index, new_name, source_count, target_count, allow_failures)
 
-                logger.warning("Block write to index")
+                logger.warning("Deleting old index %s", index)
+                self.with_retries(self.datastore.client.indices.delete, index=index)
+                source_writes_blocked = False
+
+                logger.warning("Block writes to reindex target %s", new_name)
                 self.with_retries(
                     self.datastore.client.indices.put_settings,
+                    index=new_name,
                     settings=write_block_settings,
                 )
 
@@ -779,36 +820,181 @@ class ESCollection(Generic[ModelType]):
                         new_name,
                         index,
                         settings=self._get_index_settings(),
+                        request_timeout=request_timeout,
                     )
 
-                    # Restore original aliases for the index
-                    for alias, alias_data in index_data["aliases"].items():
-                        # Make the reindex index the new write index if the original index was
-                        if alias_data.get("is_write_index", True):
-                            alias_actions = [
-                                {
-                                    "add": {
-                                        "index": index,
-                                        "alias": alias,
-                                        "is_write_index": True,
-                                    }
-                                },
-                                {"remove_index": {"index": new_name}},
-                            ]
-                            self.with_retries(
-                                self.datastore.client.indices.update_aliases,
-                                actions=alias_actions,
-                            )
+                    alias_actions = []
+                    aliases = index_data.get("aliases", {}) or {self.name: {"is_write_index": True}}
+                    for alias, alias_data in aliases.items():
+                        alias_action = {"index": index, "alias": alias}
+                        alias_action.update(alias_data)
+                        if alias == self.name or alias_data.get("is_write_index", False):
+                            alias_action["is_write_index"] = True
+                        alias_actions.append({"add": alias_action})
+                    alias_actions.append({"remove_index": {"index": new_name}})
+                    self.with_retries(self.datastore.client.indices.update_aliases, actions=alias_actions)
 
                     if self.with_retries(self.datastore.client.indices.exists, index=new_name):
                         logger.warning("Deleting reindex target %s", new_name)
                         self.with_retries(self.datastore.client.indices.delete, index=new_name)
                 finally:
-                    logger.warning("Unblock write to the index")
+                    if self.with_retries(self.datastore.client.indices.exists, index=index):
+                        logger.warning("Unblock writes to the index")
+                        self.with_retries(
+                            self.datastore.client.indices.put_settings,
+                            index=index,
+                            settings=write_unblock_settings,
+                        )
+            except Exception:
+                if source_writes_blocked and self.with_retries(self.datastore.client.indices.exists, index=index):
+                    logger.warning("Unblock writes to source index %s after failed reindex", index)
                     self.with_retries(
                         self.datastore.client.indices.put_settings,
+                        index=index,
                         settings=write_unblock_settings,
                     )
+                raise
+
+        return True
+
+    def _validate_reindex_result(self, index, new_name, reindex_result, allow_failures):
+        """Validate the result of an Elasticsearch reindex task.
+
+        :param index: the source index being reindexed
+        :param new_name: the temporary ``__reindex`` index being written to
+        :param reindex_result: the ``response``/``status`` payload returned by the reindex task
+        :param allow_failures: when ``True``, log the problems but do not abort
+        :raises DataStoreException: if the reindex reported failures or version conflicts and
+            ``allow_failures`` is ``False``
+        """
+        failures = reindex_result.get("failures", []) if reindex_result else []
+        version_conflicts = reindex_result.get("version_conflicts", 0) if reindex_result else 0
+
+        if not failures and not version_conflicts:
+            return
+
+        # Summarize the failures so the operator understands what went wrong
+        summary = (
+            f"Reindex of {index} into {new_name} reported {len(failures)} document failure(s) "
+            f"and {version_conflicts} version conflict(s)."
+        )
+        for failure in failures[:10]:
+            cause = failure.get("cause", failure)
+            logger.error(
+                "Reindex failure on document %s: %s - %s",
+                failure.get("id", "<unknown>"),
+                cause.get("type", "<unknown>"),
+                cause.get("reason", cause),
+            )
+        if len(failures) > 10:
+            logger.error("... and %s additional failure(s) not shown.", len(failures) - 10)
+
+        if allow_failures:
+            logger.warning("%s Proceeding anyway because allow_failures is set (DESTRUCTIVE).", summary)
+            return
+
+        raise DataStoreException(
+            f"{summary} Aborting before deleting the source index to prevent data loss. The '{new_name}' "
+            f"index has been left in place; run the reindex script with --cleanup to remove it and restore "
+            f"'{index}', then retry. Re-run with --allow-failures only if you intend to drop the "
+            f"un-convertible documents."
+        )
+
+    def _validate_reindex_counts(self, index, new_name, source_count, target_count, allow_failures):
+        """Validate that the reindexed index contains the same number of documents as the source.
+
+        :param index: the source index being reindexed
+        :param new_name: the temporary ``__reindex`` index being written to
+        :param source_count: the number of documents in the source index
+        :param target_count: the number of documents in the reindexed index
+        :param allow_failures: when ``True``, log the mismatch but do not abort
+        :raises DataStoreException: if the counts differ and ``allow_failures`` is ``False``
+        """
+        if source_count == target_count:
+            logger.warning("Document count validated: %s document(s) in both %s and %s", source_count, index, new_name)
+            return
+
+        summary = (
+            f"Document count mismatch reindexing {index} into {new_name}: "
+            f"source has {source_count} document(s) but reindex target has {target_count}."
+        )
+
+        if allow_failures:
+            logger.warning("%s Proceeding anyway because allow_failures is set (DESTRUCTIVE).", summary)
+            return
+
+        raise DataStoreException(
+            f"{summary} Aborting before deleting the source index to prevent data loss. The '{new_name}' "
+            f"index has been left in place; run the reindex script with --cleanup to remove it and restore "
+            f"'{index}', then retry. Re-run with --allow-failures only if you intend to accept the count "
+            f"mismatch."
+        )
+
+    def reindex_cleanup(self):
+        """Recover from a failed or interrupted :meth:`reindex` run.
+
+        For every index that still has a leftover ``__reindex`` index, restore the source
+        index as the writable target and delete the orphaned ``__reindex`` index. If the
+        source index is missing, raise an error instead of deleting ``__reindex`` because
+        it may be the only remaining copy of the data.
+
+        Write blocks set during reindexing are cleared so the collection is usable again.
+
+        :return: ``True`` when cleanup completed on all indexes
+        """
+        logger.warning("Beginning reindex cleanup")
+        for index in self.index_list:
+            new_name = f"{index}__reindex"
+
+            if not self.with_retries(self.datastore.client.indices.exists, index=new_name):
+                logger.info("No leftover reindex index found for %s, nothing to clean up.", index)
+                continue
+
+            if not self.with_retries(self.datastore.client.indices.exists, index=index):
+                raise DataStoreException(
+                    f"Source index '{index}' is missing but leftover reindex index '{new_name}' exists. "
+                    f"Cannot safely clean up because '{new_name}' may be the only remaining copy of the data. "
+                    f"Manually recover '{new_name}' or delete it if the data is no longer needed."
+                )
+
+            logger.warning("Restoring aliases for %s and removing leftover index %s", index, new_name)
+            index_data = self.with_retries(self.datastore.client.indices.get, index=index)[index]
+            new_index_data = self.with_retries(self.datastore.client.indices.get, index=new_name)[new_name]
+            source_aliases = index_data.get("aliases", {})
+            reindex_aliases = new_index_data.get("aliases", {})
+
+            alias_actions = []
+            for alias in sorted(set(source_aliases) | set(reindex_aliases) | {self.name}):
+                source_alias_data = source_aliases.get(alias, {})
+                reindex_alias_data = reindex_aliases.get(alias, {})
+
+                add_alias_data = {"index": index, "alias": alias}
+                add_alias_data.update(source_alias_data)
+                if (
+                    alias == self.name
+                    or source_alias_data.get("is_write_index", False)
+                    or reindex_alias_data.get("is_write_index", False)
+                ):
+                    add_alias_data["is_write_index"] = True
+
+                alias_actions.append({"add": add_alias_data})
+
+            for alias in reindex_aliases:
+                alias_actions.append({"remove": {"index": new_name, "alias": alias}})
+
+            if alias_actions:
+                logger.warning("Restoring aliases to %s", index)
+                self.with_retries(self.datastore.client.indices.update_aliases, actions=alias_actions)
+
+            logger.warning("Deleting leftover reindex index %s", new_name)
+            self.with_retries(self.datastore.client.indices.delete, index=new_name)
+
+            logger.warning("Unblock write to the index")
+            self.with_retries(
+                self.datastore.client.indices.put_settings,
+                index=index,
+                settings=write_unblock_settings,
+            )
 
         return True
 
@@ -1110,14 +1296,25 @@ class ESCollection(Generic[ModelType]):
         except elasticsearch.NotFoundError:
             return False
 
-    def delete_by_query(self, query, sort=None, max_docs=None) -> bool:
+    def delete_by_query(self, query: str, sort=None, max_docs=None) -> bool:
         """This function should delete the underlying documents referenced by the query.
         It should return true if the documents were in fact properly deleted.
 
         :param query: Query of the documents to download
         :return: True is delete successful
         """
-        query = {"bool": {"must": {"query_string": {"query": query}}}}
+        query_obj = {"bool": {"must": {"query_string": {"query": query}}}}
+        success = self.delete_by_search_object(query=query_obj, sort=sort, max_docs=max_docs)
+        return success
+
+    def delete_by_search_object(self, query: dict, sort=None, max_docs=None):
+        """Delete the underlying documents matching the query object.
+        Returns true if the documents were in fact properly deleted.
+
+        :param query: Query object following elasticsearch request structure
+        :param workers: Number of workers used for deletion if basic currency delete is used
+        :return: True is delete successful
+        """
         info = self._delete_async(self.name, query=query, sort=sort_str(parse_sort(sort)), max_docs=max_docs)
         return info.get("deleted", 0) != 0
 
@@ -1341,6 +1538,43 @@ class ESCollection(Generic[ModelType]):
 
         return res["updated"]
 
+    def _expand_fl(self, fl: str) -> str:
+        """Expand wildcard patterns in a field list string using the model's flat_fields.
+
+        For each comma-separated entry in `fl`, if the entry contains a `*`, it is treated
+        as a glob-style wildcard pattern and matched against all fields returned by
+        ``flat_fields()``.  Entries without wildcards are kept as-is.
+
+        Args:
+            fl: Comma-separated list of field names, optionally containing ``*`` wildcards
+                (e.g. ``"howler.*,event.start"``).
+
+        Returns:
+            A comma-separated string of expanded field names.  If no model class is
+            associated with this collection the original ``fl`` string is returned
+            unchanged.
+        """
+        if not self.model_class or "*" not in fl:
+            return fl
+
+        all_fields = list(self.model_class.flat_fields().keys())
+        expanded: list[str] = []
+        for pattern in fl.split(","):
+            pattern = pattern.strip()
+            if not pattern:
+                # Skip empty entries (e.g. from trailing commas).
+                continue
+            if "*" not in pattern or pattern == "*":
+                # Exact names and the bare '*' (meaning "all fields") are kept as-is.
+                expanded.append(pattern)
+            else:
+                # Convert the glob-style wildcard to a full regex pattern.
+                # Replace '*' with '.*' and escape all other regex special characters.
+                regex = re.compile("^" + re.escape(pattern).replace(r"\*", ".*") + "$")
+                matched = [f for f in all_fields if regex.match(f)]
+                expanded.extend(matched if matched else [pattern])
+        return ",".join(expanded)
+
     def _format_output(self, result, fields=None, as_obj=True):
         # Getting search document data
         extra_fields = result.get("fields", {})
@@ -1377,7 +1611,7 @@ class ESCollection(Generic[ModelType]):
         if isinstance(fields, str):
             fields = [fields]
 
-        if fields is None or "*" in fields or "id" in fields:
+        if source_data is not None and (fields is None or "*" in fields or "id" in fields):
             source_data["id"] = [item_id]
 
         if fields is None or "*" in fields:
@@ -1385,7 +1619,7 @@ class ESCollection(Generic[ModelType]):
 
         return prune(source_data, fields, self.stored_fields, mapping_class=Mapping)
 
-    def _search(self, args=None, deep_paging_id=None, use_archive=False, track_total_hits=None):
+    def _search(self, args=None, deep_paging_id=None, track_total_hits=None):
         if args is None:
             args = []
 
@@ -1494,6 +1728,26 @@ class ESCollection(Generic[ModelType]):
                 },
             }
 
+        # Add any arbitrary aggregations
+        if parsed_values["aggregations"]:
+            query_body.setdefault("aggregations", {})
+            cluster_settings = self.datastore.client.cluster.get_settings(include_defaults=True, flat_settings=True)
+            flattened_settings = {
+                **cluster_settings["defaults"],
+                **cluster_settings["transient"],
+                **cluster_settings["persistent"],
+            }
+            max_buckets = int(flattened_settings["search.max_buckets"])
+            for agg_name, agg_args in parsed_values["aggregations"]:
+                if any("size" in agg_def and agg_def["size"] > max_buckets for agg_def in agg_args.values()):
+                    # verify the size of the agg query doesn't exceed the max
+                    warnings.warn(
+                        f"Aggregation {agg_name} has a size argument higher than the maximum allowed "
+                        f"buckets of the cluster ({max_buckets}). Skipping aggregation."
+                    )
+                    continue
+                query_body["aggregations"][f"{self.CUSTOM_AGG_PREFIX}{agg_name}"] = agg_args
+
         try:
             if deep_paging_id is not None and not deep_paging_id == "*":
                 # Get the next page
@@ -1542,9 +1796,10 @@ class ESCollection(Generic[ModelType]):
         filters: list[str] | str | None = None,
         access_control: typing.Any = None,
         deep_paging_id: str | None = None,
-        use_archive: bool = False,
         track_total_hits: bool = False,
         script_fields: list[str] = [],
+        *,
+        aggregations: None = None,
     ) -> SearchResult[ModelType]: ...
 
     @overload
@@ -1560,10 +1815,49 @@ class ESCollection(Generic[ModelType]):
         filters: list[str] | str | None = None,
         access_control: typing.Any = None,
         deep_paging_id: str | None = None,
-        use_archive: bool = False,
         track_total_hits: bool = False,
         script_fields: list[str] = [],
+        *,
+        aggregations: None = None,
     ) -> SearchResult[dict[str, typing.Any]]: ...
+
+    @overload
+    def search(
+        self,
+        query: str | None,
+        as_obj: Literal[True] = True,
+        offset: int = 0,
+        rows: int | None = None,
+        sort: typing.Any = None,
+        fl: str | None = None,
+        timeout: int | None = None,
+        filters: list[str] | str | None = None,
+        access_control: typing.Any = None,
+        deep_paging_id: str | None = None,
+        track_total_hits: bool = False,
+        script_fields: list[str] = [],
+        *,
+        aggregations: list[tuple[str, dict]],
+    ) -> AggSearchResult[ModelType]: ...
+
+    @overload
+    def search(
+        self,
+        query: str | None,
+        as_obj: Literal[False],
+        offset: int = 0,
+        rows: int | None = None,
+        sort: typing.Any = None,
+        fl: str | None = None,
+        timeout: int | None = None,
+        filters: list[str] | str | None = None,
+        access_control: typing.Any = None,
+        deep_paging_id: str | None = None,
+        track_total_hits: bool = False,
+        script_fields: list[str] = [],
+        *,
+        aggregations: list[tuple[str, dict]],
+    ) -> AggSearchResult[dict[str, typing.Any]]: ...
 
     def search(
         self,
@@ -1577,9 +1871,10 @@ class ESCollection(Generic[ModelType]):
         filters=None,
         access_control=None,
         deep_paging_id=None,
-        use_archive=False,
         track_total_hits=None,
         script_fields=[],
+        *,
+        aggregations=None,
     ):
         """This function should perform a search through the datastore and return a
         search result object that consist on the following::
@@ -1596,9 +1891,16 @@ class ESCollection(Generic[ModelType]):
                     }, ...]
             }
 
+        If aggregations are provided the search result will include an additional field::
+
+            {
+                "aggregations": {       # Dictionary where the keys are the keys of the `aggregations` parameter
+                    "agg_name": {...}   #   and the values are the results of the aggregations
+                }
+            }
+
         :param script_fields: List of name/script tuple of fields to be evaluated at runtime
         :param track_total_hits: Return to total matching document count
-        :param use_archive: Query also the archive
         :param deep_paging_id: ID of the next page during deep paging searches
         :param as_obj: Return objects instead of dictionaries
         :param query: lucene query to search for
@@ -1609,6 +1911,8 @@ class ESCollection(Generic[ModelType]):
         :param timeout: maximum time of execution
         :param filters: additional queries to run on the original query to reduce the scope
         :param access_control: access control parameters to limiti the scope of the query
+        :param aggregations: optional list of arbitrary aggregations to run alongside the query
+            structured the same way as the es rest query aggs field
         :return: a search result object
         """
         if offset is None:
@@ -1637,6 +1941,7 @@ class ESCollection(Generic[ModelType]):
         ]
 
         if fl:
+            fl = self._expand_fl(fl)
             field_list = fl.split(",")
             args.append(("field_list", field_list))
         else:
@@ -1651,19 +1956,32 @@ class ESCollection(Generic[ModelType]):
         if script_fields:
             args.append(("script_fields", script_fields))
 
+        if aggregations:
+            args.append(("aggregations", aggregations))
+
         result = self._search(
             args,
             deep_paging_id=deep_paging_id,
-            use_archive=use_archive,
             track_total_hits=track_total_hits,
         )
 
-        ret_data: SearchResult = {
+        ret_data: SearchResult | AggSearchResult
+        ret_data = {
             "offset": int(offset),
             "rows": int(rows),
             "total": int(result["hits"]["total"]["value"]),
             "items": [self._format_output(doc, field_list, as_obj=as_obj) for doc in result["hits"]["hits"]],
         }
+
+        if aggregations:
+            ret_data = {
+                **ret_data,
+                "aggregations": {
+                    k[len(self.CUSTOM_AGG_PREFIX) :]: v
+                    for k, v in result.get("aggregations", {}).items()
+                    if k.startswith(self.CUSTOM_AGG_PREFIX)
+                },
+            }
 
         new_deep_paging_id = result.get("_scroll_id", None)
 
@@ -1703,7 +2021,6 @@ class ESCollection(Generic[ModelType]):
         item_buffer_size: int = 200,
         *,
         as_obj: Literal[True] = True,
-        use_archive: bool = False,
     ) -> typing.Generator[ModelType, None, None]: ...
 
     @overload
@@ -1716,7 +2033,6 @@ class ESCollection(Generic[ModelType]):
         item_buffer_size: int = 200,
         *,
         as_obj: Literal[False],
-        use_archive: bool = False,
     ) -> typing.Generator[dict[str, typing.Any], None, None]: ...
 
     def stream_search(
@@ -1727,7 +2043,6 @@ class ESCollection(Generic[ModelType]):
         access_control=None,
         item_buffer_size=200,
         as_obj=True,
-        use_archive=False,
     ):
         """This function should perform a search through the datastore and stream
         all related results as a dictionary of key value pair where each keys
@@ -1740,7 +2055,6 @@ class ESCollection(Generic[ModelType]):
         >>>     fl[x]: value
         >>> }
 
-        :param use_archive: Query also the archive
         :param as_obj: Return objects instead of dictionaries
         :param query: lucene query to search for
         :param fl: list of fields to return from the search
@@ -1761,6 +2075,7 @@ class ESCollection(Generic[ModelType]):
             filters.append(access_control)
 
         if fl:
+            fl = self._expand_fl(fl)
             fl = fl.split(",")
 
         query_expression = {
@@ -1810,6 +2125,8 @@ class ESCollection(Generic[ModelType]):
 
         if not fl:
             fl = "howler.id"
+        else:
+            fl = self._expand_fl(fl)
 
         if rows is None:
             rows = 5
@@ -1859,6 +2176,9 @@ class ESCollection(Generic[ModelType]):
         :return: a generator of keys
         """
         for item in self.stream_search("id:*", fl="id", access_control=access_control):
+            if item is None:
+                continue
+
             try:
                 yield item._id
             except AttributeError:
@@ -1961,7 +2281,6 @@ class ESCollection(Generic[ModelType]):
         mincount=None,
         filters=None,
         access_control=None,
-        use_archive=False,
     ):
         type_modifier = self._validate_steps_count(start, end, gap)
         start = type_modifier(start)
@@ -2000,7 +2319,7 @@ class ESCollection(Generic[ModelType]):
         if filters:
             args.append(("filters", filters))
 
-        result = self._search(args, use_archive=use_archive)
+        result = self._search(args)
 
         # Convert the histogram into a dictionary
         return {
@@ -2020,7 +2339,6 @@ class ESCollection(Generic[ModelType]):
         mincount=None,
         filters=None,
         access_control=None,
-        use_archive=False,
         field_script=None,
     ):
         if not query:
@@ -2053,7 +2371,7 @@ class ESCollection(Generic[ModelType]):
         if field_script:
             args.append(("field_script", field_script))
 
-        result = self._search(args, use_archive=use_archive)
+        result = self._search(args)
 
         # Convert the histogram into a dictionary
         return {
@@ -2066,7 +2384,6 @@ class ESCollection(Generic[ModelType]):
         query="id:*",
         filters=None,
         access_control=None,
-        use_archive=False,
         field_script=None,
     ):
         if filters is None:
@@ -2090,7 +2407,7 @@ class ESCollection(Generic[ModelType]):
         if field_script:
             args.append(("field_script", field_script))
 
-        result = self._search(args, use_archive=use_archive)
+        result = self._search(args)
         return result["aggregations"][f"{field}_stats"]
 
     def grouped_search(
@@ -2106,7 +2423,6 @@ class ESCollection(Generic[ModelType]):
         filters=None,
         access_control=None,
         as_obj=True,
-        use_archive=False,
         track_total_hits=False,
     ):
         if rows is None:
@@ -2137,6 +2453,7 @@ class ESCollection(Generic[ModelType]):
         filters.append("%s:*" % group_field)
 
         if fl:
+            fl = self._expand_fl(fl)
             field_list = fl.split(",")
             args.append(("field_list", field_list))
         else:
@@ -2148,7 +2465,7 @@ class ESCollection(Generic[ModelType]):
         if filters:
             args.append(("filters", filters))
 
-        result = self._search(args, use_archive=use_archive, track_total_hits=track_total_hits)
+        result = self._search(args, track_total_hits=track_total_hits)
 
         return {
             "offset": offset,
@@ -2284,6 +2601,83 @@ class ESCollection(Generic[ModelType]):
         else:
             return True
 
+    def _create_ilm_policy(self, ilm_config):
+        """Create or update the ILM policy for this collection.
+
+        Builds an ILM policy with hot (rollover), optional warm (forcemerge),
+        and optional cold phases. No delete phase — retention is handled by
+        the retention cronjob.
+
+        The ``ilm_config`` parameter (global :class:`ILMConfig`) is used **only**
+        for the hot phase rollover settings (``rollover_max_age`` and
+        ``rollover_max_size``). Warm and cold phase configuration is sourced
+        exclusively from ``self.ilm_config`` (the per-index :class:`ILMIndexConfig`).
+
+        :param ilm_config: The global ILMConfig with rollover settings (hot phase only).
+        """
+        phases: dict[str, Any] = {
+            "hot": {
+                "min_age": "0ms",
+                "actions": {
+                    "rollover": {
+                        "max_age": ilm_config.rollover_max_age,
+                        "max_primary_shard_size": ilm_config.rollover_max_size,
+                    }
+                },
+            }
+        }
+
+        if self.ilm_config and self.ilm_config.warm:
+            warm_actions: dict[str, Any] = {}
+            if self.ilm_config.warm_forcemerge_segments is not None:
+                warm_actions["forcemerge"] = {"max_num_segments": self.ilm_config.warm_forcemerge_segments}
+            phases["warm"] = {
+                "min_age": self.ilm_config.warm,
+                "actions": warm_actions,
+            }
+
+        if self.ilm_config and self.ilm_config.cold:
+            # Note: forcemerge is NOT allowed in the cold phase by ES.
+            # Cold phase is typically just for storage tier allocation.
+            phases["cold"] = {
+                "min_age": self.ilm_config.cold,
+                "actions": {},
+            }
+
+        policy = {"phases": phases}
+
+        self.with_retries(
+            self.datastore.client.ilm.put_lifecycle,
+            name=f"{self.name}_policy",
+            policy=policy,
+        )
+        logger.info("ILM policy %s_policy created/updated", self.name)
+
+    def _create_index_template(self, ilm_config):
+        """Create or update a composable index template for ILM-managed rollover.
+
+        The template matches '{name}-*' and includes the full ODM mappings
+        so that rollover indices inherit the correct schema.
+
+        :param ilm_config: The global ILMConfig (unused directly but kept for symmetry).
+        """
+        settings = self._get_index_settings()
+        settings["index"]["lifecycle.name"] = f"{self.name}_policy"
+        settings["index"]["lifecycle.rollover_alias"] = self.name
+
+        mappings = self._get_index_mappings()
+
+        self.with_retries(
+            self.datastore.client.indices.put_index_template,
+            name=f"{self.name}_template",
+            index_patterns=[f"{self.name}-*"],
+            template={
+                "settings": settings,
+                "mappings": mappings,
+            },
+        )
+        logger.info("Index template %s_template created/updated", self.name)
+
     def _get_index_settings(self) -> dict:
         default_stub: dict = deepcopy(default_index)
         settings: dict = default_stub.pop("settings", {})
@@ -2400,8 +2794,15 @@ class ESCollection(Generic[ModelType]):
         """This function should test if the collection that you are trying to access does indeed exist
         and should create it if it does not.
 
+        When ILM is configured for this collection, it sets up the ILM policy,
+        composable index template, and bootstraps a rollover alias instead of
+        using the legacy _hot index naming.
+
         :return:
         """
+        if self.ilm_config:
+            return self._ensure_collection_ilm()
+
         # Create HOT index
         if not self.with_retries(self.datastore.client.indices.exists, index=self.name):
             logger.debug("Index %s does not exist. Creating it now...", self.name.upper())
@@ -2444,6 +2845,158 @@ class ESCollection(Generic[ModelType]):
 
         self._check_fields()
 
+    def _ensure_collection_ilm(self):
+        """Bootstrap an ILM-managed collection with rollover alias.
+
+        1. Create/update the ILM policy and composable index template.
+        2. Bootstrap the initial index if needed:
+           - If ILM indices already exist (pattern {name}-0*), skip.
+           - If a legacy _hot index exists, migrate it to {name}-000001.
+           - Otherwise, create {name}-000001 from scratch.
+        """
+        from howler.odm.models.config import config as _config
+
+        ilm_global = _config.datastore.ilm
+
+        # Idempotent: create/update ILM policy and index template
+        self._create_ilm_policy(ilm_global)
+        self._create_index_template(ilm_global)
+
+        ilm_initial_index = f"{self.name}-000001"
+
+        # Check if any ILM-managed index already exists
+        existing_ilm_indices = list(
+            self.with_retries(
+                self.datastore.client.indices.get, index=f"{self.name}-0*", ignore_unavailable=True
+            ).keys()
+        )
+
+        if existing_ilm_indices:
+            # ILM already bootstrapped — ensure the alias exists
+            latest = sorted(existing_ilm_indices)[-1]
+            if not self.with_retries(self.datastore.client.indices.exists_alias, name=self.name):
+                # Find the latest index to set as write index
+                self.with_retries(
+                    self.datastore.client.indices.put_alias,
+                    index=latest,
+                    name=self.name,
+                    is_write_index=True,
+                )
+
+            self.index_name = latest
+            logger.debug("ILM collection %s already bootstrapped", self.name.upper())
+        elif self.with_retries(self.datastore.client.indices.exists, index=self.index_name):
+            # Legacy _hot index exists — migrate to ILM
+            logger.info("Migrating %s from legacy _hot index to ILM-managed rollover", self.name.upper())
+
+            # Block writes on the old index
+            self.with_retries(
+                self.datastore.client.indices.put_settings,
+                index=self.index_name,
+                settings=write_block_settings,
+            )
+
+            # Everything after write-block must be wrapped in try/except to ensure
+            # we unblock writes if migration fails — otherwise ingestion is stuck.
+            try:
+                # Clone the _hot index to the new ILM initial index
+                self._safe_index_copy(self.datastore.client.indices.clone, self.index_name, ilm_initial_index)
+
+                # Apply ILM settings to the new index
+                self.with_retries(
+                    self.datastore.client.indices.put_settings,
+                    index=ilm_initial_index,
+                    settings={
+                        "index.lifecycle.name": f"{self.name}_policy",
+                        "index.lifecycle.rollover_alias": self.name,
+                        "index.blocks.write": None,
+                    },
+                )
+
+                # Swap alias: remove old _hot, add new ILM index as write index
+                actions = [
+                    {"add": {"index": ilm_initial_index, "alias": self.name, "is_write_index": True}},
+                ]
+
+                # Remove old alias if it points to _hot
+                if self.with_retries(self.datastore.client.indices.exists_alias, index=self.index_name, name=self.name):
+                    actions.append({"remove": {"index": self.index_name, "alias": self.name}})
+
+                self.with_retries(self.datastore.client.indices.update_aliases, actions=actions)
+
+            except Exception:
+                # Migration failed — rollback to restore ingestion to the old index
+                logger.exception(
+                    "Migration of %s to ILM failed. Rolling back write-block on %s.",
+                    self.name.upper(),
+                    self.index_name,
+                )
+
+                # Unblock writes on the old index so ingestion can resume
+                try:
+                    self.with_retries(
+                        self.datastore.client.indices.put_settings,
+                        index=self.index_name,
+                        settings=write_unblock_settings,
+                    )
+                    logger.info("Rollback successful: writes restored to %s", self.index_name)
+                except Exception as rollback_err:
+                    logger.critical(
+                        "CRITICAL: Rollback failed for %s — index may be write-blocked! Error: %s",
+                        self.index_name,
+                        str(rollback_err),
+                    )
+
+                # Clean up partially-created ILM index if it exists
+                try:
+                    if self.with_retries(self.datastore.client.indices.exists, index=ilm_initial_index):
+                        self.with_retries(self.datastore.client.indices.delete, index=ilm_initial_index)
+                        logger.info("Cleaned up partial ILM index %s", ilm_initial_index)
+                except Exception:
+                    logger.warning(
+                        "Could not clean up partial ILM index %s — manual cleanup may be needed",
+                        ilm_initial_index,
+                    )
+
+                # Re-raise the original exception so startup fails clearly
+                raise
+
+            # Unblock writes on the old index (it stays around until manually removed)
+            self.with_retries(
+                self.datastore.client.indices.put_settings,
+                index=self.index_name,
+                settings=write_unblock_settings,
+            )
+
+            # Update index_name to point to the ILM initial index
+            self.index_name = ilm_initial_index
+
+            logger.info("Migration of %s to ILM complete", self.name.upper())
+        else:
+            # Fresh install — create the initial ILM index with alias
+            logger.debug("Creating ILM-managed index %s...", ilm_initial_index)
+            settings = self._get_index_settings()
+            settings["index"]["lifecycle.name"] = f"{self.name}_policy"
+            settings["index"]["lifecycle.rollover_alias"] = self.name
+
+            try:
+                self.with_retries(
+                    self.datastore.client.indices.create,
+                    index=ilm_initial_index,
+                    mappings=self._get_index_mappings(),
+                    settings=settings,
+                    aliases={self.name: {"is_write_index": True}},
+                )
+            except elasticsearch.exceptions.RequestError as e:
+                if "resource_already_exists_exception" not in str(e):
+                    raise
+                logger.warning("ILM index already exists: %s", ilm_initial_index)
+
+            # Update index_name to point to the ILM initial index
+            self.index_name = ilm_initial_index
+
+        self._check_fields()
+
     def _add_fields(self, missing_fields: Dict):
         no_fix = []
         properties = {}
@@ -2480,6 +3033,13 @@ class ESCollection(Generic[ModelType]):
                 name=self.name,
                 **recursive_update(current_template, {"mappings": {"properties": properties}}),
             )
+
+        # When ILM is enabled, also update the composable index template so
+        # future rollover indices inherit the new field mappings.
+        if self.ilm_config:
+            from howler.odm.models.config import config as _config
+
+            self._create_index_template(_config.datastore.ilm)
 
     def wipe(self):
         """This function should completely delete the collection

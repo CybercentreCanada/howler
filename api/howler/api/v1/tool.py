@@ -59,6 +59,9 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
             {'id': None, 'error': "Error message"},
         ]
     }
+
+    .. deprecated::
+        Use POST /api/v1/hit/ directly with pre-mapped hit data instead.
     """
     data = request.json
     if not isinstance(data, dict):
@@ -74,7 +77,10 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
 
     if not isinstance(hits, list):
         return bad_request(err="Invalid: 'hits' field is missing or invalid.")
-    warnings = []
+    warnings = [
+        "This endpoint is deprecated and will be removed in a future version. "
+        "Use POST /api/v1/hit/ directly with pre-mapped hit data instead."
+    ]
     # Validate field_map targets
     hit_fields = Hit.flat_fields()
     _bundle_compat_fields = {"howler.is_bundle", "howler.hits", "howler.bundle_size", "howler.bundles"}
@@ -97,8 +103,7 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
 
     out: list[dict[str, Any]] = []
     odms: list[Hit] = []
-    bundle_raw: dict[str, Any] | None = None
-    bundle_index: int | None = None
+    bundle_id: str | None = None
     for hit in hits:
         cur_id = get_random_id()
         cur_time = now_as_iso()
@@ -148,10 +153,9 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
             odm, warns = hit_service.convert_hit(obj, unique=True, ignore_extra_values=ignore_extra_values)
 
             if is_bundle:
-                if bundle_raw is not None:
+                if bundle_id is not None:
                     return bad_request(err="You can only specify one bundle hit!")
-                bundle_raw = obj
-                bundle_index = len(odms)
+                bundle_id = odm.howler.id
 
             odms.append(odm)
 
@@ -167,16 +171,38 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
             logger.warning(e)
 
             out.append({"id": None, "error": str(e)})
+
+    # Deduplicate by hash: skip hits whose hash already exists in the datastore
+    if odms:
+        hashes = [odm.howler.hash for odm in odms]
+        existing_hashes: dict[str, int] = datastore().hit.facet(
+            "howler.hash",
+            query=f"howler.hash:({' OR '.join(hashes)})",
+            rows=len(hashes),
+        )
+
+        deduplicated_odms = []
+        for odm in odms:
+            if odm.howler.hash in existing_hashes:
+                logger.warning("Hit with hash %s already exists in the DB, skipping", odm.howler.hash)
+                warnings.append(f"Hit with hash {odm.howler.hash} already exists in the DB and was skipped.")
+                out[:] = [entry for entry in out if entry["id"] != odm.howler.id]
+            else:
+                deduplicated_odms.append(odm)
+
+        odms = deduplicated_odms
+
     # If there are any errors...
     if any([obj["error"] for obj in out]):
         return bad_request(out, warnings=warnings, err="No valid hits were provided")
-    else:
-        if bundle_index is not None:
-            # Route through bundle compat service → creates a case
-            from howler.services import bundle_compat_service
 
-            bundle_odm = odms[bundle_index]
-            child_odms = [odm for i, odm in enumerate(odms) if i != bundle_index]
+    if bundle_id is not None:
+        # Route through bundle compat service -> creates a case
+        from howler.services import bundle_compat_service
+
+        bundle_odm = next((odm for odm in odms if odm.howler.id == bundle_id), None)
+        if bundle_odm is not None:
+            child_odms = [odm for odm in odms if odm.howler.id != bundle_id]
 
             for odm in child_odms:
                 hit_service.create_hit(odm.howler.id, odm, user=user.uname)
@@ -189,18 +215,21 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
 
             # Replace the bundle entry in the output with the created bundle id
             for entry in out:
-                if entry.get("id") == bundle_odm.howler.id:
+                if entry.get("id") == bundle_id:
                     entry["id"] = result["howler"]["id"]
                     entry["_case_id"] = result.get("_case_id")
         else:
+            # The bundle hit may have been dropped by de-duplication; ingest remaining hits directly.
             for odm in odms:
                 hit_service.create_hit(odm.howler.id, odm, user=user.uname)
                 analytic_service.save_from_hit(odm, user)
+    else:
+        for odm in odms:
+            hit_service.create_hit(odm.howler.id, odm, user=user.uname)
+            analytic_service.save_from_hit(odm, user)
 
-        datastore().hit.commit()
+    datastore().hit.commit()
 
-        action_service.bulk_execute_on_query(
-            f"howler.id:({' OR '.join(entry['id'] for entry in out if entry['id'])})", user=user
-        )
+    action_service.enqueue_action_execution([entry["id"] for entry in out], trigger="create", user=user)
 
-        return created(out, warnings=warnings)
+    return created(out, warnings=warnings)

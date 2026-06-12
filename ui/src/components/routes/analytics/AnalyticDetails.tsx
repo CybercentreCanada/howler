@@ -22,6 +22,7 @@ import api from 'api';
 import { useAppUser } from 'commons/components/app/hooks';
 import PageCenter from 'commons/components/pages/PageCenter';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
+import { ModalContext } from 'components/app/providers/ModalProvider';
 import { UserListContext } from 'components/app/providers/UserListProvider';
 import UserList from 'components/elements/UserList';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
@@ -51,6 +52,7 @@ const AnalyticDetails = () => {
   const { dispatchApi } = useMyApi();
   const theme = useTheme();
   const { showSuccessMessage } = useMySnackbar();
+  const { withConfirmDeleteModal } = useContext(ModalContext);
   const { users, searchUsers } = useContext(UserListContext);
   const { config } = useContext(ApiConfigContext);
 
@@ -93,12 +95,14 @@ const AnalyticDetails = () => {
     [analytic?.analytic_id, dispatchApi]
   );
 
-  const onDelete = useCallback(async () => {
-    await dispatchApi(api.analytic.del(analytic?.analytic_id));
+  const onDelete = useCallback(() => {
+    withConfirmDeleteModal(async () => {
+      await dispatchApi(api.analytic.del(analytic?.analytic_id));
 
-    showSuccessMessage(t('route.analytics.deleted'));
-    navigate('/analytics');
-  }, [analytic?.analytic_id, dispatchApi, navigate, showSuccessMessage, t]);
+      showSuccessMessage(t('route.analytics.deleted'));
+      navigate('/analytics');
+    });
+  }, [analytic?.analytic_id, dispatchApi, navigate, withConfirmDeleteModal, showSuccessMessage, t]);
 
   const onEdit = useCallback(async () => {
     if (editingInterval) {
@@ -312,7 +316,7 @@ const AnalyticDetails = () => {
             <Grid item xs={12} md={3}>
               <Autocomplete
                 options={analytic?.detections ?? []}
-                renderInput={param => <TextField {...param} label="Detection" />}
+                renderInput={param => <TextField {...param} label={t('route.analytics.dropdown.detection')} />}
                 value={filter}
                 onChange={(_, v) => setFilter(v)}
               />

@@ -55,7 +55,8 @@ class HowlerDatastore(object):
             )
 
         for _index, _odm in INDEXES.items():
-            self.ds.register(_index, _odm)
+            ilm_index_config = config.datastore.ilm.indices.get(_index) if config.datastore.ilm.enabled else None
+            self.ds.register(_index, _odm, ilm_config=ilm_index_config)
 
     def __enter__(self):
         return self

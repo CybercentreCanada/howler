@@ -1,9 +1,15 @@
+{{- $hasCerts := false -}}
+{{- range .Values.rest.datastore.hosts -}}
+  {{- if .cert -}}
+    {{- $hasCerts = true -}}
+  {{- end -}}
+{{- end -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Values.howlerRest.name }}
+  name: {{ .Values.rest.name }}
+  namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/component: rest
 {{ include "howler.labels" . | indent 4 }}
 spec:
   selector:
@@ -23,22 +29,30 @@ spec:
         checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
     spec:
       nodeSelector:
-{{ toYaml .Values.howlerRest.nodeSelector | indent 8 }}
+{{ toYaml .Values.rest.nodeSelector | indent 8 }}
       affinity:
-{{ toYaml .Values.howlerRest.affinity | indent 8 }}
+{{ toYaml .Values.rest.affinity | indent 8 }}
       tolerations:
-{{ toYaml .Values.howlerRest.tolerations | indent 8 }}
+{{ toYaml .Values.rest.tolerations | indent 8 }}
       containers:
       - name: {{ include "howler.name" . }}
-        image: "{{ .Values.howlerRest.image.repository }}:{{ .Values.howlerRest.image.tag }}"
-        imagePullPolicy: {{ .Values.howlerRest.image.pullPolicy | quote }}
+        securityContext:
+          {{- toYaml .Values.rest.securityContext | nindent 12 }}
+        image: "{{ .Values.images.rest.repository }}:{{ .Values.images.rest.tag }}"
+        imagePullPolicy: {{ .Values.images.rest.pullPolicy | quote }}
         ports:
         - containerPort: 5000
         volumeMounts:
         - name: conf
           mountPath: /etc/howler/conf/
+        {{- if $hasCerts }}
+        - name: howler-certs
+          mountPath: /etc/howler/certs/
+        {{- end }}
         env:
         {{include "sharedEnv" . | indent 8}}
+        - name: WORKERS
+          value: "6"
         - name: HWL_USE_REST_API
           value: "true"
         - name: HWL_USE_WEBSOCKET_API
@@ -46,10 +60,15 @@ spec:
         - name: HWL_USE_JOB_SYSTEM
           value: "false"
         - name: APP_NAME
-          value: {{ .Values.howlerRest.appName | default "howler" }}
+          value: {{ .Values.rest.appName | default "howler" }}
         resources:
-          {{- toYaml .Values.howlerRest.resources | nindent 12 }}
+          {{- toYaml .Values.rest.resources | nindent 12 }}
       volumes:
       - name: conf
         configMap:
           name: howler-server-conf
+      {{- if $hasCerts }}
+      - name: howler-certs
+        secret:
+          secretName: howler-certs
+      {{- end }}

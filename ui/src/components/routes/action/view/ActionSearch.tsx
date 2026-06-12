@@ -15,6 +15,7 @@ import {
 import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
 import { useAppUser } from 'commons/components/app/hooks';
+import { ModalContext } from 'components/app/providers/ModalProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import { TuiListProvider, type TuiListItemProps } from 'components/elements/addons/lists';
 import { TuiListMethodContext } from 'components/elements/addons/lists/TuiListProvider';
@@ -24,7 +25,7 @@ import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Action } from 'models/entities/generated/Action';
-import { useCallback, useContext, useEffect, useState, type FC } from 'react';
+import { useCallback, useContext, useEffect, useState, type FC, type MouseEvent } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { StorageKey, VALID_ACTION_TRIGGERS } from 'utils/constants';
@@ -37,6 +38,7 @@ const ActionSearch: FC = () => {
   const { user } = useAppUser<HowlerUser>();
   const { dispatchApi } = useMyApi();
   const { load } = useContext(TuiListMethodContext);
+  const { withConfirmDeleteModal } = useContext(ModalContext);
   const [searchParams, setSearchParams] = useSearchParams();
   const { deleteAction } = useMyActionFunctions();
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
@@ -93,6 +95,18 @@ const ActionSearch: FC = () => {
       }
     },
     [offset, searchParams, setSearchParams]
+  );
+
+  const onDelete = useCallback(
+    (e: MouseEvent, actionId: string) => {
+      e.preventDefault();
+      e.stopPropagation();
+      withConfirmDeleteModal(async () => {
+        await deleteAction(actionId);
+        onSearch();
+      });
+    },
+    [deleteAction, onSearch, withConfirmDeleteModal]
   );
 
   // Effect to initialize list of users.
@@ -166,15 +180,7 @@ const ActionSearch: FC = () => {
                 )}
                 <FlexOne />
                 {((item.item.owner_id === user.username && editRoles) || user.roles?.includes('admin')) && (
-                  <IconButton
-                    size="small"
-                    onClick={async e => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      await deleteAction(item.item.action_id);
-                      onSearch();
-                    }}
-                  >
+                  <IconButton size="small" onClick={e => onDelete(e, item.item.action_id)}>
                     <Delete />
                   </IconButton>
                 )}
@@ -198,7 +204,7 @@ const ActionSearch: FC = () => {
         </Card>
       );
     },
-    [deleteAction, editRoles, navigate, onSearch, t, user.roles, user.username]
+    [editRoles, navigate, onDelete, t, user.roles, user.username]
   );
 
   return (

@@ -1,9 +1,29 @@
 {{- if .Values.ingress.enabled -}}
 {{- $fullName := include "howler.fullname" . -}}
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+{{/*
+  Gateway API migration notes
+  ===========================
+  This chart previously used networking.k8s.io/v1 Ingress. It has been
+  migrated to the Gateway API (gateway.networking.k8s.io/v1).
+
+  Two deployment patterns are supported:
+
+  1. Dedicated Gateway (ingress.createGateway: true)
+     The chart creates its own Gateway and HTTPRoute. Use this when the
+     application owns its own load balancer entry point.
+
+  2. Shared Platform Gateway (ingress.createGateway: false)
+     Only an HTTPRoute is created. It attaches to an existing Gateway
+     managed by the platform team via ingress.parentRefs. Use this when
+     the cluster provides a shared gateway (e.g. analytical-platform-gateway).
+*/}}
+{{- if .Values.ingress.createGateway }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
 metadata:
   name: {{ $fullName }}
+  namespace: {{ .Release.Namespace }}
   labels:
 {{ include "howler.labels" . | indent 4 }}
   {{- with .Values.ingress.annotations }}
@@ -11,39 +31,135 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-{{- if .Values.ingress.tls }}
-  tls:
-  {{- range .Values.ingress.tls }}
-    - hosts:
-      {{- range .hosts }}
-        - {{ . | quote }}
-      {{- end }}
-      secretName: {{ .secretName }}
+  # The GatewayClass determines which controller provisions this Gateway.
+  # Must match a GatewayClass name that exists in the cluster.
+  # Run: kubectl get gatewayclasses
+  gatewayClassName: {{ .Values.ingress.gatewayClassName }}
+  {{- with .Values.ingress.infrastructure }}
+  # infrastructure.annotations/labels are propagated by the gateway controller
+  # onto the Service (and Deployment) it generates to expose the proxy.
+  # This is the correct place for cloud provider annotations such as
+  # service.beta.kubernetes.io/azure-load-balancer-internal.
+  infrastructure:
+    {{- with .annotations }}
+    annotations:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .labels }}
+    labels:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
   {{- end }}
+  listeners:
+    {{- if .Values.ingress.tls }}
+    {{/*
+      HTTPS listeners: one listener is created per host in each TLS entry so
+      that each hostname can be bound to a specific TLS certificate Secret.
+      Listener names are derived from the hostname (dots replaced with dashes)
+      and must be unique within the Gateway. They are also referenced by
+      sectionName in the HTTPRoute parentRefs below.
+    */}}
+    {{- range .Values.ingress.tls }}
+    {{- $secretName := .secretName }}
+    {{- range .hosts }}
+    - name: {{ . | replace "." "-" | trunc 63 }}
+      hostname: {{ . | quote }}
+      port: 443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: {{ $secretName }}
+    {{- end }}
+    {{- end }}
+    {{- else }}
+    {{/*
+      HTTP listeners (no TLS configured): one plain HTTP listener per host.
+      Listener names are http-0, http-1, etc.
+    */}}
+    {{- range $i, $host := .Values.ingress.hosts | default (list "") }}
+    - name: {{ printf "http-%d" $i }}
+      port: 80
+      protocol: HTTP
+      {{- if $host }}
+      hostname: {{ $host | quote }}
+      {{- end }}
+    {{- end }}
+    {{- end }}
 {{- end }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fullName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "howler.labels" . | indent 4 }}
+spec:
+  {{/*
+    parentRefs determines which Gateway(s) this route attaches to.
+
+    Priority order:
+      1. ingress.parentRefs is set explicitly — used as-is. Enables attaching
+         to a shared platform Gateway in a different namespace.
+      2. ingress.createGateway is true and no parentRefs — auto-generated refs
+         pointing at the Gateway created above, one ref per listener so that
+         sectionName binding is unambiguous.
+      3. Neither — parentRefs is omitted (edge case; generally not useful).
+  */}}
+  parentRefs:
+    {{- if .Values.ingress.parentRefs }}
+    {{- toYaml .Values.ingress.parentRefs | nindent 4 }}
+    {{- else if .Values.ingress.createGateway }}
+    {{- if .Values.ingress.tls }}
+    {{- range .Values.ingress.tls }}
+    {{- range .hosts }}
+    - name: {{ $fullName }}
+      sectionName: {{ . | replace "." "-" | trunc 63 }}
+    {{- end }}
+    {{- end }}
+    {{- else }}
+    {{- range $i, $host := .Values.ingress.hosts | default (list "") }}
+    - name: {{ $fullName }}
+      sectionName: {{ printf "http-%d" $i }}
+    {{- end }}
+    {{- end }}
+    {{- end }}
+  {{/*
+    hostnames restricts this route to requests whose Host header matches one
+    of the listed values. Must be a subset of the hostnames covered by the
+    parent Gateway's listeners.
+  */}}
+  {{- with .Values.ingress.hosts }}
+  hostnames:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{/*
+    Rules are evaluated in order. More specific paths (/api, /socket) are
+    listed before the catch-all UI rule (/) so that REST and WebSocket
+    traffic is never accidentally forwarded to the web frontend.
+  */}}
   rules:
-    - host: {{ .Values.ingress.host | quote }}
-      http:
-        paths:
-          - path: {{ .Values.ingress.rest.path }}
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ $fullName }}-rest
-                port:
-                  name: rest
-          - path: {{ .Values.ingress.websocket.path }}
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ $fullName }}-rest-websocket
-                port:
-                  name: websocket
-          - path: {{ $.Values.ingress.ui.path }}
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ $fullName }}-web
-                port:
-                  name: web
+    - matches:
+        - path:
+            type: PathPrefix
+            value: {{ .Values.ingress.rest.path }}
+      backendRefs:
+        - name: {{ $fullName }}-rest
+          port: {{ .Values.rest.port | default 5000 }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: {{ .Values.ingress.websocket.path }}
+      backendRefs:
+        - name: {{ $fullName }}-rest-websocket
+          port: {{ .Values.rest.port | default 5000 }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: {{ .Values.ingress.ui.path }}
+      backendRefs:
+        - name: {{ $fullName }}-web
+          port: {{ .Values.ui.port | default 3000 }}
 {{- end }}

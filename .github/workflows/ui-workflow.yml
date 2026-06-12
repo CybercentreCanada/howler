@@ -83,6 +83,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Check translations
+        run: python build_scripts/check_translation.py
+
+      - name: Check for banned imports
+        run: python build_scripts/find_bad_imports.py
+
       - name: Run type checking
         run: pnpm tsc --noEmit
 

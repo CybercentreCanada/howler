@@ -3,6 +3,7 @@ import { Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/materia
 import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
 import { useAppUser } from 'commons/components/app/hooks';
+import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
 import { TuiListProvider, type TuiListItem, type TuiListItemProps } from 'components/elements/addons/lists';
 import { TuiListMethodContext, type TuiListMethodsState } from 'components/elements/addons/lists/TuiListProvider';
 import ItemManager from 'components/elements/display/ItemManager';
@@ -22,8 +23,10 @@ const TemplatesBase: FC = () => {
   const navigate = useNavigate();
   const { dispatchApi } = useMyApi();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { load } = useContext<TuiListMethodsState<Template>>(TuiListMethodContext);
+  const { load, remove } = useContext<TuiListMethodsState<Template>>(TuiListMethodContext);
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
+
+  const { analytics } = useContext(AnalyticContext);
 
   const [phrase, setPhrase] = useState<string>('');
   const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
@@ -67,6 +70,7 @@ const TemplatesBase: FC = () => {
 
   // Load the items into list when response changes.
   // This hook should only trigger when the 'response' changes.
+  // or if the analytic list changes to refresh the disabled state
   useEffect(() => {
     if (response) {
       load(
@@ -74,12 +78,17 @@ const TemplatesBase: FC = () => {
           id: item.template_id,
           item,
           selected: false,
-          cursor: false
+          cursor: false,
+          disabled:
+            item.detection &&
+            !analytics
+              .find(v => v.name === item.analytic)
+              ?.detections?.map((s: string) => s.toLowerCase())
+              ?.includes(item.detection?.toLowerCase())
         }))
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [response, load]);
+  }, [response, load, analytics]);
 
   const onPageChange = useCallback(
     (_offset: number) => {
@@ -117,9 +126,24 @@ const TemplatesBase: FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offset]);
 
+  const removeTemplate = useCallback(
+    async (templateId: string) => {
+      await dispatchApi(api.template.del(templateId), {
+        logError: false,
+        showError: true,
+        throwError: false
+      });
+
+      remove(templateId);
+    },
+    [dispatchApi, remove]
+  );
+
   const renderer = useCallback(
-    (item: Template, className?: string) => <TemplateCard template={item} className={className} />,
-    []
+    (item: Template, error?: boolean, className?: string) => (
+      <TemplateCard template={item} error={error} onRemove={removeTemplate} className={className} />
+    ),
+    [removeTemplate]
   );
 
   return (
@@ -159,15 +183,17 @@ const TemplatesBase: FC = () => {
           {t('route.templates.search.prompt')}
         </Typography>
       }
-      renderer={({ item }: TuiListItemProps<Template>, classRenderer) => renderer(item.item, classRenderer())}
+      renderer={({ item }: TuiListItemProps<Template>, classRenderer) =>
+        renderer(item.item, !!item.disabled, classRenderer())
+      }
       response={response}
-      onSelect={(item: TuiListItem<Template>) =>
+      onSelect={(item: TuiListItem<Template>) => {
         navigate(
           `/templates/view?type=${item.item.type}&analytic=${item.item.analytic}${
             item.item.detection ? '&detection=' + item.item.detection : ''
           }`
-        )
-      }
+        );
+      }}
       onCreate={() => navigate('/templates/view')}
       createPrompt="route.templates.create"
       searchPrompt="route.templates.manager.search"

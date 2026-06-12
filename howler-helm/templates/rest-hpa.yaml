@@ -2,13 +2,14 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ .Values.howlerRest.name }}
+  name: {{ .Values.rest.name }}
+  namespace: {{ .Release.Namespace }}
   labels: {}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ .Values.howlerRest.name }}
+    name: {{ .Values.rest.name }}
   minReplicas: {{ .Values.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.autoscaling.maxReplicas }}
   {{- if .Values.autoscaling.metrics }}

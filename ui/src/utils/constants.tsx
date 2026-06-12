@@ -59,6 +59,7 @@ export enum StorageKey {
   COMPACT_JSON = 'compact_json_view',
   FLATTEN_JSON = 'flatten_json_view',
   FORCE_DRAWER = 'force_drawer',
+  SHOW_HIT_SUMMARY_GRAPH = 'show_hit_summary_graph',
   LAST_VIEW = 'last_view',
   ONLY_RULES = 'only_rules',
   PAGE_COUNT = 'page_count',

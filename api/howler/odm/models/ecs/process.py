@@ -79,7 +79,7 @@ class ParentParentProcess(odm.Model):
         odm.Compound(PE),
         description="Windows Portable Executable (PE) metadata.",
     )
-    pid = odm.Optional(odm.Integer(description="Process id."))
+    pid = odm.Optional(odm.Long(description="Process id."))
     same_as_process = odm.Optional(
         odm.Boolean(
             description="This boolean is used to identify if a leader process is the same as the top level process."
@@ -141,7 +141,7 @@ class ParentProcess(odm.Model):
         odm.Compound(PE),
         description="Windows Portable Executable (PE) metadata.",
     )
-    pid = odm.Optional(odm.Integer(description="Process id."))
+    pid = odm.Optional(odm.Long(description="Process id."))
     same_as_process = odm.Optional(
         odm.Boolean(
             description="This boolean is used to identify if a leader process is the same as the top level process."
@@ -203,7 +203,7 @@ class Process(odm.Model):
         odm.Compound(PE),
         description="Windows Portable Executable (PE) metadata.",
     )
-    pid = odm.Optional(odm.Integer(description="Process id."))
+    pid = odm.Optional(odm.Long(description="Process id."))
     same_as_process = odm.Optional(
         odm.Boolean(
             description="This boolean is used to identify if a leader process is the same as the top level process."

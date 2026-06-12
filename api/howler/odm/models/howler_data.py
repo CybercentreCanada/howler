@@ -201,6 +201,12 @@ class HowlerData(odm.Model):
         description="Unique identifier of the assigned user.",
         default=DEFAULT_ASSIGNMENT,
     )
+    assessor: Optional[str] = odm.Optional(
+        odm.Keyword(
+            description="The most recent person to assess a hit",
+            default=None,
+        )
+    )
     data: list[str] = odm.List(
         odm.Keyword(description="Raw telemetry records associated with this hit."),
         default=[],

@@ -282,3 +282,61 @@ remember:
 
 With proper preparation and testing, this migration will provide improved search functionality and better data type
 handling for large integer values in your Howler deployment.
+
+## Migration: Legacy `_hot` Index to ILM Rollover
+
+When ILM is enabled for an index that was previously using the legacy `_hot` naming convention (e.g. `howler-hit_hot`), Howler **automatically migrates** it on startup. No manual steps are required.
+
+### What happens automatically
+
+When the Howler API starts and `_ensure_collection_ilm()` runs for a collection, it detects one of three states:
+
+1. **ILM indices already exist** (pattern `{name}-0*`): No action needed. The alias is verified and the collection is ready.
+
+2. **Legacy `_hot` index exists** (e.g. `howler-hit_hot`): Automatic migration:
+   1. The ILM policy and composable index template are created/updated.
+   2. Writes to the old `_hot` index are temporarily blocked.
+   3. The `_hot` index is cloned to `{name}-000001` (e.g. `howler-hit-000001`).
+   4. ILM lifecycle settings (`lifecycle.name`, `lifecycle.rollover_alias`) are applied to the new index.
+   5. The alias (`howler-hit`) is atomically swapped: the old `_hot` index is removed from the alias, and the new `-000001` index is added as the write index.
+   6. Writes to the old `_hot` index are unblocked (it remains in the cluster until manually removed).
+   7. All data is preserved — the clone is a zero-copy operation at the filesystem level in Elasticsearch.
+
+3. **Fresh install** (no existing index): A new `{name}-000001` index is created with the ILM policy and rollover alias already attached.
+
+### What operators should do
+
+- **Before enabling ILM**: No preparation is needed. The migration is safe to run on a live cluster.
+- **After migration**: The old `_hot` index will still exist in the cluster but is no longer referenced by the alias. Operators can delete it at their convenience to reclaim disk space:
+  ```
+  DELETE /howler-hit_hot
+  ```
+- **Rollback**: If you need to revert, disable `ilm.enabled` in the config, manually recreate the alias pointing to `_hot`, and delete the `-000001` index. However, any documents written after migration will only be in the new index.
+
+### Configuration
+
+Enable ILM by adding the following to your Howler configuration:
+
+```yaml
+datastore:
+  ilm:
+    enabled: true
+    rollover_max_age: "30d"       # Max age before rollover (default: 30d)
+    rollover_max_size: "50gb"     # Max primary shard size before rollover (default: 50gb)
+    indices:
+      hit:
+        warm: "30d"               # Move to warm phase after 30 days
+        cold: "90d"               # Move to cold phase after 90 days
+```
+
+- `rollover_max_age` / `rollover_max_size`: Triggers for creating a new write index. Whichever threshold is hit first causes the rollover.
+- `warm`: Optional. Min age before the index transitions to the warm phase (triggers a force-merge). Omit to skip the warm phase.
+- `cold`: Optional. Min age before the index transitions to the cold phase. Omit to skip the cold phase.
+- There is **no delete phase** — the existing retention cronjob handles document deletion via `delete_by_query` across all tiers using the alias.
+- There is **no readonly action** in warm/cold — the retention cronjob needs write access to delete expired documents across all indices.
+
+### Interaction with existing features
+
+- **Retention cronjob**: Continues to work unchanged. It runs `delete_by_query` against the alias, which fans out across all backing indices (hot, warm, cold). No per-tier awareness is needed.
+- **Search**: All queries go through the alias and automatically span all backing indices. No changes to search behavior.
+- **Ingestion**: New documents are written to the current write index via the alias. Rollover is managed by Elasticsearch's ILM.

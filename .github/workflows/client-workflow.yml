@@ -98,11 +98,13 @@ jobs:
         working-directory: .
         run: |
           echo "base-depth=$(expr ${{ github.event.pull_request.commits }} + 1)" >> $GITHUB_OUTPUT
+
       - name: Checkout current ref
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: ${{ steps.base-depth.outputs.base-depth }}
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
@@ -168,6 +170,7 @@ jobs:
       - name: Coverage Results
         if: steps.tests.outcome == 'success'
         run: |
+          git fetch --depth=1 origin $BASE_SHA
           git diff --name-only $(git merge-base $BASE_SHA $HEAD_SHA)..$HEAD_SHA
           git diff $(git merge-base $BASE_SHA $HEAD_SHA)..$HEAD_SHA > diff.txt
           poetry run coverage_report

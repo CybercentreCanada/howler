@@ -114,5 +114,12 @@
     }
   },
   "editor.autoIndentOnPaste": true,
-  "python-envs.defaultEnvManager": "ms-python.python:system"
+  "python-envs.defaultEnvManager": "ms-python.python:system",
+  "python-envs.pythonProjects": [
+    {
+      "path": ".",
+      "envManager": "ms-python.python:poetry",
+      "packageManager": "ms-python.python:poetry"
+    }
+  ]
 }

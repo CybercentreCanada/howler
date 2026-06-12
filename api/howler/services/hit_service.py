@@ -111,7 +111,7 @@ def get_hit_workflow() -> Workflow:
                     "source": [Status.OPEN, Status.IN_PROGRESS],
                     "transition": HitStatusTransition.ASSESS,
                     "dest": Status.RESOLVED,
-                    "actions": [assess_hit, assign_hit],
+                    "actions": [assess_hit],
                 }
             ),
             Transition(
@@ -649,11 +649,8 @@ def transition_hit(
         # Commit database changes before executing bulk actions
         datastore().hit.commit()
 
-        # Build query for all processed hits (primary + children)
-        hit_query = f"howler.id:({hit_id})"
-
-        # Execute bulk actions on all hits
-        action_service.bulk_execute_on_query(hit_query, trigger=trigger, user=user)
+        # Enqueue action execution for all hits
+        action_service.enqueue_action_execution([hit_id], trigger=trigger, user=user)
 
         # Emit events for processed hit to notify other systems
         data, hit_version = datastore().hit.get(hit_id, as_obj=False, version=True)

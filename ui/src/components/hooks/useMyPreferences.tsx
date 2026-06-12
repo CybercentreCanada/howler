@@ -334,7 +334,8 @@ const useMyPreferences = (): AppPreferenceConfigs => {
         )
       },
       leftnav: {
-        elements: MENU_ITEMS
+        elements: MENU_ITEMS,
+        width: 280
       }
     }),
     [USER_MENU_ITEMS, ADMIN_MENU_ITEMS, MENU_ITEMS, leftItems, rightItems]

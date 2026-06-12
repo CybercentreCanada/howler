@@ -60,8 +60,10 @@ import Templates from 'components/routes/templates/Templates';
 import ViewComposer from 'components/routes/views/ViewComposer';
 import Views from 'components/routes/views/Views';
 import dayjs from 'dayjs';
+import 'dayjs/locale/fr-ca';
 import duration from 'dayjs/plugin/duration';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
+import minMax from 'dayjs/plugin/minMax';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import utc from 'dayjs/plugin/utc';
 import i18n from 'i18n';
@@ -69,7 +71,7 @@ import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Hit } from 'models/entities/generated/Hit';
 import * as monaco from 'monaco-editor';
 import howlerPluginStore from 'plugins/store';
-import { useContext, useEffect, useMemo, type FC, type PropsWithChildren } from 'react';
+import { useCallback, useContext, useEffect, useMemo, type FC, type PropsWithChildren } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { PluginProvider, usePluginStore } from 'react-pluggable';
 import { createBrowserRouter, Outlet, RouterProvider, useLocation, useNavigate } from 'react-router-dom';
@@ -96,6 +98,8 @@ dayjs.extend(utc);
 dayjs.extend(duration);
 dayjs.extend(relativeTime);
 dayjs.extend(localizedFormat);
+dayjs.extend(minMax);
+dayjs.locale(i18n.language === 'en' ? 'en' : 'fr-ca');
 
 loader.config({ monaco });
 
@@ -122,6 +126,15 @@ const MyApp: FC = () => {
   const { setItems } = useAppSwitcher();
   const { get, set, remove } = useMyLocalStorage();
   const pluginStore = usePluginStore();
+
+  const onLanguageChange = useCallback((language: 'en' | 'fr') => dayjs.locale(language === 'en' ? 'en' : 'fr-ca'), []);
+
+  useEffect(() => {
+    i18n.on('languageChanged', onLanguageChange);
+    return () => {
+      i18n.off('languageChanged', onLanguageChange);
+    };
+  }, [onLanguageChange]);
 
   // Simulate app loading time...
   // e.g. fetching initial app data, etc.
@@ -268,7 +281,11 @@ const createRouter = () =>
         },
         {
           path: 'cases/:id',
-          element: <ParameterProvider><CaseViewer /></ParameterProvider>,
+          element: (
+            <ParameterProvider>
+              <CaseViewer />
+            </ParameterProvider>
+          ),
           children: [
             {
               index: true,

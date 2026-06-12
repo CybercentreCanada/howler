@@ -14,11 +14,12 @@ import {
 import api from 'api';
 import PageCenter from 'commons/components/pages/PageCenter';
 import TemplateEditor from 'components/routes/templates/TemplateEditor';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Check, Delete, SsidChart } from '@mui/icons-material';
 import AppInfoPanel from 'commons/components/display/AppInfoPanel';
+import { ModalContext } from 'components/app/providers/ModalProvider';
 import { DEFAULT_FIELDS } from 'components/elements/hit/HitOutline';
 import useMyApi from 'components/hooks/useMyApi';
 import isEqual from 'lodash-es/isEqual';
@@ -33,9 +34,11 @@ const TemplateViewer = () => {
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
   const { dispatchApi } = useMyApi();
+  const { withConfirmDeleteModal } = useContext(ModalContext);
 
   const [templateList, setTemplateList] = useState<Template[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<Template>(null);
+  const [sessionTemplateList, setSessionTemplateList] = useState<Template[]>([]);
   const [displayFields, setDisplayFields] = useState<string[]>([]);
 
   const [analytics, setAnalytics] = useState<Analytic[]>([]);
@@ -104,22 +107,28 @@ const TemplateViewer = () => {
 
   useEffect(() => {
     if (analytic && detection) {
-      const template = (templateList ?? []).find(
-        _template =>
-          _template.analytic === analytic &&
-          ((detection === 'ANY' && !_template.detection) || _template.detection === detection) &&
-          _template.type === type
-      );
+      const findTemplate = (_templateList: Template[]) =>
+        (_templateList ?? []).find(
+          _template =>
+            _template.analytic === analytic &&
+            ((detection === 'ANY' && !_template.detection) || _template.detection === detection) &&
+            _template.type === type
+        );
+
+      const template = findTemplate(templateList);
+
+      // check if a template has been modified in the session but not saved to the datastore
+      const sessionTemplate = findTemplate(sessionTemplateList);
 
       if (template) {
         setSelectedTemplate(template);
-        setDisplayFields(template.keys);
+        setDisplayFields(sessionTemplate ? sessionTemplate.keys : template.keys);
       } else {
         setSelectedTemplate(null);
-        setDisplayFields(DEFAULT_FIELDS);
+        setDisplayFields(sessionTemplate ? sessionTemplate.keys : DEFAULT_FIELDS);
       }
     }
-  }, [analytic, detection, templateList, type]);
+  }, [analytic, detection, sessionTemplateList, templateList, type]);
 
   useEffect(() => {
     if (analytic) {
@@ -153,15 +162,38 @@ const TemplateViewer = () => {
     return { ..._hit };
   }, [analytic]);
 
-  const onDelete = useCallback(async () => {
-    await dispatchApi(api.template.del(selectedTemplate.template_id), {
-      logError: false,
-      showError: true,
-      throwError: false
+  const onDelete = useCallback(() => {
+    withConfirmDeleteModal(async () => {
+      await dispatchApi(api.template.del(selectedTemplate.template_id), {
+        logError: false,
+        showError: true,
+        throwError: false
+      });
+      setSessionTemplateList(l =>
+        l.filter(
+          v =>
+            v.analytic != selectedTemplate.analytic ||
+            v.detection != selectedTemplate.detection ||
+            v.type != selectedTemplate.type
+        )
+      );
+      setTemplateList(l =>
+        l.filter(
+          v =>
+            v.analytic != selectedTemplate.analytic ||
+            v.detection != selectedTemplate.detection ||
+            v.type != selectedTemplate.type
+        )
+      );
     });
-    setSelectedTemplate(null);
-    setDisplayFields(DEFAULT_FIELDS);
-  }, [dispatchApi, selectedTemplate?.template_id]);
+  }, [
+    dispatchApi,
+    selectedTemplate?.analytic,
+    selectedTemplate?.detection,
+    selectedTemplate?.template_id,
+    selectedTemplate?.type,
+    withConfirmDeleteModal
+  ]);
 
   const onSave = useCallback(async () => {
     if (analytic && detection) {
@@ -186,16 +218,48 @@ const TemplateViewer = () => {
         setSelectedTemplate(result);
         const newList = [result, ...templateList];
         setTemplateList(newList.filter((v1, i) => newList.findIndex(v2 => v1.template_id === v2.template_id) === i));
+
+        const updatedSessionList = sessionTemplateList.filter(
+          v => v.analytic !== result.analytic || v.detection !== result.detection || v.type !== result.type
+        );
+        setSessionTemplateList(updatedSessionList);
       } finally {
         setTemplateLoading(false);
       }
     }
-  }, [analytic, detection, dispatchApi, displayFields, selectedTemplate, templateList, type]);
+  }, [analytic, detection, dispatchApi, displayFields, selectedTemplate, sessionTemplateList, templateList, type]);
 
   const analyticOrDetectionMissing = useMemo(() => !analytic || !detection, [analytic, detection]);
   const noFieldChange = useMemo(
     () => displayFields.length < 1 || isEqual(selectedTemplate?.keys ?? DEFAULT_FIELDS, displayFields),
     [displayFields, selectedTemplate?.keys]
+  );
+
+  const onTypeToggle = useCallback(
+    (_type: string) => {
+      setType(_type);
+
+      if (noFieldChange) {
+        return;
+      }
+
+      const sessionTemplate = {
+        analytic: analytic,
+        detection: detection !== 'ANY' ? detection : null,
+        type: type,
+        keys: displayFields
+      };
+      const newList = [sessionTemplate, ...sessionTemplateList];
+      setSessionTemplateList(
+        newList.filter(
+          (v1, i) =>
+            newList.findIndex(
+              v2 => v1.analytic === v2.analytic && v1.detection === v2.detection && v1.type === v2.type
+            ) === i
+        )
+      );
+    },
+    [analytic, detection, displayFields, noFieldChange, sessionTemplateList, type]
   );
 
   return (
@@ -209,7 +273,10 @@ const TemplateViewer = () => {
               options={analytics.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))}
               getOptionLabel={option => option.name}
               value={analytics.find(a => a.name === analytic) || null}
-              onChange={(__, newValue) => setAnalytic(newValue ? newValue.name : '')}
+              onChange={(__, newValue) => {
+                setAnalytic(newValue ? newValue.name : '');
+                setSessionTemplateList([]); // do not keep session memory if analytic or detection is changed
+              }}
               renderInput={autocompleteAnalyticParams => (
                 <TextField {...autocompleteAnalyticParams} label={t('route.templates.analytic')} size="small" />
               )}
@@ -222,7 +289,10 @@ const TemplateViewer = () => {
                 options={['ANY', ...detections.sort()]}
                 getOptionLabel={option => option}
                 value={detection ?? ''}
-                onChange={(__, newValue) => setDetection(newValue)}
+                onChange={(__, newValue) => {
+                  setDetection(newValue);
+                  setSessionTemplateList([]); // do not keep session memory if analytic or detection is changed
+                }}
                 renderInput={autocompleteDetectionParams => (
                   <TextField {...autocompleteDetectionParams} label={t('route.templates.detection')} size="small" />
                 )}
@@ -241,7 +311,7 @@ const TemplateViewer = () => {
             disabled={analyticOrDetectionMissing}
             onChange={(__, _type) => {
               if (_type) {
-                setType(_type);
+                onTypeToggle(_type);
               }
             }}
           >

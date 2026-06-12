@@ -93,6 +93,52 @@ class Host(BaseModel):
         return self.__repr__()
 
 
+class ILMIndexConfig(BaseModel):
+    """Per-index ILM phase configuration.
+
+    Controls when an index transitions to warm and cold phases.
+    Values are Elasticsearch age strings (e.g. "30d", "90d").
+    """
+
+    warm: Optional[str] = Field(
+        default=None,
+        description="Min age before the index enters the warm phase (e.g. '30d'). None to skip.",
+    )
+    warm_forcemerge_segments: Optional[int] = Field(
+        default=3,
+        description="Max segments after forcemerge in warm phase. Use 2-3 if writes still occur. "
+        "None to skip forcemerge.",
+    )
+    cold: Optional[str] = Field(
+        default=None,
+        description="Min age before the index enters the cold phase (e.g. '90d'). None to skip.",
+    )
+
+
+class ILMConfig(BaseModel):
+    """Index Lifecycle Management configuration.
+
+    When enabled, Howler uses Elasticsearch ILM policies and rollover aliases
+    to split large indices into time-based segments. This cooperates with the
+    existing retention cronjob — ILM handles rollover and phase transitions,
+    while the retention job handles document deletion.
+    """
+
+    enabled: bool = Field(default=False, description="Enable ILM-based index rollover")
+    rollover_max_age: str = Field(
+        default="30d",
+        description="Maximum age of the write index before rollover (e.g. '30d')",
+    )
+    rollover_max_size: str = Field(
+        default="50gb",
+        description="Maximum primary shard size before rollover (e.g. '50gb')",
+    )
+    indices: dict[str, ILMIndexConfig] = Field(
+        default={},
+        description="Per-index ILM configuration, keyed by collection name (e.g. 'hit')",
+    )
+
+
 class Datastore(BaseModel):
     """Datastore configuration for Howler.
 
@@ -106,6 +152,10 @@ class Datastore(BaseModel):
     )
     type: Literal["elasticsearch"] = Field(
         default="elasticsearch", description="Type of application used for the datastore"
+    )
+    ilm: ILMConfig = Field(
+        default_factory=ILMConfig,
+        description="Index Lifecycle Management configuration",
     )
 
 
@@ -365,6 +415,19 @@ class Correlation(BaseModel):
     batch_timeout: int = Field(default=10, description="Seconds to wait before flushing a partial batch.")
 
 
+class ActionQueue(BaseModel):
+    """Action queue worker configuration.
+
+    Controls the background worker that buffers action execution requests
+    via a Redis queue, coalescing them into batches to reduce Elasticsearch
+    query load during ingestion spikes.
+    """
+
+    enabled: bool = Field(default=True, description="Enable the action queue worker?")
+    batch_size: int = Field(default=100, description="Max action items per batch.")
+    batch_timeout: int = Field(default=10, description="Seconds to wait before flushing a partial batch.")
+
+
 class System(BaseModel):
     """System-level configuration for Howler.
 
@@ -380,6 +443,8 @@ class System(BaseModel):
     "View Cleanup Configuration"
     correlation: Correlation = Correlation()
     "Correlation Worker Configuration"
+    action_queue: ActionQueue = ActionQueue()
+    "Action Queue Worker Configuration"
 
 
 class UI(BaseModel):
@@ -470,6 +535,18 @@ class Telemetry(BaseModel):
     )
 
 
+class Discovery(BaseModel):
+    """Service discovery configuration for Howler.
+
+    Defines settings for enabling and configuring service discovery,
+    allowing Howler instances to locate and communicate with each other
+    in distributed deployments.
+    """
+
+    url: Optional[str] = Field(default=None, description="Discovery URL")
+    enabled: bool = Field(default=False, description="Should discovery be enabled?")
+
+
 class Core(BaseModel):
     """Core application configuration for Howler.
 
@@ -552,6 +629,8 @@ class Config(BaseSettings):
     logging: Logging = Logging()
     system: System = System()
     ui: UI = UI()
+    discovery: Discovery = Discovery()
+
     mapping: dict[str, str] = Field(description="Mapping of alert keys to clue types", default={})
 
     model_config = SettingsConfigDict(

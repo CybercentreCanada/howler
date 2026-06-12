@@ -1,26 +1,49 @@
 {
+    "exclude": [
+        "**/build",
+        "**/.venv",
+        "ui",
+        "**/node_modules",
+        "**/__pycache__",
+        "**/.*"
+    ],
     "executionEnvironments": [
         {
+            "extraPaths": [
+                "./api"
+            ],
             "reportArgumentType": "none",
             "reportAssignmentType": "none",
             "root": "api/howler/odm/models"
         },
         {
+            "extraPaths": [
+                "./api"
+            ],
             "reportArgumentType": "information",
             "reportAttributeAccessIssue": "information",
             "reportOptionalCall": "information",
             "root": "api/howler/datastore"
         },
         {
+            "extraPaths": [
+                "./api"
+            ],
             "reportOptionalMemberAccess": "information",
             "reportPossiblyUnboundVariable": "information",
             "root": "api/howler/odm/helper.py"
         },
         {
+            "extraPaths": [
+                "./api"
+            ],
             "reportPossiblyUnboundVariable": "information",
             "root": "api/howler/odm/random_data.py"
         },
         {
+            "extraPaths": [
+                "./api"
+            ],
             "reportArgumentType": "information",
             "reportAttributeAccessIssue": "information",
             "reportIncompatibleMethodOverride": "information",
@@ -30,10 +53,16 @@
             "root": "api/howler/odm/base.py"
         },
         {
+            "extraPaths": [
+                "./api"
+            ],
             "reportAttributeAccessIssue": "information",
             "root": "api/howler/security/__init__.py"
         },
         {
+            "extraPaths": [
+                "./api"
+            ],
             "reportArgumentType": "information",
             "reportOperatorIssue": "information",
             "reportOptionalMemberAccess": "information",
@@ -41,16 +70,25 @@
             "root": "api/howler/helper/ws.py"
         },
         {
+            "extraPaths": [
+                "./api"
+            ],
             "reportArgumentType": "information",
             "reportIncompatibleMethodOverride": "information",
             "reportReturnType": "information",
             "root": "api/howler/remote/datatypes"
         },
         {
+            "extraPaths": [
+                "./api"
+            ],
             "reportArgumentType": "none",
             "root": "api/howler/common/classification.py"
         },
         {
+            "extraPaths": [
+                "./api"
+            ],
             "reportArgumentType": "none",
             "reportAttributeAccessIssue": "none",
             "reportCallIssue": "none",
@@ -59,6 +97,7 @@
             "reportOperatorIssue": "none",
             "reportOptionalIterable": "none",
             "reportOptionalMemberAccess": "none",
+            "reportOptionalOperand": "none",
             "reportOptionalSubscript": "none",
             "reportPossiblyUnboundVariable": "none",
             "reportReturnType": "none",

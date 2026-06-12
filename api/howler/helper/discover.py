@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, cast
 
 import requests
 
@@ -16,6 +16,9 @@ def get_apps_list(discovery_url: str | None) -> list[dict[str, str]]:
     Returns:
         list[dict[str, str]]: A list of other apps
     """
+    if not config.discovery.enabled or discovery_url is None:
+        return []
+
     if discovery_url not in DISCO_CACHE:
         apps: list[dict[str, Any]] = []
 
@@ -28,7 +31,7 @@ def get_apps_list(discovery_url: str | None) -> list[dict[str, str]]:
 
         try:
             resp = requests.get(
-                url,
+                cast(str, discovery_url or config.discovery.url),
                 headers={"accept": "application/json"},
                 timeout=5,
             )

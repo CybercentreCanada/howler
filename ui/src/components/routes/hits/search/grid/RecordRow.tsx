@@ -2,8 +2,8 @@ import { KeyboardArrowUp } from '@mui/icons-material';
 import { Box, Collapse, IconButton, lighten, Stack, TableCell, TableRow, Typography, useTheme } from '@mui/material';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { RecordContext } from 'components/app/providers/RecordProvider';
-import Assigned from 'components/elements/hit/elements/Assigned';
 import EscalationChip from 'components/elements/hit/elements/EscalationChip';
+import HitUsers from 'components/elements/hit/elements/HitUsers';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import ObservableCard from 'components/elements/observable/ObservableCard';
@@ -94,7 +94,7 @@ const RecordRow: FC<{
                   {record.howler.detection}
                 </Typography>
                 {isHit(record) && record.howler.assignment !== 'unassigned' && (
-                  <Assigned hit={record} layout={HitLayout.DENSE} hideLabel />
+                  <HitUsers hit={record} layout={HitLayout.DENSE} hideLabel />
                 )}
               </Stack>
             </Collapse>

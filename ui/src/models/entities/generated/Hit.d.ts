@@ -46,6 +46,7 @@ export interface Hit {
   aws?: Aws;
   azure?: Azure;
   cbs?: Cbs;
+  classification?: string;
   cloud?: Cloud;
   clue?: Clue;
   container?: Container;

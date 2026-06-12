@@ -251,6 +251,7 @@ README.md, LICENSE, .gitignore, .pre-commit-config.yaml, pyrightconfig.json
 - Most common failure: Python version mismatch, missing conf files, skipped install, or dependency update.
 - Check documentation/ for deep developer and CI/CD guidance.
 - **For PRs**: Ensure all automated and manual review requirements are satisfied prior to merge to reduce rejection risk.
+- **For PRs**: If you make changes to lockfiles/dependencies, remove these changes before creating a pull request.
 
 ---
 

@@ -53,6 +53,10 @@ class Grouped(object):
 
         Returns a generator that transparently and efficiently pages through results.
         """
+        # Default the query to include all hits if none provided
+        if query is None:
+            query = "howler.id:*"
+
         return self._do_grouped(
             "hit",
             field,
