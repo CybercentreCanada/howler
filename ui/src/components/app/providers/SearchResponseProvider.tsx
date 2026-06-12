@@ -17,14 +17,14 @@ export type SearchResponseContextType<T> = {
     config?: DispatchApiConfig
   ) => Promise<HowlerSearchResponse<T>>;
   getSearchRequestData: (requestData: Partial<HowlerSearchRequest>) => Partial<HowlerSearchRequest>;
-  response: SearchResponseState<T>;
+  response: SearchResponseState<T> | null;
 };
 
 export const SearchResponseContext = createContext<SearchResponseContextType<any>>(null);
 
 type SearchResponseProviderProps<T> = PropsWithChildren<{
   idField: string;
-  initialResponse?: SearchResponseState<T>;
+  initialResponse?: SearchResponseState<T> | null;
 }>;
 
 const SearchResponseProvider = <T,>({
@@ -33,7 +33,7 @@ const SearchResponseProvider = <T,>({
   initialResponse = null
 }: SearchResponseProviderProps<T>) => {
   const { dispatchApi } = useMyApi();
-  const [response, setResponse] = useState<SearchResponseState<T>>(initialResponse);
+  const [response, setResponse] = useState<SearchResponseState<T> | null>(initialResponse);
 
   const request = useCallback(
     async (
@@ -43,13 +43,13 @@ const SearchResponseProvider = <T,>({
     ) => {
       const _response = await dispatchApi(endpoint(requestData), config);
 
-      setResponse({
+      setResponse(_prevResponse => ({
         ..._response,
-        removeCount: _response.offset <= response?.offset ? 0 : (response?.removeCount ?? 0)
-      });
+        removeCount: _response.offset <= _prevResponse?.offset ? 0 : (_prevResponse?.removeCount ?? 0)
+      }));
       return _response;
     },
-    [dispatchApi, response]
+    [dispatchApi]
   );
 
   const getSearchRequestData = useCallback(
