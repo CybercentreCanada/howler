@@ -1,4 +1,4 @@
-import { Grid, gridClasses, Tooltip } from '@mui/material';
+import { Grid, gridClasses } from '@mui/material';
 import { sortBy, uniqBy } from 'lodash-es';
 import type { FC } from 'react';
 import { useMemo } from 'react';
@@ -9,8 +9,6 @@ import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Hit } from 'models/entities/generated/Hit';
 
 import HitNotebooks from 'components/elements/hit/HitNotebooks';
-import PivotTooltip from 'components/elements/hit/PivotTooltip';
-import RelatedLinkTooltip from 'components/elements/hit/RelatedLinkTooltip';
 import ResolvePivotUrl from 'components/elements/hit/ResolvePivotUrl';
 import PivotLink from 'components/elements/hit/related/PivotLink';
 import RelatedLink from 'components/elements/hit/related/RelatedLink';
@@ -49,17 +47,13 @@ const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
   return (
     <Grid container spacing={1} pr={2} sx={{ [`& .${gridClasses.item}`]: { display: 'flex' } }}>
       {displayLinks
-        .filter(link => !!link.href) // ← ensure href exists
+        .filter(link => !!link.href)
         .map(link => {
-          const safeTitle = link.title ?? link.href; // ← fallback title
+          const safeTitle = link.title ?? link.href;
 
           return (
             <Grid item key={link.href}>
-              <Tooltip title={<RelatedLinkTooltip title={safeTitle} href={link.href} />}>
-                <span>
-                  <RelatedLink compact title={safeTitle} href={link.href} target="_blank" rel="noopener noreferrer" />
-                </span>
-              </Tooltip>
+              <RelatedLink compact title={safeTitle} href={link.href} target="_blank" rel="noopener noreferrer" />
             </Grid>
           );
         })}
@@ -67,11 +61,7 @@ const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
       {displayPivots.map(({ pivot, dossier, resolvedUrl }) => {
         return (
           <Grid item key={`${dossier.dossier_id}-${pivot.value}`}>
-            <Tooltip title={<PivotTooltip dossier={dossier} resolvedUrl={resolvedUrl} />}>
-              <span>
-                <PivotLink pivot={pivot} hit={hit} compact />
-              </span>
-            </Tooltip>
+            <PivotLink pivot={pivot} hit={hit} dossier={dossier} resolvedUrl={resolvedUrl} compact />
           </Grid>
         );
       })}

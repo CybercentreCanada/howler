@@ -14,11 +14,11 @@ const PivotTooltip: FC<{ dossier: Dossier; resolvedUrl: string }> = ({ dossier, 
         {dossier.owner}
       </Typography>
       <Typography variant="body2" sx={{ mt: 2 }}>
-        {dossier.leads?.[0]?.content?.slice(0, 120) ?? 'No description'}
+        {dossier.leads?.[0]?.content?.slice(0, 120) ?? t('pivot.description.none')}
       </Typography>
       <Box sx={{ mt: 2, wordBreak: 'break-all' }}>
         <Typography variant="caption" display="block">
-          {'URL : '}
+          {t('pivot.url')}
         </Typography>
         <Link href={resolvedUrl} target="_blank" rel="noopener noreferrer" underline="hover">
           {resolvedUrl}
