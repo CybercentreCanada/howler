@@ -55,10 +55,10 @@ jobs:
       - name: Checkout current ref
         uses: actions/checkout@v4
 
-      - name: Install Node v20
+      - name: Install Node v24
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Install pnpm v11
         uses: pnpm/action-setup@v4
@@ -138,10 +138,10 @@ jobs:
         with:
           version: 11
 
-      - name: Install Node v20
+      - name: Install Node v24
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           registry-url: 'https://registry.npmjs.org'  # Configure for NPM publishing
 
       - name: Get pnpm store path
@@ -236,10 +236,10 @@ jobs:
       - name: Checkout current ref
         uses: actions/checkout@v4
 
-      - name: Install Node v20
+      - name: Install Node v24
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install pnpm v11
