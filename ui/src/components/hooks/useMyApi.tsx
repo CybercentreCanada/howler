@@ -2,7 +2,7 @@ import type { HowlerResponse } from 'api';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import { useCallback, useMemo } from 'react';
 
-type DispatchApiConfig = {
+export type DispatchApiConfig = {
   throwError?: boolean;
   logError?: boolean;
   showError?: boolean;

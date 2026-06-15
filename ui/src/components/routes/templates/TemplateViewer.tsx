@@ -22,6 +22,7 @@ import AppInfoPanel from 'commons/components/display/AppInfoPanel';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import { DEFAULT_FIELDS } from 'components/elements/hit/HitOutline';
 import useMyApi from 'components/hooks/useMyApi';
+import useMySnackbar from 'components/hooks/useMySnackbar';
 import isEqual from 'lodash-es/isEqual';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Hit } from 'models/entities/generated/Hit';
@@ -35,6 +36,7 @@ const TemplateViewer = () => {
   const [params, setParams] = useSearchParams();
   const { dispatchApi } = useMyApi();
   const { withConfirmDeleteModal } = useContext(ModalContext);
+  const { showSuccessMessage } = useMySnackbar();
 
   const [templateList, setTemplateList] = useState<Template[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<Template>(null);
@@ -167,7 +169,7 @@ const TemplateViewer = () => {
       await dispatchApi(api.template.del(selectedTemplate.template_id), {
         logError: false,
         showError: true,
-        throwError: false
+        throwError: true
       });
       setSessionTemplateList(l =>
         l.filter(
@@ -185,6 +187,7 @@ const TemplateViewer = () => {
             v.type != selectedTemplate.type
         )
       );
+      showSuccessMessage(t('route.templates.manager.delete.success'));
     });
   }, [
     dispatchApi,
@@ -192,7 +195,9 @@ const TemplateViewer = () => {
     selectedTemplate?.detection,
     selectedTemplate?.template_id,
     selectedTemplate?.type,
-    withConfirmDeleteModal
+    withConfirmDeleteModal,
+    showSuccessMessage,
+    t
   ]);
 
   const onSave = useCallback(async () => {

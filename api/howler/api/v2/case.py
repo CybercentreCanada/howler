@@ -18,6 +18,8 @@ case_api._doc = "Manage the different cases created"  # type: ignore
 
 logger = get_logger(__file__)
 
+# TODO: Implement refresh logic rfrom cccs-hxp here: https://github.com/CybercentreCanada/howler/pull/401
+
 
 @generate_swagger_docs()
 @case_api.route("/", methods=["POST"])

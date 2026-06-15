@@ -1,4 +1,4 @@
-import { hdelete, hget, hpost, hput, joinAllUri, joinUri, uri as parentUri } from 'api';
+import { hdelete, hget, hpost, hput, joinAllUri, joinUri, uri as parentUri, type HowlerRefreshParam } from 'api';
 import * as favourite from 'api/view/favourite';
 import type { View } from 'models/entities/generated/View';
 
@@ -10,16 +10,20 @@ export const get = (): Promise<View[]> => {
   return hget(uri());
 };
 
-export const post = (newData: Partial<View>): Promise<View> => {
-  return hpost(uri(), newData);
+export const post = (newData: Partial<View>, refresh?: HowlerRefreshParam): Promise<View> => {
+  return hpost(uri(), newData, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
-export const put = (id: string, partialView: Partial<Omit<View, 'view_id'>>): Promise<View> => {
-  return hput(uri(id), partialView);
+export const put = (
+  id: string,
+  partialView: Partial<Omit<View, 'view_id'>>,
+  refresh?: HowlerRefreshParam
+): Promise<View> => {
+  return hput(uri(id), partialView, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
-export const del = (id: string): Promise<void> => {
-  return hdelete(uri(id));
+export const del = (id: string, refresh?: HowlerRefreshParam): Promise<void> => {
+  return hdelete(uri(id), undefined, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
 export { favourite };

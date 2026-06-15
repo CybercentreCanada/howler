@@ -17,6 +17,7 @@ import FlexOne from 'components/elements/addons/layout/FlexOne';
 import Phrase from 'components/elements/addons/search/phrase/Phrase';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
 import useMyApi from 'components/hooks/useMyApi';
+import useMySnackbar from 'components/hooks/useMySnackbar';
 import OperationEntry from 'components/routes/action/shared/OperationEntry';
 import type { ActionOperation } from 'models/ActionTypes';
 import type { HowlerUser } from 'models/entities/HowlerUser';
@@ -45,6 +46,7 @@ const ActionDetails = () => {
   const [action, setAction] = useState<Action>();
 
   const { withConfirmDeleteModal } = useContext(ModalContext);
+  const { showSuccessMessage } = useMySnackbar();
 
   const onTriggerChange: ChangeEventHandler<HTMLInputElement> = useCallback(
     async e => {
@@ -71,6 +73,15 @@ const ActionDetails = () => {
       }
     },
     [action, dispatchApi, setLoading]
+  );
+
+  const onDelete = useCallback(
+    () =>
+      withConfirmDeleteModal(async () => {
+        await deleteAction(action?.action_id);
+        showSuccessMessage(t('route.actions.manager.delete.success'));
+      }),
+    [withConfirmDeleteModal, deleteAction, action?.action_id, showSuccessMessage, t]
   );
 
   useEffect(() => {
@@ -119,13 +130,7 @@ const ActionDetails = () => {
           {response && <QueryResultText count={response.total} query={action?.query} />}
           <FlexOne />
           {((action?.owner_id === user.username && editRoles) || user.roles?.includes('admin')) && (
-            <Button
-              startIcon={<Delete />}
-              size="small"
-              variant="outlined"
-              color="error"
-              onClick={() => withConfirmDeleteModal(() => deleteAction(action?.action_id))}
-            >
+            <Button startIcon={<Delete />} size="small" variant="outlined" color="error" onClick={onDelete}>
               {t('button.delete')}
             </Button>
           )}

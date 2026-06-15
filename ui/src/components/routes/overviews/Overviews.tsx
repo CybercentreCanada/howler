@@ -1,8 +1,11 @@
 import { Article } from '@mui/icons-material';
 import { Typography } from '@mui/material';
 import api from 'api';
-import type { HowlerSearchResponse } from 'api/search';
 import { ModalContext } from 'components/app/providers/ModalProvider';
+import SearchResponseProvider, {
+  SearchResponseContext,
+  type SearchResponseContextType
+} from 'components/app/providers/SearchResponseProvider';
 import { TuiListProvider, type TuiListItem, type TuiListItemProps } from 'components/elements/addons/lists';
 import { TuiListMethodContext, type TuiListMethodsState } from 'components/elements/addons/lists/TuiListProvider';
 import ItemManager from 'components/elements/display/ItemManager';
@@ -28,9 +31,11 @@ const OverviewsBase: FC = () => {
 
   const [phrase, setPhrase] = useState<string>('');
   const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
-  const [response, setResponse] = useState<HowlerSearchResponse<Overview>>(null);
   const [hasError, setHasError] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const { response, request, remove, getSearchRequestData } =
+    useContext<SearchResponseContextType<Overview>>(SearchResponseContext);
 
   const onSearch = useCallback(async () => {
     try {
@@ -47,21 +52,17 @@ const OverviewsBase: FC = () => {
       // Check for the actual search query
       const query = phrase ? `*:*${phrase}*` : '*:*';
       // Ensure the overview should be visible and/or matches the type we are filtering for
-      setResponse(
-        await dispatchApi(
-          api.search.overview.post({
-            query,
-            rows: pageCount,
-            offset
-          })
-        )
-      );
+      await request(api.search.overview.post, {
+        query,
+        rows: pageCount,
+        offset
+      });
     } catch (e) {
       setHasError(true);
     } finally {
       setLoading(false);
     }
-  }, [phrase, setSearchParams, searchParams, dispatchApi, pageCount, offset]);
+  }, [phrase, setSearchParams, searchParams, request, pageCount, offset]);
 
   // Load the items into list when response changes.
   // This hook should only trigger when the 'response' changes.
@@ -82,12 +83,13 @@ const OverviewsBase: FC = () => {
   const onPageChange = useCallback(
     (_offset: number) => {
       if (_offset !== offset) {
-        searchParams.set('offset', _offset.toString());
+        const modifiedRequest = getSearchRequestData({ offset: _offset });
+        searchParams.set('offset', modifiedRequest.offset.toString());
         setSearchParams(searchParams, { replace: true });
-        setOffset(_offset);
+        setOffset(modifiedRequest.offset);
       }
     },
-    [offset, searchParams, setSearchParams]
+    [offset, searchParams, setSearchParams, getSearchRequestData]
   );
 
   const onDelete = useCallback(
@@ -97,8 +99,8 @@ const OverviewsBase: FC = () => {
 
       withConfirmDeleteModal(async () => {
         try {
-          await dispatchApi(api.overview.del(id), { throwError: false, showError: true });
-          await onSearch();
+          await dispatchApi(api.overview.del(id), { throwError: true, showError: true });
+          remove(id);
           showSuccessMessage(t('route.overviews.manager.delete.success'));
         } catch (_err) {
           // eslint-disable-next-line no-console
@@ -106,7 +108,7 @@ const OverviewsBase: FC = () => {
         }
       });
     },
-    [dispatchApi, onSearch, withConfirmDeleteModal, showSuccessMessage, t]
+    [dispatchApi, remove, withConfirmDeleteModal, showSuccessMessage, t]
   );
 
   useEffect(() => {
@@ -175,7 +177,9 @@ const OverviewsBase: FC = () => {
 const Overviews = () => {
   return (
     <TuiListProvider>
-      <OverviewsBase />
+      <SearchResponseProvider idField="overview_id">
+        <OverviewsBase />
+      </SearchResponseProvider>
     </TuiListProvider>
   );
 };

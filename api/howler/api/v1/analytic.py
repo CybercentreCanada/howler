@@ -11,6 +11,7 @@ from howler.api import (
     not_found,
     ok,
 )
+from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -81,6 +82,7 @@ def get_analytic(id, **kwargs):
 @generate_swagger_docs()
 @analytic_api.route("/<id>", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
+@parse_parameters(refresh=parse_refresh)
 def update_analytic(id: str, user: User, **kwargs):
     """Update an analytic
 
@@ -88,7 +90,8 @@ def update_analytic(id: str, user: User, **kwargs):
     id => The id of the analytic to modify
 
     Optional Arguments:
-    None
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     {
@@ -100,6 +103,8 @@ def update_analytic(id: str, user: User, **kwargs):
         ...analytic     # The updated analytic data
     }
     """
+    refresh = kwargs.get("refresh")
+
     storage = datastore()
 
     existing_analytic = storage.analytic.get(id)
@@ -123,7 +128,7 @@ def update_analytic(id: str, user: User, **kwargs):
             {**existing_triage_data, **new_data.get("triage_settings", {})}
         )
 
-        storage.analytic.save(existing_analytic.analytic_id, existing_analytic)
+        storage.analytic.save(existing_analytic.analytic_id, existing_analytic, refresh=refresh)
 
         return ok(existing_analytic)
     except HowlerException as e:
@@ -133,6 +138,7 @@ def update_analytic(id: str, user: User, **kwargs):
 @generate_swagger_docs()
 @analytic_api.route("/rules", methods=["POST"])
 @api_login(required_priv=["R", "W"])
+@parse_parameters(refresh=parse_refresh)
 def create_rule(user: User, **kwargs):
     """Create a rule analytic
 
@@ -140,7 +146,8 @@ def create_rule(user: User, **kwargs):
     None
 
     Optional Arguments:
-    None
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     {
@@ -159,6 +166,7 @@ def create_rule(user: User, **kwargs):
 @generate_swagger_docs()
 @analytic_api.route("/<id>", methods=["DELETE"])
 @api_login(audit=False, required_priv=["W"])
+@parse_parameters(refresh=parse_refresh)
 def delete_rule(id: str, user: User, **kwargs):
     """Delete a rule
 
@@ -166,7 +174,8 @@ def delete_rule(id: str, user: User, **kwargs):
     id  => id of the analytic whose comments we are deleting
 
     Optional Arguments:
-    None
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     [
@@ -430,6 +439,7 @@ def delete_comments(id: str, user: User, **kwargs):
 @generate_swagger_docs()
 @analytic_api.route("/<id>/owner", methods=["POST"])
 @api_login(required_priv=["W"])
+@parse_parameters(refresh=parse_refresh)
 def set_analytic_owner(id: str, user: dict[str, Any], **kwargs):
     """Set the analytic's owner
 
@@ -438,6 +448,10 @@ def set_analytic_owner(id: str, user: dict[str, Any], **kwargs):
 
     Arguments:
     None
+
+    Optional Arguments:
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     {
@@ -449,6 +463,8 @@ def set_analytic_owner(id: str, user: dict[str, Any], **kwargs):
         ...analytic            # The claimed analytic
     }
     """
+    refresh = kwargs.get("refresh")
+
     if not analytic_service.does_analytic_exist(id):
         return not_found(err=f"Analytic {id} does not exist")
 
@@ -461,8 +477,7 @@ def set_analytic_owner(id: str, user: dict[str, Any], **kwargs):
     analytic.owner = data["username"]
 
     ds = datastore()
-    ds.analytic.save(analytic.analytic_id, analytic)
-    ds.analytic.commit()
+    ds.analytic.save(analytic.analytic_id, analytic, refresh=refresh)
 
     return ok(analytic)
 
