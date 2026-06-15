@@ -1,4 +1,4 @@
-import { hdelete, hput, joinAllUri } from 'api';
+import { hdelete, hput, joinAllUri, type HowlerRefreshParam } from 'api';
 import type { LabelActionBody } from 'api/hit';
 import { uri as parentUri } from 'api/hit';
 import type { Hit } from 'models/entities/generated/Hit';
@@ -7,10 +7,20 @@ export const uri = (id: string, category: string) => {
   return joinAllUri(parentUri(), id, 'labels', category);
 };
 
-export const put = (id: string, category: string, body: LabelActionBody): Promise<Hit> => {
-  return hput(uri(id, category), body);
+export const put = (
+  id: string,
+  category: string,
+  body: LabelActionBody,
+  refresh?: HowlerRefreshParam
+): Promise<Hit> => {
+  return hput(uri(id, category), body, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
-export const del = (id: string, category: string, body: LabelActionBody): Promise<Hit> => {
-  return hdelete(uri(id, category), body);
+export const del = (
+  id: string,
+  category: string,
+  body: LabelActionBody,
+  refresh?: HowlerRefreshParam
+): Promise<Hit> => {
+  return hdelete(uri(id, category), body, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };

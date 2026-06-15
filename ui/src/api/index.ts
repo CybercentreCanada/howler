@@ -62,6 +62,8 @@ export type HowlerResponse<R> = {
   api_status_code: number;
 };
 
+export type HowlerRefreshParam = 'true' | 'false' | 'wait_for';
+
 /**
  * The base section of the Howler API uri.
  *
@@ -262,8 +264,13 @@ export const hget = <R = any>(_uri: string, searchParams?: URLSearchParams, head
  * @param body - the body of the request.
  * @returns the `api_response` object of the returned {@link HowlerResponse}.
  */
-export const hpost = <R = any>(_uri: string, body: any, headers: HeadersInit = {}): Promise<R> => {
-  return hfetch(_uri, 'post', body, undefined, headers);
+export const hpost = <R = any>(
+  _uri: string,
+  body: any,
+  headers: HeadersInit = {},
+  searchParams?: URLSearchParams
+): Promise<R> => {
+  return hfetch(_uri, 'post', body, searchParams, headers);
 };
 
 /**
@@ -275,8 +282,13 @@ export const hpost = <R = any>(_uri: string, body: any, headers: HeadersInit = {
  * @param body - the body of the request.
  * @returns the `api_response` object of the returned {@link HowlerResponse}.
  */
-export const hput = <R = any>(_uri: string, body: any, headers: HeadersInit = {}): Promise<R> => {
-  return hfetch(_uri, 'put', body, undefined, headers);
+export const hput = <R = any>(
+  _uri: string,
+  body: any,
+  headers: HeadersInit = {},
+  searchParams?: URLSearchParams
+): Promise<R> => {
+  return hfetch(_uri, 'put', body, searchParams, headers);
 };
 
 /**
@@ -288,8 +300,13 @@ export const hput = <R = any>(_uri: string, body: any, headers: HeadersInit = {}
  * @param body - the body of the request.
  * @returns the `api_response` object of the returned {@link HowlerResponse}.
  */
-export const hpatch = <R = any>(_uri: string, body: any, headers: HeadersInit = {}): Promise<R> => {
-  return hfetch(_uri, 'patch', body, undefined, headers);
+export const hpatch = <R = any>(
+  _uri: string,
+  body: any,
+  headers: HeadersInit = {},
+  searchParams?: URLSearchParams
+): Promise<R> => {
+  return hfetch(_uri, 'patch', body, searchParams, headers);
 };
 
 /**
@@ -300,8 +317,13 @@ export const hpatch = <R = any>(_uri: string, body: any, headers: HeadersInit = 
  * @param _uri - the uri to fetch.
  * @returns the `api_response` object of the returned {@link HowlerResponse}.
  */
-export const hdelete = <R = any>(_uri: string, body = null, headers: HeadersInit = {}): Promise<R> => {
-  return hfetch(_uri, 'delete', body, undefined, headers);
+export const hdelete = <R = any>(
+  _uri: string,
+  body = null,
+  headers: HeadersInit = {},
+  searchParams?: URLSearchParams
+): Promise<R> => {
+  return hfetch(_uri, 'delete', body, searchParams, headers);
 };
 
 /**

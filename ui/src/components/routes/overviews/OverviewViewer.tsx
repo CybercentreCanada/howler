@@ -27,6 +27,7 @@ import { ModalContext } from 'components/app/providers/ModalProvider';
 import { OverviewContext } from 'components/app/providers/OverviewProvider';
 import HitOverview from 'components/elements/hit/HitOverview';
 import useMyApi from 'components/hooks/useMyApi';
+import useMySnackbar from 'components/hooks/useMySnackbar';
 import useMyTheme from 'components/hooks/useMyTheme';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Hit } from 'models/entities/generated/Hit';
@@ -46,6 +47,7 @@ const OverviewViewer = () => {
   const { getOverviews } = useContext(OverviewContext);
   const { dispatchApi } = useMyApi();
   const { withConfirmDeleteModal } = useContext(ModalContext);
+  const { showSuccessMessage } = useMySnackbar();
 
   const [overviewList, setOverviewList] = useState<Overview[]>([]);
   const [selectedOverview, setSelectedOverview] = useState<Overview>(null);
@@ -182,12 +184,14 @@ const OverviewViewer = () => {
       await dispatchApi(api.overview.del(selectedOverview.overview_id), {
         logError: false,
         showError: true,
-        throwError: false
+        throwError: true
       });
+      setOverviewList(l => l.filter(v => v.overview_id !== selectedOverview.overview_id));
       setSelectedOverview(null);
       setContent('');
+      showSuccessMessage(t('route.overviews.manager.delete.success'));
     });
-  }, [dispatchApi, selectedOverview?.overview_id, withConfirmDeleteModal]);
+  }, [dispatchApi, selectedOverview?.overview_id, withConfirmDeleteModal, showSuccessMessage, t]);
 
   const onSave = useCallback(async () => {
     if (analytic && detection) {

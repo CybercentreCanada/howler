@@ -9,7 +9,7 @@ continue to work without modification.
     in a future release.
 """
 
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from howler.common.exceptions import HowlerException, InvalidDataException, NotFoundException
 from howler.common.loader import datastore
@@ -52,10 +52,12 @@ def find_case_for_bundle(bundle_hit_id: str) -> Optional[str]:
     return None
 
 
+# TODO: Properly implement refresh logic for compatibility
 def create_bundle(
     bundle_hit_data: dict[str, Any],
     child_hit_ids: list[str],
     user: str,
+    refresh: Literal["true", "false", "wait_for"] | None,
 ) -> dict[str, Any]:
     """Create a hit + case that together represent a legacy bundle.
 
@@ -93,7 +95,7 @@ def create_bundle(
 
     odm, warnings = hit_service.convert_hit(bundle_hit_data, unique=True, ignore_extra_values=True)
     hit_service.create_hit(odm.howler.id, odm, user=user)
-    analytic_service.save_from_hit(odm, {"uname": user})  # type: ignore[arg-type]
+    analytic_service.save_from_hits(odm, {"uname": user})  # type: ignore[arg-type]
 
     analytic = odm.howler.analytic or "Unknown"
     detection = odm.howler.detection or "Alert"
@@ -138,7 +140,10 @@ def create_bundle(
     return synthesize_bundle_response(updated_case, odm, warnings=warnings)
 
 
-def add_to_bundle(bundle_id: str, hit_ids: list[str]) -> dict[str, Any]:
+# TODO: Properly implement refresh logic for compatibility
+def add_to_bundle(
+    bundle_id: str, hit_ids: list[str], refresh: Literal["true", "false", "wait_for"] | None
+) -> dict[str, Any]:
     """Add hits to an existing bundle (case).
 
     Finds the case associated with *bundle_id*, then appends each hit under
@@ -206,7 +211,10 @@ def add_to_bundle(bundle_id: str, hit_ids: list[str]) -> dict[str, Any]:
     return synthesize_bundle_response(updated_case, root_hit)
 
 
-def remove_from_bundle(bundle_id: str, hit_ids: list[str]) -> dict[str, Any]:
+# TODO: Properly implement refresh logic for compatibility
+def remove_from_bundle(
+    bundle_id: str, hit_ids: list[str], refresh: Literal["true", "false", "wait_for"] | None
+) -> dict[str, Any]:
     """Remove hits from an existing bundle (case).
 
     If *hit_ids* is ``["*"]``, all child hits (everything except the root) are

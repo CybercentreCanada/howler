@@ -15,9 +15,12 @@ import {
   useTheme
 } from '@mui/material';
 import api from 'api';
-import type { HowlerSearchResponse } from 'api/search';
 import { useAppUser } from 'commons/components/app/hooks';
 import useLocalStorageItem from 'commons/components/utils/hooks/useLocalStorageItem';
+import SearchResponseProvider, {
+  SearchResponseContext,
+  type SearchResponseContextType
+} from 'components/app/providers/SearchResponseProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import { TuiListProvider, type TuiListItemProps } from 'components/elements/addons/lists';
 import { TuiListMethodContext, type TuiListMethodsState } from 'components/elements/addons/lists/TuiListProvider';
@@ -45,12 +48,13 @@ const AnalyticSearchBase: FC = () => {
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
   const appUser = useAppUser<HowlerUser>();
 
+  const { response, request } = useContext<SearchResponseContextType<Analytic>>(SearchResponseContext);
+
   const [onlyRules, setOnlyRules] = useLocalStorageItem<RuleTypes>(StorageKey.ONLY_RULES, 0);
   const [searching, setSearching] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);
   const [phrase, setPhrase] = useState(searchParams.get('phrase') || '');
   const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
-  const [response, setResponse] = useState<HowlerSearchResponse<Analytic>>(null);
 
   const addFavourite = useCallback(
     async (analytic: Analytic) => {
@@ -90,23 +94,20 @@ const AnalyticSearchBase: FC = () => {
 
     try {
       const sanitizedPhrase = sanitizeLuceneQuery(phrase);
-      const _response = await dispatchApi(
-        api.search.analytic.post({
-          query:
-            `name:*${sanitizedPhrase}* OR detections:*${sanitizedPhrase}*` +
-            (onlyRules > 0 ? ' AND _exists_:rule_type' : onlyRules < 0 ? ' AND -_exists_:rule_type' : ''),
-          rows: pageCount,
-          offset
-        })
-      );
-      setResponse(_response);
+      const _response = await request(api.search.analytic.post, {
+        query:
+          `name:*${sanitizedPhrase}* OR detections:*${sanitizedPhrase}*` +
+          (onlyRules > 0 ? ' AND _exists_:rule_type' : onlyRules < 0 ? ' AND -_exists_:rule_type' : ''),
+        rows: pageCount,
+        offset
+      });
       load(_response.items.map(u => ({ id: u.analytic_id, item: u })));
     } catch (e) {
       setHasError(true);
     } finally {
       setSearching(false);
     }
-  }, [dispatchApi, load, offset, onlyRules, pageCount, phrase, searchParams, setSearchParams]);
+  }, [request, load, offset, onlyRules, pageCount, phrase, searchParams, setSearchParams]);
 
   const onPageChange = useCallback(
     (_offset: number) => {
@@ -293,7 +294,9 @@ const AnalyticSearchBase: FC = () => {
 const AnalyticSearch: FC = () => {
   return (
     <TuiListProvider>
-      <AnalyticSearchBase />
+      <SearchResponseProvider idField="analytic_id">
+        <AnalyticSearchBase />
+      </SearchResponseProvider>
     </TuiListProvider>
   );
 };
