@@ -7,6 +7,7 @@ import type { Case } from 'models/entities/generated/Case';
 import type { Task } from 'models/entities/generated/Task';
 import { useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import CaseTask from './CaseTask';
 
 /** Maximum number of child cases auto-loaded for task aggregation. */
@@ -69,7 +70,7 @@ const TaskPanel: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promise<
           setChildCases(results);
           // Default: all child cases selected
           if (selectedChildIds === null) {
-            setSelectedChildIds(results.map(r => r!.caseId));
+            setSelectedChildIds(results.map(r => r.caseId));
           }
         }
       });
@@ -229,8 +230,8 @@ const TaskPanel: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promise<
         <Stack key={child.caseId} spacing={1}>
           <Divider>
             <Chip
-              component="a"
-              href={`/cases/${child.caseId}`}
+              component={Link}
+              to={`/cases/${child.caseId}`}
               clickable
               size="small"
               label={child.caseName}
