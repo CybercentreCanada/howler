@@ -444,7 +444,7 @@ def test_refresh_param_forwarded_to_es(
         ),
     )
 
-    assert response.status_code in (200, 201, 204), json.dumps(response.json() if response.is_json else response.text)
+    assert response.status_code in (200, 201, 204), json.dumps(response.json()) if response.is_json else response.text
     assert datastore_connection.get_collection(index).write_call_args_history[-1]["refresh"] == "wait_for"
 
 
