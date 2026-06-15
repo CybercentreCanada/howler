@@ -42,13 +42,7 @@ def _add_entity_name(flattened_test_data: list[tuple[str, str]]):
 def _get_rw_model(model_class):
     model_obj = random_model_obj(model_class)
 
-    # do not create read only objects
-    if model_class == Analytic:
-        model_obj.rule = "some rule"
-        model_obj.rule_type = "lucene"
-        model_obj.detections = ["Rule"]
-
-    elif model_class == View:
+    if model_class == View:
         model_obj.type = "global"
 
     if model_obj.get("owner") is not None:
@@ -62,19 +56,6 @@ RequestFactory = Callable[[dict[str, Any]], str]
 
 def _entity_default_request_factory(ctx: dict[str, Any]) -> str:
     return ctx["entity_obj"].json()
-
-
-def _analytic_rules_post_request_factory(ctx: dict[str, Any]) -> str:
-    entity_obj = ctx["entity_obj"]
-    return json.dumps(
-        {
-            "name": entity_obj["name"],
-            "description": entity_obj["description"],
-            "rule": entity_obj["rule"],
-            "rule_type": entity_obj["rule_type"],
-            "rule_crontab": entity_obj["rule_crontab"],
-        }
-    )
 
 
 def _analytic_owner_post_request_factory(_: dict[str, Any]) -> str:
@@ -116,14 +97,6 @@ def _hit_delete_request_factory(ctx: dict[str, Any]) -> str:
     return json.dumps(ctx["hit_ids"])
 
 
-def _hit_bundle_post_request_factory(ctx: dict[str, Any]) -> str:
-    return json.dumps({"bundle": ctx["hit_model"].as_primitives(), "hits": ctx["hit_ids"]})
-
-
-def _hit_bundle_item_request_factory(_: dict[str, Any]) -> str:
-    return json.dumps([])
-
-
 def _hit_update_query_request_factory(ctx: dict[str, Any]) -> str:
     return json.dumps({"query": {"ids": ctx["hit_id"]}, "operations": ctx["hit_operations"]})
 
@@ -155,8 +128,7 @@ def _build_request(test_client, endpoint: str, method: str, data: str):
 REFRESH_SUPPORTING_ENDPOINTS = (
     ("/action/{id}", ("DELETE", "PATCH", "PUT")),
     ("/action", ("POST",)),
-    ("/analytic/{id}", ("DELETE", "PUT")),
-    ("/analytic/rules", ("POST",)),
+    ("/analytic/{id}", ("PUT",)),
     ("/analytic/{id}/owner", ("POST",)),
     ("/dossier/{id}", ("DELETE", "PUT")),
     ("/dossier", ("POST",)),
@@ -176,11 +148,7 @@ REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_HITS = (
 
 REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_SINGLE_HIT = (("/hit/{id}/overwrite", ("PUT",)),)
 
-REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_IDS = (
-    ("/hit", ("DELETE",)),
-    # ("/hit/bundle", ("POST",)),   --refresh param not supported until we can batch create hits
-    ("/hit/bundle/{id}", ("DELETE", "PUT")),
-)
+REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_IDS = (("/hit", ("DELETE",)),)
 
 REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_OPERATIONS = (
     ("/hit/update", ("PUT",)),
@@ -198,7 +166,6 @@ ENTITY_REQUEST_FACTORIES: dict[tuple[str, str], RequestFactory] = {
 }
 ENTITY_REQUEST_FACTORIES.update(
     {
-        ("/analytic/rules", "POST"): _analytic_rules_post_request_factory,
         ("/analytic/{id}/owner", "POST"): _analytic_owner_post_request_factory,
         ("/template/{id}", "PUT"): _template_put_request_factory,
         ("/dossier/{id}", "PUT"): _dossier_put_request_factory,
@@ -211,9 +178,6 @@ HIT_REQUEST_FACTORIES: dict[tuple[str, str], RequestFactory] = {
     ("/hit", "POST"): _hit_post_request_factory,
     ("/hit/{id}/overwrite", "PUT"): _hit_overwrite_put_request_factory,
     ("/hit", "DELETE"): _hit_delete_request_factory,
-    ("/hit/bundle", "POST"): _hit_bundle_post_request_factory,
-    ("/hit/bundle/{id}", "DELETE"): _hit_bundle_item_request_factory,
-    ("/hit/bundle/{id}", "PUT"): _hit_bundle_item_request_factory,
     ("/hit/update", "PUT"): _hit_update_query_request_factory,
     ("/hit/{id}/update", "PUT"): _hit_update_item_request_factory,
     ("/hit/{id}/transition", "POST"): _hit_transition_request_factory,
@@ -358,29 +322,6 @@ def hit_ids(hit_list: list[Hit], datastore_connection):
         except Exception as e:
             warn(f"Cleanup: failed to delete test hit with id {hit.howler.id}: {e!r}")
     datastore_connection.hit.commit()
-
-
-@pytest.fixture(scope="function")
-def hit_bundle(hit_ids, datastore_connection):
-    lookups = loader.get_lookups()
-    users = datastore_connection.user.search("*:*")["items"]
-    bundle = random_data.generate_useful_hit(lookups=lookups, users=users, prune_hit=False)
-    bundle.howler.is_bundle = True
-    bundle.howler.hits = hit_ids
-    bundle.howler.bundle_size = len(hit_ids)
-    return bundle
-
-
-@pytest.fixture(scope="function")
-def hit_bundle_id(hit_bundle: Hit, datastore_connection):
-    datastore_connection.hit.save(hit_bundle.howler.id, hit_bundle)
-    datastore_connection.hit.commit()
-    yield hit_bundle.howler.id
-    try:
-        datastore_connection.hit.delete(hit_bundle.howler.id)
-        datastore_connection.hit.commit()
-    except Exception as e:
-        warn(f"Cleanup: failed to delete test hit bundle with id {hit_bundle.howler.id}: {e!r}")
 
 
 @pytest.fixture(scope="function")
@@ -560,9 +501,9 @@ def test_refresh_param_forwarded_to_es_hits_expect_single_hit(
     _flatten_test_data(REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_IDS),
 )
 def test_refresh_param_forwarded_to_es_hits_expect_ids(
-    endpoint: str, method: str, test_client, datastore_connection, hit_ids, hit_bundle_id, hit_model
+    endpoint: str, method: str, test_client, datastore_connection, hit_id, hit_ids, hit_model
 ):
-    templated_endpoint = endpoint.format(id=hit_bundle_id) if "{id}" in endpoint else endpoint
+    templated_endpoint = endpoint.format(id=hit_id) if "{id}" in endpoint else endpoint
 
     response = _build_request(
         test_client,
