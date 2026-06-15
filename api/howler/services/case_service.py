@@ -461,9 +461,15 @@ def append_case(case_id: str, item: CaseItem) -> Case:
     # Enforce root placement: case items must not live inside subfolders.
     # Strip any leading folder segments, keeping only the last path component.
     original_path = item.path
-    root_path = original_path.split("/")[-1] if original_path else item.value
+    if original_path and "/" in original_path:
+        stripped_path = original_path.strip("/")
+        root_path = stripped_path.split("/")[-1] if stripped_path else None
+    else:
+        root_path = original_path
 
-    if root_path != original_path:
+    if not root_path:
+        item.path = item.value
+    elif root_path != original_path:
         logger.info(
             "Case item path '%s' contains folder segments; normalizing to root path '%s'",
             original_path,
