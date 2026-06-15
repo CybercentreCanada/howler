@@ -180,7 +180,7 @@ def delete_hits(user: User, **kwargs):
     if "admin" not in user["type"]:
         return forbidden(err="Cannot delete hit, only admin is allowed to delete")
 
-    hit_ids = list(set(hit_ids))
+    hit_ids = set(hit_ids)
     non_existing_hit_ids = [hit_id for hit_id in hit_ids if not hit_service.exists(hit_id)]
 
     if non_existing_hit_ids:

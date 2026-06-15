@@ -1,19 +1,14 @@
 import { avatarClasses, AvatarGroup, Chip, Divider, Stack, Typography } from '@mui/material';
 import { useAppUser } from 'commons/components/app/hooks';
+import { SocketContext } from 'components/app/providers/SocketProvider';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
+import { uniq } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { FC } from 'react';
+import { useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { HitLayout } from '../HitLayout';
-
-type AssignedProps = FC<{
-  hit: Hit;
-  layout: HitLayout;
-  hideLabel?: boolean;
-  showAssigned?: boolean;
-  showAssessor?: boolean;
-}>;
 
 type AvatarChipProps = {
   userId: string;
@@ -48,15 +43,25 @@ const AvatarChip = ({ userId, noUser, placeholder, layout, hideLabel }: AvatarCh
     />
   );
 };
-const HitUsers: AssignedProps = ({ hit, layout, hideLabel = false, showAssigned = false, showAssessor = false }) => {
+
+const Assigned: FC<{
+  hit: Hit;
+  layout: HitLayout;
+  hideLabel?: boolean;
+  showAssessor?: boolean;
+  showAssigned?: boolean;
+}> = ({ hit, layout, hideLabel = false, showAssessor = false, showAssigned = false }) => {
   const { t } = useTranslation();
   const { user } = useAppUser<HowlerUser>();
+  const { viewers } = useContext(SocketContext);
+
+  const hitViewers = uniq(viewers[hit?.howler?.id] ?? []).filter(viewer => viewer !== user.username);
 
   const assessorVisible = showAssessor || hit.howler.assessment != null;
   const assigneeVisible = !hit.howler.assessor && (showAssigned || hit.howler.assignment !== 'unassigned');
 
   return (
-    <Stack direction={hideLabel ? 'row' : 'column'} spacing={0.5} alignItems="flex-start">
+    <Stack direction="row" spacing={0.5}>
       <Stack display="grid" gridTemplateColumns="repeat(2, 1fr)" alignItems="center" columnGap={0.5} rowGap={0.25}>
         {assigneeVisible && (
           <>
@@ -83,7 +88,7 @@ const HitUsers: AssignedProps = ({ hit, layout, hideLabel = false, showAssigned 
           </>
         )}
       </Stack>
-      {hit.howler.viewers?.length > 0 && hideLabel && <Divider orientation="vertical" flexItem variant="middle" />}
+      {hitViewers.length > 0 && hideLabel && <Divider orientation="vertical" flexItem variant="middle" />}
       <AvatarGroup
         max={3}
         sx={{ [`.${avatarClasses.root}`]: { border: 0, marginLeft: 0.5 } }}
@@ -97,18 +102,16 @@ const HitUsers: AssignedProps = ({ hit, layout, hideLabel = false, showAssigned 
           }
         }}
       >
-        {[...new Set(hit?.howler.viewers)]
-          .filter(viewer => viewer !== user.username)
-          .map(viewer => (
-            <HowlerAvatar
-              key={viewer}
-              userId={viewer}
-              sx={{ height: layout !== HitLayout.COMFY ? 24 : 32, width: layout !== HitLayout.COMFY ? 24 : 32 }}
-            />
-          ))}
+        {hitViewers.map(viewer => (
+          <HowlerAvatar
+            key={viewer}
+            userId={viewer}
+            sx={{ height: layout !== HitLayout.COMFY ? 24 : 32, width: layout !== HitLayout.COMFY ? 24 : 32 }}
+          />
+        ))}
       </AvatarGroup>
     </Stack>
   );
 };
 
-export default HitUsers;
+export default Assigned;
