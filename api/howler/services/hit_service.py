@@ -431,10 +431,7 @@ CREATED_HITS = Counter(
 
 @tracer.start_as_current_span(f"{__name__}.create_hit")
 def create_hit(
-    id: str,
-    hit: Hit,
-    user: Optional[str] = None,
-    overwrite: bool = False,
+    id: str, hit: Hit, user: Optional[str] = None, overwrite: bool = False, refresh: str | None = None
 ) -> bool:
     """Create a new hit in the database.
 
@@ -446,6 +443,7 @@ def create_hit(
         hit: The Hit ODM object to save
         user: Optional username to record in the creation log
         overwrite: Whether to allow overwriting an existing hit with the same ID
+        refresh: Optional refresh parameter for the datastore
 
     Returns:
         bool: True if the hit was successfully created
@@ -460,7 +458,7 @@ def create_hit(
         hit.howler.log = [Log({"timestamp": "NOW", "explanation": "Created hit", "user": user})]
 
     CREATED_HITS.labels(hit.howler.analytic).inc()
-    return datastore().hit.save(id, hit)
+    return datastore().hit.save(id, hit, refresh=refresh)
 
 
 @tracer.start_as_current_span(f"{__name__}.update_hit")
@@ -469,6 +467,7 @@ def update_hit(
     operations: list[OdmUpdateOperation],
     user: Optional[str] = None,
     version: Optional[str] = None,
+    refresh: str | None = None,
 ):
     """Update one or more properties of a hit in the database.
 
@@ -493,12 +492,12 @@ def update_hit(
             "Status of a Hit cannot be modified like other properties. Please use a transition to do so."
         )
 
-    return _update_hit(hit_id, operations, user, version=version)
+    return _update_hit(hit_id, operations, user, version=version, refresh=refresh)
 
 
 @typing.no_type_check
 @tracer.start_as_current_span(f"{__name__}.save_hit")
-def save_hit(hit: Hit, version: Optional[str] = None) -> tuple[Hit, str]:
+def save_hit(hit: Hit, version: Optional[str] = None, refresh: str | None = None) -> tuple[Hit, str]:
     """Save a hit to the datastore and emit an event notification.
 
     This function persists a hit object to the database and emits an event
@@ -507,11 +506,12 @@ def save_hit(hit: Hit, version: Optional[str] = None) -> tuple[Hit, str]:
     Args:
         hit: The Hit ODM object to save
         version: Optional version string for optimistic locking
+        refresh: Optional refresh parameter for the datastore
 
     Returns:
         Tuple of (hit_data_dict, version_string)
     """
-    datastore().hit.save(hit.howler.id, hit, version=version)
+    datastore().hit.save(hit.howler.id, hit, version=version, refresh=refresh)
     data, _version = datastore().hit.get(hit.howler.id, as_obj=False, version=True)
     event_service.emit("hits", {"hit": data, "version": _version})
 
@@ -524,6 +524,7 @@ def _update_hit(
     operations: list[OdmUpdateOperation],
     user: Optional[str] = None,
     version: Optional[str] = None,
+    refresh: str | None = None,
 ) -> tuple[dict[str, Any] | None, str | None]:
     """Internal function to update a hit with proper logging and event emission.
 
@@ -535,6 +536,7 @@ def _update_hit(
         operations: List of ODM update operations to apply
         user: Optional username to record in operation logs
         version: Optional version string for optimistic locking
+        refresh: Optional refresh parameter for the datastore
 
     Returns:
         Tuple of (updated_hit_data, new_version)
@@ -597,7 +599,7 @@ def _update_hit(
                 )
             )
 
-    datastore().hit.update(hit_id, final_operations, version)
+    datastore().hit.update(hit_id, final_operations, version, refresh=refresh)
     # Need to fetch the new data of the hit for the event_service
     data, _version = datastore().hit.get(hit_id, as_obj=False, version=True) or (None, None)
     if data and _version:
@@ -653,6 +655,7 @@ def transition_hit(
     transition: HitStatusTransition,
     user: User,
     version: Optional[str] = None,
+    refresh: str | None = None,
     **kwargs,
 ):
     """Transition a hit from one status to another while updating related properties.
@@ -707,7 +710,7 @@ def transition_hit(
         if updates:
             # Only apply version validation to the primary hit
             hit_version = version if (current_hit_id == primary_hit["howler"]["id"] and version) else None
-            _update_hit(current_hit_id, updates, user.uname, version=hit_version)
+            _update_hit(current_hit_id, updates, user.uname, version=hit_version, refresh=refresh)
 
     # Execute bulk actions for transitions that require them
     # These transitions need additional processing beyond the workflow
@@ -753,11 +756,12 @@ DELETED_HITS = Counter(f"{APP_NAME.replace('-', '_')}_deleted_hits_total", "The 
 
 
 @tracer.start_as_current_span(f"{__name__}.delete_hits")
-def delete_hits(hit_ids: list[str]) -> bool:
+def delete_hits(hit_ids: list[str], refresh: str | None = None) -> bool:
     """Delete a set of hits from the database
 
     Args:
         hit_ids (list[str]): The IDs of the hits to delete
+        refresh (str | None): Whether to refresh the datastore before returning.
 
     Returns:
         bool: Was the deletion successful?
@@ -773,9 +777,7 @@ def delete_hits(hit_ids: list[str]) -> bool:
         result = result and ds.hit.delete(hit_id)
         DELETED_HITS.inc()
 
-    ds.hit.update_by_query("howler.is_bundle:true", operations)
-
-    ds.hit.commit()
+    ds.hit.update_by_query("howler.is_bundle:true", operations, refresh=refresh)
 
     return result
 

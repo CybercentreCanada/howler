@@ -296,7 +296,7 @@ def add_access_control(user: dict[str, Any]):
     user["access_control"] = safe_str(query)
 
 
-def save_user_account(username: str, data: dict[str, Any], user: dict[str, Any]) -> bool:
+def save_user_account(username: str, data: dict[str, Any], user: dict[str, Any], refresh: str | None = None) -> bool:
     """Create or update a user in the database
 
     Args:
@@ -339,7 +339,7 @@ def save_user_account(username: str, data: dict[str, Any], user: dict[str, Any])
     elif avatar is not None:
         storage.user_avatar.save(username, avatar)
 
-    return storage.user.save(username, data)
+    return storage.user.save(username, data, refresh=refresh)
 
 
 def get_dynamic_classification(user_info: dict[str, Any]) -> str | None:

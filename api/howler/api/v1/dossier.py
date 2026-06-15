@@ -1,7 +1,13 @@
 from flask import request
 
 from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
-from howler.common.exceptions import ForbiddenException, HowlerException, InvalidDataException, NotFoundException
+from howler.api.v1.utils.params import parse_parameters, parse_refresh
+from howler.common.exceptions import (
+    ForbiddenException,
+    HowlerException,
+    InvalidDataException,
+    NotFoundException,
+)
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
@@ -49,6 +55,7 @@ def get_dossiers(user: User, **kwargs):
 @generate_swagger_docs()
 @dossier_api.route("/", methods=["POST"])
 @api_login(required_priv=["R", "W"])
+@parse_parameters(refresh=parse_refresh)
 def create_dossier(**kwargs):
     """Create a new dossier
 
@@ -56,7 +63,8 @@ def create_dossier(**kwargs):
     None
 
     Optional Arguments:
-    None
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     {
@@ -72,8 +80,10 @@ def create_dossier(**kwargs):
     """
     dossier_data = request.json
 
+    refresh = kwargs.get("refresh")
+
     try:
-        return created(dossier_service.create_dossier(dossier_data, username=kwargs["user"]["uname"]))
+        return created(dossier_service.create_dossier(dossier_data, username=kwargs["user"]["uname"], refresh=refresh))
     except InvalidDataException as e:
         return bad_request(err=str(e))
     except HowlerException:
@@ -147,6 +157,7 @@ def get_dossier_for_hit(id: str, user: User, **kwargs):
 @generate_swagger_docs()
 @dossier_api.route("/<id>", methods=["DELETE"])
 @api_login(required_priv=["W"])
+@parse_parameters(refresh=parse_refresh)
 def delete_dossier(id: str, user: User, **kwargs):
     """Delete a dossier
 
@@ -154,7 +165,8 @@ def delete_dossier(id: str, user: User, **kwargs):
     id => The id of the dossier to delete
 
     Optional Arguments:
-    None
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     None
@@ -164,6 +176,8 @@ def delete_dossier(id: str, user: User, **kwargs):
         "success": true     # Did the deletion succeed?
     }
     """
+    refresh = kwargs.get("refresh")
+
     storage = datastore()
 
     existing_dossier: Dossier = storage.dossier.get_if_exists(id)
@@ -173,9 +187,7 @@ def delete_dossier(id: str, user: User, **kwargs):
     if existing_dossier.owner != user.uname and "admin" not in user.type:
         return forbidden(err="You cannot delete a dossier unless you are an administrator, or the owner.")
 
-    success = storage.dossier.delete(id)
-
-    storage.dossier.commit()
+    success = storage.dossier.delete(id, refresh=refresh)
 
     return no_content({"success": success})
 
@@ -183,6 +195,7 @@ def delete_dossier(id: str, user: User, **kwargs):
 @generate_swagger_docs()
 @dossier_api.route("/<id>", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
+@parse_parameters(refresh=parse_refresh)
 def update_dossier(id: str, user: User, **kwargs):
     """Update a dossier
 
@@ -190,7 +203,8 @@ def update_dossier(id: str, user: User, **kwargs):
     id => The id of the dossier to modify
 
     Optional Arguments:
-    None
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     {
@@ -207,8 +221,10 @@ def update_dossier(id: str, user: User, **kwargs):
     if not isinstance(new_data, dict):
         return bad_request(err="Invalid data format")
 
+    refresh = kwargs.get("refresh")
+
     try:
-        updated_dossier = dossier_service.update_dossier(id, new_data, user)
+        updated_dossier = dossier_service.update_dossier(id, new_data, user, refresh=refresh)
 
         return ok(updated_dossier)
     except ForbiddenException as e:

@@ -1,4 +1,4 @@
-import { hdelete, hget, hpost, joinAllUri, joinUri, uri as parentUri } from 'api';
+import { hdelete, hget, hpost, joinAllUri, joinUri, uri as parentUri, type HowlerRefreshParam } from 'api';
 import * as assign from 'api/hit/assign';
 import * as comments from 'api/hit/comments';
 import * as labels from 'api/hit/labels';
@@ -45,12 +45,12 @@ interface PostResponse {
   }[];
 }
 
-export const post = (hits: Hit[]): Promise<PostResponse> => {
-  return hpost(uri(), hits);
+export const post = (hits: Hit[], refresh?: HowlerRefreshParam): Promise<PostResponse> => {
+  return hpost(uri(), hits, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
-export const del = (ids: string[]): Promise<{ success: boolean }> => {
-  return hdelete(uri(), ids);
+export const del = (ids: string[], refresh?: HowlerRefreshParam): Promise<{ success: boolean }> => {
+  return hdelete(uri(), ids, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
 export { assign, comments, labels, overwrite, transition };

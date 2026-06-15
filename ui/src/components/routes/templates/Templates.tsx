@@ -1,14 +1,18 @@
 import { Article } from '@mui/icons-material';
 import { Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
 import api from 'api';
-import type { HowlerSearchResponse } from 'api/search';
 import { useAppUser } from 'commons/components/app/hooks';
 import { AnalyticContext } from 'components/app/providers/AnalyticProvider';
+import SearchResponseProvider, {
+  SearchResponseContext,
+  type SearchResponseContextType
+} from 'components/app/providers/SearchResponseProvider';
 import { TuiListProvider, type TuiListItem, type TuiListItemProps } from 'components/elements/addons/lists';
 import { TuiListMethodContext, type TuiListMethodsState } from 'components/elements/addons/lists/TuiListProvider';
 import ItemManager from 'components/elements/display/ItemManager';
 import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
+import useMySnackbar from 'components/hooks/useMySnackbar';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Template } from 'models/entities/generated/Template';
 import { useCallback, useContext, useEffect, useState, type FC } from 'react';
@@ -23,14 +27,16 @@ const TemplatesBase: FC = () => {
   const navigate = useNavigate();
   const { dispatchApi } = useMyApi();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { load, remove } = useContext<TuiListMethodsState<Template>>(TuiListMethodContext);
+  const { load } = useContext<TuiListMethodsState<Template>>(TuiListMethodContext);
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
+  const { showSuccessMessage } = useMySnackbar();
 
   const { analytics } = useContext(AnalyticContext);
+  const { response, request, remove, getSearchRequestData } =
+    useContext<SearchResponseContextType<Template>>(SearchResponseContext);
 
   const [phrase, setPhrase] = useState<string>('');
   const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
-  const [response, setResponse] = useState<HowlerSearchResponse<Template>>(null);
   const [types, setTypes] = useState<('personal' | 'global')[]>([]);
   const [hasError, setHasError] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -52,21 +58,17 @@ const TemplatesBase: FC = () => {
       // Ensure the template should be visible and/or matches the type we are filtering for
       const typeQuery = `(type:global OR owner:(${user.username} OR none)) AND type:(${types.join(' ') || '*'})`;
 
-      setResponse(
-        await dispatchApi(
-          api.search.template.post({
-            query: `${phraseQuery} AND ${typeQuery}`,
-            rows: pageCount,
-            offset
-          })
-        )
-      );
+      await request(api.search.template.post, {
+        query: `${phraseQuery} AND ${typeQuery}`,
+        rows: pageCount,
+        offset
+      });
     } catch (e) {
       setHasError(true);
     } finally {
       setSearching(false);
     }
-  }, [phrase, setSearchParams, searchParams, user.username, types, dispatchApi, pageCount, offset]);
+  }, [phrase, setSearchParams, searchParams, user.username, types, request, pageCount, offset]);
 
   // Load the items into list when response changes.
   // This hook should only trigger when the 'response' changes.
@@ -93,12 +95,13 @@ const TemplatesBase: FC = () => {
   const onPageChange = useCallback(
     (_offset: number) => {
       if (_offset !== offset) {
-        searchParams.set('offset', _offset.toString());
+        const modifiedRequest = getSearchRequestData({ offset: _offset });
+        searchParams.set('offset', modifiedRequest.offset.toString());
         setSearchParams(searchParams, { replace: true });
-        setOffset(_offset);
+        setOffset(modifiedRequest.offset);
       }
     },
-    [offset, searchParams, setSearchParams]
+    [offset, searchParams, setSearchParams, getSearchRequestData]
   );
 
   useEffect(() => {
@@ -131,12 +134,13 @@ const TemplatesBase: FC = () => {
       await dispatchApi(api.template.del(templateId), {
         logError: false,
         showError: true,
-        throwError: false
+        throwError: true
       });
 
       remove(templateId);
+      showSuccessMessage(t('route.templates.manager.delete.success'));
     },
-    [dispatchApi, remove]
+    [dispatchApi, remove, showSuccessMessage, t]
   );
 
   const renderer = useCallback(
@@ -205,7 +209,9 @@ const TemplatesBase: FC = () => {
 const Templates = () => {
   return (
     <TuiListProvider>
-      <TemplatesBase />
+      <SearchResponseProvider idField="template_id">
+        <TemplatesBase />
+      </SearchResponseProvider>
     </TuiListProvider>
   );
 };

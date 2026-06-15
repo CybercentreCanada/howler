@@ -1,4 +1,4 @@
-import { hdelete, hget, hput, joinAllUri, joinUri, uri as parentUri } from 'api';
+import { hdelete, hget, hput, joinAllUri, joinUri, uri as parentUri, type HowlerRefreshParam } from 'api';
 import * as comments from 'api/analytic/comments';
 import * as favourite from 'api/analytic/favourite';
 import * as notebooks from 'api/analytic/notebooks';
@@ -16,12 +16,12 @@ export const get = (id?: string) => {
   return id ? hget<Analytic>(uri(id)) : hget<Analytic[]>(uri());
 };
 
-export const put = (id: string, editData: EditOptions): Promise<Analytic> => {
-  return hput(uri(id), editData);
+export const put = (id: string, editData: EditOptions, refresh?: HowlerRefreshParam): Promise<Analytic> => {
+  return hput(uri(id), editData, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
-export const del = (id: string) => {
-  return hdelete(uri(id));
+export const del = (id: string, refresh?: HowlerRefreshParam): Promise<void> => {
+  return hdelete(uri(id), undefined, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
 export { comments, favourite, notebooks, owner, rules };
