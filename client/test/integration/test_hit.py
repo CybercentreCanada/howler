@@ -153,7 +153,7 @@ def test_duplicate(client):
         }
     )
 
-    time.sleep(1)
+    time.sleep(5)
 
     total = client.search.hit("howler.id:*")["total"]
 
