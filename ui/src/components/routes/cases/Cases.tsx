@@ -1,11 +1,10 @@
 import { Topic } from '@mui/icons-material';
 import { Stack, Typography } from '@mui/material';
 import api from 'api';
-import type { HowlerSearchResponse } from 'api/search';
+import { SearchResponseContext, type SearchResponseContextType } from 'components/app/providers/SearchResponseProvider';
 import { TuiListProvider, type TuiListItem, type TuiListItemProps } from 'components/elements/addons/lists';
 import { TuiListMethodContext, type TuiListMethodsState } from 'components/elements/addons/lists/TuiListProvider';
 import ItemManager from 'components/elements/display/ItemManager';
-import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import dayjs from 'dayjs';
 import type { Case } from 'models/entities/generated/Case';
@@ -35,14 +34,14 @@ const buildPhraseQuery = (phrase: string | null) => {
 const CasesBase: FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { dispatchApi } = useMyApi();
   const [searchParams, setSearchParams] = useSearchParams();
   const { load } = useContext<TuiListMethodsState<Case>>(TuiListMethodContext);
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
+  const { response, request } = useContext<SearchResponseContextType<Case>>(SearchResponseContext);
+
   const [phrase, setPhrase] = useState<string>('');
   const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
-  const [response, setResponse] = useState<HowlerSearchResponse<Case>>(null);
   const [hasError, setHasError] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -93,22 +92,18 @@ const CasesBase: FC = () => {
       setSearchParams(searchParams, { replace: true });
 
       const filters = buildFilters();
-      setResponse(
-        await dispatchApi(
-          api.search.case.post({
-            query: buildPhraseQuery(phrase),
-            filters,
-            rows: pageCount,
-            offset
-          })
-        )
-      );
+      await request(api.search.case.post, {
+        query: buildPhraseQuery(phrase),
+        filters,
+        rows: pageCount,
+        offset
+      });
     } catch (e) {
       setHasError(true);
     } finally {
       setLoading(false);
     }
-  }, [buildFilters, phrase, setSearchParams, searchParams, dispatchApi, pageCount, offset]);
+  }, [phrase, setSearchParams, searchParams, buildFilters, request, pageCount, offset]);
 
   // Load the items into list when response changes.
   useEffect(() => {

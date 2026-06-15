@@ -24,9 +24,9 @@ import { ESCALATION_COLORS, PROVIDER_COLORS } from 'utils/constants';
 import { stringToColor } from 'utils/utils';
 import PluginTypography from '../PluginTypography';
 import AnalyticLink from './elements/AnalyticLink';
+import Assigned from './elements/Assigned';
 import EscalationChip from './elements/EscalationChip';
 import HitTimestamp from './elements/HitTimestamp';
-import HitUsers from './elements/HitUsers';
 import HitBannerTooltip from './HitBannerTooltip';
 import { HitLayout } from './HitLayout';
 import RelatedRecords from './related/RelatedRecords';
@@ -304,7 +304,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, lazy = false, layout = HitLayout.N
         ]}
       >
         <HitTimestamp hit={hit} layout={layout} />
-        <HitUsers hit={hit} layout={layout} showAssigned={showAssigned} />
+        <Assigned hit={hit} layout={layout} showAssigned={showAssigned} />
         {hit.howler.links?.[0]?.href && (
           <Chip
             icon={<OpenInNew />}
