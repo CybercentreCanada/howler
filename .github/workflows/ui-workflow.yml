@@ -60,10 +60,10 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install pnpm v10
+      - name: Install pnpm v11
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 11
 
       - name: Get pnpm store path
         id: pnpm-cache-dir
@@ -133,10 +133,10 @@ jobs:
       - name: Checkout current ref
         uses: actions/checkout@v4
 
-      - name: Install pnpm v10
+      - name: Install pnpm v11
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 11
 
       - name: Install Node v20
         uses: actions/setup-node@v4
@@ -242,10 +242,10 @@ jobs:
           node-version: 20
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Install pnpm v10
+      - name: Install pnpm v11
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 11
 
       - name: Get pnpm store path
         id: pnpm-cache-dir
