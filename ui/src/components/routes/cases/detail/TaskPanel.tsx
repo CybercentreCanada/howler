@@ -2,6 +2,7 @@ import { Add, ExpandLess, ExpandMore } from '@mui/icons-material';
 import { Autocomplete, Chip, Divider, Skeleton, Stack, TextField, Tooltip, Typography } from '@mui/material';
 import api from 'api';
 import useMyApi from 'components/hooks/useMyApi';
+import { isNil } from 'lodash-es';
 import type { Case } from 'models/entities/generated/Case';
 import type { Task } from 'models/entities/generated/Task';
 import { useEffect, useMemo, useState, type FC } from 'react';
@@ -28,7 +29,7 @@ const TaskPanel: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promise<
   const [addingTask, setAddingTask] = useState(false);
   const [childCases, setChildCases] = useState<ChildCaseEntry[]>([]);
   const [showChildTasks, setShowChildTasks] = useState(true);
-  const [selectedChildIds, setSelectedChildIds] = useState<string[]>([]);
+  const [selectedChildIds, setSelectedChildIds] = useState<string[] | null>(null);
 
   // Collect the IDs for all child case items (up to MAX_CHILD_CASES)
   const childCaseItems = useMemo(
@@ -40,36 +41,43 @@ const TaskPanel: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promise<
   useEffect(() => {
     if (childCaseItems.length === 0) {
       setChildCases([]);
+      setSelectedChildIds([]);
       return;
     }
 
     let cancelled = false;
 
     Promise.all(
-      childCaseItems.map(item =>
-        dispatchApi(api.v2.case.get(item.value), { throwError: false }).then(c => {
-          if (!c) {
-            return null;
+      childCaseItems.map(async item => {
+        const c = await dispatchApi(api.v2.case.get(item.value), { throwError: false });
+
+        if (!c) {
+          return null;
+        }
+
+        return {
+          caseId: c.case_id,
+          caseName: c.title ?? c.case_id,
+          tasks: c.tasks ?? [],
+          paths: (c.items ?? []).map(i => i.path).filter(p => !isNil(p))
+        } satisfies ChildCaseEntry;
+      })
+    )
+      .then(results => results.filter(r => !isNil(r)))
+      .then(results => {
+        if (!cancelled) {
+          setChildCases(results);
+          // Default: all child cases selected
+          if (selectedChildIds === null) {
+            setSelectedChildIds(results.map(r => r!.caseId));
           }
-          return {
-            caseId: c.case_id,
-            caseName: c.title ?? c.case_id,
-            tasks: c.tasks ?? [],
-            paths: (c.items ?? []).map(i => i.path)
-          } satisfies ChildCaseEntry;
-        })
-      )
-    ).then(results => {
-      if (!cancelled) {
-        setChildCases(results.filter((r): r is ChildCaseEntry => r !== null));
-        // Default: all child cases selected
-        setSelectedChildIds(results.filter(Boolean).map(r => r!.caseId));
-      }
-    });
+        }
+      });
 
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [childCaseItems, dispatchApi]);
 
   // Child cases available as filter options
@@ -77,7 +85,7 @@ const TaskPanel: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promise<
 
   // Child cases whose tasks are currently visible
   const visibleChildCases = useMemo(
-    () => (showChildTasks ? childCases.filter(c => selectedChildIds.includes(c.caseId)) : []),
+    () => (showChildTasks ? childCases.filter(c => (selectedChildIds ?? []).includes(c.caseId)) : []),
     [showChildTasks, childCases, selectedChildIds]
   );
 
@@ -124,7 +132,7 @@ const TaskPanel: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promise<
               size="small"
               disableCloseOnSelect
               options={childCaseOptions}
-              value={selectedChildIds}
+              value={selectedChildIds ?? []}
               onChange={(_ev, val) => setSelectedChildIds(val)}
               getOptionLabel={id => childCases.find(c => c.caseId === id)?.caseName ?? id}
               renderTags={(vals, getTagProps) =>
@@ -144,7 +152,7 @@ const TaskPanel: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promise<
                 <TextField
                   {...params}
                   size="small"
-                  placeholder={selectedChildIds.length === 0 ? t('page.cases.dashboard.tasks.filter_cases') : ''}
+                  placeholder={selectedChildIds?.length === 0 ? t('page.cases.dashboard.tasks.filter_cases') : ''}
                   sx={{ minWidth: 180 }}
                 />
               )}
@@ -176,7 +184,7 @@ const TaskPanel: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promise<
         <CaseTask
           key={task.id}
           task={task}
-          paths={_case.items.map(item => item.path)}
+          paths={_case.items.map(item => item.path).filter(p => !isNil(p))}
           onEdit={onEdit(task)}
           onDelete={() => updateCase({ tasks: _case.tasks.filter(_task => _task.id !== task.id) })}
         />
@@ -184,7 +192,7 @@ const TaskPanel: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promise<
       {addingTask && (
         <CaseTask
           newTask
-          paths={_case.items.map(item => item.path)}
+          paths={_case.items.map(item => item.path).filter(p => !isNil(p))}
           onEdit={async task => {
             await onEdit()(task);
             setAddingTask(false);

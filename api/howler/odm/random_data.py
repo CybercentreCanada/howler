@@ -809,7 +809,7 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
         for idx, related_case_id in enumerate(selected_related_case_ids, start=1):
             items.append(
                 {
-                    "path": f"cases/Related Case {idx}",
+                    "path": f"Related Case {idx}",
                     "type": "case",
                     "value": related_case_id,
                 }
