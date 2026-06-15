@@ -72,17 +72,19 @@ def _create_bundle_via_tool(session, host, child_count: int = 2):
         "is_bundle": ["howler.is_bundle"],
     }
 
+    run_id = uuid4().hex
+
     bundle_row = {
         "analytic": "tool-bundle-analytic",
         "detection": "tool-bundle-detection",
-        "hash": "cd" * 32,
+        "hash": run_id * 2,
         "is_bundle": True,
     }
     children = [
         {
             "analytic": f"tool-child-{i}",
             "detection": f"tool-child-detection-{i}",
-            "hash": "ef" * 32,
+            "hash": uuid4().hex * 2,
         }
         for i in range(child_count)
     ]
