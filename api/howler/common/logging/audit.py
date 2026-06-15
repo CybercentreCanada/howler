@@ -98,9 +98,8 @@ def audit(args, kwargs, logged_in_uname, user, func, impersonator=None):
         req_method = request.method
         req_path = request.path
     except RuntimeError:
-        req_method = None
-        req_path = None
-
+        req_method = "N/A"
+        req_path = "N/A"
     params_list = (
         list(args)
         + ["%s='%s'" % (k, v) for k, v in kwargs.items() if k in AUDIT_KW_TARGET]
