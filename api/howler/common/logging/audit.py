@@ -94,6 +94,13 @@ def audit(args, kwargs, logged_in_uname, user, func, impersonator=None):
     except RuntimeError:
         req_args = []
 
+    try:
+        req_method = request.method
+        req_path = request.path
+    except RuntimeError:
+        req_method = None
+        req_path = None
+
     params_list = (
         list(args)
         + ["%s='%s'" % (k, v) for k, v in kwargs.items() if k in AUDIT_KW_TARGET]
@@ -132,7 +139,7 @@ def audit(args, kwargs, logged_in_uname, user, func, impersonator=None):
             extra={
                 "user": audit_user,
                 "function": f"{func.__name__}({', '.join(params_list)})",
-                "method": request.method,
-                "path": request.path,
+                "method": req_method,
+                "path": req_path,
             },
         )
