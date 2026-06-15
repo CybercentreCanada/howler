@@ -145,12 +145,11 @@ def test_create(client):
 
 
 def test_duplicate(client):
-    _random_hash = random_hash()
     client.hit.create(
         {
             "howler.analytic": "Test Dupes",
             "howler.score": 0,
-            "howler.hash": _random_hash,
+            "howler.hash": random_hash(),
         }
     )
 
@@ -158,6 +157,7 @@ def test_duplicate(client):
 
     total = client.search.hit("howler.id:*")["total"]
 
+    _random_hash = random_hash()
     client.hit.create(
         [
             {
