@@ -117,6 +117,9 @@ def search(indexes: str, **kwargs):
         }
     )
 
+    # NOTE: This means index searches must be either ALL access controlled or none of them havbe access control.
+    # Otherwise, the access control requirements on one index will cause the other index to return no items.
+    # This is pretty reasonable constraint, as all the relevant, searchable items support classifications.
     if has_access_control(index_list):
         params["access_control"] = user["access_control"]
 
