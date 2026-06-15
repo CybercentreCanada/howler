@@ -111,7 +111,7 @@ def test_facet_single_field(client: Client):
     _create_hit(client, analytic="FacetAnalytic")
     time.sleep(5)
 
-    result = client.v2.search.facet("hit", ["howler.analytic"], "*:*")
+    result = client.v2.search.facet("hit", ["howler.analytic"], "*:*", rows=25)
 
     assert "howler.analytic" in result
     assert "facetanalytic" in result["howler.analytic"]
