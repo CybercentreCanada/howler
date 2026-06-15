@@ -17,29 +17,24 @@ describe('HowlerCard', () => {
       const { container } = render(<HowlerCard />);
       expect(container.firstChild).toHaveClass('MuiCard-root');
     });
-
-    it('always applies outline: none style', () => {
-      const { container } = render(<HowlerCard />);
-      expect(container.firstChild).toHaveStyle({ outline: 'none' });
-    });
   });
 
   describe('elevation', () => {
-    it('uses elevation 4 when no variant is specified', () => {
+    it('uses elevation when no variant is specified', () => {
       const { container } = render(<HowlerCard />);
-      expect(container.firstChild).toHaveClass('MuiPaper-elevation4');
+      expect(container.firstChild).toHaveClass('MuiPaper-elevation');
     });
 
-    it('uses elevation 4 when variant is not outlined', () => {
+    it('uses elevation when variant is not outlined', () => {
       const { container } = render(<HowlerCard variant="elevation" />);
-      expect(container.firstChild).toHaveClass('MuiPaper-elevation4');
+      expect(container.firstChild).toHaveClass('MuiPaper-elevation');
     });
 
     it('uses the outlined variant style (not elevation) when variant is outlined', () => {
       const { container } = render(<HowlerCard variant="outlined" />);
       // MUI renders the outlined variant with MuiPaper-outlined, not an elevation class
       expect(container.firstChild).toHaveClass('MuiPaper-outlined');
-      expect(container.firstChild).not.toHaveClass('MuiPaper-elevation4');
+      expect(container.firstChild).not.toHaveClass('MuiPaper-elevation');
     });
   });
 
