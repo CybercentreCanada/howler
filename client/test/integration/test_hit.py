@@ -168,7 +168,7 @@ def test_duplicate(client):
             {
                 "howler.analytic": "Test Dupes",
                 "howler.score": 0,
-                "howler.hash": random_hash(),
+                "howler.hash": _random_hash,
             },
         ]
     )
