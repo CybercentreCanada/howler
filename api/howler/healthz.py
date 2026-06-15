@@ -12,8 +12,12 @@ logger = get_logger(__file__)
 
 def _is_datastore_healthy() -> bool:
     """Check whether the datastore is reachable."""
-    if datastore().ds.ping():
-        return True
+    try:
+        if datastore().ds.ping():
+            return True
+    except Exception as error:  # noqa: BLE001
+        logger.warning("Health check failed: datastore ping raised %s", error)
+        return False
 
     logger.warning("Health check failed: datastore ping returned false")
     return False
