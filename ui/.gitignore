@@ -152,6 +152,3 @@ firefox_profile/
 
 target/coverage
 target/*-report.*
-
-# pnpm workspace build-approval config (generated locally by pnpm approve-builds)
-pnpm-workspace.yaml

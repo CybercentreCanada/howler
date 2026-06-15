@@ -30,9 +30,7 @@ describe('ErrorOccured', () => {
 
     expect(screen.getByText('Application Stopped Working')).toBeInTheDocument();
     expect(
-      screen.getByText(
-        'The application stopped working suddenly. If the problem persists please reach out on teams.'
-      )
+      screen.getByText('The application stopped working suddenly. If the problem persists please reach out on teams.')
     ).toBeInTheDocument();
   });
 

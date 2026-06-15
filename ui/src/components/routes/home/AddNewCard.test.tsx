@@ -33,8 +33,26 @@ const mockFetchViews = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 vi.mock('components/app/providers/ViewProvider', () => ({
   ViewContext: React.createContext({
     views: {
-      'view-1': { view_id: 'view-1', title: 'My View', query: 'howler.status:open', sort: 'event.created desc', span: 'date.range.1.month', type: 'personal', owner: 'testuser', settings: { advance_on_triage: false } },
-      'view-2': { view_id: 'view-2', title: 'Second View', query: 'howler.status:open', sort: 'event.created desc', span: 'date.range.1.month', type: 'personal', owner: 'testuser', settings: { advance_on_triage: false } }
+      'view-1': {
+        view_id: 'view-1',
+        title: 'My View',
+        query: 'howler.status:open',
+        sort: 'event.created desc',
+        span: 'date.range.1.month',
+        type: 'personal',
+        owner: 'testuser',
+        settings: { advance_on_triage: false }
+      },
+      'view-2': {
+        view_id: 'view-2',
+        title: 'Second View',
+        query: 'howler.status:open',
+        sort: 'event.created desc',
+        span: 'date.range.1.month',
+        type: 'personal',
+        owner: 'testuser',
+        settings: { advance_on_triage: false }
+      }
     },
     fetchViews: mockFetchViews
   })
@@ -83,9 +101,7 @@ describe('AddNewCard', () => {
     render(<AddNewCard dashboard={[]} addCard={mockAddCard} />, { wrapper: Wrapper });
 
     await waitFor(() => {
-      expect(mockApiSearchAnalyticPost).toHaveBeenCalledWith(
-        expect.objectContaining({ query: '*:*' })
-      );
+      expect(mockApiSearchAnalyticPost).toHaveBeenCalledWith(expect.objectContaining({ query: '*:*' }));
     });
   });
 });

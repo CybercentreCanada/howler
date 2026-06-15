@@ -1,0 +1,12 @@
+allowBuilds:
+  '@firebase/util': true
+  '@swc/core': true
+  esbuild: true
+  msw: true
+  protobufjs: true
+  rxdb: true
+
+minimumReleaseAge: 1440
+
+overrides:
+  handlebars-async-helpers>handlebars: '4.*'
