@@ -7,6 +7,7 @@ from flask import request
 import howler.services.user_service as user_service
 from howler.api import bad_request, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
 from howler.api.v1.utils.etag import add_etag
+from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import (
     AccessDeniedException,
     AuthenticationException,
@@ -76,7 +77,8 @@ def who_am_i(**kwargs):
 @generate_swagger_docs()
 @user_api.route("/<username>", methods=["POST"])
 @api_login(required_type=["admin"])
-def add_user_account(username, **_):
+@parse_parameters(refresh=parse_refresh)
+def add_user_account(username, **kwargs):
     """Add a user to the system
 
     Variables:
@@ -84,6 +86,10 @@ def add_user_account(username, **_):
 
     Arguments:
     None
+
+    Optional Arguments:
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     {
@@ -101,6 +107,7 @@ def add_user_account(username, **_):
      "success": true             # Saving the user info succeded
     }
     """
+    refresh = kwargs.get("refresh")
     data = request.json
     if not isinstance(data, dict):
         return bad_request(err="Invalid data format")
@@ -137,7 +144,7 @@ def add_user_account(username, **_):
         storage.user_avatar.save(username, avatar)
 
     try:
-        return ok({"success": storage.user.save(username, User(data))})
+        return ok({"success": storage.user.save(username, User(data), refresh=refresh)})
     except ValueError as e:
         return bad_request(err=str(e))
 
@@ -188,7 +195,8 @@ def get_user_account(username: str, server_version: Optional[str] = None, **kwar
 @generate_swagger_docs()
 @user_api.route("/<username>", methods=["DELETE"])
 @api_login(required_type=["admin"])
-def remove_user_account(username, **_):
+@parse_parameters(refresh=parse_refresh)
+def remove_user_account(username, **kwargs):
     """Remove the account specified by the username.
 
     Variables:
@@ -197,15 +205,20 @@ def remove_user_account(username, **_):
     Arguments:
     None
 
+    Optional Arguments:
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
+
     Result Example:
     {
      "success": true  # Was the remove successful?
     }
     """
+    refresh = kwargs.get("refresh")
     storage = datastore()
     user_data = storage.user.get(username)
     if user_data:
-        user_deleted = storage.user.delete(username)
+        user_deleted = storage.user.delete(username, refresh=refresh)
 
         if storage.user_avatar.exists(username):
             avatar_deleted = storage.user_avatar.delete(username)
@@ -224,6 +237,7 @@ def remove_user_account(username, **_):
 @generate_swagger_docs()
 @user_api.route("/<username>", methods=["PUT"])
 @api_login(required_type=["admin", "user"], enforce_quota=False)
+@parse_parameters(refresh=parse_refresh)
 def set_user_account(username: str, **kwargs):  # noqa: C901
     """Save the user account information.
 
@@ -232,6 +246,10 @@ def set_user_account(username: str, **kwargs):  # noqa: C901
 
     Arguments:
     None
+
+    Optional Arguments:
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     {
@@ -249,6 +267,8 @@ def set_user_account(username: str, **kwargs):  # noqa: C901
      "success": true             # Saving the user info succeded
     }
     """
+    refresh = kwargs.get("refresh")
+
     try:
         new_data = request.json
         if not isinstance(new_data, dict):
@@ -290,7 +310,7 @@ def set_user_account(username: str, **kwargs):  # noqa: C901
         # Apply dynamic classification
         data["classification"] = user_service.get_dynamic_classification(data)
 
-        ret_val = user_service.save_user_account(username, data, kwargs["user"])
+        ret_val = user_service.save_user_account(username, data, kwargs["user"], refresh=refresh)
         return ok({"success": ret_val})
     except AccessDeniedException as e:
         return forbidden(err=str(e))

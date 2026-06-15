@@ -117,6 +117,10 @@ class AuthenticationException(HowlerException):
     """Exception thrown when a user cannot be authenticated"""
 
 
+class HowlerInvalidParameterException(HowlerException):
+    """Raised when an endpoint parameter is invalid."""
+
+
 class Chain(object):
     """This class can be used as a decorator to override the type of exceptions returned by a function"""
 

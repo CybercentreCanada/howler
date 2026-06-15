@@ -3,7 +3,7 @@ import PageCenter from 'commons/components/pages/PageCenter';
 import { useTranslation } from 'react-i18next';
 
 import { Add, Search } from '@mui/icons-material';
-import type { HowlerSearchResponse } from 'api/search';
+import type { SearchResponseState } from 'components/app/providers/SearchResponseProvider';
 import type { TuiListItemOnSelect, TuiListItemRenderer } from 'components/elements/addons/lists';
 import { TuiList } from 'components/elements/addons/lists';
 import SearchPagination from 'components/elements/addons/search/SearchPagination';
@@ -24,7 +24,7 @@ interface ItemManagerProps {
   onSelect?: TuiListItemOnSelect<unknown>;
   phrase: string;
   renderer: TuiListItemRenderer<unknown>;
-  response: HowlerSearchResponse<unknown>;
+  response: SearchResponseState<unknown>;
   searchAdornment?: ReactNode;
   searching: boolean;
   createPrompt?: string;
@@ -113,6 +113,7 @@ const ItemManager: FC<ItemManagerProps> = ({
                 total={response.total}
                 limit={response.rows}
                 offset={response.offset}
+                removeCount={response.removeCount}
                 onChange={onPageChange}
               />
             </Stack>

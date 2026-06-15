@@ -490,7 +490,7 @@ class ESCollection(Generic[ModelType]):
 
         self._wait_for_status(target, min_status=min_status)
 
-    def _delete_async(self, index, query, max_docs=None, sort=None):
+    def _delete_async(self, index, query, max_docs=None, sort=None, refresh=None):
         deleted = 0
         while True:
             task = self.with_retries(
@@ -501,6 +501,7 @@ class ESCollection(Generic[ModelType]):
                 conflicts="proceed",
                 sort=sort,
                 max_docs=max_docs,
+                refresh=refresh,
             )
             res = self._get_task_results(task)
 
@@ -510,7 +511,7 @@ class ESCollection(Generic[ModelType]):
             else:
                 deleted += res["deleted"]
 
-    def _update_async(self, index, script, query, max_docs=None):
+    def _update_async(self, index, script, query, max_docs=None, refresh=None):
         updated = 0
         while True:
             task = self.with_retries(
@@ -521,6 +522,7 @@ class ESCollection(Generic[ModelType]):
                 wait_for_completion=False,
                 conflicts="proceed",
                 max_docs=max_docs,
+                refresh=refresh,
             )
             res = self._get_task_results(task)
 
@@ -1240,7 +1242,7 @@ class ESCollection(Generic[ModelType]):
             return self.normalize(data, as_obj=as_obj), version
         return self.normalize(data, as_obj=as_obj)
 
-    def save(self, key, data, version=None):
+    def save(self, key, data, version=None, refresh=None):
         """Save to document to the datastore using the key as its document id.
 
         The document data will be normalized before being saved in the datastore.
@@ -1283,6 +1285,7 @@ class ESCollection(Generic[ModelType]):
                 if_seq_no=seq_no,
                 if_primary_term=primary_term,
                 raise_conflicts=True,
+                refresh=refresh,
             )
         except elasticsearch.BadRequestError as e:
             raise NonRecoverableError(
@@ -1292,7 +1295,7 @@ class ESCollection(Generic[ModelType]):
 
         return True
 
-    def delete(self, key):
+    def delete(self, key, refresh=None):
         """This function should delete the underlying document referenced by the key.
         It should return true if the document was in fact properly deleted.
 
@@ -1300,12 +1303,12 @@ class ESCollection(Generic[ModelType]):
         :return: True is delete successful
         """
         try:
-            info = self.with_retries(self.datastore.client.delete, id=key, index=self.name)
+            info = self.with_retries(self.datastore.client.delete, id=key, index=self.name, refresh=refresh)
             return info["result"] == "deleted"
         except elasticsearch.NotFoundError:
             return False
 
-    def delete_by_query(self, query: str, sort=None, max_docs=None):
+    def delete_by_query(self, query: str, sort=None, max_docs=None, refresh=None):
         """This function should delete the underlying documents referenced by the query.
         It should return true if the documents were in fact properly deleted.
 
@@ -1314,10 +1317,10 @@ class ESCollection(Generic[ModelType]):
         :return: True is delete successful
         """
         query_obj = {"bool": {"must": {"query_string": {"query": query}}}}
-        success = self.delete_by_search_object(query=query_obj, sort=sort, max_docs=max_docs)
+        success = self.delete_by_search_object(query=query_obj, sort=sort, max_docs=max_docs, refresh=refresh)
         return success
 
-    def delete_by_search_object(self, query: dict, sort=None, max_docs=None):
+    def delete_by_search_object(self, query: dict, sort=None, max_docs=None, refresh=None):
         """Delete the underlying documents matching the query object.
         Returns true if the documents were in fact properly deleted.
 
@@ -1325,7 +1328,9 @@ class ESCollection(Generic[ModelType]):
         :param workers: Number of workers used for deletion if basic currency delete is used
         :return: True is delete successful
         """
-        info = self._delete_async(self.name, query=query, sort=sort_str(parse_sort(sort)), max_docs=max_docs)
+        info = self._delete_async(
+            self.name, query=query, sort=sort_str(parse_sort(sort)), max_docs=max_docs, refresh=refresh
+        )
         return info.get("deleted", 0) != 0
 
     def _create_scripts_from_operations(self, operations):
@@ -1459,7 +1464,7 @@ class ESCollection(Generic[ModelType]):
 
         return ret_ops
 
-    def update(self, key, operations, version=None):
+    def update(self, key, operations, version=None, refresh=None):
         """This function performs an atomic update on some fields from the
         underlying documents referenced by the id using a list of operations.
 
@@ -1488,6 +1493,7 @@ class ESCollection(Generic[ModelType]):
                 if_seq_no=seq_no,
                 if_primary_term=primary_term,
                 raise_conflicts=bool(seq_no and primary_term),
+                refresh=refresh,
             )
             return (
                 res["result"] == "updated",
@@ -1507,7 +1513,7 @@ class ESCollection(Generic[ModelType]):
 
         return False
 
-    def update_by_query(self, query, operations, filters=None, access_control=None, max_docs=None):
+    def update_by_query(self, query, operations, filters=None, access_control=None, max_docs=None, refresh=None):
         """This function performs an atomic update on some fields from the
         underlying documents matching the query and the filters using a list of operations.
 
@@ -1542,6 +1548,7 @@ class ESCollection(Generic[ModelType]):
                     }
                 },
                 max_docs=max_docs,
+                refresh=refresh,
             )
         except Exception:
             return False
