@@ -84,7 +84,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Check translations
-        run: python build_scripts/check_translation.py
+        run: python ../hooks/check_translation.py
 
       - name: Check for banned imports
         run: python ../hooks/find_bad_imports.py

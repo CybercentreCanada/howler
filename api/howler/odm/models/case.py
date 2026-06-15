@@ -2,6 +2,7 @@ from typing import Any, Optional
 
 from howler import odm
 from howler.common.exceptions import HowlerValueError
+from howler.config import CLASSIFICATION
 from howler.odm.constants import Status
 from howler.odm.mixins import DatastoreMixin
 from howler.utils.compat import StrEnum
@@ -120,6 +121,12 @@ class CaseEnrichment(odm.Model):
 @odm.model(index=True, store=True, description="Case model with path-based items, enrichments, rules, and tasks.")
 class Case(DatastoreMixin["Case"], odm.Model):
     case_id: str = odm.UUID(description="A unique identifier for this case.")
+    classification: str = odm.Classification(
+        is_user_classification=False,
+        copyto="__text__",
+        default=CLASSIFICATION.UNRESTRICTED,
+        description="Maximum classification for the case",
+    )
     title: str = odm.Keyword(description="Case title.")
     summary: str = odm.Text(description="Short case summary.")
     overview: str = odm.Optional(odm.Text(description="Markdown overview of the case."))

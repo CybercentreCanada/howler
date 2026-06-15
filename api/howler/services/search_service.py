@@ -56,7 +56,7 @@ def _normalize_indexes(indexes: str | list[str]) -> str:
         if index in {"*", "_all"} or "-" in index or "*" in index:
             normalized_indexes.append(index)
         else:
-            normalized_indexes.append(f"{APP_NAME}-{index}_hot")
+            normalized_indexes.append(f"{APP_NAME}-{index}")
 
     return ",".join(normalized_indexes)
 
