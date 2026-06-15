@@ -1,5 +1,5 @@
 /// <reference types="vitest" />
-import { render, screen, act } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import i18n from 'i18n';
 import React from 'react';
 import { I18nextProvider } from 'react-i18next';

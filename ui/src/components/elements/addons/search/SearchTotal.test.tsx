@@ -47,10 +47,9 @@ describe('SearchTotal', () => {
     });
 
     it('passes variant to Typography', () => {
-      const { container } = render(
-        <SearchTotal total={10} offset={0} pageLength={10} variant="caption" />,
-        { wrapper: Wrapper }
-      );
+      const { container } = render(<SearchTotal total={10} offset={0} pageLength={10} variant="caption" />, {
+        wrapper: Wrapper
+      });
       expect(container.firstChild).toHaveClass('MuiTypography-caption');
     });
   });

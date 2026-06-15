@@ -136,12 +136,6 @@
     "@mui/material": "^5.18.0",
     "@mui/x-date-pickers": "^7.29.4"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "msw"
-    ]
-  },
   "repository": {
     "url": "https://github.com/CybercentreCanada/howler"
   },
