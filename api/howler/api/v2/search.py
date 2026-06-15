@@ -127,8 +127,7 @@ def search(indexes: str, **kwargs):
         return bad_request(err="There was no search query.")
 
     metadata = params.pop("metadata", [])
-    access_control = params.pop("access_control", None)
-    result = search_service.search(indexes, query, access_control=access_control, **params)
+    result = search_service.search(indexes, query, access_control=params.pop("access_control", None), **params)
 
     if metadata and any(idx in index_list for idx in ["hit"]):
         hit_service.augment_metadata(result["items"], metadata, user)

@@ -1,7 +1,10 @@
 import { Topic } from '@mui/icons-material';
 import { Stack, Typography } from '@mui/material';
 import api from 'api';
-import { SearchResponseContext, type SearchResponseContextType } from 'components/app/providers/SearchResponseProvider';
+import SearchResponseProvider, {
+  SearchResponseContext,
+  type SearchResponseContextType
+} from 'components/app/providers/SearchResponseProvider';
 import { TuiListProvider, type TuiListItem, type TuiListItemProps } from 'components/elements/addons/lists';
 import { TuiListMethodContext, type TuiListMethodsState } from 'components/elements/addons/lists/TuiListProvider';
 import ItemManager from 'components/elements/display/ItemManager';
@@ -212,7 +215,9 @@ const CasesBase: FC = () => {
 const Cases = () => {
   return (
     <TuiListProvider>
-      <CasesBase />
+      <SearchResponseProvider idField="case_id">
+        <CasesBase />
+      </SearchResponseProvider>
     </TuiListProvider>
   );
 };
