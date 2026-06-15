@@ -50,7 +50,7 @@ def datastore(datastore_connection):
 
 
 def test_normalize_indexes_string():
-    assert search_service._normalize_indexes("user,hit") == f"{APP_NAME}-user_hot,{APP_NAME}-hit_hot"
+    assert search_service._normalize_indexes("user,hit") == f"{APP_NAME}-user,{APP_NAME}-hit"
 
 
 def test_normalize_indexes_list_and_special_values():
@@ -249,7 +249,7 @@ def test_search_clears_next_scroll_when_last_page(datastore):
             "hits": [
                 {
                     "_id": "admin",
-                    "_index": f"{APP_NAME}-user_hot",
+                    "_index": f"{APP_NAME}-user",
                     "_score": 1.0,
                     "_source": {"uname": "admin"},
                 }
@@ -369,10 +369,10 @@ class TestNormalizeIndexes:
     """Tests for search_service._normalize_indexes."""
 
     def test_single_index_adds_prefix_and_suffix(self):
-        """A plain index name gets the APP_NAME prefix and _hot suffix."""
+        """A plain index name gets the APP_NAME prefix."""
         result = search_service._normalize_indexes("hit")
 
-        assert result.endswith("-hit_hot")
+        assert result == f"{APP_NAME}-hit"
 
     def test_multiple_indexes_comma_separated(self):
         """Comma-separated indexes are each normalized."""
@@ -380,8 +380,8 @@ class TestNormalizeIndexes:
 
         parts = result.split(",")
         assert len(parts) == 2
-        assert parts[0].endswith("-hit_hot")
-        assert parts[1].endswith("-observable_hot")
+        assert parts[0] == f"{APP_NAME}-hit"
+        assert parts[1] == f"{APP_NAME}-observable"
 
     def test_wildcard_preserved(self):
         """Wildcard '*' is kept as-is."""
@@ -401,7 +401,7 @@ class TestNormalizeIndexes:
 
         parts = result.split(",")
         assert len(parts) == 2
-        assert all(p.endswith("_hot") for p in parts)
+        assert all(p.startswith(APP_NAME) for p in parts)
 
     def test_empty_string_raises(self):
         """An empty string raises SearchException."""
@@ -419,7 +419,7 @@ class TestNormalizeIndexes:
 
         parts = result.split(",")
         assert len(parts) == 2
-        assert all(p.endswith("_hot") for p in parts)
+        assert all(p.startswith(APP_NAME) for p in parts)
 
     def test_all_keyword_preserved(self):
         """The '_all' keyword is preserved as-is."""
@@ -433,7 +433,7 @@ class TestNormalizeIndexes:
 
         parts = result.split(",")
         assert parts[0] == "*"
-        assert parts[1].endswith("-hit_hot")
+        assert parts[1] == f"{APP_NAME}-hit"
 
 
 # ---------------------------------------------------------------------------
@@ -447,7 +447,7 @@ class TestFormatItems:
     def test_extracts_source(self):
         """Each hit's _source is returned as an item."""
         hits = [
-            {"_source": {"howler": {"id": "hit-1"}}, "_index": "howler-hit_hot"},
+            {"_source": {"howler": {"id": "hit-1"}}, "_index": "howler-hit"},
         ]
 
         items = search_service._format_items(hits)
@@ -458,7 +458,7 @@ class TestFormatItems:
     def test_sets_index_field(self):
         """The __index field is set to the cleaned-up index name."""
         hits = [
-            {"_source": {"howler": {"id": "hit-1"}}, "_index": "howler-hit_hot"},
+            {"_source": {"howler": {"id": "hit-1"}}, "_index": "howler-hit"},
         ]
 
         items = search_service._format_items(hits)
@@ -468,8 +468,8 @@ class TestFormatItems:
     def test_skips_hits_without_source(self):
         """Hits without _source are not included in the result."""
         hits = [
-            {"_index": "howler-hit_hot"},
-            {"_source": {"howler": {"id": "hit-2"}}, "_index": "howler-hit_hot"},
+            {"_index": "howler-hit"},
+            {"_source": {"howler": {"id": "hit-2"}}, "_index": "howler-hit"},
         ]
 
         items = search_service._format_items(hits)
@@ -510,7 +510,7 @@ class TestSearch:
             "hits": {
                 "total": {"value": 1},
                 "hits": [
-                    {"_source": {"howler": {"id": "hit-1"}}, "_index": "howler-hit_hot"},
+                    {"_source": {"howler": {"id": "hit-1"}}, "_index": "howler-hit"},
                 ],
             }
         }
@@ -698,7 +698,7 @@ class TestSearch:
         mock_client.search.return_value = {
             "hits": {
                 "total": {"value": 5},
-                "hits": [{"_source": {"howler": {"id": "h1"}}, "_index": "howler-hit_hot"}],
+                "hits": [{"_source": {"howler": {"id": "h1"}}, "_index": "howler-hit"}],
             },
             "_scroll_id": "scroll-abc",
         }
@@ -739,7 +739,7 @@ class TestSearch:
             "hits": {
                 "total": {"value": 2},
                 "hits": [
-                    {"_source": {"howler": {"id": "h1"}}, "_index": "howler-hit_hot"},
+                    {"_source": {"howler": {"id": "h1"}}, "_index": "howler-hit"},
                 ],
             },
             "_scroll_id": "scroll-xyz",
