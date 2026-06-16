@@ -1,5 +1,5 @@
 import type { FC } from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { HelpOutline, Save } from '@mui/icons-material';
@@ -20,6 +20,7 @@ import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
 import PageCenter from 'commons/components/pages/PageCenter';
+import { GridColumnsContext } from 'components/app/providers/GridColumnsProvider';
 import { HitContext } from 'components/app/providers/HitProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
@@ -30,14 +31,15 @@ import VSBox from 'components/elements/addons/layout/vsbox/VSBox';
 import VSBoxContent from 'components/elements/addons/layout/vsbox/VSBoxContent';
 import VSBoxHeader from 'components/elements/addons/layout/vsbox/VSBoxHeader';
 import SearchTotal from 'components/elements/addons/search/SearchTotal';
+import AddColumnModal from 'components/elements/hit/grid/AddColumnModal';
 import HitTable from 'components/elements/hit/grid/HitTable';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import LayoutToggle, { type HowlerViewLayoutType } from 'components/elements/view/LayoutToggle';
-import useGridColumns from 'components/hooks/useGridColumns';
 import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useMySnackbar from 'components/hooks/useMySnackbar';
+import { uniq } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
@@ -69,7 +71,7 @@ const ViewComposer: FC = () => {
   const [type, setType] = useState('global');
   const [advanceOnTriage, setAdvanceOnTriage] = useState(false);
   const [displayType, setDisplayType] = useState<HowlerViewLayoutType>('list');
-  const [columns, setColumns] = useGridColumns();
+  const { columns, setColumns } = useContext(GridColumnsContext);
 
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
@@ -299,14 +301,19 @@ const ViewComposer: FC = () => {
                     </Stack>
                   </Stack>
                 </Stack>
-                {response?.total ? (
-                  <SearchTotal
-                    total={response.total}
-                    pageLength={response.items.length}
-                    offset={response.offset}
-                    sx={theme => ({ color: theme.palette.text.secondary, fontSize: '0.9em', fontStyle: 'italic' })}
-                  />
-                ) : null}
+                <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+                  {response?.total && (
+                    <SearchTotal
+                      total={response.total}
+                      pageLength={response.items.length}
+                      offset={response.offset}
+                      sx={theme => ({ color: theme.palette.text.secondary, fontSize: '0.9em', fontStyle: 'italic' })}
+                    />
+                  )}
+                  {displayType === 'grid' && (
+                    <AddColumnModal columns={columns} addColumn={key => setColumns(uniq([...columns, key]))} />
+                  )}
+                </Stack>
                 <LinearProgress sx={[!searching && { opacity: 0 }]} />
               </Stack>
             </VSBoxHeader>
@@ -320,7 +327,7 @@ const ViewComposer: FC = () => {
                 </Stack>
               ) : (
                 <Stack component={Paper} spacing={1} width="100%" height="100%" sx={{ overflow: 'auto', flex: 1 }}>
-                  <HitTable query={query} items={response?.items} columns={columns} onColumnChange={setColumns} />
+                  <HitTable query={query} items={response?.items} />
                 </Stack>
               )}
             </VSBoxContent>

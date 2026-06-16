@@ -78,7 +78,9 @@ import AvatarProvider from './providers/AvatarProvider';
 import CustomPluginProvider from './providers/CustomPluginProvider';
 import FavouriteProvider from './providers/FavouritesProvider';
 import FieldProvider from './providers/FieldProvider';
+import GridColumnsProvider from './providers/GridColumnsProvider';
 import HitProvider from './providers/HitProvider';
+import HitSearchProvider from './providers/HitSearchProvider';
 import LocalStorageProvider from './providers/LocalStorageProvider';
 import ModalProvider from './providers/ModalProvider';
 import OverviewProvider from './providers/OverviewProvider';
@@ -315,7 +317,11 @@ const createRouter = () =>
           path: 'views/create',
           element: (
             <ParameterProvider>
-              <ViewComposer />
+              <HitSearchProvider>
+                <GridColumnsProvider>
+                  <ViewComposer />
+                </GridColumnsProvider>
+              </HitSearchProvider>
             </ParameterProvider>
           )
         },

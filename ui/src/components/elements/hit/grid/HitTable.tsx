@@ -11,11 +11,12 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates } from '@dnd-ki
 import { FormatIndentDecrease, FormatIndentIncrease, Search } from '@mui/icons-material';
 import { IconButton, Stack, Table, TableCell, TableHead, TableRow } from '@mui/material';
 import useMatchers from 'components/app/hooks/useMatchers';
+import { GridColumnsContext } from 'components/app/providers/GridColumnsProvider';
 import ColumnHeader from 'components/elements/hit/grid/ColumnHeader';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { WithMetadata } from 'models/WithMetadata';
-import React, { useCallback, useEffect, useRef, useState, type PropsWithChildren } from 'react';
+import React, { useCallback, useContext, useEffect, useRef, useState, type PropsWithChildren } from 'react';
 import { StorageKey } from 'utils/constants';
 import HitRow from './HitRow';
 
@@ -23,8 +24,6 @@ const HitTable = ({
   query,
   items,
   refreshItems,
-  columns,
-  onColumnChange,
   ContextMenu,
   contextMenuProps,
   onItemClick
@@ -32,8 +31,6 @@ const HitTable = ({
   query: string;
   items?: WithMetadata<Hit>[];
   refreshItems?: (query: string, append?: boolean) => void;
-  columns: string[];
-  onColumnChange: (columns: string[]) => void;
   ContextMenu?: React.FC<PropsWithChildren<object>>;
   contextMenuProps?: object;
   onItemClick?: (event: React.MouseEvent<HTMLDivElement, MouseEvent>, hit: Hit) => void;
@@ -45,20 +42,19 @@ const HitTable = ({
   const { getMatchingAnalytic } = useMatchers();
 
   const [collapseMainColumn, setCollapseMainColumn] = useMyLocalStorageItem(StorageKey.GRID_COLLAPSE_COLUMN, false);
-  const [columnWidths, setColumnWidths] = useMyLocalStorageItem<Record<string, string>>(
-    StorageKey.GRID_COLUMN_WIDTHS,
-    {}
-  );
   const [analyticIds, setAnalyticIds] = useState<Record<string, string>>({});
+  const { columns, columnWidths, setColumnWidths, setColumns } = useContext(GridColumnsContext);
 
   const resizingCol = useRef<[string, HTMLElement]>();
 
   useEffect(() => {
     items?.forEach(hit => {
       if (!analyticIds[hit.howler.analytic]) {
-        getMatchingAnalytic(hit).then(_analytic =>
-          setAnalyticIds(_analyticIds => ({ ..._analyticIds, [hit.howler.analytic]: _analytic.analytic_id }))
-        );
+        getMatchingAnalytic(hit).then(_analytic => {
+          if (_analytic) {
+            setAnalyticIds(_analyticIds => ({ ..._analyticIds, [hit.howler.analytic]: _analytic.analytic_id }));
+          }
+        });
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -118,10 +114,10 @@ const HitTable = ({
         const oldIndex = (columns ?? []).findIndex(entry => entry === active.id);
         const newIndex = (columns ?? []).findIndex(entry => entry === over.id);
 
-        onColumnChange(arrayMove(columns, oldIndex, newIndex));
+        setColumns(arrayMove(columns, oldIndex, newIndex));
       }
     },
-    [columns, onColumnChange]
+    [columns, setColumns]
   );
 
   const tableContent = (
@@ -177,7 +173,7 @@ const HitTable = ({
                   col={col}
                   width={columnWidths[col]}
                   onMouseDown={onMouseDown}
-                  setColumns={onColumnChange}
+                  setColumns={setColumns}
                 />
               ))}
             </SortableContext>

@@ -13,6 +13,7 @@ import {
   useMediaQuery,
   useTheme
 } from '@mui/material';
+import GridColumnsProvider from 'components/app/providers/GridColumnsProvider';
 import { HitContext } from 'components/app/providers/HitProvider';
 import HitSearchProvider, { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import ParameterProvider, { ParameterContext } from 'components/app/providers/ParameterProvider';
@@ -259,7 +260,9 @@ const HitBrowserProvider: FC = () => {
   return (
     <ParameterProvider>
       <HitSearchProvider>
-        <HitBrowser />
+        <GridColumnsProvider>
+          <HitBrowser />
+        </GridColumnsProvider>
       </HitSearchProvider>
     </ParameterProvider>
   );

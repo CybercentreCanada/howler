@@ -1,5 +1,6 @@
 import { Info } from '@mui/icons-material';
 import { LinearProgress, Paper, Stack, TableBody, Typography, useTheme } from '@mui/material';
+import { GridColumnsContext } from 'components/app/providers/GridColumnsProvider';
 import { HitContext } from 'components/app/providers/HitProvider';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
@@ -8,10 +9,9 @@ import DevelopmentBanner from 'components/elements/display/features/DevelopmentB
 import AddColumnModal from 'components/elements/hit/grid/AddColumnModal';
 import HitTable from 'components/elements/hit/grid/HitTable';
 import HitContextMenu from 'components/elements/hit/HitContextMenu';
-import useGridColumns from 'components/hooks/useGridColumns';
 import useHitSelection from 'components/hooks/useHitSelection';
 import { uniq } from 'lodash-es';
-import { useCallback, useMemo, type FC } from 'react';
+import { useCallback, useContext, useMemo, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 import HitQuery from '../HitQuery';
@@ -31,9 +31,8 @@ const HitGrid: FC = () => {
 
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
-  const views = useContextSelector(ParameterContext, ctx => ctx.views);
 
-  const [columns, setColumns] = useGridColumns(views);
+  const { columns, setColumns } = useContext(GridColumnsContext);
 
   const showSelectBar = useMemo(() => {
     if (selectedHits.length > 1) {
@@ -128,8 +127,6 @@ const HitGrid: FC = () => {
           query={query}
           items={response?.items}
           refreshItems={search}
-          columns={columns}
-          onColumnChange={setColumns}
           ContextMenu={HitContextMenu}
           contextMenuProps={{ Component: TableBody, getSelectedId: getSelectedId }}
           onItemClick={onClick}
