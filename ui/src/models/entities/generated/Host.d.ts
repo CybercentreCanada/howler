@@ -3,6 +3,7 @@
  */
 export interface Host {
   domain?: string;
+  hostname?: string;
   id?: string;
   ip?: string[];
   mac?: string[];
