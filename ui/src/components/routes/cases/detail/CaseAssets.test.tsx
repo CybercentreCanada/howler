@@ -1,5 +1,5 @@
 /// <reference types="vitest" />
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Hit } from 'models/entities/generated/Hit';
 import { createElement, type FC, type PropsWithChildren } from 'react';
@@ -88,6 +88,10 @@ describe('buildAssetEntries', () => {
 
 const mockDispatchApi = vi.fn();
 
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } })
+}));
+
 vi.mock('components/hooks/useMyApi', () => ({
   default: () => ({ dispatchApi: mockDispatchApi })
 }));
@@ -172,9 +176,7 @@ describe('CaseAssets component', () => {
     expect(screen.getByText('alice')).toBeTruthy();
 
     // Click the 'ip' filter chip
-    await act(async () => {
-      await userEvent.click(screen.getByRole('button', { name: 'page.cases.assets.type.ip' }));
-    });
+    await userEvent.click(screen.getByRole('button', { name: 'page.cases.assets.type.ip' }));
 
     // Alice (user) should be filtered out
     expect(screen.queryByText('alice')).toBeNull();
@@ -189,12 +191,8 @@ describe('CaseAssets component', () => {
     await screen.findByText('1.2.3.4');
 
     const ipChip = screen.getByRole('button', { name: 'page.cases.assets.type.ip' });
-    await act(async () => {
-      await userEvent.click(ipChip);
-    });
-    await act(async () => {
-      await userEvent.click(ipChip);
-    });
+    await userEvent.click(ipChip);
+    await userEvent.click(ipChip);
 
     expect(screen.getByText('1.2.3.4')).toBeTruthy();
     expect(screen.getByText('alice')).toBeTruthy();

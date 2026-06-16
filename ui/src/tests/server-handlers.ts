@@ -36,6 +36,11 @@ export const MOCK_RESPONSES: { [path: string]: any } = {
     items: [],
     total: 0,
     rows: 0
+  },
+  '/api/v2/search/hit': {
+    items: [],
+    total: 0,
+    rows: 0
   }
 };
 

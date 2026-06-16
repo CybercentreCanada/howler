@@ -380,7 +380,7 @@ describe('ResolveModal', () => {
 
       await fillForm(user);
 
-      expect(screen.getByRole('button', { name: i18n.t('confirm') })).toBeEnabled();
+      expect(screen.getByRole('button', { name: i18n.t('modal.cases.alerts.assess') })).toBeEnabled();
     });
 
     it('is enabled when unresolved override is selected with no hits selected', async () => {
@@ -400,6 +400,72 @@ describe('ResolveModal', () => {
       await user.click(unresolvedOverride);
 
       expect(screen.getByRole('button', { name: i18n.t('confirm') })).toBeEnabled();
+    });
+
+    it('is enabled regardless of assessment or rationale when there are no unresolved hits', async () => {
+      render(<ResolveModal case={caseWithHits(['hit-resolved'])} onConfirm={mockOnConfirm} />, {
+        wrapper: createWrapper({ 'hit-resolved': HIT_RESOLVED })
+      });
+
+      // No fillForm call — confirm should be enabled without any form input
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: i18n.t('confirm') })).toBeEnabled();
+      });
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Assess button disabled states
+  // -------------------------------------------------------------------------
+
+  describe('assess button enablement', () => {
+    it('is disabled by default when no hits are selected', async () => {
+      render(<ResolveModal case={caseWithHits(['hit-1'])} onConfirm={mockOnConfirm} />, {
+        wrapper: createWrapper({ 'hit-1': HIT_1 })
+      });
+
+      await waitFor(() => {
+        expect(getHitCheckboxes()).toHaveLength(1);
+      });
+
+      expect(screen.getByRole('button', { name: i18n.t('modal.cases.alerts.assess') })).toBeDisabled();
+    });
+
+    it('is disabled when hits are selected but assessment is missing', async () => {
+      render(<ResolveModal case={caseWithHits(['hit-1'])} onConfirm={mockOnConfirm} />, {
+        wrapper: createWrapper({ 'hit-1': HIT_1 })
+      });
+
+      await waitFor(() => {
+        expect(getHitCheckboxes()).toHaveLength(1);
+      });
+      const [checkbox] = getHitCheckboxes();
+      clickCheckbox(checkbox);
+      await waitFor(() => expect(checkbox).toBeChecked());
+
+      // No assessment → assess button stays disabled
+      expect(screen.getByRole('button', { name: i18n.t('modal.cases.alerts.assess') })).toBeDisabled();
+    });
+
+    it('is enabled when a hit is selected and assessment is chosen (rationale not required)', async () => {
+      render(<ResolveModal case={caseWithHits(['hit-1'])} onConfirm={mockOnConfirm} />, {
+        wrapper: createWrapper({ 'hit-1': HIT_1 })
+      });
+
+      await waitFor(() => {
+        expect(getHitCheckboxes()).toHaveLength(1);
+      });
+      const [checkbox] = getHitCheckboxes();
+      clickCheckbox(checkbox);
+      await waitFor(() => expect(checkbox).toBeChecked());
+
+      // Select only an assessment — no rationale
+      const assessmentInput = screen.getByRole('combobox');
+      await user.type(assessmentInput, 'leg');
+      const option = await screen.findByRole('option', { name: 'legitimate' });
+      await user.click(option);
+
+      expect(screen.getByRole('button', { name: i18n.t('modal.cases.alerts.assess') })).toBeEnabled();
     });
   });
 
@@ -479,7 +545,7 @@ describe('ResolveModal', () => {
       await waitFor(() => expect(checkbox).toBeChecked());
       await fillForm(user, 'legitimate', 'My rationale');
 
-      await user.click(screen.getByRole('button', { name: i18n.t('confirm') }));
+      await user.click(screen.getByRole('button', { name: i18n.t('modal.cases.alerts.assess') }));
 
       await waitFor(() => {
         expect(mockAssess).toHaveBeenCalledWith('legitimate', true, 'My rationale');
@@ -499,7 +565,7 @@ describe('ResolveModal', () => {
       await waitFor(() => expect(checkbox).toBeChecked());
 
       await fillForm(user);
-      await user.click(screen.getByRole('button', { name: i18n.t('confirm') }));
+      await user.click(screen.getByRole('button', { name: i18n.t('modal.cases.alerts.assess') }));
 
       await waitFor(() => {
         expect(checkbox).not.toBeChecked();
@@ -586,6 +652,24 @@ describe('ResolveModal', () => {
         expect(mockOnConfirm).toHaveBeenCalledTimes(1);
         expect(mockClose).toHaveBeenCalledTimes(1);
       });
+    });
+
+    it('does not call assess when confirm is clicked even with hits selected and form filled', async () => {
+      render(<ResolveModal case={caseWithHits(['hit-resolved'])} onConfirm={mockOnConfirm} />, {
+        wrapper: createWrapper({ 'hit-resolved': HIT_RESOLVED })
+      });
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: i18n.t('confirm') })).toBeEnabled();
+      });
+
+      await fillForm(user);
+      await user.click(screen.getByRole('button', { name: i18n.t('confirm') }));
+
+      await waitFor(() => {
+        expect(mockUpdateCase).toHaveBeenCalledWith({ status: 'resolved' });
+      });
+      expect(mockAssess).not.toHaveBeenCalled();
     });
   });
 });
