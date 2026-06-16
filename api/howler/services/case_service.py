@@ -429,6 +429,11 @@ def append_case(case_id: str, item: CaseItem) -> Case:
     the referenced case is not already present in the parent case. It then persists the updated
     parent case.
 
+    Case items are always placed at the root of the case structure (no subfolders).
+    If the supplied ``item.path`` contains folder segments (e.g. ``"folder/child-case"``),
+    those segments are stripped and only the last path component is retained.  A log
+    entry is recorded whenever normalization changes the original path.
+
     Args:
         case_id: Unique identifier of the parent case to append the reference to.
         item: A CaseItem whose ``value`` is the ID of an existing case to reference.
@@ -452,6 +457,40 @@ def append_case(case_id: str, item: CaseItem) -> Case:
 
     if referenced_case is None:
         raise NotFoundException(f"Referenced case {item.value} not found, cannot be added to case")
+
+    # Enforce root placement: case items must not live inside subfolders.
+    # Strip any leading folder segments, keeping only the last path component.
+    original_path = item.path
+    if original_path and "/" in original_path:
+        stripped_path = original_path.strip("/")
+        root_path = stripped_path.split("/")[-1] if stripped_path else None
+    else:
+        root_path = original_path
+
+    if not root_path:
+        item.path = item.value
+    elif root_path != original_path:
+        logger.info(
+            "Case item path '%s' contains folder segments; normalizing to root path '%s'",
+            original_path,
+            root_path,
+        )
+        item.path = root_path
+        _case.log.append(
+            CaseLog(
+                {
+                    "timestamp": "NOW",
+                    "key": "items",
+                    "previous_value": original_path,
+                    "new_value": root_path,
+                    "user": "system",
+                    "explanation": (
+                        f"Case item path normalized from '{original_path}' to '{root_path}': "
+                        "case references must be placed at the root of the case structure."
+                    ),
+                }
+            )
+        )
 
     _case.items.append(item)
 

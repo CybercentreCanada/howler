@@ -353,4 +353,48 @@ describe('CaseSidebar', () => {
       expect(mockPut).not.toHaveBeenCalled();
     });
   });
+
+  // -------------------------------------------------------------------------
+
+  describe('card header', () => {
+    it('renders the case title in the header card', () => {
+      renderSidebar({ title: 'My Investigation' });
+      expect(screen.getByText('My Investigation')).toBeInTheDocument();
+    });
+
+    it('renders a Skeleton in place of the title when title is not set', () => {
+      renderSidebar({ title: undefined });
+      // At least one Skeleton should be present (title area)
+      expect(document.querySelector('.MuiSkeleton-root')).toBeInTheDocument();
+    });
+
+    it('renders the "started" label in the header', () => {
+      renderSidebar();
+      expect(screen.getByText(/started/i)).toBeInTheDocument();
+    });
+
+    it('renders a Skeleton for the date when created is not set', () => {
+      renderSidebar({ created: undefined });
+      expect(document.querySelector('.MuiSkeleton-root')).toBeInTheDocument();
+    });
+
+    it('renders no date Skeleton when created is set', () => {
+      // With a created date, the date text replaces the Skeleton and the title Skeleton
+      // disappears too (title defaults to "Test Case" via createMockCase).
+      // Provide escalation too so the escalation Skeleton is also replaced by a Chip.
+      renderSidebar({ created: '2024-06-01T00:00:00Z', escalation: 'open' });
+      // No Skeleton should appear when title, created, and escalation are all set
+      expect(document.querySelector('.MuiSkeleton-root')).not.toBeInTheDocument();
+    });
+
+    it('renders the escalation chip label when escalation is set', () => {
+      renderSidebar({ escalation: 'open' });
+      expect(screen.getByText('open')).toBeInTheDocument();
+    });
+
+    it('renders a Skeleton for escalation when escalation is not set', () => {
+      renderSidebar({ escalation: undefined });
+      expect(document.querySelector('.MuiSkeleton-root')).toBeInTheDocument();
+    });
+  });
 });

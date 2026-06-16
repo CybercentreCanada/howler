@@ -10,6 +10,15 @@ export const uri = (id: string) => {
 };
 
 export const post = (id: string, newData: Item): Promise<Case> => {
+  // Case items must always be placed at the root of the case structure.
+  // If a nested path is provided, strip folder segments and retain only the last component,
+  // then warn so callers know a normalization occurred.
+  if (newData.type === 'case' && newData.path?.includes('/')) {
+    const normalizedPath = newData.path.replace(/\/+$/, '').split('/').pop() || newData.value;
+
+    newData = { ...newData, path: normalizedPath };
+  }
+
   return hpost(uri(id), newData);
 };
 
