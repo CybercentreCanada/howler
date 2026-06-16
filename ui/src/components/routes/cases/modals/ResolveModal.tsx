@@ -135,19 +135,25 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
   );
 
   const handleConfirm = async () => {
-    setLoading(true);
-    try {
-      if (selectedHitIds.size > 0) {
-        await assess(assessment, true, rationale);
-
-        setSelectedHitIds(new Set());
-      }
-
-      if (unresolvedHits.length === 0 || allowUnresolvedHits) {
+    if (unresolvedHits.length === 0 || allowUnresolvedHits) {
+      setLoading(true);
+      try {
         await updateCase({ status: 'resolved' });
         onConfirm();
         close();
+      } finally {
+        setLoading(false);
       }
+    }
+  };
+
+  const onAssess = async () => {
+    setLoading(true);
+
+    setSelectedHitIds(new Set());
+
+    try {
+      await assess(assessment, true, rationale);
     } finally {
       setLoading(false);
     }
@@ -183,12 +189,7 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
   }, [dispatchApi, hitIds, loadRecords]);
 
   return (
-    <Stack
-      spacing={2}
-      p={2}
-      alignItems="start"
-      sx={{ minWidth: 'min(1000px, 60vw)', maxHeight: '100%', height: '100%' }}
-    >
+    <Stack spacing={1} alignItems="start" sx={{ minWidth: 'min(1000px, 60vw)', maxHeight: '100%', height: '100%' }}>
       <Typography variant="h4">{t('modal.cases.resolve')}</Typography>
       <Typography>{t('modal.cases.resolve.description')}</Typography>
       <Stack spacing={1} overflow="auto" width="100%" flex={1}>
@@ -220,19 +221,18 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
               )}
             />
           </Box>
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={onAssess}
+            disabled={selectedHitIds.size < 1 || !assessment}
+          >
+            {t('modal.cases.alerts.assess')}
+          </Button>
         </Stack>
         <Stack position="relative">
           <Divider />
           <LinearProgress sx={{ opacity: +loading }} />
-        </Stack>
-        <Stack direction="row" alignItems="center" spacing={1}>
-          <Checkbox
-            size="small"
-            checked={allowUnresolvedHits}
-            onChange={(_ev, checked) => setAllowUnresolvedHits(checked)}
-            inputProps={{ 'aria-label': t('modal.cases.resolve.allow_unresolved.aria_label') }}
-          />
-          <Typography>{t('modal.cases.resolve.allow_unresolved')}</Typography>
         </Stack>
         {hits
           .filter(hit => unresolvedHits.includes(hit.howler.id))
@@ -257,18 +257,23 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
           </AccordionDetails>
         </Accordion>
       </Stack>
-      <Stack direction="row" spacing={1} alignSelf="end">
+      <Divider flexItem orientation="horizontal" />
+      <Stack direction="row" spacing={1} alignSelf="stretch" alignItems="center">
+        <Checkbox
+          size="small"
+          checked={allowUnresolvedHits}
+          onChange={(_ev, checked) => setAllowUnresolvedHits(checked)}
+          inputProps={{ 'aria-label': t('modal.cases.resolve.allow_unresolved.aria_label') }}
+        />
+        <Typography>{t('modal.cases.resolve.allow_unresolved')}</Typography>
+        <div style={{ flex: 1 }} />
         <Button variant="outlined" color="error" onClick={close}>
           {t('cancel')}
         </Button>
         <Button
           variant="outlined"
           color="success"
-          disabled={
-            loading ||
-            (selectedHitIds.size > 0 && (!assessment || !rationale)) ||
-            (selectedHitIds.size === 0 && unresolvedHits.length > 0 && !allowUnresolvedHits)
-          }
+          disabled={loading || (unresolvedHits.length > 0 && !allowUnresolvedHits)}
           startIcon={loading ? <CircularProgress size={16} color="inherit" /> : undefined}
           onClick={handleConfirm}
         >

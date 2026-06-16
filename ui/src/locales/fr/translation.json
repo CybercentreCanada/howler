@@ -325,6 +325,7 @@
   "modal.cases.add_to_case.select_case": "Rechercher des cas",
   "modal.cases.add_to_case.select_path": "Sélectionner le chemin du dossier",
   "modal.cases.add_to_case.title": "Titre de l'élément",
+  "modal.cases.alerts.assess": "Évaluer alertes",
   "modal.cases.alerts.resolved": "Alertes résolues",
   "modal.cases.create_case": "Créer un cas",
   "modal.cases.create_case.escalation": "Escalade",

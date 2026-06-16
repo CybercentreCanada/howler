@@ -325,6 +325,7 @@
   "modal.cases.add_to_case.select_case": "Search Cases",
   "modal.cases.add_to_case.select_path": "Select Folder Path",
   "modal.cases.add_to_case.title": "Item Title",
+  "modal.cases.alerts.assess": "Assess Alerts",
   "modal.cases.alerts.resolved": "Resolved Alerts",
   "modal.cases.create_case": "Create Case",
   "modal.cases.create_case.escalation": "Escalation",
