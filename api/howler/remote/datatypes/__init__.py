@@ -109,14 +109,18 @@ def retry_call(func, *args, **kw):
                 log.info("Reconnected to Redis!")
 
             return ret_val
-        except (redis.ConnectionError, redis.TimeoutError, ConnectionResetError, TimeoutError, OSError) as ce:
+        except (redis.ConnectionError, redis.TimeoutError, OSError) as ce:
             # redis.ConnectionError covers BusyLoadingError (node loading after a
-            # failover) and most connect-time socket errors. redis.TimeoutError and
-            # the builtin TimeoutError/OSError cover socket read/connect timeouts
-            # that occur while a managed Redis instance is failing over.
+            # failover) and most connect-time socket errors. redis.TimeoutError
+            # covers Redis read/connect timeouts. OSError covers the builtin socket
+            # errors raised while a managed Redis instance is failing over,
+            # including its ConnectionResetError and TimeoutError subclasses.
+            #
+            # Use a monotonic clock for the retry budget so NTP/system clock
+            # adjustments can't make retries give up early or run far too long.
             if deadline is None:
-                deadline = time.time() + RETRY_DEADLINE
-            elif time.time() >= deadline:
+                deadline = time.monotonic() + RETRY_DEADLINE
+            elif time.monotonic() >= deadline:
                 # Give up after RETRY_DEADLINE so a sustained outage fails the
                 # request cleanly instead of blocking the worker indefinitely.
                 log.exception("No connection to Redis after %ss, giving up.", RETRY_DEADLINE)
@@ -165,7 +169,11 @@ def get_client(
 
     # Configure connection-level retries using the modern Retry API (the
     # replacement for the deprecated retry_on_timeout flag). A fresh Retry
-    # instance is created per client to avoid sharing mutable retry state.
+    # instance is built here per get_client call. Note that for pooled clients
+    # (private=False) the underlying connection pool is cached by host/port/ssl
+    # in get_pool, so this Retry is only applied when the pool is first created
+    # and is then effectively shared (per-pool) by every later client on that
+    # pool. The Retry config itself is immutable, so this sharing is benign.
     extra_conn_config["retry"] = Retry(ExponentialBackoff(cap=10, base=0.5), retries=3)
     extra_conn_config["retry_on_error"] = [redis.ConnectionError, redis.TimeoutError]
 
