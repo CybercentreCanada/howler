@@ -71,7 +71,7 @@ const ViewComposer: FC = () => {
   const [type, setType] = useState('global');
   const [advanceOnTriage, setAdvanceOnTriage] = useState(false);
   const [displayType, setDisplayType] = useState<HowlerViewLayoutType>('list');
-  const { columns, setColumns } = useContext(GridColumnsContext);
+  const { columns, setColumns, columnWidths } = useContext(GridColumnsContext);
 
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
@@ -90,6 +90,11 @@ const ViewComposer: FC = () => {
   const onSave = useCallback(async () => {
     setLoading(true);
 
+    const _columnData = columns.map(column => ({
+      field: column,
+      width: columnWidths[column] ? Number(columnWidths[column].slice(0, -2)) : null
+    }));
+
     try {
       if (!routeParams.id) {
         const newView = await addView({
@@ -99,7 +104,9 @@ const ViewComposer: FC = () => {
           sort: sort || null,
           span: span || null,
           settings: {
-            advance_on_triage: advanceOnTriage
+            advance_on_triage: advanceOnTriage,
+            display: displayType,
+            columns: displayType === 'grid' ? _columnData : null
           }
         });
 
@@ -111,7 +118,11 @@ const ViewComposer: FC = () => {
           query,
           sort,
           span,
-          settings: { advance_on_triage: advanceOnTriage }
+          settings: {
+            advance_on_triage: advanceOnTriage,
+            display: displayType,
+            columns: displayType === 'grid' ? _columnData : null
+          }
         });
       }
 
@@ -132,7 +143,10 @@ const ViewComposer: FC = () => {
     sort,
     span,
     advanceOnTriage,
+    displayType,
+    columns,
     navigate,
+    columnWidths,
     editView,
     showErrorMessage
   ]);
@@ -198,6 +212,7 @@ const ViewComposer: FC = () => {
       setTitle(viewToEdit.title);
       setAdvanceOnTriage(viewToEdit.settings?.advance_on_triage ?? false);
       setQuery(viewToEdit.query);
+      setDisplayType((viewToEdit.settings?.display ?? 'list') as HowlerViewLayoutType);
 
       if (viewToEdit.sort) {
         setSort(viewToEdit.sort);

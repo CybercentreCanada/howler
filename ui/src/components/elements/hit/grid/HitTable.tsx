@@ -43,7 +43,7 @@ const HitTable = ({
 
   const [collapseMainColumn, setCollapseMainColumn] = useMyLocalStorageItem(StorageKey.GRID_COLLAPSE_COLUMN, false);
   const [analyticIds, setAnalyticIds] = useState<Record<string, string>>({});
-  const { columns, columnWidths, setColumnWidths, setColumns } = useContext(GridColumnsContext);
+  const { columns, columnWidths, setColumnWidth, setColumns } = useContext(GridColumnsContext);
 
   const resizingCol = useRef<[string, HTMLElement]>();
 
@@ -76,10 +76,7 @@ const HitTable = ({
   const onMouseUp = useCallback(() => {
     const [col, element] = resizingCol.current;
 
-    setColumnWidths({
-      ...columnWidths,
-      [col]: element.style.width
-    });
+    setColumnWidth(col, element.style.width);
 
     element.style.width = null;
     element.style.maxWidth = null;
@@ -91,7 +88,7 @@ const HitTable = ({
 
     window.removeEventListener('mousemove', onMouseMove);
     window.removeEventListener('mouseup', onMouseUp);
-  }, [columnWidths, onMouseMove, setColumnWidths]);
+  }, [onMouseMove, setColumnWidth]);
 
   const onMouseDown = useCallback(
     (col: string, event: React.MouseEvent<HTMLElement, MouseEvent>) => {

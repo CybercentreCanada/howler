@@ -7,7 +7,7 @@ from howler import odm
 @odm.model(index=True, store=True, description="The field and width of a column to display in a grid view.")
 class GridColumn(odm.Model):
     field: str = odm.Keyword(description="The field key for this column.")
-    width: int = odm.Integer(description="The width of this column in pixels.")
+    width: int = odm.Optional(odm.Integer(description="The width of this column in pixels."))
 
 
 @odm.model(index=True, store=True, description="Additional View Settings")

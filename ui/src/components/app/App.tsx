@@ -333,7 +333,11 @@ const createRouter = () =>
           path: 'views/:id/edit',
           element: (
             <ParameterProvider>
-              <ViewComposer />
+              <HitSearchProvider>
+                <GridColumnsProvider>
+                  <ViewComposer />
+                </GridColumnsProvider>
+              </HitSearchProvider>
             </ParameterProvider>
           )
         },

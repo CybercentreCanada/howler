@@ -1,22 +1,22 @@
-import api from 'api';
-import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import { createContext, useCallback, useEffect, useMemo, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
 import { ParameterContext } from './ParameterProvider';
+import { ViewContext } from './ViewProvider';
 
 export type GridColumnsContextType = {
   columns: string[];
   setColumns: (columns: string[]) => void;
   columnWidths: Record<string, string>;
-  setColumnWidths: (columnWidths: Record<string, string>) => void;
+  setColumnWidth: (column: string, width: string) => void;
 };
 
 export const GridColumnsContext = createContext<GridColumnsContextType>(null);
 
 const GridColumnsProvider = ({ children }) => {
   const viewIds = useContextSelector(ParameterContext, ctx => ctx.views);
+  const getCurrentViews = useContextSelector(ViewContext, ctx => ctx.getCurrentViews);
 
   // initialise a column state from the views if they exist, falling back to local storage if not.
   // only updating local storage on changes if there are no views.
@@ -31,53 +31,45 @@ const GridColumnsProvider = ({ children }) => {
     {}
   );
   const [contextColumns, setContextColumns] = useState<string[]>(localStorageColumns);
-  const [contextColumnWidths, setContextColumnWidths] = useState<Record<string, string>>(localStorageColumnWidths);
+  const [contextColumnMap, setContextColumnMap] = useState<Map<string, { width: string; viewIds: string[] }>>();
 
-  const { dispatchApi } = useMyApi();
   const idRankMap = useMemo(() => new Map(viewIds?.map((id, index) => [id, index])), [viewIds]);
 
   useEffect(() => {
-    if (viewIds?.length) {
-      dispatchApi(api.search.view.post({ query: viewIds.map(viewId => `view_id:${viewId}`).join(' OR ') })).then(
-        _response => {
-          // collect columns from different views
-          const _itemsByPrecedence = _response.items.sort((a, b) => {
+    getCurrentViews().then(_views => {
+      if (_views.length && _views[0].settings?.display === 'grid') {
+        const _viewsByPrecedence = _views
+          .filter(_item => _item.settings?.display === 'grid')
+          .sort((a, b) => {
             const aRank = idRankMap.get(a.view_id) ?? Infinity;
             const bRank = idRankMap.get(b.view_id) ?? Infinity;
             return aRank === bRank ? 0 : aRank - bRank;
           });
 
-          const _columnMap = new Map<string, { width: number; viewIds: string[] }>();
-          const _columns = _itemsByPrecedence.reduce((acc, item) => {
-            if (item.settings?.columns) {
-              item.settings.columns.forEach(({ field, width }) => {
-                // left param precedence for size and ordering
-                if (!_columnMap.has(field)) {
-                  _columnMap.set(field, { width, viewIds: [item.view_id] });
-                  acc.push(field);
-                } else {
-                  _columnMap.get(field)?.viewIds.push(item.view_id);
-                }
-              });
-            }
-            return acc;
-          }, [] as string[]);
-
-          if (_columns.length) {
-            setContextColumns(_columns);
-            setContextColumnWidths(_columnWidths =>
-              Object.fromEntries(
-                _columns.map(col => {
-                  const columnSettings = _columnMap.get(col);
-                  return [col, columnSettings?.width ? `${columnSettings.width}px` : (_columnWidths[col] ?? null)];
-                })
-              )
-            );
+        const _columnMap = new Map<string, { width: string; viewIds: string[] }>();
+        const _columns = _viewsByPrecedence.reduce((acc, item) => {
+          if (item.settings?.columns) {
+            item.settings.columns.forEach(({ field, width }) => {
+              // left param precedence for size and ordering
+              if (!_columnMap.has(field)) {
+                _columnMap.set(field, { width: `${width}px`, viewIds: [item.view_id] });
+                acc.push(field);
+              } else {
+                _columnMap.get(field)?.viewIds.push(item.view_id);
+              }
+            });
           }
-        }
-      );
-    }
-  }, [viewIds, idRankMap, dispatchApi]);
+          return acc;
+        }, [] as string[]);
+
+        setContextColumns(_columns);
+        setContextColumnMap(_columnMap);
+      } else {
+        setContextColumns(localStorageColumns);
+        setContextColumnMap(null);
+      }
+    });
+  }, [viewIds, idRankMap, getCurrentViews, localStorageColumns]);
 
   const setColumns = useCallback(
     (columns: string[]) => {
@@ -90,15 +82,33 @@ const GridColumnsProvider = ({ children }) => {
     [viewIds, setLocalStorageColumns]
   );
 
-  const setColumnWidths = useCallback(
-    (columnWidths: Record<string, string>) => {
-      if (!viewIds?.length) {
-        // no views loaded, update the local storage
-        setLocalStorageColumnWidths(columnWidths);
+  const columnWidths = useMemo(() => {
+    if (contextColumnMap) {
+      return Object.fromEntries(
+        contextColumns.map(col => {
+          const columnSettings = contextColumnMap.get(col);
+          return [col, columnSettings?.width ?? null];
+        })
+      );
+    }
+    return localStorageColumnWidths;
+  }, [contextColumnMap, contextColumns, localStorageColumnWidths]);
+
+  const setColumnWidth = useCallback(
+    (column: string, width: string) => {
+      if (contextColumnMap) {
+        const newColumnData = contextColumnMap.has(column)
+          ? { ...contextColumnMap.get(column), width }
+          : { width, viewIds: [] };
+        setContextColumnMap(new Map(contextColumnMap.set(column, newColumnData)));
+      } else {
+        setLocalStorageColumnWidths({
+          ...localStorageColumnWidths,
+          [column]: width
+        });
       }
-      setContextColumnWidths(columnWidths);
     },
-    [viewIds, setLocalStorageColumnWidths]
+    [contextColumnMap, localStorageColumnWidths, setLocalStorageColumnWidths]
   );
 
   return (
@@ -106,8 +116,8 @@ const GridColumnsProvider = ({ children }) => {
       value={{
         columns: contextColumns,
         setColumns,
-        columnWidths: contextColumnWidths,
-        setColumnWidths
+        columnWidths,
+        setColumnWidth
       }}
     >
       {children}
