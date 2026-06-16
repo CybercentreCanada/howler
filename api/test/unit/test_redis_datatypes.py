@@ -163,7 +163,7 @@ def test_retry_call_gives_up_after_deadline():
     # The first failure starts the retry deadline. A subsequent failure after the
     # deadline expires must re-raise.
     with (
-        patch("howler.remote.datatypes.time.time", side_effect=[0.0, 61.0]),
+        patch("howler.remote.datatypes.time.monotonic", side_effect=[0.0, 61.0]),
         patch("howler.remote.datatypes.log.warning"),
         patch("howler.remote.datatypes.log.exception"),
         patch("time.sleep"),
@@ -177,7 +177,7 @@ def test_retry_call_deadline_starts_after_first_error():
     """An error from a long blocking read must still get a reconnect attempt."""
     func = MagicMock(side_effect=[redis.ConnectionError("stale blocking connection"), "ok"])
     with (
-        patch("howler.remote.datatypes.time.time", return_value=1000.0),
+        patch("howler.remote.datatypes.time.monotonic", return_value=1000.0),
         patch("time.sleep"),
     ):
         result = retry_call(func)
