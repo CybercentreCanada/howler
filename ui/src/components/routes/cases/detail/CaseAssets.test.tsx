@@ -1,12 +1,12 @@
 /// <reference types="vitest" />
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Hit } from 'models/entities/generated/Hit';
 import { createElement, type FC, type PropsWithChildren } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { createMockHit, createMockObservable } from 'tests/utils';
+import { createMockCase, createMockHit, createMockObservable } from 'tests/utils';
 import { describe, expect, it, vi } from 'vitest';
-import { buildAssetEntries } from './CaseAssets';
+import { buildAssetEntries, classifyRole } from './CaseAssets';
 
 // ---------------------------------------------------------------------------
 // Pure logic tests — no React needed
@@ -83,6 +83,98 @@ describe('buildAssetEntries', () => {
 });
 
 // ---------------------------------------------------------------------------
+// classifyRole tests
+// ---------------------------------------------------------------------------
+
+describe('classifyRole', () => {
+  const emptyCase = createMockCase();
+
+  it('returns "threat" when value is in case.threats', () => {
+    const _case = createMockCase({ threats: ['malicious.exe'] });
+    const records = [createMockHit({ howler: { id: 'h1' } })];
+    expect(classifyRole('malicious.exe', _case, records)).toBe('threat');
+  });
+
+  it('returns "target" when value is in case.targets', () => {
+    const _case = createMockCase({ targets: ['server-01'] });
+    const records = [createMockHit({ howler: { id: 'h1' } })];
+    expect(classifyRole('server-01', _case, records)).toBe('target');
+  });
+
+  it('returns "indicator" when value is in case.indicators', () => {
+    const _case = createMockCase({ indicators: ['1.2.3.4'] });
+    const records = [createMockHit({ howler: { id: 'h1' } })];
+    expect(classifyRole('1.2.3.4', _case, records)).toBe('indicator');
+  });
+
+  it('returns "threat" when value matches howler.outline.threat', () => {
+    const records = [createMockHit({ howler: { id: 'h1', outline: { threat: 'malicious.exe' } } })];
+    expect(classifyRole('malicious.exe', emptyCase, records)).toBe('threat');
+  });
+
+  it('returns "threat" with case-insensitive matching', () => {
+    const records = [createMockHit({ howler: { id: 'h1', outline: { threat: 'Malicious.EXE' } } })];
+    expect(classifyRole('malicious.exe', emptyCase, records)).toBe('threat');
+  });
+
+  it('does not match threat by substring — only exact match', () => {
+    const records = [createMockHit({ howler: { id: 'h1', outline: { threat: 'evil.com dropped payload' } } })];
+    // No substring match, defaults to indicator
+    expect(classifyRole('evil.com', emptyCase, records)).toBe('indicator');
+  });
+
+  it('classifies as indicator when value is in outline.indicators but not in threat/target', () => {
+    const records = [
+      createMockHit({
+        howler: { id: 'h1', outline: { threat: 'actor-x', target: 'server-01', indicators: ['1.2.3.4'] } }
+      })
+    ];
+    expect(classifyRole('1.2.3.4', emptyCase, records)).toBe('indicator');
+  });
+
+  it('returns "target" when value matches howler.outline.target', () => {
+    const records = [createMockHit({ howler: { id: 'h1', outline: { target: 'server-01' } } })];
+    expect(classifyRole('server-01', emptyCase, records)).toBe('target');
+  });
+
+  it('returns "indicator" when value matches threat.indicator.ip', () => {
+    const records = [
+      createMockHit({
+        howler: { id: 'h1' },
+        threat: { indicator: { ip: '10.0.0.1' } }
+      })
+    ];
+    expect(classifyRole('10.0.0.1', emptyCase, records)).toBe('indicator');
+  });
+
+  it('returns "indicator" when value matches threat.indicator.description', () => {
+    const records = [
+      createMockHit({
+        howler: { id: 'h1' },
+        threat: { indicator: { description: 'suspicious-hash-abc123' } }
+      })
+    ];
+    expect(classifyRole('suspicious-hash-abc123', emptyCase, records)).toBe('indicator');
+  });
+
+  it('defaults to "indicator" when value has no specific classification', () => {
+    const records = [createMockHit({ howler: { id: 'h1' }, related: { ip: ['5.6.7.8'] } })];
+    expect(classifyRole('5.6.7.8', emptyCase, records)).toBe('indicator');
+  });
+
+  it('case-level threats take priority over per-record outline.target', () => {
+    const _case = createMockCase({ threats: ['dual-use.exe'] });
+    const records = [createMockHit({ howler: { id: 'h1', outline: { target: 'dual-use.exe' } } })];
+    expect(classifyRole('dual-use.exe', _case, records)).toBe('threat');
+  });
+
+  it('trims whitespace before comparing', () => {
+    const records = [createMockHit({ howler: { id: 'h1', outline: { threat: '  evil.com  ' } } })];
+    expect(classifyRole('evil.com', emptyCase, records)).toBe('threat');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Component rendering tests
 // ---------------------------------------------------------------------------
 
@@ -96,15 +188,32 @@ vi.mock('components/hooks/useMyApi', () => ({
   default: () => ({ dispatchApi: mockDispatchApi })
 }));
 
+vi.mock('api', () => ({
+  default: {
+    v2: {
+      search: {
+        post: vi.fn(() => Promise.resolve({ items: [] })),
+        facet: {
+          post: vi.fn(() => Promise.resolve({}))
+        }
+      }
+    }
+  }
+}));
+
 vi.mock('../hooks/useCase', () => ({
   default: ({ case: c }: any) => ({ case: c, updateCase: vi.fn(), loading: false, missing: false })
+}));
+
+vi.mock('components/elements/PluginTypography', () => ({
+  default: ({ value }: any) => createElement('span', null, value)
 }));
 
 const mockCase = {
   case_id: 'case-001',
   items: [
-    { type: 'hit', value: 'hit-1' },
-    { type: 'observable', value: 'obs-1' }
+    { type: 'hit', value: 'hit-1', path: 'alerts/analytic-1 (hit-1)' },
+    { type: 'observable', value: 'obs-1', path: 'observables/obs-1' }
   ]
 } as any;
 
@@ -124,9 +233,7 @@ describe('CaseAssets component', () => {
 
     render(<CaseAssets case={mockCase} />, { wrapper: Wrapper });
 
-    // 6 skeleton cards
     const skeletons = document.querySelectorAll('.MuiSkeleton-root');
-
     expect(skeletons.length).toBeGreaterThan(0);
   });
 
@@ -140,7 +247,22 @@ describe('CaseAssets component', () => {
     await screen.findByText('page.cases.assets.empty');
   });
 
-  it('renders asset cards for extracted assets', async () => {
+  it('renders assets in a table for extracted assets', async () => {
+    mockDispatchApi.mockResolvedValue({
+      items: [{ howler: { id: 'hit-1' }, related: { ip: ['1.2.3.4'], user: ['alice'] } }]
+    });
+
+    render(<CaseAssets case={mockCase} />, { wrapper: Wrapper });
+
+    await screen.findByText('1.2.3.4');
+    expect(screen.getByText('alice')).toBeTruthy();
+
+    // Table headers should be present
+    expect(screen.getByText('page.cases.assets.columns.type')).toBeTruthy();
+    expect(screen.getByText('page.cases.assets.columns.value')).toBeTruthy();
+  });
+
+  it('renders a filter chip for each asset type present when popper is opened', async () => {
     mockDispatchApi.mockResolvedValue({
       items: [{ howler: { id: 'hit-1' }, related: { ip: ['1.2.3.4'], user: ['alice'] } }]
     });
@@ -149,20 +271,12 @@ describe('CaseAssets component', () => {
 
     await screen.findByText('1.2.3.4');
 
-    expect(screen.getByText('alice')).toBeTruthy();
-  });
+    // Open the type filter popper
+    await userEvent.click(screen.getByText('page.cases.assets.filter_by_type'));
 
-  it('renders a filter chip for each asset type present', async () => {
-    mockDispatchApi.mockResolvedValue({
-      items: [{ howler: { id: 'hit-1' }, related: { ip: ['1.2.3.4'], user: ['alice'] } }]
-    });
-
-    render(<CaseAssets case={mockCase} />, { wrapper: Wrapper });
-
-    await screen.findAllByText('page.cases.assets.type.ip');
-
-    expect(screen.getAllByText('page.cases.assets.type.ip')).toHaveLength(2);
-    expect(screen.getAllByText('page.cases.assets.type.user')).toHaveLength(2);
+    // Filter chips visible in popper + table = at least 2 of each type
+    expect(screen.getAllByText('page.cases.assets.type.ip').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('page.cases.assets.type.user').length).toBeGreaterThanOrEqual(2);
   });
 
   it('filters assets when a type chip is clicked', async () => {
@@ -171,14 +285,13 @@ describe('CaseAssets component', () => {
     });
     render(<CaseAssets case={mockCase} />, { wrapper: Wrapper });
 
-    // Wait for both assets to appear
     await screen.findByText('1.2.3.4');
     expect(screen.getByText('alice')).toBeTruthy();
 
-    // Click the 'ip' filter chip
-    await userEvent.click(screen.getByRole('button', { name: 'page.cases.assets.type.ip' }));
+    // Open the type filter popper and click the first 'ip' chip (in the popper)
+    await userEvent.click(screen.getByText('page.cases.assets.filter_by_type'));
+    await userEvent.click(screen.getAllByText('page.cases.assets.type.ip')[0]);
 
-    // Alice (user) should be filtered out
     expect(screen.queryByText('alice')).toBeNull();
     expect(screen.getByText('1.2.3.4')).toBeTruthy();
   });
@@ -190,7 +303,9 @@ describe('CaseAssets component', () => {
     render(<CaseAssets case={mockCase} />, { wrapper: Wrapper });
     await screen.findByText('1.2.3.4');
 
-    const ipChip = screen.getByRole('button', { name: 'page.cases.assets.type.ip' });
+    // Open the type filter popper
+    await userEvent.click(screen.getByText('page.cases.assets.filter_by_type'));
+    const ipChip = screen.getAllByText('page.cases.assets.type.ip')[0];
     await userEvent.click(ipChip);
     await userEvent.click(ipChip);
 
@@ -203,5 +318,65 @@ describe('CaseAssets component', () => {
     render(<CaseAssets case={emptyCase} />, { wrapper: Wrapper });
     await screen.findByText('page.cases.assets.empty');
     expect(mockDispatchApi).not.toHaveBeenCalled();
+  });
+
+  it('filters assets by search query', async () => {
+    mockDispatchApi.mockResolvedValue({
+      items: [{ howler: { id: 'hit-1' }, related: { ip: ['1.2.3.4'], user: ['alice'] } }]
+    });
+    render(<CaseAssets case={mockCase} />, { wrapper: Wrapper });
+    await screen.findByText('1.2.3.4');
+
+    const searchInput = screen.getByPlaceholderText('page.cases.assets.search');
+    await userEvent.type(searchInput, 'alice');
+
+    expect(screen.queryByText('1.2.3.4')).toBeNull();
+    expect(screen.getByText('alice')).toBeTruthy();
+  });
+
+  it('renders origin filter chips inside popper', async () => {
+    mockDispatchApi.mockResolvedValue({
+      items: [{ howler: { id: 'hit-1' }, related: { ip: ['1.2.3.4'] } }]
+    });
+    render(<CaseAssets case={mockCase} />, { wrapper: Wrapper });
+    await screen.findByText('1.2.3.4');
+
+    // Open the origin filter popper
+    await userEvent.click(screen.getByText('page.cases.assets.filter_by_origin'));
+
+    expect(screen.getByText('page.cases.assets.origin.hit')).toBeTruthy();
+    expect(screen.getByText('page.cases.assets.origin.observable')).toBeTruthy();
+  });
+
+  it('renders escalation filter chips from facet response', async () => {
+    mockDispatchApi
+      .mockResolvedValueOnce({
+        items: [{ howler: { id: 'hit-1', escalation: 'evidence' }, related: { ip: ['1.2.3.4'] } }]
+      })
+      .mockResolvedValueOnce({
+        'howler.escalation': { evidence: 1 }
+      });
+
+    render(<CaseAssets case={mockCase} />, { wrapper: Wrapper });
+    await screen.findByText('1.2.3.4');
+    await waitFor(() => {
+      // 'evidence' appears in the table escalation column
+      expect(screen.getByText('evidence')).toBeTruthy();
+    });
+  });
+
+  it('classifies roles and renders role chips in the table', async () => {
+    mockDispatchApi.mockResolvedValue({
+      items: [
+        {
+          howler: { id: 'hit-1', outline: { threat: 'malware.exe' } },
+          related: { hosts: ['malware.exe'] }
+        }
+      ]
+    });
+    render(<CaseAssets case={mockCase} />, { wrapper: Wrapper });
+    await screen.findByText('malware.exe');
+
+    expect(screen.getByText('page.cases.assets.role.threat')).toBeTruthy();
   });
 });
