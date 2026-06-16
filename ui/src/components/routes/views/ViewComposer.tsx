@@ -8,6 +8,7 @@ import {
   Checkbox,
   CircularProgress,
   LinearProgress,
+  Paper,
   Stack,
   TextField,
   ToggleButton,
@@ -29,9 +30,11 @@ import VSBox from 'components/elements/addons/layout/vsbox/VSBox';
 import VSBoxContent from 'components/elements/addons/layout/vsbox/VSBoxContent';
 import VSBoxHeader from 'components/elements/addons/layout/vsbox/VSBoxHeader';
 import SearchTotal from 'components/elements/addons/search/SearchTotal';
+import HitTable from 'components/elements/hit/grid/HitTable';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import LayoutToggle, { type HowlerViewLayoutType } from 'components/elements/view/LayoutToggle';
+import useGridColumns from 'components/hooks/useGridColumns';
 import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useMySnackbar from 'components/hooks/useMySnackbar';
@@ -66,6 +69,7 @@ const ViewComposer: FC = () => {
   const [type, setType] = useState('global');
   const [advanceOnTriage, setAdvanceOnTriage] = useState(false);
   const [displayType, setDisplayType] = useState<HowlerViewLayoutType>('list');
+  const [columns, setColumns] = useGridColumns();
 
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
@@ -315,7 +319,9 @@ const ViewComposer: FC = () => {
                   ))}
                 </Stack>
               ) : (
-                <div>Grid view coming soon</div>
+                <Stack component={Paper} spacing={1} width="100%" height="100%" sx={{ overflow: 'auto', flex: 1 }}>
+                  <HitTable query={query} items={response?.items} columns={columns} onColumnChange={setColumns} />
+                </Stack>
               )}
             </VSBoxContent>
           </VSBox>

@@ -4,6 +4,12 @@ from typing import Literal, Optional, Union
 from howler import odm
 
 
+@odm.model(index=True, store=True, description="The field and width of a column to display in a grid view.")
+class GridColumn(odm.Model):
+    field: str = odm.Keyword(description="The field key for this column.")
+    width: int = odm.Integer(description="The width of this column in pixels.")
+
+
 @odm.model(index=True, store=True, description="Additional View Settings")
 class Settings(odm.Model):
     advance_on_triage: bool = odm.Boolean(
@@ -16,10 +22,7 @@ class Settings(odm.Model):
         )
     )
     columns: Optional[dict[str, int]] = odm.Optional(
-        odm.Mapping(
-            odm.Integer("The width of this column in pixels"),
-            description="The columns to display in this view as a mapping of howler field keys to widths",
-        )
+        odm.List(odm.Compound(GridColumn, description="The columns to display in this view."))
     )
 
 

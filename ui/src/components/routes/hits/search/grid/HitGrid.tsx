@@ -1,6 +1,5 @@
 import { Info } from '@mui/icons-material';
 import { LinearProgress, Paper, Stack, TableBody, Typography, useTheme } from '@mui/material';
-import useMatchers from 'components/app/hooks/useMatchers';
 import { HitContext } from 'components/app/providers/HitProvider';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
@@ -9,13 +8,12 @@ import DevelopmentBanner from 'components/elements/display/features/DevelopmentB
 import AddColumnModal from 'components/elements/hit/grid/AddColumnModal';
 import HitTable from 'components/elements/hit/grid/HitTable';
 import HitContextMenu from 'components/elements/hit/HitContextMenu';
+import useGridColumns from 'components/hooks/useGridColumns';
 import useHitSelection from 'components/hooks/useHitSelection';
-import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import { uniq } from 'lodash-es';
-import { useCallback, useEffect, useMemo, useState, type FC } from 'react';
+import { useCallback, useMemo, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
-import { StorageKey } from 'utils/constants';
 import HitQuery from '../HitQuery';
 import QuerySettings from '../QuerySettings';
 import SearchActionMenu from '../shared/SearchActionMenu';
@@ -24,7 +22,6 @@ const HitGrid: FC = () => {
   const { t } = useTranslation();
   const theme = useTheme();
   const { onClick } = useHitSelection();
-  const { getMatchingAnalytic } = useMatchers();
 
   const search = useContextSelector(HitSearchContext, ctx => ctx.search);
   const response = useContextSelector(HitSearchContext, ctx => ctx.response);
@@ -34,15 +31,9 @@ const HitGrid: FC = () => {
 
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
+  const views = useContextSelector(ParameterContext, ctx => ctx.views);
 
-  const [columns, setColumns] = useMyLocalStorageItem(StorageKey.GRID_COLUMNS, [
-    'howler.outline.threat',
-    'howler.outline.target',
-    'howler.outline.indicators',
-    'howler.outline.summary'
-  ]);
-
-  const [analyticIds, setAnalyticIds] = useState<Record<string, string>>({});
+  const [columns, setColumns] = useGridColumns(views);
 
   const showSelectBar = useMemo(() => {
     if (selectedHits.length > 1) {
@@ -55,17 +46,6 @@ const HitGrid: FC = () => {
 
     return false;
   }, [selected, selectedHits]);
-
-  useEffect(() => {
-    response?.items.forEach(hit => {
-      if (!analyticIds[hit.howler.analytic]) {
-        getMatchingAnalytic(hit).then(_analytic =>
-          setAnalyticIds(_analyticIds => ({ ..._analyticIds, [hit.howler.analytic]: _analytic.analytic_id }))
-        );
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [analyticIds, response]);
 
   const onScroll = useCallback(
     (event: React.UIEvent<HTMLDivElement, UIEvent>) => {
@@ -146,11 +126,10 @@ const HitGrid: FC = () => {
       >
         <HitTable
           query={query}
-          items={response?.items ?? []}
+          items={response?.items}
           refreshItems={search}
           columns={columns}
           onColumnChange={setColumns}
-          analyticIds={analyticIds}
           ContextMenu={HitContextMenu}
           contextMenuProps={{ Component: TableBody, getSelectedId: getSelectedId }}
           onItemClick={onClick}
