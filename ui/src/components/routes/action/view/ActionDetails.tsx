@@ -59,7 +59,8 @@ const AddMemberModal = ({ open, onClose, actionId }: AddMemberModalProps) => {
 
   // 3. Search function to trigger API
   const handleSearchUsers = async (query: string) => {
-    if (query.length < 2) return;
+    if (query.length === 1) return;
+
     const results = await dispatchApi(api.user.search(query));
     setUserOptions(results || []);
   };
@@ -78,7 +79,6 @@ const AddMemberModal = ({ open, onClose, actionId }: AddMemberModalProps) => {
     <Dialog open={open} onClose={onClose}>
       <DialogTitle>{t('route.actions.permission')}</DialogTitle>
       <DialogContent>
-        {/* 4. Replace TextField with Autocomplete */}
         <Autocomplete
           options={userOptions}
           getOptionLabel={option => option.uname || option}
