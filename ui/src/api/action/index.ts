@@ -1,4 +1,4 @@
-import { hdelete, hpatch, hpost, hput, joinAllUri, joinUri, uri as parentUri } from 'api';
+import { hdelete, hget, hpatch, hpost, hput, joinAllUri, joinUri, uri as parentUri } from 'api';
 import * as execute from 'api/action/execute';
 import * as operations from 'api/action/operations';
 import { action } from 'api/search';
@@ -31,6 +31,18 @@ export const patch = (id: string, data: Action): Promise<Action> => {
 
 export const del = (id: string): Promise<void> => {
   return hdelete(uri(id));
+};
+
+export const permission = {
+  put: (id: string, data: { privilege: string; user_id: string }) => {
+    return hput(joinAllUri(uri(id), 'permission'), data);
+  },
+  delete: (id: string, data: { privilege: string; user_id: string; is_adding: boolean }) => {
+    return hdelete(joinAllUri(uri(id), 'permission'), data);
+  },
+  getOptions: (id: string) => {
+    return hget(joinAllUri(uri(id), 'permission_options'));
+  }
 };
 
 export { execute, operations };

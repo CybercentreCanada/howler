@@ -9,6 +9,7 @@ import {
   FormGroup,
   IconButton,
   LinearProgress,
+  MenuItem,
   Stack,
   TextField,
   Typography
@@ -38,17 +39,56 @@ import useMyActionFunctions from '../useMyActionFunctions';
 interface AddMemberModalProps {
   open: boolean;
   onClose: () => void;
+  actionId: string;
 }
 
-const AddMemberModal = ({ open, onClose }: AddMemberModalProps) => {
+const AddMemberModal = ({ open, onClose, actionId }: AddMemberModalProps) => {
   const { t } = useTranslation();
+  const { dispatchApi } = useMyApi();
+  const [username, setUsername] = useState('');
+  const [privilege, setPrivilege] = useState('');
+  const [options, setOptions] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    if (open && actionId) {
+      // Check that actionId exists
+      dispatchApi(api.action.permission.getOptions(actionId)).then(setOptions);
+    }
+  }, [open, actionId, dispatchApi]);
+
+  const handleAddMember = async () => {
+    await dispatchApi(
+      api.action.permission.put(actionId, {
+        privilege: privilege, // Use the selected value from the dropdown
+        user_id: username
+      })
+    );
+    onClose();
+  };
 
   return (
     <Dialog open={open} onClose={onClose}>
-      <DialogTitle>{t('route.actions.edit')}</DialogTitle>
+      <DialogTitle>{t('route.actions.permission')}</DialogTitle>
       <DialogContent>
-        <TextField label="Username" fullWidth sx={{ mt: 1 }} />
-        <Button onClick={onClose} sx={{ mt: 2 }} variant="contained">
+        <TextField label="Username" fullWidth value={username} onChange={e => setUsername(e.target.value)} />
+
+        {/* Dropdown for privilege selection */}
+        <TextField
+          select
+          label="Privilege"
+          fullWidth
+          value={privilege}
+          onChange={e => setPrivilege(e.target.value)}
+          sx={{ mt: 2 }}
+        >
+          {Object.keys(options).map(key => (
+            <MenuItem key={key} value={key}>
+              {key}
+            </MenuItem>
+          ))}
+        </TextField>
+
+        <Button onClick={handleAddMember} sx={{ mt: 2 }} variant="contained">
           {t('add')}
         </Button>
       </DialogContent>
@@ -105,7 +145,7 @@ const ActionDetails = () => {
 
     Promise.all([
       dispatchApi(api.action.operations.get()).then(setOperations),
-      dispatchApi(api.action.get(params.id).then(setAction))
+      dispatchApi(api.action.get(params.id)).then(setAction)
     ]).finally(() => setLoading(false));
   }, [dispatchApi, params.id, setLoading]);
 
@@ -261,7 +301,7 @@ const ActionDetails = () => {
       </Stack>
 
       {/* FIX: Explicitly mounted the dialog so it listens to the state change safely */}
-      <AddMemberModal open={memberModalOpen} onClose={() => setMemberModalOpen(false)} />
+      <AddMemberModal open={memberModalOpen} onClose={() => setMemberModalOpen(false)} actionId={params.id} />
     </PageCenter>
   );
 };

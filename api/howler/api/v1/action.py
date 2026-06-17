@@ -579,7 +579,6 @@ def get_permission_option(id: str, user: User):
     """
     ds = datastore()
     action: Action = ds.action.get(id)
-
     if not action:
         return not_found(err="The specified action does not exist")
 
