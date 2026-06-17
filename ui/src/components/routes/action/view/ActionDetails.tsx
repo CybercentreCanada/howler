@@ -1,5 +1,6 @@
 import { Delete, Edit, PersonAdd, PlayCircleOutline, Search } from '@mui/icons-material';
 import {
+  Autocomplete,
   Button,
   Checkbox,
   Dialog,
@@ -48,18 +49,25 @@ const AddMemberModal = ({ open, onClose, actionId }: AddMemberModalProps) => {
   const [username, setUsername] = useState('');
   const [privilege, setPrivilege] = useState('');
   const [options, setOptions] = useState<Record<string, any>>({});
+  const [userOptions, setUserOptions] = useState<any[]>([]); // 2. State for search results
 
   useEffect(() => {
     if (open && actionId) {
-      // Check that actionId exists
       dispatchApi(api.action.permission.getOptions(actionId)).then(setOptions);
     }
   }, [open, actionId, dispatchApi]);
 
+  // 3. Search function to trigger API
+  const handleSearchUsers = async (query: string) => {
+    if (query.length < 2) return;
+    const results = await dispatchApi(api.user.search(query));
+    setUserOptions(results || []);
+  };
+
   const handleAddMember = async () => {
     await dispatchApi(
       api.action.permission.put(actionId, {
-        privilege: privilege, // Use the selected value from the dropdown
+        privilege: privilege,
         user_id: username
       })
     );
@@ -70,9 +78,15 @@ const AddMemberModal = ({ open, onClose, actionId }: AddMemberModalProps) => {
     <Dialog open={open} onClose={onClose}>
       <DialogTitle>{t('route.actions.permission')}</DialogTitle>
       <DialogContent>
-        <TextField label="Username" fullWidth value={username} onChange={e => setUsername(e.target.value)} />
+        {/* 4. Replace TextField with Autocomplete */}
+        <Autocomplete
+          options={userOptions}
+          getOptionLabel={option => option.uname || option}
+          onInputChange={(event, newInputValue) => handleSearchUsers(newInputValue)}
+          onChange={(event, newValue) => setUsername(newValue?.uname || newValue || '')}
+          renderInput={params => <TextField {...params} label="Username" fullWidth sx={{ mt: 2 }} />}
+        />
 
-        {/* Dropdown for privilege selection */}
         <TextField
           select
           label="Privilege"

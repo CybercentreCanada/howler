@@ -412,3 +412,23 @@ def get_user_groups(**kwargs):
             group_data.append({"name": name, "id": g})
 
     return ok(group_data)
+
+
+@generate_swagger_docs()
+@user_api.route("/search", methods=["GET"])
+@api_login(required_priv=["R"])
+def search_users(**kwargs):
+    """Search for valid users in the system."""
+    query = request.args.get("query", "").strip()
+
+    # If the search box is empty, define a default behavior
+    if not query:
+        # Option 1: Search for everything (if your engine supports it)
+        # Or Option 2: Provide a hardcoded list/filtered subset of active users
+        # Example: Fetching all users, limited to 20
+        search_results = datastore().user.search(query="*", rows=20, sort="name")
+    else:
+        # Normal search with wildcard
+        search_results = datastore().user.search(query=f"*{query}*", rows=20)
+
+    return ok(search_results.get("items", []))

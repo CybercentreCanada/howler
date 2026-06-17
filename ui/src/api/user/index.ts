@@ -17,4 +17,10 @@ export const put = (username: string, newData: Partial<HowlerUser> | { new_pass:
   return hput(uri(username), newData);
 };
 
+export const search = (query: string) => {
+  const params = new URLSearchParams({ query });
+
+  return hget(joinUri(parentUri(), 'user/search'), params as any);
+};
+
 export { avatar, groups, whoami };
