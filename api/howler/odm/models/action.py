@@ -66,7 +66,7 @@ class Action(odm.Model):
             "owner": self.owner_id,
         }
 
-    def set_privilege_mapping(self, level: str, users: str | list[str]):
+    def set_privilege_mapping(self, level: str, user: str | list[str]):
         """
         Sets the users for a given privilege level.
         level: requested level based on priviledge mapping (owner, administrator, member)
@@ -75,14 +75,21 @@ class Action(odm.Model):
 
         return : none
         """
+        is_user_list: bool = isinstance(user, list)
         if level == "owner":
-            if isinstance(users, list) and len(users) > 1:
+            if is_user_list and len(user) > 1:
                 raise ValueError("Owner level can only have one user. a list was given with multiple users.")
-            self.owner_id = users if isinstance(users, str) else users[0]
+            self.owner_id = user if isinstance(user, str) else user[0]
         elif level == "administrator":
-            self.admins = users if isinstance(users, list) else [users]
+            if is_user_list:
+                self.admins.extend(user)
+                return
+            self.admins.append(user)
         elif level == "member":
-            self.members = users if isinstance(users, list) else [users]
+            if is_user_list:
+                self.members.extend(user)
+                return
+            self.members.append(user)
 
     def remove_privilege_mapping(self, level: str, users: str | list[str]):
         """
@@ -95,7 +102,7 @@ class Action(odm.Model):
         if level == "owner":
             if isinstance(users, list) and len(users) > 1:
                 raise ValueError("Owner level can only have one user. a list was given with multiple users.")
-            self.owner = ""  # TODO: Verify if we should allow removing owner and leaving it empty
+            self.owner_id = ""  # TODO: Verify if we should allow removing owner and leaving it empty
         elif level == "administrator":
             if isinstance(users, list):
                 self.admins = [admin for admin in self.admins if admin not in users]

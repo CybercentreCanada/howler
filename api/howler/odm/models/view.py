@@ -30,13 +30,13 @@ class View(odm.Model):
         optional=True,
     )
 
-    admin: list[str] = odm.List(
+    admins: list[str] = odm.List(
         odm.Keyword(),
         description="The group of person to whom administer this view.",
         default=[],
         optional=True,
     )
-    member: list[str] = odm.List(
+    members: list[str] = odm.List(
         odm.Keyword(),
         description="The group of person to whom can modify the view.",
         default=[],
@@ -60,12 +60,12 @@ class View(odm.Model):
         }
         """
         return {
-            "administrator": self.admin,
-            "member": self.member,
+            "administrator": self.admins,
+            "member": self.members,
             "owner": self.owner,
         }
 
-    def set_privilege_mapping(self, level: str, users: str | list[str]):
+    def set_privilege_mapping(self, level: str, user: str | list[str]):
         """
         Sets the users for a given privilege level.
         level: requested level based on priviledge mapping (owner, administrator, member)
@@ -74,14 +74,21 @@ class View(odm.Model):
 
         return : none
         """
+        is_user_list: bool = isinstance(user, list)
         if level == "owner":
-            if isinstance(users, list) and len(users) > 1:
+            if is_user_list and len(user) > 1:
                 raise ValueError("Owner level can only have one user. a list was given with multiple users.")
-            self.owner = users if isinstance(users, str) else users[0]
+            self.owner = user if isinstance(user, str) else user[0]
         elif level == "administrator":
-            self.admin = users if isinstance(users, list) else [users]
+            if is_user_list:
+                self.admins.extend(user)
+                return
+            self.admins.append(user)
         elif level == "member":
-            self.member = users if isinstance(users, list) else [users]
+            if is_user_list:
+                self.members.extend(user)
+                return
+            self.members.append(user)
 
     def remove_privilege_mapping(self, level: str, users: str | list[str]):
         """
@@ -97,11 +104,11 @@ class View(odm.Model):
             self.owner = ""
         elif level == "administrator":
             if isinstance(users, list):
-                self.admin = [a for a in self.admin if a not in users]
+                self.admins = [a for a in self.admins if a not in users]
             else:
-                self.admin = [a for a in self.admin if a != users]
+                self.admins = [a for a in self.admins if a != users]
         elif level == "member":
             if isinstance(users, list):
-                self.member = [m for m in self.member if m not in users]
+                self.members = [m for m in self.members if m not in users]
             else:
-                self.member = [m for m in self.member if m != users]
+                self.members = [m for m in self.members if m != users]
