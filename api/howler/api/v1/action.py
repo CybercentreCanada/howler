@@ -476,10 +476,16 @@ def revoke_privilege(id: str, user: User, **kwargs):
     """Give permission from one user to another.
 
     Variables:
-        action_id => The id of the Action to give administrative privilege of
+    action_id => The id of the action to remove administrative privilege of
+
+     The json object need to send "privilege", "user_id" as a key.
+    privilege : The value need to be one of ["administrator", "member", "owner"]
+    user_id : the value need to be the user to add or remove from the permission
+    is_adding: The value neeed to be a boolean representing if we add or remove a user.
 
     Arguments:
-        None
+        id: The id of the action to modify permissions for
+        user: The user making the request (injected by the api_login decorator)
 
     Optional Arguments:
         None
@@ -543,11 +549,32 @@ def revoke_privilege(id: str, user: User, **kwargs):
 @generate_swagger_docs()
 @action_api.route("/<id>/permission_options", methods=["GET"])
 @api_login(required_priv=["R", "W"], required_type=["automation_basic"])
-def get_permission_option(id: str):
+def get_permission_option(id: str, user: User):
     """Get the permission options for a given action
 
     Variables:
-        action_id => The id of the Action to get permissions for
+    action_id => The id of the action to remove administrative privilege of
+
+     The json object need to send "privilege", "user_id" as a key.
+    privilege : The value need to be one of ["administrator", "member", "owner"]
+    user_id : the value need to be the user to add or remove from the permission
+    is_adding: The value neeed to be a boolean representing if we add or remove a user.
+
+    Arguments:
+        id: The id of the Action to get permissions for
+        user: The user making the request (injected by the api_login decorator)
+    Optional Arguments:
+        None
+    Result Example:
+         {
+            "administrator": [ # Each entry corresponds to a given privilege level
+                "user1", "user2" # A list of users that have this privilege
+            ],
+            "member": [
+                "user3"
+            ],
+            "owner": "user4"
+        }
     returns a dict with the possible permissions for the action and the users that have them.
     """
     ds = datastore()
