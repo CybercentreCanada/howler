@@ -12,8 +12,8 @@ import { useTranslation } from 'react-i18next';
 import { useOutletContext } from 'react-router-dom';
 import useCase from '../hooks/useCase';
 import AssetTable from './assets/AssetTable';
-import type { AssetRole, AssetType } from './types';
-import { ASSET_FIELDS, buildAssetEntries, classifyRole } from './utils';
+import type { AssetRole, AssetType, OriginType } from './types';
+import { ASSET_FIELDS, buildAssetEntries, classifyRole, resolveSources } from './utils';
 
 const RELATED_FIELDS = ASSET_FIELDS.map(f => `related.${f}`).join(',');
 const EXTRA_FIELDS =
