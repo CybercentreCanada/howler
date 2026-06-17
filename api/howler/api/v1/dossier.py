@@ -171,8 +171,7 @@ def delete_dossier(id: str, user: User, **kwargs):
     if not existing_dossier:
         return not_found(err="This dossier does not exist")
 
-    # TODO : AG verify it work same as view
-    if user.uname not in existing_dossier.owner and "admin" not in user.type:
+    if user.uname != existing_dossier.owner and "admin" not in user.type:
         return forbidden(
             err="You cannot delete a dossier unless you are an administrator, the owner or dossier administrator."
         )
