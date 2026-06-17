@@ -451,7 +451,7 @@
   "route.actions.name": "Nom de l'action",
   "route.actions.open": "Ouvrir la requête",
   "route.actions.operation.add": "Ajouter une nouvelle opération",
-  "route.actions.permission": "Ajouter un nouveau membre",
+  "route.actions.permission": "Gestion des membres",
   "route.actions.query.empty": "La requête ne peut pas être vide.",
   "route.actions.report": "Rapport d'action",
   "route.actions.restart": "Redémarrer",
