@@ -242,18 +242,19 @@ def test_get_client_applies_resilience_config():
         assert kwargs[key] == value
 
 
-def test_get_client_does_not_set_socket_timeout():
-    """socket_timeout must NOT be set: it would make infinite blocking pops
-    (BLPOP/BZPOPMIN with timeout=0) raise spurious TimeoutErrors (redis-py #2807)."""
+def test_get_client_disables_socket_timeout():
+    """socket_timeout must be explicitly None: redis-py 8.0 defaults it to 5s, which
+    makes infinite blocking pops (BLPOP/BZPOPMIN with timeout=0) raise spurious
+    TimeoutErrors and stall the action-queue worker (redis-py #2807)."""
     from howler.remote.datatypes import RESILIENCE_CONFIG
 
-    assert "socket_timeout" not in RESILIENCE_CONFIG
+    assert RESILIENCE_CONFIG["socket_timeout"] is None
 
     fake_strict_redis, call_log = _make_fake_strict_redis()
     with patch("redis.StrictRedis", fake_strict_redis):
         get_client("some-managed-redis", 6379, private=True)
 
-    assert "socket_timeout" not in call_log[0]["kwargs"]
+    assert call_log[0]["kwargs"]["socket_timeout"] is None
 
 
 def test_get_client_pins_resp2_protocol():

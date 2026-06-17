@@ -55,16 +55,19 @@ _KEEPALIVE_OPTIONS: dict[int, int] = {
 #   - health_check_interval: proactively PING idle pooled connections before
 #     use so stale connections to the old primary are recycled transparently.
 #
-# NOTE: we intentionally do NOT set socket_timeout. It is a per-read socket
-# timeout that redis-py also applies to blocking commands, so any value would
-# make BLPOP/BZPOPMIN/BRPOP with an infinite (timeout=0) wait raise spurious
-# TimeoutErrors (see redis-py #2807). The queue consumers in this package rely
-# on infinite blocking pops, so keepalives + health checks handle failover
-# detection instead.
+# NOTE: socket_timeout is explicitly set to None. It is a per-read socket
+# timeout that redis-py also applies to blocking commands, so any positive value
+# makes BLPOP/BZPOPMIN/BRPOP with an infinite (timeout=0) wait raise spurious
+# TimeoutErrors (see redis-py #2807). This MUST be set explicitly: redis-py 8.0
+# changed the default socket_timeout from None to 5 seconds, so simply omitting
+# it would silently break the infinite blocking pops the queue consumers in this
+# package rely on. With socket_timeout disabled, keepalives + health checks
+# handle failover detection instead.
 RESILIENCE_CONFIG: dict[str, Any] = {
-    "socket_connect_timeout": 15,
+    "socket_connect_timeout": 5,
+    "socket_timeout": None,
     "socket_keepalive": True,
-    "health_check_interval": 30,
+    "health_check_interval": 15,
 }
 if _KEEPALIVE_OPTIONS:
     RESILIENCE_CONFIG["socket_keepalive_options"] = _KEEPALIVE_OPTIONS
