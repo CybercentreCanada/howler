@@ -13,7 +13,7 @@ from redis import Redis
 from howler.remote.datatypes.events import EventSender, EventWatcher
 
 
-def test_exact_event(redis_connection: Redis[Any]):
+def test_exact_event(redis_connection: Redis):
     calls: list[dict[str, Any]] = []
 
     def _track_call(data: dict[str, Any]):
@@ -40,7 +40,7 @@ def test_exact_event(redis_connection: Redis[Any]):
         watcher.stop()
 
 
-def test_serialized_event(redis_connection: Redis[Any]):
+def test_serialized_event(redis_connection: Redis):
     class Event(enum.IntEnum):
         ADD = 0
         REM = 1
@@ -83,7 +83,7 @@ def test_serialized_event(redis_connection: Redis[Any]):
         watcher.stop()
 
 
-def test_pattern_event(redis_connection: Redis[Any]):
+def test_pattern_event(redis_connection: Redis):
     calls: list[dict[str, Any]] = []
 
     def _track_call(data: dict[str, Any]):
