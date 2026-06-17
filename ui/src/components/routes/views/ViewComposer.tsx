@@ -22,6 +22,7 @@ import AppListEmpty from 'commons/components/display/AppListEmpty';
 import PageCenter from 'commons/components/pages/PageCenter';
 import { GridColumnsContext } from 'components/app/providers/GridColumnsProvider';
 import { HitContext } from 'components/app/providers/HitProvider';
+import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import CustomButton from 'components/elements/addons/buttons/CustomButton';
@@ -70,7 +71,6 @@ const ViewComposer: FC = () => {
   const [title, setTitle] = useState('');
   const [type, setType] = useState('global');
   const [advanceOnTriage, setAdvanceOnTriage] = useState(false);
-  const [displayType, setDisplayType] = useState<HowlerViewLayoutType>('list');
   const { columns, setColumns, columnWidths } = useContext(GridColumnsContext);
 
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
@@ -86,6 +86,8 @@ const ViewComposer: FC = () => {
   const [searching, setSearching] = useState<boolean>(false);
   const [error, setError] = useState<string>(null);
   const [response, setResponse] = useState<HowlerSearchResponse<Hit>>();
+  const displayType = useContextSelector(HitSearchContext, ctx => ctx.displayType);
+  const setDisplayType = useContextSelector(HitSearchContext, ctx => ctx.setDisplayType);
 
   const onSave = useCallback(async () => {
     setLoading(true);
@@ -212,7 +214,7 @@ const ViewComposer: FC = () => {
       setTitle(viewToEdit.title);
       setAdvanceOnTriage(viewToEdit.settings?.advance_on_triage ?? false);
       setQuery(viewToEdit.query);
-      setDisplayType((viewToEdit.settings?.display ?? 'list') as HowlerViewLayoutType);
+      setDisplayType(viewToEdit.settings?.display as HowlerViewLayoutType);
 
       if (viewToEdit.sort) {
         setSort(viewToEdit.sort);
@@ -333,16 +335,16 @@ const ViewComposer: FC = () => {
               </Stack>
             </VSBoxHeader>
             <VSBoxContent>
-              {displayType === 'list' ? (
+              {displayType === 'grid' ? (
+                <Stack component={Paper} spacing={1} width="100%" height="100%" sx={{ overflow: 'auto', flex: 1 }}>
+                  <HitTable query={query} items={response?.items} />
+                </Stack>
+              ) : (
                 <Stack spacing={1}>
                   {!response?.total && <AppListEmpty />}
                   {response?.items.map(hit => (
                     <HitCard key={hit.howler.id} id={hit.howler.id} layout={HitLayout.DENSE} />
                   ))}
-                </Stack>
-              ) : (
-                <Stack component={Paper} spacing={1} width="100%" height="100%" sx={{ overflow: 'auto', flex: 1 }}>
-                  <HitTable query={query} items={response?.items} />
                 </Stack>
               )}
             </VSBoxContent>
