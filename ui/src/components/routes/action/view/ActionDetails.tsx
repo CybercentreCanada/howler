@@ -19,16 +19,16 @@ import HowlerAvatar from 'components/elements/display/HowlerAvatar';
 import useMyApi from 'components/hooks/useMyApi';
 import OperationEntry from 'components/routes/action/shared/OperationEntry';
 import type { ActionOperation } from 'models/ActionTypes';
-import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Action } from 'models/entities/generated/Action';
+import type { HowlerUser } from 'models/entities/HowlerUser';
 import howlerPluginStore from 'plugins/store';
 import { useCallback, useContext, useEffect, useState, type ChangeEventHandler } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
 import { Link, useParams } from 'react-router-dom';
 import QueryResultText from '../../../elements/display/QueryResultText';
+import { MembershipManagement } from '../../../elements/membershipManagement';
 import type { CustomActionProps } from '../edit/ActionEditor';
-import { MembershipManagement } from '../elements/MembershipManagement';
 import ActionReportDisplay from '../shared/ActionReportDisplay';
 import useMyActionFunctions from '../useMyActionFunctions';
 
