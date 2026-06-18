@@ -1,18 +1,12 @@
 import { Delete, Edit, PersonAdd, PlayCircleOutline, Search } from '@mui/icons-material';
 import {
-  Autocomplete,
   Button,
   Checkbox,
-  Dialog,
-  DialogContent,
-  DialogTitle,
   FormControlLabel,
   FormGroup,
   IconButton,
   LinearProgress,
-  MenuItem,
   Stack,
-  TextField,
   Typography
 } from '@mui/material';
 import api from 'api';
@@ -34,81 +28,9 @@ import { usePluginStore } from 'react-pluggable';
 import { Link, useParams } from 'react-router-dom';
 import QueryResultText from '../../../elements/display/QueryResultText';
 import type { CustomActionProps } from '../edit/ActionEditor';
+import { MembershipManagement } from '../elements/MembershipManagement';
 import ActionReportDisplay from '../shared/ActionReportDisplay';
 import useMyActionFunctions from '../useMyActionFunctions';
-
-interface AddMemberModalProps {
-  open: boolean;
-  onClose: () => void;
-  actionId: string;
-}
-
-const AddMemberModal = ({ open, onClose, actionId }: AddMemberModalProps) => {
-  const { t } = useTranslation();
-  const { dispatchApi } = useMyApi();
-  const [username, setUsername] = useState('');
-  const [privilege, setPrivilege] = useState('');
-  const [options, setOptions] = useState<Record<string, any>>({});
-  const [userOptions, setUserOptions] = useState<any[]>([]); // 2. State for search results
-
-  useEffect(() => {
-    if (open && actionId) {
-      dispatchApi(api.action.permission.getOptions(actionId)).then(setOptions);
-    }
-  }, [open, actionId, dispatchApi]);
-
-  // 3. Search function to trigger API
-  const handleSearchUsers = async (query: string) => {
-    if (query.length === 1) return;
-
-    const results = await dispatchApi(api.user.search(query));
-    setUserOptions(results || []);
-  };
-
-  const handleAddMember = async () => {
-    await dispatchApi(
-      api.action.permission.put(actionId, {
-        privilege: privilege,
-        user_id: username
-      })
-    );
-    onClose();
-  };
-
-  return (
-    <Dialog open={open} onClose={onClose}>
-      <DialogTitle>{t('route.actions.permission')}</DialogTitle>
-      <DialogContent>
-        <Autocomplete
-          options={userOptions}
-          getOptionLabel={option => option.uname || option}
-          onInputChange={(event, newInputValue) => handleSearchUsers(newInputValue)}
-          onChange={(event, newValue) => setUsername(newValue?.uname || newValue || '')}
-          renderInput={params => <TextField {...params} label="Username" fullWidth sx={{ mt: 2 }} />}
-        />
-
-        <TextField
-          select
-          label="Privilege"
-          fullWidth
-          value={privilege}
-          onChange={e => setPrivilege(e.target.value)}
-          sx={{ mt: 2 }}
-        >
-          {Object.keys(options).map(key => (
-            <MenuItem key={key} value={key}>
-              {key}
-            </MenuItem>
-          ))}
-        </TextField>
-
-        <Button onClick={handleAddMember} sx={{ mt: 2 }} variant="contained">
-          {t('add')}
-        </Button>
-      </DialogContent>
-    </Dialog>
-  );
-};
 
 const ActionDetails = () => {
   const { t } = useTranslation();
@@ -314,8 +236,7 @@ const ActionDetails = () => {
           })}
       </Stack>
 
-      {/* FIX: Explicitly mounted the dialog so it listens to the state change safely */}
-      <AddMemberModal open={memberModalOpen} onClose={() => setMemberModalOpen(false)} actionId={params.id} />
+      <MembershipManagement open={memberModalOpen} onClose={() => setMemberModalOpen(false)} actionId={params.id} />
     </PageCenter>
   );
 };
