@@ -89,6 +89,14 @@ export const MembershipManagement = ({ open, onClose, actionId }: MembershipMana
     if (open && actionId) refresh();
   }, [open, actionId, refresh]);
 
+  // UPDATE THIS IF ANY NEW PERMISSION IS ADDED. THIS IS FOR TRANSLATION
+  const getPrivilegeLabel = (priv: string) => {
+    if (priv === 'owner' || priv === 'admin' || priv === 'member') {
+      return t(`route.actions.privilege.${priv}`);
+    }
+    return priv;
+  };
+
   const handleSearchUsers = async (query: string) => {
     if (query.length === 1) return;
     const results = await dispatchApi(api.user.search(query));
@@ -164,7 +172,10 @@ export const MembershipManagement = ({ open, onClose, actionId }: MembershipMana
                   )
                 }
               >
-                <ListItemText primary={m.user_id} secondary={m.privilege} />
+                <ListItemText
+                  primary={m.user_id}
+                  secondary={getPrivilegeLabel(m.privilege)} // Use the helper here
+                />
               </ListItem>
             ))}
           </List>
