@@ -16,7 +16,9 @@ import {
   TextField
 } from '@mui/material';
 import api from 'api';
+import { useAppUser } from 'commons/components/app/hooks';
 import useMyApi from 'components/hooks/useMyApi';
+import type { HowlerUser } from 'models/entities/HowlerUser';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -31,23 +33,12 @@ interface MemberItem {
   privilege: 'owner' | 'admin' | 'member';
 }
 
-/**
- * use to sanitize username in case the backend returns it in various formats (e.g., direct string, object with different
- * keys, array of one element,
- */
 const safeUnwrap = (val: any): string => {
   if (val === null || val === undefined) return '';
-
-  if (Array.isArray(val)) {
-    return safeUnwrap(val[0]);
-  }
-
-  if (typeof val === 'object') {
-    return safeUnwrap(val.uname || val.username || val.user_id || JSON.stringify(val));
-  }
+  if (Array.isArray(val)) return safeUnwrap(val[0]);
+  if (typeof val === 'object') return safeUnwrap(val.uname || val.username || val.user_id || JSON.stringify(val));
 
   let str = String(val).trim();
-
   while (
     (str.startsWith('[') && str.endsWith(']')) ||
     (str.startsWith("'") && str.endsWith("'")) ||
@@ -55,17 +46,18 @@ const safeUnwrap = (val: any): string => {
   ) {
     str = str.slice(1, -1).trim();
   }
-
   return str;
 };
 
 export const MembershipManagement = ({ open, onClose, actionId }: MembershipManagementProps) => {
   const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
+  const { user } = useAppUser<HowlerUser>();
 
   const [tab, setTab] = useState(0);
   const [members, setMembers] = useState<MemberItem[]>([]);
-
+  const [actionOwner, setActionOwner] = useState<string>('');
+  const [actionAdmins, setActionAdmins] = useState<string[]>([]);
   const [username, setUsername] = useState('');
   const [privilege, setPrivilege] = useState('');
   const [options, setOptions] = useState<Record<string, any>>({});
@@ -75,19 +67,21 @@ export const MembershipManagement = ({ open, onClose, actionId }: MembershipMana
     dispatchApi(api.action.get(actionId)).then(action => {
       if (!action) return;
 
+      const owner = safeUnwrap(action.owner_id);
+      const admins = (action.admins || []).map(safeUnwrap);
+      const membersList = (action.members || []).map(safeUnwrap);
+
+      setActionOwner(owner);
+      setActionAdmins(admins);
+
       const memberList: MemberItem[] = [
-        ...(action.owner_id ? [{ user_id: safeUnwrap(action.owner_id), privilege: 'owner' as const }] : []),
-        ...(action.admins || []).map(m => ({
-          user_id: safeUnwrap(m),
-          privilege: 'admin' as const
-        })),
-        ...(action.members || []).map(m => ({
-          user_id: safeUnwrap(m),
-          privilege: 'member' as const
-        }))
+        ...(owner ? [{ user_id: owner, privilege: 'owner' as const }] : []),
+        ...admins.map(m => ({ user_id: m, privilege: 'admin' as const })),
+        ...membersList.map(m => ({ user_id: m, privilege: 'member' as const }))
       ];
       setMembers(memberList);
     });
+
     dispatchApi(api.action.permission.getOptions(actionId)).then(setOptions);
   }, [actionId, dispatchApi]);
 
@@ -113,13 +107,17 @@ export const MembershipManagement = ({ open, onClose, actionId }: MembershipMana
 
     setUsername('');
     setPrivilege('');
-    onClose();
+    setTab(0);
+    refresh();
   };
 
   const handleRemoveMember = async (userId: string, priv: string) => {
+    // FIX: Map internal 'admin' to API expected 'administrator'
+    const apiPrivilege = priv === 'admin' ? 'administrator' : priv;
+
     await dispatchApi(
       api.action.permission.delete(actionId, {
-        privilege: priv,
+        privilege: apiPrivilege,
         user_id: userId,
         is_adding: false
       })
@@ -127,23 +125,39 @@ export const MembershipManagement = ({ open, onClose, actionId }: MembershipMana
     refresh();
   };
 
+  const isOwner = actionOwner === user.username;
+  const isAdmin = actionAdmins.includes(user.username);
+  const isSystemAdmin = user.roles?.includes('admin');
+  const canManage = isOwner || isAdmin || isSystemAdmin;
+
+  const canDeleteUser = (targetPrivilege: string) => {
+    if (targetPrivilege === 'owner') return false;
+    return canManage;
+  };
+
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
       <DialogTitle>{t('route.actions.permission')}</DialogTitle>
-      <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="fullWidth">
-        <Tab label="Members" />
-        <Tab label="Add" />
-      </Tabs>
+
+      {canManage ? (
+        <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="fullWidth">
+          <Tab label="Members" />
+          <Tab label="Add" />
+        </Tabs>
+      ) : (
+        <Tabs value={0} variant="fullWidth">
+          <Tab label="Members" />
+        </Tabs>
+      )}
 
       <DialogContent>
-        {tab === 0 ? (
+        {tab === 0 || !canManage ? (
           <List>
             {members.map((m, i) => (
               <ListItem
                 key={i}
                 secondaryAction={
-                  m.privilege !== 'owner' &&
-                  m.privilege !== 'admin' && (
+                  canDeleteUser(m.privilege) && (
                     <IconButton onClick={() => handleRemoveMember(m.user_id, m.privilege)}>
                       <Delete color="error" />
                     </IconButton>
@@ -157,11 +171,18 @@ export const MembershipManagement = ({ open, onClose, actionId }: MembershipMana
         ) : (
           <Box sx={{ mt: 2 }}>
             <Autocomplete
+              freeSolo
               options={userOptions}
-              getOptionLabel={(o: any) => o.uname || o}
-              onInputChange={(_, v) => handleSearchUsers(v)}
-              onChange={(_, v) => setUsername(v?.uname || v || '')}
-              renderInput={p => <TextField {...p} label="Username" fullWidth />}
+              getOptionLabel={(o: any) => (typeof o === 'string' ? o : o.uname || '')}
+              onInputChange={(_, v) => {
+                handleSearchUsers(v);
+                setUsername(v);
+              }}
+              onChange={(_, v) => {
+                const finalUsername = typeof v === 'string' ? v : v?.uname || '';
+                setUsername(finalUsername);
+              }}
+              renderInput={p => <TextField {...p} label="Username" fullWidth value={username} />}
             />
             <TextField
               select
