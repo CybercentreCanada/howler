@@ -758,6 +758,7 @@
   "usermenu.settings": "Paramètres",
   "using": "utilisant",
   "view.assigned_to_me": "Assigné à moi",
+  "view.display.grid.inactive_warning": "La vue possède des propriétés de grille qui ne peuvent pas être appliquées",
   "view.notfound": "Cette vue n'est pas disponible pour vous, ou n'existe pas.",
   "view.open": "Ouvrir requête de la vue",
   "view.refresh": "Rafraîchir la vue",

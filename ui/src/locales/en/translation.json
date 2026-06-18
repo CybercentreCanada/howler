@@ -758,6 +758,7 @@
   "usermenu.settings": "Settings",
   "using": "using",
   "view.assigned_to_me": "Assigned to Me",
+  "view.display.grid.inactive_warning": "The view has grid properties which cannot be applied",
   "view.notfound": "This view is not available to you, or does not exist.",
   "view.open": "Open View Query",
   "view.refresh": "Refresh View",
