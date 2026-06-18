@@ -215,6 +215,7 @@ const ViewComposer: FC = () => {
       setAdvanceOnTriage(viewToEdit.settings?.advance_on_triage ?? false);
       setQuery(viewToEdit.query);
       setDisplayType(viewToEdit.settings?.display as HowlerViewLayoutType);
+      setType(viewToEdit.type);
 
       if (viewToEdit.sort) {
         setSort(viewToEdit.sort);

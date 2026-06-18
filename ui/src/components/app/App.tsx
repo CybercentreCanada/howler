@@ -318,7 +318,7 @@ const createRouter = () =>
           element: (
             <ParameterProvider>
               <HitSearchProvider>
-                <GridColumnsProvider>
+                <GridColumnsProvider viewSource="path">
                   <ViewComposer />
                 </GridColumnsProvider>
               </HitSearchProvider>
@@ -334,7 +334,7 @@ const createRouter = () =>
           element: (
             <ParameterProvider>
               <HitSearchProvider>
-                <GridColumnsProvider>
+                <GridColumnsProvider viewSource="path">
                   <ViewComposer />
                 </GridColumnsProvider>
               </HitSearchProvider>

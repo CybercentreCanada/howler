@@ -43,7 +43,7 @@ const HitTable = ({
 
   const [collapseMainColumn, setCollapseMainColumn] = useMyLocalStorageItem(StorageKey.GRID_COLLAPSE_COLUMN, false);
   const [analyticIds, setAnalyticIds] = useState<Record<string, string>>({});
-  const { columns, columnWidths, setColumnWidth, setColumns } = useContext(GridColumnsContext);
+  const { columns, columnWidths, columnSources, setColumnWidth, setColumns } = useContext(GridColumnsContext);
 
   const resizingCol = useRef<[string, HTMLElement]>();
 
@@ -169,6 +169,7 @@ const HitTable = ({
                   key={col}
                   col={col}
                   width={columnWidths[col]}
+                  colSource={columnSources[col]}
                   onMouseDown={onMouseDown}
                   setColumns={setColumns}
                 />
