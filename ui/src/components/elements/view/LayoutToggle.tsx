@@ -5,18 +5,25 @@ export type HowlerViewLayoutType = 'list' | 'grid';
 
 const LayoutToggle = ({
   displayType,
-  setDisplayType
+  setDisplayType,
+  size
 }: {
   displayType: HowlerViewLayoutType;
   setDisplayType: (type: HowlerViewLayoutType) => void;
+  size?: 'small' | 'medium' | 'large';
 }) => {
   return (
-    <ToggleButtonGroup exclusive value={displayType} onChange={(__, value) => setDisplayType(value)} size="small">
+    <ToggleButtonGroup
+      exclusive
+      value={displayType}
+      onChange={(__, value) => setDisplayType(value)}
+      size={size ?? 'small'}
+    >
       <ToggleButton value="list">
-        <List />
+        <List fontSize={size ?? 'medium'} />
       </ToggleButton>
       <ToggleButton value="grid">
-        <TableChart />
+        <TableChart fontSize={size ?? 'medium'} />
       </ToggleButton>
     </ToggleButtonGroup>
   );

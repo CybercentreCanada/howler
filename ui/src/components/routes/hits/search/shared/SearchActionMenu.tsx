@@ -1,7 +1,8 @@
-import { Close, List, SavedSearch, TableChart, Terminal } from '@mui/icons-material';
-import { IconButton, Stack, ToggleButton, ToggleButtonGroup, Tooltip } from '@mui/material';
+import { Close, SavedSearch, Terminal } from '@mui/icons-material';
+import { IconButton, Stack, Tooltip } from '@mui/material';
 import { HitContext } from 'components/app/providers/HitProvider';
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
+import LayoutToggle from 'components/elements/view/LayoutToggle';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
@@ -40,14 +41,7 @@ const SearchActionMenu = ({ query }: { query: string }) => {
           <Terminal />
         </IconButton>
       </Tooltip>
-      <ToggleButtonGroup exclusive value={displayType} onChange={(__, value) => setDisplayType(value)} size="small">
-        <ToggleButton value="list">
-          <List />
-        </ToggleButton>
-        <ToggleButton value="grid">
-          <TableChart />
-        </ToggleButton>
-      </ToggleButtonGroup>
+      <LayoutToggle displayType={displayType} setDisplayType={setDisplayType} size="small" />
       <LayoutSettings />
     </Stack>
   );

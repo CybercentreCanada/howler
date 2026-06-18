@@ -315,12 +315,12 @@ const ViewComposer: FC = () => {
                     </Stack>
                     <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
                       <Typography component="span">{t('view.settings.layout')}</Typography>
-                      <LayoutToggle displayType={displayType} setDisplayType={setDisplayType} />
+                      <LayoutToggle displayType={displayType} setDisplayType={setDisplayType} size="small" />
                     </Stack>
                   </Stack>
                 </Stack>
                 <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
-                  {response?.total && (
+                  {response && (
                     <SearchTotal
                       total={response.total}
                       pageLength={response.items.length}
@@ -328,6 +328,7 @@ const ViewComposer: FC = () => {
                       sx={theme => ({ color: theme.palette.text.secondary, fontSize: '0.9em', fontStyle: 'italic' })}
                     />
                   )}
+                  <FlexOne />
                   {displayType === 'grid' && (
                     <AddColumnModal columns={columns} addColumn={key => setColumns(uniq([...columns, key]))} />
                   )}
