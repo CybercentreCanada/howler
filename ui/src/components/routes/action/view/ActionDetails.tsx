@@ -89,7 +89,7 @@ const ActionDetails = () => {
     if (action?.query) {
       onSearch(action?.query);
     }
-  }, [action?.query]);
+  }, [action?.query, onSearch]);
 
   const editRoles = user.roles.includes('automation_basic') || user.roles.includes('automation_advanced');
   const execRoles =
