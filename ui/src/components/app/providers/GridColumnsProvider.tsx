@@ -22,6 +22,9 @@ const GridColumnsProvider = ({
   children,
   viewSource = 'params'
 }: PropsWithChildren<{ viewSource?: 'params' | 'path' }>) => {
+  // initialise a column state from the views if they exist, falling back to local storage if not.
+  // only updating local storage on changes if there are no views.
+
   const routeParams = useParams();
 
   const parameterViewIds = useContextSelector(ParameterContext, ctx => ctx.views);
@@ -31,8 +34,6 @@ const GridColumnsProvider = ({
   const getCurrentViews = useContextSelector(ViewContext, ctx => ctx.getCurrentViews);
   const setDisplayType = useContextSelector(HitSearchContext, ctx => ctx.setDisplayType);
 
-  // initialise a column state from the views if they exist, falling back to local storage if not.
-  // only updating local storage on changes if there are no views.
   const [localStorageColumns, setLocalStorageColumns] = useMyLocalStorageItem(StorageKey.GRID_COLUMNS, [
     'howler.outline.threat',
     'howler.outline.target',
@@ -70,7 +71,7 @@ const GridColumnsProvider = ({
               item.settings.columns.forEach(({ field, width }) => {
                 // left param precedence for size and ordering
                 if (!_columnMap.has(field)) {
-                  _columnMap.set(field, { width: `${width}px`, viewTitles: [item.title] });
+                  _columnMap.set(field, { width: width ? `${width}px` : undefined, viewTitles: [item.title] });
                   acc.push(field);
                 } else {
                   _columnMap.get(field)?.viewTitles.push(item.title);
@@ -93,7 +94,6 @@ const GridColumnsProvider = ({
   const setColumns = useCallback(
     (columns: string[], syncLocal?: boolean) => {
       if (!viewIds?.length || syncLocal) {
-        // no views loaded, update the local storage
         setLocalStorageColumns(columns);
       }
       setContextColumns(columns);
@@ -106,7 +106,7 @@ const GridColumnsProvider = ({
       return Object.fromEntries(
         contextColumns.map(col => {
           const columnSettings = contextColumnMap.get(col);
-          return [col, columnSettings?.width ?? null];
+          return [col, columnSettings?.width];
         })
       );
     }
@@ -120,14 +120,17 @@ const GridColumnsProvider = ({
           ...localStorageColumnWidths,
           [column]: width
         });
-      }
+      } else {
+        setContextColumnMap(_contextColumnMap => {
+          const newColumnData = _contextColumnMap?.has(column)
+            ? { ..._contextColumnMap.get(column), width }
+            : { width, viewTitles: [] };
 
-      const newColumnData = contextColumnMap?.has(column)
-        ? { ...contextColumnMap.get(column), width }
-        : { width, viewTitles: [] };
-      setContextColumnMap(new Map(contextColumnMap?.set(column, newColumnData) ?? [[column, newColumnData]]));
+          return new Map(_contextColumnMap?.set(column, newColumnData) ?? [[column, newColumnData]]);
+        });
+      }
     },
-    [viewIds, contextColumnMap, localStorageColumnWidths, setLocalStorageColumnWidths]
+    [viewIds, localStorageColumnWidths, setLocalStorageColumnWidths]
   );
 
   const columnSources = useMemo(() => {
