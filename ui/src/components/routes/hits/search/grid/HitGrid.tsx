@@ -32,7 +32,7 @@ const HitGrid: FC = () => {
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
 
-  const { columns, setColumns } = useContext(GridColumnsContext);
+  const { columns, setColumns, isReady } = useContext(GridColumnsContext);
 
   const showSelectBar = useMemo(() => {
     if (selectedHits.length > 1) {
@@ -104,7 +104,7 @@ const HitGrid: FC = () => {
       </Stack>
       <Stack direction="row" spacing={1} width="100%" alignItems="center">
         <QuerySettings boxSx={{ flex: 1 }} />
-        <AddColumnModal columns={columns} addColumn={key => setColumns(uniq([...columns, key]))} />
+        <AddColumnModal columns={columns} addColumn={key => isReady && setColumns(uniq([...columns, key]))} />
       </Stack>
       {response && (
         <SearchTotal

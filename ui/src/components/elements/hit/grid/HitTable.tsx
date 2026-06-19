@@ -43,7 +43,7 @@ const HitTable = ({
 
   const [collapseMainColumn, setCollapseMainColumn] = useMyLocalStorageItem(StorageKey.GRID_COLLAPSE_COLUMN, false);
   const [analyticIds, setAnalyticIds] = useState<Record<string, string>>({});
-  const { columns, columnWidths, columnSources, setColumnWidth, setColumns } = useContext(GridColumnsContext);
+  const { columns, columnWidths, columnSources, setColumnWidth, setColumns, isReady } = useContext(GridColumnsContext);
 
   const resizingCol = useRef<[string, HTMLElement]>();
 
@@ -76,7 +76,9 @@ const HitTable = ({
   const onMouseUp = useCallback(() => {
     const [col, element] = resizingCol.current;
 
-    setColumnWidth(col, element.style.width);
+    if (isReady) {
+      setColumnWidth(col, element.style.width);
+    }
 
     element.style.width = null;
     element.style.maxWidth = null;
@@ -88,7 +90,7 @@ const HitTable = ({
 
     window.removeEventListener('mousemove', onMouseMove);
     window.removeEventListener('mouseup', onMouseUp);
-  }, [onMouseMove, setColumnWidth]);
+  }, [onMouseMove, setColumnWidth, isReady]);
 
   const onMouseDown = useCallback(
     (col: string, event: React.MouseEvent<HTMLElement, MouseEvent>) => {
@@ -111,10 +113,12 @@ const HitTable = ({
         const oldIndex = (columns ?? []).findIndex(entry => entry === active.id);
         const newIndex = (columns ?? []).findIndex(entry => entry === over.id);
 
-        setColumns(arrayMove(columns, oldIndex, newIndex));
+        if (isReady) {
+          setColumns(arrayMove(columns, oldIndex, newIndex));
+        }
       }
     },
-    [columns, setColumns]
+    [columns, setColumns, isReady]
   );
 
   const tableContent = (
@@ -171,7 +175,7 @@ const HitTable = ({
                   width={columnWidths[col]}
                   colSource={columnSources[col]}
                   onMouseDown={onMouseDown}
-                  setColumns={setColumns}
+                  setColumns={isReady ? setColumns : undefined}
                 />
               ))}
             </SortableContext>

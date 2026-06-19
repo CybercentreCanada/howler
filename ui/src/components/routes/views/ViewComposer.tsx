@@ -71,7 +71,7 @@ const ViewComposer: FC = () => {
   const [title, setTitle] = useState('');
   const [type, setType] = useState('global');
   const [advanceOnTriage, setAdvanceOnTriage] = useState(false);
-  const { columns, setColumns, columnWidths } = useContext(GridColumnsContext);
+  const { columns, setColumns, columnWidths, isReady } = useContext(GridColumnsContext);
 
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
@@ -330,7 +330,10 @@ const ViewComposer: FC = () => {
                   )}
                   <FlexOne />
                   {displayType === 'grid' && (
-                    <AddColumnModal columns={columns} addColumn={key => setColumns(uniq([...columns, key]))} />
+                    <AddColumnModal
+                      columns={columns}
+                      addColumn={key => isReady && setColumns(uniq([...columns, key]))}
+                    />
                   )}
                 </Stack>
                 <LinearProgress sx={[!searching && { opacity: 0 }]} />

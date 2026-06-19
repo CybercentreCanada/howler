@@ -1,5 +1,6 @@
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
-import { createContext, useCallback, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
+import type { View } from 'models/entities/generated/View';
+import { createContext, useCallback, useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
 import { useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
@@ -14,6 +15,7 @@ export type GridColumnsContextType = {
   setColumnWidth: (column: string, width: string, syncLocal?: boolean) => void;
   columnSources: Record<string, string[]>;
   syncToStorage: () => void;
+  isReady: boolean;
 };
 
 export const GridColumnsContext = createContext<GridColumnsContextType>(null);
@@ -46,55 +48,105 @@ const GridColumnsProvider = ({
   );
   const [contextColumns, setContextColumns] = useState<string[]>(localStorageColumns);
   const [contextColumnMap, setContextColumnMap] = useState<Map<string, { width: string; viewTitles: string[] }>>();
+  const [isReady, setIsReady] = useState(false);
+
+  const currentLoadRef = useRef({
+    viewIds: viewIds,
+    hasLocalEdits: false
+  });
 
   const idRankMap = useMemo(() => new Map(viewIds?.map((id, index) => [id, index])), [viewIds]);
 
-  useEffect(() => {
-    getCurrentViews({ views: viewIds }).then(_views => {
-      if (_views.length) {
-        if (_views[0].settings?.display === 'list') {
-          setDisplayType('list');
-        } else if (_views[0].settings?.display === 'grid') {
-          setDisplayType('grid');
+  const getViewsByPrecedence = useCallback(
+    ({ views }: { views: View[] }) => {
+      return views
+        .filter(_item => _item.settings?.display === 'grid')
+        .sort((a, b) => {
+          const aRank = idRankMap.get(a.view_id) ?? Infinity;
+          const bRank = idRankMap.get(b.view_id) ?? Infinity;
+          return aRank === bRank ? 0 : aRank - bRank;
+        });
+    },
+    [idRankMap]
+  );
 
-          const _viewsByPrecedence = _views
-            .filter(_item => _item.settings?.display === 'grid')
-            .sort((a, b) => {
-              const aRank = idRankMap.get(a.view_id) ?? Infinity;
-              const bRank = idRankMap.get(b.view_id) ?? Infinity;
-              return aRank === bRank ? 0 : aRank - bRank;
-            });
-
-          const _columnMap = new Map<string, { width: string; viewTitles: string[] }>();
-          const _columns = _viewsByPrecedence.reduce((acc, item) => {
-            if (item.settings?.columns) {
-              item.settings.columns.forEach(({ field, width }) => {
-                // left param precedence for size and ordering
-                if (!_columnMap.has(field)) {
-                  _columnMap.set(field, { width: width ? `${width}px` : undefined, viewTitles: [item.title] });
-                  acc.push(field);
-                } else {
-                  _columnMap.get(field)?.viewTitles.push(item.title);
-                }
-              });
-            }
-            return acc;
-          }, [] as string[]);
-
-          setContextColumns(_columns);
-          setContextColumnMap(_columnMap);
-        }
-      } else {
+  const updateContextForViews = useCallback(
+    (views: View[]) => {
+      if (!views.length) {
         setContextColumns(localStorageColumns);
         setContextColumnMap(null);
+        setIsReady(true);
+        return;
+      }
+
+      if (views[0].settings?.display === 'list') {
+        setDisplayType('list');
+      } else if (views[0].settings?.display === 'grid') {
+        setDisplayType('grid');
+
+        const _viewsByPrecedence = getViewsByPrecedence({ views });
+        const _columnMap = new Map<string, { width: string; viewTitles: string[] }>();
+
+        const _columns = _viewsByPrecedence.reduce((acc, item) => {
+          if (item.settings?.columns) {
+            item.settings.columns.forEach(({ field, width }) => {
+              // left param precedence for size and ordering
+              if (!_columnMap.has(field)) {
+                _columnMap.set(field, { width: width ? `${width}px` : undefined, viewTitles: [item.title] });
+                acc.push(field);
+              } else {
+                _columnMap.get(field)?.viewTitles.push(item.title);
+              }
+            });
+          }
+          return acc;
+        }, [] as string[]);
+
+        setContextColumns(_columns);
+        setContextColumnMap(_columnMap);
+      }
+
+      setIsReady(true);
+    },
+    [getViewsByPrecedence, localStorageColumns, setDisplayType]
+  );
+
+  useEffect(() => {
+    // Update current load cycle and reset local edits flag when viewIds changes
+    currentLoadRef.current = {
+      viewIds,
+      hasLocalEdits: false
+    };
+
+    if (!viewIds?.length) {
+      setContextColumns(localStorageColumns);
+      setContextColumnMap(null);
+      setIsReady(true);
+      return;
+    }
+
+    setIsReady(false);
+
+    getCurrentViews({ views: viewIds }).then(_views => {
+      // only apply results if this is still the current load cycle and no local edits occurred
+      if (currentLoadRef.current.hasLocalEdits) {
+        setIsReady(true);
+        return;
+      }
+
+      if (currentLoadRef.current.viewIds === viewIds) {
+        updateContextForViews(_views.filter(Boolean));
       }
     });
-  }, [viewIds, idRankMap, getCurrentViews, localStorageColumns, setDisplayType]);
+  }, [viewIds, getCurrentViews, localStorageColumns, updateContextForViews]);
 
   const setColumns = useCallback(
     (columns: string[], syncLocal?: boolean) => {
       if (!viewIds?.length || syncLocal) {
         setLocalStorageColumns(columns);
+      } else {
+        // Mark as having local edits so async hydration won't overwrite this change
+        currentLoadRef.current.hasLocalEdits = true;
       }
       setContextColumns(columns);
     },
@@ -121,6 +173,8 @@ const GridColumnsProvider = ({
           [column]: width
         });
       } else {
+        // Mark as having local edits so async hydration won't overwrite this change
+        currentLoadRef.current.hasLocalEdits = true;
         setContextColumnMap(_contextColumnMap => {
           const newColumnData = _contextColumnMap?.has(column)
             ? { ..._contextColumnMap.get(column), width }
@@ -159,7 +213,8 @@ const GridColumnsProvider = ({
         columnWidths,
         setColumnWidth,
         columnSources,
-        syncToStorage
+        syncToStorage,
+        isReady
       }}
     >
       {children}
