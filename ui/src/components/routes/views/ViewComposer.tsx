@@ -2,7 +2,7 @@ import type { FC } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { HelpOutline, Save } from '@mui/icons-material';
+import { HelpOutline, PersonAdd, Save } from '@mui/icons-material';
 import {
   Alert,
   Checkbox,
@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
+import { useAppUser } from 'commons/components/app/hooks';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
 import PageCenter from 'commons/components/pages/PageCenter';
 import { HitContext } from 'components/app/providers/HitProvider';
@@ -34,6 +35,7 @@ import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import type { Hit } from 'models/entities/generated/Hit';
+import type { HowlerUser } from 'models/entities/HowlerUser';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
@@ -44,12 +46,16 @@ import HitQuery from '../hits/search/HitQuery';
 import HitSort from '../hits/search/shared/HitSort';
 import SearchSpan from '../hits/search/shared/SearchSpan';
 
+// Adjust this import path if your file structure requires it
+import { MembershipManagement } from '../../elements/membershipManagement';
+
 const ViewComposer: FC = () => {
   const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
   const { showSuccessMessage, showErrorMessage } = useMySnackbar();
   const routeParams = useParams();
   const navigate = useNavigate();
+  const { user } = useAppUser<HowlerUser>();
 
   const addView = useContextSelector(ViewContext, ctx => ctx.addView);
   const editView = useContextSelector(ViewContext, ctx => ctx.editView);
@@ -60,9 +66,11 @@ const ViewComposer: FC = () => {
   const loadHits = useContextSelector(HitContext, ctx => ctx.loadHits);
 
   // view state
+  const [view, setView] = useState<any>(null); // Store the actual view object for permission checks
   const [title, setTitle] = useState('');
   const [type, setType] = useState('global');
   const [advanceOnTriage, setAdvanceOnTriage] = useState(false);
+  const [memberModalOpen, setMemberModalOpen] = useState(false);
 
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
@@ -186,6 +194,7 @@ const ViewComposer: FC = () => {
         setError(null);
       }
 
+      setView(viewToEdit);
       setTitle(viewToEdit.title);
       setAdvanceOnTriage(viewToEdit.settings?.advance_on_triage ?? false);
       setQuery(viewToEdit.query);
@@ -200,6 +209,9 @@ const ViewComposer: FC = () => {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeParams.id]);
+
+  const canManageMembership =
+    view?.owner_id === user.username || view?.admins?.includes(user.username) || user.roles?.includes('admin');
 
   return (
     <FlexPort>
@@ -247,6 +259,13 @@ const ViewComposer: FC = () => {
                   >
                     {t('save')}
                   </CustomButton>
+
+                  {/* Permissions Button - Displayed only if the user has rights and the view exists */}
+                  {routeParams.id && canManageMembership && (
+                    <CustomButton variant="outlined" startIcon={<PersonAdd />} onClick={() => setMemberModalOpen(true)}>
+                      {t('route.actions.permission')}
+                    </CustomButton>
+                  )}
                 </Stack>
                 <Typography
                   sx={theme => ({
@@ -305,6 +324,16 @@ const ViewComposer: FC = () => {
               </Stack>
             </VSBoxContent>
           </VSBox>
+
+          {/* Membership Modal */}
+          {routeParams.id && (
+            <MembershipManagement
+              open={memberModalOpen}
+              onClose={() => setMemberModalOpen(false)}
+              entityId={routeParams.id}
+              entityType="view"
+            />
+          )}
         </PageCenter>
       </ErrorBoundary>
     </FlexPort>

@@ -225,6 +225,7 @@ def update_dossier(id: str, user: User, **kwargs):
         return internal_error(err=e.message)
 
 
+# region Permission
 @generate_swagger_docs()
 @dossier_api.route("/<id>/permission", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
@@ -309,3 +310,34 @@ def revoke_privilege(id: str, user: User, **kwargs):
         return bad_request(err=success)
     existing_dossier, storage = success
     return ok(storage.dossier.get_if_exists(existing_dossier.dossier_id, as_obj=False))
+
+
+@generate_swagger_docs()
+@dossier_api.route("/<dossier_id>", methods=["GET"])
+@api_login(required_priv=["R"])
+def get_dossier_permission(dossier_id: str, user: User, **kwargs):
+    """Get details for a specific dossier
+
+    Variables:
+    dossier_id => The dossier_id of the dossier to fetch
+
+    Result Example:
+    {
+        ...dossier     # The requested dossier data
+    }
+    """
+    storage = datastore()
+
+    # Fetch the dossier as a primitive dictionary to match frontend expectations
+    dossier = storage.dossier.get_if_exists(dossier_id, as_obj=False)
+    if not dossier:
+        return not_found(err="This dossier does not exist")
+
+    # Mirror your visibility protection logic from your general search route
+    if dossier.get("type") == "personal" and user.uname != dossier.get("owner"):
+        return forbidden(err="You cannot access a personal dossier that is not owned by you.")
+
+    return ok(dossier)
+
+
+# endregion

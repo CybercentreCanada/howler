@@ -311,7 +311,7 @@ def give_privilege(view_id: str, user: User, **kwargs):
     is_adding: The value neeed to be a boolean representing if we add or remove a user.
 
     Variables:
-    action_id => The id of the action to give administrative privilege of
+    view_id => The id of the view to give administrative privilege of
 
     Optional Arguments:
         None
@@ -377,10 +377,10 @@ def give_privilege(view_id: str, user: User, **kwargs):
 @view_api.route("/<view_id>/permission", methods=["DELETE"])
 @api_login(required_priv=["R", "W"])
 def revoke_privilege(view_id: str, user: User, **kwargs):
-    """Give permission from one user to another.
+    """Revoke permission from one user to another.
 
     Variables:
-        action_id => The id of the Action to give administrative privilege of
+        view_id => The id of the view to revoke administrative privilege of
 
     Arguments:
         None
@@ -441,6 +441,71 @@ def revoke_privilege(view_id: str, user: User, **kwargs):
     storage.view.commit()
 
     return ok(storage.view.get_if_exists(existing_view.view_id, as_obj=False))
+
+
+@generate_swagger_docs()
+@view_api.route("/<id>/permission_options", methods=["GET"])
+@api_login(required_priv=["R", "W"], required_type=["automation_basic"])
+def get_permission_option(id: str, user: User):
+    """Get the permission options for a given view
+
+    Variables:
+    view_id => The id of the view to remove administrative privilege of
+
+     The json object need to send "privilege", "user_id" as a key.
+    privilege : The value need to be one of ["administrator", "member", "owner"]
+    user_id : the value need to be the user to add or remove from the permission
+    is_adding: The value neeed to be a boolean representing if we add or remove a user.
+
+    Arguments:
+        id: The id of the view to get permissions for
+        user: The user making the request (injected by the api_login decorator)
+    Optional Arguments:
+        None
+    Result Example:
+         {
+            "administrator": [ # Each entry corresponds to a given privilege level
+                "user1", "user2" # A list of users that have this privilege
+            ],
+            "member": [
+                "user3"
+            ],
+            "owner": "user4"
+        }
+    returns a dict with the possible permissions for the view and the users that have them.
+    """
+    ds = datastore()
+    view: View = ds.view.get(id)
+    if not view:
+        return not_found(err="The specified view does not exist")
+
+    return ok(view.get_privilege_mapping())
+
+
+@generate_swagger_docs()
+@view_api.route("/<view_id>", methods=["GET"])
+@api_login(required_priv=["R"])
+def get_view_permission(view_id: str, user: User, **kwargs):
+    """Get details for a specific view
+
+    Variables:
+    view_id => The view_id of the view to fetch
+
+    Result Example:
+    {
+        ...view     # The requested view data
+    }
+    """
+    storage = datastore()
+
+    view = storage.view.get_if_exists(view_id, as_obj=False)
+    if not view:
+        return not_found(err="This view does not exist")
+
+    if view.get("type") == "personal" and user.uname != view.get("owner"):
+        return forbidden(err="You cannot access a personal view that is not owned by you.")
+
+    return ok(view)
 
 
 # endregion

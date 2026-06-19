@@ -16,16 +16,16 @@ import {
   TextField
 } from '@mui/material';
 import api from 'api';
-import { useAppUser } from 'commons/components/app/hooks';
 import useMyApi from 'components/hooks/useMyApi';
-import type { HowlerUser } from 'models/entities/HowlerUser';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface MembershipManagementProps {
   open: boolean;
   onClose: () => void;
-  actionId: string;
+  entityId?: string;
+  entityType?: 'action' | 'view' | 'dossier';
+  actionId?: string; // Kept for backward compatibility with older components
 }
 
 interface MemberItem {
@@ -33,6 +33,9 @@ interface MemberItem {
   privilege: 'owner' | 'admin' | 'member';
 }
 
+/**
+ * Utility to safely unwrap nested arrays, strings, or Python stringified objects
+ */
 const safeUnwrap = (val: any): string => {
   if (val === null || val === undefined) return '';
   if (Array.isArray(val)) return safeUnwrap(val[0]);
@@ -49,30 +52,44 @@ const safeUnwrap = (val: any): string => {
   return str;
 };
 
-export const MembershipManagement = ({ open, onClose, actionId }: MembershipManagementProps) => {
+export const MembershipManagement = ({
+  open,
+  onClose,
+  entityId,
+  entityType = 'action',
+  actionId
+}: MembershipManagementProps) => {
   const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
-  const { user } = useAppUser<HowlerUser>();
 
+  // Tab state: 0 = View/Remove Members, 1 = Add New Member
   const [tab, setTab] = useState(0);
   const [members, setMembers] = useState<MemberItem[]>([]);
-  const [actionOwner, setActionOwner] = useState<string>('');
-  const [actionAdmins, setActionAdmins] = useState<string[]>([]);
   const [username, setUsername] = useState('');
   const [privilege, setPrivilege] = useState('');
   const [options, setOptions] = useState<Record<string, any>>({});
   const [userOptions, setUserOptions] = useState<any[]>([]);
 
+  // Consolidate target generic ID or fallback parameter
+  const finalEntityId = entityId || actionId;
+
+  // Memoize API routing layer
+  const apiService = useMemo(() => {
+    if (entityType === 'action') return api.action;
+    if (entityType === 'view') return api.view;
+    return (api as any).dossier;
+  }, [entityType]);
+
   const refresh = useCallback(() => {
-    dispatchApi(api.action.get(actionId)).then(action => {
-      if (!action) return;
+    if (!finalEntityId || !apiService) return;
 
-      const owner = safeUnwrap(action.owner_id);
-      const admins = (action.admins || []).map(safeUnwrap);
-      const membersList = (action.members || []).map(safeUnwrap);
+    // Fetch members list
+    dispatchApi((apiService as any).get(finalEntityId)).then((entity: any) => {
+      if (!entity) return;
 
-      setActionOwner(owner);
-      setActionAdmins(admins);
+      const owner = safeUnwrap(entity.owner_id || entity.owner);
+      const admins = (entity.admins || []).map(safeUnwrap);
+      const membersList = (entity.members || []).map(safeUnwrap);
 
       const memberList: MemberItem[] = [
         ...(owner ? [{ user_id: owner, privilege: 'owner' as const }] : []),
@@ -82,136 +99,133 @@ export const MembershipManagement = ({ open, onClose, actionId }: MembershipMana
       setMembers(memberList);
     });
 
-    dispatchApi(api.action.permission.getOptions(actionId)).then(setOptions);
-  }, [actionId, dispatchApi]);
+    const permissionService = (apiService as any).permission;
+    if (permissionService) {
+      const fetchOptions = permissionService.getOptions || permissionService.options;
+
+      if (typeof fetchOptions === 'function') {
+        dispatchApi(fetchOptions(finalEntityId))
+          .then((res: any) => {
+            if (res) setOptions(res);
+          })
+          .catch(err => {
+            // eslint-disable-next-line no-console
+            console.error('[MembershipManagement] Failed to fetch permission options:', err);
+          });
+      }
+    }
+  }, [finalEntityId, apiService, dispatchApi]);
 
   useEffect(() => {
-    if (open && actionId) refresh();
-  }, [open, actionId, refresh]);
-
-  // UPDATE THIS IF ANY NEW PERMISSION IS ADDED. THIS IS FOR TRANSLATION
-  const getPrivilegeLabel = (priv: string) => {
-    if (priv === 'owner' || priv === 'admin' || priv === 'member') {
-      return t(`route.actions.privilege.${priv}`);
+    if (open) {
+      refresh();
+      setTab(0);
     }
-    return priv;
+  }, [open, refresh]);
+
+  // Handles async user autocomplete suggestions
+  const handleSearchUsers = (query: string) => {
+    if (!query) {
+      setUserOptions([]);
+      return;
+    }
+    const searchService = (api as any).user || (api as any).search?.user;
+    if (searchService && typeof searchService.search === 'function') {
+      dispatchApi(searchService.search(query)).then((res: any) => {
+        setUserOptions(res?.items || res || []);
+      });
+    }
   };
 
-  const handleSearchUsers = async (query: string) => {
-    if (query.length === 1) return;
-    const results = await dispatchApi(api.user.search(query));
-    setUserOptions(results || []);
+  const handleAddMember = () => {
+    if (!finalEntityId) return;
+    (apiService as any).permission.put(finalEntityId, { user_id: username, privilege }).then(() => {
+      setUsername('');
+      setPrivilege('');
+      refresh();
+      setTab(0);
+    });
   };
 
-  const handleAddMember = async () => {
-    if (!username || !privilege) return;
-
-    await dispatchApi(
-      api.action.permission.put(actionId, {
-        privilege: privilege,
-        user_id: username
-      })
-    );
-
-    setUsername('');
-    setPrivilege('');
-    setTab(0);
-    refresh();
+  const handleRemoveMember = (user_id: string, priv: string) => {
+    if (!finalEntityId) return;
+    (apiService as any).permission.delete(finalEntityId, { user_id, privilege: priv }).then(refresh);
   };
 
-  const handleRemoveMember = async (userId: string, priv: string) => {
-    // FIX: Map internal 'admin' to API expected 'administrator'
-    const apiPrivilege = priv === 'admin' ? 'administrator' : priv;
-
-    await dispatchApi(
-      api.action.permission.delete(actionId, {
-        privilege: apiPrivilege,
-        user_id: userId,
-        is_adding: false
-      })
-    );
-    refresh();
-  };
-
-  const isOwner = actionOwner === user.username;
-  const isAdmin = actionAdmins.includes(user.username);
-  const isSystemAdmin = user.roles?.includes('admin');
-  const canManage = isOwner || isAdmin || isSystemAdmin;
-
-  const canDeleteUser = (targetPrivilege: string) => {
-    if (targetPrivilege === 'owner') return false;
-    return canManage;
-  };
+  // Fallback protection array: prevents dropdown from being completely blank if option fetch delays
+  const availablePrivileges = useMemo(() => {
+    const keys = Object.keys(options);
+    return keys.length > 0 ? keys : ['admin', 'member'];
+  }, [options]);
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle>{t('route.actions.permission')}</DialogTitle>
+      <DialogTitle>{t('membership.management')}</DialogTitle>
 
-      {canManage ? (
-        <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="fullWidth">
-          <Tab label="Members" />
-          <Tab label="Add" />
-        </Tabs>
-      ) : (
-        <Tabs value={0} variant="fullWidth">
-          <Tab label="Members" />
-        </Tabs>
-      )}
+      <Tabs
+        value={tab}
+        onChange={(_, newTab) => setTab(newTab)}
+        variant="fullWidth"
+        indicatorColor="primary"
+        textColor="primary"
+      >
+        <Tab label={t('members')} />
+        <Tab label={t('add')} />
+      </Tabs>
 
-      <DialogContent>
-        {tab === 0 || !canManage ? (
+      <DialogContent sx={{ minHeight: '280px', mt: 1 }}>
+        {tab === 0 ? (
           <List>
-            {members.map((m, i) => (
+            {members.map(m => (
               <ListItem
-                key={i}
+                key={`${m.user_id}-${m.privilege}`}
                 secondaryAction={
-                  canDeleteUser(m.privilege) && (
+                  m.privilege !== 'owner' && (
                     <IconButton onClick={() => handleRemoveMember(m.user_id, m.privilege)}>
                       <Delete color="error" />
                     </IconButton>
                   )
                 }
               >
-                <ListItemText
-                  primary={m.user_id}
-                  secondary={getPrivilegeLabel(m.privilege)} // Use the helper here
-                />
+                <ListItemText primary={m.user_id} secondary={t(`privilege.${m.privilege}`, m.privilege)} />
               </ListItem>
             ))}
           </List>
         ) : (
-          <Box sx={{ mt: 2 }}>
+          <Box sx={{ mt: 1 }}>
             <Autocomplete
               freeSolo
               options={userOptions}
-              getOptionLabel={(o: any) => (typeof o === 'string' ? o : o.uname || '')}
+              getOptionLabel={(o: any) => (typeof o === 'string' ? o : o.uname || o.username || '')}
               onInputChange={(_, v) => {
                 handleSearchUsers(v);
                 setUsername(v);
               }}
               onChange={(_, v) => {
-                const finalUsername = typeof v === 'string' ? v : v?.uname || '';
-                setUsername(finalUsername);
+                const selectedUser = typeof v === 'string' ? v : v?.uname || v?.username || '';
+                setUsername(selectedUser);
               }}
-              renderInput={p => <TextField {...p} label="Username" fullWidth value={username} />}
+              renderInput={p => <TextField {...p} label={t('username')} fullWidth />}
             />
+
             <TextField
               select
-              label="Privilege"
+              label={t('privilege')}
               fullWidth
               value={privilege}
               onChange={e => setPrivilege(e.target.value)}
               sx={{ mt: 2 }}
             >
-              {Object.keys(options).map(k => (
+              {availablePrivileges.map(k => (
                 <MenuItem key={k} value={k}>
-                  {k}
+                  {t(`privilege.${k}`, k)}
                 </MenuItem>
               ))}
             </TextField>
+
             <Button
               onClick={handleAddMember}
-              sx={{ mt: 2 }}
+              sx={{ mt: 3 }}
               variant="contained"
               fullWidth
               disabled={!username || !privilege}

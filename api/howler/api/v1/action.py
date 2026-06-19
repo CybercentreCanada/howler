@@ -585,4 +585,28 @@ def get_permission_option(id: str, user: User):
     return ok(action.get_privilege_mapping())
 
 
+@generate_swagger_docs()
+@action_api.route("/<id>", methods=["GET"])
+@api_login(required_priv=["R"])
+def get_action_permission(id: str, user: User, **kwargs):
+    """Get details for a specific action
+
+    Variables:
+    action_id => The action_id of the action to fetch
+
+    Result Example:
+    {
+        ...action     # The requested action data
+    }
+    """
+    storage = datastore()
+
+    action = storage.action.get_if_exists(id, as_obj=False)
+    if not action:
+        return not_found(err="This action does not exist")
+
+    if action.get("type") == "personal" and user.uname != action.get("owner"):
+        return forbidden(err="You cannot access a personal action that is not owned by you.")
+
+
 # endregion
