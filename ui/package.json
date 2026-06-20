@@ -34,7 +34,7 @@
     "chartjs-adapter-dayjs-4": "^1.0.4",
     "chartjs-plugin-zoom": "^2.2.0",
     "dayjs": "^1.11.21",
-    "dompurify": "^3.4.9",
+    "dompurify": "^3.4.11",
     "flat": "^6.0.1",
     "fuse.js": "^7.4.2",
     "handlebars": "^4.7.9",
