@@ -7,6 +7,7 @@ import type { Task } from './Task';
  * NOTE: This is an auto-generated file. Don't edit this manually.
  */
 export interface Case {
+  __index: 'case';
   case_id?: string;
   created?: string;
   end?: string;

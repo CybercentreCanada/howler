@@ -9,7 +9,7 @@ import {
   type DragEndEvent,
   type DragStartEvent
 } from '@dnd-kit/core';
-import { CalendarMonth, Circle, Dashboard, Dataset, Rule } from '@mui/icons-material';
+import { CalendarMonth, Circle, Dashboard, Dataset, Rule, Search } from '@mui/icons-material';
 import { alpha, Box, Card, Chip, Divider, LinearProgress, Skeleton, Stack, Typography, useTheme } from '@mui/material';
 import api from 'api';
 import useMyApi from 'components/hooks/useMyApi';
@@ -180,6 +180,19 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
         <Dashboard fontSize="small" />
         <Typography variant="body2" sx={{ pl: 1, textWrap: 'nowrap' }}>
           {t('page.cases.dashboard')}
+        </Typography>
+      </Stack>
+
+      <Stack
+        direction="row"
+        alignItems="center"
+        sx={navItemSx(location.pathname.endsWith('search'))}
+        component={Link}
+        to={`/cases/${_case?.case_id}/search`}
+      >
+        <Search fontSize="small" />
+        <Typography variant="body2" sx={{ userSelect: 'none', pl: 1, textWrap: 'nowrap' }}>
+          {t('page.cases.search')}
         </Typography>
       </Stack>
 
