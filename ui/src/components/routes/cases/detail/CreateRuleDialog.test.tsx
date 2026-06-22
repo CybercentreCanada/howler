@@ -50,6 +50,10 @@ vi.mock('@mui/x-date-pickers/AdapterDayjs', () => ({
   AdapterDayjs: class {}
 }));
 
+vi.mock('components/elements/display/ChipPopper', () => ({
+  default: ({ children }: { children: any }) => <>{children}</>
+}));
+
 import api from 'api';
 import CreateRuleDialog from './CreateRuleDialog';
 
@@ -79,8 +83,7 @@ describe('CreateRuleDialog', () => {
     expect(screen.getByTestId('rule-timeframe-input')).toBeInTheDocument();
     expect(screen.getByTestId('rule-no-expiry-checkbox')).toBeInTheDocument();
     expect(screen.getByTestId('rule-expire-after-resolved')).toBeInTheDocument();
-    expect(screen.getByTestId('rule-index-hit')).toBeInTheDocument();
-    expect(screen.getByTestId('rule-index-observable')).toBeInTheDocument();
+    expect(screen.getByRole('combobox')).toBeInTheDocument();
   });
 
   it('disables submit when query is empty', () => {
@@ -267,7 +270,7 @@ describe('CreateRuleDialog', () => {
         expect.objectContaining({
           query: 'event.kind:alert',
           destination: 'alerts/incoming',
-          timeframe: undefined
+          timeframe: null
         })
       );
     });
@@ -314,11 +317,10 @@ describe('CreateRuleDialog', () => {
   it('defaults to hit index checked', () => {
     render(<CreateRuleDialog {...defaultProps} />);
 
-    const hitCheckbox = screen.getByTestId('rule-index-hit') as HTMLInputElement;
-    const observableCheckbox = screen.getByTestId('rule-index-observable') as HTMLInputElement;
-
-    expect(hitCheckbox).toBeChecked();
-    expect(observableCheckbox).not.toBeChecked();
+    // With 'hit' selected by default, its chip appears in the Autocomplete input area
+    expect(screen.getAllByText('hit.search.index.hit').length).toBeGreaterThan(0);
+    // 'observable' is not selected, so its chip should not appear
+    expect(screen.queryByText('hit.search.index.observable')).not.toBeInTheDocument();
   });
 
   it('includes both indexes when both are selected', async () => {
@@ -329,8 +331,13 @@ describe('CreateRuleDialog', () => {
 
     render(<CreateRuleDialog {...defaultProps} onSubmit={onSubmit} />);
 
+    // Open the index Autocomplete and select 'observable'
     await act(async () => {
-      await user.click(screen.getByTestId('rule-index-observable'));
+      await user.click(screen.getByRole('combobox'));
+    });
+
+    await act(async () => {
+      await user.click(screen.getByRole('option', { name: 'hit.search.index.observable' }));
     });
 
     await act(async () => {
@@ -358,30 +365,21 @@ describe('CreateRuleDialog', () => {
     });
   });
 
-  it('disables submit when no indexes are selected', async () => {
+  it('prevents deselecting the last index', async () => {
     const user = userEvent.setup();
-    mockDispatchApi.mockResolvedValueOnce({ items: [], total: 1, offset: 0, rows: 0 });
-    (api.search.hit.post as ReturnType<typeof vi.fn>).mockReturnValue('search-request');
 
     render(<CreateRuleDialog {...defaultProps} />);
 
+    // 'hit' is selected by default; open the dropdown and try to deselect it
     await act(async () => {
-      await user.type(screen.getByTestId('rule-query-editor'), 'event.kind:alert');
+      await user.click(screen.getByRole('combobox'));
     });
 
     await act(async () => {
-      await user.click(screen.getByTestId('rule-search-button'));
+      await user.click(screen.getByRole('option', { name: 'hit.search.index.hit' }));
     });
 
-    await act(async () => {
-      await user.type(screen.getByTestId('rule-destination-input'), 'alerts/incoming');
-    });
-
-    // Uncheck the default hit index
-    await act(async () => {
-      await user.click(screen.getByTestId('rule-index-hit'));
-    });
-
-    expect(screen.getByTestId('rule-submit-button')).toBeDisabled();
+    // 'hit' should still be selected because deselecting the last index is prevented
+    expect(screen.getAllByText('hit.search.index.hit').length).toBeGreaterThan(0);
   });
 });
