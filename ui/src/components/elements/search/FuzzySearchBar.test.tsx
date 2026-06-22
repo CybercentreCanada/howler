@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 setupContextSelectorMock();
 
 const mockIndexPickerProps = vi.hoisted(() => ({
-  last: null as null | { additionalOptions?: { label: string; value: string }[]; defaultIndexes?: string[] }
+  last: null as null | { additionalOptions?: { label: string; value: string }[] }
 }));
 
 vi.mock('react-i18next', () => ({
@@ -17,7 +17,7 @@ vi.mock('react-i18next', () => ({
 }));
 
 vi.mock('components/routes/hits/search/shared/IndexPicker', () => ({
-  default: (props: { additionalOptions?: { label: string; value: string }[]; defaultIndexes?: string[] }) => {
+  default: (props: { additionalOptions?: { label: string; value: string }[] }) => {
     mockIndexPickerProps.last = props;
     return <div id="index-picker" />;
   }
@@ -103,8 +103,7 @@ describe('FuzzySearchBar', () => {
     render(<FuzzySearchBar onSearch={mockOnSearch} />, { wrapper: Wrapper });
 
     expect(mockIndexPickerProps.last).toEqual({
-      additionalOptions: [{ label: 'hit.search.index.case', value: 'case' }],
-      defaultIndexes: ['hit', 'observable', 'case']
+      additionalOptions: [{ label: 'hit.search.index.case', value: 'case' }]
     });
   });
 
