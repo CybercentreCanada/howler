@@ -1,6 +1,15 @@
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import type { View } from 'models/entities/generated/View';
-import { createContext, useCallback, useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
+import {
+  createContext,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PropsWithChildren,
+  type SetStateAction
+} from 'react';
 import { useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
@@ -10,7 +19,7 @@ import { ViewContext } from './ViewProvider';
 
 export type GridColumnsContextType = {
   columns: string[];
-  setColumns: (columns: string[], syncLocal?: boolean) => void;
+  setColumns: (columns: SetStateAction<string[]>, syncLocal?: boolean) => void;
   columnWidths: Record<string, string>;
   setColumnWidth: (column: string, width: string, syncLocal?: boolean) => void;
   columnSources: Record<string, string[]>;
@@ -141,16 +150,16 @@ const GridColumnsProvider = ({
   }, [viewIds, getCurrentViews, localStorageColumns, updateContextForViews]);
 
   const setColumns = useCallback(
-    (columns: string[], syncLocal?: boolean) => {
+    (columns: SetStateAction<string[]>, syncLocal?: boolean) => {
       if (!viewIds?.length || syncLocal) {
-        setLocalStorageColumns(columns);
-      } else {
-        // Mark as having local edits so async hydration won't overwrite this change
-        currentLoadRef.current.hasLocalEdits = true;
+        const newColumns = typeof columns === 'function' ? columns(contextColumns) : columns;
+        setLocalStorageColumns(newColumns);
       }
+      // Mark as having local edits so async hydration won't overwrite this change
+      currentLoadRef.current.hasLocalEdits = true;
       setContextColumns(columns);
     },
-    [viewIds, setLocalStorageColumns]
+    [viewIds, contextColumns, setLocalStorageColumns]
   );
 
   const columnWidths = useMemo(() => {
