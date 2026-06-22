@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { Case } from 'models/entities/generated/Case';
 import type { Item } from 'models/entities/generated/Item';
 import { act } from 'react';
+import { createMockCase } from 'tests/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Tree } from './types';
 
@@ -75,7 +76,7 @@ import CaseFolderContextMenu, { collectAllLeaves, getOpenUrl } from './CaseFolde
 // Fixtures
 // ---------------------------------------------------------------------------
 
-const mockCase: Case = { __index: 'case', case_id: 'case-1', title: 'Test Case', items: [] };
+const mockCase: Case = createMockCase({ case_id: 'case-1' });
 
 const hitLeaf: Item = { type: 'hit', value: 'hit-123', path: 'folder/hit-item' };
 const referenceLeaf: Item = { type: 'reference', value: 'https://example.com', path: 'folder/ref-item' };
@@ -323,7 +324,7 @@ describe('CaseFolderContextMenu', () => {
     });
 
     it('does not call the API when case_id is missing', () => {
-      renderMenu({ _case: { __index: 'case', title: 'No ID' }, leaf: hitLeaf });
+      renderMenu({ _case: createMockCase({ case_id: undefined, title: 'No ID' }), leaf: hitLeaf });
       act(() => {
         fireEvent.click(screen.getByTestId('remove-item'));
       });
