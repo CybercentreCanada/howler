@@ -68,10 +68,7 @@ const FuzzySearchBar: FC<FuzzySearchBarProps> = ({ onSearch, loading = false }) 
         }}
       />
       <Stack direction="row">
-        <IndexPicker
-          additionalOptions={[{ label: 'hit.search.index.case', value: 'case' }]}
-          defaultIndexes={['hit', 'observable', 'case']}
-        />
+        <IndexPicker additionalOptions={[{ label: 'hit.search.index.case', value: 'case' }]} />
       </Stack>
     </Stack>
   );

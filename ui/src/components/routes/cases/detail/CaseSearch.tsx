@@ -82,7 +82,7 @@ const CaseSearch: FC = () => {
   }, [indexes, offset]);
 
   return (
-    <ParameterProvider defaults={{ query: '' }}>
+    <ParameterProvider defaults={{ query: '', indexes: ['hit', 'observable', 'case'] }}>
       <PageCenter maxWidth="lg" textAlign="left">
         <Stack spacing={1}>
           <FuzzySearchBar onSearch={handleSearch} loading={loading} />
