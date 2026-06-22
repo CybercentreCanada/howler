@@ -1977,6 +1977,25 @@ class TestRuleTimeframeAndExpireAfterResolved:
         assert result.rules[0].timeframe is None
         assert result.rules[0].expire_after_resolved is False
 
+    @patch("howler.services.case_service.datastore")
+    def test_add_rule_rejects_expire_after_resolved_without_timeframe(self, mock_ds_fn):
+        """add_case_rule rejects expire_after_resolved when timeframe is not set."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_ds.case.get.return_value = mock_case
+
+        user = MagicMock()
+        user.uname = "analyst1"
+
+        with pytest.raises(InvalidDataException, match="expire after resolved"):
+            case_service.add_case_rule(
+                "case-001",
+                {"query": "*:*", "destination": "alerts/all", "expire_after_resolved": True},
+                user,
+            )
+
     @patch("howler.services.case_service.event_service")
     @patch("howler.services.case_service.datastore")
     def test_add_rule_strips_created_at(self, mock_ds_fn, mock_events):
@@ -2036,6 +2055,23 @@ class TestRuleTimeframeAndExpireAfterResolved:
         result = case_service.update_case_rule("case-001", rule.rule_id, {"timeframe": 30}, user)
 
         assert result.rules[0].timeframe == 30
+
+    @patch("howler.services.case_service.datastore")
+    def test_update_rule_rejects_expire_after_resolved_without_timeframe(self, mock_ds_fn):
+        """update_case_rule rejects enabling expire_after_resolved when timeframe is None."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        rule = CaseRule({"query": "*:*", "destination": "alerts/all", "author": "admin", "timeframe": None})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case.rules.append(rule)
+        mock_ds.case.get.return_value = mock_case
+
+        user = MagicMock()
+        user.uname = "analyst1"
+
+        with pytest.raises(InvalidDataException, match="expire after resolved"):
+            case_service.update_case_rule("case-001", rule.rule_id, {"expire_after_resolved": True}, user)
 
 
 # ---------------------------------------------------------------------------

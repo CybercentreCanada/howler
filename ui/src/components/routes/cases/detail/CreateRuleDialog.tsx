@@ -126,8 +126,8 @@ const CreateRuleDialog: FC<CreateRuleDialogProps> = ({ open, onClose, onSubmit }
       await onSubmit({
         query: query.trim(),
         destination: destination.trim(),
-        timeframe: hasExpiry ? timeframeDays : undefined,
-        expire_after_resolved: hasExpiry ? expireAfterResolved : undefined,
+        timeframe: hasExpiry ? timeframeDays : null,
+        expire_after_resolved: hasExpiry ? expireAfterResolved : false,
         indexes
       });
 

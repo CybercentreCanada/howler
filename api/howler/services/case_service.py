@@ -855,6 +855,10 @@ def add_case_rule(case_id: str, rule_data: dict, user: User) -> Case:
     rule_data.pop("created_at", None)
     rule_data["author"] = user.uname
     rule_data.setdefault("enabled", True)
+    rule_data.setdefault("expire_after_resolved", False)
+
+    if rule_data.get("timeframe") is None and rule_data["expire_after_resolved"]:
+        raise InvalidDataException("Rule cannot expire after resolved when no timeframe is set")
 
     rule = CaseRule(rule_data)
     _case.rules.append(rule)
@@ -958,6 +962,9 @@ def update_case_rule(case_id: str, rule_id: str, update_data: dict, user: User) 
         old_value = getattr(rule, key, None)
         setattr(rule, key, value)
         changes.append(f"{key}: '{old_value}' → '{value}'")
+
+    if rule.timeframe is None and rule.expire_after_resolved:
+        raise InvalidDataException("Rule cannot expire after resolved when no timeframe is set")
 
     _case.log.append(
         CaseLog(
