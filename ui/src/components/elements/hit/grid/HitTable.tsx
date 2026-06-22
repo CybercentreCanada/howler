@@ -9,7 +9,7 @@ import {
 } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { FormatIndentDecrease, FormatIndentIncrease, Search } from '@mui/icons-material';
-import { IconButton, Stack, Table, TableCell, TableHead, TableRow } from '@mui/material';
+import { IconButton, Stack, Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
 import useMatchers from 'components/app/hooks/useMatchers';
 import { GridColumnsContext } from 'components/app/providers/GridColumnsProvider';
 import ColumnHeader from 'components/elements/hit/grid/ColumnHeader';
@@ -183,7 +183,11 @@ const HitTable = ({
           <TableCell sx={{ width: '100%' }} />
         </TableRow>
       </TableHead>
-      {ContextMenu ? <ContextMenu {...contextMenuProps}>{tableContent}</ContextMenu> : tableContent}
+      {ContextMenu ? (
+        <ContextMenu {...contextMenuProps}>{tableContent}</ContextMenu>
+      ) : (
+        <TableBody>{tableContent}</TableBody>
+      )}
     </Table>
   );
 };
