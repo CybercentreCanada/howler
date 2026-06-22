@@ -135,7 +135,7 @@ ruff = "^0.15.17"
 mypy = "^1.20.2"
 pre-commit = "^4.6.0"
 howler-api = { path = "../../api" }
-pytest = "^8.4.2"
+pytest = "^9.0.3"
 mock = "^5.2.0"
 pytest-cov = "^6.3.0"
 coverage = { extras = ["toml"], version = "^7.14.1" }
