@@ -214,7 +214,7 @@ const ViewComposer: FC = () => {
       setTitle(viewToEdit.title);
       setAdvanceOnTriage(viewToEdit.settings?.advance_on_triage ?? false);
       setQuery(viewToEdit.query);
-      setDisplayType(viewToEdit.settings?.display as HowlerViewLayoutType);
+      setDisplayType((viewToEdit.settings?.display ?? null) as HowlerViewLayoutType);
       setType(viewToEdit.type);
 
       if (viewToEdit.sort) {
@@ -315,7 +315,12 @@ const ViewComposer: FC = () => {
                     </Stack>
                     <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
                       <Typography component="span">{t('view.settings.layout')}</Typography>
-                      <LayoutToggle displayType={displayType} setDisplayType={setDisplayType} size="small" />
+                      <LayoutToggle
+                        displayType={displayType}
+                        setDisplayType={setDisplayType}
+                        size="small"
+                        allowNullValue
+                      />
                     </Stack>
                   </Stack>
                 </Stack>

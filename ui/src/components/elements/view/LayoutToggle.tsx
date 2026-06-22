@@ -1,22 +1,27 @@
 import { List, TableChart } from '@mui/icons-material';
 import { ToggleButton, ToggleButtonGroup } from '@mui/material';
 
-export type HowlerViewLayoutType = 'list' | 'grid';
+export type HowlerViewLayoutType = 'list' | 'grid' | null;
 
 const LayoutToggle = ({
   displayType,
   setDisplayType,
-  size
+  size,
+  allowNullValue = false
 }: {
   displayType: HowlerViewLayoutType;
   setDisplayType: (type: HowlerViewLayoutType) => void;
   size?: 'small' | 'medium' | 'large';
+  allowNullValue?: boolean;
 }) => {
   return (
     <ToggleButtonGroup
       exclusive
       value={displayType}
-      onChange={(__, value) => setDisplayType(value)}
+      onChange={(__, value) => {
+        if (!value && !allowNullValue) return;
+        setDisplayType(value);
+      }}
       size={size ?? 'small'}
     >
       <ToggleButton value="list">
