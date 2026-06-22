@@ -75,7 +75,7 @@ import CaseFolderContextMenu, { collectAllLeaves, getOpenUrl } from './CaseFolde
 // Fixtures
 // ---------------------------------------------------------------------------
 
-const mockCase: Case = { case_id: 'case-1', title: 'Test Case', items: [] };
+const mockCase: Case = { __index: 'case', case_id: 'case-1', title: 'Test Case', items: [] };
 
 const hitLeaf: Item = { type: 'hit', value: 'hit-123', path: 'folder/hit-item' };
 const referenceLeaf: Item = { type: 'reference', value: 'https://example.com', path: 'folder/ref-item' };
@@ -323,7 +323,7 @@ describe('CaseFolderContextMenu', () => {
     });
 
     it('does not call the API when case_id is missing', () => {
-      renderMenu({ _case: { title: 'No ID' }, leaf: hitLeaf });
+      renderMenu({ _case: { __index: 'case', title: 'No ID' }, leaf: hitLeaf });
       act(() => {
         fireEvent.click(screen.getByTestId('remove-item'));
       });

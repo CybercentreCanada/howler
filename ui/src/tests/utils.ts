@@ -91,6 +91,7 @@ export const createMockView = (overrides?: Partial<View>): View => ({
 });
 
 export const createMockCase = (overrides?: Partial<Case>): Case => ({
+  __index: 'case',
   case_id: 'test-case-id',
   title: 'Test Case',
   summary: 'Test case summary',
