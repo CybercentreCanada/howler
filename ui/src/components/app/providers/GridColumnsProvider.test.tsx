@@ -1,16 +1,17 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { useContext } from 'react';
-import { setupContextSelectorMock, setupLocalStorageMock } from 'tests/mocks';
+import { useContext, type ReactNode } from 'react';
+import { setupContextSelectorMock, setupLocalStorageMock, setupReactRouterMock } from 'tests/mocks';
 import { StorageKey } from 'utils/constants';
 import GridColumnsProvider, { GridColumnsContext } from './GridColumnsProvider';
+import { HitSearchContext, type HitSearchContextType } from './HitSearchProvider';
 import { ParameterContext, type ParameterContextType } from './ParameterProvider';
 import { ViewContext, type ViewContextType } from './ViewProvider';
 
 setupContextSelectorMock();
+setupReactRouterMock();
 const mockLocalStorage = setupLocalStorageMock();
 
 import { useParams } from 'react-router-dom';
-import { HitSearchContext, type HitSearchContextType } from './HitSearchProvider';
 
 const mockParams = vi.mocked(useParams);
 const mockGetCurrentViews = vi.fn();
@@ -31,7 +32,7 @@ const makeWrapper = (parameterViewIds: string[] = [], routeId?: string) => {
     views: parameterViewIds
   };
 
-  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+  const Wrapper = ({ children }: { children: ReactNode }) => (
     <ParameterContext.Provider value={parameterContextValue as ParameterContextType}>
       <ViewContext.Provider value={mockViewsContext as ViewContextType}>
         <HitSearchContext.Provider value={mockHitSearchContext as HitSearchContextType}>
