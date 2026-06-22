@@ -39,7 +39,7 @@ const GridColumnsProvider = ({
   const routeParams = useParams();
 
   const parameterViewIds = useContextSelector(ParameterContext, ctx => ctx.views);
-  const pathViewIds = useMemo(() => [routeParams.id], [routeParams.id]);
+  const pathViewIds = useMemo(() => (routeParams.id ? [routeParams.id] : []), [routeParams.id]);
   const viewIds = viewSource === 'params' ? parameterViewIds : pathViewIds;
 
   const getCurrentViews = useContextSelector(ViewContext, ctx => ctx.getCurrentViews);
