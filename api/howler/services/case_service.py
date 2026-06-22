@@ -4,6 +4,7 @@ This module provides functionality for creating, updating, retrieving, and manag
 cases - collections of security alerts and investigation data organized by analysts.
 """
 
+from datetime import datetime, timezone
 from typing import Any, overload
 
 from prometheus_client import Counter
@@ -147,6 +148,34 @@ def delete_cases(case_ids: set[str]) -> bool:
             ds.case.save(related_case_id, related_case)
 
     return ds.case.delete_by_query(f"case_id:({' OR '.join(case_ids)})")
+
+
+def get_last_resolved_time(case: Case) -> datetime | None:
+    """Return the timestamp of the most recent resolution of a case.
+
+    Scans the case log newest-to-oldest for an entry where ``key='status'``
+    and ``new_value='resolved'``. In the case of multiple resolve/unresolve
+    cycles, returns the **final** resolved timestamp.
+
+    Args:
+        case: The Case object whose log to scan.
+
+    Returns:
+        A timezone-aware datetime if the case was ever resolved, else None.
+    """
+    for entry in reversed(case.log):
+        if entry.key == "status" and entry.new_value == "resolved":
+            ts = entry.timestamp
+            if isinstance(ts, datetime):
+                if ts.tzinfo is None:
+                    return ts.replace(tzinfo=timezone.utc)
+                return ts
+            try:
+                dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+                return dt
+            except (ValueError, TypeError):
+                continue
+    return None
 
 
 def _describe_field_change(
@@ -823,6 +852,7 @@ def add_case_rule(case_id: str, rule_data: dict, user: User) -> Case:
         raise InvalidDataException("Rule 'destination' is required")
 
     rule_data.pop("rule_id", None)
+    rule_data.pop("created_at", None)
     rule_data["author"] = user.uname
     rule_data.setdefault("enabled", True)
 
@@ -890,7 +920,8 @@ def remove_case_rule(case_id: str, rule_id: str, user: User) -> Case:
 def update_case_rule(case_id: str, rule_id: str, update_data: dict, user: User) -> Case:
     """Update fields on an existing correlation rule.
 
-    Allowed fields: ``enabled``, ``query``, ``destination``, ``timeframe``.
+    Allowed fields: ``enabled``, ``query``, ``destination``, ``timeframe``,
+    ``expire_after_resolved``.
 
     Args:
         case_id: Unique identifier of the case.
@@ -911,7 +942,7 @@ def update_case_rule(case_id: str, rule_id: str, update_data: dict, user: User) 
     if _case is None:
         raise NotFoundException(f"Case {case_id} does not exist")
 
-    allowed_fields = {"enabled", "query", "destination", "timeframe"}
+    allowed_fields = {"enabled", "query", "destination", "timeframe", "expire_after_resolved"}
     patch = {k: v for k, v in update_data.items() if k in allowed_fields}
     if not patch:
         raise InvalidDataException(

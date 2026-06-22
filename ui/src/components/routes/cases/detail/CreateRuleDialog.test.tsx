@@ -50,12 +50,6 @@ vi.mock('@mui/x-date-pickers/AdapterDayjs', () => ({
   AdapterDayjs: class {}
 }));
 
-vi.mock('@mui/x-date-pickers/DateTimePicker', () => ({
-  DateTimePicker: ({ label, disabled }: { label: string; disabled?: boolean }) => (
-    <input id="rule-timeframe-input" aria-label={label} disabled={disabled} readOnly />
-  )
-}));
-
 import api from 'api';
 import CreateRuleDialog from './CreateRuleDialog';
 
@@ -84,6 +78,7 @@ describe('CreateRuleDialog', () => {
     expect(screen.getByTestId('rule-destination-input')).toBeInTheDocument();
     expect(screen.getByTestId('rule-timeframe-input')).toBeInTheDocument();
     expect(screen.getByTestId('rule-no-expiry-checkbox')).toBeInTheDocument();
+    expect(screen.getByTestId('rule-expire-after-resolved')).toBeInTheDocument();
     expect(screen.getByTestId('rule-index-hit')).toBeInTheDocument();
     expect(screen.getByTestId('rule-index-observable')).toBeInTheDocument();
   });
@@ -206,7 +201,7 @@ describe('CreateRuleDialog', () => {
     expect(screen.queryByTestId('query-result-text')).not.toBeInTheDocument();
   });
 
-  it('includes timeframe as ISO string when no expiry is unchecked', async () => {
+  it('includes timeframe as number when expiry is enabled', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     mockDispatchApi.mockResolvedValueOnce({ items: [], total: 1, offset: 0, rows: 0 });
@@ -233,7 +228,7 @@ describe('CreateRuleDialog', () => {
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
         expect.objectContaining({
-          timeframe: expect.any(String)
+          timeframe: 14
         })
       );
     });
@@ -273,6 +268,44 @@ describe('CreateRuleDialog', () => {
           query: 'event.kind:alert',
           destination: 'alerts/incoming',
           timeframe: undefined
+        })
+      );
+    });
+  });
+
+  it('includes expire_after_resolved when checkbox is checked', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    mockDispatchApi.mockResolvedValueOnce({ items: [], total: 1, offset: 0, rows: 0 });
+    (api.search.hit.post as ReturnType<typeof vi.fn>).mockReturnValue('search-request');
+
+    render(<CreateRuleDialog {...defaultProps} onSubmit={onSubmit} />);
+
+    await act(async () => {
+      await user.click(screen.getByTestId('rule-expire-after-resolved'));
+    });
+
+    await act(async () => {
+      await user.type(screen.getByTestId('rule-query-editor'), 'event.kind:alert');
+    });
+
+    await act(async () => {
+      await user.click(screen.getByTestId('rule-search-button'));
+    });
+
+    await act(async () => {
+      await user.type(screen.getByTestId('rule-destination-input'), 'alerts/incoming');
+    });
+
+    await act(async () => {
+      await user.click(screen.getByTestId('rule-submit-button'));
+    });
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          timeframe: 14,
+          expire_after_resolved: true
         })
       );
     });

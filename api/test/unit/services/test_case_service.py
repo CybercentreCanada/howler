@@ -1625,11 +1625,11 @@ class TestAddCaseRule:
 
         result = case_service.add_case_rule(
             "case-001",
-            {"query": "*:*", "destination": "alerts/all", "timeframe": "2026-06-01T00:00:00Z"},
+            {"query": "*:*", "destination": "alerts/all", "timeframe": 14},
             user,
         )
 
-        assert result.rules[0].timeframe is not None
+        assert result.rules[0].timeframe == 14
 
     @patch("howler.services.case_service.datastore")
     def test_add_rule_case_not_found(self, mock_ds_fn):
@@ -1848,3 +1848,216 @@ class TestUpdateCaseRule:
 
         with pytest.raises(NotFoundException, match="Case"):
             case_service.update_case_rule("nonexistent", "rule-id", {"enabled": False}, user)
+
+
+# ---------------------------------------------------------------------------
+# get_last_resolved_time()
+# ---------------------------------------------------------------------------
+
+
+class TestGetLastResolvedTime:
+    """Tests for case_service.get_last_resolved_time."""
+
+    def test_single_resolution(self):
+        """Returns the timestamp when a case has been resolved once."""
+        case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        case.log = [
+            _make_log("Case created"),
+            _make_log_change("status", "open", "resolved", "2026-01-15T10:00:00.000000Z"),
+        ]
+        result = case_service.get_last_resolved_time(case)
+        assert result is not None
+        assert result.year == 2026
+        assert result.month == 1
+        assert result.day == 15
+
+    def test_multiple_resolve_cycles_returns_latest(self):
+        """Returns the final resolved timestamp after open→resolved→in-progress→resolved."""
+        case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        case.log = [
+            _make_log("Case created"),
+            _make_log_change("status", "open", "resolved", "2026-01-10T10:00:00.000000Z"),
+            _make_log_change("status", "resolved", "in-progress", "2026-01-12T10:00:00.000000Z"),
+            _make_log_change("status", "in-progress", "resolved", "2026-02-20T15:30:00.000000Z"),
+        ]
+        result = case_service.get_last_resolved_time(case)
+        assert result is not None
+        assert result.month == 2
+        assert result.day == 20
+
+    def test_no_resolution_returns_none(self):
+        """Returns None if the case has never been resolved."""
+        case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        case.log = [
+            _make_log("Case created"),
+            _make_log_change("status", "open", "in-progress", "2026-01-10T10:00:00.000000Z"),
+        ]
+        result = case_service.get_last_resolved_time(case)
+        assert result is None
+
+    def test_empty_log_returns_none(self):
+        """Returns None if the case log is empty."""
+        case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        case.log = []
+        result = case_service.get_last_resolved_time(case)
+        assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Rule CRUD: timeframe and expire_after_resolved
+# ---------------------------------------------------------------------------
+
+
+class TestRuleTimeframeAndExpireAfterResolved:
+    """Tests for timeframe (days) and expire_after_resolved (boolean) on rules."""
+
+    @patch("howler.services.case_service.event_service")
+    @patch("howler.services.case_service.datastore")
+    def test_add_rule_with_timeframe_and_expire_after_resolved(self, mock_ds_fn, mock_events):
+        """add_case_rule accepts timeframe (days) with expire_after_resolved flag."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_ds.case.get.return_value = mock_case
+
+        user = MagicMock()
+        user.uname = "analyst1"
+
+        result = case_service.add_case_rule(
+            "case-001",
+            {"query": "*:*", "destination": "alerts/all", "timeframe": 14, "expire_after_resolved": True},
+            user,
+        )
+
+        assert result.rules[0].timeframe == 14
+        assert result.rules[0].expire_after_resolved is True
+
+    @patch("howler.services.case_service.event_service")
+    @patch("howler.services.case_service.datastore")
+    def test_add_rule_with_timeframe_only(self, mock_ds_fn, mock_events):
+        """add_case_rule with timeframe defaults expire_after_resolved to False."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_ds.case.get.return_value = mock_case
+
+        user = MagicMock()
+        user.uname = "analyst1"
+
+        result = case_service.add_case_rule(
+            "case-001",
+            {"query": "*:*", "destination": "alerts/all", "timeframe": 7},
+            user,
+        )
+
+        assert result.rules[0].timeframe == 7
+        assert result.rules[0].expire_after_resolved is False
+
+    @patch("howler.services.case_service.event_service")
+    @patch("howler.services.case_service.datastore")
+    def test_add_rule_no_timeframe(self, mock_ds_fn, mock_events):
+        """add_case_rule without timeframe means no expiry."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_ds.case.get.return_value = mock_case
+
+        user = MagicMock()
+        user.uname = "analyst1"
+
+        result = case_service.add_case_rule(
+            "case-001",
+            {"query": "*:*", "destination": "alerts/all"},
+            user,
+        )
+
+        assert result.rules[0].timeframe is None
+        assert result.rules[0].expire_after_resolved is False
+
+    @patch("howler.services.case_service.event_service")
+    @patch("howler.services.case_service.datastore")
+    def test_add_rule_strips_created_at(self, mock_ds_fn, mock_events):
+        """add_case_rule ignores client-supplied created_at."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_ds.case.get.return_value = mock_case
+
+        user = MagicMock()
+        user.uname = "analyst1"
+
+        result = case_service.add_case_rule(
+            "case-001",
+            {"query": "*:*", "destination": "alerts/all", "created_at": "1999-01-01T00:00:00Z"},
+            user,
+        )
+
+        # created_at should be auto-generated ("NOW"), not the client value
+        assert result.rules[0].created_at is not None
+
+    @patch("howler.services.case_service.event_service")
+    @patch("howler.services.case_service.datastore")
+    def test_update_rule_sets_expire_after_resolved(self, mock_ds_fn, mock_events):
+        """update_case_rule can toggle expire_after_resolved."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        rule = CaseRule({"query": "*:*", "destination": "alerts/all", "author": "admin", "timeframe": 14})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case.rules.append(rule)
+        mock_ds.case.get.return_value = mock_case
+
+        user = MagicMock()
+        user.uname = "analyst1"
+
+        result = case_service.update_case_rule("case-001", rule.rule_id, {"expire_after_resolved": True}, user)
+
+        assert result.rules[0].expire_after_resolved is True
+
+    @patch("howler.services.case_service.event_service")
+    @patch("howler.services.case_service.datastore")
+    def test_update_rule_sets_timeframe(self, mock_ds_fn, mock_events):
+        """update_case_rule can update timeframe days."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        rule = CaseRule({"query": "*:*", "destination": "alerts/all", "author": "admin", "timeframe": 14})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case.rules.append(rule)
+        mock_ds.case.get.return_value = mock_case
+
+        user = MagicMock()
+        user.uname = "analyst1"
+
+        result = case_service.update_case_rule("case-001", rule.rule_id, {"timeframe": 30}, user)
+
+        assert result.rules[0].timeframe == 30
+
+
+# ---------------------------------------------------------------------------
+# Helpers for log-related tests
+# ---------------------------------------------------------------------------
+
+
+from howler.odm.models.case import CaseLog
+
+
+def _make_log(explanation: str, timestamp: str = "2026-01-01T00:00:00.000000Z") -> CaseLog:
+    return CaseLog({"timestamp": timestamp, "explanation": explanation, "user": "system"})
+
+
+def _make_log_change(key: str, prev: str, new: str, timestamp: str) -> CaseLog:
+    return CaseLog(
+        {
+            "timestamp": timestamp,
+            "key": key,
+            "previous_value": prev,
+            "new_value": new,
+            "user": "system",
+            "explanation": f"Updated {key} from '{prev}' to '{new}'",
+        }
+    )

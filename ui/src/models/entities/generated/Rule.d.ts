@@ -7,6 +7,8 @@ export interface Rule {
   query?: string;
   author?: string;
   enabled?: boolean;
-  timeframe?: string;
+  created_at?: string;
+  timeframe?: number;
+  expire_after_resolved?: boolean;
   indexes?: ('hit' | 'observable')[];
 }

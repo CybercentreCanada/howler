@@ -8,7 +8,7 @@ The public API consists of three functions:
   calls ``process_batch`` in debounced batches.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import chevron
 from opentelemetry import trace
@@ -32,6 +32,14 @@ BATCH_TIMEOUT: int = config.system.correlation.batch_timeout
 def get_active_rules() -> list[tuple[str, CaseRule]]:
     """Return all active (enabled, non-expired) rules across every case.
 
+    A rule's ``timeframe`` is an optional integer representing how many days
+    the rule stays active. When ``expire_after_resolved`` is False (default),
+    the countdown starts from ``rule.created_at``. When True, it starts from
+    the case's most recent resolution time (if the case has never been resolved
+    the timer has not started and the rule remains active).
+
+    If ``timeframe`` is None the rule never expires.
+
     Returns:
         A list of ``(case_id, rule)`` tuples for rules that should be evaluated.
     """
@@ -41,20 +49,38 @@ def get_active_rules() -> list[tuple[str, CaseRule]]:
 
     # Only fetch cases that actually have rules.
     for _case in ds.case.stream_search("_exists_:rules.rule_id"):
+        # Lazily compute last resolved time only if needed by at least one rule.
+        _last_resolved: datetime | None = None
+        _last_resolved_computed = False
+
         for rule in _case.rules:
             if not rule.enabled:
                 continue
 
-            if rule.timeframe is not None:
-                try:
-                    expiry = datetime.fromisoformat(str(rule.timeframe))
-                    if expiry <= now:
-                        continue
-                except (ValueError, TypeError):
-                    logger.warning("Invalid timeframe on rule %s in case %s", rule.rule_id, _case.case_id)
+            if rule.timeframe is None:
+                # No expiry configured — rule is always active.
+                active.append((_case.case_id, rule))
+                continue
+
+            start: datetime
+            if not rule.expire_after_resolved:
+                start = datetime.fromisoformat(str(rule.created_at).replace("Z", "+00:00"))
+            else:
+                # Timer starts from last resolution.
+                if not _last_resolved_computed:
+                    _last_resolved = case_service.get_last_resolved_time(_case)
+                    _last_resolved_computed = True
+
+                if _last_resolved is None:
+                    # Case not yet resolved — timer hasn't started.
+                    active.append((_case.case_id, rule))
                     continue
 
-            active.append((_case.case_id, rule))
+                start = _last_resolved
+
+            expiry = start + timedelta(days=rule.timeframe)
+            if expiry > now:
+                active.append((_case.case_id, rule))
 
     return active
 
