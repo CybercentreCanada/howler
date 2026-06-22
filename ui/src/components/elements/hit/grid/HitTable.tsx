@@ -175,7 +175,7 @@ const HitTable = ({
                   width={columnWidths[col]}
                   colSource={columnSources[col]}
                   onMouseDown={onMouseDown}
-                  setColumns={isReady ? setColumns : undefined}
+                  setColumns={isReady ? setColumns : () => null}
                 />
               ))}
             </SortableContext>
