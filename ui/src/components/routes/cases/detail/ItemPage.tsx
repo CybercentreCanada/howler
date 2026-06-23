@@ -112,7 +112,7 @@ const ItemPage: FC<{ case?: Case }> = ({ case: providedCase }) => {
     return <NotFoundPage />;
   }
 
-  if (item.type === 'hit' || item.type === 'observable') {
+  if (item.type === 'hit' || item.type === 'event' || item.type === 'observable') {
     return <InformationPane selected={item.value} />;
   }
 

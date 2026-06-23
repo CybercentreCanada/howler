@@ -8,7 +8,7 @@ import type { Hit } from 'models/entities/generated/Hit';
 import type { Observable } from 'models/entities/generated/Observable';
 import type { PropsWithChildren } from 'react';
 import { I18nextProvider } from 'react-i18next';
-import { createMockHit, createMockObservable } from 'tests/utils';
+import { createMockEvent, createMockHit } from 'tests/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import CreateCaseModal from './CreateCaseModal';
 
@@ -60,7 +60,7 @@ const MOCK_HIT_2: Hit = createMockHit({
   howler: { id: 'hit-002', analytic: 'AnalyticTwo', status: 'open' } as any
 });
 
-const MOCK_OBSERVABLE: Observable = createMockObservable({
+const MOCK_OBSERVABLE: Observable = createMockEvent({
   howler: { id: 'obs-001' } as any
 });
 
@@ -157,9 +157,9 @@ describe('CreateCaseModal', () => {
       expect(screen.getByText(MOCK_HIT_2.howler.analytic)).toBeInTheDocument();
     });
 
-    it('renders a row for an observable record', () => {
+    it('renders a row for an event record', () => {
       renderModal([MOCK_OBSERVABLE]);
-      expect(screen.getByText('Observable')).toBeInTheDocument();
+      expect(screen.getByText('Event')).toBeInTheDocument();
     });
 
     it('pre-populates the title for a hit with analytic and id', () => {
@@ -168,10 +168,10 @@ describe('CreateCaseModal', () => {
       expect(titleInputs[0]).toHaveValue(`${MOCK_HIT_1.howler.analytic} (${MOCK_HIT_1.howler.id})`);
     });
 
-    it('pre-populates the title for an observable with Observable and id', () => {
+    it('pre-populates the title for an event with Event and id', () => {
       renderModal([MOCK_OBSERVABLE]);
       const titleInput = screen.getByPlaceholderText(i18n.t('modal.cases.add_to_case.title'));
-      expect(titleInput).toHaveValue(`Observable (${MOCK_OBSERVABLE.howler.id})`);
+      expect(titleInput).toHaveValue(`Event (${MOCK_OBSERVABLE.howler.id})`);
     });
 
     it('shows the alert placement section label when there are records', () => {
@@ -418,7 +418,7 @@ describe('CreateCaseModal', () => {
       );
     });
 
-    it('uses observable __index for observable records', async () => {
+    it('uses event __index for event records', async () => {
       const api = (await import('api')).default;
       mockDispatchApi.mockResolvedValue({ case_id: 'new-case-id' });
 
@@ -428,10 +428,7 @@ describe('CreateCaseModal', () => {
 
       await waitFor(() => expect(mockClose).toHaveBeenCalled());
 
-      expect(api.v2.case.items.post).toHaveBeenCalledWith(
-        'new-case-id',
-        expect.objectContaining({ type: 'observable' })
-      );
+      expect(api.v2.case.items.post).toHaveBeenCalledWith('new-case-id', expect.objectContaining({ type: 'event' }));
     });
 
     it('does not call items.post when there are no records', async () => {
@@ -482,11 +479,11 @@ describe('CreateCaseModal', () => {
       expect(titleInputs[1]).toHaveValue(`${MOCK_HIT_2.howler.analytic} (${MOCK_HIT_2.howler.id})`);
     });
 
-    it('mixed hit and observable records each get correct default titles', () => {
+    it('mixed hit and event records each get correct default titles', () => {
       renderModal([MOCK_HIT_1, MOCK_OBSERVABLE]);
       const titleInputs = screen.getAllByPlaceholderText(i18n.t('modal.cases.add_to_case.title'));
       expect(titleInputs[0]).toHaveValue(`${MOCK_HIT_1.howler.analytic} (${MOCK_HIT_1.howler.id})`);
-      expect(titleInputs[1]).toHaveValue(`Observable (${MOCK_OBSERVABLE.howler.id})`);
+      expect(titleInputs[1]).toHaveValue(`Event (${MOCK_OBSERVABLE.howler.id})`);
     });
   });
 });

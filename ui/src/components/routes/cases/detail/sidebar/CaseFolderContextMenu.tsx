@@ -25,7 +25,7 @@ export const collectAllLeaves = (tree: Tree): Item[] => {
  * Returns the URL to open for a given leaf item, or null if no URL applies.
  * - reference: the item's value (an external URL)
  * - hit: /hits/<id>
- * - observable: /observables/<id>
+ * - event: /events/<id>
  * - case: /cases/<id>
  * - table / lead: null (no dedicated detail page)
  */
@@ -37,8 +37,8 @@ export const getOpenUrl = (leaf: Item): string | null => {
   if (type === 'hit') {
     return leaf.value ? `/hits/${leaf.value}` : null;
   }
-  if (type === 'observable') {
-    return leaf.value ? `/observables/${leaf.value}` : null;
+  if (type === 'event') {
+    return leaf.value ? `/events/${leaf.value}` : null;
   }
   if (type === 'case') {
     return leaf.value ? `/cases/${leaf.value}` : null;

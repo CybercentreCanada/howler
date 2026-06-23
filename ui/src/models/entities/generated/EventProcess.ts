@@ -8,7 +8,7 @@ import type { ProcessUser } from './ProcessUser';
 /**
  * NOTE: This is an auto-generated file. Don't edit this manually.
  */
-export interface ObservableProcess {
+export interface EventProcess {
   args?: string[];
   args_count?: number;
   code_signature?: CodeSignature;

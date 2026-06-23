@@ -35,7 +35,7 @@ const CaseRecordRow: FC<{
       >
         <Stack direction="row" alignItems="center" spacing={1} width="100%">
           <Typography variant="body2" fontWeight={500} sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {isHit(record) ? record.howler.analytic : 'Observable'}
+            {isHit(record) ? record.howler.analytic : 'Event'}
           </Typography>
           {isHit(record) && <EscalationChip hit={record} layout={HitLayout.DENSE} />}
           {isHit(record) && <Chip label={record.howler.status} size="small" color="primary" sx={{ flexShrink: 0 }} />}

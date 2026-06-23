@@ -1,19 +1,19 @@
 import { Box, Stack, Tab, Tabs, useTheme } from '@mui/material';
-import ObservableCard from 'components/elements/observable/ObservableCard';
+import EventCard from 'components/elements/event/EventCard';
 import useRelatedRecords from 'components/hooks/useRelatedRecords';
 import { groupBy } from 'lodash-es';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { Observable } from 'models/entities/generated/Observable';
 import { useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { isCase, isHit, isObservable } from 'utils/typeUtils';
+import { isCase, isEvent, isHit } from 'utils/typeUtils';
 import CaseCard from '../case/CaseCard';
 import HitCard from '../hit/HitCard';
 import { HitLayout } from '../hit/HitLayout';
 import RelatedLink from '../hit/related/RelatedLink';
 
-const RecordRelated: FC<{ record: Hit | Observable }> = ({ record }) => {
+const RecordRelated: FC<{ record: Hit | Event }> = ({ record }) => {
   const theme = useTheme();
   const { t } = useTranslation();
   const related = useMemo(() => record?.howler.related ?? [], [record?.howler.related]);
@@ -26,7 +26,7 @@ const RecordRelated: FC<{ record: Hit | Observable }> = ({ record }) => {
     hasLinks && 'links',
     groups.hit?.length > 0 && 'hit',
     groups.case?.length > 0 && 'case',
-    groups.observable?.length > 0 && 'observable'
+    groups.event?.length > 0 && 'event'
   ].filter(Boolean) as string[];
 
   const [activeTab, setActiveTab] = useState<string | false>(false);
@@ -42,7 +42,7 @@ const RecordRelated: FC<{ record: Hit | Observable }> = ({ record }) => {
         {hasLinks && <Tab value="links" label={t('hit.related.tab.links')} />}
         {groups.hit?.length > 0 && <Tab value="hit" label={t('hit.related.tab.hit')} />}
         {groups.case?.length > 0 && <Tab value="case" label={t('hit.related.tab.case')} />}
-        {groups.observable?.length > 0 && <Tab value="observable" label={t('hit.related.tab.observable')} />}
+        {groups.event?.length > 0 && <Tab value="event" label={t('hit.related.tab.event')} />}
       </Tabs>
 
       {currentTab === 'links' && (
@@ -85,17 +85,17 @@ const RecordRelated: FC<{ record: Hit | Observable }> = ({ record }) => {
         </Stack>
       )}
 
-      {currentTab === 'observable' && (
+      {currentTab === 'event' && (
         <Stack spacing={1} pt={1}>
-          {records.filter(isObservable).map(o => (
+          {records.filter(isEvent).map(o => (
             <Link
               key={o.howler.id}
-              to={`/observables/${o.howler.id}`}
+              to={`/events/${o.howler.id}`}
               target="_blank"
               rel="noopener noreferrer"
               style={{ textDecoration: 'none' }}
             >
-              <ObservableCard observable={o} />
+              <EventCard event={o} />
             </Link>
           ))}
         </Stack>

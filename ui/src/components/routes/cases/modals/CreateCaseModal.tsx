@@ -3,8 +3,8 @@ import api from 'api';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import MarkdownEditor from 'components/elements/MarkdownEditor';
 import useMyApi from 'components/hooks/useMyApi';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { Observable } from 'models/entities/generated/Observable';
 import { useContext, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import CaseRecordRow from './CaseRecordRow';
@@ -12,7 +12,7 @@ import { useRecordEntries } from './hooks';
 
 const ESCALATIONS = ['normal', 'focus', 'crisis'];
 
-const CreateCaseModal: FC<{ records: (Hit | Observable)[] }> = ({ records }) => {
+const CreateCaseModal: FC<{ records: (Hit | Event)[] }> = ({ records }) => {
   const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
   const { close } = useContext(ModalContext);

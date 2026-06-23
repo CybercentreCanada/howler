@@ -6,7 +6,7 @@ from typing import Any
 from flask import Blueprint, request
 from opentelemetry import trace
 
-import howler.services.event_service as event_service
+import howler.services.comms_service as comms_service
 import howler.services.viewer_service as viewer_service
 from howler.api import ok, unauthorized
 from howler.common.logging import get_logger
@@ -47,7 +47,7 @@ def emit(event: str):
 
         return unauthorized(err="Invalid auth data")
 
-    event_service.emit(event, request.json)
+    comms_service.emit(event, request.json)
 
     return ok()
 
@@ -105,11 +105,11 @@ def connect(ws: Server, *args: Any, ws_id: str, **kwargs):  # noqa: C901
         ws.send(ws_response("viewers_update", data))
 
     try:
-        event_service.on("hits", send_hit)
-        event_service.on("broadcast", send_broadcast)
-        event_service.on("action", send_action)
-        event_service.on("cases", send_case)
-        event_service.on("viewers_update", send_viewers_update)
+        comms_service.on("hits", send_hit)
+        comms_service.on("broadcast", send_broadcast)
+        comms_service.on("action", send_action)
+        comms_service.on("cases", send_case)
+        comms_service.on("viewers_update", send_viewers_update)
         while ws.connected:
             data = ws.receive(10)
             if data:
@@ -138,11 +138,11 @@ def connect(ws: Server, *args: Any, ws_id: str, **kwargs):  # noqa: C901
         else:
             logger.exception("Exception on connect.")
     finally:
-        event_service.off("hits", send_hit)
-        event_service.off("broadcast", send_broadcast)
-        event_service.off("action", send_action)
-        event_service.off("cases", send_case)
-        event_service.off("viewers_update", send_viewers_update)
+        comms_service.off("hits", send_hit)
+        comms_service.off("broadcast", send_broadcast)
+        comms_service.off("action", send_action)
+        comms_service.off("cases", send_case)
+        comms_service.off("viewers_update", send_viewers_update)
 
         for id, action, broadcast in outstanding_actions:
             outstanding_actions = check_action(id, action, broadcast, outstanding_actions=outstanding_actions, **kwargs)

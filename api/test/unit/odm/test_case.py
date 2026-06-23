@@ -74,7 +74,7 @@ class TestCaseItem:
 
     def test_create_case_item_with_id(self):
         """CaseItem can be created with an optional id."""
-        item = CaseItem({"path": "/obs", "type": "observable", "value": "obs-001"})
+        item = CaseItem({"path": "/events", "type": "event", "value": "obs-001"})
 
         assert item.value == "obs-001"
 
@@ -429,14 +429,14 @@ class TestCase:
                 "overview": "O",
                 "escalation": "medium",
                 "items": [
-                    {"path": "/obs", "type": "observable", "value": "1.2.3.4", "id": "obs-1"},
+                    {"path": "/events", "type": "event", "value": "1.2.3.4", "id": "obs-1"},
                     {"path": "/hits", "type": "hit", "value": "hit-abc"},
                 ],
             }
         )
 
         assert len(case.items) == 2
-        assert case.items[0].type == "observable"
+        assert case.items[0].type == "event"
         assert case.items[1].value == "hit-abc"
 
     def test_create_case_with_rules(self):

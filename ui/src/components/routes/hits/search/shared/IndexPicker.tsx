@@ -8,7 +8,7 @@ import { useContextSelector } from 'use-context-selector';
 
 const FILTER_OPTIONS: { label: string; value: SearchIndex }[] = [
   { label: 'hit.search.index.hit', value: 'hit' },
-  { label: 'hit.search.index.observable', value: 'observable' }
+  { label: 'hit.search.index.event', value: 'event' }
 ];
 
 const IndexPicker: FC = () => {

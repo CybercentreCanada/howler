@@ -30,7 +30,7 @@ from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import Comment, HitOperationType, HitStatusTransition
 from howler.odm.models.user import User
 from howler.security import api_login
-from howler.services import action_service, analytic_service, event_service, hit_service
+from howler.services import action_service, analytic_service, comms_service, hit_service
 from howler.utils.str_utils import sanitize_lucene_query
 
 MAX_COMMENT_LEN = 5000
@@ -409,7 +409,7 @@ def update_hit(id: str, server_version: str, **kwargs):
             hit.howler.id, operations, kwargs["user"]["uname"], server_version, refresh=refresh
         )
 
-        event_service.emit("hits", {"hit": new_hit, "version": new_version})
+        comms_service.emit("hits", {"hit": new_hit, "version": new_version})
 
         return ok(new_hit), new_version
     except HowlerValueError as e:

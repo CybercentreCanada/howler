@@ -3,15 +3,15 @@ import { Autocomplete, Box, Chip, Divider, Skeleton, Stack, TextField, Tooltip, 
 import api from 'api';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { RecordContext } from 'components/app/providers/RecordProvider';
+import EventCard from 'components/elements/event/EventCard';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
-import ObservableCard from 'components/elements/observable/ObservableCard';
 import useMyApi from 'components/hooks/useMyApi';
 import dayjs from 'dayjs';
 import { capitalize } from 'lodash-es';
 import type { Case } from 'models/entities/generated/Case';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { Observable } from 'models/entities/generated/Observable';
 import { memo, useContext, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useOutletContext } from 'react-router-dom';
@@ -58,7 +58,7 @@ const CaseTimeline: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase
 
   const [mitreOptions, setMitreOptions] = useState<MitreOption[]>([]);
   const [escalationOptions, setEscalationOptions] = useState<string[]>([]);
-  const [displayedEntries, setDisplayedEntries] = useState<(Hit | Observable)[]>([]);
+  const [displayedEntries, setDisplayedEntries] = useState<(Hit | Event)[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedMitres, setSelectedMitres] = useState<MitreOption[]>([]);
   const [selectedEscalations, setSelectedEscalations] = useState<string[]>(['evidence']);
@@ -66,7 +66,7 @@ const CaseTimeline: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase
   const ids = useMemo(
     () =>
       (_case?.items ?? [])
-        .filter(item => ['hit', 'observable'].includes(item.type))
+        .filter(item => ['hit', 'event'].includes(item.type))
         .map(item => item.value)
         .filter(Boolean),
     [_case]
@@ -80,7 +80,7 @@ const CaseTimeline: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase
     }
 
     dispatchApi(
-      api.v2.search.facet.post(['hit', 'observable'], {
+      api.v2.search.facet.post(['hit', 'event'], {
         fields: ['threat.tactic.id', 'threat.technique.id', 'howler.escalation'],
         filters: [`howler.id:(${ids.join(' OR ')})`]
       }),
@@ -119,7 +119,7 @@ const CaseTimeline: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase
     const filters = buildFilters(selectedMitres, selectedEscalations);
 
     dispatchApi(
-      api.v2.search.post<Hit | Observable>(['hit', 'observable'], {
+      api.v2.search.post<Hit | Event>(['hit', 'event'], {
         query: `howler.id:(${ids.join(' OR ')})`,
         sort: 'event.created asc',
         rows: ids.length,
@@ -250,7 +250,7 @@ const CaseTimeline: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase
                   {isHit(entry) ? (
                     <HitCard id={entry.howler.id} layout={HitLayout.DENSE} readOnly />
                   ) : (
-                    <ObservableCard id={entry.howler.id} />
+                    <EventCard id={entry.howler.id} />
                   )}
                 </Box>
               </Stack>

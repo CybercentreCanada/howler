@@ -6,7 +6,7 @@ import { createContext, useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY } from 'utils/constants';
 import Throttler from 'utils/Throttler';
 
-export type SearchIndex = 'hit' | 'observable' | 'case';
+export type SearchIndex = 'hit' | 'event' | 'case';
 
 export interface ParameterContextType {
   selected?: string;

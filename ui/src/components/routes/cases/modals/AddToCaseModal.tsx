@@ -4,8 +4,8 @@ import { ModalContext } from 'components/app/providers/ModalProvider';
 import CaseCard from 'components/elements/case/CaseCard';
 import useMyApi from 'components/hooks/useMyApi';
 import type { Case } from 'models/entities/generated/Case';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { Observable } from 'models/entities/generated/Observable';
 import { useContext, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import CaseRecordRow from './CaseRecordRow';
@@ -15,7 +15,7 @@ import { useFolderOptions, useRecordEntries } from './hooks';
 // Modal
 // ---------------------------------------------------------------------------
 
-const AddToCaseModal: FC<{ records: (Hit | Observable)[] }> = ({ records }) => {
+const AddToCaseModal: FC<{ records: (Hit | Event)[] }> = ({ records }) => {
   const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
   const { close } = useContext(ModalContext);

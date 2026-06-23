@@ -21,8 +21,8 @@ export const post = <T = any>(
     indexes = indexes.split(',').filter(identity);
   }
 
-  if (indexes.some(index => !['hit', 'observable', 'case'].includes(index))) {
-    throw new Error('Only hit, case, and observable indexes should be used currently.');
+  if (indexes.some(index => !['hit', 'event', 'case'].includes(index))) {
+    throw new Error('Only hit, case, and event indexes should be used currently.');
   }
 
   if (indexes.length < 1) {

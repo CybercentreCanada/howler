@@ -31,7 +31,7 @@ class Ingest(object):
     """Operations for ingesting records via the v2 API.
 
     Unlike the v1 ``hit`` module, v2 ingest supports multiple indexes
-    (``hit`` and ``observable``) and enqueues new records for correlation
+    (``hit`` and ``event``) and enqueues new records for correlation
     processing.
     """
 
@@ -46,7 +46,7 @@ class Ingest(object):
         """Create one or more records in the given index.
 
         Args:
-            index: Target index (``hit`` or ``observable``).
+            index: Target index (``hit`` or ``event``).
             data: A single record dict or a list of record dicts.
 
         Returns:
@@ -65,7 +65,7 @@ class Ingest(object):
         """Delete records across one or more indexes.
 
         Args:
-            indexes: Comma-separated index names (e.g. ``"hit"`` or ``"hit,observable"``).
+            indexes: Comma-separated index names (e.g. ``"hit"`` or ``"hit,event"``).
             ids: List of record IDs to delete.
 
         Returns:
@@ -81,7 +81,7 @@ class Ingest(object):
         """Validate records against an index schema without persisting.
 
         Args:
-            index: Target index (``hit`` or ``observable``).
+            index: Target index (``hit`` or ``event``).
             data: A single record dict or a list of record dicts.
 
         Returns:

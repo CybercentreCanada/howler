@@ -1,14 +1,14 @@
 import type { Case } from 'models/entities/generated/Case';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { Observable } from 'models/entities/generated/Observable';
 import { useCallback, useMemo, useState } from 'react';
 import type { RecordEntry } from './types';
 
-export const defaultTitle = (record: Hit | Observable): string => {
+export const defaultTitle = (record: Hit | Event): string => {
   if (record.__index === 'hit') {
     return `${record.howler.analytic} (${record.howler.id})`;
   }
-  return `Observable (${record.howler.id})`;
+  return `Event (${record.howler.id})`;
 };
 
 export const useFolderOptions = (selectedCase: Case | null): string[] => {
@@ -40,7 +40,7 @@ export const useFolderOptions = (selectedCase: Case | null): string[] => {
 // Hook
 // ---------------------------------------------------------------------------
 
-export const useRecordEntries = (records: (Hit | Observable)[]) => {
+export const useRecordEntries = (records: (Hit | Event)[]) => {
   const [entries, setEntries] = useState<RecordEntry[]>(() =>
     (records ?? []).map(record => ({
       record,

@@ -3,8 +3,8 @@ Demo ingestion script for Howler.
 
 Creates a phishing investigation case with:
   - Hit:        Suspicious email from john.smith@live.ca
-  - Observable: outlook.exe process spawned from explorer.exe
-  - Observable: msedge.exe spawned from outlook.exe opening the phishing link
+  - Event: outlook.exe process spawned from explorer.exe
+  - Event: msedge.exe spawned from outlook.exe opening the phishing link
 
 Then creates a case tying them all together.
 
@@ -120,11 +120,11 @@ PHISHING_HIT = {
 }
 
 # ---------------------------------------------------------------------------
-# 2. Observable — outlook.exe launched from explorer.exe
+# 2. Event — outlook.exe launched from explorer.exe
 # ---------------------------------------------------------------------------
-OUTLOOK_OBSERVABLE = {
+OUTLOOK_EVENT = {
     "howler": {
-        "hash": _hash("observable-outlook-demo"),
+        "hash": _hash("event-outlook-demo"),
     },
     "event": {
         "kind": "event",
@@ -151,11 +151,11 @@ OUTLOOK_OBSERVABLE = {
 }
 
 # ---------------------------------------------------------------------------
-# 3. Observable — msedge.exe launched by outlook.exe to open phishing link
+# 3. Event — msedge.exe launched by outlook.exe to open phishing link
 # ---------------------------------------------------------------------------
-EDGE_OBSERVABLE = {
+EDGE_EVENT = {
     "howler": {
-        "hash": _hash("observable-msedge-demo"),
+        "hash": _hash("event-msedge-demo"),
     },
     "event": {
         "kind": "event",
@@ -196,7 +196,7 @@ EDGE_OBSERVABLE = {
 
 
 # ---------------------------------------------------------------------------
-# 4. Observables — msedge.exe network connections
+# 4. Events — msedge.exe network connections
 # ---------------------------------------------------------------------------
 _NETCONN_RAW = [
     # (timestamp, process, dest, dest_port, src_port, sent, rcvd)
@@ -292,10 +292,10 @@ _NETCONN_RAW = [
     ),
 ]
 
-NETCONN_OBSERVABLES = [
+NETCONN_EVENTS = [
     {
         "howler": {
-            "hash": _hash("observable-netconn", ts, dest, str(dport), str(sport)),
+            "hash": _hash("event-netconn", ts, dest, str(dport), str(sport)),
         },
         "timestamp": ts,
         "event": {
@@ -330,11 +330,11 @@ NETCONN_OBSERVABLES = [
 
 
 # ---------------------------------------------------------------------------
-# 5. Observable — Entra ID sign-in attempt (AADSTS50074 – MFA required)
+# 5. Event — Entra ID sign-in attempt (AADSTS50074 – MFA required)
 # ---------------------------------------------------------------------------
-ENTRA_SIGNIN_OBSERVABLE = {
+ENTRA_SIGNIN_EVENT = {
     "howler": {
-        "hash": _hash("observable-entra-signin-demo"),
+        "hash": _hash("event-entra-signin-demo"),
     },
     "timestamp": "2026-02-06T16:11:37.139Z",
     "event": {
@@ -398,9 +398,9 @@ def ingest_hits(hits: list[dict]) -> list[str]:
     return ids
 
 
-def ingest_observables(observables: list[dict]) -> list[str]:
-    """Create observables via POST /api/v2/ingest/observable and return their IDs."""
-    result = _post("/api/v2/ingest/observable", observables)
+def ingest_events(events: list[dict]) -> list[str]:
+    """Create events via POST /api/v2/ingest/event and return their IDs."""
+    result = _post("/api/v2/ingest/event", events)
     api = result.get("api_response", result)
     # api_response is a list of IDs
     if isinstance(api, list):
@@ -441,31 +441,31 @@ if __name__ == "__main__":
     hit_id = hit_ids[0]
     print(f"  Hit created: {hit_id}")
 
-    # --- Ingest the two process observables ---
-    print("[2/5] Creating process observables...")
-    obs_ids = ingest_observables([OUTLOOK_OBSERVABLE, EDGE_OBSERVABLE])
+    # --- Ingest the two process events ---
+    print("[2/5] Creating process events...")
+    obs_ids = ingest_events([OUTLOOK_EVENT, EDGE_EVENT])
     if len(obs_ids) < 2:
-        print("  Failed to create process observables. Aborting.", file=sys.stderr)
+        print("  Failed to create process events. Aborting.", file=sys.stderr)
         sys.exit(1)
     outlook_obs_id, edge_obs_id = obs_ids[0], obs_ids[1]
-    print(f"  Observable (outlook.exe): {outlook_obs_id}")
-    print(f"  Observable (msedge.exe):  {edge_obs_id}")
+    print(f"  Event (outlook.exe): {outlook_obs_id}")
+    print(f"  Event (msedge.exe):  {edge_obs_id}")
 
-    # --- Ingest network connection observables ---
-    print("[3/5] Creating network connection observables...")
-    netconn_ids = ingest_observables(NETCONN_OBSERVABLES)
+    # --- Ingest network connection events ---
+    print("[3/5] Creating network connection events...")
+    netconn_ids = ingest_events(NETCONN_EVENTS)
     if not netconn_ids:
-        print("  [WARN] Failed to create network observables.", file=sys.stderr)
+        print("  [WARN] Failed to create network events.", file=sys.stderr)
     for nc_id, (ts, _proc, dest, dport, _sport, sent, rcvd) in zip(
         netconn_ids, _NETCONN_RAW
     ):
         print(f"  Connection {dest}:{dport} (sent={sent}/rcvd={rcvd}): {nc_id}")
 
-    # --- Ingest Entra ID sign-in observable ---
-    print("[4/6] Creating Entra ID sign-in observable...")
-    signin_ids = ingest_observables([ENTRA_SIGNIN_OBSERVABLE])
+    # --- Ingest Entra ID sign-in event ---
+    print("[4/6] Creating Entra ID sign-in event...")
+    signin_ids = ingest_events([ENTRA_SIGNIN_EVENT])
     if not signin_ids:
-        print("  [WARN] Failed to create sign-in observable.", file=sys.stderr)
+        print("  [WARN] Failed to create sign-in event.", file=sys.stderr)
     signin_obs_id = signin_ids[0] if signin_ids else None
     if signin_obs_id:
         print(f"  Sign-in (AADSTS50074): {signin_obs_id}")
@@ -492,20 +492,20 @@ if __name__ == "__main__":
                 "path": f"alerts/Email Gateway ({hit_id})",
             },
             {
-                "type": "observable",
+                "type": "event",
                 "value": outlook_obs_id,
-                "path": f"observables/outlook.exe ({outlook_obs_id})",
+                "path": f"events/outlook.exe ({outlook_obs_id})",
             },
             {
-                "type": "observable",
+                "type": "event",
                 "value": edge_obs_id,
-                "path": f"observables/msedge.exe ({edge_obs_id})",
+                "path": f"events/msedge.exe ({edge_obs_id})",
             },
             *[
                 {
-                    "type": "observable",
+                    "type": "event",
                     "value": nc_id,
-                    "path": f"observables/network/{dest}:{port} ({nc_id})",
+                    "path": f"events/network/{dest}:{port} ({nc_id})",
                 }
                 for nc_id, (_ts, _p, dest, port, _sp, _s, _r) in zip(
                     netconn_ids, _NETCONN_RAW
@@ -514,9 +514,9 @@ if __name__ == "__main__":
             *(
                 [
                     {
-                        "type": "observable",
+                        "type": "event",
                         "value": signin_obs_id,
-                        "path": f"observables/Entra ID Sign-in ({signin_obs_id})",
+                        "path": f"events/Entra ID Sign-in ({signin_obs_id})",
                     }
                 ]
                 if signin_obs_id
@@ -531,12 +531,12 @@ if __name__ == "__main__":
         sys.exit(1)
     print(f"  Case created: {case_id}")
     print(f"  Linked hit {hit_id}")
-    print(f"  Linked observable {outlook_obs_id}")
-    print(f"  Linked observable {edge_obs_id}")
+    print(f"  Linked event {outlook_obs_id}")
+    print(f"  Linked event {edge_obs_id}")
     for nc_id in netconn_ids:
-        print(f"  Linked network observable {nc_id}")
+        print(f"  Linked network event {nc_id}")
     if signin_obs_id:
-        print(f"  Linked Entra sign-in observable {signin_obs_id}")
+        print(f"  Linked Entra sign-in event {signin_obs_id}")
 
     # --- Add investigation tasks ---
     print("[6/6] Adding investigation tasks...")
@@ -551,13 +551,13 @@ if __name__ == "__main__":
             "id": str(uuid.uuid4()),
             "assignment": "huey",
             "summary": "Review process telemetry on DESKTOP-TONY01 for further suspicious activity.",
-            "path": f"observables/outlook.exe ({outlook_obs_id})",
+            "path": f"events/outlook.exe ({outlook_obs_id})",
         },
         {
             "id": str(uuid.uuid4()),
             "assignment": "huey",
             "summary": "Determine if credentials were entered on the phishing page opened by msedge.exe.",
-            "path": f"observables/msedge.exe ({edge_obs_id})",
+            "path": f"events/msedge.exe ({edge_obs_id})",
         },
         {
             "id": str(uuid.uuid4()),

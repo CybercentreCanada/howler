@@ -9,7 +9,7 @@ export type AssetType = 'hash' | 'hosts' | 'ip' | 'user' | 'ids' | 'id' | 'uri' 
 export interface AssetEntry {
   type: AssetType;
   value: string;
-  /** IDs of the hits/observables this asset was seen in */
+  /** IDs of the hits/events this asset was seen in */
   seenIn: string[];
 }
 

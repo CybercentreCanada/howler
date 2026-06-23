@@ -33,10 +33,10 @@ class TestSearchCall:
         search, conn = _make_search_module()
         conn.post.return_value = {"total": 0, "items": [], "offset": 0, "rows": 0}
 
-        search("hit,observable", "howler.id:*")
+        search("hit,event", "howler.id:*")
 
         path = conn.post.call_args[0][0]
-        assert "search/hit,observable" in path
+        assert "search/hit,event" in path
 
     def test_search_with_filters(self):
         search, conn = _make_search_module()
@@ -203,10 +203,10 @@ class TestSearchFacet:
         search, conn = _make_search_module()
         conn.post.return_value = {}
 
-        search.facet("hit,observable", ["howler.analytic"])
+        search.facet("hit,event", ["howler.analytic"])
 
         path = conn.post.call_args[0][0]
-        assert "search/facet/hit,observable" in path
+        assert "search/facet/hit,event" in path
 
     def test_facet_with_optional_params(self):
         search, conn = _make_search_module()

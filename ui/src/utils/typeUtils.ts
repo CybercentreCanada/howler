@@ -1,6 +1,6 @@
 import type { Case } from 'models/entities/generated/Case';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { Observable } from 'models/entities/generated/Observable';
 import type { WithMetadata } from 'models/WithMetadata';
 
 export const isHit = (obj: WithMetadata<any>): obj is Hit => {
@@ -27,14 +27,17 @@ export const isCase = (obj: WithMetadata<any>): obj is Case => {
   return false;
 };
 
-export const isObservable = (obj: WithMetadata<any>): obj is Observable => {
+export const isEvent = (obj: WithMetadata<any>): obj is Event => {
   if (!obj) {
     return false;
   }
 
-  if (obj.__index === 'observable') {
+  if (obj.__index === 'event') {
     return true;
   }
 
   return false;
 };
+
+/** @deprecated Use isEvent instead */
+export const isObservable = isEvent;

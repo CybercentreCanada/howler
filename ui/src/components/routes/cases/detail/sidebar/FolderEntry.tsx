@@ -22,6 +22,7 @@ const ICON_FOR_TYPE: Record<string, ComponentType<SvgIconProps>> = {
   folder: Folder,
   case: BookRounded,
   observable: Visibility,
+  event: Visibility,
   hit: CheckCircle,
   table: TableChart,
   lead: Lightbulb,

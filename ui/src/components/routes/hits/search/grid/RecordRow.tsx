@@ -8,8 +8,8 @@ import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import ObservableCard from 'components/elements/observable/ObservableCard';
 import { get } from 'lodash-es';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { Observable } from 'models/entities/generated/Observable';
 import { memo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -18,12 +18,12 @@ import { isHit } from 'utils/typeUtils';
 import EnhancedCell from './EnhancedCell';
 
 const RecordRow: FC<{
-  record: Hit | Observable;
+  record: Hit | Event;
   analyticIds: Record<string, string>;
   columns: string[];
   columnWidths: Record<string, string>;
   collapseMainColumn: boolean;
-  onClick: (e: React.MouseEvent<HTMLDivElement>, record: Hit | Observable) => void;
+  onClick: (e: React.MouseEvent<HTMLDivElement>, record: Hit | Event) => void;
 }> = ({ record, analyticIds, columns, columnWidths, collapseMainColumn, onClick }) => {
   const theme = useTheme();
   const { t } = useTranslation();
