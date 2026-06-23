@@ -48,7 +48,7 @@ def _sample_hit(analytic: str = "Test Analytic", detection: str = "Test Detectio
     }
 
 
-def _sample_observable() -> dict:
+def _sample_event() -> dict:
     return {
         "howler": {
             "data": ["raw entry"],
@@ -111,7 +111,7 @@ class TestCreateEndpoint:
 
         with request_context.test_request_context(
             method="POST",
-            json=[_sample_observable()],
+            json=[_sample_event()],
             headers={"Authorization": "Bearer ."},
         ):
             from howler.api.v2.ingest import create
@@ -453,13 +453,13 @@ class TestValidateEndpoint:
             assert "Bad field" in body["api_response"]["invalid"][0]["error"]
 
     @patch("howler.api.v2.ingest.event_service")
-    def test_validate_observable(self, mock_obs_svc, request_context: Flask):
-        """Observable index routes to convert_event."""
+    def test_validate_event(self, mock_obs_svc, request_context: Flask):
+        """Event index routes to convert_event."""
         mock_obs_svc.convert_event.return_value = (MagicMock(), [])
 
         with request_context.test_request_context(
             method="POST",
-            json=[_sample_observable()],
+            json=[_sample_event()],
             headers={"Content-Type": "application/json"},
         ):
             from howler.api.v2.ingest import validate
@@ -556,8 +556,8 @@ class TestIngestionQueueing:
     @patch("howler.api.v2.ingest._get_ingestion_queue")
     @patch("howler.api.v2.ingest.event_service")
     @patch("howler.security.auth_service")
-    def test_enqueues_observable_ids(self, mock_auth_service, mock_obs_svc, mock_queue_fn, request_context: Flask):
-        """Observable IDs are also enqueued for correlation."""
+    def test_enqueues_event_ids(self, mock_auth_service, mock_obs_svc, mock_queue_fn, request_context: Flask):
+        """Event IDs are also enqueued for correlation."""
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
@@ -567,7 +567,7 @@ class TestIngestionQueueing:
 
         with request_context.test_request_context(
             method="POST",
-            json=[_sample_observable()],
+            json=[_sample_event()],
             headers={"Authorization": "Bearer ."},
         ):
             from howler.api.v2.ingest import create

@@ -2,11 +2,11 @@ import { KeyboardArrowUp } from '@mui/icons-material';
 import { Box, Collapse, IconButton, lighten, Stack, TableCell, TableRow, Typography, useTheme } from '@mui/material';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { RecordContext } from 'components/app/providers/RecordProvider';
+import EventCard from 'components/elements/event/EventCard';
 import Assigned from 'components/elements/hit/elements/Assigned';
 import EscalationChip from 'components/elements/hit/elements/EscalationChip';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
-import ObservableCard from 'components/elements/observable/ObservableCard';
 import { get } from 'lodash-es';
 import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
@@ -118,7 +118,7 @@ const RecordRow: FC<{
               {isHit(record) ? (
                 <HitCard id={record.howler.id} layout={HitLayout.NORMAL} />
               ) : (
-                <ObservableCard id={record.howler.id} observable={record} />
+                <EventCard id={record.howler.id} event={record} />
               )}
             </Box>
           </Collapse>

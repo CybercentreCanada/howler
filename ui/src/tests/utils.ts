@@ -48,9 +48,6 @@ export const createMockEvent = (overrides?: RecursivePartial<Event>): Event =>
     }
   }) as Event;
 
-/** @deprecated Use createMockEvent instead */
-export const createMockObservable = createMockEvent;
-
 export const createMockAnalytic = (overrides?: Partial<Analytic>): Analytic => ({
   analytic_id: 'test-analytic-id',
   name: 'test-analytic',

@@ -19,8 +19,8 @@ SAMPLE_EVENT_DATA: dict[str, Any] = {
 }
 
 
-def test_convert_observable_basic():
-    """Test basic conversion of a dictionary to an Observable ODM object."""
+def test_convert_event_basic():
+    """Test basic conversion of a dictionary to an Event ODM object."""
     data: dict[str, Any] = {
         "howler.data": ["some raw data"],
     }
@@ -34,7 +34,7 @@ def test_convert_observable_basic():
     assert result.event.created is not None
 
 
-def test_convert_observable_hash_deterministic():
+def test_convert_event_hash_deterministic():
     """Test that the same data produces the same hash."""
     data1: dict[str, Any] = {"howler.data": ["entry one"]}
     data2: dict[str, Any] = {"howler.data": ["entry one"]}
@@ -45,7 +45,7 @@ def test_convert_observable_hash_deterministic():
     assert result1.howler.hash == result2.howler.hash
 
 
-def test_convert_observable_hash_differs_on_different_data():
+def test_convert_event_hash_differs_on_different_data():
     """Test that different data produces different hashes."""
     data1: dict[str, Any] = {"howler.data": ["entry one"]}
     data2: dict[str, Any] = {"howler.data": ["entry two"]}
@@ -56,7 +56,7 @@ def test_convert_observable_hash_differs_on_different_data():
     assert result1.howler.hash != result2.howler.hash
 
 
-def test_convert_observable_preserves_explicit_hash():
+def test_convert_event_preserves_explicit_hash():
     """Test that an explicitly provided hash is kept."""
     explicit_hash = "deadbeef12345678"
     data: dict[str, Any] = {
@@ -69,7 +69,7 @@ def test_convert_observable_preserves_explicit_hash():
     assert result.howler.hash == explicit_hash
 
 
-def test_convert_observable_assigns_random_id():
+def test_convert_event_assigns_random_id():
     """Test that each conversion assigns a unique random ID."""
     data: dict[str, Any] = {"howler.data": ["data"]}
 
@@ -79,7 +79,7 @@ def test_convert_observable_assigns_random_id():
     assert result1.howler.id != result2.howler.id
 
 
-def test_convert_observable_data_serialization():
+def test_convert_event_data_serialization():
     """Test that non-string data entries are JSON-serialized."""
     data: dict[str, Any] = {
         "howler.data": [{"key": "value"}, "plain string"],
@@ -91,7 +91,7 @@ def test_convert_observable_data_serialization():
     assert "plain string" in result.howler.data
 
 
-def test_convert_observable_event_defaults():
+def test_convert_event_event_defaults():
     """Test that event fields get default values when not provided."""
     data: dict[str, Any] = {"howler.data": ["data"]}
 
@@ -102,7 +102,7 @@ def test_convert_observable_event_defaults():
     assert result.event.created is not None
 
 
-def test_convert_observable_event_preserves_created():
+def test_convert_event_event_preserves_created():
     """Test that an explicitly provided event.created is preserved."""
     create_date = datetime.now(tz=UTC_TZ).replace(year=2500)
     data: dict[str, Any] = {
@@ -115,7 +115,7 @@ def test_convert_observable_event_preserves_created():
     assert result.event.created == create_date
 
 
-def test_convert_observable_event_without_created():
+def test_convert_event_event_without_created():
     """Test that event without created gets a default created value."""
     data: dict[str, Any] = {
         "howler.data": ["data"],
@@ -127,7 +127,7 @@ def test_convert_observable_event_without_created():
     assert result.event.created is not None
 
 
-def test_convert_observable_extra_values_raises():
+def test_convert_event_extra_values_raises():
     """Test that extra values raise HowlerValueError when ignore_extra_values=False."""
     data: dict[str, Any] = {
         "howler.data": ["data"],
@@ -138,7 +138,7 @@ def test_convert_observable_extra_values_raises():
         event_service.convert_event(data, unique=False, ignore_extra_values=False)
 
 
-def test_convert_observable_extra_values_ignored():
+def test_convert_event_extra_values_ignored():
     """Test that extra values produce warnings when ignore_extra_values=True."""
     data: dict[str, Any] = {
         "howler.data": ["data"],
@@ -151,7 +151,7 @@ def test_convert_observable_extra_values_ignored():
     assert any("nonexistent_field" in w for w in warnings)
 
 
-def test_convert_observable_invalid_type():
+def test_convert_event_invalid_type():
     """Test that invalid data types raise HowlerTypeError."""
     data: dict[str, Any] = {
         "howler.hash": 12345,  # should be a string
@@ -161,9 +161,9 @@ def test_convert_observable_invalid_type():
         event_service.convert_event(data, unique=False)
 
 
-@patch("howler.services.event_service.exists", return_value="observable")
-def test_convert_observable_unique_already_exists(mock_exists):
-    """Test that unique=True raises ResourceExists when observable already exists."""
+@patch("howler.services.event_service.exists", return_value="event")
+def test_convert_event_unique_already_exists(mock_exists):
+    """Test that unique=True raises ResourceExists when event already exists."""
     data: dict[str, Any] = {
         "howler.data": ["data"],
     }
@@ -175,8 +175,8 @@ def test_convert_observable_unique_already_exists(mock_exists):
 
 
 @patch("howler.services.event_service.exists", return_value=None)
-def test_convert_observable_unique_does_not_exist(mock_exists):
-    """Test that unique=True succeeds when observable does not exist."""
+def test_convert_event_unique_does_not_exist(mock_exists):
+    """Test that unique=True succeeds when event does not exist."""
     data: dict[str, Any] = {
         "howler.data": ["data"],
     }
@@ -188,7 +188,7 @@ def test_convert_observable_unique_does_not_exist(mock_exists):
 
 
 @patch("howler.services.event_service.exists", return_value=False)
-def test_convert_observable_deprecated_fields(mock_exists):
+def test_convert_event_deprecated_fields(mock_exists):
     """Test that deprecated fields generate warnings."""
     data: dict[str, Any] = {
         **SAMPLE_EVENT_DATA,
@@ -210,98 +210,98 @@ def test_convert_observable_deprecated_fields(mock_exists):
 # ========================
 
 
-@patch("howler.services.event_service.exists", return_value="observable")
-def test_create_observable_already_exists(mock_exists):
-    """Test that create_event raises ResourceExists if observable exists and skip_exists=False."""
-    observable = Event(SAMPLE_EVENT_DATA)
+@patch("howler.services.event_service.exists", return_value="event")
+def test_create_event_already_exists(mock_exists):
+    """Test that create_event raises ResourceExists if event exists and skip_exists=False."""
+    event = Event(SAMPLE_EVENT_DATA)
 
     with pytest.raises(ResourceExists, match="already exists"):
-        event_service.create_event("some_id", observable)
+        event_service.create_event("some_id", event)
 
 
 @patch("howler.services.event_service.datastore")
 @patch("howler.services.event_service.exists", return_value=None)
-def test_create_observable_success(mock_exists, mock_datastore):
-    """Test successful creation of an observable."""
-    mock_observable_collection = MagicMock()
-    mock_datastore.return_value.event = mock_observable_collection
-    mock_observable_collection.save.return_value = True
+def test_create_event_success(mock_exists, mock_datastore):
+    """Test successful creation of an event."""
+    mock_event_collection = MagicMock()
+    mock_datastore.return_value.event = mock_event_collection
+    mock_event_collection.save.return_value = True
 
-    observable = Event(SAMPLE_EVENT_DATA)
+    event = Event(SAMPLE_EVENT_DATA)
 
-    result = event_service.create_event("test_id", observable)
+    result = event_service.create_event("test_id", event)
 
     assert result is True
-    mock_observable_collection.save.assert_called_once_with("test_id", observable)
+    mock_event_collection.save.assert_called_once_with("test_id", event)
 
 
 @patch("howler.services.event_service.datastore")
 @patch("howler.services.event_service.exists", return_value=None)
-def test_create_observable_with_user(mock_exists, mock_datastore):
+def test_create_event_with_user(mock_exists, mock_datastore):
     """Test that create_event adds a creation log when user is provided."""
-    mock_observable_collection = MagicMock()
-    mock_datastore.return_value.event = mock_observable_collection
-    mock_observable_collection.save.return_value = True
+    mock_event_collection = MagicMock()
+    mock_datastore.return_value.event = mock_event_collection
+    mock_event_collection.save.return_value = True
 
-    observable = Event(SAMPLE_EVENT_DATA)
+    event = Event(SAMPLE_EVENT_DATA)
 
-    event_service.create_event("test_id", observable, user="test_user")
+    event_service.create_event("test_id", event, user="test_user")
 
     # Verify log was added
-    assert len(observable.howler.log) == 1
-    assert observable.howler.log[0].user == "test_user"
-    assert observable.howler.log[0].explanation == "Created event"
+    assert len(event.howler.log) == 1
+    assert event.howler.log[0].user == "test_user"
+    assert event.howler.log[0].explanation == "Created event"
 
-    mock_observable_collection.save.assert_called_once_with("test_id", observable)
+    mock_event_collection.save.assert_called_once_with("test_id", event)
 
 
 @patch("howler.services.event_service.datastore")
 @patch("howler.services.event_service.exists", return_value=None)
-def test_create_observable_without_user(mock_exists, mock_datastore):
+def test_create_event_without_user(mock_exists, mock_datastore):
     """Test that create_event does not add a log when user is not provided."""
-    mock_observable_collection = MagicMock()
-    mock_datastore.return_value.event = mock_observable_collection
-    mock_observable_collection.save.return_value = True
+    mock_event_collection = MagicMock()
+    mock_datastore.return_value.event = mock_event_collection
+    mock_event_collection.save.return_value = True
 
-    observable = Event(SAMPLE_EVENT_DATA)
+    event = Event(SAMPLE_EVENT_DATA)
 
-    event_service.create_event("test_id", observable)
+    event_service.create_event("test_id", event)
 
     # Verify no log was added
-    assert len(observable.howler.log) == 0
+    assert len(event.howler.log) == 0
 
-    mock_observable_collection.save.assert_called_once_with("test_id", observable)
+    mock_event_collection.save.assert_called_once_with("test_id", event)
 
 
 @patch("howler.services.event_service.datastore")
 @patch("howler.services.event_service.exists", return_value=None)
-def test_create_observable_skip_exists(mock_exists, mock_datastore):
+def test_create_event_skip_exists(mock_exists, mock_datastore):
     """Test that create_event skips the existence check when skip_exists=True."""
-    mock_observable_collection = MagicMock()
-    mock_datastore.return_value.event = mock_observable_collection
-    mock_observable_collection.save.return_value = True
+    mock_event_collection = MagicMock()
+    mock_datastore.return_value.event = mock_event_collection
+    mock_event_collection.save.return_value = True
 
-    observable = Event(SAMPLE_EVENT_DATA)
+    event = Event(SAMPLE_EVENT_DATA)
 
-    event_service.create_event("test_id", observable, skip_exists=True)
+    event_service.create_event("test_id", event, skip_exists=True)
 
     # exists should NOT have been called
     mock_exists.assert_not_called()
-    mock_observable_collection.save.assert_called_once()
+    mock_event_collection.save.assert_called_once()
 
 
 @patch("howler.services.event_service.datastore")
 @patch("howler.services.event_service.exists", return_value=None)
-def test_create_observable_increments_counter(mock_exists, mock_datastore):
+def test_create_event_increments_counter(mock_exists, mock_datastore):
     """Test that create_event increments the CREATED_EVENTS counter."""
-    mock_observable_collection = MagicMock()
-    mock_datastore.return_value.event = mock_observable_collection
-    mock_observable_collection.save.return_value = True
+    mock_event_collection = MagicMock()
+    mock_datastore.return_value.event = mock_event_collection
+    mock_event_collection.save.return_value = True
 
-    observable = Event(SAMPLE_EVENT_DATA)
+    event = Event(SAMPLE_EVENT_DATA)
 
     before = event_service.CREATED_EVENTS._value.get()
-    event_service.create_event("test_id", observable)
+    event_service.create_event("test_id", event)
     after = event_service.CREATED_EVENTS._value.get()
 
     assert after == before + 1

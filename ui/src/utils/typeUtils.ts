@@ -38,6 +38,3 @@ export const isEvent = (obj: WithMetadata<any>): obj is Event => {
 
   return false;
 };
-
-/** @deprecated Use isEvent instead */
-export const isObservable = isEvent;
