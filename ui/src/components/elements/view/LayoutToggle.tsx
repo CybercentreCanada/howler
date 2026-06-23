@@ -19,7 +19,9 @@ const LayoutToggle = ({
       exclusive
       value={displayType}
       onChange={(__, value) => {
-        if (!value && !allowNullValue) return;
+        if (!value && !allowNullValue) {
+          return;
+        }
         setDisplayType(value);
       }}
       size={size ?? 'small'}
