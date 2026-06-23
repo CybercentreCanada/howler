@@ -17,7 +17,7 @@ import { memo, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ESCALATION_COLORS } from 'utils/constants';
-import type { AssetEntry, AssetRole } from './Asset';
+import type { AssetEntry, AssetRole } from '../types';
 
 const ROLE_COLORS: Record<AssetRole, 'error' | 'warning' | 'info'> = {
   threat: 'error',
@@ -129,6 +129,7 @@ const AssetTable: FC<{ assets: AssetEntry[]; case: Case }> = ({ assets, case: _c
           {sortedAssets.map(asset => {
             const sources = asset.sources ?? [];
             const escalations = [...new Set(sources.map(s => s.escalation).filter(Boolean))];
+            const linkedSources = sources.filter(source => source.path);
 
             return (
               <TableRow key={`${asset.type}:${asset.value}`}>
@@ -162,22 +163,22 @@ const AssetTable: FC<{ assets: AssetEntry[]; case: Case }> = ({ assets, case: _c
                   <Typography variant="body2">{asset.seenIn.length}</Typography>
                 </TableCell>
                 <TableCell>
-                  {sources.length === 0 ? null : sources.length === 1 ? (
+                  {linkedSources.length === 0 ? null : linkedSources.length === 1 ? (
                     <Chip
                       clickable
                       size="small"
-                      label={sources[0].path}
+                      label={linkedSources[0].path}
                       variant="outlined"
                       component={Link}
-                      to={`/cases/${_case.case_id}/${sources[0].path}`}
+                      to={`/cases/${_case.case_id}/${linkedSources[0].path}`}
                     />
                   ) : (
                     <ChipPopper
-                      label={`${sources[0].path} (+${sources.length - 1})`}
+                      label={`${linkedSources[0].path} (+${linkedSources.length - 1})`}
                       slotProps={{ chip: { size: 'small', variant: 'outlined' } }}
                     >
                       <Stack gap={0.5}>
-                        {sources.map(source => (
+                        {linkedSources.map(source => (
                           <Chip
                             key={source.id}
                             clickable

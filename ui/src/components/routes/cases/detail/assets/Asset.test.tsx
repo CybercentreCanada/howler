@@ -3,7 +3,8 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { createMockCase } from 'tests/utils';
 import { describe, expect, it } from 'vitest';
-import Asset, { type AssetEntry } from './Asset';
+import type { AssetEntry } from '../types';
+import Asset from './Asset';
 
 const makeAsset = (overrides: Partial<AssetEntry> = {}): AssetEntry => ({
   type: 'ip',
