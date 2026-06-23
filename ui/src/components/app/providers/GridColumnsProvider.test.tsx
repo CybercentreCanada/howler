@@ -337,4 +337,17 @@ describe('with views', () => {
     // most recent request takes precedence
     expect(hook.result.current.columns).toEqual(['viewCol3', 'viewCol4', 'viewCol2']);
   });
+
+  it('should keep isReady false until all async view loads are complete', async () => {
+    mockGetCurrentViews.mockImplementation(getDelayedCurrentViews(100));
+    const hook = renderHook(() => useContext(GridColumnsContext), { wrapper: makeWrapper([], 'view1') });
+
+    mockGetCurrentViews.mockImplementation(getDelayedCurrentViews(200));
+    mockParams.mockReturnValue({ id: 'view2' });
+    hook.rerender();
+
+    await waitFor(() => expect(hook.result.current.isReady).toBe(true));
+
+    expect(hook.result.current.columns).toEqual(['viewCol3', 'viewCol4', 'viewCol2']);
+  });
 });
