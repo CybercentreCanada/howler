@@ -82,6 +82,7 @@ def connect(ws: Server, *args: Any, ws_id: str, **kwargs):  # noqa: C901
     Result Example:
     A continuous websocket connection
     """
+    logger.info("%s: WS connect handler started", ws_id)
     outstanding_actions: list[tuple[str, str, bool]] = []
 
     def send_hit(data: dict[str, Any]):
@@ -105,6 +106,10 @@ def connect(ws: Server, *args: Any, ws_id: str, **kwargs):  # noqa: C901
         ws.send(ws_response("viewers_update", data))
 
     try:
+        logger.debug(
+            "%s: Registering comms listeners: hits, broadcast, action, cases, viewers_update",
+            ws_id,
+        )
         comms_service.on("hits", send_hit)
         comms_service.on("broadcast", send_broadcast)
         comms_service.on("action", send_action)
@@ -114,6 +119,7 @@ def connect(ws: Server, *args: Any, ws_id: str, **kwargs):  # noqa: C901
             data = ws.receive(10)
             if data:
                 obj = json.loads(data)
+                logger.debug("%s: Received message: keys=%s", ws_id, list(obj.keys()))
 
                 if "id" not in obj or "action" not in obj or "broadcast" not in obj:
                     ws.close(
@@ -125,19 +131,22 @@ def connect(ws: Server, *args: Any, ws_id: str, **kwargs):  # noqa: C901
                             message="Sent data is invalid.",
                         ),
                     )
+                    logger.warning("%s: Closed due to invalid payload: %s", ws_id, obj)
                     return
 
                 outstanding_actions = check_action(
                     obj["id"], obj["action"], obj["broadcast"], outstanding_actions=outstanding_actions, **kwargs
                 )
+                logger.debug("%s: Outstanding actions count=%s", ws_id, len(outstanding_actions))
             else:
-                logger.debug(ws_id + " listening")
+                logger.debug("%s listening", ws_id)
     except Exception as e:
         if isinstance(e, ConnectionClosed):
             raise
         else:
-            logger.exception("Exception on connect.")
+            logger.exception("%s: Exception in connect loop", ws_id)
     finally:
+        logger.debug("%s: Deregistering comms listeners", ws_id)
         comms_service.off("hits", send_hit)
         comms_service.off("broadcast", send_broadcast)
         comms_service.off("action", send_action)
@@ -146,3 +155,4 @@ def connect(ws: Server, *args: Any, ws_id: str, **kwargs):  # noqa: C901
 
         for id, action, broadcast in outstanding_actions:
             outstanding_actions = check_action(id, action, broadcast, outstanding_actions=outstanding_actions, **kwargs)
+        logger.info("%s: WS connect handler finished", ws_id)
