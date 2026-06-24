@@ -1,46 +1,76 @@
 import { Grid, gridClasses } from '@mui/material';
-import HitNotebooks from 'components/elements/hit/HitNotebooks';
-import PivotLink from 'components/elements/hit/related/PivotLink';
-import RelatedLink from 'components/elements/hit/related/RelatedLink';
 import { sortBy, uniqBy } from 'lodash-es';
+import type { FC } from 'react';
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { FC } from 'react';
-import { useTranslation } from 'react-i18next';
 
-const HitLinks: FC<{ hit?: Hit; analytic?: Analytic; dossiers: Dossier[] }> = ({ hit, analytic, dossiers = [] }) => {
+import HitNotebooks from 'components/elements/hit/HitNotebooks';
+import ResolvePivotUrl from 'components/elements/hit/ResolvePivotUrl';
+import PivotLink from 'components/elements/hit/related/PivotLink';
+import RelatedLink from 'components/elements/hit/related/RelatedLink';
+
+interface HitLinksProps {
+  hit?: Hit;
+  analytic?: Analytic;
+  dossiers?: Dossier[];
+}
+
+const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
   const { i18n } = useTranslation();
 
+  const displayLinks = useMemo(() => uniqBy(hit?.howler?.links ?? [], 'href').slice(0, 3), [hit?.howler?.links]);
+
+  const displayPivots = useMemo(() => {
+    const flattened = dossiers.flatMap(dossier =>
+      (dossier.pivots ?? []).map(pivot => {
+        const pivotUrl = pivot.format === 'link' ? ResolvePivotUrl(pivot, hit) : undefined;
+        return {
+          pivot,
+          dossier,
+          resolvedUrl: pivotUrl || `/dossier/${dossier.dossier_id}`
+        };
+      })
+    );
+    return sortBy(flattened, item => item.pivot.label?.[i18n.language]);
+  }, [dossiers, i18n.language, hit]);
+
+  const hasNotebooks = (analytic?.notebooks?.length ?? 0) > 0;
+
+  if (displayLinks.length === 0 && displayPivots.length === 0 && !hasNotebooks) {
+    return null;
+  }
+
   return (
-    (hit?.howler?.links?.length > 0 ||
-      analytic?.notebooks?.length > 0 ||
-      dossiers.filter(_dossier => _dossier.pivots?.length > 0).length > 0) && (
-      <Grid container spacing={1} pr={2} sx={{ [`& .${gridClasses.item}`]: { display: 'flex' } }}>
-        {hit?.howler?.links?.length > 0 &&
-          uniqBy(hit.howler.links, 'href')
-            .slice(0, 3)
-            .map(l => (
-              <Grid item key={l.href}>
-                <RelatedLink compact {...l} target="_blank" rel="noopener noreferrer" />
-              </Grid>
-            ))}
-        {sortBy(
-          dossiers.flatMap(_dossier => _dossier.pivots ?? []),
-          `label.${i18n.language}`
-        ).map((_pivot, index) => (
-          // eslint-disable-next-line react/no-array-index-key
-          <Grid item key={_pivot.value + index}>
-            <PivotLink pivot={_pivot} hit={hit} compact />
+    <Grid container spacing={1} pr={2} sx={{ [`& .${gridClasses.item}`]: { display: 'flex' } }}>
+      {displayLinks
+        .filter(link => !!link.href)
+        .map(link => {
+          const safeTitle = link.title ?? link.href;
+
+          return (
+            <Grid item key={link.href}>
+              <RelatedLink compact title={safeTitle} href={link.href} target="_blank" rel="noopener noreferrer" />
+            </Grid>
+          );
+        })}
+
+      {displayPivots.map(({ pivot, dossier, resolvedUrl }) => {
+        return (
+          <Grid item key={`${dossier.dossier_id}-${pivot.value}`}>
+            <PivotLink pivot={pivot} hit={hit} dossier={dossier} resolvedUrl={resolvedUrl} compact />
           </Grid>
-        ))}
-        {analytic?.notebooks?.length > 0 && (
-          <Grid item>
-            <HitNotebooks analytic={analytic} hit={hit} compact />
-          </Grid>
-        )}
-      </Grid>
-    )
+        );
+      })}
+      {hasNotebooks && (
+        <Grid item>
+          <HitNotebooks analytic={analytic} hit={hit} compact />
+        </Grid>
+      )}
+    </Grid>
   );
 };
 
