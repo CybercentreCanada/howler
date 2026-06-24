@@ -286,15 +286,19 @@ const ViewComposer: FC = () => {
                 >
                   {t('hit.search.prompt')}
                 </Typography>
-                <HitQuery
-                  triggerSearch={search}
-                  searching={searching}
-                  onChange={(_query, isDirty) => setIsSearchDirty(isDirty)}
-                />
-                <Stack direction="row" spacing={1}>
-                  <HitSort />
-                  <SearchSpan omitCustom />
-                  <div style={{ flex: 1 }} />
+                <Stack direction="row" width="100%" spacing={2} alignItems="flex-start" paddingBottom={1}>
+                  <Stack direction="column" width="100%" spacing={1}>
+                    <HitQuery
+                      triggerSearch={search}
+                      searching={searching}
+                      onChange={(_query, isDirty) => setIsSearchDirty(isDirty)}
+                    />
+                    <Stack direction="row" spacing={1}>
+                      <HitSort />
+                      <SearchSpan omitCustom />
+                      <div style={{ flex: 1 }} />
+                    </Stack>
+                  </Stack>
                   <Stack direction="column" spacing={1}>
                     <Stack
                       spacing={1}
@@ -324,7 +328,7 @@ const ViewComposer: FC = () => {
                     </Stack>
                   </Stack>
                 </Stack>
-                <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+                <Stack direction="row" spacing={1} alignItems="flex-end" justifyContent="space-between">
                   {response && (
                     <SearchTotal
                       total={response.total}
