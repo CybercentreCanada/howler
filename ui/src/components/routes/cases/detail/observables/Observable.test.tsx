@@ -3,26 +3,26 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { createMockCase } from 'tests/utils';
 import { describe, expect, it } from 'vitest';
-import Asset, { type AssetEntry } from './Asset';
+import Observable, { type ObservableEntry } from './Observable';
 
-const makeAsset = (overrides: Partial<AssetEntry> = {}): AssetEntry => ({
+const makeObservable = (overrides: Partial<ObservableEntry> = {}): ObservableEntry => ({
   type: 'ip',
   value: '192.168.1.1',
   seenIn: [],
   ...overrides
 });
 
-describe('Asset', () => {
+describe('Observable', () => {
   describe('type chip', () => {
     it('renders the correct label for each type', () => {
-      const cases: AssetEntry['type'][] = ['hash', 'hosts', 'ip', 'user', 'ids', 'id', 'uri', 'signature'];
+      const cases: ObservableEntry['type'][] = ['hash', 'hosts', 'ip', 'user', 'ids', 'id', 'uri', 'signature'];
       for (const type of cases) {
         const { unmount } = render(
           <MemoryRouter>
-            <Asset asset={makeAsset({ type, value: 'x' })} case={createMockCase()} />
+            <Observable asset={makeObservable({ type, value: 'x' })} case={createMockCase()} />
           </MemoryRouter>
         );
-        expect(screen.getByText(`page.cases.assets.type.${type}`)).toBeTruthy();
+        expect(screen.getByText(`page.cases.observables.type.${type}`)).toBeTruthy();
         unmount();
       }
     });
@@ -32,7 +32,7 @@ describe('Asset', () => {
     it('renders the asset value', () => {
       render(
         <MemoryRouter>
-          <Asset asset={makeAsset({ value: '10.0.0.1' })} case={createMockCase()} />
+          <Observable asset={makeObservable({ value: '10.0.0.1' })} case={createMockCase()} />
         </MemoryRouter>
       );
       expect(screen.getByText('10.0.0.1')).toBeTruthy();
@@ -42,7 +42,7 @@ describe('Asset', () => {
       const hash = 'a'.repeat(64);
       render(
         <MemoryRouter>
-          <Asset asset={makeAsset({ type: 'hash', value: hash })} case={createMockCase()} />
+          <Observable asset={makeObservable({ type: 'hash', value: hash })} case={createMockCase()} />
         </MemoryRouter>
       );
       expect(screen.getByText(hash)).toBeTruthy();
@@ -53,10 +53,10 @@ describe('Asset', () => {
     it('renders nothing when seenIn is empty', () => {
       render(
         <MemoryRouter>
-          <Asset asset={makeAsset({ seenIn: [] })} case={createMockCase()} />
+          <Observable asset={makeObservable({ seenIn: [] })} case={createMockCase()} />
         </MemoryRouter>
       );
-      expect(screen.queryByText('page.cases.assets.seen_in')).toBeNull();
+      expect(screen.queryByText('page.cases.observables.seen_in')).toBeNull();
     });
 
     it('renders "Seen in" label when seenIn has entries', () => {
@@ -65,10 +65,10 @@ describe('Asset', () => {
       });
       render(
         <MemoryRouter>
-          <Asset asset={makeAsset({ seenIn: ['hit-001'] })} case={_case} />
+          <Observable asset={makeObservable({ seenIn: ['hit-001'] })} case={_case} />
         </MemoryRouter>
       );
-      expect(screen.getByText('page.cases.assets.seen_in')).toBeTruthy();
+      expect(screen.getByText('page.cases.observables.seen_in')).toBeTruthy();
     });
 
     it('renders a chip labelled with entry.path for each seenIn id', () => {
@@ -81,7 +81,7 @@ describe('Asset', () => {
       });
       render(
         <MemoryRouter>
-          <Asset asset={makeAsset({ seenIn: ['hit-001', 'obs-002', 'hit-003'] })} case={_case} />
+          <Observable asset={makeObservable({ seenIn: ['hit-001', 'obs-002', 'hit-003'] })} case={_case} />
         </MemoryRouter>
       );
       expect(screen.getByText('alerts/my-analytic (hit-001)')).toBeTruthy();
@@ -96,7 +96,7 @@ describe('Asset', () => {
       });
       render(
         <MemoryRouter>
-          <Asset asset={makeAsset({ seenIn: ['hit-001'] })} case={_case} />
+          <Observable asset={makeObservable({ seenIn: ['hit-001'] })} case={_case} />
         </MemoryRouter>
       );
       const link = screen.getByText('alerts/my-analytic (hit-001)').closest('a');
