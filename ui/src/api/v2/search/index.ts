@@ -2,9 +2,10 @@
 import { hpost, joinAllUri } from 'api';
 import type { HowlerSearchRequest, HowlerSearchResponse } from 'api/search';
 import { uri as parentUri } from 'api/v2';
-import type { SearchIndex } from 'components/app/providers/ParameterProvider';
 import { identity, isNil } from 'lodash-es';
 import * as facet from './facet';
+
+export type SearchIndex = 'hit' | 'event' | 'case';
 
 export const uri = (indexes: string[]) => {
   return joinAllUri(parentUri(), 'search', indexes.join(','));
