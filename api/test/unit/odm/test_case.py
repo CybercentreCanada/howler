@@ -372,7 +372,7 @@ class TestCase:
                 "title": "Incident Alpha",
                 "summary": "Summary text",
                 "overview": "## Overview markdown",
-                "escalation": "high",
+                "escalation": "focus",
             }
         )
 
@@ -380,7 +380,7 @@ class TestCase:
         assert case.title == "Incident Alpha"
         assert case.summary == "Summary text"
         assert case.overview == "## Overview markdown"
-        assert case.escalation == "high"
+        assert case.escalation == "focus"
         assert isinstance(case.created, datetime)  # default NOW produces a real datetime
         assert (
             abs((case.created - datetime.now(timezone.utc)).total_seconds()) < 60

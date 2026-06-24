@@ -1,9 +1,9 @@
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from howler import odm
 from howler.common.exceptions import HowlerValueError
 from howler.config import CLASSIFICATION
-from howler.odm.constants import Status
+from howler.odm.constants import CaseEscalation, Status
 from howler.odm.mixins import DatastoreMixin
 from howler.utils.compat import StrEnum
 
@@ -130,8 +130,10 @@ class Case(DatastoreMixin["Case"], odm.Model):
     title: str = odm.Keyword(description="Case title.")
     summary: str = odm.Text(description="Short case summary.")
     overview: str = odm.Optional(odm.Text(description="Markdown overview of the case."))
-    escalation: str = odm.Optional(odm.Keyword(description="Escalation of the case."))
-    status = odm.Enum(values=Status, default=Status.OPEN, description="Status of the case.")
+    escalation: Literal["normal", "focus", "crisis"] = odm.Enum(
+        values=CaseEscalation, default=CaseEscalation.NORMAL, description="Escalation of the case."
+    )
+    status: str = odm.Enum(values=Status, default=Status.OPEN, description="Status of the case.")
     created: str = odm.Optional(odm.Date(default="NOW", description="Date/time when the case was created."))
     visible: bool = odm.Boolean(default=True, description="Whether the case is visible/accessible in the frontend.")
     updated: Optional[str] = odm.Optional(
