@@ -1,4 +1,4 @@
-"""Viewer service for tracking active viewers of entities (hits, cases, observables) in Redis.
+"""Viewer service for tracking active viewers of entities (hits, cases, events) in Redis.
 
 Stores viewer presence as ephemeral Redis sets with TTL, replacing the
 previous approach of persisting viewers directly in the ODM/ElasticSearch.
@@ -6,7 +6,7 @@ previous approach of persisting viewers directly in the ODM/ElasticSearch.
 
 from howler.config import redis
 from howler.remote.datatypes import retry_call
-from howler.services import event_service
+from howler.services import comms_service
 
 VIEWER_KEY_PREFIX = "viewers"
 VIEWER_TTL = 3600  # 1 hour
@@ -37,7 +37,7 @@ def get_viewers(entity_id: str) -> list[str]:
 
 
 def _emit_update(entity_id: str) -> None:
-    event_service.emit(
+    comms_service.emit(
         "viewers_update",
         {"id": entity_id, "viewers": get_viewers(entity_id)},
     )

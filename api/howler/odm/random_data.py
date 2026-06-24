@@ -34,7 +34,7 @@ from howler.datastore.operations import OdmHelper
 from howler.helper.hit import assess_hit
 from howler.helper.oauth import VALID_CHARS
 from howler.odm.base import Keyword
-from howler.odm.helper import generate_useful_dossier, generate_useful_hit, generate_useful_observable
+from howler.odm.helper import generate_useful_dossier, generate_useful_event, generate_useful_hit
 from howler.odm.models.action import Action
 from howler.odm.models.analytic import Analytic, Comment, Notebook, TriageOptions
 from howler.odm.models.case import Case
@@ -528,25 +528,25 @@ def wipe_views(ds):
     ds.view.wipe()
 
 
-def create_observables(ds: HowlerDatastore, observable_count: int = 200):
-    """Create random observables in the datastore.
+def create_events(ds: HowlerDatastore, event_count: int = 200):
+    """Create random events in the datastore.
 
     Args:
-        ds (HowlerDatastore): The datastore instance to save observables to.
-        observable_count (int, optional): Number of observables to create. Defaults to 200.
+        ds (HowlerDatastore): The datastore instance to save events to.
+        event_count (int, optional): Number of events to create. Defaults to 200.
     """
     lookups = loader.get_lookups()
     users = ds.user.search("*:*")["items"]
-    for observable_index in range(observable_count):
-        observable = generate_useful_observable(lookups, [user.uname for user in users], prune=False)
-        ds.observable.save(observable.howler.id, observable)
+    for event_index in range(event_count):
+        event = generate_useful_event(lookups, [user.uname for user in users], prune=False)
+        ds.event.save(event.howler.id, event)
 
-        if observable_index % 25 == 0 and "pytest" not in sys.modules:
-            logger.info("\tCreated %s/%s", observable_index, observable_count)
+        if event_index % 25 == 0 and "pytest" not in sys.modules:
+            logger.info("\tCreated %s/%s", event_index, event_count)
 
     logger.info(
-        "%s total observables in datastore",
-        ds.observable.search(query="howler.id:*", track_total_hits=True, rows=0)["total"],
+        "%s total events in datastore",
+        ds.event.search(query="howler.id:*", track_total_hits=True, rows=0)["total"],
     )
 
 
@@ -554,9 +554,7 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
     """Create some random records"""
     lookups = loader.get_lookups()
     users = ds.user.search("*:*")["items"]
-    observable_ids = [
-        obs["howler"]["id"] for obs in ds.observable.search("howler.id:*", rows=200, as_obj=False)["items"]
-    ]
+    event_ids = [obs["howler"]["id"] for obs in ds.event.search("howler.id:*", rows=200, as_obj=False)["items"]]
     created_hit_ids: list[str] = []
     hit_idx = 0
     for hit_idx in range(hit_count):
@@ -565,7 +563,7 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
             [user.uname for user in users],
             prune_hit=False,
             hit_ids=created_hit_ids,
-            observable_ids=observable_ids,
+            event_ids=event_ids,
         )
 
         # Ensure the first 20 hits have unrestricted classification for test access
@@ -630,16 +628,16 @@ def wipe_hits(ds):
     ds.hit.wipe()
 
 
-def wipe_observables(ds):
-    """Wipe the observables index"""
-    ds.observable.wipe()
+def wipe_events(ds):
+    """Wipe the events index"""
+    ds.event.wipe()
 
 
 def create_cases(ds: HowlerDatastore, num_cases: int = 5):
-    """Create random cases using references to random alerts and observables."""
+    """Create random cases using references to random alerts and events."""
     users = ds.user.search("uname:*", rows=200, as_obj=False)["items"]
     hits = ds.hit.search("howler.id:*", rows=200, as_obj=False)["items"]
-    observables = ds.observable.search("howler.id:*", rows=200, as_obj=False)["items"]
+    events = ds.event.search("howler.id:*", rows=200, as_obj=False)["items"]
     existing_case_ids = [case.get("case_id") for case in ds.case.search("case_id:*", rows=200, as_obj=False)["items"]]
     generated_case_ids: list[str] = []
 
@@ -663,7 +661,7 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
         "Network Beaconing Validation",
     ]
     case_summaries = [
-        "Correlate alerts and observables tied to suspicious infrastructure.",
+        "Correlate alerts and events tied to suspicious infrastructure.",
         "Track and validate activity linked to potential credential misuse.",
         "Review telemetry associated with suspicious movement indicators.",
         "Aggregate related detections to determine likely attack progression.",
@@ -731,7 +729,7 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
         case_id = f"case-{get_random_string(12).lower()}"
 
         selected_hits = sample(hits, k=min(len(hits), randint(5, 15))) if hits else []
-        selected_observables = sample(observables, k=min(len(observables), randint(3, 9))) if observables else []
+        selected_events = sample(events, k=min(len(events), randint(3, 9))) if events else []
 
         items: list[dict[str, str]] = []
 
@@ -748,20 +746,20 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
                 }
             )
 
-        for idx, observable in enumerate(selected_observables, start=1):
-            observable_id = observable.get("howler", {}).get("id")
-            if not observable_id:
+        for idx, event_item in enumerate(selected_events, start=1):
+            event_id = event_item.get("howler", {}).get("id")
+            if not event_id:
                 continue
 
             items.append(
                 {
-                    "path": f"observable/{observable['howler']['id']}",
-                    "type": "observable",
-                    "value": observable_id,
+                    "path": f"event/{event_item['howler']['id']}",
+                    "type": "event",
+                    "value": event_id,
                 }
             )
 
-        # Add a few additional deeply nested paths for existing hits/observables
+        # Add a few additional deeply nested paths for existing hits/events
         nested_hit_candidates = sample(selected_hits, k=min(len(selected_hits), randint(1, 3))) if selected_hits else []
         for nested_hit in nested_hit_candidates:
             nested_hit_id = nested_hit.get("howler", {}).get("id")
@@ -776,24 +774,24 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
                 }
             )
 
-        nested_observable_candidates = (
+        nested_event_candidates = (
             sample(
-                selected_observables,
-                k=min(len(selected_observables), randint(1, 2)),
+                selected_events,
+                k=min(len(selected_events), randint(1, 2)),
             )
-            if selected_observables
+            if selected_events
             else []
         )
-        for nested_observable in nested_observable_candidates:
-            nested_observable_id = nested_observable.get("howler", {}).get("id")
-            if not nested_observable_id:
+        for nested_event in nested_event_candidates:
+            nested_event_id = nested_event.get("howler", {}).get("id")
+            if not nested_event_id:
                 continue
 
             items.append(
                 {
                     "path": f"alerts/{get_random_word()}/{get_random_word()}/{get_random_word()}",
-                    "type": "observable",
-                    "value": nested_observable_id,
+                    "type": "event",
+                    "value": nested_event_id,
                 }
             )
 
@@ -827,9 +825,7 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
 
         timeline_datetimes = [
             parsed
-            for parsed in (
-                _parse_timestamp(record.get("timestamp")) for record in [*selected_hits, *selected_observables]
-            )
+            for parsed in (_parse_timestamp(record.get("timestamp")) for record in [*selected_hits, *selected_events])
             if parsed is not None
         ]
 
@@ -856,7 +852,7 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
                     "summary": choice(
                         [
                             "Review related indicators and determine additional pivots.",
-                            "Validate observable context and identify correlations.",
+                            "Validate event context and identify correlations.",
                             "Confirm scope and impacted entities for this thread.",
                             "Assess whether this path supports active compromise.",
                             "Collect supporting evidence and update confidence level.",
@@ -932,13 +928,13 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
         generated_case_ids.append(case_id)
 
         case_hit_ids = list({item["value"] for item in items if item.get("type") == "hit"})
-        case_observable_ids = list({item["value"] for item in items if item.get("type") == "observable"})
+        case_event_ids = list({item["value"] for item in items if item.get("type") == "event"})
 
         for hit_id in case_hit_ids:
             ds.hit.update(hit_id, [hit_helper.list_add("howler.related", case_id)])
 
-        for observable_id in case_observable_ids:
-            ds.observable.update(observable_id, [hit_helper.list_add("howler.related", case_id)])
+        for event_id in case_event_ids:
+            ds.event.update(event_id, [hit_helper.list_add("howler.related", case_id)])
 
     ds.case.commit()
 
@@ -1176,12 +1172,12 @@ def setup_hits(ds):
     ds.hit.fix_replicas()
 
 
-def setup_observables(ds):
-    "Set up hits index"
+def setup_events(ds):
+    "Set up events index"
     os.environ["ELASTIC_HIT_SHARDS"] = "1"
     os.environ["ELASTIC_HIT_REPLICAS"] = "1"
-    ds.observable.fix_shards()
-    ds.observable.fix_replicas()
+    ds.event.fix_shards()
+    ds.event.fix_replicas()
 
 
 def setup_users(ds):
@@ -1197,7 +1193,7 @@ INDEXES: dict[str, tuple[Callable, list[Callable]]] = {
     "templates": (wipe_templates, [create_templates]),
     "overviews": (wipe_overviews, [create_overviews]),
     "views": (wipe_views, [create_views]),
-    "observables": (wipe_observables, [create_observables]),
+    "events": (wipe_events, [create_events]),
     "hits": (wipe_hits, [create_hits]),
     "cases": (wipe_cases, [create_cases]),
     "analytics": (wipe_analytics, [create_analytics]),
@@ -1233,8 +1229,8 @@ if __name__ == "__main__":
     if "hits" in args:
         setup_hits(ds)
 
-    if "observables" in args:
-        setup_observables(ds)
+    if "events" in args:
+        setup_events(ds)
 
     if "users" in args:
         setup_users(ds)

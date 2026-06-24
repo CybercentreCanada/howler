@@ -12,8 +12,8 @@ import {
   type TooltipProps
 } from '@mui/material';
 import { get, isEmpty, uniq } from 'lodash-es';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { Observable } from 'models/entities/generated/Observable';
 import { memo, type FC } from 'react';
 
 const NoMaxWidthTooltip = styled(({ className, ...props }: TooltipProps) => (
@@ -28,7 +28,7 @@ const CaseAggregate: FC<{
   icon?: string;
   iconColor?: string;
   field?: string;
-  records?: Partial<Hit | Observable>[];
+  records?: Partial<Hit | Event>[];
   title?: string;
   subtitle?: string;
 }> = ({ icon, iconColor, field, records, title, subtitle }) => {

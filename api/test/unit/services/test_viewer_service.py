@@ -6,7 +6,7 @@ from howler.services import viewer_service
 class TestAddViewer:
     """Tests for viewer_service.add_viewer."""
 
-    @patch.object(viewer_service, "event_service")
+    @patch.object(viewer_service, "comms_service")
     @patch.object(viewer_service, "redis")
     def test_add_viewer_calls_sadd_and_expire(self, mock_redis, mock_event):
         """add_viewer writes the username to a Redis set and refreshes the TTL."""
@@ -17,7 +17,7 @@ class TestAddViewer:
         mock_redis.sadd.assert_called_once_with("viewers:entity-1", "alice")
         mock_redis.expire.assert_called_once_with("viewers:entity-1", viewer_service.VIEWER_TTL)
 
-    @patch.object(viewer_service, "event_service")
+    @patch.object(viewer_service, "comms_service")
     @patch.object(viewer_service, "redis")
     def test_add_viewer_emits_viewers_update(self, mock_redis, mock_event):
         """add_viewer emits a viewers_update event with the current viewer list."""
@@ -34,7 +34,7 @@ class TestAddViewer:
 class TestRemoveViewer:
     """Tests for viewer_service.remove_viewer."""
 
-    @patch.object(viewer_service, "event_service")
+    @patch.object(viewer_service, "comms_service")
     @patch.object(viewer_service, "redis")
     def test_remove_viewer_calls_srem(self, mock_redis, mock_event):
         """remove_viewer removes the username from the Redis set."""
@@ -44,7 +44,7 @@ class TestRemoveViewer:
 
         mock_redis.srem.assert_called_once_with("viewers:entity-1", "alice")
 
-    @patch.object(viewer_service, "event_service")
+    @patch.object(viewer_service, "comms_service")
     @patch.object(viewer_service, "redis")
     def test_remove_viewer_emits_viewers_update(self, mock_redis, mock_event):
         """remove_viewer emits a viewers_update event after removal."""

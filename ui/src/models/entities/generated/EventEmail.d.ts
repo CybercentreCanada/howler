@@ -10,7 +10,7 @@ import type { To } from './To';
 /**
  * NOTE: This is an auto-generated file. Don't edit this manually.
  */
-export interface ObservableEmail {
+export interface EventEmail {
   attachments?: EmailAttachment[];
   bcc?: Bcc;
   cc?: Cc;

@@ -34,7 +34,7 @@ class TestIngestCreate:
         conn.post.return_value = {"valid": [], "invalid": []}
 
         records = [{"howler": {"analytic": "A"}}, {"howler": {"analytic": "B"}}]
-        ingest.create("observable", records)
+        ingest.create("event", records)
 
         sent_data = json.loads(conn.post.call_args[1]["data"])
         assert len(sent_data) == 2
@@ -45,10 +45,10 @@ class TestIngestDelete:
         ingest, conn = _make_ingest_module()
         conn.delete.return_value = {"success": True}
 
-        ingest.delete("hit,observable", ["id-1", "id-2"])
+        ingest.delete("hit,event", ["id-1", "id-2"])
 
         conn.delete.assert_called_once()
-        assert "ingest/hit,observable" in conn.delete.call_args[0][0]
+        assert "ingest/hit,event" in conn.delete.call_args[0][0]
         assert conn.delete.call_args[1]["json"] == ["id-1", "id-2"]
 
 

@@ -7,7 +7,7 @@ import type { Service } from './Service';
 /**
  * NOTE: This is an auto-generated file. Don't edit this manually.
  */
-export interface ObservableCloud {
+export interface EventCloud {
   account?: CloudAccount;
   availability_zone?: string;
   instance?: Instance;

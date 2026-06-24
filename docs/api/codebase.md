@@ -99,7 +99,7 @@ This document outlines the overall structure of the Howler API codebase. The fir
   - **`auth_service.py`**, **`user_service.py`** - Authentication and user management
   - **`analytic_service.py`** - Analytics management
   - **`template_service.py`**, **`overview_service.py`** - UI customization services
-  - **`event_service.py`**, **`action_service.py`** - Event and action processing
+  - **`comms_service.py`**, **`action_service.py`** - Event and action processing
 
 - `utils` - low-level utilities:
   - **`str_utils.py`** - String manipulation utilities (including `dotdump`)

@@ -31,8 +31,8 @@ import {
   sortBy,
   uniq
 } from 'lodash-es';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { Observable } from 'models/entities/generated/Observable';
 import type { FC } from 'react';
 import { memo, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -40,7 +40,7 @@ import Throttler from 'utils/Throttler';
 import PluginTypography from './PluginTypography';
 
 const ListRenderer: FC<{
-  obj?: Hit | Observable;
+  obj?: Hit | Event;
   objKey?: string;
   maxKeyLength?: number;
   entries: any[];
@@ -143,7 +143,7 @@ const ListRenderer: FC<{
 });
 
 const ObjectRenderer: FC<{
-  obj?: Hit | Observable;
+  obj?: Hit | Event;
   parentKey?: string;
   showParentKey?: boolean;
   data: any;
@@ -228,7 +228,7 @@ const ObjectRenderer: FC<{
   );
 });
 
-const Collapsible: FC<{ obj: Hit | Observable; query: string; title: string; data: { [index: string]: any } }> = memo(
+const Collapsible: FC<{ obj: Hit | Event; query: string; title: string; data: { [index: string]: any } }> = memo(
   ({ obj, title, data, query }) => {
     const throttler = useMemo(() => new Throttler(400), []);
 
@@ -298,7 +298,7 @@ const Collapsible: FC<{ obj: Hit | Observable; query: string; title: string; dat
   }
 );
 
-const ObjectDetails: FC<{ obj: Hit | Observable }> = ({ obj }) => {
+const ObjectDetails: FC<{ obj: Hit | Event }> = ({ obj }) => {
   const { t } = useTranslation();
 
   const [query, setQuery] = useState('');

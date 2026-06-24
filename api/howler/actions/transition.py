@@ -14,7 +14,7 @@ from howler.odm.models.howler_data import (
     Vote,
 )
 from howler.odm.models.user import User
-from howler.services import event_service, hit_service
+from howler.services import comms_service, hit_service
 from howler.utils.list_utils import flatten_list
 
 OPERATION_ID = "transition"
@@ -147,7 +147,7 @@ def execute(
         if total_processed % 10 == 0:
             log.debug("Transition executed on %s hits", total_processed)
             if request_id is not None:
-                event_service.emit(
+                comms_service.emit(
                     "automation",
                     {
                         "request_id": request_id,

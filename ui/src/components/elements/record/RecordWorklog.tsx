@@ -3,9 +3,9 @@ import { CardContent, CardHeader, Divider, Skeleton, Stack, Tooltip, Typography,
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useMyUtils from 'components/hooks/useMyUtils';
 import type { HowlerUser } from 'models/entities/HowlerUser';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Log } from 'models/entities/generated/Log';
-import type { Observable } from 'models/entities/generated/Observable';
 import type { FC } from 'react';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -15,7 +15,7 @@ import HowlerAvatar from '../display/HowlerAvatar';
 import HowlerCard from '../display/HowlerCard';
 import Markdown from '../display/Markdown';
 
-const RecordWorklog: FC<{ record: Hit | Observable; users: { [id: string]: HowlerUser } }> = ({ record, users }) => {
+const RecordWorklog: FC<{ record: Hit | Event; users: { [id: string]: HowlerUser } }> = ({ record, users }) => {
   const theme = useTheme();
   const { shiftColor } = useMyUtils();
   const { t } = useTranslation();

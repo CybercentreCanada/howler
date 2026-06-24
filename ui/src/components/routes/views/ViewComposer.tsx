@@ -17,9 +17,10 @@ import {
 } from '@mui/material';
 import api from 'api';
 import { type HowlerSearchResponse } from 'api/search';
+import type { SearchIndex } from 'api/v2/search';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
 import PageCenter from 'commons/components/pages/PageCenter';
-import { ParameterContext, type SearchIndex } from 'components/app/providers/ParameterProvider';
+import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { RecordContext } from 'components/app/providers/RecordProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import CustomButton from 'components/elements/addons/buttons/CustomButton';
@@ -28,14 +29,14 @@ import VSBox from 'components/elements/addons/layout/vsbox/VSBox';
 import VSBoxContent from 'components/elements/addons/layout/vsbox/VSBoxContent';
 import VSBoxHeader from 'components/elements/addons/layout/vsbox/VSBoxHeader';
 import SearchTotal from 'components/elements/addons/search/SearchTotal';
+import EventCard from 'components/elements/event/EventCard';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
-import ObservableCard from 'components/elements/observable/ObservableCard';
 import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useMySnackbar from 'components/hooks/useMySnackbar';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { Observable } from 'models/entities/generated/Observable';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
@@ -81,7 +82,7 @@ const ViewComposer: FC = () => {
   const [isSearchDirty, setIsSearchDirty] = useState(false);
   const [searching, setSearching] = useState<boolean>(false);
   const [error, setError] = useState<string>(null);
-  const [response, setResponse] = useState<HowlerSearchResponse<Hit | Observable>>();
+  const [response, setResponse] = useState<HowlerSearchResponse<Hit | Event>>();
   const [isLoadingView, setIsLoadingView] = useState(!!routeParams.id);
 
   const onSave = useCallback(async () => {
@@ -144,7 +145,7 @@ const ViewComposer: FC = () => {
       setError(null);
 
       try {
-        const normalizedIndexes = searchIndexes?.length > 0 ? searchIndexes : ['hit'];
+        const normalizedIndexes = searchIndexes?.length > 0 ? searchIndexes : ['hit' as const];
         const _response = await dispatchApi(
           api.v2.search.post(normalizedIndexes, {
             rows: pageCount,
@@ -336,7 +337,7 @@ const ViewComposer: FC = () => {
                   record.__index === 'hit' ? (
                     <HitCard key={record.howler.id} id={record.howler.id} layout={HitLayout.DENSE} />
                   ) : (
-                    <ObservableCard key={record.howler.id} observable={record} />
+                    <EventCard key={record.howler.id} event={record} />
                   )
                 )}
               </Stack>

@@ -1,6 +1,7 @@
 import { FilterList } from '@mui/icons-material';
 import { Autocomplete, TextField } from '@mui/material';
-import { ParameterContext, type SearchIndex } from 'components/app/providers/ParameterProvider';
+import type { SearchIndex } from 'api/v2/search';
+import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import ChipPopper from 'components/elements/display/ChipPopper';
 import { memo, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -8,7 +9,7 @@ import { useContextSelector } from 'use-context-selector';
 
 const FILTER_OPTIONS: { label: string; value: SearchIndex }[] = [
   { label: 'hit.search.index.hit', value: 'hit' },
-  { label: 'hit.search.index.observable', value: 'observable' }
+  { label: 'hit.search.index.event', value: 'event' }
 ];
 
 const IndexPicker: FC = () => {

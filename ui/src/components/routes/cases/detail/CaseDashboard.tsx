@@ -44,7 +44,7 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
   const ids = useMemo(
     () =>
       (_case?.items ?? [])
-        .filter(item => ['hit', 'observable'].includes(item.type))
+        .filter(item => ['hit', 'event'].includes(item.type))
         .map(item => item.value)
         .filter(val => !!val),
     [_case?.items]
@@ -66,7 +66,7 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
     }
 
     dispatchApi(
-      api.v2.search.post(['hit', 'observable'], {
+      api.v2.search.post(['hit', 'event'], {
         query: `howler.id:(${missingIds.join(' OR ')})`,
         metadata: ['template', 'analytic']
       })

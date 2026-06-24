@@ -26,8 +26,8 @@ import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import { isEmpty } from 'lodash-es';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { Observable } from 'models/entities/generated/Observable';
 import type { WithMetadata } from 'models/WithMetadata';
 import type { FC } from 'react';
 import { memo, useCallback, useContext, useEffect, useState } from 'react';
@@ -40,7 +40,7 @@ import PluginChip from '../PluginChip';
 import HitGraph from './aggregate/HitGraph';
 
 const HitSummary: FC<{
-  response?: HowlerSearchResponse<WithMetadata<Hit | Observable>>;
+  response?: HowlerSearchResponse<WithMetadata<Hit | Event>>;
   execute?: boolean;
   onStart?: () => void;
   onComplete?: () => void;

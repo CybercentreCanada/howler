@@ -4,11 +4,11 @@ import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import i18n from 'i18n';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { Observable } from 'models/entities/generated/Observable';
 import type { PropsWithChildren } from 'react';
 import { I18nextProvider } from 'react-i18next';
-import { createMockHit, createMockObservable } from 'tests/utils';
+import { createMockEvent, createMockHit } from 'tests/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import CreateCaseModal from './CreateCaseModal';
 
@@ -60,7 +60,7 @@ const MOCK_HIT_2: Hit = createMockHit({
   howler: { id: 'hit-002', analytic: 'AnalyticTwo', status: 'open' } as any
 });
 
-const MOCK_OBSERVABLE: Observable = createMockObservable({
+const MOCK_EVENT: Event = createMockEvent({
   howler: { id: 'obs-001' } as any
 });
 
@@ -88,8 +88,7 @@ const Wrapper = ({ children }: PropsWithChildren) => (
 // Helpers
 // ---------------------------------------------------------------------------
 
-const renderModal = (records: (Hit | Observable)[]) =>
-  render(<CreateCaseModal records={records} />, { wrapper: Wrapper });
+const renderModal = (records: (Hit | Event)[]) => render(<CreateCaseModal records={records} />, { wrapper: Wrapper });
 
 const fillCaseMetadata = async (
   user: UserEvent,
@@ -157,9 +156,9 @@ describe('CreateCaseModal', () => {
       expect(screen.getByText(MOCK_HIT_2.howler.analytic)).toBeInTheDocument();
     });
 
-    it('renders a row for an observable record', () => {
-      renderModal([MOCK_OBSERVABLE]);
-      expect(screen.getByText('Observable')).toBeInTheDocument();
+    it('renders a row for an event record', () => {
+      renderModal([MOCK_EVENT]);
+      expect(screen.getByText('Event')).toBeInTheDocument();
     });
 
     it('pre-populates the title for a hit with analytic and id', () => {
@@ -168,10 +167,10 @@ describe('CreateCaseModal', () => {
       expect(titleInputs[0]).toHaveValue(`${MOCK_HIT_1.howler.analytic} (${MOCK_HIT_1.howler.id})`);
     });
 
-    it('pre-populates the title for an observable with Observable and id', () => {
-      renderModal([MOCK_OBSERVABLE]);
+    it('pre-populates the title for an event with Event and id', () => {
+      renderModal([MOCK_EVENT]);
       const titleInput = screen.getByPlaceholderText(i18n.t('modal.cases.add_to_case.title'));
-      expect(titleInput).toHaveValue(`Observable (${MOCK_OBSERVABLE.howler.id})`);
+      expect(titleInput).toHaveValue(`Event (${MOCK_EVENT.howler.id})`);
     });
 
     it('shows the alert placement section label when there are records', () => {
@@ -418,20 +417,17 @@ describe('CreateCaseModal', () => {
       );
     });
 
-    it('uses observable __index for observable records', async () => {
+    it('uses event __index for event records', async () => {
       const api = (await import('api')).default;
       mockDispatchApi.mockResolvedValue({ case_id: 'new-case-id' });
 
-      renderModal([MOCK_OBSERVABLE]);
+      renderModal([MOCK_EVENT]);
       await fillCaseMetadata(user);
       await user.click(screen.getByRole('button', { name: i18n.t('confirm') }));
 
       await waitFor(() => expect(mockClose).toHaveBeenCalled());
 
-      expect(api.v2.case.items.post).toHaveBeenCalledWith(
-        'new-case-id',
-        expect.objectContaining({ type: 'observable' })
-      );
+      expect(api.v2.case.items.post).toHaveBeenCalledWith('new-case-id', expect.objectContaining({ type: 'event' }));
     });
 
     it('does not call items.post when there are no records', async () => {
@@ -482,11 +478,11 @@ describe('CreateCaseModal', () => {
       expect(titleInputs[1]).toHaveValue(`${MOCK_HIT_2.howler.analytic} (${MOCK_HIT_2.howler.id})`);
     });
 
-    it('mixed hit and observable records each get correct default titles', () => {
-      renderModal([MOCK_HIT_1, MOCK_OBSERVABLE]);
+    it('mixed hit and event records each get correct default titles', () => {
+      renderModal([MOCK_HIT_1, MOCK_EVENT]);
       const titleInputs = screen.getAllByPlaceholderText(i18n.t('modal.cases.add_to_case.title'));
       expect(titleInputs[0]).toHaveValue(`${MOCK_HIT_1.howler.analytic} (${MOCK_HIT_1.howler.id})`);
-      expect(titleInputs[1]).toHaveValue(`Observable (${MOCK_OBSERVABLE.howler.id})`);
+      expect(titleInputs[1]).toHaveValue(`Event (${MOCK_EVENT.howler.id})`);
     });
   });
 });

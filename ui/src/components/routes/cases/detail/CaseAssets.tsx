@@ -2,8 +2,8 @@ import { Chip, Grid, Skeleton, Stack, Typography } from '@mui/material';
 import api from 'api';
 import useMyApi from 'components/hooks/useMyApi';
 import type { Case } from 'models/entities/generated/Case';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { Observable } from 'models/entities/generated/Observable';
 import type { Related } from 'models/entities/generated/Related';
 import { memo, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -42,12 +42,12 @@ const extractAssets = (
 };
 
 /** Deduplicate and merge seenIn lists into a map keyed by `type:value` */
-export const buildAssetEntries = (records: Partial<Hit | Observable>[]): AssetEntry[] => {
+export const buildAssetEntries = (records: Partial<Hit | Event>[]): AssetEntry[] => {
   const map = new Map<string, AssetEntry>();
 
   for (const record of records) {
-    const related = (record as Hit).related ?? (record as Observable).related;
-    const recordId = (record as Hit).howler?.id ?? (record as Observable).howler?.id;
+    const related = (record as Hit).related ?? (record as Event).related;
+    const recordId = (record as Hit).howler?.id ?? (record as Event).howler?.id;
     if (!recordId) {
       continue;
     }
@@ -76,13 +76,13 @@ const CaseAssets: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, 
   const routeCase = useOutletContext<Case>();
   const { case: _case } = useCase({ case: providedCase ?? routeCase, caseId });
 
-  const [records, setRecords] = useState<Partial<Hit | Observable>[] | null>(null);
+  const [records, setRecords] = useState<Partial<Hit | Event>[] | null>(null);
   const [activeFilters, setActiveFilters] = useState<Set<AssetType>>(new Set());
 
   const ids = useMemo(
     () =>
       (_case?.items ?? [])
-        .filter(item => ['hit', 'observable'].includes(item.type))
+        .filter(item => ['hit', 'event'].includes(item.type))
         .map(item => item.value)
         .filter(val => !!val),
     [_case?.items]
@@ -94,7 +94,7 @@ const CaseAssets: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, 
       return;
     }
     dispatchApi(
-      api.v2.search.post<Hit | Observable>(['hit', 'observable'], {
+      api.v2.search.post<Hit | Event>(['hit', 'event'], {
         query: `howler.id:(${ids.join(' OR ')})`,
         fl: `howler.id,${RELATED_FIELDS}`
       })

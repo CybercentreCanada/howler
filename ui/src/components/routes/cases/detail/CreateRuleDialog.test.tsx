@@ -85,7 +85,7 @@ describe('CreateRuleDialog', () => {
     expect(screen.getByTestId('rule-timeframe-input')).toBeInTheDocument();
     expect(screen.getByTestId('rule-no-expiry-checkbox')).toBeInTheDocument();
     expect(screen.getByTestId('rule-index-hit')).toBeInTheDocument();
-    expect(screen.getByTestId('rule-index-observable')).toBeInTheDocument();
+    expect(screen.getByTestId('rule-index-event')).toBeInTheDocument();
   });
 
   it('disables submit when query is empty', () => {
@@ -282,10 +282,10 @@ describe('CreateRuleDialog', () => {
     render(<CreateRuleDialog {...defaultProps} />);
 
     const hitCheckbox = screen.getByTestId('rule-index-hit') as HTMLInputElement;
-    const observableCheckbox = screen.getByTestId('rule-index-observable') as HTMLInputElement;
+    const eventCheckbox = screen.getByTestId('rule-index-event') as HTMLInputElement;
 
     expect(hitCheckbox).toBeChecked();
-    expect(observableCheckbox).not.toBeChecked();
+    expect(eventCheckbox).not.toBeChecked();
   });
 
   it('includes both indexes when both are selected', async () => {
@@ -297,7 +297,7 @@ describe('CreateRuleDialog', () => {
     render(<CreateRuleDialog {...defaultProps} onSubmit={onSubmit} />);
 
     await act(async () => {
-      await user.click(screen.getByTestId('rule-index-observable'));
+      await user.click(screen.getByTestId('rule-index-event'));
     });
 
     await act(async () => {
@@ -319,7 +319,7 @@ describe('CreateRuleDialog', () => {
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
         expect.objectContaining({
-          indexes: expect.arrayContaining(['hit', 'observable'])
+          indexes: expect.arrayContaining(['hit', 'event'])
         })
       );
     });

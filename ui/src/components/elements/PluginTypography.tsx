@@ -1,6 +1,6 @@
 import { Typography, type TypographyProps } from '@mui/material';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { Observable } from 'models/entities/generated/Observable';
 import howlerPluginStore from 'plugins/store';
 import { memo, type FC, type ReactNode } from 'react';
 import { usePluginStore } from 'react-pluggable';
@@ -9,7 +9,7 @@ export type PluginTypographyProps = TypographyProps & {
   value: string;
   context: string;
   field?: string;
-  obj?: Hit | Observable;
+  obj?: Hit | Event;
 };
 
 const PluginTypography: FC<PluginTypographyProps> = ({ children, value, context, field, obj, ...props }) => {

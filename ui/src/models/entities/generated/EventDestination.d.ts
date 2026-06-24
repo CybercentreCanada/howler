@@ -1,13 +1,13 @@
 import type { AutonomousSystems } from './AutonomousSystems';
+import type { DestinationOriginal } from './DestinationOriginal';
 import type { Geo } from './Geo';
 import type { Nat } from './Nat';
-import type { SourceOriginal } from './SourceOriginal';
 import type { User } from './User';
 
 /**
  * NOTE: This is an auto-generated file. Don't edit this manually.
  */
-export interface ObservableSource {
+export interface EventDestination {
   address?: string;
   autonomous_systems?: AutonomousSystems;
   bytes?: number;
@@ -16,7 +16,7 @@ export interface ObservableSource {
   ip?: string;
   mac?: string;
   nat?: Nat;
-  original?: SourceOriginal;
+  original?: DestinationOriginal;
   packets?: number;
   port?: number;
   user?: User;

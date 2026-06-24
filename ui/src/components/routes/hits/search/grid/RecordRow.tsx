@@ -2,14 +2,14 @@ import { KeyboardArrowUp } from '@mui/icons-material';
 import { Box, Collapse, IconButton, lighten, Stack, TableCell, TableRow, Typography, useTheme } from '@mui/material';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { RecordContext } from 'components/app/providers/RecordProvider';
+import EventCard from 'components/elements/event/EventCard';
 import Assigned from 'components/elements/hit/elements/Assigned';
 import EscalationChip from 'components/elements/hit/elements/EscalationChip';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
-import ObservableCard from 'components/elements/observable/ObservableCard';
 import { get } from 'lodash-es';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { Observable } from 'models/entities/generated/Observable';
 import { memo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -18,12 +18,12 @@ import { isHit } from 'utils/typeUtils';
 import EnhancedCell from './EnhancedCell';
 
 const RecordRow: FC<{
-  record: Hit | Observable;
+  record: Hit | Event;
   analyticIds: Record<string, string>;
   columns: string[];
   columnWidths: Record<string, string>;
   collapseMainColumn: boolean;
-  onClick: (e: React.MouseEvent<HTMLDivElement>, record: Hit | Observable) => void;
+  onClick: (e: React.MouseEvent<HTMLDivElement>, record: Hit | Event) => void;
 }> = ({ record, analyticIds, columns, columnWidths, collapseMainColumn, onClick }) => {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -118,7 +118,7 @@ const RecordRow: FC<{
               {isHit(record) ? (
                 <HitCard id={record.howler.id} layout={HitLayout.NORMAL} />
               ) : (
-                <ObservableCard id={record.howler.id} observable={record} />
+                <EventCard id={record.howler.id} event={record} />
               )}
             </Box>
           </Collapse>

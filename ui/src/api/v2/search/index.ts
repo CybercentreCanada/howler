@@ -5,12 +5,14 @@ import { uri as parentUri } from 'api/v2';
 import { identity, isNil } from 'lodash-es';
 import * as facet from './facet';
 
+export type SearchIndex = 'hit' | 'event' | 'case';
+
 export const uri = (indexes: string[]) => {
   return joinAllUri(parentUri(), 'search', indexes.join(','));
 };
 
 export const post = <T = any>(
-  indexes: string | string[],
+  indexes: SearchIndex | SearchIndex[],
   request?: HowlerSearchRequest
 ): Promise<HowlerSearchResponse<T>> => {
   if (isNil(indexes)) {
@@ -18,11 +20,11 @@ export const post = <T = any>(
   }
 
   if (typeof indexes === 'string') {
-    indexes = indexes.split(',').filter(identity);
+    indexes = indexes.split(',').filter(identity) as SearchIndex[];
   }
 
-  if (indexes.some(index => !['hit', 'observable', 'case'].includes(index))) {
-    throw new Error('Only hit, case, and observable indexes should be used currently.');
+  if (indexes.some(index => !['hit', 'event', 'case'].includes(index))) {
+    throw new Error('Only hit, case, and event indexes should be used currently.');
   }
 
   if (indexes.length < 1) {

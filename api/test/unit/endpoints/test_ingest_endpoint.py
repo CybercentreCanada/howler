@@ -48,7 +48,7 @@ def _sample_hit(analytic: str = "Test Analytic", detection: str = "Test Detectio
     }
 
 
-def _sample_observable() -> dict:
+def _sample_event() -> dict:
     return {
         "howler": {
             "data": ["raw entry"],
@@ -65,7 +65,7 @@ class TestCreateEndpoint:
     """Tests for the POST create endpoint."""
 
     @patch("howler.api.v2.ingest._get_ingestion_queue")
-    @patch("howler.api.v2.ingest.observable_service")
+    @patch("howler.api.v2.ingest.event_service")
     @patch("howler.api.v2.ingest.hit_service")
     @patch("howler.security.auth_service")
     def test_create_hit_success(
@@ -95,33 +95,33 @@ class TestCreateEndpoint:
             mock_queue_fn.return_value.push.assert_called_once_with("hit-001")
 
     @patch("howler.api.v2.ingest._get_ingestion_queue")
-    @patch("howler.api.v2.ingest.observable_service")
+    @patch("howler.api.v2.ingest.event_service")
     @patch("howler.api.v2.ingest.hit_service")
     @patch("howler.security.auth_service")
-    def test_create_observable_success(
+    def test_create_event_success(
         self, mock_auth_service, mock_hit_svc, mock_obs_svc, mock_queue_fn, request_context: Flask
     ):
-        """Returns 201 with IDs when observables are created successfully."""
+        """Returns 201 with IDs when events are created successfully."""
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
         mock_obs = MagicMock()
         mock_obs.howler.id = "obs-001"
-        mock_obs_svc.convert_observable.return_value = (mock_obs, [])
+        mock_obs_svc.convert_event.return_value = (mock_obs, [])
 
         with request_context.test_request_context(
             method="POST",
-            json=[_sample_observable()],
+            json=[_sample_event()],
             headers={"Authorization": "Bearer ."},
         ):
             from howler.api.v2.ingest import create
 
-            result: Response = create(index="observable")
+            result: Response = create(index="event")
 
             assert result.status_code == 201
             body = result.get_json()
             assert body["api_response"] == ["obs-001"]
-            mock_obs_svc.create_observable.assert_called_once()
+            mock_obs_svc.create_event.assert_called_once()
             mock_hit_svc.convert_hit.assert_not_called()
 
     @patch("howler.api.v2.ingest.hit_service")
@@ -175,7 +175,7 @@ class TestCreateEndpoint:
         ):
             from howler.api.v2.ingest import create
 
-            result: Response = create(index="hit,observable")
+            result: Response = create(index="hit,event")
 
             assert result.status_code == 400
 
@@ -371,7 +371,7 @@ class TestDeleteEndpoint:
         ):
             from howler.api.v2.ingest import delete
 
-            result: Response = delete(indexes="hit,observable", user=user)
+            result: Response = delete(indexes="hit,event", user=user)
 
             assert result.status_code == 204
 
@@ -452,19 +452,19 @@ class TestValidateEndpoint:
             assert len(body["api_response"]["invalid"]) == 1
             assert "Bad field" in body["api_response"]["invalid"][0]["error"]
 
-    @patch("howler.api.v2.ingest.observable_service")
-    def test_validate_observable(self, mock_obs_svc, request_context: Flask):
-        """Observable index routes to convert_observable."""
-        mock_obs_svc.convert_observable.return_value = (MagicMock(), [])
+    @patch("howler.api.v2.ingest.event_service")
+    def test_validate_event(self, mock_obs_svc, request_context: Flask):
+        """Event index routes to convert_event."""
+        mock_obs_svc.convert_event.return_value = (MagicMock(), [])
 
         with request_context.test_request_context(
             method="POST",
-            json=[_sample_observable()],
+            json=[_sample_event()],
             headers={"Content-Type": "application/json"},
         ):
             from howler.api.v2.ingest import validate
 
-            result: Response = validate(index="observable")
+            result: Response = validate(index="event")
 
             assert result.status_code == 200
             body = result.get_json()
@@ -492,7 +492,7 @@ class TestValidateEndpoint:
         ):
             from howler.api.v2.ingest import validate
 
-            result: Response = validate(index="hit,observable")
+            result: Response = validate(index="hit,event")
 
             assert result.status_code == 400
 
@@ -554,25 +554,25 @@ class TestIngestionQueueing:
             mock_queue_fn.return_value.push.assert_called_once_with("hit-a", "hit-b")
 
     @patch("howler.api.v2.ingest._get_ingestion_queue")
-    @patch("howler.api.v2.ingest.observable_service")
+    @patch("howler.api.v2.ingest.event_service")
     @patch("howler.security.auth_service")
-    def test_enqueues_observable_ids(self, mock_auth_service, mock_obs_svc, mock_queue_fn, request_context: Flask):
-        """Observable IDs are also enqueued for correlation."""
+    def test_enqueues_event_ids(self, mock_auth_service, mock_obs_svc, mock_queue_fn, request_context: Flask):
+        """Event IDs are also enqueued for correlation."""
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
         obs = MagicMock()
         obs.howler.id = "obs-a"
-        mock_obs_svc.convert_observable.return_value = (obs, [])
+        mock_obs_svc.convert_event.return_value = (obs, [])
 
         with request_context.test_request_context(
             method="POST",
-            json=[_sample_observable()],
+            json=[_sample_event()],
             headers={"Authorization": "Bearer ."},
         ):
             from howler.api.v2.ingest import create
 
-            create(index="observable")
+            create(index="event")
 
             mock_queue_fn.return_value.push.assert_called_once_with("obs-a")
 
@@ -649,7 +649,7 @@ class TestOverwrite:
         ):
             from howler.api.v2.ingest import overwrite
 
-            result: Response = overwrite(index="hit,observable", id="hit-001", server_version="v1", user=user)
+            result: Response = overwrite(index="hit,event", id="hit-001", server_version="v1", user=user)
 
             assert result.status_code == 400
 

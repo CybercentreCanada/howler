@@ -2,14 +2,14 @@ import { Link as LinkIcon } from '@mui/icons-material';
 import { alpha, Box, Chip, Divider, Stack, useTheme } from '@mui/material';
 import CasePreview from 'components/elements/case/CasePreview';
 import ChipPopper from 'components/elements/display/ChipPopper';
-import ObservablePreview from 'components/elements/observable/ObservablePreview';
+import EventPreview from 'components/elements/event/EventPreview';
 import useRelatedRecords from 'components/hooks/useRelatedRecords';
 import { identity, uniq } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
 import { memo, useMemo, useState, type FC, type PropsWithChildren } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { isCase, isHit, isObservable } from 'utils/typeUtils';
+import { isCase, isEvent, isHit } from 'utils/typeUtils';
 import HitPreview from '../HitPreview';
 
 const RecordLink: FC<PropsWithChildren<{ to: string; ariaLabel: string }>> = ({ to, ariaLabel, children }) => {
@@ -99,15 +99,11 @@ const RelatedRecords: FC<{ hit: Hit }> = ({ hit }) => {
                   <CasePreview case={entry} />
                 </RecordLink>
               );
-            } else if (isObservable(entry)) {
+            } else if (isEvent(entry)) {
               const key = entry.howler.id;
               return (
-                <RecordLink
-                  key={key}
-                  to={`/observables/${key}`}
-                  ariaLabel={t('hit.header.view.observable', { id: key })}
-                >
-                  <ObservablePreview observable={entry} />
+                <RecordLink key={key} to={`/events/${key}`} ariaLabel={t('hit.header.view.event', { id: key })}>
+                  <EventPreview event={entry} />
                 </RecordLink>
               );
             }

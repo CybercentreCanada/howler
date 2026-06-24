@@ -6,7 +6,7 @@ from howler.utils.socket_utils import check_action
 @patch("howler.services.hit_service.update_hit")
 @patch("howler.services.hit_service.exists")
 @patch("howler.utils.socket_utils.viewer_service")
-@patch("howler.services.event_service.emit")
+@patch("howler.services.comms_service.emit")
 def test_socket(emit, mock_viewer_service, exists, update_hit):
     _id = "test_id"
 

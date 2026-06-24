@@ -55,7 +55,7 @@ def search(indexes: str, **kwargs):
     """Search through specified index for a given query. Uses lucene search syntax for query.
 
     Variables:
-    indexes  =>   Comma-separated list of indexes to search in (hit, observable,...)
+    indexes  =>   Comma-separated list of indexes to search in (hit, event,...)
 
     Arguments:
     query   =>   Query to search for

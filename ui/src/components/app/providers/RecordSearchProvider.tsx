@@ -7,8 +7,8 @@ import i18n from 'i18n';
 import { cloneDeep } from 'lodash-es';
 import isNull from 'lodash-es/isNull';
 import isUndefined from 'lodash-es/isUndefined';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { Observable } from 'models/entities/generated/Observable';
 import type { WithMetadata } from 'models/WithMetadata';
 import {
   useCallback,
@@ -37,7 +37,7 @@ export interface RecordSearchContextType {
   displayType: 'list' | 'grid';
   searching: boolean;
   error: string | null;
-  response: HowlerSearchResponse<WithMetadata<Hit | Observable>> | null;
+  response: HowlerSearchResponse<WithMetadata<Hit | Event>> | null;
   fzfSearch: boolean;
 
   setDisplayType: (type: 'list' | 'grid') => void;

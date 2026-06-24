@@ -6,7 +6,7 @@ import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { RecordContext } from 'components/app/providers/RecordProvider';
 import { createElement, type FC, type PropsWithChildren } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { createMockHit, createMockObservable } from 'tests/utils';
+import { createMockEvent, createMockHit } from 'tests/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildFilters } from './CaseTimeline';
 
@@ -90,8 +90,8 @@ vi.mock('components/elements/hit/HitCard', () => ({
   default: ({ id }: { id: string }) => <div>{`HitCard:${id}`}</div>
 }));
 
-vi.mock('components/elements/observable/ObservableCard', () => ({
-  default: ({ id }: { id: string }) => <div>{`ObservableCard:${id}`}</div>
+vi.mock('components/elements/event/EventCard', () => ({
+  default: ({ id }: { id: string }) => <div>{`EventCard:${id}`}</div>
 }));
 
 // Return the request object rather than a Promise so dispatchApi's first
@@ -122,7 +122,7 @@ const mockCase = {
   case_id: 'case-001',
   items: [
     { type: 'hit', value: 'hit-1', path: 'hits/hit-1' },
-    { type: 'observable', value: 'obs-1', path: 'observables/obs-1' }
+    { type: 'event', value: 'obs-1', path: 'events/obs-1' }
   ]
 } as any;
 
@@ -163,7 +163,7 @@ const mockFacetResponse = {
 const mockSearchResponse = (
   items = [
     createMockHit({ howler: { id: 'hit-1' }, event: { created: '2024-01-01T00:00:00Z' } }),
-    createMockObservable({ howler: { id: 'obs-1' } })
+    createMockEvent({ howler: { id: 'obs-1' } })
   ]
 ) => ({ items, total: items.length, rows: items.length, offset: 0 });
 
@@ -189,13 +189,13 @@ describe('CaseTimeline component', () => {
     await screen.findByText('page.cases.timeline.empty');
   });
 
-  it('renders HitCard for hit entries and ObservableCard for observable entries', async () => {
+  it('renders HitCard for hit entries and EventCard for event entries', async () => {
     mockDispatchApi.mockResolvedValueOnce(mockFacetResponse).mockResolvedValueOnce(mockSearchResponse());
 
     render(<CaseTimeline case={mockCase} />, { wrapper: Wrapper });
 
     expect(await screen.findByText('HitCard:hit-1')).toBeTruthy();
-    expect(screen.getByText('ObservableCard:obs-1')).toBeTruthy();
+    expect(screen.getByText('EventCard:obs-1')).toBeTruthy();
   });
 
   it('renders the formatted event.created timestamp for hits', async () => {

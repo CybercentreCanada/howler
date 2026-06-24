@@ -5,7 +5,7 @@ import type { ObserverIngress } from './ObserverIngress';
 /**
  * NOTE: This is an auto-generated file. Don't edit this manually.
  */
-export interface ObservableObserver {
+export interface EventObserver {
   egress?: Egress;
   hostname?: string;
   ingress?: ObserverIngress;
