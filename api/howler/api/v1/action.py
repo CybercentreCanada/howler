@@ -90,7 +90,7 @@ def add_action(user: User, **_) -> Response:
         return error
 
     try:
-        new_action["owner_id"] = [user.uname]
+        new_action["owner_id"] = user.uname
 
         action_obj = Action(new_action)
 
@@ -454,8 +454,8 @@ def give_privilege(id: str, user: User, **kwargs):
     priv_request: str = escape(str(priv_requested))
     is_allowed: bool = is_allowed_to_change(level_requested=priv_request, user=user, existing_item=existing_action)
 
-    if isinstance(is_allowed, Response):
-        return is_allowed
+    if not is_allowed:
+        return forbidden(err="You do not have the necessary permissions to modify this privilege level.")
 
     if user_to_add in priv_map[priv_request]:
         return bad_request(err=f"{user_to_add} already have the permission {priv_request}")
