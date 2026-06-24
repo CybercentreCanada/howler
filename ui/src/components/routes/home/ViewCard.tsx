@@ -1,6 +1,7 @@
 import { OpenInNew } from '@mui/icons-material';
 import { Card, CardContent, IconButton, Skeleton, Stack, Typography } from '@mui/material';
 import api from 'api';
+import type { SearchIndex } from 'api/v2/search';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
 import { useRecordContextSelector } from 'components/app/providers/RecordProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
@@ -114,7 +115,7 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
 
     try {
       const res = await dispatchApi(
-        api.v2.search.post(view.indexes, {
+        api.v2.search.post(view.indexes as SearchIndex[], {
           query: view.query,
           rows: limit,
           metadata: ['analytic']
