@@ -313,31 +313,22 @@ def revoke_privilege(id: str, user: User, **kwargs):
 
 
 @generate_swagger_docs()
-@dossier_api.route("/<dossier_id>", methods=["GET"])
+@dossier_api.route("/<id>/permission_options", methods=["GET"])
 @api_login(required_priv=["R"])
-def get_dossier_permission(dossier_id: str, user: User, **kwargs):
-    """Get details for a specific dossier
+def get_dossier_permission_options(id: str, user: User):
+    """Get the privilege/permission mapping for a given dossier
 
-    Variables:
-    dossier_id => The dossier_id of the dossier to fetch
-
-    Result Example:
-    {
-        ...dossier     # The requested dossier data
-    }
+    Arguments:
+        id: The id of the dossier to get permissions for
+        user: The user making the request (injected by the api_login decorator)
     """
-    storage = datastore()
-
-    # Fetch the dossier as a primitive dictionary to match frontend expectations
-    dossier = storage.dossier.get_if_exists(dossier_id, as_obj=False)
+    ds = datastore()
+    dossier: Dossier = ds.dossier.get(id)
     if not dossier:
-        return not_found(err="This dossier does not exist")
+        return not_found(err="The specified dossier does not exist")
 
-    # Mirror your visibility protection logic from your general search route
-    if dossier.get("type") == "personal" and user.uname != dossier.get("owner"):
-        return forbidden(err="You cannot access a personal dossier that is not owned by you.")
-
-    return ok(dossier)
+    # Returns a dict containing owner, administrator, and member lists
+    return ok(dossier.get_privilege_mapping())
 
 
 # endregion

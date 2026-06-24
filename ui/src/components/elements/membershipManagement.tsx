@@ -17,7 +17,7 @@ import {
 } from '@mui/material';
 import api from 'api';
 import useMyApi from 'components/hooks/useMyApi';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface MembershipManagementProps {
@@ -25,22 +25,18 @@ interface MembershipManagementProps {
   onClose: () => void;
   entityId?: string;
   entityType?: 'action' | 'view' | 'dossier';
-  actionId?: string; // Kept for backward compatibility with older components
+  actionId?: string;
 }
 
 interface MemberItem {
   user_id: string;
-  privilege: 'owner' | 'admin' | 'member';
+  privilege: string;
 }
 
-/**
- * Utility to safely unwrap nested arrays, strings, or Python stringified objects
- */
 const safeUnwrap = (val: any): string => {
   if (val === null || val === undefined) return '';
   if (Array.isArray(val)) return safeUnwrap(val[0]);
   if (typeof val === 'object') return safeUnwrap(val.uname || val.username || val.user_id || JSON.stringify(val));
-
   let str = String(val).trim();
   while (
     (str.startsWith('[') && str.endsWith(']')) ||
@@ -62,83 +58,77 @@ export const MembershipManagement = ({
   const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
 
-  // Tab state: 0 = View/Remove Members, 1 = Add New Member
   const [tab, setTab] = useState(0);
   const [members, setMembers] = useState<MemberItem[]>([]);
   const [username, setUsername] = useState('');
-  const [privilege, setPrivilege] = useState('');
+  const [privilege, setPrivilege] = useState(''); // Used for adding
   const [options, setOptions] = useState<Record<string, any>>({});
   const [userOptions, setUserOptions] = useState<any[]>([]);
 
-  // Consolidate target generic ID or fallback parameter
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+  const hasPerformedSearch = useRef(false);
+
   const finalEntityId = entityId || actionId;
 
-  // Memoize API routing layer
-  const apiService = useMemo(() => {
-    if (entityType === 'action') return api.action;
-    if (entityType === 'view') return api.view;
-    return (api as any).dossier;
-  }, [entityType]);
+  const apiService = useMemo(
+    () => (entityType === 'action' ? api.action : entityType === 'view' ? api.view : (api as any).dossier),
+    [entityType]
+  );
 
   const refresh = useCallback(() => {
     if (!finalEntityId || !apiService) return;
 
-    // Fetch members list
     dispatchApi((apiService as any).get(finalEntityId)).then((entity: any) => {
       if (!entity) return;
 
       const owner = safeUnwrap(entity.owner_id || entity.owner);
-      const admins = (entity.admins || []).map(safeUnwrap);
+      const adminUsers: any[] = entity.admins || entity.administrator || [];
+      const adminRoleLabel = 'administrator';
       const membersList = (entity.members || []).map(safeUnwrap);
 
       const memberList: MemberItem[] = [
-        ...(owner ? [{ user_id: owner, privilege: 'owner' as const }] : []),
-        ...admins.map(m => ({ user_id: m, privilege: 'admin' as const })),
-        ...membersList.map(m => ({ user_id: m, privilege: 'member' as const }))
+        ...(owner ? [{ user_id: owner, privilege: 'owner' }] : []),
+        ...adminUsers.map(m => ({ user_id: safeUnwrap(m), privilege: adminRoleLabel })),
+        ...membersList.map(m => ({ user_id: m, privilege: 'member' }))
       ];
       setMembers(memberList);
     });
 
     const permissionService = (apiService as any).permission;
-    if (permissionService) {
-      const fetchOptions = permissionService.getOptions || permissionService.options;
-
-      if (typeof fetchOptions === 'function') {
-        dispatchApi(fetchOptions(finalEntityId))
-          .then((res: any) => {
-            if (res) setOptions(res);
-          })
-          .catch(err => {
-            // eslint-disable-next-line no-console
-            console.error('[MembershipManagement] Failed to fetch permission options:', err);
-          });
-      }
+    if (permissionService?.getOptions) {
+      dispatchApi(permissionService.getOptions(finalEntityId))
+        .then((res: any) => res && setOptions(res))
+        .catch(console.error);
     }
   }, [finalEntityId, apiService, dispatchApi]);
 
-  useEffect(() => {
-    if (open) {
-      refresh();
-      setTab(0);
-    }
-  }, [open, refresh]);
-
-  // Handles async user autocomplete suggestions
-  const handleSearchUsers = (query: string) => {
-    if (!query) {
-      setUserOptions([]);
-      return;
-    }
+  const performSearch = (query: string) => {
     const searchService = (api as any).user || (api as any).search?.user;
-    if (searchService && typeof searchService.search === 'function') {
+    if (searchService?.search) {
       dispatchApi(searchService.search(query)).then((res: any) => {
         setUserOptions(res?.items || res || []);
+        hasPerformedSearch.current = true;
       });
     }
   };
 
+  const handleSearchUsers = (query: string) => {
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+
+    if (!query || query.length < 2) {
+      setUserOptions([]);
+      return;
+    }
+
+    if (!hasPerformedSearch.current) {
+      performSearch(query);
+    } else {
+      searchTimeout.current = setTimeout(() => performSearch(query), 500);
+    }
+  };
+
   const handleAddMember = () => {
-    if (!finalEntityId) return;
+    if (!finalEntityId || !(apiService as any).permission) return;
     (apiService as any).permission.put(finalEntityId, { user_id: username, privilege }).then(() => {
       setUsername('');
       setPrivilege('');
@@ -147,32 +137,35 @@ export const MembershipManagement = ({
     });
   };
 
-  const handleRemoveMember = (user_id: string, priv: string) => {
-    if (!finalEntityId) return;
-    (apiService as any).permission.delete(finalEntityId, { user_id, privilege: priv }).then(refresh);
+  // Fixed: Renamed parameter to 'targetPrivilege' to avoid scope conflict
+  const handleRemoveMember = (user_id: string, targetPrivilege: string) => {
+    if (!finalEntityId || !(apiService as any).permission) return;
+    (apiService as any).permission.delete(finalEntityId, { user_id, privilege: targetPrivilege }).then(refresh);
   };
 
-  // Fallback protection array: prevents dropdown from being completely blank if option fetch delays
+  useEffect(() => {
+    if (open) {
+      refresh();
+      setTab(0);
+      hasPerformedSearch.current = false;
+    }
+    return () => {
+      if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    };
+  }, [open, refresh]);
+
   const availablePrivileges = useMemo(() => {
     const keys = Object.keys(options);
-    return keys.length > 0 ? keys : ['admin', 'member'];
+    return keys.length > 0 ? keys : ['administrator', 'member'];
   }, [options]);
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
       <DialogTitle>{t('membership.management')}</DialogTitle>
-
-      <Tabs
-        value={tab}
-        onChange={(_, newTab) => setTab(newTab)}
-        variant="fullWidth"
-        indicatorColor="primary"
-        textColor="primary"
-      >
+      <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="fullWidth">
         <Tab label={t('members')} />
         <Tab label={t('add')} />
       </Tabs>
-
       <DialogContent sx={{ minHeight: '280px', mt: 1 }}>
         {tab === 0 ? (
           <List>
@@ -187,7 +180,7 @@ export const MembershipManagement = ({
                   )
                 }
               >
-                <ListItemText primary={m.user_id} secondary={t(`privilege.${m.privilege}`, m.privilege)} />
+                <ListItemText primary={m.user_id} secondary={m.privilege} />
               </ListItem>
             ))}
           </List>
@@ -201,13 +194,9 @@ export const MembershipManagement = ({
                 handleSearchUsers(v);
                 setUsername(v);
               }}
-              onChange={(_, v) => {
-                const selectedUser = typeof v === 'string' ? v : v?.uname || v?.username || '';
-                setUsername(selectedUser);
-              }}
+              onChange={(_, v) => setUsername(typeof v === 'string' ? v : v?.uname || v?.username || '')}
               renderInput={p => <TextField {...p} label={t('username')} fullWidth />}
             />
-
             <TextField
               select
               label={t('privilege')}
@@ -218,11 +207,10 @@ export const MembershipManagement = ({
             >
               {availablePrivileges.map(k => (
                 <MenuItem key={k} value={k}>
-                  {t(`privilege.${k}`, k)}
+                  {k}
                 </MenuItem>
               ))}
             </TextField>
-
             <Button
               onClick={handleAddMember}
               sx={{ mt: 3 }}
