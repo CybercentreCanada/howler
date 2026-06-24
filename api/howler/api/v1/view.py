@@ -15,6 +15,7 @@ from howler.odm.models.user import User
 from howler.odm.models.view import View
 from howler.security import api_login
 from howler.services.permission_service import (
+    _get_edit_auth_error,
     get_require_data_helper,
     is_allowed_to_change,
     privilege_value_verifications,
@@ -178,45 +179,40 @@ def update_view(view_id: str, user: User, **kwargs):
         ...view     # The updated view data
     }
     """
-    storage = datastore()
-
     new_data = request.json
     if not isinstance(new_data, dict):
         return bad_request(err="Invalid data format")
 
-    if set(new_data.keys()) & {"view_id", "owner"}:
+    # .isdisjoint() is a very clean, fast way to check for restricted keys
+    if not new_data.keys().isdisjoint({"view_id", "owner"}):
         return bad_request(err="You cannot change the owner or id of a view.")
 
+    storage = datastore()
     existing_view: View = storage.view.get_if_exists(view_id)
+
     if not existing_view:
         return not_found(err="This view does not exist")
 
-    if existing_view.type == "readonly":
-        return forbidden(err="You cannot edit a built-in view.")
+    # Delegate the heavy auth checks to the helper function
+    auth_error = _get_edit_auth_error(existing_view, user)
+    if auth_error:
+        return forbidden(err=auth_error)
 
-    if existing_view.type == "personal" and user.uname != existing_view.owner:
-        return forbidden(err="You cannot update a personal view that is not owned by you.")
+    if "query" in new_data:
+        try:
+            storage.hit.search(new_data["query"])
+        except SearchException:
+            return bad_request(err="You must use a valid query when updating a view.")
+        except HowlerException as e:
+            return bad_request(err=str(e))
 
-    allowed_list: list[str] = [existing_view.owner] + existing_view.admin + existing_view.member
-    if existing_view.type == "global" and (user.uname not in allowed_list) and "admin" not in user.type:
-        return forbidden(err="Only the owner of a view and administrators can edit a global view.")
-
-    new_view = View(cast(dict, merge({}, existing_view.as_primitives(), new_data)))
+    updated_primitives = merge({}, existing_view.as_primitives(), new_data)
+    new_view = View(cast(dict, updated_primitives))
 
     storage.view.save(new_view.view_id, new_view)
-
     storage.view.commit()
 
-    try:
-        if "query" in new_data:
-            # Make sure the query is valid
-            storage.hit.search(new_data["query"])
-
-        return ok(storage.view.get_if_exists(existing_view.view_id, as_obj=False))
-    except SearchException:
-        return bad_request(err="You must use a valid query when updating a view.")
-    except HowlerException as e:
-        return bad_request(err=str(e))
+    return ok(storage.view.get_if_exists(new_view.view_id, as_obj=False))
 
 
 @generate_swagger_docs()
@@ -296,7 +292,7 @@ def remove_as_favourite(view_id: str, **kwargs):
         return bad_request(err=str(e))
 
 
-# region: Permission
+# region Permission
 
 
 @generate_swagger_docs()
@@ -444,9 +440,9 @@ def revoke_privilege(view_id: str, user: User, **kwargs):
 
 
 @generate_swagger_docs()
-@view_api.route("/<id>/permission_options", methods=["GET"])
+@view_api.route("/<view_id>/permission_options", methods=["GET"])
 @api_login(required_priv=["R", "W"], required_type=["automation_basic"])
-def get_permission_option(id: str, user: User):
+def get_permission_option(view_id: str, user: User):
     """Get the permission options for a given view
 
     Variables:
@@ -458,7 +454,7 @@ def get_permission_option(id: str, user: User):
     is_adding: The value neeed to be a boolean representing if we add or remove a user.
 
     Arguments:
-        id: The id of the view to get permissions for
+        view_id: The id of the view to get permissions for
         user: The user making the request (injected by the api_login decorator)
     Optional Arguments:
         None
@@ -475,7 +471,7 @@ def get_permission_option(id: str, user: User):
     returns a dict with the possible permissions for the view and the users that have them.
     """
     ds = datastore()
-    view: View = ds.view.get(id)
+    view: View = ds.view.get(view_id)
     if not view:
         return not_found(err="The specified view does not exist")
 
@@ -483,29 +479,18 @@ def get_permission_option(id: str, user: User):
 
 
 @generate_swagger_docs()
-@view_api.route("/<view_id>", methods=["GET"])
+@view_api.route("/<view_id>/permission_options", methods=["GET"])
 @api_login(required_priv=["R"])
-def get_view_permission(view_id: str, user: User, **kwargs):
-    """Get details for a specific view
+def get_view_permission_options(view_id: str, user: User, **kwargs):
+    """Get privilege/permission mapping for a given view"""
+    ds = datastore()
 
-    Variables:
-    view_id => The view_id of the view to fetch
-
-    Result Example:
-    {
-        ...view     # The requested view data
-    }
-    """
-    storage = datastore()
-
-    view = storage.view.get_if_exists(view_id, as_obj=False)
+    view: View = ds.view.get(view_id)
     if not view:
-        return not_found(err="This view does not exist")
+        return not_found(err="The specified view does not exist")
 
-    if view.get("type") == "personal" and user.uname != view.get("owner"):
-        return forbidden(err="You cannot access a personal view that is not owned by you.")
-
-    return ok(view)
+    # Returns ONLY the dictionary with owner, administrator, and member lists
+    return ok(view.get_privilege_mapping())
 
 
 # endregion

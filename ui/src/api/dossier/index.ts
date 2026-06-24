@@ -28,7 +28,6 @@ export const permission = {
     return hput(joinAllUri(uri(id), 'permission'), data);
   },
   delete: (id: string, data: { privilege: string; user_id: string }) => {
-    // REMOVE the { data } wrapper so it is just 'data'
     return hdelete(joinAllUri(uri(id), 'permission'), data);
   },
   getOptions: (id: string) => {

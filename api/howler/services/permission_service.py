@@ -94,3 +94,20 @@ def get_require_data_helper(
     priv_requested: str = escape(str(priv_change["privilege"]))
     user_to_move: str = escape(str(priv_change["user_id"]))
     return storage, priv_requested, user_to_move
+
+
+def _get_edit_auth_error(existing_item: Dossier | Action | View, user: User) -> str | None:
+    """Helper function to validate if a user can edit an item. Returns the error string or None."""
+    if existing_item.type == "readonly":
+        return "You cannot edit a built-in view."
+
+    if existing_item.type == "personal" and user.uname != existing_item.owner:
+        return "You cannot update a personal view that is not owned by you."
+
+    if existing_item.type == "global" and "admin" not in user.type:
+        mapping = existing_item.get_privilege_mapping()
+        allowed_users = {u for val in mapping.values() for u in ([val] if isinstance(val, str) else val)}
+        if user.uname not in allowed_users:
+            return "Only the members of a view and global administrators can edit a global view."
+
+    return None

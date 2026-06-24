@@ -586,7 +586,7 @@ def get_permission_option(id: str, user: User):
 
 
 @generate_swagger_docs()
-@action_api.route("/<id>", methods=["GET"])
+@action_api.route("/<id>/permission_options", methods=["GET"])
 @api_login(required_priv=["R"])
 def get_action_permission(id: str, user: User, **kwargs):
     """Get details for a specific action

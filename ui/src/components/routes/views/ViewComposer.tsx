@@ -210,8 +210,13 @@ const ViewComposer: FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeParams.id]);
 
+  // FIX: Added backward compatible checks for 'owner' and 'administrator' keys to match backend contracts
   const canManageMembership =
-    view?.owner_id === user.username || view?.admins?.includes(user.username) || user.roles?.includes('admin');
+    view?.owner === user.username ||
+    view?.owner_id === user.username ||
+    view?.administrator?.includes(user.username) ||
+    view?.admins?.includes(user.username) ||
+    user.roles?.includes('admin');
 
   return (
     <FlexPort>
