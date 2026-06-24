@@ -451,7 +451,7 @@ def append_case(case_id: str, item: CaseItem) -> Case:
         raise NotFoundException(f"Case {case_id} does not exist")
 
     if any(item.value == case_item["value"] for case_item in _case.items):
-        raise InvalidDataException(f"Event {item.value} already exists in case {case_id}")
+        raise InvalidDataException(f"Item {item.value} already exists in case {case_id}")
 
     referenced_case = ds.case.get(item.value)
 

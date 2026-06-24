@@ -30,7 +30,7 @@ const useRelatedRecords = <T = MixedRecords,>(ids: string[], enabled = true): Wi
     (async () => {
       const joined = ids.join(' OR ');
       const result = await dispatchApi(
-        api.v2.search.post<WithMetadata<T>>('hit,event,case', {
+        api.v2.search.post<WithMetadata<T>>(['hit', 'event', 'case'], {
           query: `howler.id:(${joined}) OR case_id:(${joined})`
         }),
         { throwError: false, showError: true }

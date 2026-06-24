@@ -1,4 +1,4 @@
-"""Unit tests for the event service."""
+"""Unit tests for the comms service."""
 
 from unittest.mock import MagicMock, patch
 

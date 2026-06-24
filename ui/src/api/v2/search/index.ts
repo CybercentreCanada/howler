@@ -2,6 +2,7 @@
 import { hpost, joinAllUri } from 'api';
 import type { HowlerSearchRequest, HowlerSearchResponse } from 'api/search';
 import { uri as parentUri } from 'api/v2';
+import type { SearchIndex } from 'components/app/providers/ParameterProvider';
 import { identity, isNil } from 'lodash-es';
 import * as facet from './facet';
 
@@ -10,7 +11,7 @@ export const uri = (indexes: string[]) => {
 };
 
 export const post = <T = any>(
-  indexes: string | string[],
+  indexes: SearchIndex | SearchIndex[],
   request?: HowlerSearchRequest
 ): Promise<HowlerSearchResponse<T>> => {
   if (isNil(indexes)) {
@@ -18,7 +19,7 @@ export const post = <T = any>(
   }
 
   if (typeof indexes === 'string') {
-    indexes = indexes.split(',').filter(identity);
+    indexes = indexes.split(',').filter(identity) as SearchIndex[];
   }
 
   if (indexes.some(index => !['hit', 'event', 'case'].includes(index))) {

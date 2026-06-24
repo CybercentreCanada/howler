@@ -80,7 +80,13 @@ const RecordProvider: FC<PropsWithChildren> = ({ children }) => {
   const getRecord = useCallback(
     async (id: string, force = false) => {
       if (!recordRequests.current[id] || force) {
-        recordRequests.current[id] = dispatchApi(api.hit.get(id, ['template', 'dossiers', 'analytic', 'overview']));
+        recordRequests.current[id] = dispatchApi(
+          api.v2.search.post<Hit | Event>(['hit', 'event'], {
+            query: `howler.id:${id}`,
+            rows: 1,
+            metadata: ['template', 'dossiers', 'analytic', 'overview']
+          })
+        ).then(result => result.items[0]);
         const newRecord = await recordRequests.current[id];
         setRecords(_records => ({ ..._records, [id]: newRecord }));
       }

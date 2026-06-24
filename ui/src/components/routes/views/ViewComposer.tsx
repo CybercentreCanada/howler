@@ -17,9 +17,10 @@ import {
 } from '@mui/material';
 import api from 'api';
 import { type HowlerSearchResponse } from 'api/search';
+import type { SearchIndex } from 'api/v2/search';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
 import PageCenter from 'commons/components/pages/PageCenter';
-import { ParameterContext, type SearchIndex } from 'components/app/providers/ParameterProvider';
+import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { RecordContext } from 'components/app/providers/RecordProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import CustomButton from 'components/elements/addons/buttons/CustomButton';
@@ -144,7 +145,7 @@ const ViewComposer: FC = () => {
       setError(null);
 
       try {
-        const normalizedIndexes = searchIndexes?.length > 0 ? searchIndexes : ['hit'];
+        const normalizedIndexes = searchIndexes?.length > 0 ? searchIndexes : ['hit' as const];
         const _response = await dispatchApi(
           api.v2.search.post(normalizedIndexes, {
             rows: pageCount,

@@ -248,9 +248,9 @@ const CaseTimeline: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase
                   sx={{ flex: 1, minWidth: 0, textDecoration: 'none' }}
                 >
                   {isHit(entry) ? (
-                    <HitCard id={entry.howler.id} layout={HitLayout.DENSE} readOnly />
+                    <HitCard id={entry.howler.id} hit={entry} layout={HitLayout.DENSE} readOnly />
                   ) : (
-                    <EventCard id={entry.howler.id} />
+                    <EventCard id={entry.howler.id} event={entry} />
                   )}
                 </Box>
               </Stack>
