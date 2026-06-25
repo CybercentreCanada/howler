@@ -61,7 +61,7 @@ class TestGetCase:
             "title": "Test Case",
             "summary": "summary",
             "overview": "overview",
-            "escalation": "high",
+            "escalation": "crisis",
         }
         mock_datastore.return_value.case.get_if_exists.return_value = case_data
 
@@ -76,7 +76,7 @@ class TestGetCase:
             body = result.get_json()
             assert body["api_response"]["case_id"] == "case-001"
             assert body["api_response"]["title"] == "Test Case"
-            assert body["api_response"]["escalation"] == "high"
+            assert body["api_response"]["escalation"] == "crisis"
             mock_datastore.return_value.case.get_if_exists.assert_called_once_with(key="case-001", as_obj=False)
 
     @patch("howler.api.v2.case.datastore")
@@ -291,7 +291,7 @@ class TestUpdateCaseEndpoint:
                 "title": "Updated Title",
                 "summary": "S",
                 "overview": "O",
-                "escalation": "low",
+                "escalation": "normal",
             }
         )
         mock_case_service.update_case.return_value = updated
