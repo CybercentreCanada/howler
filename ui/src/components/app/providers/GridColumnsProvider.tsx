@@ -38,7 +38,7 @@ export type GridColumnsContextType = {
    * Set the width of a single column.
    * @param syncLocal - When `true`, also persists the change to local storage even if views are active.
    */
-  setColumnWidth: (column: string, width: number | string, syncLocal?: boolean) => void;
+  setColumnWidth: (column: string, width: number, syncLocal?: boolean) => void;
   /**
    * Maps each column field to the list of view titles that declared it.
    * Empty array for columns that came from local storage rather than a view.
@@ -66,7 +66,10 @@ export const GridColumnsContext = createContext<GridColumnsContextType>(null);
  *   - `"params"` (default) — reads from `ParameterContext` (query-string driven).
  *   - `"path"` — reads from the current route's `:id` param.
  */
-const GridColumnsProvider = ({ children, viewSource = 'params' }: PropsWithChildren<{ viewSource?: 'params' | 'path' }>) => {
+const GridColumnsProvider = ({
+  children,
+  viewSource = 'params'
+}: PropsWithChildren<{ viewSource?: 'params' | 'path' }>) => {
   const routeParams = useParams();
 
   // Resolve view IDs from the appropriate source.
@@ -218,19 +221,14 @@ const GridColumnsProvider = ({ children, viewSource = 'params' }: PropsWithChild
   );
 
   const setColumnWidth = useCallback(
-    (column: string, width: number | string, syncLocal?: boolean) => {
-      const parsedWidth = typeof width === 'string' ? parsePixelSizeStringToInt(width) : width;
-      if (parsedWidth === null) {
-        return;
-      }
-
+    (column: string, width: number, syncLocal?: boolean) => {
       if (!hasViews || syncLocal) {
         // No active views — persist directly to local storage.
-        setLocalStorageColumnWidths({ ...parsedLocalStorageColumnWidths, [column]: parsedWidth });
+        setLocalStorageColumnWidths({ ...parsedLocalStorageColumnWidths, [column]: width });
       } else {
         // Active views — update the in-memory view widths only, and flag a local edit.
         currentLoadRef.current.hasLocalEdits = true;
-        setViewColumnWidths(prev => ({ ...prev, [column]: parsedWidth }));
+        setViewColumnWidths(prev => ({ ...prev, [column]: width }));
       }
     },
     [hasViews, parsedLocalStorageColumnWidths, setLocalStorageColumnWidths]
@@ -263,6 +261,6 @@ const GridColumnsProvider = ({ children, viewSource = 'params' }: PropsWithChild
       {children}
     </GridColumnsContext.Provider>
   );
-};;
+};
 
 export default GridColumnsProvider;

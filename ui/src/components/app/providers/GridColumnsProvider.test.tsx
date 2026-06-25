@@ -92,7 +92,7 @@ describe('no views', () => {
     const hook = renderHook(() => useContext(GridColumnsContext), { wrapper: Wrapper });
 
     act(() => {
-      hook.result.current.setColumnWidth('col1', '150px');
+      hook.result.current.setColumnWidth('col1', 150);
     });
 
     expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
@@ -107,7 +107,7 @@ describe('no views', () => {
     const hook = renderHook(() => useContext(GridColumnsContext), { wrapper: Wrapper });
 
     act(() => {
-      hook.result.current.setColumnWidth('col2', '200px');
+      hook.result.current.setColumnWidth('col2', 200);
     });
 
     expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
@@ -274,7 +274,7 @@ describe('with views', () => {
     await waitFor(() => expect(hook.result.current.isReady).toBe(true));
 
     await act(async () => {
-      hook.result.current.setColumnWidth('viewCol1', '150px');
+      hook.result.current.setColumnWidth('viewCol1', 150);
     });
 
     expect(hook.result.current.columnWidths).toEqual({
@@ -294,7 +294,7 @@ describe('with views', () => {
     await waitFor(() => expect(hook.result.current.isReady).toBe(true));
 
     await act(async () => {
-      hook.result.current.setColumnWidth('viewCol3', '150px');
+      hook.result.current.setColumnWidth('viewCol3', 150);
     });
 
     expect(hook.result.current.columnWidths).toEqual({

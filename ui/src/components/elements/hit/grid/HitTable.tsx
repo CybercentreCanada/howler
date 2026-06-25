@@ -45,7 +45,7 @@ const HitTable = ({
   const [analyticIds, setAnalyticIds] = useState<Record<string, string>>({});
   const { columns, columnWidths, columnSources, setColumnWidth, setColumns, isReady } = useContext(GridColumnsContext);
 
-  const resizingCol = useRef<[string, HTMLElement]>();
+  const resizingCol = useRef<[string, HTMLElement, number]>();
 
   useEffect(() => {
     items?.forEach(hit => {
@@ -64,20 +64,22 @@ const HitTable = ({
     event.stopPropagation();
     event.preventDefault();
 
-    const [col, element] = resizingCol.current;
+    const [col, element, initialWidth] = resizingCol.current;
     const rect = element.getBoundingClientRect();
 
     document.querySelectorAll<HTMLElement>(`.col-${col.replaceAll('.', '-')}`).forEach(el => {
       el.style.maxWidth = rect.width + event.movementX + 'px';
       el.style.width = rect.width + event.movementX + 'px';
     });
+
+    resizingCol.current = [col, element, initialWidth + event.movementX];
   }, []);
 
   const onMouseUp = useCallback(() => {
-    const [col, element] = resizingCol.current;
+    const [col, element, width] = resizingCol.current;
 
     if (isReady) {
-      setColumnWidth(col, element.style.width);
+      setColumnWidth(col, width);
     }
 
     element.style.width = null;
@@ -97,7 +99,10 @@ const HitTable = ({
       event.stopPropagation();
       event.preventDefault();
 
-      resizingCol.current = [col, (event.target as HTMLElement).parentElement];
+      const element = (event.target as HTMLElement).parentElement;
+      const rect = element.getBoundingClientRect();
+
+      resizingCol.current = [col, element, rect.width];
 
       window.addEventListener('mousemove', onMouseMove);
       window.addEventListener('mouseup', onMouseUp);
