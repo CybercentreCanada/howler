@@ -2,7 +2,7 @@ import type { FC } from 'react';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { HelpOutline, Save } from '@mui/icons-material';
+import { HelpOutline, Save, Settings } from '@mui/icons-material';
 import {
   Alert,
   Checkbox,
@@ -32,6 +32,7 @@ import VSBox from 'components/elements/addons/layout/vsbox/VSBox';
 import VSBoxContent from 'components/elements/addons/layout/vsbox/VSBoxContent';
 import VSBoxHeader from 'components/elements/addons/layout/vsbox/VSBoxHeader';
 import SearchTotal from 'components/elements/addons/search/SearchTotal';
+import ChipPopper from 'components/elements/display/ChipPopper';
 import AddColumnModal from 'components/elements/hit/grid/AddColumnModal';
 import HitTable from 'components/elements/hit/grid/HitTable';
 import HitCard from 'components/elements/hit/HitCard';
@@ -297,34 +298,42 @@ const ViewComposer: FC = () => {
                       <HitSort />
                       <SearchSpan omitCustom />
                       <div style={{ flex: 1 }} />
-                    </Stack>
-                  </Stack>
-                  <Stack direction="column" spacing={1}>
-                    <Stack
-                      spacing={1}
-                      direction="row"
-                      alignItems="center"
-                      sx={{ flex: '0 !important', minWidth: '300px' }}
-                    >
-                      <Typography component="span">{t('view.settings.advance_on_triage')}</Typography>
-                      <Tooltip title={t('view.settings.advance_on_triage.description')}>
-                        <HelpOutline sx={{ fontSize: '16px' }} />
-                      </Tooltip>
-                      <FlexOne />
-                      <Checkbox
-                        size="small"
-                        checked={advanceOnTriage}
-                        onChange={(_event, checked) => setAdvanceOnTriage(checked)}
-                      />
-                    </Stack>
-                    <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
-                      <Typography component="span">{t('view.settings.layout')}</Typography>
-                      <LayoutToggle
-                        displayType={displayType}
-                        setDisplayType={setDisplayType}
-                        size="small"
-                        allowNullValue
-                      />
+                      <ChipPopper
+                        label={<Typography variant="body2">{t('view.settings')}</Typography>}
+                        deleteIcon={<Settings />}
+                        toggleOnDelete
+                        slotProps={{ chip: { size: 'small' } }}
+                        placement="bottom-end"
+                      >
+                        <Stack direction="column" spacing={1}>
+                          <Stack
+                            spacing={1}
+                            direction="row"
+                            alignItems="center"
+                            sx={{ flex: '0 !important', minWidth: '300px' }}
+                          >
+                            <Typography component="span">{t('view.settings.advance_on_triage')}</Typography>
+                            <Tooltip title={t('view.settings.advance_on_triage.description')}>
+                              <HelpOutline sx={{ fontSize: '16px' }} />
+                            </Tooltip>
+                            <FlexOne />
+                            <Checkbox
+                              size="small"
+                              checked={advanceOnTriage}
+                              onChange={(_event, checked) => setAdvanceOnTriage(checked)}
+                            />
+                          </Stack>
+                          <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+                            <Typography component="span">{t('view.settings.layout')}</Typography>
+                            <LayoutToggle
+                              displayType={displayType}
+                              setDisplayType={setDisplayType}
+                              size="small"
+                              allowNullValue
+                            />
+                          </Stack>
+                        </Stack>
+                      </ChipPopper>
                     </Stack>
                   </Stack>
                 </Stack>
