@@ -418,7 +418,23 @@ def get_user_groups(**kwargs):
 @user_api.route("/search", methods=["GET"])
 @api_login(required_priv=["R"])
 def search_users(**kwargs):
-    """Search for valid users in the system that match the query."""
+    """Search for valid users in the system that match the query.
+
+    Variables:
+    None
+
+    Arguments:
+    query => The search query to use to find users
+
+    Result Example:
+    [
+        {
+            "name": "Test user",        # Name of the user
+            "is_active": true,          # Is the user active?
+            "classification": "",            # Max classification for user
+            "uname": "usertest",        # Username
+
+    """
     query = request.args.get("query", "")
 
     search_results = datastore().user.search(query=f"*{query}*", rows=20)

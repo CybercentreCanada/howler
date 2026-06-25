@@ -409,13 +409,17 @@ def execute_operations(**kwargs) -> Response:
 def give_privilege(id: str, user: User, **kwargs):
     """give permission from one user to an other.
 
-    The json object need to send "privilege", "user_id" as a key.
-    privilege : The value need to be one of ["administrator", "member", "owner"]
-    user_id : the value need to be the user to add or remove from the permission
-    is_adding: The value neeed to be a boolean representing if we add or remove a user.
+        The json object need to send "privilege", "user_id" as a key.
+        privilege : The value need to be one of ["administrator", "member", "owner"]
+        user_id : the value need to be the user to add or remove from the permission
+        is_adding: The value neeed to be a boolean representing if we add or remove a user.
 
     Variables:
     action_id => The id of the action to give administrative privilege of
+
+    Arguments:
+        id : The id of the action to give administrative privilege of
+        user : the user requesting the privilege change (injected by the api_login decorator)
 
     Optional Arguments:
         None
@@ -476,12 +480,7 @@ def revoke_privilege(id: str, user: User, **kwargs):
     """Give permission from one user to another.
 
     Variables:
-    action_id => The id of the action to remove administrative privilege of
-
-     The json object need to send "privilege", "user_id" as a key.
-    privilege : The value need to be one of ["administrator", "member", "owner"]
-    user_id : the value need to be the user to add or remove from the permission
-    is_adding: The value neeed to be a boolean representing if we add or remove a user.
+        id => The unique ID of the action embedded in the URL path
 
     Arguments:
         id: The id of the action to modify permissions for
@@ -553,12 +552,7 @@ def get_permission_option(id: str, user: User):
     """Get the permission options for a given action
 
     Variables:
-    action_id => The id of the action to remove administrative privilege of
-
-     The json object need to send "privilege", "user_id" as a key.
-    privilege : The value need to be one of ["administrator", "member", "owner"]
-    user_id : the value need to be the user to add or remove from the permission
-    is_adding: The value neeed to be a boolean representing if we add or remove a user.
+    id => The unique ID of the action embedded in the URL path
 
     Arguments:
         id: The id of the Action to get permissions for
@@ -592,21 +586,30 @@ def get_action_permission(id: str, user: User, **kwargs):
     """Get details for a specific action
 
     Variables:
-    action_id => The action_id of the action to fetch
+        id => The unique ID of the action embedded in the URL path
+    Arguments:
+        id: The id of the Action to get permissions for
+        user: The user making the request (injected by the api_login decorator)
 
+    Optional Arguments:
+        None
     Result Example:
-    {
-        ...action     # The requested action data
-    }
+         {
+            "administrator": [ # Each entry corresponds to a given privilege level
+                "user1", "user2" # A list of users that have this privilege
+            ],
+        }
+    returns a dict with the possible permissions for the action and the users that have them.
     """
     storage = datastore()
 
-    action = storage.action.get_if_exists(id, as_obj=False)
-    if not action:
+    action: Action = storage.action.get_if_exists(id, as_obj=False)  # type: ignore
+    if not action or not isinstance(action, Action):
         return not_found(err="This action does not exist")
 
     if action.get("type") == "personal" and user.uname != action.get("owner"):
         return forbidden(err="You cannot access a personal action that is not owned by you.")
+    return ok(action.get_privilege_mapping())
 
 
 # endregion

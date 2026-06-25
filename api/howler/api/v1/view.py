@@ -482,7 +482,27 @@ def get_permission_option(view_id: str, user: User):
 @view_api.route("/<view_id>/permission_options", methods=["GET"])
 @api_login(required_priv=["R"])
 def get_view_permission_options(view_id: str, user: User, **kwargs):
-    """Get privilege/permission mapping for a given view"""
+    """Get privilege/permission mapping for a given view
+
+    Variables:
+        view_id => The id of the view to get permissions for
+    Arguments:
+        view_id: The id of the view to get permissions for
+        user: The user making the request (injected by the api_login decorator)
+    Optional Arguments:
+        None
+    Result Example:
+        {
+            "administrator": [ # Each entry corresponds to a given privilege level
+                "user1", "user2" # A list of users that have this privilege
+            ],
+            "member": [
+                "user3"],
+            "owner": "user4"
+        }
+    returns a dict with the possible permissions for the view and the users that have them.
+
+    """
     ds = datastore()
 
     view: View = ds.view.get(view_id)

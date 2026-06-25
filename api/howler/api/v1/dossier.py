@@ -318,9 +318,21 @@ def revoke_privilege(id: str, user: User, **kwargs):
 def get_dossier_permission_options(id: str, user: User):
     """Get the privilege/permission mapping for a given dossier
 
+    Variables:
+        id: The id of the dossier to get permissions for
+
     Arguments:
         id: The id of the dossier to get permissions for
         user: The user making the request (injected by the api_login decorator)
+
+    Result Example:
+        {
+            "administrator": [ # Each entry corresponds to a given privilege level
+                "user1", "user2" # A list of users that have this privilege ],
+            "member": [ # Each entry corresponds to a given privilege level]
+            "owner": "user4"
+        }
+    returns a dict with the possible permissions for the dossier and the users that have them.
     """
     ds = datastore()
     dossier: Dossier = ds.dossier.get(id)
