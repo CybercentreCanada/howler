@@ -15,7 +15,7 @@ from howler.services import correlation_service
 
 def _make_rule(
     enabled: bool = True,
-    timeframe: str | None = None,
+    timeframe: int | None = None,
     query: str = "*:*",
     destination: str = "related",
     indexes: list[str] | None = None,
@@ -64,12 +64,14 @@ class TestGetActiveRules:
 
     @patch("howler.services.correlation_service.datastore")
     def test_excludes_expired_rules(self, mock_ds_fn):
-        """Rules with a timeframe in the past are excluded."""
+        """Rules whose created_at + timeframe is in the past are excluded."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        past = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
-        case = _make_case_obj("case-1", [_make_rule(timeframe=past)])
+        rule = _make_rule(timeframe=1)
+        rule.created_at = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
+
+        case = _make_case_obj("case-1", [rule])
         mock_ds.case.stream_search.return_value = iter([case])
 
         result = correlation_service.get_active_rules()
@@ -78,15 +80,16 @@ class TestGetActiveRules:
 
     @patch("howler.services.correlation_service.datastore")
     def test_includes_valid_rules(self, mock_ds_fn):
-        """Enabled rules with a future (or no) timeframe are returned."""
+        """Enabled rules with an unexpired (or no) timeframe are returned."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        future = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
         rules = [
-            _make_rule(timeframe=future, query="event.kind:alert"),
+            _make_rule(timeframe=30, query="event.kind:alert"),
             _make_rule(timeframe=None, query="*:*"),
         ]
+        rules[0].created_at = datetime.now(timezone.utc).isoformat()
+
         case = _make_case_obj("case-1", rules)
         mock_ds.case.stream_search.return_value = iter([case])
 
@@ -113,7 +116,7 @@ class TestGetActiveRules:
 
     @patch("howler.services.correlation_service.datastore")
     def test_excludes_rules_with_invalid_timeframe(self, mock_ds_fn):
-        """Rules with an unparseable timeframe are skipped with a warning."""
+        """Rules with unparseable timeframe are skipped and do not crash."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -130,6 +133,69 @@ class TestGetActiveRules:
         result = correlation_service.get_active_rules()
 
         assert len(result) == 0
+
+    @patch("howler.services.correlation_service.datastore")
+    def test_excludes_rules_with_non_positive_timeframe(self, mock_ds_fn):
+        """Rules with timeframe <= 0 are treated as invalid and skipped."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        rule_zero = MagicMock()
+        rule_zero.enabled = True
+        rule_zero.timeframe = 0
+        rule_zero.rule_id = "rule-zero"
+        rule_zero.expire_after_resolved = False
+        rule_zero.created_at = datetime.now(timezone.utc).isoformat()
+
+        rule_negative = MagicMock()
+        rule_negative.enabled = True
+        rule_negative.timeframe = -5
+        rule_negative.rule_id = "rule-negative"
+        rule_negative.expire_after_resolved = False
+        rule_negative.created_at = datetime.now(timezone.utc).isoformat()
+
+        case = _make_case_obj("case-1", [rule_zero, rule_negative])
+        mock_ds.case.stream_search.return_value = iter([case])
+
+        result = correlation_service.get_active_rules()
+
+        assert len(result) == 0
+
+    @patch("howler.services.correlation_service.datastore")
+    def test_handles_naive_created_at_as_utc(self, mock_ds_fn):
+        """Naive created_at timestamps are normalized to UTC and processed."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        rule = _make_rule(timeframe=1)
+        rule.created_at = (datetime.now() - timedelta(hours=1)).isoformat()
+
+        case = _make_case_obj("case-1", [rule])
+        mock_ds.case.stream_search.return_value = iter([case])
+
+        result = correlation_service.get_active_rules()
+
+        assert len(result) == 1
+        assert result[0][0] == "case-1"
+
+    @patch("howler.services.correlation_service.case_service")
+    @patch("howler.services.correlation_service.datastore")
+    def test_handles_naive_last_resolved_as_utc(self, mock_ds_fn, mock_case_service):
+        """Naive resolution timestamps are normalized to UTC and processed."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        rule = _make_rule(timeframe=1)
+        rule.expire_after_resolved = True
+
+        case = _make_case_obj("case-1", [rule])
+        mock_ds.case.stream_search.return_value = iter([case])
+        mock_case_service.get_last_resolved_time.return_value = datetime.now() - timedelta(hours=1)
+
+        result = correlation_service.get_active_rules()
+
+        assert len(result) == 1
+        assert result[0][0] == "case-1"
 
 
 # ---------------------------------------------------------------------------

@@ -107,6 +107,13 @@ class CaseRule(odm.Model):
         description="Indexes to run this rule against (hit, observable, or both).",
     )
 
+    def __init__(self, data: dict = None, *args, **kwargs):
+        timeframe = data.get("timeframe") if data else None
+        if timeframe is not None and (isinstance(timeframe, bool) or not isinstance(timeframe, int) or timeframe <= 0):
+            raise HowlerValueError("Rule timeframe must be a positive integer or None")
+
+        super().__init__(data, *args, **kwargs)
+
 
 @odm.model(index=True, store=True, description="Task associated with a case item path.")
 class CaseTask(odm.Model):
