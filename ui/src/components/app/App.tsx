@@ -30,8 +30,8 @@ import AnalyticDetails from 'components/routes/analytics/AnalyticDetails';
 import AnalyticSearch from 'components/routes/analytics/AnalyticSearch';
 import CaseViewer from 'components/routes/cases/CaseViewer';
 import Cases from 'components/routes/cases/Cases';
-import CaseAssets from 'components/routes/cases/detail/CaseAssets';
 import CaseDashboard from 'components/routes/cases/detail/CaseDashboard';
+import CaseObservables from 'components/routes/cases/detail/CaseObservables';
 import CaseRules from 'components/routes/cases/detail/CaseRules';
 import CaseTimeline from 'components/routes/cases/detail/CaseTimeline';
 import ItemPage from 'components/routes/cases/detail/ItemPage';
@@ -292,8 +292,8 @@ const createRouter = () =>
               element: <CaseDashboard />
             },
             {
-              path: 'assets',
-              element: <CaseAssets />
+              path: 'observables',
+              element: <CaseObservables />
             },
             {
               path: 'timeline',
