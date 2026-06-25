@@ -31,11 +31,15 @@ class Facet(object):
         field   : field to extract the facets from
 
         Optional:
-        query    : Initial query to filter the data (default: 'id:*')
+        query    : Initial query to filter the data (default: 'howler.id:*')
         filters  : Additional lucene queries used to filter the data (list of strings)
         mincount : Minimum amount of hits for the value to be returned
         rows     : The number of different facets to return
 
         Returns all results.
         """
+        # Default the query to include all hits if none provided
+        if query is None:
+            query = "howler.id:*"
+
         return self._do_facet("hit", field, query=query, mincount=mincount, filters=filters, rows=rows)

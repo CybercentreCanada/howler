@@ -98,7 +98,7 @@ def get_dossier(
     return datastore().dossier.get_if_exists(key=id, as_obj=as_odm, version=version)
 
 
-def create_dossier(dossier_data: Optional[Any], username: str) -> Dossier:  # noqa: C901
+def create_dossier(dossier_data: Optional[Any], username: str, refresh: str | None = None) -> Dossier:  # noqa: C901
     """Create a new dossier in the datastore.
 
     This function validates the input data, ensures the query is valid by testing it
@@ -107,6 +107,7 @@ def create_dossier(dossier_data: Optional[Any], username: str) -> Dossier:  # no
     Args:
         dossier_data: Dictionary containing dossier configuration data
         username: Username of the user creating the dossier
+        refresh: Whether to refresh the datastore before returning
 
     Returns:
         Newly created Dossier object
@@ -152,10 +153,7 @@ def create_dossier(dossier_data: Optional[Any], username: str) -> Dossier:  # no
         dossier.owner = username
 
         # Save the dossier to the datastore
-        storage.dossier.save(dossier.dossier_id, dossier)
-
-        # Commit the transaction to persist changes
-        storage.dossier.commit()
+        storage.dossier.save(dossier.dossier_id, dossier, refresh=refresh)
 
         return dossier
     except SearchException:
@@ -166,7 +164,7 @@ def create_dossier(dossier_data: Optional[Any], username: str) -> Dossier:  # no
         raise InvalidDataException(str(e))
 
 
-def update_dossier(dossier_id: str, dossier_data: dict[str, Any], user: User) -> Dossier:  # noqa: C901
+def update_dossier(dossier_id: str, dossier_data: dict[str, Any], user: User, refresh: str | None = None) -> Dossier:  # noqa: C901
     """Update one or more properties of a dossier in the database.
 
     This function enforces access control rules and validates data before updating.
@@ -177,6 +175,7 @@ def update_dossier(dossier_id: str, dossier_data: dict[str, Any], user: User) ->
         dossier_id: Unique identifier of the dossier to update
         dossier_data: Dictionary containing fields to update
         user: User object representing the requesting user
+        refresh: Whether to refresh the datastore before returning
 
     Returns:
         Updated Dossier object
@@ -230,10 +229,7 @@ def update_dossier(dossier_id: str, dossier_data: dict[str, Any], user: User) ->
         # Merge the new data with existing dossier data
         new_data = Dossier(cast(dict, merge({}, existing_dossier.as_primitives(), dossier_data)))
 
-        storage.dossier.save(dossier_id, new_data)
-
-        # Commit the transaction to persist changes
-        storage.dossier.commit()
+        storage.dossier.save(dossier_id, new_data, refresh=refresh)
 
         return new_data
     except SearchException:

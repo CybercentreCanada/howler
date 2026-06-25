@@ -59,6 +59,9 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
             {'id': None, 'error': "Error message"},
         ]
     }
+
+    .. deprecated::
+        Use POST /api/v1/hit/ directly with pre-mapped hit data instead.
     """
     data = request.json
     if not isinstance(data, dict):
@@ -74,7 +77,10 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
 
     if not isinstance(hits, list):
         return bad_request(err="Invalid: 'hits' field is missing or invalid.")
-    warnings = []
+    warnings = [
+        "This endpoint is deprecated and will be removed in a future version. "
+        "Use POST /api/v1/hit/ directly with pre-mapped hit data instead."
+    ]
     # Validate field_map targets
     hit_fields = Hit.flat_fields()
     for targets in field_map.values():
@@ -157,27 +163,48 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
             logger.warning(e)
 
             out.append({"id": None, "error": str(e)})
+
+    # Deduplicate by hash: skip hits whose hash already exists in the datastore
+    if odms:
+        hashes = [odm.howler.hash for odm in odms]
+        existing_hashes: dict[str, int] = datastore().hit.facet(
+            "howler.hash",
+            query=f"howler.hash:({' OR '.join(hashes)})",
+            rows=len(hashes),
+        )
+
+        deduplicated_odms = []
+        for odm in odms:
+            if odm.howler.hash in existing_hashes:
+                logger.warning("Hit with hash %s already exists in the DB, skipping", odm.howler.hash)
+                warnings.append(f"Hit with hash {odm.howler.hash} already exists in the DB and was skipped.")
+                out[:] = [entry for entry in out if entry["id"] != odm.howler.id]
+            else:
+                deduplicated_odms.append(odm)
+
+        odms = deduplicated_odms
+
     # If there are any errors...
     if any([obj["error"] for obj in out]):
         return bad_request(out, warnings=warnings, err="No valid hits were provided")
-    else:
-        for odm in odms:
-            if bundle_hit is not None:
-                bundle_hit.howler.hits.append(odm.howler.id)
-                bundle_hit.howler.bundle_size += 1
-                odm.howler.bundles.append(bundle_hit.howler.id)
 
-            hit_service.create_hit(odm.howler.id, odm, user=user.uname)
+    for odm in odms:
+        if bundle_hit is not None:
+            bundle_hit.howler.hits.append(odm.howler.id)
+            bundle_hit.howler.bundle_size += 1
+            odm.howler.bundles.append(bundle_hit.howler.id)
 
-            analytic_service.save_from_hit(odm, user)
+        hit_service.create_hit(odm.howler.id, odm, user=user.uname)
 
-        if bundle_hit:
-            hit_service.create_hit(bundle_hit.howler.id, bundle_hit, user=user.uname)
+    analytic_service.save_from_hits(odms, user)
 
-            analytic_service.save_from_hit(bundle_hit, user)
+    if bundle_hit:
+        hit_service.create_hit(bundle_hit.howler.id, bundle_hit, user=user.uname)
 
-        datastore().hit.commit()
+        analytic_service.save_from_hits(bundle_hit, user)
 
-        action_service.enqueue_action_execution([entry["id"] for entry in out], trigger="create", user=user)
+    datastore().hit.commit()
 
-        return created(out, warnings=warnings)
+    action_service.enqueue_action_execution([entry["id"] for entry in out], trigger="create", user=user)
+
+    return created(out, warnings=warnings)

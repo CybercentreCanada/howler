@@ -73,7 +73,7 @@ class Hash(Generic[T]):
     def __init__(
         self,
         name: str,
-        host: str | Redis[Any] | RedisCluster[Any] | None = None,
+        host: str | Redis | RedisCluster | None = None,
         port: Optional[int] = None,
     ):
         self.c: Any = get_client(host, port, False)

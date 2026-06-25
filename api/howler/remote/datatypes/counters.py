@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 
 from redis.exceptions import ConnectionError
 
@@ -8,7 +8,7 @@ from howler.remote.datatypes.hash import Hash
 
 class Counters(object):
     def __init__(self, prefix="counter", host=None, port=None, track_counters=False):
-        self.c = get_client(host, port, False)
+        self.c: Any = get_client(host, port, False)
         self.prefix = prefix
         if track_counters:
             self.tracker: Optional[Hash] = Hash("c-tracker-%s" % prefix, host=host, port=port)

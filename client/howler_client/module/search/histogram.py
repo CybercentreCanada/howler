@@ -42,7 +42,7 @@ class Histogram(object):
         field   : field to create the histograms with (only work on date or number fields)
 
         Optional:
-        query    : Initial query to filter the data (default: 'id:*')
+        query    : Initial query to filter the data (default: 'howler.id:*')
         filters  : Additional lucene queries used to filter the data (list of strings)
         mincount : Minimum amount of hits for the value to be returned
         start    : Beginning of the histogram range (Default: now-1d or 0)

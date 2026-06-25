@@ -1,6 +1,6 @@
 from typing import Any
 
-import redis
+from redis.exceptions import ResponseError
 
 from howler.remote.datatypes import get_client, retry_call
 
@@ -35,7 +35,7 @@ class UserQuotaTracker(object):
     def begin(self, user, max_quota):
         try:
             return retry_call(self.bs, args=[self._queue_name(user), max_quota, self.timeout]) == 1
-        except redis.exceptions.ResponseError as er:
+        except ResponseError as er:
             # TODO: This is a failsafe for upgrade purposes could be removed in a future version
             if "WRONGTYPE" in str(er):
                 retry_call(self.c.delete, self._queue_name(user))
@@ -47,7 +47,7 @@ class UserQuotaTracker(object):
         """When only one item is requested, blocking is is possible."""
         try:
             retry_call(self.c.zpopmin, self._queue_name(user))
-        except redis.exceptions.ResponseError as er:
+        except ResponseError as er:
             # TODO: This is a failsafe for upgrade purposes could be removed in a future version
             if "WRONGTYPE" in str(er):
                 retry_call(self.c.delete, self._queue_name(user))

@@ -169,7 +169,7 @@ def _create_alert_hits(alerts: list[dict[str, Any]], tenant_id: str, alert_mappe
                     alert_hit_odm.event.id = alert_hit_odm.howler.id
                 logger.info("Creating individual alert hit %s with ID %s", i, alert_hit_odm.howler.id)
                 hit_service.create_hit(alert_hit_odm.howler.id, alert_hit_odm, user="system")
-                analytic_service.save_from_hit(alert_hit_odm, {"uname": "system"})
+                analytic_service.save_from_hits(alert_hit_odm, {"uname": "system"})
                 child_hit_ids.append(alert_hit_odm.howler.id)
                 logger.debug("Successfully created alert hit %s: %s", i, alert_hit_odm.howler.id)
             else:
@@ -238,7 +238,7 @@ def _create_new_incident(
 
         logger.info("Creating incident hit with ID %s", bundle_odm.howler.id)
         hit_service.create_hit(bundle_odm.howler.id, bundle_odm, user="system")
-        analytic_service.save_from_hit(bundle_odm, {"uname": "system"})
+        analytic_service.save_from_hits(bundle_odm, {"uname": "system"})
         if child_hit_ids:
             _link_child_hits_to_bundle(bundle_odm, child_hit_ids)
         datastore().hit.commit()

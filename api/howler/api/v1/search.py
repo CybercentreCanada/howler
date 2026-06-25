@@ -78,7 +78,6 @@ def search(index, **kwargs):
     sort                =>   How to sort the results (not available in deep paging)
     fl                  =>   List of fields to return
     timeout             =>   Maximum execution time (ms)
-    use_archive         =>   Allow access to the datastore achive (Default: False)
     track_total_hits    =>   Track the total number of query matches, instead of stopping at 10000 (Default: False)
     metadata            =>   A list of additional features to be added to the result alongside the raw results
 
@@ -118,17 +117,8 @@ def search(index, **kwargs):
         "track_total_hits",
     ]
     multi_fields = ["filters", "metadata"]
-    boolean_fields = ["use_archive"]
 
     params, req_data = generate_params(request, fields, multi_fields)
-
-    params.update(
-        {
-            k: str(req_data.get(k, "false")).lower() in ["true", ""]
-            for k in boolean_fields
-            if req_data.get(k, None) is not None
-        }
-    )
 
     if has_access_control(index):
         params.update({"access_control": user["access_control"]})
@@ -350,17 +340,8 @@ def sigma_search(index, **kwargs):
         "track_total_hits",
     ]
     multi_fields = ["filters"]
-    boolean_fields = ["use_archive"]
 
     params, req_data = generate_params(request, fields, multi_fields)
-
-    params.update(
-        {
-            k: str(req_data.get(k, "false")).lower() in ["true", ""]
-            for k in boolean_fields
-            if req_data.get(k, None) is not None
-        }
-    )
 
     if has_access_control(index):
         params.update({"access_control": user["access_control"]})
@@ -520,7 +501,6 @@ def count(index, **kwargs):
     Optional Arguments:
     filters             =>   List of additional filter queries limit the data
     timeout             =>   Maximum execution time (ms)
-    use_archive         =>   Allow access to the datastore achive (Default: False)
 
     Data Block:
     # Note that the data block is for POST requests only!
@@ -542,15 +522,6 @@ def count(index, **kwargs):
         return bad_request(err=f"Not a valid index to search in: {index}")
 
     params, req_data = generate_params(request, [], [])
-
-    boolean_fields = ["use_archive"]
-    params.update(
-        {
-            k: str(req_data.get(k, "false")).lower() in ["true", ""]
-            for k in boolean_fields
-            if req_data.get(k, None) is not None
-        }
-    )
 
     if has_access_control(index):
         params.update({"access_control": user["access_control"]})
@@ -744,7 +715,7 @@ def histogram(index, field, **kwargs):
     params: dict[str, Any] = {}
     if field_info is None:
         return bad_request(err=f"Field '{field}' is not a valid field in index: {index}")
-    elif field_info["type"] == "integer":
+    elif field_info["type"] in ("integer", "long"):
         params = {"start": 0, "end": 2000, "gap": 100}
     elif field_info["type"] == "date":
         storage = datastore()
@@ -808,7 +779,7 @@ def stats(index, int_field, **kwargs):
     if field_info is None:
         return bad_request(err=f"Field '{int_field}' is not a valid field in index: {index}")
 
-    if field_info["type"] not in ["integer", "float"]:
+    if field_info["type"] not in ["integer", "float", "long"]:
         return bad_request(err=f"Field '{int_field}' is not a numeric field.")
 
     fields = ["query"]

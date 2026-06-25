@@ -2,13 +2,19 @@
 now_as_iso - Returns a valid ISO-8601 string ending in Z
 reply_queue_name - Default, prefix, suffix, prefix+suffix, uniqueness across 50 calls
 decode - Valid dict/list/string JSON, invalid JSON returns None
-retry_call - Immediate success, retries on ConnectionError, retries on ConnectionResetError
-get_pool - Returns BlockingConnectionPool, caching by host/port, distinct pools for different hosts, SSL uses SSLConnection, SSL kwarg is stripped
+retry_call - Immediate success, retries on ConnectionError, ConnectionResetError, redis/builtin TimeoutError,
+             OSError, BusyLoadingError
+get_pool - Returns BlockingConnectionPool, caching by host/port, distinct pools for different hosts, SSL uses
+           SSLConnection, SSL kwarg is stripped, failover resilience kwargs applied
 get_client – Returns an existing Redis, StrictRedis, or RedisCluster instance unchanged
-get_client – private=True → direct StrictRedis, private=False → pool-backed, cluster mode → RedisCluster, None host/port falls back to configured nonpersistent
-get_client – auth/TLS -> Password forwarded as username/password, TLS with CA file sets ssl_ca_certs, TLS with CA dir sets ssl_ca_path, missing cert path raises FileNotFoundError
+get_client – private=True → direct StrictRedis, private=False → pool-backed, cluster mode → RedisCluster,
+             None host/port falls back to configured nonpersistent
+get_client – auth/TLS -> Password forwarded as username/password, TLS with CA file sets ssl_ca_certs,
+             TLS with CA dir sets ssl_ca_path, missing cert path raises FileNotFoundError
 
-A notable technique used: redis.StrictRedis and redis.RedisCluster are patched with real subclasses (not MagicMock) so the isinstance() guard inside get_client keeps working correctly, while still capturing constructor arguments for assertions."""
+A notable technique used: redis.StrictRedis and redis.RedisCluster are patched with real subclasses (not MagicMock)
+so the isinstance() guard inside get_client keeps working correctly, while still capturing constructor arguments for
+assertions."""
 
 import json
 from unittest.mock import MagicMock, patch
@@ -16,14 +22,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import redis
 
-from howler.remote.datatypes import (
-    decode,
-    get_client,
-    get_pool,
-    now_as_iso,
-    reply_queue_name,
-    retry_call,
-)
+from howler.remote.datatypes import decode, get_client, get_pool, now_as_iso, reply_queue_name, retry_call
 
 # ---------------------------------------------------------------------------
 # now_as_iso
@@ -127,6 +126,65 @@ def test_retry_call_retries_on_connection_reset():
     assert result == "ok"
 
 
+def test_retry_call_retries_on_redis_timeout():
+    """A managed Redis failover surfaces as redis.TimeoutError on reads."""
+    func = MagicMock(side_effect=[redis.TimeoutError("timed out"), "ok"])
+    with patch("time.sleep"):
+        result = retry_call(func)
+    assert result == "ok"
+
+
+def test_retry_call_retries_on_builtin_timeout():
+    func = MagicMock(side_effect=[TimeoutError(), "ok"])
+    with patch("time.sleep"):
+        result = retry_call(func)
+    assert result == "ok"
+
+
+def test_retry_call_retries_on_os_error():
+    """Connection-refused / DNS errors during failover are OSError subclasses."""
+    func = MagicMock(side_effect=[ConnectionRefusedError(), "ok"])
+    with patch("time.sleep"):
+        result = retry_call(func)
+    assert result == "ok"
+
+
+def test_retry_call_retries_on_busy_loading():
+    """A node reloading its dataset after a failover raises BusyLoadingError."""
+    func = MagicMock(side_effect=[redis.BusyLoadingError("loading"), "ok"])
+    with patch("time.sleep"):
+        result = retry_call(func)
+    assert result == "ok"
+
+
+def test_retry_call_gives_up_after_deadline():
+    """A sustained outage must re-raise once RETRY_DEADLINE is exceeded."""
+    func = MagicMock(side_effect=redis.ConnectionError("down"))
+    # The first failure starts the retry deadline. A subsequent failure after the
+    # deadline expires must re-raise.
+    with (
+        patch("howler.remote.datatypes.time.monotonic", side_effect=[0.0, 61.0]),
+        patch("howler.remote.datatypes.log.warning"),
+        patch("howler.remote.datatypes.log.exception"),
+        patch("time.sleep"),
+    ):
+        with pytest.raises(redis.ConnectionError):
+            retry_call(func)
+    assert func.call_count == 2
+
+
+def test_retry_call_deadline_starts_after_first_error():
+    """An error from a long blocking read must still get a reconnect attempt."""
+    func = MagicMock(side_effect=[redis.ConnectionError("stale blocking connection"), "ok"])
+    with (
+        patch("howler.remote.datatypes.time.monotonic", return_value=1000.0),
+        patch("time.sleep"),
+    ):
+        result = retry_call(func)
+    assert result == "ok"
+    assert func.call_count == 2
+
+
 # ---------------------------------------------------------------------------
 # get_pool
 # ---------------------------------------------------------------------------
@@ -171,6 +229,60 @@ def test_get_pool_ssl_strips_ssl_kwarg():
     assert pool is not None
 
 
+def test_get_client_applies_resilience_config():
+    """get_client must forward failover resilience kwargs to the connection."""
+    from howler.remote.datatypes import RESILIENCE_CONFIG
+
+    fake_strict_redis, call_log = _make_fake_strict_redis()
+    with patch("redis.StrictRedis", fake_strict_redis):
+        get_client("some-managed-redis", 6379, private=True)
+
+    kwargs = call_log[0]["kwargs"]
+    for key, value in RESILIENCE_CONFIG.items():
+        assert kwargs[key] == value
+
+
+def test_get_client_disables_socket_timeout():
+    """socket_timeout must be explicitly None: redis-py 8.0 defaults it to 5s, which
+    makes infinite blocking pops (BLPOP/BZPOPMIN with timeout=0) raise spurious
+    TimeoutErrors and stall the action-queue worker (redis-py #2807)."""
+    from howler.remote.datatypes import RESILIENCE_CONFIG
+
+    assert RESILIENCE_CONFIG["socket_timeout"] is None
+
+    fake_strict_redis, call_log = _make_fake_strict_redis()
+    with patch("redis.StrictRedis", fake_strict_redis):
+        get_client("some-managed-redis", 6379, private=True)
+
+    assert call_log[0]["kwargs"]["socket_timeout"] is None
+
+
+def test_get_client_pins_resp2_protocol():
+    """get_client must pin protocol=2 so the redis-py 8.0 RESP3 default does not
+    change wire behaviour unexpectedly."""
+    fake_strict_redis, call_log = _make_fake_strict_redis()
+    with patch("redis.StrictRedis", fake_strict_redis):
+        get_client("some-managed-redis", 6379, private=True)
+
+    assert call_log[0]["kwargs"]["protocol"] == 2
+
+
+def test_get_client_configures_retry():
+    """get_client must attach a modern Retry object and retry_on_error list."""
+    from redis.retry import Retry
+
+    fake_strict_redis, call_log = _make_fake_strict_redis()
+    with patch("redis.StrictRedis", fake_strict_redis):
+        get_client("some-managed-redis", 6379, private=True)
+
+    kwargs = call_log[0]["kwargs"]
+    assert isinstance(kwargs["retry"], Retry)
+    assert redis.ConnectionError in kwargs["retry_on_error"]
+    assert redis.TimeoutError in kwargs["retry_on_error"]
+    # The deprecated retry_on_timeout flag must no longer be forwarded.
+    assert "retry_on_timeout" not in kwargs
+
+
 # ---------------------------------------------------------------------------
 # get_client – helpers
 #
@@ -186,6 +298,7 @@ def _make_redis_server_mock(
     password=None,
     tls_enabled=False,
     tls_ca_cert=None,
+    tls_disable_check_hostname=False,
     is_cluster=False,
 ):
     m = MagicMock()
@@ -194,6 +307,7 @@ def _make_redis_server_mock(
     m.password = password
     m.tls_enabled = tls_enabled
     m.tls_ca_cert = tls_ca_cert
+    m.tls_disable_check_hostname = tls_disable_check_hostname
     m.is_cluster = is_cluster
     return m
 
@@ -250,10 +364,10 @@ def test_get_client_returns_existing_cluster_instance():
 
 def test_get_client_private_creates_strict_redis():
     """private=True must create a StrictRedis directly (no pool)."""
-    FakeStrictRedis, log = _make_fake_strict_redis()
+    fake_strict_redis, log = _make_fake_strict_redis()
 
     with (
-        patch("howler.remote.datatypes.redis.StrictRedis", new=FakeStrictRedis),
+        patch("howler.remote.datatypes.redis.StrictRedis", new=fake_strict_redis),
         patch("howler.remote.datatypes.config") as mock_config,
     ):
         mock_config.core.redis.nonpersistent = _make_redis_server_mock()
@@ -262,16 +376,19 @@ def test_get_client_private_creates_strict_redis():
         result = get_client("localhost", 6379, private=True)
 
     assert isinstance(result, redis.StrictRedis)
-    assert log[-1]["kwargs"] == {"host": "localhost", "port": 6379}
+    kw = log[-1]["kwargs"]
+    assert kw["host"] == "localhost"
+    assert kw["port"] == 6379
+    assert "connection_pool" not in kw
 
 
 def test_get_client_non_private_uses_pool():
     """private=False must create a StrictRedis backed by a connection pool."""
-    FakeStrictRedis, log = _make_fake_strict_redis()
+    fake_strict_redis, log = _make_fake_strict_redis()
     mock_pool = MagicMock()
 
     with (
-        patch("howler.remote.datatypes.redis.StrictRedis", new=FakeStrictRedis),
+        patch("howler.remote.datatypes.redis.StrictRedis", new=fake_strict_redis),
         patch("howler.remote.datatypes.get_pool", return_value=mock_pool) as mock_get_pool,
         patch("howler.remote.datatypes.config") as mock_config,
     ):
@@ -287,11 +404,11 @@ def test_get_client_non_private_uses_pool():
 
 def test_get_client_cluster_mode():
     """When is_cluster=True a RedisCluster must be returned."""
-    FakeRedisCluster, log = _make_fake_redis_cluster()
+    fake_redis_cluster, log = _make_fake_redis_cluster()
     host, port = "127.0.0.1", 6379
 
     with (
-        patch("howler.remote.datatypes.redis.RedisCluster", new=FakeRedisCluster),
+        patch("howler.remote.datatypes.redis.RedisCluster", new=fake_redis_cluster),
         patch("howler.remote.datatypes.config") as mock_config,
     ):
         mock_config.core.redis.nonpersistent = _make_redis_server_mock(host=host, port=port, is_cluster=True)
@@ -300,16 +417,18 @@ def test_get_client_cluster_mode():
         result = get_client(host, port, private=False)
 
     assert isinstance(result, redis.RedisCluster)
-    assert log[-1]["kwargs"] == {"host": host, "port": port}
+    kw = log[-1]["kwargs"]
+    assert kw["host"] == host
+    assert kw["port"] == port
 
 
 def test_get_client_defaults_to_nonpersistent_when_no_host_port():
     """Passing host=None/port=None must fall back to the configured nonpersistent host."""
-    FakeStrictRedis, log = _make_fake_strict_redis()
+    fake_strict_redis, log = _make_fake_strict_redis()
     mock_pool = MagicMock()
 
     with (
-        patch("howler.remote.datatypes.redis.StrictRedis", new=FakeStrictRedis),
+        patch("howler.remote.datatypes.redis.StrictRedis", new=fake_strict_redis),
         patch("howler.remote.datatypes.get_pool", return_value=mock_pool) as mock_get_pool,
         patch("howler.remote.datatypes.config") as mock_config,
     ):
@@ -329,10 +448,10 @@ def test_get_client_defaults_to_nonpersistent_when_no_host_port():
 
 def test_get_client_with_password():
     """Password must be forwarded as username/password kwargs."""
-    FakeStrictRedis, log = _make_fake_strict_redis()
+    fake_strict_redis, log = _make_fake_strict_redis()
 
     with (
-        patch("howler.remote.datatypes.redis.StrictRedis", new=FakeStrictRedis),
+        patch("howler.remote.datatypes.redis.StrictRedis", new=fake_strict_redis),
         patch("howler.remote.datatypes.config") as mock_config,
     ):
         mock_config.core.redis.nonpersistent = _make_redis_server_mock(password="secret")
@@ -347,12 +466,12 @@ def test_get_client_with_password():
 
 def test_get_client_tls_enabled_with_ca_file(tmp_path):
     """TLS + a CA cert *file* must set ssl=True and ssl_ca_certs."""
-    FakeStrictRedis, log = _make_fake_strict_redis()
+    fake_strict_redis, log = _make_fake_strict_redis()
     ca_cert = tmp_path / "ca.pem"
     ca_cert.write_text("CERT")
 
     with (
-        patch("howler.remote.datatypes.redis.StrictRedis", new=FakeStrictRedis),
+        patch("howler.remote.datatypes.redis.StrictRedis", new=fake_strict_redis),
         patch("howler.remote.datatypes.config") as mock_config,
     ):
         mock_config.core.redis.nonpersistent = _make_redis_server_mock(tls_enabled=True, tls_ca_cert=str(ca_cert))
@@ -369,10 +488,10 @@ def test_get_client_tls_enabled_with_ca_file(tmp_path):
 
 def test_get_client_tls_enabled_with_ca_dir(tmp_path):
     """TLS + a CA cert *directory* must set ssl_ca_path (not ssl_ca_certs)."""
-    FakeStrictRedis, log = _make_fake_strict_redis()
+    fake_strict_redis, log = _make_fake_strict_redis()
 
     with (
-        patch("howler.remote.datatypes.redis.StrictRedis", new=FakeStrictRedis),
+        patch("howler.remote.datatypes.redis.StrictRedis", new=fake_strict_redis),
         patch("howler.remote.datatypes.config") as mock_config,
     ):
         mock_config.core.redis.nonpersistent = _make_redis_server_mock(tls_enabled=True, tls_ca_cert=str(tmp_path))
@@ -383,6 +502,40 @@ def test_get_client_tls_enabled_with_ca_dir(tmp_path):
     kw = log[-1]["kwargs"]
     assert kw.get("ssl_ca_path") == str(tmp_path)
     assert "ssl_ca_certs" not in kw
+
+
+def test_get_client_tls_disable_check_hostname():
+    """tls_disable_check_hostname=True must set ssl_check_hostname=False."""
+    fake_strict_redis, log = _make_fake_strict_redis()
+
+    with (
+        patch("howler.remote.datatypes.redis.StrictRedis", new=fake_strict_redis),
+        patch("howler.remote.datatypes.config") as mock_config,
+    ):
+        mock_config.core.redis.nonpersistent = _make_redis_server_mock(
+            tls_enabled=True, tls_disable_check_hostname=True
+        )
+        mock_config.core.redis.persistent = _make_redis_server_mock(port=6380)
+
+        get_client("localhost", 6379, private=True)
+
+    assert log[-1]["kwargs"].get("ssl_check_hostname") is False
+
+
+def test_get_client_tls_check_hostname_enabled_by_default():
+    """When tls_disable_check_hostname is False, ssl_check_hostname must not be set."""
+    fake_strict_redis, log = _make_fake_strict_redis()
+
+    with (
+        patch("howler.remote.datatypes.redis.StrictRedis", new=fake_strict_redis),
+        patch("howler.remote.datatypes.config") as mock_config,
+    ):
+        mock_config.core.redis.nonpersistent = _make_redis_server_mock(tls_enabled=True)
+        mock_config.core.redis.persistent = _make_redis_server_mock(port=6380)
+
+        get_client("localhost", 6379, private=True)
+
+    assert "ssl_check_hostname" not in log[-1]["kwargs"]
 
 
 def test_get_client_tls_enabled_cert_not_found():
@@ -409,10 +562,10 @@ def test_get_client_tls_enabled_cert_not_found():
 def test_get_client_non_private_with_password():
     """private=False + password: credentials must be forwarded to get_pool and
     on to BlockingConnectionPool."""
-    FakeStrictRedis, log = _make_fake_strict_redis()
+    fake_strict_redis, log = _make_fake_strict_redis()
 
     with (
-        patch("howler.remote.datatypes.redis.StrictRedis", new=FakeStrictRedis),
+        patch("howler.remote.datatypes.redis.StrictRedis", new=fake_strict_redis),
         patch("howler.remote.datatypes.config") as mock_config,
     ):
         mock_config.core.redis.nonpersistent = _make_redis_server_mock(password="poolpass")
@@ -433,12 +586,12 @@ def test_get_client_non_private_with_password():
 def test_get_client_non_private_with_tls_ca_file(tmp_path):
     """private=False + TLS CA file: ssl kwargs must be forwarded to get_pool,
     which must create an SSLConnection-backed pool carrying ssl_ca_certs."""
-    FakeStrictRedis, log = _make_fake_strict_redis()
+    fake_strict_redis, log = _make_fake_strict_redis()
     ca_cert = tmp_path / "ca.pem"
     ca_cert.write_text("CERT")
 
     with (
-        patch("howler.remote.datatypes.redis.StrictRedis", new=FakeStrictRedis),
+        patch("howler.remote.datatypes.redis.StrictRedis", new=fake_strict_redis),
         patch("howler.remote.datatypes.config") as mock_config,
     ):
         mock_config.core.redis.nonpersistent = _make_redis_server_mock(tls_enabled=True, tls_ca_cert=str(ca_cert))
@@ -458,10 +611,10 @@ def test_get_client_non_private_with_tls_ca_file(tmp_path):
 def test_get_client_non_private_with_tls_ca_dir(tmp_path):
     """private=False + TLS CA directory: ssl_ca_path must be forwarded to
     get_pool and carried by the SSLConnection-backed pool."""
-    FakeStrictRedis, log = _make_fake_strict_redis()
+    fake_strict_redis, log = _make_fake_strict_redis()
 
     with (
-        patch("howler.remote.datatypes.redis.StrictRedis", new=FakeStrictRedis),
+        patch("howler.remote.datatypes.redis.StrictRedis", new=fake_strict_redis),
         patch("howler.remote.datatypes.config") as mock_config,
     ):
         mock_config.core.redis.nonpersistent = _make_redis_server_mock(tls_enabled=True, tls_ca_cert=str(tmp_path))
@@ -480,12 +633,12 @@ def test_get_client_non_private_with_tls_ca_dir(tmp_path):
 def test_get_client_non_private_with_password_and_tls(tmp_path):
     """private=False + password + TLS: all kwargs must arrive together in the
     pool's connection_kwargs."""
-    FakeStrictRedis, log = _make_fake_strict_redis()
+    fake_strict_redis, log = _make_fake_strict_redis()
     ca_cert = tmp_path / "ca.pem"
     ca_cert.write_text("CERT")
 
     with (
-        patch("howler.remote.datatypes.redis.StrictRedis", new=FakeStrictRedis),
+        patch("howler.remote.datatypes.redis.StrictRedis", new=fake_strict_redis),
         patch("howler.remote.datatypes.config") as mock_config,
     ):
         mock_config.core.redis.nonpersistent = _make_redis_server_mock(
@@ -514,11 +667,11 @@ def test_get_client_non_private_with_password_and_tls(tmp_path):
 def test_get_client_cluster_with_password():
     """When is_cluster=True and a password is configured, credentials must be
     forwarded to RedisCluster."""
-    FakeRedisCluster, log = _make_fake_redis_cluster()
+    fake_redis_cluster, log = _make_fake_redis_cluster()
     host, port = "127.0.0.1", 6379
 
     with (
-        patch("howler.remote.datatypes.redis.RedisCluster", new=FakeRedisCluster),
+        patch("howler.remote.datatypes.redis.RedisCluster", new=fake_redis_cluster),
         patch("howler.remote.datatypes.config") as mock_config,
     ):
         mock_config.core.redis.nonpersistent = _make_redis_server_mock(
@@ -539,13 +692,13 @@ def test_get_client_cluster_with_password():
 def test_get_client_cluster_with_tls_ca_file(tmp_path):
     """When is_cluster=True and TLS is enabled with a CA cert file, ssl kwargs
     must be forwarded to RedisCluster."""
-    FakeRedisCluster, log = _make_fake_redis_cluster()
+    fake_redis_cluster, log = _make_fake_redis_cluster()
     host, port = "127.0.0.1", 6379
     ca_cert = tmp_path / "ca.pem"
     ca_cert.write_text("CERT")
 
     with (
-        patch("howler.remote.datatypes.redis.RedisCluster", new=FakeRedisCluster),
+        patch("howler.remote.datatypes.redis.RedisCluster", new=fake_redis_cluster),
         patch("howler.remote.datatypes.config") as mock_config,
     ):
         mock_config.core.redis.nonpersistent = _make_redis_server_mock(
@@ -566,11 +719,11 @@ def test_get_client_cluster_with_tls_ca_file(tmp_path):
 def test_get_client_cluster_with_tls_ca_dir(tmp_path):
     """When is_cluster=True and TLS is enabled with a CA cert directory,
     ssl_ca_path must be forwarded to RedisCluster."""
-    FakeRedisCluster, log = _make_fake_redis_cluster()
+    fake_redis_cluster, log = _make_fake_redis_cluster()
     host, port = "127.0.0.1", 6379
 
     with (
-        patch("howler.remote.datatypes.redis.RedisCluster", new=FakeRedisCluster),
+        patch("howler.remote.datatypes.redis.RedisCluster", new=fake_redis_cluster),
         patch("howler.remote.datatypes.config") as mock_config,
     ):
         mock_config.core.redis.nonpersistent = _make_redis_server_mock(
@@ -591,13 +744,13 @@ def test_get_client_cluster_with_tls_ca_dir(tmp_path):
 def test_get_client_cluster_with_password_and_tls(tmp_path):
     """When is_cluster=True with both password and TLS configured, all kwargs
     must be forwarded together."""
-    FakeRedisCluster, log = _make_fake_redis_cluster()
+    fake_redis_cluster, log = _make_fake_redis_cluster()
     host, port = "127.0.0.1", 6379
     ca_cert = tmp_path / "ca.pem"
     ca_cert.write_text("CERT")
 
     with (
-        patch("howler.remote.datatypes.redis.RedisCluster", new=FakeRedisCluster),
+        patch("howler.remote.datatypes.redis.RedisCluster", new=fake_redis_cluster),
         patch("howler.remote.datatypes.config") as mock_config,
     ):
         mock_config.core.redis.nonpersistent = _make_redis_server_mock(

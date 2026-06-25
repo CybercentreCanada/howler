@@ -10,6 +10,7 @@ from howler.api import (
     not_found,
     ok,
 )
+from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -58,6 +59,7 @@ def get_overviews(**kwargs):
 @generate_swagger_docs()
 @overview_api.route("/", methods=["POST"])
 @api_login(required_priv=["R", "W"])
+@parse_parameters(refresh=parse_refresh)
 def create_overview(**kwargs):
     """Create a new overview
 
@@ -65,7 +67,8 @@ def create_overview(**kwargs):
     None
 
     Optional Arguments:
-    None
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     {
@@ -86,6 +89,8 @@ def create_overview(**kwargs):
     if "content" not in overview_data:
         return bad_request(err="You must specify content when creating an overview!")
 
+    refresh = kwargs.get("refresh")
+
     storage = datastore()
 
     try:
@@ -103,7 +108,7 @@ def create_overview(**kwargs):
         if storage.overview.search(query_str)["total"] > 0:
             return conflict(err="An overview covering this case already exists.")
 
-        storage.overview.save(overview.overview_id, overview)
+        storage.overview.save(overview.overview_id, overview, refresh=refresh)
         return created(overview)
     except HowlerException as e:
         return bad_request(err=str(e))
@@ -112,6 +117,7 @@ def create_overview(**kwargs):
 @generate_swagger_docs()
 @overview_api.route("/<id>", methods=["DELETE"])
 @api_login(required_priv=["W"])
+@parse_parameters(refresh=parse_refresh)
 def delete_overview(id: str, user: User, **kwargs):
     """Delete an overview
 
@@ -119,7 +125,8 @@ def delete_overview(id: str, user: User, **kwargs):
     id => The id of the overview to delete
 
     Optional Arguments:
-    None
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     None
@@ -129,6 +136,8 @@ def delete_overview(id: str, user: User, **kwargs):
         "success": true     # Did the deletion succeed?
     }
     """
+    refresh = kwargs.get("refresh")
+
     storage = datastore()
 
     if not storage.overview.exists(id):
@@ -139,7 +148,7 @@ def delete_overview(id: str, user: User, **kwargs):
     if existing_overview.owner != user.uname and "admin" not in user.type:
         return forbidden(err="You cannot delete an overview that is not owned by you.")
 
-    result = storage.overview.delete(id)
+    result = storage.overview.delete(id, refresh=refresh)
     if result:
         return no_content()
     else:
@@ -149,6 +158,7 @@ def delete_overview(id: str, user: User, **kwargs):
 @generate_swagger_docs()
 @overview_api.route("/<id>", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
+@parse_parameters(refresh=parse_refresh)
 def update_overview_content(id: str, user: User, **kwargs):
     """Update an overview's content
 
@@ -156,7 +166,8 @@ def update_overview_content(id: str, user: User, **kwargs):
     id => The id of the overview to modify
 
     Optional Arguments:
-    None
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     {
@@ -168,6 +179,8 @@ def update_overview_content(id: str, user: User, **kwargs):
         ...overview     # The updated overview data
     }
     """
+    refresh = kwargs.get("refresh")
+
     storage = datastore()
 
     if not storage.overview.exists(id):
@@ -183,7 +196,7 @@ def update_overview_content(id: str, user: User, **kwargs):
 
     existing_overview.content = content
 
-    storage.overview.save(existing_overview.overview_id, existing_overview)
+    storage.overview.save(existing_overview.overview_id, existing_overview, refresh=refresh)
 
     try:
         return ok(storage.overview.get_if_exists(existing_overview.overview_id, as_obj=False))

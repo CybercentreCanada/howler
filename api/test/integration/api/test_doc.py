@@ -31,9 +31,9 @@ def test_formatting(datastore_connection, login_session):
             path: str = api["path"]
             matches = re.findall(r"<(\w+)>", path)
 
-            assert re.search(
-                r"\n *Variables:", description
-            ), f"Endpoint {api['function']} is missing a Variables: portion of the docstring!"
+            assert re.search(r"\n *Variables:", description), (
+                f"Endpoint {api['function']} is missing a Variables: portion of the docstring!"
+            )
 
             if len(matches) > 0:
                 desc_parts = [
@@ -49,9 +49,9 @@ def test_formatting(datastore_connection, login_session):
                 if len(desc_parts) != len(matches):
                     warnings.warn(variables_err)
 
-            assert re.search(r"\n *Arguments:", description) or re.search(
-                r"\n *Optional Arguments:", description
-            ), f"Endpoint {api['function']} is missing an Arguments: portion of the docstring!"
+            assert re.search(r"\n *Arguments:", description) or re.search(r"\n *Optional Arguments:", description), (
+                f"Endpoint {api['function']} is missing an Arguments: portion of the docstring!"
+            )
 
             if (
                 "POST" not in api["methods"]
@@ -69,9 +69,9 @@ def test_formatting(datastore_connection, login_session):
                     "PUT methods!"
                 )
 
-            assert re.search(
-                r"\n *Result Example:", description
-            ), f"Endpoint {api['function']} doesn't have a Result Example: portion!"
+            assert re.search(r"\n *Result Example:", description), (
+                f"Endpoint {api['function']} doesn't have a Result Example: portion!"
+            )
 
             headers = [line.strip() for line in description.splitlines() if line.endswith(":")]
 
@@ -80,12 +80,17 @@ def test_formatting(datastore_connection, login_session):
                 "Variables, Arguments, Optional Arguments, Data Block, Result Example"
             )
 
-            assert headers[0] == "Variables:", header_error
-            assert headers[1].endswith("Arguments:"), header_error
-            assert headers[-1] == "Result Example:", header_error
+            # Filter out Sphinx directives (e.g. ".. deprecated::") from the ordered-header check
+            non_directive_headers = [h for h in headers if not h.startswith("..")]
 
-            if "Arguments:" in headers and "Optional Arguments:" in headers:
-                assert headers[1] == "Arguments:" and headers[2] == "Optional Arguments:", header_error
+            assert non_directive_headers[0] == "Variables:", header_error
+            assert non_directive_headers[1].endswith("Arguments:"), header_error
+            assert non_directive_headers[-1] == "Result Example:", header_error
 
-            if "Data Block:" in headers:
-                assert headers[-2] == "Data Block:", header_error
+            if "Arguments:" in non_directive_headers and "Optional Arguments:" in non_directive_headers:
+                assert non_directive_headers[1] == "Arguments:" and non_directive_headers[2] == "Optional Arguments:", (
+                    header_error
+                )
+
+            if "Data Block:" in non_directive_headers:
+                assert non_directive_headers[-2] == "Data Block:", header_error

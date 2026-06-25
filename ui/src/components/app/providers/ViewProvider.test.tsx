@@ -225,7 +225,11 @@ describe('ViewContext', () => {
       const result = await act(async () => hook.result.current('example_view_id', { query: DEFAULT_QUERY }));
 
       expect(hput).toHaveBeenCalledOnce();
-      expect(hput).toBeCalledWith('/api/v1/view/example_view_id', { query: DEFAULT_QUERY });
+
+      const [url, body, ...rest] = vi.mocked(hput).mock.calls[0];
+      expect(url).toBe('/api/v1/view/example_view_id');
+      expect(body).toEqual({ query: DEFAULT_QUERY });
+      expect(rest.every(v => v === undefined)).toBe(true);
 
       expect(result).toEqual(MOCK_RESPONSES['/api/v1/view/example_view_id']);
     });

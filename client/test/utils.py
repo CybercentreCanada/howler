@@ -8,6 +8,8 @@ def create_hit_and_get_id(client):
     map = {
         "file.sha256": ["file.hash.sha256", "howler.hash"],
         "file.name": ["file.name"],
+        "file.md5": ["file.hash.md5"],
+        "file.size": ["file.size"],
         "src_ip": ["source.ip", "related.ip"],
         "dest_ip": ["destination.ip", "related.ip"],
         "time.created": ["event.start"],
@@ -20,7 +22,9 @@ def create_hit_and_get_id(client):
             "dest_ip": "31.46.39.115",
             "file": {
                 "name": "cool_file.exe",
-                "sha256": "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+                "sha256": random_hash(),
+                "md5": hashlib.md5(b"cool_file.exe").hexdigest(),
+                "size": 12345,
             },
             "time": {
                 "created": datetime.datetime(2020, 5, 17).isoformat() + "Z",
