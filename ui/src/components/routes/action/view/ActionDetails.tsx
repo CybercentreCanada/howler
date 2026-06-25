@@ -47,7 +47,6 @@ const ActionDetails = () => {
   const [action, setAction] = useState<Action>();
   const [memberModalOpen, setMemberModalOpen] = useState(false);
 
-  // CLEANUP: Removed 'showModal' since we are using local state instead
   const { withConfirmDeleteModal } = useContext(ModalContext);
   const { showSuccessMessage } = useMySnackbar();
 
