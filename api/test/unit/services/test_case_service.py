@@ -10,8 +10,8 @@ from howler.services import case_service
 
 @pytest.fixture(autouse=True)
 def _suppress_event_emit():
-    """Prevent event_service.emit from reaching Redis during unit tests."""
-    with patch("howler.services.case_service.event_service"):
+    """Prevent comms_service.emit from reaching Redis during unit tests."""
+    with patch("howler.services.case_service.comms_service"):
         yield
 
 
@@ -578,10 +578,10 @@ class TestAppendCaseItemRouting:
         with pytest.raises(NotImplementedError):
             case_service.append_case_item("case-001", item=item)
 
-    @patch("howler.services.case_service.append_observable")
+    @patch("howler.services.case_service.append_event")
     @patch("howler.services.case_service.datastore")
-    def test_append_case_item_routes_observable(self, mock_ds_fn, mock_append_obs):
-        """append_case_item dispatches to append_observable for 'observable' type."""
+    def test_append_case_item_routes_event(self, mock_ds_fn, mock_append_event):
+        """append_case_item dispatches to append_event for 'event' type."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -589,12 +589,12 @@ class TestAppendCaseItemRouting:
         mock_case.items = []
         mock_ds.case.get.return_value = mock_case
 
-        mock_append_obs.return_value = mock_case
+        mock_append_event.return_value = mock_case
 
-        item = CaseItem({"type": "observable", "value": "obs-001", "path": "observables/obs-001"})
+        item = CaseItem({"type": "event", "value": "obs-001", "path": "events/obs-001"})
         result = case_service.append_case_item("case-001", item=item)
 
-        mock_append_obs.assert_called_once_with("case-001", item)
+        mock_append_event.assert_called_once_with("case-001", item)
         assert result is mock_case
 
     @patch("howler.services.case_service.append_case")
@@ -745,18 +745,18 @@ class TestAppendHit:
 
 
 # ---------------------------------------------------------------------------
-# append_observable()
+# append_event()
 # ---------------------------------------------------------------------------
 
 
-class TestAppendObservable:
-    """Tests for case_service.append_observable."""
+class TestAppendEvent:
+    """Tests for case_service.append_event."""
 
     @patch("howler.services.case_service._sync_case_metadata")
     @patch("howler.services.case_service._add_backreference")
     @patch("howler.services.case_service.datastore")
-    def test_append_observable_adds_item(self, mock_ds_fn, mock_backref, mock_sync):
-        """append_observable appends the item to the case and saves."""
+    def test_append_event_adds_item(self, mock_ds_fn, mock_backref, mock_sync):
+        """append_event appends the item to the case and saves."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -768,10 +768,10 @@ class TestAppendObservable:
 
         mock_obs = MagicMock()
         mock_obs.howler.id = "obs-001"
-        mock_ds.observable.get.return_value = mock_obs
+        mock_ds.event.get.return_value = mock_obs
 
-        item = CaseItem({"type": "observable", "value": "obs-001", "path": "related/"})
-        case_service.append_observable("case-001", item)
+        item = CaseItem({"type": "event", "value": "obs-001", "path": "related/"})
+        case_service.append_event("case-001", item)
 
         mock_ds.case.save.assert_called_once()
         assert len(mock_case.items) == 1
@@ -779,45 +779,45 @@ class TestAppendObservable:
         mock_sync.assert_called_once_with("case-001")
 
     @patch("howler.services.case_service.datastore")
-    def test_append_observable_missing_case_raises(self, mock_ds_fn):
-        """append_observable raises NotFoundException when the case does not exist."""
+    def test_append_event_missing_case_raises(self, mock_ds_fn):
+        """append_event raises NotFoundException when the case does not exist."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
         mock_ds.case.get.return_value = None
 
-        item = CaseItem({"type": "observable", "value": "obs-001", "path": "related/"})
+        item = CaseItem({"type": "event", "value": "obs-001", "path": "related/"})
         with pytest.raises(NotFoundException):
-            case_service.append_observable("nonexistent-case", item)
+            case_service.append_event("nonexistent-case", item)
 
     @patch("howler.services.case_service.datastore")
-    def test_append_observable_missing_observable_raises(self, mock_ds_fn):
-        """append_observable raises NotFoundException when the observable does not exist."""
+    def test_append_event_missing_event_raises(self, mock_ds_fn):
+        """append_event raises NotFoundException when the event does not exist."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
         mock_case = MagicMock()
         mock_case.items = []
         mock_ds.case.get.return_value = mock_case
-        mock_ds.observable.get.return_value = None
+        mock_ds.event.get.return_value = None
 
-        item = CaseItem({"type": "observable", "value": "nonexistent-obs", "path": "related/"})
+        item = CaseItem({"type": "event", "value": "nonexistent-obs", "path": "related/"})
         with pytest.raises(NotFoundException):
-            case_service.append_observable("case-001", item)
+            case_service.append_event("case-001", item)
 
     @patch("howler.services.case_service.datastore")
-    def test_append_observable_duplicate_raises(self, mock_ds_fn):
-        """append_observable raises InvalidDataException when the observable is already in the case."""
+    def test_append_event_duplicate_raises(self, mock_ds_fn):
+        """append_event raises InvalidDataException when the event is already in the case."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        existing = CaseItem({"type": "observable", "value": "obs-001", "path": "observables/obs-001"})
+        existing = CaseItem({"type": "event", "value": "obs-001", "path": "events/obs-001"})
         mock_case = MagicMock()
         mock_case.items = [existing]
         mock_ds.case.get.return_value = mock_case
 
-        item = CaseItem({"type": "observable", "value": "obs-001", "path": "related/"})
+        item = CaseItem({"type": "event", "value": "obs-001", "path": "related/"})
         with pytest.raises(InvalidDataException):
-            case_service.append_observable("case-001", item)
+            case_service.append_event("case-001", item)
 
 
 # ---------------------------------------------------------------------------
@@ -1102,12 +1102,12 @@ class TestRemoveCaseItem:
 
     @patch("howler.services.case_service._sync_case_metadata")
     @patch("howler.services.case_service.datastore")
-    def test_remove_observable_item_clears_backreference(self, mock_ds_fn, mock_sync):
-        """remove_case_item removes an observable item from the case."""
+    def test_remove_event_item_clears_backreference(self, mock_ds_fn, mock_sync):
+        """remove_case_item removes an event item from the case."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        obs_item = CaseItem({"type": "observable", "value": "obs-001", "path": "observables/obs-001"})
+        obs_item = CaseItem({"type": "event", "value": "obs-001", "path": "events/obs-001"})
 
         mock_case = MagicMock()
         mock_case.case_id = "case-001"
@@ -1117,7 +1117,7 @@ class TestRemoveCaseItem:
 
         mock_obs = MagicMock()
         mock_obs.howler.related = ["case-001"]
-        mock_ds.observable.get.return_value = mock_obs
+        mock_ds.event.get.return_value = mock_obs
 
         case_service.remove_case_items("case-001", ["obs-001"])
 
@@ -1345,12 +1345,12 @@ class TestSyncCaseMetadata:
         assert mock_case.indicators == []
 
     @patch("howler.services.case_service.datastore")
-    def test_sync_case_metadata_collects_from_observables(self, mock_ds_fn):
-        """_sync_case_metadata collects indicators from observable items via their related data."""
+    def test_sync_case_metadata_collects_from_events(self, mock_ds_fn):
+        """_sync_case_metadata collects indicators from event items via their related data."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        obs_item = CaseItem({"type": "observable", "value": "obs-001", "path": "observables/obs-001"})
+        obs_item = CaseItem({"type": "event", "value": "obs-001", "path": "events/obs-001"})
 
         mock_case = MagicMock()
         mock_case.items = [obs_item]
@@ -1359,7 +1359,7 @@ class TestSyncCaseMetadata:
         mock_related = Related({"ip": ["10.0.0.1"], "hosts": ["host-x"]})
         mock_obs = MagicMock()
         mock_obs.related = mock_related
-        mock_ds.observable.get.return_value = mock_obs
+        mock_ds.event.get.return_value = mock_obs
 
         case_service._sync_case_metadata("case-001")
 
@@ -1368,18 +1368,18 @@ class TestSyncCaseMetadata:
         assert "host-x" in mock_case.indicators
 
     @patch("howler.services.case_service.datastore")
-    def test_sync_case_metadata_skips_missing_observable(self, mock_ds_fn):
-        """_sync_case_metadata skips observable items whose backing object is None."""
+    def test_sync_case_metadata_skips_missing_event(self, mock_ds_fn):
+        """_sync_case_metadata skips event items whose backing object is None."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        obs_item = CaseItem({"type": "observable", "value": "obs-missing", "path": "observables/obs-missing"})
+        obs_item = CaseItem({"type": "event", "value": "obs-missing", "path": "events/obs-missing"})
 
         mock_case = MagicMock()
         mock_case.items = [obs_item]
         mock_ds.case.get.return_value = mock_case
 
-        mock_ds.observable.get.return_value = None
+        mock_ds.event.get.return_value = None
 
         case_service._sync_case_metadata("case-001")
 
@@ -1488,9 +1488,9 @@ class TestRemoveBackreference:
 
 
 class TestCaseEventEmission:
-    """Tests that case mutations emit 'cases' events via event_service."""
+    """Tests that case mutations emit 'cases' events via comms_service."""
 
-    @patch("howler.services.case_service.event_service")
+    @patch("howler.services.case_service.comms_service")
     @patch("howler.services.case_service.datastore")
     def test_update_case_emits_event(self, mock_ds_fn, mock_events):
         """update_case emits a 'cases' event containing the updated case primitives."""
@@ -1511,7 +1511,7 @@ class TestCaseEventEmission:
         assert "case" in args[0][1]
         assert args[0][1]["case"]["title"] == "New"
 
-    @patch("howler.services.case_service.event_service")
+    @patch("howler.services.case_service.comms_service")
     @patch("howler.services.case_service.datastore")
     def test_create_case_emits_event(self, mock_ds_fn, mock_events):
         """create_case emits a 'cases' event with the new case."""
@@ -1527,7 +1527,7 @@ class TestCaseEventEmission:
         assert args[0][1]["case"]["title"] == "New"
 
     @patch("howler.services.case_service._sync_case_metadata")
-    @patch("howler.services.case_service.event_service")
+    @patch("howler.services.case_service.comms_service")
     @patch("howler.services.case_service.datastore")
     def test_append_hit_emits_event(self, mock_ds_fn, mock_events, mock_sync):
         """append_hit emits a 'cases' event after adding a hit."""
@@ -1552,7 +1552,7 @@ class TestCaseEventEmission:
         assert "case" in args[0][1]
 
     @patch("howler.services.case_service._sync_case_metadata")
-    @patch("howler.services.case_service.event_service")
+    @patch("howler.services.case_service.comms_service")
     @patch("howler.services.case_service.datastore")
     def test_append_hit_skips_emit_when_refetch_returns_none(self, mock_ds_fn, mock_events, mock_sync):
         """append_hit does not emit when the re-fetch returns None."""
@@ -1583,7 +1583,7 @@ class TestCaseEventEmission:
 class TestAddCaseRule:
     """Tests for case_service.add_case_rule."""
 
-    @patch("howler.services.case_service.event_service")
+    @patch("howler.services.case_service.comms_service")
     @patch("howler.services.case_service.datastore")
     def test_add_rule_success(self, mock_ds_fn, mock_events):
         """add_case_rule appends a rule and saves the case."""
@@ -1610,7 +1610,7 @@ class TestAddCaseRule:
         assert result.rules[0].rule_id is not None
         mock_ds.case.save.assert_called_once()
 
-    @patch("howler.services.case_service.event_service")
+    @patch("howler.services.case_service.comms_service")
     @patch("howler.services.case_service.datastore")
     def test_add_rule_with_timeframe(self, mock_ds_fn, mock_events):
         """add_case_rule stores the timeframe when provided."""
@@ -1678,7 +1678,7 @@ class TestAddCaseRule:
         with pytest.raises(InvalidDataException, match="destination"):
             case_service.add_case_rule("case-001", {"query": "event.kind:alert"}, user)
 
-    @patch("howler.services.case_service.event_service")
+    @patch("howler.services.case_service.comms_service")
     @patch("howler.services.case_service.datastore")
     def test_add_rule_strips_client_rule_id(self, mock_ds_fn, mock_events):
         """add_case_rule ignores any 'id' provided by the client."""
@@ -1708,7 +1708,7 @@ class TestAddCaseRule:
 class TestRemoveCaseRule:
     """Tests for case_service.remove_case_rule."""
 
-    @patch("howler.services.case_service.event_service")
+    @patch("howler.services.case_service.comms_service")
     @patch("howler.services.case_service.datastore")
     def test_remove_rule_success(self, mock_ds_fn, mock_events):
         """remove_case_rule removes the rule and saves."""
@@ -1765,7 +1765,7 @@ class TestRemoveCaseRule:
 class TestUpdateCaseRule:
     """Tests for case_service.update_case_rule."""
 
-    @patch("howler.services.case_service.event_service")
+    @patch("howler.services.case_service.comms_service")
     @patch("howler.services.case_service.datastore")
     def test_update_rule_toggle_enabled(self, mock_ds_fn, mock_events):
         """update_case_rule can toggle the enabled field."""
@@ -1785,7 +1785,7 @@ class TestUpdateCaseRule:
         assert result.rules[0].enabled is False
         mock_ds.case.save.assert_called_once()
 
-    @patch("howler.services.case_service.event_service")
+    @patch("howler.services.case_service.comms_service")
     @patch("howler.services.case_service.datastore")
     def test_update_rule_change_query(self, mock_ds_fn, mock_events):
         """update_case_rule can update the query field."""

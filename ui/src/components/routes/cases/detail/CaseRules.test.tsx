@@ -181,13 +181,13 @@ describe('CaseRules', () => {
   it('renders index chips for rule indexes', () => {
     mockCase.current = createMockCase({
       case_id: 'case-001',
-      rules: [makeRule({ indexes: ['hit', 'observable'] })]
+      rules: [makeRule({ indexes: ['hit', 'event'] })]
     }) as Case;
 
     render(<CaseRules />);
 
     expect(screen.getByText('hit')).toBeInTheDocument();
-    expect(screen.getByText('observable')).toBeInTheDocument();
+    expect(screen.getByText('event')).toBeInTheDocument();
   });
 
   it('defaults to hit chip when indexes is undefined', () => {

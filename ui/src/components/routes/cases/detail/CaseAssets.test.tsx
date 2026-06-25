@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import type { Hit } from 'models/entities/generated/Hit';
 import { createElement, type FC, type PropsWithChildren } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { createMockHit, createMockObservable } from 'tests/utils';
+import { createMockEvent, createMockHit } from 'tests/utils';
 import { describe, expect, it, vi } from 'vitest';
 import { buildAssetEntries } from './CaseAssets';
 
@@ -34,7 +34,7 @@ describe('buildAssetEntries', () => {
   it('deduplicates the same asset value across multiple records', () => {
     const result = buildAssetEntries([
       createMockHit({ howler: { id: 'h1' }, related: { ip: ['1.2.3.4'] } }),
-      createMockObservable({ howler: { id: 'obs1' }, related: { ip: ['1.2.3.4'] } })
+      createMockEvent({ howler: { id: 'obs1' }, related: { ip: ['1.2.3.4'] } })
     ]);
     expect(result).toHaveLength(1);
     expect(result[0].seenIn).toEqual(['h1', 'obs1']);
@@ -104,7 +104,7 @@ const mockCase = {
   case_id: 'case-001',
   items: [
     { type: 'hit', value: 'hit-1' },
-    { type: 'observable', value: 'obs-1' }
+    { type: 'event', value: 'obs-1' }
   ]
 } as any;
 
@@ -198,7 +198,7 @@ describe('CaseAssets component', () => {
     expect(screen.getByText('alice')).toBeTruthy();
   });
 
-  it('renders nothing when the case has no hit/observable items', async () => {
+  it('renders nothing when the case has no hit/event items', async () => {
     const emptyCase = { case_id: 'case-002', items: [] } as any;
     render(<CaseAssets case={emptyCase} />, { wrapper: Wrapper });
     await screen.findByText('page.cases.assets.empty');

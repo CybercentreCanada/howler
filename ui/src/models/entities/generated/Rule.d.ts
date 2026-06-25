@@ -10,5 +10,5 @@ export interface Rule {
   created_at?: string;
   timeframe?: number;
   expire_after_resolved?: boolean;
-  indexes?: ('hit' | 'observable')[];
+  indexes?: ('hit' | 'event')[];
 }

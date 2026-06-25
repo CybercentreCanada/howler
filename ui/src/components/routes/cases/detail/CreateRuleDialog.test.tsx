@@ -319,8 +319,8 @@ describe('CreateRuleDialog', () => {
 
     // With 'hit' selected by default, its chip appears in the Autocomplete input area
     expect(screen.getAllByText('hit.search.index.hit').length).toBeGreaterThan(0);
-    // 'observable' is not selected, so its chip should not appear
-    expect(screen.queryByText('hit.search.index.observable')).not.toBeInTheDocument();
+    // 'event' is not selected, so its chip should not appear
+    expect(screen.queryByText('hit.search.index.event')).not.toBeInTheDocument();
   });
 
   it('includes both indexes when both are selected', async () => {
@@ -331,13 +331,13 @@ describe('CreateRuleDialog', () => {
 
     render(<CreateRuleDialog {...defaultProps} onSubmit={onSubmit} />);
 
-    // Open the index Autocomplete and select 'observable'
+    // Open the index Autocomplete and select 'event'
     await act(async () => {
       await user.click(screen.getByRole('combobox'));
     });
 
     await act(async () => {
-      await user.click(screen.getByRole('option', { name: 'hit.search.index.observable' }));
+      await user.click(screen.getByRole('option', { name: 'hit.search.index.event' }));
     });
 
     await act(async () => {
@@ -359,7 +359,7 @@ describe('CreateRuleDialog', () => {
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
         expect.objectContaining({
-          indexes: expect.arrayContaining(['hit', 'observable'])
+          indexes: expect.arrayContaining(['hit', 'event'])
         })
       );
     });

@@ -10,7 +10,7 @@ import type { Votes } from './Votes';
 /**
  * NOTE: This is an auto-generated file. Don't edit this manually.
  */
-export interface ObservableHowler {
+export interface EventHowler {
   analytic: string;
   assessment?: string;
   comment?: HowlerComment[];

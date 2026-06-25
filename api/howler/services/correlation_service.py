@@ -90,12 +90,12 @@ def process_batch(record_ids: list[str]) -> int:
     """Evaluate all active case rules against a batch of record IDs.
 
     For each rule, a single Elasticsearch query is run against the indexes
-    specified by the rule (hit, observable, or both) to find which of the
+    specified by the rule (hit, event, or both) to find which of the
     given records match. Matching records are appended to the owning case at
     the rule's (Mustache-rendered) destination path.
 
     Args:
-        record_ids: List of record IDs (hit or observable) to evaluate.
+        record_ids: List of record IDs (hit or event) to evaluate.
 
     Returns:
         The number of records successfully added to cases.

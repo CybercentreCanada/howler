@@ -51,7 +51,7 @@ const OPTIONS: editor.IStandaloneEditorConstructionOptions = {
   overviewRulerLanes: 0
 };
 
-const INDEX_OPTIONS = ['hit', 'observable'] as const;
+const INDEX_OPTIONS = ['hit', 'event'] as const;
 
 const Subtitle: FC<{ i18nKey: string }> = ({ i18nKey }) => {
   const { t } = useTranslation();
@@ -77,7 +77,7 @@ const CreateRuleDialog: FC<CreateRuleDialogProps> = ({ open, onClose, onSubmit }
 
   const [query, setQuery] = useState('');
   const [destination, setDestination] = useState('');
-  const [indexes, setIndexes] = useState<('hit' | 'observable')[]>(['hit']);
+  const [indexes, setIndexes] = useState<('hit' | 'event')[]>(['hit']);
   const [timeframeDays, setTimeframeDays] = useState<number>(DEFAULT_TIMEFRAME_DAYS);
   const [hasExpiry, setHasExpiry] = useState(true);
   const [expireAfterResolved, setExpireAfterResolved] = useState(false);

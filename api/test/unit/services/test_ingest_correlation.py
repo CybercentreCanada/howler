@@ -226,33 +226,31 @@ class TestIngestedAlertsCorrelation:
 
 
 # ---------------------------------------------------------------------------
-# Ingested observables are correlated
+# Ingested events are correlated
 # ---------------------------------------------------------------------------
 
 
-class TestIngestedObservablesCorrelation:
-    """Verify that observables ingested via the API reach the correlation service."""
+class TestIngestedEventsCorrelation:
+    """Verify that events ingested via the API reach the correlation service."""
 
     @patch("howler.services.correlation_service.search_service")
     @patch("howler.services.correlation_service.case_service")
     @patch("howler.services.correlation_service.get_active_rules")
     @patch("howler.services.correlation_service.datastore")
-    def test_observable_matches_rule_with_observable_index(
-        self, mock_ds_fn, mock_get_rules, mock_case_svc, mock_search_svc
-    ):
-        """An observable matching a rule targeting the observable index is added."""
+    def test_event_matches_rule_with_event_index(self, mock_ds_fn, mock_get_rules, mock_case_svc, mock_search_svc):
+        """An event matching a rule targeting the event index is added."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
         rule = _make_rule(
             query="event.kind:enrichment",
-            destination="observables",
-            indexes=["observable"],
+            destination="events",
+            indexes=["event"],
         )
         mock_get_rules.return_value = [("case-1", rule)]
 
         mock_search_svc.search.return_value = {
-            "items": [{"howler": {"id": "obs-1"}, "__index": "observable"}],
+            "items": [{"howler": {"id": "obs-1"}, "__index": "event"}],
             "total": 1,
             "offset": 0,
             "rows": 1,
@@ -263,24 +261,24 @@ class TestIngestedObservablesCorrelation:
         assert added == 1
         mock_case_svc.append_case_item.assert_called_once_with(
             "case-1",
-            item_type="observable",
+            item_type="event",
             item_value="obs-1",
-            item_path="observables",
+            item_path="events",
         )
 
     @patch("howler.services.correlation_service.search_service")
     @patch("howler.services.correlation_service.case_service")
     @patch("howler.services.correlation_service.get_active_rules")
     @patch("howler.services.correlation_service.datastore")
-    def test_observable_not_matched_by_hit_only_rule(self, mock_ds_fn, mock_get_rules, mock_case_svc, mock_search_svc):
-        """A rule targeting only the hit index does not match observables."""
+    def test_event_not_matched_by_hit_only_rule(self, mock_ds_fn, mock_get_rules, mock_case_svc, mock_search_svc):
+        """A rule targeting only the hit index does not match events."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
         rule = _make_rule(query="*:*", destination="hits", indexes=["hit"])
         mock_get_rules.return_value = [("case-1", rule)]
 
-        # Search only hits — no observables returned
+        # Search only hits — no events returned
         mock_search_svc.search.return_value = {
             "items": [],
             "total": 0,
@@ -296,18 +294,18 @@ class TestIngestedObservablesCorrelation:
     @patch("howler.services.correlation_service.case_service")
     @patch("howler.services.correlation_service.get_active_rules")
     @patch("howler.services.correlation_service.datastore")
-    def test_mixed_batch_alerts_and_observables(self, mock_ds_fn, mock_get_rules, mock_case_svc, mock_search_svc):
-        """A batch with both hit and observable IDs can match a rule searching both indexes."""
+    def test_mixed_batch_alerts_and_events(self, mock_ds_fn, mock_get_rules, mock_case_svc, mock_search_svc):
+        """A batch with both hit and event IDs can match a rule searching both indexes."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        rule = _make_rule(query="*:*", destination="all", indexes=["hit", "observable"])
+        rule = _make_rule(query="*:*", destination="all", indexes=["hit", "event"])
         mock_get_rules.return_value = [("case-1", rule)]
 
         mock_search_svc.search.return_value = {
             "items": [
                 {"howler": {"id": "hit-1"}, "__index": "hit"},
-                {"howler": {"id": "obs-1"}, "__index": "observable"},
+                {"howler": {"id": "obs-1"}, "__index": "event"},
             ],
             "total": 2,
             "offset": 0,
@@ -321,26 +319,26 @@ class TestIngestedObservablesCorrelation:
         calls = mock_case_svc.append_case_item.call_args_list
         types = {c.kwargs["item_type"] for c in calls}
         values = {c.kwargs["item_value"] for c in calls}
-        assert types == {"hit", "observable"}
+        assert types == {"hit", "event"}
         assert values == {"hit-1", "obs-1"}
 
     @patch("howler.services.correlation_service.search_service")
     @patch("howler.services.correlation_service.case_service")
     @patch("howler.services.correlation_service.get_active_rules")
     @patch("howler.services.correlation_service.datastore")
-    def test_observable_batch_multiple_rules(self, mock_ds_fn, mock_get_rules, mock_case_svc, mock_search_svc):
-        """Multiple observables matched by multiple rules across different cases."""
+    def test_event_batch_multiple_rules(self, mock_ds_fn, mock_get_rules, mock_case_svc, mock_search_svc):
+        """Multiple events matched by multiple rules across different cases."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        rule_a = _make_rule(query="*:*", destination="case-a-obs", indexes=["observable"])
-        rule_b = _make_rule(query="*:*", destination="case-b-obs", indexes=["observable"])
+        rule_a = _make_rule(query="*:*", destination="case-a-obs", indexes=["event"])
+        rule_b = _make_rule(query="*:*", destination="case-b-obs", indexes=["event"])
         mock_get_rules.return_value = [("case-a", rule_a), ("case-b", rule_b)]
 
         search_result = {
             "items": [
-                {"howler": {"id": "obs-1"}, "__index": "observable"},
-                {"howler": {"id": "obs-2"}, "__index": "observable"},
+                {"howler": {"id": "obs-1"}, "__index": "event"},
+                {"howler": {"id": "obs-2"}, "__index": "event"},
             ],
             "total": 2,
             "offset": 0,
@@ -350,7 +348,7 @@ class TestIngestedObservablesCorrelation:
 
         added = correlation_service.process_batch(["obs-1", "obs-2"])
 
-        # 2 observables × 2 rules = 4 appends
+        # 2 events × 2 rules = 4 appends
         assert added == 4
         assert mock_case_svc.append_case_item.call_count == 4
 

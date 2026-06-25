@@ -1,7 +1,7 @@
-"""Integration tests for the ingestion API (hits and observables).
+"""Integration tests for the ingestion API (hits and events).
 
 These tests exercise the full ingest path via the API server:
-POST /api/v2/ingest/hit, POST /api/v2/ingest/observable, DELETE, validate.
+POST /api/v2/ingest/hit, POST /api/v2/ingest/event, DELETE, validate.
 """
 
 import json
@@ -10,7 +10,7 @@ import time
 import pytest
 
 from howler.datastore.howler_store import HowlerDatastore
-from howler.odm.random_data import wipe_hits, wipe_observables
+from howler.odm.random_data import wipe_events, wipe_hits
 from test.conftest import APIError, get_api_data
 
 
@@ -19,14 +19,14 @@ def datastore(datastore_connection):
     ds: HowlerDatastore = datastore_connection
     try:
         wipe_hits(ds)
-        wipe_observables(ds)
+        wipe_events(ds)
         ds.hit.commit()
-        ds.observable.commit()
+        ds.event.commit()
         time.sleep(1)
         yield ds
     finally:
         wipe_hits(ds)
-        wipe_observables(ds)
+        wipe_events(ds)
 
 
 def _make_hit(analytic: str = "Test Analytic", kind: str = "alert") -> dict:
@@ -41,7 +41,7 @@ def _make_hit(analytic: str = "Test Analytic", kind: str = "alert") -> dict:
     }
 
 
-def _make_observable() -> dict:
+def _make_event() -> dict:
     return {
         "howler": {
             "data": ["raw telemetry entry"],
@@ -144,72 +144,72 @@ class TestIngestHit:
 
 
 # ---------------------------------------------------------------------------
-# POST /api/v2/ingest/observable — observable ingestion
+# POST /api/v2/ingest/event — event ingestion
 # ---------------------------------------------------------------------------
 
 
-class TestIngestObservable:
-    """Integration tests for observable ingestion."""
+class TestIngestEvent:
+    """Integration tests for event ingestion."""
 
-    def test_ingest_single_observable(self, datastore: HowlerDatastore, login_session):
-        """A single observable is created and retrievable from the datastore."""
+    def test_ingest_single_event(self, datastore: HowlerDatastore, login_session):
+        """A single event is created and retrievable from the datastore."""
         session, host = login_session
 
         resp = get_api_data(
             session,
-            f"{host}/api/v2/ingest/observable",
+            f"{host}/api/v2/ingest/event",
             method="POST",
-            data=json.dumps([_make_observable()]),
+            data=json.dumps([_make_event()]),
         )
 
         assert isinstance(resp, list)
         assert len(resp) == 1
 
         obs_id = resp[0]
-        datastore.observable.commit()
+        datastore.event.commit()
         time.sleep(1)
 
-        obs = datastore.observable.get(obs_id, as_obj=False)
+        obs = datastore.event.get(obs_id, as_obj=False)
         assert obs is not None
         assert obs["howler"]["id"] == obs_id
 
-    def test_ingest_multiple_observables(self, datastore: HowlerDatastore, login_session):
-        """Multiple observables are created in a single request."""
+    def test_ingest_multiple_events(self, datastore: HowlerDatastore, login_session):
+        """Multiple events are created in a single request."""
         session, host = login_session
 
-        observables = [_make_observable(), _make_observable()]
+        events = [_make_event(), _make_event()]
 
         resp = get_api_data(
             session,
-            f"{host}/api/v2/ingest/observable",
+            f"{host}/api/v2/ingest/event",
             method="POST",
-            data=json.dumps(observables),
+            data=json.dumps(events),
         )
 
         assert len(resp) == 2
 
-        datastore.observable.commit()
+        datastore.event.commit()
         time.sleep(1)
 
         for obs_id in resp:
-            assert datastore.observable.exists(obs_id)
+            assert datastore.event.exists(obs_id)
 
-    def test_ingest_observable_assigns_hash(self, datastore: HowlerDatastore, login_session):
-        """Ingested observables receive an auto-generated hash."""
+    def test_ingest_event_assigns_hash(self, datastore: HowlerDatastore, login_session):
+        """Ingested events receive an auto-generated hash."""
         session, host = login_session
 
         resp = get_api_data(
             session,
-            f"{host}/api/v2/ingest/observable",
+            f"{host}/api/v2/ingest/event",
             method="POST",
-            data=json.dumps([_make_observable()]),
+            data=json.dumps([_make_event()]),
         )
 
         obs_id = resp[0]
-        datastore.observable.commit()
+        datastore.event.commit()
         time.sleep(1)
 
-        obs = datastore.observable.get(obs_id, as_obj=False)
+        obs = datastore.event.get(obs_id, as_obj=False)
         assert obs["howler"]["hash"] is not None
         assert len(obs["howler"]["hash"]) == 64
 
@@ -236,15 +236,15 @@ class TestIngestValidate:
         assert len(resp["valid"]) == 1
         assert len(resp["invalid"]) == 0
 
-    def test_validate_valid_observable(self, login_session):
-        """A valid observable record passes validation."""
+    def test_validate_valid_event(self, login_session):
+        """A valid event record passes validation."""
         session, host = login_session
 
         resp = get_api_data(
             session,
-            f"{host}/api/v2/ingest/observable/validate",
+            f"{host}/api/v2/ingest/event/validate",
             method="POST",
-            data=json.dumps([_make_observable()]),
+            data=json.dumps([_make_event()]),
         )
 
         assert len(resp["valid"]) == 1

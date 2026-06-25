@@ -75,7 +75,7 @@ describe('Asset', () => {
       const _case = createMockCase({
         items: [
           { path: 'alerts/my-analytic (hit-001)', type: 'hit', value: 'hit-001' },
-          { path: 'observables/obs-002', type: 'observable', value: 'obs-002' },
+          { path: 'events/obs-002', type: 'event', value: 'obs-002' },
           { path: 'alerts/other-analytic (hit-003)', type: 'hit', value: 'hit-003' }
         ]
       });
@@ -85,7 +85,7 @@ describe('Asset', () => {
         </MemoryRouter>
       );
       expect(screen.getByText('alerts/my-analytic (hit-001)')).toBeTruthy();
-      expect(screen.getByText('observables/obs-002')).toBeTruthy();
+      expect(screen.getByText('events/obs-002')).toBeTruthy();
       expect(screen.getByText('alerts/other-analytic (hit-003)')).toBeTruthy();
     });
 

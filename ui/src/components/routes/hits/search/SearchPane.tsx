@@ -13,14 +13,14 @@ import VSBoxContent from 'components/elements/addons/layout/vsbox/VSBoxContent';
 import VSBoxHeader from 'components/elements/addons/layout/vsbox/VSBoxHeader';
 import SearchPagination from 'components/elements/addons/search/SearchPagination';
 import SearchTotal from 'components/elements/addons/search/SearchTotal';
+import EventCard from 'components/elements/event/EventCard';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
-import ObservableCard from 'components/elements/observable/ObservableCard';
 import RecordContextMenu from 'components/elements/record/RecordContextMenu';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useRecordSelection from 'components/hooks/useRecordSelection';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { Observable } from 'models/entities/generated/Observable';
 import type { FC } from 'react';
 import React, { memo, useCallback, useMemo } from 'react';
 import { isMobile } from 'react-device-detect';
@@ -28,14 +28,14 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
-import { isHit, isObservable } from 'utils/typeUtils';
+import { isEvent, isHit } from 'utils/typeUtils';
 import LayoutSettings from './LayoutSettings';
 import QuerySettings from './QuerySettings';
 import RecordQuery from './RecordQuery';
 
 const Item: FC<{
-  record: Hit | Observable;
-  onClick: (event: React.MouseEvent<HTMLDivElement>, record: Hit | Observable) => void;
+  record: Hit | Event;
+  onClick: (event: React.MouseEvent<HTMLDivElement>, record: Hit | Event) => void;
 }> = memo(({ record, onClick }) => {
   const theme = useTheme();
 
@@ -93,7 +93,7 @@ const Item: FC<{
       ]}
     >
       {isHit(record) && <HitCard id={record.howler.id} layout={layout} />}
-      {isObservable(record) && <ObservableCard id={record.howler.id} observable={record} />}
+      {isEvent(record) && <EventCard id={record.howler.id} event={record} />}
     </Box>
   );
 });

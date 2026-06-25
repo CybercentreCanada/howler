@@ -6,7 +6,7 @@ import type { Pe } from './Pe';
 /**
  * NOTE: This is an auto-generated file. Don't edit this manually.
  */
-export interface ObservableFile {
+export interface EventFile {
   accessed?: string;
   attributes?: string[];
   code_signature?: CodeSignature;

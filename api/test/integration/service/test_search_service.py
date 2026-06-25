@@ -6,11 +6,11 @@ import pytest
 from howler.common.loader import APP_NAME
 from howler.datastore.exceptions import SearchException, SearchRetryException
 from howler.odm.random_data import (
+    create_events,
     create_hits,
-    create_observables,
     create_users,
+    wipe_events,
     wipe_hits,
-    wipe_observables,
     wipe_users,
 )
 from howler.services import search_service
@@ -29,9 +29,9 @@ def datastore(datastore_connection):
             wipe_hits(ds)
             create_hits(ds, hit_count=40)
 
-        if ds.observable.search("howler.id:*")["total"] != 40:
-            wipe_observables(ds)
-            create_observables(ds, observable_count=40)
+        if ds.event.search("howler.id:*")["total"] != 40:
+            wipe_events(ds)
+            create_events(ds, event_count=40)
 
         for index in range(TEST_SIZE - 5):
             user = ds.user.get("user")
@@ -41,7 +41,7 @@ def datastore(datastore_connection):
 
         ds.user.commit()
         ds.hit.commit()
-        ds.observable.commit()
+        ds.event.commit()
 
         yield ds
     finally:
@@ -54,10 +54,7 @@ def test_normalize_indexes_string():
 
 
 def test_normalize_indexes_list_and_special_values():
-    assert (
-        search_service._normalize_indexes(["*", "_all", "custom-index", "observable*"])
-        == "*,_all,custom-index,observable*"
-    )
+    assert search_service._normalize_indexes(["*", "_all", "custom-index", "event*"]) == "*,_all,custom-index,event*"
 
 
 @pytest.mark.parametrize("indexes", ["", " , ", [], [" "]])
@@ -278,7 +275,7 @@ def test_search_multiple(datastore):
     assert len(result["items"]) <= 40
 
     result = search_service.search(
-        indexes="observable",
+        indexes="event",
         query="howler.id:*",
         sort="timestamp desc",
         rows=80,
@@ -289,7 +286,7 @@ def test_search_multiple(datastore):
     assert len(result["items"]) <= 40
 
     result = search_service.search(
-        indexes="hit,observable",
+        indexes="hit,event",
         query="howler.id:*",
         sort="timestamp desc",
         rows=80,
@@ -376,12 +373,12 @@ class TestNormalizeIndexes:
 
     def test_multiple_indexes_comma_separated(self):
         """Comma-separated indexes are each normalized."""
-        result = search_service._normalize_indexes("hit,observable")
+        result = search_service._normalize_indexes("hit,event")
 
         parts = result.split(",")
         assert len(parts) == 2
         assert parts[0] == f"{APP_NAME}-hit"
-        assert parts[1] == f"{APP_NAME}-observable"
+        assert parts[1] == f"{APP_NAME}-event"
 
     def test_wildcard_preserved(self):
         """Wildcard '*' is kept as-is."""
@@ -397,7 +394,7 @@ class TestNormalizeIndexes:
 
     def test_list_input(self):
         """A list of indexes is handled correctly."""
-        result = search_service._normalize_indexes(["hit", "observable"])
+        result = search_service._normalize_indexes(["hit", "event"])
 
         parts = result.split(",")
         assert len(parts) == 2
@@ -415,7 +412,7 @@ class TestNormalizeIndexes:
 
     def test_whitespace_stripped(self):
         """Leading/trailing whitespace in index names is stripped."""
-        result = search_service._normalize_indexes("  hit , observable  ")
+        result = search_service._normalize_indexes("  hit , event  ")
 
         parts = result.split(",")
         assert len(parts) == 2

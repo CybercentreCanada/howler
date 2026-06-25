@@ -1024,20 +1024,20 @@ describe('ParameterContext', () => {
     });
 
     it('should initialize with single index from URL', async () => {
-      mockSearchParams.set('index', 'observable');
+      mockSearchParams.set('index', 'event');
 
       const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.indexes), { wrapper: Wrapper });
 
-      expect(hook.result.current).toEqual(['observable']);
+      expect(hook.result.current).toEqual(['event']);
     });
 
     it('should initialize with multiple indexes from URL', async () => {
       mockSearchParams.append('index', 'hit');
-      mockSearchParams.append('index', 'observable');
+      mockSearchParams.append('index', 'event');
 
       const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.indexes), { wrapper: Wrapper });
 
-      expect(hook.result.current).toEqual(['hit', 'observable']);
+      expect(hook.result.current).toEqual(['hit', 'event']);
     });
 
     it('should deduplicate repeated index values from URL', async () => {
@@ -1061,11 +1061,11 @@ describe('ParameterContext', () => {
         );
 
         await act(async () => {
-          hook.result.current.addIndex('observable');
+          hook.result.current.addIndex('event');
         });
 
         await waitFor(() => {
-          expect(hook.result.current.indexes).toEqual(['hit', 'observable']);
+          expect(hook.result.current.indexes).toEqual(['hit', 'event']);
         });
       });
 
@@ -1092,7 +1092,7 @@ describe('ParameterContext', () => {
     describe('removeIndex', () => {
       it('should remove an index from the list', async () => {
         mockSearchParams.append('index', 'hit');
-        mockSearchParams.append('index', 'observable');
+        mockSearchParams.append('index', 'event');
 
         const hook = renderHook(
           () =>
@@ -1108,7 +1108,7 @@ describe('ParameterContext', () => {
         });
 
         await waitFor(() => {
-          expect(hook.result.current.indexes).toEqual(['observable']);
+          expect(hook.result.current.indexes).toEqual(['event']);
         });
       });
 
@@ -1123,7 +1123,7 @@ describe('ParameterContext', () => {
         );
 
         await act(async () => {
-          hook.result.current.removeIndex('observable');
+          hook.result.current.removeIndex('event');
         });
 
         await waitFor(() => {
@@ -1156,7 +1156,7 @@ describe('ParameterContext', () => {
     describe('setIndex', () => {
       it('should update the index at the specified position', async () => {
         mockSearchParams.append('index', 'hit');
-        mockSearchParams.append('index', 'observable');
+        mockSearchParams.append('index', 'event');
 
         const hook = renderHook(
           () =>
@@ -1168,11 +1168,11 @@ describe('ParameterContext', () => {
         );
 
         await act(async () => {
-          hook.result.current.setIndex(0, 'observable');
+          hook.result.current.setIndex(0, 'event');
         });
 
         await waitFor(() => {
-          expect(hook.result.current.indexes).toEqual(['observable', 'observable']);
+          expect(hook.result.current.indexes).toEqual(['event', 'event']);
         });
       });
 
@@ -1187,7 +1187,7 @@ describe('ParameterContext', () => {
         );
 
         await act(async () => {
-          hook.result.current.setIndex(5, 'observable');
+          hook.result.current.setIndex(5, 'event');
         });
 
         await waitFor(() => {
@@ -1206,7 +1206,7 @@ describe('ParameterContext', () => {
         );
 
         await act(async () => {
-          hook.result.current.setIndex(-1, 'observable');
+          hook.result.current.setIndex(-1, 'event');
         });
 
         await waitFor(() => {
@@ -1227,11 +1227,11 @@ describe('ParameterContext', () => {
         );
 
         await act(async () => {
-          hook.result.current.setIndexes(['observable']);
+          hook.result.current.setIndexes(['event']);
         });
 
         await waitFor(() => {
-          expect(hook.result.current.indexes).toEqual(['observable']);
+          expect(hook.result.current.indexes).toEqual(['event']);
         });
       });
 
@@ -1246,11 +1246,11 @@ describe('ParameterContext', () => {
         );
 
         await act(async () => {
-          hook.result.current.setIndexes(['hit', 'hit', 'observable']);
+          hook.result.current.setIndexes(['hit', 'hit', 'event']);
         });
 
         await waitFor(() => {
-          expect(hook.result.current.indexes).toEqual(['hit', 'observable']);
+          expect(hook.result.current.indexes).toEqual(['hit', 'event']);
         });
       });
 
@@ -1277,7 +1277,7 @@ describe('ParameterContext', () => {
     describe('resetIndexes', () => {
       it('should reset indexes to default ["hit"]', async () => {
         mockSearchParams.append('index', 'hit');
-        mockSearchParams.append('index', 'observable');
+        mockSearchParams.append('index', 'event');
 
         const hook = renderHook(
           () =>
@@ -1360,14 +1360,14 @@ describe('ParameterContext', () => {
 
         await act(async () => {
           hook.result.current.resetIndexes();
-          hook.result.current.addIndex('observable');
+          hook.result.current.addIndex('event');
         });
 
         await waitFor(() => {
           expect(mockSetParams).toHaveBeenCalled();
           const call = mockSetParams.mock.calls[mockSetParams.mock.calls.length - 1];
           const urlParams = typeof call[0] === 'function' ? call[0](mockSearchParams) : call[0];
-          expect(urlParams.getAll('index')).toEqual(['hit', 'observable']);
+          expect(urlParams.getAll('index')).toEqual(['hit', 'event']);
         });
       });
 
@@ -1381,20 +1381,20 @@ describe('ParameterContext', () => {
         );
 
         await act(async () => {
-          hook.result.current.addIndex('observable');
+          hook.result.current.addIndex('event');
         });
 
         await waitFor(() => {
           expect(mockSetParams).toHaveBeenCalled();
           const call = mockSetParams.mock.calls[mockSetParams.mock.calls.length - 1];
           const urlParams = typeof call[0] === 'function' ? call[0](mockSearchParams) : call[0];
-          expect(urlParams.getAll('index')).toEqual(['hit', 'observable']);
+          expect(urlParams.getAll('index')).toEqual(['hit', 'event']);
         });
       });
 
       it('should remove all index params from URL when state resets to default', async () => {
         mockSearchParams.append('index', 'hit');
-        mockSearchParams.append('index', 'observable');
+        mockSearchParams.append('index', 'event');
 
         const hook = renderHook(
           () =>
@@ -1417,7 +1417,7 @@ describe('ParameterContext', () => {
       });
 
       it('should remove index param from URL when state returns to default', async () => {
-        mockSearchParams.set('index', 'observable');
+        mockSearchParams.set('index', 'event');
 
         const hook = renderHook(
           () =>

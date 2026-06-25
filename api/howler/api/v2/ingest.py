@@ -15,12 +15,12 @@ from howler.datastore.collection import ESCollection
 from howler.datastore.exceptions import DataStoreException
 from howler.datastore.howler_store import INDEXES
 from howler.datastore.operations import OdmHelper, OdmUpdateOperation
+from howler.odm.models.event import Event
 from howler.odm.models.hit import Hit
-from howler.odm.models.observable import Observable
 from howler.odm.models.user import User
 from howler.remote.datatypes.queues.named import NamedQueue
 from howler.security import api_login
-from howler.services import hit_service, observable_service
+from howler.services import event_service, hit_service
 from howler.utils.dict_utils import flatten
 
 MAX_COMMENT_LEN = 5000
@@ -98,12 +98,10 @@ def create(index: str, user: User, **kwargs):
     warnings = []
     for i, hit in enumerate(hits):
         try:
-            odm: Hit | Observable
-            if index == "observable":
-                odm, _warnings = observable_service.convert_observable(
-                    hit, unique=True, ignore_extra_values=ignore_extra_values
-                )
-                observable_service.create_observable(odm.howler.id, odm, user.uname, skip_exists=True)
+            odm: Hit | Event
+            if index == "event":
+                odm, _warnings = event_service.convert_event(hit, unique=True, ignore_extra_values=ignore_extra_values)
+                event_service.create_event(odm.howler.id, odm, user.uname, skip_exists=True)
             else:
                 odm, _warnings = hit_service.convert_hit(hit, unique=True, ignore_extra_values=ignore_extra_values)
                 hit_service.create_hit(odm.howler.id, odm, user.uname, skip_exists=True)
@@ -241,8 +239,8 @@ def validate(index: str, **kwargs):
 
     for hit in hits:
         try:
-            if index == "observable":
-                observable_service.convert_observable(hit, unique=True)
+            if index == "event":
+                event_service.convert_event(hit, unique=True)
             else:
                 hit_service.convert_hit(hit, unique=True)
             validation["valid"].append(hit)
@@ -273,7 +271,7 @@ def overwrite(index: str, id: str, **kwargs):
 
     Result Example:
     https://github.com/CybercentreCanada/howler-api/blob/develop/howler/odm/models/hit.py
-    https://github.com/CybercentreCanada/howler-api/blob/develop/howler/odm/models/observable.py
+    https://github.com/CybercentreCanada/howler-api/blob/develop/howler/odm/models/event.py
     """
     if "," in index:
         return bad_request(err="You cannot overwrite across multiple indexes.")
