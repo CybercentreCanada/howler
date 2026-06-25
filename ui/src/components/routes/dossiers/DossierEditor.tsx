@@ -23,7 +23,7 @@ import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { MembershipManagement } from 'components/elements/membershipManagement';
 import useMyApi from 'components/hooks/useMyApi';
 import useMySnackbar from 'components/hooks/useMySnackbar';
-import { isEqual, uniqBy } from 'lodash-es';
+import { isEqual } from 'lodash-es';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import { memo, useCallback, useEffect, useMemo, useState, type FC } from 'react';
@@ -95,69 +95,65 @@ const DossierEditor: FC = () => {
 
     for (const lead of dossier.leads ?? []) {
       if (!lead.label) {
+        // You have not configured a lead label.
         return t('route.dossiers.manager.validation.error.leads.label');
       }
 
       if (!lead.label.en) {
+        // You have not configured an english lead label.
         return t('route.dossiers.manager.validation.error.leads.label.en');
       }
 
       if (!lead.label.fr) {
+        // You have not configured a french lead label.
         return t('route.dossiers.manager.validation.error.leads.label.fr');
       }
 
       if (!lead.format) {
+        // You have not set the format for the lead with label <label>
         return t('route.dossiers.manager.validation.error.leads.format', { label: lead.label[i18n.language] });
       }
 
       if (!lead.content) {
+        // You have not set the content for the lead with label <label>
         return t('route.dossiers.manager.validation.error.leads.content', { label: lead.label[i18n.language] });
       }
 
       if (!lead.icon || !iconExists(lead.icon)) {
+        // You are missing an icon, or the specified icon does not exist for lead with label <label>
         return t('route.dossiers.manager.validation.error.leads.icon', { label: lead.label[i18n.language] });
       }
     }
 
     for (const pivot of dossier.pivots ?? []) {
       if (!pivot.label) {
+        // You have not configured a pivot label.
         return t('route.dossiers.manager.validation.error.pivots.label');
       }
 
       if (!pivot.label.en) {
+        // You have not configured an english pivot label.
         return t('route.dossiers.manager.validation.error.pivots.label.en');
       }
 
       if (!pivot.label.fr) {
+        // You have not configured a french pivot label.
         return t('route.dossiers.manager.validation.error.pivots.label.fr');
       }
 
       if (!pivot.format) {
+        // You have not set the format for the pivot with label <label>
         return t('route.dossiers.manager.validation.error.pivots.format', { label: pivot.label[i18n.language] });
       }
 
       if (!pivot.value) {
+        // You have not set the value for the pivot with label <label>
         return t('route.dossiers.manager.validation.error.pivots.value', { label: pivot.label[i18n.language] });
       }
 
       if (!pivot.icon || !iconExists(pivot.icon)) {
+        // You are missing an icon, or the specified icon does not exist for pivot with label <label>
         return t('route.dossiers.manager.validation.error.pivots.icon', { label: pivot.label[i18n.language] });
-      }
-
-      if (!pivot.mappings || pivot.mappings.length < 1) {
-        continue;
-      }
-
-      if ((pivot.mappings ?? []).length !== uniqBy(pivot.mappings ?? [], 'key').length) {
-        return t('route.dossiers.manager.validation.error.pivots.duplicate', { label: pivot.label[i18n.language] });
-      }
-
-      if (pivot.mappings?.some(mapping => !mapping.key)) {
-        return t('route.dossiers.manager.validation.error.pivots.key', { label: pivot.label[i18n.language] });
-      }
-
-      if (pivot.mappings?.some(mapping => !mapping.field || (mapping.field === 'custom' && !mapping.custom_value))) {
-        return t('route.dossiers.manager.validation.error.pivots.field', { label: pivot.label[i18n.language] });
       }
     }
 
