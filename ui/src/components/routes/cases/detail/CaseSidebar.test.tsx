@@ -184,10 +184,10 @@ describe('CaseSidebar', () => {
       expect(link).toHaveAttribute('href', '/cases/case-1');
     });
 
-    it('renders an Assets nav link pointing to the case assets route', () => {
+    it('renders an Observables nav link pointing to the case observables route', () => {
       renderSidebar();
-      const link = screen.getByText('page.cases.assets').closest('a');
-      expect(link).toHaveAttribute('href', '/cases/case-1/assets');
+      const link = screen.getByText('page.cases.observables').closest('a');
+      expect(link).toHaveAttribute('href', '/cases/case-1/observables');
     });
 
     it('renders a Timeline nav link pointing to the case timeline route', () => {

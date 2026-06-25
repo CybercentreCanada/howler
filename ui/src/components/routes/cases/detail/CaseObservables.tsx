@@ -9,22 +9,22 @@ import { memo, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useOutletContext } from 'react-router-dom';
 import useCase from '../hooks/useCase';
-import Asset, { type AssetEntry, type AssetType } from './assets/Asset';
+import Observable, { type ObservableEntry, type ObservableType } from './observables/Observable';
 
-/** All Related fields that carry asset values */
-const ASSET_FIELDS: AssetType[] = ['hash', 'hosts', 'ip', 'user', 'ids', 'id', 'uri', 'signature'];
+/** All Related fields that carry observable values */
+const OBSERVABLE_FIELDS: ObservableType[] = ['hash', 'hosts', 'ip', 'user', 'ids', 'id', 'uri', 'signature'];
 
 /** Extract (type, value, seenInId) triples from a record's related field */
-const extractAssets = (
+const extractObservables = (
   related: Related | undefined,
   recordId: string
-): { type: AssetType; value: string; id: string }[] => {
+): { type: ObservableType; value: string; id: string }[] => {
   if (!related) {
     return [];
   }
 
-  const results: { type: AssetType; value: string; id: string }[] = [];
-  for (const field of ASSET_FIELDS) {
+  const results: { type: ObservableType; value: string; id: string }[] = [];
+  for (const field of OBSERVABLE_FIELDS) {
     const raw = related[field];
     if (!raw) {
       continue;
@@ -42,8 +42,8 @@ const extractAssets = (
 };
 
 /** Deduplicate and merge seenIn lists into a map keyed by `type:value` */
-export const buildAssetEntries = (records: Partial<Hit | Event>[]): AssetEntry[] => {
-  const map = new Map<string, AssetEntry>();
+export const buildObservableEntries = (records: Partial<Hit | Event>[]): ObservableEntry[] => {
+  const map = new Map<string, ObservableEntry>();
 
   for (const record of records) {
     const related = (record as Hit).related ?? (record as Event).related;
@@ -52,7 +52,7 @@ export const buildAssetEntries = (records: Partial<Hit | Event>[]): AssetEntry[]
       continue;
     }
 
-    for (const { type, value, id } of extractAssets(related, recordId)) {
+    for (const { type, value, id } of extractObservables(related, recordId)) {
       const key = `${type}:${value}`;
       if (!map.has(key)) {
         map.set(key, { type, value, seenIn: [] });
@@ -68,16 +68,16 @@ export const buildAssetEntries = (records: Partial<Hit | Event>[]): AssetEntry[]
   return Array.from(map.values());
 };
 
-const RELATED_FIELDS = ASSET_FIELDS.map(f => `related.${f}`).join(',');
+const RELATED_FIELDS = OBSERVABLE_FIELDS.map(f => `related.${f}`).join(',');
 
-const CaseAssets: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, caseId }) => {
+const CaseObservables: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, caseId }) => {
   const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
   const routeCase = useOutletContext<Case>();
   const { case: _case } = useCase({ case: providedCase ?? routeCase, caseId });
 
   const [records, setRecords] = useState<Partial<Hit | Event>[] | null>(null);
-  const [activeFilters, setActiveFilters] = useState<Set<AssetType>>(new Set());
+  const [activeFilters, setActiveFilters] = useState<Set<ObservableType>>(new Set());
 
   const ids = useMemo(
     () =>
@@ -101,26 +101,26 @@ const CaseAssets: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, 
     ).then(response => setRecords(response.items));
   }, [dispatchApi, ids]);
 
-  const allAssets = useMemo(() => (records ? buildAssetEntries(records) : []), [records]);
+  const allObservables = useMemo(() => (records ? buildObservableEntries(records) : []), [records]);
 
-  const assetTypes = useMemo(
-    () => (allAssets ? ([...new Set(allAssets.map(a => a.type))] as AssetType[]).sort() : []),
-    [allAssets]
+  const observableTypes = useMemo(
+    () => (allObservables ? ([...new Set(allObservables.map(a => a.type))] as ObservableType[]).sort() : []),
+    [allObservables]
   );
 
-  const filteredAssets = useMemo(() => {
-    if (allAssets.length < 1) {
+  const filteredObservables = useMemo(() => {
+    if (allObservables.length < 1) {
       return [];
     }
 
     if (activeFilters.size === 0) {
-      return allAssets;
+      return allObservables;
     }
 
-    return allAssets.filter(a => activeFilters.has(a.type));
-  }, [allAssets, activeFilters]);
+    return allObservables.filter(a => activeFilters.has(a.type));
+  }, [allObservables, activeFilters]);
 
-  const toggleFilter = (type: AssetType) => {
+  const toggleFilter = (type: ObservableType) => {
     setActiveFilters(prev => {
       const next = new Set(prev);
       if (next.has(type)) {
@@ -141,15 +141,15 @@ const CaseAssets: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, 
       <Grid item xs={12}>
         <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap">
           <Typography variant="subtitle2" color="text.secondary">
-            {t('page.cases.assets.filter_by_type')}
+            {t('page.cases.observables.filter_by_type')}
           </Typography>
           {records === null ? (
             <Skeleton width={240} height={32} />
           ) : (
-            assetTypes.map(type => (
+            observableTypes.map(type => (
               <Chip
                 key={type}
-                label={t(`page.cases.assets.type.${type}`)}
+                label={t(`page.cases.observables.type.${type}`)}
                 size="small"
                 onClick={() => toggleFilter(type)}
                 color={activeFilters.has(type) ? 'primary' : 'default'}
@@ -165,14 +165,14 @@ const CaseAssets: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, 
             <Skeleton height={100} />
           </Grid>
         ))
-      ) : filteredAssets.length === 0 ? (
+      ) : filteredObservables.length === 0 ? (
         <Grid item xs={12}>
-          <Typography color="text.secondary">{t('page.cases.assets.empty')}</Typography>
+          <Typography color="text.secondary">{t('page.cases.observables.empty')}</Typography>
         </Grid>
       ) : (
-        filteredAssets.map(asset => (
-          <Grid key={`${asset.type}:${asset.value}`} item xs={12} md={6} xl={4}>
-            <Asset asset={asset} case={_case} />
+        filteredObservables.map(observable => (
+          <Grid key={`${observable.type}:${observable.value}`} item xs={12} md={6} xl={4}>
+            <Observable asset={observable} case={_case} />
           </Grid>
         ))
       )}
@@ -180,4 +180,4 @@ const CaseAssets: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, 
   );
 };
 
-export default memo(CaseAssets);
+export default memo(CaseObservables);
