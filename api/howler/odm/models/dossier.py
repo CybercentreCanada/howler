@@ -69,30 +69,34 @@ class Dossier(odm.Model):
             "owner": self.owner,
         }
 
-    def set_privilege_mapping(self, level: str, user: str | list[str]):
-        """
-        Sets the users for a given privilege level.
-        level: requested level based on priviledge mapping (owner, administrator, member)
-        [based on the privilege mapping]
-        users: a single user or list of users to assign to the specified level
 
-        return : none
-        """
-        is_user_list: bool = isinstance(user, list)
-        if level == "owner":
-            if is_user_list and len(user) > 1:
-                raise ValueError("Owner level can only have one user. a list was given with multiple users.")
-            self.owner = user if isinstance(user, str) else user[0]  # This is use to transfer ownership.
-        elif level == "administrator":
-            if is_user_list:
-                self.admins.extend(user)
-                return
-            self.admins.append(user)
-        elif level == "member":
-            if is_user_list:
-                self.members.extend(user)
-                return
-            self.members.append(user)
+def set_privilege_mapping(self, level: str, user: str | list[str]):
+    """
+    Sets the users for a given privilege level.
+    level: requested level based on privilege mapping (owner, administrator, member)
+    users: a single user or list of users to assign to the specified level
+
+    return : none
+    """
+    if level == "owner":
+        if isinstance(user, list):
+            if len(user) > 1:
+                raise ValueError("Owner level can only have one user. A list was given with multiple users.")
+            self.owner = user[0] if user else ""  # Or handle empty lists if necessary
+        else:
+            self.owner = user  # type is guaranteed to be str here
+
+    elif level == "administrator":
+        if isinstance(user, list):
+            self.admins.extend(user)  # mypy knows 'user' is list[str]
+        else:
+            self.admins.append(user)  # mypy now safely infers 'user' is str
+
+    elif level == "member":
+        if isinstance(user, list):
+            self.members.extend(user)  # mypy knows 'user' is list[str]
+        else:
+            self.members.append(user)  # mypy now safely infers 'user' is str
 
     def remove_privilege_mapping(self, level: str, users: str | list[str]):
         """
