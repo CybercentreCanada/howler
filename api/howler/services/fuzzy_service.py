@@ -7,6 +7,7 @@ from typing import Any
 import elasticsearch
 from elasticsearch import Elasticsearch
 
+from howler import odm
 from howler.common.loader import APP_NAME, datastore
 from howler.datastore.exceptions import SearchException, SearchRetryException
 from howler.datastore.types import SearchResult
@@ -138,7 +139,7 @@ def _classify_boosted_fields() -> dict[str, str]:
     from howler.odm.models.event import Event
     from howler.odm.models.hit import Hit
 
-    model_map: dict[str, type] = {
+    model_map: dict[str, type[odm.Model]] = {
         "hit": Hit,
         "event": Event,
         "case": Case,
@@ -146,9 +147,10 @@ def _classify_boosted_fields() -> dict[str, str]:
 
     field_types: dict[str, str] = {}
     for index, fields in FIELD_BOOSTS.items():
-        model_class = model_map.get(index)
+        model_class = model_map.get(index, None)
         if not model_class:
             continue
+
         flat = model_class.flat_fields()
         for field_name in fields:
             if field_name in field_types:
