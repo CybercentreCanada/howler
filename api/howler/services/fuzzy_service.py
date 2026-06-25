@@ -8,7 +8,6 @@ import elasticsearch
 from elasticsearch import Elasticsearch
 
 from howler.common.loader import APP_NAME, datastore
-from howler.common.logging import get_logger
 from howler.datastore.exceptions import SearchException, SearchRetryException
 from howler.datastore.types import SearchResult
 from howler.odm.base import (
@@ -27,11 +26,15 @@ from howler.odm.base import (
 from howler.services.search_service import _normalize_indexes
 from howler.utils.str_utils import sanitize_lucene_query
 
-logger = get_logger(__file__)
-
 DEFAULT_OFFSET = 0
 DEFAULT_ROW_SIZE = 100
-VALID_INDEXES = {"hit", "observable", "case"}
+VALID_INDEXES = {"hit", "event", "case"}
+
+
+def _escape_query_string(query: str) -> str:
+    """Escape special Lucene characters from a raw query string."""
+    return sanitize_lucene_query(query)
+
 
 # Compiled regexes from ODM base for token type detection
 _IP_RE = re.compile(IP_ONLY_REGEX)
@@ -58,7 +61,7 @@ FIELD_BOOSTS: dict[str, dict[str, int]] = {
         "related.signature": 2,
         "message": 1,
     },
-    "observable": {
+    "event": {
         "howler.id": 5,
         "source.ip": 4,
         "destination.ip": 4,
@@ -132,12 +135,12 @@ def _classify_boosted_fields() -> dict[str, str]:
         A dict mapping field name to one of 'ip', 'text', or 'keyword'.
     """
     from howler.odm.models.case import Case
+    from howler.odm.models.event import Event
     from howler.odm.models.hit import Hit
-    from howler.odm.models.observable import Observable
 
     model_map: dict[str, type] = {
         "hit": Hit,
-        "observable": Observable,
+        "event": Event,
         "case": Case,
     }
 
@@ -317,7 +320,7 @@ def fuzzy_search(
     """Perform a fuzzy/plain-text search across multiple indexes.
 
     Args:
-        indexes: List of index names (hit, observable, case).
+        indexes: List of index names (hit, event, case).
         q: Plain text search query.
         filters: Additional filter queries.
         offset: Offset into results.

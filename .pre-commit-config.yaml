@@ -61,7 +61,6 @@ repos:
         language: script
         stages: [pre-commit]
         files: ^ui/.*\.(ts|tsx)
-        pass_filenames: true
       - id: bad-ui-imports
         name: Check for bad UI imports
         entry: hooks/find_bad_imports.py

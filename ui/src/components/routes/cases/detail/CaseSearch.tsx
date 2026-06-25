@@ -3,13 +3,13 @@ import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
 import type { FuzzySearchItem } from 'api/v2/fuzzy';
 import PageCenter from 'commons/components/pages/PageCenter';
-import ParameterProvider, { ParameterContext } from 'components/app/providers/ParameterProvider';
+import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import SearchPagination from 'components/elements/addons/search/SearchPagination';
 import SearchTotal from 'components/elements/addons/search/SearchTotal';
 import CaseCard from 'components/elements/case/CaseCard';
+import EventCard from 'components/elements/event/EventCard';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
-import ObservableCard from 'components/elements/observable/ObservableCard';
 import FuzzySearchBar from 'components/elements/search/FuzzySearchBar';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import type { Case } from 'models/entities/generated/Case';
@@ -18,7 +18,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
-import { isCase, isHit, isObservable } from 'utils/typeUtils';
+import { isCase, isEvent, isHit } from 'utils/typeUtils';
 
 const CaseSearch: FC = () => {
   const parentCase = useOutletContext<Case>();
@@ -36,7 +36,10 @@ const CaseSearch: FC = () => {
   const caseIds = useMemo(
     () =>
       parentCase
-        ? [parentCase.case_id, ...parentCase.items.filter(item => item.type === 'case').map(item => item.value)]
+        ? [
+            parentCase.case_id,
+            ...(parentCase.items ?? []).filter(item => item.type === 'case').map(item => item.value)
+          ].filter((id): id is string => !!id)
         : [],
     [parentCase]
   );
@@ -48,11 +51,11 @@ const CaseSearch: FC = () => {
 
       try {
         // If no indexes specified, search across all types
-        const searchIndexes = _indexes.length > 0 ? _indexes : ['case', 'hit', 'observable'];
+        const searchIndexes = _indexes.length > 0 ? _indexes : ['case', 'hit', 'event'];
 
         // Add case_id to the filters to scope the search to this case and its sub-cases
         const filters = parentCase?.case_id
-          ? [`case_id:(${caseIds.join(' OR ')}) OR howler.related:${caseIds.join(' OR ')}`]
+          ? [`case_id:(${caseIds.join(' OR ')}) OR howler.related:(${caseIds.join(' OR ')})`]
           : [];
 
         setResponse(
@@ -82,51 +85,49 @@ const CaseSearch: FC = () => {
   }, [indexes, offset]);
 
   return (
-    <ParameterProvider defaults={{ query: '', indexes: ['hit', 'observable', 'case'] }}>
-      <PageCenter maxWidth="lg" textAlign="left">
-        <Stack spacing={1}>
-          <FuzzySearchBar onSearch={handleSearch} loading={loading} />
+    <PageCenter maxWidth="lg" textAlign="left">
+      <Stack spacing={1}>
+        <FuzzySearchBar onSearch={handleSearch} loading={loading} />
 
-          {response && (
-            <Stack direction="row" alignItems="center" sx={{ pt: 1 }}>
-              <SearchTotal
-                total={response.total}
-                pageLength={response.items.length}
-                offset={response.offset}
-                sx={theme => ({ color: theme.palette.text.secondary, fontSize: '0.9em', fontStyle: 'italic' })}
-              />
-              <Box flex={1} />
-              <SearchPagination
-                total={response.total}
-                limit={response.rows}
-                offset={response.offset}
-                onChange={nextOffset => setOffset(nextOffset)}
-              />
-            </Stack>
-          )}
-          {error && (
-            <Typography color="error" sx={{ mb: 2 }}>
-              {error}
-            </Typography>
-          )}
-          {loading ? (
-            <>
-              <Skeleton variant="rounded" height={430} />
-            </>
-          ) : (
-            (response?.items ?? []).map(item => {
-              if (isHit(item)) {
-                return <HitCard key={item.howler.id} id={item.howler.id} layout={hitLayout} />;
-              } else if (isObservable(item)) {
-                return <ObservableCard key={item.howler.id} id={item.howler.id} observable={item} />;
-              } else if (isCase(item)) {
-                return <CaseCard key={item.case_id} caseId={item.case_id} case={item} />;
-              }
-            })
-          )}
-        </Stack>
-      </PageCenter>
-    </ParameterProvider>
+        {response && (
+          <Stack direction="row" alignItems="center" sx={{ pt: 1 }}>
+            <SearchTotal
+              total={response.total}
+              pageLength={response.items.length}
+              offset={response.offset}
+              sx={theme => ({ color: theme.palette.text.secondary, fontSize: '0.9em', fontStyle: 'italic' })}
+            />
+            <Box flex={1} />
+            <SearchPagination
+              total={response.total}
+              limit={response.rows}
+              offset={response.offset}
+              onChange={nextOffset => setOffset(nextOffset)}
+            />
+          </Stack>
+        )}
+        {error && (
+          <Typography color="error" sx={{ mb: 2 }}>
+            {error}
+          </Typography>
+        )}
+        {loading ? (
+          <>
+            <Skeleton variant="rounded" height={430} />
+          </>
+        ) : (
+          (response?.items ?? []).map(item => {
+            if (isHit(item)) {
+              return <HitCard key={item.howler.id} id={item.howler.id} layout={hitLayout} />;
+            } else if (isEvent(item)) {
+              return <EventCard key={item.howler.id} id={item.howler.id} event={item} />;
+            } else if (isCase(item)) {
+              return <CaseCard key={item.case_id} caseId={item.case_id} case={item} />;
+            }
+          })
+        )}
+      </Stack>
+    </PageCenter>
   );
 };
 

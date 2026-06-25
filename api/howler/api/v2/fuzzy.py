@@ -18,8 +18,8 @@ logger = get_logger(__file__)
 @generate_swagger_docs()
 @fuzzy_api.route("/search", methods=["POST"])
 @api_login(required_priv=["R"])
-def fuzzy_search(**kwargs):
-    """Perform a plain-text fuzzy search across hits, observables, and cases.
+def fuzzy_search(**kwargs):  # noqa: C901
+    """Perform a plain-text fuzzy search across hits, events, and cases.
 
     Accepts a plain string (word, IP, domain, URL, username, email, hash) and
     returns ranked results across specified indexes.
@@ -30,7 +30,7 @@ def fuzzy_search(**kwargs):
     Data Block:
     {
         "query": "192.168.1.1",             # Plain text search query (required)
-        "indexes": ["hit", "observable", "case"],  # Indexes to search (optional, defaults to all)
+        "indexes": ["hit", "event", "case"],  # Indexes to search (optional, defaults to all)
         "filters": ["howler.status:open"],          # Additional filters (optional)
         "offset": 0,                                # Offset into results (optional, default 0)
         "rows": 100,                                # Number of results (optional, default 100)
@@ -63,14 +63,14 @@ def fuzzy_search(**kwargs):
         return bad_request(err="Search query is required and cannot be empty.")
 
     # Parse indexes
-    indexes = req_data.get("indexes", ["hit", "observable", "case"])
+    indexes = req_data.get("indexes", ["hit", "event", "case"])
     if isinstance(indexes, str):
         indexes = [idx.strip() for idx in indexes.split(",") if idx.strip()]
 
     # Validate indexes
     for idx in indexes:
         if idx not in fuzzy_service.VALID_INDEXES:
-            return bad_request(err=f"Invalid index: {idx}. Must be one of: hit, observable, case")
+            return bad_request(err=f"Invalid index: {idx}. Must be one of: hit, event, case")
 
     if not indexes:
         return bad_request(err="At least one index must be specified.")
@@ -79,8 +79,11 @@ def fuzzy_search(**kwargs):
     if isinstance(filters, str):
         filters = [filters]
 
-    offset = int(req_data.get("offset", 0))
-    rows = int(req_data.get("rows", 100))
+    try:
+        offset = int(req_data.get("offset", 0))
+        rows = int(req_data.get("rows", 100))
+    except (TypeError, ValueError):
+        return bad_request(err="'offset' and 'rows' must be integers.")
     track_total_hits = bool(req_data.get("track_total_hits", False))
 
     # Apply access control if indexes are access controlled

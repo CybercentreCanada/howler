@@ -73,7 +73,7 @@ class TestBuildFuzzyQuery:
     def test_phrase_prefix_excludes_keyword_fields(self):
         """phrase_prefix queries only work on text fields; keyword fields must be excluded."""
         field_classes = _classify_boosted_fields()
-        result = build_fuzzy_query("some query", ["hit", "observable", "case"])
+        result = build_fuzzy_query("some query", ["hit", "event", "case"])
         should = result["query"]["bool"]["should"]
         pp_clauses = [c for c in should if "multi_match" in c and c["multi_match"]["type"] == "phrase_prefix"]
         for clause in pp_clauses:
@@ -94,7 +94,7 @@ class TestBuildFuzzyQuery:
         assert mm[0]["multi_match"]["type"] == "best_fields"
 
     def test_ip_query_uses_term_for_ip_fields(self):
-        result = build_fuzzy_query("192.168.1.1", ["hit", "observable"])
+        result = build_fuzzy_query("192.168.1.1", ["hit", "event"])
         should = result["query"]["bool"]["should"]
         # Should have term queries for IP fields + one multi_match for text fields
         term_clauses = [c for c in should if "term" in c]
@@ -116,7 +116,7 @@ class TestBuildFuzzyQuery:
         assert mm[0]["multi_match"]["type"] == "best_fields"
 
     def test_email_query_uses_phrase(self):
-        result = build_fuzzy_query("user@example.com", ["hit", "observable"])
+        result = build_fuzzy_query("user@example.com", ["hit", "event"])
         should = result["query"]["bool"]["should"]
         mm = [c for c in should if "multi_match" in c]
         assert len(mm) == 2
@@ -124,7 +124,7 @@ class TestBuildFuzzyQuery:
         assert mm[1]["multi_match"]["type"] == "best_fields"
 
     def test_domain_query_uses_phrase(self):
-        result = build_fuzzy_query("evil.example.com", ["observable"])
+        result = build_fuzzy_query("evil.example.com", ["event"])
         should = result["query"]["bool"]["should"]
         mm = [c for c in should if "multi_match" in c]
         assert len(mm) == 2
@@ -157,7 +157,7 @@ class TestBuildFuzzyQuery:
         assert "filter" not in result["query"]["bool"]
 
     def test_multiple_indexes_combines_fields(self):
-        result = build_fuzzy_query("test", ["hit", "observable", "case"])
+        result = build_fuzzy_query("test", ["hit", "event", "case"])
         should = result["query"]["bool"]["should"]
         fields = should[0]["multi_match"]["fields"]
         # Should contain text/keyword fields from all three indexes

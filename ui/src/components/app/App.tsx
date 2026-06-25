@@ -283,7 +283,7 @@ const createRouter = () =>
         {
           path: 'cases/:id',
           element: (
-            <ParameterProvider>
+            <ParameterProvider defaults={{ query: '', indexes: ['hit', 'event', 'case'] }}>
               <CaseViewer />
             </ParameterProvider>
           ),

@@ -47,7 +47,7 @@ class TestFuzzySearchBasic:
         target_hit = hits[0]
         threat = target_hit["howler"]["outline"]["threat"]
 
-        result = _fuzzy_post(session, host, {"q": threat, "indexes": ["hit"]})
+        result = _fuzzy_post(session, host, {"query": threat, "indexes": ["hit"]})
 
         assert result["total"] >= 1
         assert result["offset"] == 0
@@ -65,27 +65,27 @@ class TestFuzzySearchBasic:
         assert len(hits) > 0
         hit_id = hits[0]["howler"]["id"]
 
-        result = _fuzzy_post(session, host, {"q": hit_id, "indexes": ["hit"]})
+        result = _fuzzy_post(session, host, {"query": hit_id, "indexes": ["hit"]})
 
         assert result["total"] >= 1
         ids_found = [item["howler"]["id"] for item in result["items"]]
         assert hit_id in ids_found
 
     def test_search_across_multiple_indexes(self, datastore: HowlerDatastore, login_session):
-        """Searching across hit and observable should return results with __index set."""
+        """Searching across hit and event should return results with __index set."""
         session, host = login_session
 
         hits = datastore.hit.search("howler.id:*", rows=1, as_obj=False)["items"]
         assert len(hits) > 0
         threat = hits[0]["howler"]["outline"]["threat"]
 
-        result = _fuzzy_post(session, host, {"q": threat, "indexes": ["hit", "observable"]})
+        result = _fuzzy_post(session, host, {"query": threat, "indexes": ["hit", "event"]})
 
         assert result["total"] >= 1
         # All items should have an __index field
         for item in result["items"]:
             assert "__index" in item
-            assert item["__index"] in ("hit", "observable")
+            assert item["__index"] in ("hit", "event")
 
     def test_search_results_have_score(self, datastore: HowlerDatastore, login_session):
         """All results should include a _score field."""
@@ -94,7 +94,7 @@ class TestFuzzySearchBasic:
         hits = datastore.hit.search("howler.id:*", rows=1, as_obj=False)["items"]
         hit_id = hits[0]["howler"]["id"]
 
-        result = _fuzzy_post(session, host, {"q": hit_id, "indexes": ["hit"]})
+        result = _fuzzy_post(session, host, {"query": hit_id, "indexes": ["hit"]})
 
         assert result["total"] >= 1
         for item in result["items"]:
@@ -113,7 +113,7 @@ class TestFuzzySearchPagination:
         hits = datastore.hit.search("howler.id:*", rows=1, as_obj=False)["items"]
         threat = hits[0]["howler"]["outline"]["threat"]
 
-        result = _fuzzy_post(session, host, {"q": threat, "indexes": ["hit"], "rows": 2})
+        result = _fuzzy_post(session, host, {"query": threat, "indexes": ["hit"], "rows": 2})
 
         assert result["rows"] <= 2
 
@@ -124,10 +124,10 @@ class TestFuzzySearchPagination:
         hits = datastore.hit.search("howler.id:*", rows=1, as_obj=False)["items"]
         threat = hits[0]["howler"]["outline"]["threat"]
 
-        result_full = _fuzzy_post(session, host, {"q": threat, "indexes": ["hit"], "rows": 100})
+        result_full = _fuzzy_post(session, host, {"query": threat, "indexes": ["hit"], "rows": 100})
 
         if result_full["total"] > 1:
-            result_offset = _fuzzy_post(session, host, {"q": threat, "indexes": ["hit"], "rows": 100, "offset": 1})
+            result_offset = _fuzzy_post(session, host, {"query": threat, "indexes": ["hit"], "rows": 100, "offset": 1})
             assert result_offset["offset"] == 1
             # Offset result should have one fewer item (or same if more pages exist)
             assert result_offset["total"] == result_full["total"]
@@ -141,12 +141,12 @@ class TestFuzzySearchValidation:
         session, host = login_session
 
         with pytest.raises(APIError) as exc_info:
-            _fuzzy_post(session, host, {"q": "", "indexes": ["hit"]})
+            _fuzzy_post(session, host, {"query": "", "indexes": ["hit"]})
 
         assert "400" in str(exc_info.value)
 
     def test_missing_query_returns_error(self, datastore: HowlerDatastore, login_session):
-        """A missing 'q' field should return a 400 error."""
+        """A missing 'query' field should return a 400 error."""
         session, host = login_session
 
         with pytest.raises(APIError) as exc_info:
@@ -159,7 +159,7 @@ class TestFuzzySearchValidation:
         session, host = login_session
 
         with pytest.raises(APIError) as exc_info:
-            _fuzzy_post(session, host, {"q": "test", "indexes": ["invalid_index"]})
+            _fuzzy_post(session, host, {"query": "test", "indexes": ["invalid_index"]})
 
         assert "400" in str(exc_info.value)
 
@@ -191,13 +191,13 @@ class TestFuzzySearchFilters:
         hit_id = hits[0]["howler"]["id"]
 
         # Search without filter
-        result_unfiltered = _fuzzy_post(session, host, {"q": threat, "indexes": ["hit"]})
+        result_unfiltered = _fuzzy_post(session, host, {"query": threat, "indexes": ["hit"]})
 
         # Search with filter that matches only our specific hit
         result_filtered = _fuzzy_post(
             session,
             host,
-            {"q": threat, "indexes": ["hit"], "filters": [f"howler.id:{hit_id}"]},
+            {"query": threat, "indexes": ["hit"], "filters": [f"howler.id:{hit_id}"]},
         )
 
         assert result_filtered["total"] >= 1
@@ -213,6 +213,6 @@ class TestFuzzySearchFilters:
         hits = datastore.hit.search("howler.id:*", rows=1, as_obj=False)["items"]
         hit_id = hits[0]["howler"]["id"]
 
-        result = _fuzzy_post(session, host, {"q": hit_id, "indexes": "hit,observable"})
+        result = _fuzzy_post(session, host, {"query": hit_id, "indexes": "hit,event"})
 
         assert result["total"] >= 1
