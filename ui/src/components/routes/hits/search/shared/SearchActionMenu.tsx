@@ -1,8 +1,6 @@
 import { Close, SavedSearch, Terminal } from '@mui/icons-material';
 import { IconButton, Stack, Tooltip } from '@mui/material';
 import { HitContext } from 'components/app/providers/HitProvider';
-import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
-import LayoutToggle from 'components/elements/view/LayoutToggle';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
@@ -13,9 +11,6 @@ const SearchActionMenu = ({ query }: { query: string }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const routeParams = useParams();
-
-  const displayType = useContextSelector(HitSearchContext, ctx => ctx.displayType);
-  const setDisplayType = useContextSelector(HitSearchContext, ctx => ctx.setDisplayType);
 
   const bundleHit = useContextSelector(HitContext, ctx =>
     location.pathname.startsWith('/bundles') ? ctx.hits[routeParams.id] : null
@@ -41,7 +36,6 @@ const SearchActionMenu = ({ query }: { query: string }) => {
           <Terminal />
         </IconButton>
       </Tooltip>
-      <LayoutToggle displayType={displayType} setDisplayType={setDisplayType} size="small" />
       <LayoutSettings />
     </Stack>
   );
