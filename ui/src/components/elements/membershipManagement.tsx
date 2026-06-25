@@ -161,7 +161,7 @@ export const MembershipManagement = ({
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle>{t('membership.management')}</DialogTitle>
+      <DialogTitle>{t('route.actions.permission')}</DialogTitle>
       <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="fullWidth">
         <Tab label={t('members')} />
         <Tab label={t('add')} />

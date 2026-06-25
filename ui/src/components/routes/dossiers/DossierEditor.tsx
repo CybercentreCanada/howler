@@ -42,8 +42,8 @@ const DossierEditor: FC = () => {
   const { showSuccessMessage } = useMySnackbar();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user } = useAppUser<HowlerUser>();
-
+  const appUser = useAppUser<HowlerUser>();
+  const user = appUser?.user;
   const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
 
   const isNarrow = useMediaQuery(`(max-width: ${i18n.language === 'en' ? 1275 : 1375}px)`);
