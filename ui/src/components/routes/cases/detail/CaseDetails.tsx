@@ -110,10 +110,15 @@ const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
           <Autocomplete
             size="small"
             disabled={loading}
+            disableClearable
             value={_case.status}
             options={config.lookups['howler.status']}
             renderInput={params => <TextField {...params} size="small" />}
-            onChange={(_ev, status) => handleStatus(status)}
+            onChange={(_ev, status) => {
+              if (status) {
+                handleStatus(status);
+              }
+            }}
           />
 
           <Stack direction="row" spacing={1} alignItems="center">
@@ -123,10 +128,15 @@ const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
           <Autocomplete
             size="small"
             disabled={loading}
+            disableClearable
             value={_case.escalation ?? null}
             options={config.lookups['case.escalation']}
             renderInput={params => <TextField {...params} size="small" />}
-            onChange={(_ev, escalation) => wrappedUpdate({ escalation })}
+            onChange={(_ev, escalation) => {
+              if (escalation) {
+                wrappedUpdate({ escalation });
+              }
+            }}
           />
         </Stack>
         <Divider />

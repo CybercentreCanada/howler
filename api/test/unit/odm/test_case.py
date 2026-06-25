@@ -23,11 +23,11 @@ class TestCaseLog:
     def test_create_case_log_without_explanation_requires_timestamp_new_value_user(self):
         """CaseLog without explanation requires timestamp, new_value, and user."""
         log = CaseLog(
-            {"timestamp": "NOW", "key": "escalation", "previous_value": "low", "new_value": "high", "user": "bob"}
+            {"timestamp": "NOW", "key": "escalation", "previous_value": "low", "new_value": "crisis", "user": "bob"}
         )
 
         assert log.user == "bob"
-        assert log.new_value == "high"
+        assert log.new_value == "crisis"
         assert log.previous_value == "low"
         assert log.key == "escalation"
 
@@ -39,7 +39,7 @@ class TestCaseLog:
     def test_create_case_log_missing_user_without_explanation_raises(self):
         """CaseLog raises HowlerValueError when explanation is absent and user is missing."""
         with pytest.raises(HowlerValueError):
-            CaseLog({"timestamp": "NOW", "new_value": "high"})  # no explanation and no user
+            CaseLog({"timestamp": "NOW", "new_value": "crisis"})  # no explanation and no user
 
     def test_case_log_as_primitives(self):
         """as_primitives returns a plain dict containing all stored fields."""
@@ -48,7 +48,7 @@ class TestCaseLog:
                 "timestamp": "NOW",
                 "key": "escalation",
                 "previous_value": "low",
-                "new_value": "high",
+                "new_value": "crisis",
                 "user": "alice",
             }
         )
@@ -56,7 +56,7 @@ class TestCaseLog:
 
         assert isinstance(primitives, dict)
         assert primitives["user"] == "alice"
-        assert primitives["new_value"] == "high"
+        assert primitives["new_value"] == "crisis"
         assert primitives["previous_value"] == "low"
         assert primitives["key"] == "escalation"
 
@@ -350,7 +350,7 @@ class TestCase:
                     # missing 'title'
                     "summary": "S",
                     "overview": "O",
-                    "escalation": "high",
+                    "escalation": "crisis",
                 }
             )
 
@@ -360,7 +360,7 @@ class TestCase:
                     "title": "T",
                     # missing 'summary'
                     "overview": "O",
-                    "escalation": "high",
+                    "escalation": "crisis",
                 }
             )
 
@@ -447,7 +447,7 @@ class TestCase:
                 "title": "With Rules",
                 "summary": "S",
                 "overview": "O",
-                "escalation": "high",
+                "escalation": "crisis",
                 "rules": [
                     {"destination": "/critical", "query": "howler.score:>90", "author": "analyst"},
                 ],
@@ -491,7 +491,7 @@ class TestCase:
                 "title": "With Enrichments",
                 "summary": "S",
                 "overview": "O",
-                "escalation": "high",
+                "escalation": "crisis",
                 "enrichments": [
                     {"path": "/obs/ip", "annotations": ["ann-1"]},
                 ],
@@ -577,7 +577,7 @@ class TestCase:
                 "title": "Hidden Case",
                 "summary": "S",
                 "overview": "O",
-                "escalation": "high",
+                "escalation": "crisis",
                 "visible": False,
             }
         )

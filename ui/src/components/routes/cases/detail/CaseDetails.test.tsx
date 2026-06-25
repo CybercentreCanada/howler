@@ -69,7 +69,7 @@ vi.mock('../modals/ResolveModal', () => ({
 const mockConfig = {
   lookups: {
     'howler.status': ['open', 'in-progress', 'on-hold', 'resolved'],
-    'case.escalation': ['miss', 'hit', 'alert', 'evidence'],
+    'case.escalation': ['normal', 'focus', 'crisis'],
     'howler.escalation': ['miss', 'hit', 'alert', 'evidence']
   }
 } as any;
@@ -115,7 +115,7 @@ describe('CaseDetails', () => {
     user = userEvent.setup();
     vi.clearAllMocks();
     mockUpdate.mockResolvedValue(undefined);
-    testCase = createMockCase({ case_id: 'test-case-id', status: 'open', escalation: 'hit' }) as Case;
+    testCase = createMockCase({ case_id: 'test-case-id', status: 'open', escalation: 'normal' }) as Case;
     Object.keys(mockViewers).forEach(k => delete mockViewers[k]);
   });
 
@@ -167,11 +167,11 @@ describe('CaseDetails', () => {
     it('calls update with the new escalation when an option is selected', async () => {
       render(<CaseDetails case={testCase} />, { wrapper: Wrapper });
 
-      await user.click(screen.getByDisplayValue('hit'));
-      await user.click(await screen.findByRole('option', { name: 'alert' }));
+      await user.click(screen.getByDisplayValue('normal'));
+      await user.click(await screen.findByRole('option', { name: 'focus' }));
 
       await waitFor(() => {
-        expect(mockUpdate).toHaveBeenCalledWith({ escalation: 'alert' });
+        expect(mockUpdate).toHaveBeenCalledWith({ escalation: 'focus' });
       });
     });
   });
