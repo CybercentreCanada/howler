@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   maxLenStr,
   nameToInitials,
+  parsePixelSizeStringToInt,
   safeFieldValue,
   safeFieldValueURI,
   safeStringPropertyCompare,
@@ -210,5 +211,31 @@ describe('validateRegex', () => {
 
   it('returns true for a pattern with quantifiers', () => {
     expect(validateRegex('a{2,5}')).toBe(true);
+  });
+});
+
+describe('parsePixelSizeStringToInt', () => {
+  it('parses a pixel size string with "px" suffix', () => {
+    expect(parsePixelSizeStringToInt('100px')).toBe(100);
+  });
+
+  it('parses a pixel size string without "px" suffix', () => {
+    expect(parsePixelSizeStringToInt('200')).toBe(200);
+  });
+
+  it('parses a pixel size string with decimal value', () => {
+    expect(parsePixelSizeStringToInt('150.5px')).toBe(150);
+  });
+
+  it('returns null for a non-numeric string', () => {
+    expect(parsePixelSizeStringToInt('abc')).toBeNull();
+  });
+
+  it('returns null for an empty string', () => {
+    expect(parsePixelSizeStringToInt('')).toBeNull();
+  });
+
+  it('returns null for a string with an invalid unit', () => {
+    expect(parsePixelSizeStringToInt('50rem')).toBeNull();
   });
 });

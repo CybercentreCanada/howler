@@ -7,7 +7,7 @@ import FlexOne from 'components/elements/addons/layout/FlexOne';
 import { useContext, type FC, type SetStateAction } from 'react';
 
 const ColumnHeader: FC<{
-  width: string;
+  width: number;
   col: string;
   colSource?: string[];
   setColumns: (val: SetStateAction<string[]>) => void;

@@ -67,7 +67,7 @@ describe('no views', () => {
     expect(hook.result.current.columns).toEqual(['col1', 'col2']);
 
     expect(mockLocalStorage.getItem).toHaveBeenCalledWith(_prefixStorageKey(StorageKey.GRID_COLUMN_WIDTHS));
-    expect(hook.result.current.columnWidths).toEqual({ col1: '100px' });
+    expect(hook.result.current.columnWidths).toEqual({ col1: 100 });
 
     expect(mockSetDisplayType).not.toHaveBeenCalled();
   });
@@ -97,9 +97,9 @@ describe('no views', () => {
 
     expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
       _prefixStorageKey(StorageKey.GRID_COLUMN_WIDTHS),
-      JSON.stringify({ col1: '150px' })
+      JSON.stringify({ col1: 150 })
     );
-    expect(hook.result.current.columnWidths).toEqual({ col1: '150px' });
+    expect(hook.result.current.columnWidths).toEqual({ col1: 150 });
   });
 
   it("should add a column width to local storage if it doesn't exist", () => {
@@ -112,9 +112,9 @@ describe('no views', () => {
 
     expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
       _prefixStorageKey(StorageKey.GRID_COLUMN_WIDTHS),
-      JSON.stringify({ col1: '100px', col2: '200px' })
+      JSON.stringify({ col1: 100, col2: 200 })
     );
-    expect(hook.result.current.columnWidths).toEqual({ col1: '100px', col2: '200px' });
+    expect(hook.result.current.columnWidths).toEqual({ col1: 100, col2: 200 });
   });
 });
 
@@ -221,9 +221,9 @@ describe('with views', () => {
     await waitFor(() => expect(hook.result.current.isReady).toBe(true));
     expect(hook.result.current.columns).toEqual(['viewCol1', 'viewCol2', 'viewCol3', 'viewCol4']);
     expect(hook.result.current.columnWidths).toEqual({
-      viewCol1: '101px',
-      viewCol2: '102px',
-      viewCol4: '204px'
+      viewCol1: 101,
+      viewCol2: 102,
+      viewCol4: 204
     });
     expect(mockSetDisplayType).toHaveBeenCalledWith('grid');
 
@@ -241,7 +241,7 @@ describe('with views', () => {
 
     await waitFor(() => expect(hook.result.current.isReady).toBe(true));
     expect(hook.result.current.columns).toEqual(['viewCol5', 'viewCol6']);
-    expect(hook.result.current.columnWidths).toEqual({ viewCol5: '300px', viewCol6: '301px' });
+    expect(hook.result.current.columnWidths).toEqual({ viewCol5: 300, viewCol6: 301 });
     expect(mockSetDisplayType).toHaveBeenCalledWith('grid');
 
     expect(mockLocalStorage.getItem(_prefixStorageKey(StorageKey.GRID_COLUMNS))).toEqual(localStorageColumns);
@@ -278,8 +278,8 @@ describe('with views', () => {
     });
 
     expect(hook.result.current.columnWidths).toEqual({
-      viewCol1: '150px',
-      viewCol2: '102px'
+      viewCol1: 150,
+      viewCol2: 102
     });
     expect(mockLocalStorage.getItem(_prefixStorageKey(StorageKey.GRID_COLUMNS))).toEqual(localStorageColumns);
     expect(mockLocalStorage.getItem(_prefixStorageKey(StorageKey.GRID_COLUMN_WIDTHS))).toEqual(
@@ -298,9 +298,9 @@ describe('with views', () => {
     });
 
     expect(hook.result.current.columnWidths).toEqual({
-      viewCol1: '101px',
-      viewCol2: '102px',
-      viewCol3: '150px'
+      viewCol1: 101,
+      viewCol2: 102,
+      viewCol3: 150
     });
     expect(mockLocalStorage.getItem(_prefixStorageKey(StorageKey.GRID_COLUMNS))).toEqual(localStorageColumns);
     expect(mockLocalStorage.getItem(_prefixStorageKey(StorageKey.GRID_COLUMN_WIDTHS))).toEqual(

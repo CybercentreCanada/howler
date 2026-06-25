@@ -12,6 +12,7 @@ import {
 import { useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
+import { parsePixelSizeStringToInt } from 'utils/stringUtils';
 import { HitSearchContext } from './HitSearchProvider';
 import { ParameterContext } from './ParameterProvider';
 import { ViewContext } from './ViewProvider';
@@ -31,13 +32,13 @@ export type GridColumnsContextType = {
    * @param syncLocal - When `true`, also persists the change to local storage even if views are active.
    */
   setColumns: (columns: SetStateAction<string[]>, syncLocal?: boolean) => void;
-  /** Per-column widths (CSS string, e.g. `"120px"`), keyed by field name. */
-  columnWidths: Record<string, string>;
+  /** Per-column widths (pixels, e.g. `120`), keyed by field name. */
+  columnWidths: Record<string, number>;
   /**
    * Set the width of a single column.
    * @param syncLocal - When `true`, also persists the change to local storage even if views are active.
    */
-  setColumnWidth: (column: string, width: string, syncLocal?: boolean) => void;
+  setColumnWidth: (column: string, width: number | string, syncLocal?: boolean) => void;
   /**
    * Maps each column field to the list of view titles that declared it.
    * Empty array for columns that came from local storage rather than a view.
@@ -65,10 +66,7 @@ export const GridColumnsContext = createContext<GridColumnsContextType>(null);
  *   - `"params"` (default) — reads from `ParameterContext` (query-string driven).
  *   - `"path"` — reads from the current route's `:id` param.
  */
-const GridColumnsProvider = ({
-  children,
-  viewSource = 'params'
-}: PropsWithChildren<{ viewSource?: 'params' | 'path' }>) => {
+const GridColumnsProvider = ({ children, viewSource = 'params' }: PropsWithChildren<{ viewSource?: 'params' | 'path' }>) => {
   const routeParams = useParams();
 
   // Resolve view IDs from the appropriate source.
@@ -86,18 +84,29 @@ const GridColumnsProvider = ({
     'howler.outline.indicators',
     'howler.outline.summary'
   ]);
-  const [localStorageColumnWidths, setLocalStorageColumnWidths] = useMyLocalStorageItem<Record<string, string>>(
-    StorageKey.GRID_COLUMN_WIDTHS,
-    {}
-  );
+  const [localStorageColumnWidths, setLocalStorageColumnWidths] = useMyLocalStorageItem<
+    Record<string, string | number>
+  >(StorageKey.GRID_COLUMN_WIDTHS, {});
 
   // --- In-memory state (may be overridden by view data) ---
   const [contextColumns, setContextColumns] = useState<string[]>(localStorageColumns);
   /** Non-null only when columns were loaded from views; null means fall back to local storage widths. */
-  const [viewColumnWidths, setViewColumnWidths] = useState<Record<string, string> | null>(null);
+  const [viewColumnWidths, setViewColumnWidths] = useState<Record<string, number> | null>(null);
   /** Non-null only when columns were loaded from views; tracks which view(s) declared each column. */
   const [viewColumnSources, setViewColumnSources] = useState<Record<string, string[]> | null>(null);
   const [isReady, setIsReady] = useState(false);
+
+  // Parse local storage widths into numbers for backwards compatibility with css style strings
+  const parsedLocalStorageColumnWidths = useMemo(() => {
+    const parsed: Record<string, number> = {};
+    for (const [col, width] of Object.entries(localStorageColumnWidths)) {
+      const numWidth = typeof width === 'string' ? parsePixelSizeStringToInt(width) : width;
+      if (numWidth !== null) {
+        parsed[col] = numWidth;
+      }
+    }
+    return parsed;
+  }, [localStorageColumnWidths]);
 
   /**
    * Tracks the current async load "cycle" to guard against stale async results.
@@ -161,7 +170,7 @@ const GridColumnsProvider = ({
           .sort((a, b) => (idRankMap.get(a.view_id) ?? Infinity) - (idRankMap.get(b.view_id) ?? Infinity));
 
         const columns: string[] = [];
-        const widths: Record<string, string> = {};
+        const widths: Record<string, number> = {};
         const sources: Record<string, string[]> = {};
 
         for (const view of gridViews) {
@@ -169,7 +178,7 @@ const GridColumnsProvider = ({
             if (!sources[field]) {
               // First occurrence wins for column order and width.
               columns.push(field);
-              widths[field] = width ? `${width}px` : undefined;
+              widths[field] = width ?? undefined;
               sources[field] = [view.title];
             } else {
               // Subsequent views that also declare this field are recorded as additional sources.
@@ -204,22 +213,27 @@ const GridColumnsProvider = ({
 
   // When views are active, use their widths; otherwise fall back to local storage widths.
   const columnWidths = useMemo(
-    () => viewColumnWidths ?? localStorageColumnWidths,
-    [viewColumnWidths, localStorageColumnWidths]
+    () => viewColumnWidths ?? parsedLocalStorageColumnWidths,
+    [viewColumnWidths, parsedLocalStorageColumnWidths]
   );
 
   const setColumnWidth = useCallback(
-    (column: string, width: string, syncLocal?: boolean) => {
+    (column: string, width: number | string, syncLocal?: boolean) => {
+      const parsedWidth = typeof width === 'string' ? parsePixelSizeStringToInt(width) : width;
+      if (parsedWidth === null) {
+        return;
+      }
+
       if (!hasViews || syncLocal) {
         // No active views — persist directly to local storage.
-        setLocalStorageColumnWidths({ ...localStorageColumnWidths, [column]: width });
+        setLocalStorageColumnWidths({ ...parsedLocalStorageColumnWidths, [column]: parsedWidth });
       } else {
         // Active views — update the in-memory view widths only, and flag a local edit.
         currentLoadRef.current.hasLocalEdits = true;
-        setViewColumnWidths(prev => ({ ...prev, [column]: width }));
+        setViewColumnWidths(prev => ({ ...prev, [column]: parsedWidth }));
       }
     },
-    [hasViews, localStorageColumnWidths, setLocalStorageColumnWidths]
+    [hasViews, parsedLocalStorageColumnWidths, setLocalStorageColumnWidths]
   );
 
   // Map each column to the view(s) that declared it, or an empty array for local-storage columns.
@@ -249,6 +263,6 @@ const GridColumnsProvider = ({
       {children}
     </GridColumnsContext.Provider>
   );
-};
+};;
 
 export default GridColumnsProvider;

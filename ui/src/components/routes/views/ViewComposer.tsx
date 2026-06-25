@@ -95,7 +95,7 @@ const ViewComposer: FC = () => {
 
     const _columnData = columns.map(column => ({
       field: column,
-      width: columnWidths[column] ? Number(columnWidths[column].slice(0, -2)) : null
+      width: columnWidths[column] ?? null
     }));
 
     try {
