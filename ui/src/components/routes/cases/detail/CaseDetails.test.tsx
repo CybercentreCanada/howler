@@ -137,7 +137,7 @@ describe('CaseDetails', () => {
     render(<CaseDetails case={testCase} />, { wrapper: Wrapper });
 
     expect(screen.getByText('page.cases.detail.escalation')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('hit')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('normal')).toBeInTheDocument();
   });
 
   describe('status changes', () => {

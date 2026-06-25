@@ -405,7 +405,7 @@ class TestCase:
                 "title": "Incident Beta",
                 "summary": "Summary",
                 "overview": "Overview",
-                "escalation": "low",
+                "escalation": "normal",
                 "targets": ["server-1", "server-2"],
                 "threats": ["apt-29"],
                 "indicators": ["ioc-hash-abc"],
@@ -427,7 +427,7 @@ class TestCase:
                 "title": "With Items",
                 "summary": "S",
                 "overview": "O",
-                "escalation": "medium",
+                "escalation": "focus",
                 "items": [
                     {"path": "/events", "type": "event", "value": "1.2.3.4", "id": "obs-1"},
                     {"path": "/hits", "type": "hit", "value": "hit-abc"},
@@ -466,7 +466,7 @@ class TestCase:
                 "title": "With Tasks",
                 "summary": "S",
                 "overview": "O",
-                "escalation": "low",
+                "escalation": "normal",
                 "tasks": [
                     {
                         "id": "00000000-0000-0000-0000-000000000010",
@@ -509,7 +509,7 @@ class TestCase:
                 "title": "Roundtrip",
                 "summary": "Summary",
                 "overview": "Overview",
-                "escalation": "medium",
+                "escalation": "focus",
                 "targets": ["t1"],
                 "items": [{"path": "/a", "type": "hit", "value": "v1"}],
                 "rules": [{"destination": "/b", "query": "q", "author": "admin"}],
@@ -563,7 +563,7 @@ class TestCase:
                 "title": "Visibility Default",
                 "summary": "S",
                 "overview": "O",
-                "escalation": "low",
+                "escalation": "normal",
             }
         )
 
@@ -592,7 +592,7 @@ class TestCase:
                 "title": "T",
                 "summary": "S",
                 "overview": "O",
-                "escalation": "medium",
+                "escalation": "focus",
             }
         )
 
@@ -608,7 +608,7 @@ class TestCase:
                 "title": "Dates",
                 "summary": "S",
                 "overview": "O",
-                "escalation": "low",
+                "escalation": "normal",
                 "start": "2025-01-01T00:00:00Z",
                 "end": "2025-12-31T23:59:59Z",
             }
@@ -632,7 +632,7 @@ class TestCase:
                     "title": "T",
                     "summary": "S",
                     "overview": "O",
-                    "escalation": "low",
+                    "escalation": "normal",
                     "start": "not-a-date",
                 }
             )
@@ -645,7 +645,7 @@ class TestCase:
                 "title": "T",
                 "summary": "S",
                 "overview": "O",
-                "escalation": "low",
+                "escalation": "normal",
                 "log": [
                     {"timestamp": "NOW", "explanation": "Case created", "user": "admin"},
                 ],
