@@ -333,20 +333,20 @@ class TestProcessBatch:
     @patch("howler.services.correlation_service.case_service")
     @patch("howler.services.correlation_service.get_active_rules")
     @patch("howler.services.correlation_service.datastore")
-    def test_adds_matching_observables(self, mock_ds_fn, mock_get_rules, mock_case_svc, mock_search_svc):
-        """Matching observables are added to the case with item_type='observable'."""
+    def test_adds_matching_events(self, mock_ds_fn, mock_get_rules, mock_case_svc, mock_search_svc):
+        """Matching events are added to the case with item_type='event'.."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
         rule = _make_rule(
             query="event.kind:enrichment",
-            destination="observables",
-            indexes=["observable"],
+            destination="events",
+            indexes=["event"],
         )
         mock_get_rules.return_value = [("case-1", rule)]
 
         mock_search_svc.search.return_value = {
-            "items": [{"howler": {"id": "obs-1"}, "__index": "observable"}],
+            "items": [{"howler": {"id": "obs-1"}, "__index": "event"}],
             "total": 1,
             "offset": 0,
             "rows": 1,
@@ -357,9 +357,9 @@ class TestProcessBatch:
         assert added == 1
         mock_case_svc.append_case_item.assert_called_once_with(
             "case-1",
-            item_type="observable",
+            item_type="event",
             item_value="obs-1",
-            item_path="observables",
+            item_path="events",
         )
 
     @patch("howler.services.correlation_service.search_service")
@@ -367,21 +367,21 @@ class TestProcessBatch:
     @patch("howler.services.correlation_service.get_active_rules")
     @patch("howler.services.correlation_service.datastore")
     def test_searches_both_indexes(self, mock_ds_fn, mock_get_rules, mock_case_svc, mock_search_svc):
-        """A rule targeting both hit and observable indexes searches across both."""
+        """A rule targeting both hit and event indexes searches across both."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
         rule = _make_rule(
             query="*:*",
             destination="related",
-            indexes=["hit", "observable"],
+            indexes=["hit", "event"],
         )
         mock_get_rules.return_value = [("case-1", rule)]
 
         mock_search_svc.search.return_value = {
             "items": [
                 {"howler": {"id": "hit-1"}, "__index": "hit"},
-                {"howler": {"id": "obs-1"}, "__index": "observable"},
+                {"howler": {"id": "obs-1"}, "__index": "event"},
             ],
             "total": 2,
             "offset": 0,
@@ -393,11 +393,11 @@ class TestProcessBatch:
         assert added == 2
         mock_search_svc.search.assert_called_once()
         call_kwargs = mock_search_svc.search.call_args
-        assert set(call_kwargs.kwargs["indexes"]) == {"hit", "observable"}
+        assert set(call_kwargs.kwargs["indexes"]) == {"hit", "event"}
 
         calls = mock_case_svc.append_case_item.call_args_list
         types = {c.kwargs["item_type"] for c in calls}
-        assert types == {"hit", "observable"}
+        assert types == {"hit", "event"}
 
     @patch("howler.services.correlation_service.search_service")
     @patch("howler.services.correlation_service.case_service")
@@ -432,13 +432,13 @@ class TestProcessBatch:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        rule = _make_rule(query="*:*", destination="items", indexes=["hit", "observable"])
+        rule = _make_rule(query="*:*", destination="items", indexes=["hit", "event"])
         mock_get_rules.return_value = [("case-1", rule)]
 
         mock_search_svc.search.return_value = {
             "items": [
                 {"howler": {"id": "hit-1"}, "__index": "hit"},
-                {"howler": {"id": "obs-1"}, "__index": "observable"},
+                {"howler": {"id": "obs-1"}, "__index": "event"},
             ],
             "total": 2,
             "offset": 0,
@@ -453,4 +453,4 @@ class TestProcessBatch:
         hit_call = [c for c in calls if c.kwargs["item_value"] == "hit-1"][0]
         obs_call = [c for c in calls if c.kwargs["item_value"] == "obs-1"][0]
         assert hit_call.kwargs["item_type"] == "hit"
-        assert obs_call.kwargs["item_type"] == "observable"
+        assert obs_call.kwargs["item_type"] == "event"

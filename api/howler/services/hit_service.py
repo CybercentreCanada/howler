@@ -8,7 +8,7 @@ from typing import Any, Literal, Optional, Union, cast, overload
 from opentelemetry import trace
 from prometheus_client import Counter
 
-import howler.services.event_service as event_service
+import howler.services.comms_service as comms_service
 from howler.actions.promote import Escalation
 from howler.common.exceptions import HowlerTypeError, HowlerValueError, NotFoundException, ResourceExists
 from howler.common.loader import APP_NAME, datastore
@@ -27,7 +27,7 @@ from howler.helper.hit import (
     vote_hit,
 )
 from howler.helper.workflow import Transition, Workflow
-from howler.odm.models.ecs.event import Event
+from howler.odm.models.ecs.event import ECSEvent
 from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import HitOperationType, HitStatusTransition, Log, Status
 from howler.odm.models.user import User
@@ -322,7 +322,7 @@ def convert_hit(  # noqa: C901
         if not odm.event.created:
             odm.event.created = "NOW"
     else:
-        odm.event = Event({"created": "NOW", "id": odm.howler.id})
+        odm.event = ECSEvent({"created": "NOW", "id": odm.howler.id})
 
     if unique and exists(odm.howler.id):
         raise ResourceExists("Resource with id %s already exists" % odm.howler.id)
@@ -478,7 +478,7 @@ def save_hit(hit: Hit, version: Optional[str] = None, refresh: str | None = None
     """
     datastore().hit.save(hit.howler.id, hit, version=version, refresh=refresh)
     data, _version = datastore().hit.get(hit.howler.id, as_obj=False, version=True)
-    event_service.emit("hits", {"hit": data, "version": _version})
+    comms_service.emit("hits", {"hit": data, "version": _version})
 
     return data, _version
 
@@ -565,10 +565,10 @@ def _update_hit(
             )
 
     datastore().hit.update(hit_id, final_operations, version, refresh=refresh)
-    # Need to fetch the new data of the hit for the event_service
+    # Need to fetch the new data of the hit for the comms_service
     data, _version = datastore().hit.get(hit_id, as_obj=False, version=True) or (None, None)
     if data and _version:
-        event_service.emit("hits", {"hit": data, "version": _version})
+        comms_service.emit("hits", {"hit": data, "version": _version})
 
     return data, _version
 
@@ -662,7 +662,7 @@ def transition_hit(
 
         # Emit events for processed hit to notify other systems
         data, hit_version = datastore().hit.get(hit_id, as_obj=False, version=True)
-        event_service.emit("hits", {"hit": data, "version": hit_version})
+        comms_service.emit("hits", {"hit": data, "version": hit_version})
 
 
 DELETED_HITS = Counter(f"{APP_NAME.replace('-', '_')}_deleted_hits_total", "The number of deleted hits")

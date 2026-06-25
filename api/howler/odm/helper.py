@@ -12,10 +12,10 @@ from howler.datastore.howler_store import HowlerDatastore
 from howler.helper.discover import get_apps_list
 from howler.odm.base import Model
 from howler.odm.models.dossier import Dossier
+from howler.odm.models.event import Event
 from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import Escalation, Link
 from howler.odm.models.lead import Lead
-from howler.odm.models.observable import Observable
 from howler.odm.models.pivot import Pivot
 from howler.odm.models.user import User
 from howler.odm.randomizer import (
@@ -44,7 +44,7 @@ def generate_useful_hit(  # noqa: C901
     users: list[str],
     prune_hit: bool = True,
     hit_ids: list[str] | None = None,
-    observable_ids: list[str] | None = None,
+    event_ids: list[str] | None = None,
 ) -> Hit:
     "Create a random, useful/cogent hit for synthetic data"
     hit: Hit = random_model_obj(cast(Model, Hit))
@@ -343,18 +343,18 @@ def generate_useful_hit(  # noqa: C901
     related: list[str] = []
     if hit_ids:
         related.extend(sample(hit_ids, k=randint(0, min(3, len(hit_ids)))))
-    if observable_ids:
-        related.extend(sample(observable_ids, k=randint(0, min(5, len(observable_ids)))))
+    if event_ids:
+        related.extend(sample(event_ids, k=randint(0, min(5, len(event_ids)))))
     hit.howler.related = related
 
     return hit
 
 
-def generate_useful_observable(  # noqa: C901
+def generate_useful_event(  # noqa: C901
     lookups: dict[str, dict[str, Any]], users: list[str], prune: bool = True
-) -> Observable:
-    "Create a random, useful/cogent observable for synthetic data"
-    observable: Observable = random_model_obj(cast(Model, Observable))
+) -> Event:
+    "Create a random, useful/cogent event for synthetic data"
+    event: Event = random_model_obj(cast(Model, Event))
 
     rand_seed = random.random()
 
@@ -365,12 +365,12 @@ def generate_useful_observable(  # noqa: C901
         seconds=random.randint(0, 59),
     )
 
-    observable.event.created = timestamp.isoformat() + "Z"
-    observable.event.provider = choice(["HBS", "NBS", "CBS", "AssemblyLine"])
-    observable.timestamp = timestamp.isoformat() + "Z"
+    event.event.created = timestamp.isoformat() + "Z"
+    event.event.provider = choice(["HBS", "NBS", "CBS", "AssemblyLine"])
+    event.timestamp = timestamp.isoformat() + "Z"
 
-    observable.organization.name, observable.organization.id = random_department()
-    observable.threat.framework = choice(["MITRE ATT&CK", "Custom"])
+    event.organization.name, event.organization.id = random_department()
+    event.threat.framework = choice(["MITRE ATT&CK", "Custom"])
     tactic_id = choice(
         [
             *list(lookups.get("tactics", {}).keys()),
@@ -383,12 +383,12 @@ def generate_useful_observable(  # noqa: C901
             *[icon for icon in lookups["icons"] if not icon.startswith("TA")],
         ]
     )
-    observable.threat.tactic.id = tactic_id
-    observable.threat.tactic.name = lookups.get("tactics", {}).get(tactic_id, {}).get("name", "Unknown")
-    observable.threat.technique.id = technique_id
-    observable.threat.technique.name = lookups.get("techniques", {}).get(technique_id, {}).get("name", "Unknown")
+    event.threat.tactic.id = tactic_id
+    event.threat.tactic.name = lookups.get("tactics", {}).get(tactic_id, {}).get("name", "Unknown")
+    event.threat.technique.id = technique_id
+    event.threat.technique.name = lookups.get("techniques", {}).get(technique_id, {}).get("name", "Unknown")
 
-    observable.cloud.service.name = choice(
+    event.cloud.service.name = choice(
         [
             "Azure",
             "Amazon AWS",
@@ -398,31 +398,31 @@ def generate_useful_observable(  # noqa: C901
             "Microsoft Teams",
         ]
     )
-    observable.aws.account.id = get_random_id()
-    observable.aws.organization.id = get_random_id()
-    observable.azure.subscription_id = get_random_id()
-    observable.azure.tenant_id = get_random_id()
-    observable.azure.resource_id = get_random_id()
-    observable.gcp.project_id = get_random_id()
-    observable.gcp.network_id = get_random_id()
-    observable.gcp.service_account_id = get_random_id()
-    observable.gcp.resource_id = get_random_id()
-    observable.user.name = get_random_word()
-    observable.user_agent.original = get_random_user_agent()
+    event.aws.account.id = get_random_id()
+    event.aws.organization.id = get_random_id()
+    event.azure.subscription_id = get_random_id()
+    event.azure.tenant_id = get_random_id()
+    event.azure.resource_id = get_random_id()
+    event.gcp.project_id = get_random_id()
+    event.gcp.network_id = get_random_id()
+    event.gcp.service_account_id = get_random_id()
+    event.gcp.resource_id = get_random_id()
+    event.user.name = get_random_word()
+    event.user_agent.original = get_random_user_agent()
 
-    for i in range(len(observable.howler.comment)):
-        observable.howler.comment[i].user = choice(users)
+    for i in range(len(event.howler.comment)):
+        event.howler.comment[i].user = choice(users)
 
-    observable.event.id = observable.howler.id
+    event.event.id = event.howler.id
 
-    observable.howler.escalation = choice([Escalation.HIT, Escalation.ALERT])
+    event.howler.escalation = choice([Escalation.HIT, Escalation.ALERT])
 
     if randint(1, 10) > 9:
-        observable.howler.expiry = datetime.now() + timedelta(days=randint(1, 60))
+        event.howler.expiry = datetime.now() + timedelta(days=randint(1, 60))
     else:
-        observable.howler.expiry = None
+        event.howler.expiry = None
 
-    observable.howler.data = [
+    event.howler.data = [
         json.dumps(
             {
                 "key": "value",
@@ -445,7 +445,7 @@ def generate_useful_observable(  # noqa: C901
         ),
     ]
 
-    return observable
+    return event
 
 
 def create_users_with_username(ds: HowlerDatastore, usernames: list[str]):

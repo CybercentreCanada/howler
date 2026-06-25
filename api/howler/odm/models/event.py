@@ -59,12 +59,12 @@ DEFAULT_LABELS = {"assignments": [], "generic": []}
 @odm.model(
     index=True,
     store=True,
-    description="Observable metadata fields, howler specific.",
+    description="Event metadata fields, howler specific.",
 )
-class ObservableData(odm.Model):
-    id: str = odm.UUID(description="A UUID for this observable.")
+class EventData(odm.Model):
+    id: str = odm.UUID(description="A UUID for this event.")
     data: list[str] = odm.List(
-        odm.Keyword(description="Raw telemetry records associated with this observable."),
+        odm.Keyword(description="Raw telemetry records associated with this event."),
         default=[],
         store=False,
     )
@@ -84,11 +84,11 @@ class ObservableData(odm.Model):
     escalation = odm.Enum(
         values=Escalation,
         default=Escalation.HIT,
-        description="Level of escalation of this observable.",
+        description="Level of escalation of this event.",
     )
     expiry = odm.Optional(
         odm.Date(
-            description="User selected time for observable expiry",
+            description="User selected time for event expiry",
         )
     )
     comment: list[Comment] = odm.List(
@@ -99,28 +99,26 @@ class ObservableData(odm.Model):
     log: list[Log] = odm.List(
         odm.Compound(Log),
         default=[],
-        description="A list of changes to the observable with timestamps and attribution.",
+        description="A list of changes to the event with timestamps and attribution.",
     )
 
 
 @odm.model(
     index=True,
     store=True,
-    description="Observable schema which is an extended version of Elastic Common Schema (ECS)",
+    description="Event schema which is an extended version of Elastic Common Schema (ECS)",
     id_field="howler.id",
 )
-class Observable(DatastoreMixin["Observable"], Record):
+class Event(DatastoreMixin["Event"], Record):
     # Howler extended fields. Deviates from ECS
-    howler: ObservableData = odm.Compound(
-        ObservableData,
-        description="Howler specific definition of the observable",
+    howler: EventData = odm.Compound(
+        EventData,
+        description="Howler specific definition of the event",
     )
 
 
 if __name__ == "__main__":
     from pprint import pprint
 
-    fields = {
-        k: f"{v.__class__.__name__}{' (array)' if v.multivalued else ''}" for k, v in Observable.flat_fields().items()
-    }
+    fields = {k: f"{v.__class__.__name__}{' (array)' if v.multivalued else ''}" for k, v in Event.flat_fields().items()}
     pprint(fields)  # noqa: T203

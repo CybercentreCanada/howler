@@ -207,8 +207,8 @@ def append_item(id: str, user: User, **kwargs):  # noqa: C901
     """Append an item to a case
 
     This endpoint adds a new item to a case's items list. The item can reference
-    different types of objects (hits, observables, or other cases). When a hit or
-    observable is added, a bidirectional relationship is created - the case will
+    different types of objects (hits, events, or other cases). When a hit or
+    event is added, a bidirectional relationship is created - the case will
     reference the item, and the item will reference the case in its related.cases list.
 
     Variables:
@@ -219,7 +219,7 @@ def append_item(id: str, user: User, **kwargs):  # noqa: C901
 
     Data Block:
     {
-        "type": "hit",            # Type of item to append: "hit", "observable", "case", "table", "lead", or "reference"
+        "type": "hit",            # Type of item to append: "hit", "event", "case", "table", "lead", or "reference"
         "value": "item-id-123"    # The ID or reference value for the item,
         "path": "example/path/Title"
     }
@@ -254,7 +254,7 @@ def delete_item(case_id: str, **kwargs):
     """Delete one or more items from a case
 
     This endpoint removes items from a case's items list. If an item is a hit or
-    observable, the bidirectional relationship is cleaned up - the case reference will
+    event, the bidirectional relationship is cleaned up - the case reference will
     be removed from the backing object's related.cases list.
 
     Variables:

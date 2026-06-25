@@ -1,16 +1,16 @@
 import { OpenInNew } from '@mui/icons-material';
 import { Chip, IconButton, Stack, Typography, useTheme } from '@mui/material';
-import type { Observable } from 'models/entities/generated/Observable';
+import type { Event } from 'models/entities/generated/Event';
 import type { FC } from 'react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
 type PreviewProps = {
-  observable: Observable;
+  event: Event;
 };
 
-const ObservablePreview: FC<PreviewProps> = ({ observable }) => {
+const EventPreview: FC<PreviewProps> = ({ event }) => {
   const { t } = useTranslation();
   const theme = useTheme();
 
@@ -23,15 +23,15 @@ const ObservablePreview: FC<PreviewProps> = ({ observable }) => {
       <Stack>
         <Stack direction="row" spacing={1} alignItems="center">
           <Typography variant="body1" fontWeight="bold">
-            {observable.event.provider}
+            {event.event.provider}
           </Typography>
           <div style={{ flex: 1 }} />
-          <Chip label={observable.event.kind} />
-          {observable.event.reference && (
+          <Chip label={event.event.kind} />
+          {event.event.reference && (
             <IconButton
               size="small"
               component={Link}
-              to={observable.event.reference}
+              to={event.event.reference}
               sx={{ opacity: 1 }}
               target="_blank"
               rel="noopener noreferrer"
@@ -41,15 +41,15 @@ const ObservablePreview: FC<PreviewProps> = ({ observable }) => {
           )}
         </Stack>
 
-        {observable.event.type && (
+        {event.event.type && (
           <Typography variant="caption">
-            {t('event.type')} - {observable.event.type.join(', ')}
+            {t('event.type')} - {event.event.type.join(', ')}
           </Typography>
         )}
 
-        {observable.event.module && (
+        {event.event.module && (
           <Typography variant="caption">
-            {t('event.module')} - {observable.event.module}
+            {t('event.module')} - {event.event.module}
           </Typography>
         )}
       </Stack>
@@ -57,4 +57,4 @@ const ObservablePreview: FC<PreviewProps> = ({ observable }) => {
   );
 };
 
-export default memo(ObservablePreview);
+export default memo(EventPreview);

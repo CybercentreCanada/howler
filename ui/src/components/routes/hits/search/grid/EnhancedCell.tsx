@@ -1,12 +1,12 @@
 /* eslint-disable react/no-array-index-key */
 import { Stack, TableCell, type SxProps } from '@mui/material';
 import PluginTypography from 'components/elements/PluginTypography';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { Observable } from 'models/entities/generated/Observable';
 import { memo, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 
-const EnhancedCell: FC<{ record: Hit | Observable; value: string; sx?: SxProps; className: string; field: string }> = ({
+const EnhancedCell: FC<{ record: Hit | Event; value: string; sx?: SxProps; className: string; field: string }> = ({
   record,
   value: rawValue,
   sx = {},

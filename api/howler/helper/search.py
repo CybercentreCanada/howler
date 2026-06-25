@@ -5,7 +5,7 @@ from howler.datastore.collection import ESCollection
 from howler.odm.models.user import User
 
 # List of indices where queries are protected with classification access control
-ACCESS_CONTROLLED_INDICES: set[str] = {"hit", "observable", "case"}
+ACCESS_CONTROLLED_INDICES: set[str] = {"hit", "event", "case"}
 
 ADMIN_INDEX_MAP: dict[str, Callable[[], ESCollection]] = {}
 
@@ -16,7 +16,7 @@ INDEX_MAP: dict[str, Callable[[], ESCollection]] = {
     "analytic": lambda: datastore().analytic,
     "dossier": lambda: datastore().dossier,
     "hit": lambda: datastore().hit,
-    "observable": lambda: datastore().observable,
+    "event": lambda: datastore().event,
     "case": lambda: datastore().case,
     "overview": lambda: datastore().overview,
     "template": lambda: datastore().template,
@@ -29,7 +29,7 @@ INDEX_ORDER_MAP: dict[str, str] = {
     "analytic": "name asc",
     "dossier": "title asc",
     "hit": "event.created desc",
-    "observable": "event.created desc",
+    "event": "event.created desc",
     "case": "created desc",
     "overview": "overview_id asc",
     "template": "template_id asc",

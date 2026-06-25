@@ -42,7 +42,7 @@ class SearchV2(object):
         """Search across one or more indexes.
 
         Args:
-            indexes: Comma-separated index names (e.g. ``"hit"`` or ``"hit,observable"``).
+            indexes: Comma-separated index names (e.g. ``"hit"`` or ``"hit,event"``).
             query: Lucene query string.
             filters: Additional filter queries.
             fl: Comma-separated list of fields to return.

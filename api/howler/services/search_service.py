@@ -104,7 +104,7 @@ def search(  # noqa: C901
     """Search through specified index for a given query. Uses lucene search syntax for query.
 
     Variables:
-    indexes  =>   Comma-separated list of indexes to search in (hit, observable,...)
+    indexes  =>   Comma-separated list of indexes to search in (hit, event,...)
 
     Arguments:
     query: Query to search for
@@ -222,7 +222,7 @@ def search(  # noqa: C901
 
 
 if __name__ == "__main__":
-    results = search("hit,observable", "howler.id:*", sort="timestamp desc", rows=250)
+    results = search("hit,event", "howler.id:*", sort="timestamp desc", rows=250)
 
     indexes = {result["_index"] for result in results["items"]}
 

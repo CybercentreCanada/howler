@@ -12,13 +12,14 @@ import HitOutline from './HitOutline';
 
 const HitCard: FC<{
   id?: string;
+  hit?: Hit;
   lazy?: boolean;
   layout: HitLayout;
   readOnly?: boolean;
   elevation?: number;
-}> = ({ id, layout, readOnly = true, lazy = false, elevation }) => {
+}> = ({ id, layout, readOnly = true, lazy = false, elevation, hit: _hit }) => {
   const getRecord = useContextSelector(RecordContext, ctx => ctx.getRecord);
-  const hit = useContextSelector(RecordContext, ctx => ctx.records[id] as Hit);
+  const hit = useContextSelector(RecordContext, ctx => _hit ?? (ctx.records[id] as Hit));
 
   useEffect(() => {
     if (!hit && !lazy) {

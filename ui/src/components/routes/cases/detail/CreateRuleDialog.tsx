@@ -63,7 +63,7 @@ const CreateRuleDialog: FC<CreateRuleDialogProps> = ({ open, onClose, onSubmit }
 
   const [query, setQuery] = useState('');
   const [destination, setDestination] = useState('');
-  const [indexes, setIndexes] = useState<('hit' | 'observable')[]>(['hit']);
+  const [indexes, setIndexes] = useState<('hit' | 'event')[]>(['hit']);
   const [timeframe, setTimeframe] = useState<Dayjs>(dayjs().add(DEFAULT_TIMEFRAME_DAYS, 'day'));
   const [noExpiry, setNoExpiry] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -270,19 +270,19 @@ const CreateRuleDialog: FC<CreateRuleDialogProps> = ({ open, onClose, onSubmit }
               <FormControlLabel
                 control={
                   <Checkbox
-                    id="rule-index-observable"
-                    checked={indexes.includes('observable')}
+                    id="rule-index-event"
+                    checked={indexes.includes('event')}
                     onChange={(_e, checked) => {
                       setIndexes(prev => {
                         if (checked) {
-                          return prev.includes('observable') ? prev : [...prev, 'observable'];
+                          return prev.includes('event') ? prev : [...prev, 'event'];
                         }
-                        return prev.filter(i => i !== 'observable');
+                        return prev.filter(i => i !== 'event');
                       });
                     }}
                   />
                 }
-                label={t('hit.search.index.observable')}
+                label={t('hit.search.index.event')}
               />
             </FormGroup>
           </Box>
