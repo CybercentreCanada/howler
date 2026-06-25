@@ -84,19 +84,19 @@ def set_privilege_mapping(self, level: str, user: str | list[str]):
                 raise ValueError("Owner level can only have one user. A list was given with multiple users.")
             self.owner = user[0] if user else ""  # Or handle empty lists if necessary
         else:
-            self.owner = user  # type is guaranteed to be str here
+            self.owner = user
 
     elif level == "administrator":
         if isinstance(user, list):
-            self.admins.extend(user)  # mypy knows 'user' is list[str]
+            self.admins.extend(user)
         else:
-            self.admins.append(user)  # mypy now safely infers 'user' is str
+            self.admins.append(user)
 
     elif level == "member":
         if isinstance(user, list):
-            self.members.extend(user)  # mypy knows 'user' is list[str]
+            self.members.extend(user)
         else:
-            self.members.append(user)  # mypy now safely infers 'user' is str
+            self.members.append(user)
 
     def remove_privilege_mapping(self, level: str, users: str | list[str]):
         """
