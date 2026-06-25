@@ -21,7 +21,7 @@ class Search(object):
         self.stats = Stats(connection)
         self.stream = Stream(connection, self._do_search)
 
-    def _do_search(self, index, query, use_archive=False, track_total_hits=None, **kwargs):
+    def _do_search(self, index, query, track_total_hits=None, **kwargs):
         if index not in SEARCHABLE:
             raise ClientError("Index %s is not searchable" % index, 400)
 
@@ -34,8 +34,6 @@ class Search(object):
 
         kwargs = {k: v for k, v in kwargs.items() if v is not None}
         kwargs["query"] = query
-        if use_archive:
-            kwargs["use_archive"] = ""
         if track_total_hits:
             kwargs["track_total_hits"] = track_total_hits
         path = api_path("search", index)
@@ -50,7 +48,6 @@ class Search(object):
         rows=25,
         sort=None,
         timeout=None,
-        use_archive=False,
         track_total_hits=None,
     ):
         """Search hits with a lucene query.
@@ -65,7 +62,6 @@ class Search(object):
         rows              : Number of records to return (integer)
         sort              : Field used for sorting with direction (string: ex. 'id desc')
         timeout           : Max amount of miliseconds the query will run (integer)
-        use_archive       : Also query the archive
         track_total_hits  : Number of hits to track (default: 10k)
 
         Returns all results.
@@ -79,6 +75,5 @@ class Search(object):
             rows=rows,
             sort=sort,
             timeout=timeout,
-            use_archive=use_archive,
             track_total_hits=track_total_hits,
         )

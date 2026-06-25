@@ -11,11 +11,13 @@ import {
   Paper,
   Popper,
   Stack,
-  TextField
+  TextField,
+  Tooltip
 } from '@mui/material';
 import api from 'api';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { ModalContext } from 'components/app/providers/ModalProvider';
+import NotebookTooltip from 'components/elements/hit/NotebookTooltip';
 import useMyApi from 'components/hooks/useMyApi';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import type { Analytic } from 'models/entities/generated/Analytic';
@@ -224,42 +226,46 @@ const HitNotebooks: FC<{ analytic: Analytic; selectedNotebook?: string; hit?: Hi
               </Fade>
             )}
           </Popper>
-          <HowlerCard
-            variant={compact ? 'outlined' : 'elevation'}
-            onClick={handleToggle}
-            sx={[
-              theme => ({
-                cursor: 'pointer',
-                backgroundColor: 'transparent',
-                transition: theme.transitions.create(['border-color']),
-                '&:hover': { borderColor: 'primary.main', '& a': { textDecoration: 'underline' } },
-                '& > div': {
-                  height: '100%'
-                },
-                '& a': { textDecoration: 'none', color: 'text.primary' }
-              }),
-              !compact && { border: 'thin solid', borderColor: 'transparent' }
-            ]}
-          >
-            <Stack direction="row" p={1} spacing={1} alignItems="center">
-              <Avatar
-                variant="rounded"
-                src={'/images/jupyter_notebook_file_icon.png'}
+          <Tooltip title={<NotebookTooltip />}>
+            <span>
+              <HowlerCard
+                variant={compact ? 'outlined' : 'elevation'}
+                onClick={handleToggle}
                 sx={[
                   theme => ({
-                    width: theme.spacing(3),
-                    height: theme.spacing(3),
-                    '& img': {
-                      objectFit: 'contain'
-                    }
-                  })
+                    cursor: 'pointer',
+                    backgroundColor: 'transparent',
+                    transition: theme.transitions.create(['border-color']),
+                    '&:hover': { borderColor: 'primary.main', '& a': { textDecoration: 'underline' } },
+                    '& > div': {
+                      height: '100%'
+                    },
+                    '& a': { textDecoration: 'none', color: 'text.primary' }
+                  }),
+                  !compact && { border: 'thin solid', borderColor: 'transparent' }
                 ]}
               >
-                {'jupyter_notebook_file_icon.png'}
-              </Avatar>
-              {t('hit.notebook.tooltip')}
-            </Stack>
-          </HowlerCard>
+                <Stack direction="row" p={1} spacing={1} alignItems="center">
+                  <Avatar
+                    variant="rounded"
+                    src={'/images/jupyter_notebook_file_icon.png'}
+                    sx={[
+                      theme => ({
+                        width: theme.spacing(3),
+                        height: theme.spacing(3),
+                        '& img': {
+                          objectFit: 'contain'
+                        }
+                      })
+                    ]}
+                  >
+                    {'jupyter_notebook_file_icon.png'}
+                  </Avatar>
+                  {t('hit.notebook.tooltip')}
+                </Stack>
+              </HowlerCard>
+            </span>
+          </Tooltip>
         </div>
       </ClickAwayListener>
     )

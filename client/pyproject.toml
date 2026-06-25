@@ -128,7 +128,6 @@ pycryptodome = "^3.20.0"
 requests = { extras = ["security"], version = ">=2.32.0,<3.0.0" }
 python-baseconv = "^1.2.2"
 coverage = { extras = ["toml"], version = "^7.6.1" }
-diff-cover = "^9.2.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = ">=0.6.8,<0.16.0"
@@ -139,7 +138,7 @@ mypy = "^1.11.2"
 pytest = ">=8.3.3,<10.0.0"
 pytest-cov = "^5.0.0"
 passlib = "^1.7.4"
-
+diff-cover = "^10.3.0"
 
 [tool.poetry.group.types.dependencies]
 types-requests = "^2.32.0.20240914"

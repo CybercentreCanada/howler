@@ -1,7 +1,8 @@
 import json
 import sys
+import warnings
 from hashlib import sha256
-from typing import TYPE_CHECKING, Any, Literal, Optional, Union
+from typing import TYPE_CHECKING, Any, Literal
 
 from howler_client.common.dict_utils import flatten
 from howler_client.common.utils import ClientError, api_path
@@ -68,7 +69,7 @@ class Hit(object):
         map: dict[str, list[str]],
         documents: list[dict[str, Any]],
         ignore_extra_values: bool = False,
-    ) -> dict[str, Union[Optional[str], list[str]]]:
+    ) -> list[dict[str, str | list[str] | None]]:
         """Create hits for a given tool using the raw documents and a map of the document fields to howler's fields.
 
         Args:
@@ -79,8 +80,17 @@ class Hit(object):
             ignore_extra_values (bool, optional): Whether to allow extra fields, or raise an error. Defaults to False.
 
         Returns:
-            dict[str, Union[Optional[str], list[str]]]: A list of IDs/Errors in the same order as the original documents
+            list[dict[str, str | list[str] | None]]: One entry per document, each with keys ``id``, ``error``,
+                and ``warn``.
+
+        .. deprecated::
+            Use the regular create() function instead, mapping the record before ingestion.
         """
+        warnings.warn(
+            "create_from_map is deprecated and will be removed in a future version.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         data = {"map": map, "hits": documents}
 
         try:
@@ -103,9 +113,9 @@ class Hit(object):
                 warn = res["warn"]
                 if isinstance(warn, list):
                     for w in warn:
-                        logger.warn(w)
+                        logger.warning(w)
                 else:
-                    logger.warn(warn)
+                    logger.warning(warn)
 
         return result
 
@@ -135,13 +145,13 @@ class Hit(object):
 
     def create(  # noqa: C901
         self: Self,
-        data: Union[dict[str, Any], list[dict[str, Any]]],
+        data: dict[str, Any] | list[dict[str, Any]],
         ignore_extra_values: bool = False,
     ):
         """Create one or many hits using the howler schema.
 
         Args:
-            data (Union[dict[str, Any], list[dict[str, Any]]]): The hit or list of hits to create
+            data (dict[str, Any] | list[dict[str, Any]]): The hit or list of hits to create
             ignore_extra_values (bool, optional): Whtether to ignore extra values, or throw an exception.
                 Defaults to False.
 
@@ -178,22 +188,20 @@ class Hit(object):
 
             final_hit_list.append(hit)
 
-        search_result = self._search.grouped.hit(
+        hashes = [hit["howler.hash"] for hit in final_hit_list]
+        existing_hashes: dict[str, int] = self._search.facet.hit(
             "howler.hash",
-            limit=1,
-            filters=[f"howler.hash:{' '.join(list_hit['howler.hash'] for list_hit in final_hit_list)}"],
-        )["items"]
+            query=f"howler.hash:({' OR '.join(hashes)})",
+            rows=len(hashes),
+        )
 
-        for hit in final_hit_list:
-            for match in search_result:
-                if hit["howler.hash"] == match["value"]:
-                    matched_hit = match["items"][0]
-
-                    logger.warning(
-                        f"Hit with hash {hit['howler.hash']} already exists in the DB at "
-                        f"id {matched_hit['howler']['id']}, reusing"
-                    )
-                    final_hit_list.remove(hit)
+        for hit in list(final_hit_list):
+            if hit["howler.hash"] in existing_hashes:
+                logger.warning(
+                    "Hit with hash %s already exists in the DB, reusing",
+                    hit["howler.hash"],
+                )
+                final_hit_list.remove(hit)
 
         if len(final_hit_list) < 1:
             logger.info("No hits to submit.")
@@ -211,9 +219,6 @@ class Hit(object):
 
         for invalid_hit in result["invalid"]:
             logger.error(invalid_hit["error"])
-
-        for entry in search_result:
-            result["valid"].append(entry["items"][0])
 
         return result
 

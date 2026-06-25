@@ -41,7 +41,7 @@ def main():
         diff_report_result = ""
         if diff_exists:
             diff_report_result = subprocess.check_output(
-                shlex.split("diff-cover coverage.xml --diff-file=diff.txt --markdown-report diff-cover-report.md")
+                shlex.split("diff-cover coverage.xml --diff-file diff.txt --markdown-report diff-cover-report.md")
             ).decode()
             print(diff_report_result)
 

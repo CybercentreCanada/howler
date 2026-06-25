@@ -17,20 +17,20 @@ export const get = (id: string): Promise<Action> => {
     .then(res => res.items[0]);
 };
 
-export const post = (data: Action): Promise<Action> => {
-  return hpost(uri(), data);
+export const post = (data: Action, refresh?: HowlerRefreshParam): Promise<Action> => {
+  return hpost(uri(), data, {}, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
-export const put = (id: string, data: Action): Promise<Action> => {
-  return hput(uri(id), data);
+export const put = (id: string, data: Action, refresh?: HowlerRefreshParam): Promise<Action> => {
+  return hput(uri(id), data, {}, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
-export const patch = (id: string, data: Action): Promise<Action> => {
-  return hpatch(uri(id), data);
+export const patch = (id: string, data: Action, refresh?: HowlerRefreshParam): Promise<Action> => {
+  return hpatch(uri(id), data, {}, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
-export const del = (id: string): Promise<void> => {
-  return hdelete(uri(id));
+export const del = (id: string, refresh?: HowlerRefreshParam): Promise<void> => {
+  return hdelete(uri(id), undefined, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
 export const permission = {

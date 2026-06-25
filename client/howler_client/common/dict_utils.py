@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, AnyStr, Optional, cast
+from typing import TYPE_CHECKING, Any, AnyStr, cast
 from typing import Mapping as _Mapping
 
 if TYPE_CHECKING:
@@ -15,8 +15,8 @@ def strip_nulls(d: Any):
 
 
 def recursive_update(
-    d: Optional[dict[str, Any]],
-    u: Optional[_Mapping[str, Any]],
+    d: dict[str, Any] | None,
+    u: _Mapping[str, Any] | None,
     stop_keys: list[AnyStr] = [],
     allow_recursion: bool = True,
 ) -> dict[str, Any]:
@@ -37,11 +37,11 @@ def recursive_update(
 
 
 def get_recursive_delta(
-    d1: Optional[_Mapping[str, Any]],
-    d2: Optional[_Mapping[str, Any]],
+    d1: _Mapping[str, Any] | None,
+    d2: _Mapping[str, Any] | None,
     stop_keys: list[AnyStr] = [],
     allow_recursion: bool = True,
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     "Get the recursive difference between two objects"
     if d1 is None:
         return cast(dict, d2)
@@ -73,7 +73,7 @@ def get_recursive_delta(
     return out
 
 
-def flatten(data: dict, fields: list[str] = [], parent_key: Optional[str] = None) -> dict:
+def flatten(data: dict, fields: list[str] = [], parent_key: str | None = None) -> dict:
     "Flatten a nested dict"
     items: list[tuple[str, Any]] = []
 
@@ -105,7 +105,7 @@ def unflatten(data: _Mapping) -> _Mapping:
     return out
 
 
-def prune(data: _Mapping, keys: list[str], parent_key: Optional[str] = None) -> dict[str, Any]:
+def prune(data: _Mapping, keys: list[str], parent_key: str | None = None) -> dict[str, Any]:
     "Remove all keys in the given list from the dict if they exist"
     pruned_items: list[tuple[str, Any]] = []
 

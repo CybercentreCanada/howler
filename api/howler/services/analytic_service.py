@@ -95,18 +95,45 @@ def get_matching_analytics(hits: Union[list[Hit], list[dict[str, Any]]]) -> list
         return []
 
 
-def save_from_hit(hit: Hit, user: User):
-    """Save updates to an analytic based on a new hit that has been created
+def save_from_hits(hits: Hit | list[Hit], user: User, refresh: str | None = None):
+    """Save updates to analytics based on new hits that have been created
 
     Args:
-        hit (Hit): The newly created hit to use to update the analytic entry
+        hits (Hit | list[Hit]): The newly created hit(s) to use to update the analytic entry/entries
+        refresh (str | None): The refresh strategy to use when saving the analytic(s).
     """
     storage = datastore()
 
+    if isinstance(hits, Hit):
+        hits = [hits]
+
+    # group by analytics for bulk update
+    hits_by_analytic: dict[str, list[Hit]] = {}
+    for hit in hits:
+        hits_by_analytic.setdefault(hit.howler.analytic, []).append(hit)
+
+    analytics = []
+    for analytic_name, hit_group in hits_by_analytic.items():
+        analytic_update = _get_analytic_updates_from_hit_group(analytic_name, hit_group, user)
+        if analytic_update:
+            analytics.append(analytic_update)
+
+    if analytics:
+        for analytic in analytics[:-1]:
+            storage.analytic.save(analytic.analytic_id, analytic)
+
+        # save the last one passing on the refresh parameter
+        storage.analytic.save(analytics[-1].analytic_id, analytics[-1], refresh=refresh)
+
+
+def _get_analytic_updates_from_hit_group(analytic_name: str, hit_group: list[Hit], user: User) -> Analytic | None:
+    """Get the new or modified analytic object that should be saved or None if no changes"""
+    storage = datastore()
+
     save = False
-    existing_analytics: list[Analytic] = storage.analytic.search(
-        f'name:"{sanitize_lucene_query(hit.howler.analytic)}"'
-    )["items"]
+    existing_analytics: list[Analytic] = storage.analytic.search(f'name:"{sanitize_lucene_query(analytic_name)}"')[
+        "items"
+    ]
     if len(existing_analytics) > 0:
         analytic: Analytic = existing_analytics[0]
 
@@ -118,11 +145,14 @@ def save_from_hit(hit: Hit, user: User):
             analytic.contributors.append(user.uname)
             save = True
 
-        if hit.howler.detection:
-            new_detections = [d for d in analytic.detections if d.lower() != (hit.howler.detection or "").lower()]
-            new_detections.append(hit.howler.detection)
+        hit_bundle_detections = [hit.howler.detection for hit in hit_group if hit.howler.detection]
 
-            new_detections = sorted(new_detections)
+        if hit_bundle_detections:
+            detection_filter_list = [d.lower() for d in hit_bundle_detections]
+            updated_detections = [d for d in analytic.detections if d.lower() not in detection_filter_list]
+            updated_detections.extend(hit_bundle_detections)
+
+            new_detections = sorted(updated_detections)
 
             if new_detections != analytic.as_primitives()["detections"]:
                 save = True
@@ -133,15 +163,14 @@ def save_from_hit(hit: Hit, user: User):
             for duplicate in existing_analytics[1:]:
                 storage.analytic.delete(duplicate.analytic_id)
 
-            storage.analytic.commit()
     else:
         save = True
         analytic = Analytic(
             {
-                "name": hit.howler.analytic,
+                "name": analytic_name,
                 "owner": user["uname"],
                 "contributors": [user["uname"]],
-                "detections": [hit.howler.detection] if hit.howler.detection else [],
+                "detections": [hit.howler.detection for hit in hit_group if hit.howler.detection],
                 "description": "Placeholder Description - Défaut Description",
                 "triage_settings": {
                     "valid_assessments": Assessment.list(),
@@ -151,7 +180,5 @@ def save_from_hit(hit: Hit, user: User):
         )
 
     if save:
-        storage.analytic.save(analytic.analytic_id, analytic)
-
-        # This is necessary as we often save over the analytic multiple times in quick succession when saving from hits
-        storage.analytic.commit()
+        return analytic
+    return None
