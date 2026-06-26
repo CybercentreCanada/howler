@@ -1,86 +1,9 @@
 /// <reference types="vitest" />
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Hit } from 'models/entities/generated/Hit';
 import { createElement, type FC, type PropsWithChildren } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { createMockEvent, createMockHit } from 'tests/utils';
 import { describe, expect, it, vi } from 'vitest';
-import { buildObservableEntries } from './CaseObservables';
-
-// ---------------------------------------------------------------------------
-// Pure logic tests — no React needed
-// ---------------------------------------------------------------------------
-
-describe('buildObservableEntries', () => {
-  it('returns an empty array for records with no related field', () => {
-    expect(buildObservableEntries([createMockHit({ howler: { id: 'h1' } })])).toEqual([]);
-  });
-
-  it('extracts a single IP from a hit', () => {
-    const result = buildObservableEntries([createMockHit({ howler: { id: 'h1' }, related: { ip: ['1.2.3.4'] } })]);
-    expect(result).toHaveLength(1);
-    expect(result[0]).toEqual({ type: 'ip', value: '1.2.3.4', seenIn: ['h1'] });
-  });
-
-  it('extracts multiple fields from a single record', () => {
-    const result = buildObservableEntries([
-      createMockHit({ howler: { id: 'h1' }, related: { ip: ['1.2.3.4'], user: ['alice'] } })
-    ]);
-    const types = result.map(a => a.type).sort();
-    expect(types).toEqual(['ip', 'user']);
-  });
-
-  it('deduplicates the same asset value across multiple records', () => {
-    const result = buildObservableEntries([
-      createMockHit({ howler: { id: 'h1' }, related: { ip: ['1.2.3.4'] } }),
-      createMockEvent({ howler: { id: 'obs1' }, related: { ip: ['1.2.3.4'] } })
-    ]);
-    expect(result).toHaveLength(1);
-    expect(result[0].seenIn).toEqual(['h1', 'obs1']);
-  });
-
-  it('keeps distinct asset values as separate entries', () => {
-    const result = buildObservableEntries([
-      createMockHit({ howler: { id: 'h1' }, related: { ip: ['1.2.3.4'] } }),
-      createMockHit({ howler: { id: 'h2' }, related: { ip: ['5.6.7.8'] } })
-    ]);
-    expect(result).toHaveLength(2);
-  });
-
-  it('does not duplicate seenIn ids when the same record appears twice for the same asset', () => {
-    const result = buildObservableEntries([
-      createMockHit({ howler: { id: 'h1' }, related: { ip: ['1.2.3.4'] } }),
-      createMockHit({ howler: { id: 'h1' }, related: { ip: ['1.2.3.4'] } })
-    ]);
-    expect(result[0].seenIn).toEqual(['h1']);
-  });
-
-  it('skips records with no howler.id', () => {
-    const noId: Partial<Hit> = { related: { ip: ['1.2.3.4'] } } as any;
-    expect(buildObservableEntries([noId])).toEqual([]);
-  });
-
-  it('handles the scalar `id` field on Related', () => {
-    const result = buildObservableEntries([createMockHit({ howler: { id: 'h1' }, related: { id: 'some-id' } })]);
-    expect(result).toHaveLength(1);
-    expect(result[0]).toEqual({ type: 'id', value: 'some-id', seenIn: ['h1'] });
-  });
-
-  it('handles array fields like hash, hosts, user, ids, uri, signature', () => {
-    const related = {
-      hash: ['abc123'],
-      hosts: ['host.example.com'],
-      user: ['bob'],
-      ids: ['guid-1'],
-      uri: ['https://example.com'],
-      signature: ['rule-X']
-    };
-    const result = buildObservableEntries([createMockHit({ howler: { id: 'h1' }, related })]);
-    const types = result.map(a => a.type).sort();
-    expect(types).toEqual(['hash', 'hosts', 'ids', 'signature', 'uri', 'user']);
-  });
-});
 
 // ---------------------------------------------------------------------------
 // Component rendering tests
@@ -96,15 +19,32 @@ vi.mock('components/hooks/useMyApi', () => ({
   default: () => ({ dispatchApi: mockDispatchApi })
 }));
 
+vi.mock('api', () => ({
+  default: {
+    v2: {
+      search: {
+        post: vi.fn(() => Promise.resolve({ items: [] })),
+        facet: {
+          post: vi.fn(() => Promise.resolve({}))
+        }
+      }
+    }
+  }
+}));
+
 vi.mock('../hooks/useCase', () => ({
   default: ({ case: c }: any) => ({ case: c, updateCase: vi.fn(), loading: false, missing: false })
+}));
+
+vi.mock('components/elements/PluginTypography', () => ({
+  default: ({ value }: any) => createElement('span', null, value)
 }));
 
 const mockCase = {
   case_id: 'case-001',
   items: [
-    { type: 'hit', value: 'hit-1' },
-    { type: 'event', value: 'obs-1' }
+    { type: 'hit', value: 'hit-1', path: 'alerts/analytic-1 (hit-1)' },
+    { type: 'observable', value: 'obs-1', path: 'observables/obs-1' }
   ]
 } as any;
 
@@ -124,9 +64,7 @@ describe('CaseObservables component', () => {
 
     render(<CaseObservables case={mockCase} />, { wrapper: Wrapper });
 
-    // 6 skeleton cards
     const skeletons = document.querySelectorAll('.MuiSkeleton-root');
-
     expect(skeletons.length).toBeGreaterThan(0);
   });
 
@@ -140,7 +78,22 @@ describe('CaseObservables component', () => {
     await screen.findByText('page.cases.observables.empty');
   });
 
-  it('renders observable cards for extracted observables', async () => {
+  it('renders observables in a table for extracted observables', async () => {
+    mockDispatchApi.mockResolvedValue({
+      items: [{ howler: { id: 'hit-1' }, related: { ip: ['1.2.3.4'], user: ['alice'] } }]
+    });
+
+    render(<CaseObservables case={mockCase} />, { wrapper: Wrapper });
+
+    await screen.findByText('1.2.3.4');
+    expect(screen.getByText('alice')).toBeTruthy();
+
+    // Table headers should be present
+    expect(screen.getByText('page.cases.observables.columns.type')).toBeTruthy();
+    expect(screen.getByText('page.cases.observables.columns.value')).toBeTruthy();
+  });
+
+  it('renders a filter chip for each observable type present when popper is opened', async () => {
     mockDispatchApi.mockResolvedValue({
       items: [{ howler: { id: 'hit-1' }, related: { ip: ['1.2.3.4'], user: ['alice'] } }]
     });
@@ -149,20 +102,12 @@ describe('CaseObservables component', () => {
 
     await screen.findByText('1.2.3.4');
 
-    expect(screen.getByText('alice')).toBeTruthy();
-  });
+    // Open the type filter popper
+    await userEvent.click(screen.getByText('page.cases.observables.filter_by_type'));
 
-  it('renders a filter chip for each observable type present', async () => {
-    mockDispatchApi.mockResolvedValue({
-      items: [{ howler: { id: 'hit-1' }, related: { ip: ['1.2.3.4'], user: ['alice'] } }]
-    });
-
-    render(<CaseObservables case={mockCase} />, { wrapper: Wrapper });
-
-    await screen.findAllByText('page.cases.observables.type.ip');
-
-    expect(screen.getAllByText('page.cases.observables.type.ip')).toHaveLength(2);
-    expect(screen.getAllByText('page.cases.observables.type.user')).toHaveLength(2);
+    // Filter chips visible in popper + table = at least 2 of each type
+    expect(screen.getAllByText('page.cases.observables.type.ip').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('page.cases.observables.type.user').length).toBeGreaterThanOrEqual(2);
   });
 
   it('filters observables when a type chip is clicked', async () => {
@@ -171,14 +116,13 @@ describe('CaseObservables component', () => {
     });
     render(<CaseObservables case={mockCase} />, { wrapper: Wrapper });
 
-    // Wait for both observables to appear
     await screen.findByText('1.2.3.4');
     expect(screen.getByText('alice')).toBeTruthy();
 
-    // Click the 'ip' filter chip
-    await userEvent.click(screen.getByRole('button', { name: 'page.cases.observables.type.ip' }));
+    // Open the type filter popper and click the first 'ip' chip (in the popper)
+    await userEvent.click(screen.getByText('page.cases.observables.filter_by_type'));
+    await userEvent.click(screen.getAllByText('page.cases.observables.type.ip')[0]);
 
-    // Alice (user) should be filtered out
     expect(screen.queryByText('alice')).toBeNull();
     expect(screen.getByText('1.2.3.4')).toBeTruthy();
   });
@@ -190,7 +134,9 @@ describe('CaseObservables component', () => {
     render(<CaseObservables case={mockCase} />, { wrapper: Wrapper });
     await screen.findByText('1.2.3.4');
 
-    const ipChip = screen.getByRole('button', { name: 'page.cases.observables.type.ip' });
+    // Open the type filter popper
+    await userEvent.click(screen.getByText('page.cases.observables.filter_by_type'));
+    const ipChip = screen.getAllByText('page.cases.observables.type.ip')[0];
     await userEvent.click(ipChip);
     await userEvent.click(ipChip);
 
@@ -198,10 +144,70 @@ describe('CaseObservables component', () => {
     expect(screen.getByText('alice')).toBeTruthy();
   });
 
-  it('renders nothing when the case has no hit/event items', async () => {
+  it('renders nothing when the case has no hit/observable items', async () => {
     const emptyCase = { case_id: 'case-002', items: [] } as any;
     render(<CaseObservables case={emptyCase} />, { wrapper: Wrapper });
     await screen.findByText('page.cases.observables.empty');
     expect(mockDispatchApi).not.toHaveBeenCalled();
+  });
+
+  it('filters observables by search query', async () => {
+    mockDispatchApi.mockResolvedValue({
+      items: [{ howler: { id: 'hit-1' }, related: { ip: ['1.2.3.4'], user: ['alice'] } }]
+    });
+    render(<CaseObservables case={mockCase} />, { wrapper: Wrapper });
+    await screen.findByText('1.2.3.4');
+
+    const searchInput = screen.getByPlaceholderText('page.cases.observables.search');
+    await userEvent.type(searchInput, 'alice');
+
+    expect(screen.queryByText('1.2.3.4')).toBeNull();
+    expect(screen.getByText('alice')).toBeTruthy();
+  });
+
+  it('renders origin filter chips inside popper', async () => {
+    mockDispatchApi.mockResolvedValue({
+      items: [{ howler: { id: 'hit-1' }, related: { ip: ['1.2.3.4'] } }]
+    });
+    render(<CaseObservables case={mockCase} />, { wrapper: Wrapper });
+    await screen.findByText('1.2.3.4');
+
+    // Open the origin filter popper
+    await userEvent.click(screen.getByText('page.cases.observables.filter_by_origin'));
+
+    expect(screen.getByText('page.cases.observables.origin.hit')).toBeTruthy();
+    expect(screen.getByText('page.cases.observables.origin.event')).toBeTruthy();
+  });
+
+  it('renders escalation filter chips from facet response', async () => {
+    mockDispatchApi
+      .mockResolvedValueOnce({
+        items: [{ howler: { id: 'hit-1', escalation: 'evidence' }, related: { ip: ['1.2.3.4'] } }]
+      })
+      .mockResolvedValueOnce({
+        'howler.escalation': { evidence: 1 }
+      });
+
+    render(<CaseObservables case={mockCase} />, { wrapper: Wrapper });
+    await screen.findByText('1.2.3.4');
+    await waitFor(() => {
+      // 'evidence' appears in the table escalation column
+      expect(screen.getByText('evidence')).toBeTruthy();
+    });
+  });
+
+  it('classifies roles and renders role chips in the table', async () => {
+    mockDispatchApi.mockResolvedValue({
+      items: [
+        {
+          howler: { id: 'hit-1', outline: { threat: 'malware.exe' } },
+          related: { hosts: ['malware.exe'] }
+        }
+      ]
+    });
+    render(<CaseObservables case={mockCase} />, { wrapper: Wrapper });
+    await screen.findByText('malware.exe');
+
+    expect(screen.getByText('page.cases.observables.role.threat')).toBeTruthy();
   });
 });

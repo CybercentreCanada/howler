@@ -3,17 +3,9 @@ import type { Case } from 'models/entities/generated/Case';
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import type { ObservableEntry } from '../types';
 
-export type ObservableType = 'hash' | 'hosts' | 'ip' | 'user' | 'ids' | 'id' | 'uri' | 'signature';
-
-export interface ObservableEntry {
-  type: ObservableType;
-  value: string;
-  /** IDs of the hits/events this observable was seen in */
-  seenIn: string[];
-}
-
-const Observable: FC<{ asset: ObservableEntry; case: Case }> = ({ asset, case: _case }) => {
+const Observable: FC<{ observable: ObservableEntry; case: Case }> = ({ observable, case: _case }) => {
   const { t } = useTranslation();
 
   return (
@@ -23,22 +15,22 @@ const Observable: FC<{ asset: ObservableEntry; case: Case }> = ({ asset, case: _
           <Stack direction="row" alignItems="center" spacing={1}>
             <Chip
               size="small"
-              label={t(`page.cases.observables.type.${asset.type}`)}
+              label={t(`page.cases.observables.type.${observable.type}`)}
               color="primary"
               variant="outlined"
             />
             <Typography variant="body2" sx={{ wordBreak: 'break-all', fontFamily: 'monospace' }}>
-              {asset.value}
+              {observable.value}
             </Typography>
           </Stack>
 
-          {asset.seenIn.length > 0 && (
+          {observable.seenIn.length > 0 && (
             <Stack spacing={0.5}>
               <Typography variant="caption" color="text.secondary">
                 {t('page.cases.observables.seen_in')}
               </Typography>
               <Stack direction="row" flexWrap="wrap" gap={0.5}>
-                {asset.seenIn.map(id => {
+                {observable.seenIn.map(id => {
                   const entry = _case.items.find(item => item.value === id);
 
                   return (

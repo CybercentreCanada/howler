@@ -3,7 +3,8 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { createMockCase } from 'tests/utils';
 import { describe, expect, it } from 'vitest';
-import Observable, { type ObservableEntry } from './Observable';
+import type { ObservableEntry } from '../types';
+import Observable from './Observable';
 
 const makeObservable = (overrides: Partial<ObservableEntry> = {}): ObservableEntry => ({
   type: 'ip',
@@ -19,7 +20,7 @@ describe('Observable', () => {
       for (const type of cases) {
         const { unmount } = render(
           <MemoryRouter>
-            <Observable asset={makeObservable({ type, value: 'x' })} case={createMockCase()} />
+            <Observable observable={makeObservable({ type, value: 'x' })} case={createMockCase()} />
           </MemoryRouter>
         );
         expect(screen.getByText(`page.cases.observables.type.${type}`)).toBeTruthy();
@@ -32,7 +33,7 @@ describe('Observable', () => {
     it('renders the asset value', () => {
       render(
         <MemoryRouter>
-          <Observable asset={makeObservable({ value: '10.0.0.1' })} case={createMockCase()} />
+          <Observable observable={makeObservable({ value: '10.0.0.1' })} case={createMockCase()} />
         </MemoryRouter>
       );
       expect(screen.getByText('10.0.0.1')).toBeTruthy();
@@ -42,7 +43,7 @@ describe('Observable', () => {
       const hash = 'a'.repeat(64);
       render(
         <MemoryRouter>
-          <Observable asset={makeObservable({ type: 'hash', value: hash })} case={createMockCase()} />
+          <Observable observable={makeObservable({ type: 'hash', value: hash })} case={createMockCase()} />
         </MemoryRouter>
       );
       expect(screen.getByText(hash)).toBeTruthy();
@@ -53,7 +54,7 @@ describe('Observable', () => {
     it('renders nothing when seenIn is empty', () => {
       render(
         <MemoryRouter>
-          <Observable asset={makeObservable({ seenIn: [] })} case={createMockCase()} />
+          <Observable observable={makeObservable({ seenIn: [] })} case={createMockCase()} />
         </MemoryRouter>
       );
       expect(screen.queryByText('page.cases.observables.seen_in')).toBeNull();
@@ -65,7 +66,7 @@ describe('Observable', () => {
       });
       render(
         <MemoryRouter>
-          <Observable asset={makeObservable({ seenIn: ['hit-001'] })} case={_case} />
+          <Observable observable={makeObservable({ seenIn: ['hit-001'] })} case={_case} />
         </MemoryRouter>
       );
       expect(screen.getByText('page.cases.observables.seen_in')).toBeTruthy();
@@ -81,7 +82,7 @@ describe('Observable', () => {
       });
       render(
         <MemoryRouter>
-          <Observable asset={makeObservable({ seenIn: ['hit-001', 'obs-002', 'hit-003'] })} case={_case} />
+          <Observable observable={makeObservable({ seenIn: ['hit-001', 'obs-002', 'hit-003'] })} case={_case} />
         </MemoryRouter>
       );
       expect(screen.getByText('alerts/my-analytic (hit-001)')).toBeTruthy();
@@ -96,7 +97,7 @@ describe('Observable', () => {
       });
       render(
         <MemoryRouter>
-          <Observable asset={makeObservable({ seenIn: ['hit-001'] })} case={_case} />
+          <Observable observable={makeObservable({ seenIn: ['hit-001'] })} case={_case} />
         </MemoryRouter>
       );
       const link = screen.getByText('alerts/my-analytic (hit-001)').closest('a');
