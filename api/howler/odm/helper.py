@@ -7,7 +7,7 @@ from random import choice, randint, sample
 from typing import Any, cast
 
 from howler.common.logging import get_logger
-from howler.config import config
+from howler.config import CLASSIFICATION, config
 from howler.datastore.howler_store import HowlerDatastore
 from howler.helper.discover import get_apps_list
 from howler.odm.base import Model
@@ -48,6 +48,9 @@ def generate_useful_hit(  # noqa: C901
 ) -> Hit:
     "Create a random, useful/cogent hit for synthetic data"
     hit: Hit = random_model_obj(cast(Model, Hit))
+
+    if CLASSIFICATION.enforce:
+        hit.classification = CLASSIFICATION.UNRESTRICTED
 
     rand_seed = random.random()
 
