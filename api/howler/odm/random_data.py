@@ -19,7 +19,7 @@ import importlib
 import json
 import random
 import textwrap
-from datetime import datetime, timedelta
+from datetime import datetime
 from random import choice, randint, sample
 from typing import Any, Callable, cast
 from uuid import uuid4
@@ -908,13 +908,8 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
                         ),
                         "author": choice(selected_participants or ["admin"]),
                         "enabled": choice([True, True, True, False]),
-                        "timeframe": choice(
-                            [
-                                (datetime.now() + timedelta(days=randint(7, 28))).isoformat(),
-                                (datetime.now() + timedelta(days=randint(7, 28))).isoformat(),
-                                None,
-                            ]
-                        ),
+                        "timeframe": choice([7, 14, 28, None]),
+                        "expire_after_resolved": choice([True, False]),
                     }
                     for _ in range(randint(1, 3))
                 ],

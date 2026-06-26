@@ -19,7 +19,6 @@ import api from 'api';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import ConfirmDeleteModal from 'components/elements/display/modals/ConfirmDeleteModal';
 import useMyApi from 'components/hooks/useMyApi';
-import dayjs from 'dayjs';
 import type { Case } from 'models/entities/generated/Case';
 import type { Rule } from 'models/entities/generated/Rule';
 import { useCallback, useContext, useState, type FC } from 'react';
@@ -120,69 +119,69 @@ const CaseRules: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, c
                 </TableRow>
               </TableHead>
               <TableBody>
-                {rules.map(rule => {
-                  const _timeframe = rule.timeframe ? dayjs(rule.timeframe) : null;
-
-                  return (
-                    <TableRow key={rule.rule_id} id={`rule-row-${rule.rule_id}`}>
-                      <TableCell>
-                        <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                          {rule.destination}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            fontFamily: 'monospace'
-                          }}
-                        >
-                          {rule.query}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Stack direction="row" spacing={0.5}>
-                          {(rule.indexes ?? ['hit']).map(idx => (
-                            <Chip key={idx} size="small" label={idx} variant="outlined" />
-                          ))}
-                        </Stack>
-                      </TableCell>
-                      <TableCell>
-                        {_timeframe ? (
-                          <Chip
-                            size="small"
-                            label={_timeframe.format('YYYY-MM-DD HH:mm')}
-                            color={_timeframe.isBefore(dayjs()) ? 'error' : 'default'}
-                          />
-                        ) : (
-                          <Chip size="small" label={t('page.cases.rules.no_expiry')} color="success" />
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{rule.author}</Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Switch
-                          id={`rule-toggle-${rule.rule_id}`}
-                          checked={rule.enabled ?? true}
-                          onChange={(_e, checked) => handleToggleEnabled(rule.rule_id, checked)}
+                {rules.map(rule => (
+                  <TableRow key={rule.rule_id} id={`rule-row-${rule.rule_id}`}>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                        {rule.destination}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontFamily: 'monospace'
+                        }}
+                      >
+                        {rule.query}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Stack direction="row" spacing={0.5}>
+                        {(rule.indexes ?? ['hit']).map(idx => (
+                          <Chip key={idx} size="small" label={idx} variant="outlined" />
+                        ))}
+                      </Stack>
+                    </TableCell>
+                    <TableCell>
+                      {rule.timeframe != null ? (
+                        <Chip
                           size="small"
+                          label={
+                            rule.expire_after_resolved
+                              ? t('page.cases.rules.timeframe.after_resolved', { days: rule.timeframe })
+                              : t('page.cases.rules.timeframe.days', { days: rule.timeframe })
+                          }
+                          color={rule.expire_after_resolved ? 'info' : 'default'}
                         />
-                      </TableCell>
-                      <TableCell align="right">
-                        <Tooltip title={t('delete')}>
-                          <IconButton
-                            id={`rule-delete-${rule.rule_id}`}
-                            size="small"
-                            onClick={() => handleDeleteRule(rule.rule_id)}
-                          >
-                            <Delete fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                      ) : (
+                        <Chip size="small" label={t('page.cases.rules.no_expiry')} color="success" />
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">{rule.author}</Typography>
+                    </TableCell>
+                    <TableCell align="center">
+                      <Switch
+                        id={`rule-toggle-${rule.rule_id}`}
+                        checked={rule.enabled ?? true}
+                        onChange={(_e, checked) => handleToggleEnabled(rule.rule_id, checked)}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <Tooltip title={t('delete')}>
+                        <IconButton
+                          id={`rule-delete-${rule.rule_id}`}
+                          size="small"
+                          onClick={() => handleDeleteRule(rule.rule_id)}
+                        >
+                          <Delete fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </TableContainer>

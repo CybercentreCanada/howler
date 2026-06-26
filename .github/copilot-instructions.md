@@ -275,6 +275,16 @@ When both of the following are true:
 
 ---
 
+### Case Rules: `expire_after_resolved` Requires `timeframe`
+
+When creating or updating case correlation rules, reject configurations where:
+- `timeframe` is `None` (no expiry), and
+- `expire_after_resolved` is `True`.
+
+`expire_after_resolved` only makes sense when a finite timeframe exists. Enforce this in service-layer validation for both add and update flows.
+
+---
+
 ### TypeScript: Always Use Braces on `if` Statements
 
 Never use single-line, braceless `if` statements. Always add braces and a newline for the body:
