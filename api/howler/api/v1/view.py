@@ -5,6 +5,7 @@ from markupsafe import escape
 from mergedeep.mergedeep import merge
 
 from howler.api import bad_request, created, forbidden, make_subapi_blueprint, no_content, not_found, ok
+from howler.api.v1.utils.params import parse_refresh
 from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -80,6 +81,7 @@ def create_view(**kwargs):
     }
     """
     view_data = request.json
+    refresh = parse_refresh(request.args.get("refresh"))
     if not isinstance(view_data, dict):
         return bad_request(err="Invalid data format")
 
@@ -109,7 +111,7 @@ def create_view(**kwargs):
 
             storage.user.save(current_user["uname"], current_user)
 
-        storage.view.save(view.view_id, view)
+        storage.view.save(view.view_id, view, refresh=refresh)
         return created(view)
     except SearchException:
         return bad_request(err="You must use a valid query when creating a view.")
@@ -138,7 +140,7 @@ def delete_view(view_id: str, user: User, **kwargs):
     }
     """
     storage = datastore()
-
+    refresh = parse_refresh(request.args.get("refresh"))
     existing_view: View = storage.view.get_if_exists(view_id)
     if not existing_view:
         return not_found(err="This view does not exist")
@@ -149,7 +151,7 @@ def delete_view(view_id: str, user: User, **kwargs):
     if existing_view.type == "readonly":
         return forbidden(err="You cannot delete built-in views.")
 
-    success = storage.view.delete(view_id)
+    success = storage.view.delete(view_id, refresh=refresh)
 
     storage.view.commit()
 
@@ -180,6 +182,7 @@ def update_view(view_id: str, user: User, **kwargs):
     }
     """
     new_data = request.json
+    refresh = parse_refresh(request.args.get("refresh"))
     if not isinstance(new_data, dict):
         return bad_request(err="Invalid data format")
 
@@ -209,7 +212,7 @@ def update_view(view_id: str, user: User, **kwargs):
     updated_primitives = merge({}, existing_view.as_primitives(), new_data)
     new_view = View(cast(dict, updated_primitives))
 
-    storage.view.save(new_view.view_id, new_view)
+    storage.view.save(new_view.view_id, new_view, refresh=refresh)
     storage.view.commit()
 
     return ok(storage.view.get_if_exists(new_view.view_id, as_obj=False))

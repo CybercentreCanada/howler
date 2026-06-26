@@ -666,7 +666,7 @@ def test_invalid_refresh_param(test_client):
         method=method,
         query_string={"refresh": "invalid"},
         content_type="application/json",
-        data={},
+        data=json.dumps({}),  # Ensures the global JSON middleware passes successfully
         headers={"Authorization": _TEST_TOKEN},
     )
     response = test_client.open(request)

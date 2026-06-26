@@ -5,7 +5,8 @@ from markupsafe import escape
 
 import howler.actions as actions
 from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
-from howler.common.exceptions import HowlerException
+from howler.api.v1.utils.params import parse_refresh
+from howler.common.exceptions import HowlerException, HowlerInvalidParameterException
 from howler.common.loader import datastore
 from howler.common.logging.audit import audit
 from howler.common.swagger import generate_swagger_docs
@@ -82,7 +83,10 @@ def add_action(user: User, **_) -> Response:
     }
     """
     new_action = request.json
-
+    try:
+        refresh = parse_refresh(request.args.get("refresh"))
+    except HowlerInvalidParameterException as err:
+        return bad_request(err=str(err))
     if new_action is None:
         return bad_request(err="You must specify an action")
 
@@ -95,7 +99,7 @@ def add_action(user: User, **_) -> Response:
         action_obj = Action(new_action)
 
         ds = datastore()
-        ds.action.save(action_obj.action_id, action_obj)
+        ds.action.save(action_obj.action_id, action_obj, refresh=refresh)
         ds.action.commit()
     except HowlerException as e:
         return bad_request(err=str(e))
@@ -137,6 +141,8 @@ def update_action(id: str, user: User, **_) -> Response:
     }
     """
     updated_action = request.json
+    refresh = parse_refresh(request.args.get("refresh"))
+
     if not isinstance(updated_action, dict):
         return bad_request(err="Incorrect data structure!")
 
@@ -169,7 +175,7 @@ def update_action(id: str, user: User, **_) -> Response:
     try:
         action_obj = Action(updated_action)
         action_obj.action_id = id
-        ds.action.save(action_obj.action_id, action_obj)
+        ds.action.save(action_obj.action_id, action_obj, refresh=refresh)
         ds.action.commit()
     except HowlerException as e:
         return bad_request(err=str(e))
@@ -195,18 +201,18 @@ def delete_action(id: str, user: User, **kwargs) -> Response:
     ds = datastore()
 
     result = ds.action.search(f"action_id:{id}", rows=1)
+    refresh = parse_refresh(request.args.get("refresh"))
 
     if not result["total"]:
         return not_found(err="Action does not exist")
 
     action: Action = result["items"][0]
 
-    # TODO AG : verify if this work same as dossier and Action
     if user.uname not in action.owner_id and "admin" not in user.type:
         return forbidden(err="You do not have the permissions necessary to delete this action.")
 
     try:
-        ds.action.delete(id)
+        ds.action.delete(id, refresh=refresh)
         ds.action.commit()
 
         return no_content()
