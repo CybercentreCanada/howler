@@ -23,11 +23,11 @@ class TestCaseLog:
     def test_create_case_log_without_explanation_requires_timestamp_new_value_user(self):
         """CaseLog without explanation requires timestamp, new_value, and user."""
         log = CaseLog(
-            {"timestamp": "NOW", "key": "escalation", "previous_value": "low", "new_value": "high", "user": "bob"}
+            {"timestamp": "NOW", "key": "escalation", "previous_value": "low", "new_value": "crisis", "user": "bob"}
         )
 
         assert log.user == "bob"
-        assert log.new_value == "high"
+        assert log.new_value == "crisis"
         assert log.previous_value == "low"
         assert log.key == "escalation"
 
@@ -39,7 +39,7 @@ class TestCaseLog:
     def test_create_case_log_missing_user_without_explanation_raises(self):
         """CaseLog raises HowlerValueError when explanation is absent and user is missing."""
         with pytest.raises(HowlerValueError):
-            CaseLog({"timestamp": "NOW", "new_value": "high"})  # no explanation and no user
+            CaseLog({"timestamp": "NOW", "new_value": "crisis"})  # no explanation and no user
 
     def test_case_log_as_primitives(self):
         """as_primitives returns a plain dict containing all stored fields."""
@@ -48,7 +48,7 @@ class TestCaseLog:
                 "timestamp": "NOW",
                 "key": "escalation",
                 "previous_value": "low",
-                "new_value": "high",
+                "new_value": "crisis",
                 "user": "alice",
             }
         )
@@ -56,7 +56,7 @@ class TestCaseLog:
 
         assert isinstance(primitives, dict)
         assert primitives["user"] == "alice"
-        assert primitives["new_value"] == "high"
+        assert primitives["new_value"] == "crisis"
         assert primitives["previous_value"] == "low"
         assert primitives["key"] == "escalation"
 
@@ -361,7 +361,7 @@ class TestCase:
                     # missing 'title'
                     "summary": "S",
                     "overview": "O",
-                    "escalation": "high",
+                    "escalation": "crisis",
                 }
             )
 
@@ -371,7 +371,7 @@ class TestCase:
                     "title": "T",
                     # missing 'summary'
                     "overview": "O",
-                    "escalation": "high",
+                    "escalation": "crisis",
                 }
             )
 
@@ -383,7 +383,7 @@ class TestCase:
                 "title": "Incident Alpha",
                 "summary": "Summary text",
                 "overview": "## Overview markdown",
-                "escalation": "high",
+                "escalation": "focus",
             }
         )
 
@@ -391,7 +391,7 @@ class TestCase:
         assert case.title == "Incident Alpha"
         assert case.summary == "Summary text"
         assert case.overview == "## Overview markdown"
-        assert case.escalation == "high"
+        assert case.escalation == "focus"
         assert isinstance(case.created, datetime)  # default NOW produces a real datetime
         assert (
             abs((case.created - datetime.now(timezone.utc)).total_seconds()) < 60
@@ -416,7 +416,7 @@ class TestCase:
                 "title": "Incident Beta",
                 "summary": "Summary",
                 "overview": "Overview",
-                "escalation": "low",
+                "escalation": "normal",
                 "targets": ["server-1", "server-2"],
                 "threats": ["apt-29"],
                 "indicators": ["ioc-hash-abc"],
@@ -438,7 +438,7 @@ class TestCase:
                 "title": "With Items",
                 "summary": "S",
                 "overview": "O",
-                "escalation": "medium",
+                "escalation": "focus",
                 "items": [
                     {"path": "/events", "type": "event", "value": "1.2.3.4", "id": "obs-1"},
                     {"path": "/hits", "type": "hit", "value": "hit-abc"},
@@ -458,7 +458,7 @@ class TestCase:
                 "title": "With Rules",
                 "summary": "S",
                 "overview": "O",
-                "escalation": "high",
+                "escalation": "crisis",
                 "rules": [
                     {"destination": "/critical", "query": "howler.score:>90", "author": "analyst"},
                 ],
@@ -477,7 +477,7 @@ class TestCase:
                 "title": "With Tasks",
                 "summary": "S",
                 "overview": "O",
-                "escalation": "low",
+                "escalation": "normal",
                 "tasks": [
                     {
                         "id": "00000000-0000-0000-0000-000000000010",
@@ -502,7 +502,7 @@ class TestCase:
                 "title": "With Enrichments",
                 "summary": "S",
                 "overview": "O",
-                "escalation": "high",
+                "escalation": "crisis",
                 "enrichments": [
                     {"path": "/obs/ip", "annotations": ["ann-1"]},
                 ],
@@ -520,7 +520,7 @@ class TestCase:
                 "title": "Roundtrip",
                 "summary": "Summary",
                 "overview": "Overview",
-                "escalation": "medium",
+                "escalation": "focus",
                 "targets": ["t1"],
                 "items": [{"path": "/a", "type": "hit", "value": "v1"}],
                 "rules": [{"destination": "/b", "query": "q", "author": "admin"}],
@@ -574,7 +574,7 @@ class TestCase:
                 "title": "Visibility Default",
                 "summary": "S",
                 "overview": "O",
-                "escalation": "low",
+                "escalation": "normal",
             }
         )
 
@@ -588,7 +588,7 @@ class TestCase:
                 "title": "Hidden Case",
                 "summary": "S",
                 "overview": "O",
-                "escalation": "high",
+                "escalation": "crisis",
                 "visible": False,
             }
         )
@@ -603,7 +603,7 @@ class TestCase:
                 "title": "T",
                 "summary": "S",
                 "overview": "O",
-                "escalation": "medium",
+                "escalation": "focus",
             }
         )
 
@@ -619,7 +619,7 @@ class TestCase:
                 "title": "Dates",
                 "summary": "S",
                 "overview": "O",
-                "escalation": "low",
+                "escalation": "normal",
                 "start": "2025-01-01T00:00:00Z",
                 "end": "2025-12-31T23:59:59Z",
             }
@@ -643,7 +643,7 @@ class TestCase:
                     "title": "T",
                     "summary": "S",
                     "overview": "O",
-                    "escalation": "low",
+                    "escalation": "normal",
                     "start": "not-a-date",
                 }
             )
@@ -656,7 +656,7 @@ class TestCase:
                 "title": "T",
                 "summary": "S",
                 "overview": "O",
-                "escalation": "low",
+                "escalation": "normal",
                 "log": [
                     {"timestamp": "NOW", "explanation": "Case created", "user": "admin"},
                 ],

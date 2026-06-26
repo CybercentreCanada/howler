@@ -153,7 +153,7 @@ class TestUpdateCase:
                 "title": "T",
                 "summary": "S",
                 "overview": "O",
-                "escalation": "low",
+                "escalation": "normal",
             }
         )
 
@@ -174,7 +174,7 @@ class TestUpdateCase:
                 "title": "Old Title",
                 "summary": "S",
                 "overview": "O",
-                "escalation": "low",
+                "escalation": "normal",
             }
         )
 
@@ -198,7 +198,7 @@ class TestUpdateCase:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
         mock_ds.case.get.return_value = Case(
-            {"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"}
+            {"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"}
         )
         mock_user = MagicMock()
         mock_user.uname = "analyst"
@@ -212,7 +212,7 @@ class TestUpdateCase:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
         mock_ds.case.get.return_value = Case(
-            {"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"}
+            {"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"}
         )
         mock_user = MagicMock()
         mock_user.uname = "analyst"
@@ -228,7 +228,7 @@ class TestUpdateCase:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
         mock_ds.case.get.return_value = Case(
-            {"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"}
+            {"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"}
         )
         mock_user = MagicMock()
         mock_user.uname = "analyst"
@@ -247,7 +247,7 @@ class TestUpdateCase:
                 "title": "T",
                 "summary": "S",
                 "overview": "O",
-                "escalation": "low",
+                "escalation": "normal",
                 "targets": ["host-a", "host-b"],
             }
         )
@@ -270,7 +270,7 @@ class TestUpdateCase:
                 "title": "T",
                 "summary": "S",
                 "overview": "O",
-                "escalation": "low",
+                "escalation": "normal",
                 "targets": ["host-a"],
             }
         )
@@ -289,7 +289,7 @@ class TestUpdateCase:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
         mock_ds.case.get.return_value = Case(
-            {"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"}
+            {"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"}
         )
         mock_user = MagicMock()
         mock_user.uname = "analyst"
@@ -1497,7 +1497,7 @@ class TestCaseEventEmission:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
         mock_ds.case.get.return_value = Case(
-            {"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"}
+            {"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"}
         )
 
         mock_user = MagicMock()
@@ -1534,7 +1534,7 @@ class TestCaseEventEmission:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         mock_hit = MagicMock()
         mock_hit.howler.related = []
         mock_hit.howler.id = "hit-001"
@@ -1559,7 +1559,7 @@ class TestCaseEventEmission:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         mock_hit = MagicMock()
         mock_hit.howler.related = []
         mock_hit.howler.id = "hit-001"
@@ -1590,7 +1590,7 @@ class TestAddCaseRule:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         mock_ds.case.get.return_value = mock_case
 
         user = MagicMock()
@@ -1617,7 +1617,7 @@ class TestAddCaseRule:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         mock_ds.case.get.return_value = mock_case
 
         user = MagicMock()
@@ -1654,7 +1654,7 @@ class TestAddCaseRule:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         mock_ds.case.get.return_value = mock_case
 
         user = MagicMock()
@@ -1669,7 +1669,7 @@ class TestAddCaseRule:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         mock_ds.case.get.return_value = mock_case
 
         user = MagicMock()
@@ -1685,7 +1685,7 @@ class TestAddCaseRule:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         mock_ds.case.get.return_value = mock_case
 
         user = MagicMock()
@@ -1716,7 +1716,7 @@ class TestRemoveCaseRule:
         mock_ds_fn.return_value = mock_ds
 
         rule = CaseRule({"query": "*:*", "destination": "alerts/all", "author": "admin"})
-        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         mock_case.rules.append(rule)
         mock_ds.case.get.return_value = mock_case
 
@@ -1734,7 +1734,7 @@ class TestRemoveCaseRule:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         mock_ds.case.get.return_value = mock_case
 
         user = MagicMock()
@@ -1773,7 +1773,7 @@ class TestUpdateCaseRule:
         mock_ds_fn.return_value = mock_ds
 
         rule = CaseRule({"query": "*:*", "destination": "alerts/all", "author": "admin", "enabled": True})
-        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         mock_case.rules.append(rule)
         mock_ds.case.get.return_value = mock_case
 
@@ -1793,7 +1793,7 @@ class TestUpdateCaseRule:
         mock_ds_fn.return_value = mock_ds
 
         rule = CaseRule({"query": "old:query", "destination": "alerts/all", "author": "admin"})
-        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         mock_case.rules.append(rule)
         mock_ds.case.get.return_value = mock_case
 
@@ -1811,7 +1811,7 @@ class TestUpdateCaseRule:
         mock_ds_fn.return_value = mock_ds
 
         rule = CaseRule({"query": "*:*", "destination": "alerts/all", "author": "admin"})
-        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         mock_case.rules.append(rule)
         mock_ds.case.get.return_value = mock_case
 
@@ -1827,7 +1827,7 @@ class TestUpdateCaseRule:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         mock_ds.case.get.return_value = mock_case
 
         user = MagicMock()

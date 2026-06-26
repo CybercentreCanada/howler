@@ -12,12 +12,15 @@ const FILTER_OPTIONS: { label: string; value: SearchIndex }[] = [
   { label: 'hit.search.index.event', value: 'event' }
 ];
 
-const IndexPicker: FC = () => {
+const IndexPicker: FC<{
+  additionalOptions?: { label: string; value: SearchIndex }[];
+}> = ({ additionalOptions = [] }) => {
   const { t } = useTranslation();
   const indexes = useContextSelector(ParameterContext, ctx => ctx.indexes);
   const setIndexes = useContextSelector(ParameterContext, ctx => ctx.setIndexes);
 
-  const selectedOptions = FILTER_OPTIONS.filter(opt => indexes.includes(opt.value));
+  const allOptions = [...FILTER_OPTIONS, ...additionalOptions];
+  const selectedOptions = allOptions.filter(opt => indexes.includes(opt.value));
 
   return (
     <ChipPopper
@@ -29,7 +32,7 @@ const IndexPicker: FC = () => {
       <Autocomplete
         size="small"
         multiple
-        options={FILTER_OPTIONS}
+        options={allOptions}
         value={selectedOptions}
         onChange={(_ev, values) => values.length > 0 && setIndexes(values.map(val => val.value))}
         isOptionEqualToValue={(opt, val) => opt.value === val.value}

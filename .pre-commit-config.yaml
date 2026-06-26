@@ -50,11 +50,17 @@ repos:
         stages: [pre-commit]
         files: ^plugins/sentinel/.*\.(toml|lock)
       - id: prettier
-        name: prettier
+        name: Prettier Formatting Checks
         entry: hooks/prettier.sh
         language: script
         stages: [pre-commit]
         files: ^ui/.*
+      - id: tsc
+        name: Typescript Checks
+        entry: hooks/tsc.sh
+        language: script
+        stages: [pre-commit]
+        files: ^ui/.*\.(ts|tsx)
       - id: bad-ui-imports
         name: Check for bad UI imports
         entry: hooks/find_bad_imports.py
