@@ -6,7 +6,7 @@ import { ModalContext } from 'components/app/providers/ModalProvider';
 import { RecordContext } from 'components/app/providers/RecordProvider';
 import i18n from 'i18n';
 import type { Hit } from 'models/entities/generated/Hit';
-import { type FC, type PropsWithChildren } from 'react';
+import type { FC, PropsWithChildren } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { MemoryRouter } from 'react-router-dom';
 import { createMockCase, createMockHit } from 'tests/utils';

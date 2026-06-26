@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import glob
+import re
 import sys
 import textwrap
 from pathlib import Path
@@ -22,14 +23,27 @@ BANNED_STRINGS = [
     ),
 ]
 
-root = Path(__file__).parent.parent
+# Matches: import { type A, type B } from '...' (all named imports are type-only)
+# These should instead use: import type { A, B } from '...'
+_TYPE_ONLY_NAMED_IMPORT_RE = re.compile(
+    r"\bimport\s*\{((?:\s*type\s+\w+(?:\s+as\s+\w+)?\s*,?\s*)*)\}\s*from\s*[\'\"]\s*",
+    re.MULTILINE,
+)
 
-lib_dir = root / "src"
+root = Path(__file__).parent.parent / "ui"
 
-print("Ensuring no banned imports are used in the lib directory: ", end="")
+src_dir = root / "src"
 
-for filename in glob.glob(str(lib_dir / "**/*.ts*"), recursive=True):
+print("Ensuring no banned imports are used in the src directory: ", end="")
+
+error = False
+
+for filename in glob.glob(str(src_dir / "**/*.ts*"), recursive=True):
     _file = Path(filename)
+
+    if str(_file.relative_to(src_dir)).startswith("commons"):
+        continue
+
     data = _file.read_text()
 
     for banned_string, explanations in BANNED_STRINGS:
@@ -44,6 +58,23 @@ for filename in glob.glob(str(lib_dir / "**/*.ts*"), recursive=True):
 
             print(f"ERROR: {_file.relative_to(root)} contains a banned string:")
             print(f"> {banned_string}: {margin.join(wrapped_explanation)}")
-            sys.exit(1)
+
+            error = True
+
+    for match in _TYPE_ONLY_NAMED_IMPORT_RE.finditer(data):
+        members = [m.strip() for m in match.group(1).split(",") if m.strip()]
+        if members and all(m.startswith("type ") for m in members):
+            print("failed")
+            print(
+                f"ERROR: {_file.relative_to(root)} has a type-only named import that should use 'import type' syntax:"
+            )
+            print(f"> {match.group(0)!r}")
+            print(
+                ">   Use: import type {{ X, Y }} from '...' instead of import {{ type X, type Y }} from '...'"
+            )
+            error = True
+
+if error:
+    sys.exit(1)
 
 print("passed")

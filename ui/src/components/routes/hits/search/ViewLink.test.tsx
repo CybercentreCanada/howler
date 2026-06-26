@@ -1,7 +1,7 @@
 /// <reference types="vitest" />
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
-import { type PropsWithChildren } from 'react';
+import type { PropsWithChildren } from 'react';
 import { setupReactRouterMock } from 'tests/mocks';
 import { vi } from 'vitest';
 

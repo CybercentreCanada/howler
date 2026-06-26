@@ -16,7 +16,7 @@ import {
   Typography
 } from '@mui/material';
 import api from 'api';
-import { type HowlerSearchResponse } from 'api/search';
+import type { HowlerSearchResponse } from 'api/search';
 import type { SearchIndex } from 'api/v2/search';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
 import PageCenter from 'commons/components/pages/PageCenter';

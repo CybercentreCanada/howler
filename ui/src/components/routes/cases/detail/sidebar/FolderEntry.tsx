@@ -13,7 +13,7 @@ import {
 import type { SvgIconProps } from '@mui/material';
 import { alpha, Box, Stack, Typography, useTheme } from '@mui/material';
 import type { Item } from 'models/entities/generated/Item';
-import { type ComponentType, type FC } from 'react';
+import type { ComponentType, FC } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import type { Tree } from './types';
 

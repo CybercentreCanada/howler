@@ -4,7 +4,7 @@ import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { SocketContext } from 'components/app/providers/SocketProvider';
 import type { Case } from 'models/entities/generated/Case';
-import { type FC, type PropsWithChildren } from 'react';
+import type { FC, PropsWithChildren } from 'react';
 import { createMockCase } from 'tests/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
