@@ -48,6 +48,7 @@ const CaseObservables: FC<{ case?: Case; caseId?: string }> = ({ case: providedC
       setRecords([]);
       return;
     }
+
     dispatchApi(
       api.v2.search.post<Hit | Event>(['hit', 'event'], {
         query: `howler.id:(${ids.join(' OR ')})`,
@@ -176,7 +177,7 @@ const CaseObservables: FC<{ case?: Case; caseId?: string }> = ({ case: providedC
                   : t('page.cases.observables.filter_by_type')
               }
               slotProps={{
-                chip: { size: 'small', variant: 'outlined', color: activeFilters.length > 0 ? 'primary' : 'default' }
+                chip: { size: 'small', color: activeFilters.length > 0 ? 'primary' : 'default' }
               }}
             >
               {records === null ? (
@@ -204,7 +205,7 @@ const CaseObservables: FC<{ case?: Case; caseId?: string }> = ({ case: providedC
                   : t('page.cases.observables.filter_by_origin')
               }
               slotProps={{
-                chip: { size: 'small', variant: 'outlined', color: originFilters.length > 0 ? 'primary' : 'default' }
+                chip: { size: 'small', color: originFilters.length > 0 ? 'primary' : 'default' }
               }}
             >
               <Stack direction="row" gap={0.5} flexWrap="wrap">
@@ -228,7 +229,7 @@ const CaseObservables: FC<{ case?: Case; caseId?: string }> = ({ case: providedC
                   : t('page.cases.observables.filter_by_role')
               }
               slotProps={{
-                chip: { size: 'small', variant: 'outlined', color: roleFilters.length > 0 ? 'primary' : 'default' }
+                chip: { size: 'small', color: roleFilters.length > 0 ? 'primary' : 'default' }
               }}
             >
               <Stack direction="row" gap={0.5} flexWrap="wrap">
@@ -255,7 +256,6 @@ const CaseObservables: FC<{ case?: Case; caseId?: string }> = ({ case: providedC
                 slotProps={{
                   chip: {
                     size: 'small',
-                    variant: 'outlined',
                     color: activeEscalations.length > 0 ? 'primary' : 'default'
                   }
                 }}
