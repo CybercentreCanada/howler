@@ -539,6 +539,9 @@ def revoke_privilege(id: str, user: User, **kwargs):
     if isinstance(is_allowed, Response):
         return is_allowed
 
+    if not is_allowed:
+        return forbidden(err="You do not have the necessary permissions to modify this privilege level.")
+
     if user_to_remove not in priv_map[priv_requested]:
         return bad_request(err=f"{user_to_remove} is not in the {priv_requested} premission group")
 
