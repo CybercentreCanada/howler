@@ -2,7 +2,7 @@ import type { Case } from 'models/entities/generated/Case';
 import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Related } from 'models/entities/generated/Related';
-import { type ObservableEntry, type ObservableRole, type ObservableSource, type ObservableType } from './types';
+import type { ObservableEntry, ObservableRole, ObservableSource, ObservableType } from './types';
 
 /** All Related fields that carry asset values */
 export const OBSERVABLE_FIELDS: ObservableType[] = ['hash', 'hosts', 'ip', 'user', 'ids', 'id', 'uri', 'signature'];
