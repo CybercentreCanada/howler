@@ -1,5 +1,6 @@
 /// <reference types="vitest" />
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import AxiosClient from './AxiosClient';
 
 // ---------------------------------------------------------------------------
 // vi.hoisted() ensures these values are available when the vi.mock factories
@@ -12,17 +13,17 @@ const {
   interceptorRef
 } = vi.hoisted(() => {
   // Ref object used to capture the response interceptor across test resets
-  const interceptorRef: { fn: ((res: any) => Promise<any>) | null } = { fn: null };
+  const _interceptorRef: { fn: ((res: any) => Promise<any>) | null } = { fn: null };
 
-  const mockInterceptorResponseUse = vi.fn().mockImplementation(
+  const _mockInterceptorResponseUse = vi.fn().mockImplementation(
     (onFulfilled: (res: any) => Promise<any>) => {
-      interceptorRef.fn = onFulfilled;
+      _interceptorRef.fn = onFulfilled;
     }
   );
 
-  const mockAxiosInstance = vi.fn() as any;
-  mockAxiosInstance.interceptors = {
-    response: { use: mockInterceptorResponseUse }
+  const _mockAxiosInstance = vi.fn() as any;
+  _mockAxiosInstance.interceptors = {
+    response: { use: _mockInterceptorResponseUse }
   };
 
   class MockAxiosError extends Error {
@@ -34,7 +35,12 @@ const {
     }
   }
 
-  return { mockAxiosInstance, mockAxiosError: MockAxiosError, mockInterceptorResponseUse, interceptorRef };
+  return {
+    mockAxiosInstance: _mockAxiosInstance,
+    mockAxiosError: MockAxiosError,
+    mockInterceptorResponseUse: _mockInterceptorResponseUse,
+    interceptorRef: _interceptorRef
+  };
 });
 
 vi.mock('axios', () => ({
@@ -52,9 +58,6 @@ vi.mock('utils/sessionStorage', () => ({
   getAxiosCache: vi.fn(() => ({})),
   setAxiosCache: vi.fn()
 }));
-
-// Import AFTER mocks are registered
-import AxiosClient from './AxiosClient';
 
 // ---------------------------------------------------------------------------
 // Tests
