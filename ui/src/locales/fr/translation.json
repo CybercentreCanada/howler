@@ -430,7 +430,7 @@
   "page.cases.observables.role.indicator": "Indicateur",
   "page.cases.observables.role.target": "Cible",
   "page.cases.observables.role.threat": "Menace",
-  "page.cases.observables.search": "Rechercher des actifs...",
+  "page.cases.observables.search": "Rechercher des observables...",
   "page.cases.observables.seen_in": "Vu dans",
   "page.cases.observables.type.hash": "Hachage",
   "page.cases.observables.type.hosts": "Hôte",

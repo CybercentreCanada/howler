@@ -135,9 +135,10 @@ export const resolveSources = (
       if (!item) {
         return null;
       }
+
       return {
         id,
-        type: item.type as 'hit' | 'observable' | 'case',
+        type: item.type as 'hit' | 'event' | 'case',
         path: item.path,
         escalation: escalationMap.get(id)
       };

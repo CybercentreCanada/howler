@@ -28,18 +28,18 @@ const ROLE_COLORS: Record<ObservableRole, 'error' | 'warning' | 'info'> = {
 type SortColumn = 'type' | 'value' | 'role' | 'seen_in' | 'escalation';
 type SortDirection = 'asc' | 'desc';
 
-const getSortValue = (asset: ObservableEntry, column: SortColumn): string | number => {
+const getSortValue = (observable: ObservableEntry, column: SortColumn): string | number => {
   switch (column) {
     case 'type':
-      return asset.type;
+      return observable.type;
     case 'value':
-      return asset.value.toLowerCase();
+      return observable.value.toLowerCase();
     case 'role':
-      return asset.role ?? '';
+      return observable.role ?? '';
     case 'seen_in':
-      return asset.seenIn.length;
+      return observable.seenIn.length;
     case 'escalation':
-      return (asset.sources ?? [])
+      return (observable.sources ?? [])
         .map(s => s.escalation)
         .filter(Boolean)
         .join(',');
@@ -48,7 +48,7 @@ const getSortValue = (asset: ObservableEntry, column: SortColumn): string | numb
   }
 };
 
-const ObservableTable: FC<{ assets: ObservableEntry[]; case: Case }> = ({ assets, case: _case }) => {
+const ObservableTable: FC<{ observables: ObservableEntry[]; case: Case }> = ({ observables, case: _case }) => {
   const { t } = useTranslation();
   const [sortColumn, setSortColumn] = useState<SortColumn>('type');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -63,14 +63,14 @@ const ObservableTable: FC<{ assets: ObservableEntry[]; case: Case }> = ({ assets
   };
 
   const sortedObservables = useMemo(() => {
-    return [...assets].sort((a, b) => {
+    return [...observables].sort((a, b) => {
       const aVal = getSortValue(a, sortColumn);
       const bVal = getSortValue(b, sortColumn);
       const cmp =
         typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal));
       return sortDirection === 'asc' ? cmp : -cmp;
     });
-  }, [assets, sortColumn, sortDirection]);
+  }, [observables, sortColumn, sortDirection]);
 
   return (
     <TableContainer>
@@ -83,7 +83,7 @@ const ObservableTable: FC<{ assets: ObservableEntry[]; case: Case }> = ({ assets
                 direction={sortColumn === 'type' ? sortDirection : 'asc'}
                 onClick={() => handleSort('type')}
               >
-                {t('page.cases.assets.columns.type')}
+                {t('page.cases.observables.columns.type')}
               </TableSortLabel>
             </TableCell>
             <TableCell sortDirection={sortColumn === 'value' ? sortDirection : false}>
@@ -92,7 +92,7 @@ const ObservableTable: FC<{ assets: ObservableEntry[]; case: Case }> = ({ assets
                 direction={sortColumn === 'value' ? sortDirection : 'asc'}
                 onClick={() => handleSort('value')}
               >
-                {t('page.cases.assets.columns.value')}
+                {t('page.cases.observables.columns.value')}
               </TableSortLabel>
             </TableCell>
             <TableCell sortDirection={sortColumn === 'role' ? sortDirection : false}>
@@ -101,7 +101,7 @@ const ObservableTable: FC<{ assets: ObservableEntry[]; case: Case }> = ({ assets
                 direction={sortColumn === 'role' ? sortDirection : 'asc'}
                 onClick={() => handleSort('role')}
               >
-                {t('page.cases.assets.columns.role')}
+                {t('page.cases.observables.columns.role')}
               </TableSortLabel>
             </TableCell>
             <TableCell align="right" sortDirection={sortColumn === 'seen_in' ? sortDirection : false}>
@@ -110,57 +110,57 @@ const ObservableTable: FC<{ assets: ObservableEntry[]; case: Case }> = ({ assets
                 direction={sortColumn === 'seen_in' ? sortDirection : 'asc'}
                 onClick={() => handleSort('seen_in')}
               >
-                {t('page.cases.assets.columns.seen_in')}
+                {t('page.cases.observables.columns.seen_in')}
               </TableSortLabel>
             </TableCell>
-            <TableCell>{t('page.cases.assets.columns.sources')}</TableCell>
+            <TableCell>{t('page.cases.observables.columns.sources')}</TableCell>
             <TableCell sortDirection={sortColumn === 'escalation' ? sortDirection : false}>
               <TableSortLabel
                 active={sortColumn === 'escalation'}
                 direction={sortColumn === 'escalation' ? sortDirection : 'asc'}
                 onClick={() => handleSort('escalation')}
               >
-                {t('page.cases.assets.columns.escalation')}
+                {t('page.cases.observables.columns.escalation')}
               </TableSortLabel>
             </TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {sortedObservables.map(asset => {
-            const sources = asset.sources ?? [];
+          {sortedObservables.map(observable => {
+            const sources = observable.sources ?? [];
             const escalations = [...new Set(sources.map(s => s.escalation).filter(Boolean))];
             const linkedSources = sources.filter(source => source.path);
 
             return (
-              <TableRow key={`${asset.type}:${asset.value}`}>
+              <TableRow key={`${observable.type}:${observable.value}`}>
                 <TableCell>
                   <Chip
                     size="small"
-                    label={t(`page.cases.assets.type.${asset.type}`)}
+                    label={t(`page.cases.observables.type.${observable.type}`)}
                     color="primary"
                     variant="outlined"
                   />
                 </TableCell>
                 <TableCell sx={{ maxWidth: 300 }}>
                   <PluginTypography
-                    value={asset.value}
+                    value={observable.value}
                     context="table"
                     variant="body2"
                     sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}
                   />
                 </TableCell>
                 <TableCell>
-                  {asset.role && (
+                  {observable.role && (
                     <Chip
                       size="small"
-                      label={t(`page.cases.assets.role.${asset.role}`)}
-                      color={ROLE_COLORS[asset.role]}
+                      label={t(`page.cases.observables.role.${observable.role}`)}
+                      color={ROLE_COLORS[observable.role]}
                       variant="outlined"
                     />
                   )}
                 </TableCell>
                 <TableCell align="right">
-                  <Typography variant="body2">{asset.seenIn.length}</Typography>
+                  <Typography variant="body2">{observable.seenIn.length}</Typography>
                 </TableCell>
                 <TableCell>
                   {linkedSources.length === 0 ? null : linkedSources.length === 1 ? (
