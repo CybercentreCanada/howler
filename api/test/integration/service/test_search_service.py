@@ -72,7 +72,8 @@ def test_format_items():
                 "_score": 1.23,
                 "_source": {"uname": "admin", "name": "Administrator"},
             }
-        ]
+        ],
+        None,
     )
 
     assert items[0]["uname"] == "admin"
@@ -447,7 +448,7 @@ class TestFormatItems:
             {"_source": {"howler": {"id": "hit-1"}}, "_index": "howler-hit"},
         ]
 
-        items = search_service._format_items(hits)
+        items = search_service._format_items(hits, None)
 
         assert len(items) == 1
         assert items[0]["howler"]["id"] == "hit-1"
@@ -458,7 +459,7 @@ class TestFormatItems:
             {"_source": {"howler": {"id": "hit-1"}}, "_index": "howler-hit"},
         ]
 
-        items = search_service._format_items(hits)
+        items = search_service._format_items(hits, None)
 
         assert items[0]["__index"] == "hit"
 
@@ -469,7 +470,7 @@ class TestFormatItems:
             {"_source": {"howler": {"id": "hit-2"}}, "_index": "howler-hit"},
         ]
 
-        items = search_service._format_items(hits)
+        items = search_service._format_items(hits, None)
 
         assert len(items) == 1
         assert items[0]["howler"]["id"] == "hit-2"
@@ -478,13 +479,62 @@ class TestFormatItems:
         """When _index is missing from a hit, __index is not set."""
         hits = [{"_source": {"howler": {"id": "hit-1"}}}]
 
-        items = search_service._format_items(hits)
+        items = search_service._format_items(hits, None)
 
         assert "__index" not in items[0]
 
     def test_empty_hits_returns_empty_list(self):
         """An empty hits list returns an empty items list."""
-        assert search_service._format_items([]) == []
+        assert search_service._format_items([], None) == []
+
+    @patch("howler.services.search_service.case_service")
+    def test_case_index_triggers_classification_filter(self, mock_case_svc):
+        """Items with __index='case' are passed through filter_case_items_by_classification."""
+        hits = [
+            {"_source": {"case_id": "case-001", "items": []}, "_index": "howler-case"},
+        ]
+
+        search_service._format_items(hits, "RESTRICTED")
+
+        mock_case_svc.filter_case_items_by_classification.assert_called_once()
+        call_args = mock_case_svc.filter_case_items_by_classification.call_args
+        assert call_args[0][1] == "RESTRICTED"
+
+    @patch("howler.services.search_service.case_service")
+    def test_case_index_skips_filter_when_no_user_classification(self, mock_case_svc):
+        """Items with __index='case' are NOT filtered when user_classification is None."""
+        hits = [
+            {"_source": {"case_id": "case-001", "items": []}, "_index": "howler-case"},
+        ]
+
+        search_service._format_items(hits, None)
+
+        mock_case_svc.filter_case_items_by_classification.assert_not_called()
+
+    @patch("howler.services.search_service.case_service")
+    def test_non_case_index_skips_classification_filter(self, mock_case_svc):
+        """Items with __index != 'case' are never passed to the classification filter."""
+        hits = [
+            {"_source": {"howler": {"id": "hit-1"}}, "_index": "howler-hit"},
+            {"_source": {"howler": {"id": "evt-1"}}, "_index": "howler-event"},
+        ]
+
+        search_service._format_items(hits, "RESTRICTED")
+
+        mock_case_svc.filter_case_items_by_classification.assert_not_called()
+
+    @patch("howler.services.search_service.case_service")
+    def test_mixed_indexes_only_filters_cases(self, mock_case_svc):
+        """When results span multiple indexes, only 'case' items are filtered."""
+        hits = [
+            {"_source": {"howler": {"id": "hit-1"}}, "_index": "howler-hit"},
+            {"_source": {"case_id": "case-001", "items": []}, "_index": "howler-case"},
+        ]
+
+        items = search_service._format_items(hits, "UNRESTRICTED")
+
+        assert len(items) == 2
+        assert mock_case_svc.filter_case_items_by_classification.call_count == 1
 
 
 # ---------------------------------------------------------------------------

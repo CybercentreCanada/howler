@@ -63,7 +63,7 @@ def create_case(user: User, **kwargs):
 @generate_swagger_docs()
 @case_api.route("/<id>", methods=["GET"])
 @api_login(audit=True, required_priv=["R"])
-def get_case(id: str, **kwargs):
+def get_case(id: str, user: User, **kwargs):
     """Get a case.
 
     Variables:
@@ -77,10 +77,12 @@ def get_case(id: str, **kwargs):
         ...case    # The requested case, if it exists
     }
     """
-    case = datastore().case.get_if_exists(key=id, as_obj=False)
+    case = datastore().case.get(id, as_obj=False)
 
     if not case:
         return not_found(err="Case %s does not exist" % id)
+
+    case_service.filter_case_items_by_classification(case, user.classification)
 
     return ok(case)
 

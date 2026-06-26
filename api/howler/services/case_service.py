@@ -12,6 +12,7 @@ from prometheus_client import Counter
 from howler.common.exceptions import HowlerValueError, InvalidDataException, NotFoundException
 from howler.common.loader import APP_NAME, datastore
 from howler.common.logging import get_logger
+from howler.config import CLASSIFICATION
 from howler.datastore.exceptions import DataStoreException
 from howler.odm.models.case import Case, CaseItem, CaseItemTypes, CaseLog, CaseRule
 from howler.odm.models.ecs.related import Related
@@ -148,6 +149,28 @@ def delete_cases(case_ids: set[str]) -> bool:
             ds.case.save(related_case_id, related_case)
 
     return ds.case.delete_by_query(f"case_id:({' OR '.join(case_ids)})")
+
+
+def filter_case_items_by_classification(_case: dict, user_classification: str):
+    """Remove items from a case dict that exceed the user's classification.
+
+    Items without a ``classification`` value are always included. Items with a
+    classification are only included when ``CLASSIFICATION.is_accessible``
+    confirms the requesting user can see them.
+
+    Args:
+        case: Raw case dict (as returned by ``as_obj=False`` datastore calls).
+        user_classification: The requesting user's maximum classification string.
+    """
+    if "items" not in _case:
+        return
+
+    _case["items"] = [
+        item
+        for item in _case["items"]
+        if item.get("classification") is None
+        or CLASSIFICATION.is_accessible(user_classification, item["classification"])
+    ]
 
 
 def get_last_resolved_time(case: Case) -> datetime | None:
@@ -389,6 +412,8 @@ def append_hit(case_id: str, item: CaseItem) -> Case:
     if hit is None:
         raise NotFoundException(f"Hit {item.value} not found, cannot be added to case")
 
+    item.classification = hit.classification
+
     _case.items.append(item)
 
     if not ds.case.save(_case.case_id, _case):
@@ -435,6 +460,8 @@ def append_event(case_id: str, item: CaseItem) -> Case:
 
     if event is None:
         raise NotFoundException(f"Event {item.value} not found, cannot be added to case")
+
+    item.classification = event.classification
 
     _case.items.append(item)
 

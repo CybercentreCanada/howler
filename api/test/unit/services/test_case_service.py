@@ -2091,3 +2091,222 @@ def _make_log_change(key: str, prev: str, new: str, timestamp: str) -> CaseLog:
             "explanation": f"Updated {key} from '{prev}' to '{new}'",
         }
     )
+
+
+# ---------------------------------------------------------------------------
+# CaseItem.classification — propagation from hit / event
+# ---------------------------------------------------------------------------
+
+
+class TestCaseItemClassificationPropagation:
+    """Tests that append_hit / append_event copy the record's classification onto the item."""
+
+    @patch("howler.services.case_service._sync_case_metadata")
+    @patch("howler.services.case_service._add_backreference")
+    @patch("howler.services.case_service.datastore")
+    def test_append_hit_copies_classification(self, mock_ds_fn, _mock_backref, _mock_sync):
+        """append_hit sets item.classification from the fetched hit."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = MagicMock()
+        mock_case.case_id = "case-001"
+        mock_case.items = []
+        mock_ds.case.get.return_value = mock_case
+        mock_ds.case.save.return_value = True
+
+        mock_hit = MagicMock()
+        mock_hit.classification = "RESTRICTED"
+        mock_ds.hit.get.return_value = mock_hit
+
+        item = CaseItem({"type": "hit", "value": "hit-001", "path": "alerts/hit-001"})
+        case_service.append_hit("case-001", item)
+
+        assert item.classification == "RESTRICTED"
+
+    @patch("howler.services.case_service._sync_case_metadata")
+    @patch("howler.services.case_service._add_backreference")
+    @patch("howler.services.case_service.datastore")
+    def test_append_hit_overwrites_any_existing_classification(self, mock_ds_fn, _mock_backref, _mock_sync):
+        """append_hit overwrites any classification already set on the item with the hit's value."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = MagicMock()
+        mock_case.case_id = "case-001"
+        mock_case.items = []
+        mock_ds.case.get.return_value = mock_case
+        mock_ds.case.save.return_value = True
+
+        mock_hit = MagicMock()
+        mock_hit.classification = "UNRESTRICTED"
+        mock_ds.hit.get.return_value = mock_hit
+
+        item = CaseItem({"type": "hit", "value": "hit-001", "path": "alerts/hit-001"})
+        case_service.append_hit("case-001", item)
+
+        assert item.classification == "UNRESTRICTED"
+
+    @patch("howler.services.case_service._sync_case_metadata")
+    @patch("howler.services.case_service._add_backreference")
+    @patch("howler.services.case_service.datastore")
+    def test_append_event_copies_classification(self, mock_ds_fn, _mock_backref, _mock_sync):
+        """append_event sets item.classification from the fetched event."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = MagicMock()
+        mock_case.case_id = "case-001"
+        mock_case.items = []
+        mock_ds.case.get.return_value = mock_case
+        mock_ds.case.save.return_value = True
+
+        mock_event = MagicMock()
+        mock_event.classification = "RESTRICTED"
+        mock_event.howler.id = "event-001"
+        mock_ds.event.get.return_value = mock_event
+
+        item = CaseItem({"type": "event", "value": "event-001", "path": "events/event-001"})
+        case_service.append_event("case-001", item)
+
+        assert item.classification == "RESTRICTED"
+
+    @patch("howler.services.case_service._sync_case_metadata")
+    @patch("howler.services.case_service._add_backreference")
+    @patch("howler.services.case_service.datastore")
+    def test_append_event_copies_unrestricted_classification(self, mock_ds_fn, _mock_backref, _mock_sync):
+        """append_event sets item.classification even when the event is UNRESTRICTED."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = MagicMock()
+        mock_case.case_id = "case-001"
+        mock_case.items = []
+        mock_ds.case.get.return_value = mock_case
+        mock_ds.case.save.return_value = True
+
+        mock_event = MagicMock()
+        mock_event.classification = "UNRESTRICTED"
+        mock_event.howler.id = "event-001"
+        mock_ds.event.get.return_value = mock_event
+
+        item = CaseItem({"type": "event", "value": "event-001", "path": "events/event-001"})
+        case_service.append_event("case-001", item)
+
+        assert item.classification == "UNRESTRICTED"
+
+
+# ---------------------------------------------------------------------------
+# filter_case_items_by_classification()
+# ---------------------------------------------------------------------------
+
+
+class TestFilterCaseItemsByClassification:
+    """Tests for case_service.filter_case_items_by_classification."""
+
+    @patch("howler.services.case_service.CLASSIFICATION")
+    def test_items_without_classification_always_included(self, mock_cl):
+        """Items with no classification field are always visible regardless of user level."""
+        mock_cl.is_accessible.return_value = False  # would block if called
+
+        case = {
+            "case_id": "case-001",
+            "items": [
+                {"type": "reference", "value": "http://example.com", "path": "refs/link", "classification": None},
+                {"type": "case", "value": "child-id", "path": "cases/child", "classification": None},
+            ],
+        }
+
+        result = case_service.filter_case_items_by_classification(case, "UNRESTRICTED")
+
+        assert len(result["items"]) == 2
+        mock_cl.is_accessible.assert_not_called()
+
+    @patch("howler.services.case_service.CLASSIFICATION")
+    def test_accessible_classified_items_included(self, mock_cl):
+        """Items whose classification is accessible to the user are kept."""
+        mock_cl.is_accessible.return_value = True
+
+        case = {
+            "case_id": "case-001",
+            "items": [
+                {"type": "hit", "value": "hit-001", "path": "alerts/hit-001", "classification": "RESTRICTED"},
+            ],
+        }
+
+        result = case_service.filter_case_items_by_classification(case, "RESTRICTED")
+
+        assert len(result["items"]) == 1
+        mock_cl.is_accessible.assert_called_once_with("RESTRICTED", "RESTRICTED")
+
+    @patch("howler.services.case_service.CLASSIFICATION")
+    def test_inaccessible_classified_items_removed(self, mock_cl):
+        """Items whose classification exceeds the user's level are filtered out."""
+        mock_cl.is_accessible.return_value = False
+
+        case = {
+            "case_id": "case-001",
+            "items": [
+                {"type": "hit", "value": "hit-001", "path": "alerts/hit-001", "classification": "RESTRICTED"},
+            ],
+        }
+
+        result = case_service.filter_case_items_by_classification(case, "UNRESTRICTED")
+
+        assert len(result["items"]) == 0
+        mock_cl.is_accessible.assert_called_once_with("UNRESTRICTED", "RESTRICTED")
+
+    @patch("howler.services.case_service.CLASSIFICATION")
+    def test_mixed_items_partial_filter(self, mock_cl):
+        """Only inaccessible items are removed; accessible and unclassified items remain."""
+        mock_cl.is_accessible.side_effect = lambda user_c12n, item_c12n: item_c12n == "UNRESTRICTED"
+
+        case = {
+            "case_id": "case-001",
+            "items": [
+                {"type": "hit", "value": "hit-u", "path": "alerts/hit-u", "classification": "UNRESTRICTED"},
+                {"type": "hit", "value": "hit-r", "path": "alerts/hit-r", "classification": "RESTRICTED"},
+                {"type": "reference", "value": "http://example.com", "path": "refs/link", "classification": None},
+            ],
+        }
+
+        result = case_service.filter_case_items_by_classification(case, "UNRESTRICTED")
+
+        values = [item["value"] for item in result["items"]]
+        assert "hit-u" in values
+        assert "http://example.com" in values
+        assert "hit-r" not in values
+
+    @patch("howler.services.case_service.CLASSIFICATION")
+    def test_empty_items_list(self, mock_cl):
+        """An empty items list stays empty after filtering."""
+        case = {"case_id": "case-001", "items": []}
+
+        result = case_service.filter_case_items_by_classification(case, "UNRESTRICTED")
+
+        assert result["items"] == []
+        mock_cl.is_accessible.assert_not_called()
+
+    @patch("howler.services.case_service.CLASSIFICATION")
+    def test_missing_items_key_treated_as_empty(self, mock_cl):
+        """A case dict with no 'items' key is handled gracefully."""
+        case = {"case_id": "case-001"}
+
+        result = case_service.filter_case_items_by_classification(case, "UNRESTRICTED")
+
+        assert result["items"] == []
+
+    @patch("howler.services.case_service.CLASSIFICATION")
+    def test_returns_same_dict_object(self, mock_cl):
+        """filter_case_items_by_classification mutates and returns the same dict."""
+        mock_cl.is_accessible.return_value = True
+
+        case = {
+            "case_id": "case-001",
+            "items": [{"type": "hit", "value": "hit-001", "path": "p", "classification": "UNRESTRICTED"}],
+        }
+        original_id = id(case)
+
+        result = case_service.filter_case_items_by_classification(case, "UNRESTRICTED")
+
+        assert id(result) == original_id

@@ -12,6 +12,7 @@ from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import SearchException
 from howler.helper.search import get_collection, has_access_control
+from howler.odm.models.user import User
 from howler.security import api_login
 from howler.services import hit_service, lucene_service, search_service
 
@@ -51,7 +52,7 @@ def generate_params(request: Request, fields: list[str], multi_fields: list[str]
 @generate_swagger_docs()
 @search_api.route("/<indexes>", methods=["GET", "POST"])
 @api_login(required_priv=["R"])
-def search(indexes: str, **kwargs):
+def search(indexes: str, user: User, **kwargs):
     """Search through specified index for a given query. Uses lucene search syntax for query.
 
     Variables:
@@ -91,8 +92,6 @@ def search(indexes: str, **kwargs):
      "next_deep_paging_id": "asX3f...342",  # ID to pass back for the next page during deep paging
      "items": []}                           # List of results
     """
-    user = kwargs["user"]
-
     index_list = indexes.split(",")
 
     fields = [
@@ -117,12 +116,6 @@ def search(indexes: str, **kwargs):
         }
     )
 
-    # NOTE: This means index searches must be either ALL access controlled or none of them havbe access control.
-    # Otherwise, the access control requirements on one index will cause the other index to return no items.
-    # This is pretty reasonable constraint, as all the relevant, searchable items support classifications.
-    if has_access_control(index_list):
-        params["access_control"] = user["access_control"]
-
     params["sort"] = [entry for entry in params.get("sort", "").split(",") if entry] or search_service.DEFAULT_SORT
 
     query = req_data.get("query", None)
@@ -130,7 +123,7 @@ def search(indexes: str, **kwargs):
         return bad_request(err="There was no search query.")
 
     metadata = params.pop("metadata", [])
-    result = search_service.search(indexes, query, access_control=params.pop("access_control", None), **params)
+    result = search_service.search(indexes, query, user=user, **params)
 
     if metadata and any(idx in index_list for idx in ["hit"]):
         hit_service.augment_metadata(result["items"], metadata, user)
