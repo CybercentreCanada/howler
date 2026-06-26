@@ -29,13 +29,13 @@ describe('useMyTheme', () => {
 
   it('dark palette includes primary and secondary colours', () => {
     const { result } = renderHook(() => useMyTheme());
-    expect(result.current.palette.dark.primary?.main).toBeTruthy();
-    expect(result.current.palette.dark.secondary?.main).toBeTruthy();
+    expect(result.current.palette.dark.primary).toHaveProperty('main');
+    expect(result.current.palette.dark.secondary).toHaveProperty('main');
   });
 
   it('light palette includes primary and secondary colours', () => {
     const { result } = renderHook(() => useMyTheme());
-    expect(result.current.palette.light.primary?.main).toBeTruthy();
-    expect(result.current.palette.light.secondary?.main).toBeTruthy();
+    expect(result.current.palette.light.primary).toHaveProperty('main');
+    expect(result.current.palette.light.secondary).toHaveProperty('main');
   });
 });
