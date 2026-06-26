@@ -1860,7 +1860,7 @@ class TestGetLastResolvedTime:
 
     def test_single_resolution(self):
         """Returns the timestamp when a case has been resolved once."""
-        case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         case.log = [
             _make_log("Case created"),
             _make_log_change("status", "open", "resolved", "2026-01-15T10:00:00.000000Z"),
@@ -1873,7 +1873,7 @@ class TestGetLastResolvedTime:
 
     def test_multiple_resolve_cycles_returns_latest(self):
         """Returns the final resolved timestamp after open→resolved→in-progress→resolved."""
-        case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         case.log = [
             _make_log("Case created"),
             _make_log_change("status", "open", "resolved", "2026-01-10T10:00:00.000000Z"),
@@ -1887,7 +1887,7 @@ class TestGetLastResolvedTime:
 
     def test_no_resolution_returns_none(self):
         """Returns None if the case has never been resolved."""
-        case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         case.log = [
             _make_log("Case created"),
             _make_log_change("status", "open", "in-progress", "2026-01-10T10:00:00.000000Z"),
@@ -1897,7 +1897,7 @@ class TestGetLastResolvedTime:
 
     def test_empty_log_returns_none(self):
         """Returns None if the case log is empty."""
-        case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         case.log = []
         result = case_service.get_last_resolved_time(case)
         assert result is None
@@ -1917,7 +1917,7 @@ class TestRuleTimeframeAndExpireAfterResolved:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         mock_ds.case.get.return_value = mock_case
 
         user = MagicMock()
@@ -1938,7 +1938,7 @@ class TestRuleTimeframeAndExpireAfterResolved:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         mock_ds.case.get.return_value = mock_case
 
         user = MagicMock()
@@ -1959,7 +1959,7 @@ class TestRuleTimeframeAndExpireAfterResolved:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         mock_ds.case.get.return_value = mock_case
 
         user = MagicMock()
@@ -1980,7 +1980,7 @@ class TestRuleTimeframeAndExpireAfterResolved:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         mock_ds.case.get.return_value = mock_case
 
         user = MagicMock()
@@ -1999,7 +1999,7 @@ class TestRuleTimeframeAndExpireAfterResolved:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         mock_ds.case.get.return_value = mock_case
 
         user = MagicMock()
@@ -2021,7 +2021,7 @@ class TestRuleTimeframeAndExpireAfterResolved:
         mock_ds_fn.return_value = mock_ds
 
         rule = CaseRule({"query": "*:*", "destination": "alerts/all", "author": "admin", "timeframe": 14})
-        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         mock_case.rules.append(rule)
         mock_ds.case.get.return_value = mock_case
 
@@ -2039,7 +2039,7 @@ class TestRuleTimeframeAndExpireAfterResolved:
         mock_ds_fn.return_value = mock_ds
 
         rule = CaseRule({"query": "*:*", "destination": "alerts/all", "author": "admin", "timeframe": 14})
-        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         mock_case.rules.append(rule)
         mock_ds.case.get.return_value = mock_case
 
@@ -2057,7 +2057,7 @@ class TestRuleTimeframeAndExpireAfterResolved:
         mock_ds_fn.return_value = mock_ds
 
         rule = CaseRule({"query": "*:*", "destination": "alerts/all", "author": "admin", "timeframe": None})
-        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "low"})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         mock_case.rules.append(rule)
         mock_ds.case.get.return_value = mock_case
 
