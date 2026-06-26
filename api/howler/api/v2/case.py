@@ -354,7 +354,8 @@ def add_rule(id: str, user: User, **kwargs):
     {
         "query": "howler.analytic:Suspicious*",
         "destination": "alerts/{{howler.analytic}}",
-        "timeframe": "2026-05-06T00:00:00Z"   // optional, null means no expiry
+        "timeframe": 14,                        // optional, days until expiry (null = no expiry)
+        "expire_after_resolved": true           // optional, start countdown after case resolution
     }
 
     Result Example:
@@ -405,7 +406,8 @@ def delete_rule(id: str, rule_id: str, user: User, **kwargs):
 def update_rule(id: str, rule_id: str, user: User, **kwargs):
     """Update a correlation rule on a case
 
-    Allows updating individual fields on a rule: enabled, query, destination, timeframe.
+    Allows updating individual fields on a rule: enabled, query, destination,
+    timeframe, expire_after_resolved.
 
     Variables:
     id        => The id of the case
@@ -416,7 +418,9 @@ def update_rule(id: str, rule_id: str, user: User, **kwargs):
 
     Data Block:
     {
-        "enabled": false
+        "enabled": false,
+        "timeframe": 7,                 // days until expiry
+        "expire_after_resolved": true   // start countdown after resolution
     }
 
     Result Example:

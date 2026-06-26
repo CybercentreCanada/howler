@@ -97,7 +97,8 @@ const makeRule = (overrides?: Partial<Rule>): Rule => ({
   destination: 'alerts/{{howler.analytic}}',
   author: 'analyst1',
   enabled: true,
-  timeframe: '2026-06-01T00:00:00.000Z',
+  timeframe: 14,
+  expire_after_resolved: false,
   indexes: ['hit'],
   ...overrides
 });
@@ -141,6 +142,28 @@ describe('CaseRules', () => {
     render(<CaseRules />);
 
     expect(screen.getByText('page.cases.rules.no_expiry')).toBeInTheDocument();
+  });
+
+  it('shows after-resolved chip when expire_after_resolved is true', () => {
+    mockCase.current = createMockCase({
+      case_id: 'case-001',
+      rules: [makeRule({ timeframe: 7, expire_after_resolved: true })]
+    }) as Case;
+
+    render(<CaseRules />);
+
+    expect(screen.getByText('page.cases.rules.timeframe.after_resolved')).toBeInTheDocument();
+  });
+
+  it('shows days chip when expire_after_resolved is false', () => {
+    mockCase.current = createMockCase({
+      case_id: 'case-001',
+      rules: [makeRule({ timeframe: 14, expire_after_resolved: false })]
+    }) as Case;
+
+    render(<CaseRules />);
+
+    expect(screen.getByText('page.cases.rules.timeframe.days')).toBeInTheDocument();
   });
 
   it('renders enabled toggle for each rule', () => {

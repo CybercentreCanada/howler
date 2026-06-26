@@ -88,15 +88,33 @@ class CaseRule(odm.Model):
     query: str = odm.Keyword(description="Lucene query used by this rule.")
     author: str = odm.Keyword(description="Username who created the rule.")
     enabled: bool = odm.Boolean(default=True, description="Whether the rule is currently active.")
-    timeframe: Optional[str] = odm.Optional(
-        odm.Date(description="ISO datetime when rule expires. Null means no expiry."),
+    created_at: str = odm.Date(
+        default="NOW",
+        description="Timestamp when the rule was created.",
+    )
+    timeframe: Optional[int] = odm.Optional(
+        odm.Integer(min=1, description="Number of days the rule stays active. Null means no expiry."),
         default=None,
+    )
+    expire_after_resolved: bool = odm.Boolean(
+        default=False,
+        description="When true, the timeframe countdown starts from the case's last "
+        "resolution time instead of from rule creation.",
     )
     indexes: list[str] = odm.List(
         odm.Enum(values=RuleIndexTypes),
         default=[RuleIndexTypes.HIT],
         description="Indexes to run this rule against (hit, event, or both).",
     )
+
+    def __init__(self, data: dict = None, *args, **kwargs):
+        timeframe = data.get("timeframe") if data else None
+        if timeframe is not None and (isinstance(timeframe, bool) or not isinstance(timeframe, int) or timeframe <= 0):
+            raise HowlerValueError("Rule timeframe must be a positive integer or None")
+        elif timeframe is None and data.get("expire_after_resolved", False):
+            raise HowlerValueError("Rule cannot expire after resolved when no timeframe is set")
+
+        super().__init__(data, *args, **kwargs)
 
 
 @odm.model(index=True, store=True, description="Task associated with a case item path.")

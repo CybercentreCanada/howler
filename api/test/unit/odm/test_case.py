@@ -197,20 +197,31 @@ class TestCaseRule:
 
         assert rule.timeframe is None
 
-    def test_case_rule_timeframe_accepts_iso_date(self):
-        """CaseRule.timeframe can be set to a valid ISO date string."""
+    def test_case_rule_timeframe_accepts_positive_integer(self):
+        """CaseRule.timeframe accepts a positive integer number of days."""
         rule = CaseRule(
             {
                 "destination": "/dest",
                 "query": "*:*",
                 "author": "user1",
-                "timeframe": "2026-05-06T00:00:00Z",
+                "timeframe": 14,
             }
         )
 
-        assert rule.timeframe is not None
-        assert rule.timeframe.year == 2026
-        assert rule.timeframe.month == 5
+        assert rule.timeframe == 14
+
+    @pytest.mark.parametrize("timeframe", [0, -1, "7", 1.5, True, False])
+    def test_case_rule_timeframe_rejects_invalid_values(self, timeframe):
+        """CaseRule.timeframe must be a positive integer or None."""
+        with pytest.raises(HowlerValueError, match="positive integer or None"):
+            CaseRule(
+                {
+                    "destination": "/dest",
+                    "query": "*:*",
+                    "author": "user1",
+                    "timeframe": timeframe,
+                }
+            )
 
     def test_case_rule_as_primitives(self):
         """as_primitives returns expected dict with all fields."""
@@ -220,7 +231,7 @@ class TestCaseRule:
                 "query": "*:*",
                 "author": "admin",
                 "enabled": False,
-                "timeframe": "2026-06-01T12:00:00Z",
+                "timeframe": 30,
             }
         )
         primitives = rule.as_primitives()

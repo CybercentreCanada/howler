@@ -420,3 +420,148 @@ class TestIngestToCorrelationContract:
         # Verify commits happened before the search
         mock_ds.case.commit.assert_called_once()
         mock_ds.hit.commit.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# get_active_rules(): timeframe and expire_after_resolved
+# ---------------------------------------------------------------------------
+
+
+class TestGetActiveRulesExpiry:
+    """Tests for correlation_service.get_active_rules with the new expiry model."""
+
+    @patch("howler.services.correlation_service.case_service")
+    @patch("howler.services.correlation_service.datastore")
+    def test_no_timeframe_always_active(self, mock_ds_fn, mock_case_svc):
+        """A rule with no timeframe is always active."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        rule = _make_rule(query="*:*")
+        # Ensure timeframe is None (default from _make_rule)
+        rule.timeframe = None
+        rule.expire_after_resolved = False
+
+        case = MagicMock()
+        case.case_id = "case-1"
+        case.rules = [rule]
+        mock_ds.case.stream_search.return_value = [case]
+
+        results = correlation_service.get_active_rules()
+        assert len(results) == 1
+
+    @patch("howler.services.correlation_service.case_service")
+    @patch("howler.services.correlation_service.datastore")
+    def test_timeframe_from_creation_active(self, mock_ds_fn, mock_case_svc):
+        """Rule with timeframe from creation is active when within the window."""
+        from datetime import datetime, timedelta, timezone
+
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        rule = _make_rule(query="*:*")
+        rule.timeframe = 14
+        rule.expire_after_resolved = False
+        # Created 5 days ago — still within 14-day window
+        rule.created_at = datetime.now(timezone.utc) - timedelta(days=5)
+
+        case = MagicMock()
+        case.case_id = "case-1"
+        case.rules = [rule]
+        mock_ds.case.stream_search.return_value = [case]
+
+        results = correlation_service.get_active_rules()
+        assert len(results) == 1
+
+    @patch("howler.services.correlation_service.case_service")
+    @patch("howler.services.correlation_service.datastore")
+    def test_timeframe_from_creation_expired(self, mock_ds_fn, mock_case_svc):
+        """Rule with timeframe from creation is inactive after the window."""
+        from datetime import datetime, timedelta, timezone
+
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        rule = _make_rule(query="*:*")
+        rule.timeframe = 7
+        rule.expire_after_resolved = False
+        # Created 10 days ago — past the 7-day window
+        rule.created_at = datetime.now(timezone.utc) - timedelta(days=10)
+
+        case = MagicMock()
+        case.case_id = "case-1"
+        case.rules = [rule]
+        mock_ds.case.stream_search.return_value = [case]
+
+        results = correlation_service.get_active_rules()
+        assert len(results) == 0
+
+    @patch("howler.services.correlation_service.case_service")
+    @patch("howler.services.correlation_service.datastore")
+    def test_expire_after_resolved_case_not_resolved(self, mock_ds_fn, mock_case_svc):
+        """Rule with expire_after_resolved is active when case not yet resolved."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        rule = _make_rule(query="*:*")
+        rule.timeframe = 7
+        rule.expire_after_resolved = True
+
+        case = MagicMock()
+        case.case_id = "case-1"
+        case.rules = [rule]
+        mock_ds.case.stream_search.return_value = [case]
+
+        # Case never resolved
+        mock_case_svc.get_last_resolved_time.return_value = None
+
+        results = correlation_service.get_active_rules()
+        assert len(results) == 1
+
+    @patch("howler.services.correlation_service.case_service")
+    @patch("howler.services.correlation_service.datastore")
+    def test_expire_after_resolved_within_window(self, mock_ds_fn, mock_case_svc):
+        """Rule with expire_after_resolved is active within the window after resolution."""
+        from datetime import datetime, timedelta, timezone
+
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        rule = _make_rule(query="*:*")
+        rule.timeframe = 14
+        rule.expire_after_resolved = True
+
+        case = MagicMock()
+        case.case_id = "case-1"
+        case.rules = [rule]
+        mock_ds.case.stream_search.return_value = [case]
+
+        # Resolved 5 days ago — still within 14-day window
+        mock_case_svc.get_last_resolved_time.return_value = datetime.now(timezone.utc) - timedelta(days=5)
+
+        results = correlation_service.get_active_rules()
+        assert len(results) == 1
+
+    @patch("howler.services.correlation_service.case_service")
+    @patch("howler.services.correlation_service.datastore")
+    def test_expire_after_resolved_past_window(self, mock_ds_fn, mock_case_svc):
+        """Rule with expire_after_resolved is inactive after the window."""
+        from datetime import datetime, timedelta, timezone
+
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        rule = _make_rule(query="*:*")
+        rule.timeframe = 7
+        rule.expire_after_resolved = True
+
+        case = MagicMock()
+        case.case_id = "case-1"
+        case.rules = [rule]
+        mock_ds.case.stream_search.return_value = [case]
+
+        # Resolved 10 days ago — past 7-day window
+        mock_case_svc.get_last_resolved_time.return_value = datetime.now(timezone.utc) - timedelta(days=10)
+
+        results = correlation_service.get_active_rules()
+        assert len(results) == 0
