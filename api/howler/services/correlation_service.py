@@ -29,7 +29,14 @@ BATCH_SIZE: int = config.system.correlation.batch_size
 BATCH_TIMEOUT: int = config.system.correlation.batch_timeout
 
 
-def get_active_rules() -> list[tuple[str, CaseRule]]:
+def _normalize_utc(ts: datetime) -> datetime:
+    """Normalize a datetime to UTC, assuming naive timestamps are UTC."""
+    if ts.tzinfo is None:
+        return ts.replace(tzinfo=timezone.utc)
+    return ts
+
+
+def get_active_rules() -> list[tuple[str, CaseRule]]:  # noqa: C901
     """Return all active (enabled, non-expired) rules across every case.
 
     A rule's ``timeframe`` is an optional integer representing how many days
@@ -76,7 +83,7 @@ def get_active_rules() -> list[tuple[str, CaseRule]]:
                     active.append((_case.case_id, rule))
                     continue
 
-                start = _last_resolved
+                start = _normalize_utc(_last_resolved)
 
             expiry = start + timedelta(days=rule.timeframe)
             if expiry > now:

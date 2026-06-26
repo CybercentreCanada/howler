@@ -857,10 +857,11 @@ def add_case_rule(case_id: str, rule_data: dict, user: User) -> Case:
     rule_data.setdefault("enabled", True)
     rule_data.setdefault("expire_after_resolved", False)
 
-    if rule_data.get("timeframe") is None and rule_data["expire_after_resolved"]:
-        raise InvalidDataException("Rule cannot expire after resolved when no timeframe is set")
+    try:
+        rule = CaseRule(rule_data)
+    except HowlerValueError as ex:
+        raise InvalidDataException(str(ex)) from ex
 
-    rule = CaseRule(rule_data)
     _case.rules.append(rule)
 
     _case.log.append(
@@ -963,7 +964,9 @@ def update_case_rule(case_id: str, rule_id: str, update_data: dict, user: User) 
         setattr(rule, key, value)
         changes.append(f"{key}: '{old_value}' → '{value}'")
 
-    if rule.timeframe is None and rule.expire_after_resolved:
+    if rule.timeframe is not None and (not isinstance(rule.timeframe, int) or rule.timeframe <= 0):
+        raise HowlerValueError("Rule timeframe must be a positive integer or None")
+    elif rule.timeframe is None and rule.expire_after_resolved:
         raise InvalidDataException("Rule cannot expire after resolved when no timeframe is set")
 
     _case.log.append(

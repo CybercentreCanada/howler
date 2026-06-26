@@ -55,7 +55,7 @@ class TestAddRule:
         rule_data = {
             "query": "event.kind:alert",
             "destination": "alerts/{{howler.analytic}}",
-            "timeframe": "2026-06-01T00:00:00Z",
+            "timeframe": 14,
         }
 
         resp = get_api_data(

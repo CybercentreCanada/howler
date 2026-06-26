@@ -1911,9 +1911,8 @@ class TestGetLastResolvedTime:
 class TestRuleTimeframeAndExpireAfterResolved:
     """Tests for timeframe (days) and expire_after_resolved (boolean) on rules."""
 
-    @patch("howler.services.case_service.event_service")
     @patch("howler.services.case_service.datastore")
-    def test_add_rule_with_timeframe_and_expire_after_resolved(self, mock_ds_fn, mock_events):
+    def test_add_rule_with_timeframe_and_expire_after_resolved(self, mock_ds_fn):
         """add_case_rule accepts timeframe (days) with expire_after_resolved flag."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
@@ -1933,9 +1932,8 @@ class TestRuleTimeframeAndExpireAfterResolved:
         assert result.rules[0].timeframe == 14
         assert result.rules[0].expire_after_resolved is True
 
-    @patch("howler.services.case_service.event_service")
     @patch("howler.services.case_service.datastore")
-    def test_add_rule_with_timeframe_only(self, mock_ds_fn, mock_events):
+    def test_add_rule_with_timeframe_only(self, mock_ds_fn):
         """add_case_rule with timeframe defaults expire_after_resolved to False."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
@@ -1955,9 +1953,8 @@ class TestRuleTimeframeAndExpireAfterResolved:
         assert result.rules[0].timeframe == 7
         assert result.rules[0].expire_after_resolved is False
 
-    @patch("howler.services.case_service.event_service")
     @patch("howler.services.case_service.datastore")
-    def test_add_rule_no_timeframe(self, mock_ds_fn, mock_events):
+    def test_add_rule_no_timeframe(self, mock_ds_fn):
         """add_case_rule without timeframe means no expiry."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
@@ -1996,9 +1993,8 @@ class TestRuleTimeframeAndExpireAfterResolved:
                 user,
             )
 
-    @patch("howler.services.case_service.event_service")
     @patch("howler.services.case_service.datastore")
-    def test_add_rule_strips_created_at(self, mock_ds_fn, mock_events):
+    def test_add_rule_strips_created_at(self, mock_ds_fn):
         """add_case_rule ignores client-supplied created_at."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
@@ -2018,9 +2014,8 @@ class TestRuleTimeframeAndExpireAfterResolved:
         # created_at should be auto-generated ("NOW"), not the client value
         assert result.rules[0].created_at is not None
 
-    @patch("howler.services.case_service.event_service")
     @patch("howler.services.case_service.datastore")
-    def test_update_rule_sets_expire_after_resolved(self, mock_ds_fn, mock_events):
+    def test_update_rule_sets_expire_after_resolved(self, mock_ds_fn):
         """update_case_rule can toggle expire_after_resolved."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
@@ -2037,9 +2032,8 @@ class TestRuleTimeframeAndExpireAfterResolved:
 
         assert result.rules[0].expire_after_resolved is True
 
-    @patch("howler.services.case_service.event_service")
     @patch("howler.services.case_service.datastore")
-    def test_update_rule_sets_timeframe(self, mock_ds_fn, mock_events):
+    def test_update_rule_sets_timeframe(self, mock_ds_fn):
         """update_case_rule can update timeframe days."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds

@@ -111,6 +111,8 @@ class CaseRule(odm.Model):
         timeframe = data.get("timeframe") if data else None
         if timeframe is not None and (isinstance(timeframe, bool) or not isinstance(timeframe, int) or timeframe <= 0):
             raise HowlerValueError("Rule timeframe must be a positive integer or None")
+        elif timeframe is None and data.get("expire_after_resolved", False):
+            raise HowlerValueError("Rule cannot expire after resolved when no timeframe is set")
 
         super().__init__(data, *args, **kwargs)
 
