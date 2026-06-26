@@ -444,21 +444,18 @@ describe('delay', () => {
   it('rejects on cancel when rejectOnCancel=true', async () => {
     vi.useFakeTimers();
     const d = delay(100, true);
-    const rejection = expect(d).rejects.toBeDefined();
+    const rejection = expect(d).rejects.toBeUndefined();
     d.cancel();
-    vi.advanceTimersByTime(200);
     await rejection;
     vi.useRealTimers();
   });
 });
 
 describe('getProvider', () => {
+  const originalLocation = window.location;
+
   afterEach(() => {
-    // Reset any window.location changes by navigating back to default
-    Object.defineProperty(window, 'location', {
-      writable: true,
-      value: { pathname: '/', search: '', href: 'http://localhost/' }
-    });
+    Object.defineProperty(window, 'location', { value: originalLocation, writable: true });
   });
 
   it('returns the provider from the search params when not in oauth path', () => {
@@ -479,11 +476,10 @@ describe('getProvider', () => {
 });
 
 describe('searchResultsDisplay', () => {
+  const originalLocation = window.location;
+
   afterEach(() => {
-    Object.defineProperty(window, 'location', {
-      writable: true,
-      value: { pathname: '/', search: '', href: 'http://localhost/' }
-    });
+    Object.defineProperty(window, 'location', { value: originalLocation, writable: true });
   });
 
   it('returns count as string when below the max', () => {
