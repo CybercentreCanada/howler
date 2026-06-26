@@ -457,10 +457,11 @@ def revoke_privilege(received_data: dict, dossier_id: str, user: User) -> tuple[
     if isinstance(result, str):
         return result
 
-    storage, existing_dossier = result
+    storage, existing_dossier = result  # type: ignore
 
     if not isinstance(existing_dossier, Dossier):
         return f"Wrong object instance of {type(existing_dossier)} insted of Dossier"
+    existing_dossier: Dossier = existing_dossier
 
     is_allowed: bool = is_allowed_to_change(level_requested=priv_requested, user=user, existing_item=existing_dossier)
 

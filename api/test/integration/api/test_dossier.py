@@ -300,53 +300,37 @@ def test_get_dossier_for_hit_user_scoping(datastore: HowlerDatastore, login_sess
         datastore.dossier.commit()
 
 
-# region : Testing Permissions
-
-# region : Permission helper
+# region Permission helper
 
 
 def add_permission_every_role(member_to_add: str, member_requesting, create_res, host, dossier):
-    try:
-        for membership in dossier.get_privilege_mapping().keys():
-            if membership == "owner":
-                continue  # Skip owner since it has different behavior
-                # (only one owner allowed, and is a string not a list)
-            get_api_data(
-                member_requesting,
-                f"{host}/api/v1/dossier/{create_res['dossier_id']}/permission",
-                method="PUT",
-                data=json.dumps(
-                    {
-                        "user_id": member_to_add,
-                        "privilege": membership,
-                    }
-                ),
-            )
-    # Error is intended sometime.
-    except APIError:
-        return
+    """Directly make requests to grant privileges across all roles without hiding crashes."""
+    for membership in dossier.get_privilege_mapping().keys():
+        if membership == "owner":
+            continue
+
+        priv_change = {"privilege": membership, "user_id": member_to_add}
+        get_api_data(
+            member_requesting,
+            f"{host}/api/v1/dossier/{create_res['dossier_id']}/permission",
+            method="PUT",
+            data=json.dumps(priv_change),
+        )
 
 
 def remove_permission_every_role(member_to_remove: str, member_requesting, create_res, host, dossier):
-    try:
-        for membership in dossier.get_privilege_mapping().keys():
-            if membership == "owner":
-                continue  # Skip owner since it has different behavior owner can only be replaced not remove
-                # (only one owner allowed, and is a string not a list)
-            get_api_data(
-                member_requesting,
-                f"{host}/api/v1/dossier/{create_res['dossier_id']}/permission",
-                method="DELETE",
-                data=json.dumps(
-                    {
-                        "user_id": member_to_remove,
-                        "privilege": membership,
-                    }
-                ),
-            )
-    # Error is intended sometime.
-    except APIError:
-        return
+    """Directly make requests to revoke privileges across all roles."""
+    for membership in dossier.get_privilege_mapping().keys():
+        if membership == "owner":
+            continue
+
+        priv_change = {"privilege": membership, "user_id": member_to_remove}
+        get_api_data(
+            member_requesting,
+            f"{host}/api/v1/dossier/{create_res['dossier_id']}/permission",
+            method="DELETE",
+            data=json.dumps(priv_change),
+        )
 
 
 def modifying_dossier(member_requesting, create_res, host, dossier_name: str = "renamed_dossier"):
@@ -673,6 +657,7 @@ def test_member(datastore: HowlerDatastore, user_session: dict):
     member_session, _ = user_session("huey")
     member_uname = get_api_data(member_session, f"{host}/api/v1/user/whoami", method="GET")["username"]
     owner_uname = get_api_data(owner_session, f"{host}/api/v1/user/whoami", method="GET")["username"]
+
     # Create the dossier
     create_res = get_api_data(
         owner_session,
@@ -680,6 +665,7 @@ def test_member(datastore: HowlerDatastore, user_session: dict):
         method="POST",
         data=json.dumps({"title": "test_membership", "type": "global", "query": "howler.hash:*"}),
     )
+
     # Giving membership to member
     datastore.dossier.commit()
     get_api_data(
@@ -698,37 +684,56 @@ def test_member(datastore: HowlerDatastore, user_session: dict):
     assert member_uname in dossier.get_privilege_mapping()["member"]  # ensure the membership was given
 
     # Member should not be able to add admin/owner/member
-    add_permission_every_role(
-        create_res=create_res, host=host, member_requesting=member_session, member_to_add=member_uname, dossier=dossier
-    )
+    # Loop through roles manually to assert each one throws an APIError
+    for membership in dossier.get_privilege_mapping().keys():
+        if membership == "owner":
+            continue
+
+        with pytest.raises(APIError) as err:
+            get_api_data(
+                member_session,
+                f"{host}/api/v1/dossier/{create_res['dossier_id']}/permission",
+                method="PUT",
+                data=json.dumps({"privilege": membership, "user_id": member_uname}),
+            )
+        assert "not allowed" in str(err.value)
+
     datastore.dossier.commit()
     dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
     for membership in ["owner", "administrator"]:
         assert member_uname not in dossier.get_privilege_mapping()[membership]
 
     # Member should not be able to remove admin/owner/member
-    # adding owner into every role
+    # First, add owner into every role using the authorized owner session
     add_permission_every_role(
         create_res=create_res, host=host, member_requesting=owner_session, member_to_add=owner_uname, dossier=dossier
     )
+
     # verify owner is in every role
     datastore.dossier.commit()
     dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
     for membership in dossier.get_privilege_mapping().keys():
         assert owner_uname in dossier.get_privilege_mapping()[membership]
 
-    remove_permission_every_role(
-        create_res=create_res,
-        host=host,
-        member_requesting=member_session,
-        member_to_remove=member_uname,
-        dossier=dossier,
-    )
+    # Assert that member_session gets blocked trying to remove roles
+    for membership in dossier.get_privilege_mapping().keys():
+        if membership == "owner":
+            continue
+
+        with pytest.raises(APIError):
+            get_api_data(
+                member_session,
+                f"{host}/api/v1/dossier/{create_res['dossier_id']}/permission",
+                method="DELETE",
+                data=json.dumps({"privilege": membership, "user_id": member_uname}),
+            )
+
     # ensure owner is still in every role
     datastore.dossier.commit()
     dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
     for membership in dossier.get_privilege_mapping().keys():
         assert owner_uname in dossier.get_privilege_mapping()[membership]
+
     # Member should not be able to delete dossier
     total = datastore.dossier.search("dossier_id:*")["total"]
     try:

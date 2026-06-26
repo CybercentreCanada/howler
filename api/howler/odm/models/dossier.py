@@ -69,39 +69,38 @@ class Dossier(odm.Model):
             "owner": self.owner,
         }
 
+    def set_privilege_mapping(self, level: str, user: str | list[str]):
+        """
+        Sets the users for a given privilege level.
+        level: requested level based on privilege mapping (owner, administrator, member)
+        users: a single user or list of users to assign to the specified level
 
-def set_privilege_mapping(self, level: str, user: str | list[str]):
-    """
-    Sets the users for a given privilege level.
-    level: requested level based on privilege mapping (owner, administrator, member)
-    users: a single user or list of users to assign to the specified level
+        return : none
+        """
+        if level == "owner":
+            if isinstance(user, list):
+                if len(user) > 1:
+                    raise ValueError("Owner level can only have one user. A list was given with multiple users.")
+                self.owner = user[0] if user else ""  # Or handle empty lists if necessary
+            else:
+                self.owner = user
 
-    return : none
-    """
-    if level == "owner":
-        if isinstance(user, list):
-            if len(user) > 1:
-                raise ValueError("Owner level can only have one user. A list was given with multiple users.")
-            self.owner = user[0] if user else ""  # Or handle empty lists if necessary
-        else:
-            self.owner = user
+        elif level == "administrator":
+            if isinstance(user, list):
+                self.admins.extend(user)
+            else:
+                self.admins.append(user)
 
-    elif level == "administrator":
-        if isinstance(user, list):
-            self.admins.extend(user)
-        else:
-            self.admins.append(user)
-
-    elif level == "member":
-        if isinstance(user, list):
-            self.members.extend(user)
-        else:
-            self.members.append(user)
+        elif level == "member":
+            if isinstance(user, list):
+                self.members.extend(user)
+            else:
+                self.members.append(user)
 
     def remove_privilege_mapping(self, level: str, users: str | list[str]):
         """
         Removes the specified users from a given privilege level.
-        level: requested level based on priviledge mapping (owner, administrator, member)
+        level: requested level based on privilege mapping (owner, administrator, member)
         [based on the privilege mapping]
         users: a single user or list of users to remove from the specified level
         return : none
