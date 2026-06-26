@@ -63,7 +63,7 @@ class TestGetCase:
             "overview": "overview",
             "escalation": "crisis",
         }
-        mock_datastore.return_value.case.get_if_exists.return_value = case_data
+        mock_datastore.return_value.case.get.return_value = case_data
 
         with request_context.test_request_context(
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
@@ -77,7 +77,7 @@ class TestGetCase:
             assert body["api_response"]["case_id"] == "case-001"
             assert body["api_response"]["title"] == "Test Case"
             assert body["api_response"]["escalation"] == "crisis"
-            mock_datastore.return_value.case.get_if_exists.assert_called_once_with(key="case-001", as_obj=False)
+            mock_datastore.return_value.case.get.assert_called_once_with("case-001", as_obj=False)
 
     @patch("howler.api.v2.case.datastore")
     @patch("howler.api.v2.case.case_service")
@@ -87,7 +87,7 @@ class TestGetCase:
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        mock_datastore.return_value.case.get_if_exists.return_value = None
+        mock_datastore.return_value.case.get.return_value = None
 
         with request_context.test_request_context(
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
@@ -97,7 +97,7 @@ class TestGetCase:
             result: Response = get_case(id="nonexistent")
 
             assert result.status_code == 404
-            mock_datastore.return_value.case.get_if_exists.assert_called_once_with(key="nonexistent", as_obj=False)
+            mock_datastore.return_value.case.get.assert_called_once_with("nonexistent", as_obj=False)
 
 
 # ---------------------------------------------------------------------------

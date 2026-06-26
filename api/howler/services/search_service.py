@@ -85,7 +85,7 @@ def _format_items(hits: list[dict[str, Any]], user_classification: str | None) -
             if raw_index:
                 source["__index"] = raw_index.replace(f"{APP_NAME}-", "").replace("_hot", "")
 
-            if source["__index"] == "case" and user_classification:
+            if source.get("__index") == "case" and user_classification:
                 case_service.filter_case_items_by_classification(source, user_classification)
 
             items.append(source)
@@ -146,7 +146,7 @@ def search(  # noqa: C901
     # NOTE: This means index searches must be either ALL access controlled or none of them havbe access control.
     # Otherwise, the access control requirements on one index will cause the other index to return no items.
     # This is pretty reasonable constraint, as all the relevant, searchable items support classifications.
-    if user and has_access_control(indexes):
+    if user and user.access_control and has_access_control(indexes):
         parsed_filters.append(user.access_control)
 
     if query is None:

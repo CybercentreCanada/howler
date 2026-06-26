@@ -225,7 +225,7 @@ class TestSearch:
             search(indexes="hit", user=user)
 
             call_kwargs = mock_search_svc.search.call_args
-            assert "access_control" in call_kwargs.kwargs or any("access_control" in str(a) for a in call_kwargs.args)
+            assert "user" in call_kwargs.kwargs
 
 
 # ---------------------------------------------------------------------------

@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from howler.common.exceptions import InvalidDataException, NotFoundException
+from howler.config import CLASSIFICATION
 from howler.odm.models.case import Case, CaseItem, CaseRule
 from howler.odm.models.ecs.related import Related
 from howler.services import case_service
@@ -669,6 +670,7 @@ class TestAppendHit:
         mock_ds.case.get.return_value = mock_case
 
         mock_hit = MagicMock()
+        mock_hit.classification = CLASSIFICATION.UNRESTRICTED
         mock_ds.hit.get.return_value = mock_hit
 
         item = CaseItem({"type": "hit", "value": "hit-001", "path": "related/"})
@@ -692,6 +694,7 @@ class TestAppendHit:
         mock_ds.case.get.return_value = mock_case
 
         mock_hit = MagicMock()
+        mock_hit.classification = CLASSIFICATION.UNRESTRICTED
         mock_ds.hit.get.return_value = mock_hit
 
         item = CaseItem({"type": "hit", "value": "hit-001", "path": "related/"})
@@ -767,6 +770,7 @@ class TestAppendEvent:
         mock_ds.case.save.return_value = True
 
         mock_obs = MagicMock()
+        mock_obs.classification = CLASSIFICATION.UNRESTRICTED
         mock_obs.howler.id = "obs-001"
         mock_ds.event.get.return_value = mock_obs
 
@@ -1536,6 +1540,7 @@ class TestCaseEventEmission:
 
         mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         mock_hit = MagicMock()
+        mock_hit.classification = CLASSIFICATION.UNRESTRICTED
         mock_hit.howler.related = []
         mock_hit.howler.id = "hit-001"
 
@@ -1561,6 +1566,7 @@ class TestCaseEventEmission:
 
         mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
         mock_hit = MagicMock()
+        mock_hit.classification = CLASSIFICATION.UNRESTRICTED
         mock_hit.howler.related = []
         mock_hit.howler.id = "hit-001"
 
@@ -2122,7 +2128,7 @@ class TestCaseItemClassificationPropagation:
         item = CaseItem({"type": "hit", "value": "hit-001", "path": "alerts/hit-001"})
         case_service.append_hit("case-001", item)
 
-        assert item.classification == "RESTRICTED"
+        assert item.classification.value == CLASSIFICATION.normalize_classification("RESTRICTED")
 
     @patch("howler.services.case_service._sync_case_metadata")
     @patch("howler.services.case_service._add_backreference")
@@ -2145,7 +2151,7 @@ class TestCaseItemClassificationPropagation:
         item = CaseItem({"type": "hit", "value": "hit-001", "path": "alerts/hit-001"})
         case_service.append_hit("case-001", item)
 
-        assert item.classification == "UNRESTRICTED"
+        assert item.classification.value == CLASSIFICATION.normalize_classification("UNRESTRICTED")
 
     @patch("howler.services.case_service._sync_case_metadata")
     @patch("howler.services.case_service._add_backreference")
@@ -2169,7 +2175,7 @@ class TestCaseItemClassificationPropagation:
         item = CaseItem({"type": "event", "value": "event-001", "path": "events/event-001"})
         case_service.append_event("case-001", item)
 
-        assert item.classification == "RESTRICTED"
+        assert item.classification.value == CLASSIFICATION.normalize_classification("RESTRICTED")
 
     @patch("howler.services.case_service._sync_case_metadata")
     @patch("howler.services.case_service._add_backreference")
@@ -2193,7 +2199,7 @@ class TestCaseItemClassificationPropagation:
         item = CaseItem({"type": "event", "value": "event-001", "path": "events/event-001"})
         case_service.append_event("case-001", item)
 
-        assert item.classification == "UNRESTRICTED"
+        assert item.classification.value == CLASSIFICATION.normalize_classification("UNRESTRICTED")
 
 
 # ---------------------------------------------------------------------------

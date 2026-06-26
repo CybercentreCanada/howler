@@ -299,7 +299,7 @@ def test_search_multiple(datastore):
 
 
 def test_search_access_control_added_to_filters(datastore):
-    """When access_control is provided, it is appended as an additional filter in the ES query."""
+    """When a user with access_control is provided, it is appended as an additional filter in the ES query."""
     client = search_service.datastore().ds.client
 
     captured_kwargs = {}
@@ -309,8 +309,12 @@ def test_search_access_control_added_to_filters(datastore):
         captured_kwargs.update(kwargs)
         return original_search(**kwargs)
 
+    user = MagicMock()
+    user.access_control = "__access_lvl__:[0 TO 100]"
+    user.classification = None
+
     with patch.object(client, "search", side_effect=capture_search):
-        search_service.search("user", query="uname:admin", access_control="__access_lvl__:[0 TO 100]")
+        search_service.search("hit", query="howler.id:*", user=user)
 
     query_body_filter = captured_kwargs["query"]["bool"]["filter"]
     acl_filters = [
@@ -320,7 +324,7 @@ def test_search_access_control_added_to_filters(datastore):
 
 
 def test_search_access_control_none_adds_no_extra_filter(datastore):
-    """When access_control is None, no extra filter is appended."""
+    """When a user has no access_control, no extra filter is appended."""
     client = search_service.datastore().ds.client
 
     captured_kwargs = {}
@@ -330,8 +334,12 @@ def test_search_access_control_none_adds_no_extra_filter(datastore):
         captured_kwargs.update(kwargs)
         return original_search(**kwargs)
 
+    user = MagicMock()
+    user.access_control = None
+    user.classification = None
+
     with patch.object(client, "search", side_effect=capture_search):
-        search_service.search("user", query="uname:admin", access_control=None)
+        search_service.search("hit", query="howler.id:*", user=user)
 
     query_body_filter = captured_kwargs["query"]["bool"]["filter"]
     assert len(query_body_filter) == 0
@@ -348,17 +356,21 @@ def test_search_access_control_combined_with_filters(datastore):
         captured_kwargs.update(kwargs)
         return original_search(**kwargs)
 
+    user = MagicMock()
+    user.access_control = "__access_lvl__:[0 TO 200]"
+    user.classification = None
+
     with patch.object(client, "search", side_effect=capture_search):
         search_service.search(
-            "user",
-            query="uname:*",
-            filters=["uname:admin"],
-            access_control="__access_lvl__:[0 TO 200]",
+            "hit",
+            query="howler.id:*",
+            filters=["howler.id:*"],
+            user=user,
         )
 
     query_body_filter = captured_kwargs["query"]["bool"]["filter"]
     filter_queries = [f["query_string"]["query"] for f in query_body_filter]
-    assert "uname:admin" in filter_queries
+    assert "howler.id:*" in filter_queries
     assert "__access_lvl__:[0 TO 200]" in filter_queries
     assert len(filter_queries) == 2
 
