@@ -24,6 +24,9 @@ def fuzzy_search(**kwargs):  # noqa: C901
     Accepts a plain string (word, IP, domain, URL, username, email, hash) and
     returns ranked results across specified indexes.
 
+    Variables:
+    None
+
     Arguments:
     None
 
