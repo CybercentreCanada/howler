@@ -1,15 +1,15 @@
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from howler import odm
 from howler.common.exceptions import HowlerValueError
 from howler.config import CLASSIFICATION
-from howler.odm.constants import Status
+from howler.odm.constants import CaseEscalation, Status
 from howler.odm.mixins import DatastoreMixin
 from howler.utils.compat import StrEnum
 
-CASE_ITEM_TYPES = {"observable", "hit", "case", "lead", "reference"}
+CASE_ITEM_TYPES = {"event", "hit", "case", "lead", "reference"}
 
-RULE_INDEX_TYPES = {"hit", "observable"}
+RULE_INDEX_TYPES = {"hit", "event"}
 
 
 class RuleIndexTypes(StrEnum):
@@ -20,7 +20,7 @@ class RuleIndexTypes(StrEnum):
     """
 
     HIT = "hit"
-    OBSERVABLE = "observable"
+    EVENT = "event"
 
 
 class CaseItemTypes(StrEnum):
@@ -31,7 +31,7 @@ class CaseItemTypes(StrEnum):
     context, evidence, or relationships for the case investigation.
 
     Attributes:
-        OBSERVABLE: A suspicious or noteworthy observable (IP, domain, hash, etc.) that
+        EVENT: A suspicious or noteworthy event (network connection, process execution, etc.) that
             has been identified and tracked in the system.
         HIT: An alert or detection hit from an analytic that triggered on specific
             telemetry or behavior patterns.
@@ -45,7 +45,7 @@ class CaseItemTypes(StrEnum):
             provides additional context or evidence.
     """
 
-    OBSERVABLE = "observable"
+    EVENT = "event"
     HIT = "hit"
     TABLE = "table"
     CASE = "case"
@@ -95,7 +95,7 @@ class CaseRule(odm.Model):
     indexes: list[str] = odm.List(
         odm.Enum(values=RuleIndexTypes),
         default=[RuleIndexTypes.HIT],
-        description="Indexes to run this rule against (hit, observable, or both).",
+        description="Indexes to run this rule against (hit, event, or both).",
     )
 
 
@@ -130,8 +130,10 @@ class Case(DatastoreMixin["Case"], odm.Model):
     title: str = odm.Keyword(description="Case title.")
     summary: str = odm.Text(description="Short case summary.")
     overview: str = odm.Optional(odm.Text(description="Markdown overview of the case."))
-    escalation: str = odm.Optional(odm.Keyword(description="Escalation of the case."))
-    status = odm.Enum(values=Status, default=Status.OPEN, description="Status of the case.")
+    escalation: Literal["normal", "focus", "crisis"] = odm.Enum(
+        values=CaseEscalation, default=CaseEscalation.NORMAL, description="Escalation of the case."
+    )
+    status: str = odm.Enum(values=Status, default=Status.OPEN, description="Status of the case.")
     created: str = odm.Optional(odm.Date(default="NOW", description="Date/time when the case was created."))
     visible: bool = odm.Boolean(default=True, description="Whether the case is visible/accessible in the frontend.")
     updated: Optional[str] = odm.Optional(

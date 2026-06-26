@@ -1,27 +1,28 @@
 import { OpenInNew } from '@mui/icons-material';
 import { Card, CardContent, IconButton, Skeleton, Stack, Typography } from '@mui/material';
 import api from 'api';
+import type { SearchIndex } from 'api/v2/search';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
 import { useRecordContextSelector } from 'components/app/providers/RecordProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
+import EventCard from 'components/elements/event/EventCard';
 import HitBanner from 'components/elements/hit/HitBanner';
 import { HitLayout } from 'components/elements/hit/HitLayout';
-import ObservableCard from 'components/elements/observable/ObservableCard';
 import RecordContextMenu from 'components/elements/record/RecordContextMenu';
 import useMyApi from 'components/hooks/useMyApi';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { Observable } from 'models/entities/generated/Observable';
 import { useCallback, useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
-import { isObservable } from 'utils/typeUtils';
+import { isEvent } from 'utils/typeUtils';
 import { buildViewUrl } from 'utils/viewUtils';
 
 // Custom hook to select records by IDs with proper memoization
-const useSelectRecordsByIds = (recordIds: string[]): Hit[] | Observable[] => {
+const useSelectRecordsByIds = (recordIds: string[]): Hit[] | Event[] => {
   const recordIdsRef = useRef<string[]>(recordIds);
-  const prevResultRef = useRef<Hit[] | Observable[]>([]);
+  const prevResultRef = useRef<Hit[] | Event[]>([]);
   const prevRecordIdsRef = useRef<string[]>([]);
 
   // Keep ref up to date with latest recordIds
@@ -56,19 +57,19 @@ const useSelectRecordsByIds = (recordIds: string[]): Hit[] | Observable[] => {
 const normalize = (val: any) => (val == null ? '' : String(val));
 
 // Have to normalize the fields as websockets and api return null and undefined respectively. This causes false positives when comparing signatures if not normalized to a consistent value. We also stringify non-primitive values to ensure changes are detected.
-const createRecordSignature = (record: Hit | Observable) => {
+const createRecordSignature = (record: Hit | Event) => {
   if (!record) {
     return '';
   }
 
-  if (isObservable(record)) {
+  if (isEvent(record)) {
     return record.howler?.id;
   }
 
   return `${record.howler?.id}:${normalize(record.howler?.status)}:${normalize(record.howler?.assignment)}:${normalize(record.howler?.assessment)}`;
 };
 
-const createSignatureFromRecords = (records: Hit[] | Observable[]) => {
+const createSignatureFromRecords = (records: Hit[] | Event[]) => {
   if (records.length === 0) return '';
   return records.map(createRecordSignature).join('|');
 };
@@ -114,7 +115,7 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
 
     try {
       const res = await dispatchApi(
-        api.v2.search.post(view.indexes, {
+        api.v2.search.post(view.indexes as SearchIndex[], {
           query: view.query,
           rows: limit,
           metadata: ['analytic']
@@ -231,7 +232,7 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
           </>
         ) : records.length > 0 ? (
           <RecordContextMenu getSelectedId={getSelectedId}>
-            {records.map((r: Observable | Hit) => (
+            {records.map((r: Event | Hit) => (
               <Card
                 id={r.howler.id}
                 variant="outlined"
@@ -243,7 +244,7 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
                   {r.__index == 'hit' ? (
                     <HitBanner layout={HitLayout.DENSE} hit={r} />
                   ) : (
-                    <ObservableCard observable={r}></ObservableCard>
+                    <EventCard event={r}></EventCard>
                   )}
                 </CardContent>
               </Card>

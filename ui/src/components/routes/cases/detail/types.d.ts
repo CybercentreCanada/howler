@@ -1,23 +1,23 @@
-export type AssetType = 'hash' | 'hosts' | 'ip' | 'user' | 'ids' | 'id' | 'uri' | 'signature';
+export type ObservableType = 'hash' | 'hosts' | 'ip' | 'user' | 'ids' | 'id' | 'uri' | 'signature';
 
-export type AssetRole = 'threat' | 'target' | 'indicator';
+export type ObservableRole = 'threat' | 'target' | 'indicator';
 
-export interface AssetSource {
+export interface ObservableSource {
   id: string;
   type: 'hit' | 'observable' | 'case';
   path?: string;
   escalation?: string;
 }
 
-export interface AssetEntry {
-  type: AssetType;
+export interface ObservableEntry {
+  type: ObservableType;
   value: string;
-  /** IDs of the hits/observables this asset was seen in */
+  /** IDs of the hits/observables this observable was seen in */
   seenIn: string[];
   /** Resolved source metadata for each seenIn item */
-  sources?: AssetSource[];
-  /** Classified role of this asset */
-  role?: AssetRole;
+  sources?: ObservableSource[];
+  /** Classified role of this observable */
+  role?: ObservableRole;
 }
 
 export type OriginType = 'hit' | 'observable';

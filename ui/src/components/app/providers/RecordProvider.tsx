@@ -1,8 +1,8 @@
 import api from 'api';
 import useMyApi from 'components/hooks/useMyApi';
 import { uniq } from 'lodash-es';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { Observable } from 'models/entities/generated/Observable';
 import type { HitUpdate } from 'models/socket/HitUpdate';
 import type { WithMetadata } from 'models/WithMetadata';
 import type { FC, PropsWithChildren } from 'react';
@@ -11,14 +11,14 @@ import { createContext, useContextSelector } from 'use-context-selector';
 import { SocketContext, type RecievedDataType } from './SocketProvider';
 
 export interface RecordContextType {
-  records: { [index: string]: Hit | Observable };
-  selectedRecords: (Hit | Observable)[];
+  records: { [index: string]: Hit | Event };
+  selectedRecords: (Hit | Event)[];
   addRecordToSelection: (id: string) => void;
   removeRecordFromSelection: (id: string) => void;
   clearSelectedRecords: (except?: string) => void;
-  loadRecords: (hits: (Hit | Observable)[]) => void;
-  updateRecord: (newHit: Hit | Observable) => void;
-  getRecord: (id: string, force?: boolean) => Promise<WithMetadata<Hit | Observable>>;
+  loadRecords: (hits: (Hit | Event)[]) => void;
+  updateRecord: (newHit: Hit | Event) => void;
+  getRecord: (id: string, force?: boolean) => Promise<WithMetadata<Hit | Event>>;
 }
 
 export const RecordContext = createContext<RecordContextType>(null);
@@ -35,14 +35,14 @@ const RecordProvider: FC<PropsWithChildren> = ({ children }) => {
    * Rapidly updates, good for uses in-context where parallel updates my be occurring, i.e.
    * when two cards request the same hit that's missing from the store. Used in getRecord for this reason.
    */
-  const recordRequests = useRef<{ [id: string]: Promise<Hit | Observable> }>({});
+  const recordRequests = useRef<{ [id: string]: Promise<Hit | Event> }>({});
 
   /**
    * The "Authoritative" store of hits. Changes here will trigger rerenders, and essentially
    * caches the result of the above promises. Slower to update, so used outside of the hitcontext
    * where parallel requests aren't an issue.
    */
-  const [records, setRecords] = useState<{ [index: string]: Hit | Observable }>({});
+  const [records, setRecords] = useState<{ [index: string]: Hit | Event }>({});
 
   const [selectedHitIds, setSelectedHitIds] = useState<string[]>([]);
 
@@ -80,7 +80,13 @@ const RecordProvider: FC<PropsWithChildren> = ({ children }) => {
   const getRecord = useCallback(
     async (id: string, force = false) => {
       if (!recordRequests.current[id] || force) {
-        recordRequests.current[id] = dispatchApi(api.hit.get(id, ['template', 'dossiers', 'analytic', 'overview']));
+        recordRequests.current[id] = dispatchApi(
+          api.v2.search.post<Hit | Event>(['hit', 'event'], {
+            query: `howler.id:${id}`,
+            rows: 1,
+            metadata: ['template', 'dossiers', 'analytic', 'overview']
+          })
+        ).then(result => result.items[0]);
         const newRecord = await recordRequests.current[id];
         setRecords(_records => ({ ..._records, [id]: newRecord }));
       }

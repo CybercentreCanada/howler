@@ -1,5 +1,5 @@
 from howler.common.logging import get_logger
-from howler.services import event_service, viewer_service
+from howler.services import comms_service, viewer_service
 
 logger = get_logger(__file__)
 
@@ -20,7 +20,7 @@ def check_action(
         list[tuple[str, str, bool]]: The new list of outstanding actions
     """
     if broadcast:
-        event_service.emit(
+        comms_service.emit(
             "broadcast",
             {"id": id, "action": action, "username": kwargs["username"]},
         )

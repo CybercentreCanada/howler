@@ -84,7 +84,7 @@ class Case(object):
 
         Args:
             case_id: ID of the case.
-            item_type: Type of item (``hit``, ``observable``, ``case``, ``table``, ``lead``, or ``reference``).
+            item_type: Type of item (``hit``, ``event``, ``case``, ``table``, ``lead``, or ``reference``).
             value: The ID or reference value for the item.
             path: Display path for the item in the case tree.
 

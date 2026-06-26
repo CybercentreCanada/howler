@@ -19,8 +19,8 @@ import FlexOne from 'components/elements/addons/layout/FlexOne';
 import useMyApi from 'components/hooks/useMyApi';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Comment as AnalyticComment } from 'models/entities/generated/Comment';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { Observable } from 'models/entities/generated/Observable';
 import type { SocketEvent } from 'models/socket/HitUpdate';
 import {
   useCallback,
@@ -43,7 +43,7 @@ import TypingIndicator from '../display/TypingIndicator';
 const MAX_LENGTH = 5000;
 
 interface RecordCommentsProps {
-  record: Hit | Observable;
+  record: Hit | Event;
   users: { [id: string]: HowlerUser };
 }
 

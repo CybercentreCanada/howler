@@ -32,7 +32,7 @@ export const MOCK_RESPONSES: { [path: string]: any } = {
     rows: 1
   },
   '/api/v1/analytic': [createMockAnalytic()],
-  '/api/v2/search/hit,observable': {
+  '/api/v2/search/hit,event': {
     items: [],
     total: 0,
     rows: 0

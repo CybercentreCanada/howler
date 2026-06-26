@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { Case } from 'models/entities/generated/Case';
 import type { Item } from 'models/entities/generated/Item';
 import { act } from 'react';
+import { createMockCase } from 'tests/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Tree } from './types';
 
@@ -75,11 +76,11 @@ import CaseFolderContextMenu, { collectAllLeaves, getOpenUrl } from './CaseFolde
 // Fixtures
 // ---------------------------------------------------------------------------
 
-const mockCase: Case = { case_id: 'case-1', title: 'Test Case', items: [] };
+const mockCase: Case = createMockCase({ case_id: 'case-1' });
 
 const hitLeaf: Item = { type: 'hit', value: 'hit-123', path: 'folder/hit-item' };
 const referenceLeaf: Item = { type: 'reference', value: 'https://example.com', path: 'folder/ref-item' };
-const observableLeaf: Item = { type: 'observable', value: 'obs-456', path: 'folder/obs-item' };
+const eventLeaf: Item = { type: 'event', value: 'obs-456', path: 'folder/event-item' };
 const caseLeaf: Item = { type: 'case', value: 'nested-case-id', path: 'folder/case-item' };
 const tableLeaf: Item = { type: 'table', value: 'table-789', path: 'folder/table-item' };
 const leadLeaf: Item = { type: 'lead', value: 'lead-999', path: 'folder/lead-item' };
@@ -160,8 +161,8 @@ describe('getOpenUrl', () => {
     expect(getOpenUrl(hitLeaf)).toBe('/hits/hit-123');
   });
 
-  it('returns /observables/<id> for an observable item', () => {
-    expect(getOpenUrl(observableLeaf)).toBe('/observables/obs-456');
+  it('returns /events/<id> for an event item', () => {
+    expect(getOpenUrl(eventLeaf)).toBe('/events/obs-456');
   });
 
   it('returns /cases/<id> for a case item', () => {
@@ -210,8 +211,8 @@ describe('CaseFolderContextMenu', () => {
       expect(screen.getByTestId('remove-item')).toBeInTheDocument();
     });
 
-    it('shows "Open item" and "Remove item" for an observable leaf', () => {
-      renderMenu({ leaf: observableLeaf });
+    it('shows "Open item" and "Remove item" for an event leaf', () => {
+      renderMenu({ leaf: eventLeaf });
       expect(screen.getByTestId('open-item')).toBeInTheDocument();
       expect(screen.getByTestId('remove-item')).toBeInTheDocument();
     });
@@ -283,12 +284,12 @@ describe('CaseFolderContextMenu', () => {
       expect(window.open).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener noreferrer');
     });
 
-    it('calls window.open with the observable URL', () => {
-      renderMenu({ leaf: observableLeaf });
+    it('calls window.open with the event URL', () => {
+      renderMenu({ leaf: eventLeaf });
       act(() => {
         fireEvent.click(screen.getByTestId('open-item'));
       });
-      expect(window.open).toHaveBeenCalledWith('/observables/obs-456', '_blank', 'noopener noreferrer');
+      expect(window.open).toHaveBeenCalledWith('/events/obs-456', '_blank', 'noopener noreferrer');
     });
 
     it('calls window.open with the case URL', () => {
@@ -323,7 +324,7 @@ describe('CaseFolderContextMenu', () => {
     });
 
     it('does not call the API when case_id is missing', () => {
-      renderMenu({ _case: { title: 'No ID' }, leaf: hitLeaf });
+      renderMenu({ _case: createMockCase({ case_id: undefined, title: 'No ID' }), leaf: hitLeaf });
       act(() => {
         fireEvent.click(screen.getByTestId('remove-item'));
       });

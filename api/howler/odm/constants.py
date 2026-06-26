@@ -18,3 +18,20 @@ class Status(str, HowlerEnum):
 
     def __str__(self) -> str:
         return self.value
+
+
+class CaseEscalation(str, HowlerEnum):
+    """Enum representing the escalation of a case in Howler.
+
+    Args:
+      NORMAL (str): Default escalation level.
+      FOCUS (str): Elevated escalation level requiring extra attention.
+      CRISIS (str): Highest escalation level requiring urgent response.
+    """
+
+    NORMAL = "normal"
+    FOCUS = "focus"
+    CRISIS = "crisis"
+
+    def __str__(self) -> str:
+        return self.value

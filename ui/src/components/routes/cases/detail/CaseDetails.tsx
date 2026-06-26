@@ -1,9 +1,16 @@
-import { Check, FormatListBulleted, HourglassBottom, Pause, People, WarningRounded } from '@mui/icons-material';
+import {
+  Check,
+  FormatListBulleted,
+  HourglassBottom,
+  Pause,
+  People,
+  TrendingUp,
+  WarningRounded
+} from '@mui/icons-material';
 import {
   Autocomplete,
   AvatarGroup,
   Card,
-  Chip,
   Divider,
   LinearProgress,
   Skeleton,
@@ -25,6 +32,7 @@ import dayjs from 'dayjs';
 import type { Case } from 'models/entities/generated/Case';
 import { useContext, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ESCALATION_COLOR_MAP } from '../constants';
 import useCase from '../hooks/useCase';
 import ResolveModal from '../modals/ResolveModal';
 import SourceAggregate from './aggregates/SourceAggregate';
@@ -102,10 +110,33 @@ const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
           <Autocomplete
             size="small"
             disabled={loading}
+            disableClearable
             value={_case.status}
             options={config.lookups['howler.status']}
             renderInput={params => <TextField {...params} size="small" />}
-            onChange={(_ev, status) => handleStatus(status)}
+            onChange={(_ev, status) => {
+              if (status) {
+                handleStatus(status);
+              }
+            }}
+          />
+
+          <Stack direction="row" spacing={1} alignItems="center">
+            <TrendingUp color={ESCALATION_COLOR_MAP[_case.escalation]} />
+            <Typography variant="body1">{t('page.cases.detail.escalation')}</Typography>
+          </Stack>
+          <Autocomplete
+            size="small"
+            disabled={loading}
+            disableClearable
+            value={_case.escalation ?? null}
+            options={config.lookups['case.escalation']}
+            renderInput={params => <TextField {...params} size="small" />}
+            onChange={(_ev, escalation) => {
+              if (escalation) {
+                wrappedUpdate({ escalation });
+              }
+            }}
           />
         </Stack>
         <Divider />
@@ -158,14 +189,6 @@ const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
           </Stack>
           <Table sx={{ '& td': { p: 1 } }}>
             <TableBody>
-              <TableRow>
-                <TableCell>
-                  <Typography variant="caption">{t('page.cases.escalation')}</Typography>
-                </TableCell>
-                <TableCell>
-                  <Chip size="small" label={_case.escalation} />
-                </TableCell>
-              </TableRow>
               <TableRow>
                 <TableCell>
                   <Typography variant="caption">{t('page.cases.created')}</Typography>

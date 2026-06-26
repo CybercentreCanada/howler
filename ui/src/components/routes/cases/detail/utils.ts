@@ -1,23 +1,23 @@
 import type { Case } from 'models/entities/generated/Case';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { Observable } from 'models/entities/generated/Observable';
 import type { Related } from 'models/entities/generated/Related';
-import { type AssetEntry, type AssetRole, type AssetSource, type AssetType } from './types';
+import { type ObservableEntry, type ObservableRole, type ObservableSource, type ObservableType } from './types';
 
 /** All Related fields that carry asset values */
-export const ASSET_FIELDS: AssetType[] = ['hash', 'hosts', 'ip', 'user', 'ids', 'id', 'uri', 'signature'];
+export const OBSERVABLE_FIELDS: ObservableType[] = ['hash', 'hosts', 'ip', 'user', 'ids', 'id', 'uri', 'signature'];
 
 /** Extract (type, value, seenInId) triples from a record's related field */
-export const extractAssets = (
+export const extractObservables = (
   related: Related | undefined,
   recordId: string
-): { type: AssetType; value: string; id: string }[] => {
+): { type: ObservableType; value: string; id: string }[] => {
   if (!related) {
     return [];
   }
 
-  const results: { type: AssetType; value: string; id: string }[] = [];
-  for (const field of ASSET_FIELDS) {
+  const results: { type: ObservableType; value: string; id: string }[] = [];
+  for (const field of OBSERVABLE_FIELDS) {
     const raw = related[field];
     if (!raw) {
       continue;
@@ -35,17 +35,17 @@ export const extractAssets = (
 };
 
 /** Deduplicate and merge seenIn lists into a map keyed by `type:value` */
-export const buildAssetEntries = (records: Partial<Hit | Observable>[]): AssetEntry[] => {
-  const map = new Map<string, AssetEntry>();
+export const buildObservableEntries = (records: Partial<Hit | Event>[]): ObservableEntry[] => {
+  const map = new Map<string, ObservableEntry>();
 
   for (const record of records) {
-    const related = (record as Hit).related ?? (record as Observable).related;
-    const recordId = (record as Hit).howler?.id ?? (record as Observable).howler?.id;
+    const related = (record as Hit).related ?? (record as Event).related;
+    const recordId = (record as Hit).howler?.id ?? (record as Event).howler?.id;
     if (!recordId) {
       continue;
     }
 
-    for (const { type, value, id } of extractAssets(related, recordId)) {
+    for (const { type, value, id } of extractObservables(related, recordId)) {
       const key = `${type}:${value}`;
       if (!map.has(key)) {
         map.set(key, { type, value, seenIn: [] });
@@ -72,7 +72,7 @@ export const buildAssetEntries = (records: Partial<Hit | Observable>[]): AssetEn
  *
  * Comparison is case-insensitive and trimmed.
  */
-export const classifyRole = (value: string, _case: Case, records: Partial<Hit | Observable>[]): AssetRole => {
+export const classifyRole = (value: string, _case: Case, records: Partial<Hit | Event>[]): ObservableRole => {
   const normalized = value.trim().toLowerCase();
 
   // Case-level classification (most authoritative)
@@ -124,7 +124,7 @@ export const resolveSources = (
   seenIn: string[],
   caseItems: Case['items'],
   escalationMap: Map<string, string>
-): AssetSource[] => {
+): ObservableSource[] => {
   if (!caseItems?.length) {
     return [];
   }
@@ -142,5 +142,5 @@ export const resolveSources = (
         escalation: escalationMap.get(id)
       };
     })
-    .filter(Boolean) as AssetSource[];
+    .filter(Boolean) as ObservableSource[];
 };

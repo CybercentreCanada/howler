@@ -1,3 +1,4 @@
+import type { SearchIndex } from 'api/v2/search';
 import { identity, isEmpty, isEqual, isUndefined, omitBy, uniq } from 'lodash-es';
 import type { Dispatch, FC, PropsWithChildren, SetStateAction } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -5,8 +6,6 @@ import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY } from 'utils/constants';
 import Throttler from 'utils/Throttler';
-
-export type SearchIndex = 'hit' | 'observable' | 'case';
 
 export interface ParameterContextType {
   selected?: string;
@@ -80,14 +79,13 @@ const PARAM_MAPPINGS: [string, keyof SearchValues][] = [
 interface ArrayParamDescriptor {
   urlKey: string;
   stateKey: 'filters' | 'views' | 'indexes';
-  default?: string[];
 }
 
 /** Multi-value URL params that map to array state keys */
 const ARRAY_PARAMS: ArrayParamDescriptor[] = [
   { urlKey: 'filter', stateKey: 'filters' },
   { urlKey: 'view', stateKey: 'views' },
-  { urlKey: 'index', stateKey: 'indexes', default: DEFAULT_VALUES.indexes }
+  { urlKey: 'index', stateKey: 'indexes' }
 ];
 
 const ARRAY_URL_KEYS = new Set(ARRAY_PARAMS.map(p => p.urlKey));
@@ -172,6 +170,7 @@ const useListHandlers = <T,>(
  */
 const useUrlSync = (
   values: SearchValues,
+  defaults: Partial<SearchValues>,
   _setValues: Dispatch<SetStateAction<SearchValues>>,
   params: URLSearchParams,
   setParams: ReturnType<typeof useSearchParams>[1],
@@ -188,20 +187,21 @@ const useUrlSync = (
       const urlValue = params.get(urlKey);
       if (stateValue === urlValue) return;
 
-      if (params.has(urlKey) && stateValue === DEFAULT_VALUES[stateKey]) {
+      if (params.has(urlKey) && stateValue === defaults[stateKey]) {
         changes[urlKey] = null; // remove
-      } else if (stateValue !== DEFAULT_VALUES[stateKey]) {
+      } else if (stateValue !== defaults[stateKey]) {
         changes[urlKey] = stateValue; // write
       }
     });
 
     // Array params: skip when state equals default and URL is already empty
-    ARRAY_PARAMS.forEach(({ urlKey, stateKey, default: def }) => {
+    ARRAY_PARAMS.forEach(({ urlKey, stateKey }) => {
       const stateArr = values[stateKey] as string[];
       const urlArr = params.getAll(urlKey);
+      const defaultValue = stateKey === 'indexes' ? defaults.indexes : undefined;
       if (isEqual(stateArr, urlArr)) return;
 
-      const isDefault = def ? isEqual(stateArr, def) : stateArr.length === 0;
+      const isDefault = defaultValue ? isEqual(stateArr, defaultValue) : stateArr.length === 0;
       if (!isDefault) {
         changes[urlKey] = stateArr.length === 0 ? null : stateArr;
       } else if (urlArr.length > 0) {
@@ -223,23 +223,24 @@ const useUrlSync = (
 
     // Drop scalar entries that already match the URL
     return omitBy(changes, (val, key) => !ARRAY_URL_KEYS.has(key) && val == params.get(key));
-  }, [values, params, pathname]);
+  }, [values, defaults, params, pathname]);
 
   const getStateFromUrl = useCallback(() => {
     const changes: Partial<SearchValues> = {};
 
     // Scalar params: fall back to default when absent from URL
     PARAM_MAPPINGS.forEach(([urlKey, stateKey]) => {
-      const urlValue = params.has(urlKey) ? params.get(urlKey) : (DEFAULT_VALUES[stateKey] ?? undefined);
+      const urlValue = params.has(urlKey) ? params.get(urlKey) : (defaults[stateKey] ?? undefined);
       if (urlValue !== values[stateKey]) {
         (changes as any)[stateKey] = urlValue;
       }
     });
 
     // Array params: fall back to their declared default when absent from URL
-    ARRAY_PARAMS.forEach(({ urlKey, stateKey, default: def }) => {
+    ARRAY_PARAMS.forEach(({ urlKey, stateKey }) => {
       const raw = params.getAll(urlKey);
-      const resolved = (isEmpty(raw) && def ? def : uniq(raw)) as SearchValues[typeof stateKey];
+      const defaultValue = stateKey === 'indexes' ? defaults.indexes : undefined;
+      const resolved = (isEmpty(raw) && defaultValue ? defaultValue : uniq(raw)) as SearchValues[typeof stateKey];
       if (!isEqual(resolved, values[stateKey])) {
         (changes as any)[stateKey] = resolved;
       }
@@ -254,7 +255,7 @@ const useUrlSync = (
     if (urlOffset !== values.offset) changes.offset = urlOffset;
 
     return omitBy(omitBy(changes, isUndefined), (val, key) => val == (values as any)[key]);
-  }, [values, params, pathname, routeId]);
+  }, [values, defaults, params, pathname, routeId]);
 
   // State → URL
   useEffect(() => {
@@ -293,21 +294,24 @@ const useUrlSync = (
 /**
  * Context responsible for tracking updates to query operations in hit and view search.
  */
-const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
+const ParameterProvider: FC<PropsWithChildren<{ defaults?: Partial<SearchValues> }>> = ({
+  children,
+  defaults: _defaults = {}
+}) => {
   const location = useLocation();
   const routeParams = useParams();
   const [params, setParams] = useSearchParams();
+
+  const defaults = useMemo<Partial<SearchValues>>(() => ({ ...DEFAULT_VALUES, ..._defaults }), [_defaults]);
 
   const pendingChanges = useRef<Partial<SearchValues>>({});
 
   const [values, _setValues] = useState<SearchValues>({
     selected: getSelectedValue(params, location.pathname, routeParams.id),
-    query: params.get('query') ?? DEFAULT_VALUES.query,
-    sort: params.get('sort') ?? DEFAULT_VALUES.sort,
-    span: params.get('span') ?? DEFAULT_VALUES.span,
-    indexes: params.has('index')
-      ? uniq(params.getAll('index') as SearchIndex[]).filter(identity)
-      : DEFAULT_VALUES.indexes,
+    query: params.get('query') ?? defaults.query,
+    sort: params.get('sort') ?? defaults.sort,
+    span: params.get('span') ?? defaults.span,
+    indexes: params.has('index') ? uniq(params.getAll('index') as SearchIndex[]).filter(identity) : defaults.indexes,
     filters: params.getAll('filter'),
     views: params.getAll('view'),
     startDate: params.get('start_date'),
@@ -317,7 +321,7 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
   });
 
   // TODO: SELECTING A BUNDLE STILL CAUSES A FREAKOUT
-  useUrlSync(values, _setValues, params, setParams, location.pathname, location.search, routeParams.id);
+  useUrlSync(values, defaults, _setValues, params, setParams, location.pathname, location.search, routeParams.id);
 
   const set = useCallback(
     <K extends keyof SearchValues>(key: K) =>
@@ -327,7 +331,7 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
         if (key === 'selected') {
           pendingChanges.current.selected = value as string | null;
         } else {
-          (pendingChanges.current as any)[key] = value ?? DEFAULT_VALUES[key] ?? null;
+          (pendingChanges.current as any)[key] = value ?? defaults[key] ?? null;
         }
 
         if (key === 'span' && typeof value === 'string' && !value.endsWith('custom')) {
@@ -340,7 +344,7 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
           pendingChanges.current = {};
         });
       },
-    [values]
+    [values, defaults]
   );
 
   const setOffset = useCallback(
@@ -379,7 +383,7 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
         removeIndex: indexes.remove,
         setIndex: indexes.setAt,
         setIndexes: indexes.setAll,
-        resetIndexes: useCallback(() => indexes.reset(DEFAULT_VALUES.indexes), [indexes]),
+        resetIndexes: useCallback(() => indexes.reset(defaults.indexes), [indexes, defaults]),
 
         addView: views.add,
         removeView: views.remove,

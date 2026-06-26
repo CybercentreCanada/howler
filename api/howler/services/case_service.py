@@ -14,10 +14,10 @@ from howler.common.logging import get_logger
 from howler.datastore.exceptions import DataStoreException
 from howler.odm.models.case import Case, CaseItem, CaseItemTypes, CaseLog, CaseRule
 from howler.odm.models.ecs.related import Related
+from howler.odm.models.event import Event
 from howler.odm.models.hit import Hit
-from howler.odm.models.observable import Observable
 from howler.odm.models.user import User
-from howler.services import event_service
+from howler.services import comms_service
 
 logger = get_logger(__file__)
 
@@ -59,7 +59,7 @@ def create_case(_case: dict, user: str = None) -> Case:  # type: ignore
 
         case = updated_case
 
-    event_service.emit("cases", {"case": case.as_primitives()})
+    comms_service.emit("cases", {"case": case.as_primitives()})
 
     return case
 
@@ -246,7 +246,7 @@ def update_case(case_id: str, case_data: dict[str, Any], user: User) -> Case:
     case.updated = "NOW"
     ds.case.save(case_id, case)
 
-    event_service.emit("cases", {"case": case.as_primitives()})
+    comms_service.emit("cases", {"case": case.as_primitives()})
 
     return case
 
@@ -277,7 +277,7 @@ def append_case_item(  # noqa: C901
         case_id: Unique identifier of the case to append the item to.
         item: A pre-built CaseItem object. If provided, item_type, item_value,
             and item_path are ignored.
-        item_type: The type of item to append (e.g. "hit", "observable", "case",
+        item_type: The type of item to append (e.g. "hit", "event", "case",
             "table", "lead", "reference"). Required if item is not provided.
         item_value: The value/identifier of the item to append. Required if item
             is not provided.
@@ -314,8 +314,8 @@ def append_case_item(  # noqa: C901
     match item.type:
         case CaseItemTypes.HIT:
             return append_hit(case_id, item)
-        case CaseItemTypes.OBSERVABLE:
-            return append_observable(case_id, item)
+        case CaseItemTypes.EVENT:
+            return append_event(case_id, item)
         case CaseItemTypes.CASE:
             return append_case(case_id, item)
         case CaseItemTypes.TABLE:
@@ -371,25 +371,25 @@ def append_hit(case_id: str, item: CaseItem) -> Case:
 
     updated_case = ds.case.get(_case.case_id)
     if updated_case:
-        event_service.emit("cases", {"case": updated_case.as_primitives()})
+        comms_service.emit("cases", {"case": updated_case.as_primitives()})
 
     return _case
 
 
-def append_observable(case_id: str, item: CaseItem) -> Case:
-    """Append an observable item to a case and create a back-reference on the observable.
+def append_event(case_id: str, item: CaseItem) -> Case:
+    """Append an event item to a case and create a back-reference on the event.
 
-    Validates that the case and observable both exist and that the observable is
+    Validates that the case and event both exist and that the event is
     not already present in the case. It then persists the updated case and adds a back-reference
-    from the observable to the case.
+    from the event to the case.
 
     Args:
-        case_id: Unique identifier of the case to append the observable to.
-        item: A CaseItem whose ``value`` is the ID of an existing observable.
+        case_id: Unique identifier of the case to append the event to.
+        item: A CaseItem whose ``value`` is the ID of an existing event.
 
     Raises:
-        NotFoundException: If the case or observable does not exist.
-        InvalidDataException: If the observable is already present in the case.
+        NotFoundException: If the case or event does not exist.
+        InvalidDataException: If the event is already present in the case.
         DataStoreException: If saving the updated case fails.
     """
     ds = datastore()
@@ -400,24 +400,24 @@ def append_observable(case_id: str, item: CaseItem) -> Case:
         raise NotFoundException(f"Case {case_id} does not exist")
 
     if any(item.value == case_item["value"] for case_item in _case.items):
-        raise InvalidDataException(f"Observable {item.value} already exists in case {case_id}")
+        raise InvalidDataException(f"Event {item.value} already exists in case {case_id}")
 
-    observable = ds.observable.get(key=item.value)
+    event = ds.event.get(key=item.value)
 
-    if observable is None:
-        raise NotFoundException(f"Observable {item.value} not found, cannot be added to case")
+    if event is None:
+        raise NotFoundException(f"Event {item.value} not found, cannot be added to case")
 
     _case.items.append(item)
 
     if not ds.case.save(_case.case_id, _case):
         raise DataStoreException(f"Failed to save {_case.case_id} with new item {item.value}")
 
-    _add_backreference(observable, _case.case_id)
+    _add_backreference(event, _case.case_id)
     _sync_case_metadata(case_id)
 
     updated_case = ds.case.get(_case.case_id)
     if updated_case:
-        event_service.emit("cases", {"case": updated_case.as_primitives()})
+        comms_service.emit("cases", {"case": updated_case.as_primitives()})
 
     return _case
 
@@ -451,7 +451,7 @@ def append_case(case_id: str, item: CaseItem) -> Case:
         raise NotFoundException(f"Case {case_id} does not exist")
 
     if any(item.value == case_item["value"] for case_item in _case.items):
-        raise InvalidDataException(f"Observable {item.value} already exists in case {case_id}")
+        raise InvalidDataException(f"Item {item.value} already exists in case {case_id}")
 
     referenced_case = ds.case.get(item.value)
 
@@ -497,7 +497,7 @@ def append_case(case_id: str, item: CaseItem) -> Case:
     if not datastore().case.save(_case.case_id, _case):
         raise DataStoreException(f"Failed to save {_case.case_id} with new item {item.value}")
 
-    event_service.emit("cases", {"case": _case.as_primitives()})
+    comms_service.emit("cases", {"case": _case.as_primitives()})
 
     return _case
 
@@ -562,7 +562,7 @@ def append_reference(case_id: str, item: CaseItem) -> Case:
     if not datastore().case.save(_case.case_id, _case):
         raise DataStoreException(f"Failed to save {_case.case_id} with new item {item.value}")
 
-    event_service.emit("cases", {"case": _case.as_primitives()})
+    comms_service.emit("cases", {"case": _case.as_primitives()})
 
     return _case
 
@@ -584,7 +584,7 @@ def _collect_indicators_from_related(related: Related | None) -> set[str]:
 def _sync_case_metadata(case_id: str) -> None:  # noqa: C901
     """Re-compute and persist threat/target/indicator lists from all case items.
 
-    Iterates over hit and observable items in the case and re-derives the
+    Iterates over hit and event items in the case and re-derives the
     ``targets``, ``threats``, and ``indicators`` lists from the backing
     objects' ECS ``related.*`` fields and, for hits, the outline fields.
     """
@@ -614,12 +614,12 @@ def _sync_case_metadata(case_id: str) -> None:  # noqa: C901
                 if outline.indicators:
                     indicators.update(str(v) for v in outline.indicators if v)
 
-        elif item.type == CaseItemTypes.OBSERVABLE and item.value:
-            observable = ds.observable.get(item.value)
-            if observable is None:
+        elif item.type == CaseItemTypes.EVENT and item.value:
+            event = ds.event.get(item.value)
+            if event is None:
                 continue
 
-            indicators.update(_collect_indicators_from_related(observable.related))
+            indicators.update(_collect_indicators_from_related(event.related))
 
     _case.targets = sorted(targets)
     _case.threats = sorted(threats)
@@ -627,15 +627,15 @@ def _sync_case_metadata(case_id: str) -> None:  # noqa: C901
     ds.case.save(case_id, _case)
 
 
-def _add_backreference(backing_obj: Hit | Observable | None, case_id: str):
-    """Add a back-reference from a hit or observable to a case.
+def _add_backreference(backing_obj: Hit | Event | None, case_id: str):
+    """Add a back-reference from a hit or event to a case.
 
     Records the case ID in the backing object's ``howler.related_ids`` set so
-    that the relationship can be traversed from the hit/observable side. If the
+    that the relationship can be traversed from the hit/event side. If the
     back-reference already exists, the call is a no-op.
 
     Args:
-        backing_obj: The Hit or Observable object to add the back-reference to.
+        backing_obj: The Hit or Event object to add the back-reference to.
         case_id: Unique identifier of the case to reference.
 
     Raises:
@@ -654,15 +654,15 @@ def _add_backreference(backing_obj: Hit | Observable | None, case_id: str):
     datastore()[backing_obj.__class__.__name__.lower()].save(backing_obj.howler.id, backing_obj)
 
 
-def remove_backreference(backing_obj: Hit | Observable | None, case_id: str):
-    """Remove a back-reference from a hit or observable to a case.
+def remove_backreference(backing_obj: Hit | Event | None, case_id: str):
+    """Remove a back-reference from a hit or event to a case.
 
     Removes the case ID from the backing object's ``howler.related`` list
     and persists the change. If the case ID is not present in the list,
     the call is a no-op.
 
     Args:
-        backing_obj: The Hit or Observable object to remove the back-reference from.
+        backing_obj: The Hit or Event object to remove the back-reference from.
         case_id: Unique identifier of the case reference to remove.
 
     Raises:
@@ -686,7 +686,7 @@ def remove_case_items(case_id: str, values: list[str]):
     any modifications.  If any value is missing the call raises NotFoundException
     without altering the case.  When all values are confirmed, all matching
     items are removed in memory, the case is persisted once, and back-references
-    are cleaned up from any associated hits or observables.
+    are cleaned up from any associated hits or events.
 
     Args:
         case_id: Unique identifier of the case to remove items from.
@@ -717,9 +717,9 @@ def remove_case_items(case_id: str, values: list[str]):
 
     # Resolve items and collect backing objects that need back-reference cleanup.
     items_to_remove = [items_by_value[v] for v in values]
-    backing_objs: list[Hit | Observable] = []
+    backing_objs: list[Hit | Event] = []
     for item in items_to_remove:
-        if item.type in [CaseItemTypes.HIT, CaseItemTypes.OBSERVABLE]:
+        if item.type in [CaseItemTypes.HIT, CaseItemTypes.EVENT]:
             obj = ds[item.type].get(item.value)
             if obj:
                 backing_objs.append(obj)
@@ -739,7 +739,7 @@ def remove_case_items(case_id: str, values: list[str]):
 
     updated_case = ds.case.get(_case.case_id)
     if updated_case:
-        event_service.emit("cases", {"case": updated_case.as_primitives()})
+        comms_service.emit("cases", {"case": updated_case.as_primitives()})
 
     return _case
 
@@ -787,7 +787,7 @@ def rename_case_item(case_id: str, item_value: str, new_path: str) -> Case:
     if not ds.case.save(_case.case_id, _case):
         raise DataStoreException("Failed to save case after item rename")
 
-    event_service.emit("cases", {"case": _case.as_primitives()})
+    comms_service.emit("cases", {"case": _case.as_primitives()})
 
     return _case
 
@@ -841,7 +841,7 @@ def add_case_rule(case_id: str, rule_data: dict, user: User) -> Case:
 
     _case.updated = "NOW"
     ds.case.save(case_id, _case)
-    event_service.emit("cases", {"case": _case.as_primitives()})
+    comms_service.emit("cases", {"case": _case.as_primitives()})
     return _case
 
 
@@ -883,7 +883,7 @@ def remove_case_rule(case_id: str, rule_id: str, user: User) -> Case:
 
     _case.updated = "NOW"
     ds.case.save(case_id, _case)
-    event_service.emit("cases", {"case": _case.as_primitives()})
+    comms_service.emit("cases", {"case": _case.as_primitives()})
     return _case
 
 
@@ -940,5 +940,5 @@ def update_case_rule(case_id: str, rule_id: str, update_data: dict, user: User) 
 
     _case.updated = "NOW"
     ds.case.save(case_id, _case)
-    event_service.emit("cases", {"case": _case.as_primitives()})
+    comms_service.emit("cases", {"case": _case.as_primitives()})
     return _case

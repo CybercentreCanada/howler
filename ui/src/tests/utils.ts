@@ -2,8 +2,8 @@ import type { Action } from 'models/entities/generated/Action';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Case } from 'models/entities/generated/Case';
 import type { Dossier } from 'models/entities/generated/Dossier';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { Observable } from 'models/entities/generated/Observable';
 import type { Template } from 'models/entities/generated/Template';
 import type { View } from 'models/entities/generated/View';
 
@@ -35,18 +35,18 @@ export const createMockHit = (overrides?: RecursivePartial<Hit>): Hit =>
     }
   }) as Hit;
 
-export const createMockObservable = (overrides?: RecursivePartial<Observable>): Observable =>
+export const createMockEvent = (overrides?: RecursivePartial<Event>): Event =>
   ({
     ...overrides,
-    __index: 'observable',
+    __index: 'event',
     howler: {
-      id: 'test-observable-1',
+      id: 'test-event-1',
       analytic: 'test-analytic',
       detection: 'Test Detection',
       hash: '',
       ...overrides?.howler
     }
-  }) as Observable;
+  }) as Event;
 
 export const createMockAnalytic = (overrides?: Partial<Analytic>): Analytic => ({
   analytic_id: 'test-analytic-id',
@@ -91,6 +91,7 @@ export const createMockView = (overrides?: Partial<View>): View => ({
 });
 
 export const createMockCase = (overrides?: Partial<Case>): Case => ({
+  __index: 'case',
   case_id: 'test-case-id',
   title: 'Test Case',
   summary: 'Test case summary',
