@@ -93,7 +93,7 @@ class CaseRule(odm.Model):
         description="Timestamp when the rule was created.",
     )
     timeframe: Optional[int] = odm.Optional(
-        odm.Integer(description="Number of days the rule stays active. Null means no expiry."),
+        odm.Integer(min=1, description="Number of days the rule stays active. Null means no expiry."),
         default=None,
     )
     expire_after_resolved: bool = odm.Boolean(

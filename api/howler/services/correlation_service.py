@@ -69,6 +69,11 @@ def get_active_rules() -> list[tuple[str, CaseRule]]:  # noqa: C901
                 active.append((_case.case_id, rule))
                 continue
 
+            # Skip rules whose timeframe is not a valid positive integer.
+            if isinstance(rule.timeframe, bool) or not isinstance(rule.timeframe, int) or rule.timeframe <= 0:
+                logger.warning("Skipping rule %s with invalid timeframe: %r", rule.rule_id, rule.timeframe)
+                continue
+
             start: datetime
             if not rule.expire_after_resolved:
                 start = datetime.fromisoformat(str(rule.created_at).replace("Z", "+00:00"))
