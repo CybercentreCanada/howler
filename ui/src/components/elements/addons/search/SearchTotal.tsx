@@ -11,7 +11,7 @@ type SearchTotalProps = TypographyProps & {
 const SearchTotal = ({ total, offset, pageLength, ...typographyProps }: SearchTotalProps) => {
   return (
     <Typography {...typographyProps}>
-      {total <= 1 ? (
+      {total < 1 ? (
         <Trans
           i18nKey="search.result.showing.single"
           values={{

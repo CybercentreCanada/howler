@@ -864,6 +864,22 @@ describe('ParameterContext', () => {
 
       expect(hook.result.current).toBe('different_hit_id');
     });
+
+    it('should not sync query when default query differs from global default', async () => {
+      const CustomDefaultWrapper = ({ children }) => {
+        return <ParameterProvider defaults={{ query: '' }}>{children}</ParameterProvider>;
+      };
+
+      const hook = renderHook(() => useContextSelector(ParameterContext, ctx => ctx.query), {
+        wrapper: CustomDefaultWrapper
+      });
+
+      expect(hook.result.current).toBe('');
+
+      await waitFor(() => {
+        expect(mockSetParams).not.toHaveBeenCalled();
+      });
+    });
   });
 
   describe('useParameterContextSelector', () => {

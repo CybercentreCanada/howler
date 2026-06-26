@@ -83,6 +83,7 @@ import CaseFolder from './CaseFolder';
 // ---------------------------------------------------------------------------
 
 const makeCase = (id: string, items: Item[] = []): Case => ({
+  __index: 'case',
   case_id: id,
   title: `Case ${id}`,
   items

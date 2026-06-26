@@ -33,6 +33,7 @@ import Cases from 'components/routes/cases/Cases';
 import CaseDashboard from 'components/routes/cases/detail/CaseDashboard';
 import CaseObservables from 'components/routes/cases/detail/CaseObservables';
 import CaseRules from 'components/routes/cases/detail/CaseRules';
+import CaseSearch from 'components/routes/cases/detail/CaseSearch';
 import CaseTimeline from 'components/routes/cases/detail/CaseTimeline';
 import ItemPage from 'components/routes/cases/detail/ItemPage';
 import DossierEditor from 'components/routes/dossiers/DossierEditor';
@@ -282,7 +283,7 @@ const createRouter = () =>
         {
           path: 'cases/:id',
           element: (
-            <ParameterProvider>
+            <ParameterProvider defaults={{ query: '', indexes: ['hit', 'event', 'case'] }}>
               <CaseViewer />
             </ParameterProvider>
           ),
@@ -302,6 +303,10 @@ const createRouter = () =>
             {
               path: 'rules',
               element: <CaseRules />
+            },
+            {
+              path: 'search',
+              element: <CaseSearch />
             },
             {
               path: '*',

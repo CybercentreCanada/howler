@@ -203,7 +203,7 @@ def get_parent_key(key: str) -> str:
 
 def sanitize_lucene_query(query: str):
     """Take in a given string, and escape it to ensure it is safe to search on via lucene"""
-    query = re.sub(r'([\^"~*?:\\/()[\]{}\-!])', r"\\\1", query)
+    query = re.sub(r'([\^"~*?:\\/()[\]{}\-!+])', r"\\\1", query)
 
     return query.replace("&&", "\\&&").replace("||", "\\||")
 

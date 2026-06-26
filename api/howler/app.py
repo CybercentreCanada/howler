@@ -49,6 +49,7 @@ from howler.api.v1.user import user_api
 from howler.api.v1.view import view_api
 from howler.api.v2 import apiv2
 from howler.api.v2.case import case_api
+from howler.api.v2.fuzzy import fuzzy_api
 from howler.api.v2.ingest import ingest_api
 from howler.api.v2.search import search_api as v2_search_api
 from howler.common.logging import get_logger
@@ -143,6 +144,7 @@ if HWL_USE_REST_API or DEBUG:
     # v2
     app.register_blueprint(apiv2)
     app.register_blueprint(case_api)
+    app.register_blueprint(fuzzy_api)
     app.register_blueprint(ingest_api)
     app.register_blueprint(v2_search_api)
 
