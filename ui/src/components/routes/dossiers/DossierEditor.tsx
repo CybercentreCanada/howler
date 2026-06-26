@@ -171,7 +171,6 @@ const DossierEditor: FC = () => {
         navigate(`/dossiers/${result.dossier_id}/edit`);
       } else {
         // Construct a clean payload with ONLY permitted fields
-        // This solves the "Only type, title, owner, query, leads, pivots can be updated" error
         const updatePayload = {
           title: dossier.title,
           query: dossier.query,

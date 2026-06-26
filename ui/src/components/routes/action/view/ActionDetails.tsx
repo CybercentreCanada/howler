@@ -99,6 +99,7 @@ const ActionDetails = () => {
     if (action?.query) {
       onSearch(action?.query);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [action?.query, onSearch]);
 
   const editRoles = user.roles.includes('automation_basic') || user.roles.includes('automation_advanced');
@@ -167,12 +168,7 @@ const ActionDetails = () => {
           {(action?.owner_id === user.username ||
             action?.admins?.includes(user.username) ||
             user.roles?.includes('admin')) && (
-            <Button
-              startIcon={<PersonAdd />} // Updated icon to make sense contextually
-              size="small"
-              variant="outlined"
-              onClick={() => setMemberModalOpen(true)}
-            >
+            <Button startIcon={<PersonAdd />} size="small" variant="outlined" onClick={() => setMemberModalOpen(true)}>
               {t('route.actions.permission')}
             </Button>
           )}
