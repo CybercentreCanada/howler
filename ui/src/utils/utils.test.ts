@@ -1,19 +1,23 @@
 /// <reference types="vitest" />
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   bytesToSize,
   compareTimestamp,
   convertCustomDateRangeToLucene,
   convertDateToLucene,
   convertLuceneToDate,
+  delay,
   flattenDeep,
   formatDate,
+  getProvider,
   getTimeRange,
   hashCode,
   humanReadableNumber,
   removeEmpty,
   searchObject,
+  searchResultsDisplay,
   sortByTimestamp,
+  stringToColor,
   tryParse,
   twitterShort
 } from './utils';
@@ -381,5 +385,145 @@ describe('twitterShort', () => {
     const oneYearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString();
     const result = twitterShort(oneYearAgo);
     expect(result).toMatch(/year/);
+  });
+});
+
+describe('stringToColor', () => {
+  it('returns a non-empty string for any input', () => {
+    const result = stringToColor('hello');
+    expect(typeof result).toBe('string');
+    expect(result.length).toBeGreaterThan(0);
+  });
+
+  it('returns the same color for the same input', () => {
+    expect(stringToColor('alice')).toBe(stringToColor('alice'));
+  });
+
+  it('returns different colors for different inputs', () => {
+    // Not guaranteed for all pairs, but statistically very likely for distinct words
+    const colors = ['alice', 'bob', 'carol', 'dave'].map(stringToColor);
+    const unique = new Set(colors);
+    expect(unique.size).toBeGreaterThan(1);
+  });
+
+  it('handles an empty string without throwing', () => {
+    expect(() => stringToColor('')).not.toThrow();
+  });
+});
+
+describe('delay', () => {
+  it('resolves after the specified time', async () => {
+    vi.useFakeTimers();
+    const promise = delay(100);
+    vi.advanceTimersByTime(100);
+    await expect(promise).resolves.toBeUndefined();
+    vi.useRealTimers();
+  });
+
+  it('does not resolve before the specified time', async () => {
+    vi.useFakeTimers();
+    let resolved = false;
+    delay(200).then(() => {
+      resolved = true;
+    });
+    vi.advanceTimersByTime(100);
+    expect(resolved).toBe(false);
+    vi.advanceTimersByTime(100);
+    await Promise.resolve(); // flush microtasks
+    expect(resolved).toBe(true);
+    vi.useRealTimers();
+  });
+
+  it('can be cancelled via the .cancel() method without rejecting by default', () => {
+    vi.useFakeTimers();
+    const d = delay(100);
+    expect(() => d.cancel()).not.toThrow();
+    vi.useRealTimers();
+  });
+
+  it('rejects on cancel when rejectOnCancel=true', async () => {
+    vi.useFakeTimers();
+    const d = delay(100, true);
+    const rejection = expect(d).rejects.toBeDefined();
+    d.cancel();
+    vi.advanceTimersByTime(200);
+    await rejection;
+    vi.useRealTimers();
+  });
+});
+
+describe('getProvider', () => {
+  afterEach(() => {
+    // Reset any window.location changes by navigating back to default
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { pathname: '/', search: '', href: 'http://localhost/' }
+    });
+  });
+
+  it('returns the provider from the search params when not in oauth path', () => {
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { pathname: '/login', search: '?provider=azure', href: 'http://localhost/login?provider=azure' }
+    });
+    expect(getProvider()).toBe('azure');
+  });
+
+  it('returns null when no provider param is present and path is not oauth', () => {
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { pathname: '/hits', search: '', href: 'http://localhost/hits' }
+    });
+    expect(getProvider()).toBeNull();
+  });
+});
+
+describe('searchResultsDisplay', () => {
+  afterEach(() => {
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { pathname: '/', search: '', href: 'http://localhost/' }
+    });
+  });
+
+  it('returns count as string when below the max', () => {
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { pathname: '/', search: '', href: 'http://localhost/' }
+    });
+    expect(searchResultsDisplay(500)).toBe('500');
+  });
+
+  it('appends "+" when count equals the default max (10000) and no track_total_hits param', () => {
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { pathname: '/', search: '', href: 'http://localhost/' }
+    });
+    expect(searchResultsDisplay(10000)).toBe('10000+');
+  });
+
+  it('appends "+" when count matches the explicit track_total_hits param', () => {
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { pathname: '/', search: '?track_total_hits=500', href: 'http://localhost/?track_total_hits=500' }
+    });
+    expect(searchResultsDisplay(500)).toBe('500+');
+  });
+
+  it('does not append "+" when count does not equal track_total_hits', () => {
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { pathname: '/', search: '?track_total_hits=1000', href: 'http://localhost/?track_total_hits=1000' }
+    });
+    expect(searchResultsDisplay(500)).toBe('500');
+  });
+
+  it('uses a custom max when provided', () => {
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { pathname: '/', search: '', href: 'http://localhost/' }
+    });
+    expect(searchResultsDisplay(500, 500)).toBe('500+');
+    expect(searchResultsDisplay(499, 500)).toBe('499');
   });
 });
