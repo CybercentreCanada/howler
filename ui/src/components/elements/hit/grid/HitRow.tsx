@@ -18,7 +18,7 @@ const HitRow: FC<{
   hit: Hit;
   analyticIds: Record<string, string>;
   columns: string[];
-  columnWidths: Record<string, string>;
+  columnWidths: Record<string, number>;
   collapseMainColumn: boolean;
   onClick: (e: React.MouseEvent<HTMLDivElement>, hit: Hit) => void;
 }> = ({ hit, analyticIds, columns, columnWidths, collapseMainColumn, onClick }) => {
