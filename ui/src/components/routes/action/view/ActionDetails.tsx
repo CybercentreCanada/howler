@@ -115,7 +115,7 @@ const ActionDetails = () => {
     user.roles.includes('admin') ||
     user.roles.includes('actionrunner_basic') ||
     user.roles.includes('actionrunner_advanced');
-  const adminList = action?.administrator || action?.admins || [];
+  const adminList = action?.admins || [];
   return (
     <PageCenter maxWidth="1500px" textAlign="left" height="100%">
       <Stack spacing={1}>
