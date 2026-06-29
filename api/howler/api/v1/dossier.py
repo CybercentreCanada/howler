@@ -186,9 +186,7 @@ def delete_dossier(id: str, user: User, **kwargs):
         return not_found(err="This dossier does not exist")
 
     if user.uname != existing_dossier.owner and "admin" not in user.type:
-        return forbidden(
-            err="You cannot delete a dossier unless you are an administrator, the owner or dossier administrator."
-        )
+        return forbidden(err="You cannot delete a dossier unless you are a global administrator or the owner.")
 
     success = storage.dossier.delete(id, refresh=refresh)
 
@@ -196,7 +194,7 @@ def delete_dossier(id: str, user: User, **kwargs):
 
 
 @generate_swagger_docs()
-@dossier_api.route("/<id>", methods=["PUT", "DELETE"])
+@dossier_api.route("/<id>", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
 @parse_parameters(refresh=parse_refresh)
 def update_dossier(id: str, user: User, **kwargs):
@@ -274,7 +272,7 @@ def give_privilege(id: str, user: User, **kwargs):
     if not isinstance(priv_change, dict):
         return bad_request(err="Invalid data format")
 
-    if not set(priv_change.keys()) & {"privilege", "user_id"}:
+    if not {"privilege", "user_id"}.issubset(priv_change.keys()):
         return bad_request(err="Invalid data format. Need new privilege and user_id")
 
     success: tuple[Dossier, HowlerDatastore] | str = dossier_service.give_privilege(
@@ -315,7 +313,7 @@ def revoke_privilege(id: str, user: User, **kwargs):
     priv_change: dict = request.json
     if not isinstance(priv_change, dict):
         return bad_request(err="Invalid data format")
-    if not set(priv_change.keys()) & {"privilege", "user_id"}:
+    if not {"privilege", "user_id"}.issubset(priv_change.keys()):
         return bad_request(err="Invalid data format. Need new privilege and user_id")
 
     success: tuple[Dossier, HowlerDatastore] | str = dossier_service.revoke_privilege(

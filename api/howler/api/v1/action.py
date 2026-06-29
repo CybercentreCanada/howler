@@ -85,8 +85,8 @@ def add_action(user: User, **_) -> Response:
     new_action = request.json
     try:
         refresh = parse_refresh(request.args.get("refresh"))
-    except HowlerInvalidParameterException as err:
-        return bad_request(err=str(err))
+    except HowlerInvalidParameterException as e:
+        return bad_request(err=str(e))
     if new_action is None:
         return bad_request(err="You must specify an action")
 
@@ -141,7 +141,10 @@ def update_action(id: str, user: User, **_) -> Response:
     }
     """
     updated_action = request.json
-    refresh = parse_refresh(request.args.get("refresh"))
+    try:
+        refresh = parse_refresh(request.args.get("refresh"))
+    except HowlerInvalidParameterException as e:
+        return bad_request(err=str(e))
 
     if not isinstance(updated_action, dict):
         return bad_request(err="Incorrect data structure!")
@@ -201,14 +204,18 @@ def delete_action(id: str, user: User, **kwargs) -> Response:
     ds = datastore()
 
     result = ds.action.search(f"action_id:{id}", rows=1)
-    refresh = parse_refresh(request.args.get("refresh"))
+
+    try:
+        refresh = parse_refresh(request.args.get("refresh"))
+    except HowlerInvalidParameterException as e:
+        return bad_request(err=str(e))
 
     if not result["total"]:
         return not_found(err="Action does not exist")
 
     action: Action = result["items"][0]
 
-    if user.uname not in action.owner_id and "admin" not in user.type:
+    if user.uname != action.owner_id and "admin" not in user.type:
         return forbidden(err="You do not have the permissions necessary to delete this action.")
 
     try:
@@ -542,6 +549,11 @@ def revoke_privilege(id: str, user: User, **kwargs):
     if user_to_remove not in priv_map[priv_requested]:
         return bad_request(err=f"{user_to_remove} is not in the {priv_requested} premission group")
 
+    if priv_requested == "owner":
+        return bad_request(
+            err="You cannot remove the owner privilege. Only transfer is allowed. (Use the give_privilege endpoint)"
+        )
+
     existing_action.remove_privilege_mapping(priv_requested, user_to_remove)
 
     storage.action.save(existing_action.action_id, existing_action)
@@ -549,40 +561,6 @@ def revoke_privilege(id: str, user: User, **kwargs):
     storage.action.commit()
 
     return ok(storage.action.get_if_exists(existing_action.action_id, as_obj=False))
-
-
-@generate_swagger_docs()
-@action_api.route("/<id>/permission_options", methods=["GET"])
-@api_login(required_priv=["R", "W"], required_type=["automation_basic"])
-def get_permission_option(id: str, user: User):
-    """Get the permission options for a given action
-
-    Variables:
-    id => The unique ID of the action embedded in the URL path
-
-    Arguments:
-        id: The id of the Action to get permissions for
-        user: The user making the request (injected by the api_login decorator)
-    Optional Arguments:
-        None
-    Result Example:
-         {
-            "administrator": [ # Each entry corresponds to a given privilege level
-                "user1", "user2" # A list of users that have this privilege
-            ],
-            "member": [
-                "user3"
-            ],
-            "owner": "user4"
-        }
-    returns a dict with the possible permissions for the action and the users that have them.
-    """
-    ds = datastore()
-    action: Action = ds.action.get(id)
-    if not action:
-        return not_found(err="The specified action does not exist")
-
-    return ok(action.get_privilege_mapping())
 
 
 @generate_swagger_docs()

@@ -6,7 +6,7 @@ from mergedeep.mergedeep import merge
 
 from howler.api import bad_request, created, forbidden, make_subapi_blueprint, no_content, not_found, ok
 from howler.api.v1.utils.params import parse_refresh
-from howler.common.exceptions import HowlerException, InvalidDataException
+from howler.common.exceptions import HowlerException, HowlerInvalidParameterException, InvalidDataException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
@@ -81,7 +81,11 @@ def create_view(**kwargs):
     }
     """
     view_data = request.json
-    refresh = parse_refresh(request.args.get("refresh"))
+    try:
+        refresh = parse_refresh(request.args.get("refresh"))
+    except HowlerInvalidParameterException as e:
+        return bad_request(err=str(e))
+
     if not isinstance(view_data, dict):
         return bad_request(err="Invalid data format")
 
@@ -140,8 +144,13 @@ def delete_view(view_id: str, user: User, **kwargs):
     }
     """
     storage = datastore()
-    refresh = parse_refresh(request.args.get("refresh"))
+    try:
+        refresh = parse_refresh(request.args.get("refresh"))
+    except (InvalidDataException, ValueError) as e:
+        return bad_request(err=f"Invalid refresh parameter: {str(e)}")
+
     existing_view: View = storage.view.get_if_exists(view_id)
+
     if not existing_view:
         return not_found(err="This view does not exist")
 
