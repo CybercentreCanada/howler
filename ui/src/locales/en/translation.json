@@ -380,8 +380,8 @@
   "page.settings.local.details.drawer.description": "Instead of switching between a divided view and the drawer on different screen sizes, this setting forces Howler to always use the drawer.",
   "page.settings.local.flatten.json": "Flatten JSON in JSON View",
   "page.settings.local.flatten.json.description": "Instead of showing the object structure of the JSON, show it as flattened keys.",
-  "page.settings.local.hits.display_type": "Default display type for results",
-  "page.settings.local.hits.display_type.description": "This setting allows you to decide whether to use the list or grid view by default when searching.",
+  "page.settings.local.hits.display_type": "Display type for results",
+  "page.settings.local.hits.display_type.description": "This setting allows you to decide whether to use the list or grid view when searching.",
   "page.settings.local.hits.display_type.grid": "Grid",
   "page.settings.local.hits.display_type.list": "List",
   "page.settings.local.hits.field_count": "Template Field Count",
@@ -767,9 +767,12 @@
   "usermenu.settings": "Settings",
   "using": "using",
   "view.assigned_to_me": "Assigned to Me",
+  "view.display.grid.inactive_warning": "The view has grid properties which cannot be applied",
   "view.notfound": "This view is not available to you, or does not exist.",
   "view.open": "Open View Query",
   "view.refresh": "Refresh View",
+  "view.settings": "View Settings",
   "view.settings.advance_on_triage": "Advance to next hit on triage",
-  "view.settings.advance_on_triage.description": "If this is enabled, triaging a hit on this view will automatically move to the next hit in line, making rapid triage of hits easier."
+  "view.settings.advance_on_triage.description": "If this is enabled, triaging a hit on this view will automatically move to the next hit in line, making rapid triage of hits easier.",
+  "view.settings.layout": "Default layout in search"
 }
