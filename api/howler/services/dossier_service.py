@@ -201,7 +201,7 @@ def update_dossier(dossier_id: str, dossier_data: dict[str, Any], user: User, re
 
     # Enforce access control for personal dossiers
     # Only the owner or admin users can modify personal dossiers
-    is_dossier_admin: bool = user.uname == existing_dossier.owner or user.name in existing_dossier.admins
+    is_dossier_admin: bool = user.uname == existing_dossier.owner or user.uname in existing_dossier.admins
     if existing_dossier.type == "personal" and not is_dossier_admin and "admin" not in user.type:
         raise ForbiddenException("You cannot update a personal dossier that is not owned by you.")
 
@@ -210,7 +210,7 @@ def update_dossier(dossier_id: str, dossier_data: dict[str, Any], user: User, re
     # TODO : AG : verify this work to only allow "member" to modify it
     is_member: bool = user.uname in ([existing_dossier.owner] + existing_dossier.admins + existing_dossier.members)
     if not is_member and "admin" not in user.type:
-        raise ForbiddenException("Only the members of a dossier and administrators can edit a global dossier.")
+        raise ForbiddenException("Only the members of a dossier and global administrators can edit a global dossier.")
 
     # Validate pivot configurations if they're being updated
     # Ensure no duplicate mapping keys exist within any pivot
@@ -331,15 +331,13 @@ def change_privilege(
     if level_requested not in priv_map:
         raise InvalidDataException("The requested level does not exist in dossier. Use member, administrator or owner.")
 
-    is_dossier_admin: bool = user.uname in existing_dossier.admins or user.uname != existing_dossier.owner
+    is_dossier_admin: bool = user.uname in existing_dossier.admins or user.uname == existing_dossier.owner
     if not is_dossier_admin and "admin" not in user.type:
         raise InvalidDataException("You cannot give administrative privilege for this dossier.")
 
-    if level_requested == "owner" and user.uname != existing_dossier.owner and not "admin" not in user.type:
+    # Global admin or owner should be the only one able to transfer ownership
+    if level_requested == "owner" and user.uname != existing_dossier.owner or "admin" not in user.type:
         raise InvalidDataException("You cannot give owner privilege for this dossier.")
-    # use the maping to update the list to the proper privilege
-    if level_requested == "owner":
-        pass
 
     elif is_adding:
         existing_dossier.set_privilege_mapping(level_requested, new_member)
@@ -472,6 +470,9 @@ def revoke_privilege(received_data: dict, dossier_id: str, user: User) -> tuple[
 
     if isinstance(is_allowed, str):
         return is_allowed
+
+    if priv_requested == "owner":
+        return "Ownership cannot be revoked. It must be transferred to another user via an ownership assignment."
 
     if user_to_remove not in priv_map[priv_requested]:
         return f"{user_to_remove} is not in the {priv_requested} premission group"

@@ -47,7 +47,7 @@ export const permission = {
   put: (id: string, data: { privilege: string; user_id: string }) => {
     return hput(joinAllUri(uri(id), 'permission'), data);
   },
-  delete: (id: string, data: { privilege: string; user_id: string; is_adding: boolean }) => {
+  delete: (id: string, data: { privilege: string; user_id: string }) => {
     return hdelete(joinAllUri(uri(id), 'permission'), data);
   },
   getOptions: (id: string) => {

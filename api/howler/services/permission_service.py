@@ -72,7 +72,7 @@ def privilege_value_verifications(
 
     if not existing_item:
         temp_type = type(existing_item)
-        return f"This {temp_type} does not exist"
+        return f"This {temp_type.__name__} does not exist"
     if level_requested not in existing_item.get_privilege_mapping().keys():
         return f"Permission {level_requested} does not exist options are \
             {existing_item.get_privilege_mapping().keys()}"
@@ -87,7 +87,7 @@ def get_require_data_helper(
     if not isinstance(priv_change, dict):
         return "Invalid data format"
 
-    if not set(priv_change.keys()) & {"privilege", "user_id"}:
+    if not {"privilege", "user_id"}.issubset(priv_change.keys()):
         return "Invalid data format. Need new privilege and user_id"
 
     storage = datastore()

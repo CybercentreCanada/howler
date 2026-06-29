@@ -102,7 +102,7 @@ class Action(odm.Model):
         if level == "owner":
             if isinstance(users, list) and len(users) > 1:
                 raise ValueError("Owner level can only have one user. a list was given with multiple users.")
-            self.owner_id = ""  # TODO: Verify if we should allow removing owner and leaving it empty
+            raise ValueError("Owner can only be transferred. They should be assigned to another user.")
         elif level == "administrator":
             if isinstance(users, list):
                 self.admins = [admin for admin in self.admins if admin not in users]

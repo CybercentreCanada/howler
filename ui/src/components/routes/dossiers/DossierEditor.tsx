@@ -65,7 +65,9 @@ const DossierEditor: FC = () => {
   // Permission Check Logic
   const canManageMembership = useMemo(() => {
     if (!user || !dossier) return false;
-    return dossier.owner === user.username || user.roles?.includes('admin');
+    const adminList = (dossier as any).admins || dossier.administrator || [];
+    const isAdministrator = adminList.includes(user.username) || dossier.owner === user.username;
+    return isAdministrator || user.roles?.includes('admin');
   }, [user, dossier]);
 
   const validationError = useMemo(() => {
@@ -170,14 +172,14 @@ const DossierEditor: FC = () => {
         showSuccessMessage(t('route.dossiers.manager.create.success'));
         navigate(`/dossiers/${result.dossier_id}/edit`);
       } else {
-        // Construct a clean payload with ONLY permitted fields
+        // Construct a clean payload with ONLY permitted fields.
+        // Removed 'owner' to prevent accidental ownership transfers via PUT.
         const updatePayload = {
           title: dossier.title,
           query: dossier.query,
           leads: dossier.leads,
           pivots: dossier.pivots,
-          type: dossier.type,
-          owner: dossier.owner
+          type: dossier.type
         };
 
         const updated = await dispatchApi(api.dossier.put(dossier.dossier_id, updatePayload));

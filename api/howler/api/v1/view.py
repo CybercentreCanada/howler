@@ -6,7 +6,7 @@ from mergedeep.mergedeep import merge
 
 from howler.api import bad_request, created, forbidden, make_subapi_blueprint, no_content, not_found, ok
 from howler.api.v1.utils.params import parse_refresh
-from howler.common.exceptions import HowlerException
+from howler.common.exceptions import HowlerException, InvalidDataException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
@@ -182,7 +182,11 @@ def update_view(view_id: str, user: User, **kwargs):
     }
     """
     new_data = request.json
-    refresh = parse_refresh(request.args.get("refresh"))
+    try:
+        refresh = parse_refresh(request.args.get("refresh"))
+    except (InvalidDataException, ValueError) as e:
+        return bad_request(err=f"Invalid refresh parameter: {str(e)}")
+
     if not isinstance(new_data, dict):
         return bad_request(err="Invalid data format")
 
@@ -440,45 +444,6 @@ def revoke_privilege(view_id: str, user: User, **kwargs):
     storage.view.commit()
 
     return ok(storage.view.get_if_exists(existing_view.view_id, as_obj=False))
-
-
-@generate_swagger_docs()
-@view_api.route("/<view_id>/permission_options", methods=["GET"])
-@api_login(required_priv=["R", "W"], required_type=["automation_basic"])
-def get_permission_option(view_id: str, user: User):
-    """Get the permission options for a given view
-
-    Variables:
-    view_id => The id of the view to remove administrative privilege of
-
-     The json object need to send "privilege", "user_id" as a key.
-    privilege : The value need to be one of ["administrator", "member", "owner"]
-    user_id : the value need to be the user to add or remove from the permission
-    is_adding: The value neeed to be a boolean representing if we add or remove a user.
-
-    Arguments:
-        view_id: The id of the view to get permissions for
-        user: The user making the request (injected by the api_login decorator)
-    Optional Arguments:
-        None
-    Result Example:
-         {
-            "administrator": [ # Each entry corresponds to a given privilege level
-                "user1", "user2" # A list of users that have this privilege
-            ],
-            "member": [
-                "user3"
-            ],
-            "owner": "user4"
-        }
-    returns a dict with the possible permissions for the view and the users that have them.
-    """
-    ds = datastore()
-    view: View = ds.view.get(view_id)
-    if not view:
-        return not_found(err="The specified view does not exist")
-
-    return ok(view.get_privilege_mapping())
 
 
 @generate_swagger_docs()

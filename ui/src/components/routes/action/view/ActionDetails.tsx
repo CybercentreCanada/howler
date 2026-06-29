@@ -69,7 +69,14 @@ const ActionDetails = () => {
           })
         );
 
-        setAction({ ...action, triggers: newTriggers });
+        setAction(prevAction => {
+          if (!prevAction) return prevAction;
+          const cleanAction: Omit<Action, keyof any> = prevAction;
+          return {
+            ...cleanAction,
+            triggers: newTriggers
+          } as Action;
+        });
       } finally {
         setLoading(false);
       }
@@ -108,7 +115,7 @@ const ActionDetails = () => {
     user.roles.includes('admin') ||
     user.roles.includes('actionrunner_basic') ||
     user.roles.includes('actionrunner_advanced');
-
+  const adminList = action?.administrator || action?.admins || [];
   return (
     <PageCenter maxWidth="1500px" textAlign="left" height="100%">
       <Stack spacing={1}>
@@ -131,7 +138,6 @@ const ActionDetails = () => {
         <Stack direction="row" alignItems="center" spacing={1}>
           {response && <QueryResultText count={response.total} query={action?.query} />}
           <FlexOne />
-
           {((action?.owner_id === user.username && editRoles) || user.roles?.includes('admin')) && (
             <Button startIcon={<Delete />} size="small" variant="outlined" color="error" onClick={onDelete}>
               {t('button.delete')}
@@ -151,8 +157,8 @@ const ActionDetails = () => {
 
           {((action?.owner_id === user.username && editRoles) ||
             (user.roles?.includes('admin') && editRoles) ||
-            (action?.admins?.includes(user.username) && editRoles) ||
-            (action?.members?.includes(user.username) && editRoles)) && (
+            (adminList.includes(user.username) && editRoles) ||
+            (action?.member?.includes(user.username) && editRoles)) && (
             <Button
               startIcon={<Edit />}
               size="small"
@@ -163,10 +169,9 @@ const ActionDetails = () => {
               {t('route.actions.edit')}
             </Button>
           )}
-
           {/* Only the owner and Admins should be able to add members */}
           {(action?.owner_id === user.username ||
-            action?.admins?.includes(user.username) ||
+            adminList.includes(user.username) ||
             user.roles?.includes('admin')) && (
             <Button startIcon={<PersonAdd />} size="small" variant="outlined" onClick={() => setMemberModalOpen(true)}>
               {t('route.actions.permission')}

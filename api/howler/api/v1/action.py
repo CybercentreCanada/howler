@@ -418,8 +418,6 @@ def give_privilege(id: str, user: User, **kwargs):
         The json object need to send "privilege", "user_id" as a key.
         privilege : The value need to be one of ["administrator", "member", "owner"]
         user_id : the value need to be the user to add or remove from the permission
-        is_adding: The value neeed to be a boolean representing if we add or remove a user.
-
     Variables:
     action_id => The id of the action to give administrative privilege of
 
@@ -499,7 +497,6 @@ def revoke_privilege(id: str, user: User, **kwargs):
         {
             "privilege": "privilege to give",  # [member, administrator, owner]
             "user_id": "user to remove permission from",
-            "is_adding": true
         }
 
     Result Example:
