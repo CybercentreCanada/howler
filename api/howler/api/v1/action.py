@@ -587,7 +587,7 @@ def get_action_permission(id: str, user: User, **kwargs):
     """
     storage = datastore()
 
-    action: Action = storage.action.get_if_exists(id, as_obj=False)  # type: ignore
+    action: Action = storage.action.get_if_exists(id, as_obj=True)  # type: ignore
     if not action or not isinstance(action, Action):
         return not_found(err="This action does not exist")
 

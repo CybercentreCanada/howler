@@ -79,6 +79,7 @@ const ViewComposer: FC = () => {
   const [title, setTitle] = useState('');
   const [type, setType] = useState('global');
   const [advanceOnTriage, setAdvanceOnTriage] = useState(false);
+  const [memberModalOpen, setMemberModalOpen] = useState(false);
   const { columns, setColumns, columnWidths, isReady } = useContext(GridColumnsContext);
 
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
