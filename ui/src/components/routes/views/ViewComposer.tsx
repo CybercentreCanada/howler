@@ -1,13 +1,14 @@
 import type { FC } from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { HelpOutline, Save } from '@mui/icons-material';
+import { HelpOutline, Save, Settings } from '@mui/icons-material';
 import {
   Alert,
   Checkbox,
   CircularProgress,
   LinearProgress,
+  Paper,
   Stack,
   TextField,
   ToggleButton,
@@ -19,20 +20,28 @@ import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
 import PageCenter from 'commons/components/pages/PageCenter';
+import { GridColumnsContext } from 'components/app/providers/GridColumnsProvider';
 import { HitContext } from 'components/app/providers/HitProvider';
+import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import CustomButton from 'components/elements/addons/buttons/CustomButton';
+import FlexOne from 'components/elements/addons/layout/FlexOne';
 import FlexPort from 'components/elements/addons/layout/FlexPort';
 import VSBox from 'components/elements/addons/layout/vsbox/VSBox';
 import VSBoxContent from 'components/elements/addons/layout/vsbox/VSBoxContent';
 import VSBoxHeader from 'components/elements/addons/layout/vsbox/VSBoxHeader';
 import SearchTotal from 'components/elements/addons/search/SearchTotal';
+import ChipPopper from 'components/elements/display/ChipPopper';
+import AddColumnModal from 'components/elements/hit/grid/AddColumnModal';
+import HitTable from 'components/elements/hit/grid/HitTable';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
+import LayoutToggle, { type HowlerViewLayoutType } from 'components/elements/view/LayoutToggle';
 import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useMySnackbar from 'components/hooks/useMySnackbar';
+import { uniq } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
@@ -63,6 +72,7 @@ const ViewComposer: FC = () => {
   const [title, setTitle] = useState('');
   const [type, setType] = useState('global');
   const [advanceOnTriage, setAdvanceOnTriage] = useState(false);
+  const { columns, setColumns, columnWidths, isReady } = useContext(GridColumnsContext);
 
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
   const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
@@ -77,9 +87,16 @@ const ViewComposer: FC = () => {
   const [searching, setSearching] = useState<boolean>(false);
   const [error, setError] = useState<string>(null);
   const [response, setResponse] = useState<HowlerSearchResponse<Hit>>();
+  const displayType = useContextSelector(HitSearchContext, ctx => ctx.displayType);
+  const setDisplayType = useContextSelector(HitSearchContext, ctx => ctx.setDisplayType);
 
   const onSave = useCallback(async () => {
     setLoading(true);
+
+    const _columnData = columns.map(column => ({
+      field: column,
+      width: columnWidths[column] ?? null
+    }));
 
     try {
       if (!routeParams.id) {
@@ -90,7 +107,9 @@ const ViewComposer: FC = () => {
           sort: sort || null,
           span: span || null,
           settings: {
-            advance_on_triage: advanceOnTriage
+            advance_on_triage: advanceOnTriage,
+            display: displayType,
+            columns: displayType === 'grid' ? _columnData : null
           }
         });
 
@@ -102,7 +121,11 @@ const ViewComposer: FC = () => {
           query,
           sort,
           span,
-          settings: { advance_on_triage: advanceOnTriage }
+          settings: {
+            advance_on_triage: advanceOnTriage,
+            display: displayType,
+            columns: displayType === 'grid' ? _columnData : null
+          }
         });
       }
 
@@ -123,7 +146,10 @@ const ViewComposer: FC = () => {
     sort,
     span,
     advanceOnTriage,
+    displayType,
+    columns,
     navigate,
+    columnWidths,
     editView,
     showErrorMessage
   ]);
@@ -189,6 +215,8 @@ const ViewComposer: FC = () => {
       setTitle(viewToEdit.title);
       setAdvanceOnTriage(viewToEdit.settings?.advance_on_triage ?? false);
       setQuery(viewToEdit.query);
+      setDisplayType((viewToEdit.settings?.display ?? null) as HowlerViewLayoutType);
+      setType(viewToEdit.type);
 
       if (viewToEdit.sort) {
         setSort(viewToEdit.sort);
@@ -259,50 +287,89 @@ const ViewComposer: FC = () => {
                 >
                   {t('hit.search.prompt')}
                 </Typography>
-                <HitQuery
-                  triggerSearch={search}
-                  searching={searching}
-                  onChange={(_query, isDirty) => setIsSearchDirty(isDirty)}
-                />
-                <Stack direction="row" spacing={1}>
-                  <HitSort />
-                  <SearchSpan omitCustom />
-                  <div style={{ flex: 1 }} />
-                  <Stack
-                    spacing={1}
-                    direction="row"
-                    alignItems="center"
-                    sx={{ flex: '0 !important', minWidth: '300px' }}
-                  >
-                    <Typography component="span">{t('view.settings.advance_on_triage')}</Typography>
-                    <Tooltip title={t('view.settings.advance_on_triage.description')}>
-                      <HelpOutline sx={{ fontSize: '16px' }} />
-                    </Tooltip>
-                    <Checkbox
-                      size="small"
-                      checked={advanceOnTriage}
-                      onChange={(_event, checked) => setAdvanceOnTriage(checked)}
+                <Stack direction="row" width="100%" spacing={2} alignItems="flex-start" paddingBottom={1}>
+                  <Stack direction="column" width="100%" spacing={1}>
+                    <HitQuery
+                      triggerSearch={search}
+                      searching={searching}
+                      onChange={(_query, isDirty) => setIsSearchDirty(isDirty)}
                     />
+                    <Stack direction="row" spacing={1}>
+                      <HitSort />
+                      <SearchSpan omitCustom />
+                      <div style={{ flex: 1 }} />
+                      <ChipPopper
+                        label={<Typography variant="body2">{t('view.settings')}</Typography>}
+                        deleteIcon={<Settings />}
+                        toggleOnDelete
+                        slotProps={{ chip: { size: 'small' } }}
+                        placement="bottom-end"
+                      >
+                        <Stack direction="column" spacing={1}>
+                          <Stack
+                            spacing={1}
+                            direction="row"
+                            alignItems="center"
+                            sx={{ flex: '0 !important', minWidth: '300px' }}
+                          >
+                            <Typography component="span">{t('view.settings.advance_on_triage')}</Typography>
+                            <Tooltip title={t('view.settings.advance_on_triage.description')}>
+                              <HelpOutline sx={{ fontSize: '16px' }} />
+                            </Tooltip>
+                            <FlexOne />
+                            <Checkbox
+                              size="small"
+                              checked={advanceOnTriage}
+                              onChange={(_event, checked) => setAdvanceOnTriage(checked)}
+                            />
+                          </Stack>
+                          <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+                            <Typography component="span">{t('view.settings.layout')}</Typography>
+                            <LayoutToggle
+                              displayType={displayType}
+                              setDisplayType={setDisplayType}
+                              size="small"
+                              allowNullValue
+                            />
+                          </Stack>
+                        </Stack>
+                      </ChipPopper>
+                    </Stack>
                   </Stack>
                 </Stack>
-                {response?.total ? (
-                  <SearchTotal
-                    total={response.total}
-                    pageLength={response.items.length}
-                    offset={response.offset}
-                    sx={theme => ({ color: theme.palette.text.secondary, fontSize: '0.9em', fontStyle: 'italic' })}
-                  />
-                ) : null}
+                <Stack direction="row" spacing={1} alignItems="flex-end" justifyContent="space-between">
+                  {response && (
+                    <SearchTotal
+                      total={response.total}
+                      pageLength={response.items.length}
+                      offset={response.offset}
+                      sx={theme => ({ color: theme.palette.text.secondary, fontSize: '0.9em', fontStyle: 'italic' })}
+                    />
+                  )}
+                  <FlexOne />
+                  {displayType === 'grid' && (
+                    <AddColumnModal
+                      columns={columns}
+                      addColumn={key => isReady && setColumns(uniq([...columns, key]))}
+                    />
+                  )}
+                </Stack>
                 <LinearProgress sx={[!searching && { opacity: 0 }]} />
               </Stack>
             </VSBoxHeader>
             <VSBoxContent>
-              <Stack spacing={1}>
-                {!response?.total && <AppListEmpty />}
-                {response?.items.map(hit => (
-                  <HitCard key={hit.howler.id} id={hit.howler.id} layout={HitLayout.DENSE} />
-                ))}
-              </Stack>
+              {displayType === 'grid' ? (
+                <Stack component={Paper} spacing={1} width="100%" height="100%" sx={{ overflow: 'auto', flex: 1 }}>
+                  <HitTable query={query} items={response?.items} />
+                </Stack>
+              ) : (
+                <Stack spacing={1}>
+                  {!response?.total && <AppListEmpty />}
+                  {response?.items.map(hit => (
+                    <HitCard key={hit.howler.id} id={hit.howler.id} layout={HitLayout.DENSE} />
+                  ))}
+                </Stack>
+              )}
             </VSBoxContent>
           </VSBox>
         </PageCenter>

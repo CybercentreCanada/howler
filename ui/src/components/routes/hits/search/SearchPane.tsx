@@ -1,5 +1,5 @@
-import { Close, ErrorOutline, SavedSearch, Terminal } from '@mui/icons-material';
-import { Box, IconButton, LinearProgress, Stack, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { ErrorOutline } from '@mui/icons-material';
+import { Box, LinearProgress, Stack, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { grey } from '@mui/material/colors';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
 import PageCenter from 'commons/components/pages/PageCenter';
@@ -16,6 +16,7 @@ import SearchTotal from 'components/elements/addons/search/SearchTotal';
 import HowlerCard from 'components/elements/display/HowlerCard';
 import HitBanner from 'components/elements/hit/HitBanner';
 import HitCard from 'components/elements/hit/HitCard';
+import HitContextMenu from 'components/elements/hit/HitContextMenu';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import useHitSelection from 'components/hooks/useHitSelection';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
@@ -24,15 +25,13 @@ import type { FC } from 'react';
 import React, { memo, useCallback, useEffect, useMemo } from 'react';
 import { isMobile } from 'react-device-detect';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
-import BundleParentMenu from './BundleParentMenu';
 import { BundleScroller } from './BundleScroller';
-import HitContextMenu from './HitContextMenu';
 import HitQuery from './HitQuery';
-import LayoutSettings from './LayoutSettings';
 import QuerySettings from './QuerySettings';
+import SearchActionMenu from './shared/SearchActionMenu';
 
 const Item: FC<{
   hit: Hit;
@@ -101,7 +100,6 @@ const Item: FC<{
 const SearchPane: FC = () => {
   const { t } = useTranslation();
   const location = useLocation();
-  const navigate = useNavigate();
   const routeParams = useParams();
 
   const selected = useContextSelector(ParameterContext, ctx => ctx.selected);
@@ -184,25 +182,7 @@ const SearchPane: FC = () => {
                 </Tooltip>
               )}
               <FlexOne />
-              {bundleHit?.howler.bundles.length > 0 && <BundleParentMenu bundle={bundleHit} />}
-              {bundleHit && (
-                <Tooltip title={t('hit.bundle.close')}>
-                  <IconButton size="small" onClick={() => navigate('/search')}>
-                    <Close />
-                  </IconButton>
-                </Tooltip>
-              )}
-              <Tooltip title={t('route.views.save')}>
-                <IconButton component={Link} disabled={!query} to={`/views/create?query=${query}`}>
-                  <SavedSearch />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title={t('route.actions.save')}>
-                <IconButton component={Link} disabled={!query} to={`/action/execute?query=${query}`}>
-                  <Terminal />
-                </IconButton>
-              </Tooltip>
-              <LayoutSettings />
+              <SearchActionMenu query={query} />
             </Stack>
           </Stack>
 

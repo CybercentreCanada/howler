@@ -1,13 +1,4 @@
-import {
-  ArrowDropDown,
-  InfoOutlined,
-  List,
-  Settings,
-  TableChart,
-  ViewComfy,
-  ViewCompact,
-  ViewModule
-} from '@mui/icons-material';
+import { ArrowDropDown, InfoOutlined, Settings, ViewComfy, ViewCompact, ViewModule } from '@mui/icons-material';
 import {
   Checkbox,
   Divider,
@@ -21,6 +12,7 @@ import {
 import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import ChipPopper from 'components/elements/display/ChipPopper';
 import { HitLayout } from 'components/elements/hit/HitLayout';
+import LayoutToggle from 'components/elements/view/LayoutToggle';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -56,26 +48,7 @@ const LayoutSettings: FC = () => {
             <InfoOutlined fontSize="inherit" />
           </Tooltip>
         </Stack>
-        <ToggleButtonGroup
-          exclusive
-          value={displayType}
-          onChange={(__, value) => setDisplayType(value)}
-          size="small"
-          aria-labelledby="display_type"
-        >
-          <ToggleButton value="list">
-            <Stack direction="row" spacing={0.5}>
-              <List />
-              <span>{t('page.settings.local.hits.display_type.list')}</span>
-            </Stack>
-          </ToggleButton>
-          <ToggleButton value="grid">
-            <Stack direction="row" spacing={0.5}>
-              <TableChart />
-              <span>{t('page.settings.local.hits.display_type.grid')}</span>
-            </Stack>
-          </ToggleButton>
-        </ToggleButtonGroup>
+        <LayoutToggle displayType={displayType} setDisplayType={setDisplayType} />
         <Divider flexItem />
         <Stack direction="row" spacing={0.5} alignItems="center" alignSelf="stretch">
           <FormLabel id="layout">{t('page.settings.local.hits.layout')}</FormLabel>
