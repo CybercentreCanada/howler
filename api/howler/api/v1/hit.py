@@ -35,6 +35,7 @@ from howler.odm.models.howler_data import Comment, HitOperationType, HitStatusTr
 from howler.odm.models.user import User
 from howler.security import api_login
 from howler.services import action_service, analytic_service, event_service, hit_service
+from howler.utils.constants import DEBUG_FORCE_REFRESH
 from howler.utils.str_utils import sanitize_lucene_query
 
 MAX_COMMENT_LEN = 5000
@@ -125,17 +126,12 @@ def create_hits(user: User, **kwargs):
 
     if len(response_body["invalid"]) == 0:
         if len(odms) > 0:
-            for odm in odms:  # Save all but the last hit without refreshing
+            for odm in odms:
                 # Ensure all ids are consistent
                 if odm.event is not None:
                     odm.event.id = odm.howler.id
-                # TODO keeping the commit approach until we can batch create hits
-                # passing refresh to each one is potentially even more inefficient
-                hit_service.create_hit(odm.howler.id, odm, user=user.uname, refresh="false")
 
-            if refresh == "true":
-                datastore().hit.commit()
-
+            hit_service.create_hits(odms, user=user.uname, refresh="true" if DEBUG_FORCE_REFRESH else refresh)
             analytic_service.save_from_hits(odms, user, refresh=refresh)
             action_service.enqueue_action_execution([odm.howler.id for odm in odms], trigger="create", user=user)
 
@@ -589,7 +585,7 @@ def add_label(id, label_set, user, **kwargs):
         id,
         [hit_helper.list_add(f"howler.labels.{label_set}", label) for label in labels],
         user["uname"],
-        refresh=refresh,
+        refresh="true" if DEBUG_FORCE_REFRESH else refresh,
     )
 
     action_service.enqueue_action_execution([id], trigger="add_label", user=user)
@@ -646,7 +642,7 @@ def remove_labels(id, label_set, user, **kwargs):
         id,
         [hit_helper.list_remove(f"howler.labels.{label_set}", label) for label in labels],
         user["uname"],
-        refresh=refresh,
+        refresh="true" if DEBUG_FORCE_REFRESH else refresh,
     )
 
     action_service.enqueue_action_execution([id], trigger="remove_label", user=user)
@@ -1078,12 +1074,13 @@ def create_bundle(user: User, **kwargs):
 
         odm.howler.hits.extend(hit_id for hit_id in child_hits if hit_id not in odm.howler.hits)
 
-        # TODO see comment above about batch creating hits
-        hit_service.create_hit(odm.howler.id, odm, user=user.uname, refresh="false")
+        hit_service.create_hit(odm.howler.id, odm, user=user.uname, refresh=refresh)
         analytic_service.save_from_hits(odm, user, refresh=refresh)
 
+        child_hits = []
         for hit_id in odm.howler.hits:
             child_hit: Hit = hit_service.get_hit(hit_id, as_odm=True)
+            child_hits.append(child_hit)
 
             if child_hit.howler.is_bundle:
                 return bad_request(
@@ -1091,10 +1088,8 @@ def create_bundle(user: User, **kwargs):
                 )
 
             child_hit.howler.bundles.append(odm.howler.id)
-            datastore().hit.save(child_hit.howler.id, child_hit, refresh="false")
 
-        if refresh == "true":
-            datastore().hit.commit()
+        hit_service.overwrite_hits(child_hits, refresh=refresh)
 
         return created(odm)
     except HowlerException as e:
@@ -1152,8 +1147,10 @@ def update_bundle(id, **kwargs):
     bundle_hit.howler.is_bundle = True
 
     try:
+        hits_to_save = []
         for hit_id in new_hit_list:
             child_hit: Hit = hit_service.get_hit(hit_id, as_odm=True)
+            hits_to_save.append(child_hit)
 
             if child_hit.howler.is_bundle:
                 return bad_request(
@@ -1163,9 +1160,9 @@ def update_bundle(id, **kwargs):
             new_bundle_list = child_hit.howler.as_primitives().get("bundles", [])
             new_bundle_list.append(bundle_hit.howler.id)
             child_hit.howler.bundles = new_bundle_list
-            datastore().hit.save(child_hit.howler.id, child_hit)
 
-        datastore().hit.save(bundle_hit.howler.id, bundle_hit, refresh=refresh)
+        hits_to_save.append(bundle_hit)
+        hit_service.overwrite_hits(hits_to_save, refresh=refresh)
 
         return ok(bundle_hit)
     except HowlerException as e:

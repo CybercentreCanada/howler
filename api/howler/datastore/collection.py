@@ -533,13 +533,13 @@ class ESCollection(Generic[ModelType]):
             else:
                 updated += res["updated"]
 
-    def bulk(self, operations: ElasticBulkPlan):
+    def bulk(self, operations: ElasticBulkPlan, refresh: str | None = None):
         """
         Execute a bulk plan.
 
         :return: Results of the bulk operation
         """
-        return self.with_retries(self.datastore.client.bulk, operations=operations.get_plan_data())
+        return self.with_retries(self.datastore.client.bulk, operations=operations.get_plan_data(), refresh=refresh)
 
     def get_bulk_plan(self):
         """
