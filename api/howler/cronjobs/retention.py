@@ -43,8 +43,8 @@ def _execute_rules(ds: HowlerDatastore) -> None:
     Iterates each enabled rule, computes its cutoff date, and deletes
     hits that match the rule's query and are older than the cutoff.
     Errors for individual rules are logged and skipped so that
-    remaining rules still execute. Emits a structured summary log
-    after all rules have been processed.
+    remaining rules still execute. Emits a structured result log
+    for each rule execution.
 
     Note: Rules are independent. If multiple rules match the same hit,
     the hit is deleted by whichever rule runs first; subsequent matching
@@ -69,7 +69,8 @@ def _execute_rules(ds: HowlerDatastore) -> None:
             continue
 
         delta_kwargs = {str(rule.limit_unit): rule.limit_amount}
-        cutoff = (datetime.now() - timedelta(**delta_kwargs)).strftime("%Y-%m-%d")
+        cutoff_dt = datetime.now(tz=timezone("UTC")) - timedelta(**delta_kwargs)
+        cutoff = cutoff_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
         combined_query = f"({rule.query}) AND event.created:{{* TO {cutoff}}}"
 
         logger.debug(
@@ -80,7 +81,7 @@ def _execute_rules(ds: HowlerDatastore) -> None:
         )
 
         try:
-            count = ds.hit.count(combined_query, filters=None)
+            count = ds.hit.count(combined_query, filters=None).get("count", -1)
             ds.hit.delete_by_query(combined_query)
             ds.hit.commit()
             logger.debug("Retention rule '%s' complete", rule.name)
