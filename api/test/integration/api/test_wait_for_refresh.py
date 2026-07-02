@@ -100,9 +100,9 @@ def hit_list(datastore_connection):
     random_data.wipe_analytics(datastore_connection)
     random_data.create_analytics(datastore_connection)
     hits = []
+    lookups = loader.get_lookups()
+    users = datastore_connection.user.search("*:*")["items"]
     for _ in range(5):
-        lookups = loader.get_lookups()
-        users = datastore_connection.user.search("*:*")["items"]
         hit = random_data.generate_useful_hit(lookups=lookups, users=users, prune_hit=False)
         hits.append(hit)
     return hits
