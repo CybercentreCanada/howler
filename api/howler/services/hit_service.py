@@ -473,14 +473,14 @@ def create_hits(
     bulk_plan = storage.hit.get_bulk_plan()
 
     for hit in hits:
-        if not overwrite and does_hit_exist(hit.id):
-            raise ResourceExists("Hit %s already exists in datastore" % hit.id)
+        if not overwrite and does_hit_exist(hit.howler.id):
+            raise ResourceExists("Hit %s already exists in datastore" % hit.howler.id)
 
         if user:
             hit.howler.log = [Log({"timestamp": "NOW", "explanation": "Created hit", "user": user})]
 
         CREATED_HITS.labels(hit.howler.analytic).inc()
-        bulk_plan.add_insert_operation(hit.id, hit)
+        bulk_plan.add_insert_operation(hit.howler.id, hit)
 
     return storage.hit.bulk(bulk_plan, refresh=refresh)
 
@@ -529,7 +529,7 @@ def overwrite_hits(hits: list[Hit], refresh: str | None = None) -> bool:
     bulk_plan = storage.hit.get_bulk_plan()
 
     for hit in hits:
-        bulk_plan.add_upsert_operation(hit.id, hit)
+        bulk_plan.add_upsert_operation(hit.howler.id, hit)
 
     return storage.hit.bulk(bulk_plan, refresh=refresh)
 
