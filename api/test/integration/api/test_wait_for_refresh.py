@@ -3,7 +3,9 @@
 import base64
 import importlib
 import json
-from typing import Any, Callable
+import random
+import secrets
+from typing import Any
 from warnings import warn
 
 import pytest
@@ -13,30 +15,13 @@ from howler.app import app
 from howler.common import loader
 from howler.common.exceptions import HowlerInvalidParameterException
 from howler.datastore.collection import ESCollection
-from howler.datastore.store import ESStore
 from howler.odm import random_data
-from howler.odm.models.action import Action
 from howler.odm.models.analytic import Analytic
-from howler.odm.models.dossier import Dossier
 from howler.odm.models.hit import Hit
-from howler.odm.models.overview import Overview
-from howler.odm.models.template import Template
-from howler.odm.models.user import User
-from howler.odm.models.view import View
 from howler.odm.randomizer import random_model_obj
 
 _TEST_TOKEN = f"Basic {base64.b64encode(b'admin:devkey:admin').decode('utf-8')}"
-
-
-def _flatten_test_data(test_data: tuple[tuple[str, tuple[str]]]):
-    flattened = []
-    for name, keys in test_data:
-        flattened.extend((name, key) for key in keys)
-    return tuple(flattened)
-
-
-def _add_entity_name(flattened_test_data: list[tuple[str, str]]):
-    return [(endpoint.split("/")[1], endpoint, method) for endpoint, method in flattened_test_data]
+random.seed(1783007511)  # Ensure deterministic test data for reproducibility
 
 
 def _get_rw_model(model_class):
@@ -48,96 +33,10 @@ def _get_rw_model(model_class):
         model_obj.rule_type = "lucene"
         model_obj.detections = ["Rule"]
 
-    elif model_class == View:
-        model_obj.type = "global"
-
     if model_obj.get("owner") is not None:
         model_obj.owner = "admin"
 
     return model_obj
-
-
-RequestFactory = Callable[[dict[str, Any]], str]
-
-
-def _entity_default_request_factory(ctx: dict[str, Any]) -> str:
-    return ctx["entity_obj"].json()
-
-
-def _analytic_rules_post_request_factory(ctx: dict[str, Any]) -> str:
-    entity_obj = ctx["entity_obj"]
-    return json.dumps(
-        {
-            "name": entity_obj["name"],
-            "description": entity_obj["description"],
-            "rule": entity_obj["rule"],
-            "rule_type": entity_obj["rule_type"],
-            "rule_crontab": entity_obj["rule_crontab"],
-        }
-    )
-
-
-def _analytic_owner_post_request_factory(_: dict[str, Any]) -> str:
-    return json.dumps({"username": "admin"})
-
-
-def _template_put_request_factory(ctx: dict[str, Any]) -> str:
-    return json.dumps(ctx["entity_obj"]["keys"])
-
-
-def _dossier_put_request_factory(ctx: dict[str, Any]) -> str:
-    entity_obj = ctx["entity_obj"]
-    return json.dumps(
-        {
-            "title": entity_obj["title"],
-            "query": entity_obj["query"],
-        }
-    )
-
-
-def _view_put_request_factory(ctx: dict[str, Any]) -> str:
-    entity_obj = ctx["entity_obj"]
-    return json.dumps({k: v for k, v in entity_obj.as_primitives().items() if k not in ("owner", "view_id")})
-
-
-def _user_put_request_factory(ctx: dict[str, Any]) -> str:
-    return json.dumps({"is_active": ctx["entity_obj"]["is_active"]})
-
-
-def _hit_post_request_factory(ctx: dict[str, Any]) -> str:
-    return json.dumps([hit.as_primitives() for hit in ctx["hit_list"]])
-
-
-def _hit_overwrite_put_request_factory(ctx: dict[str, Any]) -> str:
-    return ctx["hit_model"].json()
-
-
-def _hit_delete_request_factory(ctx: dict[str, Any]) -> str:
-    return json.dumps(ctx["hit_ids"])
-
-
-def _hit_bundle_post_request_factory(ctx: dict[str, Any]) -> str:
-    return json.dumps({"bundle": ctx["hit_model"].as_primitives(), "hits": ctx["hit_ids"]})
-
-
-def _hit_bundle_item_request_factory(_: dict[str, Any]) -> str:
-    return json.dumps([])
-
-
-def _hit_update_query_request_factory(ctx: dict[str, Any]) -> str:
-    return json.dumps({"query": {"ids": ctx["hit_id"]}, "operations": ctx["hit_operations"]})
-
-
-def _hit_update_item_request_factory(ctx: dict[str, Any]) -> str:
-    return json.dumps(ctx["hit_operations"])
-
-
-def _hit_transition_request_factory(_: dict[str, Any]) -> str:
-    return json.dumps({"transition": "assign_to_me", "data": {}})
-
-
-def _hit_labels_request_factory(ctx: dict[str, Any]) -> str:
-    return json.dumps({"value": ["initial_label" if ctx["method"] == "DELETE" else "test_label"]})
 
 
 def _build_request(test_client, endpoint: str, method: str, data: str):
@@ -152,191 +51,54 @@ def _build_request(test_client, endpoint: str, method: str, data: str):
     return test_client.open(request)
 
 
-REFRESH_SUPPORTING_ENDPOINTS = (
-    ("/action/{id}", ("DELETE", "PATCH", "PUT")),
-    ("/action", ("POST",)),
-    ("/analytic/{id}", ("DELETE", "PUT")),
-    ("/analytic/rules", ("POST",)),
-    ("/analytic/{id}/owner", ("POST",)),
-    ("/dossier/{id}", ("DELETE", "PUT")),
-    ("/dossier", ("POST",)),
-    ("/overview/{id}", ("DELETE", "PUT")),
-    ("/overview", ("POST",)),
-    ("/template/{id}", ("DELETE", "PUT")),
-    ("/template", ("POST",)),
-    ("/user/{id}", ("DELETE", "PUT", "POST")),
-    ("/view/{id}", ("DELETE", "PUT")),
-    ("/view", ("POST",)),
-)
-
-# hit endpoints tested separately because they don't have the same request structure as the other entities
-REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_HITS = (
-    # ("/hit", ("POST",)),  --refresh param not supported until we can batch create hits
-)
-
-REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_SINGLE_HIT = (("/hit/{id}/overwrite", ("PUT",)),)
-
-REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_IDS = (
-    ("/hit", ("DELETE",)),
-    # ("/hit/bundle", ("POST",)),   --refresh param not supported until we can batch create hits
-    ("/hit/bundle/{id}", ("DELETE", "PUT")),
-)
-
-REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_OPERATIONS = (
-    ("/hit/update", ("PUT",)),
-    ("/hit/{id}/update", ("PUT",)),
-)
-
-REFRESH_SUPPORTING_HIT_TRANSITION_ENDPOINTS = (("/hit/{id}/transition", ("POST",)),)
-
-REFRESH_SUPPORTING_HIT_LABEL_ENDPOINTS = (("/hit/{id}/labels/{label_set}", ("PUT", "DELETE")),)
-
-ENTITY_REQUEST_FACTORIES: dict[tuple[str, str], RequestFactory] = {
-    (endpoint, method): _entity_default_request_factory
-    for endpoint, methods in REFRESH_SUPPORTING_ENDPOINTS
-    for method in methods
-}
-ENTITY_REQUEST_FACTORIES.update(
-    {
-        ("/analytic/rules", "POST"): _analytic_rules_post_request_factory,
-        ("/analytic/{id}/owner", "POST"): _analytic_owner_post_request_factory,
-        ("/template/{id}", "PUT"): _template_put_request_factory,
-        ("/dossier/{id}", "PUT"): _dossier_put_request_factory,
-        ("/view/{id}", "PUT"): _view_put_request_factory,
-        ("/user/{id}", "PUT"): _user_put_request_factory,
-    }
-)
-
-HIT_REQUEST_FACTORIES: dict[tuple[str, str], RequestFactory] = {
-    ("/hit", "POST"): _hit_post_request_factory,
-    ("/hit/{id}/overwrite", "PUT"): _hit_overwrite_put_request_factory,
-    ("/hit", "DELETE"): _hit_delete_request_factory,
-    ("/hit/bundle", "POST"): _hit_bundle_post_request_factory,
-    ("/hit/bundle/{id}", "DELETE"): _hit_bundle_item_request_factory,
-    ("/hit/bundle/{id}", "PUT"): _hit_bundle_item_request_factory,
-    ("/hit/update", "PUT"): _hit_update_query_request_factory,
-    ("/hit/{id}/update", "PUT"): _hit_update_item_request_factory,
-    ("/hit/{id}/transition", "POST"): _hit_transition_request_factory,
-    ("/hit/{id}/labels/{label_set}", "PUT"): _hit_labels_request_factory,
-    ("/hit/{id}/labels/{label_set}", "DELETE"): _hit_labels_request_factory,
-}
+SPY_INDEXES = ("action", "analytic", "dossier", "overview", "template", "view", "user", "hit")
 
 
-class MockCollection(ESCollection):
-    def __init__(self, datastore: ESStore, name, model_class=None, validate=True, max_attempts=10):
-        self.write_call_args_history = []
-        super().__init__(datastore, name, model_class, validate, max_attempts)
+class SpyCollection:
+    def __init__(self, index_name: str, wrapped_collection: ESCollection):
+        self.index_name = index_name
+        self.wrapped_collection = wrapped_collection
+        self.write_call_args_history: list[dict[str, Any]] = []
+
+    def __getattr__(self, name: str):
+        return getattr(self.wrapped_collection, name)
+
+    def _record_write(self, operation: str, refresh: str | None):
+        self.write_call_args_history.append({"index": self.index_name, "operation": operation, "refresh": refresh})
 
     def save(self, key, data, version=None, refresh=None):
-        self.write_call_args_history.append({"key": key, "data": data, "version": version, "refresh": refresh})
-        return super().save(key, data, version, refresh)
+        self._record_write("save", refresh)
+        return self.wrapped_collection.save(key, data, version, refresh)
 
     def delete(self, key, refresh=None):
-        self.write_call_args_history.append({"key": key, "refresh": refresh})
-        return super().delete(key, refresh)
+        self._record_write("delete", refresh)
+        return self.wrapped_collection.delete(key, refresh)
 
     def update(self, key, operations, version=None, refresh=None):
-        self.write_call_args_history.append(
-            {"key": key, "operations": operations, "version": version, "refresh": refresh}
-        )
-        return super().update(key, operations, version, refresh)
+        self._record_write("update", refresh)
+        return self.wrapped_collection.update(key, operations, version, refresh)
+
+    def bulk(self, operations, refresh=None):
+        self._record_write("bulk", refresh)
+        return self.wrapped_collection.bulk(operations, refresh)
 
     def delete_by_query(self, query: str, sort=None, max_docs=None, refresh=None):
-        self.write_call_args_history.append({"query": query, "sort": sort, "max_docs": max_docs, "refresh": refresh})
-        return super().delete_by_query(query, sort, max_docs, refresh)
+        self._record_write("delete_by_query", refresh)
+        return self.wrapped_collection.delete_by_query(query, sort, max_docs, refresh)
 
     def delete_by_search_object(self, query: dict, sort=None, max_docs=None, refresh=None):
-        self.write_call_args_history.append({"query": query, "sort": sort, "max_docs": max_docs, "refresh": refresh})
-        return super().delete_by_search_object(query, sort, max_docs, refresh)
+        self._record_write("delete_by_search_object", refresh)
+        return self.wrapped_collection.delete_by_search_object(query, sort, max_docs, refresh)
 
     def update_by_query(self, query, operations, filters=None, access_control=None, max_docs=None, refresh=None):
-        self.write_call_args_history.append(
-            {
-                "query": query,
-                "operations": operations,
-                "filters": filters,
-                "access_control": access_control,
-                "max_docs": max_docs,
-                "refresh": refresh,
-            }
-        )
-        return super().update_by_query(query, operations, filters, access_control, max_docs, refresh)
-
-
-@pytest.fixture(scope="module")
-def entity_names():
-    return (
-        ("action", Action),
-        ("analytic", Analytic),
-        ("dossier", Dossier),
-        ("overview", Overview),
-        ("template", Template),
-        ("view", View),
-        ("user", User),
-        ("hit", Hit),
-    )
-
-
-@pytest.fixture(scope="function")
-def entity_id(request, entity_names, datastore_connection):
-    entity_name = request.param
-    entity_class = dict(entity_names).get(entity_name)
-
-    if entity_name == "user":
-        random_data.wipe_users(datastore_connection)
-        random_data.create_users(datastore_connection)
-        entity_id = "shawn-h"
-    else:
-        try:
-            c: ESCollection = datastore_connection.get_collection(entity_name)
-            model_obj = _get_rw_model(entity_class)
-            entity_id = model_obj[f"{entity_name}_id"]
-            c.save(entity_id, model_obj)
-            c.commit()
-        except (AttributeError, KeyError) as e:
-            warn(f"Skipping create entity {entity_name}: {e!r}")
-            pytest.skip("No test entity created for this endpoint")
-
-    yield entity_id
-
-    try:
-        c: ESCollection = datastore_connection.get_collection(entity_name)
-        c.delete(entity_id)
-        c.commit()
-    except Exception as e:
-        warn(f"Cleanup: failed to delete test entity {entity_name} with id {entity_id}: {e!r}")
-
-
-@pytest.fixture(scope="function")
-def hit_operations():
-    return [
-        ("SET", "howler.assignment", "user"),
-    ]
-
-
-@pytest.fixture(scope="function")
-def hit_model(datastore_connection):
-    lookups = loader.get_lookups()
-    users = datastore_connection.user.search("*:*")["items"]
-    hit = random_data.generate_useful_hit(lookups=lookups, users=users, prune_hit=False)
-    hit.howler.labels = {"generic": ["initial_label"]}
-    return hit
-
-
-@pytest.fixture(scope="function")
-def hit_id(hit_model: Hit, datastore_connection):
-    datastore_connection.hit.save(hit_model.howler.id, hit_model)
-    datastore_connection.hit.commit()
-    yield hit_model.howler.id
-    try:
-        datastore_connection.hit.delete(hit_model.howler.id)
-        datastore_connection.hit.commit()
-    except Exception as e:
-        warn(f"Cleanup: failed to delete test hit with id {hit_model.howler.id}: {e!r}")
+        self._record_write("update_by_query", refresh)
+        return self.wrapped_collection.update_by_query(query, operations, filters, access_control, max_docs, refresh)
 
 
 @pytest.fixture(scope="function")
 def hit_list(datastore_connection):
+    random_data.wipe_analytics(datastore_connection)
+    random_data.create_analytics(datastore_connection)
     hits = []
     for _ in range(5):
         lookups = loader.get_lookups()
@@ -384,27 +146,125 @@ def hit_bundle_id(hit_bundle: Hit, datastore_connection):
 
 
 @pytest.fixture(scope="function")
-def namespaces_for_patch(entity_names):
-    return [f"howler.api.v1.{entity_name}" for entity_name, _ in entity_names] + [
-        "howler.services.dossier_service",
-        "howler.services.user_service",
+def tool_hit_field_map():
+    return {
+        "analytic": ["howler.analytic"],
+        "file.sha256": ["file.hash.sha256", "howler.hash"],
+        "file.name": ["file.name"],
+        "src_ip": ["source.ip", "related.ip"],
+        "dest_ip": ["destination.ip", "related.ip"],
+        "time.created": ["event.start"],
+        "time.completed": ["event.end"],
+        "raw": ["howler.data"],
+        "zone": ["cloud.availability_zone"],
+    }
+
+
+@pytest.fixture(scope="function")
+def tool_hit_raw_hit(datastore_connection):
+    raw_hit = {
+        "analytic": "tool-refresh-forwarding",
+        "src_ip": "10.10.10.10",
+        "dest_ip": "10.10.10.11",
+        "file": {
+            "name": "refresh-test.exe",
+            "sha256": secrets.token_hex(32),
+        },
+        "time": {
+            "created": "2026-01-01T00:00:00.000Z",
+            "completed": "2026-01-01T00:05:00.000Z",
+        },
+        "zone": "integration-test",
+    }
+    raw_hit["raw"] = {**raw_hit}
+
+    yield raw_hit
+
+    datastore_connection.hit.delete_by_query("howler.analytic:tool-refresh-forwarding", refresh="true")
+    datastore_connection.analytic.delete_by_query("name:tool-refresh-forwarding", refresh="true")
+
+
+@pytest.fixture(scope="function")
+def namespaces_for_patch():
+    return [
+        "howler.api.v1.analytic",
+        "howler.api.v1.hit",
+        "howler.api.v1.tool",
+        "howler.services.analytic_service",
         "howler.services.hit_service",
+        "howler.services.user_service",
     ]
 
 
 @pytest.fixture(scope="function")
-def mock_ds(monkeypatch, datastore_connection, entity_names, namespaces_for_patch):
-    collections = {
-        entity_name: MockCollection(datastore_connection.ds, entity_name, model_class=entity_class)
-        for entity_name, entity_class in entity_names
-    }
-    original_collections = datastore_connection.ds._collections
-    datastore_connection.ds._collections = collections
+def mock_ds(monkeypatch, datastore_connection, namespaces_for_patch):
+    original_collections = dict(datastore_connection.ds._collections)
+    wrapped_collections = {}
+
+    # Build and cache wrappers so writes are recorded while preserving datastore behavior.
+    for index_name in SPY_INDEXES:
+        real_collection = datastore_connection.get_collection(index_name)
+        wrapped_collections[index_name] = SpyCollection(index_name=index_name, wrapped_collection=real_collection)
+
+    datastore_connection.ds._collections = wrapped_collections
+
     for namespace in namespaces_for_patch:
         module = importlib.import_module(namespace)
         monkeypatch.setattr(module, "datastore", lambda: datastore_connection)
+
     yield datastore_connection
+
     datastore_connection.ds._collections = original_collections
+
+
+def _clear_spy_history(datastore_connection):
+    for collection in datastore_connection.ds._collections.values():
+        if hasattr(collection, "write_call_args_history"):
+            collection.write_call_args_history.clear()
+
+
+def _get_spy_history(datastore_connection):
+    history: list[dict[str, Any]] = []
+    for collection in datastore_connection.ds._collections.values():
+        if hasattr(collection, "write_call_args_history"):
+            history.extend(collection.write_call_args_history)
+    return history
+
+
+def _assert_refresh_for_all_writes(
+    datastore_connection,
+    expected_refresh: str,
+    expected_indexes: set[str],
+    min_writes: int,
+):
+    history = _get_spy_history(datastore_connection)
+    assert len(history) >= min_writes, f"Expected at least {min_writes} writes, got {len(history)}"
+
+    indexes_written = {call["index"] for call in history}
+    assert indexes_written == expected_indexes
+
+    calls_without_expected_refresh = [call for call in history if call["refresh"] != expected_refresh]
+    assert not calls_without_expected_refresh
+
+
+def _assert_refresh_by_index(
+    datastore_connection,
+    expected_refresh_by_index: dict[str, str],
+    expected_indexes: set[str],
+    min_writes: int,
+):
+    history = _get_spy_history(datastore_connection)
+    assert len(history) >= min_writes, f"Expected at least {min_writes} writes, got {len(history)}"
+
+    indexes_written = {call["index"] for call in history}
+    assert indexes_written == expected_indexes
+
+    invalid_calls = [
+        call
+        for call in history
+        if call["index"] in expected_refresh_by_index and call["refresh"] != expected_refresh_by_index[call["index"]]
+    ]
+    assert not invalid_calls
 
 
 @pytest.fixture(scope="function")
@@ -457,216 +317,219 @@ def test_parse_wait_flag_invalid(test_client):
             parse_refresh(request.args.get("refresh"))
 
 
-@pytest.mark.parametrize(
-    "entity_id,endpoint,method",
-    _add_entity_name(_flatten_test_data(REFRESH_SUPPORTING_ENDPOINTS)),
-    indirect=["entity_id"],
-)
-def test_refresh_param_forwarded_to_es(
-    test_client, endpoint: str, method: str, datastore_connection, entity_id, entity_names
-):
-    entity_name_dict = dict(entity_names)
-    index = endpoint.split("/")[1]
+def test_rule_refresh_forwards_all_writes(test_client, datastore_connection):
+    endpoint = "/analytic/rules"
+    method = "POST"
+    entity_obj = _get_rw_model(Analytic)
 
-    entity_class = entity_name_dict.get(index)
+    _clear_spy_history(datastore_connection)
 
-    if index not in entity_name_dict:
-        pytest.skip(f"Unimplemented mock collection for index {index}")
-
-    entity_obj = _get_rw_model(entity_class)
-    request_factory = ENTITY_REQUEST_FACTORIES[(endpoint, method)]
-
-    templated_endpoint = endpoint
-    if "{id}" in endpoint:
-        if not entity_id:
-            pytest.skip("No test entity created for this endpoint")
-
-        if index == "user" and method == "POST":
-            # new user to test creation
-            entity_id = "new-test-user"
-
-        templated_endpoint = endpoint.format(id=entity_id)
-        entity_obj["uname" if index == "user" else f"{index}_id"] = entity_id
-
-    response = _build_request(
-        test_client,
-        endpoint=templated_endpoint,
-        method=method,
-        data=request_factory(
-            {
-                "endpoint": endpoint,
-                "method": method,
-                "index": index,
-                "entity_obj": entity_obj,
-                "entity_id": entity_id,
-            }
-        ),
-    )
-
-    assert response.status_code in (200, 201, 204), entity_obj.json()
-    assert datastore_connection.get_collection(index).write_call_args_history[-1]["refresh"] == "wait_for"
-
-
-@pytest.mark.parametrize(
-    "endpoint,method",
-    _flatten_test_data(REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_HITS),
-)
-def test_refresh_param_forwarded_to_es_hits_expect_hits(
-    endpoint: str, method: str, test_client, datastore_connection, hit_list
-):
     response = _build_request(
         test_client,
         endpoint=endpoint,
         method=method,
-        data=HIT_REQUEST_FACTORIES[(endpoint, method)](
+        data=json.dumps(
             {
-                "endpoint": endpoint,
-                "method": method,
-                "hit_list": hit_list,
+                "name": entity_obj["name"],
+                "description": entity_obj["description"],
+                "rule": entity_obj["rule"],
+                "rule_type": entity_obj["rule_type"],
+                "rule_crontab": entity_obj["rule_crontab"],
             }
         ),
     )
 
-    assert response.status_code in (200, 201, 204)
-    assert datastore_connection.hit.write_call_args_history[-1]["refresh"] == "wait_for"
-
-
-@pytest.mark.parametrize(
-    "endpoint,method",
-    _flatten_test_data(REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_SINGLE_HIT),
-)
-def test_refresh_param_forwarded_to_es_hits_expect_single_hit(
-    endpoint: str, method: str, test_client, datastore_connection, hit_id, hit_model
-):
-    response = _build_request(
-        test_client,
-        endpoint=endpoint.format(id=hit_id) if "{id}" in endpoint else endpoint,
-        method=method,
-        data=HIT_REQUEST_FACTORIES[(endpoint, method)](
-            {
-                "endpoint": endpoint,
-                "method": method,
-                "hit_model": hit_model,
-            }
-        ),
+    assert response.status_code == 200, response.data.decode("utf-8")
+    _assert_refresh_for_all_writes(
+        datastore_connection,
+        expected_refresh="wait_for",
+        expected_indexes={"analytic", "template"},
+        min_writes=2,
     )
 
-    assert response.status_code in (200, 201, 204)
-    assert datastore_connection.hit.write_call_args_history[-1]["refresh"] == "wait_for"
 
+def test_bundle_put_refresh_forwards_all_writes(test_client, datastore_connection, hit_bundle_id):
+    endpoint = "/hit/bundle/{id}"
+    method = "PUT"
 
-@pytest.mark.parametrize(
-    "endpoint,method",
-    _flatten_test_data(REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_IDS),
-)
-def test_refresh_param_forwarded_to_es_hits_expect_ids(
-    endpoint: str, method: str, test_client, datastore_connection, hit_ids, hit_bundle_id, hit_model
-):
-    templated_endpoint = endpoint.format(id=hit_bundle_id) if "{id}" in endpoint else endpoint
+    _clear_spy_history(datastore_connection)
 
     response = _build_request(
         test_client,
-        endpoint=templated_endpoint,
+        endpoint=endpoint.format(id=hit_bundle_id),
         method=method,
-        data=HIT_REQUEST_FACTORIES[(endpoint, method)](
-            {
-                "endpoint": endpoint,
-                "method": method,
-                "hit_ids": hit_ids,
-                "hit_model": hit_model,
-            }
-        ),
+        data=json.dumps([]),
     )
 
-    assert response.status_code in (200, 201, 204)
-    assert datastore_connection.hit.write_call_args_history[-1]["refresh"] == "wait_for"
+    assert response.status_code == 200, response.data.decode("utf-8")
+    _assert_refresh_for_all_writes(
+        datastore_connection,
+        expected_refresh="wait_for",
+        expected_indexes={"hit"},
+        min_writes=1,
+    )
 
 
-@pytest.mark.parametrize(
-    "endpoint,method",
-    _flatten_test_data(REFRESH_SUPPORTING_HIT_ENDPOINTS_EXPECT_OPERATIONS),
-)
-def test_refresh_param_forwarded_to_es_hits_expect_operations(
-    endpoint: str, method: str, test_client, datastore_connection, hit_id, hit_operations
-):
-    templated_endpoint = endpoint.format(id=hit_id) if "{id}" in endpoint else endpoint
+def test_hit_post_refresh_forwards_all_writes(test_client, datastore_connection, hit_list, monkeypatch):
+    endpoint = "/hit"
+    method = "POST"
+
+    hit_module = importlib.import_module("howler.api.v1.hit")
+    monkeypatch.setattr(hit_module, "DEBUG_FORCE_REFRESH", False)
+
+    _clear_spy_history(datastore_connection)
 
     response = _build_request(
         test_client,
-        endpoint=templated_endpoint,
+        endpoint=endpoint,
         method=method,
-        data=HIT_REQUEST_FACTORIES[(endpoint, method)](
-            {
-                "endpoint": endpoint,
-                "method": method,
-                "hit_id": hit_id,
-                "hit_operations": hit_operations,
-            }
-        ),
+        data=json.dumps([hit.as_primitives() for hit in hit_list]),
     )
 
-    assert response.status_code in (200, 201, 204)
-    assert datastore_connection.hit.write_call_args_history[-1]["refresh"] == "wait_for"
+    assert response.status_code == 201, response.data.decode("utf-8")
+    _assert_refresh_for_all_writes(
+        datastore_connection,
+        expected_refresh="wait_for",
+        expected_indexes={"hit", "analytic"},
+        min_writes=2,
+    )
 
 
-@pytest.mark.parametrize(
-    "endpoint,method",
-    _flatten_test_data(REFRESH_SUPPORTING_HIT_TRANSITION_ENDPOINTS),
-)
-def test_refresh_param_forwarded_to_es_hits_transition(
-    endpoint: str, method: str, test_client, datastore_connection, hit_id
-):
+def test_hit_post_force_refresh_mixed_by_index(test_client, datastore_connection, hit_list, monkeypatch):
+    endpoint = "/hit"
+    method = "POST"
+
+    hit_module = importlib.import_module("howler.api.v1.hit")
+    monkeypatch.setattr(hit_module, "DEBUG_FORCE_REFRESH", True)
+
+    _clear_spy_history(datastore_connection)
+
     response = _build_request(
         test_client,
-        endpoint=endpoint.format(id=hit_id),
+        endpoint=endpoint,
         method=method,
-        data=HIT_REQUEST_FACTORIES[(endpoint, method)](
-            {
-                "endpoint": endpoint,
-                "method": method,
-            }
-        ),
+        data=json.dumps([hit.as_primitives() for hit in hit_list]),
     )
 
-    assert response.status_code in (200, 201, 204)
-    assert datastore_connection.hit.write_call_args_history[-1]["refresh"] == "wait_for"
+    assert response.status_code == 201, response.data.decode("utf-8")
+    _assert_refresh_by_index(
+        datastore_connection,
+        expected_refresh_by_index={"hit": "true", "analytic": "wait_for"},
+        expected_indexes={"hit", "analytic"},
+        min_writes=2,
+    )
 
 
-@pytest.mark.parametrize(
-    "endpoint,method",
-    _flatten_test_data(REFRESH_SUPPORTING_HIT_LABEL_ENDPOINTS),
-)
-def test_refresh_param_forwarded_to_es_hits_labels(
-    endpoint: str, method: str, test_client, datastore_connection, hit_id
-):
+def test_bundle_post_refresh_forwards_all_writes(test_client, datastore_connection, hit_bundle, hit_ids):
+    endpoint = "/hit/bundle"
+    method = "POST"
+
+    hit_bundle.howler.analytic = f"refresh-multi-bundle-{secrets.token_hex(6)}"
+
+    _clear_spy_history(datastore_connection)
+
     response = _build_request(
         test_client,
-        endpoint=endpoint.format(id=hit_id, label_set="generic"),
+        endpoint=endpoint,
         method=method,
-        data=HIT_REQUEST_FACTORIES[(endpoint, method)](
-            {
-                "endpoint": endpoint,
-                "method": method,
-            }
-        ),
+        data=json.dumps({"bundle": hit_bundle.as_primitives(), "hits": hit_ids}),
     )
 
-    assert response.status_code in (200, 201, 204)
-    assert datastore_connection.hit.write_call_args_history[-1]["refresh"] == "wait_for"
+    assert response.status_code == 201, response.data.decode("utf-8")
+    _assert_refresh_for_all_writes(
+        datastore_connection,
+        expected_refresh="wait_for",
+        expected_indexes={"hit", "analytic"},
+        min_writes=3,
+    )
+
+
+def test_bundle_delete_refresh_forwards_all_writes(test_client, datastore_connection, hit_bundle_id):
+    endpoint = "/hit/bundle/{id}"
+    method = "DELETE"
+
+    _clear_spy_history(datastore_connection)
+
+    response = _build_request(
+        test_client,
+        endpoint=endpoint.format(id=hit_bundle_id),
+        method=method,
+        data=json.dumps(["*"]),
+    )
+
+    assert response.status_code == 200, response.data.decode("utf-8")
+    _assert_refresh_for_all_writes(
+        datastore_connection,
+        expected_refresh="wait_for",
+        expected_indexes={"hit"},
+        min_writes=2,
+    )
+
+
+def test_tool_hits_post_refresh_forwards_all_writes(
+    test_client, datastore_connection, monkeypatch, tool_hit_field_map, tool_hit_raw_hit
+):
+    endpoint = "/tools/{tool_name}/hits"
+    method = "POST"
+
+    tool_module = importlib.import_module("howler.api.v1.tool")
+    monkeypatch.setattr(tool_module, "DEBUG_FORCE_REFRESH", False)
+
+    _clear_spy_history(datastore_connection)
+
+    response = _build_request(
+        test_client,
+        endpoint=endpoint.format(tool_name="refresh-test-tool"),
+        method=method,
+        data=json.dumps({"map": tool_hit_field_map, "hits": [tool_hit_raw_hit]}),
+    )
+
+    assert response.status_code == 201, response.data.decode("utf-8")
+    _assert_refresh_for_all_writes(
+        datastore_connection,
+        expected_refresh="wait_for",
+        expected_indexes={"hit", "analytic"},
+        min_writes=2,
+    )
+
+
+def test_tool_hits_post_force_refresh_mixed_by_index(
+    test_client, datastore_connection, monkeypatch, tool_hit_field_map, tool_hit_raw_hit
+):
+    endpoint = "/tools/{tool_name}/hits"
+    method = "POST"
+
+    tool_module = importlib.import_module("howler.api.v1.tool")
+    monkeypatch.setattr(tool_module, "DEBUG_FORCE_REFRESH", True)
+
+    _clear_spy_history(datastore_connection)
+
+    response = _build_request(
+        test_client,
+        endpoint=endpoint.format(tool_name="refresh-test-tool"),
+        method=method,
+        data=json.dumps({"map": tool_hit_field_map, "hits": [tool_hit_raw_hit]}),
+    )
+
+    assert response.status_code == 201, response.data.decode("utf-8")
+    _assert_refresh_by_index(
+        datastore_connection,
+        expected_refresh_by_index={"hit": "true", "analytic": "wait_for"},
+        expected_indexes={"hit", "analytic"},
+        min_writes=2,
+    )
 
 
 def test_invalid_refresh_param(test_client):
-    endpoint, methods = next(
-        (endpoint, methods) for endpoint, methods in REFRESH_SUPPORTING_ENDPOINTS if "{id}" not in endpoint
-    )
-    method = methods[0]
+    endpoint = "/analytic/rules"
+    method = "POST"
 
     request = EnvironBuilder(
         path=f"/api/v1{endpoint}",
         method=method,
         query_string={"refresh": "invalid"},
         content_type="application/json",
-        data={},
+        data=json.dumps({}),
         headers={"Authorization": _TEST_TOKEN},
     )
     response = test_client.open(request)
