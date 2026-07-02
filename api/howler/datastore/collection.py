@@ -537,9 +537,10 @@ class ESCollection(Generic[ModelType]):
         """
         Execute a bulk plan.
 
-        :return: Results of the bulk operation
+        :return: True if the operation completed without errors
         """
-        return self.with_retries(self.datastore.client.bulk, operations=operations.get_plan_data(), refresh=refresh)
+        response = self.with_retries(self.datastore.client.bulk, operations=operations.get_plan_data(), refresh=refresh)
+        return not response["errors"]
 
     def get_bulk_plan(self):
         """
