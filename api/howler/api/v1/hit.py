@@ -1223,18 +1223,18 @@ def remove_bundle_children(id, **kwargs):
     bundle_hit.howler.is_bundle = len(new_hit_list) > 0
 
     try:
-        child_hits = []
+        hits_to_save = []
         for hit_id in hit_ids:
             child_hit: Hit = hit_service.get_hit(hit_id, as_odm=True)
-            child_hits.append(child_hit)
+            hits_to_save.append(child_hit)
 
             try:
                 child_hit.howler.bundles.remove(bundle_hit.howler.id)
             except ValueError:
                 logger.warning("Bundle isn't included in child %s!", bundle_hit.howler.id)
 
-        hit_service.overwrite_hits(child_hits, refresh=refresh)
-        datastore().hit.save(bundle_hit.howler.id, bundle_hit, refresh=refresh)
+        hits_to_save.append(bundle_hit)
+        hit_service.overwrite_hits(hits_to_save, refresh=refresh)
 
         return ok(bundle_hit)
     except HowlerException as e:

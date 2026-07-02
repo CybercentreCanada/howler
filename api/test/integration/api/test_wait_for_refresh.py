@@ -462,7 +462,7 @@ def test_bundle_delete_refresh_forwards_all_writes(test_client, datastore_connec
         datastore_connection,
         expected_refresh="wait_for",
         expected_indexes={"hit"},
-        min_writes=2,
+        min_writes=1,
     )
 
 
