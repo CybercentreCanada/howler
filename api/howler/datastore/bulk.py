@@ -85,4 +85,4 @@ class ElasticBulkPlan(object):
                 self.operations.append(json.dumps({"doc": saved_doc}))
 
     def get_plan_data(self):
-        return "\n".join(self.operations)
+        return "\n".join(self.operations) + "\n"
