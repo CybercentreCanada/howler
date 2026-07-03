@@ -529,7 +529,7 @@ def overwrite_hits(hits: list[Hit], refresh: str | None = None) -> bool:
     bulk_plan = storage.hit.get_bulk_plan()
 
     for hit in hits:
-        bulk_plan.add_upsert_operation(hit.howler.id, hit)
+        bulk_plan.add_index_operation(hit.howler.id, hit)
 
     return storage.hit.bulk(bulk_plan, refresh=refresh)
 

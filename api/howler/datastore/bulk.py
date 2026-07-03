@@ -35,6 +35,21 @@ class ElasticBulkPlan(object):
         self.operations.append(json.dumps({"create": {"_index": index or self.indexes[0], "_id": doc_id}}))
         self.operations.append(json.dumps(saved_doc))
 
+    def add_index_operation(self, doc_id, doc, index=None):
+        if self.model and isinstance(doc, self.model):
+            saved_doc = doc.as_primitives(hidden_fields=True)
+        elif self.model:
+            saved_doc = self.model(doc).as_primitives(hidden_fields=True)
+        else:
+            if not isinstance(doc, dict):
+                saved_doc = {"__non_doc_raw__": doc}
+            else:
+                saved_doc = deepcopy(doc)
+        saved_doc["id"] = doc_id
+
+        self.operations.append(json.dumps({"index": {"_index": index or self.indexes[0], "_id": doc_id}}))
+        self.operations.append(json.dumps(saved_doc))
+
     def add_upsert_operation(self, doc_id, doc, index=None):
         if self.model and isinstance(doc, self.model):
             saved_doc = doc.as_primitives(hidden_fields=True)

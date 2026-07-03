@@ -121,7 +121,7 @@ def save_from_hits(hits: Hit | list[Hit], user: User, refresh: str | None = None
     if analytics:
         bulk_plan = storage.analytic.get_bulk_plan()
         for analytic in analytics:
-            bulk_plan.add_upsert_operation(analytic.analytic_id, analytic)
+            bulk_plan.add_index_operation(analytic.analytic_id, analytic)
 
         storage.analytic.bulk(bulk_plan, refresh=refresh)
 

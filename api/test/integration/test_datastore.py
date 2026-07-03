@@ -170,8 +170,8 @@ def _test_bulk(c: ESCollection):
     insert_plan = c.get_bulk_plan()
     insert_plan.add_insert_operation("test1", test_map.get("test1"))
     insert_plan.add_insert_operation("test2", test_map.get("test2"))
-    insert_plan.add_insert_operation("test3", test_map.get("test3"))
-    insert_plan.add_insert_operation("test4", test_map.get("test4"))
+    insert_plan.add_index_operation("test3", test_map.get("test3"))
+    insert_plan.add_index_operation("test4", test_map.get("test4"))
     c.bulk(insert_plan)
     c.commit()
 
