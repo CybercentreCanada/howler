@@ -21,7 +21,6 @@ from howler.odm.models.hit import Hit
 from howler.odm.randomizer import random_model_obj
 
 _TEST_TOKEN = f"Basic {base64.b64encode(b'admin:devkey:admin').decode('utf-8')}"
-random.seed(1783007511)  # Ensure deterministic test data for reproducibility
 
 
 def _get_rw_model(model_class):
@@ -93,6 +92,15 @@ class SpyCollection:
     def update_by_query(self, query, operations, filters=None, access_control=None, max_docs=None, refresh=None):
         self._record_write("update_by_query", refresh)
         return self.wrapped_collection.update_by_query(query, operations, filters, access_control, max_docs, refresh)
+
+
+@pytest.fixture(autouse=True, scope="function")
+def seed_random():
+    """Seed the random number generator for reproducibility"""
+    original_state = random.getstate()
+    random.seed(1783007511)
+    yield
+    random.setstate(original_state)
 
 
 @pytest.fixture(scope="function")
