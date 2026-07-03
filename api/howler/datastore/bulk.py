@@ -2,9 +2,11 @@ import json
 from copy import deepcopy
 from typing import List, Optional
 
+from howler import odm
+
 
 class ElasticBulkPlan(object):
-    def __init__(self, indexes: List[str], model: Optional[type] = None):
+    def __init__(self, indexes: List[str], model: Optional[type[odm.Model]] = None):
         self.indexes = indexes
         self.model = model
         self.operations: List[str] = []
@@ -20,7 +22,7 @@ class ElasticBulkPlan(object):
             for cur_index in self.indexes:
                 self.operations.append(json.dumps({"delete": {"_index": cur_index, "_id": doc_id}}))
 
-    def add_insert_operation(self, doc_id, doc, index=None):
+    def add_insert_operation(self, doc_id: str, doc, index=None):
         if self.model and isinstance(doc, self.model):
             saved_doc = doc.as_primitives(hidden_fields=True)
         elif self.model:
