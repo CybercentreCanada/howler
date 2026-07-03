@@ -460,6 +460,7 @@ def create_hit(
     CREATED_HITS.labels(hit.howler.analytic).inc()
     return datastore().hit.save(id, hit, refresh=refresh)
 
+
 @tracer.start_as_current_span(f"{__name__}.create_hits")
 def create_hits(
     hits: list[Hit], user: Optional[str] = None, overwrite: bool = False, refresh: str | None = None
