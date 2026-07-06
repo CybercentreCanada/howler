@@ -113,15 +113,16 @@ class ElasticBulkPlan(object):
                 )
 
     def get_plan_data(self):
+        """Construct the bulk request from the current operations"""
         return self._get_plan_for_operations()
 
     def get_plan_batches(self, batch_size: int = DEFAULT_BATCH_SIZE):
-        """Yield batches of operations from the bulk plan."""
+        """Yield plan data in batches"""
         for ptr in range(0, len(self.operations), batch_size):
             yield self._get_plan_for_operations(self.operations[ptr : ptr + batch_size])
 
     def _flatten_operations(self, batch: List[_OPERATION_GROUP] | None = None) -> List[str]:
-        """Flatten a batch of operations into a list of strings."""
+        """Flatten the (operation, data) tuples for a batch or the full list of operations if no batch provided"""
         if not batch:
             batch = self.operations
 
@@ -132,7 +133,7 @@ class ElasticBulkPlan(object):
         return flattened
 
     def _get_plan_for_operations(self, batch: List[_OPERATION_GROUP] | None = None) -> str:
-        """Get the bulk plan string for a batch of operations."""
+        """Get the bulk plan string for a batch or the full list of operations if no batch provided"""
         plan = "\n".join(self._flatten_operations(batch)) + "\n"
 
         if len(plan.encode("utf-8")) > self.ELASTIC_MAX_REQUEST_SIZE:
