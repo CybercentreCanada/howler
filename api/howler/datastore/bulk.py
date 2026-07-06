@@ -126,7 +126,7 @@ class ElasticBulkPlan(object):
         if not batch:
             batch = self.operations
 
-        flattened = []
+        flattened: list[str] = []
         for op in batch:
             flattened.extend(op)
 
