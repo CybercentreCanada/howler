@@ -4,13 +4,15 @@ from copy import deepcopy
 from typing import List, Optional
 
 from howler import odm
+from howler.config import config
 
 _OPERATION_GROUP = tuple[str] | tuple[str, str]
 
+ELASTIC_HOST_CONFIG = next((host for host in config.datastore.hosts if host.name == "elastic"), None)
+ELASTIC_MAX_REQUEST_SIZE = ELASTIC_HOST_CONFIG.max_request_size if ELASTIC_HOST_CONFIG else None
+DEFAULT_BATCH_SIZE = ELASTIC_HOST_CONFIG.request_batch_size if ELASTIC_HOST_CONFIG else None
 
 class ElasticBulkPlan(object):
-    ELASTIC_MAX_REQUEST_SIZE = 100_000_000  # 100MB
-    DEFAULT_BATCH_SIZE = 500
 
     def __init__(self, indexes: List[str], model: Optional[type[odm.Model]] = None):
         self.indexes = indexes
@@ -116,8 +118,10 @@ class ElasticBulkPlan(object):
         """Construct the bulk request from the current operations"""
         return self._get_plan_for_operations()
 
-    def get_plan_batches(self, batch_size: int = DEFAULT_BATCH_SIZE):
+    def get_plan_batches(self, batch_size: int | None = DEFAULT_BATCH_SIZE):
         """Yield plan data in batches"""
+        if batch_size is None:
+            batch_size = len(self.operations)
         for ptr in range(0, len(self.operations), batch_size):
             yield self._get_plan_for_operations(self.operations[ptr : ptr + batch_size])
 
@@ -136,9 +140,9 @@ class ElasticBulkPlan(object):
         """Get the bulk plan string for a batch or the full list of operations if no batch provided"""
         plan = "\n".join(self._flatten_operations(batch)) + "\n"
 
-        if len(plan.encode("utf-8")) > self.ELASTIC_MAX_REQUEST_SIZE:
+        if ELASTIC_MAX_REQUEST_SIZE and len(plan.encode("utf-8")) > ELASTIC_MAX_REQUEST_SIZE:
             warnings.warn(
-                f"Bulk plan exceeds maximum request size of {self.ELASTIC_MAX_REQUEST_SIZE} bytes. "
+                f"Bulk plan exceeds maximum request size of {ELASTIC_MAX_REQUEST_SIZE} bytes. "
                 f"Current size: {len(plan.encode('utf-8'))} bytes."
             )
 

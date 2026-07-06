@@ -24,8 +24,8 @@ def bulk_plan():
 
 @pytest.mark.parametrize(
     "operation_length, batch_size",
-    [(6, 2), (5, 2), (6, 10), (1, 1)],
-    ids=["divisible", "not_divisible", "larger_than_ops", "single_op"],
+    [(6, 2), (5, 2), (6, 10), (1, 1), (6, None)],
+    ids=["divisible", "not_divisible", "larger_than_ops", "single_op", "no_batch_size"],
 )
 def test_get_plan_batches(bulk_plan, operations, operation_length, batch_size):
     for op, op_args in operations[:operation_length]:
@@ -38,5 +38,5 @@ def test_get_plan_batches(bulk_plan, operations, operation_length, batch_size):
 
     batches = list(bulk_plan.get_plan_batches(batch_size=batch_size))
 
-    assert len(batches) == math.ceil(operation_length / batch_size)
+    assert len(batches) == math.ceil(operation_length / (batch_size or operation_length))
     assert "".join(batches) == bulk_plan.get_plan_data()

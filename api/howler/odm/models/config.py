@@ -73,6 +73,10 @@ class Host(BaseModel):
     fingerprint: str | None = Field(
         description="Optional certificate fingerprint to validate against when connecting to datastore", default=None
     )
+    max_request_size: Optional[int] = Field(description="Maximum request size in bytes", default=None)
+    request_batch_size: Optional[int] = Field(
+        description="Default number of operations for bulk requests", default=None
+    )
 
     def __repr__(self):
         result = ""
@@ -148,7 +152,17 @@ class Datastore(BaseModel):
     """
 
     hosts: list[Host] = Field(
-        default=[Host(name="elastic", username="elastic", password="devpass", scheme="http", host="localhost:9200")],  # noqa: S106
+        default=[
+            Host(
+                name="elastic",
+                username="elastic",
+                password="devpass",  # noqa: S106
+                scheme="http",
+                host="localhost:9200",
+                max_request_size=100_000_000,  # 100MB
+                request_batch_size=500,
+            )
+        ],
         description="List of hosts used for the datastore",
     )
     type: Literal["elasticsearch"] = Field(
