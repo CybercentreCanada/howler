@@ -196,7 +196,7 @@ repository = "https://github.com/CybercentreCanada/howler-api"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-apscheduler = "3.11.2"
+apscheduler = "3.11.3"
 authlib = "^1.6.0"
 chardet = "5.2.0"
 elasticsearch = "8.19.3"
