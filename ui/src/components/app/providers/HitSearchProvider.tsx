@@ -166,7 +166,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
         try {
           const _response = await dispatchApi(
             api.search.hit.post({
-              offset: appendResults && response ? response.rows : offset,
+              offset: appendResults && response?.rows ? response.rows : offset,
               rows: pageCount,
               query: _query || DEFAULT_QUERY,
               sort,
@@ -204,27 +204,21 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
         }
       });
     },
-    // We skip reloading when the response changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       sort,
       span,
       query,
-      startDate,
-      endDate,
-      filters,
       setQuery,
-      location.pathname,
-      routeParams.id,
-      views,
-      dispatchApi,
+      setQueryHistory,
+      queryHistory,
+      response.rows,
       offset,
+      dispatchApi,
       pageCount,
+      getFilters,
       trackTotalHits,
       loadHits,
-      getCurrentViews,
-      setOffset,
-      getFilters
+      setOffset
     ]
   );
 
