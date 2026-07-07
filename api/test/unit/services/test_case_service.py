@@ -2300,7 +2300,7 @@ class TestFilterCaseItemsByClassification:
 
         case_service.filter_case_items_by_classification(case, "UNRESTRICTED")
 
-        assert case["items"] == []
+        assert case.get("items", None) is None
 
     @patch("howler.services.case_service.CLASSIFICATION")
     def test_returns_same_dict_object(self, mock_cl):
