@@ -2223,9 +2223,9 @@ class TestFilterCaseItemsByClassification:
             ],
         }
 
-        result = case_service.filter_case_items_by_classification(case, "UNRESTRICTED")
+        case_service.filter_case_items_by_classification(case, "UNRESTRICTED")
 
-        assert len(result["items"]) == 2
+        assert len(case["items"]) == 2
         mock_cl.is_accessible.assert_not_called()
 
     @patch("howler.services.case_service.CLASSIFICATION")
@@ -2240,9 +2240,9 @@ class TestFilterCaseItemsByClassification:
             ],
         }
 
-        result = case_service.filter_case_items_by_classification(case, "RESTRICTED")
+        case_service.filter_case_items_by_classification(case, "RESTRICTED")
 
-        assert len(result["items"]) == 1
+        assert len(case["items"]) == 1
         mock_cl.is_accessible.assert_called_once_with("RESTRICTED", "RESTRICTED")
 
     @patch("howler.services.case_service.CLASSIFICATION")
@@ -2257,9 +2257,9 @@ class TestFilterCaseItemsByClassification:
             ],
         }
 
-        result = case_service.filter_case_items_by_classification(case, "UNRESTRICTED")
+        case_service.filter_case_items_by_classification(case, "UNRESTRICTED")
 
-        assert len(result["items"]) == 0
+        assert len(case["items"]) == 0
         mock_cl.is_accessible.assert_called_once_with("UNRESTRICTED", "RESTRICTED")
 
     @patch("howler.services.case_service.CLASSIFICATION")
@@ -2276,9 +2276,9 @@ class TestFilterCaseItemsByClassification:
             ],
         }
 
-        result = case_service.filter_case_items_by_classification(case, "UNRESTRICTED")
+        case_service.filter_case_items_by_classification(case, "UNRESTRICTED")
 
-        values = [item["value"] for item in result["items"]]
+        values = [item["value"] for item in case["items"]]
         assert "hit-u" in values
         assert "http://example.com" in values
         assert "hit-r" not in values
@@ -2288,9 +2288,9 @@ class TestFilterCaseItemsByClassification:
         """An empty items list stays empty after filtering."""
         case = {"case_id": "case-001", "items": []}
 
-        result = case_service.filter_case_items_by_classification(case, "UNRESTRICTED")
+        case_service.filter_case_items_by_classification(case, "UNRESTRICTED")
 
-        assert result["items"] == []
+        assert case["items"] == []
         mock_cl.is_accessible.assert_not_called()
 
     @patch("howler.services.case_service.CLASSIFICATION")
@@ -2298,9 +2298,9 @@ class TestFilterCaseItemsByClassification:
         """A case dict with no 'items' key is handled gracefully."""
         case = {"case_id": "case-001"}
 
-        result = case_service.filter_case_items_by_classification(case, "UNRESTRICTED")
+        case_service.filter_case_items_by_classification(case, "UNRESTRICTED")
 
-        assert result["items"] == []
+        assert case["items"] == []
 
     @patch("howler.services.case_service.CLASSIFICATION")
     def test_returns_same_dict_object(self, mock_cl):
@@ -2313,6 +2313,6 @@ class TestFilterCaseItemsByClassification:
         }
         original_id = id(case)
 
-        result = case_service.filter_case_items_by_classification(case, "UNRESTRICTED")
+        case_service.filter_case_items_by_classification(case, "UNRESTRICTED")
 
-        assert id(result) == original_id
+        assert id(case) == original_id

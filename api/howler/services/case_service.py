@@ -163,7 +163,7 @@ def filter_case_items_by_classification(_case: dict, user_classification: str):
         user_classification: The requesting user's maximum classification string.
     """
     if "items" not in _case:
-        return
+        _case["items"] = []
 
     _case["items"] = [
         item
