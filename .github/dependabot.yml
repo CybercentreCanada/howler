@@ -5,6 +5,8 @@ updates:
     directory: "/ui"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 2
     commit-message:
       prefix: "chore"
       prefix-development: "chore"
