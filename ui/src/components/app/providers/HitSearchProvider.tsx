@@ -211,7 +211,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
       setQuery,
       setQueryHistory,
       queryHistory,
-      response.rows,
+      response?.rows,
       offset,
       dispatchApi,
       pageCount,
