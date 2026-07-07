@@ -9,6 +9,9 @@ from howler.common.loader import APP_NAME, datastore
 from howler.datastore.collection import parse_sort
 from howler.datastore.exceptions import SearchException, SearchRetryException
 from howler.datastore.types import SearchResult
+from howler.helper.search import has_access_control
+from howler.odm.models.user import User
+from howler.services import case_service
 
 DEFAULT_OFFSET = 0
 DEFAULT_ROW_SIZE = 25
@@ -61,7 +64,7 @@ def _normalize_indexes(indexes: str | list[str]) -> str:
     return ",".join(normalized_indexes)
 
 
-def _format_items(hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _format_items(hits: list[dict[str, Any]], user_classification: str | None) -> list[dict[str, Any]]:
     """Formats Elasticsearch search hits into a standardized item format.
 
     Extracts the _source content from each hit.
@@ -82,6 +85,9 @@ def _format_items(hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
             if raw_index:
                 source["__index"] = raw_index.replace(f"{APP_NAME}-", "").replace("_hot", "")
 
+            if source.get("__index") == "case" and user_classification:
+                case_service.filter_case_items_by_classification(source, user_classification)
+
             items.append(source)
 
     return items
@@ -99,7 +105,7 @@ def search(  # noqa: C901
     timeout: int | None = None,
     track_total_hits: bool = False,
     metadata: list[str] | None = None,
-    access_control: str | None = None,
+    user: User | None = None,
 ) -> SearchResult[dict[str, Any]]:
     """Search through specified index for a given query. Uses lucene search syntax for query.
 
@@ -137,8 +143,11 @@ def search(  # noqa: C901
     else:
         parsed_filters = filters
 
-    if access_control:
-        parsed_filters.append(access_control)
+    # NOTE: This means index searches must be either ALL access controlled or none of them have access control.
+    # Otherwise, the access control requirements on one index will cause the other index to return no items.
+    # This is pretty reasonable constraint, as all the relevant, searchable items support classifications.
+    if user and user.access_control and has_access_control(indexes):
+        parsed_filters.append(user.access_control)
 
     if query is None:
         query = "id:*"
@@ -197,7 +206,7 @@ def search(  # noqa: C901
         "offset": int(offset),
         "rows": len(hits),
         "total": int(total),
-        "items": _format_items(hits),
+        "items": _format_items(hits, user.classification if user else None),
     }
 
     next_deep_paging_id = result.get("_scroll_id")

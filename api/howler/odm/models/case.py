@@ -79,6 +79,14 @@ class CaseItem(odm.Model):
     type: str = odm.Enum(values=CaseItemTypes, description="Type of case item.")
     value: str = odm.Keyword(description="String reference value for the item (ID, URL, or token).")
     visible: bool = odm.Boolean(default=True, description="Whether the item is visible/accessible in the frontend.")
+    classification: Optional[str] = odm.Optional(
+        odm.Classification(
+            is_user_classification=False,
+            copyto="__text__",
+            default=CLASSIFICATION.UNRESTRICTED,
+            description="Classification of the related record. Automatically populated for hit and event items.",
+        )
+    )
 
 
 @odm.model(index=True, store=True, description="Rule used to place/query data into case paths.")
