@@ -43,6 +43,9 @@ export const getOpenUrl = (leaf: Item): string | null => {
   if (type === 'case') {
     return leaf.value ? `/cases/${leaf.value}` : null;
   }
+  if (type === 'markdown') {
+    return null;
+  }
   return null;
 };
 
@@ -105,16 +108,25 @@ const CaseFolderContextMenu: FC<CaseFolderContextMenuProps> = ({ _case, leaf, tr
         if (!_case.case_id) {
           return;
         }
-        const itemsToDelete = leaf ? [leaf] : tree ? collectAllLeaves(tree) : [];
-        const values = itemsToDelete.filter(i => !!i.value).map(i => i.value!);
-        if (!values.length) {
+
+        if (leaf?.id) {
+          dispatchApi(api.v2.case.items.del(_case.case_id!, [leaf.id]), { throwError: false }).then(updatedCase => {
+            if (updatedCase) {
+              onUpdate?.(updatedCase);
+            }
+          });
           return;
         }
-        dispatchApi(api.v2.case.items.del(_case.case_id!, values), { throwError: false }).then(updatedCase => {
-          if (updatedCase) {
-            onUpdate?.(updatedCase);
-          }
-        });
+
+        if (isFolder && tree?.id) {
+          dispatchApi(api.v2.case.items.del(_case.case_id!, [tree.id], true), { throwError: false }).then(
+            updatedCase => {
+              if (updatedCase) {
+                onUpdate?.(updatedCase);
+              }
+            }
+          );
+        }
       }
     });
 

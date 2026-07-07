@@ -62,7 +62,7 @@ describe('Observable', () => {
 
     it('renders "Seen in" label when seenIn has entries', () => {
       const _case = createMockCase({
-        items: [{ path: 'alerts/test-analytic (hit-001)', type: 'hit', value: 'hit-001' }]
+        items: [{ type: 'hit', value: 'hit-001' }]
       });
       render(
         <MemoryRouter>
@@ -75,9 +75,9 @@ describe('Observable', () => {
     it('renders a chip labelled with entry.path for each seenIn id', () => {
       const _case = createMockCase({
         items: [
-          { path: 'alerts/my-analytic (hit-001)', type: 'hit', value: 'hit-001' },
-          { path: 'events/obs-002', type: 'event', value: 'obs-002' },
-          { path: 'alerts/other-analytic (hit-003)', type: 'hit', value: 'hit-003' }
+          { type: 'hit', value: 'hit-001' },
+          { type: 'event', value: 'obs-002' },
+          { type: 'hit', value: 'hit-003' }
         ]
       });
       render(
@@ -93,7 +93,7 @@ describe('Observable', () => {
     it('links each chip to /cases/:case_id/:path', () => {
       const _case = createMockCase({
         case_id: 'case-abc',
-        items: [{ path: 'alerts/my-analytic (hit-001)', type: 'hit', value: 'hit-001' }]
+        items: [{ type: 'hit', value: 'hit-001' }]
       });
       render(
         <MemoryRouter>

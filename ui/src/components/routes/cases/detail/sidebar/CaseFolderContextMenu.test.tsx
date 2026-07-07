@@ -78,12 +78,12 @@ import CaseFolderContextMenu, { collectAllLeaves, getOpenUrl } from './CaseFolde
 
 const mockCase: Case = createMockCase({ case_id: 'case-1' });
 
-const hitLeaf: Item = { type: 'hit', value: 'hit-123', path: 'folder/hit-item' };
-const referenceLeaf: Item = { type: 'reference', value: 'https://example.com', path: 'folder/ref-item' };
-const eventLeaf: Item = { type: 'event', value: 'obs-456', path: 'folder/event-item' };
-const caseLeaf: Item = { type: 'case', value: 'nested-case-id', path: 'folder/case-item' };
-const tableLeaf: Item = { type: 'table', value: 'table-789', path: 'folder/table-item' };
-const leadLeaf: Item = { type: 'lead', value: 'lead-999', path: 'folder/lead-item' };
+const hitLeaf: Item = { id: 'id-hit', type: 'hit', value: 'hit-123', name: 'hit-item' };
+const referenceLeaf: Item = { id: 'id-ref', type: 'reference', value: 'https://example.com', name: 'ref-item' };
+const eventLeaf: Item = { id: 'id-event', type: 'event', value: 'obs-456', name: 'event-item' };
+const caseLeaf: Item = { id: 'id-case', type: 'case', value: 'nested-case-id', name: 'case-item' };
+const tableLeaf: Item = { id: 'id-table', type: 'table', value: 'table-789', name: 'table-item' };
+const leadLeaf: Item = { id: 'id-lead', type: 'lead', value: 'lead-999', name: 'lead-item' };
 
 const renderMenu = (props: Partial<React.ComponentPropsWithoutRef<typeof CaseFolderContextMenu>>) =>
   render(
@@ -113,16 +113,15 @@ beforeEach(() => {
 
 describe('collectAllLeaves', () => {
   it('returns leaves at the root level', () => {
-    const tree: Tree = { path: '', leaves: [hitLeaf, referenceLeaf] };
+    const tree: Tree = { leaves: [hitLeaf, referenceLeaf] };
     expect(collectAllLeaves(tree)).toEqual([hitLeaf, referenceLeaf]);
   });
 
   it('returns leaves from nested subfolders', () => {
     const tree: Tree = {
-      path: '',
       leaves: [hitLeaf],
       folders: {
-        subfolder: { path: 'subfolder', leaves: [referenceLeaf] }
+        subfolder: { id: 'subfolder-id', leaves: [referenceLeaf] }
       }
     };
     expect(collectAllLeaves(tree)).toEqual([hitLeaf, referenceLeaf]);
@@ -130,14 +129,13 @@ describe('collectAllLeaves', () => {
 
   it('returns leaves from deeply nested subfolders', () => {
     const tree: Tree = {
-      path: '',
       leaves: [],
       folders: {
         level1: {
-          path: 'level1',
+          id: 'level1-id',
           leaves: [hitLeaf],
           folders: {
-            level2: { path: 'level1/level2', leaves: [referenceLeaf] }
+            level2: { id: 'level2-id', leaves: [referenceLeaf] }
           }
         }
       }
@@ -148,7 +146,7 @@ describe('collectAllLeaves', () => {
   });
 
   it('returns an empty array for an empty tree', () => {
-    expect(collectAllLeaves({ path: '', leaves: [] })).toEqual([]);
+    expect(collectAllLeaves({ leaves: [] })).toEqual([]);
   });
 });
 
@@ -247,13 +245,13 @@ describe('CaseFolderContextMenu', () => {
       const { container: withoutOpen } = renderMenu({ leaf: tableLeaf });
       expect(withoutOpen.querySelector('hr')).not.toBeNull();
 
-      const { container: withFolder } = renderMenu({ tree: { path: 'folder', leaves: [hitLeaf] } });
+      const { container: withFolder } = renderMenu({ tree: { id: 'folder-id', leaves: [hitLeaf] } });
       expect(withFolder.querySelector('hr')).toBeNull();
     });
   });
 
   describe('menu items for folders', () => {
-    const folderTree: Tree = { path: 'folder', leaves: [hitLeaf, referenceLeaf] };
+    const folderTree: Tree = { id: 'folder-id', leaves: [hitLeaf, referenceLeaf] };
 
     it('shows only "Remove folder" for a folder (no open URL)', () => {
       renderMenu({ tree: folderTree });
@@ -308,7 +306,7 @@ describe('CaseFolderContextMenu', () => {
         fireEvent.click(screen.getByTestId('remove-item'));
       });
       await waitFor(() => {
-        expect(mockDel).toHaveBeenCalledWith('case-1', ['hit-123']);
+        expect(mockDel).toHaveBeenCalledWith('case-1', ['id-hit']);
       });
     });
 
@@ -331,9 +329,9 @@ describe('CaseFolderContextMenu', () => {
       expect(mockDel).not.toHaveBeenCalled();
     });
 
-    it('skips items with no value', async () => {
-      const noValueLeaf: Item = { type: 'hit', path: 'folder/no-value' };
-      renderMenu({ leaf: noValueLeaf });
+    it('skips items with no id', async () => {
+      const noIdLeaf: Item = { type: 'hit', value: 'some-val' };
+      renderMenu({ leaf: noIdLeaf });
       act(() => {
         fireEvent.click(screen.getByTestId('remove-item'));
       });
@@ -355,7 +353,7 @@ describe('CaseFolderContextMenu', () => {
     });
 
     it('does not show "Rename item" for a folder', () => {
-      renderMenu({ tree: { path: 'folder', leaves: [hitLeaf] } });
+      renderMenu({ tree: { id: 'folder-id', leaves: [hitLeaf] } });
       expect(screen.queryByTestId('rename-item')).not.toBeInTheDocument();
     });
 
@@ -388,24 +386,24 @@ describe('CaseFolderContextMenu', () => {
   });
 
   describe('"Remove folder" action', () => {
-    it('calls dispatchApi with all leaf values in a single batch call', async () => {
-      const folderTree: Tree = { path: 'folder', leaves: [hitLeaf, referenceLeaf] };
+    it('calls dispatchApi with the folder id and force flag', async () => {
+      const folderTree: Tree = { id: 'folder-id', leaves: [hitLeaf, referenceLeaf] };
       renderMenu({ tree: folderTree });
       act(() => {
         fireEvent.click(screen.getByTestId('remove-item'));
       });
       await waitFor(() => {
-        expect(mockDel).toHaveBeenCalledWith('case-1', ['hit-123', 'https://example.com']);
+        expect(mockDel).toHaveBeenCalledWith('case-1', ['folder-id'], true);
         expect(mockDel).toHaveBeenCalledTimes(1);
       });
     });
 
-    it('calls dispatchApi with leaves from nested subfolders in a single batch call', async () => {
+    it('calls dispatchApi with the folder id for nested subfolders', async () => {
       const nestedTree: Tree = {
-        path: 'folder',
+        id: 'folder-id',
         leaves: [hitLeaf],
         folders: {
-          subfolder: { path: 'folder/subfolder', leaves: [referenceLeaf] }
+          subfolder: { id: 'subfolder-id', leaves: [referenceLeaf] }
         }
       };
       renderMenu({ tree: nestedTree });
@@ -413,14 +411,14 @@ describe('CaseFolderContextMenu', () => {
         fireEvent.click(screen.getByTestId('remove-item'));
       });
       await waitFor(() => {
-        expect(mockDel).toHaveBeenCalledWith('case-1', expect.arrayContaining(['hit-123', 'https://example.com']));
+        expect(mockDel).toHaveBeenCalledWith('case-1', ['folder-id'], true);
         expect(mockDel).toHaveBeenCalledTimes(1);
       });
     });
 
     it('calls onUpdate with the updated case after deletion', async () => {
       const onUpdate = vi.fn();
-      const folderTree: Tree = { path: 'folder', leaves: [hitLeaf, referenceLeaf] };
+      const folderTree: Tree = { id: 'folder-id', leaves: [hitLeaf, referenceLeaf] };
       renderMenu({ tree: folderTree, onUpdate: onUpdate });
       act(() => {
         fireEvent.click(screen.getByTestId('remove-item'));
@@ -430,9 +428,9 @@ describe('CaseFolderContextMenu', () => {
       });
     });
 
-    it('does not call the API or onUpdate for an empty folder', () => {
+    it('does not call the API or onUpdate for a folder without id', () => {
       const onUpdate = vi.fn();
-      renderMenu({ tree: { path: 'folder', leaves: [] } as Tree, onUpdate: onUpdate });
+      renderMenu({ tree: { leaves: [] } as Tree, onUpdate: onUpdate });
       act(() => {
         fireEvent.click(screen.getByTestId('remove-item'));
       });

@@ -221,9 +221,9 @@ def append_item(id: str, user: User, **kwargs):  # noqa: C901
 
     Data Block:
     {
-        "type": "hit",            # Type of item to append: "hit", "event", "case", "table", "lead", or "reference"
-        "value": "item-id-123"    # The ID or reference value for the item,
-        "path": "example/path/Title"
+        "type": "hit",            # Type of item: hit, event, case, folder, markdown, reference, table, or lead
+        "value": "item-id-123",   # The ID or reference value for the item
+        "parent": "folder-uuid"   # Optional: parent folder item ID (null for root)
     }
 
     Result Example:
@@ -236,7 +236,10 @@ def append_item(id: str, user: User, **kwargs):  # noqa: C901
     except UnsupportedMediaType:
         return bad_request(err="Invalid JSON body")
 
-    for field in ["value", "type", "path"]:
+    if not body or not isinstance(body, dict):
+        return bad_request(err="Request body must be a JSON object.")
+
+    for field in ["value", "type"]:
         if field not in body:
             return bad_request(err=f"CaseItem '{field}' is required")
 
@@ -245,6 +248,8 @@ def append_item(id: str, user: User, **kwargs):  # noqa: C901
     except DataStoreException as e:
         logger.exception("Save Error")
         return internal_error(err=str(e))
+    except NotFoundException as e:
+        return not_found(err=str(e))
     except InvalidDataException as e:
         return bad_request(err=str(e))
 
@@ -267,51 +272,8 @@ def delete_item(case_id: str, **kwargs):
 
     Data Block:
     {
-        "values": ["item-id-123", "item-id-456"]   # The values of the items to delete
-    }
-
-    Result Example:
-    {
-        ...case     # The updated case data
-    }
-    """
-    body = request.json
-
-    if not body or not isinstance(body, dict) or "values" not in body:
-        return bad_request(err="Request body must be a JSON object with a 'values' field.")
-
-    values = body["values"]
-    if not isinstance(values, list) or not values:
-        return bad_request(err="'values' must be a non-empty list.")
-
-    try:
-        return ok(case_service.remove_case_items(case_id, values))
-    except DataStoreException as e:
-        logger.exception("Save Error")
-        return internal_error(err=str(e))
-    except (InvalidDataException, NotFoundException) as e:
-        return bad_request(err=str(e))
-
-
-@generate_swagger_docs()
-@case_api.route("/<case_id>/items", methods=["PUT"])
-@api_login(required_priv=["R", "W"])
-def rename_item(case_id: str, **kwargs):
-    """Rename (re-path) an item within a case
-
-    Updates the path of a single item identified by its value. The new path must
-    not already be used by another item in the case.
-
-    Variables:
-    case_id       => The id of the case to modify
-
-    Arguments:
-    None
-
-    Data Block:
-    {
-        "value": "item-id-123",          # The value of the item to rename
-        "new_path": "folder/New Name"    # The new path for the item
+        "ids": ["uuid-1", "uuid-2"],   # The UUIDs of the items to delete
+        "force": false                 # Optional: force-delete non-empty folders
     }
 
     Result Example:
@@ -324,12 +286,71 @@ def rename_item(case_id: str, **kwargs):
     if not body or not isinstance(body, dict):
         return bad_request(err="Request body must be a JSON object.")
 
-    for field in ["value", "new_path"]:
-        if field not in body:
-            return bad_request(err=f"'{field}' is required.")
+    ids = body.get("ids")
+    force = body.get("force", False)
+
+    if not ids or not isinstance(ids, list):
+        return bad_request(err="'ids' must be a non-empty list.")
 
     try:
-        return ok(case_service.rename_case_item(case_id, item_value=body["value"], new_path=body["new_path"]))
+        return ok(case_service.remove_case_items(case_id, ids, force=force))
+    except DataStoreException as e:
+        logger.exception("Save Error")
+        return internal_error(err=str(e))
+    except (InvalidDataException, NotFoundException) as e:
+        return bad_request(err=str(e))
+
+
+@generate_swagger_docs()
+@case_api.route("/<case_id>/items", methods=["PUT"])
+@api_login(required_priv=["R", "W"])
+def rename_item(case_id: str, **kwargs):
+    """Move an item within a case
+
+    Updates the parent of a single item identified by its id.
+
+    Variables:
+    case_id       => The id of the case to modify
+
+    Arguments:
+    None
+
+    Data Block:
+    {
+        "id": "uuid-of-item",           # The UUID of the item to update
+        "new_parent": "uuid-or-null",   # Move: the UUID of the target folder, or null for root
+        "new_name": "Display Name"      # Rename: the new display name for the item
+    }
+
+    Result Example:
+    {
+        ...case     # The updated case data
+    }
+    """
+    body = request.json
+
+    if not body or not isinstance(body, dict):
+        return bad_request(err="Request body must be a JSON object.")
+
+    if "id" not in body:
+        return bad_request(err="'id' is required.")
+
+    item_id = body["id"]
+
+    try:
+        # Rename
+        if "new_name" in body:
+            result = case_service.rename_case_item(case_id, item_id=item_id, new_name=body["new_name"])
+            # If also moving, chain the operations
+            if "new_parent" in body:
+                result = case_service.move_case_item(case_id, item_id=item_id, new_parent=body["new_parent"])
+            return ok(result)
+
+        # Move only
+        if "new_parent" not in body:
+            return bad_request(err="At least one of 'new_name' or 'new_parent' is required.")
+
+        return ok(case_service.move_case_item(case_id, item_id=item_id, new_parent=body["new_parent"]))
     except DataStoreException as e:
         logger.exception("Save Error")
         return internal_error(err=str(e))

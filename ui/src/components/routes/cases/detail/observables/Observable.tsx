@@ -38,10 +38,10 @@ const Observable: FC<{ observable: ObservableEntry; case: Case }> = ({ observabl
                       key={id}
                       clickable
                       size="small"
-                      label={entry.path}
+                      label={entry?.name ?? entry?.value ?? id}
                       variant="outlined"
                       component={Link}
-                      to={`/cases/${_case.case_id}/${entry.path}`}
+                      to={`/cases/${_case.case_id}/${entry?.id ?? ''}`}
                     />
                   );
                 })}

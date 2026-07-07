@@ -163,13 +163,13 @@ describe('CreateCaseModal', () => {
 
     it('pre-populates the title for a hit with analytic and id', () => {
       renderModal([MOCK_HIT_1]);
-      const titleInputs = screen.getAllByPlaceholderText(i18n.t('modal.cases.add_to_case.title'));
+      const titleInputs = screen.getAllByPlaceholderText(i18n.t('modal.cases.add_to_case.name'));
       expect(titleInputs[0]).toHaveValue(`${MOCK_HIT_1.howler.analytic} (${MOCK_HIT_1.howler.id})`);
     });
 
     it('pre-populates the title for an event with Event and id', () => {
       renderModal([MOCK_EVENT]);
-      const titleInput = screen.getByPlaceholderText(i18n.t('modal.cases.add_to_case.title'));
+      const titleInput = screen.getByPlaceholderText(i18n.t('modal.cases.add_to_case.name'));
       expect(titleInput).toHaveValue(`Event (${MOCK_EVENT.howler.id})`);
     });
 
@@ -181,29 +181,6 @@ describe('CreateCaseModal', () => {
     it('does not show the alert placement section when records is empty', () => {
       renderModal([]);
       expect(screen.queryByText(i18n.t('modal.cases.create_case.items_section'))).not.toBeInTheDocument();
-    });
-
-    it('shows the full path preview when a title is set', async () => {
-      renderModal([MOCK_HIT_1]);
-      const expectedTitle = `${MOCK_HIT_1.howler.analytic} (${MOCK_HIT_1.howler.id})`;
-      await waitFor(() => {
-        expect(
-          screen.getByText(i18n.t('modal.cases.add_to_case.full_path', { path: expectedTitle }))
-        ).toBeInTheDocument();
-      });
-    });
-
-    it('shows combined path/title in the full path preview', async () => {
-      renderModal([MOCK_HIT_1]);
-      const pathInput = screen.getByPlaceholderText(i18n.t('modal.cases.add_to_case.select_path'));
-      await user.type(pathInput, 'folder');
-
-      const expectedFull = `folder/${MOCK_HIT_1.howler.analytic} (${MOCK_HIT_1.howler.id})`;
-      await waitFor(() => {
-        expect(
-          screen.getByText(i18n.t('modal.cases.add_to_case.full_path', { path: expectedFull }))
-        ).toBeInTheDocument();
-      });
     });
   });
 
@@ -234,7 +211,7 @@ describe('CreateCaseModal', () => {
       renderModal([MOCK_HIT_1]);
       await fillCaseMetadata(user);
 
-      const titleInput = screen.getByPlaceholderText(i18n.t('modal.cases.add_to_case.title'));
+      const titleInput = screen.getByPlaceholderText(i18n.t('modal.cases.add_to_case.name'));
       await user.clear(titleInput);
 
       expect(screen.getByRole('button', { name: i18n.t('confirm') })).toBeDisabled();
@@ -244,24 +221,6 @@ describe('CreateCaseModal', () => {
       renderModal([]);
       await fillCaseMetadata(user);
       expect(screen.getByRole('button', { name: i18n.t('confirm') })).toBeEnabled();
-    });
-
-    it('disables confirm when a folder path starts with /', async () => {
-      renderModal([MOCK_HIT_1]);
-      await fillCaseMetadata(user);
-
-      await user.type(screen.getByPlaceholderText(i18n.t('modal.cases.add_to_case.select_path')), '/leading');
-
-      expect(screen.getByRole('button', { name: i18n.t('confirm') })).toBeDisabled();
-    });
-
-    it('disables confirm when a folder path ends with /', async () => {
-      renderModal([MOCK_HIT_1]);
-      await fillCaseMetadata(user);
-
-      await user.type(screen.getByPlaceholderText(i18n.t('modal.cases.add_to_case.select_path')), 'trailing/');
-
-      expect(screen.getByRole('button', { name: i18n.t('confirm') })).toBeDisabled();
     });
   });
 
@@ -370,21 +329,22 @@ describe('CreateCaseModal', () => {
       expect(api.v2.case.items.post).toHaveBeenCalledWith(
         'new-case-id',
         expect.objectContaining({
-          path: `${MOCK_HIT_1.howler.analytic} (${MOCK_HIT_1.howler.id})`,
+          name: `${MOCK_HIT_1.howler.analytic} (${MOCK_HIT_1.howler.id})`,
           value: MOCK_HIT_1.howler.id,
-          type: 'hit'
+          type: 'hit',
+          parent: null
         })
       );
     });
 
-    it('uses a custom edited item title in the path', async () => {
+    it('uses a custom edited item title in the name', async () => {
       const api = (await import('api')).default;
       mockDispatchApi.mockResolvedValue({ case_id: 'new-case-id' });
 
       renderModal([MOCK_HIT_1]);
       await fillCaseMetadata(user);
 
-      const titleInput = screen.getByPlaceholderText(i18n.t('modal.cases.add_to_case.title'));
+      const titleInput = screen.getByPlaceholderText(i18n.t('modal.cases.add_to_case.name'));
       await user.clear(titleInput);
       await user.type(titleInput, 'Custom Item Name');
 
@@ -393,27 +353,7 @@ describe('CreateCaseModal', () => {
 
       expect(api.v2.case.items.post).toHaveBeenCalledWith(
         'new-case-id',
-        expect.objectContaining({ path: 'Custom Item Name' })
-      );
-    });
-
-    it('combines folder path and title when a folder path is provided', async () => {
-      const api = (await import('api')).default;
-      mockDispatchApi.mockResolvedValue({ case_id: 'new-case-id' });
-
-      renderModal([MOCK_HIT_1]);
-      await fillCaseMetadata(user);
-
-      await user.type(screen.getByPlaceholderText(i18n.t('modal.cases.add_to_case.select_path')), 'investigations');
-
-      await user.click(screen.getByRole('button', { name: i18n.t('confirm') }));
-      await waitFor(() => expect(mockClose).toHaveBeenCalled());
-
-      expect(api.v2.case.items.post).toHaveBeenCalledWith(
-        'new-case-id',
-        expect.objectContaining({
-          path: `investigations/${MOCK_HIT_1.howler.analytic} (${MOCK_HIT_1.howler.id})`
-        })
+        expect.objectContaining({ name: 'Custom Item Name' })
       );
     });
 
@@ -462,7 +402,7 @@ describe('CreateCaseModal', () => {
   describe('multiple records', () => {
     it('renders independent title inputs for each record', () => {
       renderModal([MOCK_HIT_1, MOCK_HIT_2]);
-      const titleInputs = screen.getAllByPlaceholderText(i18n.t('modal.cases.add_to_case.title'));
+      const titleInputs = screen.getAllByPlaceholderText(i18n.t('modal.cases.add_to_case.name'));
       expect(titleInputs).toHaveLength(2);
       expect(titleInputs[0]).toHaveValue(`${MOCK_HIT_1.howler.analytic} (${MOCK_HIT_1.howler.id})`);
       expect(titleInputs[1]).toHaveValue(`${MOCK_HIT_2.howler.analytic} (${MOCK_HIT_2.howler.id})`);
@@ -470,7 +410,7 @@ describe('CreateCaseModal', () => {
 
     it('editing one record title does not affect the other', async () => {
       renderModal([MOCK_HIT_1, MOCK_HIT_2]);
-      const titleInputs = screen.getAllByPlaceholderText(i18n.t('modal.cases.add_to_case.title'));
+      const titleInputs = screen.getAllByPlaceholderText(i18n.t('modal.cases.add_to_case.name'));
       await user.clear(titleInputs[0]);
       await user.type(titleInputs[0], 'Edited Title');
 
@@ -480,7 +420,7 @@ describe('CreateCaseModal', () => {
 
     it('mixed hit and event records each get correct default titles', () => {
       renderModal([MOCK_HIT_1, MOCK_EVENT]);
-      const titleInputs = screen.getAllByPlaceholderText(i18n.t('modal.cases.add_to_case.title'));
+      const titleInputs = screen.getAllByPlaceholderText(i18n.t('modal.cases.add_to_case.name'));
       expect(titleInputs[0]).toHaveValue(`${MOCK_HIT_1.howler.analytic} (${MOCK_HIT_1.howler.id})`);
       expect(titleInputs[1]).toHaveValue(`Event (${MOCK_EVENT.howler.id})`);
     });

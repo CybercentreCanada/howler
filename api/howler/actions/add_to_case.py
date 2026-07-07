@@ -13,7 +13,6 @@ OPERATION_ID = "add_to_case"
 def execute(
     query: str,
     case_id: Optional[str] = None,
-    path: str = "related",
     title_template: str = "{{howler.analytic}} ({{howler.id}})",
     **kwargs,
 ):
@@ -22,9 +21,8 @@ def execute(
     Args:
         query (str): The query on which to apply this automation.
         case_id (str): The ID of the case to add the alerts to.
-        path (str): The path within the case at which to place the alerts. Defaults to "related".
         title_template (str): A Mustache-compatible template string used to generate each item's
-            path suffix (title). The hit's fields are available as template variables.
+            display name. The hit's fields are available as template variables.
             Defaults to "{{howler.analytic}} ({{howler.id}})".
     """
     if not case_id:
@@ -65,19 +63,14 @@ def execute(
     skipped = []
     added = []
 
-    normalized_path = path.rstrip("/")
-
     for hit in hits:
-        hit_data = hit.as_primitives()
-        title = chevron.render(title_template, hit_data)
-        item_path = f"{normalized_path}/{title}" if normalized_path else title
-
         try:
+            item_name = chevron.render(title_template, hit.as_primitives())
             case_service.append_case_item(
                 case_id,
                 item_type="hit",
                 item_value=hit.howler.id,
-                item_path=item_path,
+                item_name=item_name,
             )
             added.append(hit.howler.id)
         except InvalidDataException as e:
@@ -126,7 +119,6 @@ def specification():
             {
                 "args": {
                     "case_id": [],
-                    "path": [],
                     "title_template": [],
                 },
                 "options": {},

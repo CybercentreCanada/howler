@@ -138,7 +138,7 @@ describe('TaskPanel', () => {
     });
 
     it('does not show child-case controls when there are no case-type items', () => {
-      renderPanel({ items: [{ type: 'hit', value: 'h1', path: 'root/h1' }] });
+      renderPanel({ items: [{ type: 'hit', value: 'h1' }] });
       expect(screen.queryByTestId('child-case-autocomplete')).not.toBeInTheDocument();
     });
 
@@ -160,8 +160,8 @@ describe('TaskPanel', () => {
       renderPanel({
         tasks: [mkTask('t1')],
         items: [
-          { type: 'hit', value: 'h1', path: 'root/h1' },
-          { type: 'hit', value: 'h2', path: undefined }
+          { type: 'hit', value: 'h1' },
+          { type: 'hit', value: 'h2' }
         ]
       });
       const captured = mockCaseTaskProps.current.find((p: any) => p.task?.id === 't1');
@@ -261,7 +261,7 @@ describe('TaskPanel', () => {
         case_id: id,
         title,
         tasks: taskList,
-        items: itemPaths.map(p => ({ type: 'hit', value: p, path: p }))
+        items: itemPaths.map(p => ({ type: 'hit', value: p }))
       });
 
     const setupChild = (child: Case) => {
@@ -271,7 +271,7 @@ describe('TaskPanel', () => {
 
     it('fetches child cases for items of type "case"', async () => {
       setupChild(mkChildCase('child-1', 'Child One'));
-      renderPanel({ items: [{ type: 'case', value: 'child-1', path: 'child-1' }] });
+      renderPanel({ items: [{ type: 'case', value: 'child-1' }] });
       await waitFor(() => {
         expect(mockCaseGet).toHaveBeenCalledWith('child-1');
       });
@@ -279,14 +279,14 @@ describe('TaskPanel', () => {
 
     it('does not fetch child cases for non-case item types', async () => {
       setupChild(mkChildCase('child-1', 'Child One'));
-      renderPanel({ items: [{ type: 'hit', value: 'child-1', path: 'child-1' }] });
+      renderPanel({ items: [{ type: 'hit', value: 'child-1' }] });
       await new Promise(r => setTimeout(r, 0));
       expect(mockCaseGet).not.toHaveBeenCalled();
     });
 
     it('renders a section with the child case name after fetch', async () => {
       setupChild(mkChildCase('child-1', 'Child One'));
-      renderPanel({ items: [{ type: 'case', value: 'child-1', path: 'child-1' }] });
+      renderPanel({ items: [{ type: 'case', value: 'child-1' }] });
       await waitFor(() => {
         expect(screen.getByText('Child One')).toBeInTheDocument();
       });
@@ -300,8 +300,8 @@ describe('TaskPanel', () => {
 
       renderPanel({
         items: [
-          { type: 'case', value: 'child-1', path: 'child-1' },
-          { type: 'case', value: 'child-2', path: 'child-2' }
+          { type: 'case', value: 'child-1' },
+          { type: 'case', value: 'child-2' }
         ]
       });
 
@@ -315,7 +315,7 @@ describe('TaskPanel', () => {
       mockCaseGet.mockReturnValue(Promise.resolve(null));
       mockDispatchApi.mockResolvedValue(null);
 
-      renderPanel({ items: [{ type: 'case', value: 'missing', path: 'missing' }] });
+      renderPanel({ items: [{ type: 'case', value: 'missing' }] });
 
       await waitFor(() => {
         expect(mockDispatchApi).toHaveBeenCalled();
@@ -326,8 +326,7 @@ describe('TaskPanel', () => {
     it('fetches at most MAX_CHILD_CASES (10) child cases when more are present', async () => {
       const items = Array.from({ length: 12 }, (_, i) => ({
         type: 'case',
-        value: `c${i}`,
-        path: `c${i}`
+        value: `c${i}`
       }));
       mockCaseGet.mockImplementation((id: string) => Promise.resolve(mkChildCase(id, `Case ${id}`)));
       mockDispatchApi.mockImplementation((p: any) => p);
@@ -342,7 +341,7 @@ describe('TaskPanel', () => {
     it('renders child case tasks with readOnly=true', async () => {
       const childTask = mkTask('ct1', 'Child Task');
       setupChild(mkChildCase('child-1', 'Child One', [childTask]));
-      renderPanel({ items: [{ type: 'case', value: 'child-1', path: 'child-1' }] });
+      renderPanel({ items: [{ type: 'case', value: 'child-1' }] });
 
       await waitFor(() => {
         const captured = mockCaseTaskProps.current.find((p: any) => p.task?.id === 'ct1');
@@ -354,7 +353,7 @@ describe('TaskPanel', () => {
     it('passes caseOrigin to each child case CaseTask', async () => {
       const childTask = mkTask('ct1', 'Child Task');
       setupChild(mkChildCase('child-1', 'Child One', [childTask]));
-      renderPanel({ items: [{ type: 'case', value: 'child-1', path: 'child-1' }] });
+      renderPanel({ items: [{ type: 'case', value: 'child-1' }] });
 
       await waitFor(() => {
         const captured = mockCaseTaskProps.current.find((p: any) => p.task?.id === 'ct1');
@@ -369,13 +368,13 @@ describe('TaskPanel', () => {
         title: 'Child One',
         tasks: [childTask],
         items: [
-          { type: 'hit', value: 'h1', path: 'child-1/hit' },
-          { type: 'hit', value: 'h2', path: undefined }
+          { type: 'hit', value: 'h1' },
+          { type: 'hit', value: 'h2' }
         ]
       });
       mockCaseGet.mockReturnValue(Promise.resolve(child));
       mockDispatchApi.mockImplementation((p: any) => p);
-      renderPanel({ items: [{ type: 'case', value: 'child-1', path: 'child-1' }] });
+      renderPanel({ items: [{ type: 'case', value: 'child-1' }] });
 
       await waitFor(() => {
         const captured = mockCaseTaskProps.current.find((p: any) => p.task?.id === 'ct1');
@@ -385,7 +384,7 @@ describe('TaskPanel', () => {
 
     it('shows an empty message when the child case has no tasks', async () => {
       setupChild(mkChildCase('child-1', 'Child One', []));
-      renderPanel({ items: [{ type: 'case', value: 'child-1', path: 'child-1' }] });
+      renderPanel({ items: [{ type: 'case', value: 'child-1' }] });
       await waitFor(() => {
         expect(screen.getByText('page.cases.dashboard.tasks.child.empty')).toBeInTheDocument();
       });
@@ -393,7 +392,7 @@ describe('TaskPanel', () => {
 
     it('links the child case section chip to /cases/{caseId}', async () => {
       setupChild(mkChildCase('child-1', 'Child One', []));
-      renderPanel({ items: [{ type: 'case', value: 'child-1', path: 'child-1' }] });
+      renderPanel({ items: [{ type: 'case', value: 'child-1' }] });
       await waitFor(() => {
         const link = screen.getByText('Child One').closest('a');
         expect(link).toHaveAttribute('href', '/cases/child-1');
@@ -402,7 +401,7 @@ describe('TaskPanel', () => {
 
     it('uses the case title as the child case name when title is set', async () => {
       setupChild(mkChildCase('child-1', 'My Child Case', []));
-      renderPanel({ items: [{ type: 'case', value: 'child-1', path: 'child-1' }] });
+      renderPanel({ items: [{ type: 'case', value: 'child-1' }] });
       await waitFor(() => {
         expect(screen.getByText('My Child Case')).toBeInTheDocument();
       });
@@ -420,7 +419,7 @@ describe('TaskPanel', () => {
       });
       mockCaseGet.mockReturnValue(Promise.resolve(child));
       mockDispatchApi.mockImplementation((p: any) => p);
-      renderPanel({ items: [{ type: 'case', value: 'child-1', path: 'child-1' }] });
+      renderPanel({ items: [{ type: 'case', value: 'child-1' }] });
       await waitFor(() => screen.getByText('Child One'));
     };
 
@@ -469,7 +468,7 @@ describe('TaskPanel', () => {
       mockCaseGet.mockReturnValue(Promise.resolve(child));
       mockDispatchApi.mockImplementation((p: any) => p);
 
-      renderPanel({ items: [{ type: 'case', value: 'child-1', path: 'child-1' }] });
+      renderPanel({ items: [{ type: 'case', value: 'child-1' }] });
       await waitFor(() => screen.getByTestId('case-task-ct1'));
 
       act(() => {
@@ -492,7 +491,7 @@ describe('TaskPanel', () => {
       mockCaseGet.mockReturnValue(Promise.resolve(child));
       mockDispatchApi.mockImplementation((p: any) => p);
 
-      renderPanel({ items: [{ type: 'case', value: 'child-1', path: 'child-1' }] });
+      renderPanel({ items: [{ type: 'case', value: 'child-1' }] });
       await waitFor(() => screen.getByTestId('case-task-ct1'));
 
       act(() => {

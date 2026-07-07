@@ -57,10 +57,12 @@ const renderPanel = (caseValue: Case | null) => {
   );
 };
 
-const makeHitItem = (id: string, path = `/cases/test/${id}`) => ({
+const makeHitItem = (value: string, id = value) => ({
   type: 'hit' as const,
-  value: id,
-  path
+  value,
+  id,
+  name: null as string | null,
+  parent: null as string | null
 });
 
 // ---------------------------------------------------------------------------
@@ -94,12 +96,7 @@ describe('AlertPanel', () => {
     const duplicate = makeHitItem('hit-1', '/cases/test/path-a');
     const _case = createMockCase({
       case_id: 'case-2',
-      items: [
-        duplicate,
-        duplicate,
-        makeHitItem('hit-2', '/cases/test/path-b'),
-        { type: 'event', value: 'event-1', path: '/cases/test/event-1' }
-      ]
+      items: [duplicate, duplicate, makeHitItem('hit-2', '/cases/test/path-b'), { type: 'event', value: 'event-1' }]
     });
 
     renderPanel(_case);
@@ -128,8 +125,8 @@ describe('AlertPanel', () => {
     const links = Array.from(container.querySelectorAll('a'));
 
     expect(links).toHaveLength(2);
-    expect(links[0]).toHaveAttribute('href', '/cases/case-3/path-one');
-    expect(links[1]).toHaveAttribute('href', '/cases/case-3/path-two');
+    expect(links[0]).toHaveAttribute('href', '/hits/hit-1');
+    expect(links[1]).toHaveAttribute('href', '/hits/hit-2');
   });
 
   it('shows pagination with multiple pages and switches to page 2 items', () => {

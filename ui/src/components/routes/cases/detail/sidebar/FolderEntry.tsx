@@ -4,6 +4,7 @@ import {
   BookRounded,
   CheckCircle,
   ChevronRight,
+  Description,
   Folder,
   Lightbulb,
   Link as LinkIcon,
@@ -25,12 +26,12 @@ const ICON_FOR_TYPE: Record<string, ComponentType<SvgIconProps>> = {
   hit: CheckCircle,
   table: TableChart,
   lead: Lightbulb,
-  reference: LinkIcon
+  reference: LinkIcon,
+  markdown: Description
 };
 
 interface FolderEntryProps {
   caseId?: string | null;
-  path: string;
   /** MUI `pl` value for indentation */
   indent: number;
   /** Text displayed as the entry label */
@@ -46,11 +47,12 @@ interface FolderEntryProps {
   onClick?: () => void;
   itemType: string;
   entry?: Item | Tree;
+  /** UUID of this folder item, used for parent-based drop targets */
+  folderId?: string | null;
 }
 
 const FolderEntry: FC<FolderEntryProps> = ({
   caseId,
-  path,
   indent,
   label,
   itemType,
@@ -59,7 +61,8 @@ const FolderEntry: FC<FolderEntryProps> = ({
   chevronOpen = false,
   to,
   onClick,
-  entry
+  entry,
+  folderId = null
 }) => {
   const location = useLocation();
   const theme = useTheme();
@@ -67,7 +70,8 @@ const FolderEntry: FC<FolderEntryProps> = ({
   const isCase = itemType === 'case';
   const isFolder = itemType === 'folder';
 
-  const dndId = `${caseId ?? ''}:${itemType}:${path}`;
+  const entryId = (entry as Item)?.id ?? (entry as Tree)?.id ?? label;
+  const dndId = `${caseId ?? ''}:${itemType}:${entryId}`;
 
   const {
     attributes,
@@ -90,8 +94,8 @@ const FolderEntry: FC<FolderEntryProps> = ({
     id: dndId,
     disabled: !isFolder || isDragging || !caseId,
     data: {
-      path,
-      caseId
+      caseId,
+      folderId: folderId ?? (entry as Tree)?.id ?? null
     }
   });
 

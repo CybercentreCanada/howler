@@ -60,7 +60,7 @@ const TaskPanel: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promise<
           caseId: c.case_id,
           caseName: c.title ?? c.case_id,
           tasks: c.tasks ?? [],
-          paths: (c.items ?? []).map(i => i.path).filter(p => !isNil(p))
+          paths: (c.items ?? []).map(i => i.name ?? i.value).filter(p => !isNil(p))
         } satisfies ChildCaseEntry;
       })
     )
@@ -185,7 +185,7 @@ const TaskPanel: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promise<
         <CaseTask
           key={task.id}
           task={task}
-          paths={_case.items.map(item => item.path).filter(p => !isNil(p))}
+          paths={_case.items.map(item => item.name ?? item.value).filter(p => !isNil(p))}
           onEdit={onEdit(task)}
           onDelete={() => updateCase({ tasks: _case.tasks.filter(_task => _task.id !== task.id) })}
         />
@@ -193,7 +193,7 @@ const TaskPanel: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promise<
       {addingTask && (
         <CaseTask
           newTask
-          paths={_case.items.map(item => item.path).filter(p => !isNil(p))}
+          paths={_case.items.map(item => item.name ?? item.value).filter(p => !isNil(p))}
           onEdit={async task => {
             await onEdit()(task);
             setAddingTask(false);

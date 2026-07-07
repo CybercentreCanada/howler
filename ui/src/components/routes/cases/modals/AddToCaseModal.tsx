@@ -37,10 +37,7 @@ const AddToCaseModal: FC<{ records: (Hit | Event)[] }> = ({ records }) => {
   const folderOptions = useFolderOptions(selectedCase);
 
   const isValid = useMemo(
-    () =>
-      !!selectedCase &&
-      entries.length > 0 &&
-      entries.every(e => !!e.title.trim() && !e.path.startsWith('/') && !e.path.endsWith('/')),
+    () => !!selectedCase && entries.length > 0 && entries.every(e => !!e.name.trim()),
     [selectedCase, entries]
   );
 
@@ -52,12 +49,12 @@ const AddToCaseModal: FC<{ records: (Hit | Event)[] }> = ({ records }) => {
     setSubmitting(true);
     try {
       for (const entry of entries) {
-        const fullPath = entry.path ? `${entry.path}/${entry.title}` : entry.title;
         await dispatchApi(
           api.v2.case.items.post(selectedCase.case_id, {
-            path: fullPath,
+            name: entry.name,
             value: entry.record.howler.id,
-            type: entry.record.__index
+            type: entry.record.__index,
+            parent: entry.parent
           })
         );
       }
@@ -106,8 +103,8 @@ const AddToCaseModal: FC<{ records: (Hit | Event)[] }> = ({ records }) => {
                 key={entry.record.howler.id}
                 entry={entry}
                 folderOptions={folderOptions}
-                onTitleChange={val => updateEntry(i, 'title', val)}
-                onPathChange={val => updateEntry(i, 'path', val)}
+                onNameChange={val => updateEntry(i, 'name', val)}
+                onParentChange={val => updateEntry(i, 'parent', val)}
               />
             ))}
           </Stack>

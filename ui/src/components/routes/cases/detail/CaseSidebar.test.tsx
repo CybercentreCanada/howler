@@ -52,6 +52,7 @@ vi.mock('components/hooks/useMyApi', () => ({
 }));
 
 const mockPut = vi.hoisted(() => vi.fn());
+const mockMove = vi.hoisted(() => vi.fn());
 
 vi.mock('api', () => ({
   default: {
@@ -59,7 +60,7 @@ vi.mock('api', () => ({
       case: {
         put: (...args: any[]) => mockPut(...args),
         get: vi.fn(),
-        items: { del: vi.fn(), patch: vi.fn() }
+        items: { del: vi.fn(), patch: vi.fn(), move: (...args: any[]) => mockMove(...args) }
       }
     }
   }
@@ -113,7 +114,13 @@ import CaseSidebar from './CaseSidebar';
 // Helpers
 // ---------------------------------------------------------------------------
 
-const hitItem = (path: string, value = path): Item => ({ type: 'hit', value, path });
+const hitItem = (value: string, id = value, parent: string | null = null): Item => ({
+  type: 'hit',
+  value,
+  id,
+  parent,
+  name: null
+});
 
 const renderSidebar = (overrides?: Partial<Case>, onUpdate = vi.fn()) => {
   const _case = createMockCase({ case_id: 'case-1', items: [], ...overrides });
@@ -147,6 +154,7 @@ const fireDragEnd = (activeData: object, overData: object) => {
 beforeEach(() => {
   mockDispatchApi.mockReset();
   mockPut.mockReset();
+  mockMove.mockReset();
   mockActiveDrag.current = null;
   mockDragEndHandler.current = null;
   mockDragStartHandler.current = null;
@@ -238,76 +246,56 @@ describe('CaseSidebar', () => {
   });
 
   describe('handleDragEnd — item moves', () => {
-    it('calls PUT with the updated path when a hit is moved to a folder', async () => {
-      const items = [hitItem('docs/report', 'rep-val')];
-      const updatedCase = createMockCase({ case_id: 'case-1', items: [hitItem('archive/report', 'rep-val')] });
-      mockPut.mockReturnValue(Promise.resolve(updatedCase));
-      mockDispatchApi.mockImplementation((p: Promise<any>) => p);
-
-      const { onUpdate } = renderSidebar({ items });
-
-      fireDragEnd(
-        { type: 'hit', entry: hitItem('docs/report', 'rep-val'), caseId: 'case-1' },
-        { path: 'archive', caseId: 'case-1' }
-      );
-
-      await waitFor(() => {
-        expect(mockPut).toHaveBeenCalledWith(
-          'case-1',
-          expect.objectContaining({
-            items: expect.arrayContaining([expect.objectContaining({ path: 'archive/report' })])
-          })
-        );
-        expect(onUpdate).toHaveBeenCalledWith(updatedCase);
-      });
-    });
-
-    it('moves an item to root when the over path is empty', async () => {
-      const items = [hitItem('folder/report', 'rep-val')];
-      const updatedCase = createMockCase({ case_id: 'case-1', items: [hitItem('report', 'rep-val')] });
-      mockPut.mockReturnValue(Promise.resolve(updatedCase));
-      mockDispatchApi.mockImplementation((p: Promise<any>) => p);
-
-      const { onUpdate } = renderSidebar({ items });
-
-      fireDragEnd(
-        { type: 'hit', entry: hitItem('folder/report', 'rep-val'), caseId: 'case-1' },
-        { path: '', caseId: 'case-1' } // root drop zone
-      );
-
-      await waitFor(() => {
-        expect(mockPut).toHaveBeenCalledWith(
-          'case-1',
-          expect.objectContaining({
-            items: expect.arrayContaining([expect.objectContaining({ path: 'report' })])
-          })
-        );
-        expect(onUpdate).toHaveBeenCalledWith(updatedCase);
-      });
-    });
-
-    it('moves all items under a folder when type is folder', async () => {
-      const items = [hitItem('docs/a', 'a-val'), hitItem('docs/b', 'b-val'), hitItem('other/c', 'c-val')];
+    it('calls move when a hit is moved to a folder', async () => {
+      const items = [hitItem('rep-val', 'item-1', 'docs-folder')];
       const updatedCase = createMockCase({ case_id: 'case-1', items });
-      mockPut.mockReturnValue(Promise.resolve(updatedCase));
+      mockMove.mockReturnValue(Promise.resolve(updatedCase));
+      mockDispatchApi.mockImplementation((p: Promise<any>) => p);
+
+      const { onUpdate } = renderSidebar({ items });
+
+      fireDragEnd({ type: 'hit', entry: items[0], caseId: 'case-1' }, { folderId: 'archive-folder', caseId: 'case-1' });
+
+      await waitFor(() => {
+        expect(mockMove).toHaveBeenCalledWith('case-1', 'item-1', 'archive-folder');
+        expect(onUpdate).toHaveBeenCalledWith(updatedCase);
+      });
+    });
+
+    it('moves an item to root when the target is root', async () => {
+      const items = [hitItem('rep-val', 'item-1', 'folder-id')];
+      const updatedCase = createMockCase({ case_id: 'case-1', items });
+      mockMove.mockReturnValue(Promise.resolve(updatedCase));
+      mockDispatchApi.mockImplementation((p: Promise<any>) => p);
+
+      const { onUpdate } = renderSidebar({ items });
+
+      fireDragEnd(
+        { type: 'hit', entry: items[0], caseId: 'case-1' },
+        { caseId: 'case-1' } // root drop zone — no folderId
+      );
+
+      await waitFor(() => {
+        expect(mockMove).toHaveBeenCalledWith('case-1', 'item-1', null);
+        expect(onUpdate).toHaveBeenCalledWith(updatedCase);
+      });
+    });
+
+    it('moves a folder to another folder', async () => {
+      const items = [hitItem('a-val', 'a-id', 'docs-folder'), hitItem('b-val', 'b-id', 'docs-folder')];
+      const updatedCase = createMockCase({ case_id: 'case-1', items });
+      mockMove.mockReturnValue(Promise.resolve(updatedCase));
       mockDispatchApi.mockImplementation((p: Promise<any>) => p);
 
       renderSidebar({ items });
 
-      fireDragEnd({ type: 'folder', entry: { path: 'docs' }, caseId: 'case-1' }, { path: 'archive', caseId: 'case-1' });
+      fireDragEnd(
+        { type: 'folder', entry: { id: 'docs-folder' }, caseId: 'case-1' },
+        { folderId: 'archive-folder', caseId: 'case-1' }
+      );
 
       await waitFor(() => {
-        expect(mockPut).toHaveBeenCalledWith(
-          'case-1',
-          expect.objectContaining({
-            items: expect.arrayContaining([
-              expect.objectContaining({ path: 'archive/docs/a' }),
-              expect.objectContaining({ path: 'archive/docs/b' }),
-              // Items not under 'docs' are unchanged
-              expect.objectContaining({ path: 'other/c' })
-            ])
-          })
-        );
+        expect(mockMove).toHaveBeenCalledWith('case-1', 'docs-folder', 'archive-folder');
       });
     });
   });

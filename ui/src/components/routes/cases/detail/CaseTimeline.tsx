@@ -72,7 +72,7 @@ const CaseTimeline: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase
     [_case]
   );
 
-  const getPath = (value: string) => _case!.items.find(item => item.value === value)?.path;
+  const getItemId = (value: string) => _case!.items.find(item => item.value === value)?.id;
 
   useEffect(() => {
     if (ids.length < 1) {
@@ -244,7 +244,7 @@ const CaseTimeline: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase
                 </Stack>
                 <Box
                   component={Link}
-                  to={`/cases/${_case.case_id}/${getPath(entry.howler.id)}`}
+                  to={`/cases/${_case.case_id}/${getItemId(entry.howler.id)}`}
                   sx={{ flex: 1, minWidth: 0, textDecoration: 'none' }}
                 >
                   {isHit(entry) ? (

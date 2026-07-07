@@ -232,7 +232,6 @@ class TestProcessBatch:
             "case-1",
             item_type="hit",
             item_value="hit-1",
-            item_path="alerts",
         )
 
     @patch("howler.services.correlation_service.search_service")
@@ -284,7 +283,6 @@ class TestProcessBatch:
             "case-1",
             item_type="hit",
             item_value="hit-1",
-            item_path="alerts/My Detection",
         )
 
     @patch("howler.services.correlation_service.case_service")
@@ -357,7 +355,6 @@ class TestProcessBatch:
             "case-2",
             item_type="hit",
             item_value="hit-1",
-            item_path="b",
         )
 
     @patch("howler.services.correlation_service.search_service")
@@ -425,7 +422,6 @@ class TestProcessBatch:
             "case-1",
             item_type="event",
             item_value="obs-1",
-            item_path="events",
         )
 
     @patch("howler.services.correlation_service.search_service")

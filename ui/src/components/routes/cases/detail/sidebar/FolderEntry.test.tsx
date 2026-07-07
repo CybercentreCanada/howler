@@ -60,12 +60,12 @@ import FolderEntry from './FolderEntry';
 // Helpers
 // ---------------------------------------------------------------------------
 
-const hitItem = (path: string, value = path): Item => ({ type: 'hit', value, path });
+const hitItem = (value: string, id = value): Item => ({ type: 'hit', value, id });
 
 const renderEntry = (props: Partial<React.ComponentPropsWithoutRef<typeof FolderEntry>> = {}) =>
   render(
     <MemoryRouter>
-      <FolderEntry caseId="case-1" path="folder/item" indent={1} label="my label" itemType="hit" {...props} />
+      <FolderEntry caseId="case-1" indent={1} label="my label" itemType="hit" {...props} />
     </MemoryRouter>
   );
 
@@ -201,19 +201,20 @@ describe('FolderEntry', () => {
   describe('DnD ID namespacing', () => {
     it('passes the namespaced id to useDraggable', async () => {
       const { useDraggable } = await import('@dnd-kit/core');
-      renderEntry({ caseId: 'case-1', itemType: 'hit', path: 'folder/item' });
-      expect(vi.mocked(useDraggable)).toHaveBeenCalledWith(expect.objectContaining({ id: 'case-1:hit:folder/item' }));
+      const entry = hitItem('hit-001', 'item-id-1');
+      renderEntry({ caseId: 'case-1', itemType: 'hit', entry });
+      expect(vi.mocked(useDraggable)).toHaveBeenCalledWith(expect.objectContaining({ id: 'case-1:hit:item-id-1' }));
     });
 
     it('passes the namespaced id to useDroppable', async () => {
-      renderEntry({ caseId: 'case-1', itemType: 'folder', path: 'docs' });
-      expect(vi.mocked(useDroppable)).toHaveBeenCalledWith(expect.objectContaining({ id: 'case-1:folder:docs' }));
+      renderEntry({ caseId: 'case-1', itemType: 'folder', entry: { id: 'folder-id', leaves: [], folders: {} } as any });
+      expect(vi.mocked(useDroppable)).toHaveBeenCalledWith(expect.objectContaining({ id: 'case-1:folder:folder-id' }));
     });
 
-    it('uses empty string prefix when caseId is null', async () => {
+    it('falls back to label when entry has no id', async () => {
       const { useDraggable } = await import('@dnd-kit/core');
-      renderEntry({ caseId: null, itemType: 'hit', path: 'item' });
-      expect(vi.mocked(useDraggable)).toHaveBeenCalledWith(expect.objectContaining({ id: ':hit:item' }));
+      renderEntry({ caseId: null, itemType: 'hit', label: 'my label' });
+      expect(vi.mocked(useDraggable)).toHaveBeenCalledWith(expect.objectContaining({ id: ':hit:my label' }));
     });
   });
 
@@ -243,7 +244,7 @@ describe('FolderEntry', () => {
   describe('drag data payload', () => {
     it('includes type, label, entry, and caseId in drag data', async () => {
       const { useDraggable } = await import('@dnd-kit/core');
-      const entry = hitItem('folder/item');
+      const entry = hitItem('hit-value', 'entry-id');
       renderEntry({ caseId: 'case-1', itemType: 'hit', label: 'my label', entry });
       expect(vi.mocked(useDraggable)).toHaveBeenCalledWith(
         expect.objectContaining({

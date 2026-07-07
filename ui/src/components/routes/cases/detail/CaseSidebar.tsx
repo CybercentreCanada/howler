@@ -9,14 +9,39 @@ import {
   type DragEndEvent,
   type DragStartEvent
 } from '@dnd-kit/core';
-import { CalendarMonth, Circle, Dashboard, Dataset, Rule, Search } from '@mui/icons-material';
-import { alpha, Box, Card, Chip, Divider, LinearProgress, Skeleton, Stack, Typography, useTheme } from '@mui/material';
+import {
+  AddCircle,
+  CalendarMonth,
+  Circle,
+  Dashboard,
+  Dataset,
+  Description,
+  Folder,
+  Refresh,
+  Rule,
+  Search,
+  UnfoldLess
+} from '@mui/icons-material';
+import {
+  alpha,
+  Box,
+  Card,
+  Chip,
+  IconButton,
+  LinearProgress,
+  Skeleton,
+  Stack,
+  Typography,
+  useTheme
+} from '@mui/material';
 import api from 'api';
+import { ModalContext } from 'components/app/providers/ModalProvider';
 import useMyApi from 'components/hooks/useMyApi';
+import AddItemToCaseModal from 'components/routes/cases/modals/AddItemToCaseModal';
 import dayjs from 'dayjs';
 import type { Case } from 'models/entities/generated/Case';
 import type { Item } from 'models/entities/generated/Item';
-import { useCallback, useState, type FC } from 'react';
+import { useCallback, useContext, useReducer, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
 import { ESCALATION_COLOR_MAP } from '../constants';
@@ -35,6 +60,7 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
   const { t } = useTranslation();
   const location = useLocation();
   const theme = useTheme();
+  const { showModal } = useContext(ModalContext);
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -51,6 +77,7 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
 
   const [loading, setLoading] = useState(false);
   const [activeDragData, setActiveDragData] = useState<{ type: string; label: string } | null>(null);
+  const [collapseKey, collapse] = useReducer(x => x + 1, 0);
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const data = event.active.data.current;
@@ -101,38 +128,21 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
       }
 
       const movingEntry: Item | Tree = active.data.current.entry;
-      const movingType = active.data.current.type;
+      const movingId = (movingEntry as Item).id ?? (movingEntry as Tree).id;
+      const targetFolderId = over.data.current.folderId ?? null;
 
-      if (!movingEntry?.path) {
+      if (!movingId) {
         return;
       }
 
-      const filename = movingEntry.path.split('/').pop();
-      const targetPath = over.data.current.path ? `${over.data.current.path}/${filename}` : filename;
-
-      if (!targetPath) {
+      const currentParent = (movingEntry as Item).parent ?? (movingEntry as Tree).parentId ?? null;
+      if (currentParent === targetFolderId) {
         return;
       }
-
-      if (targetPath === movingEntry.path) {
-        return;
-      }
-
-      const items = _case.items.map(_item =>
-        (
-          movingType === 'folder'
-            ? _item.path.startsWith(movingEntry.path)
-            : _item.value === (movingEntry as Item).value
-        )
-          ? { ..._item, path: _item.path.replace(movingEntry.path, targetPath) }
-          : _item
-      );
 
       try {
         setLoading(true);
-
-        const updatedCase = await dispatchApi(api.v2.case.put(_case.case_id, { items }));
-
+        const updatedCase = await dispatchApi(api.v2.case.items.move(_case.case_id, movingId, targetFolderId));
         update(updatedCase);
       } finally {
         setLoading(false);
@@ -235,7 +245,91 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
         </Typography>
       </Stack>
 
-      <Divider />
+      <Card sx={{ borderRadius: 0, p: 0.25 }}>
+        <Stack direction="row" spacing={0.25}>
+          <div style={{ flex: 1 }} />
+
+          <IconButton
+            size="small"
+            sx={{ position: 'relative' }}
+            onClick={() => {
+              if (_case) {
+                showModal(<AddItemToCaseModal caseData={_case} onUpdated={update} />);
+              }
+            }}
+          >
+            <Description sx={{ fontSize: '18px' }} />
+            <AddCircle
+              sx={{
+                fontSize: '12px',
+                position: 'absolute',
+                bottom: 2,
+                right: 2,
+                backgroundColor: theme.palette.background.paper,
+                borderRadius: '100%'
+              }}
+              htmlColor="grey"
+            />
+          </IconButton>
+
+          <IconButton
+            size="small"
+            sx={{ position: 'relative' }}
+            onClick={async () => {
+              if (_case?.case_id) {
+                try {
+                  setLoading(true);
+                  const updatedCase = await dispatchApi(
+                    api.v2.case.items.post(_case.case_id, {
+                      type: 'folder',
+                      value: t('page.cases.sidebar.new_folder')
+                    })
+                  );
+                  update(updatedCase);
+                } finally {
+                  setLoading(false);
+                }
+              }
+            }}
+          >
+            <Folder sx={{ fontSize: '18px' }} />
+            <AddCircle
+              sx={{
+                fontSize: '12px',
+                position: 'absolute',
+                bottom: 2,
+                right: 2,
+                backgroundColor: theme.palette.background.paper,
+                borderRadius: '100%'
+              }}
+              htmlColor="grey"
+            />
+          </IconButton>
+
+          <IconButton
+            size="small"
+            onClick={async () => {
+              if (_case?.case_id) {
+                try {
+                  setLoading(true);
+                  const refreshedCase = await dispatchApi(api.v2.case.get(_case.case_id));
+                  if (refreshedCase) {
+                    update(refreshedCase);
+                  }
+                } finally {
+                  setLoading(false);
+                }
+              }
+            }}
+          >
+            <Refresh sx={{ fontSize: '18px' }} />
+          </IconButton>
+
+          <IconButton size="small" onClick={collapse}>
+            <UnfoldLess sx={{ fontSize: '18px' }} />
+          </IconButton>
+        </Stack>
+      </Card>
 
       {_case && (
         <Box
@@ -255,17 +349,11 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
-              <CaseFolder case={_case} onItemUpdated={update} />
+              <CaseFolder case={_case} onItemUpdated={update} collapseKey={collapseKey} />
               <RootDropZone caseId={_case.case_id} />
               <DragOverlay dropAnimation={null}>
                 {activeDragData && (
-                  <FolderEntry
-                    caseId={null}
-                    path=""
-                    indent={0}
-                    label={activeDragData.label}
-                    itemType={activeDragData.type}
-                  />
+                  <FolderEntry caseId={null} indent={0} label={activeDragData.label} itemType={activeDragData.type} />
                 )}
               </DragOverlay>
             </DndContext>

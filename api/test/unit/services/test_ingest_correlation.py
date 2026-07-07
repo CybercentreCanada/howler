@@ -70,7 +70,6 @@ class TestIngestedAlertsCorrelation:
             "case-1",
             item_type="hit",
             item_value="ingested-hit-1",
-            item_path="alerts/incoming",
         )
 
     @patch("howler.services.correlation_service.search_service")
@@ -154,13 +153,11 @@ class TestIngestedAlertsCorrelation:
             "case-a",
             item_type="hit",
             item_value="hit-1",
-            item_path="case-a-alerts",
         )
         mock_case_svc.append_case_item.assert_any_call(
             "case-b",
             item_type="hit",
             item_value="hit-1",
-            item_path="case-b-all",
         )
 
     @patch("howler.services.correlation_service.search_service")
@@ -221,7 +218,6 @@ class TestIngestedAlertsCorrelation:
             "case-1",
             item_type="hit",
             item_value="hit-tpl",
-            item_path="alerts/Phishing Detector/alert",
         )
 
 
@@ -263,7 +259,6 @@ class TestIngestedEventsCorrelation:
             "case-1",
             item_type="event",
             item_value="obs-1",
-            item_path="events",
         )
 
     @patch("howler.services.correlation_service.search_service")

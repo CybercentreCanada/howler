@@ -309,7 +309,12 @@ def append_case_item(case_id: str, item: CaseItem) -> Case: ...
 
 @overload
 def append_case_item(
-    case_id: str, item: None = None, item_type: str = ..., item_value: str = ..., item_path: str = ...
+    case_id: str,
+    item: None = None,
+    item_type: str = ...,
+    item_value: str = ...,
+    item_parent: str | None = ...,
+    item_name: str | None = ...,
 ) -> Case: ...
 
 
@@ -318,50 +323,47 @@ def append_case_item(  # noqa: C901
     item: CaseItem | None = None,
     item_type: str | None = None,
     item_value: str | None = None,
-    item_path: str = "related",
+    item_parent: str | None = None,
+    item_name: str | None = None,
 ) -> Case:
     """Append an item to a case, dispatching to the appropriate handler based on item type.
 
     Can be called either with a pre-built CaseItem object or with individual
-    item_type, item_value, and item_path parameters to construct one.
+    item_type, item_value, item_parent, and item_name parameters to construct one.
 
     Args:
         case_id: Unique identifier of the case to append the item to.
-        item: A pre-built CaseItem object. If provided, item_type, item_value,
-            and item_path are ignored.
-        item_type: The type of item to append (e.g. "hit", "event", "case",
-            "table", "lead", "reference"). Required if item is not provided.
+        item: A pre-built CaseItem object. If provided, other params are ignored.
+        item_type: The type of item to append. Required if item is not provided.
         item_value: The value/identifier of the item to append. Required if item
             is not provided.
-        item_path: Path for organizing the item within the case. Must not end
-            with a trailing "/".
+        item_parent: Parent folder ID, or None for root placement.
+        item_name: Optional display name for the item.
 
     Raises:
         InvalidDataException: If item is not provided and item_type or item_value
-            are missing, or if item_type is not a valid CaseItemTypes value, or
-            if the resolved item path ends with a trailing "/".
+            are missing, or if item_type is not a valid CaseItemTypes value.
     """
     if item is None:
         if not all([item_type, item_value]):
-            raise InvalidDataException("item_type, item_value, and item_path are required if item is not provided")
+            raise InvalidDataException("item_type and item_value are required if item is not provided")
 
         if item_type not in CaseItemTypes:
             raise InvalidDataException(f"Invalid item type: {item_type}, valid types are: {', '.join(CaseItemTypes)}")
 
-        item = CaseItem({"type": item_type, "value": item_value, "path": item_path})
+        data: dict = {"type": item_type, "value": item_value, "parent": item_parent}
+        if item_name is not None:
+            data["name"] = item_name
+        item = CaseItem(data)
 
-    if item.path.endswith("/"):
-        raise InvalidDataException("item path must not end with a trailing '/'")
-
-    # Verify the case exists and deduplicate paths: if an existing item
-    # already occupies the same path, append the new item's unique value in
-    # parentheses to avoid a collision.
+    # Verify the case exists.
     _case = datastore().case.get(case_id)
     if _case is None:
         raise NotFoundException(f"Case {case_id} does not exist")
 
-    if any(item.path == case_item.path for case_item in _case.items):
-        item.path = f"{item.path} ({item.value})"
+    # If a parent is specified, ensure it references an existing folder item.
+    if item.parent is not None:
+        _ensure_parent_exists(_case, item.parent)
 
     match item.type:
         case CaseItemTypes.HIT:
@@ -376,8 +378,247 @@ def append_case_item(  # noqa: C901
             return append_lead(case_id, item)
         case CaseItemTypes.REFERENCE:
             return append_reference(case_id, item)
+        case CaseItemTypes.FOLDER:
+            return append_folder(case_id, item)
+        case CaseItemTypes.MARKDOWN:
+            return append_markdown(case_id, item)
         case _:
-            raise InvalidDataException(f"Unsupported item type: {item_type}")
+            raise InvalidDataException(f"Unsupported item type: {item.type}")
+
+
+def _ensure_parent_exists(_case: Case, parent_id: str) -> None:
+    """Validate that a parent ID references an existing folder item in the case.
+
+    Args:
+        _case: The case whose items to search.
+        parent_id: The ID that must correspond to a folder-type item.
+
+    Raises:
+        InvalidDataException: If the parent ID does not match any folder item.
+    """
+    parent = next((item for item in _case.items if item.id == parent_id), None)
+    if parent is None:
+        raise InvalidDataException(f"Parent item '{parent_id}' does not exist in the case")
+    if parent.type != CaseItemTypes.FOLDER:
+        raise InvalidDataException(f"Parent item '{parent_id}' is not a folder (type: {parent.type})")
+
+
+def append_folder(case_id: str, item: CaseItem) -> Case:
+    """Append a folder item to a case.
+
+    Validates that the case exists and that the folder name is not already
+    present under the same parent. Persists the updated case.
+
+    Args:
+        case_id: Unique identifier of the case.
+        item: A CaseItem of type ``folder`` whose ``value`` is the folder display name.
+
+    Raises:
+        NotFoundException: If the case does not exist.
+        InvalidDataException: If a folder with the same value already exists under the same parent.
+        DataStoreException: If saving the case fails.
+    """
+    ds = datastore()
+
+    _case = ds.case.get(case_id)
+    if _case is None:
+        raise NotFoundException(f"Case {case_id} does not exist")
+
+    # Check for duplicate folder under same parent
+    if any(
+        ci.type == CaseItemTypes.FOLDER and ci.value == item.value and ci.parent == item.parent for ci in _case.items
+    ):
+        raise InvalidDataException(
+            f"Folder '{item.value}' already exists under parent '{item.parent}' in case {case_id}"
+        )
+
+    _case.items.append(item)
+
+    if not ds.case.save(_case.case_id, _case):
+        raise DataStoreException(f"Failed to save {_case.case_id} with new folder {item.value}")
+
+    comms_service.emit("cases", {"case": _case.as_primitives()})
+
+    return _case
+
+
+def append_markdown(case_id: str, item: CaseItem) -> Case:
+    """Append a markdown document item to a case.
+
+    The markdown content is stored directly in ``item.value``.
+
+    Args:
+        case_id: Unique identifier of the case.
+        item: A CaseItem of type ``markdown`` whose ``value`` is the markdown content.
+
+    Raises:
+        NotFoundException: If the case does not exist.
+        DataStoreException: If saving the case fails.
+    """
+    ds = datastore()
+
+    _case = ds.case.get(case_id)
+    if _case is None:
+        raise NotFoundException(f"Case {case_id} does not exist")
+
+    _case.items.append(item)
+
+    if not ds.case.save(_case.case_id, _case):
+        raise DataStoreException(f"Failed to save {_case.case_id} with new markdown item")
+
+    comms_service.emit("cases", {"case": _case.as_primitives()})
+
+    return _case
+
+
+def move_case_item(case_id: str, item_id: str, new_parent: str | None) -> Case:
+    """Move an item to a different parent folder (or to root).
+
+    Args:
+        case_id: Unique identifier of the case.
+        item_id: The UUID of the item to move.
+        new_parent: The UUID of the target folder, or None for root.
+
+    Returns:
+        The updated Case object.
+
+    Raises:
+        NotFoundException: If the case or item does not exist.
+        InvalidDataException: If the target parent is invalid or would create a cycle.
+        DataStoreException: If saving the case fails.
+    """
+    ds = datastore()
+
+    _case = ds.case.get(case_id)
+    if _case is None:
+        raise NotFoundException(f"Case {case_id} does not exist")
+
+    item = next((i for i in _case.items if i.id == item_id), None)
+    if item is None:
+        raise NotFoundException(f"Item {item_id} does not exist in case {case_id}")
+
+    # Case items must remain root-level
+    if item.type == CaseItemTypes.CASE and new_parent is not None:
+        raise InvalidDataException("Case items must be root-level (parent must be null)")
+
+    # Validate new parent
+    if new_parent is not None:
+        _ensure_parent_exists(_case, new_parent)
+
+        # Prevent cycles: the new parent must not be a descendant of the item being moved
+        if item.type == CaseItemTypes.FOLDER:
+            if _is_descendant(_case.items, new_parent, item_id):
+                raise InvalidDataException(f"Cannot move folder '{item_id}' under its own descendant '{new_parent}'")
+
+    item.parent = new_parent
+
+    if not ds.case.save(_case.case_id, _case):
+        raise DataStoreException("Failed to save case after item move")
+
+    comms_service.emit("cases", {"case": _case.as_primitives()})
+
+    return _case
+
+
+def _is_descendant(items: list[CaseItem], candidate_id: str, ancestor_id: str) -> bool:
+    """Check if candidate_id is a descendant of ancestor_id in the item tree.
+
+    Walks up from candidate_id via parent pointers. Returns True if ancestor_id
+    is encountered, indicating a cycle would be created.
+    """
+    items_by_id = {item.id: item for item in items}
+    current: str | None = candidate_id
+    visited: set[str] = set()
+    while current is not None:
+        if current == ancestor_id:
+            return True
+        if current in visited:
+            break
+        visited.add(current)
+        item = items_by_id.get(current)
+        if item is None:
+            break
+        current = item.parent
+    return False
+
+
+def remove_case_items(case_id: str, item_ids: list[str], force: bool = False) -> Case:  # noqa: C901
+    """Remove items from a case by their IDs.
+
+    Args:
+        case_id: Unique identifier of the case.
+        item_ids: List of item UUIDs to remove.
+        force: If True, also remove children of folder items. If False,
+            reject removal of non-empty folders.
+
+    Returns:
+        The updated Case object.
+
+    Raises:
+        NotFoundException: If the case or any item does not exist.
+        InvalidDataException: If a non-empty folder is being removed without force=True.
+        DataStoreException: If saving the case fails.
+    """
+    ds = datastore()
+
+    _case = ds.case.get(case_id)
+    if _case is None:
+        raise NotFoundException(f"Case {case_id} does not exist")
+
+    items_by_id = {item.id: item for item in _case.items}
+    missing = [iid for iid in item_ids if iid not in items_by_id]
+    if missing:
+        raise NotFoundException(f"Item(s) not found in case: {', '.join(missing)}")
+
+    # Collect all IDs to remove (including children if force=True)
+    ids_to_remove: set[str] = set()
+    for iid in item_ids:
+        item = items_by_id[iid]
+        if item.type == CaseItemTypes.FOLDER:
+            children = [ci for ci in _case.items if ci.parent == iid]
+            if children and not force:
+                raise InvalidDataException(
+                    f"Folder '{iid}' is not empty. Use force=True to remove it and its children."
+                )
+            if force:
+                # Recursively collect all descendants
+                ids_to_remove.update(_collect_descendant_ids(_case.items, iid))
+        ids_to_remove.add(iid)
+
+    # Resolve backing objects for back-reference cleanup
+    items_to_remove = [items_by_id[iid] for iid in ids_to_remove if iid in items_by_id]
+    backing_objs: list[Hit | Event] = []
+    for item in items_to_remove:
+        if item.type in [CaseItemTypes.HIT, CaseItemTypes.EVENT]:
+            obj = ds[item.type].get(item.value)
+            if obj:
+                backing_objs.append(obj)
+
+    _case.items = [item for item in _case.items if item.id not in ids_to_remove]
+
+    if not ds.case.save(_case.case_id, _case):
+        raise DataStoreException("Failed to save case after item removal")
+
+    for backing_obj in backing_objs:
+        remove_backreference(backing_obj, _case.case_id)
+
+    _sync_case_metadata(case_id)
+
+    updated_case = ds.case.get(_case.case_id)
+    if updated_case:
+        comms_service.emit("cases", {"case": updated_case.as_primitives()})
+
+    return updated_case or _case
+
+
+def _collect_descendant_ids(items: list[CaseItem], parent_id: str) -> set[str]:
+    """Recursively collect all descendant item IDs of a given parent."""
+    result: set[str] = set()
+    for item in items:
+        if item.parent == parent_id:
+            result.add(item.id)
+            result.update(_collect_descendant_ids(items, item.id))
+    return result
 
 
 def append_hit(case_id: str, item: CaseItem) -> Case:
@@ -485,10 +726,8 @@ def append_case(case_id: str, item: CaseItem) -> Case:
     the referenced case is not already present in the parent case. It then persists the updated
     parent case.
 
-    Case items are always placed at the root of the case structure (no subfolders).
-    If the supplied ``item.path`` contains folder segments (e.g. ``"folder/child-case"``),
-    those segments are stripped and only the last path component is retained.  A log
-    entry is recorded whenever normalization changes the original path.
+    Case items must always be root-level; the ``CaseItem.__init__`` guard rejects
+    construction with a non-null ``parent`` for ``type == "case"``.
 
     Args:
         case_id: Unique identifier of the parent case to append the reference to.
@@ -513,40 +752,6 @@ def append_case(case_id: str, item: CaseItem) -> Case:
 
     if referenced_case is None:
         raise NotFoundException(f"Referenced case {item.value} not found, cannot be added to case")
-
-    # Enforce root placement: case items must not live inside subfolders.
-    # Strip any leading folder segments, keeping only the last path component.
-    original_path = item.path
-    if original_path and "/" in original_path:
-        stripped_path = original_path.strip("/")
-        root_path = stripped_path.split("/")[-1] if stripped_path else None
-    else:
-        root_path = original_path
-
-    if not root_path:
-        item.path = item.value
-    elif root_path != original_path:
-        logger.info(
-            "Case item path '%s' contains folder segments; normalizing to root path '%s'",
-            original_path,
-            root_path,
-        )
-        item.path = root_path
-        _case.log.append(
-            CaseLog(
-                {
-                    "timestamp": "NOW",
-                    "key": "items",
-                    "previous_value": original_path,
-                    "new_value": root_path,
-                    "user": "system",
-                    "explanation": (
-                        f"Case item path normalized from '{original_path}' to '{root_path}': "
-                        "case references must be placed at the root of the case structure."
-                    ),
-                }
-            )
-        )
 
     _case.items.append(item)
 
@@ -735,110 +940,40 @@ def remove_backreference(backing_obj: Hit | Event | None, case_id: str):
         datastore()[backing_obj.__class__.__name__.lower()].save(backing_obj.howler.id, backing_obj)
 
 
-def remove_case_items(case_id: str, values: list[str]):
-    """Remove one or more items from a case in a single atomic operation.
-
-    Validates that every requested value exists within the case before making
-    any modifications.  If any value is missing the call raises NotFoundException
-    without altering the case.  When all values are confirmed, all matching
-    items are removed in memory, the case is persisted once, and back-references
-    are cleaned up from any associated hits or events.
+def rename_case_item(case_id: str, item_id: str, new_name: str) -> Case:
+    """Rename a single item within a case by updating its display name.
 
     Args:
-        case_id: Unique identifier of the case to remove items from.
-        item_values: List of item values (IDs / URLs) to remove.
+        case_id: Unique identifier of the case.
+        item_id: The UUID of the item to rename.
+        new_name: The new display name for the item.
 
     Returns:
         The updated Case object.
 
     Raises:
-        NotFoundException: If the case does not exist, or if any requested value
-            is not present in the case's items list.
+        NotFoundException: If the case or item does not exist.
+        InvalidDataException: If new_name is empty.
         DataStoreException: If persisting the updated case fails.
     """
-    ds = datastore()
-
-    _case = ds.case.get(key=case_id)
-
-    if not _case:
-        raise NotFoundException(f"Case {case_id} does not exist")
-
-    # Build a lookup of value → item for all items currently in the case.
-    items_by_value = {_item["value"]: _item for _item in _case.items}
-
-    # Pre-validate all requested values before touching anything.
-    missing = [v for v in values if v not in items_by_value]
-    if missing:
-        raise NotFoundException(f"Case item(s) not found in case: {', '.join(missing)}")
-
-    # Resolve items and collect backing objects that need back-reference cleanup.
-    items_to_remove = [items_by_value[v] for v in values]
-    backing_objs: list[Hit | Event] = []
-    for item in items_to_remove:
-        if item.type in [CaseItemTypes.HIT, CaseItemTypes.EVENT]:
-            obj = ds[item.type].get(item.value)
-            if obj:
-                backing_objs.append(obj)
-
-    # Remove all items in memory, then persist the case once.
-    for item in items_to_remove:
-        _case.items.remove(item)
-
-    if not ds.case.save(_case.case_id, _case):
-        raise DataStoreException("Failed to save case after item removal")
-
-    # Clean up back-references after the case is safely persisted.
-    for backing_obj in backing_objs:
-        remove_backreference(backing_obj, _case.case_id)
-
-    _sync_case_metadata(case_id)
-
-    updated_case = ds.case.get(_case.case_id)
-    if updated_case:
-        comms_service.emit("cases", {"case": updated_case.as_primitives()})
-
-    return _case
-
-
-def rename_case_item(case_id: str, item_value: str, new_path: str) -> Case:
-    """Rename (re-path) a single item within a case.
-
-    Validates that the target item exists in the case, that the new path is not
-    already used by another item, then updates the item's path in memory and
-    persists the case once.
-
-    Args:
-        case_id: Unique identifier of the case to modify.
-        item_value: The value/identifier of the item to rename.
-        new_path: The new path for the item (must not end with '/').
-
-    Returns:
-        The updated Case object.
-
-    Raises:
-        NotFoundException: If the case does not exist or the item is not found.
-        InvalidDataException: If new_path ends with '/' or is already taken by
-            another item in the case.
-        DataStoreException: If persisting the updated case fails.
-    """
-    if not new_path or new_path.endswith("/"):
-        raise InvalidDataException("new_path must be a non-empty string and must not end with '/'")
+    if not new_name or not new_name.strip():
+        raise InvalidDataException("new_name must be a non-empty string")
 
     ds = datastore()
 
-    _case = ds.case.get(key=case_id)
-
-    if not _case:
+    _case = ds.case.get(case_id)
+    if _case is None:
         raise NotFoundException(f"Case {case_id} does not exist")
 
-    item = next((_item for _item in _case.items if _item["value"] == item_value), None)
-    if not item:
-        raise NotFoundException(f"Case item {item_value} does not exist in case {case_id}")
+    item = next((i for i in _case.items if i.id == item_id), None)
+    if item is None:
+        raise NotFoundException(f"Item {item_id} does not exist in case {case_id}")
 
-    if any(_item["path"] == new_path for _item in _case.items if _item["value"] != item_value):
-        raise InvalidDataException(f"An item already exists at path '{new_path}' in case {case_id}")
+    # Guard: reject if the target name is already used by a sibling (item with the same parent).
+    if any(i.name == new_name.strip() and i.id != item_id and i.parent == item.parent for i in _case.items):
+        raise InvalidDataException(f"Name '{new_name.strip()}' is already used by a sibling item in this case")
 
-    item.path = new_path
+    item.name = new_name.strip()
 
     if not ds.case.save(_case.case_id, _case):
         raise DataStoreException("Failed to save case after item rename")

@@ -72,13 +72,11 @@ def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = 
         added = []
         skipped = []
         for hit in matching_hits:
-            child_label = f"hits/{hit.howler.analytic} ({hit.howler.id})"
             try:
                 case_service.append_case_item(
                     case_id,
                     item_type="hit",
                     item_value=hit.howler.id,
-                    item_path=child_label,
                 )
                 added.append(hit.howler.id)
             except Exception:

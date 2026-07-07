@@ -89,9 +89,16 @@ const makeCase = (id: string, items: Item[] = []): Case => ({
   items
 });
 
-const hitItem = (path: string, value = path): Item => ({ type: 'hit', value, path });
-const caseItem = (path: string, value: string): Item => ({ type: 'case', value, path });
-const refItem = (path: string, value: string): Item => ({ type: 'reference', value, path });
+const hitItem = (name: string, value = name, id = `id-${value}`): Item => ({ id, type: 'hit', value, name });
+const caseItem = (name: string, value: string, id = `id-${value}`): Item => ({ id, type: 'case', value, name });
+const refItem = (name: string, value: string, id = `id-${value}`): Item => ({ id, type: 'reference', value, name });
+const folderItem = (name: string, id: string, parent?: string): Item => ({
+  id,
+  type: 'folder',
+  value: name,
+  name,
+  ...(parent ? { parent } : {})
+});
 
 const renderFolder = (
   props: Partial<React.ComponentPropsWithoutRef<typeof CaseFolder>> & { case: Case },
@@ -121,20 +128,20 @@ beforeEach(() => {
 
 describe('CaseFolder', () => {
   describe('flat leaves', () => {
-    it('renders a leaf label derived from path', () => {
-      renderFolder({ case: makeCase('c1', [hitItem('folder/my-hit', 'v1')]) });
+    it('renders a leaf label from item name', () => {
+      renderFolder({ case: makeCase('c1', [hitItem('my-hit', 'v1')]) });
       expect(screen.getByText('my-hit')).toBeInTheDocument();
     });
 
-    it('falls back to value when leaf has no path', () => {
-      const noPath: Item = { type: 'hit', value: 'bare-value' };
-      // Items with no path are excluded from the tree entirely
-      renderFolder({ case: makeCase('c1', [noPath]) });
-      expect(screen.queryByText('bare-value')).not.toBeInTheDocument();
+    it('falls back to value when leaf has no name', () => {
+      const noName: Item = { id: 'id-bare', type: 'hit', value: 'bare-value' };
+      renderFolder({ case: makeCase('c1', [noName]) });
+      expect(screen.getByText('bare-value')).toBeInTheDocument();
     });
 
     it('renders multiple leaves in the same folder', () => {
-      const items = [hitItem('folder/alpha', 'va'), hitItem('folder/beta', 'vb')];
+      const fld = folderItem('folder', 'f1');
+      const items = [fld, { ...hitItem('alpha', 'va'), parent: 'f1' }, { ...hitItem('beta', 'vb'), parent: 'f1' }];
       renderFolder({ case: makeCase('c1', items) });
       expect(screen.getByText('alpha')).toBeInTheDocument();
       expect(screen.getByText('beta')).toBeInTheDocument();
@@ -146,7 +153,7 @@ describe('CaseFolder', () => {
       renderFolder({
         case: makeCase('c1'),
         name: 'documents',
-        folder: { path: 'documents', leaves: [hitItem('documents/item', 'v')] }
+        folder: { id: 'doc-folder', leaves: [hitItem('item', 'v')] }
       });
       expect(screen.getByText('documents')).toBeInTheDocument();
     });
@@ -165,7 +172,7 @@ describe('CaseFolder', () => {
       renderFolder({
         case: makeCase('c1'),
         name: 'docs',
-        folder: { path: 'docs', leaves: [hitItem('docs/item', 'v')] }
+        folder: { id: 'docs-folder', leaves: [hitItem('item', 'v')] }
       });
       expect(screen.getByText('item')).toBeInTheDocument();
       await user.click(screen.getByText('docs'));
@@ -177,7 +184,7 @@ describe('CaseFolder', () => {
       renderFolder({
         case: makeCase('c1'),
         name: 'docs',
-        folder: { path: 'docs', leaves: [hitItem('docs/item', 'v')] }
+        folder: { id: 'docs-folder', leaves: [hitItem('item', 'v')] }
       });
       await user.click(screen.getByText('docs'));
       await user.click(screen.getByText('docs'));
@@ -186,68 +193,70 @@ describe('CaseFolder', () => {
   });
 
   describe('leaf link URLs', () => {
-    it('builds a /cases/<id>/<path> URL for a hit leaf', () => {
-      renderFolder({ case: makeCase('case-1', [hitItem('folder/my-hit', 'hit-id')]) });
+    it('builds a /cases/<id>/<itemId> URL for a hit leaf', () => {
+      renderFolder({ case: makeCase('case-1', [hitItem('my-hit', 'hit-id', 'item-1')]) });
       const link = screen.getByText('my-hit').closest('a');
-      expect(link).toHaveAttribute('href', '/cases/case-1/folder/my-hit');
+      expect(link).toHaveAttribute('href', '/cases/case-1/item-1');
     });
 
     it('uses the leaf value directly as href for a reference item', () => {
-      renderFolder({ case: makeCase('case-1', [refItem('links/ext', 'https://example.com')]) });
+      renderFolder({ case: makeCase('case-1', [refItem('ext', 'https://example.com')]) });
       const link = screen.getByText('ext').closest('a');
       expect(link).toHaveAttribute('href', 'https://example.com');
     });
 
-    it('omits the path segment when the leaf has no path (only value)', () => {
-      // A leaf item with value but no structural path still renders the root case URL
-      const items = [hitItem('top', 'top-val')];
+    it('uses the item id in the URL', () => {
+      const items = [hitItem('top', 'top-val', 'item-top')];
       renderFolder({ case: makeCase('case-1', items) });
       const link = screen.getByText('top').closest('a');
-      expect(link).toHaveAttribute('href', '/cases/case-1/top');
+      expect(link).toHaveAttribute('href', '/cases/case-1/item-top');
     });
   });
 
-  describe('nested case paths', () => {
-    it('prepends parentCasePaths to the leaf URL', () => {
-      const leaf = hitItem('example/page', 'page-val');
+  describe('nested case id paths', () => {
+    it('prepends parentCaseIds to the leaf URL', () => {
+      const leaf = hitItem('page', 'page-val', 'id-page');
       renderFolder(
         {
           case: makeCase('case3', [leaf]),
-          parentCasePaths: ['cases/caseone', 'cases/casetwo']
+          parentCaseIds: ['id-one', 'id-two']
         },
         'case1'
       );
       const link = screen.getByText('page').closest('a');
-      expect(link).toHaveAttribute('href', '/cases/case1/cases/caseone/cases/casetwo/example/page');
+      expect(link).toHaveAttribute('href', '/cases/case1/id-one/id-two/id-page');
     });
 
     it('produces the correct URL at one level of nesting', () => {
-      const leaf = hitItem('data/item', 'val');
+      const leaf = hitItem('item', 'val', 'id-val');
       renderFolder(
         {
           case: makeCase('case2', [leaf]),
-          parentCasePaths: ['cases/caseone']
+          parentCaseIds: ['id-one']
         },
         'case1'
       );
       const link = screen.getByText('item').closest('a');
-      expect(link).toHaveAttribute('href', '/cases/case1/cases/caseone/data/item');
+      expect(link).toHaveAttribute('href', '/cases/case1/id-one/id-val');
     });
   });
 
   describe('subfolders', () => {
     it('renders subfolder names', () => {
+      const fld = folderItem('alpha', 'f-alpha');
+      const hit: Item = { ...hitItem('item', 'v'), parent: 'f-alpha' };
       renderFolder({
-        case: makeCase('c1', [hitItem('alpha/item', 'v')])
+        case: makeCase('c1', [fld, hit])
       });
-      // The structural folder "alpha" is not rendered as a labelled header at root level,
-      // but its child leaf label "item" should be visible
       expect(screen.getByText('item')).toBeInTheDocument();
     });
 
     it('renders nested subfolder children', () => {
+      const fldA = folderItem('a', 'f-a');
+      const fldB = folderItem('b', 'f-b', 'f-a');
+      const hit: Item = { ...hitItem('deep', 'v'), parent: 'f-b' };
       renderFolder({
-        case: makeCase('c1', [hitItem('a/b/deep', 'v')])
+        case: makeCase('c1', [fldA, fldB, hit])
       });
       expect(screen.getByText('deep')).toBeInTheDocument();
     });
@@ -255,7 +264,7 @@ describe('CaseFolder', () => {
 
   describe('nested case expansion', () => {
     it('does not show nested case content before the case leaf is clicked', () => {
-      const items = [caseItem('cases/child', 'child-case-id')];
+      const items = [caseItem('child', 'child-case-id', 'id-child')];
       const _case = makeCase('root', items);
       mockDispatchApi.mockResolvedValue(null);
       renderFolder({ case: _case });
@@ -263,8 +272,8 @@ describe('CaseFolder', () => {
     });
 
     it('fetches the nested case when a case leaf is clicked', async () => {
-      const items = [caseItem('cases/child', 'child-case-id')];
-      const nestedCase = makeCase('child-case-id', [hitItem('nested/page', 'p')]);
+      const items = [caseItem('child', 'child-case-id', 'id-child')];
+      const nestedCase = makeCase('child-case-id', [hitItem('page', 'p')]);
       mockGetCase.mockReturnValue(Promise.resolve(nestedCase));
       mockDispatchApi.mockImplementation((p: Promise<any>) => p);
 
@@ -280,11 +289,11 @@ describe('CaseFolder', () => {
     });
 
     it('renders the nested case items after the fetch resolves', async () => {
-      const nestedCase = makeCase('child-case-id', [hitItem('nested/page', 'p')]);
+      const nestedCase = makeCase('child-case-id', [hitItem('page', 'p')]);
       mockGetCase.mockReturnValue(Promise.resolve(nestedCase));
       mockDispatchApi.mockImplementation((p: Promise<any>) => p);
 
-      renderFolder({ case: makeCase('root', [caseItem('cases/child', 'child-case-id')]) });
+      renderFolder({ case: makeCase('root', [caseItem('child', 'child-case-id', 'id-child')]) });
 
       act(() => {
         screen.getByText('child').click();
@@ -296,11 +305,11 @@ describe('CaseFolder', () => {
     });
 
     it('builds the correct URL for a leaf inside a nested case', async () => {
-      const nestedCase = makeCase('child-case-id', [hitItem('data/item', 'val')]);
+      const nestedCase = makeCase('child-case-id', [hitItem('item', 'val', 'id-val')]);
       mockGetCase.mockReturnValue(Promise.resolve(nestedCase));
       mockDispatchApi.mockImplementation((p: Promise<any>) => p);
 
-      renderFolder({ case: makeCase('root', [caseItem('cases/child', 'child-case-id')]) });
+      renderFolder({ case: makeCase('root', [caseItem('child', 'child-case-id', 'id-child')]) });
 
       act(() => {
         screen.getByText('child').click();
@@ -308,16 +317,16 @@ describe('CaseFolder', () => {
 
       await waitFor(() => {
         const link = screen.getByText('item').closest('a');
-        expect(link).toHaveAttribute('href', '/cases/root/cases/child/data/item');
+        expect(link).toHaveAttribute('href', '/cases/root/id-child/id-val');
       });
     });
 
     it('does not call the API a second time when a case leaf is toggled closed and re-opened', async () => {
-      const nestedCase = makeCase('child-case-id', [hitItem('nested/page', 'p')]);
+      const nestedCase = makeCase('child-case-id', [hitItem('page', 'p')]);
       mockGetCase.mockReturnValue(Promise.resolve(nestedCase));
       mockDispatchApi.mockImplementation((p: Promise<any>) => p);
 
-      renderFolder({ case: makeCase('root', [caseItem('cases/child', 'child-case-id')]) });
+      renderFolder({ case: makeCase('root', [caseItem('child', 'child-case-id', 'id-child')]) });
 
       act(() => {
         screen.getByText('child').click();
@@ -336,11 +345,11 @@ describe('CaseFolder', () => {
     });
 
     it('hides nested case content after the case leaf is toggled closed', async () => {
-      const nestedCase = makeCase('child-case-id', [hitItem('nested/page', 'p')]);
+      const nestedCase = makeCase('child-case-id', [hitItem('page', 'p')]);
       mockGetCase.mockReturnValue(Promise.resolve(nestedCase));
       mockDispatchApi.mockImplementation((p: Promise<any>) => p);
 
-      renderFolder({ case: makeCase('root', [caseItem('cases/child', 'child-case-id')]) });
+      renderFolder({ case: makeCase('root', [caseItem('child', 'child-case-id', 'id-child')]) });
 
       act(() => {
         screen.getByText('child').click();
@@ -356,15 +365,15 @@ describe('CaseFolder', () => {
 
   describe('rootCaseId propagation', () => {
     it('uses _case.case_id as the root when rootCaseId is not provided', () => {
-      renderFolder({ case: makeCase('my-case', [hitItem('folder/item', 'v')]) });
+      renderFolder({ case: makeCase('my-case', [hitItem('item', 'v', 'id-v')]) });
       const link = screen.getByText('item').closest('a');
-      expect(link).toHaveAttribute('href', '/cases/my-case/folder/item');
+      expect(link).toHaveAttribute('href', '/cases/my-case/id-v');
     });
 
     it('uses the provided rootCaseId in URLs when given', () => {
-      renderFolder({ case: makeCase('nested-case', [hitItem('folder/item', 'v')]) }, 'root-case');
+      renderFolder({ case: makeCase('nested-case', [hitItem('item', 'v', 'id-v')]) }, 'root-case');
       const link = screen.getByText('item').closest('a');
-      expect(link).toHaveAttribute('href', '/cases/root-case/folder/item');
+      expect(link).toHaveAttribute('href', '/cases/root-case/id-v');
     });
   });
 });

@@ -45,8 +45,8 @@ def find_case_for_bundle(bundle_hit_id: str) -> Optional[str]:
     for related_id in hit.howler.related:
         case = ds.case.get(related_id)
         if case is not None:
-            # Confirm the bundle hit is at the root path (empty string)
-            if any(item.value == bundle_hit_id and item.path == "" for item in case.items):
+            # Confirm the bundle hit is present and at root level (no parent)
+            if any(item.value == bundle_hit_id and item.parent is None for item in case.items):
                 return case.case_id
 
     return None
@@ -106,12 +106,11 @@ def create_bundle(
         user=user,
     )
 
-    # Root hit at empty path
+    # Root hit
     case_service.append_case_item(
         case.case_id,
         item_type="hit",
         item_value=odm.howler.id,
-        item_path="",
     )
 
     for child_id in child_hit_ids:
@@ -119,13 +118,11 @@ def create_bundle(
         if child_hit is None:
             continue
 
-        child_label = f"hits/{child_hit.howler.analytic} ({child_id})"
         try:
             case_service.append_case_item(
                 case.case_id,
                 item_type="hit",
                 item_value=child_id,
-                item_path=child_label,
             )
         except (InvalidDataException, NotFoundException, DataStoreException) as exc:
             logger.warning("Could not add child hit %s to case: %s", child_id, exc)
@@ -169,7 +166,6 @@ def add_to_bundle(
             case.case_id,
             item_type="hit",
             item_value=bundle_id,
-            item_path="",
         )
         datastore().hit.commit()
         datastore().case.commit()
@@ -196,12 +192,10 @@ def add_to_bundle(
             logger.warning("Hit %s does not exist, skipping", hit_id)
             continue
 
-        child_label = f"hits/{child_hit.howler.analytic} ({hit_id})"
         case_service.append_case_item(
             case_id,
             item_type="hit",
             item_value=hit_id,
-            item_path=child_label,
         )
 
     updated_case: Case | None = datastore().case.get(case_id)

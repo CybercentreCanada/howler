@@ -193,8 +193,8 @@ describe('CaseDashboard', () => {
     const dashboardCase = createMockCase({
       case_id: 'case-2',
       items: [
-        { type: 'hit', value: 'hit-1', path: 'root/hit-1' },
-        { type: 'event', value: 'event-1', path: 'root/event-1' }
+        { type: 'hit', value: 'hit-1' },
+        { type: 'event', value: 'event-1' }
       ]
     });
 
@@ -244,10 +244,10 @@ describe('CaseDashboard', () => {
     const dashboardCase = createMockCase({
       case_id: 'case-3',
       items: [
-        { type: 'hit', value: 'hit-1', path: 'root/hit-1' },
-        { type: 'event', value: 'event-1', path: 'root/event-1' },
-        { type: 'hit', value: 'hit-2', path: 'root/hit-2' },
-        { type: 'case', value: 'case-child', path: 'root/case-child' }
+        { type: 'hit', value: 'hit-1' },
+        { type: 'event', value: 'event-1' },
+        { type: 'hit', value: 'hit-2' },
+        { type: 'case', value: 'case-child' }
       ]
     });
 

@@ -14,18 +14,18 @@ import { HitLayout } from 'components/elements/hit/HitLayout';
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isHit } from 'utils/typeUtils';
-import type { RecordEntry } from './types';
+import type { FolderOption, RecordEntry } from './types';
 
 const CaseRecordRow: FC<{
   entry: RecordEntry;
-  folderOptions?: string[];
-  onTitleChange: (title: string) => void;
-  onPathChange: (path: string) => void;
-}> = ({ entry, folderOptions = [], onTitleChange, onPathChange }) => {
+  folderOptions?: FolderOption[];
+  onNameChange: (name: string) => void;
+  onParentChange: (parent: string | null) => void;
+}> = ({ entry, folderOptions = [], onNameChange, onParentChange }) => {
   const { t } = useTranslation();
-  const { record, path, title } = entry;
-  const fullPath = path ? `${path}/${title}` : title;
-  const pathError = path.startsWith('/') || path.endsWith('/');
+  const { record, parent, name } = entry;
+
+  const selectedFolder = folderOptions.find(f => f.id === parent) ?? null;
 
   return (
     <Accordion variant="outlined" defaultExpanded sx={{ flexShrink: 0 }}>
@@ -46,35 +46,31 @@ const CaseRecordRow: FC<{
       </AccordionSummary>
       <AccordionDetails>
         <Stack spacing={1}>
-          <Autocomplete
-            freeSolo
-            disablePortal
-            options={folderOptions}
-            value={path}
-            onInputChange={(_ev, newVal) => onPathChange(newVal)}
-            renderInput={params => (
-              <TextField
-                {...params}
-                size="small"
-                placeholder={t('modal.cases.add_to_case.select_path')}
-                fullWidth
-                error={pathError}
-                helperText={pathError ? t('modal.cases.add_to_case.path_invalid') : undefined}
-              />
-            )}
-          />
+          {folderOptions.length > 0 && (
+            <Autocomplete
+              disablePortal
+              options={folderOptions}
+              getOptionLabel={opt => opt.label}
+              isOptionEqualToValue={(opt, val) => opt.id === val.id}
+              value={selectedFolder}
+              onChange={(_ev, newVal) => onParentChange(newVal?.id ?? null)}
+              renderInput={params => (
+                <TextField
+                  {...params}
+                  size="small"
+                  placeholder={t('modal.cases.add_to_case.select_folder')}
+                  fullWidth
+                />
+              )}
+            />
+          )}
           <TextField
             size="small"
             fullWidth
-            placeholder={t('modal.cases.add_to_case.title')}
-            value={title}
-            onChange={ev => onTitleChange(ev.target.value)}
+            placeholder={t('modal.cases.add_to_case.name')}
+            value={name}
+            onChange={ev => onNameChange(ev.target.value)}
           />
-          {title && (
-            <Typography variant="caption" color="textSecondary">
-              {t('modal.cases.add_to_case.full_path', { path: fullPath })}
-            </Typography>
-          )}
         </Stack>
       </AccordionDetails>
     </Accordion>

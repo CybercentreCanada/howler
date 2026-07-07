@@ -7,7 +7,7 @@ from howler.odm.constants import CaseEscalation, Status
 from howler.odm.mixins import DatastoreMixin
 from howler.utils.compat import StrEnum
 
-CASE_ITEM_TYPES = {"event", "hit", "case", "lead", "reference"}
+CASE_ITEM_TYPES = {"event", "hit", "case", "lead", "reference", "folder", "markdown"}
 
 RULE_INDEX_TYPES = {"hit", "event"}
 
@@ -43,6 +43,8 @@ class CaseItemTypes(StrEnum):
             validation by analysts.
         REFERENCE: An external reference such as a URL, document, or resource that
             provides additional context or evidence.
+        FOLDER: An organizational folder for grouping case items hierarchically.
+        MARKDOWN: A markdown document whose value contains the markdown content directly.
     """
 
     EVENT = "event"
@@ -51,6 +53,8 @@ class CaseItemTypes(StrEnum):
     CASE = "case"
     LEAD = "lead"
     REFERENCE = "reference"
+    FOLDER = "folder"
+    MARKDOWN = "markdown"
 
 
 @odm.model(index=True, store=True, description="Log definition.")
@@ -73,9 +77,17 @@ class CaseLog(odm.Model):
         super().__init__(data, *args, **kwargs)
 
 
-@odm.model(index=True, store=True, description="A path-scoped item included in a case.")
+@odm.model(index=True, store=True, description="An item included in a case.")
 class CaseItem(odm.Model):
-    path: str = odm.Keyword(description="Path of the item in the case hierarchy.", default="")
+    id: str = odm.UUID(description="Unique identifier for this item.")
+    parent: Optional[str] = odm.Optional(
+        odm.Keyword(description="ID of the parent folder item, or null for root-level items."),
+        default=None,
+    )
+    name: Optional[str] = odm.Optional(
+        odm.Keyword(description="Display name for the item. Optional; the UI falls back to value when absent."),
+        default=None,
+    )
     type: str = odm.Enum(values=CaseItemTypes, description="Type of case item.")
     value: str = odm.Keyword(description="String reference value for the item (ID, URL, or token).")
     visible: bool = odm.Boolean(default=True, description="Whether the item is visible/accessible in the frontend.")
@@ -87,6 +99,12 @@ class CaseItem(odm.Model):
             description="Classification of the related record. Automatically populated for hit and event items.",
         )
     )
+
+    def __init__(self, data: dict = None, *args, **kwargs):
+        # Enforce: case items must be root-level (parent=null).
+        if data and data.get("type") == CaseItemTypes.CASE and data.get("parent") is not None:
+            raise HowlerValueError("Case items must be root-level (parent must be null)")
+        super().__init__(data, *args, **kwargs)
 
 
 @odm.model(index=True, store=True, description="Rule used to place/query data into case paths.")

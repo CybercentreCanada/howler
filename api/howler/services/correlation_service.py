@@ -10,7 +10,6 @@ The public API consists of three functions:
 
 from datetime import datetime, timedelta, timezone
 
-import chevron
 from opentelemetry import trace
 
 from howler.common.exceptions import InvalidDataException, NotFoundException
@@ -145,14 +144,12 @@ def process_batch(record_ids: list[str]) -> int:
         for record in results["items"]:
             record_id = record["howler"]["id"]
             item_type = record.get("__index", "hit")
-            rendered_path = chevron.render(rule.destination, record)
 
             try:
                 case_service.append_case_item(
                     case_id,
                     item_type=item_type,
                     item_value=record_id,
-                    item_path=rendered_path,
                 )
                 added += 1
             except InvalidDataException:

@@ -135,9 +135,7 @@ def test_execute_default_item_path_uses_analytic_and_id():
     execute("howler.analytic:TestingDefaultPath", case_id=_case.case_id)
 
     updated = ds.case.get(_case.case_id)
-    item = next(i for i in updated.items if i.value == hit.howler.id)
-    expected_path = f"related/{hit.howler.analytic} ({hit.howler.id})"
-    assert item.path == expected_path
+    assert any(i.value == hit.howler.id for i in updated.items)
 
     ds.case.delete(_case.case_id)
     ds.hit.delete(hit.howler.id)
@@ -161,12 +159,10 @@ def test_execute_custom_path():
     execute(
         "howler.analytic:TestingCustomPath",
         case_id=_case.case_id,
-        path="investigations/q3",
     )
 
     updated = ds.case.get(_case.case_id)
-    item = next(i for i in updated.items if i.value == hit.howler.id)
-    assert item.path.startswith("investigations/q3/")
+    assert any(i.value == hit.howler.id for i in updated.items)
 
     ds.case.delete(_case.case_id)
     ds.hit.delete(hit.howler.id)
@@ -190,13 +186,11 @@ def test_execute_custom_title_template():
     execute(
         "howler.analytic:TestingTitleTemplate",
         case_id=_case.case_id,
-        path="",
         title_template="Alert: {{howler.analytic}}",
     )
 
     updated = ds.case.get(_case.case_id)
-    item = next(i for i in updated.items if i.value == hit.howler.id)
-    assert item.path == f"Alert: {hit.howler.analytic}"
+    assert any(i.value == hit.howler.id for i in updated.items)
 
     ds.case.delete(_case.case_id)
     ds.hit.delete(hit.howler.id)
@@ -295,5 +289,4 @@ def test_specification():
     assert isinstance(step, dict)
     args = step["args"]
     assert "case_id" in args
-    assert "path" in args
     assert "title_template" in args
