@@ -12,8 +12,8 @@ ELASTIC_HOST_CONFIG = next((host for host in config.datastore.hosts if host.name
 ELASTIC_MAX_REQUEST_SIZE = ELASTIC_HOST_CONFIG.max_request_size if ELASTIC_HOST_CONFIG else None
 DEFAULT_BATCH_SIZE = ELASTIC_HOST_CONFIG.request_batch_size if ELASTIC_HOST_CONFIG else None
 
-class ElasticBulkPlan(object):
 
+class ElasticBulkPlan(object):
     def __init__(self, indexes: List[str], model: Optional[type[odm.Model]] = None):
         self.indexes = indexes
         self.model = model
