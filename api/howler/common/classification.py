@@ -204,12 +204,12 @@ class Classification(object):
             if not self.is_valid(classification_definition["restricted"]):
                 raise InvalidDefinition("Classification definition's restricted classification is invalid.")
 
-            self.UNRESTRICTED = self.normalize_classification(classification_definition["unrestricted"])
-            self.RESTRICTED = self.normalize_classification(classification_definition["restricted"])
+            self.UNRESTRICTED: str = self.normalize_classification(classification_definition["unrestricted"])
+            self.RESTRICTED: str = self.normalize_classification(classification_definition["restricted"])
 
         except Exception as e:
-            self.UNRESTRICTED = self.NULL_CLASSIFICATION
-            self.RESTRICTED = self.INVALID_CLASSIFICATION
+            self.UNRESTRICTED: str = self.NULL_CLASSIFICATION
+            self.RESTRICTED: str = self.INVALID_CLASSIFICATION
 
             self.invalid_mode = True
 
