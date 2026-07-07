@@ -4,7 +4,7 @@ import useMyApi from 'components/hooks/useMyApi';
 import useMyLocalStorage, { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import dayjs from 'dayjs';
 import i18n from 'i18n';
-import { cloneDeep } from 'lodash-es';
+import { cloneDeep, isNil } from 'lodash-es';
 import isNull from 'lodash-es/isNull';
 import isUndefined from 'lodash-es/isUndefined';
 import type { Hit } from 'models/entities/generated/Hit';
@@ -166,7 +166,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
         try {
           const _response = await dispatchApi(
             api.search.hit.post({
-              offset: appendResults && response?.rows ? response.rows : offset,
+              offset: appendResults && !isNil(response?.rows) ? response.rows : offset,
               rows: pageCount,
               query: _query || DEFAULT_QUERY,
               sort,
