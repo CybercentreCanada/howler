@@ -143,7 +143,7 @@ def search(  # noqa: C901
     else:
         parsed_filters = filters
 
-    # NOTE: This means index searches must be either ALL access controlled or none of them havbe access control.
+    # NOTE: This means index searches must be either ALL access controlled or none of them have access control.
     # Otherwise, the access control requirements on one index will cause the other index to return no items.
     # This is pretty reasonable constraint, as all the relevant, searchable items support classifications.
     if user and user.access_control and has_access_control(indexes):
