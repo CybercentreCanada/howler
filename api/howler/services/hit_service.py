@@ -474,7 +474,7 @@ def create_hits(
     bulk_plan = storage.hit.get_bulk_plan()
 
     for hit in hits:
-        if not overwrite and does_hit_exist(hit.howler.id):
+        if not overwrite and storage.hit.exists(hit.howler.id):
             raise ResourceExists("Hit %s already exists in datastore" % hit.howler.id)
 
         if user:
