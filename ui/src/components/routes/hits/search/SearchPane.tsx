@@ -1,5 +1,5 @@
-import { ErrorOutline, SavedSearch, Terminal } from '@mui/icons-material';
-import { Box, IconButton, LinearProgress, Stack, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { ErrorOutline } from '@mui/icons-material';
+import { Box, LinearProgress, Stack, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { grey } from '@mui/material/colors';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
 import PageCenter from 'commons/components/pages/PageCenter';
@@ -25,13 +25,12 @@ import type { FC } from 'react';
 import React, { memo, useCallback, useMemo } from 'react';
 import { isMobile } from 'react-device-detect';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
 import { isEvent, isHit } from 'utils/typeUtils';
-import LayoutSettings from './LayoutSettings';
 import QuerySettings from './QuerySettings';
 import RecordQuery from './RecordQuery';
+import SearchActionMenu from './shared/SearchActionMenu';
 
 const Item: FC<{
   record: Hit | Event;
@@ -144,17 +143,7 @@ const SearchPane: FC = () => {
                 </Tooltip>
               )}
               <FlexOne />
-              <Tooltip title={t('route.views.save')}>
-                <IconButton component={Link} disabled={!query} to={`/views/create?query=${query}`}>
-                  <SavedSearch />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title={t('route.actions.save')}>
-                <IconButton component={Link} disabled={!query} to={`/action/execute?query=${query}`}>
-                  <Terminal />
-                </IconButton>
-              </Tooltip>
-              <LayoutSettings />
+              <SearchActionMenu query={query} />
             </Stack>
           </Stack>
 

@@ -86,11 +86,13 @@ import AvatarProvider from './providers/AvatarProvider';
 import CustomPluginProvider from './providers/CustomPluginProvider';
 import FavouriteProvider from './providers/FavouritesProvider';
 import FieldProvider from './providers/FieldProvider';
+import GridColumnsProvider from './providers/GridColumnsProvider';
 import LocalStorageProvider from './providers/LocalStorageProvider';
 import ModalProvider from './providers/ModalProvider';
 import OverviewProvider from './providers/OverviewProvider';
 import ParameterProvider from './providers/ParameterProvider';
 import RecordProvider from './providers/RecordProvider';
+import RecordSearchProvider from './providers/RecordSearchProvider';
 import SocketProvider from './providers/SocketProvider';
 import UserListProvider from './providers/UserListProvider';
 import ViewProvider from './providers/ViewProvider';
@@ -358,7 +360,11 @@ const createRouter = () =>
           path: 'views/create',
           element: (
             <ParameterProvider>
-              <ViewComposer />
+              <RecordSearchProvider>
+                <GridColumnsProvider viewSource="path">
+                  <ViewComposer />
+                </GridColumnsProvider>
+              </RecordSearchProvider>
             </ParameterProvider>
           )
         },
@@ -370,7 +376,11 @@ const createRouter = () =>
           path: 'views/:id/edit',
           element: (
             <ParameterProvider>
-              <ViewComposer />
+              <RecordSearchProvider>
+                <GridColumnsProvider viewSource="path">
+                  <ViewComposer />
+                </GridColumnsProvider>
+              </RecordSearchProvider>
             </ParameterProvider>
           )
         },

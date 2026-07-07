@@ -90,7 +90,12 @@
   ],
   "ruff.configurationPreference": "filesystemFirst",
   "editor.formatOnSaveMode": "modificationsIfAvailable",
-  "mypy-type-checker.cwd": "${nearestConfig}",
+  "mypy-type-checker.cwd": "${workspaceFolder}/api",
+  "mypy-type-checker.interpreter": [
+    "poetry",
+    "run",
+    "python"
+  ],
   "eslint.workingDirectories": [
     {
       "directory": "./ui",

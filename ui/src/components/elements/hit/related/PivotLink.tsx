@@ -2,8 +2,10 @@ import { ErrorOutline } from '@mui/icons-material';
 import { Tooltip } from '@mui/material';
 import { useHelpers } from 'components/elements/display/handlebars/helpers';
 import HowlerCard from 'components/elements/display/HowlerCard';
+import PivotTooltip from 'components/elements/hit/PivotTooltip';
 import Handlebars from 'handlebars';
 import { isEmpty } from 'lodash-es';
+import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Pivot } from 'models/entities/generated/Pivot';
 import React, { useMemo, type FC } from 'react';
@@ -18,9 +20,11 @@ export interface PivotLinkProps {
   pivot: Pivot;
   hit: Hit;
   compact?: boolean;
+  dossier: Dossier;
+  resolvedUrl: string;
 }
 
-const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false }) => {
+const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false, dossier, resolvedUrl }) => {
   const { i18n } = useTranslation();
 
   const helpers = useHelpers({ async: false, components: false });
@@ -67,6 +71,8 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false }) => {
     try {
       return handlebars.compile(pivot.value)(templateObject);
     } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error(`Failed to compile pivot template for value "${pivot.value}":`, e);
       return pivot.value;
     }
   }, [flatHit, pivot, handlebars, helpers]);
@@ -80,6 +86,7 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false }) => {
         icon={pivot.icon}
         target="_blank"
         rel="noopener noreferrer"
+        tooltip={<PivotTooltip dossier={dossier} resolvedUrl={resolvedUrl} />}
       />
     );
   }

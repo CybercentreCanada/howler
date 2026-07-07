@@ -1,4 +1,4 @@
-import { ArrowDownward, ArrowUpward, Language, Lock, Person } from '@mui/icons-material';
+import { ArrowDownward, ArrowUpward, Language, List, Lock, Person, TableChart } from '@mui/icons-material';
 import { Chip, Stack, Tooltip, Typography } from '@mui/material';
 import { useMemo, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -11,9 +11,10 @@ interface ViewTitleProps {
   indexes?: string[];
   sort?: string;
   span?: string;
+  settings?: { display?: string };
 }
 
-export const ViewTitle: FC<ViewTitleProps> = ({ title, type, query, sort, span, indexes }) => {
+export const ViewTitle: FC<ViewTitleProps> = ({ title, type, query, sort, span, indexes, settings }) => {
   const { t } = useTranslation();
   const spanLabel = useMemo(() => {
     if (!span) {
@@ -45,6 +46,16 @@ export const ViewTitle: FC<ViewTitleProps> = ({ title, type, query, sort, span, 
             }[type]
           }
         </Tooltip>
+        {settings?.display && (
+          <Tooltip title={t(`page.settings.local.hits.display_type.${settings.display}`)}>
+            {
+              {
+                list: <List fontSize="small" />,
+                grid: <TableChart fontSize="small" />
+              }[settings.display]
+            }
+          </Tooltip>
+        )}
         <Typography variant="body1">{t(title)}</Typography>
       </Stack>
       <Typography variant="caption">

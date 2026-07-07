@@ -21,7 +21,7 @@ const RecordRow: FC<{
   record: Hit | Event;
   analyticIds: Record<string, string>;
   columns: string[];
-  columnWidths: Record<string, string>;
+  columnWidths: Record<string, number>;
   collapseMainColumn: boolean;
   onClick: (e: React.MouseEvent<HTMLDivElement>, record: Hit | Event) => void;
 }> = ({ record, analyticIds, columns, columnWidths, collapseMainColumn, onClick }) => {

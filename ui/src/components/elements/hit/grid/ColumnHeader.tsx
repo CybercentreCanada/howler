@@ -1,17 +1,18 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { DragIndicator, Remove } from '@mui/icons-material';
+import { DragIndicator, JoinFull, Remove } from '@mui/icons-material';
 import { Box, IconButton, Stack, TableCell, Tooltip, useTheme } from '@mui/material';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import { useContext, type FC, type SetStateAction } from 'react';
 
 const ColumnHeader: FC<{
-  width: string;
+  width: number;
   col: string;
+  colSource?: string[];
   setColumns: (val: SetStateAction<string[]>) => void;
   onMouseDown: (col: string, event: React.MouseEvent<HTMLElement, MouseEvent>) => void;
-}> = ({ col, width, setColumns, onMouseDown }) => {
+}> = ({ col, width, colSource, setColumns, onMouseDown }) => {
   const theme = useTheme();
   const { config } = useContext(ApiConfigContext);
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: col });
@@ -37,6 +38,11 @@ const ColumnHeader: FC<{
         <Tooltip title={config.indexes.hit[col].description}>
           <span>{col}</span>
         </Tooltip>
+        {colSource?.length > 1 && (
+          <Tooltip title={colSource.join(', ')}>
+            <JoinFull fontSize="small" />
+          </Tooltip>
+        )}
         <FlexOne />
         <IconButton
           size="small"

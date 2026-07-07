@@ -33,6 +33,7 @@ class RedisServer(BaseModel):
     tls_ca_cert: Optional[str] = Field(
         description="Path to CA Certificate (PEM) to validate Redis instance certificate when using TLS", default=None
     )
+    tls_disable_check_hostname: bool = Field(default=False, description="Disable TLS hostname check")
     is_cluster: bool = Field(default=False, description="Is this Redis instance a cluster?")
 
 

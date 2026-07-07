@@ -105,10 +105,7 @@ const LUCENE_QUERY_OPTIONS: ('default' | 'facet' | 'groupby' | 'explain')[] = [
 ];
 
 type SearchResponse<T> =
-  | HowlerSearchResponse<T>
-  | HowlerEQLSearchResponse<T>
-  | HowlerFacetSearchResponse
-  | HowlerGroupedSearchResponse<T>;
+  HowlerSearchResponse<T> | HowlerEQLSearchResponse<T> | HowlerFacetSearchResponse | HowlerGroupedSearchResponse<T>;
 
 const CustomPopper = (props: PopperProps) => {
   return <Popper {...props} style={{ width: 'fit-content' }} placement="bottom-start" />;

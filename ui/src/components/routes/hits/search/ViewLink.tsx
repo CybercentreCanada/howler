@@ -8,7 +8,8 @@ import {
   Person,
   Refresh,
   SavedSearch,
-  SelectAll
+  SelectAll,
+  Warning
 } from '@mui/icons-material';
 import { Autocomplete, Chip, CircularProgress, IconButton, Stack, TextField, Tooltip, Typography } from '@mui/material';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
@@ -36,6 +37,7 @@ const ViewLink: FC<{ id: number; viewId: string }> = ({ id, viewId }) => {
   const setParamView = useContextSelector(ParameterContext, ctx => ctx.setView);
 
   const search = useContextSelector(RecordSearchContext, ctx => ctx.search);
+  const displayType = useContextSelector(RecordSearchContext, ctx => ctx.displayType);
 
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>(null);
@@ -147,18 +149,25 @@ const ViewLink: FC<{ id: number; viewId: string }> = ({ id, viewId }) => {
         </Tooltip>
       }
       label={
-        <Tooltip title={view.query}>
-          <Typography
-            role="link"
-            sx={{ color: 'text.primary' }}
-            variant="body2"
-            component={Link}
-            to={`/views/${view.view_id}/edit`}
-            aria-label={`${t(view.title)} - ${view.query ?? t('unknown')}`}
-          >
-            {t(view.title)}
-          </Typography>
-        </Tooltip>
+        <Stack direction="row" spacing={0.5} alignItems="center">
+          <Tooltip title={view.query}>
+            <Typography
+              role="link"
+              sx={{ color: 'text.primary' }}
+              variant="body2"
+              component={Link}
+              to={`/views/${view.view_id}/edit`}
+              aria-label={`${t(view.title)} - ${view.query ?? t('unknown')}`}
+            >
+              {t(view.title)}
+            </Typography>
+          </Tooltip>
+          {view.settings?.display === 'grid' && displayType !== 'grid' && (
+            <Tooltip title={t('view.display.grid.inactive_warning')}>
+              <Warning fontSize="small" color="warning" />
+            </Tooltip>
+          )}
+        </Stack>
       }
       onDelete={() => removeView(viewId)}
     >

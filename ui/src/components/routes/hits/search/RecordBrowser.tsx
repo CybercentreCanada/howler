@@ -13,6 +13,7 @@ import {
   useMediaQuery,
   useTheme
 } from '@mui/material';
+import GridColumnsProvider from 'components/app/providers/GridColumnsProvider';
 import ParameterProvider, { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { RecordContext } from 'components/app/providers/RecordProvider';
 import RecordSearchProvider, { RecordSearchContext } from 'components/app/providers/RecordSearchProvider';
@@ -31,7 +32,7 @@ import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
 import InformationPane from './InformationPane';
 import SearchPane from './SearchPane';
-import HitGrid from './grid/HitGrid';
+import RecordGrid from './grid/RecordGrid';
 
 // https://github.com/jsx-eslint/eslint-plugin-react/blob/master/docs/rules/display-name.md
 const Wrapper = memo<{ show: boolean; showDrawer: boolean; children: ReactNode; onClose: () => void }>(
@@ -136,7 +137,7 @@ const HitBrowser: FC = () => {
         display="flex"
         sx={[{ overflow: 'auto' }, displayType === 'list' && !isNull(searchPaneWidth) && { maxWidth: searchPaneWidth }]}
       >
-        <ErrorBoundary>{displayType === 'list' ? <SearchPane /> : <HitGrid />}</ErrorBoundary>
+        <ErrorBoundary>{displayType === 'list' ? <SearchPane /> : <RecordGrid />}</ErrorBoundary>
         <Collapse
           in={showSelectBar}
           unmountOnExit
@@ -259,7 +260,9 @@ const HitBrowserProvider: FC = () => {
   return (
     <ParameterProvider>
       <RecordSearchProvider>
-        <HitBrowser />
+        <GridColumnsProvider>
+          <HitBrowser />
+        </GridColumnsProvider>
       </RecordSearchProvider>
     </ParameterProvider>
   );

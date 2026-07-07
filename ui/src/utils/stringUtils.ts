@@ -55,3 +55,11 @@ export const validateRegex = (regex: string) => {
     return false;
   }
 };
+
+export const parsePixelSizeStringToInt = (size: string) => {
+  const match = size.match(/^(\d+(\.\d+)?)(px)?$/);
+  if (match) {
+    return parseInt(match[1]);
+  }
+  return null;
+};
