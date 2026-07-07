@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import Throttler from 'utils/Throttler';
 import { hashCode } from 'utils/utils';
 import Markdown, { type MarkdownProps } from '../display/Markdown';
-import { useHelpers } from './handlebars/helpers';
+import { HowlerHelperError, useHelpers } from './handlebars/helpers';
 
 type HandlebarsInstance = typeof Handlebars;
 
@@ -56,7 +56,7 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
 
       handlebars.registerHelper(helper.keyword, (...args: any[]) => {
         console.debug(`Running helper ${helper.keyword}`);
-
+        args = args.length ? [args[args.length - 1], ...args.slice(0, -1)] : []; // re-sort args so that the context is always the first argument
         if (helper.componentCallback) {
           const id = hashCode(JSON.stringify([helper.keyword, ...args])).toString();
           if (!mdComponents[id]) {
@@ -71,8 +71,17 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
 
           return new Handlebars.SafeString(`\`${id}\``);
         }
-
-        return helper.callback(...args);
+        try {
+          return helper.callback(...args);
+        } catch (err) {
+          if (err instanceof HowlerHelperError) {
+            return new Handlebars.SafeString(
+              `<span style="color: red; font-weight: bold; font-family: monospace;">Invalid Usage [${helper.keyword}]: ${err.message}</span>
+              ${helper.hint ? `<br/><span style="color: gray; font-family: monospace;">${helper.hint}</span>` : ''}`
+            );
+          }
+          throw err;
+        }
       });
     });
   }, [handlebars, helpers, mdComponents]);
