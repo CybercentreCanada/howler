@@ -33,7 +33,7 @@ def env_substitute(buffer):
 _CLASSIFICATIONS: dict[Union[str, Path], "Classification"] = {}
 
 
-def get_classification(yml_config: Optional[str] = None):  # noqa: C901
+def get_classification(yml_config: Optional[str] = None) -> "Classification":  # noqa: C901
     "Get the classification from a given classification.yml file, caching results"
     if yml_config in _CLASSIFICATIONS:
         return _CLASSIFICATIONS[yml_config]
