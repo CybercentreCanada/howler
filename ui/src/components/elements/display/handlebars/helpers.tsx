@@ -5,7 +5,7 @@ import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import { flatten } from 'flat';
 import Handlebars from 'handlebars';
-import { capitalize, get, groupBy, isObject } from 'lodash-es';
+import { capitalize, get, groupBy, isNil, isObject } from 'lodash-es';
 import howlerPluginStore from 'plugins/store';
 import { useMemo, type ReactElement } from 'react';
 import { usePluginStore } from 'react-pluggable';
@@ -52,7 +52,7 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             fr: "Vérifie l'égalité de la représentation en chaîne de caractères des deux arguments."
           },
           callback: (_, arg1, arg2) => {
-            if (arg1 == undefined || arg2 == undefined) {
+            if (isNil(arg1) || isNil(arg2)) {
               throw new HowlerHelperError('Both arguments must be provided.');
             }
             return arg1.toString() === arg2.toString();
@@ -107,7 +107,7 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             fr: "Retourne la représentation en majuscules d'un argument de chaîne."
           },
           callback: (_, val: string) => {
-            if (val == undefined) {
+            if (isNil(val)) {
               throw new HowlerHelperError('Upper expects a string argument');
             }
             return val.toString().toLocaleUpperCase();
@@ -121,7 +121,7 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             fr: "Retourne la représentation en minuscules d'un argument de chaîne."
           },
           callback: (_, val: string) => {
-            if (val == undefined) {
+            if (isNil(val)) {
               throw new HowlerHelperError('Lower expects a string argument');
             }
             return val.toString().toLocaleLowerCase();
@@ -208,7 +208,7 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             fr: 'Convertit une chaîne JSON en objet.'
           },
           callback: (_, str) => {
-            if (str == undefined) {
+            if (isNil(str)) {
               throw new HowlerHelperError('Parse JSON expects a string argument');
             }
             try {
@@ -306,7 +306,7 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             fr: ''
           },
           callback: (_, str: string, searchValue: string, replaceValue: string) => {
-            if (str == undefined || searchValue == undefined || replaceValue == undefined) {
+            if (isNil(str) || isNil(searchValue) || isNil(replaceValue)) {
               throw new HowlerHelperError('Replace expects three arguments');
             }
             return str.toString().replaceAll(searchValue ?? '', replaceValue ?? '');
