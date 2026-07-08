@@ -73,7 +73,8 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             const [arg1, arg2] = args;
 
             return arg1 && arg2;
-          }
+          },
+          hint: 'Usage: {{and arg1 arg2}}'
         },
         {
           keyword: 'or',
@@ -86,7 +87,8 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             const [arg1, arg2] = args;
 
             return arg1 || arg2;
-          }
+          },
+          hint: 'Usage: {{or arg1 arg2}}'
         },
         {
           keyword: 'not',
@@ -99,7 +101,8 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             const arg = args[0];
 
             return !arg;
-          }
+          },
+          hint: 'Usage: {{not arg}}'
         },
         {
           keyword: 'curly',
@@ -112,7 +115,8 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             const arg1 = args[0];
 
             return new Handlebars.SafeString(`{{${arg1}}}`);
-          }
+          },
+          hint: 'Usage: {{curly arg}}'
         },
         {
           keyword: 'join',
@@ -125,7 +129,8 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             const [arg1, arg2] = args;
 
             return [arg1?.toString() ?? '', arg2?.toString() ?? ''].join(context.hash?.sep ?? '');
-          }
+          },
+          hint: 'Usage: {{join arg1 arg2 sep=string}}'
         },
         {
           keyword: 'upper',
@@ -183,7 +188,8 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             } catch (e) {
               return '';
             }
-          }
+          },
+          hint: 'Usage: {{fetch url key}}'
         },
         {
           keyword: 'howler',
@@ -200,7 +206,8 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             }
 
             return <HitCard id={id} layout={HitLayout.NORMAL} />;
-          }
+          },
+          hint: 'Usage: {{howler hitId}}'
         },
         {
           keyword: 'entries',
@@ -217,7 +224,8 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             }
 
             return Object.entries(obj).map(([key, value]) => ({ key, value }));
-          }
+          },
+          hint: 'Usage: {{entries obj}}'
         },
         {
           keyword: 'render_json',
@@ -234,7 +242,8 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             }
 
             return <JSONViewer data={data} />;
-          }
+          },
+          hint: 'Usage: {{render_json obj}}'
         },
         {
           keyword: 'to_json',
@@ -247,7 +256,8 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             const obj = args[0];
 
             return new Handlebars.SafeString(JSON.stringify(obj));
-          }
+          },
+          hint: 'Usage: {{to_json obj}}'
         },
         {
           keyword: 'parse_json',
@@ -285,7 +295,8 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             } catch (e) {
               return '';
             }
-          }
+          },
+          hint: 'Usage: {{get obj key}}'
         },
         {
           keyword: 'includes',
@@ -298,7 +309,8 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             const [arg1, arg2] = args;
 
             return !!arg2 && !!arg1?.includes(arg2);
-          }
+          },
+          hint: 'Usage: {{includes str substr}}'
         },
 
         {
@@ -345,7 +357,8 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
                 </Table>
               </Paper>
             );
-          }
+          },
+          hint: 'Usage: {{table cells}}'
         },
 
         {
@@ -359,7 +372,8 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             const [actionId, hitId] = args;
 
             return <ActionButton actionId={actionId} hitId={hitId} {...(context.hash ?? {})} />;
-          }
+          },
+          hint: 'Usage: {{action actionId hitId}}'
         },
 
         {
