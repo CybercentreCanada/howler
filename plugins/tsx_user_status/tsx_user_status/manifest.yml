@@ -1,0 +1,5 @@
+name: tsx_user_status
+modules:
+  routes:
+    - user_status:status_api
+    - healthz:healthz_api

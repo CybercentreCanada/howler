@@ -1,0 +1,8 @@
+name: tsx_user_tags
+modules:
+  routes:
+    - tags:tags_api
+    - healthz:healthz_api
+  odm:
+    modify_odm:
+      user: true
