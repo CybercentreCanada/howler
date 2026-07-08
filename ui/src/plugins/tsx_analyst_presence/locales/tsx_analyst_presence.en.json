@@ -1,0 +1,39 @@
+{
+  "tsxAnalystPresence.common.analysts": "Analysts",
+  "tsxAnalystPresence.common.availability": "Availability",
+  "tsxAnalystPresence.common.available": "Available",
+  "tsxAnalystPresence.common.unavailable": "Unavailable",
+  "tsxAnalystPresence.common.all": "All",
+  "tsxAnalystPresence.common.portfolio": "Portfolio",
+  "tsxAnalystPresence.common.products": "Products",
+  "tsxAnalystPresence.common.disciplines": "Disciplines",
+  "tsxAnalystPresence.common.status": "Status",
+  "tsxAnalystPresence.common.cancel": "Cancel",
+  "tsxAnalystPresence.common.clear": "Clear",
+  "tsxAnalystPresence.common.close": "Close",
+  "tsxAnalystPresence.common.confirm": "Confirm",
+
+  "tsxAnalystPresence.trigger.tooltip": "View analysts",
+
+  "tsxAnalystPresence.filter.search": "Search",
+  "tsxAnalystPresence.filter.search.placeholder": "Search by name",
+  "tsxAnalystPresence.filter.noResults": "No results matching current filters",
+
+  "tsxAnalystPresence.table.header.name": "Name",
+  "tsxAnalystPresence.table.header.team": "Team",
+  "tsxAnalystPresence.table.header.shift": "Shift",
+  "tsxAnalystPresence.table.header.status": "Status",
+  "tsxAnalystPresence.table.header.tags": "Tags",
+
+  "tsxAnalystPresence.tags": "Tags",
+  "tsxAnalystPresence.tags.chip.tooltip": "Toggle filter",
+
+  "tsxAnalystPresence.status.notEditable": "Status is unavailable and cannot be edited.",
+  "tsxAnalystPresence.status.confirmDialog.title": "Change status",
+  "tsxAnalystPresence.status.confirmDialog.changeMessage": "Are you sure you want to change the status for {{username}} to {{status}}?",
+  "tsxAnalystPresence.status.confirmDialog.clearMessage": "Are you sure you want to clear the status for {{username}}?",
+
+  "tsxAnalystPresence.error.status.fetch": "Failed to fetch analyst presence data.",
+  "tsxAnalystPresence.error.status.update": "Failed to update status.",
+  "tsxAnalystPresence.success.status.update": "Status updated successfully."
+}
