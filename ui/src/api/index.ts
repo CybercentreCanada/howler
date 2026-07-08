@@ -8,6 +8,8 @@ import * as hit from 'api/hit';
 import * as notebook from 'api/notebook';
 import * as overview from 'api/overview';
 import * as search from 'api/search';
+import * as status from 'api/status';
+import * as tags from 'api/tags';
 import * as template from 'api/template';
 import * as user from 'api/user';
 import * as view from 'api/view';
@@ -45,7 +47,9 @@ const api = {
   template,
   user,
   view,
-  notebook
+  notebook,
+  status,
+  tags
 };
 
 /**
