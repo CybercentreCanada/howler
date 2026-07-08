@@ -154,7 +154,12 @@ def test_add_to_case_custom_path_and_template(datastore: HowlerDatastore, login_
     updated = datastore.case.get(test_case.case_id)
     matching = [item for item in updated.items if item.value == first_hit.howler.id]
     assert len(matching) == 1
-    assert matching[0].path == f"investigations/test/{first_hit.howler.id}"
+
+    folders = {item.name: item for item in updated.items if item.type == "folder"}
+    assert "investigations" in folders
+    assert "test" in folders
+    assert matching[0].name == first_hit.howler.id
+    assert matching[0].parent == folders["test"].id
 
 
 # ---------------------------------------------------------------------------

@@ -89,7 +89,7 @@ class CaseItem(odm.Model):
         default=None,
     )
     type: str = odm.Enum(values=CaseItemTypes, description="Type of case item.")
-    value: str = odm.Keyword(description="String reference value for the item (ID, URL, or token).")
+    value: str = odm.Keyword(description="String reference value for the item (ID, URL, or token), or markdown.")
     visible: bool = odm.Boolean(default=True, description="Whether the item is visible/accessible in the frontend.")
     classification: Optional[str] = odm.Optional(
         odm.Classification(
@@ -104,6 +104,11 @@ class CaseItem(odm.Model):
         # Enforce: case items must be root-level (parent=null).
         if data and data.get("type") == CaseItemTypes.CASE and data.get("parent") is not None:
             raise HowlerValueError("Case items must be root-level (parent must be null)")
+
+        # Set value equal to name for folder items
+        if data and data.get("type") == CaseItemTypes.FOLDER:
+            data["value"] = data.get("name")
+
         super().__init__(data, *args, **kwargs)
 
 

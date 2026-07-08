@@ -10,9 +10,10 @@ from howler.services import case_service
 OPERATION_ID = "add_to_case"
 
 
-def execute(
+def execute(  # noqa: C901
     query: str,
     case_id: Optional[str] = None,
+    path: str = "related",
     title_template: str = "{{howler.analytic}} ({{howler.id}})",
     **kwargs,
 ):
@@ -21,8 +22,9 @@ def execute(
     Args:
         query (str): The query on which to apply this automation.
         case_id (str): The ID of the case to add the alerts to.
+        path (str): The path within the case at which to place the alerts. Defaults to "related".
         title_template (str): A Mustache-compatible template string used to generate each item's
-            display name. The hit's fields are available as template variables.
+            name. The hit's fields are available as template variables.
             Defaults to "{{howler.analytic}} ({{howler.id}})".
     """
     if not case_id:
@@ -37,7 +39,8 @@ def execute(
 
     ds = datastore()
 
-    if ds.case.get(case_id) is None:
+    case = ds.case.get(case_id)
+    if case is None:
         return [
             {
                 "query": query,
@@ -64,13 +67,22 @@ def execute(
     added = []
 
     for hit in hits:
+        title = chevron.render(title_template, hit.as_primitives())
+        item_path = f"{path.rstrip('/')}/{title}" if path else title
         try:
-            item_name = chevron.render(title_template, hit.as_primitives())
+            path, name = item_path.rsplit("/", maxsplit=1)
+        except ValueError:
+            name = item_path
+
+        try:
+            parent = case_service.get_parent_from_path(case, path, ensure=True)
+
             case_service.append_case_item(
-                case_id,
+                case,
                 item_type="hit",
                 item_value=hit.howler.id,
-                item_name=item_name,
+                item_name=name,
+                item_parent=parent.id if parent else None,
             )
             added.append(hit.howler.id)
         except InvalidDataException as e:
@@ -119,6 +131,7 @@ def specification():
             {
                 "args": {
                     "case_id": [],
+                    "path": [],
                     "title_template": [],
                 },
                 "options": {},

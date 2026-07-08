@@ -9,7 +9,7 @@ continue to work without modification.
     in a future release.
 """
 
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from howler.common.exceptions import HowlerException, InvalidDataException, NotFoundException
 from howler.common.loader import datastore
@@ -31,7 +31,7 @@ DEPRECATION_MESSAGE = (
 )
 
 
-def find_case_for_bundle(bundle_hit_id: str) -> Optional[str]:
+def find_case_for_bundle(bundle_hit_id: str) -> Case | None:
     """Return the case_id of the case that contains *bundle_hit_id* at its root.
 
     The lookup relies on the ``howler.related`` back-reference that
@@ -47,7 +47,7 @@ def find_case_for_bundle(bundle_hit_id: str) -> Optional[str]:
         if case is not None:
             # Confirm the bundle hit is present and at root level (no parent)
             if any(item.value == bundle_hit_id and item.parent is None for item in case.items):
-                return case.case_id
+                return case
 
     return None
 
@@ -108,10 +108,12 @@ def create_bundle(
 
     # Root hit
     case_service.append_case_item(
-        case.case_id,
+        case,
         item_type="hit",
         item_value=odm.howler.id,
     )
+
+    folder = case_service.get_parent_from_path(case, "hits", ensure=True)
 
     for child_id in child_hit_ids:
         child_hit = hit_service.get_hit(child_id, as_odm=True)
@@ -120,9 +122,7 @@ def create_bundle(
 
         try:
             case_service.append_case_item(
-                case.case_id,
-                item_type="hit",
-                item_value=child_id,
+                case, item_type="hit", item_value=child_id, item_parent=folder.id if folder else None
             )
         except (InvalidDataException, NotFoundException, DataStoreException) as exc:
             logger.warning("Could not add child hit %s to case: %s", child_id, exc)
@@ -152,10 +152,10 @@ def add_to_bundle(
     if root_hit is None:
         raise NotFoundException(f"Bundle hit {bundle_id} does not exist")
 
-    case_id = find_case_for_bundle(bundle_id)
+    case = find_case_for_bundle(bundle_id)
 
     # develop: PUT on a plain hit converts it into a bundle by creating a case
-    if case_id is None:
+    if case is None:
         analytic = root_hit.howler.analytic or "Unknown"
         detection = root_hit.howler.detection or "Alert"
         case = case_service.create_case(
@@ -169,7 +169,8 @@ def add_to_bundle(
         )
         datastore().hit.commit()
         datastore().case.commit()
-        case_id = case.case_id
+
+    case_id = case.case_id
 
     # Check for duplicates and nested bundles before modifying
     current_case: Case | None = datastore().case.get(case_id)
@@ -218,14 +219,14 @@ def remove_from_bundle(
     if root_hit is None:
         raise NotFoundException(f"Bundle hit {bundle_id} does not exist")
 
-    case_id = find_case_for_bundle(bundle_id)
-    if case_id is None:
+    _case = find_case_for_bundle(bundle_id)
+    if _case is None:
         # Hit exists but is not a bundle — match develop's "must be a bundle" error
         raise InvalidDataException("The specified hit must be a bundle.")
 
-    case: Case | None = datastore().case.get(case_id)
+    case: Case | None = datastore().case.get(_case.case_id)
     if case is None:
-        raise NotFoundException(f"Case {case_id} not found")
+        raise NotFoundException(f"Case {_case.case_id} not found")
 
     if hit_ids == ["*"]:
         values_to_remove = [item.value for item in case.items if item.value != bundle_id]
@@ -238,11 +239,12 @@ def remove_from_bundle(
         values_to_remove = [v for v in values_to_remove if v in existing_values]
 
         if values_to_remove:
-            case_service.remove_case_items(case_id, values_to_remove)
+            item_ids_to_remove = [item.id for item in case.items if item.value in values_to_remove]
+            case_service.remove_case_items(_case, item_ids_to_remove)
 
-    updated_case: Case | None = datastore().case.get(case_id)
+    updated_case: Case | None = datastore().case.get(_case.case_id)
     if updated_case is None:
-        raise NotFoundException(f"Case {case_id} not found")
+        raise NotFoundException(f"Case {_case.case_id} not found")
 
     return synthesize_bundle_response(updated_case, root_hit)
 

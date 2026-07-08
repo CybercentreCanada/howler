@@ -82,7 +82,10 @@ class TestCaseItem:
     @pytest.mark.parametrize("item_type", sorted(CASE_ITEM_TYPES))
     def test_valid_item_types(self, item_type):
         """All declared CASE_ITEM_TYPES are accepted by the enum field."""
-        item = CaseItem({"type": item_type, "value": "val"})
+        if item_type == "folder":
+            item = CaseItem({"type": item_type, "name": "val"})
+        else:
+            item = CaseItem({"type": item_type, "value": "val"})
         assert item.type == item_type
 
     def test_invalid_item_type_raises(self):
@@ -720,8 +723,9 @@ class TestCaseItemIdParent:
 
     def test_case_item_folder_type(self):
         """CaseItem accepts 'folder' as a valid type."""
-        item = CaseItem({"type": "folder", "value": "My Folder"})
+        item = CaseItem({"type": "folder", "name": "My Folder"})
         assert item.type == "folder"
+        assert item.value == "My Folder"
 
     def test_case_item_markdown_type(self):
         """CaseItem accepts 'markdown' as a valid type."""
@@ -732,7 +736,9 @@ class TestCaseItemIdParent:
     @pytest.mark.parametrize("item_type", sorted(CASE_ITEM_TYPES))
     def test_all_item_types_accepted(self, item_type):
         """All CASE_ITEM_TYPES including folder and markdown are accepted."""
-        if item_type == "case":
+        if item_type == "folder":
+            item = CaseItem({"type": item_type, "name": "val"})
+        elif item_type == "case":
             item = CaseItem({"type": item_type, "value": "val"})
         else:
             item = CaseItem({"type": item_type, "value": "val"})
@@ -740,6 +746,7 @@ class TestCaseItemIdParent:
 
     def test_case_item_folder_with_parent(self):
         """A folder can be nested inside another folder."""
-        item = CaseItem({"type": "folder", "value": "Sub Folder", "parent": "parent-folder-id"})
+        item = CaseItem({"type": "folder", "name": "Sub Folder", "parent": "parent-folder-id"})
         assert item.parent == "parent-folder-id"
         assert item.type == "folder"
+        assert item.value == "Sub Folder"

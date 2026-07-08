@@ -159,10 +159,17 @@ def test_execute_custom_path():
     execute(
         "howler.analytic:TestingCustomPath",
         case_id=_case.case_id,
+        path="investigations/test",
     )
 
     updated = ds.case.get(_case.case_id)
-    assert any(i.value == hit.howler.id for i in updated.items)
+    folder_chain = {item.name: item for item in updated.items if item.type == "folder"}
+    assert "investigations" in folder_chain
+    assert "test" in folder_chain
+
+    added_item = next(i for i in updated.items if i.value == hit.howler.id)
+    assert added_item.name == f"{hit.howler.analytic} ({hit.howler.id})"
+    assert added_item.parent == folder_chain["test"].id
 
     ds.case.delete(_case.case_id)
     ds.hit.delete(hit.howler.id)
@@ -190,7 +197,8 @@ def test_execute_custom_title_template():
     )
 
     updated = ds.case.get(_case.case_id)
-    assert any(i.value == hit.howler.id for i in updated.items)
+    added_item = next(i for i in updated.items if i.value == hit.howler.id)
+    assert added_item.name == "Alert: TestingTitleTemplate"
 
     ds.case.delete(_case.case_id)
     ds.hit.delete(hit.howler.id)
@@ -254,8 +262,15 @@ def test_execute_mixed_results():
 
     ds.hit.commit()
 
-    # Pre-add hit_existing so the second execute sees it as a duplicate
-    case_service.append_case_item(_case.case_id, item_type="hit", item_value=hit_existing.howler.id)
+    # Pre-add hit_existing at the same default destination/path as execute() so it is treated as a duplicate.
+    related_folder = case_service.get_parent_from_path(_case, "related", ensure=True)
+    case_service.append_case_item(
+        _case,
+        item_type="hit",
+        item_value=hit_existing.howler.id,
+        item_name=f"{hit_existing.howler.analytic} ({hit_existing.howler.id})",
+        item_parent=related_folder.id if related_folder else None,
+    )
 
     result = execute("howler.analytic:TestingMixed", case_id=_case.case_id)
 
@@ -289,4 +304,5 @@ def test_specification():
     assert isinstance(step, dict)
     args = step["args"]
     assert "case_id" in args
+    assert "path" in args
     assert "title_template" in args

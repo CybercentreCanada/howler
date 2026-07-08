@@ -7,7 +7,7 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import DataStoreException
-from howler.odm.models.case import CaseItem
+from howler.odm.models.case import Case, CaseItem
 from howler.odm.models.user import User
 from howler.security import api_login
 from howler.services import case_service
@@ -221,9 +221,10 @@ def append_item(id: str, user: User, **kwargs):  # noqa: C901
 
     Data Block:
     {
-        "type": "hit",            # Type of item: hit, event, case, folder, markdown, reference, table, or lead
-        "value": "item-id-123",   # The ID or reference value for the item
-        "parent": "folder-uuid"   # Optional: parent folder item ID (null for root)
+        "type": "hit",                  # Type of item: hit, event, case, folder, markdown, reference, table, or lead
+        "value": "item-id-123",         # The ID or reference value for the item
+        "parent": "folder-uuid"         # Optional: parent folder item ID (null for root)
+        "path": "example/path/Title"    # Optional: path to create the item at (will ensure path exists)
     }
 
     Result Example:
@@ -244,6 +245,11 @@ def append_item(id: str, user: User, **kwargs):  # noqa: C901
             return bad_request(err=f"CaseItem '{field}' is required")
 
     try:
+        if path := body.pop("path", None):
+            parent = case_service.get_parent_from_path(id, path)
+
+            body["parent"] = parent.id if parent else None
+
         return ok(case_service.append_case_item(id, item=CaseItem(body)))
     except DataStoreException as e:
         logger.exception("Save Error")
@@ -286,11 +292,15 @@ def delete_item(case_id: str, **kwargs):
     if not body or not isinstance(body, dict):
         return bad_request(err="Request body must be a JSON object.")
 
-    ids = body.get("ids")
     force = body.get("force", False)
+    if not isinstance(force, bool):
+        return bad_request(err="'force' must be a boolean.")
 
+    ids = body.get("ids")
     if not ids or not isinstance(ids, list):
         return bad_request(err="'ids' must be a non-empty list.")
+    elif not all(isinstance(item_id, str) for item_id in ids):
+        return bad_request(err="All items in 'ids' must be strings.")
 
     try:
         return ok(case_service.remove_case_items(case_id, ids, force=force))
@@ -317,9 +327,9 @@ def rename_item(case_id: str, **kwargs):
 
     Data Block:
     {
-        "id": "uuid-of-item",           # The UUID of the item to update
-        "new_parent": "uuid-or-null",   # Move: the UUID of the target folder, or null for root
-        "new_name": "Display Name"      # Rename: the new display name for the item
+        "id": "uuid-of-item",       # The UUID of the item to update
+        "parent": "uuid-or-null",   # Move: the UUID of the target folder, or null for root
+        "name": "Display Name"      # Rename: the new display name for the item
     }
 
     Result Example:
@@ -336,21 +346,18 @@ def rename_item(case_id: str, **kwargs):
         return bad_request(err="'id' is required.")
 
     item_id = body["id"]
-
     try:
-        # Rename
-        if "new_name" in body:
-            result = case_service.rename_case_item(case_id, item_id=item_id, new_name=body["new_name"])
-            # If also moving, chain the operations
-            if "new_parent" in body:
-                result = case_service.move_case_item(case_id, item_id=item_id, new_parent=body["new_parent"])
-            return ok(result)
+        result: Case | None = None
+        if "name" in body:
+            result = case_service.rename_case_item(case_id, item_id, body["name"])
 
-        # Move only
-        if "new_parent" not in body:
-            return bad_request(err="At least one of 'new_name' or 'new_parent' is required.")
+        if "parent" in body:
+            result = case_service.move_case_item(case_id, item_id, body["parent"])
 
-        return ok(case_service.move_case_item(case_id, item_id=item_id, new_parent=body["new_parent"]))
+        if not result:
+            return bad_request(err="At least one of 'name' or 'parent' is required.")
+
+        return ok(result)
     except DataStoreException as e:
         logger.exception("Save Error")
         return internal_error(err=str(e))

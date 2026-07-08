@@ -811,11 +811,11 @@ class TestRenameItemEndpoint:
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        mock_case_service.move_case_item.return_value = {"case_id": "case-001", "title": "Test"}
+        mock_case_service.rename_case_item.return_value = {"case_id": "case-001", "title": "Test"}
 
         with request_context.test_request_context(
             method="PUT",
-            json={"id": "item-uuid", "new_parent": None},
+            json={"id": "item-uuid", "name": "Renamed Item"},
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
         ):
             from howler.api.v2.case import rename_item
@@ -823,7 +823,7 @@ class TestRenameItemEndpoint:
             result: Response = rename_item(case_id="case-001")
 
             assert result.status_code == 200
-            mock_case_service.move_case_item.assert_called_once_with("case-001", item_id="item-uuid", new_parent=None)
+            mock_case_service.rename_case_item.assert_called_once_with("case-001", "item-uuid", "Renamed Item")
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
@@ -843,7 +843,7 @@ class TestRenameItemEndpoint:
             result: Response = rename_item(case_id="case-001")
 
             assert result.status_code == 400
-            mock_case_service.move_case_item.assert_not_called()
+            mock_case_service.rename_case_item.assert_not_called()
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
@@ -854,7 +854,7 @@ class TestRenameItemEndpoint:
 
         with request_context.test_request_context(
             method="PUT",
-            json={"new_parent": None},
+            json={"name": "Renamed Item"},
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
         ):
             from howler.api.v2.case import rename_item
@@ -862,14 +862,14 @@ class TestRenameItemEndpoint:
             result: Response = rename_item(case_id="case-001")
 
             assert result.status_code == 400
-            mock_case_service.move_case_item.assert_not_called()
+            mock_case_service.rename_case_item.assert_not_called()
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
-    def test_move_item_missing_new_parent_returns_400(
+    def test_move_item_missing_name_or_parent_returns_400(
         self, mock_auth_service, mock_case_service, request_context: Flask
     ):
-        """Returns 400 when 'new_path' field is missing from the body."""
+        """Returns 400 when neither 'name' nor 'parent' is provided."""
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
@@ -883,7 +883,7 @@ class TestRenameItemEndpoint:
             result: Response = rename_item(case_id="case-001")
 
             assert result.status_code == 400
-            mock_case_service.move_case_item.assert_not_called()
+            mock_case_service.rename_case_item.assert_not_called()
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
@@ -894,11 +894,11 @@ class TestRenameItemEndpoint:
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        mock_case_service.move_case_item.side_effect = NotFoundException("Item not found")
+        mock_case_service.rename_case_item.side_effect = NotFoundException("Item not found")
 
         with request_context.test_request_context(
             method="PUT",
-            json={"id": "item-uuid", "new_parent": None},
+            json={"id": "item-uuid", "name": "Renamed Item"},
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
         ):
             from howler.api.v2.case import rename_item
@@ -916,11 +916,11 @@ class TestRenameItemEndpoint:
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        mock_case_service.move_case_item.side_effect = InvalidDataException("Path already taken")
+        mock_case_service.rename_case_item.side_effect = InvalidDataException("Path already taken")
 
         with request_context.test_request_context(
             method="PUT",
-            json={"id": "item-uuid", "new_parent": None},
+            json={"id": "item-uuid", "name": "Renamed Item"},
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
         ):
             from howler.api.v2.case import rename_item
@@ -940,11 +940,11 @@ class TestRenameItemEndpoint:
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        mock_case_service.move_case_item.side_effect = DataStoreException("datastore failure")
+        mock_case_service.rename_case_item.side_effect = DataStoreException("datastore failure")
 
         with request_context.test_request_context(
             method="PUT",
-            json={"id": "item-uuid", "new_parent": None},
+            json={"id": "item-uuid", "name": "Renamed Item"},
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
         ):
             from howler.api.v2.case import rename_item

@@ -172,7 +172,7 @@ class TestSaveMethod:
         instance.save()
 
         mock_ds.__getitem__.assert_called_once_with("_fakemodel")
-        mock_ds["_fakemodel"].save.assert_called_once_with("my-id", instance)
+        mock_ds["_fakemodel"].save.assert_called_once_with("my-id", instance, refresh="wait_for")
 
     @patch("howler.odm.mixins.datastore")
     def test_save_uses_lowercase_class_name_as_index(self, mock_datastore):

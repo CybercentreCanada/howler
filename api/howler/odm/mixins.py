@@ -9,7 +9,7 @@ Elasticsearch datastore without boilerplate.
 from __future__ import annotations
 
 from operator import attrgetter
-from typing import Generic, TypeVar, overload
+from typing import Generic, Literal, TypeVar, overload
 
 from howler.common.exceptions import HowlerRuntimeError
 from howler.common.loader import datastore
@@ -82,7 +82,7 @@ class DatastoreMixin(Generic[ModelType]):
         """
         return datastore()
 
-    def save(self) -> bool:
+    def save(self, refresh: Literal["true", "false", "wait_for"] = "wait_for") -> bool:
         """Persist the current model instance to the datastore.
 
         Determines the target index from the lowercase class name, extracts the
@@ -94,4 +94,4 @@ class DatastoreMixin(Generic[ModelType]):
         id_field = self.__class__._Model__id_field  # type: ignore[attr-defined]
         current_id = attrgetter(id_field)(self)
 
-        return self.ds[index_name].save(current_id, self)
+        return self.ds[index_name].save(current_id, self, refresh=refresh)

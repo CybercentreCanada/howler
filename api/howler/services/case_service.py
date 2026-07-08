@@ -303,13 +303,72 @@ def update_case(case_id: str, case_data: dict[str, Any], user: User) -> Case:
     return case
 
 
+def get_parent_from_path(case: str | Case | None, path: str | None, ensure: bool = False) -> CaseItem | None:
+    """Given a path, return the lowest parent of the path in the case.
+
+    If ensure is set to true, create folders in the case until the path exists.
+
+    Args:
+        case: The case to search for.
+        path: The path to return the lowest parent for.
+        ensure: Whether to ensure the path exists, or return None if it doesn't.
+
+    Raises:
+        InvalidDataException: If the path is invalid.
+    """
+    if isinstance(case, str):
+        logger.debug("Attempting to fetch case %s", case)
+        case = datastore().case.get(case)
+
+    if case is None:
+        raise NotFoundException("Case does not exist")
+
+    if not path or path == "/":
+        return None
+
+    # Normalize path: remove leading/trailing slashes and split
+    path_parts = [p for p in path.strip("/").split("/") if p]
+
+    if not path_parts:
+        return None
+
+    current_parent: str | None = None
+
+    for part in path_parts:
+        # Find folder matching this part with current parent
+        folder = next(
+            (
+                item
+                for item in case.items
+                if item.type == CaseItemTypes.FOLDER and item.name == part and item.parent == current_parent
+            ),
+            None,
+        )
+
+        if folder is None:
+            if not ensure:
+                return None
+            # Create the folder
+            folder_item = CaseItem({"type": CaseItemTypes.FOLDER, "name": part, "parent": current_parent, "value": ""})
+            case.items.append(folder_item)
+            current_parent = folder_item.id
+        else:
+            current_parent = folder.id
+
+    # Find the final parent folder
+    if current_parent is None:
+        return None
+
+    return next((item for item in case.items if item.id == current_parent), None)
+
+
 @overload
-def append_case_item(case_id: str, item: CaseItem) -> Case: ...
+def append_case_item(case: str | Case | None, item: CaseItem) -> Case: ...
 
 
 @overload
 def append_case_item(
-    case_id: str,
+    case: str | Case | None,
     item: None = None,
     item_type: str = ...,
     item_value: str = ...,
@@ -319,7 +378,7 @@ def append_case_item(
 
 
 def append_case_item(  # noqa: C901
-    case_id: str,
+    case: str | Case | None,
     item: CaseItem | None = None,
     item_type: str | None = None,
     item_value: str | None = None,
@@ -344,6 +403,15 @@ def append_case_item(  # noqa: C901
         InvalidDataException: If item is not provided and item_type or item_value
             are missing, or if item_type is not a valid CaseItemTypes value.
     """
+    ds = datastore()
+
+    if isinstance(case, str):
+        logger.debug("Attempting to fetch case %s", case)
+        case = ds.case.get(case)
+
+    if case is None:
+        raise NotFoundException("Case does not exist")
+
     if item is None:
         if not all([item_type, item_value]):
             raise InvalidDataException("item_type and item_value are required if item is not provided")
@@ -356,34 +424,49 @@ def append_case_item(  # noqa: C901
             data["name"] = item_name
         item = CaseItem(data)
 
-    # Verify the case exists.
-    _case = datastore().case.get(case_id)
-    if _case is None:
-        raise NotFoundException(f"Case {case_id} does not exist")
-
     # If a parent is specified, ensure it references an existing folder item.
     if item.parent is not None:
-        _ensure_parent_exists(_case, item.parent)
+        _ensure_parent_exists(case, item.parent)
+
+    _check_conflicts(case, item)
+
+    # Check for duplicate folder under same parent
+    if any(ci.name == item.name and ci.parent == item.parent for ci in case.items):
+        raise InvalidDataException(f"An item with name '{item.name}' already exists in destination.")
 
     match item.type:
         case CaseItemTypes.HIT:
-            return append_hit(case_id, item)
+            return append_hit(case, item)
         case CaseItemTypes.EVENT:
-            return append_event(case_id, item)
+            return append_event(case, item)
         case CaseItemTypes.CASE:
-            return append_case(case_id, item)
-        case CaseItemTypes.TABLE:
-            return append_table(case_id, item)
-        case CaseItemTypes.LEAD:
-            return append_lead(case_id, item)
-        case CaseItemTypes.REFERENCE:
-            return append_reference(case_id, item)
-        case CaseItemTypes.FOLDER:
-            return append_folder(case_id, item)
-        case CaseItemTypes.MARKDOWN:
-            return append_markdown(case_id, item)
+            return append_case(case, item)
+        case CaseItemTypes.REFERENCE | CaseItemTypes.MARKDOWN | CaseItemTypes.FOLDER:
+            case.items.append(item)
+
+            if not case.save():
+                raise DataStoreException(f"Failed to save {case.case_id} with new {item.type} {item.name}")
+
+            comms_service.emit("cases", {"case": case.as_primitives()})
+
+            return case
         case _:
             raise InvalidDataException(f"Unsupported item type: {item.type}")
+
+
+def _check_conflicts(case: Case, item: CaseItem) -> None:
+    """Validate that two items are not craeted with the same name and parent.
+
+    Args:
+        case: The case whose items to search.
+        item: The case item to check for conflicts with
+
+    Raises:
+        InvalidDataException: If there is a conflict between the existing case items and the new item
+    """
+    # Check for duplicate folder under same parent
+    if any(ci.name == item.name and ci.parent == item.parent for ci in case.items):
+        raise InvalidDataException(f"An item with name '{item.name}' already exists in parent {item.parent}.")
 
 
 def _ensure_parent_exists(_case: Case, parent_id: str) -> None:
@@ -403,79 +486,11 @@ def _ensure_parent_exists(_case: Case, parent_id: str) -> None:
         raise InvalidDataException(f"Parent item '{parent_id}' is not a folder (type: {parent.type})")
 
 
-def append_folder(case_id: str, item: CaseItem) -> Case:
-    """Append a folder item to a case.
-
-    Validates that the case exists and that the folder name is not already
-    present under the same parent. Persists the updated case.
-
-    Args:
-        case_id: Unique identifier of the case.
-        item: A CaseItem of type ``folder`` whose ``value`` is the folder display name.
-
-    Raises:
-        NotFoundException: If the case does not exist.
-        InvalidDataException: If a folder with the same value already exists under the same parent.
-        DataStoreException: If saving the case fails.
-    """
-    ds = datastore()
-
-    _case = ds.case.get(case_id)
-    if _case is None:
-        raise NotFoundException(f"Case {case_id} does not exist")
-
-    # Check for duplicate folder under same parent
-    if any(
-        ci.type == CaseItemTypes.FOLDER and ci.value == item.value and ci.parent == item.parent for ci in _case.items
-    ):
-        raise InvalidDataException(
-            f"Folder '{item.value}' already exists under parent '{item.parent}' in case {case_id}"
-        )
-
-    _case.items.append(item)
-
-    if not ds.case.save(_case.case_id, _case):
-        raise DataStoreException(f"Failed to save {_case.case_id} with new folder {item.value}")
-
-    comms_service.emit("cases", {"case": _case.as_primitives()})
-
-    return _case
-
-
-def append_markdown(case_id: str, item: CaseItem) -> Case:
-    """Append a markdown document item to a case.
-
-    The markdown content is stored directly in ``item.value``.
-
-    Args:
-        case_id: Unique identifier of the case.
-        item: A CaseItem of type ``markdown`` whose ``value`` is the markdown content.
-
-    Raises:
-        NotFoundException: If the case does not exist.
-        DataStoreException: If saving the case fails.
-    """
-    ds = datastore()
-
-    _case = ds.case.get(case_id)
-    if _case is None:
-        raise NotFoundException(f"Case {case_id} does not exist")
-
-    _case.items.append(item)
-
-    if not ds.case.save(_case.case_id, _case):
-        raise DataStoreException(f"Failed to save {_case.case_id} with new markdown item")
-
-    comms_service.emit("cases", {"case": _case.as_primitives()})
-
-    return _case
-
-
-def move_case_item(case_id: str, item_id: str, new_parent: str | None) -> Case:
+def move_case_item(case: str | Case | None, item_id: str, new_parent: str | None) -> Case:
     """Move an item to a different parent folder (or to root).
 
     Args:
-        case_id: Unique identifier of the case.
+        _case: Case object or unique identifier of the case.
         item_id: The UUID of the item to move.
         new_parent: The UUID of the target folder, or None for root.
 
@@ -489,13 +504,16 @@ def move_case_item(case_id: str, item_id: str, new_parent: str | None) -> Case:
     """
     ds = datastore()
 
-    _case = ds.case.get(case_id)
-    if _case is None:
-        raise NotFoundException(f"Case {case_id} does not exist")
+    if isinstance(case, str):
+        logger.debug("Attempting to fetch case %s", case)
+        case = ds.case.get(case)
 
-    item = next((i for i in _case.items if i.id == item_id), None)
+    if case is None:
+        raise NotFoundException("Case does not exist")
+
+    item = next((i for i in case.items if i.id == item_id), None)
     if item is None:
-        raise NotFoundException(f"Item {item_id} does not exist in case {case_id}")
+        raise NotFoundException(f"Item {item_id} does not exist in case {case.case_id}")
 
     # Case items must remain root-level
     if item.type == CaseItemTypes.CASE and new_parent is not None:
@@ -503,21 +521,24 @@ def move_case_item(case_id: str, item_id: str, new_parent: str | None) -> Case:
 
     # Validate new parent
     if new_parent is not None:
-        _ensure_parent_exists(_case, new_parent)
+        _ensure_parent_exists(case, new_parent)
 
         # Prevent cycles: the new parent must not be a descendant of the item being moved
         if item.type == CaseItemTypes.FOLDER:
-            if _is_descendant(_case.items, new_parent, item_id):
+            if _is_descendant(case.items, new_parent, item_id):
                 raise InvalidDataException(f"Cannot move folder '{item_id}' under its own descendant '{new_parent}'")
+
+    if any(ci.name == item.name and ci.parent == new_parent and ci.id != item_id for ci in case.items):
+        raise InvalidDataException(f"An item with name '{item.name}' already exists in destination.")
 
     item.parent = new_parent
 
-    if not ds.case.save(_case.case_id, _case):
+    if not ds.case.save(case.case_id, case):
         raise DataStoreException("Failed to save case after item move")
 
-    comms_service.emit("cases", {"case": _case.as_primitives()})
+    comms_service.emit("cases", {"case": case.as_primitives()})
 
-    return _case
+    return case
 
 
 def _is_descendant(items: list[CaseItem], candidate_id: str, ancestor_id: str) -> bool:
@@ -542,11 +563,11 @@ def _is_descendant(items: list[CaseItem], candidate_id: str, ancestor_id: str) -
     return False
 
 
-def remove_case_items(case_id: str, item_ids: list[str], force: bool = False) -> Case:  # noqa: C901
+def remove_case_items(case: str | Case | None, item_ids: list[str], force: bool = False) -> Case:  # noqa: C901
     """Remove items from a case by their IDs.
 
     Args:
-        case_id: Unique identifier of the case.
+        _case: Case object or unique identifier of the case.
         item_ids: List of item UUIDs to remove.
         force: If True, also remove children of folder items. If False,
             reject removal of non-empty folders.
@@ -561,11 +582,14 @@ def remove_case_items(case_id: str, item_ids: list[str], force: bool = False) ->
     """
     ds = datastore()
 
-    _case = ds.case.get(case_id)
-    if _case is None:
-        raise NotFoundException(f"Case {case_id} does not exist")
+    if isinstance(case, str):
+        logger.debug("Attempting to fetch case %s", case)
+        case = ds.case.get(case)
 
-    items_by_id = {item.id: item for item in _case.items}
+    if case is None:
+        raise NotFoundException("Case does not exist")
+
+    items_by_id = {item.id: item for item in case.items}
     missing = [iid for iid in item_ids if iid not in items_by_id]
     if missing:
         raise NotFoundException(f"Item(s) not found in case: {', '.join(missing)}")
@@ -575,14 +599,14 @@ def remove_case_items(case_id: str, item_ids: list[str], force: bool = False) ->
     for iid in item_ids:
         item = items_by_id[iid]
         if item.type == CaseItemTypes.FOLDER:
-            children = [ci for ci in _case.items if ci.parent == iid]
+            children = [ci for ci in case.items if ci.parent == iid]
             if children and not force:
                 raise InvalidDataException(
                     f"Folder '{iid}' is not empty. Use force=True to remove it and its children."
                 )
             if force:
                 # Recursively collect all descendants
-                ids_to_remove.update(_collect_descendant_ids(_case.items, iid))
+                ids_to_remove.update(_collect_descendant_ids(case.items, iid))
         ids_to_remove.add(iid)
 
     # Resolve backing objects for back-reference cleanup
@@ -594,21 +618,19 @@ def remove_case_items(case_id: str, item_ids: list[str], force: bool = False) ->
             if obj:
                 backing_objs.append(obj)
 
-    _case.items = [item for item in _case.items if item.id not in ids_to_remove]
+    case.items = [item for item in case.items if item.id not in ids_to_remove]
 
-    if not ds.case.save(_case.case_id, _case):
+    if not ds.case.save(case.case_id, case):
         raise DataStoreException("Failed to save case after item removal")
 
     for backing_obj in backing_objs:
-        remove_backreference(backing_obj, _case.case_id)
+        remove_backreference(backing_obj, case.case_id)
 
-    _sync_case_metadata(case_id)
+    _sync_case_metadata(case)
 
-    updated_case = ds.case.get(_case.case_id)
-    if updated_case:
-        comms_service.emit("cases", {"case": updated_case.as_primitives()})
+    comms_service.emit("cases", {"case": case.as_primitives()})
 
-    return updated_case or _case
+    return case
 
 
 def _collect_descendant_ids(items: list[CaseItem], parent_id: str) -> set[str]:
@@ -621,7 +643,7 @@ def _collect_descendant_ids(items: list[CaseItem], parent_id: str) -> set[str]:
     return result
 
 
-def append_hit(case_id: str, item: CaseItem) -> Case:
+def append_hit(case: Case, item: CaseItem) -> Case:
     """Append a hit item to a case and create a back-reference on the hit.
 
     Validates that the case and hit both exist and that the hit is not already
@@ -640,38 +662,29 @@ def append_hit(case_id: str, item: CaseItem) -> Case:
     """
     ds = datastore()
 
-    _case = ds.case.get(case_id)
-
-    if _case is None:
-        raise NotFoundException(f"Case {case_id} does not exist")
-
-    if any(item.value == case_item["value"] for case_item in _case.items):
-        raise InvalidDataException(f"Hit {item.value} already exists in case {case_id}")
-
     hit = ds.hit.get(item.value)
-
     if hit is None:
         raise NotFoundException(f"Hit {item.value} not found, cannot be added to case")
 
     item.classification = hit.classification
 
-    _case.items.append(item)
+    case.items.append(item)
 
-    if not ds.case.save(_case.case_id, _case):
-        raise DataStoreException(f"Failed to save {_case.case_id} with new item {item.value}")
+    if not ds.case.save(case.case_id, case):
+        raise DataStoreException(f"Failed to save {case.case_id} with new item {item.value}")
 
-    _add_backreference(hit, _case.case_id)
+    _add_backreference(hit, case.case_id)
 
-    _sync_case_metadata(_case.case_id)
+    _sync_case_metadata(case)
 
-    updated_case = ds.case.get(_case.case_id)
+    updated_case = ds.case.get(case.case_id)
     if updated_case:
         comms_service.emit("cases", {"case": updated_case.as_primitives()})
 
-    return _case
+    return case
 
 
-def append_event(case_id: str, item: CaseItem) -> Case:
+def append_event(case: Case, item: CaseItem) -> Case:
     """Append an event item to a case and create a back-reference on the event.
 
     Validates that the case and event both exist and that the event is
@@ -689,14 +702,6 @@ def append_event(case_id: str, item: CaseItem) -> Case:
     """
     ds = datastore()
 
-    _case = ds.case.get(key=case_id)
-
-    if _case is None:
-        raise NotFoundException(f"Case {case_id} does not exist")
-
-    if any(item.value == case_item["value"] for case_item in _case.items):
-        raise InvalidDataException(f"Event {item.value} already exists in case {case_id}")
-
     event = ds.event.get(key=item.value)
 
     if event is None:
@@ -704,22 +709,20 @@ def append_event(case_id: str, item: CaseItem) -> Case:
 
     item.classification = event.classification
 
-    _case.items.append(item)
+    case.items.append(item)
 
-    if not ds.case.save(_case.case_id, _case):
-        raise DataStoreException(f"Failed to save {_case.case_id} with new item {item.value}")
+    if not case.save():
+        raise DataStoreException(f"Failed to save {case.case_id} with new item {item.value}")
 
-    _add_backreference(event, _case.case_id)
-    _sync_case_metadata(case_id)
-
-    updated_case = ds.case.get(_case.case_id)
+    _add_backreference(event, case.case_id)
+    updated_case = _sync_case_metadata(case)
     if updated_case:
         comms_service.emit("cases", {"case": updated_case.as_primitives()})
 
-    return _case
+    return updated_case or case
 
 
-def append_case(case_id: str, item: CaseItem) -> Case:
+def append_case(case: Case, item: CaseItem) -> Case:
     """Append a case reference item to a case.
 
     Validates that both the parent case and the referenced case exist, and that
@@ -740,92 +743,22 @@ def append_case(case_id: str, item: CaseItem) -> Case:
     """
     ds = datastore()
 
-    _case = ds.case.get(case_id)
-
-    if _case is None:
-        raise NotFoundException(f"Case {case_id} does not exist")
-
-    if any(item.value == case_item["value"] for case_item in _case.items):
-        raise InvalidDataException(f"Item {item.value} already exists in case {case_id}")
+    if any(item.value == case_item["value"] for case_item in case.items):
+        raise InvalidDataException(f"Item {item.value} already exists in case {case.case_id}")
 
     referenced_case = ds.case.get(item.value)
 
     if referenced_case is None:
-        raise NotFoundException(f"Referenced case {item.value} not found, cannot be added to case")
+        raise NotFoundException(f"Referenced case {item.name} not found, cannot be added to case")
 
-    _case.items.append(item)
+    case.items.append(item)
 
-    if not datastore().case.save(_case.case_id, _case):
-        raise DataStoreException(f"Failed to save {_case.case_id} with new item {item.value}")
+    if not case.save():
+        raise DataStoreException(f"Failed to save {case.case_id} with new item {item.name}")
 
-    comms_service.emit("cases", {"case": _case.as_primitives()})
+    comms_service.emit("cases", {"case": case.as_primitives()})
 
-    return _case
-
-
-def append_table(case_id: str, item: CaseItem) -> Case:
-    """Append a table item to a case.
-
-    Not yet implemented.
-
-    Args:
-        case_id: Unique identifier of the case to append the table to.
-        item: A CaseItem representing the table to append.
-
-    Raises:
-        NotImplementedError: Always raised; this feature is not yet implemented.
-    """
-    raise NotImplementedError
-
-
-def append_lead(case_id: str, item: CaseItem) -> Case:
-    """Append a lead item to a case.
-
-    Not yet implemented.
-
-    Args:
-        case_id: Unique identifier of the case to append the lead to.
-        item: A CaseItem representing the lead to append.
-
-    Raises:
-        NotImplementedError: Always raised; this feature is not yet implemented.
-    """
-    raise NotImplementedError
-
-
-def append_reference(case_id: str, item: CaseItem) -> Case:
-    """Append an external reference item to a case.
-
-    Validates that the case exists and that the reference URL is not already
-    present in the case. It then persists the updated case.
-
-    Args:
-        case_id: Unique identifier of the case to append the reference to.
-        item: A CaseItem whose ``value`` is the external URL to reference.
-
-    Raises:
-        NotFoundException: If the case does not exist.
-        InvalidDataException: If the reference URL is already present in the case.
-        DataStoreException: If saving the updated case fails.
-    """
-    ds = datastore()
-
-    _case = ds.case.get(key=case_id)
-
-    if _case is None:
-        raise NotFoundException(f"Case {case_id} does not exist")
-
-    if any(item.value == case_item["value"] for case_item in _case.items):
-        raise InvalidDataException(f"Reference {item.value} already exists in case {case_id}")
-
-    _case.items.append(item)
-
-    if not datastore().case.save(_case.case_id, _case):
-        raise DataStoreException(f"Failed to save {_case.case_id} with new item {item.value}")
-
-    comms_service.emit("cases", {"case": _case.as_primitives()})
-
-    return _case
+    return case
 
 
 def _collect_indicators_from_related(related: Related | None) -> set[str]:
@@ -842,7 +775,7 @@ def _collect_indicators_from_related(related: Related | None) -> set[str]:
     return indicators
 
 
-def _sync_case_metadata(case_id: str) -> None:  # noqa: C901
+def _sync_case_metadata(case: Case | None) -> Case | None:  # noqa: C901
     """Re-compute and persist threat/target/indicator lists from all case items.
 
     Iterates over hit and event items in the case and re-derives the
@@ -850,15 +783,14 @@ def _sync_case_metadata(case_id: str) -> None:  # noqa: C901
     objects' ECS ``related.*`` fields and, for hits, the outline fields.
     """
     ds = datastore()
-    _case = ds.case.get(case_id)
-    if _case is None:
-        return
+    if case is None:
+        return None
 
     targets: set[str] = set()
     threats: set[str] = set()
     indicators: set[str] = set()
 
-    for item in _case.items:
+    for item in case.items:
         if item.type == CaseItemTypes.HIT and item.value:
             hit = ds.hit.get(item.value)
             if hit is None:
@@ -882,10 +814,12 @@ def _sync_case_metadata(case_id: str) -> None:  # noqa: C901
 
             indicators.update(_collect_indicators_from_related(event.related))
 
-    _case.targets = sorted(targets)
-    _case.threats = sorted(threats)
-    _case.indicators = sorted(indicators)
-    ds.case.save(case_id, _case)
+    case.targets = sorted(targets)
+    case.threats = sorted(threats)
+    case.indicators = sorted(indicators)
+    case.save()
+
+    return case
 
 
 def _add_backreference(backing_obj: Hit | Event | None, case_id: str):
@@ -912,7 +846,7 @@ def _add_backreference(backing_obj: Hit | Event | None, case_id: str):
         return
 
     backing_obj.howler.related.append(case_id)
-    datastore()[backing_obj.__class__.__name__.lower()].save(backing_obj.howler.id, backing_obj)
+    backing_obj.save()
 
 
 def remove_backreference(backing_obj: Hit | Event | None, case_id: str):
@@ -937,7 +871,7 @@ def remove_backreference(backing_obj: Hit | Event | None, case_id: str):
 
     if case_id in backing_obj.howler.related:
         backing_obj.howler.related.remove(case_id)
-        datastore()[backing_obj.__class__.__name__.lower()].save(backing_obj.howler.id, backing_obj)
+        backing_obj.save()
 
 
 def rename_case_item(case_id: str, item_id: str, new_name: str) -> Case:
