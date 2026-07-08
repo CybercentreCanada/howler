@@ -3,7 +3,7 @@ import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
-import { DataGridPro } from '@mui/x-data-grid-pro';
+import { DataGrid } from '@mui/x-data-grid';
 import { TsxColoredDot } from 'plugins/tsx_components/tsx_colored_dot';
 import { useSharedUserStatusList } from 'plugins/tsx_hooks/user_status/UserStatusListContext';
 import { useMemo, type ComponentProps } from 'react';
@@ -59,7 +59,7 @@ export const AnalystPresenceTable = ({ keyword }: AnalystPresenceTableProps) => 
   }
 
   return (
-    <DataGridPro
+    <DataGrid
       rows={filteredUsers}
       getRowId={row => row.uname}
       getRowClassName={({ row }) => (row.status === null ? 'analyst-presence-row-unavailable' : '')}
@@ -146,7 +146,6 @@ export const AnalystPresenceTable = ({ keyword }: AnalystPresenceTableProps) => 
         detailPanelExpandIcon: ({ color: _, ...props }) => <ExpandMoreIcon {...props} />,
         detailPanelCollapseIcon: ({ color: _, ...props }) => <ExpandLessIcon {...props} />
       }}
-      getDetailPanelHeight={() => 'auto'}
       getDetailPanelContent={({ row }) => <AnalystPresenceTableDetails user={row} />}
       sx={{
         mx: 2,
