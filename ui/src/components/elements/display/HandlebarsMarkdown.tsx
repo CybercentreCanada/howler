@@ -69,12 +69,10 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
       handlebars.registerHelper(helper.keyword, (...args: any[]) => {
         console.debug(`Running helper ${helper.keyword}`);
 
-        const options = args.pop();
-
         if (helper.componentCallback) {
           const id = hashCode(JSON.stringify([helper.keyword, ...args])).toString();
           if (!mdComponents[id]) {
-            const result = helper.componentCallback(options, ...args);
+            const result = helper.componentCallback(...args);
 
             if (result instanceof Promise) {
               result.then(_result => setMdComponents(_components => ({ ..._components, [id]: _result })));
@@ -86,7 +84,7 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
           return new Handlebars.SafeString(`\`${id}\``);
         }
         try {
-          return helper.callback(options, ...args);
+          return helper.callback(...args);
         } catch (err) {
           if (err instanceof HowlerHelperError) {
             throw new HowlerHandlebarsRenderError(err.message, helper.keyword, helper.hint);

@@ -51,7 +51,10 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             en: 'Checks the equality of the string representation of the two arguments.',
             fr: "Vérifie l'égalité de la représentation en chaîne de caractères des deux arguments."
           },
-          callback: (_, arg1, arg2) => {
+          callback: (...args) => {
+            args.pop(); // remove options
+            const [arg1, arg2] = args;
+
             if (isNil(arg1) || isNil(arg2)) {
               throw new HowlerHelperError('Both arguments must be provided.');
             }
@@ -65,7 +68,12 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             en: 'Runs the comparison `arg1 && arg2`, and returns the result.',
             fr: 'Exécute la comparaison `arg1 && arg2`, et retourne le résultat.'
           },
-          callback: (_, arg1, arg2) => arg1 && arg2
+          callback: (...args) => {
+            args.pop(); // remove options
+            const [arg1, arg2] = args;
+
+            return arg1 && arg2;
+          }
         },
         {
           keyword: 'or',
@@ -73,7 +81,12 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             en: 'Runs the comparison `arg1 || arg2`, and returns the result.',
             fr: 'Exécute la comparaison `arg1 || arg2`, et retourne le résultat.'
           },
-          callback: (_, arg1, arg2) => arg1 || arg2
+          callback: (...args) => {
+            args.pop(); // remove options
+            const [arg1, arg2] = args;
+
+            return arg1 || arg2;
+          }
         },
         {
           keyword: 'not',
@@ -81,7 +94,12 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             en: 'Runs the comparison `!arg`, and returns the result.',
             fr: 'Exécute la comparaison `!arg`, et retourne le résultat.'
           },
-          callback: (_, arg) => !arg
+          callback: (...args) => {
+            args.pop(); // remove options
+            const arg = args[0];
+
+            return !arg;
+          }
         },
         {
           keyword: 'curly',
@@ -89,7 +107,12 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             en: 'Wraps the given argument in curly braces.',
             fr: "Entoure l'argument donné d'accolades."
           },
-          callback: (_, arg1) => new Handlebars.SafeString(`{{${arg1}}}`)
+          callback: (...args) => {
+            args.pop(); // remove options
+            const arg1 = args[0];
+
+            return new Handlebars.SafeString(`{{${arg1}}}`);
+          }
         },
         {
           keyword: 'join',
@@ -97,8 +120,12 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             en: 'Joins two string arguments with a given string `sep`, or the empty string as a default.',
             fr: 'Joint deux arguments de chaîne avec une chaîne donnée `sep`, ou la chaîne vide par défaut.'
           },
-          callback: (context, arg1: string, arg2: string) =>
-            [arg1?.toString() ?? '', arg2?.toString() ?? ''].join(context.hash?.sep ?? '')
+          callback: (...args) => {
+            const context = args.pop();
+            const [arg1, arg2] = args;
+
+            return [arg1?.toString() ?? '', arg2?.toString() ?? ''].join(context.hash?.sep ?? '');
+          }
         },
         {
           keyword: 'upper',
@@ -106,7 +133,10 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             en: 'Returns the uppercase representation of a string argument.',
             fr: "Retourne la représentation en majuscules d'un argument de chaîne."
           },
-          callback: (_, val: string) => {
+          callback: (...args) => {
+            args.pop(); // remove options
+            const val = args[0];
+
             if (isNil(val)) {
               throw new HowlerHelperError('Upper expects a string argument');
             }
@@ -120,7 +150,10 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             en: 'Returns the lowercase representation of a string argument.',
             fr: "Retourne la représentation en minuscules d'un argument de chaîne."
           },
-          callback: (_, val: string) => {
+          callback: (...args) => {
+            args.pop(); // remove options
+            const val = args[0];
+
             if (isNil(val)) {
               throw new HowlerHelperError('Lower expects a string argument');
             }
@@ -135,7 +168,10 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             fr: "Récupère l'URL fournie et retourne la clé donnée (aplatie) de l'objet JSON retourné. Notez que le résultat doit être du JSON !"
           },
           async: true,
-          callback: async (_, url, key) => {
+          callback: async (...args) => {
+            args.pop(); // remove options
+            const [url, key] = args;
+
             try {
               if (!FETCH_RESULTS[url]) {
                 FETCH_RESULTS[url] = fetch(url).then(res => res.json());
@@ -155,7 +191,10 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             en: 'Given a howler hit ID, this helper renders a hit card for that ID.',
             fr: 'Étant donné un ID de résultat howler, cet assistant affiche une carte de résultat pour cet ID.'
           },
-          componentCallback: (_, id) => {
+          componentCallback: (...args) => {
+            args.pop(); // remove options
+            const id = args[0];
+
             if (!id) {
               return <AppListEmpty />;
             }
@@ -169,7 +208,10 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             en: 'Given a dict, return an array of {key, value} objects.',
             fr: "Étant donné un dictionnaire, retourne un tableau d'objets {key, value}."
           },
-          callback: (_, obj) => {
+          callback: (...args) => {
+            args.pop(); // remove options
+            const obj = args[0];
+
             if (!isObject(obj)) {
               return new Handlebars.SafeString('Invalid Object.');
             }
@@ -183,7 +225,10 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             en: 'Given JSON data, this helper renders a JSON viewer component.',
             fr: 'Étant donné des données JSON, cet assistant affiche un composant de visualisation JSON.'
           },
-          componentCallback: (_, data) => {
+          componentCallback: (...args) => {
+            args.pop(); // remove options
+            const data = args[0];
+
             if (!data) {
               return <AppListEmpty />;
             }
@@ -197,7 +242,10 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             en: 'Convert any object into a JSON string.',
             fr: "Convertit n'importe quel objet en chaîne JSON."
           },
-          callback: (_, obj) => {
+          callback: (...args) => {
+            args.pop(); // remove options
+            const obj = args[0];
+
             return new Handlebars.SafeString(JSON.stringify(obj));
           }
         },
@@ -207,7 +255,10 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             en: 'Convert a JSON string into an object.',
             fr: 'Convertit une chaîne JSON en objet.'
           },
-          callback: (_, str) => {
+          callback: (...args) => {
+            args.pop(); // remove options
+            const str = args[0];
+
             if (isNil(str)) {
               throw new HowlerHelperError('Parse JSON expects a string argument');
             }
@@ -225,7 +276,10 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             en: 'Returns the given (flattened) key from the provided object.',
             fr: "Retourne la clé donnée (aplatie) de l'objet fourni."
           },
-          callback: (_, data, key) => {
+          callback: (...args) => {
+            args.pop(); // remove options
+            const [data, key] = args;
+
             try {
               return get(data, key);
             } catch (e) {
@@ -239,7 +293,10 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             en: 'Checks if field is in string',
             fr: 'Vérifie si le champ est dans la chaîne'
           },
-          callback: (_, arg1, arg2) => {
+          callback: (...args) => {
+            args.pop(); // remove options
+            const [arg1, arg2] = args;
+
             return !!arg2 && !!arg1?.includes(arg2);
           }
         },
@@ -250,7 +307,10 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             en: 'Render a table in markdown given an array of cells',
             fr: "Affiche un tableau en markdown à partir d'un tableau de cellules"
           },
-          componentCallback: (_, cells: Cell[]) => {
+          componentCallback: (...args) => {
+            args.pop(); // remove options
+            const cells: Cell[] = args[0];
+
             const columns = Object.keys(groupBy(cells, 'column'));
             const rows = groupBy(cells, 'row');
 
@@ -294,7 +354,10 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             en: 'Execute a howler action given a specific action ID (from the URL when viewing the action, i.e. yaIKVqiKhWpyCsWdqsE4D)',
             fr: "Exécute une action howler à partir d'un ID d'action spécifique (de l'URL lors de la visualisation de l'action, par ex. yaIKVqiKhWpyCsWdqsE4D)"
           },
-          componentCallback: (context, actionId: string, hitId: string) => {
+          componentCallback: (...args) => {
+            const context = args.pop(); // remove options
+            const [actionId, hitId] = args;
+
             return <ActionButton actionId={actionId} hitId={hitId} {...(context.hash ?? {})} />;
           }
         },
@@ -305,7 +368,10 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             en: '',
             fr: ''
           },
-          callback: (_, str: string, searchValue: string, replaceValue: string) => {
+          callback: (...args) => {
+            args.pop(); // remove options
+            const [str, searchValue, replaceValue] = args;
+
             if (isNil(str) || isNil(searchValue) || isNil(replaceValue)) {
               throw new HowlerHelperError('Replace expects three arguments');
             }
