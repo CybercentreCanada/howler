@@ -466,7 +466,10 @@ def _check_conflicts(case: Case, item: CaseItem) -> None:
     """
     # Check for duplicate folder under same parent
     if any(ci.name == item.name and ci.parent == item.parent for ci in case.items):
-        raise InvalidDataException(f"An item with name '{item.name}' already exists in parent {item.parent}.")
+        raise InvalidDataException(
+            f"An item with name '{item.name}' already exists in "
+            + (f"parent {item.parent}." if item.parent else "root.")
+        )
 
 
 def _ensure_parent_exists(_case: Case, parent_id: str) -> None:
@@ -895,26 +898,29 @@ def rename_case_item(case_id: str, item_id: str, new_name: str) -> Case:
 
     ds = datastore()
 
-    _case = ds.case.get(case_id)
-    if _case is None:
+    case = ds.case.get(case_id)
+    if case is None:
         raise NotFoundException(f"Case {case_id} does not exist")
 
-    item = next((i for i in _case.items if i.id == item_id), None)
+    item = next((i for i in case.items if i.id == item_id), None)
     if item is None:
         raise NotFoundException(f"Item {item_id} does not exist in case {case_id}")
 
     # Guard: reject if the target name is already used by a sibling (item with the same parent).
-    if any(i.name == new_name.strip() and i.id != item_id and i.parent == item.parent for i in _case.items):
+    if any(i.name == new_name.strip() and i.id != item_id and i.parent == item.parent for i in case.items):
         raise InvalidDataException(f"Name '{new_name.strip()}' is already used by a sibling item in this case")
 
     item.name = new_name.strip()
 
-    if not ds.case.save(_case.case_id, _case):
+    if item.type == CaseItemTypes.FOLDER:
+        item.value = item.name
+
+    if not case.save():
         raise DataStoreException("Failed to save case after item rename")
 
-    comms_service.emit("cases", {"case": _case.as_primitives()})
+    comms_service.emit("cases", {"case": case.as_primitives()})
 
-    return _case
+    return case
 
 
 def add_case_rule(case_id: str, rule_data: dict, user: User) -> Case:

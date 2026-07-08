@@ -154,7 +154,7 @@ class CaseTask(odm.Model):
     complete: bool = odm.Boolean(default=False, description="Whether the task is complete.")
     assignment: str | None = odm.Keyword(description="Assigned discipline or user ID.", optional=True)
     summary: str = odm.Text(description="Task summary.")
-    path: str = odm.Keyword(description="Associated case item path.", optional=True)
+    item: str = odm.Keyword(description="Associated case item id.", optional=True)
 
 
 @odm.model(index=True, store=True, description="Enrichment annotations associated with a case path.")

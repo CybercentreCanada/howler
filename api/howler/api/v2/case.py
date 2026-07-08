@@ -240,7 +240,7 @@ def append_item(id: str, user: User, **kwargs):  # noqa: C901
     if not body or not isinstance(body, dict):
         return bad_request(err="Request body must be a JSON object.")
 
-    for field in ["value", "type"]:
+    for field in ["value", "type", "name"]:
         if field not in body:
             return bad_request(err=f"CaseItem '{field}' is required")
 

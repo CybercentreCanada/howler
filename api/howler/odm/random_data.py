@@ -37,7 +37,7 @@ from howler.odm.base import Keyword
 from howler.odm.helper import generate_useful_dossier, generate_useful_event, generate_useful_hit
 from howler.odm.models.action import Action
 from howler.odm.models.analytic import Analytic, Comment, Notebook, TriageOptions
-from howler.odm.models.case import Case
+from howler.odm.models.case import Case, CaseItem, CaseRule, CaseTask
 from howler.odm.models.ecs.event import EVENT_CATEGORIES
 from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import Assessment, Escalation, Scrutiny, Status
@@ -47,7 +47,7 @@ from howler.odm.models.user import User
 from howler.odm.models.view import View
 from howler.odm.randomizer import get_random_string, get_random_user, get_random_word, random_model_obj
 from howler.security.utils import get_password_hash
-from howler.services import analytic_service, user_service
+from howler.services import analytic_service, case_service, user_service
 
 classification = loader.get_classification()
 
@@ -635,9 +635,9 @@ def wipe_events(ds):
 
 def create_cases(ds: HowlerDatastore, num_cases: int = 5):
     """Create random cases using references to random alerts and events."""
-    users = ds.user.search("uname:*", rows=200, as_obj=False)["items"]
-    hits = ds.hit.search("howler.id:*", rows=200, as_obj=False)["items"]
-    events = ds.event.search("howler.id:*", rows=200, as_obj=False)["items"]
+    users = ds.user.search("uname:*", rows=200, as_obj=True)["items"]
+    hits = ds.hit.search("howler.id:*", rows=200, as_obj=True)["items"]
+    events = ds.event.search("howler.id:*", rows=200, as_obj=True)["items"]
     existing_case_ids = [case.get("case_id") for case in ds.case.search("case_id:*", rows=200, as_obj=False)["items"]]
     generated_case_ids: list[str] = []
 
@@ -716,9 +716,12 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
         "Detection Review",
     ]
 
-    def _parse_timestamp(value: str | None) -> datetime | None:
+    def _parse_timestamp(value: str | datetime | None) -> datetime | None:
         if not value:
             return None
+
+        if isinstance(value, datetime):
+            return value
 
         try:
             return datetime.fromisoformat(value.replace("Z", "+00:00"))
@@ -731,92 +734,6 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
         selected_hits = sample(hits, k=min(len(hits), randint(5, 15))) if hits else []
         selected_events = sample(events, k=min(len(events), randint(3, 9))) if events else []
 
-        items: list[dict[str, str]] = []
-
-        for idx, hit in enumerate(selected_hits, start=1):
-            hit_id = hit.get("howler", {}).get("id")
-            if not hit_id:
-                continue
-
-            items.append(
-                {
-                    "path": f"alerts/{hit['howler']['analytic']} ({hit['howler']['id']})",
-                    "type": "hit",
-                    "value": hit_id,
-                }
-            )
-
-        for idx, event_item in enumerate(selected_events, start=1):
-            event_id = event_item.get("howler", {}).get("id")
-            if not event_id:
-                continue
-
-            items.append(
-                {
-                    "path": f"event/{event_item['howler']['id']}",
-                    "type": "event",
-                    "value": event_id,
-                }
-            )
-
-        # Add a few additional deeply nested paths for existing hits/events
-        nested_hit_candidates = sample(selected_hits, k=min(len(selected_hits), randint(1, 3))) if selected_hits else []
-        for nested_hit in nested_hit_candidates:
-            nested_hit_id = nested_hit.get("howler", {}).get("id")
-            if not nested_hit_id:
-                continue
-
-            items.append(
-                {
-                    "path": f"alerts/{get_random_word()}/{get_random_word()}",
-                    "type": "hit",
-                    "value": nested_hit_id,
-                }
-            )
-
-        nested_event_candidates = (
-            sample(
-                selected_events,
-                k=min(len(selected_events), randint(1, 2)),
-            )
-            if selected_events
-            else []
-        )
-        for nested_event in nested_event_candidates:
-            nested_event_id = nested_event.get("howler", {}).get("id")
-            if not nested_event_id:
-                continue
-
-            items.append(
-                {
-                    "path": f"alerts/{get_random_word()}/{get_random_word()}/{get_random_word()}",
-                    "type": "event",
-                    "value": nested_event_id,
-                }
-            )
-
-        available_related_case_ids = [
-            cid for cid in [*existing_case_ids, *generated_case_ids] if isinstance(cid, str) and cid != case_id
-        ]
-        selected_related_case_ids = (
-            sample(available_related_case_ids, k=min(len(available_related_case_ids), randint(0, 3)))
-            if available_related_case_ids
-            else []
-        )
-
-        for idx, related_case_id in enumerate(selected_related_case_ids, start=1):
-            items.append(
-                {
-                    "path": f"Related Case {idx}",
-                    "type": "case",
-                    "value": related_case_id,
-                }
-            )
-
-        selected_reference_names = sample(reference_name_pool, k=randint(1, 3))
-        for idx, reference_name in enumerate(selected_reference_names, start=1):
-            items.append({"path": f"references/{reference_name}", "type": "reference", "value": "https://example.com"})
-
         selected_targets = sample(target_pool, k=randint(1, min(3, len(target_pool))))
         selected_threats = sample(threat_pool, k=randint(1, min(3, len(threat_pool))))
         selected_participants = [
@@ -825,7 +742,7 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
 
         timeline_datetimes = [
             parsed
-            for parsed in (_parse_timestamp(record.get("timestamp")) for record in [*selected_hits, *selected_events])
+            for parsed in (_parse_timestamp(record.timestamp) for record in [*selected_hits, *selected_events])
             if parsed is not None
         ]
 
@@ -840,36 +757,7 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
             ]
         )
 
-        task_count = randint(3, 7)
-        tasks = []
-        for _ in range(task_count):
-            tasks.append(
-                {
-                    "id": str(uuid4()),
-                    "complete": choice([True, False]),
-                    "assignment": choice(selected_participants or ["admin"]),
-                    "status": choice(Status.list()),
-                    "summary": choice(
-                        [
-                            "Review related indicators and determine additional pivots.",
-                            "Validate event context and identify correlations.",
-                            "Confirm scope and impacted entities for this thread.",
-                            "Assess whether this path supports active compromise.",
-                            "Collect supporting evidence and update confidence level.",
-                            "Compare this artifact against recent detection patterns.",
-                            "Identify additional systems requiring triage for this lead.",
-                            "Map this task output to containment or remediation actions.",
-                            "Verify timeline consistency with known suspicious activity.",
-                            "Check for related user and host activity across the same window.",
-                            "Validate whether this indicator appears in prior incidents.",
-                            "Document findings and propose next investigation pivots.",
-                        ]
-                    ),
-                    "path": choice([item["path"] for item in items]) if items else "alerts/alert1",
-                }
-            )
-
-        case_data = Case(
+        case = Case(
             {
                 "case_id": case_id,
                 "title": choice(case_titles),
@@ -884,9 +772,149 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
                 "threats": selected_threats,
                 "indicators": list(set(selected_targets + selected_threats))[:5],
                 "participants": selected_participants,
-                "items": items,
                 "enrichments": [],
-                "rules": [
+            }
+        )
+
+        for hit in selected_hits:
+            parent = case_service.get_parent_from_path(case, "alerts", ensure=True)
+
+            case.items.append(
+                CaseItem(
+                    {
+                        "name": f"{hit.howler.analytic} ({hit.howler.id})",
+                        "parent": parent.id if parent else None,
+                        "type": "hit",
+                        "value": hit.howler.id,
+                    }
+                )
+            )
+
+        for event in selected_events:
+            parent = case_service.get_parent_from_path(case, "events", ensure=True)
+
+            case.items.append(
+                CaseItem(
+                    {
+                        "name": f"{get_random_word()} ({event.howler.id})",
+                        "parent": parent.id if parent else None,
+                        "type": "event",
+                        "value": event.howler.id,
+                    }
+                )
+            )
+
+        # Add a few additional deeply nested paths for existing hits/events
+        nested_hit_candidates = sample(selected_hits, k=min(len(selected_hits), randint(1, 3))) if selected_hits else []
+        for hit in nested_hit_candidates:
+            parent = case_service.get_parent_from_path(
+                case, f"alerts/{get_random_word()}/{get_random_word()}", ensure=True
+            )
+
+            case.items.append(
+                CaseItem(
+                    {
+                        "name": f"{get_random_word()} ({hit.howler.id})",
+                        "parent": parent.id if parent else None,
+                        "type": "hit",
+                        "value": hit.howler.id,
+                    }
+                )
+            )
+
+        nested_event_candidates = (
+            sample(
+                selected_events,
+                k=min(len(selected_events), randint(1, 2)),
+            )
+            if selected_events
+            else []
+        )
+        for event in nested_event_candidates:
+            parent = case_service.get_parent_from_path(
+                case, f"alerts/{get_random_word()}/{get_random_word()}", ensure=True
+            )
+
+            case.items.append(
+                CaseItem(
+                    {
+                        "name": f"{get_random_word()} ({event.howler.id})",
+                        "parent": parent.id if parent else None,
+                        "type": "event",
+                        "value": event.howler.id,
+                    }
+                )
+            )
+
+        available_related_case_ids = [
+            cid for cid in [*existing_case_ids, *generated_case_ids] if isinstance(cid, str) and cid != case_id
+        ]
+        selected_related_case_ids = (
+            sample(available_related_case_ids, k=min(len(available_related_case_ids), randint(0, 3)))
+            if available_related_case_ids
+            else []
+        )
+
+        for idx, related_case_id in enumerate(selected_related_case_ids, start=1):
+            case.items.append(
+                CaseItem(
+                    {
+                        "name": f"Related Case {idx}",
+                        "type": "case",
+                        "value": related_case_id,
+                    }
+                )
+            )
+
+        selected_reference_names = sample(reference_name_pool, k=randint(1, 3))
+        for reference_name in selected_reference_names:
+            parent = case_service.get_parent_from_path(case, "references", ensure=True)
+            case.items.append(
+                CaseItem(
+                    {
+                        "name": reference_name,
+                        "type": "reference",
+                        "value": "https://example.com",
+                        "parent": parent.id if parent else None,
+                    }
+                )
+            )
+
+        task_count = randint(3, 7)
+        for _ in range(task_count):
+            case.tasks.append(
+                CaseTask(
+                    {
+                        "id": str(uuid4()),
+                        "complete": choice([True, False]),
+                        "assignment": choice(selected_participants or ["admin"]),
+                        "status": choice(Status.list()),
+                        "summary": choice(
+                            [
+                                "Review related indicators and determine additional pivots.",
+                                "Validate event context and identify correlations.",
+                                "Confirm scope and impacted entities for this thread.",
+                                "Assess whether this path supports active compromise.",
+                                "Collect supporting evidence and update confidence level.",
+                                "Compare this artifact against recent detection patterns.",
+                                "Identify additional systems requiring triage for this lead.",
+                                "Map this task output to containment or remediation actions.",
+                                "Verify timeline consistency with known suspicious activity.",
+                                "Check for related user and host activity across the same window.",
+                                "Validate whether this indicator appears in prior incidents.",
+                                "Document findings and propose next investigation pivots.",
+                            ]
+                        ),
+                        "item": choice([item.id for item in case.items]) if case.items else None,
+                    }
+                )
+            )
+
+        for _ in range(randint(1, 3)):
+            timeframe = choice([7, 14, 28, None])
+
+            case.rules.append(
+                CaseRule(
                     {
                         "destination": choice(
                             [
@@ -908,22 +936,19 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
                         ),
                         "author": choice(selected_participants or ["admin"]),
                         "enabled": choice([True, True, True, False]),
-                        "timeframe": choice([7, 14, 28, None]),
-                        "expire_after_resolved": choice([True, False]),
+                        "timeframe": timeframe,
+                        "expire_after_resolved": choice([True, False]) if timeframe is not None else False,
                     }
-                    for _ in range(randint(1, 3))
-                ],
-                "tasks": tasks,
-            }
-        )
+                )
+            )
 
-        case_data = run_modifications("case", case_data)
+        case_data = run_modifications("case", case)
 
         ds.case.save(case_id, case_data)
         generated_case_ids.append(case_id)
 
-        case_hit_ids = list({item["value"] for item in items if item.get("type") == "hit"})
-        case_event_ids = list({item["value"] for item in items if item.get("type") == "event"})
+        case_hit_ids = list({item.value for item in case.items if item.type == "hit"})
+        case_event_ids = list({item.value for item in case.items if item.type == "event"})
 
         for hit_id in case_hit_ids:
             ds.hit.update(hit_id, [hit_helper.list_add("howler.related", case_id)])
