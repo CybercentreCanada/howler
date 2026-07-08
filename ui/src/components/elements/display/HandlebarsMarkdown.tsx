@@ -21,10 +21,10 @@ class HowlerHandlebarsRenderError extends Error {
   hint?: string;
 
   constructor(message: string, helper: string, hint?: string) {
-    super(message);
+    super(Handlebars.escapeExpression(message));
     this.name = 'HowlerHandlebarsRenderError';
-    this.helper = helper;
-    this.hint = hint;
+    this.helper = Handlebars.escapeExpression(helper);
+    this.hint = hint ? Handlebars.escapeExpression(hint) : undefined;
   }
 }
 
@@ -84,7 +84,15 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
           return new Handlebars.SafeString(`\`${id}\``);
         }
         try {
-          return helper.callback(...args);
+          const result = helper.callback(...args);
+          return result instanceof Promise
+            ? result.catch(err => {
+                if (err instanceof HowlerHelperError) {
+                  throw new HowlerHandlebarsRenderError(err.message, helper.keyword, helper.hint);
+                }
+                throw err;
+              })
+            : result;
         } catch (err) {
           if (err instanceof HowlerHelperError) {
             throw new HowlerHandlebarsRenderError(err.message, helper.keyword, helper.hint);
