@@ -2,6 +2,7 @@ import type { Case } from 'models/entities/generated/Case';
 import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
 import { useCallback, useMemo, useState } from 'react';
+import { buildPathFromID } from '../utils';
 import type { FolderOption, RecordEntry } from './types';
 
 export const defaultTitle = (record: Hit | Event): string => {
@@ -20,9 +21,10 @@ export const useFolderOptions = (selectedCase: Case | null): FolderOption[] => {
     const options: FolderOption[] = [];
     for (const item of selectedCase.items) {
       if (item.type === 'folder' && item.id) {
-        options.push({ id: item.id, label: item.name ?? item.value ?? item.id });
+        options.push({ id: item.id, label: buildPathFromID(selectedCase, item.id) });
       }
     }
+
     return options;
   }, [selectedCase]);
 };

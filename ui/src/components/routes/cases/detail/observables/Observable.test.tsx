@@ -72,12 +72,12 @@ describe('Observable', () => {
       expect(screen.getByText('page.cases.observables.seen_in')).toBeTruthy();
     });
 
-    it('renders a chip labelled with entry.path for each seenIn id', () => {
+    it('renders chips labelled from item name/value for each seenIn id', () => {
       const _case = createMockCase({
         items: [
-          { type: 'hit', value: 'hit-001' },
-          { type: 'event', value: 'obs-002' },
-          { type: 'hit', value: 'hit-003' }
+          { id: 'i1', type: 'hit', value: 'hit-001', name: 'first-hit' },
+          { id: 'i2', type: 'event', value: 'obs-002', name: 'obs-two' },
+          { id: 'i3', type: 'hit', value: 'hit-003' }
         ]
       });
       render(
@@ -85,24 +85,24 @@ describe('Observable', () => {
           <Observable observable={makeObservable({ seenIn: ['hit-001', 'obs-002', 'hit-003'] })} case={_case} />
         </MemoryRouter>
       );
-      expect(screen.getByText('alerts/my-analytic (hit-001)')).toBeTruthy();
-      expect(screen.getByText('events/obs-002')).toBeTruthy();
-      expect(screen.getByText('alerts/other-analytic (hit-003)')).toBeTruthy();
+      expect(screen.getByText('first-hit')).toBeTruthy();
+      expect(screen.getByText('obs-two')).toBeTruthy();
+      expect(screen.getByText('hit-003')).toBeTruthy();
     });
 
-    it('links each chip to /cases/:case_id/:path', () => {
+    it('links each chip to /cases/:case_id/:item_id', () => {
       const _case = createMockCase({
         case_id: 'case-abc',
-        items: [{ type: 'hit', value: 'hit-001' }]
+        items: [{ id: 'item-1', type: 'hit', value: 'hit-001', name: 'first-hit' }]
       });
       render(
         <MemoryRouter>
           <Observable observable={makeObservable({ seenIn: ['hit-001'] })} case={_case} />
         </MemoryRouter>
       );
-      const link = screen.getByText('alerts/my-analytic (hit-001)').closest('a');
+      const link = screen.getByText('first-hit').closest('a');
       expect(link).not.toBeNull();
-      expect(link?.getAttribute('href')).toBe('/cases/case-abc/alerts/my-analytic (hit-001)');
+      expect(link?.getAttribute('href')).toBe('/cases/case-abc/item-1');
     });
   });
 });

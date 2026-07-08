@@ -10,7 +10,7 @@ import type { Tree } from './types';
  * Items with `parent=null` or `parent=undefined` are root-level.
  */
 export const buildTree = (items: Item[] = []): Tree => {
-  const root: Tree = { leaves: [], folders: {} };
+  const root: Tree = { item: null, leaves: [], folders: {} };
 
   // Index folders by id
   const folderNodes: Record<string, Tree> = {};
@@ -21,8 +21,7 @@ export const buildTree = (items: Item[] = []): Tree => {
       folderNodes[folder.id] = {
         leaves: [],
         folders: {},
-        id: folder.id,
-        parentId: folder.parent ?? null
+        item: folder
       };
     }
   }
@@ -34,9 +33,9 @@ export const buildTree = (items: Item[] = []): Tree => {
     }
     const node = folderNodes[folder.id];
     if (folder.parent && folderNodes[folder.parent]) {
-      folderNodes[folder.parent].folders![folder.value ?? folder.id] = node;
+      folderNodes[folder.parent].folders![folder.name] = node;
     } else {
-      root.folders![folder.value ?? folder.id] = node;
+      root.folders![folder.name] = node;
     }
   }
 

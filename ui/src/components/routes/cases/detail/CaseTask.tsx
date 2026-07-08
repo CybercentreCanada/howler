@@ -12,40 +12,43 @@ import {
   Typography
 } from '@mui/material';
 import UserList from 'components/elements/UserList';
+import type { Case } from 'models/entities/generated/Case';
+import type { Item } from 'models/entities/generated/Item';
 import type { Task } from 'models/entities/generated/Task';
-import { useEffect, useState, type FC } from 'react';
+import { useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { buildPathFromID } from '../utils';
 
 const CaseTask: FC<{
+  case: Case;
   task?: Task;
-  paths: string[];
   onDelete?: () => Promise<void>;
-  onEdit: (task?: Partial<Task>) => Promise<void>;
+  onEdit?: (task?: Partial<Task>) => Promise<void>;
   loading?: boolean;
   newTask?: boolean;
   /** When true all editing controls are hidden and the task is display-only */
   readOnly?: boolean;
-  /** If provided, renders an origin chip linking the task back to its source case */
-  caseOrigin?: { caseId: string; caseName: string };
-}> = ({ task, onEdit, onDelete, paths, newTask = false, readOnly = false, caseOrigin }) => {
+}> = ({ case: _case, task, onEdit, onDelete, newTask = false, readOnly = false }) => {
   const { t } = useTranslation();
 
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(newTask);
 
   const [summary, setSummary] = useState(task?.summary || '');
-  const [path, setPath] = useState(task?.path ?? null);
+  const [item, setItem] = useState(task?.item ? _case?.items.find(_item => _item.id === task.item) : null);
   const [assignment, setAssignment] = useState(task?.assignment);
   const [complete, setComplete] = useState(task?.complete ?? false);
 
   const dirty =
-    summary !== task?.summary || path !== task?.path || complete !== task?.complete || assignment !== task?.assignment;
+    summary !== task?.summary || item !== task?.item || complete !== task?.complete || assignment !== task?.assignment;
+
+  const options: Item[] = useMemo(() => _case?.items ?? [], [_case]);
 
   const onSubmit = async () => {
     if (dirty && editing) {
       setLoading(true);
-      await onEdit({ summary, path: !path ? null : path, assignment, complete });
+      await onEdit({ summary, item: !item ? null : item.id, assignment, complete });
       setLoading(false);
     }
   };
@@ -69,12 +72,12 @@ const CaseTask: FC<{
   useEffect(() => {
     if (!editing && task) {
       setSummary(task.summary);
-      setPath(task.path);
+      setItem(task?.item ? _case?.items.find(_item => _item.id === task.item) : null);
       setComplete(task.complete);
       setAssignment(task.assignment);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [task]);
+  }, [task, _case]);
 
   return (
     <Card sx={{ pl: 0.5, pr: 1, py: 0.5, position: 'relative' }}>
@@ -99,13 +102,15 @@ const CaseTask: FC<{
           <Typography sx={[complete && { textDecoration: 'line-through' }]}>{task?.summary || summary}</Typography>
         )}
 
-        {!editing && path && <Chip clickable component={Link} to={path} label={path} />}
+        {!editing && item && <Chip clickable component={Link} to={buildPathFromID(_case, item.id)} label={item.name} />}
         {editing && !readOnly && (
           <Autocomplete
             disabled={loading}
-            value={path}
-            options={paths}
-            onChange={(_ev, value) => setPath(value)}
+            value={item}
+            options={options}
+            getOptionLabel={opt => buildPathFromID(_case, opt.id)}
+            isOptionEqualToValue={opt => opt.id === item.id}
+            onChange={(_ev, value) => setItem(value)}
             fullWidth
             renderInput={params => <TextField {...params} size="small" />}
           />
@@ -117,17 +122,6 @@ const CaseTask: FC<{
           i18nLabel="route.cases.task.set.assignment"
           avatarHeight={24}
         />
-        {caseOrigin && (
-          <Chip
-            size="small"
-            component={Link}
-            to={`/cases/${caseOrigin.caseId}`}
-            clickable
-            label={caseOrigin.caseName}
-            variant="outlined"
-            sx={{ maxWidth: 140 }}
-          />
-        )}
         <div style={{ flex: 1 }} />
         {!readOnly && editing && !newTask && (
           <Tooltip title={t('route.cases.task.delete')}>

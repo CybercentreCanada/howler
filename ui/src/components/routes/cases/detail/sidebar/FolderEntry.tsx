@@ -16,7 +16,6 @@ import { alpha, Box, Stack, Typography, useTheme } from '@mui/material';
 import type { Item } from 'models/entities/generated/Item';
 import type { ComponentType, FC } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import type { Tree } from './types';
 
 // Static map: item type → MUI icon component (avoids re-creating closures on each render)
 const ICON_FOR_TYPE: Record<string, ComponentType<SvgIconProps>> = {
@@ -31,47 +30,53 @@ const ICON_FOR_TYPE: Record<string, ComponentType<SvgIconProps>> = {
 };
 
 interface FolderEntryProps {
+  /** The corresponding case ID for this entry */
   caseId?: string | null;
+
   /** MUI `pl` value for indentation */
   indent: number;
+
   /** Text displayed as the entry label */
   label: string;
+
   /** MUI icon color token applied to the entry icon (default: 'inherit') */
   iconColor?: SvgIconProps['color'];
+
   /** MUI color token for the label Typography (default: 'text.secondary') */
   labelColor?: string;
+
   /** Whether the chevron is rotated 90° (expanded state) */
   chevronOpen?: boolean;
+
   /** When provided the entry renders as a react-router Link */
   to?: string;
+
+  /** Callback fired when the entry is clicked */
   onClick?: () => void;
-  itemType: string;
-  entry?: Item | Tree;
-  /** UUID of this folder item, used for parent-based drop targets */
-  folderId?: string | null;
+
+  /** The item entity associated with this entry */
+  entry: Item;
 }
 
 const FolderEntry: FC<FolderEntryProps> = ({
   caseId,
   indent,
   label,
-  itemType,
   iconColor = 'disabled',
   labelColor = 'text.secondary',
   chevronOpen = false,
   to,
   onClick,
-  entry,
-  folderId = null
+  entry
 }) => {
   const location = useLocation();
   const theme = useTheme();
 
-  const isCase = itemType === 'case';
-  const isFolder = itemType === 'folder';
+  const isCase = entry?.type === 'case';
+  const isFolder = entry?.type === 'folder';
 
-  const entryId = (entry as Item)?.id ?? (entry as Tree)?.id ?? label;
-  const dndId = `${caseId ?? ''}:${itemType}:${entryId}`;
+  const entryId = entry?.id;
+  const dndId = `${caseId ?? ''}:${entry?.type}:${entryId}`;
 
   const {
     attributes,
@@ -82,7 +87,7 @@ const FolderEntry: FC<FolderEntryProps> = ({
   } = useDraggable({
     id: dndId,
     data: {
-      type: itemType,
+      type: entry?.type,
       label,
       entry,
       caseId
@@ -95,13 +100,13 @@ const FolderEntry: FC<FolderEntryProps> = ({
     disabled: !isFolder || isDragging || !caseId,
     data: {
       caseId,
-      folderId: folderId ?? (entry as Tree)?.id ?? null
+      folderId: entry?.id ?? null
     }
   });
 
   const isLink = to != null && !isDragging;
   const active = decodeURIComponent(location.pathname) === to;
-  const Icon = ICON_FOR_TYPE[itemType] ?? Folder;
+  const Icon = ICON_FOR_TYPE[entry?.type] ?? Folder;
 
   return (
     <Stack
@@ -134,8 +139,8 @@ const FolderEntry: FC<FolderEntryProps> = ({
       {...(isLink && {
         component: Link,
         to,
-        target: itemType === 'reference' ? '_blank' : undefined,
-        rel: itemType === 'reference' ? 'noopener noreferrer' : undefined
+        target: entry?.type === 'reference' ? '_blank' : undefined,
+        rel: entry?.type === 'reference' ? 'noopener noreferrer' : undefined
       })}
     >
       <Box

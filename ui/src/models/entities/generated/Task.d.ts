@@ -5,6 +5,6 @@ export interface Task {
   assignment?: string;
   complete?: boolean;
   id?: string;
-  path?: string;
+  item?: string;
   summary?: string;
 }

@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useState, type FC } from 'react';
 import { useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { ESCALATION_COLORS } from 'utils/constants';
+import { buildPathFromID } from '../../utils';
 import CaseFolderContextMenu from './CaseFolderContextMenu';
 import FolderEntry from './FolderEntry';
 import type { Tree } from './types';
@@ -25,7 +26,7 @@ interface CaseFolderProps {
    * The chain of case item IDs traversed from the root case to reach this
    * nested case. Empty at the top level.
    */
-  parentCaseIds?: string[];
+  parentCaseNames?: string[];
 
   /**
    * Increment this value to collapse all named sub-folders. The root folder
@@ -41,7 +42,7 @@ const CaseFolder: FC<CaseFolderProps> = ({
   folder,
   name,
   step = -1,
-  parentCaseIds = [],
+  parentCaseNames = [],
   collapseKey,
   onItemUpdated
 }) => {
@@ -49,17 +50,23 @@ const CaseFolder: FC<CaseFolderProps> = ({
   const { dispatchApi } = useMyApi();
   const params = useParams();
 
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(!name || !collapseKey);
   const [caseStates, setCaseStates] = useState<Record<string, CaseNodeState>>({});
 
   // Collapse this folder (and clear nested case expansions) when the parent
   // signals collapse-all. Only named folders (not the invisible root) respond.
   useEffect(() => {
-    if (!collapseKey || !name) {
+    if (!collapseKey) {
       return;
     }
-    setOpen(false);
-    setCaseStates({});
+
+    setCaseStates(_states =>
+      Object.fromEntries(Object.entries(_states).map(([id, entry]) => [id, { ...entry, open: false }]))
+    );
+
+    if (name) {
+      setOpen(false);
+    }
   }, [collapseKey, name]);
 
   const records = useContextSelector(RecordContext, ctx => ctx.records);
@@ -68,14 +75,14 @@ const CaseFolder: FC<CaseFolderProps> = ({
   const rootCaseId = params.id;
 
   // Returns the MUI colour token for the item's escalation, or undefined if none.
-  const getEscalationColor = (itemType: string | undefined, itemKey: string | undefined, leafId: string) => {
-    if (itemType === 'hit' && leafId) {
-      const color = ESCALATION_COLORS[records[leafId]?.howler?.escalation as keyof typeof ESCALATION_COLORS];
+  const getEscalationColor = (itemType: string, leaf: Item) => {
+    if (itemType === 'hit' && leaf.value) {
+      const color = ESCALATION_COLORS[records[leaf.value]?.howler?.escalation as keyof typeof ESCALATION_COLORS];
       if (color) return color;
     }
 
-    if (itemType === 'case' && itemKey) {
-      const color = ESCALATION_COLORS[caseStates[itemKey]?.data?.escalation as keyof typeof ESCALATION_COLORS];
+    if (itemType === 'case' && leaf.value) {
+      const color = ESCALATION_COLORS[caseStates[leaf.value]?.data?.escalation as keyof typeof ESCALATION_COLORS];
       if (color) return color;
     }
 
@@ -83,27 +90,22 @@ const CaseFolder: FC<CaseFolderProps> = ({
   };
 
   const toggleCase = useCallback(
-    (item: Item, itemKey?: string) => {
-      const resolvedKey = itemKey || item.id || item.value;
-      if (!resolvedKey) {
-        return;
-      }
-
-      const prev = caseStates[resolvedKey] ?? { open: false, loading: false, data: null };
+    (item: Item) => {
+      const prev = caseStates[item.value] ?? { open: false, loading: false, data: null };
       const shouldOpen = !prev.open;
       const shouldFetch = shouldOpen && !!item.value && !prev.data && !prev.loading;
 
-      setCaseStates(current => ({ ...current, [resolvedKey]: { ...prev, open: shouldOpen, loading: shouldFetch } }));
+      setCaseStates(current => ({ ...current, [item.value]: { ...prev, open: shouldOpen, loading: shouldFetch } }));
 
       if (!shouldFetch) return;
 
       dispatchApi(api.v2.case.get(item.value!), { throwError: false })
         .then(caseResponse => {
           if (!caseResponse) return;
-          setCaseStates(current => ({ ...current, [resolvedKey]: { ...current[resolvedKey], data: caseResponse } }));
+          setCaseStates(current => ({ ...current, [item.value]: { ...current[item.value], data: caseResponse } }));
         })
         .finally(() => {
-          setCaseStates(current => ({ ...current, [resolvedKey]: { ...current[resolvedKey], loading: false } }));
+          setCaseStates(current => ({ ...current, [item.value]: { ...current[item.value], loading: false } }));
         });
     },
     [caseStates, dispatchApi]
@@ -112,7 +114,7 @@ const CaseFolder: FC<CaseFolderProps> = ({
   return (
     <Stack sx={{ overflow: 'visible' }}>
       {name && (
-        <CaseFolderContextMenu _case={_case} tree={tree} onUpdate={onItemUpdated}>
+        <CaseFolderContextMenu case={_case} item={folder.item} onUpdate={onItemUpdated}>
           <Box
             sx={{
               transition: theme.transitions.create('background', { duration: 100 }),
@@ -122,13 +124,11 @@ const CaseFolder: FC<CaseFolderProps> = ({
           >
             <FolderEntry
               caseId={_case.case_id === rootCaseId ? rootCaseId : null}
-              itemType="folder"
               indent={step * 1.5}
               label={name}
               chevronOpen={open}
               onClick={() => setOpen(_open => !_open)}
-              entry={tree}
-              folderId={tree.id ?? null}
+              entry={folder.item}
             />
           </Box>
         </CaseFolderContextMenu>
@@ -141,25 +141,22 @@ const CaseFolder: FC<CaseFolderProps> = ({
             ?.filter(leaf => leaf.type?.toLowerCase() === 'case')
             .map(leaf => {
               const itemType = leaf.type?.toLowerCase();
-              const isCase = itemType === 'case';
-              const itemKey = leaf.id || leaf.value;
-              const nodeState = itemKey ? caseStates[itemKey] : null;
+              const nodeState = leaf.value ? caseStates[leaf.value] : null;
               const isCaseOpen = !!nodeState?.open;
               const isCaseLoading = !!nodeState?.loading;
               const nestedCase = nodeState?.data ?? null;
-              const fullItemId = [...parentCaseIds, leaf.id].filter(Boolean).join('/');
-              const itemTo =
-                itemType !== 'reference' ? `/cases/${rootCaseId}${fullItemId ? `/${fullItemId}` : ''}` : leaf.value;
+              const fullItemPath = [...parentCaseNames, leaf.name].filter(Boolean).join('/');
+              const itemTo = `/cases/${rootCaseId}${fullItemPath ? `/${fullItemPath}` : ''}`;
 
-              const escalationColor = getEscalationColor(itemType, itemKey, leaf.value);
+              const escalationColor = getEscalationColor(itemType, leaf);
               const iconColor = escalationColor ?? ('inherit' as const);
               const leafColor = escalationColor ? `${escalationColor}.light` : 'text.secondary';
 
               return (
                 <CaseFolderContextMenu
                   key={`${_case?.case_id}-${leaf.id}-${leaf.value}`}
-                  _case={_case}
-                  leaf={leaf}
+                  case={_case}
+                  item={leaf}
                   onUpdate={onItemUpdated}
                 >
                   <Stack>
@@ -174,27 +171,26 @@ const CaseFolder: FC<CaseFolderProps> = ({
                         caseId={_case.case_id === rootCaseId ? rootCaseId : null}
                         indent={step * 1.5 + 1}
                         label={leaf.name ?? leaf.value ?? ''}
-                        itemType={itemType}
                         iconColor={iconColor}
                         labelColor={leafColor}
                         chevronOpen={isCaseOpen}
                         to={itemTo}
-                        onClick={() => isCase && toggleCase(leaf, itemKey)}
+                        onClick={() => toggleCase(leaf)}
                         entry={leaf}
                       />
                     </Box>
 
-                    {isCase && isCaseOpen && isCaseLoading && (
+                    {isCaseOpen && isCaseLoading && (
                       <Stack pl={step * 1.5 + 4} py={0.25}>
                         <Skeleton width={140} height={16} />
                       </Stack>
                     )}
 
-                    {isCase && isCaseOpen && nestedCase && (
+                    {isCaseOpen && nestedCase && (
                       <CaseFolder
                         case={nestedCase}
                         step={step + 1}
-                        parentCaseIds={[...parentCaseIds, leaf.id].filter(Boolean)}
+                        parentCaseNames={[...parentCaseNames, leaf.name].filter(Boolean)}
                         onItemUpdated={onItemUpdated}
                         collapseKey={collapseKey}
                       />
@@ -208,12 +204,12 @@ const CaseFolder: FC<CaseFolderProps> = ({
           {Object.entries(tree.folders ?? {}).map(([folderName, subfolder]) => {
             return (
               <CaseFolder
-                key={`${_case?.case_id}-${subfolder.id ?? folderName}`}
+                key={subfolder.item.id}
                 name={folderName}
                 case={_case}
                 folder={subfolder}
                 step={step + 1}
-                parentCaseIds={parentCaseIds}
+                parentCaseNames={parentCaseNames}
                 onItemUpdated={onItemUpdated}
                 collapseKey={collapseKey}
               />
@@ -225,20 +221,19 @@ const CaseFolder: FC<CaseFolderProps> = ({
             ?.filter(leaf => leaf.type?.toLowerCase() !== 'case')
             .map(leaf => {
               const itemType = leaf.type?.toLowerCase();
-              const itemKey = leaf.id || leaf.value;
-              const fullItemId = [...parentCaseIds, leaf.id].filter(Boolean).join('/');
+              const fullItemPath = [...parentCaseNames, buildPathFromID(_case, leaf.id)].filter(Boolean).join('/');
               const itemTo =
-                itemType !== 'reference' ? `/cases/${rootCaseId}${fullItemId ? `/${fullItemId}` : ''}` : leaf.value;
+                itemType !== 'reference' ? `/cases/${rootCaseId}${fullItemPath ? `/${fullItemPath}` : ''}` : leaf.value;
 
-              const escalationColor = getEscalationColor(itemType, itemKey, leaf.value);
+              const escalationColor = getEscalationColor(itemType, leaf);
               const iconColor = escalationColor ?? ('inherit' as const);
               const leafColor = escalationColor ? `${escalationColor}.light` : 'text.secondary';
 
               return (
                 <CaseFolderContextMenu
                   key={`${_case?.case_id}-${leaf.id}-${leaf.value}`}
-                  _case={_case}
-                  leaf={leaf}
+                  case={_case}
+                  item={leaf}
                   onUpdate={onItemUpdated}
                 >
                   <Box
@@ -252,7 +247,6 @@ const CaseFolder: FC<CaseFolderProps> = ({
                       caseId={_case.case_id === rootCaseId ? rootCaseId : null}
                       indent={step * 1.5 + 1}
                       label={leaf.name ?? leaf.value ?? ''}
-                      itemType={itemType}
                       iconColor={iconColor}
                       labelColor={leafColor}
                       to={itemTo}

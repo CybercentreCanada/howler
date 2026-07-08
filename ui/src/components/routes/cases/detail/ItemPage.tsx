@@ -7,6 +7,7 @@ import type { Item } from 'models/entities/generated/Item';
 import { useEffect, useMemo, useState, type FC } from 'react';
 import { useOutletContext, useParams } from 'react-router-dom';
 import useCase from '../hooks/useCase';
+import { buildPathFromID } from '../utils';
 import CaseDashboard from './CaseDashboard';
 
 const ItemPage: FC<{ case?: Case }> = ({ case: providedCase }) => {
@@ -21,17 +22,10 @@ const ItemPage: FC<{ case?: Case }> = ({ case: providedCase }) => {
   const [loading, setLoading] = useState(true);
 
   // When rendered as a child route, the wildcard segment is in params['*'].
+  // When rendered directly with a case prop, fall back to parsing the pathname.
   const subPath = params['*'] ?? '';
 
-  // Item IDs separated by '/' for nested case traversal
-  const itemIds = useMemo(
-    () =>
-      subPath
-        .replace(/^\/+|\/+$/g, '')
-        .split('/')
-        .filter(Boolean),
-    [subPath]
-  );
+  const normalizedSubPath = useMemo(() => subPath.replace(/^\/+|\/+$/g, ''), [subPath]);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,7 +33,7 @@ const ItemPage: FC<{ case?: Case }> = ({ case: providedCase }) => {
     const resolveItem = async () => {
       setLoading(true);
 
-      if (itemIds.length === 0) {
+      if (!normalizedSubPath) {
         if (!cancelled) {
           setItem(null);
           setLoading(false);
@@ -48,15 +42,28 @@ const ItemPage: FC<{ case?: Case }> = ({ case: providedCase }) => {
       }
 
       let currentCase = _case;
+      let remainingPath = normalizedSubPath;
 
-      // Walk through all but the last ID, resolving nested cases
-      for (let i = 0; i < itemIds.length - 1; i++) {
-        const segmentId = itemIds[i];
-        const matched = currentCase?.items?.find(
-          _item => _item.id === segmentId && _item.type?.toLowerCase() === 'case'
-        );
+      while (currentCase && remainingPath) {
+        const currentRemainingPath = remainingPath;
 
-        if (!matched?.value) {
+        const matchedNestedCase = currentCase.items
+          .filter(Boolean)
+          .find(_item => _item.type === 'case' && currentRemainingPath.startsWith(`${_item.name}/`));
+
+        if (!matchedNestedCase) {
+          break;
+        }
+
+        if (currentRemainingPath === matchedNestedCase.id) {
+          if (!cancelled) {
+            setItem(matchedNestedCase);
+            setLoading(false);
+          }
+          return;
+        }
+
+        if (!matchedNestedCase.value) {
           if (!cancelled) {
             setItem(null);
             setLoading(false);
@@ -64,7 +71,8 @@ const ItemPage: FC<{ case?: Case }> = ({ case: providedCase }) => {
           return;
         }
 
-        const nextCase = await dispatchApi(api.v2.case.get(matched.value), { throwError: false });
+        const nextCase = await dispatchApi(api.v2.case.get(matchedNestedCase.value), { throwError: false });
+
         if (!nextCase) {
           if (!cancelled) {
             setItem(null);
@@ -72,12 +80,12 @@ const ItemPage: FC<{ case?: Case }> = ({ case: providedCase }) => {
           }
           return;
         }
+
+        remainingPath = currentRemainingPath.replace(`${matchedNestedCase.name}/`, '');
         currentCase = nextCase;
       }
 
-      // Resolve the final item ID
-      const finalId = itemIds[itemIds.length - 1];
-      const resolvedItem = currentCase?.items?.find(_item => _item.id === finalId);
+      const resolvedItem = currentCase.items.find(_item => buildPathFromID(currentCase, _item.id) === remainingPath);
 
       if (!cancelled) {
         setItem(resolvedItem || null);
@@ -85,12 +93,14 @@ const ItemPage: FC<{ case?: Case }> = ({ case: providedCase }) => {
       }
     };
 
-    resolveItem();
+    if (_case) {
+      resolveItem();
+    }
 
     return () => {
       cancelled = true;
     };
-  }, [_case, dispatchApi, itemIds]);
+  }, [_case, dispatchApi, normalizedSubPath]);
 
   if (loading) {
     return null;

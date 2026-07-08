@@ -10,7 +10,7 @@ import type { PropsWithChildren } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { createMockCase, createMockEvent, createMockHit } from 'tests/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import AddToCaseModal from './AddToCaseModal';
+import AddRecordToCaseModal from './AddRecordToCaseModal';
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks
@@ -87,7 +87,8 @@ const Wrapper = ({ children }: PropsWithChildren) => (
 // Helpers
 // ---------------------------------------------------------------------------
 
-const renderModal = (records: (Hit | Event)[]) => render(<AddToCaseModal records={records} />, { wrapper: Wrapper });
+const renderModal = (records: (Hit | Event)[]) =>
+  render(<AddRecordToCaseModal records={records} />, { wrapper: Wrapper });
 
 const selectCase = async (user: UserEvent, caseTitle: string) => {
   const combobox = screen.getAllByRole('combobox')[0];
@@ -238,7 +239,7 @@ describe('AddToCaseModal', () => {
       const folderInputs = screen.getAllByPlaceholderText(i18n.t('modal.cases.add_to_case.select_folder'));
       await user.click(folderInputs[0]);
       expect(await screen.findByRole('option', { name: 'folder' })).toBeInTheDocument();
-      expect(screen.getByRole('option', { name: 'subfolder' })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: 'folder/subfolder' })).toBeInTheDocument();
     });
   });
 

@@ -13,14 +13,16 @@ export const post = (id: string, newData: Item): Promise<Case> => {
   return hpost(uri(id), newData);
 };
 
-export const del = (id: string, ids: string[], force = false): Promise<Case> => {
+export const del = (id: string, ids: string | string[], force = false): Promise<Case> => {
+  if (!Array.isArray(ids)) {
+    ids = [ids];
+  }
+
   return hdelete(uri(id), { ids, force });
 };
 
-export const move = (id: string, itemId: string, newParent: string | null): Promise<Case> => {
-  return hput(uri(id), { id: itemId, new_parent: newParent });
-};
+export const put = (caseId: string, id: string, payload: { name?: string; parent?: string } = {}): Promise<Case> => {
+  (payload as Record<string, string>).id = id;
 
-export const rename = (id: string, itemId: string, newName: string): Promise<Case> => {
-  return hput(uri(id), { id: itemId, new_name: newName });
+  return hput(uri(caseId), payload);
 };

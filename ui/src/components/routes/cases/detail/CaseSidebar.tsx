@@ -37,7 +37,7 @@ import {
 import api from 'api';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import useMyApi from 'components/hooks/useMyApi';
-import AddItemToCaseModal from 'components/routes/cases/modals/AddItemToCaseModal';
+import AddToCaseModal from 'components/routes/cases/modals/AddToCaseModal';
 import dayjs from 'dayjs';
 import type { Case } from 'models/entities/generated/Case';
 import type { Item } from 'models/entities/generated/Item';
@@ -48,7 +48,6 @@ import { ESCALATION_COLOR_MAP } from '../constants';
 import CaseFolder from './sidebar/CaseFolder';
 import FolderEntry from './sidebar/FolderEntry';
 import RootDropZone from './sidebar/RootDropZone';
-import type { Tree } from './sidebar/types';
 
 interface CaseSidebarProps {
   case: Case;
@@ -127,22 +126,22 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
         return;
       }
 
-      const movingEntry: Item | Tree = active.data.current.entry;
-      const movingId = (movingEntry as Item).id ?? (movingEntry as Tree).id;
+      const movingEntry: Item = active.data.current.entry;
       const targetFolderId = over.data.current.folderId ?? null;
 
-      if (!movingId) {
+      if (!movingEntry.id) {
         return;
       }
 
-      const currentParent = (movingEntry as Item).parent ?? (movingEntry as Tree).parentId ?? null;
-      if (currentParent === targetFolderId) {
+      if (movingEntry.parent === targetFolderId) {
         return;
       }
 
       try {
         setLoading(true);
-        const updatedCase = await dispatchApi(api.v2.case.items.move(_case.case_id, movingId, targetFolderId));
+        const updatedCase = await dispatchApi(
+          api.v2.case.items.put(_case.case_id, movingEntry.id, { parent: targetFolderId })
+        );
         update(updatedCase);
       } finally {
         setLoading(false);
@@ -254,7 +253,7 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
             sx={{ position: 'relative' }}
             onClick={() => {
               if (_case) {
-                showModal(<AddItemToCaseModal caseData={_case} onUpdated={update} />);
+                showModal(<AddToCaseModal case={_case} onUpdated={update} />);
               }
             }}
           >
@@ -282,6 +281,7 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
                   const updatedCase = await dispatchApi(
                     api.v2.case.items.post(_case.case_id, {
                       type: 'folder',
+                      name: t('page.cases.sidebar.new_folder'),
                       value: t('page.cases.sidebar.new_folder')
                     })
                   );
@@ -352,9 +352,7 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
               <CaseFolder case={_case} onItemUpdated={update} collapseKey={collapseKey} />
               <RootDropZone caseId={_case.case_id} />
               <DragOverlay dropAnimation={null}>
-                {activeDragData && (
-                  <FolderEntry caseId={null} indent={0} label={activeDragData.label} itemType={activeDragData.type} />
-                )}
+                {activeDragData && <FolderEntry caseId={null} indent={0} label={activeDragData.label} entry={null} />}
               </DragOverlay>
             </DndContext>
           </Box>

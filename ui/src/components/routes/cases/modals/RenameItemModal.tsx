@@ -7,16 +7,16 @@ import type { Item } from 'models/entities/generated/Item';
 import { useContext, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 
-const RenameItemModal: FC<{ _case: Case; leaf: Item; onRenamed?: (updatedCase: Case) => void }> = ({
+const RenameItemModal: FC<{ _case: Case; item: Item; onRenamed?: (updatedCase: Case) => void }> = ({
   _case,
-  leaf,
+  item,
   onRenamed
 }) => {
   const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
   const { close } = useContext(ModalContext);
 
-  const currentName = leaf.name ?? leaf.value ?? '';
+  const currentName = item.name ?? item.value ?? '';
 
   const [name, setName] = useState(currentName);
   const [submitting, setSubmitting] = useState(false);
@@ -30,12 +30,12 @@ const RenameItemModal: FC<{ _case: Case; leaf: Item; onRenamed?: (updatedCase: C
   const isValid = !nameError;
 
   const onSubmit = async () => {
-    if (!isValid || !_case.case_id || !leaf.id) {
+    if (!isValid || !_case.case_id || !item.id) {
       return;
     }
     setSubmitting(true);
     try {
-      const updatedCase = await dispatchApi(api.v2.case.items.rename(_case.case_id, leaf.id, name.trim()));
+      const updatedCase = await dispatchApi(api.v2.case.items.put(_case.case_id, item.id, { name: name.trim() }));
       if (updatedCase) {
         onRenamed?.(updatedCase);
         close();

@@ -28,7 +28,7 @@ describe('buildTree', () => {
   });
 
   it('places items inside a folder by parent reference', () => {
-    const folder: Item = { id: 'folder-1', type: 'folder', value: 'My Folder', parent: null };
+    const folder: Item = { id: 'folder-1', type: 'folder', value: 'My Folder', name: 'My Folder', parent: null };
     const item: Item = { id: 'item-1', type: 'hit', value: 'hit-001', parent: 'folder-1' };
     const result = buildTree([folder, item]);
     expect(result.folders?.['My Folder']).toBeDefined();
@@ -36,32 +36,24 @@ describe('buildTree', () => {
   });
 
   it('renders empty folders', () => {
-    const folder: Item = { id: 'folder-1', type: 'folder', value: 'Empty', parent: null };
+    const folder: Item = { id: 'folder-1', type: 'folder', value: 'Empty', name: 'Empty', parent: null };
     const result = buildTree([folder]);
     expect(result.folders?.Empty).toBeDefined();
     expect(result.folders?.Empty.leaves).toEqual([]);
   });
 
   it('nests folders inside other folders', () => {
-    const parent: Item = { id: 'f1', type: 'folder', value: 'Parent', parent: null };
-    const child: Item = { id: 'f2', type: 'folder', value: 'Child', parent: 'f1' };
+    const parent: Item = { id: 'f1', type: 'folder', value: 'Parent', name: 'Parent', parent: null };
+    const child: Item = { id: 'f2', type: 'folder', value: 'Child', name: 'Child', parent: 'f1' };
     const item: Item = { id: 'i1', type: 'hit', value: 'hit-1', parent: 'f2' };
     const result = buildTree([parent, child, item]);
     expect(result.folders?.Parent.folders?.Child.leaves).toEqual([item]);
   });
 
   it('includes folder id in tree nodes', () => {
-    const folder: Item = { id: 'folder-1', type: 'folder', value: 'Folder', parent: null };
+    const folder: Item = { id: 'folder-1', type: 'folder', value: 'Folder', name: 'Folder', parent: null };
     const result = buildTree([folder]);
-    expect(result.folders?.Folder.id).toBe('folder-1');
-  });
-
-  it('includes parentId in tree nodes', () => {
-    const parent: Item = { id: 'f1', type: 'folder', value: 'Parent', parent: null };
-    const child: Item = { id: 'f2', type: 'folder', value: 'Child', parent: 'f1' };
-    const result = buildTree([parent, child]);
-    expect(result.folders?.Parent.parentId).toBeNull();
-    expect(result.folders?.Parent.folders?.Child.parentId).toBe('f1');
+    expect(result.folders?.Folder.item?.id).toBe('folder-1');
   });
 
   it('places orphaned items at root when parent folder is missing', () => {
@@ -84,7 +76,7 @@ describe('buildTree', () => {
   });
 
   it('handles multiple items in the same folder', () => {
-    const folder: Item = { id: 'f1', type: 'folder', value: 'Alerts', parent: null };
+    const folder: Item = { id: 'f1', type: 'folder', value: 'Alerts', name: 'Alerts', parent: null };
     const a: Item = { id: 'a', type: 'hit', value: 'hit-a', parent: 'f1' };
     const b: Item = { id: 'b', type: 'hit', value: 'hit-b', parent: 'f1' };
     const result = buildTree([folder, a, b]);

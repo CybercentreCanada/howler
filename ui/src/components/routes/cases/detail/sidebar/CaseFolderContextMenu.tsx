@@ -51,11 +51,9 @@ export const getOpenUrl = (leaf: Item): string | null => {
 
 export interface CaseFolderContextMenuProps extends PropsWithChildren {
   /** The case that owns the item(s). */
-  _case: Case;
+  case: Case;
   /** Present when the context menu is for a single leaf item. */
-  leaf?: Item;
-  /** Present when the context menu is for a folder (all leaves within it will be removed). */
-  tree?: Tree;
+  item?: Item;
   /** Called after item(s) have been updated (renamed, removed). */
   onUpdate?: (updatedCase: Case) => void;
 }
@@ -65,7 +63,7 @@ export interface CaseFolderContextMenuProps extends PropsWithChildren {
  * - **Open item** – opens the item in a new tab (only for leaf items with a navigable URL).
  * - **Remove item / Remove folder** – deletes the leaf item or all items under a folder.
  */
-const CaseFolderContextMenu: FC<CaseFolderContextMenuProps> = ({ _case, leaf, tree, onUpdate, children }) => {
+const CaseFolderContextMenu: FC<CaseFolderContextMenuProps> = ({ case: _case, item, onUpdate, children }) => {
   const { dispatchApi } = useMyApi();
   const { t } = useTranslation();
   const { showModal } = useContext(ModalContext);
@@ -73,8 +71,8 @@ const CaseFolderContextMenu: FC<CaseFolderContextMenuProps> = ({ _case, leaf, tr
   const items = useMemo<ContextMenuEntry[]>(() => {
     const entries: ContextMenuEntry[] = [];
 
-    if (leaf) {
-      const openUrl = getOpenUrl(leaf);
+    if (item) {
+      const openUrl = getOpenUrl(item);
       if (openUrl) {
         entries.push({
           kind: 'item',
@@ -84,21 +82,21 @@ const CaseFolderContextMenu: FC<CaseFolderContextMenuProps> = ({ _case, leaf, tr
           onClick: () => window.open(openUrl, '_blank', 'noopener noreferrer')
         });
       }
-
-      entries.push({
-        kind: 'item',
-        id: 'rename-item',
-        label: t('page.cases.sidebar.item.rename'),
-        icon: <DriveFileRenameOutline fontSize="small" />,
-        onClick: () => showModal(<RenameItemModal _case={_case} leaf={leaf} onRenamed={onUpdate} />, { height: null })
-      });
     }
 
     if (entries.length > 0) {
       entries.push({ kind: 'divider', id: 'divider-remove' });
     }
 
-    const isFolder = !leaf && !!tree;
+    const isFolder = item.type === 'folder';
+    entries.push({
+      kind: 'item',
+      id: 'rename-item',
+      label: isFolder ? t('page.cases.sidebar.folder.rename') : t('page.cases.sidebar.item.rename'),
+      icon: <DriveFileRenameOutline fontSize="small" />,
+      onClick: () => showModal(<RenameItemModal _case={_case} item={item} onRenamed={onUpdate} />, { height: null })
+    });
+
     entries.push({
       kind: 'item',
       id: 'remove-item',
@@ -109,29 +107,18 @@ const CaseFolderContextMenu: FC<CaseFolderContextMenuProps> = ({ _case, leaf, tr
           return;
         }
 
-        if (leaf?.id) {
-          dispatchApi(api.v2.case.items.del(_case.case_id!, [leaf.id]), { throwError: false }).then(updatedCase => {
+        dispatchApi(api.v2.case.items.del(_case.case_id!, [item.id], isFolder), { throwError: false }).then(
+          updatedCase => {
             if (updatedCase) {
               onUpdate?.(updatedCase);
             }
-          });
-          return;
-        }
-
-        if (isFolder && tree?.id) {
-          dispatchApi(api.v2.case.items.del(_case.case_id!, [tree.id], true), { throwError: false }).then(
-            updatedCase => {
-              if (updatedCase) {
-                onUpdate?.(updatedCase);
-              }
-            }
-          );
-        }
+          }
+        );
       }
     });
 
     return entries;
-  }, [_case, leaf, tree, dispatchApi, onUpdate, showModal, t]);
+  }, [_case, item, dispatchApi, onUpdate, showModal, t]);
 
   return <ContextMenu items={items}>{children}</ContextMenu>;
 };
