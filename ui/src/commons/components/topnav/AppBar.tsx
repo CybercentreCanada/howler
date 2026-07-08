@@ -14,7 +14,8 @@ import AppSwitcher from 'commons/components/topnav/AppSwitcher';
 import { Notifications } from 'commons/components/topnav/Notifications';
 import ThemeSelectionIcon from 'commons/components/topnav/ThemeSelectionIcon';
 import UserProfile from 'commons/components/topnav/UserProfile';
-import { memo, useCallback, useLayoutEffect, useMemo } from 'react';
+import howlerPluginStore from 'plugins/store';
+import { Fragment, memo, useCallback, useLayoutEffect, useMemo } from 'react';
 
 export const AppBarBase = ({ children }) => {
   const layout = useAppLayout();
@@ -122,6 +123,11 @@ const AppBar = () => {
       >
         {renderLeft()}
         <div style={{ flex: 1 }} />
+
+        {howlerPluginStore.appBarItems.map(item => (
+          <Fragment key={item.key}>{item.element}</Fragment>
+        ))}
+
         {rightBeforeSearch}
         {quicksearch.show && <AppSearch />}
         <Notifications />
