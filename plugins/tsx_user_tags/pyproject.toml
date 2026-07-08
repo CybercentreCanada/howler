@@ -11,7 +11,7 @@ dependencies = [
 ]
 
 [tool.poetry.dependencies]
-howler-api = { path = "../../cccs/api", develop = true }
+howler-api = { path = "../../api", develop = true }
 
 [tool.ruff]
 line-length = 120
