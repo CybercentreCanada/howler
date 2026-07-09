@@ -199,8 +199,10 @@ jobs:
         working-directory: ui/dist
 
       - name: Publish Built Package
+        # Can't use latest currently: https://github.com/npm/cli/issues/9722
+        # npm install -g npm@latest
         run: |
-          npm install -g npm@latest
+          npm install -g npm@11
           npm publish --access public --tag ${{ steps.version-check.outputs.npm_tag }}
         working-directory: ui/dist  # Publish from the built dist directory
 
