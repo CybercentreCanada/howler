@@ -36,8 +36,8 @@ def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = 
         ]
 
     try:
-        case_id = bundle_compat_service.find_case_for_bundle(bundle_id)
-        if case_id is None:
+        case = bundle_compat_service.find_case_for_bundle(bundle_id)
+        if case is None:
             report.append(
                 {
                     "query": query,
@@ -69,19 +69,20 @@ def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = 
             )
             return report
 
-        # Get the case to check which hits are actually in it
-        case = ds.case.get(case_id)
-        if case is None:
+        # Refresh case from datastore to ensure latest state
+        refreshed_case = ds.case.get(case.case_id)
+        if refreshed_case is None:
             report.append(
                 {
                     "query": query,
                     "outcome": "error",
                     "title": "Case Not Found",
-                    "message": f"Associated case {case_id} no longer exists.",
+                    "message": f"Associated case {case.case_id} no longer exists.",
                 }
             )
             return report
 
+        case = refreshed_case
         case_item_values = {item.value for item in case.items}
         values_to_remove = [h.howler.id for h in matching_hits if h.howler.id in case_item_values]
         skipped_ids = [h.howler.id for h in matching_hits if h.howler.id not in case_item_values]
@@ -110,7 +111,7 @@ def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = 
         # remove_case_items expects item UUIDs (CaseItem.id), not hit value strings.
         value_set = set(values_to_remove)
         item_ids_to_remove = [item.id for item in case.items if item.value in value_set]
-        case_service.remove_case_items(case_id, item_ids_to_remove)
+        case_service.remove_case_items(case, item_ids_to_remove)
 
         report.append(
             {
