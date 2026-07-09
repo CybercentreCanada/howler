@@ -31,6 +31,7 @@ import {
   LinearProgress,
   Skeleton,
   Stack,
+  Tooltip,
   Typography,
   useTheme
 } from '@mui/material';
@@ -248,86 +249,94 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
         <Stack direction="row" spacing={0.25}>
           <div style={{ flex: 1 }} />
 
-          <IconButton
-            size="small"
-            sx={{ position: 'relative' }}
-            onClick={() => {
-              if (_case) {
-                showModal(<AddToCaseModal case={_case} onUpdated={update} />);
-              }
-            }}
-          >
-            <Description sx={{ fontSize: '18px' }} />
-            <AddCircle
-              sx={{
-                fontSize: '12px',
-                position: 'absolute',
-                bottom: 2,
-                right: 2,
-                backgroundColor: theme.palette.background.paper,
-                borderRadius: '100%'
-              }}
-              htmlColor="grey"
-            />
-          </IconButton>
-
-          <IconButton
-            size="small"
-            sx={{ position: 'relative' }}
-            onClick={async () => {
-              if (_case?.case_id) {
-                try {
-                  setLoading(true);
-                  const updatedCase = await dispatchApi(
-                    api.v2.case.items.post(_case.case_id, {
-                      type: 'folder',
-                      name: t('page.cases.sidebar.new_folder'),
-                      value: t('page.cases.sidebar.new_folder')
-                    })
-                  );
-                  update(updatedCase);
-                } finally {
-                  setLoading(false);
+          <Tooltip title={t('page.cases.sidebar.add_item')}>
+            <IconButton
+              size="small"
+              sx={{ position: 'relative' }}
+              onClick={() => {
+                if (_case) {
+                  showModal(<AddToCaseModal case={_case} onUpdated={update} />);
                 }
-              }
-            }}
-          >
-            <Folder sx={{ fontSize: '18px' }} />
-            <AddCircle
-              sx={{
-                fontSize: '12px',
-                position: 'absolute',
-                bottom: 2,
-                right: 2,
-                backgroundColor: theme.palette.background.paper,
-                borderRadius: '100%'
               }}
-              htmlColor="grey"
-            />
-          </IconButton>
+            >
+              <Description sx={{ fontSize: '18px' }} />
+              <AddCircle
+                sx={{
+                  fontSize: '12px',
+                  position: 'absolute',
+                  bottom: 2,
+                  right: 2,
+                  backgroundColor: theme.palette.background.paper,
+                  borderRadius: '100%'
+                }}
+                htmlColor="grey"
+              />
+            </IconButton>
+          </Tooltip>
 
-          <IconButton
-            size="small"
-            onClick={async () => {
-              if (_case?.case_id) {
-                try {
-                  setLoading(true);
-                  const refreshedCase = await dispatchApi(api.v2.case.get(_case.case_id));
-                  if (refreshedCase) {
-                    update(refreshedCase);
+          <Tooltip title={t('page.cases.sidebar.add_folder')}>
+            <IconButton
+              size="small"
+              sx={{ position: 'relative' }}
+              onClick={async () => {
+                if (_case?.case_id) {
+                  try {
+                    setLoading(true);
+                    const updatedCase = await dispatchApi(
+                      api.v2.case.items.post(_case.case_id, {
+                        type: 'folder',
+                        name: t('page.cases.sidebar.new_folder'),
+                        value: t('page.cases.sidebar.new_folder')
+                      })
+                    );
+                    update(updatedCase);
+                  } finally {
+                    setLoading(false);
                   }
-                } finally {
-                  setLoading(false);
                 }
-              }
-            }}
-          >
-            <Refresh sx={{ fontSize: '18px' }} />
-          </IconButton>
+              }}
+            >
+              <Folder sx={{ fontSize: '18px' }} />
+              <AddCircle
+                sx={{
+                  fontSize: '12px',
+                  position: 'absolute',
+                  bottom: 2,
+                  right: 2,
+                  backgroundColor: theme.palette.background.paper,
+                  borderRadius: '100%'
+                }}
+                htmlColor="grey"
+              />
+            </IconButton>
+          </Tooltip>
 
-          <IconButton size="small" onClick={collapse}>
-            <UnfoldLess sx={{ fontSize: '18px' }} />
-          </IconButton>
+          <Tooltip title={t('page.cases.sidebar.refresh')}>
+            <IconButton
+              size="small"
+              onClick={async () => {
+                if (_case?.case_id) {
+                  try {
+                    setLoading(true);
+                    const refreshedCase = await dispatchApi(api.v2.case.get(_case.case_id));
+                    if (refreshedCase) {
+                      update(refreshedCase);
+                    }
+                  } finally {
+                    setLoading(false);
+                  }
+                }
+              }}
+            >
+              <Refresh sx={{ fontSize: '18px' }} />
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title={t('page.cases.sidebar.collapse_all')}>
+            <IconButton size="small" onClick={collapse}>
+              <UnfoldLess sx={{ fontSize: '18px' }} />
+            </IconButton>
+          </Tooltip>
         </Stack>
       </Card>
 
