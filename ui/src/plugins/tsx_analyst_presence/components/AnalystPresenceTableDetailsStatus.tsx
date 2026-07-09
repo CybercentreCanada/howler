@@ -100,7 +100,7 @@ export const AnalystPresenceTableDetailsStatus = ({ user }: AnalystPresenceTable
               <Select
                 labelId={statusLabelId}
                 size="small"
-                value={selectedStatus ?? ''}
+                value={selectedStatus && statuses?.includes(selectedStatus) ? selectedStatus : ''}
                 label={t('tsxAnalystPresence.common.status')}
                 onChange={e => setSelectedStatus((e.target.value as UserStatus['status']) || null)}
                 disabled={isLoadingStatuses || isUpdatingUserStatus}

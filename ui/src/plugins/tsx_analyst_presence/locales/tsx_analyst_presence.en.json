@@ -25,6 +25,9 @@
   "tsxAnalystPresence.table.header.status": "Status",
   "tsxAnalystPresence.table.header.tags": "Tags",
 
+  "tsxAnalystPresence.table.expand": "Expand row",
+  "tsxAnalystPresence.table.collapse": "Collapse row",
+
   "tsxAnalystPresence.tags": "Tags",
   "tsxAnalystPresence.tags.chip.tooltip": "Toggle filter",
 
