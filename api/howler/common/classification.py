@@ -1,7 +1,7 @@
 import itertools
 import logging
 from copy import copy
-from typing import Any, Dict, KeysView, List, Optional, Set, Tuple, Union, cast
+from typing import TYPE_CHECKING, Any, Dict, KeysView, List, Optional, Set, Tuple, Union, cast
 
 from howler.common.exceptions import (
     HowlerKeyError,
@@ -9,6 +9,9 @@ from howler.common.exceptions import (
     InvalidDefinition,
 )
 from howler.common.loader import APP_NAME
+
+if TYPE_CHECKING:
+    from howler.odm.base import ClassificationObject
 
 log = logging.getLogger(f"{APP_NAME}.classification")
 
@@ -203,12 +206,12 @@ class Classification(object):
             if not self.is_valid(classification_definition["restricted"]):
                 raise InvalidDefinition("Classification definition's restricted classification is invalid.")
 
-            self.UNRESTRICTED = self.normalize_classification(classification_definition["unrestricted"])
-            self.RESTRICTED = self.normalize_classification(classification_definition["restricted"])
+            self.UNRESTRICTED: str = self.normalize_classification(classification_definition["unrestricted"])
+            self.RESTRICTED: str = self.normalize_classification(classification_definition["restricted"])
 
         except Exception as e:
-            self.UNRESTRICTED = self.NULL_CLASSIFICATION
-            self.RESTRICTED = self.INVALID_CLASSIFICATION
+            self.UNRESTRICTED: str = self.NULL_CLASSIFICATION
+            self.RESTRICTED: str = self.INVALID_CLASSIFICATION
 
             self.invalid_mode = True
 
@@ -755,7 +758,9 @@ class Classification(object):
             skip_auto_select=True,
         )
 
-    def is_accessible(self, user_c12n: str, c12n: str, ignore_invalid: bool = False) -> bool:
+    def is_accessible(
+        self, user_c12n: "str | ClassificationObject", c12n: "str | ClassificationObject", ignore_invalid: bool = False
+    ) -> bool:
         """
         Given a user classification, check if a user is allow to see a certain classification
 
@@ -774,6 +779,12 @@ class Classification(object):
 
         if c12n is None:
             return True
+
+        if not isinstance(user_c12n, str):
+            user_c12n = user_c12n.value
+
+        if not isinstance(c12n, str):
+            c12n = c12n.value
 
         try:
             user_lvl, user_req, user_groups, user_subgroups = self._get_classification_parts(user_c12n)
