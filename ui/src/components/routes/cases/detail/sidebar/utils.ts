@@ -32,10 +32,15 @@ export const buildTree = (items: Item[] = []): Tree => {
       continue;
     }
     const node = folderNodes[folder.id];
+    const folderName = folder.name ?? folder.value ?? folder.id;
+    if (!folderName) {
+      continue;
+    }
+
     if (folder.parent && folderNodes[folder.parent]) {
-      folderNodes[folder.parent].folders![folder.name] = node;
+      folderNodes[folder.parent].folders![folderName] = node;
     } else {
-      root.folders![folder.name] = node;
+      root.folders![folderName] = node;
     }
   }
 
