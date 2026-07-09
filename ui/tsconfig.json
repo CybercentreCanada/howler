@@ -22,7 +22,7 @@
     "verbatimModuleSyntax": true,
 
     /* for imports. */
-    "baseUrl": "./src",
+    "rootDir": "./src",
     "paths": {},
 
     "outDir": "dist"
