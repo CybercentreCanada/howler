@@ -183,8 +183,8 @@ export const language = <languages.IMonarchLanguage>{
 
       // links
       [/\{+[^}]+\}+/, 'string.target'],
-      [/(!?\[)((?:[^\]\\]|@escapes)*)(\]\([^)]+\))/, ['string.link', '', 'string.link']],
-      [/(!?\[)((?:[^\]\\]|@escapes)*)(\])/, 'string.link'],
+      [/(!?\[)([^\\\]@]*(?:@escapes[^\\\]@]*)*)(\]\([^)]+\))/, ['string.link', '', 'string.link']],
+      [/(!?\[)([^\\\]@]*(?:@escapes[^\\\]@]*)*)(\])/, 'string.link'],
 
       // or html
       { include: 'html' }
