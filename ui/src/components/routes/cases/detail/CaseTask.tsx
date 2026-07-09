@@ -41,7 +41,7 @@ const CaseTask: FC<{
   const [complete, setComplete] = useState(task?.complete ?? false);
 
   const dirty =
-    summary !== task?.summary || item !== task?.item || complete !== task?.complete || assignment !== task?.assignment;
+    summary !== task?.summary || item.id !== task?.item || complete !== task?.complete || assignment !== task?.assignment;
 
   const options: Item[] = useMemo(() => _case?.items ?? [], [_case]);
 
