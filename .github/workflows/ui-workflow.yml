@@ -93,10 +93,10 @@ jobs:
       - name: Run oxfmt checks
         run: pnpm oxfmt src --check
 
-      - name: Run eslint linter checks
+      - name: Run oxlint checks
         run: pnpm oxlint src
 
-      - name: Run Unit Tests
+      - name: Run unit Tests
         run: pnpm test
 
       - name: Report Coverage
