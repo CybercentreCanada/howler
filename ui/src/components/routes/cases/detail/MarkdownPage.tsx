@@ -58,10 +58,12 @@ const MarkdownPage: FC<{ case: Case; item: Item }> = ({ case: _case, item }) => 
   return (
     <Box p={1} sx={{ mt: -1, minHeight: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column' }}>
       <Stack direction="row" alignItems="center" spacing={1}>
-        <Typography variant="h6" color="text.secondary">
-          {path}/
-        </Typography>
-        <Typography variant="h4">{item.name}</Typography>
+        <Stack direction="row">
+          <Typography variant="h6" color="text.secondary">
+            {path}/
+          </Typography>
+          <Typography variant="h6">{item.name}</Typography>
+        </Stack>
         {item.classification && <ClassificationChip classification={item.classification} format="long" />}
         <div style={{ flex: 1 }} />
         {isEditing && (
