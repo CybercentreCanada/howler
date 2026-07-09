@@ -91,7 +91,11 @@ def get_dossier(
     return datastore().dossier.get_if_exists(key=id, as_obj=as_odm, version=version)
 
 
-def create_dossier(dossier_data: Optional[Any], username: str, refresh: str | None = None) -> Dossier:  # noqa: C901
+def create_dossier(  # noqa: C901
+    dossier_data: Optional[Any],
+    username: str,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+) -> Dossier:
     """Create a new dossier in the datastore.
 
     This function validates the input data, ensures the query is valid by testing it
@@ -157,7 +161,12 @@ def create_dossier(dossier_data: Optional[Any], username: str, refresh: str | No
         raise InvalidDataException(str(e))
 
 
-def update_dossier(dossier_id: str, dossier_data: dict[str, Any], user: User, refresh: str | None = None) -> Dossier:  # noqa: C901
+def update_dossier(  # noqa: C901
+    dossier_id: str,
+    dossier_data: dict[str, Any],
+    user: User,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+) -> Dossier:
     """Update one or more properties of a dossier in the database.
 
     This function enforces access control rules and validates data before updating.

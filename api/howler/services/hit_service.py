@@ -396,7 +396,11 @@ CREATED_HITS = Counter(
 
 @tracer.start_as_current_span(f"{__name__}.create_hit")
 def create_hit(
-    id: str, hit: Hit, user: Optional[str] = None, skip_exists: bool = False, refresh: str | None = None
+    id: str,
+    hit: Hit,
+    user: Optional[str] = None,
+    skip_exists: bool = False,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
 ) -> bool:
     """Create a new hit in the database.
 
@@ -408,7 +412,7 @@ def create_hit(
         hit: The Hit ODM object to save
         user: Optional username to record in the creation log
         skip_exists: Whether to check for an existing record
-        refresh: Optional refresh parameter for the datastore
+        refresh: Optional datastore refresh strategy ("true", "false", "wait_for")
 
     Returns:
         bool: True if the hit was successfully created

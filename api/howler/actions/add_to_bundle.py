@@ -78,7 +78,11 @@ def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = 
             name = f"{hit.howler.analytic} ({hit.howler.id})"
             try:
                 case_service.append_case_item(
-                    case, item_type=CaseItemTypes.HIT, item_name=name, item_value=hit.howler.id, item_parent=folder.id
+                    case,
+                    item_type=CaseItemTypes.HIT,
+                    item_name=name,
+                    item_value=hit.howler.id,
+                    item_parent=folder.id if folder else None,
                 )
                 added.append(hit.howler.id)
             except Exception:
