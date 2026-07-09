@@ -4,7 +4,7 @@ import useMyApi from 'components/hooks/useMyApi';
 import useMyLocalStorage, { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import dayjs from 'dayjs';
 import i18n from 'i18n';
-import { cloneDeep } from 'lodash-es';
+import { cloneDeep, isNil } from 'lodash-es';
 import isNull from 'lodash-es/isNull';
 import isUndefined from 'lodash-es/isUndefined';
 import type { Event } from 'models/entities/generated/Event';
@@ -20,7 +20,7 @@ import {
   type PropsWithChildren,
   type SetStateAction
 } from 'react';
-import { useLocation, useParams } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
 import Throttler from 'utils/Throttler';
@@ -55,7 +55,6 @@ const THROTTLER = new Throttler(500);
 
 const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
   const { get } = useMyLocalStorage();
-  const routeParams = useParams();
   const location = useLocation();
   const { dispatchApi } = useMyApi();
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
@@ -156,7 +155,7 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
         try {
           const _response = await dispatchApi(
             api.v2.search.post<WithMetadata<Hit>>(indexes, {
-              offset: appendResults && response ? response.rows : offset,
+              offset: appendResults && !isNil(response?.rows) ? response.rows : offset,
               rows: pageCount,
               query: _query || DEFAULT_QUERY,
               sort,
@@ -194,28 +193,22 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
         }
       });
     },
-    // We skip reloading when the response changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       sort,
       span,
       query,
-      startDate,
-      endDate,
-      filters,
       indexes,
       setQuery,
-      location.pathname,
-      routeParams.id,
-      views,
-      dispatchApi,
+      setQueryHistory,
+      queryHistory,
+      response?.rows,
       offset,
+      dispatchApi,
       pageCount,
+      getFilters,
       trackTotalHits,
       loadHits,
-      getCurrentViews,
-      setOffset,
-      getFilters
+      setOffset
     ]
   );
 
