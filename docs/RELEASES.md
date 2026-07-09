@@ -1,5 +1,9 @@
 # Howler Releases
 
+## Howler UI `v2.19.0`
+
+- **Fontsource Roboto Import Resolution** *(bugfix)*: Fixed the UI entrypoint to import Roboto from the package's explicit CSS entry so TypeScript can resolve the side-effect import correctly.
+
 ## Howler UI `v2.18.0`
 
 - **Action Outcome Messages** *(new feature)*: Actions now display an appropriate success or failure message according to the outcome of the operation.
