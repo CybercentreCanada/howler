@@ -12,11 +12,9 @@ export const AnalystPresenceSnackbar = () => {
       anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       onClose={() => setSnackbarMessage(null)}
     >
-      {snackbarMessage !== null && (
-        <Alert severity={snackbarMessage?.type} variant="filled" onClose={() => setSnackbarMessage(null)}>
-          {snackbarMessage?.message}
-        </Alert>
-      )}
+      <Alert severity={snackbarMessage?.type} variant="filled" onClose={() => setSnackbarMessage(null)}>
+        {snackbarMessage?.message}
+      </Alert>
     </Snackbar>
   );
 };
