@@ -4,7 +4,7 @@ import useMyApi from 'components/hooks/useMyApi';
 import useMyLocalStorage, { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import dayjs from 'dayjs';
 import i18n from 'i18n';
-import { cloneDeep } from 'lodash-es';
+import { cloneDeep, isNil } from 'lodash-es';
 import isNull from 'lodash-es/isNull';
 import isUndefined from 'lodash-es/isUndefined';
 import type { Hit } from 'models/entities/generated/Hit';
@@ -166,7 +166,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
         try {
           const _response = await dispatchApi(
             api.search.hit.post({
-              offset: appendResults && response ? response.rows : offset,
+              offset: appendResults && !isNil(response?.rows) ? response.rows : offset,
               rows: pageCount,
               query: _query || DEFAULT_QUERY,
               sort,
@@ -204,27 +204,21 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
         }
       });
     },
-    // We skip reloading when the response changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       sort,
       span,
       query,
-      startDate,
-      endDate,
-      filters,
       setQuery,
-      location.pathname,
-      routeParams.id,
-      views,
-      dispatchApi,
+      setQueryHistory,
+      queryHistory,
+      response?.rows,
       offset,
+      dispatchApi,
       pageCount,
+      getFilters,
       trackTotalHits,
       loadHits,
-      getCurrentViews,
-      setOffset,
-      getFilters
+      setOffset
     ]
   );
 
