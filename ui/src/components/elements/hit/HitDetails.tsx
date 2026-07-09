@@ -147,7 +147,9 @@ const ObjectRenderer: FC<{ hit?: Hit; parentKey?: string; showParentKey?: boolea
     const entries = useMemo(() => {
       const unsorted = Object.entries(flatten(data, { safe: true })).map(([key, val]) => [key, val]);
 
-      const sortedAlphabetical = unsorted.map(([key]) => key).sort();
+      const sortedAlphabetical = unsorted
+        .map(([key]) => key)
+        .sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }));
 
       return sortBy(
         unsorted,

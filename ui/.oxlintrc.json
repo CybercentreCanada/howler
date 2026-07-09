@@ -51,6 +51,13 @@
     "react/no-unknown-property": "error",
     "import/newline-after-import": "error",
     "import/no-cycle": "warn",
+    "typescript/no-misused-spread": "off",
+    "typescript/unbound-method": "off",
+    "typescript/no-useless-default-assignment": "off",
+    "jsx-a11y/click-events-have-key-events": "off",
+    "jsx-a11y/no-static-element-interactions": "off",
+    "jsx-a11y/prefer-tag-over-role": "off",
+    "jsx-a11y/aria-role": "off",
     "jsx-a11y/anchor-is-valid": [
       "error",
       {

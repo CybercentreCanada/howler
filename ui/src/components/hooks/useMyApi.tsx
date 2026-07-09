@@ -29,7 +29,7 @@ const useMyApi = () => {
       } catch (error) {
         if (error instanceof Error) {
           if (onConflict && [409, 412].includes((error.cause as HowlerResponse<any>)?.api_status_code)) {
-            onConflict();
+            void onConflict();
             return null;
           }
 
