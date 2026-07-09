@@ -107,7 +107,10 @@ def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = 
             )
             return report
 
-        case_service.remove_case_items(case_id, values_to_remove)
+        # remove_case_items expects item UUIDs (CaseItem.id), not hit value strings.
+        value_set = set(values_to_remove)
+        item_ids_to_remove = [item.id for item in case.items if item.value in value_set]
+        case_service.remove_case_items(case_id, item_ids_to_remove)
 
         report.append(
             {

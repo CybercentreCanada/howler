@@ -108,9 +108,7 @@ def create_bundle(
 
     # Root hit
     case_service.append_case_item(
-        case,
-        item_type="hit",
-        item_value=odm.howler.id,
+        case, item_type="hit", item_value=odm.howler.id, item_name=f"{odm.howler.analytic} ({odm.howler.id})"
     )
 
     folder = case_service.get_parent_from_path(case, "hits", ensure=True)
@@ -122,7 +120,11 @@ def create_bundle(
 
         try:
             case_service.append_case_item(
-                case, item_type="hit", item_value=child_id, item_parent=folder.id if folder else None
+                case,
+                item_type="hit",
+                item_value=child_id,
+                item_name=f"{child_hit.howler.analytic} ({child_hit.howler.id})",
+                item_parent=folder.id if folder else None,
             )
         except (InvalidDataException, NotFoundException, DataStoreException) as exc:
             logger.warning("Could not add child hit %s to case: %s", child_id, exc)
@@ -240,7 +242,10 @@ def remove_from_bundle(
 
         if values_to_remove:
             item_ids_to_remove = [item.id for item in case.items if item.value in values_to_remove]
-            case_service.remove_case_items(_case, item_ids_to_remove)
+            # force=True is required when removing all children via wildcard because the "hits/" folder
+            # item is included in the removal set and may still have children at removal time.
+            use_force = hit_ids == ["*"]
+            case_service.remove_case_items(_case, item_ids_to_remove, force=use_force)
 
     updated_case: Case | None = datastore().case.get(_case.case_id)
     if updated_case is None:

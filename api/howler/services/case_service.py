@@ -424,15 +424,14 @@ def append_case_item(  # noqa: C901
             data["name"] = item_name
         item = CaseItem(data)
 
+    if item.name is None:
+        item.name = item.value
+
     # If a parent is specified, ensure it references an existing folder item.
     if item.parent is not None:
         _ensure_parent_exists(case, item.parent)
 
     _check_conflicts(case, item)
-
-    # Check for duplicate folder under same parent
-    if any(ci.name == item.name and ci.parent == item.parent for ci in case.items):
-        raise InvalidDataException(f"An item with name '{item.name}' already exists in destination.")
 
     match item.type:
         case CaseItemTypes.HIT:
@@ -455,7 +454,7 @@ def append_case_item(  # noqa: C901
 
 
 def _check_conflicts(case: Case, item: CaseItem) -> None:
-    """Validate that two items are not craeted with the same name and parent.
+    """Validate that two items are not created with the same name and parent.
 
     Args:
         case: The case whose items to search.
@@ -464,6 +463,11 @@ def _check_conflicts(case: Case, item: CaseItem) -> None:
     Raises:
         InvalidDataException: If there is a conflict between the existing case items and the new item
     """
+    # Unnamed items (name=None) are identified by their value, not their name; skip name-based
+    # conflict detection for them so that multiple unnamed hits can coexist in the same parent.
+    if item.name is None:
+        return
+
     # Check for duplicate folder under same parent
     if any(ci.name == item.name and ci.parent == item.parent for ci in case.items):
         raise InvalidDataException(
