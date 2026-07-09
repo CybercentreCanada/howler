@@ -1,7 +1,7 @@
 import itertools
 import logging
 from copy import copy
-from typing import Any, Dict, KeysView, List, Optional, Set, Tuple, Union, cast
+from typing import TYPE_CHECKING, Any, Dict, KeysView, List, Optional, Set, Tuple, Union, cast
 
 from howler.common.exceptions import (
     HowlerKeyError,
@@ -10,6 +10,9 @@ from howler.common.exceptions import (
 )
 from howler.common.loader import APP_NAME
 from howler.odm.base import ClassificationObject
+
+if TYPE_CHECKING:
+    from howler.odm.base import ClassificationObject
 
 log = logging.getLogger(f"{APP_NAME}.classification")
 
@@ -757,7 +760,7 @@ class Classification(object):
         )
 
     def is_accessible(
-        self, user_c12n: str | ClassificationObject, c12n: str | ClassificationObject, ignore_invalid: bool = False
+        self, user_c12n: "str | ClassificationObject", c12n: "str | ClassificationObject", ignore_invalid: bool = False
     ) -> bool:
         """
         Given a user classification, check if a user is allow to see a certain classification
