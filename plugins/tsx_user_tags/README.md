@@ -43,6 +43,20 @@ cd /workspaces/howler/api
 poetry add --editable ../plugins/tsx_user_tags
 ```
 
+For local development, you can also enable the plugin without editing
+`config.yml` by setting `HWL_CORE__PLUGINS` when starting the API:
+
+```shell
+cd /workspaces/howler/api
+HWL_CORE__PLUGINS='["tsx_user_tags"]' poetry run server
+```
+
+When running with `tsx_user_status` locally as well, include both plugin names:
+
+```shell
+HWL_CORE__PLUGINS='["tsx_user_status", "tsx_user_tags"]' poetry run server
+```
+
 ---
 
 ## Plugin Configuration
@@ -87,6 +101,7 @@ Each tag type (`portfolio`, `products`, `primary_disciplines`) can use a differe
 | Route                        | Method | Description                                                        |
 | ---------------------------- | ------ | ------------------------------------------------------------------ |
 | `/api/v1/tags/all`           | GET    | Fetch all available tag options (portfolio, products, disciplines) |
+| `/api/v1/tags/cache`         | DELETE | Invalidate cached analytics tag lists (admin only)                 |
 | `/api/v1/tags/healthz/ready` | GET    | Returns 200 OK if all services are online/ready                    |
 | `/api/v1/tags/healthz/live`  | GET    | Returns 200 OK if plugin is loaded                                 |
 

@@ -115,21 +115,17 @@ class TestGetStatus:
 class TestSetStatus:
     """Tests for set_status."""
 
-    @pytest.mark.parametrize("status", ["1", "available", "busy", "away"])
+    @pytest.mark.parametrize("status", ["available", "busy", "unavailable", "away"])
     def test_sets_valid_status(self, service, mock_redis, status):
         service.set_status("user@test.com", status)
         mock_redis.set.assert_called_once_with(_status_key("user@test.com"), status)
-
-    def test_coerces_integer_to_string(self, service, mock_redis):
-        service.set_status("user@test.com", 7)
-        mock_redis.set.assert_called_once_with(_status_key("user@test.com"), "7")
 
     def test_none_deletes_key(self, service, mock_redis):
         service.set_status("user@test.com", None)
         mock_redis.delete.assert_called_once_with(_status_key("user@test.com"))
         mock_redis.set.assert_not_called()
 
-    @pytest.mark.parametrize("bad_status", ["", "   ", [], {}])
+    @pytest.mark.parametrize("bad_status", ["", "   ", "1", 7, [], {}])
     def test_rejects_invalid_status(self, service, bad_status):
         with pytest.raises(ValueError, match="Invalid status"):
             service.set_status("user@test.com", bad_status)
@@ -137,7 +133,7 @@ class TestSetStatus:
     def test_raises_on_redis_error(self, service, mock_redis):
         mock_redis.set.side_effect = RedisError("connection lost")
         with pytest.raises(UserStatusWriteError):
-            service.set_status("user@test.com", "1")
+            service.set_status("user@test.com", "available")
 
 
 class TestGetShift:
@@ -650,7 +646,7 @@ class TestUserStatusEnum:
     """Tests for UserStatus enum."""
 
     def test_enum_contains_expected_values(self):
-        expected = {str(i) for i in range(1, 16)} | {"available", "busy", "unavailable", "away"}
+        expected = {"available", "busy", "unavailable", "away"}
         actual = {s.value for s in UserStatus}
         assert actual == expected
 

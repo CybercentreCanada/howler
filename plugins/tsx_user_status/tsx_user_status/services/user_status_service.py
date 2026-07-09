@@ -15,7 +15,7 @@ logger = get_logger(__file__)
 # in :meth:`UserStatusService.apply_patch`.
 UNSET: Any = object()
 
-# All recognized status values (numeric shift codes plus named assignment statuses).
+# All recognized assignment status values.
 _VALID_STATUSES: frozenset[str] = frozenset(member.value for member in UserStatus)
 
 

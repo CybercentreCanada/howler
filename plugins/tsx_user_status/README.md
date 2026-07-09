@@ -42,6 +42,20 @@ cd /workspaces/howler/api
 poetry add --editable ../plugins/tsx_user_status
 ```
 
+For local development, you can also enable the plugin without editing
+`config.yml` by setting `HWL_CORE__PLUGINS` when starting the API:
+
+```shell
+cd /workspaces/howler/api
+HWL_CORE__PLUGINS='["tsx_user_status"]' poetry run server
+```
+
+When running with `tsx_user_tags` locally as well, include both plugin names:
+
+```shell
+HWL_CORE__PLUGINS='["tsx_user_status", "tsx_user_tags"]' poetry run server
+```
+
 ---
 
 ## Plugin Configuration
@@ -140,6 +154,10 @@ All user status endpoints return a consistent user object:
   `tsx_user_tags` plugin. Users with no tags set return all three lists empty:
   `{"portfolio": [], "products": [], "primary_disciplines": []}`.
 
+For full tag support, enable the `tsx_user_tags` plugin alongside
+`tsx_user_status` so the User ODM includes the tags extension and the
+controlled tag dictionaries are available.
+
 ### GET /api/v1/status/users
 
 Returns an array of all active users with their status, schedule, team, and tags:
@@ -225,10 +243,9 @@ Clear all fields atomically:
 
 ## Status Values
 
-Status must be one of the recognized values: the numeric shift codes `"1"`
-through `"15"`, or a named status (`"available"`, `"busy"`, `"unavailable"`,
-`"away"`). Retrieve the authoritative list via `GET /api/v1/status/statuses`.
-Set to `null` to clear.
+Status must be one of the recognized assignment values: `"available"`,
+`"busy"`, `"unavailable"`, or `"away"`. Retrieve the authoritative list via
+`GET /api/v1/status/statuses`. Set to `null` to clear.
 
 ## Authentication
 

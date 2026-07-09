@@ -4,29 +4,8 @@ from enum import StrEnum
 
 
 class UserStatus(StrEnum):
-    """Valid user status values.
+    """Valid user status values for alert assignment workflows."""
 
-    Numeric statuses (1-15) represent shift/availability codes.
-    Named statuses support alert assignment workflows.
-    """
-
-    STATUS_1 = "1"
-    STATUS_2 = "2"
-    STATUS_3 = "3"
-    STATUS_4 = "4"
-    STATUS_5 = "5"
-    STATUS_6 = "6"
-    STATUS_7 = "7"
-    STATUS_8 = "8"
-    STATUS_9 = "9"
-    STATUS_10 = "10"
-    STATUS_11 = "11"
-    STATUS_12 = "12"
-    STATUS_13 = "13"
-    STATUS_14 = "14"
-    STATUS_15 = "15"
-
-    # Assignment statuses
     AVAILABLE = "available"
     BUSY = "busy"
     UNAVAILABLE = "unavailable"

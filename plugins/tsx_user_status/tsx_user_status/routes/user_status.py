@@ -200,7 +200,7 @@ def get_status_options(**kwargs):
     None
 
     Result example:
-    {"api_response": ["1", "2", ..., "15", "available", "busy", "unavailable", "away"]}
+    {"api_response": ["available", "busy", "unavailable", "away"]}
     """
     return ok([s.value for s in UserStatus])
 

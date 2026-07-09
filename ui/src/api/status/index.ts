@@ -3,10 +3,8 @@ import type { UserTags } from 'api/tags';
 
 const BASE_URI = (): string => joinUri(apiUri(), 'status');
 
-export type OperatorNumber =
-  '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | '11' | '12' | '13' | '14' | '15';
 export type UserAvailability = 'available' | 'away' | 'busy' | 'unavailable';
-export type UserStatusValue = OperatorNumber | UserAvailability;
+export type UserStatusValue = UserAvailability;
 export type ScheduleBlob = Record<string, string[]>;
 
 export type UserStatus = {

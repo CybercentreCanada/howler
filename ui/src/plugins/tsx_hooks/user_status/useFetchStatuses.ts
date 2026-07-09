@@ -3,9 +3,6 @@ import type { UserStatusValue } from 'api/status';
 import useMyApi from 'components/hooks/useMyApi';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-/** Temporarily excluded statuses, reintroduce when assignment engine is ready */
-const EXCLUDED_STATUSES: UserStatusValue[] = ['available', 'away', 'busy', 'unavailable'];
-
 type Options = {
   /**
    * Callback function that will be called with the fetched data when the fetch is successful.
@@ -41,9 +38,8 @@ export const useFetchStatuses = (options?: Options) => {
 
     try {
       const response = await dispatchApi(api.status.getStatuses());
-      const filteredStatuses = response.filter(status => !EXCLUDED_STATUSES.includes(status));
-      setData(filteredStatuses);
-      optionsRef.current?.onSuccess?.(filteredStatuses);
+      setData(response);
+      optionsRef.current?.onSuccess?.(response);
     } catch (_error) {
       const err = _error instanceof Error ? _error : new Error('An unknown error occurred');
       setError(err);
