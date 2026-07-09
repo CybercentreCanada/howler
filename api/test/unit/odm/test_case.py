@@ -276,13 +276,13 @@ class TestCaseTask:
                 "id": "00000000-0000-0000-0000-000000000001",
                 "assignment": "analyst-team",
                 "summary": "Review indicators",
-                "path": "/alerts/critical",
+                "item": "item-001",
             }
         )
 
         assert task.assignment == "analyst-team"
         assert task.summary == "Review indicators"
-        assert task.path == "/alerts/critical"
+        assert task.item == "item-001"
         assert task.complete is False  # default
 
     def test_case_task_complete_flag(self):
@@ -293,7 +293,7 @@ class TestCaseTask:
                 "complete": True,
                 "assignment": "soc",
                 "summary": "Done",
-                "path": "/",
+                "item": "item-002",
             }
         )
 
@@ -306,7 +306,7 @@ class TestCaseTask:
                 {
                     "id": "00000000-0000-0000-0000-000000000003",
                     "assignment": "soc",
-                    # missing 'summary' and 'path'
+                    # missing 'summary'
                 }
             )
 
@@ -317,7 +317,7 @@ class TestCaseTask:
                 "id": "00000000-0000-0000-0000-000000000005",
                 "assignment": "soc",
                 "summary": "Analyse logs",
-                "path": "/alerts/critical",
+                "item": "item-005",
                 "complete": True,
             }
         )
@@ -326,7 +326,7 @@ class TestCaseTask:
         assert isinstance(primitives, dict)
         assert primitives["assignment"] == "soc"
         assert primitives["summary"] == "Analyse logs"
-        assert primitives["path"] == "/alerts/critical"
+        assert primitives["item"] == "item-005"
         assert primitives["complete"] is True
 
 

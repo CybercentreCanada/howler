@@ -371,7 +371,7 @@ class TestAppendItemEndpoint:
 
         with request_context.test_request_context(
             method="POST",
-            json={"type": "hit", "value": "hit-001"},
+            json={"type": "hit", "value": "hit-001", "name": "Hit 001"},
             headers={"Authorization": "Bearer ."},
         ):
             from howler.api.v2.case import append_item
@@ -401,7 +401,7 @@ class TestAppendItemEndpoint:
             assert result.status_code == 400
             mock_case_service.append_case_item.assert_not_called()
 
-    @pytest.mark.parametrize("missing_field", ["value", "type"])
+    @pytest.mark.parametrize("missing_field", ["value", "type", "name"])
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
     def test_append_item_missing_field_returns_400(
@@ -411,7 +411,7 @@ class TestAppendItemEndpoint:
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        body = {"type": "hit", "value": "hit-001"}
+        body = {"type": "hit", "value": "hit-001", "name": "Hit 001"}
         del body[missing_field]
 
         with request_context.test_request_context(
@@ -442,7 +442,7 @@ class TestAppendItemEndpoint:
 
         with request_context.test_request_context(
             method="POST",
-            json={"type": "hit", "value": "hit-001"},
+            json={"type": "hit", "value": "hit-001", "name": "Hit 001"},
             headers={"Authorization": "Bearer ."},
         ):
             from howler.api.v2.case import append_item
@@ -462,7 +462,7 @@ class TestAppendItemEndpoint:
 
         with request_context.test_request_context(
             method="POST",
-            json={"type": "hit", "value": "hit-001"},
+            json={"type": "hit", "value": "hit-001", "name": "Hit 001"},
             headers={"Authorization": "Bearer ."},
         ):
             from howler.api.v2.case import append_item

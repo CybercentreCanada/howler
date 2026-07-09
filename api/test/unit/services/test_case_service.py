@@ -1130,13 +1130,14 @@ class TestRenameCaseItem:
         mock_case = MagicMock()
         mock_case.case_id = "case-001"
         mock_case.items = [item]
+        mock_case.save.return_value = True
         mock_ds.case.get.return_value = mock_case
-        mock_ds.case.save.return_value = True
 
         result = case_service.rename_case_item("case-001", item.id, "New Name")
 
         assert item.name == "New Name"
-        mock_ds.case.save.assert_called_once_with("case-001", mock_case)
+        mock_case.save.assert_called_once_with()
+        mock_ds.case.save.assert_not_called()
         assert result is mock_case
 
     @patch("howler.services.case_service.datastore")
@@ -1211,8 +1212,8 @@ class TestRenameCaseItem:
         mock_case = MagicMock()
         mock_case.case_id = "case-001"
         mock_case.items = [item]
+        mock_case.save.return_value = False
         mock_ds.case.get.return_value = mock_case
-        mock_ds.case.save.return_value = False
 
         with pytest.raises(DataStoreException):
             case_service.rename_case_item("case-001", item.id, "New Name")
@@ -1227,12 +1228,13 @@ class TestRenameCaseItem:
         mock_case = MagicMock()
         mock_case.case_id = "case-001"
         mock_case.items = [item]
+        mock_case.save.return_value = True
         mock_ds.case.get.return_value = mock_case
-        mock_ds.case.save.return_value = True
 
         case_service.rename_case_item("case-001", item.id, "Same")
 
-        mock_ds.case.save.assert_called_once()
+        mock_case.save.assert_called_once_with()
+        mock_ds.case.save.assert_not_called()
 
     @patch("howler.services.case_service.datastore")
     def test_rename_item_allows_same_name_in_different_folder(self, mock_ds_fn):
@@ -1247,13 +1249,14 @@ class TestRenameCaseItem:
         mock_case = MagicMock()
         mock_case.case_id = "case-001"
         mock_case.items = [folder_a, folder_b, item_in_a, item_in_b]
+        mock_case.save.return_value = True
         mock_ds.case.get.return_value = mock_case
-        mock_ds.case.save.return_value = True
 
         # Renaming item_in_b to "Report" is allowed because it's in a different folder
         case_service.rename_case_item("case-001", item_in_b.id, "Report")
 
-        mock_ds.case.save.assert_called_once()
+        mock_case.save.assert_called_once_with()
+        mock_ds.case.save.assert_not_called()
 
     @patch("howler.services.case_service.datastore")
     def test_rename_item_raises_when_sibling_has_same_name(self, mock_ds_fn):
