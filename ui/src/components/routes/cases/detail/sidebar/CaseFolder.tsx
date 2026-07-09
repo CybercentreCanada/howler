@@ -86,7 +86,7 @@ const CaseFolder: FC<CaseFolderProps> = ({
       if (color) return color;
     }
 
-    return undefined;
+    return null;
   };
 
   const toggleCase = useCallback(

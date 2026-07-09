@@ -11,7 +11,7 @@ export const buildPathFromID = (_case: Case, itemId: string): string => {
   return `${parentPath}/${name}`;
 };
 
-export const getIDFromPath = (_case: Case, path: string): string | undefined => {
+export const getIDFromPath = (_case: Case, path: string): string | null => {
   if (!_case.items) return null;
 
   for (const item of _case.items) {
