@@ -120,14 +120,14 @@ suppress-dummy-args = true
 suppress-none-returning = true
 
 [tool.ruff.lint.per-file-ignores]
-"sentinel/**/__init__.py" = ["F401"]
-"sentinel/odm/hit.py" = ["S311"]
-"sentinel/odm/models/*" = ["D", "ANN", "C901"]
+"iceberg/**/__init__.py" = ["F401"]
+"iceberg/odm/hit.py" = ["S311"]
+"iceberg/odm/models/*" = ["D", "ANN", "C901"]
 "test/*" = ["D", "ANN", "S", "N818", "TRY", "PIE", "E402"]
 "build_scripts/*" = ["D", "ANN", "S", "N818", "T20", "TRY"]
 
 [tool.poetry]
-packages = [{ include = "sentinel" }]
+packages = [{ include = "iceberg" }]
 
 
 [tool.poetry.group.dev.dependencies]
