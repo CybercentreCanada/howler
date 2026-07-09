@@ -145,7 +145,7 @@ const AnalyticComments: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
 
   useEffect(() => {
     setUserIds(new Set(analytic?.comment.map(c => c.user)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [analytic?.analytic_id]);
 
   const comments = useMemo(

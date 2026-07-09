@@ -61,7 +61,7 @@ const useMyActionFunctions = () => {
     addListener<{ processed: number; total: number }>('action', handler);
 
     return () => removeListener('action');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [handler]);
 
   return {

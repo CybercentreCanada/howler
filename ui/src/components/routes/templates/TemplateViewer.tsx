@@ -71,7 +71,7 @@ const TemplateViewer = () => {
       });
 
     dispatchApi(api.template.get()).then(setTemplateList);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [analytic, dispatchApi]);
 
   useEffect(() => {

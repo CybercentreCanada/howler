@@ -128,13 +128,13 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
     useCallback(
       key => value => {
         if ((key as string) === 'filters') {
-          // eslint-disable-next-line no-console
+          // oxlint-disable-next-line no-console
           console.error('Cannot use set() for filters. Use addFilter/removeFilter/clearFilters instead.');
           return;
         }
 
         if ((key as string) === 'views') {
-          // eslint-disable-next-line no-console
+          // oxlint-disable-next-line no-console
           console.error('Cannot use set() for views. Use addView/removeView/clearViews instead.');
           return;
         }
@@ -406,7 +406,7 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
       },
       { replace: !changes.query && !Object.keys(changes).includes('offset') }
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [values]);
 
   useEffect(() => {
@@ -420,7 +420,7 @@ const ParameterProvider: FC<PropsWithChildren> = ({ children }) => {
       ..._current,
       ...changes
     }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search, location.pathname, routeParams.id]);
 
   return (

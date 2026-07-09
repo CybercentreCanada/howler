@@ -20,7 +20,7 @@ export const getRoute = (route: string, siteMap: AppSiteMapRoute[]): BreadcrumbI
 
   // hopefully, we only have a single match.
   if (matched && matched.length > 1) {
-    // eslint-disable-next-line no-console
+    // oxlint-disable-next-line no-console
     console.warn(`Found more than one sitemap route match for: ${route}`);
   }
   return matched && matched[0] ? matched[0] : { route: { path: route, title: TITLE_404 }, matcher: null };
@@ -39,7 +39,7 @@ const appendRoute = (breadcrumbs: BreadcrumbItem[], breadcrumb: BreadcrumbItem):
     }
     // If the last element of bread is a leaf, then we remove it.
     if (breadcrumbs[breadcrumbs.length - 1].route.isLeaf) {
-      // eslint-disable-next-line no-param-reassign
+      // oxlint-disable-next-line no-param-reassign
       breadcrumbs = breadcrumbs.slice(0, breadcrumbs.length - 1);
     }
     // See if the route is already in the breadcrumbs.

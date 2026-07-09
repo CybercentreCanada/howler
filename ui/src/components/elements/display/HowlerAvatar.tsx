@@ -41,14 +41,14 @@ const HowlerAvatar: FC<HowlerAvatarProps> = ({ userId, ...avatarProps }) => {
           av && !av.startsWith('http') && !av.startsWith('data:') ? setProps(stringAvatar(av)) : setProps({ src: av })
         )
         .catch(e => {
-          // eslint-disable-next-line no-console
+          // oxlint-disable-next-line no-console
           console.debug(e);
           setProps({
             src: null
           });
         });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   if (userId) {

@@ -102,7 +102,7 @@ const UserProfile = () => {
     if (open) {
       setOpen(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
   return (

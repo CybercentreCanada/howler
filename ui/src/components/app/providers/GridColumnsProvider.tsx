@@ -197,7 +197,7 @@ const GridColumnsProvider = ({
 
       setIsReady(true);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [viewIds, hasViews, getCurrentViews, localStorageColumns, setDisplayType]);
 
   const setColumns = useCallback(

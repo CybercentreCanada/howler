@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+/* oxlint-disable no-console */
 import EnrichedTypography, { type EnrichedTypographyProps } from '@cccsaurora/clue-ui/components/EnrichedTypography';
 import Fetcher from '@cccsaurora/clue-ui/components/fetchers/Fetcher';
 import Entry from '@cccsaurora/clue-ui/components/group/Entry';
@@ -73,7 +73,7 @@ const ClueGroup: FC<PropsWithChildren<{ type: string; enabled?: boolean }>> = pr
     return (
       <Stack spacing={1}>
         <strong style={{ color: 'red' }}>{i18nInstance.t('markdown.error')}</strong>
-        {/* eslint-disable-next-line react/jsx-no-literals */}
+        {/* oxlint-disable-next-line react/jsx-no-literals */}
         <code style={{ fontSize: '0.8rem' }}>{i18nInstance.t('markdown.props.missing')}: type</code>
       </Stack>
     );
@@ -120,7 +120,7 @@ const HELPERS: HowlerHelper[] = [
         return (
           <Stack spacing={1}>
             <strong style={{ color: 'red' }}>{i18nInstance.t('markdown.error')}</strong>
-            {/* eslint-disable-next-line react/jsx-no-literals */}
+            {/* oxlint-disable-next-line react/jsx-no-literals */}
             <code style={{ fontSize: '0.8rem' }}>{i18nInstance.t('markdown.helpers.clue.arguments')}</code>
           </Stack>
         );

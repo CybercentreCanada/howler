@@ -50,7 +50,7 @@ const HitOutline: FC<{ hit: WithMetadata<Hit>; layout: HitLayout; forceAllFields
         fields: DEFAULT_FIELDS
       });
     }
-  }, [hit, layout, template, templateFieldCount]);
+  }, [hit, layout, template, templateFieldCount, forceAllFields]);
 
   return (
     <Box sx={{ py: 1, width: '100%', pr: 2 }}>

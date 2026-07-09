@@ -1,4 +1,4 @@
-/* eslint-disable import/no-cycle */
+/* oxlint-disable import/no-cycle */
 import { hget, joinAllUri } from 'api';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import { uri as parentUri } from '.';

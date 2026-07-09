@@ -8,5 +8,5 @@ export default interface RestClient {
     params?: URLSearchParams,
     headers?: HeadersInit
   ): Promise<[HowlerResponse<R>, number, { [index: string]: any }]>;
-  // eslint-disable-next-line semi
+  // oxlint-disable-next-line semi
 }

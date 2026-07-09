@@ -166,7 +166,7 @@ const HitActions: FC<{
 
   useEffect(() => {
     getMatchingAnalytic(hit).then(setAnalytic);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [hit?.howler.analytic]);
 
   const handleOpenSetting = useCallback((e: React.MouseEvent<HTMLElement>) => setOpenSetting(e.currentTarget), []);

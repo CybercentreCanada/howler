@@ -6,7 +6,6 @@
     "ms-python.vscode-pylance",
     "charliermarsh.ruff",
     "github.vscode-github-actions",
-    "esbenp.prettier-vscode",
-    "dbaeumer.vscode-eslint"
+    "oxc.oxc-vscode",
   ]
 }

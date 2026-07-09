@@ -124,7 +124,7 @@ const AppToc = ({ children, translation, items, titleI18nKey = 'toc', topI18nKey
         // If element exists already, use native scrollIntoView.
         scrollElement.scrollIntoView(true);
       } else {
-        // eslint-disable-next-line no-console
+        // oxlint-disable-next-line no-console
         console.log('[WARN] Trying to scroll to unknown ID:', location.hash);
       }
     }

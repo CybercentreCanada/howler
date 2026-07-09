@@ -55,7 +55,7 @@ export const Notification: FC<Props> = memo(
       (url: string = ''): Promise<any> =>
         new Promise(async resolve => {
           const response: Response = (await fetch(url, { method: 'GET' }).catch(err =>
-            // eslint-disable-next-line no-console
+            // oxlint-disable-next-line no-console
             console.error(`Notification Area: error caused by URL "${err}`)
           )) as Response;
 

@@ -1,4 +1,4 @@
-/* eslint-disable react/no-array-index-key */
+/* oxlint-disable react/no-array-index-key */
 import { Stack, TableCell, type SxProps } from '@mui/material';
 import PluginTypography from 'components/elements/PluginTypography';
 import type { Hit } from 'models/entities/generated/Hit';

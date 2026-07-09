@@ -71,7 +71,7 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
 
         return ids.map(id => views[id] ?? newViews[id]);
       } catch (e) {
-        // eslint-disable-next-line no-console
+        // oxlint-disable-next-line no-console
         console.warn(e);
 
         return [];

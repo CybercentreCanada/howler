@@ -33,7 +33,7 @@ const LocalStorageProvider: FC<PropsWithChildren> = ({ children }) => {
         ...newData
       };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [getStored]);
 
   const set: LocalStorageContextType['set'] = useCallback(

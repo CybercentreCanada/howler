@@ -1,4 +1,4 @@
-// eslint-disable-next-line import/no-cycle
+// oxlint-disable-next-line import/no-cycle
 import { hdelete, hput, joinUri } from 'api';
 import { uri as parentUri } from 'api/hit/comments';
 

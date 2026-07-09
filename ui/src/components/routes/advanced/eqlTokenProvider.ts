@@ -1,4 +1,4 @@
-/* eslint-disable no-useless-escape */
+/* oxlint-disable no-useless-escape */
 import type { languages } from 'monaco-editor';
 
 /**

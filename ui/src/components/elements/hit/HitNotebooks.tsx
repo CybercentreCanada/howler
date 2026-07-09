@@ -79,7 +79,7 @@ const HitNotebooks: FC<{ analytic: Analytic; selectedNotebook?: string; hit?: Hi
 
         window.open(`${envs[0].url}lab/tree/${filename}`, '_blank');
         setOpen(false);
-      } catch (e) {
+      } catch {
         showErrorMessage(t('hit.notebook.error.failToPost'));
       }
     },
@@ -106,7 +106,7 @@ const HitNotebooks: FC<{ analytic: Analytic; selectedNotebook?: string; hit?: Hi
       } else {
         goToJupyhub(nbFileName, `${envs[0].url}post/${nbFileName}`);
       }
-    } catch (e) {
+    } catch {
       // error means notebook doesn't exist, we can proceed with posting
       goToJupyhub(nbFileName, `${envs[0].url}post/${nbFileName}`);
     }
@@ -160,7 +160,7 @@ const HitNotebooks: FC<{ analytic: Analytic; selectedNotebook?: string; hit?: Hi
         name: ''
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   return (

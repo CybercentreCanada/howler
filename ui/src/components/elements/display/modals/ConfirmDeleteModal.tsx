@@ -1,4 +1,5 @@
 import { Button, Stack, Typography } from '@mui/material';
+// oxlint-disable-next-line import/no-cycle
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import type { FC } from 'react';
 import { useCallback, useContext } from 'react';

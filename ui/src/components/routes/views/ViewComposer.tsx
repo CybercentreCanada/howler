@@ -186,7 +186,7 @@ const ViewComposer: FC = () => {
 
   useEffect(() => {
     search(query || DEFAULT_QUERY);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // We only run this when ancillary properties (i.e. filters, sorting) change
@@ -194,7 +194,7 @@ const ViewComposer: FC = () => {
     if (query) {
       search(query);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [sort, span]);
 
   useEffect(() => {
@@ -226,7 +226,7 @@ const ViewComposer: FC = () => {
         setSpan(viewToEdit.span);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [routeParams.id]);
 
   return (

@@ -73,7 +73,7 @@ export default function AppSearch() {
     if (service.onMounted) {
       service.onMounted(setValue, state);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // keyboard[window] handler.

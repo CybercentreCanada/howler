@@ -90,11 +90,11 @@ jobs:
       - name: Run type checking
         run: pnpm tsc --noEmit
 
-      - name: Run prettier formatting checks
-        run: pnpm run lint
+      - name: Run oxfmt checks
+        run: pnpm oxfmt src --check
 
       - name: Run eslint linter checks
-        run: pnpm eslint src
+        run: pnpm oxlint src
 
       - name: Run Unit Tests
         run: pnpm test

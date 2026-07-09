@@ -16,7 +16,7 @@ const useSetup = () => {
   const features: { [index: string]: boolean } = config.configuration?.features ?? {};
 
   useEffect(() => {
-    // eslint-disable-next-line no-console
+    // oxlint-disable-next-line no-console
     console.debug('Initializing clue snackbar event handler');
 
     const handleMessage = (event: CustomEvent<SnackbarEvents>) => {
@@ -47,7 +47,7 @@ const useSetup = () => {
     if (features.borealis || features.clue) {
       clue.setReady(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [features, appUser.isReady()]);
 };
 

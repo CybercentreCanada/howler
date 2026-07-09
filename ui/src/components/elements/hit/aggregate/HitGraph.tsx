@@ -152,7 +152,7 @@ const HitGraph: FC = () => {
     }
 
     performQuery();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [query, views, error, span, response, escalationFilter, filterField]);
 
   const options: ChartOptions<'scatter'> = useMemo(() => {

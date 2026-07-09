@@ -17,7 +17,7 @@ const setScrollPosition = (key: string, pos: number) => {
   try {
     window.sessionStorage.setItem(key, pos.toString());
   } catch {
-    // eslint-disable-next-line no-console
+    // oxlint-disable-next-line no-console
     console.log('Session storage full, can not save the scroll position');
   }
 };

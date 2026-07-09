@@ -57,7 +57,7 @@ const HitTable = ({
         });
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [analyticIds, items]);
 
   const onMouseMove = useCallback((event: MouseEvent) => {

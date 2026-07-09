@@ -6,7 +6,7 @@ const useMyUserList = (ids: Set<string>) => {
 
   useEffect(() => {
     fetchUsers(ids);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [ids]);
 
   return users;

@@ -256,7 +256,7 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
 
     getMatchingAnalytic(hit).then(setAnalytic);
     getMatchingTemplate(hit).then(setTemplate);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [hit]);
 
   // Reset menu state when context menu is closed

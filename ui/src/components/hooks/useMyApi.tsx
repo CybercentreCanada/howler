@@ -20,7 +20,7 @@ const useMyApi = () => {
   const { showErrorMessage } = useMySnackbar();
 
   const dispatchApi = useCallback(
-    // eslint-disable-next-line comma-spacing
+    // oxlint-disable-next-line comma-spacing
     async <R,>(apiCall: Promise<R>, config: DispatchApiConfig = DEFAULT_CONFIG): Promise<R> => {
       const { throwError, logError, showError, onConflict } = { ...DEFAULT_CONFIG, ...config };
       try {
@@ -38,7 +38,7 @@ const useMyApi = () => {
           }
 
           if (logError) {
-            // eslint-disable-next-line no-console
+            // oxlint-disable-next-line no-console
             console.error(error);
           }
 

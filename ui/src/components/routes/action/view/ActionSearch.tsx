@@ -80,7 +80,7 @@ const ActionSearch: FC = () => {
         rows: pageCount,
         offset
       });
-    } catch (e) {
+    } catch {
       setHasError(true);
     } finally {
       setSearching(false);
@@ -128,7 +128,7 @@ const ActionSearch: FC = () => {
         setSearchParams(searchParams, { replace: true });
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -144,12 +144,12 @@ const ActionSearch: FC = () => {
     if (!searching) {
       onSearch();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [offset]);
 
   useEffect(() => {
     onSearch();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [searchModifiers]);
 
   const editRoles = user.roles.includes('automation_basic') || user.roles.includes('automation_advanced');

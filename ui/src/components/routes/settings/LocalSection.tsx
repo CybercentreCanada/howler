@@ -1,4 +1,4 @@
-/* eslint-disable react/jsx-no-literals */
+/* oxlint-disable react/jsx-no-literals */
 import { List, TableChart, ViewComfy, ViewCompact, ViewModule } from '@mui/icons-material';
 import {
   MenuItem,

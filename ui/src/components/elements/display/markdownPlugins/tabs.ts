@@ -17,7 +17,7 @@ const findTabs = (index, parent) => {
       if (!metaString) break;
       const [tabtitle] = metaString.match(/(?<=tab=("|'))(.*?)(?=("|'))/) ?? [''];
       if (!tabtitle) {
-        // eslint-disable-next-line no-console
+        // oxlint-disable-next-line no-console
         console.warn('Failed to parse tab title.');
         break;
       }

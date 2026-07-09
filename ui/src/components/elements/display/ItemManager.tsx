@@ -33,7 +33,7 @@ interface ItemManagerProps {
   createIcon?: ReactNode;
 }
 
-// eslint-disable-next-line comma-spacing
+// oxlint-disable-next-line comma-spacing
 const ItemManager: FC<ItemManagerProps> = ({
   aboveSearch,
   afterSearch,

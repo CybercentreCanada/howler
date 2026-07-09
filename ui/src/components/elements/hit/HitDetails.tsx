@@ -1,5 +1,5 @@
-/* eslint-disable react/no-array-index-key */
-/* eslint-disable @typescript-eslint/no-use-before-define */
+/* oxlint-disable react/no-array-index-key */
+/* oxlint-disable @typescript-eslint/no-use-before-define */
 import { ArrowDropDown, InfoOutlined } from '@mui/icons-material';
 import {
   Accordion,
@@ -123,7 +123,7 @@ const ListRenderer: FC<{
               >
                 {entry}
               </PluginTypography>
-              {/* eslint-disable-next-line react/jsx-no-literals */}
+              {/* oxlint-disable-next-line react/jsx-no-literals */}
               {allPrimitives && index < uniqueEntries.length - 1 && <span>,</span>}
             </Grid>
           );

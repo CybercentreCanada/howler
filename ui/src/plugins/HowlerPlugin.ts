@@ -82,7 +82,7 @@ abstract class HowlerPlugin implements IPlugin {
     renderer: (content: string, metadata: any, hit?: Hit) => React.ReactNode
   ) {
     if (!howlerPluginStore.addLead(format)) {
-      // eslint-disable-next-line no-console
+      // oxlint-disable-next-line no-console
       console.error(`Lead format ${format} already configured, not enabling for plugin ${this.getPluginName()}`);
       return;
     }
@@ -93,7 +93,7 @@ abstract class HowlerPlugin implements IPlugin {
     this.pluginStore.addFunction(`lead.${format}.form`, form);
     this.functionsToRemove.push(`lead.${format}.form`);
 
-    // eslint-disable-next-line no-console
+    // oxlint-disable-next-line no-console
     console.debug(`Lead format ${format} enabled for plugin ${this.getPluginName()}`);
   }
 
@@ -103,7 +103,7 @@ abstract class HowlerPlugin implements IPlugin {
     renderer: (props: PivotLinkProps) => React.ReactNode
   ) {
     if (!howlerPluginStore.addPivot(format)) {
-      // eslint-disable-next-line no-console
+      // oxlint-disable-next-line no-console
       console.error(`Pivot format ${format} already configured, not enabling for plugin ${this.getPluginName()}`);
       return;
     }
@@ -114,7 +114,7 @@ abstract class HowlerPlugin implements IPlugin {
     this.pluginStore.addFunction(`pivot.${format}.form`, form);
     this.functionsToRemove.push(`pivot.${format}.form`);
 
-    // eslint-disable-next-line no-console
+    // oxlint-disable-next-line no-console
     console.debug(`Pivot format ${format} enabled for plugin ${this.getPluginName()}`);
   }
 
@@ -196,7 +196,7 @@ abstract class HowlerPlugin implements IPlugin {
     if (isRoot) {
       if (breadcrumbs != null) {
         breadcrumbs = null;
-        // eslint-disable-next-line no-console
+        // oxlint-disable-next-line no-console
         console.warn(`Sitemap '${path}' with isRoot should not contain breadcrumbs and have been removed`);
       }
     }
@@ -309,7 +309,7 @@ abstract class HowlerPlugin implements IPlugin {
     documentation: PluginDocumentation
   ) {
     if (!howlerPluginStore.addOperation(format)) {
-      // eslint-disable-next-line no-console
+      // oxlint-disable-next-line no-console
       console.error(`Operation ${format} already configured, not enabling for plugin ${this.getPluginName()}`);
       return;
     }
@@ -320,7 +320,7 @@ abstract class HowlerPlugin implements IPlugin {
     this.pluginStore.addFunction(`operation.${format}.documentation`, () => documentation);
     this.functionsToRemove.push(`operation.${format}.documentation`);
 
-    // eslint-disable-next-line no-console
+    // oxlint-disable-next-line no-console
     console.debug(`Operation ${format} enabled for plugin ${this.getPluginName()}`);
   }
 

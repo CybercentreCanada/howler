@@ -66,7 +66,7 @@ const Stacked = forwardRef<
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [analytic?.name, color, field]);
 
   useEffect(() => {

@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+/* oxlint-disable no-console */
 import { Paper, Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
 import HitCard from 'components/elements/hit/HitCard';
@@ -118,7 +118,7 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
               const json = await FETCH_RESULTS[url];
 
               return flatten(json)[key];
-            } catch (e) {
+            } catch {
               return '';
             }
           }
@@ -194,7 +194,7 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
           callback: (data, key) => {
             try {
               return get(data, key);
-            } catch (e) {
+            } catch {
               return '';
             }
           }

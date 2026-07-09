@@ -35,8 +35,9 @@ const defaultCtx: Partial<ParameterContextType> = {
   setCustomSpan: mockSetCustomSpan
 };
 
-const makeWrapper = (ctx: Partial<ParameterContextType>) =>
-  function ({ children }: PropsWithChildren) {
+const makeWrapper =
+  (ctx: Partial<ParameterContextType>) =>
+  ({ children }: PropsWithChildren) => {
     return (
       <ParameterContext.Provider value={{ ...defaultCtx, ...ctx } as ParameterContextType}>
         {children}

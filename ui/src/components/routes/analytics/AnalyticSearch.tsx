@@ -102,7 +102,7 @@ const AnalyticSearchBase: FC = () => {
         offset
       });
       load(_response.items.map(u => ({ id: u.analytic_id, item: u })));
-    } catch (e) {
+    } catch {
       setHasError(true);
     } finally {
       setSearching(false);
@@ -144,7 +144,7 @@ const AnalyticSearchBase: FC = () => {
         setSearchParams(searchParams, { replace: true });
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
     [onlyRules]
   );
 
@@ -160,7 +160,7 @@ const AnalyticSearchBase: FC = () => {
     if (!searching) {
       onSearch();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [offset]);
 
   // Search result list item renderer.

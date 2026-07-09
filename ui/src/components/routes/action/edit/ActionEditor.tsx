@@ -114,7 +114,7 @@ const ActionEditor: FC = () => {
     if (responseQuery) {
       onSearch(responseQuery);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatchApi, getHitFields]);
 
   useEffect(() => {
@@ -149,7 +149,7 @@ const ActionEditor: FC = () => {
         onSearch(existingAction.query);
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatchApi, params.id]);
 
   return (
@@ -174,13 +174,7 @@ const ActionEditor: FC = () => {
               !name ||
               loading ||
               userOperations.length < 1 ||
-              userOperations.some(
-                a =>
-                  !operationReady(
-                    a?.data_json,
-                    operations.find(_a => _a.id === a.operation_id)
-                  )
-              )
+              userOperations.some(a => !operationReady(a?.data_json, operations.find(_a => _a.id === a.operation_id)))
             }
             onClick={() => saveAction(name, responseQuery, userOperations, triggers)}
           >
@@ -336,13 +330,7 @@ const ActionEditor: FC = () => {
                 !response ||
                 loading ||
                 userOperations.length < 1 ||
-                userOperations.some(
-                  a =>
-                    !operationReady(
-                      a?.data_json,
-                      operations.find(_a => _a.id === a.operation_id)
-                    )
-                )
+                userOperations.some(a => !operationReady(a?.data_json, operations.find(_a => _a.id === a.operation_id)))
               }
               onClick={_submitAction}
             >

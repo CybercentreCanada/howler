@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+/* oxlint-disable no-console */
 import Handlebars, { type Exception } from 'handlebars';
 import asyncHelpers from 'handlebars-async-helpers';
 import type { FC, ReactElement } from 'react';
@@ -97,7 +97,7 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
           return;
         }
 
-        // eslint-disable-next-line no-console
+        // oxlint-disable-next-line no-console
         console.error(err);
 
         setRendered(`

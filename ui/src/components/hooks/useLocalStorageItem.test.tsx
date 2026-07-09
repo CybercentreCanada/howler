@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
+/* oxlint-disable @typescript-eslint/no-unused-vars */
 /// <reference types="vitest" />
 import { act, renderHook } from '@testing-library/react';
 import { setupLocalStorageMock } from 'tests/mocks';

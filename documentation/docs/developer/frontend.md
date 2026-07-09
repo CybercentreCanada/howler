@@ -28,7 +28,7 @@ The UI provides several npm scripts for development:
 - `pnpm dev` or `pnpm start` - Start the Vite development server
 - `pnpm build` - Build the application for production (runs TypeScript compiler and Vite build)
 - `pnpm serve` - Preview the production build locally
-- `pnpm lint` - Format code using Prettier
+- `pnpm lint` - Format code using oxfmt and oxlint
 - `pnpm test` - Run tests with coverage using Vitest
 - `pnpm test-ui` - Run tests with UI and coverage
 
@@ -67,10 +67,8 @@ The Howler UI is built with modern web technologies:
 ### Development Tools
 
 - **Vitest** - Fast unit testing framework (Vite-native)
-- **ESLint** - Code linting with TypeScript, React, and Prettier integration
-- **Prettier** - Code formatting
+- **oxfmt and oxlint** - Code linting and formatting with TypeScript, React integration
 
 ## Visual Studio Code
 
-If developing in VS Code, it is recommended to install the workspace's recommended extensions for built-in Prettier and
-ESLint support. These can be found in the `.vscode/extensions.json` file.
+If developing in VS Code, it is recommended to install the workspace's recommended extensions for built-in oxfmt and oxlint support. These can be found in the `.vscode/extensions.json` file.

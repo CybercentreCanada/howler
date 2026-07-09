@@ -113,7 +113,7 @@ const HitViewer: FC = () => {
     } else if (!hasOverview && tab === 'overview') {
       setTab('details');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [hasOverview]);
 
   const tabContent = useMemo(() => {
@@ -242,7 +242,7 @@ const HitViewer: FC = () => {
 
             {hit?.howler.dossier?.map((lead, index) => (
               <Tab
-                // eslint-disable-next-line react/no-array-index-key
+                // oxlint-disable-next-line react/no-array-index-key
                 key={'lead:' + index}
                 label={
                   <Stack direction="row" spacing={0.5}>
@@ -258,7 +258,7 @@ const HitViewer: FC = () => {
             {dossiers.flatMap((_dossier, dossierIndex) =>
               (_dossier.leads ?? []).map((_lead, leadIndex) => (
                 <Tab
-                  // eslint-disable-next-line react/no-array-index-key
+                  // oxlint-disable-next-line react/no-array-index-key
                   key={`external-lead:${dossierIndex}:${leadIndex}`}
                   label={
                     <Stack direction="row" spacing={0.5}>

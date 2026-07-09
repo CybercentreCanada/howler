@@ -74,7 +74,7 @@ const HitWorklog: FC<{ hit: Hit; users: { [id: string]: HowlerUser } }> = ({ hit
           return acc;
         }, [] as Log[][]);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
     [hit?.howler?.log]
   );
 
@@ -88,7 +88,7 @@ const HitWorklog: FC<{ hit: Hit; users: { [id: string]: HowlerUser } }> = ({ hit
         });
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // We now render the actual HTML from our grouped worklog items

@@ -19,6 +19,15 @@ repos:
   #   hooks:
   #     - id: conventional-pre-commit
   #       stages: [commit-msg]
+  - repo: https://github.com/oxc-project/mirrors-oxfmt
+    rev: v0.58.0 # Replace with your current oxfmt version
+    hooks:
+      - id: oxfmt
+  - repo: https://github.com/oxc-project/mirrors-oxlint
+    rev: v1.73.0 # Replace with the latest oxlint release tag
+    hooks:
+      - id: oxlint
+        args: [--fix] # Auto-fixes rules like removing unused imports
   - repo: local
     hooks:
       - id: poetry-check-api
@@ -49,12 +58,6 @@ repos:
         language: script
         stages: [pre-commit]
         files: ^plugins/sentinel/.*\.(toml|lock)
-      - id: prettier
-        name: prettier
-        entry: ui/build_scripts/prettier.sh
-        language: script
-        stages: [pre-commit]
-        files: ^ui/.*
       - id: bad-ui-imports
         name: Check for bad UI imports
         entry: ui/build_scripts/find_bad_imports.py

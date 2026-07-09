@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+/* oxlint-disable no-console */
 import { has } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { WithMetadata } from 'models/WithMetadata';
@@ -23,7 +23,7 @@ const useMatchers = () => {
       // should also exist
       try {
         return (await getHit(hit.howler.id, true)).__template;
-      } catch (e) {
+      } catch {
         return null;
       }
     },
@@ -44,7 +44,7 @@ const useMatchers = () => {
       // should also exist
       try {
         return (await getHit(hit.howler.id, true)).__overview;
-      } catch (e) {
+      } catch {
         return null;
       }
     },
@@ -65,7 +65,7 @@ const useMatchers = () => {
       // should also exist
       try {
         return (await getHit(hit.howler.id, true)).__dossiers ?? [];
-      } catch (e) {
+      } catch {
         return [];
       }
     },
@@ -85,7 +85,7 @@ const useMatchers = () => {
       // This is a fallback in case metadata is not included.
       try {
         return (await getHit(hit.howler.id, true)).__analytic;
-      } catch (e) {
+      } catch {
         return null;
       }
     },

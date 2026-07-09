@@ -117,7 +117,7 @@ import DossierEditor from './DossierEditor';
 
 const mockUseParams = vi.mocked(useParams);
 const mockUseSearchParams = vi.mocked(useSearchParams);
-// eslint-disable-next-line react-hooks/rules-of-hooks
+// oxlint-disable-next-line react-hooks/rules-of-hooks
 const mockNavigate = vi.mocked(useNavigate());
 
 // Mock ParameterContext

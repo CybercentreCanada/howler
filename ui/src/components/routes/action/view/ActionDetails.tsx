@@ -97,7 +97,7 @@ const ActionDetails = () => {
     if (action?.query) {
       onSearch(action?.query);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [action?.query]);
 
   const editRoles = user.roles.includes('automation_basic') || user.roles.includes('automation_advanced');

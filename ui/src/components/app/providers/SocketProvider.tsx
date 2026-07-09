@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+/* oxlint-disable no-console */
 import api from 'api';
 import useMyLocalStorage from 'components/hooks/useMyLocalStorage';
 import type { PropsWithChildren } from 'react';
@@ -121,7 +121,7 @@ const SocketProvider: React.FC<PropsWithChildren> = ({ children }) => {
             console.error(data);
             setRetry(false);
           }
-        } catch (err) {
+        } catch {
           // There's no useful data, or the refresh attempt failed.
           // Either way, we can't really do anything
         }
@@ -157,7 +157,7 @@ const SocketProvider: React.FC<PropsWithChildren> = ({ children }) => {
       if (data?.error || data?.status >= 400) {
         console.warn(data?.message || 'Websocket Error');
       }
-    } catch (err) {
+    } catch {
       console.warn('Websocket Error');
     }
   }, []);

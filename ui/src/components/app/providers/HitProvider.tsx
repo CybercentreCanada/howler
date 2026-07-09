@@ -50,7 +50,7 @@ const HitProvider: FC<PropsWithChildren> = ({ children }) => {
   const handler = useMemo(
     () => (data: RecievedDataType<HitUpdate>) => {
       if (data.hit) {
-        // eslint-disable-next-line no-console
+        // oxlint-disable-next-line no-console
         console.debug('Received websocket update for hit', data.hit.howler.id);
         hitRequests.current[data.hit.howler.id] = Promise.resolve(data.hit);
 

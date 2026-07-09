@@ -29,7 +29,7 @@ const ActionButton: FC<{ actionId: string; hitId: string; label: string } & Butt
     return (
       <Stack spacing={1}>
         <strong style={{ color: 'red' }}>{t('markdown.error')}</strong>
-        {/* eslint-disable-next-line react/jsx-no-literals */}
+        {/* oxlint-disable-next-line react/jsx-no-literals */}
         <code style={{ fontSize: '0.8rem' }}>{t('markdown.actionbutton.error')}</code>
       </Stack>
     );

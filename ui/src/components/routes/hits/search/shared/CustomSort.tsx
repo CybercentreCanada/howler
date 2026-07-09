@@ -38,7 +38,7 @@ const CustomSort: FC = () => {
     }
 
     setSavedSort(uniqBy([...sortEntries, `${field} ${sort}`], entry => entry.replace(/ .+/, '')).join(','));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [field]);
 
   return (

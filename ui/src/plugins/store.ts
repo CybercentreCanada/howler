@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+/* oxlint-disable no-console */
 import type { Hit } from 'models/entities/generated/Hit';
 import { createPluginStore, Event } from 'react-pluggable';
 import type { AppLeftNavElement } from '../commons/components/app/AppConfigs';

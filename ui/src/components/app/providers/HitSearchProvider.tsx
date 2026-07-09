@@ -99,7 +99,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
     const filterQueryTime = dayjs().subtract(1, 'month').toISOString();
 
     setQueryHistory(Object.fromEntries(Object.entries(queryHistory).filter(([_, value]) => value > filterQueryTime)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Inject default view into URL when no views present
@@ -234,7 +234,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
       setResponse(null);
     }
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [offset, pageCount, sort, span, bundleId, location.pathname, startDate, endDate, filters, query, views]);
 
   return (

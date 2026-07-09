@@ -144,7 +144,7 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
 
       leftNav.setElements(newElements);
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [analytics.ready, appUser]);
 
   return <FavouriteContext.Provider value={{}}>{children}</FavouriteContext.Provider>;

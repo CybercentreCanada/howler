@@ -139,7 +139,7 @@ const SearchPane: FC = () => {
     if (location.pathname.startsWith('/bundles')) {
       getHit(routeParams.id);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, routeParams.id]);
 
   return (

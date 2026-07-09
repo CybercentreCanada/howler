@@ -1,4 +1,4 @@
-/* eslint-disable prefer-arrow/prefer-arrow-functions */
+/* oxlint-disable prefer-arrow/prefer-arrow-functions */
 import {
   Alert,
   Box,
@@ -110,14 +110,14 @@ const Markdown: FC<MarkdownProps> = ({ md, components = {}, disableLinks = false
           if (match?.[1] === 'json') {
             try {
               return <JSONViewer data={JSON.parse((node.children[0] as any).value)} />;
-            } catch (e) {
+            } catch {
               return <code style={{ color: 'red' }}>{t('markdown.json.invalid')}</code>;
             }
           }
 
           return match ? (
             <SyntaxHighlighter
-              // eslint-disable-next-line react/no-children-prop
+              // oxlint-disable-next-line react/no-children-prop
               children={String(children).replace(/\n$/, '')}
               style={isDark ? oneDark : oneLight}
               language={match[1]}
@@ -133,9 +133,9 @@ const Markdown: FC<MarkdownProps> = ({ md, components = {}, disableLinks = false
         blockquote({ children }) {
           return <Box sx={{ pl: 1, borderLeft: `2px solid ${theme.palette.divider}` }}>{children}</Box>;
         },
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // oxlint-disable-next-line @typescript-eslint/no-unused-vars
         img({ node, ...props }) {
-          // eslint-disable-next-line jsx-a11y/alt-text
+          // oxlint-disable-next-line jsx-a11y/alt-text
           return <Image {...props} style={{ ...props.style, maxWidth: '75%' }} />;
         },
         table({ children }) {
@@ -182,7 +182,7 @@ const Markdown: FC<MarkdownProps> = ({ md, components = {}, disableLinks = false
           try {
             parsed = new URL(props.href);
           } catch (e) {
-            // eslint-disable-next-line no-console
+            // oxlint-disable-next-line no-console
             console.warn('error when parsing URL:', e);
           }
 

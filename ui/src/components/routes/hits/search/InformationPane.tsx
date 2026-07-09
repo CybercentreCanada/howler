@@ -86,7 +86,7 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
 
     setUserIds(getUserList(hit));
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [getHit, selected]);
 
   useEffect(() => {
@@ -142,7 +142,7 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
     } else if (!hasOverview && tab === 'overview') {
       setTab('details');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [hasOverview]);
 
   /**
@@ -311,7 +311,7 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
             <Tab label={t('hit.viewer.details')} value="details" onClick={() => setTab('details')} />
             {hit?.howler.dossier?.map((lead, index) => (
               <Tab
-                // eslint-disable-next-line react/no-array-index-key
+                // oxlint-disable-next-line react/no-array-index-key
                 key={'lead:' + index}
                 label={
                   <Stack direction="row" spacing={0.5}>
@@ -326,7 +326,7 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
             {dossiers.flatMap((_dossier, dossierIndex) =>
               (_dossier.leads ?? []).map((_lead, leadIndex) => (
                 <Tab
-                  // eslint-disable-next-line react/no-array-index-key
+                  // oxlint-disable-next-line react/no-array-index-key
                   key={`external-lead:${dossierIndex}:${leadIndex}`}
                   label={
                     <Stack direction="row" spacing={0.5}>

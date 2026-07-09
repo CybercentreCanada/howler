@@ -96,7 +96,7 @@ const ViewsBase: FC = () => {
         rows: pageCount,
         offset
       });
-    } catch (e) {
+    } catch {
       setHasError(true);
     } finally {
       setSearching(false);
@@ -127,7 +127,7 @@ const ViewsBase: FC = () => {
         }))
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [response, load]);
 
   const onPageChange = useCallback(
@@ -228,7 +228,7 @@ const ViewsBase: FC = () => {
     if (!searching) {
       onSearch();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [offset, favouritesOnly, type]);
 
   return (

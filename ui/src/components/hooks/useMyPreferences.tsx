@@ -39,222 +39,218 @@ const useMyPreferences = (): AppPreferenceConfigs => {
   const { leftItems, rightItems } = useContext(AppBarContext);
 
   // The following menu items will show up in the Left Navigation Drawer
-  const MENU_ITEMS = useMemo<AppLeftNavElement[]>(
-    () => {
-      let defaultMenu: AppLeftNavElement[] = [
-        {
-          type: 'item',
-          element: {
-            id: 'dashboard',
-            i18nKey: 'route.home',
-            route: '/',
-            icon: <Dashboard />
-          }
-        },
-        {
-          type: 'group',
-          element: {
-            id: 'views',
-            i18nKey: 'route.views.saved',
-            icon: <SavedSearch />,
-            items: []
-          }
-        },
-        {
-          type: 'group',
-          element: {
-            id: 'analytics',
-            i18nKey: 'route.analytics.pinned',
-            icon: <QueryStats />,
-            items: []
-          }
-        },
-        {
-          type: 'divider',
-          element: null
-        },
-        {
-          type: 'item',
-          element: {
-            id: 'search.hit',
-            i18nKey: 'route.search',
-            route: '/search',
-            icon: <Search />
-          }
-        },
-        {
-          type: 'item',
-          element: {
-            id: 'advanced',
-            i18nKey: 'route.advanced',
-            route: '/advanced',
-            icon: <Code />
-          }
-        },
-        {
-          type: 'divider',
-          element: null
-        },
-        {
-          type: 'item',
-          element: {
-            id: 'manage.views',
-            i18nKey: 'route.views',
-            icon: <ManageSearch />,
-            route: '/views'
-          }
-        },
-        {
-          type: 'item',
-          element: {
-            id: 'manage.analytics',
-            i18nKey: 'route.analytics',
-            icon: <QueryStats />,
-            route: '/analytics'
-          }
-        },
-        {
-          type: 'item',
-          element: {
-            id: 'manage.templates',
-            i18nKey: 'route.templates',
-            icon: <FormatListBulleted />,
-            route: '/templates'
-          }
-        },
-        {
-          type: 'item',
-          element: {
-            id: 'manage.overviews',
-            i18nKey: 'route.overviews',
-            icon: <Article />,
-            route: '/overviews'
-          }
-        },
-        {
-          type: 'item',
-          element: {
-            id: 'manage.dossiers',
-            i18nKey: 'route.dossiers',
-            icon: <Topic />,
-            route: '/dossiers'
-          }
-        },
-        {
-          type: 'item',
-          element: {
-            id: 'manage.actions',
-            i18nKey: 'route.actions',
-            icon: <Terminal />,
-            route: '/action',
-            userPropValidators: [
-              { prop: 'roles', value: 'automation_basic' },
-              { prop: 'roles', value: 'automation_advanced' },
-              { prop: 'roles', value: 'actionrunner_basic' },
-              { prop: 'roles', value: 'actionrunner_advanced' }
-            ]
-          }
-        },
-        {
-          type: 'item',
-          element: {
-            id: 'action.integrations',
-            i18nKey: 'route.integrations',
-            icon: <Api />,
-            route: '/action/integrations',
-            userPropValidators: [{ prop: 'roles', value: 'automation_basic' }]
-          }
-        },
-        {
-          type: 'divider',
-          element: null
-        },
-        {
-          type: 'group',
-          element: {
-            id: 'help',
-            i18nKey: 'page.help',
-            icon: <Help />,
-            items: [
-              {
-                id: 'help.main',
-                i18nKey: 'route.help.main',
-                route: '/help',
-                nested: true,
-                icon: <HelpCenter />
-              },
-              {
-                id: 'help.client',
-                i18nKey: 'route.help.client',
-                route: '/help/client',
-                nested: true,
-                icon: <Terminal />
-              },
-              { id: 'help.hit', i18nKey: 'route.help.hit', route: '/help/hit', nested: true, icon: <Shield /> },
-              {
-                id: 'help.search',
-                i18nKey: 'route.help.search',
-                route: '/help/search',
-                nested: true,
-                icon: <Search />
-              },
-              {
-                id: 'help.views',
-                i18nKey: 'route.help.views',
-                route: '/help/views',
-                nested: true,
-                icon: <SavedSearch />
-              },
-              {
-                id: 'help.templates',
-                i18nKey: 'route.help.templates',
-                route: '/help/templates',
-                nested: true,
-                icon: <FormatListBulleted />
-              },
-              {
-                id: 'help.overview',
-                i18nKey: 'route.help.overviews',
-                route: '/help/overviews',
-                nested: true,
-                icon: <Article />
-              },
-              { id: 'help.auth', i18nKey: 'route.help.auth', route: '/help/auth', nested: true, icon: <Key /> },
-              {
-                id: 'help.actions',
-                i18nKey: 'route.help.actions',
-                route: '/help/actions',
-                nested: true,
-                icon: <SettingsSuggest />
-              },
-              {
-                id: 'help.notebook',
-                i18nKey: 'route.help.notebook',
-                route: '/help/notebook',
-                nested: true,
-                icon: <Description />
-              },
-              { id: 'help.api', i18nKey: 'route.help.api', route: '/help/api', nested: true, icon: <Storage /> },
-              {
-                id: 'help.retention',
-                i18nKey: 'route.help.retention',
-                route: '/help/retention',
-                nested: true,
-                icon: <Book />
-              }
-            ]
-          }
+  const MENU_ITEMS = useMemo<AppLeftNavElement[]>(() => {
+    let defaultMenu: AppLeftNavElement[] = [
+      {
+        type: 'item',
+        element: {
+          id: 'dashboard',
+          i18nKey: 'route.home',
+          route: '/',
+          icon: <Dashboard />
         }
-      ];
+      },
+      {
+        type: 'group',
+        element: {
+          id: 'views',
+          i18nKey: 'route.views.saved',
+          icon: <SavedSearch />,
+          items: []
+        }
+      },
+      {
+        type: 'group',
+        element: {
+          id: 'analytics',
+          i18nKey: 'route.analytics.pinned',
+          icon: <QueryStats />,
+          items: []
+        }
+      },
+      {
+        type: 'divider',
+        element: null
+      },
+      {
+        type: 'item',
+        element: {
+          id: 'search.hit',
+          i18nKey: 'route.search',
+          route: '/search',
+          icon: <Search />
+        }
+      },
+      {
+        type: 'item',
+        element: {
+          id: 'advanced',
+          i18nKey: 'route.advanced',
+          route: '/advanced',
+          icon: <Code />
+        }
+      },
+      {
+        type: 'divider',
+        element: null
+      },
+      {
+        type: 'item',
+        element: {
+          id: 'manage.views',
+          i18nKey: 'route.views',
+          icon: <ManageSearch />,
+          route: '/views'
+        }
+      },
+      {
+        type: 'item',
+        element: {
+          id: 'manage.analytics',
+          i18nKey: 'route.analytics',
+          icon: <QueryStats />,
+          route: '/analytics'
+        }
+      },
+      {
+        type: 'item',
+        element: {
+          id: 'manage.templates',
+          i18nKey: 'route.templates',
+          icon: <FormatListBulleted />,
+          route: '/templates'
+        }
+      },
+      {
+        type: 'item',
+        element: {
+          id: 'manage.overviews',
+          i18nKey: 'route.overviews',
+          icon: <Article />,
+          route: '/overviews'
+        }
+      },
+      {
+        type: 'item',
+        element: {
+          id: 'manage.dossiers',
+          i18nKey: 'route.dossiers',
+          icon: <Topic />,
+          route: '/dossiers'
+        }
+      },
+      {
+        type: 'item',
+        element: {
+          id: 'manage.actions',
+          i18nKey: 'route.actions',
+          icon: <Terminal />,
+          route: '/action',
+          userPropValidators: [
+            { prop: 'roles', value: 'automation_basic' },
+            { prop: 'roles', value: 'automation_advanced' },
+            { prop: 'roles', value: 'actionrunner_basic' },
+            { prop: 'roles', value: 'actionrunner_advanced' }
+          ]
+        }
+      },
+      {
+        type: 'item',
+        element: {
+          id: 'action.integrations',
+          i18nKey: 'route.integrations',
+          icon: <Api />,
+          route: '/action/integrations',
+          userPropValidators: [{ prop: 'roles', value: 'automation_basic' }]
+        }
+      },
+      {
+        type: 'divider',
+        element: null
+      },
+      {
+        type: 'group',
+        element: {
+          id: 'help',
+          i18nKey: 'page.help',
+          icon: <Help />,
+          items: [
+            {
+              id: 'help.main',
+              i18nKey: 'route.help.main',
+              route: '/help',
+              nested: true,
+              icon: <HelpCenter />
+            },
+            {
+              id: 'help.client',
+              i18nKey: 'route.help.client',
+              route: '/help/client',
+              nested: true,
+              icon: <Terminal />
+            },
+            { id: 'help.hit', i18nKey: 'route.help.hit', route: '/help/hit', nested: true, icon: <Shield /> },
+            {
+              id: 'help.search',
+              i18nKey: 'route.help.search',
+              route: '/help/search',
+              nested: true,
+              icon: <Search />
+            },
+            {
+              id: 'help.views',
+              i18nKey: 'route.help.views',
+              route: '/help/views',
+              nested: true,
+              icon: <SavedSearch />
+            },
+            {
+              id: 'help.templates',
+              i18nKey: 'route.help.templates',
+              route: '/help/templates',
+              nested: true,
+              icon: <FormatListBulleted />
+            },
+            {
+              id: 'help.overview',
+              i18nKey: 'route.help.overviews',
+              route: '/help/overviews',
+              nested: true,
+              icon: <Article />
+            },
+            { id: 'help.auth', i18nKey: 'route.help.auth', route: '/help/auth', nested: true, icon: <Key /> },
+            {
+              id: 'help.actions',
+              i18nKey: 'route.help.actions',
+              route: '/help/actions',
+              nested: true,
+              icon: <SettingsSuggest />
+            },
+            {
+              id: 'help.notebook',
+              i18nKey: 'route.help.notebook',
+              route: '/help/notebook',
+              nested: true,
+              icon: <Description />
+            },
+            { id: 'help.api', i18nKey: 'route.help.api', route: '/help/api', nested: true, icon: <Storage /> },
+            {
+              id: 'help.retention',
+              i18nKey: 'route.help.retention',
+              route: '/help/retention',
+              nested: true,
+              icon: <Book />
+            }
+          ]
+        }
+      }
+    ];
 
-      const appMenuBuilder = new AppMenuBuilder(defaultMenu);
-      appMenuBuilder.applyOperations(howlerPluginStore.mainMenuOperations);
+    const appMenuBuilder = new AppMenuBuilder(defaultMenu);
+    appMenuBuilder.applyOperations(howlerPluginStore.mainMenuOperations);
 
-      return appMenuBuilder.menu;
-    },
-    // prettier-ignore
-    []
-  );
+    return appMenuBuilder.menu;
+  }, []);
 
   // This is the basic user menu, it is a menu that shows up in account avatar popover.
   const USER_MENU_ITEMS = useMemo(() => {

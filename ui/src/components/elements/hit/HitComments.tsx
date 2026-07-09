@@ -86,7 +86,7 @@ const HitComments: FC<HitCommentsProps> = ({ hit, users }) => {
     addListener<SocketEvent>('hitComments', handler);
 
     return () => removeListener('hitComments');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [handler]);
 
   useEffect(() => {
@@ -96,7 +96,7 @@ const HitComments: FC<HitCommentsProps> = ({ hit, users }) => {
         setAnalyticComments(sortByTimestamp(analytic?.comment ?? []));
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [getMatchingAnalytic, hit?.howler?.analytic]);
 
   const onSubmit = useCallback(async () => {

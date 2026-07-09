@@ -41,16 +41,16 @@ const useMySnackbar = () => {
     [enqueueSnackbar, snackBarOptions]
   );
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // oxlint-disable-next-line react-hooks/exhaustive-deps
   const showErrorMessage = useCallback(enqueue('error'), [enqueue]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // oxlint-disable-next-line react-hooks/exhaustive-deps
   const showWarningMessage = useCallback(enqueue('warning'), [enqueue]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // oxlint-disable-next-line react-hooks/exhaustive-deps
   const showSuccessMessage = useCallback(enqueue('success'), [enqueue]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // oxlint-disable-next-line react-hooks/exhaustive-deps
   const showInfoMessage = useCallback(enqueue('info'), [enqueue]);
 
   return useMemo(

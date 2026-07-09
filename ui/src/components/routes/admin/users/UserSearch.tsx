@@ -103,7 +103,7 @@ const UserSearch: FC = () => {
         setSearchParams(searchParams);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -119,7 +119,7 @@ const UserSearch: FC = () => {
     if (!searching) {
       onSearch();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [offset]);
 
   // TuiTable cell renderer

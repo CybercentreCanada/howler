@@ -101,7 +101,7 @@ const HitBrowser: FC = () => {
 
   useEffect(() => {
     fetchViews(selectedViews);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, location.search]);
 
   const onClose = useCallback(() => {
@@ -125,7 +125,7 @@ const HitBrowser: FC = () => {
     if (selected && !selectedHits.some(_hit => _hit?.howler.id === selected)) {
       addHitToSelection(selected);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [addHitToSelection, location.pathname, removeHitFromSelection, response, routeParams.id, selected, setSelected]);
 
   return (

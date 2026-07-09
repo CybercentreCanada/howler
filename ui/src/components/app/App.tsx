@@ -147,7 +147,7 @@ const MyApp: FC = () => {
     }
 
     getUser();
-    // eslint-disable-next-line
+    // oxlint-disable-next-line
   }, []);
 
   useEffect(() => {
@@ -163,7 +163,7 @@ const MyApp: FC = () => {
         navigate('/login');
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [appUser.isReady()]);
 
   for (const plugin of howlerPluginStore.plugins) {

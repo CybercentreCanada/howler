@@ -1,4 +1,4 @@
-/* eslint-disable no-useless-escape */
+/* oxlint-disable no-useless-escape */
 import { useMonaco } from '@monaco-editor/react';
 import { OpenInNew, PlayArrowOutlined, SsidChart } from '@mui/icons-material';
 import {

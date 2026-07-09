@@ -61,7 +61,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
     }
 
     getMatchingAnalytic(hit).then(analytic => setAnalyticId(analytic?.analytic_id));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [hit?.howler.analytic]);
 
   const providerColor = useMemo(

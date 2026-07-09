@@ -57,7 +57,7 @@ const DossiersBase: FC = () => {
         rows: pageCount,
         offset
       });
-    } catch (e) {
+    } catch {
       setHasError(true);
     } finally {
       setLoading(false);
@@ -77,7 +77,7 @@ const DossiersBase: FC = () => {
         }))
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [response, load]);
 
   const onPageChange = useCallback(
@@ -103,7 +103,7 @@ const DossiersBase: FC = () => {
           remove(id);
           showSuccessMessage(t('route.dossiers.manager.delete.success'));
         } catch (_err) {
-          // eslint-disable-next-line no-console
+          // oxlint-disable-next-line no-console
           console.warn(_err);
         }
       });
@@ -118,7 +118,7 @@ const DossiersBase: FC = () => {
       searchParams.set('offset', '0');
       setSearchParams(searchParams, { replace: true });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -133,7 +133,7 @@ const DossiersBase: FC = () => {
     if (!loading) {
       onSearch();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [offset]);
 
   const renderer = useCallback(

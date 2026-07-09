@@ -267,7 +267,7 @@ const SearchDocumentation: FC = () => {
               <a
                 href="https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/keyword"
                 style={{ color: 'info', textDecoration: 'underline' }}
-                // eslint-disable-next-line react/jsx-no-literals
+                // oxlint-disable-next-line react/jsx-no-literals
               >
                 https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/keyword
               </a>
@@ -296,7 +296,7 @@ const SearchDocumentation: FC = () => {
               <a
                 href="https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/text"
                 style={{ color: 'info', textDecoration: 'underline' }}
-                // eslint-disable-next-line react/jsx-no-literals
+                // oxlint-disable-next-line react/jsx-no-literals
               >
                 https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/text
               </a>
@@ -307,7 +307,7 @@ const SearchDocumentation: FC = () => {
               <a
                 href="https://www.elastic.co/blog/strings-are-dead-long-live-strings"
                 style={{ color: 'info', textDecoration: 'underline' }}
-                // eslint-disable-next-line react/jsx-no-literals
+                // oxlint-disable-next-line react/jsx-no-literals
               >
                 https://www.elastic.co/blog/strings-are-dead-long-live-strings
               </a>

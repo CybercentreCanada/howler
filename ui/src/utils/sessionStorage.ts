@@ -34,7 +34,7 @@ const {
         try {
           sessionStorage.setItem(_name, JSON.stringify(data));
         } catch (e) {
-          // eslint-disable-next-line no-console
+          // oxlint-disable-next-line no-console
           console.warn('Quota Error when saving to sessionStorage', e);
         }
       });

@@ -17,7 +17,7 @@ const HitCard: FC<{ id?: string; layout: HitLayout; readOnly?: boolean }> = ({ i
     if (!hit) {
       getHit(id);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   if (!hit) {
