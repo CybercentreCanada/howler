@@ -108,6 +108,7 @@ vi.mock('@mui/material', async () => {
     Menu: ({ children, open, onClose, ...props }) =>
       open ? (
         <div
+          tabIndex={0}
           role="menu"
           onClick={onClose}
           {...omit(props, ['sx', 'slotProps', 'MenuListProps', 'anchorOrigin', 'anchorEl'])}
@@ -119,6 +120,7 @@ vi.mock('@mui/material', async () => {
       const Component = component || 'div';
       return (
         <Component
+          tabIndex={0}
           role="menuitem"
           onClick={onClick}
           aria-disabled={disabled}
@@ -235,7 +237,7 @@ describe('HitContextMenu', () => {
 
       act(() => {
         const menu = screen.getByRole('menu');
-        user.click(menu);
+        void user.click(menu);
       });
 
       await waitFor(() => {

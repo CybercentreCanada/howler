@@ -79,7 +79,7 @@ const Markdown: FC<MarkdownProps> = ({ md, components = {}, disableLinks = false
   }, [isDark, theme]);
 
   useEffect(() => {
-    mermaid.run();
+    void mermaid.run();
   });
 
   return (

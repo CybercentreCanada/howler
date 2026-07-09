@@ -22,7 +22,7 @@ const AnalyticTemplates: FC<{ analytic: Analytic }> = ({ analytic }) => {
 
   useEffect(() => {
     setLoading(true);
-    dispatchApi(api.template.get())
+    void dispatchApi(api.template.get())
       .then(_templates => _templates.filter(_template => _template.analytic === analytic?.name))
       .then(setTemplates)
       .finally(() => setLoading(false));

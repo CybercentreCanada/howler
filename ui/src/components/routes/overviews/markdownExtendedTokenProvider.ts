@@ -43,8 +43,8 @@ export const language = <languages.IMonarchLanguage>{
   tokenPostfix: '.md',
 
   // escape codes
-  control: /[\\`*_\[\]{}()#+\-\.!]/,
-  noncontrol: /[^\\`*_\[\]{}()#+\-\.!]/,
+  control: /[\\`*_[\]{}()#+\-.!]/,
+  noncontrol: /[^\\`*_[\]{}()#+\-.!]/,
   escapes: /\\(?:@control)/,
 
   // escape codes for javascript/CSS strings
@@ -86,7 +86,7 @@ export const language = <languages.IMonarchLanguage>{
       [/^(\s{0,3})(#+)((?:[^\\#]|@escapes)+)((?:#+)?)/, ['white', 'keyword', 'keyword', 'keyword']],
 
       // headers (with =)
-      [/^\s*(=+|\-+)\s*$/, 'keyword'],
+      [/^\s*(=+|-+)\s*$/, 'keyword'],
 
       // headers (with ***)
       [/^\s*((\*[ ]?)+)\s*$/, 'meta.separator'],
@@ -95,16 +95,16 @@ export const language = <languages.IMonarchLanguage>{
       [/^\s*>+/, 'comment'],
 
       // list (starting with * or number)
-      [/^\s*([\*\-+:]|\d+\.)\s/, 'keyword'],
+      [/^\s*([*\-+:]|\d+\.)\s/, 'keyword'],
 
       // code block (4 spaces indent)
       [/^(\t|[ ]{4})[^ ].*$/, 'string'],
 
       // code block (3 tilde)
-      [/^\s*~~~\s*((?:\w|[\/\-#])+)?\s*$/, { token: 'string', next: '@codeblock' }],
+      [/^\s*~~~\s*((?:\w|[/\-#])+)?\s*$/, { token: 'string', next: '@codeblock' }],
 
       // github style code blocks (with backticks and language)
-      [/^\s*```\s*((?:\w|[\/\-#])+).*$/, { token: 'string', next: '@codeblockgh', nextEmbedded: '$1' }],
+      [/^\s*```\s*((?:\w|[/\-#])+).*$/, { token: 'string', next: '@codeblockgh', nextEmbedded: '$1' }],
 
       // github style code blocks (with backticks but no language)
       [/^\s*```\s*$/, { token: 'string', next: '@codeblock' }],
@@ -120,7 +120,7 @@ export const language = <languages.IMonarchLanguage>{
     handlebars: [
       [/"[^"]+"/, 'string'],
       [/[()]/, 'handlebars'],
-      [/[\w\d\.]+/, 'variable'],
+      [/[\w\d.]+/, 'variable'],
       [
         /[#/\w]+/,
         {
@@ -136,15 +136,15 @@ export const language = <languages.IMonarchLanguage>{
 
     table_header: [
       { include: '@table_common' },
-      [/[^\|]+/, 'keyword.table.header'] // table header
+      [/[^|]+/, 'keyword.table.header'] // table header
     ],
 
     table_body: [{ include: '@table_common' }, { include: '@linecontent' }],
 
     table_common: [
-      [/\s*[\-:]+\s*/, { token: 'keyword', switchTo: 'table_body' }], // header-divider
+      [/\s*[-:]+\s*/, { token: 'keyword', switchTo: 'table_body' }], // header-divider
       [/^\s*\|/, 'keyword.table.left'], // opening |
-      [/^\s*[^\|]/, '@rematch', '@pop'], // exiting
+      [/^\s*[^|]/, '@rematch', '@pop'], // exiting
       [/^\s*$/, '@rematch', '@pop'], // exiting
       [
         /\|/,
@@ -183,7 +183,7 @@ export const language = <languages.IMonarchLanguage>{
 
       // links
       [/\{+[^}]+\}+/, 'string.target'],
-      [/(!?\[)((?:[^\]\\]|@escapes)*)(\]\([^\)]+\))/, ['string.link', '', 'string.link']],
+      [/(!?\[)((?:[^\]\\]|@escapes)*)(\]\([^)]+\))/, ['string.link', '', 'string.link']],
       [/(!?\[)((?:[^\]\\]|@escapes)*)(\])/, 'string.link'],
 
       // or html
@@ -206,7 +206,7 @@ export const language = <languages.IMonarchLanguage>{
       // html tags
       [/<(\w+)\/>/, 'tag'],
       [
-        /<(\w+)(\-|\w)*/,
+        /<(\w+)(-|\w)*/,
         {
           cases: {
             '@empty': { token: 'tag', next: '@tag.$1' },
@@ -214,16 +214,16 @@ export const language = <languages.IMonarchLanguage>{
           }
         }
       ],
-      [/<\/(\w+)(\-|\w)*\s*>/, { token: 'tag' }],
+      [/<\/(\w+)(-|\w)*\s*>/, { token: 'tag' }],
 
       [/<!--/, 'comment', '@comment']
     ],
 
     comment: [
-      [/[^<\-]+/, 'comment.content'],
+      [/[^<-]+/, 'comment.content'],
       [/-->/, 'comment', '@pop'],
       [/<!--/, 'comment.content.invalid'],
-      [/[<\-]/, 'comment.content']
+      [/[<-]/, 'comment.content']
     ],
 
     // Almost full HTML tag matching, complete with embedded scripts & styles

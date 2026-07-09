@@ -42,7 +42,7 @@ const AnalyticProvider: FC<PropsWithChildren> = ({ children }) => {
 
   useEffect(() => {
     if (!ready && appUser.isReady()) {
-      fetchAnalytics();
+      void fetchAnalytics();
     }
   }, [ready, appUser, fetchAnalytics]);
 

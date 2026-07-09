@@ -185,14 +185,14 @@ const ViewComposer: FC = () => {
   );
 
   useEffect(() => {
-    search(query || DEFAULT_QUERY);
+    void search(query || DEFAULT_QUERY);
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // We only run this when ancillary properties (i.e. filters, sorting) change
   useEffect(() => {
     if (query) {
-      search(query);
+      void search(query);
     }
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [sort, span]);
@@ -202,7 +202,7 @@ const ViewComposer: FC = () => {
       return;
     }
 
-    (async () => {
+    void (async () => {
       const viewToEdit = (await getCurrentViews({ views: [routeParams.id] }))[0];
 
       if (!viewToEdit) {

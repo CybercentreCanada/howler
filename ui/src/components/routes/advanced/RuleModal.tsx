@@ -89,7 +89,7 @@ const RuleModal: FC<{ onSubmit: () => void; fileData: string; type: 'eql' | 'luc
       if (parsedEvent.isCtrl && parsedEvent.isEnter) {
         e.stopPropagation();
         e.preventDefault();
-        handleSubmit();
+        void handleSubmit();
       } else if (parsedEvent.isEscape) {
         e.stopPropagation();
         e.preventDefault();

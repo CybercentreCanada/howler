@@ -441,7 +441,7 @@ describe('DossierEditor', () => {
         await user.type(titleInput, 'Test Title');
 
         const queryInput = screen.getByTestId('query-input');
-        user.click(queryInput);
+        void user.click(queryInput);
         await user.keyboard('test query');
         await user.keyboard('{Enter}');
 

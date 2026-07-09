@@ -1,4 +1,3 @@
-/// <reference types="vitest" />
 import { renderHook } from '@testing-library/react';
 import { setupLocalStorageMock } from 'tests/mocks';
 import { describe, expect, it, vi } from 'vitest';

@@ -15,7 +15,7 @@ const HitCard: FC<{ id?: string; layout: HitLayout; readOnly?: boolean }> = ({ i
 
   useEffect(() => {
     if (!hit) {
-      getHit(id);
+      void getHit(id);
     }
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);

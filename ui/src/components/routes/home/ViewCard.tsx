@@ -128,19 +128,19 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
     }
 
     debounceTimerRef.current = setTimeout(() => {
-      refreshView();
+      void refreshView();
     }, DEBOUNCE_TIME);
   }, [refreshView]);
 
   useEffect(() => {
     if (refreshTick) {
-      refreshView();
+      void refreshView();
     }
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshTick]);
 
   useEffect(() => {
-    fetchViews([viewId]);
+    void fetchViews([viewId]);
   }, [fetchViews, viewId]);
 
   useEffect(() => {
@@ -150,7 +150,7 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
 
     const loadingTimeout = setTimeout(() => setLoading(true), 200);
 
-    refreshView().finally(() => {
+    void refreshView().finally(() => {
       clearTimeout(loadingTimeout);
       setLoading(false);
     });

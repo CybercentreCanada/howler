@@ -1,4 +1,3 @@
-/// <reference types="vitest" />
 import * as matchers from '@testing-library/jest-dom/matchers';
 import '@testing-library/jest-dom/vitest';
 import { configure } from '@testing-library/react';

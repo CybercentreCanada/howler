@@ -45,7 +45,7 @@ const ApiDocumentation: FC = () => {
   const [data, setData] = useState<HelpResponse>(null);
 
   useEffect(() => {
-    dispatchApi(api.help.get()).then(setData);
+    void dispatchApi(api.help.get()).then(setData);
   }, [dispatchApi]);
 
   if (!data) {

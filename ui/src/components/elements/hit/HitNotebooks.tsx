@@ -99,16 +99,16 @@ const HitNotebooks: FC<{ analytic: Analytic; selectedNotebook?: string; hit?: Hi
         showModal(
           <ConfirmNotebookModal
             onConfirm={() => {
-              goToJupyhub(nbFileName, `${envs[0].url}post/${nbFileName}`);
+              void goToJupyhub(nbFileName, `${envs[0].url}post/${nbFileName}`);
             }}
           />
         );
       } else {
-        goToJupyhub(nbFileName, `${envs[0].url}post/${nbFileName}`);
+        void goToJupyhub(nbFileName, `${envs[0].url}post/${nbFileName}`);
       }
     } catch {
       // error means notebook doesn't exist, we can proceed with posting
-      goToJupyhub(nbFileName, `${envs[0].url}post/${nbFileName}`);
+      void goToJupyhub(nbFileName, `${envs[0].url}post/${nbFileName}`);
     }
 
     setLoading(false);
@@ -150,9 +150,9 @@ const HitNotebooks: FC<{ analytic: Analytic; selectedNotebook?: string; hit?: Hi
 
   useEffect(() => {
     if (open) {
-      fetchEnvs(); //retrieve env info from howler-api/nbgallery
+      void fetchEnvs(); //retrieve env info from howler-api/nbgallery
       if (selectedNotebook) {
-        fetchNb();
+        void fetchNb();
       }
     } else {
       setLoadedNotebook({
@@ -185,7 +185,7 @@ const HitNotebooks: FC<{ analytic: Analytic; selectedNotebook?: string; hit?: Hi
                       label="Notebook"
                       select
                       onChange={e => {
-                        fetchNb(e.target.value);
+                        void fetchNb(e.target.value);
                       }}
                       SelectProps={{
                         MenuProps: {

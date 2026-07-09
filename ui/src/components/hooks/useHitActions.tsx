@@ -254,7 +254,7 @@ const useHitActions = (_hits: Hit | Hit[]) => {
             ...option,
             actionFunction: () => {
               if (!loading) {
-                manage(option.name.toLowerCase());
+                void manage(option.name.toLowerCase());
               }
             }
           }) as ActionButton

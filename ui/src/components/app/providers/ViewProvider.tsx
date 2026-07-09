@@ -85,7 +85,7 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
       return;
     }
 
-    (async () => {
+    void (async () => {
       const result = await fetchViews([defaultView]);
 
       if (!result.length) {
@@ -124,7 +124,7 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
 
       setViews(_views => ({
         ..._views,
-        [id]: { ...(_views[id] ?? {}), ...partialView }
+        [id]: { ..._views[id], ...partialView }
       }));
 
       return result;
@@ -150,7 +150,7 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
 
       setViews(_views => ({ ..._views, [newView.view_id]: newView }));
 
-      addFavourite(newView.view_id);
+      void addFavourite(newView.view_id);
 
       return newView;
     },

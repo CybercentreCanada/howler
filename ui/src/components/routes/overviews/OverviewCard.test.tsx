@@ -1,4 +1,3 @@
-/// <reference types="vitest" />
 import { render, screen } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import i18n from 'i18n';

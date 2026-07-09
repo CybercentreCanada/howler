@@ -143,7 +143,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
     async (_query?: string, appendResults?: boolean) => {
       THROTTLER.debounce(async () => {
         if (_query === 'woof!') {
-          i18n.changeLanguage('woof');
+          void i18n.changeLanguage('woof');
           return;
         }
 
@@ -229,7 +229,7 @@ const HitSearchProvider: FC<PropsWithChildren> = ({ children }) => {
     }
 
     if (views.length > 0 || bundleId || (query && query !== DEFAULT_QUERY) || offset > 0 || filters.length > 0) {
-      search(query);
+      void search(query);
     } else {
       setResponse(null);
     }

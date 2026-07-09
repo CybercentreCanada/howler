@@ -107,12 +107,12 @@ const ActionEditor: FC = () => {
   );
 
   useEffect(() => {
-    dispatchApi(api.action.operations.get())
+    void dispatchApi(api.action.operations.get())
       .then(_operations => _operations.filter(a => difference(a.roles, user.roles).length < a.roles.length))
       .then(setOperations);
 
     if (responseQuery) {
-      onSearch(responseQuery);
+      void onSearch(responseQuery);
     }
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatchApi, getHitFields]);
@@ -128,7 +128,7 @@ const ActionEditor: FC = () => {
   useEffect(() => {
     if (params.id) {
       setLoading(true);
-      dispatchApi(
+      void dispatchApi(
         api.search.action.post({
           query: `action_id:${params.id}`,
           rows: 1
@@ -146,7 +146,7 @@ const ActionEditor: FC = () => {
         setSearchParams(new URLSearchParams(searchParams), { replace: true });
         setUserOperations(existingAction.operations);
         setLoading(false);
-        onSearch(existingAction.query);
+        void onSearch(existingAction.query);
       });
     }
     // oxlint-disable-next-line react-hooks/exhaustive-deps

@@ -60,7 +60,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, layout = HitLayout.NORMAL, showAss
       return;
     }
 
-    getMatchingAnalytic(hit).then(analytic => setAnalyticId(analytic?.analytic_id));
+    void getMatchingAnalytic(hit).then(analytic => setAnalyticId(analytic?.analytic_id));
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [hit?.howler.analytic]);
 

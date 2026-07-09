@@ -1,4 +1,3 @@
-/// <reference types="vitest" />
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import Image from './Image';

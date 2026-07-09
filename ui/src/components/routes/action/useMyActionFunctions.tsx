@@ -144,7 +144,7 @@ const useMyActionFunctions = () => {
           setLoading(false);
           setRequestId(null);
           setProgress([0, 0]);
-          onSearch(query);
+          void onSearch(query);
         }
       },
       [dispatchApi, onSearch, showErrorMessage, t]

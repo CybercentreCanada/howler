@@ -131,7 +131,7 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
       .filter(el => !['views', 'analytics'].includes(el.element?.id as any))
       .filter(el => !!el);
 
-    (async () => {
+    void (async () => {
       const analyticElement = processAnalyticElement();
       if (analyticElement) {
         newElements.splice(1, 0, analyticElement);

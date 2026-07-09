@@ -100,7 +100,7 @@ const HitBrowser: FC = () => {
   }, [selected, selectedHits]);
 
   useEffect(() => {
-    fetchViews(selectedViews);
+    void fetchViews(selectedViews);
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, location.search]);
 

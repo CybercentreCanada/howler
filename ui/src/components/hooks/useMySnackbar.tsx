@@ -29,7 +29,7 @@ const useMySnackbar = () => {
           ...snackBarOptions,
           ...options,
           SnackbarProps: {
-            ...(options.SnackbarProps ?? {}),
+            ...options.SnackbarProps,
             onClick: options.SnackbarProps?.onClick
               ? e => {
                   options.SnackbarProps?.onClick(e);

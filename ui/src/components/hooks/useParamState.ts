@@ -23,7 +23,7 @@ const useParamState: {
   <T extends Primitive>(key: string, defaultValue?: T, list?: false): [T, (value: T) => void];
   // List mode
   <T extends Exclude<Primitive, null>>(key: string, defaultValue: T, list: true): [T[], (value: T[]) => void];
-} = <T extends Primitive>(key: string, defaultValue: T = null as T, list = false) => {
+} = <T extends Primitive>(key: string, defaultValue: T = null as T, list) => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [value, setValue] = useState<T | T[]>(() => {

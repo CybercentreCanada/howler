@@ -31,7 +31,7 @@ const BundleParentMenu: FC<{ bundle: Hit }> = ({ bundle }) => {
       return;
     }
 
-    api.search.hit
+    void api.search.hit
       .post({ query: `howler.id:(${bundle.howler.bundles.join(' OR ')})` })
       .then(response => setParentHits(response.items));
   }, [bundle.howler.bundles, parentAnchor]);

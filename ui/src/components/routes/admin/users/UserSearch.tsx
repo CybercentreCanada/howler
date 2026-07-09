@@ -81,7 +81,7 @@ const UserSearch: FC = () => {
     (event: KeyboardEvent<HTMLElement>) => {
       const { isEnter } = parseEvent(event);
       if (isEnter) {
-        onSearch();
+        void onSearch();
       }
     },
     [onSearch]
@@ -90,13 +90,13 @@ const UserSearch: FC = () => {
   // Clean button handler.
   const onClear = useCallback(() => {
     setPhrase('');
-    onSearch();
+    void onSearch();
   }, [onSearch]);
 
   // Effect to initialize list of users.
   useEffect(
     () => {
-      onSearch();
+      void onSearch();
 
       if (!searchParams.has('offset')) {
         searchParams.set('offset', '0');
@@ -117,7 +117,7 @@ const UserSearch: FC = () => {
 
   useEffect(() => {
     if (!searching) {
-      onSearch();
+      void onSearch();
     }
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [offset]);

@@ -1,4 +1,3 @@
-/// <reference types="vitest" />
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Throttler from './Throttler';
 
@@ -109,7 +108,7 @@ describe('Throttler', () => {
     it('does not invoke fn before the delay', async () => {
       const fn = vi.fn().mockResolvedValue('x');
       const t = new Throttler(100);
-      t.delayAsync(fn);
+      void t.delayAsync(fn);
       expect(fn).not.toHaveBeenCalled();
     });
 
@@ -140,7 +139,7 @@ describe('Throttler', () => {
     it('cancels the previous pending call when invoked again', async () => {
       const fn = vi.fn().mockResolvedValue(42);
       const t = new Throttler(100);
-      t.delayAsync(fn);
+      void t.delayAsync(fn);
       vi.advanceTimersByTime(50);
       const second = t.delayAsync(fn);
       vi.advanceTimersByTime(100);

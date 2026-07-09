@@ -27,11 +27,7 @@ type SearchResponseProviderProps<T> = PropsWithChildren<{
   initialResponse?: SearchResponseState<T>;
 }>;
 
-const SearchResponseProvider = <T,>({
-  children,
-  idField: idField,
-  initialResponse = null
-}: SearchResponseProviderProps<T>) => {
+const SearchResponseProvider = <T,>({ children, idField, initialResponse = null }: SearchResponseProviderProps<T>) => {
   const { dispatchApi } = useMyApi();
   const [response, setResponse] = useState<SearchResponseState<T> | null>(initialResponse);
 

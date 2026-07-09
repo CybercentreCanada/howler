@@ -252,7 +252,6 @@ const useMyPreferences = (): AppPreferenceConfigs => {
     return appMenuBuilder.menu;
   }, []);
 
-  // This is the basic user menu, it is a menu that shows up in account avatar popover.
   const USER_MENU_ITEMS = useMemo(() => {
     // Load plugin menu items first as Settings/Logout generally
     // appear at the end of user menus.
@@ -271,7 +270,6 @@ const useMyPreferences = (): AppPreferenceConfigs => {
     ];
   }, []);
 
-  // This is the basic administrator menu, it is a menu that shows up under the user menu in the account avatar popover.
   const ADMIN_MENU_ITEMS = useMemo(() => {
     return [
       {

@@ -120,7 +120,7 @@ const HitProvider: FC<PropsWithChildren> = ({ children }) => {
   }, []);
 
   const clearSelectedHits: HitContextType['clearSelectedHits'] = useCallback((except: string) => {
-    setSelectedHitIds(!!except ? [except] : []);
+    setSelectedHitIds(except ? [except] : []);
   }, []);
 
   const selectedHits = useMemo(() => selectedHitIds.map(id => hits[id]).filter(hit => !!hit), [hits, selectedHitIds]);
@@ -128,7 +128,7 @@ const HitProvider: FC<PropsWithChildren> = ({ children }) => {
   useEffect(() => {
     selectedHitIds.forEach(id => {
       if (!hitRequests.current[id]) {
-        getHit(id);
+        void getHit(id);
       }
     });
   }, [getHit, selectedHitIds]);

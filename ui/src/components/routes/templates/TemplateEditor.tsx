@@ -50,7 +50,7 @@ const TemplateEditor = ({
   );
 
   useEffect(() => {
-    getHitFields().then(suggestionFields => setSuggestions(suggestionFields.map(f => f.key)));
+    void getHitFields().then(suggestionFields => setSuggestions(suggestionFields.map(f => f.key)));
   }, [getHitFields]);
 
   const handleDragEnd = useCallback(

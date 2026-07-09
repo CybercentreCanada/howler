@@ -121,7 +121,7 @@ const ActionSearch: FC = () => {
   // Effect to initialize list of users.
   useEffect(
     () => {
-      onSearch();
+      void onSearch();
 
       if (!searchParams.has('offset')) {
         searchParams.set('offset', '0');
@@ -142,13 +142,13 @@ const ActionSearch: FC = () => {
 
   useEffect(() => {
     if (!searching) {
-      onSearch();
+      void onSearch();
     }
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [offset]);
 
   useEffect(() => {
-    onSearch();
+    void onSearch();
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [searchModifiers]);
 

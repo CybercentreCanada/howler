@@ -1,4 +1,3 @@
-/// <reference types="vitest" />
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AxiosClient from './AxiosClient';
 

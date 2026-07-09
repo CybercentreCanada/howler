@@ -80,7 +80,7 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
 
     if (!hit?.howler.data) {
       setLoading(true);
-      getHit(selected, true).finally(() => setLoading(false));
+      void getHit(selected, true).finally(() => setLoading(false));
       return;
     }
 
@@ -99,18 +99,18 @@ const InformationPane: FC<{ onClose?: () => void }> = ({ onClose }) => {
 
   useEffect(() => {
     if (hit && !analytic) {
-      getMatchingAnalytic(hit).then(setAnalytic);
+      void getMatchingAnalytic(hit).then(setAnalytic);
     }
   }, [analytic, getMatchingAnalytic, hit]);
 
   useEffect(() => {
     if (hit && !_dossiers) {
-      getMatchingDossiers(hit).then(setDossiers);
+      void getMatchingDossiers(hit).then(setDossiers);
     }
   }, [_dossiers, getMatchingDossiers, hit]);
 
   useEffect(() => {
-    getMatchingOverview(hit).then(_overview => setHasOverview(!!_overview));
+    void getMatchingOverview(hit).then(_overview => setHasOverview(!!_overview));
   }, [getMatchingOverview, hit]);
 
   useEffect(() => {

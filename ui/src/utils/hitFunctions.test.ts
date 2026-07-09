@@ -1,4 +1,3 @@
-/// <reference types="vitest" />
 import type { Hit } from 'models/entities/generated/Hit';
 import { describe, expect, it } from 'vitest';
 import { getUserList } from './hitFunctions';

@@ -91,7 +91,7 @@ const HitComments: FC<HitCommentsProps> = ({ hit, users }) => {
 
   useEffect(() => {
     if (hit?.howler?.analytic) {
-      getMatchingAnalytic(hit).then(analytic => {
+      void getMatchingAnalytic(hit).then(analytic => {
         setAnalyticId(analytic?.analytic_id);
         setAnalyticComments(sortByTimestamp(analytic?.comment ?? []));
       });
@@ -159,7 +159,7 @@ const HitComments: FC<HitCommentsProps> = ({ hit, users }) => {
       }
 
       if (e.ctrlKey && e.key === 'Enter' && !loading) {
-        onSubmit();
+        void onSubmit();
       }
     },
     [loading, onSubmit]
@@ -210,7 +210,7 @@ const HitComments: FC<HitCommentsProps> = ({ hit, users }) => {
 
         setComments(
           comments.map(cmt =>
-            cmt.id !== commentId ? cmt : { ...cmt, reactions: { ...(cmt?.reactions ?? {}), [user.username]: type } }
+            cmt.id !== commentId ? cmt : { ...cmt, reactions: { ...cmt?.reactions, [user.username]: type } }
           )
         );
       } else {
@@ -218,9 +218,7 @@ const HitComments: FC<HitCommentsProps> = ({ hit, users }) => {
 
         setComments(
           comments.map(cmt =>
-            cmt.id !== commentId
-              ? cmt
-              : { ...cmt, reactions: { ...(cmt?.reactions ?? {}), [user.username]: undefined } }
+            cmt.id !== commentId ? cmt : { ...cmt, reactions: { ...cmt?.reactions, [user.username]: undefined } }
           )
         );
       }

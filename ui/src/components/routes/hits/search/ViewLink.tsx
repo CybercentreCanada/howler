@@ -44,7 +44,7 @@ const ViewLink: FC<{ id: number; viewId: string }> = ({ id, viewId }) => {
 
   useEffect(() => {
     setLoading(true);
-    getCurrentViews({ views: [viewId], ignoreParams: true })
+    void getCurrentViews({ views: [viewId], ignoreParams: true })
       .then(result => setView(result[0]))
       .finally(() => setLoading(false));
   }, [getCurrentViews, viewId]);

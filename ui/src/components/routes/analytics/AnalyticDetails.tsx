@@ -68,7 +68,7 @@ const AnalyticDetails = () => {
   );
 
   useEffect(() => {
-    dispatchApi(api.analytic.get(params.id) as Promise<Analytic>).then(setAnalytic);
+    void dispatchApi(api.analytic.get(params.id) as Promise<Analytic>).then(setAnalytic);
   }, [dispatchApi, params.id]);
 
   const [filter, _setFilter] = useState<string | null>(searchParams.get('filter') ?? null);

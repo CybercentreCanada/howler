@@ -30,7 +30,7 @@ export type PhraseProps = Omit<TextFieldProps, 'onChange' | 'onKeyDown' | 'varia
 };
 
 const Phrase = ({
-  value = '',
+  value,
   variant = 'outlined',
   suggestions = [],
   lexer,

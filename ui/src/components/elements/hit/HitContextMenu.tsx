@@ -254,8 +254,8 @@ const HitContextMenu: FC<PropsWithChildren<HitContextMenuProps>> = ({ children, 
       return;
     }
 
-    getMatchingAnalytic(hit).then(setAnalytic);
-    getMatchingTemplate(hit).then(setTemplate);
+    void getMatchingAnalytic(hit).then(setAnalytic);
+    void getMatchingTemplate(hit).then(setTemplate);
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [hit]);
 

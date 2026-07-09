@@ -112,7 +112,7 @@ const DossiersBase: FC = () => {
   );
 
   useEffect(() => {
-    onSearch();
+    void onSearch();
 
     if (!searchParams.has('offset')) {
       searchParams.set('offset', '0');
@@ -131,7 +131,7 @@ const DossiersBase: FC = () => {
 
   useEffect(() => {
     if (!loading) {
-      onSearch();
+      void onSearch();
     }
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [offset]);

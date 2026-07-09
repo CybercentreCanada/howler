@@ -1,4 +1,3 @@
-/// <reference types="vitest" />
 import { act, renderHook } from '@testing-library/react';
 import { createElement, type FC, type PropsWithChildren } from 'react';
 import { MemoryRouter, useSearchParams } from 'react-router-dom';

@@ -1,4 +1,3 @@
-/// <reference types="vitest" />
 import { act, render, screen } from '@testing-library/react';
 import i18n from 'i18n';
 import React from 'react';

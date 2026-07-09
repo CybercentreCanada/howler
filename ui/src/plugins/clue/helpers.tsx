@@ -310,10 +310,10 @@ où clue_table_cells est un tableau avec les propriétés :
                             {!!cell.clue_fetcher && !!cell.clue_type ? (
                               <Fetcher
                                 slotProps={{
-                                  image: { width: !!cell.fetcher_width ? cell.fetcher_width : 'fit-content' },
+                                  image: { width: cell.fetcher_width ? cell.fetcher_width : 'fit-content' },
                                   stack: {
                                     component: 'span',
-                                    sx: !!cell.fetcher_width
+                                    sx: cell.fetcher_width
                                       ? { width: cell.fetcher_width, display: 'block' }
                                       : { width: 'fit-content' }
                                   }
@@ -322,7 +322,7 @@ où clue_table_cells est un tableau avec les propriétés :
                                 value={cell.value}
                                 type={cell.clue_type}
                               />
-                            ) : !!cell.clue_type ? (
+                            ) : cell.clue_type ? (
                               <MarkdownTypography
                                 slotProps={{
                                   stack: {

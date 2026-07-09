@@ -137,7 +137,7 @@ const SearchPane: FC = () => {
 
   useEffect(() => {
     if (location.pathname.startsWith('/bundles')) {
-      getHit(routeParams.id);
+      void getHit(routeParams.id);
     }
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, routeParams.id]);

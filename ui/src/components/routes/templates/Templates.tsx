@@ -105,7 +105,7 @@ const TemplatesBase: FC = () => {
   );
 
   useEffect(() => {
-    onSearch();
+    void onSearch();
 
     if (!searchParams.has('offset')) {
       searchParams.set('offset', '0');
@@ -124,7 +124,7 @@ const TemplatesBase: FC = () => {
 
   useEffect(() => {
     if (!searching) {
-      onSearch();
+      void onSearch();
     }
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [offset]);

@@ -1,4 +1,3 @@
-/// <reference types="vitest" />
 import type { AppLeftNavElement, AppLeftNavGroup, AppLeftNavItem } from 'commons/components/app/AppConfigs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import AppMenuBuilder from './menuUtils';

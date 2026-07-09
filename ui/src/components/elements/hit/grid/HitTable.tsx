@@ -50,7 +50,7 @@ const HitTable = ({
   useEffect(() => {
     items?.forEach(hit => {
       if (!analyticIds[hit.howler.analytic]) {
-        getMatchingAnalytic(hit).then(_analytic => {
+        void getMatchingAnalytic(hit).then(_analytic => {
           if (_analytic) {
             setAnalyticIds(_analyticIds => ({ ..._analyticIds, [hit.howler.analytic]: _analytic.analytic_id }));
           }

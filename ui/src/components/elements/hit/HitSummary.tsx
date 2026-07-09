@@ -180,7 +180,7 @@ const HitSummary: FC<{
       return;
     }
 
-    performAggregation();
+    void performAggregation();
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [query, views, searching, error]);
 

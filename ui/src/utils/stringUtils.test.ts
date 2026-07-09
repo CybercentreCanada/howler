@@ -1,4 +1,3 @@
-/// <reference types="vitest" />
 import { describe, expect, it } from 'vitest';
 import {
   maxLenStr,
@@ -80,7 +79,7 @@ describe('safeFieldValue', () => {
   });
 
   it('escapes backslash before escaping quotes (order matters)', () => {
-    expect(safeFieldValue('\\"')).toBe('"\\\\\\"\"');
+    expect(safeFieldValue('\\"')).toBe('"\\\\\\""');
   });
 });
 

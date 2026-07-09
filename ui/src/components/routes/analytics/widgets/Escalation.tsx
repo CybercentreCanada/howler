@@ -30,7 +30,7 @@ const Escalation = forwardRef<any, { analytic: Analytic; maxWidth?: string }>(({
 
     setLoading(true);
 
-    api.search.facet.hit
+    void api.search.facet.hit
       .post({
         query: `howler.analytic:("${analytic.name}")`,
         fields: ['howler.escalation']

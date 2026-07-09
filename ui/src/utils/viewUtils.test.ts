@@ -1,4 +1,3 @@
-/// <reference types="vitest" />
 import type { View } from 'models/entities/generated/View';
 import { describe, expect, it } from 'vitest';
 import { buildViewUrl } from './viewUtils';

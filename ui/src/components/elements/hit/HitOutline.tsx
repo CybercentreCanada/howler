@@ -28,7 +28,7 @@ const HitOutline: FC<{ hit: WithMetadata<Hit>; layout: HitLayout; forceAllFields
   const [template, setTemplate] = useState<Template>(null);
 
   useEffect(() => {
-    getMatchingTemplate(hit).then(setTemplate);
+    void getMatchingTemplate(hit).then(setTemplate);
   }, [getMatchingTemplate, hit]);
 
   const outline = useMemo(() => {

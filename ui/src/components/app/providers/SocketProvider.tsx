@@ -116,7 +116,7 @@ const SocketProvider: React.FC<PropsWithChildren> = ({ children }) => {
           // If we are unauthorized, we can update the token through the usual process and tell
           // the connection to retry with the new token
           if (data.status === 401) {
-            api.user.whoami.get().then(() => setRetry(true));
+            void api.user.whoami.get().then(() => setRetry(true));
           } else {
             console.error(data);
             setRetry(false);

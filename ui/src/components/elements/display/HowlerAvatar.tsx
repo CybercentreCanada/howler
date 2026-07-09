@@ -58,7 +58,7 @@ const HowlerAvatar: FC<HowlerAvatarProps> = ({ userId, ...avatarProps }) => {
           aria-label={displayId}
           {...avatarProps}
           {...props}
-          sx={{ ...(avatarProps?.sx || {}), ...(props?.sx || {}) } as SxProps<Theme>}
+          sx={{ ...avatarProps?.sx, ...props?.sx } as SxProps<Theme>}
         />
       </Tooltip>
     );
@@ -68,7 +68,7 @@ const HowlerAvatar: FC<HowlerAvatarProps> = ({ userId, ...avatarProps }) => {
         aria-label={t('unknown')}
         {...avatarProps}
         {...props}
-        sx={{ ...(avatarProps?.sx || {}), ...(props?.sx || {}) } as SxProps<Theme>}
+        sx={{ ...avatarProps?.sx, ...props?.sx } as SxProps<Theme>}
       />
     );
   }

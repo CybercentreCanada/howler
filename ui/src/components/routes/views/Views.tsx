@@ -226,7 +226,7 @@ const ViewsBase: FC = () => {
 
   useEffect(() => {
     if (!searching) {
-      onSearch();
+      void onSearch();
     }
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [offset, favouritesOnly, type]);

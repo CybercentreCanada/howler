@@ -74,7 +74,7 @@ const useTitle = () => {
   }, [location.pathname, params.id, searchParams, getAnalyticFromId, setTitle, t, hits, getHit, sitemap.routes]);
 
   useEffect(() => {
-    runChecks();
+    void runChecks();
   }, [runChecks]);
 };
 

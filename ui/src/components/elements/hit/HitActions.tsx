@@ -165,7 +165,7 @@ const HitActions: FC<{
   }, [keyboardDownHandler]);
 
   useEffect(() => {
-    getMatchingAnalytic(hit).then(setAnalytic);
+    void getMatchingAnalytic(hit).then(setAnalytic);
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [hit?.howler.analytic]);
 

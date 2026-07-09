@@ -69,7 +69,7 @@ const AnalyticComments: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
       }
 
       if (e.ctrlKey && e.key === 'Enter' && !loading) {
-        onSubmit();
+        void onSubmit();
       }
     },
     [loading, onSubmit]
@@ -124,7 +124,7 @@ const AnalyticComments: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
         setAnalytic({
           ...analytic,
           comment: analytic.comment.map(cmt =>
-            cmt.id !== commentId ? cmt : { ...cmt, reactions: { ...(cmt?.reactions ?? {}), [user.username]: type } }
+            cmt.id !== commentId ? cmt : { ...cmt, reactions: { ...cmt?.reactions, [user.username]: type } }
           )
         });
       } else {
@@ -133,9 +133,7 @@ const AnalyticComments: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
         setAnalytic({
           ...analytic,
           comment: analytic.comment.map(cmt =>
-            cmt.id !== commentId
-              ? cmt
-              : { ...cmt, reactions: { ...(cmt?.reactions ?? {}), [user.username]: undefined } }
+            cmt.id !== commentId ? cmt : { ...cmt, reactions: { ...cmt?.reactions, [user.username]: undefined } }
           )
         });
       }
