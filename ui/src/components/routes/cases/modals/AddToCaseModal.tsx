@@ -87,11 +87,16 @@ const AddToCaseModal: FC<AddItemToCaseModalProps> = ({ case: _case, parentId = n
       <Stack direction="row" spacing={1}>
         <Autocomplete
           value={itemType}
-          onChange={(_, option) => setItemType(option)}
+          onChange={(_, option) => {
+            if (option) {
+              setItemType(option);
+            }
+          }}
           options={ITEM_TYPES}
           getOptionLabel={opt => t(opt.labelKey)}
           isOptionEqualToValue={(option, choice) => option.value === choice.value}
           disablePortal
+          disableClearable
           renderInput={params => (
             <TextField {...params} size="small" label={t('modal.cases.add_item.type')} sx={{ minWidth: '175px' }} />
           )}
