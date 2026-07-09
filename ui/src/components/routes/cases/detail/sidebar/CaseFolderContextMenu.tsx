@@ -52,8 +52,10 @@ export const getOpenUrl = (leaf: Item): string | null => {
 export interface CaseFolderContextMenuProps extends PropsWithChildren {
   /** The case that owns the item(s). */
   case: Case;
+
   /** Present when the context menu is for a single leaf item. */
-  item?: Item;
+  item: Item;
+
   /** Called after item(s) have been updated (renamed, removed). */
   onUpdate?: (updatedCase: Case) => void;
 }
@@ -71,17 +73,15 @@ const CaseFolderContextMenu: FC<CaseFolderContextMenuProps> = ({ case: _case, it
   const items = useMemo<ContextMenuEntry[]>(() => {
     const entries: ContextMenuEntry[] = [];
 
-    if (item) {
-      const openUrl = getOpenUrl(item);
-      if (openUrl) {
-        entries.push({
-          kind: 'item',
-          id: 'open-item',
-          label: t('page.cases.sidebar.item.open'),
-          icon: <OpenInNew fontSize="small" />,
-          onClick: () => window.open(openUrl, '_blank', 'noopener noreferrer')
-        });
-      }
+    const openUrl = getOpenUrl(item);
+    if (openUrl) {
+      entries.push({
+        kind: 'item',
+        id: 'open-item',
+        label: t('page.cases.sidebar.item.open'),
+        icon: <OpenInNew fontSize="small" />,
+        onClick: () => window.open(openUrl, '_blank', 'noopener noreferrer')
+      });
     }
 
     if (entries.length > 0) {

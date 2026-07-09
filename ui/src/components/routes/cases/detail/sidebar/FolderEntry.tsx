@@ -55,7 +55,7 @@ interface FolderEntryProps {
   onClick?: () => void;
 
   /** The item entity associated with this entry */
-  entry: Item;
+  entry?: Item;
 }
 
 const FolderEntry: FC<FolderEntryProps> = ({
