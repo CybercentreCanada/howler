@@ -1,3 +1,5 @@
+import type { ClassificationDefinition } from 'utils/classificationParser';
+
 /**
  * NOTE: This is an auto-generated file. Don't edit this manually.
  */
@@ -234,6 +236,6 @@ export interface ApiType {
   indexes: APIIndexes;
   lookups: APILookups;
   configuration: APIConfiguration;
-  c12nDef: APIC12Ndef;
+  c12nDef: ClassificationDefinition;
   mapping: APIMappings;
 }

@@ -255,7 +255,7 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
               sx={{ position: 'relative' }}
               onClick={() => {
                 if (_case) {
-                  showModal(<AddToCaseModal case={_case} onUpdated={update} />);
+                  showModal(<AddToCaseModal case={_case} onUpdated={update} />, { maxHeight: '90vh', height: 'unset' });
                 }
               }}
             >

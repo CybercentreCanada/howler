@@ -1,9 +1,11 @@
-import { Autocomplete, Button, CircularProgress, Stack, TextField, Typography } from '@mui/material';
+import { useMonaco } from '@monaco-editor/react';
+import { Autocomplete, Box, Button, CircularProgress, Stack, TextField, Typography, useTheme } from '@mui/material';
 import api from 'api';
 import { ModalContext } from 'components/app/providers/ModalProvider';
+import ThemedEditor from 'components/elements/ThemedEditor';
 import useMyApi from 'components/hooks/useMyApi';
 import type { Case } from 'models/entities/generated/Case';
-import { useContext, useMemo, useState, type FC } from 'react';
+import { useContext, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFolderOptions } from './hooks';
 
@@ -20,6 +22,8 @@ interface AddItemToCaseModalProps {
 
 const AddToCaseModal: FC<AddItemToCaseModalProps> = ({ case: _case, parentId = null, onUpdated }) => {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const monaco = useMonaco();
   const { dispatchApi } = useMyApi();
   const { close } = useContext(ModalContext);
 
@@ -30,6 +34,14 @@ const AddToCaseModal: FC<AddItemToCaseModalProps> = ({ case: _case, parentId = n
   const [submitting, setSubmitting] = useState(false);
 
   const folderOptions = useFolderOptions(_case);
+
+  useEffect(() => {
+    if (!monaco) {
+      return;
+    }
+
+    monaco.editor.getModels().forEach(model => model.setEOL(monaco.editor.EndOfLineSequence.LF));
+  }, [monaco]);
 
   const isValid = useMemo(() => {
     if (!title.trim()) {
@@ -69,28 +81,31 @@ const AddToCaseModal: FC<AddItemToCaseModalProps> = ({ case: _case, parentId = n
   };
 
   return (
-    <Stack spacing={2} p={2} sx={{ minWidth: 'min(600px, 60vw)' }}>
+    <Stack spacing={2} p={2} sx={{ minWidth: 'min(1000px, 60vw)' }}>
       <Typography variant="h4">{t('modal.cases.add_item')}</Typography>
 
-      <Autocomplete
-        value={itemType}
-        onChange={(_, option) => setItemType(option)}
-        options={ITEM_TYPES}
-        getOptionLabel={opt => t(opt.labelKey)}
-        isOptionEqualToValue={(option, choice) => option.value === choice.value}
-        fullWidth
-        disablePortal
-        renderInput={params => <TextField {...params} label={t('modal.cases.add_item.type')} />}
-      />
+      <Stack direction="row" spacing={1}>
+        <Autocomplete
+          value={itemType}
+          onChange={(_, option) => setItemType(option)}
+          options={ITEM_TYPES}
+          getOptionLabel={opt => t(opt.labelKey)}
+          isOptionEqualToValue={(option, choice) => option.value === choice.value}
+          disablePortal
+          renderInput={params => (
+            <TextField {...params} size="small" label={t('modal.cases.add_item.type')} sx={{ minWidth: '175px' }} />
+          )}
+        />
 
-      <TextField
-        size="small"
-        label={t('modal.cases.add_item.title')}
-        value={title}
-        onChange={ev => setTitle(ev.target.value)}
-        fullWidth
-        autoFocus
-      />
+        <TextField
+          size="small"
+          label={t('modal.cases.add_item.title')}
+          value={title}
+          onChange={ev => setTitle(ev.target.value)}
+          fullWidth
+          autoFocus
+        />
+      </Stack>
 
       {itemType.value === 'reference' && (
         <TextField
@@ -99,22 +114,23 @@ const AddToCaseModal: FC<AddItemToCaseModalProps> = ({ case: _case, parentId = n
           value={value}
           onChange={ev => setValue(ev.target.value)}
           fullWidth
-          placeholder="https://..."
+          placeholder="https://example.com"
         />
       )}
 
       {itemType.value === 'markdown' && (
-        <TextField
-          size="small"
-          label={t('modal.cases.add_item.content')}
-          value={value}
-          onChange={ev => setValue(ev.target.value)}
-          fullWidth
-          multiline
-          minRows={4}
-          maxRows={12}
-          placeholder={t('modal.cases.add_item.markdown_placeholder')}
-        />
+        <Box sx={{ border: 'thin solid', borderColor: theme.palette.divider }}>
+          <ThemedEditor
+            id="add-item-markdown"
+            height="240px"
+            width="100%"
+            language="markdown"
+            theme={theme.palette.mode === 'light' ? 'howler' : 'howler-dark'}
+            value={value}
+            onChange={content => setValue(content ?? '')}
+            options={{}}
+          />
+        </Box>
       )}
 
       {folderOptions.length > 0 && (

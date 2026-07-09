@@ -9,6 +9,7 @@ import { useOutletContext, useParams } from 'react-router-dom';
 import useCase from '../hooks/useCase';
 import { buildPathFromID } from '../utils';
 import CaseDashboard from './CaseDashboard';
+import MarkdownPage from './MarkdownPage';
 
 const ItemPage: FC<{ case?: Case }> = ({ case: providedCase }) => {
   const params = useParams();
@@ -116,6 +117,10 @@ const ItemPage: FC<{ case?: Case }> = ({ case: providedCase }) => {
 
   if (item.type === 'case') {
     return <CaseDashboard caseId={item.value} />;
+  }
+
+  if (item.type === 'markdown') {
+    return <MarkdownPage case={_case} item={item} />;
   }
 
   return <h1>{JSON.stringify(item)}</h1>;
