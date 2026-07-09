@@ -75,7 +75,7 @@ def execute(  # noqa: C901
             name = item_path
 
         try:
-            parent = case_service.get_parent_from_path(case, path, ensure=True)
+            parent = case_service.get_parent_from_path(case, path, create_if_missing=True)
 
             case_service.append_case_item(
                 case,

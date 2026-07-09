@@ -777,7 +777,7 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
         )
 
         for hit in selected_hits:
-            parent = case_service.get_parent_from_path(case, "alerts", ensure=True)
+            parent = case_service.get_parent_from_path(case, "alerts", create_if_missing=True)
 
             case.items.append(
                 CaseItem(
@@ -791,7 +791,7 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
             )
 
         for event in selected_events:
-            parent = case_service.get_parent_from_path(case, "events", ensure=True)
+            parent = case_service.get_parent_from_path(case, "events", create_if_missing=True)
 
             case.items.append(
                 CaseItem(
@@ -808,7 +808,7 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
         nested_hit_candidates = sample(selected_hits, k=min(len(selected_hits), randint(1, 3))) if selected_hits else []
         for hit in nested_hit_candidates:
             parent = case_service.get_parent_from_path(
-                case, f"alerts/{get_random_word()}/{get_random_word()}", ensure=True
+                case, f"alerts/{get_random_word()}/{get_random_word()}", create_if_missing=True
             )
 
             case.items.append(
@@ -832,7 +832,7 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
         )
         for event in nested_event_candidates:
             parent = case_service.get_parent_from_path(
-                case, f"alerts/{get_random_word()}/{get_random_word()}", ensure=True
+                case, f"alerts/{get_random_word()}/{get_random_word()}", create_if_missing=True
             )
 
             case.items.append(
@@ -868,7 +868,7 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
 
         selected_reference_names = sample(reference_name_pool, k=randint(1, 3))
         for reference_name in selected_reference_names:
-            parent = case_service.get_parent_from_path(case, "references", ensure=True)
+            parent = case_service.get_parent_from_path(case, "references", create_if_missing=True)
             case.items.append(
                 CaseItem(
                     {

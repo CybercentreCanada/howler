@@ -157,7 +157,7 @@ def process_batch(record_ids: list[str]) -> int:  # noqa: C901
                 path = None
                 name = rendered_path
 
-            parent = case_service.get_parent_from_path(case, path, ensure=True)
+            parent = case_service.get_parent_from_path(case, path, create_if_missing=True)
 
             try:
                 case_service.append_case_item(

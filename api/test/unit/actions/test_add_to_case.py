@@ -263,7 +263,7 @@ def test_execute_mixed_results():
     ds.hit.commit()
 
     # Pre-add hit_existing at the same default destination/path as execute() so it is treated as a duplicate.
-    related_folder = case_service.get_parent_from_path(_case, "related", ensure=True)
+    related_folder = case_service.get_parent_from_path(_case, "related", create_if_missing=True)
     case_service.append_case_item(
         _case,
         item_type="hit",

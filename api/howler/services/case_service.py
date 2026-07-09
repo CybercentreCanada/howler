@@ -26,11 +26,11 @@ logger = get_logger(__file__)
 CREATED_CASES = Counter(f"{APP_NAME.replace('-', '_')}_created_cases_total", "The number of created cases")
 
 
-def create_case(_case: dict, user: str = None) -> Case:  # type: ignore
+def create_case(case_data: dict, user: str = None) -> Case:  # type: ignore
     """Create a new case in the datastore.
 
     Args:
-        case: Case data
+        case_dict: Case data
         user: Username to record in the creation log
 
     Returns:
@@ -39,13 +39,13 @@ def create_case(_case: dict, user: str = None) -> Case:  # type: ignore
     Raises:
         ResourceExists: If a case with the same ID already exists
     """
-    if not _case:
+    if not case_data:
         raise InvalidDataException("Case data is required to create a case")
 
-    _case.pop("case_id", None)
-    items = _case.pop("items", [])
+    case_data.pop("case_id", None)
+    items = case_data.pop("items", [])
 
-    case = Case(_case)
+    case = Case(case_data)
     case.log = [CaseLog({"timestamp": "NOW", "explanation": "Case created", "user": user or "system"})]
     datastore().case.save(case.case_id, case)
     CREATED_CASES.inc()
@@ -151,7 +151,7 @@ def delete_cases(case_ids: set[str]) -> bool:
     return ds.case.delete_by_query(f"case_id:({' OR '.join(case_ids)})")
 
 
-def filter_case_items_by_classification(_case: dict, user_classification: str):
+def filter_case_items_by_classification(case_data: dict, user_classification: str):
     """Remove items from a case dict that exceed the user's classification.
 
     Items without a ``classification`` value are always included. Items with a
@@ -159,15 +159,15 @@ def filter_case_items_by_classification(_case: dict, user_classification: str):
     confirms the requesting user can see them.
 
     Args:
-        case: Raw case dict (as returned by ``as_obj=False`` datastore calls).
+        case_data: Raw case data (as returned by ``as_obj=False`` datastore calls).
         user_classification: The requesting user's maximum classification string.
     """
-    if "items" not in _case:
+    if "items" not in case_data:
         return
 
-    _case["items"] = [
+    case_data["items"] = [
         item
-        for item in _case["items"]
+        for item in case_data["items"]
         if item.get("classification") is None
         or CLASSIFICATION.is_accessible(user_classification, item["classification"])
     ]
@@ -303,7 +303,7 @@ def update_case(case_id: str, case_data: dict[str, Any], user: User) -> Case:
     return case
 
 
-def get_parent_from_path(case: str | Case | None, path: str | None, ensure: bool = False) -> CaseItem | None:
+def get_parent_from_path(case: str | Case | None, path: str | None, create_if_missing: bool = False) -> CaseItem | None:
     """Given a path, return the lowest parent of the path in the case.
 
     If ensure is set to true, create folders in the case until the path exists.
@@ -311,7 +311,7 @@ def get_parent_from_path(case: str | Case | None, path: str | None, ensure: bool
     Args:
         case: The case to search for.
         path: The path to return the lowest parent for.
-        ensure: Whether to ensure the path exists, or return None if it doesn't.
+        create_if_missing: Whether to create the path if it's missing or return None.
 
     Raises:
         InvalidDataException: If the path is invalid.
@@ -346,7 +346,7 @@ def get_parent_from_path(case: str | Case | None, path: str | None, ensure: bool
         )
 
         if folder is None:
-            if not ensure:
+            if not create_if_missing:
                 return None
             # Create the folder
             folder_item = CaseItem({"type": CaseItemTypes.FOLDER, "name": part, "parent": current_parent, "value": ""})
@@ -476,17 +476,17 @@ def _check_conflicts(case: Case, item: CaseItem) -> None:
         )
 
 
-def _ensure_parent_exists(_case: Case, parent_id: str) -> None:
+def _ensure_parent_exists(case: Case, parent_id: str) -> None:
     """Validate that a parent ID references an existing folder item in the case.
 
     Args:
-        _case: The case whose items to search.
+        case: The case whose items to search.
         parent_id: The ID that must correspond to a folder-type item.
 
     Raises:
         InvalidDataException: If the parent ID does not match any folder item.
     """
-    parent = next((item for item in _case.items if item.id == parent_id), None)
+    parent = next((item for item in case.items if item.id == parent_id), None)
     if parent is None:
         raise InvalidDataException(f"Parent item '{parent_id}' does not exist in the case")
     if parent.type != CaseItemTypes.FOLDER:
@@ -497,7 +497,7 @@ def move_case_item(case: str | Case | None, item_id: str, new_parent: str | None
     """Move an item to a different parent folder (or to root).
 
     Args:
-        _case: Case object or unique identifier of the case.
+        case: Case object or unique identifier of the case.
         item_id: The UUID of the item to move.
         new_parent: The UUID of the target folder, or None for root.
 
@@ -574,7 +574,7 @@ def remove_case_items(case: str | Case | None, item_ids: list[str], force: bool 
     """Remove items from a case by their IDs.
 
     Args:
-        _case: Case object or unique identifier of the case.
+        case: Case object or unique identifier of the case.
         item_ids: List of item UUIDs to remove.
         force: If True, also remove children of folder items. If False,
             reject removal of non-empty folders.

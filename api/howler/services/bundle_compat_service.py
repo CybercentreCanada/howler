@@ -111,7 +111,7 @@ def create_bundle(
         case, item_type="hit", item_value=odm.howler.id, item_name=f"{odm.howler.analytic} ({odm.howler.id})"
     )
 
-    folder = case_service.get_parent_from_path(case, "hits", ensure=True)
+    folder = case_service.get_parent_from_path(case, "hits", create_if_missing=True)
 
     for child_id in child_hit_ids:
         child_hit = hit_service.get_hit(child_id, as_odm=True)

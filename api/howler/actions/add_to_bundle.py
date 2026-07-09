@@ -70,7 +70,7 @@ def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = 
             )
             return report
 
-        folder = case_service.get_parent_from_path(case, "hits", ensure=True)
+        folder = case_service.get_parent_from_path(case, "hits", create_if_missing=True)
 
         added = []
         skipped = []
