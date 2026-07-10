@@ -16,4 +16,9 @@ export interface HowlerUser extends AppUser {
   favourite_analytics?: string[];
   dashboard?: { entry_id: string; type: 'view' | 'analytic'; config: string }[];
   refresh_rate?: number;
+  tags?: {
+    portfolio: string[];
+    products: string[];
+    primary_disciplines: string[];
+  };
 }

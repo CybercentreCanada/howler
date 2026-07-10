@@ -1,0 +1,18 @@
+{
+  "tsxUserStatus.trigger.placeholder": "Set status",
+  "tsxUserStatus.trigger.label": "Status: {{status}}",
+  "tsxUserStatus.panel.title": "Work Session",
+  "tsxUserStatus.panel.description": "Share your current team, shift, and status with colleagues and shift leads. Remember to clear your status before ending your shift.",
+  "tsxUserStatus.panel.status.label": "Status",
+  "tsxUserStatus.status.chip.you": "You",
+  "tsxUserStatus.status.chip.occupied": "Occupied",
+  "tsxUserStatus.status.chip.others": "Others",
+  "tsxUserStatus.panel.team.label": "Team",
+  "tsxUserStatus.panel.schedule.label": "Shift",
+  "tsxUserStatus.panel.schedule.helperText": "Select a team to view available shifts",
+  "tsxUserStatus.panel.clearButton": "Clear",
+  "tsxUserStatus.panel.cancelButton": "Cancel",
+  "tsxUserStatus.panel.confirmButton": "Confirm",
+  "tsxUserStatus.panel.updateErrorMessage": "Failed to update status. Please try again.",
+  "tsxUserStatus.panel.none": "None"
+}

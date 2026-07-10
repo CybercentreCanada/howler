@@ -1,0 +1,67 @@
+[project]
+name = "tsx-user-tags"
+version = "0.1.0"
+description = "Allow analysts to manage personal tags (portfolio, products, disciplines)"
+authors = [
+    { name = "ts-veerreddys", email = "veer.reddy.sathi@truesec.se" }
+]
+readme = "README.md"
+requires-python = ">=3.10,<4.0"
+dependencies = [
+]
+
+[tool.poetry.dependencies]
+howler-api = { path = "../../api", develop = true }
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "W",
+    "C901",
+    "I",
+    "N",
+    "D1",
+    "D2",
+    "ANN",
+    "S",
+    "T20",
+    "PIE",
+    "FLY",
+    "TRY",
+]
+ignore = [
+    "ANN003",
+    "ANN201",
+    "ANN401",
+    "D100",
+    "D104",
+    "D105",
+    "D107",
+    "D203",
+    "D213",
+    "N818",
+    "S603",
+    "TRY003",
+    "TRY300",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"test/**" = ["D", "ANN", "S", "N818", "TRY", "PIE", "E402"]
+
+[tool.ruff.lint.flake8-annotations]
+ignore-fully-untyped = true
+mypy-init-return = true
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+ruff = "^0.15"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

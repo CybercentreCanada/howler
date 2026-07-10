@@ -232,6 +232,8 @@ opentelemetry-sdk = "1.40.0"
 opentelemetry-exporter-otlp-proto-http = "1.40.0"
 opentelemetry-instrumentation-flask = "0.61b0"
 azure-monitor-opentelemetry = "^1.8.7"
+tsx-user-status = {path = "../plugins/tsx_user_status", develop = true}
+tsx-user-tags = {path = "../plugins/tsx_user_tags", develop = true}
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.7.0"
