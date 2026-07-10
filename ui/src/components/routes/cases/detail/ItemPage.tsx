@@ -7,7 +7,9 @@ import type { Item } from 'models/entities/generated/Item';
 import { useEffect, useMemo, useState, type FC } from 'react';
 import { useOutletContext, useParams } from 'react-router-dom';
 import useCase from '../hooks/useCase';
+import { buildPathFromID } from '../utils';
 import CaseDashboard from './CaseDashboard';
+import MarkdownPage from './MarkdownPage';
 
 const ItemPage: FC<{ case?: Case }> = ({ case: providedCase }) => {
   const params = useParams();
@@ -47,19 +49,14 @@ const ItemPage: FC<{ case?: Case }> = ({ case: providedCase }) => {
         const currentRemainingPath = remainingPath;
 
         const matchedNestedCase = currentCase.items
-          .filter(
-            _item =>
-              _item?.path &&
-              _item?.type?.toLowerCase() === 'case' &&
-              (currentRemainingPath === _item.path || currentRemainingPath.startsWith(`${_item.path}/`))
-          )
-          .sort((a, b) => (b.path?.length || 0) - (a.path?.length || 0))[0];
+          .filter(Boolean)
+          .find(_item => _item.type === 'case' && currentRemainingPath.startsWith(`${_item.name}/`));
 
         if (!matchedNestedCase) {
           break;
         }
 
-        if (currentRemainingPath === matchedNestedCase.path) {
+        if (currentRemainingPath === matchedNestedCase.id) {
           if (!cancelled) {
             setItem(matchedNestedCase);
             setLoading(false);
@@ -85,11 +82,11 @@ const ItemPage: FC<{ case?: Case }> = ({ case: providedCase }) => {
           return;
         }
 
-        remainingPath = currentRemainingPath.slice((matchedNestedCase.path?.length || 0) + 1);
+        remainingPath = currentRemainingPath.replace(`${matchedNestedCase.name}/`, '');
         currentCase = nextCase;
       }
 
-      const resolvedItem = currentCase?.items?.find(_item => _item.path === remainingPath);
+      const resolvedItem = currentCase.items.find(_item => buildPathFromID(currentCase, _item.id) === remainingPath);
 
       if (!cancelled) {
         setItem(resolvedItem || null);
@@ -97,7 +94,9 @@ const ItemPage: FC<{ case?: Case }> = ({ case: providedCase }) => {
       }
     };
 
-    resolveItem();
+    if (_case) {
+      resolveItem();
+    }
 
     return () => {
       cancelled = true;
@@ -118,6 +117,10 @@ const ItemPage: FC<{ case?: Case }> = ({ case: providedCase }) => {
 
   if (item.type === 'case') {
     return <CaseDashboard caseId={item.value} />;
+  }
+
+  if (item.type === 'markdown') {
+    return <MarkdownPage case={_case} item={item} />;
   }
 
   return <h1>{JSON.stringify(item)}</h1>;

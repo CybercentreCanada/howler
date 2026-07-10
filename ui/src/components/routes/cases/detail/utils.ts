@@ -139,7 +139,8 @@ export const resolveSources = (
       return {
         id,
         type: item.type as 'hit' | 'event' | 'case',
-        path: item.path,
+        path: item.id,
+        label: item.name ?? item.value,
         escalation: escalationMap.get(id)
       };
     })

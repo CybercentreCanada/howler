@@ -334,8 +334,8 @@ class TestHideCases:
         # Build a Case object with items — stream_search returns it directly.
         related_case = Case({"case_id": "case-other", "title": "test case", "summary": "summary"})
         related_case.items = [
-            CaseItem({"type": "case", "value": "case-001", "path": "ref"}),
-            CaseItem({"type": "case", "value": "something-else", "path": "other"}),
+            CaseItem({"type": "case", "value": "case-001"}),
+            CaseItem({"type": "case", "value": "something-else"}),
         ]
         mock_ds.case.stream_search.return_value = iter([related_case])
 
@@ -571,12 +571,16 @@ class TestAppendCaseItemRouting:
     @pytest.mark.parametrize("item_type", ["table", "lead"])
     @patch("howler.services.case_service.datastore")
     def test_append_not_implemented_types_raise(self, mock_ds_fn, item_type):
-        """append_case_item raises NotImplementedError for table/lead/reference item types."""
+        """append_case_item raises InvalidDataException for unsupported item types."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        item = CaseItem({"type": item_type, "value": "x", "path": "misc"})
-        with pytest.raises(NotImplementedError):
+        mock_case = MagicMock()
+        mock_case.items = []
+        mock_ds.case.get.return_value = mock_case
+
+        item = CaseItem({"type": item_type, "value": "x", "name": "x"})
+        with pytest.raises(InvalidDataException):
             case_service.append_case_item("case-001", item=item)
 
     @patch("howler.services.case_service.append_event")
@@ -592,10 +596,10 @@ class TestAppendCaseItemRouting:
 
         mock_append_event.return_value = mock_case
 
-        item = CaseItem({"type": "event", "value": "obs-001", "path": "events/obs-001"})
+        item = CaseItem({"type": "event", "value": "obs-001"})
         result = case_service.append_case_item("case-001", item=item)
 
-        mock_append_event.assert_called_once_with("case-001", item)
+        mock_append_event.assert_called_once_with(mock_case, item)
         assert result is mock_case
 
     @patch("howler.services.case_service.append_case")
@@ -611,30 +615,11 @@ class TestAppendCaseItemRouting:
 
         mock_append_case.return_value = mock_case
 
-        item = CaseItem({"type": "case", "value": "child-001", "path": "cases/child-001"})
+        item = CaseItem({"type": "case", "value": "child-001"})
         result = case_service.append_case_item("case-001", item=item)
 
-        mock_append_case.assert_called_once_with("case-001", item)
+        mock_append_case.assert_called_once_with(mock_case, item)
         assert result is mock_case
-
-    @patch("howler.services.case_service.datastore")
-    def test_append_case_item_raises_if_item_path_ends_with_slash(self, mock_ds_fn):
-        """append_case_item raises InvalidDataException when the pre-built item's path ends with '/'."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-
-        item = CaseItem({"type": "hit", "value": "hit-001", "path": "alerts/"})
-        with pytest.raises(InvalidDataException, match="trailing"):
-            case_service.append_case_item("case-001", item=item)
-
-    @patch("howler.services.case_service.datastore")
-    def test_append_case_item_raises_if_item_type_path_ends_with_slash(self, mock_ds_fn):
-        """append_case_item raises InvalidDataException when item_path param ends with '/'."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-
-        with pytest.raises(InvalidDataException, match="trailing"):
-            case_service.append_case_item("case-001", item_type="hit", item_value="hit-001", item_path="alerts/")
 
     @patch("howler.services.case_service.datastore")
     def test_append_case_item_raises_not_found_for_missing_case(self, mock_ds_fn):
@@ -643,8 +628,8 @@ class TestAppendCaseItemRouting:
         mock_ds_fn.return_value = mock_ds
         mock_ds.case.get.return_value = None
 
-        item = CaseItem({"type": "hit", "value": "hit-001", "path": "alerts"})
-        with pytest.raises(NotFoundException, match="does not exist"):
+        item = CaseItem({"type": "hit", "value": "hit-001"})
+        with pytest.raises(NotFoundException, match="Case does not exist"):
             case_service.append_case_item("nonexistent", item=item)
 
 
@@ -673,18 +658,18 @@ class TestAppendHit:
         mock_hit.classification = CLASSIFICATION.UNRESTRICTED
         mock_ds.hit.get.return_value = mock_hit
 
-        item = CaseItem({"type": "hit", "value": "hit-001", "path": "related/"})
-        case_service.append_hit("case-001", item)
+        item = CaseItem({"type": "hit", "value": "hit-001"})
+        case_service.append_hit(mock_case, item)
 
         assert len(mock_case.items) == 1
         mock_backref.assert_called_once_with(mock_hit, "case-001")
-        mock_sync.assert_called_once_with("case-001")
+        mock_sync.assert_called_once_with(mock_case)
 
     @patch("howler.services.case_service._sync_case_metadata")
     @patch("howler.services.case_service._add_backreference")
     @patch("howler.services.case_service.datastore")
-    def test_append_hit_preserves_path(self, mock_ds_fn, mock_backref, mock_sync):
-        """append_hit preserves the item path as-is without any manipulation."""
+    def test_append_hit_preserves_name_and_parent(self, mock_ds_fn, mock_backref, mock_sync):
+        """append_hit preserves the item's name and parent fields without modification."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -697,21 +682,22 @@ class TestAppendHit:
         mock_hit.classification = CLASSIFICATION.UNRESTRICTED
         mock_ds.hit.get.return_value = mock_hit
 
-        item = CaseItem({"type": "hit", "value": "hit-001", "path": "related/"})
-        case_service.append_hit("case-001", item)
+        item = CaseItem({"type": "hit", "value": "hit-001", "name": "My Alert", "parent": None})
+        case_service.append_hit(mock_case, item)
 
-        assert item.path == "related/"
+        assert item.name == "My Alert"
+        assert item.parent is None
 
     @patch("howler.services.case_service.datastore")
     def test_append_hit_missing_case_raises(self, mock_ds_fn):
-        """append_hit raises NotFoundException when the case does not exist."""
+        """append_case_item raises NotFoundException when the case does not exist."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
         mock_ds.case.get.return_value = None
 
-        item = CaseItem({"type": "hit", "value": "hit-001", "path": "related/"})
+        item = CaseItem({"type": "hit", "value": "hit-001"})
         with pytest.raises(NotFoundException):
-            case_service.append_hit("nonexistent-case", item)
+            case_service.append_case_item("nonexistent-case", item=item)
 
     @patch("howler.services.case_service.datastore")
     def test_append_hit_missing_hit_raises(self, mock_ds_fn):
@@ -724,27 +710,28 @@ class TestAppendHit:
         mock_ds.case.get.return_value = mock_case
         mock_ds.hit.get.return_value = None
 
-        item = CaseItem({"type": "hit", "value": "nonexistent-hit", "path": "related/"})
+        item = CaseItem({"type": "hit", "value": "nonexistent-hit"})
         with pytest.raises(NotFoundException):
-            case_service.append_hit("case-001", item)
+            case_service.append_hit(mock_case, item)
 
         # Case must NOT have been saved when the hit doesn't exist.
         mock_ds.case.save.assert_not_called()
 
     @patch("howler.services.case_service.datastore")
     def test_append_hit_duplicate_raises(self, mock_ds_fn):
-        """append_hit raises InvalidDataException when the hit is already in the case."""
+        """append_case_item raises InvalidDataException when the destination already contains same name/parent."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        existing = CaseItem({"type": "hit", "value": "hit-001", "path": "alerts/test"})
+        existing = CaseItem({"type": "hit", "value": "hit-001", "name": "dup"})
         mock_case = MagicMock()
         mock_case.items = [existing]
         mock_ds.case.get.return_value = mock_case
+        mock_ds.hit.get.return_value = MagicMock(classification=CLASSIFICATION.UNRESTRICTED)
 
-        item = CaseItem({"type": "hit", "value": "hit-001", "path": "related/"})
+        item = CaseItem({"type": "hit", "value": "hit-002", "name": "dup"})
         with pytest.raises(InvalidDataException):
-            case_service.append_hit("case-001", item)
+            case_service.append_case_item("case-001", item=item)
 
 
 # ---------------------------------------------------------------------------
@@ -767,31 +754,31 @@ class TestAppendEvent:
         mock_case.case_id = "case-001"
         mock_case.items = []
         mock_ds.case.get.return_value = mock_case
-        mock_ds.case.save.return_value = True
+        mock_case.save.return_value = True
 
         mock_obs = MagicMock()
         mock_obs.classification = CLASSIFICATION.UNRESTRICTED
         mock_obs.howler.id = "obs-001"
         mock_ds.event.get.return_value = mock_obs
 
-        item = CaseItem({"type": "event", "value": "obs-001", "path": "related/"})
-        case_service.append_event("case-001", item)
+        item = CaseItem({"type": "event", "value": "obs-001"})
+        case_service.append_event(mock_case, item)
 
-        mock_ds.case.save.assert_called_once()
+        mock_case.save.assert_called_once()
         assert len(mock_case.items) == 1
         mock_backref.assert_called_once_with(mock_obs, "case-001")
-        mock_sync.assert_called_once_with("case-001")
+        mock_sync.assert_called_once_with(mock_case)
 
     @patch("howler.services.case_service.datastore")
     def test_append_event_missing_case_raises(self, mock_ds_fn):
-        """append_event raises NotFoundException when the case does not exist."""
+        """append_case_item raises NotFoundException when the case does not exist."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
         mock_ds.case.get.return_value = None
 
-        item = CaseItem({"type": "event", "value": "obs-001", "path": "related/"})
+        item = CaseItem({"type": "event", "value": "obs-001"})
         with pytest.raises(NotFoundException):
-            case_service.append_event("nonexistent-case", item)
+            case_service.append_case_item("nonexistent-case", item=item)
 
     @patch("howler.services.case_service.datastore")
     def test_append_event_missing_event_raises(self, mock_ds_fn):
@@ -804,24 +791,25 @@ class TestAppendEvent:
         mock_ds.case.get.return_value = mock_case
         mock_ds.event.get.return_value = None
 
-        item = CaseItem({"type": "event", "value": "nonexistent-obs", "path": "related/"})
+        item = CaseItem({"type": "event", "value": "nonexistent-obs"})
         with pytest.raises(NotFoundException):
-            case_service.append_event("case-001", item)
+            case_service.append_event(mock_case, item)
 
     @patch("howler.services.case_service.datastore")
     def test_append_event_duplicate_raises(self, mock_ds_fn):
-        """append_event raises InvalidDataException when the event is already in the case."""
+        """append_case_item raises InvalidDataException for duplicate destination name/parent."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        existing = CaseItem({"type": "event", "value": "obs-001", "path": "events/obs-001"})
+        existing = CaseItem({"type": "event", "value": "obs-001", "name": "dup"})
         mock_case = MagicMock()
         mock_case.items = [existing]
         mock_ds.case.get.return_value = mock_case
+        mock_ds.event.get.return_value = MagicMock(classification=CLASSIFICATION.UNRESTRICTED)
 
-        item = CaseItem({"type": "event", "value": "obs-001", "path": "related/"})
+        item = CaseItem({"type": "event", "value": "obs-002", "name": "dup"})
         with pytest.raises(InvalidDataException):
-            case_service.append_event("case-001", item)
+            case_service.append_case_item("case-001", item=item)
 
 
 # ---------------------------------------------------------------------------
@@ -845,26 +833,26 @@ class TestAppendCase:
         mock_child = MagicMock()
         mock_child.case_id = "child-001"
 
-        mock_ds.case.get.side_effect = lambda key, as_obj=False: mock_parent if key == "parent-001" else mock_child
-        mock_ds.case.save.return_value = True
+        mock_ds.case.get.return_value = mock_child
+        mock_parent.save.return_value = True
 
-        item = CaseItem({"type": "case", "value": "child-001", "path": "related/child-001"})
-        case_service.append_case("parent-001", item)
+        item = CaseItem({"type": "case", "value": "child-001"})
+        case_service.append_case(mock_parent, item)
 
-        mock_ds.case.save.assert_called_once()
+        mock_parent.save.assert_called_once()
         assert len(mock_parent.items) == 1
-        assert "child-001" in item.path
+        assert item.value == "child-001"
 
     @patch("howler.services.case_service.datastore")
     def test_append_case_missing_parent_raises(self, mock_ds_fn):
-        """append_case raises NotFoundException when the parent case does not exist."""
+        """append_case_item raises NotFoundException when the parent case does not exist."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
         mock_ds.case.get.return_value = None
 
-        item = CaseItem({"type": "case", "value": "child-001", "path": "related/"})
+        item = CaseItem({"type": "case", "value": "child-001"})
         with pytest.raises(NotFoundException):
-            case_service.append_case("nonexistent-parent", item)
+            case_service.append_case_item("nonexistent-parent", item=item)
 
     @patch("howler.services.case_service.datastore")
     def test_append_case_missing_referenced_case_raises(self, mock_ds_fn):
@@ -875,11 +863,11 @@ class TestAppendCase:
         mock_parent = MagicMock()
         mock_parent.items = []
 
-        mock_ds.case.get.side_effect = lambda key, as_obj=False: mock_parent if key == "parent-001" else None
+        mock_ds.case.get.return_value = None
 
-        item = CaseItem({"type": "case", "value": "nonexistent-child", "path": "related/"})
+        item = CaseItem({"type": "case", "value": "nonexistent-child"})
         with pytest.raises(NotFoundException):
-            case_service.append_case("parent-001", item)
+            case_service.append_case(mock_parent, item)
 
     @patch("howler.services.case_service.datastore")
     def test_append_case_duplicate_raises(self, mock_ds_fn):
@@ -887,18 +875,18 @@ class TestAppendCase:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        existing = CaseItem({"type": "case", "value": "child-001", "path": "cases/child-001"})
+        existing = CaseItem({"type": "case", "value": "child-001"})
         mock_parent = MagicMock()
         mock_parent.items = [existing]
-        mock_ds.case.get.return_value = mock_parent
+        mock_ds.case.get.return_value = MagicMock()
 
-        item = CaseItem({"type": "case", "value": "child-001", "path": "related/"})
+        item = CaseItem({"type": "case", "value": "child-001"})
         with pytest.raises(InvalidDataException):
-            case_service.append_case("parent-001", item)
+            case_service.append_case(mock_parent, item)
 
     @patch("howler.services.case_service.datastore")
-    def test_append_case_normalizes_nested_path_to_root(self, mock_ds_fn):
-        """append_case strips folder segments from a case item path, keeping only the last component."""
+    def test_append_case_places_item_at_root(self, mock_ds_fn):
+        """append_case always places case items at root level (parent must be None)."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -910,18 +898,18 @@ class TestAppendCase:
         mock_child = MagicMock()
         mock_child.case_id = "child-001"
 
-        mock_ds.case.get.side_effect = lambda key, as_obj=False: mock_parent if key == "parent-001" else mock_child
-        mock_ds.case.save.return_value = True
+        mock_ds.case.get.return_value = mock_child
+        mock_parent.save.return_value = True
 
-        item = CaseItem({"type": "case", "value": "child-001", "path": "folder/subfolder/child-case"})
-        case_service.append_case("parent-001", item)
+        item = CaseItem({"type": "case", "value": "child-001"})
+        case_service.append_case(mock_parent, item)
 
-        # The path should be normalized to just the last component
-        assert item.path == "child-case"
+        assert len(mock_parent.items) == 1
+        assert item.parent is None
 
     @patch("howler.services.case_service.datastore")
-    def test_append_case_normalized_path_logs_explanation(self, mock_ds_fn):
-        """append_case records a log entry when the case item path is normalized."""
+    def test_append_case_no_log_entry_for_plain_add(self, mock_ds_fn):
+        """append_case does not generate a log entry for a normal case reference add."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -933,47 +921,18 @@ class TestAppendCase:
         mock_child = MagicMock()
         mock_child.case_id = "child-001"
 
-        mock_ds.case.get.side_effect = lambda key, as_obj=False: mock_parent if key == "parent-001" else mock_child
-        mock_ds.case.save.return_value = True
+        mock_ds.case.get.return_value = mock_child
+        mock_parent.save.return_value = True
 
-        original_path = "folder/child-case"
-        item = CaseItem({"type": "case", "value": "child-001", "path": original_path})
-        case_service.append_case("parent-001", item)
+        item = CaseItem({"type": "case", "value": "child-001"})
+        case_service.append_case(mock_parent, item)
 
-        # A log entry must have been appended documenting the normalization
-        assert len(mock_parent.log) == 1
-        log_entry = mock_parent.log[0]
-        assert original_path in log_entry["explanation"]
-        assert "child-case" in log_entry["explanation"]
-
-    @patch("howler.services.case_service.datastore")
-    def test_append_case_root_path_not_modified(self, mock_ds_fn):
-        """append_case leaves a root-level path (no folder segments) unchanged."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-
-        mock_parent = MagicMock()
-        mock_parent.case_id = "parent-001"
-        mock_parent.items = []
-        mock_parent.log = []
-
-        mock_child = MagicMock()
-        mock_child.case_id = "child-001"
-
-        mock_ds.case.get.side_effect = lambda key, as_obj=False: mock_parent if key == "parent-001" else mock_child
-        mock_ds.case.save.return_value = True
-
-        item = CaseItem({"type": "case", "value": "child-001", "path": "child-case"})
-        case_service.append_case("parent-001", item)
-
-        # No folder segments → path must remain as supplied
-        assert item.path == "child-case"
-        # No normalization log entry should have been added
+        assert len(mock_parent.items) == 1
         assert len(mock_parent.log) == 0
 
     @patch("howler.services.case_service.datastore")
-    def test_append_case_single_segment_path_not_modified(self, mock_ds_fn):
-        """append_case does not alter a path consisting of a single segment without slashes."""
+    def test_append_case_item_value_unchanged(self, mock_ds_fn):
+        """append_case stores the item's value unchanged."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -985,13 +944,36 @@ class TestAppendCase:
         mock_child = MagicMock()
         mock_child.case_id = "child-001"
 
-        mock_ds.case.get.side_effect = lambda key, as_obj=False: mock_parent if key == "parent-001" else mock_child
-        mock_ds.case.save.return_value = True
+        mock_ds.case.get.return_value = mock_child
+        mock_parent.save.return_value = True
 
-        item = CaseItem({"type": "case", "value": "child-001", "path": "my-child"})
-        case_service.append_case("parent-001", item)
+        item = CaseItem({"type": "case", "value": "child-001"})
+        case_service.append_case(mock_parent, item)
 
-        assert item.path == "my-child"
+        assert item.value == "child-001"
+        assert len(mock_parent.log) == 0
+
+    @patch("howler.services.case_service.datastore")
+    def test_append_case_with_optional_name(self, mock_ds_fn):
+        """append_case correctly stores a case item with an optional display name."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_parent = MagicMock()
+        mock_parent.case_id = "parent-001"
+        mock_parent.items = []
+        mock_parent.log = []
+
+        mock_child = MagicMock()
+        mock_child.case_id = "child-001"
+
+        mock_ds.case.get.return_value = mock_child
+        mock_parent.save.return_value = True
+
+        item = CaseItem({"type": "case", "value": "child-001", "name": "my-child"})
+        case_service.append_case(mock_parent, item)
+
+        assert item.name == "my-child"
         assert len(mock_parent.log) == 0
 
 
@@ -1001,11 +983,11 @@ class TestAppendCase:
 
 
 class TestAppendReference:
-    """Tests for case_service.append_reference."""
+    """Tests for case_service.append_case_item with reference items."""
 
     @patch("howler.services.case_service.datastore")
     def test_append_reference_adds_item(self, mock_ds_fn):
-        """append_reference saves the reference item to the case."""
+        """append_case_item saves the reference item to the case."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -1013,39 +995,39 @@ class TestAppendReference:
         mock_case.items = []
         mock_case.case_id = "case-001"
         mock_ds.case.get.return_value = mock_case
-        mock_ds.case.save.return_value = True
+        mock_case.save.return_value = True
 
-        item = CaseItem({"type": "reference", "value": "https://example.com", "path": "refs"})
-        case_service.append_reference("case-001", item)
+        item = CaseItem({"type": "reference", "value": "https://example.com", "name": "refs"})
+        case_service.append_case_item("case-001", item=item)
 
         assert item in mock_case.items
-        mock_ds.case.save.assert_called_once()
+        mock_case.save.assert_called_once()
 
     @patch("howler.services.case_service.datastore")
     def test_append_reference_missing_case_raises(self, mock_ds_fn):
-        """append_reference raises NotFoundException when the case does not exist."""
+        """append_case_item raises NotFoundException when the case does not exist."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
         mock_ds.case.get.return_value = None
 
-        item = CaseItem({"type": "reference", "value": "https://example.com", "path": "refs"})
+        item = CaseItem({"type": "reference", "value": "https://example.com", "name": "refs"})
         with pytest.raises(NotFoundException):
-            case_service.append_reference("nonexistent", item)
+            case_service.append_case_item("nonexistent", item=item)
 
     @patch("howler.services.case_service.datastore")
     def test_append_reference_duplicate_raises(self, mock_ds_fn):
-        """append_reference raises InvalidDataException when the URL already exists."""
+        """append_case_item raises InvalidDataException when destination sibling name already exists."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        existing = CaseItem({"type": "reference", "value": "https://example.com", "path": "refs"})
+        existing = CaseItem({"type": "reference", "value": "https://example.com", "name": "refs"})
         mock_case = MagicMock()
         mock_case.items = [existing]
         mock_ds.case.get.return_value = mock_case
 
-        item = CaseItem({"type": "reference", "value": "https://example.com", "path": "refs"})
+        item = CaseItem({"type": "reference", "value": "https://another.example.com", "name": "refs"})
         with pytest.raises(InvalidDataException):
-            case_service.append_reference("case-001", item)
+            case_service.append_case_item("case-001", item=item)
 
 
 # ---------------------------------------------------------------------------
@@ -1068,16 +1050,16 @@ class TestRemoveCaseItem:
 
     @patch("howler.services.case_service.datastore")
     def test_remove_case_item_raises_not_found_for_missing_item(self, mock_ds_fn):
-        """remove_case_item raises NotFoundException when the item value is not in the case."""
+        """remove_case_item raises NotFoundException when the item id is not in the case."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
         mock_case = MagicMock()
-        mock_case.items = [CaseItem({"type": "hit", "value": "other-id", "path": "alerts/x"})]
+        mock_case.items = [CaseItem({"type": "hit", "value": "other-id"})]
         mock_ds.case.get.return_value = mock_case
 
         with pytest.raises(NotFoundException):
-            case_service.remove_case_items("case-001", ["nonexistent-item-value"])
+            case_service.remove_case_items("case-001", ["00000000-0000-0000-0000-000000000000"])
 
     @patch("howler.services.case_service._sync_case_metadata")
     @patch("howler.services.case_service.datastore")
@@ -1086,7 +1068,7 @@ class TestRemoveCaseItem:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        hit_item = CaseItem({"type": "hit", "value": "hit-001", "path": "alerts/test"})
+        hit_item = CaseItem({"type": "hit", "value": "hit-001"})
 
         mock_case = MagicMock()
         mock_case.case_id = "case-001"
@@ -1098,11 +1080,11 @@ class TestRemoveCaseItem:
         mock_hit.howler.related = ["case-001"]
         mock_ds.hit.get.return_value = mock_hit
 
-        case_service.remove_case_items("case-001", ["hit-001"])
+        case_service.remove_case_items("case-001", [hit_item.id])
 
         assert hit_item not in mock_case.items
         mock_ds.case.save.assert_called_once()
-        mock_sync.assert_called_once_with("case-001")
+        mock_sync.assert_called_once_with(mock_case)
 
     @patch("howler.services.case_service._sync_case_metadata")
     @patch("howler.services.case_service.datastore")
@@ -1111,7 +1093,7 @@ class TestRemoveCaseItem:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        obs_item = CaseItem({"type": "event", "value": "obs-001", "path": "events/obs-001"})
+        obs_item = CaseItem({"type": "event", "value": "obs-001"})
 
         mock_case = MagicMock()
         mock_case.case_id = "case-001"
@@ -1123,11 +1105,11 @@ class TestRemoveCaseItem:
         mock_obs.howler.related = ["case-001"]
         mock_ds.event.get.return_value = mock_obs
 
-        case_service.remove_case_items("case-001", ["obs-001"])
+        case_service.remove_case_items("case-001", [obs_item.id])
 
         assert obs_item not in mock_case.items
         mock_ds.case.save.assert_called_once()
-        mock_sync.assert_called_once_with("case-001")
+        mock_sync.assert_called_once_with(mock_case)
 
 
 # ---------------------------------------------------------------------------
@@ -1140,21 +1122,22 @@ class TestRenameCaseItem:
 
     @patch("howler.services.case_service.datastore")
     def test_rename_item_success(self, mock_ds_fn):
-        """Updates the item path and saves the case once."""
+        """Updates the item name and saves the case once."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        item = CaseItem({"type": "hit", "value": "hit-001", "path": "folder/Old Name"})
+        item = CaseItem({"type": "hit", "value": "hit-001", "name": "Old Name"})
         mock_case = MagicMock()
         mock_case.case_id = "case-001"
         mock_case.items = [item]
+        mock_case.save.return_value = True
         mock_ds.case.get.return_value = mock_case
-        mock_ds.case.save.return_value = True
 
-        result = case_service.rename_case_item("case-001", "hit-001", "folder/New Name")
+        result = case_service.rename_case_item("case-001", item.id, "New Name")
 
-        assert item.path == "folder/New Name"
-        mock_ds.case.save.assert_called_once_with("case-001", mock_case)
+        assert item.name == "New Name"
+        mock_case.save.assert_called_once_with()
+        mock_ds.case.save.assert_not_called()
         assert result is mock_case
 
     @patch("howler.services.case_service.datastore")
@@ -1165,7 +1148,7 @@ class TestRenameCaseItem:
         mock_ds.case.get.return_value = None
 
         with pytest.raises(NotFoundException):
-            case_service.rename_case_item("nonexistent", "hit-001", "folder/New Name")
+            case_service.rename_case_item("nonexistent", "hit-001", "New Name")
 
         mock_ds.case.save.assert_not_called()
 
@@ -1176,42 +1159,42 @@ class TestRenameCaseItem:
         mock_ds_fn.return_value = mock_ds
 
         mock_case = MagicMock()
-        mock_case.items = [CaseItem({"type": "hit", "value": "other-id", "path": "folder/x"})]
+        mock_case.items = [CaseItem({"type": "hit", "value": "other-id", "name": "x"})]
         mock_ds.case.get.return_value = mock_case
 
         with pytest.raises(NotFoundException):
-            case_service.rename_case_item("case-001", "hit-001", "folder/New Name")
+            case_service.rename_case_item("case-001", "hit-001", "New Name")
 
         mock_ds.case.save.assert_not_called()
 
     @patch("howler.services.case_service.datastore")
-    def test_rename_item_raises_invalid_data_when_path_taken(self, mock_ds_fn):
-        """Raises InvalidDataException when new_path is already used by another item."""
+    def test_rename_item_raises_invalid_data_when_name_taken(self, mock_ds_fn):
+        """Raises InvalidDataException when new_name is already used by another item."""
         from howler.common.exceptions import InvalidDataException
 
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        item_a = CaseItem({"type": "hit", "value": "hit-001", "path": "folder/A"})
-        item_b = CaseItem({"type": "hit", "value": "hit-002", "path": "folder/B"})
+        item_a = CaseItem({"type": "hit", "value": "hit-001", "name": "A"})
+        item_b = CaseItem({"type": "hit", "value": "hit-002", "name": "B"})
         mock_case = MagicMock()
         mock_case.items = [item_a, item_b]
         mock_ds.case.get.return_value = mock_case
 
         with pytest.raises(InvalidDataException):
-            case_service.rename_case_item("case-001", "hit-001", "folder/B")
+            case_service.rename_case_item("case-001", item_a.id, "B")
 
         mock_ds.case.save.assert_not_called()
 
     def test_rename_item_raises_invalid_data_for_trailing_slash(self):
-        """Raises InvalidDataException without touching the datastore for a bad path."""
+        """Raises InvalidDataException without touching the datastore for a bad name."""
         from howler.common.exceptions import InvalidDataException
 
         with pytest.raises(InvalidDataException):
-            case_service.rename_case_item("case-001", "hit-001", "folder/")
+            case_service.rename_case_item("case-001", "hit-001", "")
 
-    def test_rename_item_raises_invalid_data_for_empty_path(self):
-        """Raises InvalidDataException for an empty new_path."""
+    def test_rename_item_raises_invalid_data_for_empty_name(self):
+        """Raises InvalidDataException for an empty new_name."""
         from howler.common.exceptions import InvalidDataException
 
         with pytest.raises(InvalidDataException):
@@ -1225,32 +1208,73 @@ class TestRenameCaseItem:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        item = CaseItem({"type": "hit", "value": "hit-001", "path": "folder/Old Name"})
+        item = CaseItem({"type": "hit", "value": "hit-001", "name": "Old Name"})
         mock_case = MagicMock()
         mock_case.case_id = "case-001"
         mock_case.items = [item]
+        mock_case.save.return_value = False
         mock_ds.case.get.return_value = mock_case
-        mock_ds.case.save.return_value = False
 
         with pytest.raises(DataStoreException):
-            case_service.rename_case_item("case-001", "hit-001", "folder/New Name")
+            case_service.rename_case_item("case-001", item.id, "New Name")
 
     @patch("howler.services.case_service.datastore")
-    def test_rename_item_allows_same_path_on_same_item(self, mock_ds_fn):
-        """Renaming an item to its current path is allowed (no conflict with itself)."""
+    def test_rename_item_allows_same_name_on_same_item(self, mock_ds_fn):
+        """Renaming an item to its current name is allowed (no conflict with itself)."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        item = CaseItem({"type": "hit", "value": "hit-001", "path": "folder/Same"})
+        item = CaseItem({"type": "hit", "value": "hit-001", "name": "Same"})
         mock_case = MagicMock()
         mock_case.case_id = "case-001"
         mock_case.items = [item]
+        mock_case.save.return_value = True
         mock_ds.case.get.return_value = mock_case
-        mock_ds.case.save.return_value = True
 
-        case_service.rename_case_item("case-001", "hit-001", "folder/Same")
+        case_service.rename_case_item("case-001", item.id, "Same")
 
-        mock_ds.case.save.assert_called_once()
+        mock_case.save.assert_called_once_with()
+        mock_ds.case.save.assert_not_called()
+
+    @patch("howler.services.case_service.datastore")
+    def test_rename_item_allows_same_name_in_different_folder(self, mock_ds_fn):
+        """Items in different folders may share a name; only siblings conflict."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        folder_a = CaseItem({"type": "folder", "name": "folder-a"})
+        folder_b = CaseItem({"type": "folder", "name": "folder-b"})
+        item_in_a = CaseItem({"type": "hit", "value": "hit-001", "name": "Report", "parent": folder_a.id})
+        item_in_b = CaseItem({"type": "hit", "value": "hit-002", "name": "Other", "parent": folder_b.id})
+        mock_case = MagicMock()
+        mock_case.case_id = "case-001"
+        mock_case.items = [folder_a, folder_b, item_in_a, item_in_b]
+        mock_case.save.return_value = True
+        mock_ds.case.get.return_value = mock_case
+
+        # Renaming item_in_b to "Report" is allowed because it's in a different folder
+        case_service.rename_case_item("case-001", item_in_b.id, "Report")
+
+        mock_case.save.assert_called_once_with()
+        mock_ds.case.save.assert_not_called()
+
+    @patch("howler.services.case_service.datastore")
+    def test_rename_item_raises_when_sibling_has_same_name(self, mock_ds_fn):
+        """Renaming to a name already used by a sibling (same parent) raises InvalidDataException."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        folder = CaseItem({"type": "folder", "name": "folder-a"})
+        item_a = CaseItem({"type": "hit", "value": "hit-001", "name": "Report", "parent": folder.id})
+        item_b = CaseItem({"type": "hit", "value": "hit-002", "name": "Other", "parent": folder.id})
+        mock_case = MagicMock()
+        mock_case.items = [folder, item_a, item_b]
+        mock_ds.case.get.return_value = mock_case
+
+        with pytest.raises(InvalidDataException):
+            case_service.rename_case_item("case-001", item_b.id, "Report")
+
+        mock_ds.case.save.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -1296,9 +1320,8 @@ class TestSyncCaseMetadata:
         """_sync_case_metadata does nothing when the case does not exist."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
-        mock_ds.case.get.return_value = None
 
-        case_service._sync_case_metadata("nonexistent-id")
+        case_service._sync_case_metadata(None)
 
         mock_ds.case.save.assert_not_called()
 
@@ -1308,11 +1331,11 @@ class TestSyncCaseMetadata:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        hit_item = CaseItem({"type": "hit", "value": "hit-001", "path": "alerts/test"})
+        hit_item = CaseItem({"type": "hit", "value": "hit-001", "name": "test"})
 
         mock_case = MagicMock()
         mock_case.items = [hit_item]
-        mock_ds.case.get.return_value = mock_case
+        mock_case.save.return_value = True
 
         mock_outline = MagicMock()
         mock_outline.threat = "evil.example.com"
@@ -1324,9 +1347,9 @@ class TestSyncCaseMetadata:
         mock_hit.howler.outline = mock_outline
         mock_ds.hit.get.return_value = mock_hit
 
-        case_service._sync_case_metadata("case-001")
+        case_service._sync_case_metadata(mock_case)
 
-        mock_ds.case.save.assert_called_once()
+        mock_case.save.assert_called_once()
         assert mock_case.threats == ["evil.example.com"]
         assert mock_case.targets == ["workstation-01"]
         assert mock_case.indicators == ["hash-abc"]
@@ -1339,11 +1362,11 @@ class TestSyncCaseMetadata:
 
         mock_case = MagicMock()
         mock_case.items = []
-        mock_ds.case.get.return_value = mock_case
+        mock_case.save.return_value = True
 
-        case_service._sync_case_metadata("case-001")
+        case_service._sync_case_metadata(mock_case)
 
-        mock_ds.case.save.assert_called_once()
+        mock_case.save.assert_called_once()
         assert mock_case.targets == []
         assert mock_case.threats == []
         assert mock_case.indicators == []
@@ -1354,20 +1377,20 @@ class TestSyncCaseMetadata:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        obs_item = CaseItem({"type": "event", "value": "obs-001", "path": "events/obs-001"})
+        obs_item = CaseItem({"type": "event", "value": "obs-001", "name": "obs-001"})
 
         mock_case = MagicMock()
         mock_case.items = [obs_item]
-        mock_ds.case.get.return_value = mock_case
+        mock_case.save.return_value = True
 
         mock_related = Related({"ip": ["10.0.0.1"], "hosts": ["host-x"]})
         mock_obs = MagicMock()
         mock_obs.related = mock_related
         mock_ds.event.get.return_value = mock_obs
 
-        case_service._sync_case_metadata("case-001")
+        case_service._sync_case_metadata(mock_case)
 
-        mock_ds.case.save.assert_called_once()
+        mock_case.save.assert_called_once()
         assert "10.0.0.1" in mock_case.indicators
         assert "host-x" in mock_case.indicators
 
@@ -1377,17 +1400,17 @@ class TestSyncCaseMetadata:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        obs_item = CaseItem({"type": "event", "value": "obs-missing", "path": "events/obs-missing"})
+        obs_item = CaseItem({"type": "event", "value": "obs-missing", "name": "obs-missing"})
 
         mock_case = MagicMock()
         mock_case.items = [obs_item]
-        mock_ds.case.get.return_value = mock_case
+        mock_case.save.return_value = True
 
         mock_ds.event.get.return_value = None
 
-        case_service._sync_case_metadata("case-001")
+        case_service._sync_case_metadata(mock_case)
 
-        mock_ds.case.save.assert_called_once()
+        mock_case.save.assert_called_once()
         assert mock_case.indicators == []
 
 
@@ -1411,12 +1434,8 @@ class TestAddBackreference:
         with pytest.raises(InvalidDataException):
             case_service._add_backreference(mock_obj, "")
 
-    @patch("howler.services.case_service.datastore")
-    def test_add_backreference_appends_and_saves(self, mock_ds_fn):
+    def test_add_backreference_appends_and_saves(self):
         """_add_backreference appends the case_id to related and saves the object."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-
         mock_obj = MagicMock()
         mock_obj.howler.related = []
         mock_obj.howler.id = "obj-001"
@@ -1424,14 +1443,10 @@ class TestAddBackreference:
         case_service._add_backreference(mock_obj, "case-abc")
 
         assert "case-abc" in mock_obj.howler.related
-        mock_ds.__getitem__.return_value.save.assert_called_once()
+        mock_obj.save.assert_called_once()
 
-    @patch("howler.services.case_service.datastore")
-    def test_add_backreference_is_idempotent(self, mock_ds_fn):
+    def test_add_backreference_is_idempotent(self):
         """_add_backreference does not add a duplicate if the case_id is already present."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-
         mock_obj = MagicMock()
         mock_obj.howler.related = ["case-abc"]
         mock_obj.howler.id = "obj-001"
@@ -1439,7 +1454,7 @@ class TestAddBackreference:
         case_service._add_backreference(mock_obj, "case-abc")
 
         assert mock_obj.howler.related.count("case-abc") == 1
-        mock_ds.__getitem__.return_value.save.assert_not_called()
+        mock_obj.save.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -1455,26 +1470,18 @@ class TestRemoveBackreference:
         with pytest.raises(InvalidDataException):
             case_service.remove_backreference(None, "case-id")
 
-    @patch("howler.services.case_service.datastore")
-    def test_remove_backreference_noop_when_not_present(self, mock_ds_fn):
+    def test_remove_backreference_noop_when_not_present(self):
         """remove_backreference does nothing when case_id is not in related."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-
         mock_obj = MagicMock()
         mock_obj.howler.related = ["other-case"]
 
         case_service.remove_backreference(mock_obj, "case-that-was-never-added")
 
         assert "other-case" in mock_obj.howler.related
-        mock_ds.__getitem__.return_value.save.assert_not_called()
+        mock_obj.save.assert_not_called()
 
-    @patch("howler.services.case_service.datastore")
-    def test_remove_backreference_removes_and_saves(self, mock_ds_fn):
+    def test_remove_backreference_removes_and_saves(self):
         """remove_backreference removes the case_id from related and saves."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-
         mock_obj = MagicMock()
         mock_obj.howler.related = ["case-abc", "other-case"]
         mock_obj.howler.id = "obj-001"
@@ -1483,7 +1490,7 @@ class TestRemoveBackreference:
 
         assert "case-abc" not in mock_obj.howler.related
         assert "other-case" in mock_obj.howler.related
-        mock_ds.__getitem__.return_value.save.assert_called_once()
+        mock_obj.save.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
@@ -1548,8 +1555,8 @@ class TestCaseEventEmission:
         mock_ds.hit.get.return_value = mock_hit
         mock_ds.case.save.return_value = True
 
-        item = CaseItem({"type": "hit", "value": "hit-001", "path": "alerts/test"})
-        case_service.append_hit("case-001", item)
+        item = CaseItem({"type": "hit", "value": "hit-001", "name": "test"})
+        case_service.append_hit(mock_case, item)
 
         mock_events.emit.assert_called_once()
         args = mock_events.emit.call_args
@@ -1571,12 +1578,12 @@ class TestCaseEventEmission:
         mock_hit.howler.id = "hit-001"
 
         # First get returns the case, second get (refetch) returns None
-        mock_ds.case.get.side_effect = [mock_case, None]
+        mock_ds.case.get.side_effect = [None]
         mock_ds.hit.get.return_value = mock_hit
         mock_ds.case.save.return_value = True
 
-        item = CaseItem({"type": "hit", "value": "hit-001", "path": "alerts/test"})
-        case_service.append_hit("case-001", item)
+        item = CaseItem({"type": "hit", "value": "hit-001", "name": "test"})
+        case_service.append_hit(mock_case, item)
 
         mock_events.emit.assert_not_called()
 
@@ -2125,8 +2132,8 @@ class TestCaseItemClassificationPropagation:
         mock_hit.classification = "RESTRICTED"
         mock_ds.hit.get.return_value = mock_hit
 
-        item = CaseItem({"type": "hit", "value": "hit-001", "path": "alerts/hit-001"})
-        case_service.append_hit("case-001", item)
+        item = CaseItem({"type": "hit", "value": "hit-001", "name": "hit-001"})
+        case_service.append_hit(mock_case, item)
 
         assert item.classification.value == CLASSIFICATION.normalize_classification("RESTRICTED")
 
@@ -2148,8 +2155,8 @@ class TestCaseItemClassificationPropagation:
         mock_hit.classification = "UNRESTRICTED"
         mock_ds.hit.get.return_value = mock_hit
 
-        item = CaseItem({"type": "hit", "value": "hit-001", "path": "alerts/hit-001"})
-        case_service.append_hit("case-001", item)
+        item = CaseItem({"type": "hit", "value": "hit-001", "name": "hit-001"})
+        case_service.append_hit(mock_case, item)
 
         assert item.classification.value == CLASSIFICATION.normalize_classification("UNRESTRICTED")
 
@@ -2165,15 +2172,15 @@ class TestCaseItemClassificationPropagation:
         mock_case.case_id = "case-001"
         mock_case.items = []
         mock_ds.case.get.return_value = mock_case
-        mock_ds.case.save.return_value = True
+        mock_case.save.return_value = True
 
         mock_event = MagicMock()
         mock_event.classification = "RESTRICTED"
         mock_event.howler.id = "event-001"
         mock_ds.event.get.return_value = mock_event
 
-        item = CaseItem({"type": "event", "value": "event-001", "path": "events/event-001"})
-        case_service.append_event("case-001", item)
+        item = CaseItem({"type": "event", "value": "event-001", "name": "event-001"})
+        case_service.append_event(mock_case, item)
 
         assert item.classification.value == CLASSIFICATION.normalize_classification("RESTRICTED")
 
@@ -2189,15 +2196,15 @@ class TestCaseItemClassificationPropagation:
         mock_case.case_id = "case-001"
         mock_case.items = []
         mock_ds.case.get.return_value = mock_case
-        mock_ds.case.save.return_value = True
+        mock_case.save.return_value = True
 
         mock_event = MagicMock()
         mock_event.classification = "UNRESTRICTED"
         mock_event.howler.id = "event-001"
         mock_ds.event.get.return_value = mock_event
 
-        item = CaseItem({"type": "event", "value": "event-001", "path": "events/event-001"})
-        case_service.append_event("case-001", item)
+        item = CaseItem({"type": "event", "value": "event-001", "name": "event-001"})
+        case_service.append_event(mock_case, item)
 
         assert item.classification.value == CLASSIFICATION.normalize_classification("UNRESTRICTED")
 
@@ -2218,8 +2225,8 @@ class TestFilterCaseItemsByClassification:
         case = {
             "case_id": "case-001",
             "items": [
-                {"type": "reference", "value": "http://example.com", "path": "refs/link", "classification": None},
-                {"type": "case", "value": "child-id", "path": "cases/child", "classification": None},
+                {"type": "reference", "value": "http://example.com", "classification": None, "name": "link"},
+                {"type": "case", "value": "child-id", "classification": None, "name": "child"},
             ],
         }
 
@@ -2236,7 +2243,7 @@ class TestFilterCaseItemsByClassification:
         case = {
             "case_id": "case-001",
             "items": [
-                {"type": "hit", "value": "hit-001", "path": "alerts/hit-001", "classification": "RESTRICTED"},
+                {"type": "hit", "value": "hit-001", "classification": "RESTRICTED", "name": "hit-001"},
             ],
         }
 
@@ -2253,7 +2260,7 @@ class TestFilterCaseItemsByClassification:
         case = {
             "case_id": "case-001",
             "items": [
-                {"type": "hit", "value": "hit-001", "path": "alerts/hit-001", "classification": "RESTRICTED"},
+                {"type": "hit", "value": "hit-001", "classification": "RESTRICTED", "name": "hit-001"},
             ],
         }
 
@@ -2270,9 +2277,9 @@ class TestFilterCaseItemsByClassification:
         case = {
             "case_id": "case-001",
             "items": [
-                {"type": "hit", "value": "hit-u", "path": "alerts/hit-u", "classification": "UNRESTRICTED"},
-                {"type": "hit", "value": "hit-r", "path": "alerts/hit-r", "classification": "RESTRICTED"},
-                {"type": "reference", "value": "http://example.com", "path": "refs/link", "classification": None},
+                {"type": "hit", "value": "hit-u", "classification": "UNRESTRICTED", "name": "hit-u"},
+                {"type": "hit", "value": "hit-r", "classification": "RESTRICTED", "name": "hit-r"},
+                {"type": "reference", "value": "http://example.com", "classification": None, "name": "link"},
             ],
         }
 
@@ -2309,10 +2316,331 @@ class TestFilterCaseItemsByClassification:
 
         case = {
             "case_id": "case-001",
-            "items": [{"type": "hit", "value": "hit-001", "path": "p", "classification": "UNRESTRICTED"}],
+            "items": [{"type": "hit", "value": "hit-001", "classification": "UNRESTRICTED", "name": "p"}],
         }
         original_id = id(case)
 
         case_service.filter_case_items_by_classification(case, "UNRESTRICTED")
 
         assert id(case) == original_id
+
+
+# ---------------------------------------------------------------------------
+# append_folder()
+# ---------------------------------------------------------------------------
+
+
+class TestAppendFolder:
+    """Tests for case_service.append_case_item with folder items."""
+
+    @patch("howler.services.case_service.datastore")
+    def test_append_folder_adds_item(self, mock_ds_fn):
+        """append_case_item appends a folder item and saves the case."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = MagicMock()
+        mock_case.case_id = "case-001"
+        mock_case.items = []
+        mock_ds.case.get.return_value = mock_case
+        mock_case.save.return_value = True
+
+        item = CaseItem({"type": "folder", "name": "My Folder"})
+        case_service.append_case_item("case-001", item=item)
+
+        assert len(mock_case.items) == 1
+        mock_case.save.assert_called_once()
+
+    @patch("howler.services.case_service.datastore")
+    def test_append_folder_missing_case_raises(self, mock_ds_fn):
+        """append_case_item raises NotFoundException when case does not exist."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+        mock_ds.case.get.return_value = None
+
+        item = CaseItem({"type": "folder", "name": "Folder"})
+        with pytest.raises(NotFoundException):
+            case_service.append_case_item("nonexistent", item=item)
+
+    @patch("howler.services.case_service.datastore")
+    def test_append_folder_duplicate_same_parent_raises(self, mock_ds_fn):
+        """append_case_item raises InvalidDataException for duplicate folder name under same parent."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        existing = CaseItem({"type": "folder", "name": "My Folder"})
+        mock_case = MagicMock()
+        mock_case.case_id = "case-001"
+        mock_case.items = [existing]
+        mock_ds.case.get.return_value = mock_case
+
+        item = CaseItem({"type": "folder", "name": "My Folder"})
+        with pytest.raises(InvalidDataException, match="already exists"):
+            case_service.append_case_item("case-001", item=item)
+
+
+# ---------------------------------------------------------------------------
+# append_markdown()
+# ---------------------------------------------------------------------------
+
+
+class TestAppendMarkdown:
+    """Tests for case_service.append_case_item with markdown items."""
+
+    @patch("howler.services.case_service.datastore")
+    def test_append_markdown_adds_item(self, mock_ds_fn):
+        """append_case_item appends a markdown item and saves the case."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = MagicMock()
+        mock_case.case_id = "case-001"
+        mock_case.items = []
+        mock_ds.case.get.return_value = mock_case
+        mock_case.save.return_value = True
+
+        item = CaseItem({"type": "markdown", "value": "# Hello\n\nWorld"})
+        case_service.append_case_item("case-001", item=item)
+
+        assert len(mock_case.items) == 1
+        mock_case.save.assert_called_once()
+
+    @patch("howler.services.case_service.datastore")
+    def test_append_markdown_missing_case_raises(self, mock_ds_fn):
+        """append_case_item raises NotFoundException when case does not exist."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+        mock_ds.case.get.return_value = None
+
+        item = CaseItem({"type": "markdown", "value": "content"})
+        with pytest.raises(NotFoundException):
+            case_service.append_case_item("nonexistent", item=item)
+
+
+# ---------------------------------------------------------------------------
+# move_case_item()
+# ---------------------------------------------------------------------------
+
+
+class TestMoveCaseItem:
+    """Tests for case_service.move_case_item."""
+
+    @patch("howler.services.case_service.datastore")
+    def test_move_item_to_folder(self, mock_ds_fn):
+        """move_case_item updates the parent and saves."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        folder = CaseItem({"type": "folder", "name": "Folder"})
+        item = CaseItem({"type": "hit", "value": "hit-001"})
+
+        mock_case = MagicMock()
+        mock_case.case_id = "case-001"
+        mock_case.items = [folder, item]
+        mock_ds.case.get.return_value = mock_case
+        mock_ds.case.save.return_value = True
+
+        case_service.move_case_item("case-001", item.id, folder.id)
+
+        assert item.parent == folder.id
+        mock_ds.case.save.assert_called_once()
+
+    @patch("howler.services.case_service.datastore")
+    def test_move_item_to_root(self, mock_ds_fn):
+        """move_case_item moves item to root when new_parent is None."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        folder = CaseItem({"type": "folder", "name": "Folder"})
+        item = CaseItem({"type": "hit", "value": "hit-001", "parent": folder.id})
+
+        mock_case = MagicMock()
+        mock_case.case_id = "case-001"
+        mock_case.items = [folder, item]
+        mock_ds.case.get.return_value = mock_case
+        mock_ds.case.save.return_value = True
+
+        case_service.move_case_item("case-001", item.id, None)
+
+        assert item.parent is None
+        mock_ds.case.save.assert_called_once()
+
+    @patch("howler.services.case_service.datastore")
+    def test_move_case_item_type_to_subfolder_raises(self, mock_ds_fn):
+        """move_case_item raises InvalidDataException when moving a case item to a folder."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        folder = CaseItem({"type": "folder", "name": "Folder"})
+        case_item = CaseItem({"type": "case", "value": "child-001"})
+
+        mock_case = MagicMock()
+        mock_case.case_id = "parent-001"
+        mock_case.items = [folder, case_item]
+        mock_ds.case.get.return_value = mock_case
+
+        with pytest.raises(InvalidDataException, match="root-level"):
+            case_service.move_case_item("parent-001", case_item.id, folder.id)
+
+    @patch("howler.services.case_service.datastore")
+    def test_move_missing_case_raises(self, mock_ds_fn):
+        """move_case_item raises NotFoundException when case does not exist."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+        mock_ds.case.get.return_value = None
+
+        with pytest.raises(NotFoundException):
+            case_service.move_case_item("nonexistent", "item-id", None)
+
+    @patch("howler.services.case_service.datastore")
+    def test_move_missing_item_raises(self, mock_ds_fn):
+        """move_case_item raises NotFoundException when item does not exist."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = MagicMock()
+        mock_case.case_id = "case-001"
+        mock_case.items = []
+        mock_ds.case.get.return_value = mock_case
+
+        with pytest.raises(NotFoundException):
+            case_service.move_case_item("case-001", "nonexistent-item", None)
+
+    @patch("howler.services.case_service.datastore")
+    def test_move_folder_into_own_child_raises(self, mock_ds_fn):
+        """move_case_item prevents cycle by rejecting move of a folder under its descendant."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        parent_folder = CaseItem({"type": "folder", "name": "Parent"})
+        child_folder = CaseItem({"type": "folder", "name": "Child", "parent": parent_folder.id})
+
+        mock_case = MagicMock()
+        mock_case.case_id = "case-001"
+        mock_case.items = [parent_folder, child_folder]
+        mock_ds.case.get.return_value = mock_case
+
+        with pytest.raises(InvalidDataException, match="descendant"):
+            case_service.move_case_item("case-001", parent_folder.id, child_folder.id)
+
+
+# ---------------------------------------------------------------------------
+# remove_case_items()
+# ---------------------------------------------------------------------------
+
+
+class TestRemoveCaseItemsByIds:
+    """Tests for case_service.remove_case_items."""
+
+    @patch("howler.services.case_service._sync_case_metadata")
+    @patch("howler.services.case_service.datastore")
+    def test_remove_item_by_id(self, mock_ds_fn, mock_sync):
+        """remove_case_items removes a single item by its UUID."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        item = CaseItem({"type": "reference", "value": "https://example.com"})
+
+        mock_case = MagicMock()
+        mock_case.case_id = "case-001"
+        mock_case.items = [item]
+        mock_ds.case.get.return_value = mock_case
+        mock_ds.case.save.return_value = True
+
+        case_service.remove_case_items("case-001", [item.id])
+
+        assert item not in mock_case.items
+        mock_ds.case.save.assert_called_once()
+
+    @patch("howler.services.case_service.datastore")
+    def test_remove_missing_case_raises(self, mock_ds_fn):
+        """Raises NotFoundException when case does not exist."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+        mock_ds.case.get.return_value = None
+
+        with pytest.raises(NotFoundException):
+            case_service.remove_case_items("nonexistent", ["some-id"])
+
+    @patch("howler.services.case_service.datastore")
+    def test_remove_missing_item_raises(self, mock_ds_fn):
+        """Raises NotFoundException when item id is not in the case."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_case = MagicMock()
+        mock_case.case_id = "case-001"
+        mock_case.items = []
+        mock_ds.case.get.return_value = mock_case
+
+        with pytest.raises(NotFoundException):
+            case_service.remove_case_items("case-001", ["nonexistent-id"])
+
+    @patch("howler.services.case_service.datastore")
+    def test_remove_non_empty_folder_without_force_raises(self, mock_ds_fn):
+        """Raises InvalidDataException when removing a non-empty folder without force."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        folder = CaseItem({"type": "folder", "name": "Folder"})
+        child = CaseItem({"type": "hit", "value": "hit-001", "parent": folder.id})
+
+        mock_case = MagicMock()
+        mock_case.case_id = "case-001"
+        mock_case.items = [folder, child]
+        mock_ds.case.get.return_value = mock_case
+
+        with pytest.raises(InvalidDataException, match="not empty"):
+            case_service.remove_case_items("case-001", [folder.id], force=False)
+
+    @patch("howler.services.case_service._sync_case_metadata")
+    @patch("howler.services.case_service.datastore")
+    def test_remove_non_empty_folder_with_force(self, mock_ds_fn, mock_sync):
+        """remove_case_items with force=True removes a folder and its children."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        folder = CaseItem({"type": "folder", "name": "Folder"})
+        child = CaseItem({"type": "reference", "value": "https://test.com", "parent": folder.id})
+
+        mock_case = MagicMock()
+        mock_case.case_id = "case-001"
+        mock_case.items = [folder, child]
+        mock_ds.case.get.return_value = mock_case
+        mock_ds.case.save.return_value = True
+
+        case_service.remove_case_items("case-001", [folder.id], force=True)
+
+        assert len(mock_case.items) == 0
+        mock_ds.case.save.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# _is_descendant()
+# ---------------------------------------------------------------------------
+
+
+class TestIsDescendant:
+    """Tests for case_service._is_descendant cycle detection."""
+
+    def test_direct_descendant(self):
+        """Child is a direct descendant of parent."""
+        parent = CaseItem({"type": "folder", "name": "P"})
+        child = CaseItem({"type": "folder", "name": "C", "parent": parent.id})
+
+        assert case_service._is_descendant([parent, child], child.id, parent.id) is True
+
+    def test_not_descendant(self):
+        """Unrelated items are not descendants."""
+        a = CaseItem({"type": "folder", "name": "A"})
+        b = CaseItem({"type": "folder", "name": "B"})
+
+        assert case_service._is_descendant([a, b], b.id, a.id) is False
+
+    def test_deep_descendant(self):
+        """Grandchild is a descendant of grandparent."""
+        gp = CaseItem({"type": "folder", "name": "GP"})
+        p = CaseItem({"type": "folder", "name": "P", "parent": gp.id})
+        c = CaseItem({"type": "folder", "name": "C", "parent": p.id})
+
+        assert case_service._is_descendant([gp, p, c], c.id, gp.id) is True

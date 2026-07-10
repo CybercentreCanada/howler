@@ -371,7 +371,7 @@ class TestAppendItemEndpoint:
 
         with request_context.test_request_context(
             method="POST",
-            json={"type": "hit", "value": "hit-001", "path": "alerts/test"},
+            json={"type": "hit", "value": "hit-001", "name": "Hit 001"},
             headers={"Authorization": "Bearer ."},
         ):
             from howler.api.v2.case import append_item
@@ -401,7 +401,7 @@ class TestAppendItemEndpoint:
             assert result.status_code == 400
             mock_case_service.append_case_item.assert_not_called()
 
-    @pytest.mark.parametrize("missing_field", ["value", "type", "path"])
+    @pytest.mark.parametrize("missing_field", ["value", "type", "name"])
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
     def test_append_item_missing_field_returns_400(
@@ -411,7 +411,7 @@ class TestAppendItemEndpoint:
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        body = {"type": "hit", "value": "hit-001", "path": "alerts/test"}
+        body = {"type": "hit", "value": "hit-001", "name": "Hit 001"}
         del body[missing_field]
 
         with request_context.test_request_context(
@@ -442,7 +442,7 @@ class TestAppendItemEndpoint:
 
         with request_context.test_request_context(
             method="POST",
-            json={"type": "hit", "value": "hit-001", "path": "alerts/test"},
+            json={"type": "hit", "value": "hit-001", "name": "Hit 001"},
             headers={"Authorization": "Bearer ."},
         ):
             from howler.api.v2.case import append_item
@@ -462,7 +462,7 @@ class TestAppendItemEndpoint:
 
         with request_context.test_request_context(
             method="POST",
-            json={"type": "hit", "value": "hit-001", "path": "alerts/test"},
+            json={"type": "hit", "value": "hit-001", "name": "Hit 001"},
             headers={"Authorization": "Bearer ."},
         ):
             from howler.api.v2.case import append_item
@@ -608,7 +608,7 @@ class TestDeleteItemEndpoint:
 
         with request_context.test_request_context(
             method="DELETE",
-            json={"values": ["hit-001"]},
+            json={"ids": ["hit-001"]},
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
         ):
             from howler.api.v2.case import delete_item
@@ -616,7 +616,7 @@ class TestDeleteItemEndpoint:
             result: Response = delete_item("case-001")
 
             assert result.status_code == 200
-            mock_case_service.remove_case_items.assert_called_once_with("case-001", ["hit-001"])
+            mock_case_service.remove_case_items.assert_called_once_with("case-001", ["hit-001"], force=False)
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
@@ -629,7 +629,7 @@ class TestDeleteItemEndpoint:
 
         with request_context.test_request_context(
             method="DELETE",
-            json={"values": ["hit-001", "hit-002", "obs-003"]},
+            json={"ids": ["hit-001", "hit-002", "obs-003"]},
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
         ):
             from howler.api.v2.case import delete_item
@@ -637,7 +637,9 @@ class TestDeleteItemEndpoint:
             result: Response = delete_item("case-001")
 
             assert result.status_code == 200
-            mock_case_service.remove_case_items.assert_called_once_with("case-001", ["hit-001", "hit-002", "obs-003"])
+            mock_case_service.remove_case_items.assert_called_once_with(
+                "case-001", ["hit-001", "hit-002", "obs-003"], force=False
+            )
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
@@ -664,7 +666,7 @@ class TestDeleteItemEndpoint:
     def test_delete_item_missing_values_field_returns_400(
         self, mock_auth_service, mock_case_service, request_context: Flask
     ):
-        """Returns 400 when the JSON body does not contain a 'values' field."""
+        """Returns 400 when the JSON body does not contain a 'ids' field."""
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
@@ -685,7 +687,7 @@ class TestDeleteItemEndpoint:
     def test_delete_item_empty_values_list_returns_400(
         self, mock_auth_service, mock_case_service, request_context: Flask
     ):
-        """Returns 400 when 'values' is an empty list."""
+        """Returns 400 when 'ids' is an empty list."""
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
@@ -706,7 +708,7 @@ class TestDeleteItemEndpoint:
     def test_delete_item_values_not_a_list_returns_400(
         self, mock_auth_service, mock_case_service, request_context: Flask
     ):
-        """Returns 400 when 'values' is not a list."""
+        """Returns 400 when 'ids' is not a list."""
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
@@ -737,7 +739,7 @@ class TestDeleteItemEndpoint:
 
         with request_context.test_request_context(
             method="DELETE",
-            json={"values": ["missing-item"]},
+            json={"ids": ["missing-item"]},
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
         ):
             from howler.api.v2.case import delete_item
@@ -745,7 +747,7 @@ class TestDeleteItemEndpoint:
             result: Response = delete_item("case-001")
 
             assert result.status_code == 400
-            mock_case_service.remove_case_items.assert_called_once_with("case-001", ["missing-item"])
+            mock_case_service.remove_case_items.assert_called_once_with("case-001", ["missing-item"], force=False)
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
@@ -760,7 +762,7 @@ class TestDeleteItemEndpoint:
 
         with request_context.test_request_context(
             method="DELETE",
-            json={"values": ["hit-001"]},
+            json={"ids": ["hit-001"]},
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
         ):
             from howler.api.v2.case import delete_item
@@ -784,7 +786,7 @@ class TestDeleteItemEndpoint:
 
         with request_context.test_request_context(
             method="DELETE",
-            json={"values": ["hit-001"]},
+            json={"ids": ["hit-001"]},
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
         ):
             from howler.api.v2.case import delete_item
@@ -813,7 +815,7 @@ class TestRenameItemEndpoint:
 
         with request_context.test_request_context(
             method="PUT",
-            json={"value": "hit-001", "new_path": "folder/New Name"},
+            json={"id": "item-uuid", "name": "Renamed Item"},
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
         ):
             from howler.api.v2.case import rename_item
@@ -821,9 +823,7 @@ class TestRenameItemEndpoint:
             result: Response = rename_item(case_id="case-001")
 
             assert result.status_code == 200
-            mock_case_service.rename_case_item.assert_called_once_with(
-                "case-001", item_value="hit-001", new_path="folder/New Name"
-            )
+            mock_case_service.rename_case_item.assert_called_once_with("case-001", "item-uuid", "Renamed Item")
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
@@ -848,13 +848,13 @@ class TestRenameItemEndpoint:
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
     def test_rename_item_missing_value_returns_400(self, mock_auth_service, mock_case_service, request_context: Flask):
-        """Returns 400 when 'value' field is missing from the body."""
+        """Returns 400 when 'id' field is missing from the body."""
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
         with request_context.test_request_context(
             method="PUT",
-            json={"new_path": "folder/New Name"},
+            json={"name": "Renamed Item"},
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
         ):
             from howler.api.v2.case import rename_item
@@ -866,16 +866,16 @@ class TestRenameItemEndpoint:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
-    def test_rename_item_missing_new_path_returns_400(
+    def test_move_item_missing_name_or_parent_returns_400(
         self, mock_auth_service, mock_case_service, request_context: Flask
     ):
-        """Returns 400 when 'new_path' field is missing from the body."""
+        """Returns 400 when neither 'name' nor 'parent' is provided."""
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
         with request_context.test_request_context(
             method="PUT",
-            json={"value": "hit-001"},
+            json={"id": "item-uuid"},
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
         ):
             from howler.api.v2.case import rename_item
@@ -898,7 +898,7 @@ class TestRenameItemEndpoint:
 
         with request_context.test_request_context(
             method="PUT",
-            json={"value": "missing", "new_path": "folder/New Name"},
+            json={"id": "item-uuid", "name": "Renamed Item"},
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
         ):
             from howler.api.v2.case import rename_item
@@ -920,7 +920,7 @@ class TestRenameItemEndpoint:
 
         with request_context.test_request_context(
             method="PUT",
-            json={"value": "hit-001", "new_path": "folder/Taken"},
+            json={"id": "item-uuid", "name": "Renamed Item"},
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
         ):
             from howler.api.v2.case import rename_item
@@ -944,7 +944,7 @@ class TestRenameItemEndpoint:
 
         with request_context.test_request_context(
             method="PUT",
-            json={"value": "hit-001", "new_path": "folder/New Name"},
+            json={"id": "item-uuid", "name": "Renamed Item"},
             headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
         ):
             from howler.api.v2.case import rename_item

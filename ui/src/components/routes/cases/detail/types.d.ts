@@ -6,6 +6,7 @@ export interface ObservableSource {
   id: string;
   type: 'hit' | 'observable' | 'case';
   path?: string;
+  label?: string;
   escalation?: string;
 }
 

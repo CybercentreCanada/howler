@@ -10,7 +10,7 @@ from howler.services import case_service
 OPERATION_ID = "add_to_case"
 
 
-def execute(
+def execute(  # noqa: C901
     query: str,
     case_id: Optional[str] = None,
     path: str = "related",
@@ -24,7 +24,7 @@ def execute(
         case_id (str): The ID of the case to add the alerts to.
         path (str): The path within the case at which to place the alerts. Defaults to "related".
         title_template (str): A Mustache-compatible template string used to generate each item's
-            path suffix (title). The hit's fields are available as template variables.
+            name. The hit's fields are available as template variables.
             Defaults to "{{howler.analytic}} ({{howler.id}})".
     """
     if not case_id:
@@ -39,7 +39,8 @@ def execute(
 
     ds = datastore()
 
-    if ds.case.get(case_id) is None:
+    case = ds.case.get(case_id)
+    if case is None:
         return [
             {
                 "query": query,
@@ -65,19 +66,23 @@ def execute(
     skipped = []
     added = []
 
-    normalized_path = path.rstrip("/")
-
     for hit in hits:
-        hit_data = hit.as_primitives()
-        title = chevron.render(title_template, hit_data)
-        item_path = f"{normalized_path}/{title}" if normalized_path else title
+        title = chevron.render(title_template, hit.as_primitives())
+        item_path = f"{path.rstrip('/')}/{title}" if path else title
+        try:
+            path, name = item_path.rsplit("/", maxsplit=1)
+        except ValueError:
+            name = item_path
 
         try:
+            parent = case_service.get_parent_from_path(case, path, create_if_missing=True)
+
             case_service.append_case_item(
-                case_id,
+                case,
                 item_type="hit",
                 item_value=hit.howler.id,
-                item_path=item_path,
+                item_name=name,
+                item_parent=parent.id if parent else None,
             )
             added.append(hit.howler.id)
         except InvalidDataException as e:

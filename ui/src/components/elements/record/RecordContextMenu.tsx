@@ -23,7 +23,7 @@ import { TOP_ROW, VOTE_OPTIONS, type ActionButton } from 'components/elements/hi
 import useHitActions from 'components/hooks/useHitActions';
 import useMyApi from 'components/hooks/useMyApi';
 import useMyActionFunctions from 'components/routes/action/useMyActionFunctions';
-import AddToCaseModal from 'components/routes/cases/modals/AddToCaseModal';
+import AddRecordToCaseModal from 'components/routes/cases/modals/AddRecordToCaseModal';
 import CreateCaseModal from 'components/routes/cases/modals/CreateCaseModal';
 import { capitalize, get, groupBy, isEmpty, toString } from 'lodash-es';
 import type { Action } from 'models/entities/generated/Action';
@@ -327,7 +327,7 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
       icon: <CreateNewFolder />,
       label: t('modal.cases.add_to_case'),
       disabled: !record,
-      onClick: () => showModal(<AddToCaseModal records={records} />, { maxHeight: '90vh' })
+      onClick: () => showModal(<AddRecordToCaseModal records={records} />, { maxHeight: '90vh' })
     });
     result.push({
       kind: 'item',

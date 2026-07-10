@@ -10,26 +10,19 @@ export const uri = (id: string) => {
 };
 
 export const post = (id: string, newData: Item): Promise<Case> => {
-  // Case items must always be placed at the root of the case structure.
-  // If a nested path is provided, strip folder segments and retain only the last component,
-  // then warn so callers know a normalization occurred.
-  if (newData.type === 'case' && newData.path?.includes('/')) {
-    const normalizedPath = newData.path.replace(/\/+$/, '').split('/').pop() || newData.value;
-
-    newData = { ...newData, path: normalizedPath };
-  }
-
   return hpost(uri(id), newData);
 };
 
-export const del = (id: string, values: string | string[]): Promise<Case> => {
-  if (!Array.isArray(values)) {
-    values = [values];
+export const del = (id: string, ids: string | string[], force = false): Promise<Case> => {
+  if (!Array.isArray(ids)) {
+    ids = [ids];
   }
 
-  return hdelete(uri(id), { values });
+  return hdelete(uri(id), { ids, force });
 };
 
-export const put = (id: string, value: string, newPath: string): Promise<Case> => {
-  return hput(uri(id), { value, new_path: newPath });
+export const put = (caseId: string, id: string, payload: { name?: string; parent?: string } = {}): Promise<Case> => {
+  (payload as Record<string, string>).id = id;
+
+  return hput(uri(caseId), payload);
 };

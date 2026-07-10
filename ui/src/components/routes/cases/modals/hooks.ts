@@ -2,7 +2,8 @@ import type { Case } from 'models/entities/generated/Case';
 import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
 import { useCallback, useMemo, useState } from 'react';
-import type { RecordEntry } from './types';
+import { buildPathFromID } from '../utils';
+import type { FolderOption, RecordEntry } from './types';
 
 export const defaultTitle = (record: Hit | Event): string => {
   if (record.__index === 'hit') {
@@ -11,28 +12,20 @@ export const defaultTitle = (record: Hit | Event): string => {
   return `Event (${record.howler.id})`;
 };
 
-export const useFolderOptions = (selectedCase: Case | null): string[] => {
+export const useFolderOptions = (selectedCase: Case | null): FolderOption[] => {
   return useMemo(() => {
     if (!selectedCase?.items) {
       return [];
     }
 
-    const paths = new Set<string>();
-
+    const options: FolderOption[] = [];
     for (const item of selectedCase.items) {
-      if (!item.path) {
-        continue;
-      }
-
-      const parts = item.path.split('/');
-      parts.pop();
-
-      for (let i = 1; i <= parts.length; i++) {
-        paths.add(parts.slice(0, i).join('/'));
+      if (item.type === 'folder' && item.id) {
+        options.push({ id: item.id, label: buildPathFromID(selectedCase, item.id) });
       }
     }
 
-    return Array.from(paths);
+    return options;
   }, [selectedCase]);
 };
 
@@ -44,12 +37,12 @@ export const useRecordEntries = (records: (Hit | Event)[]) => {
   const [entries, setEntries] = useState<RecordEntry[]>(() =>
     (records ?? []).map(record => ({
       record,
-      path: '',
-      title: defaultTitle(record)
+      parent: null,
+      name: defaultTitle(record)
     }))
   );
 
-  const updateEntry = useCallback((index: number, field: 'title' | 'path', value: string) => {
+  const updateEntry = useCallback((index: number, field: 'name' | 'parent', value: string | null) => {
     setEntries(prev => {
       const next = [...prev];
       next[index] = { ...next[index], [field]: value };

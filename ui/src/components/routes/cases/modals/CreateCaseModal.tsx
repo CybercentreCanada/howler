@@ -26,10 +26,7 @@ const CreateCaseModal: FC<{ records: (Hit | Event)[] }> = ({ records }) => {
   const [entries, updateEntry] = useRecordEntries(records);
 
   const isValid = useMemo(
-    () =>
-      !!caseTitle.trim() &&
-      !!summary.trim() &&
-      entries.every(e => !!e.title.trim() && !e.path.startsWith('/') && !e.path.endsWith('/')),
+    () => !!caseTitle.trim() && !!summary.trim() && entries.every(e => !!e.name.trim()),
     [caseTitle, summary, entries]
   );
 
@@ -51,12 +48,12 @@ const CreateCaseModal: FC<{ records: (Hit | Event)[] }> = ({ records }) => {
 
       if (newCase?.case_id) {
         for (const entry of entries) {
-          const fullPath = entry.path ? `${entry.path}/${entry.title}` : entry.title;
           await dispatchApi(
             api.v2.case.items.post(newCase.case_id, {
-              path: fullPath,
+              name: entry.name,
               value: entry.record.howler.id,
-              type: entry.record.__index
+              type: entry.record.__index,
+              parent: entry.parent
             })
           );
         }
@@ -117,8 +114,8 @@ const CreateCaseModal: FC<{ records: (Hit | Event)[] }> = ({ records }) => {
               <CaseRecordRow
                 key={entry.record.howler.id}
                 entry={entry}
-                onTitleChange={val => updateEntry(i, 'title', val)}
-                onPathChange={val => updateEntry(i, 'path', val)}
+                onNameChange={val => updateEntry(i, 'name', val)}
+                onParentChange={val => updateEntry(i, 'parent', val)}
               />
             ))}
           </Stack>

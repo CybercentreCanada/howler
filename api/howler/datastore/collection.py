@@ -836,11 +836,11 @@ class ESCollection(Generic[ModelType]):
                     alias_actions.append({"remove_index": {"index": new_name}})
                     self.with_retries(self.datastore.client.indices.update_aliases, actions=alias_actions)
 
-                    if self.with_retries(self.datastore.client.indices.exists, index=new_name):
+                    if bool(self.with_retries(self.datastore.client.indices.exists, index=new_name)):
                         logger.warning("Deleting reindex target %s", new_name)
                         self.with_retries(self.datastore.client.indices.delete, index=new_name)
                 finally:
-                    if self.with_retries(self.datastore.client.indices.exists, index=index):
+                    if bool(self.with_retries(self.datastore.client.indices.exists, index=index)):
                         logger.warning("Unblock writes to the index")
                         self.with_retries(
                             self.datastore.client.indices.put_settings,
@@ -848,7 +848,7 @@ class ESCollection(Generic[ModelType]):
                             settings=write_unblock_settings,
                         )
             except Exception:
-                if source_writes_blocked and self.with_retries(self.datastore.client.indices.exists, index=index):
+                if source_writes_blocked and bool(self.with_retries(self.datastore.client.indices.exists, index=index)):
                     logger.warning("Unblock writes to source index %s after failed reindex", index)
                     self.with_retries(
                         self.datastore.client.indices.put_settings,
@@ -1233,7 +1233,7 @@ class ESCollection(Generic[ModelType]):
             return self.normalize(data, as_obj=as_obj), version
         return self.normalize(data, as_obj=as_obj)
 
-    def save(self, key, data, version=None, refresh=None):
+    def save(self, key, data, version=None, refresh: Literal["true", "false", "wait_for"] | None = None):
         """Save to document to the datastore using the key as its document id.
 
         The document data will be normalized before being saved in the datastore.
@@ -1241,6 +1241,9 @@ class ESCollection(Generic[ModelType]):
         :param key: ID of the document to save
         :param data: raw data or instance of the model class to save as the document
         :param version: version of the document to save over, if the version check fails this will raise an exception
+        :param refresh: 'true' | 'false' | 'wait_for' | None
+             Whether to refresh the datastore before returning. 'wait_for' will wait for the change to be visible
+             in search.
         :return: True if the document was saved properly
         """
         if " " in key:

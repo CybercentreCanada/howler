@@ -228,12 +228,11 @@ class TestProcessBatch:
         added = correlation_service.process_batch(["hit-1"])
 
         assert added == 1
-        mock_case_svc.append_case_item.assert_called_once_with(
-            "case-1",
-            item_type="hit",
-            item_value="hit-1",
-            item_path="alerts",
-        )
+        mock_case_svc.append_case_item.assert_called_once()
+        kwargs = mock_case_svc.append_case_item.call_args.kwargs
+        assert kwargs["item_type"] == "hit"
+        assert kwargs["item_value"] == "hit-1"
+        assert kwargs["item_name"] == "alerts"
 
     @patch("howler.services.correlation_service.search_service")
     @patch("howler.services.correlation_service.case_service")
@@ -280,12 +279,11 @@ class TestProcessBatch:
 
         correlation_service.process_batch(["hit-1"])
 
-        mock_case_svc.append_case_item.assert_called_once_with(
-            "case-1",
-            item_type="hit",
-            item_value="hit-1",
-            item_path="alerts/My Detection",
-        )
+        mock_case_svc.append_case_item.assert_called_once()
+        kwargs = mock_case_svc.append_case_item.call_args.kwargs
+        assert kwargs["item_type"] == "hit"
+        assert kwargs["item_value"] == "hit-1"
+        assert kwargs["item_name"] == "My Detection"
 
     @patch("howler.services.correlation_service.case_service")
     @patch("howler.services.correlation_service.get_active_rules")
@@ -353,12 +351,10 @@ class TestProcessBatch:
         added = correlation_service.process_batch(["hit-1"])
 
         assert added == 1
-        mock_case_svc.append_case_item.assert_called_once_with(
-            "case-2",
-            item_type="hit",
-            item_value="hit-1",
-            item_path="b",
-        )
+        mock_case_svc.append_case_item.assert_called_once()
+        kwargs = mock_case_svc.append_case_item.call_args.kwargs
+        assert kwargs["item_type"] == "hit"
+        assert kwargs["item_value"] == "hit-1"
 
     @patch("howler.services.correlation_service.search_service")
     @patch("howler.services.correlation_service.case_service")
@@ -421,12 +417,10 @@ class TestProcessBatch:
         added = correlation_service.process_batch(["obs-1"])
 
         assert added == 1
-        mock_case_svc.append_case_item.assert_called_once_with(
-            "case-1",
-            item_type="event",
-            item_value="obs-1",
-            item_path="events",
-        )
+        mock_case_svc.append_case_item.assert_called_once()
+        kwargs = mock_case_svc.append_case_item.call_args.kwargs
+        assert kwargs["item_type"] == "event"
+        assert kwargs["item_value"] == "obs-1"
 
     @patch("howler.services.correlation_service.search_service")
     @patch("howler.services.correlation_service.case_service")

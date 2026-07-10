@@ -8,18 +8,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // Hoisted mocks
 // ---------------------------------------------------------------------------
 
-const mockHitCardProps = vi.hoisted(() => ({ current: [] as Array<Record<string, unknown>> }));
+const mockCaseCardProps = vi.hoisted(() => ({ current: [] as Array<Record<string, unknown>> }));
 
 // ---------------------------------------------------------------------------
 // Module mocks
 // ---------------------------------------------------------------------------
-
-vi.mock('components/elements/hit/HitCard', () => ({
-  default: (props: Record<string, unknown>) => {
-    mockHitCardProps.current.push(props);
-    return <div id={`hit-card-${String(props.id)}`} />;
-  }
-}));
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -39,11 +32,18 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
+vi.mock('../../../elements/case/CaseCard', () => ({
+  default: (props: Record<string, unknown>) => {
+    mockCaseCardProps.current.push(props);
+    return <div id={`case-card-${String(props.caseId)}`} />;
+  }
+}));
+
 // ---------------------------------------------------------------------------
 // Imports after mocks
 // ---------------------------------------------------------------------------
 
-import AlertPanel from './AlertPanel';
+import RelatedCasePanel from './RelatedCasePanel';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -52,13 +52,13 @@ import AlertPanel from './AlertPanel';
 const renderPanel = (caseValue: Case | null) => {
   return render(
     <MemoryRouter>
-      <AlertPanel case={caseValue as Case} />
+      <RelatedCasePanel case={caseValue as Case} />
     </MemoryRouter>
   );
 };
 
-const makeHitItem = (value: string, id = value) => ({
-  type: 'hit' as const,
+const makeCaseItem = (value: string, id = value) => ({
+  type: 'case' as const,
   value,
   id,
   name: null as string | null,
@@ -70,79 +70,90 @@ const makeHitItem = (value: string, id = value) => ({
 // ---------------------------------------------------------------------------
 
 beforeEach(() => {
-  mockHitCardProps.current = [];
+  mockCaseCardProps.current = [];
 });
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('AlertPanel', () => {
+describe('RelatedCasePanel', () => {
   it('renders a skeleton when the case is null', () => {
     const { container } = renderPanel(null);
 
     expect(container.querySelector('.MuiSkeleton-root')).toBeTruthy();
   });
 
-  it('renders the translated heading key', () => {
-    const _case = createMockCase({ case_id: 'case-1', items: [] });
+  it('renders nothing when the case has no case-type items', () => {
+    const baseCase = createMockCase({ case_id: 'case-no-cases', items: [{ type: 'hit', value: 'hit-1' }] as any });
+    const { container } = renderPanel(baseCase);
 
-    renderPanel(_case);
-
-    expect(screen.getByText('page.cases.dashboard.alerts')).toBeInTheDocument();
+    expect(container).toBeEmptyDOMElement();
   });
 
-  it('renders HitCard only for unique hit items on the current page', () => {
-    const duplicate = makeHitItem('hit-1', '/cases/test/path-a');
+  it('renders the translated heading key', () => {
+    const _case = createMockCase({ case_id: 'case-1', items: [makeCaseItem('child-1')] });
+    renderPanel(_case);
+
+    expect(screen.getByText('page.cases.dashboard.cases')).toBeInTheDocument();
+  });
+
+  it('renders CaseCard only for unique case items on the current page', () => {
+    const duplicate = makeCaseItem('child-1', '/cases/test/path-a');
     const _case = createMockCase({
       case_id: 'case-2',
-      items: [duplicate, duplicate, makeHitItem('hit-2', '/cases/test/path-b'), { type: 'event', value: 'event-1' }]
+      items: [
+        duplicate,
+        duplicate,
+        makeCaseItem('child-2', '/cases/test/path-b'),
+        { type: 'event', value: 'event-1' } as any
+      ]
     });
 
     renderPanel(_case);
 
-    expect(screen.getByTestId('hit-card-hit-1')).toBeInTheDocument();
-    expect(screen.getByTestId('hit-card-hit-2')).toBeInTheDocument();
-    expect(screen.queryByTestId('hit-card-event-1')).not.toBeInTheDocument();
-    expect(mockHitCardProps.current).toHaveLength(2);
+    expect(screen.getByTestId('case-card-child-1')).toBeInTheDocument();
+    expect(screen.getByTestId('case-card-child-2')).toBeInTheDocument();
+    expect(screen.queryByTestId('case-card-event-1')).not.toBeInTheDocument();
+    expect(mockCaseCardProps.current).toHaveLength(2);
 
-    expect(mockHitCardProps.current[0]).toEqual(
+    expect(mockCaseCardProps.current[0]).toEqual(
       expect.objectContaining({
-        id: 'hit-1',
-        lazy: true,
-        layout: 'dense'
+        caseId: 'child-1'
       })
     );
   });
 
-  it('renders overlay links that target each hit path', () => {
+  it('renders overlay links that target each case path', () => {
     const _case = createMockCase({
       case_id: 'case-3',
-      items: [makeHitItem('hit-1', '/cases/case-3/path-one'), makeHitItem('hit-2', '/cases/case-3/path-two')]
+      items: [makeCaseItem('child-1', '/cases/case-3/path-one'), makeCaseItem('child-2', '/cases/case-3/path-two')]
     });
 
     const { container } = renderPanel(_case);
     const links = Array.from(container.querySelectorAll('a'));
 
     expect(links).toHaveLength(2);
-    expect(links[0]).toHaveAttribute('href', '/hits/hit-1');
-    expect(links[1]).toHaveAttribute('href', '/hits/hit-2');
+    expect(links[0]).toHaveAttribute('href', '/cases/child-1');
+    expect(links[1]).toHaveAttribute('href', '/cases/child-2');
   });
 
   it('shows pagination with multiple pages and switches to page 2 items', () => {
-    const items = Array.from({ length: 6 }, (_, idx) => makeHitItem(`hit-${idx + 1}`, `/cases/test/hit-${idx + 1}`));
+    const items = Array.from({ length: 6 }, (_, idx) =>
+      makeCaseItem(`child-${idx + 1}`, `/cases/test/child-${idx + 1}`)
+    );
     const _case = createMockCase({ case_id: 'case-4', items });
 
     renderPanel(_case);
 
-    expect(screen.getByTestId('hit-card-hit-1')).toBeInTheDocument();
-    expect(screen.getByTestId('hit-card-hit-5')).toBeInTheDocument();
-    expect(screen.queryByTestId('hit-card-hit-6')).not.toBeInTheDocument();
+    expect(screen.getByTestId('case-card-child-1')).toBeInTheDocument();
+    expect(screen.getByTestId('case-card-child-5')).toBeInTheDocument();
+    expect(screen.queryByTestId('case-card-child-6')).not.toBeInTheDocument();
 
     const pageTwoButton = screen.getByRole('button', { name: 'Go to page 2' });
     fireEvent.click(pageTwoButton);
 
-    expect(screen.getByTestId('hit-card-hit-6')).toBeInTheDocument();
-    expect(screen.queryByTestId('hit-card-hit-1')).not.toBeInTheDocument();
+    expect(screen.getByTestId('case-card-child-6')).toBeInTheDocument();
+    expect(screen.queryByTestId('case-card-child-1')).not.toBeInTheDocument();
   });
 });

@@ -1,38 +1,58 @@
-import { get, set, sortBy, take } from 'lodash-es';
+import { sortBy } from 'lodash-es';
 import type { Item } from 'models/entities/generated/Item';
 import type { Tree } from './types';
 
+/**
+ * Build a tree from a flat array of items using parent-based relationships.
+ *
+ * Folder items (type=folder) become tree nodes whose children are items
+ * referencing the folder's `id` as their `parent`.
+ * Items with `parent=null` or `parent=undefined` are root-level.
+ */
 export const buildTree = (items: Item[] = []): Tree => {
-  // Root tree node stores direct children in `leaves`; subfolders live under `folders`.
-  const tree: any = { leaves: [], path: '' };
+  const root: Tree = { item: null, leaves: [], folders: {} };
 
-  sortBy(items, 'path').forEach(item => {
-    // Ignore items that cannot be placed in the folder structure.
-    if (!item?.path) {
-      return;
+  // Index folders by id
+  const folderNodes: Record<string, Tree> = {};
+  const folderItems = items.filter(item => item.type === 'folder');
+
+  for (const folder of folderItems) {
+    if (folder.id) {
+      folderNodes[folder.id] = {
+        leaves: [],
+        folders: {},
+        item: folder
+      };
+    }
+  }
+
+  // Build folder hierarchy
+  for (const folder of folderItems) {
+    if (!folder.id) {
+      continue;
+    }
+    const node = folderNodes[folder.id];
+    const folderName = folder.name ?? folder.value ?? folder.id;
+    if (!folderName) {
+      continue;
     }
 
-    // Split path into folder segments + item name, then remove the item name.
-    const parts = item.path.split('/');
-    parts.pop();
-
-    // Ensure each folder node exists and has its path set.
-    parts.forEach((_, index) => {
-      const folderPath = `folders.${take(parts, index + 1).join('.folders.')}`;
-      set(tree, `${folderPath}.path`, take(parts, index + 1).join('/'));
-    });
-
-    if (parts.length > 0) {
-      // Navigate to the target folder via the `folders` nesting and append the leaf.
-      const folderPath = `folders.${parts.join('.folders.')}`;
-      const size = (get(tree, folderPath) as Tree)?.leaves?.length ?? 0;
-      set(tree, `${folderPath}.leaves.${size}`, item);
-      return;
+    if (folder.parent && folderNodes[folder.parent]) {
+      folderNodes[folder.parent].folders![folderName] = node;
+    } else {
+      root.folders![folderName] = node;
     }
+  }
 
-    // Items without parent folders are top-level leaves.
-    tree.leaves.push(item);
-  });
+  // Place non-folder items
+  const nonFolderItems = items.filter(item => item.type !== 'folder');
+  for (const item of sortBy(nonFolderItems, 'value')) {
+    if (item.parent && folderNodes[item.parent]) {
+      folderNodes[item.parent].leaves!.push(item);
+    } else {
+      root.leaves!.push(item);
+    }
+  }
 
-  return tree;
+  return root;
 };

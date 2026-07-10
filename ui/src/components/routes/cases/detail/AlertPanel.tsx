@@ -34,11 +34,11 @@ const AlertPanel: FC<{ case: Case }> = ({ case: _case }) => {
       <Divider />
       {alertPages?.length > 0 &&
         alertPages[alertPage - 1].map(item => (
-          <Box key={item.path} position="relative">
+          <Box key={item.id ?? item.value} position="relative">
             <HitCard layout={HitLayout.DENSE} id={item.value} lazy />
             <Box
               component={Link}
-              to={item.path}
+              to={`/hits/${item.value}`}
               sx={{
                 position: 'absolute',
                 top: 0,

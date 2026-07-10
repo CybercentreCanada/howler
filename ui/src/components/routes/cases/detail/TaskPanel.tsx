@@ -2,7 +2,6 @@ import { Add, ExpandLess, ExpandMore } from '@mui/icons-material';
 import { Autocomplete, Chip, Divider, Skeleton, Stack, TextField, Tooltip, Typography } from '@mui/material';
 import api from 'api';
 import useMyApi from 'components/hooks/useMyApi';
-import { isNil } from 'lodash-es';
 import type { Case } from 'models/entities/generated/Case';
 import type { Task } from 'models/entities/generated/Task';
 import { useEffect, useMemo, useState, type FC } from 'react';
@@ -13,13 +12,6 @@ import CaseTask from './CaseTask';
 /** Maximum number of child cases auto-loaded for task aggregation. */
 const MAX_CHILD_CASES = 10;
 
-interface ChildCaseEntry {
-  caseId: string;
-  caseName: string;
-  tasks: Task[];
-  paths: string[];
-}
-
 const TaskPanel: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promise<void> }> = ({
   case: _case,
   updateCase
@@ -28,7 +20,7 @@ const TaskPanel: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promise<
   const { dispatchApi } = useMyApi();
 
   const [addingTask, setAddingTask] = useState(false);
-  const [childCases, setChildCases] = useState<ChildCaseEntry[]>([]);
+  const [childCases, setChildCases] = useState<Case[]>([]);
   const [showChildTasks, setShowChildTasks] = useState(true);
   const [selectedChildIds, setSelectedChildIds] = useState<string[] | null>(null);
 
@@ -48,29 +40,17 @@ const TaskPanel: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promise<
 
     let cancelled = false;
 
-    Promise.all(
-      childCaseItems.map(async item => {
-        const c = await dispatchApi(api.v2.case.get(item.value), { throwError: false });
-
-        if (!c) {
-          return null;
-        }
-
-        return {
-          caseId: c.case_id,
-          caseName: c.title ?? c.case_id,
-          tasks: c.tasks ?? [],
-          paths: (c.items ?? []).map(i => i.path).filter(p => !isNil(p))
-        } satisfies ChildCaseEntry;
-      })
+    dispatchApi(
+      api.v2.search.post('case', { query: `case_id:(${childCaseItems.map(item => item.value).join(' OR ')})` }),
+      { throwError: false }
     )
-      .then(results => results.filter(r => !isNil(r)))
+      .then(results => results.items)
       .then(results => {
         if (!cancelled) {
           setChildCases(results);
           // Default: all child cases selected
           if (selectedChildIds === null) {
-            setSelectedChildIds(results.map(r => r.caseId));
+            setSelectedChildIds(results.map(r => r.case_id));
           }
         }
       });
@@ -82,11 +62,11 @@ const TaskPanel: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promise<
   }, [childCaseItems, dispatchApi]);
 
   // Child cases available as filter options
-  const childCaseOptions = useMemo(() => childCases.map(c => c.caseId), [childCases]);
+  const childCaseOptions = useMemo(() => childCases.map(c => c.case_id), [childCases]);
 
   // Child cases whose tasks are currently visible
   const visibleChildCases = useMemo(
-    () => (showChildTasks ? childCases.filter(c => (selectedChildIds ?? []).includes(c.caseId)) : []),
+    () => (showChildTasks ? childCases.filter(c => (selectedChildIds ?? []).includes(c.case_id)) : []),
     [showChildTasks, childCases, selectedChildIds]
   );
 
@@ -135,7 +115,7 @@ const TaskPanel: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promise<
               options={childCaseOptions}
               value={selectedChildIds ?? []}
               onChange={(_ev, val) => setSelectedChildIds(val)}
-              getOptionLabel={id => childCases.find(c => c.caseId === id)?.caseName ?? id}
+              getOptionLabel={id => childCases.find(c => c.case_id === id)?.title ?? id}
               renderTags={(vals, getTagProps) =>
                 vals.map((id, index) => {
                   const { key, ...tagProps } = getTagProps({ index });
@@ -144,7 +124,7 @@ const TaskPanel: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promise<
                       key={key}
                       {...tagProps}
                       size="small"
-                      label={childCases.find(c => c.caseId === id)?.caseName ?? id}
+                      label={childCases.find(c => c.case_id === id)?.title ?? id}
                     />
                   );
                 })
@@ -185,7 +165,8 @@ const TaskPanel: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promise<
         <CaseTask
           key={task.id}
           task={task}
-          paths={_case.items.map(item => item.path).filter(p => !isNil(p))}
+
+          case={_case}
           onEdit={onEdit(task)}
           onDelete={() => updateCase({ tasks: _case.tasks.filter(_task => _task.id !== task.id) })}
         />
@@ -193,7 +174,7 @@ const TaskPanel: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promise<
       {addingTask && (
         <CaseTask
           newTask
-          paths={_case.items.map(item => item.path).filter(p => !isNil(p))}
+          case={_case}
           onEdit={async task => {
             await onEdit()(task);
             setAddingTask(false);
@@ -227,14 +208,14 @@ const TaskPanel: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promise<
 
       {/* Child case tasks */}
       {visibleChildCases.map(child => (
-        <Stack key={child.caseId} spacing={1}>
+        <Stack key={child.case_id} spacing={1}>
           <Divider>
             <Chip
               component={Link}
-              to={`/cases/${child.caseId}`}
+              to={`/cases/${child.case_id}`}
               clickable
               size="small"
-              label={child.caseName}
+              label={child.title}
               variant="outlined"
             />
           </Divider>
@@ -243,16 +224,7 @@ const TaskPanel: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promise<
               {t('page.cases.dashboard.tasks.child.empty')}
             </Typography>
           ) : (
-            child.tasks.map(task => (
-              <CaseTask
-                key={task.id}
-                task={task}
-                paths={child.paths}
-                onEdit={async () => {}}
-                readOnly
-                caseOrigin={{ caseId: child.caseId, caseName: child.caseName }}
-              />
-            ))
+            child.tasks.map(task => <CaseTask key={task.id} task={task} case={child} readOnly />)
           )}
         </Stack>
       ))}

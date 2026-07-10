@@ -9,7 +9,7 @@ const RootDropZone: FC<{ caseId: string }> = ({ caseId }) => {
   const { active } = useDndContext();
   const { setNodeRef, isOver } = useDroppable({
     id: `${caseId}:folder:__root__`,
-    data: { path: '', caseId }
+    data: { path: '', caseId, folderId: null }
   });
 
   if (!active) {

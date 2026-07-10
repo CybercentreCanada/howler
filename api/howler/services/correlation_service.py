@@ -98,7 +98,7 @@ def get_active_rules() -> list[tuple[str, CaseRule]]:  # noqa: C901
 
 
 @tracer.start_as_current_span(f"{__name__}.process_batch")
-def process_batch(record_ids: list[str]) -> int:
+def process_batch(record_ids: list[str]) -> int:  # noqa: C901
     """Evaluate all active case rules against a batch of record IDs.
 
     For each rule, a single Elasticsearch query is run against the indexes
@@ -130,6 +130,10 @@ def process_batch(record_ids: list[str]) -> int:
 
     for case_id, rule in rules:
         indexes: list[str] = list(rule.indexes) if rule.indexes else [RuleIndexTypes.HIT]
+        case = ds.case.get(case_id)
+        if case is None:
+            logger.warning("Case %s not found during correlation", case_id)
+            continue
 
         try:
             results = search_service.search(
@@ -145,14 +149,23 @@ def process_batch(record_ids: list[str]) -> int:
         for record in results["items"]:
             record_id = record["howler"]["id"]
             item_type = record.get("__index", "hit")
+
             rendered_path = chevron.render(rule.destination, record)
+            try:
+                path, name = rendered_path.rsplit("/", maxsplit=1)
+            except ValueError:
+                path = None
+                name = rendered_path
+
+            parent = case_service.get_parent_from_path(case, path, create_if_missing=True)
 
             try:
                 case_service.append_case_item(
-                    case_id,
+                    case,
                     item_type=item_type,
                     item_value=record_id,
-                    item_path=rendered_path,
+                    item_name=name,
+                    item_parent=parent.id if parent else None,
                 )
                 added += 1
             except InvalidDataException:

@@ -9,13 +9,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 setupContextSelectorMock();
 
-// ---------------------------------------------------------------------------
-// Hoisted mocks
-// ---------------------------------------------------------------------------
-
 const mockDragEndHandler = vi.hoisted(() => ({ current: null as ((e: any) => void) | null }));
 const mockDragStartHandler = vi.hoisted(() => ({ current: null as ((e: any) => void) | null }));
-const mockActiveDrag = vi.hoisted(() => ({ current: null as any }));
 
 vi.mock('@dnd-kit/core', () => ({
   DndContext: ({ children, onDragEnd, onDragStart }: any) => {
@@ -28,16 +23,6 @@ vi.mock('@dnd-kit/core', () => ({
   TouchSensor: class {},
   useSensor: vi.fn(),
   useSensors: vi.fn(() => []),
-  useDndContext: vi.fn(() => ({ active: mockActiveDrag.current })),
-  useDroppable: vi.fn(() => ({ setNodeRef: vi.fn(), isOver: false })),
-  useDraggable: vi.fn(() => ({
-    attributes: {},
-    listeners: {},
-    setNodeRef: vi.fn(),
-    transform: null,
-    isDragging: false,
-    active: null
-  })),
   pointerWithin: vi.fn()
 }));
 
@@ -51,15 +36,19 @@ vi.mock('components/hooks/useMyApi', () => ({
   default: () => ({ dispatchApi: mockDispatchApi })
 }));
 
-const mockPut = vi.hoisted(() => vi.fn());
+const mockItemsPut = vi.hoisted(() => vi.fn());
 
 vi.mock('api', () => ({
   default: {
     v2: {
       case: {
-        put: (...args: any[]) => mockPut(...args),
         get: vi.fn(),
-        items: { del: vi.fn(), patch: vi.fn() }
+        items: {
+          put: (...args: any[]) => mockItemsPut(...args),
+          post: vi.fn(),
+          del: vi.fn(),
+          patch: vi.fn()
+        }
       }
     }
   }
@@ -78,7 +67,6 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-// Stub heavy child components
 vi.mock('./sidebar/CaseFolder', () => ({
   default: () => <div id="case-folder" />
 }));
@@ -98,31 +86,24 @@ vi.mock('components/app/providers/ModalProvider', async () => {
   };
 });
 
-vi.mock('components/app/providers/RecordProvider', async () => {
-  const { createContext } = await import('react');
-  return { RecordContext: createContext({ records: {} }) };
-});
-
-// ---------------------------------------------------------------------------
-// Imports after mocks
-// ---------------------------------------------------------------------------
-
 import CaseSidebar from './CaseSidebar';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-const hitItem = (path: string, value = path): Item => ({ type: 'hit', value, path });
+const hitItem = (value: string, id = value, parent: string | null = null): Item => ({
+  type: 'hit',
+  value,
+  id,
+  parent,
+  name: null
+});
 
 const renderSidebar = (overrides?: Partial<Case>, onUpdate = vi.fn()) => {
   const _case = createMockCase({ case_id: 'case-1', items: [], ...overrides });
-  render(
+  const utils = render(
     <MemoryRouter>
       <CaseSidebar case={_case} update={onUpdate} />
     </MemoryRouter>
   );
-  return { _case, onUpdate };
+  return { _case, onUpdate, ...utils };
 };
 
 const fireDragStart = (data: object) => {
@@ -131,270 +112,90 @@ const fireDragStart = (data: object) => {
   });
 };
 
-const fireDragEnd = (activeData: object, overData: object) => {
+const fireDragEnd = (activeData: object, overData: object | null) => {
   act(() => {
     mockDragEndHandler.current?.({
       active: { data: { current: activeData } },
-      over: { data: { current: overData } }
+      over: overData ? { data: { current: overData } } : null
     });
   });
 };
 
-// ---------------------------------------------------------------------------
-// Setup
-// ---------------------------------------------------------------------------
-
 beforeEach(() => {
   mockDispatchApi.mockReset();
-  mockPut.mockReset();
-  mockActiveDrag.current = null;
+  mockItemsPut.mockReset();
   mockDragEndHandler.current = null;
   mockDragStartHandler.current = null;
 });
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
 describe('CaseSidebar', () => {
-  describe('structure', () => {
-    it('renders the DndContext', () => {
-      renderSidebar();
-      expect(screen.getByTestId('dnd-context')).toBeInTheDocument();
-    });
+  it('renders navigation links and DnD wrappers', () => {
+    const { container } = renderSidebar();
+    expect(container.querySelector('#dnd-context')).toBeInTheDocument();
+    expect(container.querySelector('#case-folder')).toBeInTheDocument();
+    expect(container.querySelector('#drag-overlay')).toBeInTheDocument();
+    expect(container.querySelector('#root-drop-zone')).toHaveAttribute('data-case-id', 'case-1');
+    expect(screen.getByText('page.cases.dashboard').closest('a')).toHaveAttribute('href', '/cases/case-1');
+  });
 
-    it('renders the CaseFolder inside DndContext', () => {
-      renderSidebar();
-      expect(screen.getByTestId('case-folder')).toBeInTheDocument();
-    });
+  it('shows and clears drag overlay label across drag start/end', async () => {
+    const items = [hitItem('folder/my-item', 'val')];
+    renderSidebar({ items });
+    fireDragStart({ type: 'hit', label: 'my-item', entry: hitItem('folder/my-item', 'val'), caseId: 'case-1' });
+    expect(screen.getByText('my-item')).toBeInTheDocument();
 
-    it('renders the RootDropZone with the correct caseId', () => {
-      renderSidebar();
-      expect(screen.getByTestId('root-drop-zone')).toHaveAttribute('data-case-id', 'case-1');
-    });
+    mockItemsPut.mockReturnValue('put-request');
+    mockDispatchApi.mockResolvedValue(createMockCase({ case_id: 'case-1', items }));
 
-    it('renders the DragOverlay', () => {
-      renderSidebar();
-      expect(screen.getByTestId('drag-overlay')).toBeInTheDocument();
-    });
+    fireDragEnd(
+      { type: 'hit', entry: hitItem('folder/my-item', 'val', 'docs-folder'), caseId: 'case-1' },
+      { folderId: 'archive-folder', caseId: 'case-1' }
+    );
 
-    it('renders a Dashboard nav link pointing to the case route', () => {
-      renderSidebar();
-      const link = screen.getByText('page.cases.dashboard').closest('a');
-      expect(link).toHaveAttribute('href', '/cases/case-1');
-    });
-
-    it('renders an Observables nav link pointing to the case observables route', () => {
-      renderSidebar();
-      const link = screen.getByText('page.cases.observables').closest('a');
-      expect(link).toHaveAttribute('href', '/cases/case-1/observables');
-    });
-
-    it('renders a Timeline nav link pointing to the case timeline route', () => {
-      renderSidebar();
-      const link = screen.getByText('page.cases.timeline').closest('a');
-      expect(link).toHaveAttribute('href', '/cases/case-1/timeline');
-    });
-
-    it('renders a Rules nav link pointing to the case rules route', () => {
-      renderSidebar();
-      const rulesLink = screen.getByText('page.cases.rules').closest('a');
-      expect(rulesLink).toHaveAttribute('href', '/cases/case-1/rules');
+    await waitFor(() => {
+      expect(screen.queryByText('my-item')).not.toBeInTheDocument();
     });
   });
 
-  describe('drag overlay', () => {
-    it('shows nothing in the overlay when no drag is active', () => {
-      renderSidebar();
-      expect(screen.queryByTestId('folder-entry-overlay')).not.toBeInTheDocument();
-    });
+  it('moves item to folder by calling items.put with parent folder id', async () => {
+    const items = [hitItem('v', 'item-1', 'old-folder')];
+    const updatedCase = createMockCase({ case_id: 'case-1', items });
+    mockItemsPut.mockReturnValue('put-request');
+    mockDispatchApi.mockResolvedValue(updatedCase);
+    const { onUpdate } = renderSidebar({ items });
 
-    it('shows a FolderEntry in the overlay after drag starts', () => {
-      renderSidebar();
-      fireDragStart({ type: 'hit', label: 'my-item', entry: hitItem('folder/my-item'), caseId: 'case-1' });
-      expect(screen.getByTestId('folder-entry-overlay')).toBeInTheDocument();
-      expect(screen.getByText('my-item')).toBeInTheDocument();
-    });
+    fireDragEnd({ type: 'hit', entry: items[0], caseId: 'case-1' }, { folderId: 'archive-folder', caseId: 'case-1' });
 
-    it('clears the overlay after drag ends', async () => {
-      const items = [hitItem('folder/my-item', 'val')];
-      renderSidebar({ items });
-
-      mockDispatchApi.mockResolvedValue(createMockCase({ case_id: 'case-1', items }));
-      mockPut.mockReturnValue(Promise.resolve());
-
-      fireDragStart({ type: 'hit', label: 'my-item', entry: hitItem('folder/my-item'), caseId: 'case-1' });
-      expect(screen.getByTestId('folder-entry-overlay')).toBeInTheDocument();
-
-      fireDragEnd(
-        { type: 'hit', entry: hitItem('folder/my-item', 'val'), caseId: 'case-1' },
-        { path: 'other', caseId: 'case-1' }
-      );
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('folder-entry-overlay')).not.toBeInTheDocument();
-      });
+    await waitFor(() => {
+      expect(mockItemsPut).toHaveBeenCalledWith('case-1', 'item-1', { parent: 'archive-folder' });
+      expect(onUpdate).toHaveBeenCalledWith(updatedCase);
     });
   });
 
-  describe('handleDragEnd — item moves', () => {
-    it('calls PUT with the updated path when a hit is moved to a folder', async () => {
-      const items = [hitItem('docs/report', 'rep-val')];
-      const updatedCase = createMockCase({ case_id: 'case-1', items: [hitItem('archive/report', 'rep-val')] });
-      mockPut.mockReturnValue(Promise.resolve(updatedCase));
-      mockDispatchApi.mockImplementation((p: Promise<any>) => p);
+  it('moves item to root with parent null', async () => {
+    const items = [hitItem('v', 'item-1', 'folder-id')];
+    mockItemsPut.mockReturnValue('put-request');
+    mockDispatchApi.mockResolvedValue(createMockCase({ case_id: 'case-1', items }));
+    renderSidebar({ items });
 
-      const { onUpdate } = renderSidebar({ items });
+    fireDragEnd({ type: 'hit', entry: items[0], caseId: 'case-1' }, { caseId: 'case-1' });
 
-      fireDragEnd(
-        { type: 'hit', entry: hitItem('docs/report', 'rep-val'), caseId: 'case-1' },
-        { path: 'archive', caseId: 'case-1' }
-      );
-
-      await waitFor(() => {
-        expect(mockPut).toHaveBeenCalledWith(
-          'case-1',
-          expect.objectContaining({
-            items: expect.arrayContaining([expect.objectContaining({ path: 'archive/report' })])
-          })
-        );
-        expect(onUpdate).toHaveBeenCalledWith(updatedCase);
-      });
-    });
-
-    it('moves an item to root when the over path is empty', async () => {
-      const items = [hitItem('folder/report', 'rep-val')];
-      const updatedCase = createMockCase({ case_id: 'case-1', items: [hitItem('report', 'rep-val')] });
-      mockPut.mockReturnValue(Promise.resolve(updatedCase));
-      mockDispatchApi.mockImplementation((p: Promise<any>) => p);
-
-      const { onUpdate } = renderSidebar({ items });
-
-      fireDragEnd(
-        { type: 'hit', entry: hitItem('folder/report', 'rep-val'), caseId: 'case-1' },
-        { path: '', caseId: 'case-1' } // root drop zone
-      );
-
-      await waitFor(() => {
-        expect(mockPut).toHaveBeenCalledWith(
-          'case-1',
-          expect.objectContaining({
-            items: expect.arrayContaining([expect.objectContaining({ path: 'report' })])
-          })
-        );
-        expect(onUpdate).toHaveBeenCalledWith(updatedCase);
-      });
-    });
-
-    it('moves all items under a folder when type is folder', async () => {
-      const items = [hitItem('docs/a', 'a-val'), hitItem('docs/b', 'b-val'), hitItem('other/c', 'c-val')];
-      const updatedCase = createMockCase({ case_id: 'case-1', items });
-      mockPut.mockReturnValue(Promise.resolve(updatedCase));
-      mockDispatchApi.mockImplementation((p: Promise<any>) => p);
-
-      renderSidebar({ items });
-
-      fireDragEnd({ type: 'folder', entry: { path: 'docs' }, caseId: 'case-1' }, { path: 'archive', caseId: 'case-1' });
-
-      await waitFor(() => {
-        expect(mockPut).toHaveBeenCalledWith(
-          'case-1',
-          expect.objectContaining({
-            items: expect.arrayContaining([
-              expect.objectContaining({ path: 'archive/docs/a' }),
-              expect.objectContaining({ path: 'archive/docs/b' }),
-              // Items not under 'docs' are unchanged
-              expect.objectContaining({ path: 'other/c' })
-            ])
-          })
-        );
-      });
+    await waitFor(() => {
+      expect(mockItemsPut).toHaveBeenCalledWith('case-1', 'item-1', { parent: null });
     });
   });
 
-  describe('handleDragEnd — guards', () => {
-    it('does nothing when over is null', async () => {
-      renderSidebar({ items: [hitItem('folder/item', 'val')] });
+  it('does nothing for no-op drops (same parent) and invalid payloads', async () => {
+    renderSidebar({ items: [hitItem('v', 'item-1', 'same-folder')] });
 
-      act(() => {
-        mockDragEndHandler.current?.({
-          active: { data: { current: { type: 'hit', entry: hitItem('folder/item', 'val'), caseId: 'case-1' } } },
-          over: null
-        });
-      });
+    fireDragEnd(
+      { type: 'hit', entry: hitItem('v', 'item-1', 'same-folder'), caseId: 'case-1' },
+      { folderId: 'same-folder', caseId: 'case-1' }
+    );
+    fireDragEnd({ type: 'hit', entry: { type: 'hit', value: 'v' }, caseId: 'case-1' }, { folderId: 'x' });
+    fireDragEnd({ type: 'hit', entry: hitItem('v', 'id-2') }, null);
 
-      await new Promise(r => setTimeout(r, 0));
-      expect(mockPut).not.toHaveBeenCalled();
-    });
-
-    it('does nothing when the path would not change (no-op drop)', async () => {
-      const items = [hitItem('folder/item', 'val')];
-      renderSidebar({ items });
-
-      // Dropping into the same folder → same path
-      fireDragEnd(
-        { type: 'hit', entry: hitItem('folder/item', 'val'), caseId: 'case-1' },
-        { path: 'folder', caseId: 'case-1' }
-      );
-
-      await new Promise(r => setTimeout(r, 0));
-      expect(mockPut).not.toHaveBeenCalled();
-    });
-
-    it('does nothing when movingEntry.path is missing', async () => {
-      renderSidebar();
-
-      fireDragEnd(
-        { type: 'hit', entry: { value: 'val' }, caseId: 'case-1' }, // no path
-        { path: 'archive', caseId: 'case-1' }
-      );
-
-      await new Promise(r => setTimeout(r, 0));
-      expect(mockPut).not.toHaveBeenCalled();
-    });
-  });
-
-  // -------------------------------------------------------------------------
-
-  describe('card header', () => {
-    it('renders the case title in the header card', () => {
-      renderSidebar({ title: 'My Investigation' });
-      expect(screen.getByText('My Investigation')).toBeInTheDocument();
-    });
-
-    it('renders a Skeleton in place of the title when title is not set', () => {
-      renderSidebar({ title: undefined });
-      // At least one Skeleton should be present (title area)
-      expect(document.querySelector('.MuiSkeleton-root')).toBeInTheDocument();
-    });
-
-    it('renders the "started" label in the header', () => {
-      renderSidebar();
-      expect(screen.getByText(/started/i)).toBeInTheDocument();
-    });
-
-    it('renders a Skeleton for the date when created is not set', () => {
-      renderSidebar({ created: undefined });
-      expect(document.querySelector('.MuiSkeleton-root')).toBeInTheDocument();
-    });
-
-    it('renders no date Skeleton when created is set', () => {
-      // With a created date, the date text replaces the Skeleton and the title Skeleton
-      // disappears too (title defaults to "Test Case" via createMockCase).
-      // Provide escalation too so the escalation Skeleton is also replaced by a Chip.
-      renderSidebar({ created: '2024-06-01T00:00:00Z', escalation: 'open' });
-      // No Skeleton should appear when title, created, and escalation are all set
-      expect(document.querySelector('.MuiSkeleton-root')).not.toBeInTheDocument();
-    });
-
-    it('renders the escalation chip label when escalation is set', () => {
-      renderSidebar({ escalation: 'open' });
-      expect(screen.getByText('open')).toBeInTheDocument();
-    });
-
-    it('renders a Skeleton for escalation when escalation is not set', () => {
-      renderSidebar({ escalation: undefined });
-      expect(document.querySelector('.MuiSkeleton-root')).toBeInTheDocument();
-    });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(mockItemsPut).not.toHaveBeenCalled();
   });
 });

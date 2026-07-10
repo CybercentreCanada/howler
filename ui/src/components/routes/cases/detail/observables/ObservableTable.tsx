@@ -167,14 +167,14 @@ const ObservableTable: FC<{ observables: ObservableEntry[]; case: Case }> = ({ o
                     <Chip
                       clickable
                       size="small"
-                      label={linkedSources[0].path}
+                      label={linkedSources[0].label ?? linkedSources[0].path}
                       variant="outlined"
                       component={Link}
                       to={`/cases/${_case.case_id}/${linkedSources[0].path}`}
                     />
                   ) : (
                     <ChipPopper
-                      label={`${linkedSources[0].path} (+${linkedSources.length - 1})`}
+                      label={`${linkedSources[0].label ?? linkedSources[0].path} (+${linkedSources.length - 1})`}
                       slotProps={{ chip: { size: 'small', variant: 'outlined' } }}
                     >
                       <Stack gap={0.5}>
@@ -183,7 +183,7 @@ const ObservableTable: FC<{ observables: ObservableEntry[]; case: Case }> = ({ o
                             key={source.id}
                             clickable
                             size="small"
-                            label={source.path}
+                            label={source.label ?? source.path}
                             variant="outlined"
                             component={Link}
                             to={`/cases/${_case.case_id}/${source.path}`}

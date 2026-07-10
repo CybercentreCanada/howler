@@ -3,6 +3,7 @@ import type { Case } from 'models/entities/generated/Case';
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { buildPathFromID } from '../../utils';
 import type { ObservableEntry } from '../types';
 
 const Observable: FC<{ observable: ObservableEntry; case: Case }> = ({ observable, case: _case }) => {
@@ -38,10 +39,10 @@ const Observable: FC<{ observable: ObservableEntry; case: Case }> = ({ observabl
                       key={id}
                       clickable
                       size="small"
-                      label={entry.path}
+                      label={entry.name}
                       variant="outlined"
                       component={Link}
-                      to={`/cases/${_case.case_id}/${entry.path}`}
+                      to={`/cases/${_case.case_id}/${buildPathFromID(_case, entry.id)}`}
                     />
                   );
                 })}

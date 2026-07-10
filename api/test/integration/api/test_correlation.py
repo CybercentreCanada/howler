@@ -115,7 +115,9 @@ class TestCorrelationPipeline:
 
         # Verify the path was rendered
         matching_item = next(item for item in case.items if item.value == hit_id)
-        assert matching_item.path == "alerts/My Detection"
+        alerts_folder = next(item for item in case.items if item.type == "folder" and item.name == "alerts")
+        assert matching_item.name == "My Detection"
+        assert matching_item.parent == alerts_folder.id
 
     def test_non_matching_hit_not_added(self, test_case, datastore: HowlerDatastore):
         """A hit that does not match the rule's query is not added."""
@@ -291,7 +293,9 @@ class TestCorrelationWorker:
 
         case = datastore.case.get(case_id)
         matching_item = next(item for item in case.items if item.value == hit_id)
-        assert matching_item.path == "worker-test/WorkerDetection"
+        worker_folder = next(item for item in case.items if item.type == "folder" and item.name == "worker-test")
+        assert matching_item.name == "WorkerDetection"
+        assert matching_item.parent == worker_folder.id
 
     def test_worker_ignores_non_matching_hit(self, test_case, datastore: HowlerDatastore):
         """A hit that doesn't match any rule is not added by the worker."""
