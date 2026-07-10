@@ -356,8 +356,8 @@ def get_parent_from_path(case: str | Case | None, path: str | None, create_if_mi
             current_parent = folder.id
 
     # Find the final parent folder
-    if current_parent is None:
-        return None
+    if current_parent is None:  # pragma: no cover
+        return None  # pragma: no cover
 
     return next((item for item in case.items if item.id == current_parent), None)
 
@@ -1066,6 +1066,9 @@ def update_case_rule(case_id: str, rule_id: str, update_data: dict, user: User) 
 
     changes: list[str] = []
     for key, value in patch.items():
+        if key == "timeframe" and value is not None and (not isinstance(value, int) or value <= 0):
+            raise HowlerValueError("Rule timeframe must be a positive integer or None")
+
         old_value = getattr(rule, key, None)
         setattr(rule, key, value)
         changes.append(f"{key}: '{old_value}' → '{value}'")

@@ -415,6 +415,55 @@ def test_create_tools_hits_valid_hits_ignore_extra_values_false(datastore: Howle
         )
 
 
+def test_create_tools_hits_bundle_dedup_falls_back_to_direct_ingest(datastore: HowlerDatastore, login_session):
+    session, host = login_session
+
+    tool_name = "bundle-dedup-test"
+    bundle_hash = "de" * 32
+    child_hash = "ef" * 32
+
+    datastore.hit.save(
+        "existing_bundle_dedup_hit",
+        {
+            "howler": {
+                "id": "existing_bundle_dedup_hit",
+                "analytic": "existing bundle dedup hit",
+                "assignment": "unassigned",
+                "hash": bundle_hash,
+                "score": "0.2",
+                "labels": {"assignments": [], "generic": []},
+                "votes": {"benign": {}, "obscure": {}, "malicious": {}},
+            }
+        },
+    )
+    datastore.hit.commit()
+
+    field_map = {
+        "analytic": ["howler.analytic"],
+        "hash": ["howler.hash"],
+        "is_bundle": ["howler.is_bundle"],
+    }
+    hits = [
+        {"analytic": "bundle root", "hash": bundle_hash, "is_bundle": True},
+        {"analytic": "bundle child", "hash": child_hash},
+    ]
+
+    response = get_api_data(
+        session,
+        f"{host}/api/v1/tools/{tool_name}/hits",
+        data=json.dumps({"map": field_map, "hits": hits}),
+        method="POST",
+    )
+
+    assert len(response) == 1
+    assert "_case_id" not in response[0]
+    assert response[0]["error"] is None
+
+    child_hit = datastore.hit.get(response[0]["id"], as_obj=False)
+    assert child_hit["howler"]["analytic"] == "bundle child"
+    assert child_hit["howler"]["hash"] == child_hash
+
+
 def test_create_valid_hits(datastore, login_session):
     """Test that /api/v1/hit creates hits using valid data"""
     session, host = login_session

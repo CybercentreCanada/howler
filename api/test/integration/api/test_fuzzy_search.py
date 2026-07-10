@@ -163,6 +163,15 @@ class TestFuzzySearchValidation:
 
         assert "400" in str(exc_info.value)
 
+    def test_empty_indexes_returns_error(self, datastore: HowlerDatastore, login_session):
+        """An empty indexes list should return a 400 error."""
+        session, host = login_session
+
+        with pytest.raises(APIError) as exc_info:
+            _fuzzy_post(session, host, {"query": "test", "indexes": []})
+
+        assert "400" in str(exc_info.value)
+
     def test_missing_body_returns_error(self, datastore: HowlerDatastore, login_session):
         """A request with no body should return a 400 error."""
         session, host = login_session
@@ -216,3 +225,46 @@ class TestFuzzySearchFilters:
         result = _fuzzy_post(session, host, {"query": hit_id, "indexes": "hit,event"})
 
         assert result["total"] >= 1
+
+    def test_filter_as_string(self, datastore: HowlerDatastore, login_session):
+        """A single filter passed as a string should be accepted."""
+        session, host = login_session
+
+        hits = datastore.hit.search("howler.id:*", rows=1, as_obj=False)["items"]
+        hit_id = hits[0]["howler"]["id"]
+
+        result = _fuzzy_post(
+            session,
+            host,
+            {
+                "query": hit_id,
+                "indexes": ["hit"],
+                "filters": f"howler.id:{hit_id}",
+            },
+        )
+
+        assert result["total"] >= 1
+        ids_found = [item["howler"]["id"] for item in result["items"]]
+        assert hit_id in ids_found
+
+
+class TestFuzzySearchPaginationValidation:
+    """Tests for pagination input validation."""
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            {"query": "test", "indexes": ["hit"], "offset": "not-an-int"},
+            {"query": "test", "indexes": ["hit"], "rows": "not-an-int"},
+            {"query": "test", "indexes": ["hit"], "offset": None},
+            {"query": "test", "indexes": ["hit"], "rows": None},
+        ],
+    )
+    def test_invalid_offset_or_rows_returns_error(self, datastore: HowlerDatastore, login_session, payload):
+        """Non-integer offset/rows should return a 400 error."""
+        session, host = login_session
+
+        with pytest.raises(APIError) as exc_info:
+            _fuzzy_post(session, host, payload)
+
+        assert "400" in str(exc_info.value)

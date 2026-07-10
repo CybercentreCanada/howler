@@ -1,10 +1,59 @@
+from types import SimpleNamespace
+from unittest.mock import MagicMock
+
+import elasticsearch
+import pytest
+from elastic_transport import ApiResponseMeta
+
+from howler.datastore.exceptions import SearchException, SearchRetryException
+from howler.odm.base import List, Optional, Text
+from howler.services import fuzzy_service
 from howler.services.fuzzy_service import (
     _classify_boosted_fields,
     _detect_token_type,
     _escape_query_string,
     _get_ip_typed_fields,
+    _resolve_field_type,
     build_fuzzy_query,
+    fuzzy_search,
 )
+
+
+class TestResolveFieldType:
+    def test_unwraps_optional_list_to_leaf_type(self):
+        """Nested Optional/List wrappers should resolve to the leaf field class."""
+        field = Optional(List(Text()))
+
+        assert _resolve_field_type(field) is Text
+
+
+class TestClassifyBoostedFields:
+    def test_ignores_unknown_index_in_field_boosts(self, monkeypatch):
+        """Unknown indexes in FIELD_BOOSTS should be skipped."""
+        _classify_boosted_fields.cache_clear()
+        monkeypatch.setattr(fuzzy_service, "FIELD_BOOSTS", {"unknown": {"foo": 1}})
+
+        result = _classify_boosted_fields()
+
+        assert result == {}
+        _classify_boosted_fields.cache_clear()
+
+    def test_classifies_text_field_type(self, monkeypatch):
+        """Text ODM fields should be classified as ES text."""
+
+        class FakeHitModel:
+            @staticmethod
+            def flat_fields():
+                return {"fake.text": Text()}
+
+        _classify_boosted_fields.cache_clear()
+        monkeypatch.setattr(fuzzy_service, "FIELD_BOOSTS", {"hit": {"fake.text": 2}})
+        monkeypatch.setattr("howler.odm.models.hit.Hit", FakeHitModel)
+
+        result = _classify_boosted_fields()
+
+        assert result["fake.text"] == "text"
+        _classify_boosted_fields.cache_clear()
 
 
 class TestDetectTokenType:
@@ -51,6 +100,22 @@ class TestDetectTokenType:
 
 
 class TestBuildFuzzyQuery:
+    def test_field_without_explicit_boost_defaults_to_one_and_text_partition(self, monkeypatch):
+        """Fields without ^boost should default to 1 and text fields should feed phrase_prefix."""
+        monkeypatch.setattr(fuzzy_service, "_get_fields_for_index", lambda _index: ["fake.text"])
+        monkeypatch.setattr(fuzzy_service, "_classify_boosted_fields", lambda: {"fake.text": "text"})
+
+        result = build_fuzzy_query("hello", ["hit"])
+
+        should = result["query"]["bool"]["should"]
+        best_fields = [c for c in should if "multi_match" in c and c["multi_match"].get("type") == "best_fields"]
+        phrase_prefix = [c for c in should if "multi_match" in c and c["multi_match"].get("type") == "phrase_prefix"]
+
+        assert len(best_fields) >= 1
+        assert "fake.text^1" in best_fields[0]["multi_match"]["fields"]
+        assert len(phrase_prefix) == 1
+        assert "fake.text^1" in phrase_prefix[0]["multi_match"]["fields"]
+
     def test_basic_text_query(self):
         result = build_fuzzy_query("suspicious login", ["hit"])
         assert "query" in result
@@ -202,3 +267,76 @@ class TestBuildFuzzyQuery:
         assert _escape_query_string('test"val') == 'test\\"val'
         # Plain text should pass through unchanged
         assert _escape_query_string("hello world") == "hello world"
+
+
+class TestFuzzySearch:
+    def test_invalid_index_raises_search_exception(self):
+        """fuzzy_search should reject unknown indexes before querying Elasticsearch."""
+        with pytest.raises(SearchException, match="Invalid index for fuzzy search"):
+            fuzzy_search(indexes=["invalid"], query="abc")
+
+    def test_track_total_hits_passed_to_elasticsearch(self, monkeypatch):
+        """track_total_hits=True should propagate to Elasticsearch search params."""
+        mock_client = MagicMock()
+        mock_client.search.return_value = {"hits": {"total": {"value": 0}, "hits": []}}
+
+        monkeypatch.setattr(
+            fuzzy_service,
+            "datastore",
+            lambda: SimpleNamespace(ds=SimpleNamespace(client=mock_client)),
+        )
+        monkeypatch.setattr(fuzzy_service, "_normalize_indexes", lambda indexes: "howler-hit")
+        monkeypatch.setattr(fuzzy_service, "build_fuzzy_query", lambda *_args, **_kwargs: {"query": {"match_all": {}}})
+
+        fuzzy_search(indexes=["hit"], query="abc", track_total_hits=True)
+
+        assert mock_client.search.call_args.kwargs["track_total_hits"] is True
+
+    def test_connection_errors_raise_retry_exception(self, monkeypatch):
+        """Connection-related Elasticsearch errors should map to SearchRetryException."""
+        mock_client = MagicMock()
+        mock_client.search.side_effect = elasticsearch.exceptions.ConnectionTimeout("timeout")
+
+        monkeypatch.setattr(
+            fuzzy_service,
+            "datastore",
+            lambda: SimpleNamespace(ds=SimpleNamespace(client=mock_client)),
+        )
+        monkeypatch.setattr(fuzzy_service, "_normalize_indexes", lambda indexes: "howler-hit")
+        monkeypatch.setattr(fuzzy_service, "build_fuzzy_query", lambda *_args, **_kwargs: {"query": {"match_all": {}}})
+
+        with pytest.raises(SearchRetryException, match="indexes: howler-hit"):
+            fuzzy_search(indexes=["hit"], query="abc")
+
+    def test_transport_errors_raise_search_exception(self, monkeypatch):
+        """Transport-level Elasticsearch errors should map to SearchException."""
+        mock_client = MagicMock()
+        meta = ApiResponseMeta(status=400, http_version="1.1", headers={}, duration=0.0, node=None)
+        mock_client.search.side_effect = elasticsearch.exceptions.BadRequestError("bad_request", meta, {})
+
+        monkeypatch.setattr(
+            fuzzy_service,
+            "datastore",
+            lambda: SimpleNamespace(ds=SimpleNamespace(client=mock_client)),
+        )
+        monkeypatch.setattr(fuzzy_service, "_normalize_indexes", lambda indexes: "howler-hit")
+        monkeypatch.setattr(fuzzy_service, "build_fuzzy_query", lambda *_args, **_kwargs: {"query": {"match_all": {}}})
+
+        with pytest.raises(SearchException):
+            fuzzy_search(indexes=["hit"], query="abc")
+
+    def test_unexpected_errors_raise_search_exception_with_context(self, monkeypatch):
+        """Unexpected errors should be wrapped with index/query context in SearchException."""
+        mock_client = MagicMock()
+        mock_client.search.side_effect = RuntimeError("boom")
+
+        monkeypatch.setattr(
+            fuzzy_service,
+            "datastore",
+            lambda: SimpleNamespace(ds=SimpleNamespace(client=mock_client)),
+        )
+        monkeypatch.setattr(fuzzy_service, "_normalize_indexes", lambda indexes: "howler-hit")
+        monkeypatch.setattr(fuzzy_service, "build_fuzzy_query", lambda *_args, **_kwargs: {"query": {"match_all": {}}})
+
+        with pytest.raises(SearchException, match="indexes: howler-hit, query: abc, error: boom"):
+            fuzzy_search(indexes=["hit"], query="abc")

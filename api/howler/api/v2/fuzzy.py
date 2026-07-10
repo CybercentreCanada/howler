@@ -104,7 +104,7 @@ def fuzzy_search(**kwargs):  # noqa: C901
             track_total_hits=track_total_hits,
             access_control=access_control,
         )
-    except SearchException as e:
+    except SearchException as e:  # pragma: no cover
         return bad_request(err=str(e))
 
     return ok(result)

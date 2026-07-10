@@ -1,8 +1,9 @@
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from howler.common.exceptions import InvalidDataException, NotFoundException
+from howler.common.exceptions import HowlerValueError, InvalidDataException, NotFoundException
 from howler.config import CLASSIFICATION
 from howler.odm.models.case import Case, CaseItem, CaseRule
 from howler.odm.models.ecs.related import Related
@@ -2644,3 +2645,327 @@ class TestIsDescendant:
         c = CaseItem({"type": "folder", "name": "C", "parent": p.id})
 
         assert case_service._is_descendant([gp, p, c], c.id, gp.id) is True
+
+    def test_cycle_terminates_without_match(self):
+        """_is_descendant breaks out of cycles in the item tree without looping forever."""
+        a = CaseItem({"type": "folder", "name": "A"})
+        b = CaseItem({"type": "folder", "name": "B", "parent": a.id})
+        # Introduce a cycle: a.parent → b (normally impossible in a valid tree)
+        a.parent = b.id
+
+        # Neither a nor b is a descendant of "unrelated-id" — should return False
+        result = case_service._is_descendant([a, b], a.id, "unrelated-id")
+        assert result is False
+
+
+# ---------------------------------------------------------------------------
+# create_case() — with items
+# ---------------------------------------------------------------------------
+
+
+class TestCreateCaseWithItems:
+    """Tests for create_case when the items list is non-empty."""
+
+    @patch("howler.services.case_service.append_case_item")
+    @patch("howler.services.case_service.datastore")
+    def test_create_case_with_items_appends_and_fetches_updated(self, mock_ds_fn, mock_append_item):
+        """create_case calls append_case_item for each item and re-fetches the updated case."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        updated_case = MagicMock()
+        updated_case.as_primitives.return_value = {"case_id": "case-001", "title": "T"}
+        mock_ds.case.get.return_value = updated_case
+
+        result = case_service.create_case(
+            {"title": "T", "summary": "S", "items": [{"type": "reference", "value": "https://x.com", "name": "ref"}]},
+            user="admin",
+        )
+
+        mock_append_item.assert_called_once()
+        mock_ds.case.get.assert_called_once()
+        assert result is updated_case
+
+    @patch("howler.services.case_service.append_case_item")
+    @patch("howler.services.case_service.datastore")
+    def test_create_case_with_items_raises_when_updated_case_missing(self, mock_ds_fn, mock_append_item):
+        """create_case raises HowlerValueError when the updated case cannot be re-fetched."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        mock_ds.case.get.return_value = None
+
+        with pytest.raises(HowlerValueError, match="Error occurred when creating case"):
+            case_service.create_case(
+                {
+                    "title": "T",
+                    "summary": "S",
+                    "items": [{"type": "reference", "value": "https://x.com", "name": "ref"}],
+                },
+                user="admin",
+            )
+
+
+# ---------------------------------------------------------------------------
+# get_last_resolved_time() — datetime edge cases
+# ---------------------------------------------------------------------------
+
+
+class TestGetLastResolvedTimeDatetimeEdgeCases:
+    """Tests for get_last_resolved_time covering datetime timezone branches."""
+
+    def test_naive_datetime_gets_utc_added(self):
+        """get_last_resolved_time attaches UTC tzinfo to a naive datetime timestamp."""
+        naive_ts = datetime(2026, 3, 10, 12, 0, 0)  # no tzinfo
+        assert naive_ts.tzinfo is None
+
+        mock_entry = MagicMock()
+        mock_entry.key = "status"
+        mock_entry.new_value = "resolved"
+        mock_entry.timestamp = naive_ts
+
+        mock_case = MagicMock()
+        mock_case.log = [mock_entry]
+
+        result = case_service.get_last_resolved_time(mock_case)
+
+        assert result is not None
+        assert result.tzinfo is not None
+        assert result.year == 2026
+        assert result.month == 3
+
+    def test_unparseable_timestamp_is_skipped(self):
+        """get_last_resolved_time skips log entries with unparseable timestamps."""
+        bad_entry = MagicMock()
+        bad_entry.key = "status"
+        bad_entry.new_value = "resolved"
+        bad_entry.timestamp = "not-a-date-at-all"
+
+        mock_case = MagicMock()
+        mock_case.log = [bad_entry]
+
+        # No valid resolved timestamp → should return None
+        result = case_service.get_last_resolved_time(mock_case)
+        assert result is None
+
+
+# ---------------------------------------------------------------------------
+# get_parent_from_path()
+# ---------------------------------------------------------------------------
+
+
+class TestGetParentFromPath:
+    """Tests for case_service.get_parent_from_path."""
+
+    @patch("howler.services.case_service.datastore")
+    def test_string_case_id_is_fetched_from_datastore(self, mock_ds_fn):
+        """get_parent_from_path fetches the case by string ID before processing the path."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
+        mock_ds.case.get.return_value = case
+
+        result = case_service.get_parent_from_path("case-001", "/")
+
+        mock_ds.case.get.assert_called_once_with("case-001")
+        assert result is None  # "/" returns None (root path)
+
+    def test_slash_only_path_returns_none(self):
+        """get_parent_from_path returns None for a path consisting entirely of slashes."""
+        case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
+        case.items = []
+
+        result = case_service.get_parent_from_path(case, "///")
+
+        assert result is None
+
+    def test_missing_folder_without_create_returns_none(self):
+        """get_parent_from_path returns None when a path segment is missing and create_if_missing=False."""
+        case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
+        case.items = []  # no folders
+
+        result = case_service.get_parent_from_path(case, "nonexistent/subfolder", create_if_missing=False)
+
+        assert result is None
+
+    def test_none_case_raises_not_found(self):
+        """get_parent_from_path raises NotFoundException when the case resolves to None."""
+        with pytest.raises(NotFoundException):
+            case_service.get_parent_from_path(None, "some/path")
+
+
+# ---------------------------------------------------------------------------
+# _check_conflicts()
+# ---------------------------------------------------------------------------
+
+
+class TestCheckConflicts:
+    """Tests for case_service._check_conflicts."""
+
+    def test_item_with_none_name_skips_conflict_check(self):
+        """_check_conflicts returns immediately without checking when item.name is None."""
+        existing = CaseItem({"type": "hit", "value": "existing", "name": "taken"})
+        mock_case = MagicMock()
+        mock_case.items = [existing]
+
+        item = MagicMock()
+        item.name = None
+
+        # Should not raise even though there is an item named "taken" in the case
+        case_service._check_conflicts(mock_case, item)
+
+
+# ---------------------------------------------------------------------------
+# _ensure_parent_exists()
+# ---------------------------------------------------------------------------
+
+
+class TestEnsureParentExists:
+    """Tests for case_service._ensure_parent_exists."""
+
+    def test_raises_when_parent_not_found(self):
+        """_ensure_parent_exists raises InvalidDataException when the parent ID does not exist."""
+        mock_case = MagicMock()
+        mock_case.items = []
+
+        with pytest.raises(InvalidDataException, match="does not exist"):
+            case_service._ensure_parent_exists(mock_case, "nonexistent-parent-id")
+
+    def test_raises_when_parent_is_not_folder(self):
+        """_ensure_parent_exists raises InvalidDataException when the parent item is not a folder."""
+        hit_item = CaseItem({"type": "hit", "value": "hit-001", "name": "hit"})
+        mock_case = MagicMock()
+        mock_case.items = [hit_item]
+
+        with pytest.raises(InvalidDataException, match="is not a folder"):
+            case_service._ensure_parent_exists(mock_case, hit_item.id)
+
+
+# ---------------------------------------------------------------------------
+# move_case_item() — name conflict in destination
+# ---------------------------------------------------------------------------
+
+
+class TestMoveCaseItemNameConflict:
+    """Tests for move_case_item name-conflict detection at the destination."""
+
+    @patch("howler.services.case_service.datastore")
+    def test_move_raises_when_name_already_exists_in_destination(self, mock_ds_fn):
+        """move_case_item raises InvalidDataException when the destination already has an item with the same name."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        folder_a = CaseItem({"type": "folder", "name": "FolderA"})
+        folder_b = CaseItem({"type": "folder", "name": "FolderB"})
+        item_to_move = CaseItem({"type": "hit", "value": "hit-001", "name": "Report", "parent": folder_a.id})
+        sibling_in_b = CaseItem({"type": "hit", "value": "hit-002", "name": "Report", "parent": folder_b.id})
+
+        mock_case = MagicMock()
+        mock_case.case_id = "case-001"
+        mock_case.items = [folder_a, folder_b, item_to_move, sibling_in_b]
+        mock_ds.case.get.return_value = mock_case
+
+        with pytest.raises(InvalidDataException, match="already exists"):
+            case_service.move_case_item("case-001", item_to_move.id, folder_b.id)
+
+
+# ---------------------------------------------------------------------------
+# _sync_case_metadata() — missing hit
+# ---------------------------------------------------------------------------
+
+
+class TestSyncCaseMetadataMissingHit:
+    """Test _sync_case_metadata skips a hit item when the backing hit is not found."""
+
+    @patch("howler.services.case_service.datastore")
+    def test_sync_skips_hit_not_in_datastore(self, mock_ds_fn):
+        """_sync_case_metadata continues gracefully when ds.hit.get returns None."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        hit_item = CaseItem({"type": "hit", "value": "hit-missing", "name": "hit-missing"})
+
+        mock_case = MagicMock()
+        mock_case.items = [hit_item]
+        mock_case.save.return_value = True
+
+        mock_ds.hit.get.return_value = None
+
+        case_service._sync_case_metadata(mock_case)
+
+        mock_case.save.assert_called_once()
+        assert mock_case.targets == []
+        assert mock_case.threats == []
+        assert mock_case.indicators == []
+
+
+# ---------------------------------------------------------------------------
+# rename_case_item() — folder item updates .value
+# ---------------------------------------------------------------------------
+
+
+class TestRenameCaseItemFolder:
+    """Tests that rename_case_item also updates item.value for folder items."""
+
+    @patch("howler.services.case_service.datastore")
+    def test_rename_folder_updates_value(self, mock_ds_fn):
+        """rename_case_item sets item.value = new name when the item is a folder."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        folder = CaseItem({"type": "folder", "name": "Old Folder"})
+        mock_case = MagicMock()
+        mock_case.case_id = "case-001"
+        mock_case.items = [folder]
+        mock_case.save.return_value = True
+        mock_ds.case.get.return_value = mock_case
+
+        case_service.rename_case_item("case-001", folder.id, "New Folder")
+
+        assert folder.name == "New Folder"
+        assert folder.value == "New Folder"
+        mock_case.save.assert_called_once_with()
+
+
+# ---------------------------------------------------------------------------
+# update_case_rule() — invalid timeframe value
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateCaseRuleInvalidTimeframe:
+    """Tests for update_case_rule timeframe validation."""
+
+    @patch("howler.services.case_service.datastore")
+    def test_update_rule_zero_timeframe_raises(self, mock_ds_fn):
+        """update_case_rule raises HowlerValueError when timeframe is set to 0."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        rule = CaseRule({"query": "*:*", "destination": "alerts/all", "author": "admin", "timeframe": 14})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
+        mock_case.rules.append(rule)
+        mock_ds.case.get.return_value = mock_case
+
+        user = MagicMock()
+        user.uname = "analyst1"
+
+        with pytest.raises(HowlerValueError, match="positive integer"):
+            case_service.update_case_rule("case-001", rule.rule_id, {"timeframe": 0}, user)
+
+    @patch("howler.services.case_service.datastore")
+    def test_update_rule_negative_timeframe_raises(self, mock_ds_fn):
+        """update_case_rule raises HowlerValueError when timeframe is negative."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        rule = CaseRule({"query": "*:*", "destination": "alerts/all", "author": "admin", "timeframe": 7})
+        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
+        mock_case.rules.append(rule)
+        mock_ds.case.get.return_value = mock_case
+
+        user = MagicMock()
+        user.uname = "analyst1"
+
+        with pytest.raises(HowlerValueError, match="positive integer"):
+            case_service.update_case_rule("case-001", rule.rule_id, {"timeframe": -5}, user)
