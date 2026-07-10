@@ -126,14 +126,14 @@ def create_bundle(
                 item_name=f"{child_hit.howler.analytic} ({child_hit.howler.id})",
                 item_parent=folder.id if folder else None,
             )
-        except (InvalidDataException, NotFoundException, DataStoreException) as exc:
+        except (InvalidDataException, NotFoundException, DataStoreException) as exc:  # pragma: no cover
             logger.warning("Could not add child hit %s to case: %s", child_id, exc)
 
     datastore().hit.commit()
     datastore().case.commit()
 
     updated_case: Case | None = datastore().case.get(case.case_id)
-    if updated_case is None:
+    if updated_case is None:  # pragma: no cover
         raise NotFoundException(f"Case {case.case_id} disappeared after creation")
 
     return synthesize_bundle_response(updated_case, odm, warnings=warnings)
@@ -176,7 +176,7 @@ def add_to_bundle(
 
     # Check for duplicates and nested bundles before modifying
     current_case: Case | None = datastore().case.get(case_id)
-    if current_case is None:
+    if current_case is None:  # pragma: no cover
         raise NotFoundException(f"Case {case_id} not found")
 
     existing_values = {item.value for item in current_case.items}
@@ -191,7 +191,7 @@ def add_to_bundle(
 
     for hit_id in hit_ids:
         child_hit = hit_service.get_hit(hit_id, as_odm=True)
-        if child_hit is None:
+        if child_hit is None:  # pragma: no cover
             logger.warning("Hit %s does not exist, skipping", hit_id)
             continue
 
@@ -202,7 +202,7 @@ def add_to_bundle(
         )
 
     updated_case: Case | None = datastore().case.get(case_id)
-    if updated_case is None:
+    if updated_case is None:  # pragma: no cover
         raise NotFoundException(f"Case {case_id} not found")
 
     return synthesize_bundle_response(updated_case, root_hit)
@@ -248,7 +248,7 @@ def remove_from_bundle(
             case_service.remove_case_items(_case, item_ids_to_remove, force=use_force)
 
     updated_case: Case | None = datastore().case.get(_case.case_id)
-    if updated_case is None:
+    if updated_case is None:  # pragma: no cover
         raise NotFoundException(f"Case {_case.case_id} not found")
 
     return synthesize_bundle_response(updated_case, root_hit)

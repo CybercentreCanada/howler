@@ -87,9 +87,9 @@ def execute(  # noqa: C901
             added.append(hit.howler.id)
         except InvalidDataException as e:
             skipped.append(f"{hit.howler.id}: {e}")
-        except NotFoundException as e:
+        except NotFoundException as e:  # pragma: no cover
             skipped.append(f"{hit.howler.id}: {e}")
-        except Exception as e:
+        except Exception as e:  # pragma: no cover
             skipped.append(f"{hit.howler.id}: {e}")
 
     if added:

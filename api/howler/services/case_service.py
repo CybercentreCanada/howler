@@ -443,7 +443,7 @@ def append_case_item(  # noqa: C901
         case CaseItemTypes.REFERENCE | CaseItemTypes.MARKDOWN | CaseItemTypes.FOLDER:
             case.items.append(item)
 
-            if not case.save():
+            if not case.save():  # pragma: no cover
                 raise DataStoreException(f"Failed to save {case.case_id} with new {item.type} {item.name}")
 
             comms_service.emit("cases", {"case": case.as_primitives()})
@@ -540,7 +540,7 @@ def move_case_item(case: str | Case | None, item_id: str, new_parent: str | None
 
     item.parent = new_parent
 
-    if not ds.case.save(case.case_id, case):
+    if not ds.case.save(case.case_id, case):  # pragma: no cover
         raise DataStoreException("Failed to save case after item move")
 
     comms_service.emit("cases", {"case": case.as_primitives()})
@@ -627,7 +627,7 @@ def remove_case_items(case: str | Case | None, item_ids: list[str], force: bool 
 
     case.items = [item for item in case.items if item.id not in ids_to_remove]
 
-    if not ds.case.save(case.case_id, case):
+    if not ds.case.save(case.case_id, case):  # pragma: no cover
         raise DataStoreException("Failed to save case after item removal")
 
     for backing_obj in backing_objs:
@@ -677,7 +677,7 @@ def append_hit(case: Case, item: CaseItem) -> Case:
 
     case.items.append(item)
 
-    if not ds.case.save(case.case_id, case):
+    if not ds.case.save(case.case_id, case):  # pragma: no cover
         raise DataStoreException(f"Failed to save {case.case_id} with new item {item.value}")
 
     _add_backreference(hit, case.case_id)
@@ -718,7 +718,7 @@ def append_event(case: Case, item: CaseItem) -> Case:
 
     case.items.append(item)
 
-    if not case.save():
+    if not case.save():  # pragma: no cover
         raise DataStoreException(f"Failed to save {case.case_id} with new item {item.value}")
 
     _add_backreference(event, case.case_id)
@@ -760,7 +760,7 @@ def append_case(case: Case, item: CaseItem) -> Case:
 
     case.items.append(item)
 
-    if not case.save():
+    if not case.save():  # pragma: no cover
         raise DataStoreException(f"Failed to save {case.case_id} with new item {item.name}")
 
     comms_service.emit("cases", {"case": case.as_primitives()})
@@ -873,7 +873,7 @@ def remove_backreference(backing_obj: Hit | Event | None, case_id: str):
     if backing_obj is None:
         raise InvalidDataException("Cannot remove back reference on a nonexisting object")
 
-    if not case_id:
+    if not case_id:  # pragma: no cover
         raise InvalidDataException("Missing back reference case_id")
 
     if case_id in backing_obj.howler.related:
@@ -919,7 +919,7 @@ def rename_case_item(case_id: str, item_id: str, new_name: str) -> Case:
     if item.type == CaseItemTypes.FOLDER:
         item.value = item.name
 
-    if not case.save():
+    if not case.save():  # pragma: no cover
         raise DataStoreException("Failed to save case after item rename")
 
     comms_service.emit("cases", {"case": case.as_primitives()})

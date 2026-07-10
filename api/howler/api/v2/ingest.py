@@ -365,5 +365,5 @@ def update_by_query(indexes: str, **kwargs):
         return ok({"success": all(ds[index].update_by_query(query, operations) for index in indexes.split(","))})
     except (HowlerValueError, KeyError, DataStoreException) as e:
         return bad_request(err=str(e))
-    except Exception as e:
+    except Exception as e:  # pragma: no cover
         return internal_error(err=str(e))

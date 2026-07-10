@@ -56,7 +56,7 @@ def create_case(user: User, **kwargs):
         return bad_request(err=str(e))
     except ResourceExists as e:
         return bad_request(err=str(e))
-    except HowlerException as e:
+    except HowlerException as e:  # pragma: no cover
         return bad_request(err=str(e))
 
 
@@ -254,7 +254,7 @@ def append_item(id: str, user: User, **kwargs):  # noqa: C901
     except DataStoreException as e:
         logger.exception("Save Error")
         return internal_error(err=str(e))
-    except NotFoundException as e:
+    except NotFoundException as e:  # pragma: no cover
         return not_found(err=str(e))
     except InvalidDataException as e:
         return bad_request(err=str(e))

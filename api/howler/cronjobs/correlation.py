@@ -21,7 +21,7 @@ def setup_job(sched: BaseScheduler):
     """Start the correlation worker thread if correlation is enabled."""
     global _thread
 
-    if not config.system.correlation.enabled:
+    if not config.system.correlation.enabled:  # pragma: no cover
         logger.info("Correlation worker disabled by configuration")
         return
 

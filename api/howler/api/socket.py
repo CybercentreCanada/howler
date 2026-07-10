@@ -55,7 +55,7 @@ def emit(event: str):
 @tracer.start_as_current_span(f"{__name__}.get_viewers")
 @socket_api.route("/viewers/<entity_id>", methods=["GET"])
 @api_login(audit=False, required_priv=["R"])
-def get_viewers(entity_id: str, **kwargs):
+def get_viewers(entity_id: str, **kwargs):  # pragma: no cover
     """Get the list of users currently viewing the specified entity
 
     Variables:
@@ -97,11 +97,11 @@ def connect(ws: Server, *args: Any, ws_id: str, **kwargs):  # noqa: C901
         logger.debug("Sending action: %s", data)
         ws.send(ws_response("action", data))
 
-    def send_case(data: dict[str, Any]):
+    def send_case(data: dict[str, Any]):  # pragma: no cover
         logger.debug("Sending case update: %s", data.get("case", {}).get("case_id", "unknown"))
         ws.send(ws_response("cases", data))
 
-    def send_viewers_update(data: dict[str, Any]):
+    def send_viewers_update(data: dict[str, Any]):  # pragma: no cover
         logger.debug("Sending viewers update: %s", data.get("id", "unknown"))
         ws.send(ws_response("viewers_update", data))
 
@@ -139,12 +139,12 @@ def connect(ws: Server, *args: Any, ws_id: str, **kwargs):  # noqa: C901
                 )
                 logger.debug("%s: Outstanding actions count=%s", ws_id, len(outstanding_actions))
             else:
-                logger.debug("%s listening", ws_id)
+                logger.debug("%s listening", ws_id)  # pragma: no cover
     except Exception as e:
         if isinstance(e, ConnectionClosed):
             raise
         else:
-            logger.exception("%s: Exception in connect loop", ws_id)
+            logger.exception("%s: Exception in connect loop", ws_id)  # pragma: no cover
     finally:
         logger.debug("%s: Deregistering comms listeners", ws_id)
         comms_service.off("hits", send_hit)

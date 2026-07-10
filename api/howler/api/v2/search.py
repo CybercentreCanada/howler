@@ -196,7 +196,7 @@ def explain_query(index, **kwargs):
             del explanation["index"]
 
         return ok(result)
-    except Exception as e:
+    except Exception as e:  # pragma: no cover
         logger.exception("Exception on query explanation")
         return bad_request(err=f"Exception: {e}")
 

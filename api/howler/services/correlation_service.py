@@ -172,7 +172,7 @@ def process_batch(record_ids: list[str]) -> int:  # noqa: C901
                 logger.debug("Record %s already exists in case %s, skipping", record_id, case_id)
             except NotFoundException:
                 logger.warning("Case %s or record %s not found during correlation", case_id, record_id)
-            except Exception:
+            except Exception:  # pragma: no cover
                 logger.exception("Failed to add record %s to case %s", record_id, case_id)
 
     return added

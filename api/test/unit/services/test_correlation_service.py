@@ -514,3 +514,21 @@ class TestProcessBatch:
         obs_call = [c for c in calls if c.kwargs["item_value"] == "obs-1"][0]
         assert hit_call.kwargs["item_type"] == "hit"
         assert obs_call.kwargs["item_type"] == "event"
+
+    @patch("howler.services.correlation_service.search_service")
+    @patch("howler.services.correlation_service.case_service")
+    @patch("howler.services.correlation_service.get_active_rules")
+    @patch("howler.services.correlation_service.datastore")
+    def test_skips_rule_when_case_not_found(self, mock_ds_fn, mock_get_rules, mock_case_svc, mock_search_svc):
+        """When ds.case.get returns None for a case, the rule is skipped and no items are added."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+        mock_ds.case.get.return_value = None
+
+        rule = _make_rule(query="*:*", destination="related")
+        mock_get_rules.return_value = [("case-missing", rule)]
+
+        added = correlation_service.process_batch(["hit-1"])
+
+        assert added == 0
+        mock_case_svc.append_case_item.assert_not_called()

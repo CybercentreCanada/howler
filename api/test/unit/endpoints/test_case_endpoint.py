@@ -877,6 +877,46 @@ class TestDeleteItemEndpoint:
 
             assert result.status_code == 500
 
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_delete_item_non_bool_force_returns_400(self, mock_auth_service, mock_case_service, request_context: Flask):
+        """Returns 400 when 'force' is present but not a boolean."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        with request_context.test_request_context(
+            method="DELETE",
+            json={"ids": ["hit-001"], "force": "yes"},
+            headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
+        ):
+            from howler.api.v2.case import delete_item
+
+            result: Response = delete_item("case-001")
+
+            assert result.status_code == 400
+            assert "force" in result.get_json()["api_error_message"]
+            mock_case_service.remove_case_items.assert_not_called()
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_delete_item_non_string_ids_returns_400(self, mock_auth_service, mock_case_service, request_context: Flask):
+        """Returns 400 when 'ids' contains non-string values."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        with request_context.test_request_context(
+            method="DELETE",
+            json={"ids": [1, 2, 3]},
+            headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
+        ):
+            from howler.api.v2.case import delete_item
+
+            result: Response = delete_item("case-001")
+
+            assert result.status_code == 400
+            assert "strings" in result.get_json()["api_error_message"]
+            mock_case_service.remove_case_items.assert_not_called()
+
 
 # ---------------------------------------------------------------------------
 # PATCH /api/v2/case/<case_id>/items
@@ -1034,6 +1074,52 @@ class TestRenameItemEndpoint:
             result: Response = rename_item(case_id="case-001")
 
             assert result.status_code == 500
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_move_item_with_parent_calls_move_case_item(
+        self, mock_auth_service, mock_case_service, request_context: Flask
+    ):
+        """When 'parent' is present in the body, move_case_item is called."""
+        from howler.odm.models.case import Case
+
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        mock_case_service.move_case_item.return_value = Case({"case_id": "case-001", "title": "T", "summary": "S"})
+
+        with request_context.test_request_context(
+            method="PUT",
+            json={"id": "item-uuid", "parent": "folder-abc"},
+            headers={"Authorization": "Bearer .", "Content-Type": "application/json"},
+        ):
+            from howler.api.v2.case import rename_item
+
+            result: Response = rename_item(case_id="case-001")
+
+            assert result.status_code == 200
+            mock_case_service.move_case_item.assert_called_once_with("case-001", "item-uuid", "folder-abc")
+            mock_case_service.rename_case_item.assert_not_called()
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_append_item_null_body_returns_400(self, mock_auth_service, mock_case_service, request_context: Flask):
+        """Returns 400 when the JSON body is null (not a dict)."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        with request_context.test_request_context(
+            method="POST",
+            data=b"null",
+            content_type="application/json",
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.case import append_item
+
+            result: Response = append_item("case-001", user=user)
+
+            assert result.status_code == 400
+            mock_case_service.append_case_item.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

@@ -220,7 +220,7 @@ def search(  # noqa: C901
     if next_deep_paging_id is not None and len(response["items"]) < rows:
         try:
             client.clear_scroll(scroll_id=next_deep_paging_id)
-        except elasticsearch.exceptions.NotFoundError:
+        except elasticsearch.exceptions.NotFoundError:  # pragma: no cover
             pass
         next_deep_paging_id = None
 

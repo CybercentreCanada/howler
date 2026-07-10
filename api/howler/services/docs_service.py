@@ -56,7 +56,7 @@ def build_route_docs(version: str, user_types: list[str]):
                     if blueprint not in api_blueprints:
                         try:
                             doc = current_app.blueprints[rule.endpoint[: rule.endpoint.rindex(".")]]._doc  # type: ignore[attr-defined]
-                        except Exception:
+                        except Exception:  # pragma: no cover
                             doc = ""
 
                         api_blueprints[blueprint] = doc

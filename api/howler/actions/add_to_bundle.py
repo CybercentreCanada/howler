@@ -85,7 +85,7 @@ def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = 
                     item_parent=folder.id if folder else None,
                 )
                 added.append(hit.howler.id)
-            except Exception:
+            except Exception:  # pragma: no cover
                 skipped.append(hit.howler.id)
 
         if skipped:

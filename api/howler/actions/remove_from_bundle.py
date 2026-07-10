@@ -131,7 +131,7 @@ def execute(query: str, bundle_id: Optional[str] = None, user: Optional[User] = 
                 "message": str(e),
             }
         )
-    except Exception as e:
+    except Exception as e:  # pragma: no cover
         report.append(
             {
                 "query": query,

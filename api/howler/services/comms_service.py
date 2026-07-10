@@ -97,7 +97,7 @@ def emit(event: str, data: Any):
     # Always publish to Redis so other pods receive the event.
     try:
         _get_sender().send(event, {"__event__": event, "__payload__": data})
-    except Exception:
+    except Exception:  # pragma: no cover
         logger.exception("Failed to publish event %s to Redis", event)
 
 

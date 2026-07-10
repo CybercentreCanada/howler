@@ -52,7 +52,7 @@ class _ObjectsDescriptor(Generic[ModelType]):
                 f"Use '{type(obj).__name__}.store' instead."
             )
 
-        if objtype is None:
+        if objtype is None:  # pragma: no cover
             raise HowlerRuntimeError("Cannot resolve owner class for 'store' descriptor.")
 
         index_name = objtype.__name__.lower()

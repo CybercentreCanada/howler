@@ -306,3 +306,42 @@ def test_specification():
     assert "case_id" in args
     assert "path" in args
     assert "title_template" in args
+
+
+# ---------------------------------------------------------------------------
+# path="" with no slash in rendered title → name = item_path (ValueError path)
+# ---------------------------------------------------------------------------
+
+
+def test_execute_empty_path_and_simple_title():
+    """When path is empty and the rendered title has no '/', name equals the full item_path."""
+    lookups = loader.get_lookups()
+    users = datastore().user.search("uname:*")["items"]
+
+    ds = datastore()
+
+    _case = Case({"title": "No Path Case", "summary": "Testing empty path"})
+    ds.case.save(_case.case_id, _case)
+    ds.case.commit()
+
+    hit: Hit = generate_useful_hit(lookups, [u["uname"] for u in users], prune_hit=False)
+    hit.howler.analytic = "TestingEmptyPath"
+    ds.hit.save(hit.howler.id, hit)
+    ds.hit.commit()
+
+    result = execute(
+        "howler.analytic:TestingEmptyPath",
+        case_id=_case.case_id,
+        path="",
+        title_template="SimpleTitle",
+    )
+
+    assert any(r["outcome"] == "success" for r in result)
+
+    updated = ds.case.get(_case.case_id)
+    added_item = next((i for i in updated.items if i.value == hit.howler.id), None)
+    assert added_item is not None
+    assert added_item.name == "SimpleTitle"
+
+    ds.case.delete(_case.case_id)
+    ds.hit.delete(hit.howler.id)

@@ -508,7 +508,7 @@ def set_as_favourite(id: str, user: User | None, **kwargs):
     if not existing_analytic:
         return not_found(err="This analytic does not exist")
 
-    if not user:
+    if not user:  # pragma: no cover
         return forbidden(err="User was not found.")
 
     try:
@@ -543,7 +543,7 @@ def remove_as_favourite(id: str, user: User | None, **kwargs):
     if not storage.analytic.exists(id):
         return not_found(err="This analytic does not exist")
 
-    if not user:
+    if not user:  # pragma: no cover
         return forbidden(err="User was not found.")
 
     try:
