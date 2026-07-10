@@ -12,6 +12,6 @@ export interface Dossier {
   query?: string;
   title?: string;
   type?: string;
-  administrator?: string[];
-  member?: string[];
+  admins?: string[];
+  members?: string[];
 }

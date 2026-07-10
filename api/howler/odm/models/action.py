@@ -18,7 +18,7 @@ class Operation(odm.Model):
 @odm.model(index=True, store=True, description="Model of actions")
 class Action(odm.Model):
     action_id: str = odm.UUID(description="A UUID for this action")
-    owner_id: str = odm.Keyword(
+    owner: str = odm.Keyword(
         description="The person to whom this action belongs.",
         optional=True,
     )
@@ -46,6 +46,12 @@ class Action(odm.Model):
         default=[],
         description="A list of the operations this action consists of.",
     )
+
+    def __init__(self, data: dict = None, *args, **kwargs):
+        if "owner" not in data and "owner_id" in data:
+            data["owner"] = data.pop("owner_id")
+
+        super().__init__(data, *args, **kwargs)
 
     def get_privilege_mapping(self) -> dict:
         """

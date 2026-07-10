@@ -17,6 +17,9 @@ import {
 } from '@mui/material';
 import api from 'api';
 import useMyApi from 'components/hooks/useMyApi';
+import type { Action } from 'models/entities/generated/Action';
+import type { Dossier } from 'models/entities/generated/Dossier';
+import type { View } from 'models/entities/generated/View';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -33,28 +36,9 @@ interface MemberItem {
   privilege: string;
 }
 
-const safeUnwrap = (val: any): string => {
-  if (val === null || val === undefined) return '';
-  if (Array.isArray(val)) return safeUnwrap(val[0]);
-  if (typeof val === 'object') return safeUnwrap(val.uname || val.username || val.user_id || JSON.stringify(val));
-  let str = String(val).trim();
-  while (
-    (str.startsWith('[') && str.endsWith(']')) ||
-    (str.startsWith("'") && str.endsWith("'")) ||
-    (str.startsWith('"') && str.endsWith('"'))
-  ) {
-    str = str.slice(1, -1).trim();
-  }
-  return str;
-};
+type Entity = Action | Dossier | View;
 
-export const MembershipManagement = ({
-  open,
-  onClose,
-  entityId,
-  entityType = 'action',
-  actionId
-}: MembershipManagementProps) => {
+export const MembershipManagement = ({ open, onClose, entityId, entityType = 'action' }: MembershipManagementProps) => {
   const { t } = useTranslation();
   const { dispatchApi } = useMyApi();
 
@@ -68,83 +52,97 @@ export const MembershipManagement = ({
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasPerformedSearch = useRef(false);
 
-  const finalEntityId = entityId || actionId;
-
-  const apiService = useMemo(
-    () => (entityType === 'action' ? api.action : entityType === 'view' ? api.view : (api as any).dossier),
-    [entityType]
-  );
-
-  const refresh = useCallback(() => {
-    if (!finalEntityId || !apiService) return;
-
-    dispatchApi((apiService as any).get(finalEntityId)).then((entity: any) => {
-      if (!entity) return;
-
-      const owner = safeUnwrap(entity.owner_id || entity.owner);
-      const adminUsers: any[] = entity.admins || entity.administrator || [];
-      const adminRoleLabel = 'administrator';
-      const membersList = (entity.members || []).map(safeUnwrap);
-
-      const memberList: MemberItem[] = [
-        ...(owner ? [{ user_id: owner, privilege: 'owner' }] : []),
-        ...adminUsers.map(m => ({ user_id: safeUnwrap(m), privilege: adminRoleLabel })),
-        ...membersList.map(m => ({ user_id: m, privilege: 'member' }))
-      ];
-      setMembers(memberList);
-    });
-
-    const permissionService = (apiService as any).permission;
-    if (permissionService?.getOptions) {
-      dispatchApi(permissionService.getOptions(finalEntityId))
-        .then((res: any) => res && setOptions(res))
-        .catch(console.error);
-    }
-  }, [finalEntityId, apiService, dispatchApi]);
-
-  const performSearch = (query: string) => {
-    const searchService = (api as any).user || (api as any).search?.user;
-    if (searchService?.search) {
-      dispatchApi(searchService.search(query)).then((res: any) => {
-        setUserOptions(res?.items || res || []);
-        hasPerformedSearch.current = true;
-      });
-    }
-  };
-
-  const handleSearchUsers = (query: string) => {
-    if (searchTimeout.current) clearTimeout(searchTimeout.current);
-
-    if (!query || query.length < 2) {
-      setUserOptions([]);
+  const refresh = useCallback(async () => {
+    if (!entityId) {
       return;
     }
 
-    if (!hasPerformedSearch.current) {
-      performSearch(query);
-    } else {
-      searchTimeout.current = setTimeout(() => performSearch(query), 500);
-    }
-  };
+    const entity = (await dispatchApi(api[entityType].get(entityId), { throwError: false })) as Entity;
 
-  const handleAddMember = () => {
-    if (!finalEntityId || !(apiService as any).permission) return;
-    (apiService as any).permission.put(finalEntityId, { user_id: username, privilege }).then(() => {
+    if (!entity) return;
+
+    // Normalize backend ownership/admin/member fields into one list for display.
+    const memberList: MemberItem[] = [
+      ...(entity.owner ? [{ user_id: entity.owner, privilege: 'owner' }] : []),
+      ...entity.admins.map(admin => ({ user_id: admin, privilege: 'administrator' })),
+      ...entity.members.map(member => ({ user_id: member, privilege: 'member' }))
+    ];
+    setMembers(memberList);
+
+    try {
+      const result = dispatchApi(api[entityType].permission.getOptions(entityId));
+
+      setOptions(result);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error(e);
+    }
+  }, [entityId, dispatchApi, entityType]);
+
+  const performSearch = useCallback(
+    async (query: string) => {
+      // Wildcard search is used so partial usernames can be discovered quickly.
+      const result = await dispatchApi(api.search.user.post({ query: `name:*${query}*` }), { throwError: false });
+
+      if (result) {
+        setUserOptions(result.items);
+      }
+
+      hasPerformedSearch.current = true;
+    },
+    [dispatchApi]
+  );
+
+  const handleSearchUsers = useCallback(
+    (query: string) => {
+      if (searchTimeout.current) clearTimeout(searchTimeout.current);
+
+      if (!query || query.length < 2) {
+        setUserOptions([]);
+        return;
+      }
+
+      if (!hasPerformedSearch.current) {
+        // Run the first eligible search immediately to keep the UI responsive.
+        performSearch(query);
+      } else {
+        // Debounce subsequent lookups to reduce backend calls while typing.
+        searchTimeout.current = setTimeout(() => performSearch(query), 500);
+      }
+    },
+    [performSearch]
+  );
+
+  const handleAddMember = useCallback(async () => {
+    if (!entityId) {
+      return;
+    }
+
+    api[entityType].permission.put(entityId, { user_id: username, privilege }).then(() => {
       setUsername('');
       setPrivilege('');
       refresh();
       setTab(0);
     });
-  };
+  }, [entityId, entityType, privilege, refresh, username]);
 
-  // Fixed: Renamed parameter to 'targetPrivilege' to avoid scope conflict
-  const handleRemoveMember = (user_id: string, targetPrivilege: string) => {
-    if (!finalEntityId || !(apiService as any).permission) return;
-    (apiService as any).permission.delete(finalEntityId, { user_id, privilege: targetPrivilege }).then(refresh);
-  };
+  // Keep the targeted privilege explicit so we remove the intended permission entry.
+  const handleRemoveMember = useCallback(
+    async (user_id: string, targetPrivilege: string) => {
+      if (!entityId) {
+        return;
+      }
+
+      await api[entityType].permission.delete(entityId, { user_id, privilege: targetPrivilege });
+
+      refresh();
+    },
+    [entityId, entityType, refresh]
+  );
 
   useEffect(() => {
     if (open) {
+      // Reset modal state each time it opens to avoid leaking stale UI state.
       refresh();
       setTab(0);
       hasPerformedSearch.current = false;

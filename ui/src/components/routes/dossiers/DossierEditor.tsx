@@ -20,7 +20,7 @@ import api from 'api';
 import { useAppUser } from 'commons/components/app/hooks';
 import PageCenter from 'commons/components/pages/PageCenter';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
-import { MembershipManagement } from 'components/elements/membershipManagement';
+import { MembershipManagement } from 'components/elements/MembershipManagement';
 import useMyApi from 'components/hooks/useMyApi';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import { isEqual } from 'lodash-es';

@@ -16,6 +16,8 @@ import { ModalContext } from 'components/app/providers/ModalProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import Phrase from 'components/elements/addons/search/phrase/Phrase';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
+import QueryResultText from 'components/elements/display/QueryResultText';
+import { MembershipManagement } from 'components/elements/MembershipManagement';
 import useMyApi from 'components/hooks/useMyApi';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import OperationEntry from 'components/routes/action/shared/OperationEntry';
@@ -27,8 +29,6 @@ import { useCallback, useContext, useEffect, useState, type ChangeEventHandler }
 import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
 import { Link, useParams } from 'react-router-dom';
-import QueryResultText from '../../../elements/display/QueryResultText';
-import { MembershipManagement } from '../../../elements/membershipManagement';
 import type { CustomActionProps } from '../edit/ActionEditor';
 import ActionReportDisplay from '../shared/ActionReportDisplay';
 import useMyActionFunctions from '../useMyActionFunctions';

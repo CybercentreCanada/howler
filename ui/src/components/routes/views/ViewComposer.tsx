@@ -56,7 +56,7 @@ import HitSort from '../hits/search/shared/HitSort';
 import SearchSpan from '../hits/search/shared/SearchSpan';
 
 // Adjust this import path if your file structure requires it
-import { MembershipManagement } from '../../elements/membershipManagement';
+import { MembershipManagement } from '../../elements/MembershipManagement';
 
 const ViewComposer: FC = () => {
   const { t } = useTranslation();

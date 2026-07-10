@@ -21,10 +21,4 @@ export const put = (
   return hput(uri(username), newData, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
-export const search = (query: string) => {
-  const params = new URLSearchParams({ query });
-
-  return hget(joinUri(parentUri(), 'user/search'), params as any);
-};
-
 export { avatar, groups, whoami };
