@@ -103,21 +103,23 @@ def test_append_reference_item(client: Client):
 
 def test_delete_items(client: Client):
     case = _create_case(client)
-    client.v2.case.append_item(case["case_id"], "reference", "https://to-delete.com", "refs/delete")
+    updated = client.v2.case.append_item(case["case_id"], "reference", "https://to-delete.com", "refs/delete")
+    item_to_delete = next(i for i in updated["items"] if i["value"] == "https://to-delete.com")
 
-    updated = client.v2.case.delete_items(case["case_id"], ["https://to-delete.com"])
+    updated = client.v2.case.delete_items(case["case_id"], [item_to_delete["id"]])
 
     assert not any(item["value"] == "https://to-delete.com" for item in updated["items"])
 
 
 def test_rename_item(client: Client):
     case = _create_case(client)
-    client.v2.case.append_item(case["case_id"], "reference", "https://rename.com", "refs/old-name")
+    updated = client.v2.case.append_item(case["case_id"], "reference", "https://rename.com", "refs/old-name")
+    item = next(i for i in updated["items"] if i["value"] == "https://rename.com")
 
-    updated = client.v2.case.rename_item(case["case_id"], "https://rename.com", "refs/new-name")
+    updated = client.v2.case.rename_item(case["case_id"], item["id"], "new-name")
 
     item = next(i for i in updated["items"] if i["value"] == "https://rename.com")
-    assert item["path"] == "refs/new-name"
+    assert item["name"] == "new-name"
 
 
 # ---------------------------------------------------------------------------

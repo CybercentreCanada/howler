@@ -86,32 +86,69 @@ class TestCaseAppendItem:
         assert conn.post.call_args[1]["json"] == {
             "type": "hit",
             "value": "hit-abc",
+            "name": "hit-abc",
             "path": "alerts/test",
+        }
+
+    def test_append_item_includes_parent_when_provided(self):
+        case, conn = _make_case_module()
+        conn.post.return_value = {"case_id": "case-001"}
+
+        case.append_item("case-001", "reference", "https://example.com", name="Ref", parent="folder-001")
+
+        conn.post.assert_called_once()
+        assert conn.post.call_args[1]["json"] == {
+            "type": "reference",
+            "value": "https://example.com",
+            "name": "Ref",
+            "parent": "folder-001",
+        }
+
+    def test_append_item_includes_path_and_parent_when_both_provided(self):
+        case, conn = _make_case_module()
+        conn.post.return_value = {"case_id": "case-001"}
+
+        case.append_item(
+            "case-001",
+            "reference",
+            "https://example.com",
+            path="refs/child",
+            name="Ref",
+            parent="folder-001",
+        )
+
+        conn.post.assert_called_once()
+        assert conn.post.call_args[1]["json"] == {
+            "type": "reference",
+            "value": "https://example.com",
+            "name": "Ref",
+            "parent": "folder-001",
+            "path": "refs/child",
         }
 
 
 class TestCaseDeleteItems:
-    def test_delete_items_sends_values(self):
+    def test_delete_items_sends_ids(self):
         case, conn = _make_case_module()
         conn.delete.return_value = {"case_id": "case-001"}
 
-        case.delete_items("case-001", ["hit-abc"])
+        case.delete_items("case-001", ["item-123"])
 
         conn.delete.assert_called_once()
         assert "case/case-001/items" in conn.delete.call_args[0][0]
-        assert conn.delete.call_args[1]["json"] == {"values": ["hit-abc"]}
+        assert conn.delete.call_args[1]["json"] == {"ids": ["item-123"]}
 
 
 class TestCaseRenameItem:
-    def test_rename_item_puts_value_and_path(self):
+    def test_rename_item_puts_id_and_name(self):
         case, conn = _make_case_module()
         conn.put.return_value = {"case_id": "case-001"}
 
-        case.rename_item("case-001", "hit-abc", "new/path")
+        case.rename_item("case-001", "item-123", "new-name")
 
         conn.put.assert_called_once()
         assert "case/case-001/items" in conn.put.call_args[0][0]
-        assert conn.put.call_args[1]["json"] == {"value": "hit-abc", "new_path": "new/path"}
+        assert conn.put.call_args[1]["json"] == {"id": "item-123", "name": "new-name"}
 
 
 class TestCaseAddRule:

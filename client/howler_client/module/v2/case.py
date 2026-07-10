@@ -78,7 +78,9 @@ class Case(object):
         case_id: str,
         item_type: str,
         value: str,
-        path: str,
+        path: str | None = None,
+        name: str | None = None,
+        parent: str | None = None,
     ) -> dict[str, Any]:
         """Append an item to a case.
 
@@ -86,42 +88,55 @@ class Case(object):
             case_id: ID of the case.
             item_type: Type of item (``hit``, ``event``, ``case``, ``table``, ``lead``, or ``reference``).
             value: The ID or reference value for the item.
-            path: Display path for the item in the case tree.
+            path: Optional parent folder path for the item.
+            name: Optional display name for the item. Defaults to ``value``.
+            parent: Optional parent folder item ID. If both ``path`` and ``parent``
+                are provided, the API resolves and applies ``path``.
 
         Returns:
             The updated case data.
         """
+        payload: dict[str, Any] = {
+            "type": item_type,
+            "value": value,
+            "name": name or value,
+        }
+        if parent is not None:
+            payload["parent"] = parent
+        if path is not None:
+            payload["path"] = path
+
         return self._connection.post(
             api_path_v2("case", case_id, "items"),
-            json={"type": item_type, "value": value, "path": path},
+            json=payload,
         )
 
-    def delete_items(self: Self, case_id: str, item_values: list[str]) -> dict[str, Any]:
+    def delete_items(self: Self, case_id: str, item_ids: list[str]) -> dict[str, Any]:
         """Remove items from a case.
 
         Args:
             case_id: ID of the case.
-            item_values: List of item values to remove.
+            item_ids: List of item IDs to remove.
 
         Returns:
             The updated case data.
         """
-        return self._connection.delete(api_path_v2("case", case_id, "items"), json={"values": item_values})
+        return self._connection.delete(api_path_v2("case", case_id, "items"), json={"ids": item_ids})
 
-    def rename_item(self: Self, case_id: str, item_value: str, new_path: str) -> dict[str, Any]:
-        """Rename (re-path) an item within a case.
+    def rename_item(self: Self, case_id: str, item_id: str, new_name: str) -> dict[str, Any]:
+        """Rename an item within a case.
 
         Args:
             case_id: ID of the case.
-            item_value: Value identifying the item to rename.
-            new_path: New path for the item.
+            item_id: ID identifying the item to rename.
+            new_name: New display name for the item.
 
         Returns:
             The updated case data.
         """
         return self._connection.put(
             api_path_v2("case", case_id, "items"),
-            json={"value": item_value, "new_path": new_path},
+            json={"id": item_id, "name": new_name},
         )
 
     def add_rule(self: Self, case_id: str, rule_data: dict[str, Any]) -> dict[str, Any]:

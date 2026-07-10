@@ -383,6 +383,66 @@ class TestAppendItemEndpoint:
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
+    def test_append_item_with_path_resolves_parent(self, mock_auth_service, mock_case_service, request_context: Flask):
+        """Resolves `path` to a parent folder id before appending."""
+        from howler.odm.models.case import Case
+
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        resolved_parent = MagicMock()
+        resolved_parent.id = "folder-123"
+
+        mock_case_service.get_parent_from_path.return_value = resolved_parent
+        mock_case_service.append_case_item.return_value = Case({"case_id": "case-001", "title": "T", "summary": "S"})
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"type": "reference", "value": "https://example.com", "name": "Example", "path": "refs/external"},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.case import append_item
+
+            result: Response = append_item("case-001", user=user)
+
+            assert result.status_code == 200
+            mock_case_service.get_parent_from_path.assert_called_once_with("case-001", "refs/external")
+
+            appended_item = mock_case_service.append_case_item.call_args.kwargs["item"]
+            assert appended_item.parent == "folder-123"
+            assert appended_item.name == "Example"
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_append_item_with_parent_skips_path_resolution(
+        self, mock_auth_service, mock_case_service, request_context: Flask
+    ):
+        """Uses the provided parent id directly when no `path` is supplied."""
+        from howler.odm.models.case import Case
+
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        mock_case_service.append_case_item.return_value = Case({"case_id": "case-001", "title": "T", "summary": "S"})
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"type": "reference", "value": "https://example.com", "name": "Example", "parent": "folder-456"},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.case import append_item
+
+            result: Response = append_item("case-001", user=user)
+
+            assert result.status_code == 200
+            mock_case_service.get_parent_from_path.assert_not_called()
+
+            appended_item = mock_case_service.append_case_item.call_args.kwargs["item"]
+            assert appended_item.parent == "folder-456"
+            assert appended_item.name == "Example"
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
     def test_append_item_invalid_json_returns_400(self, mock_auth_service, mock_case_service, request_context: Flask):
         """Returns 400 when the body is not valid JSON."""
         user = _build_user()
@@ -425,6 +485,28 @@ class TestAppendItemEndpoint:
 
             assert result.status_code == 400
             assert missing_field in result.get_json()["api_error_message"]
+            mock_case_service.append_case_item.assert_not_called()
+
+    @patch("howler.api.v2.case.case_service")
+    @patch("howler.security.auth_service")
+    def test_append_item_missing_name_returns_expected_error(
+        self, mock_auth_service, mock_case_service, request_context: Flask
+    ):
+        """Returns the specific API error when item name is missing."""
+        user = _build_user()
+        _mock_auth(mock_auth_service, user)
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"type": "hit", "value": "hit-001"},
+            headers={"Authorization": "Bearer ."},
+        ):
+            from howler.api.v2.case import append_item
+
+            result: Response = append_item("case-001", user=user)
+
+            assert result.status_code == 400
+            assert result.get_json()["api_error_message"] == "CaseItem 'name' is required"
             mock_case_service.append_case_item.assert_not_called()
 
     @patch("howler.api.v2.case.case_service")

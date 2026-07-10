@@ -367,3 +367,13 @@ def my_endpoint(...):
 ```
 
 ---
+
+### Client v2 Case Items: `name` Is Required, Delete/Rename Use Item `id`
+
+The v2 `POST /case/<id>/items` endpoint now requires a `name` field in the JSON body, even when clients only care about `type` and `value`.
+
+`DELETE /case/<id>/items` expects `{"ids": [...]}` (item UUIDs), not values, and `PUT /case/<id>/items` expects `{"id": ..., "name": ...}` and/or `parent`.
+
+When updating the Python client, avoid value/path-based delete/rename payloads and resolve item IDs from the returned case data first.
+
+---
