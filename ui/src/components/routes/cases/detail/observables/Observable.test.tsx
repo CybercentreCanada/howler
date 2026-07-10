@@ -77,7 +77,7 @@ describe('Observable', () => {
         items: [
           { id: 'i1', type: 'hit', value: 'hit-001', name: 'first-hit' },
           { id: 'i2', type: 'event', value: 'obs-002', name: 'obs-two' },
-          { id: 'i3', type: 'hit', value: 'hit-003' }
+          { id: 'i3', type: 'hit', value: 'hit-003', name: 'third-hit' }
         ]
       });
       render(
@@ -87,10 +87,10 @@ describe('Observable', () => {
       );
       expect(screen.getByText('first-hit')).toBeTruthy();
       expect(screen.getByText('obs-two')).toBeTruthy();
-      expect(screen.getByText('hit-003')).toBeTruthy();
+      expect(screen.getByText('third-hit')).toBeTruthy();
     });
 
-    it('links each chip to /cases/:case_id/:item_id', () => {
+    it('links each chip to /cases/:case_id/:item_path', () => {
       const _case = createMockCase({
         case_id: 'case-abc',
         items: [{ id: 'item-1', type: 'hit', value: 'hit-001', name: 'first-hit' }]
@@ -102,7 +102,7 @@ describe('Observable', () => {
       );
       const link = screen.getByText('first-hit').closest('a');
       expect(link).not.toBeNull();
-      expect(link?.getAttribute('href')).toBe('/cases/case-abc/item-1');
+      expect(link?.getAttribute('href')).toBe('/cases/case-abc/first-hit');
     });
   });
 });
