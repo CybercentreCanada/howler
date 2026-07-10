@@ -79,7 +79,7 @@ def generate_swagger_docs(responses: dict[int, str] = {}):  # noqa: C901
                 "required": True,
             }
             for param_name, param in func_signature.parameters.items()
-            if param_name not in ["kwargs", "_"]
+            if param_name not in ["kwargs", "_", "user"]
             and not param_name.startswith("_")
             and param.kind != inspect.Parameter.KEYWORD_ONLY
         ]
