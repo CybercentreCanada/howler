@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { Task } from 'models/entities/generated/Task';
 import { MemoryRouter } from 'react-router-dom';
+import { setupReactRouterMock } from 'tests/mocks';
 import { createMockCase } from 'tests/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -14,17 +15,7 @@ vi.mock('components/elements/UserList', () => ({
   }
 }));
 
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
-  return {
-    ...actual,
-    Link: ({ to, children, ...props }: any) => (
-      <a href={to} {...props}>
-        {children}
-      </a>
-    )
-  };
-});
+setupReactRouterMock();
 
 vi.mock('@mui/material', async () => {
   const actual = await vi.importActual('@mui/material');
@@ -129,10 +120,10 @@ describe('CaseTask', () => {
       expect(screen.getByRole('textbox')).toBeInTheDocument();
     });
 
-    it('keeps save enabled after entering edit mode', () => {
+    it('keeps save disabled after entering edit mode with no changes', () => {
       const { container } = renderTask(mkTask({ summary: 'Unchanged' }));
       fireEvent.click(getEditButton(container)!);
-      expect(getSaveButton(container)).not.toBeDisabled();
+      expect(getSaveButton(container)).toBeDisabled();
     });
 
     it('calls onEdit with selected item id on save', async () => {
@@ -146,7 +137,9 @@ describe('CaseTask', () => {
           name: 'Hit Two'
         });
       });
-      await act(() => fireEvent.click(getSaveButton(container)!));
+      await act(async () => {
+        fireEvent.click(getSaveButton(container)!);
+      });
       expect(mockOnEdit).toHaveBeenCalledWith(expect.objectContaining({ item: 'item-2' }));
     });
   });
@@ -172,7 +165,7 @@ describe('CaseTask', () => {
   describe('auto-update effects', () => {
     it('auto-calls onEdit when complete is toggled while not editing', async () => {
       const { mockOnEdit } = renderTask(mkTask({ complete: false }));
-      await act(() => {
+      await act(async () => {
         fireEvent.click(screen.getByRole('checkbox'));
       });
       await waitFor(() => {
@@ -182,7 +175,7 @@ describe('CaseTask', () => {
 
     it('auto-calls onEdit when assignment changes while not editing', async () => {
       const { mockOnEdit } = renderTask(mkTask({ assignment: undefined }));
-      act(() => {
+      await act(async () => {
         mockUserListOnChange.fn?.(['user-42']);
       });
       await waitFor(() => {
