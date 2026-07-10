@@ -8,9 +8,8 @@ from howler.config import config
 
 _OPERATION_GROUP = tuple[str] | tuple[str, str]
 
-ELASTIC_HOST_CONFIG = next((host for host in config.datastore.hosts if host.name == "elastic"), None)
-ELASTIC_MAX_REQUEST_SIZE = ELASTIC_HOST_CONFIG.max_request_size if ELASTIC_HOST_CONFIG else None
-DEFAULT_BATCH_SIZE = ELASTIC_HOST_CONFIG.request_batch_size if ELASTIC_HOST_CONFIG else None
+ELASTIC_MAX_REQUEST_SIZE = config.datastore.max_request_size
+DEFAULT_BATCH_SIZE = config.datastore.request_batch_size
 
 
 class ElasticBulkPlan(object):
