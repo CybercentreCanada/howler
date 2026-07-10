@@ -62,34 +62,17 @@ def generate_swagger_docs(responses: dict[int, str] = {}):  # noqa: C901
 
         path_params = [
             {
-                "name": param,
+                "name": param_name,
                 "in": "path",
                 "type": "string",
             }
-            for param in func_signature.parameters
-            if param not in ["kwargs", "_"] and not param.startswith("_")
+            for param_name, param in func_signature.parameters.items()
+            if param_name not in ["kwargs", "_"]
+            and not param_name.startswith("_")
+            and param.kind != inspect.Parameter.KEYWORD_ONLY
         ]
 
-        query_params: list[dict[str, Any]] = []
-        if func_doc:
-            for section in func_doc.split("\n\n"):
-                lines = section.splitlines()
-                if not lines[0].lower().endswith("arguments:"):
-                    continue
-
-                lines = [re.sub(r" =>.+", "", line).strip() for line in lines[1:]]
-
-                for line in lines:
-                    if line.lower() == "none" or "=>" not in line:
-                        continue
-
-                    if ": " in line:
-                        name, type = line.split(": ")
-                    else:
-                        name = line
-                        type = None
-
-                    query_params.append({"name": name, "in": "query", "type": type})
+        query_params: list[dict[str, Any]] = _get_query_parameters(func_signature, func_doc)
 
         tags: list[str] = []
         if module := inspect.getmodule(function):
@@ -116,3 +99,43 @@ def generate_swagger_docs(responses: dict[int, str] = {}):  # noqa: C901
         return wrapper
 
     return decorator
+
+
+def _get_query_parameters(func_signature: inspect.Signature, func_doc: Optional[str]) -> list[dict[str, Any]]:
+    query_params = [
+        {
+            "name": param_name,
+            "in": "query",
+            "type": None if param.annotation == inspect.Parameter.empty else _get_annotated_classname(param),
+        }
+        for param_name, param in func_signature.parameters.items()
+        if param.kind == inspect.Parameter.KEYWORD_ONLY  # query parameters requested using @parse_parameters
+    ]
+
+    # compatibility with old method of docstring-based query parameter definitions, prefer params in signature
+    if func_doc:
+        for section in func_doc.split("\n\n"):
+            lines = section.splitlines()
+            if not lines[0].lower().endswith("arguments:"):
+                continue
+
+            for line in lines:
+                if line.lower() == "none" or "=>" not in line:
+                    continue
+
+                arg_def = re.sub(r" =>.+", "", line).strip()
+
+                if ": " in arg_def:
+                    name, type = arg_def.split(": ")
+                else:
+                    name = arg_def
+                    type = None
+
+                if not any(param["name"] == name for param in query_params):
+                    query_params.append({"name": name, "in": "query", "type": type})
+
+    return query_params
+
+
+def _get_annotated_classname(param: inspect.Parameter) -> str:
+    return param.annotation.__name__ if hasattr(param.annotation, "__name__") else str(param.annotation)
