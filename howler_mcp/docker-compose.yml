@@ -1,0 +1,32 @@
+services:
+  howler-mcp:
+    image: howler-mcp-server:latest
+    network_mode: host
+    environment:
+      # Howler API configuration
+      HOWLER_API_VERSION: ${HOWLER_API_VERSION:-v1}
+      HOWLER_API_HOST: ${HOWLER_API_HOST:-localhost}
+      HOWLER_API_PORT: ${HOWLER_API_PORT:-3000}
+      HOWLER_API_BASE_URL: ${HOWLER_API_BASE_URL:-http://localhost:3000/api/v1}
+      HOWLER_API_AUDIENCE: ${HOWLER_API_AUDIENCE:-howler}
+      HOWLER_API_SCOPE: ${HOWLER_API_SCOPE:-howler}
+      HOWLER_API_TIMEOUT: ${HOWLER_API_TIMEOUT:-5.0}
+
+      # Auth / Keycloak configuration
+      AUTH_HOST: ${AUTH_HOST:-localhost}
+      AUTH_PORT: ${AUTH_PORT:-9100}
+      AUTH_REALM: ${AUTH_REALM:-HogwartsMini}
+      AUTH_TOKEN_URL: ${AUTH_TOKEN_URL:-http://localhost:9100/realms/HogwartsMini/protocol/openid-connect/token}
+      AUTH_CLIENT_ID: ${AUTH_CLIENT_ID:-howlermcp}
+      AUTH_CLIENT_SECRET: ${AUTH_CLIENT_SECRET:-lalala:)}
+      AUTH_JWKS_URI: ${AUTH_JWKS_URI:-http://localhost:9100/realms/HogwartsMini/protocol/openid-connect/certs}
+      AUTH_ISSUER: ${AUTH_ISSUER:-http://localhost:9100/realms/HogwartsMini}
+      AUTH_AS_SERVER_URL: ${AUTH_AS_SERVER_URL:-http://localhost:9100/realms/HogwartsMini}
+
+      # MCP server configuration
+      MCP_HOST: ${MCP_HOST:-0.0.0.0}
+      MCP_PUBLIC_HOST: ${MCP_PUBLIC_HOST:-localhost}
+      MCP_PORT: ${MCP_PORT:-8000}
+      MCP_BASE_URL: ${MCP_BASE_URL:-http://localhost:8000/mcp}
+      MCP_SCOPE: ${MCP_SCOPE:-howlermcp:access}
+      MCP_AUDIENCE: ${MCP_AUDIENCE:-howlermcp}
