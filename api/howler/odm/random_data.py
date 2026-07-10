@@ -715,6 +715,57 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
         "Evidence Index",
         "Detection Review",
     ]
+    markdown_template_pool = [
+        (
+            "# Analyst Notes\n\n"
+            "## Hypothesis\n"
+            "{hypothesis}\n\n"
+            "## Observations\n"
+            "- Target: `{target}`\n"
+            "- Threat: `{threat}`\n"
+            "- Confidence: {confidence}\n"
+        ),
+        (
+            "# Investigation Update\n\n"
+            "## Timeline\n"
+            "1. Collected initial indicators.\n"
+            "2. Validated event overlap.\n"
+            "3. Prepared containment recommendation.\n\n"
+            "## Current Focus\n"
+            "{focus}\n"
+        ),
+        (
+            "# Triage Checklist\n\n"
+            "- [x] Validate alert context\n"
+            "- [x] Correlate related events\n"
+            "- [ ] Confirm blast radius\n"
+            "- [ ] Draft handoff summary\n\n"
+            "## Assigned Analyst\n"
+            "{analyst}\n"
+        ),
+        (
+            "# IOC Notes\n\n"
+            "| Type | Value |\n"
+            "| --- | --- |\n"
+            "| Host | {target} |\n"
+            "| Indicator | {threat} |\n\n"
+            "## Next Action\n"
+            "{next_action}\n"
+        ),
+    ]
+    confidence_pool = ["Low", "Moderate", "High", "High (pending confirmation)"]
+    focus_pool = [
+        "Verify whether this activity is tied to an active intrusion set.",
+        "Compare endpoint and identity telemetry for shared artifacts.",
+        "Validate if suspicious authentication events match known attacker tradecraft.",
+        "Identify additional systems that should be prioritized for containment.",
+    ]
+    next_action_pool = [
+        "Pivot on destination infrastructure across the previous 14 days.",
+        "Request endpoint triage package and memory capture for impacted host.",
+        "Confirm privileged account exposure and reset credentials if required.",
+        "Escalate to incident commander with correlated evidence bundle.",
+    ]
 
     def _parse_timestamp(value: str | datetime | None) -> datetime | None:
         if not value:
@@ -876,6 +927,48 @@ def create_cases(ds: HowlerDatastore, num_cases: int = 5):
                         "type": "reference",
                         "value": "https://example.com",
                         "parent": parent.id if parent else None,
+                    }
+                )
+            )
+
+        markdown_item_count = randint(2, 4)
+        for index in range(markdown_item_count):
+            markdown_parent = case_service.get_parent_from_path(
+                case,
+                choice(
+                    [
+                        "analysis/notes",
+                        "analysis/notes/daily",
+                        "analysis/notes/triage",
+                        f"analysis/{get_random_word()}",
+                    ]
+                ),
+                create_if_missing=True,
+            )
+            markdown_value = choice(markdown_template_pool).format(
+                hypothesis=choice(
+                    [
+                        "Potential credential theft followed by lateral movement.",
+                        "Suspicious beaconing indicates possible command-and-control traffic.",
+                        "Observed activity may represent staged data exfiltration.",
+                        "Alerts suggest a coordinated phishing-to-access chain.",
+                    ]
+                ),
+                target=choice(selected_targets),
+                threat=choice(selected_threats),
+                confidence=choice(confidence_pool),
+                focus=choice(focus_pool),
+                analyst=choice(selected_participants or ["admin"]),
+                next_action=choice(next_action_pool),
+            )
+
+            case.items.append(
+                CaseItem(
+                    {
+                        "name": f"Markdown Note {index + 1}",
+                        "type": "markdown",
+                        "value": markdown_value,
+                        "parent": markdown_parent.id if markdown_parent else None,
                     }
                 )
             )

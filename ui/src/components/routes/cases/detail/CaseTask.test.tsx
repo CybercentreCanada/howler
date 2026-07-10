@@ -99,7 +99,7 @@ describe('CaseTask', () => {
     it('shows a path chip linking to the resolved item path when task.item is set', () => {
       renderTask(mkTask({ item: 'item-1' }));
       const link = screen.getByText('Hit One').closest('a');
-      expect(link).toHaveAttribute('href', 'Folder/Hit One');
+      expect(link).toHaveAttribute('href', '/cases/case-1/Folder/Hit One');
     });
 
     it('does not show an item chip when task.item is not set', () => {

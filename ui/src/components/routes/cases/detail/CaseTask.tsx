@@ -105,7 +105,14 @@ const CaseTask: FC<{
           <Typography sx={[complete && { textDecoration: 'line-through' }]}>{task?.summary || summary}</Typography>
         )}
 
-        {!editing && item && <Chip clickable component={Link} to={buildPathFromID(_case, item.id)} label={item.name} />}
+        {!editing && item && (
+          <Chip
+            clickable
+            component={Link}
+            to={`/cases/${_case.case_id}/${buildPathFromID(_case, item.id)}`}
+            label={item.name}
+          />
+        )}
         {editing && !readOnly && (
           <Autocomplete
             disabled={loading}
