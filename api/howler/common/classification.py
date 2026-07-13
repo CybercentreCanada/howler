@@ -9,7 +9,6 @@ from howler.common.exceptions import (
     InvalidDefinition,
 )
 from howler.common.loader import APP_NAME
-from howler.odm.base import ClassificationObject
 
 if TYPE_CHECKING:
     from howler.odm.base import ClassificationObject
