@@ -1,11 +1,12 @@
 import json
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from flask import request
 from mergedeep import Strategy, merge
 
 from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
 from howler.api.v1.utils.etag import add_etag
+from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import HowlerException, HowlerValueError
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -57,6 +58,7 @@ def _get_ingestion_queue() -> NamedQueue[str]:
 @generate_swagger_docs()
 @ingest_api.route("/<index>", methods=["POST"])
 @api_login(required_priv=["W"])
+@parse_parameters(refresh=parse_refresh)
 def create(index: str, user: User, **kwargs):
     """Create new records in a given index.
 
@@ -93,9 +95,11 @@ def create(index: str, user: User, **kwargs):
     if not isinstance(records, list):
         return bad_request(err="JSON Payload must be a list of records.")
     ignore_extra_values = request.args.get("ignore_extra_values", False, type=lambda v: v.lower() == "true")
+    refresh = cast(Literal["true", "false", "wait_for"] | None, kwargs.get("refresh"))
 
     ids: list[str] = []
     warnings = []
+    refresh_kwargs: dict[str, Literal["true", "false", "wait_for"] | None] = {"refresh": refresh}
     for i, record in enumerate(records):
         try:
             odm: Hit | Event
@@ -103,10 +107,10 @@ def create(index: str, user: User, **kwargs):
                 odm, _warnings = event_service.convert_event(
                     record, unique=True, ignore_extra_values=ignore_extra_values
                 )
-                event_service.create_event(odm.howler.id, odm, user.uname, skip_exists=True)
+                event_service.create_event(odm.howler.id, odm, user.uname, skip_exists=True, **refresh_kwargs)
             else:
                 odm, _warnings = hit_service.convert_hit(record, unique=True, ignore_extra_values=ignore_extra_values)
-                hit_service.create_hit(odm.howler.id, odm, user.uname, skip_exists=True)
+                hit_service.create_hit(odm.howler.id, odm, user.uname, skip_exists=True, refresh=refresh)
 
             ids.append(odm.howler.id)
             warnings.extend(_warnings)
@@ -127,6 +131,7 @@ def create(index: str, user: User, **kwargs):
 @generate_swagger_docs()
 @ingest_api.route("/<indexes>", methods=["DELETE"])
 @api_login(required_priv=["W"])
+@parse_parameters(refresh=parse_refresh)
 def delete(indexes: str, user: User, **kwargs):
     """Delete records, optionally across multiple indexes.
 
@@ -157,6 +162,7 @@ def delete(indexes: str, user: User, **kwargs):
         return forbidden(err="Cannot delete hit, only administrators are permitted to delete.")
 
     index_list = indexes.split(",")
+    refresh = kwargs.get("refresh")
 
     ds = datastore()
 
@@ -174,10 +180,9 @@ def delete(indexes: str, user: User, **kwargs):
                 continue
 
             for record_id in existing:
-                ds[index].delete(record_id)
+                ds[index].delete(record_id, refresh=refresh)
 
             remaining -= set(existing)
-            ds[index].commit()
     except DataStoreException as e:
         return internal_error(err=str(e))
 
@@ -256,6 +261,7 @@ def validate(index: str, **kwargs):
 @ingest_api.route("/<index>/<id>/overwrite", methods=["PATCH"])
 @api_login(audit=False, required_priv=["W"])
 @add_etag()
+@parse_parameters(refresh=parse_refresh)
 def overwrite(index: str, id: str, **kwargs):
     """Overwrite a record.
 
@@ -290,6 +296,7 @@ def overwrite(index: str, id: str, **kwargs):
 
     try:
         odm = INDEXES[index]
+        refresh = kwargs.get("refresh")
 
         # TODO: This is inefficient. We can use elastic's `update` command to just directly patch the document
         new_record = cast(
@@ -303,7 +310,12 @@ def overwrite(index: str, id: str, **kwargs):
             ),
         )
 
-        ds[index].save(id, odm(new_record) if odm else new_record, version=kwargs.get("server_version"))
+        ds[index].save(
+            id,
+            odm(new_record) if odm else new_record,
+            version=kwargs.get("server_version"),
+            refresh=refresh,
+        )
 
         new_record, new_version = ds[index].get(id, as_obj=False, version=True)
 
@@ -315,6 +327,7 @@ def overwrite(index: str, id: str, **kwargs):
 @generate_swagger_docs()
 @ingest_api.route("/<indexes>/update", methods=["PUT"])
 @api_login(audit=False, required_priv=["W"])
+@parse_parameters(refresh=parse_refresh)
 def update_by_query(indexes: str, **kwargs):
     """Update a set of records using a query.
 
@@ -339,6 +352,7 @@ def update_by_query(indexes: str, **kwargs):
     }
     """
     data = cast(dict[str, Any], request.json)
+    refresh = kwargs.get("refresh")
 
     try:
         query = cast(str, data["query"])
@@ -364,7 +378,9 @@ def update_by_query(indexes: str, **kwargs):
 
         ds = datastore()
 
-        return ok({"success": all(ds[index].update_by_query(query, operations) for index in indexes.split(","))})
+        success = all(ds[index].update_by_query(query, operations, refresh=refresh) for index in indexes.split(","))
+
+        return ok({"success": success})
     except (HowlerValueError, KeyError, DataStoreException) as e:
         return bad_request(err=str(e))
     except Exception as e:  # pragma: no cover

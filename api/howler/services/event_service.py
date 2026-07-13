@@ -1,6 +1,6 @@
 import json
 from hashlib import sha256
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from opentelemetry import trace
 from prometheus_client import Counter
@@ -112,7 +112,14 @@ CREATED_EVENTS = Counter(
 )
 
 
-def create_event(id: str, event: Event, user: Optional[str] = None, skip_exists: bool = False) -> bool:
+def create_event(
+    id: str,
+    event: Event,
+    user: Optional[str] = None,
+    skip_exists: bool = False,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+    **kwargs: Any,
+) -> bool:
     """Create a new event in the database.
 
     This function saves an event to the datastore, optionally adding a creation
@@ -137,4 +144,4 @@ def create_event(id: str, event: Event, user: Optional[str] = None, skip_exists:
         event.howler.log = [EventLog({"timestamp": "NOW", "explanation": "Created event", "user": user})]
 
     CREATED_EVENTS.inc()
-    return datastore().event.save(id, event)
+    return datastore().event.save(id, event, refresh=refresh)
