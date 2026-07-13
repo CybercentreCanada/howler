@@ -72,7 +72,7 @@ def get_configuration(user: User | None, **kwargs):
     Args:
         user (User): The user making the request
     """
-    apps = get_apps_list(discovery_url=kwargs.get("discovery_url", None))
+    apps = get_apps_list()
 
     amount, unit = _get_apikey_max_duration()
 

@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any
 
 import requests
 
@@ -10,28 +10,24 @@ logger = get_logger(__file__)
 DISCO_CACHE = {}
 
 
-def get_apps_list(discovery_url: str | None) -> list[dict[str, str]]:
+def get_apps_list() -> list[dict[str, str]]:
     """Get a list of apps from the discovery service
 
     Returns:
         list[dict[str, str]]: A list of other apps
     """
-    if not config.discovery.enabled or discovery_url is None:
+    if not config.discovery.enabled or not config.discovery.url:
         return []
 
-    if discovery_url not in DISCO_CACHE:
+    if config.discovery.url not in DISCO_CACHE:
         apps: list[dict[str, Any]] = []
 
         if TESTING:
             logger.info("Skipping discovery, running in a test environment")
 
-        url = discovery_url or config.ui.discover_url
-        if not url:
-            return apps
-
         try:
             resp = requests.get(
-                cast(str, discovery_url or config.discovery.url),
+                config.discovery.url,
                 headers={"accept": "application/json"},
                 timeout=5,
             )
@@ -56,11 +52,11 @@ def get_apps_list(discovery_url: str | None) -> list[dict[str, str]]:
                     except Exception:
                         logger.exception("Failed to parse get app: %s", str(app))
             else:
-                logger.warning("Invalid response from server for apps discovery: %s", discovery_url)
+                logger.warning("Invalid response from server for apps discovery: %s", config.discovery.url)
         except Exception:
-            logger.exception("Failed to get apps from discover URL: %s", discovery_url)
+            logger.exception("Failed to get apps from discover URL: %s", config.discovery.url)
 
-        DISCO_CACHE[discovery_url] = sorted(apps, key=lambda k: k["name"])
+        DISCO_CACHE[config.discovery.url] = sorted(apps, key=lambda k: k["name"])
         return sorted(apps, key=lambda k: k["name"])
     else:
-        return DISCO_CACHE[discovery_url]
+        return DISCO_CACHE[config.discovery.url]
