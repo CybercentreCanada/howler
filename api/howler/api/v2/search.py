@@ -6,7 +6,7 @@ from elasticsearch import BadRequestError
 from elasticsearch._sync.client.indices import IndicesClient
 from flask import request
 
-from howler.api import bad_request, make_subapi_blueprint, ok
+from howler.api import bad_request, internal_error, make_subapi_blueprint, ok
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
@@ -98,7 +98,12 @@ def search(indexes: str, user: User, **kwargs):
         return bad_request(err="There was no search query.")
 
     metadata = params.pop("metadata", [])
-    result = search_service.search(indexes, query, user=user, **params)
+
+    try:
+        result = search_service.search(indexes, query, user=user, **params)
+    except Exception as e:
+        logger.exception(f"Exception on search with query {query}")
+        return internal_error(f"Exception on search with query {query}: {e}")
 
     if metadata and any(idx in index_list for idx in ["hit"]):
         hit_service.augment_metadata(result["items"], metadata, user)
@@ -172,8 +177,8 @@ def explain_query(index, **kwargs):
 
         return ok(result)
     except Exception as e:  # pragma: no cover
-        logger.exception("Exception on query explanation")
-        return bad_request(err=f"Exception: {e}")
+        logger.exception(f"Exception on query {query}")
+        return bad_request(err=f"Exception on query {query}: {str(e)}")
 
 
 @generate_swagger_docs()
@@ -233,7 +238,8 @@ def count(index, **kwargs):
     try:
         return ok(collection().count(query, filters, access_control=access_control))
     except (SearchException, BadRequestError) as e:
-        return bad_request(err=f"SearchException: {e}")
+        logger.exception(f"SearchException on query {params['query']}")
+        return bad_request(err=f"SearchException on query {params['query']}: {str(e)}")
 
 
 @generate_swagger_docs()
@@ -304,5 +310,5 @@ def facet(indexes: str, **kwargs):
 
         return ok(facet_result)
     except (SearchException, BadRequestError) as e:
-        logger.error("SearchException: %s", str(e), exc_info=True)
-        return bad_request(err=f"SearchException: {e}")
+        logger.exception(f"SearchException on query {params['query']}")
+        return bad_request(err=f"SearchException on query {params['query']}: {str(e)}")
