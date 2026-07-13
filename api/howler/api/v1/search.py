@@ -4,10 +4,9 @@ from typing import Any
 
 from elasticsearch import BadRequestError
 from elasticsearch._sync.client.indices import IndicesClient
-from flask import Request, request
+from flask import request
 from sigma.backends.elasticsearch import LuceneBackend
 from sigma.rule import SigmaRule
-from werkzeug.exceptions import BadRequest
 from yaml.scanner import ScannerError
 
 from howler.api import bad_request, forbidden, make_subapi_blueprint, ok
@@ -19,6 +18,7 @@ from howler.helper.search import get_collection, get_default_sort, has_access_co
 from howler.odm.models.user import User
 from howler.security import api_login
 from howler.services import hit_service, lucene_service
+from howler.utils.net_utils import generate_params
 
 SUB_API = "search"
 search_api = make_subapi_blueprint(SUB_API, api_version=1)
@@ -27,35 +27,6 @@ search_api._doc = "Perform search queries"  # type: ignore
 logger = get_logger(__file__)
 
 SENSITIVE_USER_FIELDS = ["password", "apikeys", "*"]
-
-
-def generate_params(request: Request, fields: list[str], multi_fields: list[str], params: dict[str, Any] | None = None):
-    """Generate a list of parameters, combining the request data and the query arguments"""
-    # I hate you, python
-    if params is None:
-        params = {}
-
-    if request.method == "POST":
-        try:
-            req_data = request.json
-        except BadRequest:
-            req_data = {"query": "*:*"}
-
-        params = {
-            **params,
-            **{k: req_data[k] for k in fields if k in req_data},
-            **{k: req_data[k] for k in multi_fields if k in req_data},
-        }
-
-    else:
-        req_data = request.args
-        params = {
-            **params,
-            **{k: req_data[k] for k in fields if k in req_data},
-            **{k: req_data.getlist(k) for k in multi_fields if k in req_data},
-        }
-
-    return params, req_data
 
 
 @generate_swagger_docs()
