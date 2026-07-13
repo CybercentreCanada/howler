@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Literal, Optional, Union
 
 from howler import odm
 from howler.odm.models.lead import Lead
@@ -24,7 +24,6 @@ class Dossier(odm.Model):
     )
     title: str = odm.Keyword(description="The title of this dossier.")
 
-    # TODO : AG find better language for them
     owner: str = odm.Keyword(
         description="The person to whom this dossier belongs.",
         optional=True,
@@ -45,7 +44,7 @@ class Dossier(odm.Model):
     query: Optional[str] = odm.Keyword(
         description="The query that controls when this dossier should be shown in the UI.", optional=True, default=None
     )
-    type: Literal["personal"] | Literal["global"] = odm.Enum(
+    type: Union[Literal["personal"], Literal["global"]] = odm.Enum(
         values=["personal", "global"],
         description="The type of dossier - personal or global.",
     )

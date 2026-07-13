@@ -15,12 +15,7 @@ from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.models.action import Action
 from howler.odm.models.user import User
 from howler.security import api_login
-from howler.services import action_service
-from howler.services.permission_service import (
-    get_require_data_helper,
-    is_allowed_to_change,
-    verify_privilege_values,
-)
+from howler.services import action_service, permission_service
 
 SUB_API = "action"
 classification_definition = CLASSIFICATION.get_parsed_classification_definition()
@@ -431,7 +426,8 @@ def give_privilege(id: str, user: User, **kwargs):
         user : the user requesting the privilege change (injected by the api_login decorator)
 
     Optional Arguments:
-        None
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     {
@@ -444,14 +440,14 @@ def give_privilege(id: str, user: User, **kwargs):
         "success": True     # If the operation succeeded
     }
     """
-    temp_value: tuple[HowlerDatastore, str, str] | str = get_require_data_helper(request.json)
-    refresh = kwargs.get("refresh", True)
+    temp_value: tuple[HowlerDatastore, str, str] | str = permission_service.get_require_data_helper(request.json)
+    refresh = kwargs.get("refresh")
 
     if isinstance(temp_value, str):
         return bad_request(err=temp_value)
 
     storage, priv_requested, user_to_add = temp_value
-    result = verify_privilege_values(
+    result = permission_service.verify_privilege_values(
         item_id=escape(str(id)), level_requested=priv_requested, member_to_modify=user_to_add, item_type=Action
     )
 
@@ -466,7 +462,9 @@ def give_privilege(id: str, user: User, **kwargs):
     priv_map = existing_action.get_privilege_mapping()
 
     priv_request: str = escape(str(priv_requested))
-    is_allowed: bool = is_allowed_to_change(level_requested=priv_request, user=user, existing_item=existing_action)
+    is_allowed: bool = permission_service.is_allowed_to_change(
+        level_requested=priv_request, user=user, existing_item=existing_action
+    )
 
     if not is_allowed:
         return forbidden(err="You do not have the necessary permissions to modify this privilege level.")
@@ -496,7 +494,8 @@ def revoke_privilege(id: str, user: User, **kwargs):
         user: The user making the request (injected by the api_login decorator)
 
     Optional Arguments:
-        None
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
         {
@@ -509,13 +508,13 @@ def revoke_privilege(id: str, user: User, **kwargs):
             "success": True
         }
     """
-    temp_value: tuple[HowlerDatastore, str, str] | str = get_require_data_helper(request.json)
-    refresh = kwargs.get("refresh", True)
+    temp_value: tuple[HowlerDatastore, str, str] | str = permission_service.get_require_data_helper(request.json)
+    refresh = kwargs.get("refresh")
     if isinstance(temp_value, str):
         return bad_request(err=temp_value)
 
     storage, priv_requested, user_to_remove = temp_value
-    result = verify_privilege_values(
+    result = permission_service.verify_privilege_values(
         item_id=escape(str(id)),
         level_requested=priv_requested,
         member_to_modify=user_to_remove,
@@ -530,7 +529,7 @@ def revoke_privilege(id: str, user: User, **kwargs):
         return bad_request(err=f"Wrong request type. Object of type {type(result)} was requested insted of Action")
 
     priv_map = result.get_privilege_mapping()
-    is_allowed: bool = is_allowed_to_change(
+    is_allowed: bool = permission_service.is_allowed_to_change(
         level_requested=priv_requested,
         user=user,
         existing_item=result,

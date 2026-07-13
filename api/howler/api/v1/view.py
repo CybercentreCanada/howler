@@ -15,12 +15,7 @@ from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.models.user import User
 from howler.odm.models.view import View
 from howler.security import api_login
-from howler.services.permission_service import (
-    _get_edit_auth_error,
-    get_require_data_helper,
-    is_allowed_to_change,
-    verify_privilege_values,
-)
+from howler.services import permission_service
 
 SUB_API = "view"
 view_api = make_subapi_blueprint(SUB_API, api_version=1)
@@ -197,8 +192,7 @@ def update_view(view_id: str, user: User, **kwargs):
     if not isinstance(new_data, dict):
         return bad_request(err="Invalid data format")
 
-    # .isdisjoint() is a very clean, fast way to check for restricted keys
-    if not new_data.keys().isdisjoint({"view_id", "owner"}):
+    if set(new_data.keys()) & {"view_id", "owner"}:
         return bad_request(err="You cannot change the owner or id of a view.")
 
     storage = datastore()
@@ -208,7 +202,7 @@ def update_view(view_id: str, user: User, **kwargs):
         return not_found(err="This view does not exist")
 
     # Delegate the heavy auth checks to the helper function
-    auth_error = _get_edit_auth_error(existing_view, user)
+    auth_error = permission_service._get_edit_auth_error(existing_view, user)
     if auth_error:
         return forbidden(err=auth_error)
 
@@ -254,7 +248,11 @@ def set_as_favourite(view_id: str, **kwargs):
     if not existing_view:
         return not_found(err="This view does not exist")
 
-    if existing_view.type != "global" and kwargs["user"]["uname"] != existing_view.owner and existing_view.owner:
+    if (
+        existing_view.type != "global"
+        and kwargs["user"]["uname"] != existing_view.owner
+        and existing_view.owner != "none"
+    ):
         return forbidden(err="You can only favourite global views, or views owned by you.")
 
     try:
@@ -312,23 +310,18 @@ def remove_as_favourite(view_id: str, **kwargs):
 @view_api.route("/<view_id>/permission", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
 def give_privilege(view_id: str, user: User, **kwargs):
-    """give permission from one user to an other.
-
-    The json object need to send "privilege", "user_id" as a key.
-    privilege : The value need to be one of ["administrator", "member", "owner"]
-    user_id : the value need to be the user to add or remove from the permission
-    is_adding: The value neeed to be a boolean representing if we add or remove a user.
+    """Grant a privilege on a view to another user.
 
     Variables:
-    view_id => The id of the view to give administrative privilege of
+    view_id => The ID of the view for which to grant a privilege
 
     Optional Arguments:
         None
 
     Data Block:
     {
-        "privilege": "privilege to give"  # [member, administrator, owner]
-        "user_id": "user to give permission to"
+        "privilege": "privilege to grant"  # [member, administrator, owner]
+        "user_id": "user to grant permission to"
     }
 
     Result Example:
@@ -336,14 +329,14 @@ def give_privilege(view_id: str, user: User, **kwargs):
         "success": True     # If the operation succeeded
     }
     """
-    temp_value: tuple[HowlerDatastore, str, str] | str = get_require_data_helper(request.json)
+    temp_value: tuple[HowlerDatastore, str, str] | str = permission_service.get_require_data_helper(request.json)
 
     if isinstance(temp_value, str):
         return bad_request(err=temp_value)
 
     storage, priv_requested, user_to_add = temp_value
 
-    result = verify_privilege_values(
+    result = permission_service.verify_privilege_values(
         item_id=escape(str(view_id)),
         level_requested=priv_requested,
         member_to_modify=user_to_add,
@@ -359,7 +352,9 @@ def give_privilege(view_id: str, user: User, **kwargs):
     priv_map: dict = result.get_privilege_mapping()
 
     priv_request: str = escape(str(priv_requested))
-    is_allowed: bool = is_allowed_to_change(level_requested=priv_request, user=user, existing_item=result)
+    is_allowed: bool = permission_service.is_allowed_to_change(
+        level_requested=priv_request, user=user, existing_item=result
+    )
 
     if not is_allowed:
         return bad_request(err=f'You are not allowed to give the privilege "{priv_request}" for this view ')
@@ -394,7 +389,8 @@ def revoke_privilege(view_id: str, user: User, **kwargs):
         user: The user making the request (injected by the api_login decorator)
 
     Optional Arguments:
-        None
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
         {
@@ -407,14 +403,14 @@ def revoke_privilege(view_id: str, user: User, **kwargs):
             "success": True
         }
     """
-    temp_value: tuple[HowlerDatastore, str, str] | str = get_require_data_helper(request.json)
-    refresh = kwargs.get("refresh", True)
+    temp_value: tuple[HowlerDatastore, str, str] | str = permission_service.get_require_data_helper(request.json)
+    refresh = kwargs.get("refresh")
 
     if isinstance(temp_value, str):
         return bad_request(err=temp_value)
 
     storage, priv_requested, user_to_remove = temp_value
-    result = verify_privilege_values(
+    result = permission_service.verify_privilege_values(
         item_id=escape(str(view_id)),
         level_requested=priv_requested,
         member_to_modify=user_to_remove,
@@ -431,7 +427,9 @@ def revoke_privilege(view_id: str, user: User, **kwargs):
     priv_map = result.get_privilege_mapping()
 
     priv_request: str = escape(str(priv_requested))
-    is_allowed: bool = is_allowed_to_change(level_requested=priv_request, user=user, existing_item=result)
+    is_allowed: bool = permission_service.is_allowed_to_change(
+        level_requested=priv_request, user=user, existing_item=result
+    )
 
     if not is_allowed:
         return forbidden(err=f"You do not have the necessary permissions to revoke {priv_request} on view {view_id}")

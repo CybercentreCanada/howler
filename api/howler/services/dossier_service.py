@@ -23,12 +23,7 @@ from howler.datastore.exceptions import SearchException
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.models.dossier import Dossier
 from howler.odm.models.user import User
-from howler.services import lucene_service
-from howler.services.permission_service import (
-    get_require_data_helper,
-    is_allowed_to_change,
-    verify_privilege_values,
-)
+from howler.services import lucene_service, permission_service
 
 logger = get_logger(__file__)
 
@@ -213,7 +208,6 @@ def update_dossier(dossier_id: str, dossier_data: dict[str, Any], user: User, re
 
     # Enforce access control for global dossiers
     # Only the owner or admin users can modify global dossiers
-    # TODO : AG : verify this work to only allow "member" to modify it
     is_member: bool = user.uname in ([existing_dossier.owner] + existing_dossier.admins + existing_dossier.members)
     if not is_member and "admin" not in user.type:
         raise ForbiddenException("Only the members of a dossier and global administrators can edit a global dossier.")
@@ -379,7 +373,7 @@ def give_privilege(received_data: dict, dossier_id: str, user: User, refresh: bo
         "success": True     # If the operation succeeded
     }
     """
-    temp_value: tuple[HowlerDatastore, str, str] | str = get_require_data_helper(received_data)
+    temp_value: tuple[HowlerDatastore, str, str] | str = permission_service.get_require_data_helper(received_data)
     # TODO: AG : update this once the get require data helper is updated to return the correct types
     if isinstance(temp_value, str):
         raise InvalidDataException(
@@ -388,7 +382,7 @@ def give_privilege(received_data: dict, dossier_id: str, user: User, refresh: bo
 
     storage, priv_requested, user_to_add = temp_value
 
-    result = verify_privilege_values(
+    result = permission_service.verify_privilege_values(
         item_id=escape(str(dossier_id)),
         level_requested=priv_requested,
         member_to_modify=user_to_add,
@@ -397,7 +391,9 @@ def give_privilege(received_data: dict, dossier_id: str, user: User, refresh: bo
     if not isinstance(result, Dossier):
         raise InvalidDataException(f"Wrong object instance of {type(result)} insted of Dossier")
 
-    is_allowed: bool = is_allowed_to_change(level_requested=priv_requested, user=user, existing_item=result)
+    is_allowed: bool = permission_service.is_allowed_to_change(
+        level_requested=priv_requested, user=user, existing_item=result
+    )
 
     if not is_allowed:
         raise HowlerInvalidPermissionException(
@@ -438,7 +434,7 @@ def revoke_privilege(received_data: dict, dossier_id: str, user: User, refresh: 
         "success": True     # If the operation succeeded
     }
     """
-    temp_value: tuple[HowlerDatastore, str, str] | str = get_require_data_helper(received_data)
+    temp_value: tuple[HowlerDatastore, str, str] | str = permission_service.get_require_data_helper(received_data)
 
     if isinstance(temp_value, str):
         raise InvalidDataException(
@@ -447,7 +443,7 @@ def revoke_privilege(received_data: dict, dossier_id: str, user: User, refresh: 
 
     storage, priv_requested, user_to_remove = temp_value
 
-    result = verify_privilege_values(
+    result = permission_service.verify_privilege_values(
         item_id=escape(str(dossier_id)),
         level_requested=priv_requested,
         member_to_modify=user_to_remove,
@@ -457,7 +453,9 @@ def revoke_privilege(received_data: dict, dossier_id: str, user: User, refresh: 
     if not isinstance(result, Dossier):
         raise InvalidDataException(f"Wrong object instance of {type(result)} insted of Dossier")
 
-    is_allowed: bool = is_allowed_to_change(level_requested=priv_requested, user=user, existing_item=result)
+    is_allowed: bool = permission_service.is_allowed_to_change(
+        level_requested=priv_requested, user=user, existing_item=result
+    )
 
     if not is_allowed:
         raise HowlerInvalidPermissionException(f"You are not allowed to remove {user_to_remove} from {priv_requested}")
