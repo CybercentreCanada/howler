@@ -136,60 +136,6 @@ def update_analytic(id: str, user: User, **kwargs):
 
 
 @generate_swagger_docs()
-@analytic_api.route("/rules", methods=["POST"])
-@api_login(required_priv=["R", "W"])
-@parse_parameters(refresh=parse_refresh)
-def create_rule(user: User, **kwargs):
-    """Create a rule analytic
-
-    Variables:
-    None
-
-    Optional Arguments:
-    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
-        'wait_for' will wait for the change to be visible in search.
-
-    Data Block:
-    {
-        "name": "Rule Name",
-        "description": "*markdown* _description_"
-    }
-
-    Result Example:
-    {
-        ...analytic     # The created analytic rule
-    }
-    """
-    raise NotImplementedError()
-
-
-@generate_swagger_docs()
-@analytic_api.route("/<id>", methods=["DELETE"])
-@api_login(audit=False, required_priv=["W"])
-@parse_parameters(refresh=parse_refresh)
-def delete_rule(id: str, user: User, **kwargs):
-    """Delete a rule
-
-    Variables:
-    id  => id of the analytic whose comments we are deleting
-
-    Optional Arguments:
-    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
-        'wait_for' will wait for the change to be visible in search.
-
-    Data Block:
-    [
-        ...comment_ids
-    ]
-
-    Result Example:
-    {
-    }
-    """
-    raise NotImplementedError()
-
-
-@generate_swagger_docs()
 @analytic_api.route("/<id>/comments", methods=["POST"])
 @api_login(audit=False, required_priv=["W"])
 def add_comment(id: str, user: dict[str, Any], **kwargs):
