@@ -5,7 +5,7 @@ from markupsafe import escape
 from mergedeep.mergedeep import merge
 
 from howler.api import bad_request, created, forbidden, make_subapi_blueprint, no_content, not_found, ok
-from howler.api.v1.utils.params import parse_refresh
+from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import HowlerException, HowlerInvalidParameterException, InvalidDataException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -19,7 +19,7 @@ from howler.services.permission_service import (
     _get_edit_auth_error,
     get_require_data_helper,
     is_allowed_to_change,
-    privilege_value_verifications,
+    verify_privilege_values,
 )
 
 SUB_API = "view"
@@ -162,8 +162,6 @@ def delete_view(view_id: str, user: User, **kwargs):
 
     success = storage.view.delete(view_id, refresh=refresh)
 
-    storage.view.commit()
-
     return no_content({"success": success})
 
 
@@ -226,7 +224,6 @@ def update_view(view_id: str, user: User, **kwargs):
     new_view = View(cast(dict, updated_primitives))
 
     storage.view.save(new_view.view_id, new_view, refresh=refresh)
-    storage.view.commit()
 
     return ok(storage.view.get_if_exists(new_view.view_id, as_obj=False))
 
@@ -346,7 +343,7 @@ def give_privilege(view_id: str, user: User, **kwargs):
 
     storage, priv_requested, user_to_add = temp_value
 
-    result = privilege_value_verifications(
+    result = verify_privilege_values(
         item_id=escape(str(view_id)),
         level_requested=priv_requested,
         member_to_modify=user_to_add,
@@ -356,37 +353,35 @@ def give_privilege(view_id: str, user: User, **kwargs):
     if isinstance(result, str):
         return bad_request(err=result)
 
-    if not isinstance(result[1], View):
-        return bad_request(err=f"Wrong request type. Object of type {type(result[1])} was requested insted of View")
+    if not isinstance(result, View):
+        return bad_request(err=f"Wrong request type. Object of type {type(result)} was requested insted of View")
 
-    storage, existing_view = result
-
-    priv_map: dict = existing_view.get_privilege_mapping()
+    priv_map: dict = result.get_privilege_mapping()
 
     priv_request: str = escape(str(priv_requested))
-    is_allowed: bool = is_allowed_to_change(level_requested=priv_request, user=user, existing_item=existing_view)
+    is_allowed: bool = is_allowed_to_change(level_requested=priv_request, user=user, existing_item=result)
 
     if not is_allowed:
         return bad_request(err=f'You are not allowed to give the privilege "{priv_request}" for this view ')
 
     if priv_request == "owner":
-        if existing_view.owner == user_to_add:
+        if result.owner == user_to_add:
             return bad_request(err=f"{user_to_add} already have the permission {priv_request}")
-        existing_view.set_privilege_mapping(priv_request, user_to_add)
+        result.set_privilege_mapping(priv_request, user_to_add)
     else:
         if user_to_add in priv_map[priv_request]:
             return bad_request(err=f"{user_to_add} already have the permission {priv_request}")
 
-        existing_view.set_privilege_mapping(priv_request, priv_map[priv_request] + [user_to_add])
+        result.set_privilege_mapping(priv_request, priv_map[priv_request] + [user_to_add])
 
-    storage.view.save(existing_view.view_id, existing_view)
+    storage.view.save(result.view_id, result)
 
-    storage.view.commit()
-    return ok(storage.view.get_if_exists(existing_view.view_id, as_obj=False))
+    return ok(storage.view.get_if_exists(result.view_id, as_obj=False))
 
 
 @generate_swagger_docs()
 @view_api.route("/<view_id>/permission", methods=["DELETE"])
+@parse_parameters(refresh=parse_refresh)
 @api_login(required_priv=["R", "W"])
 def revoke_privilege(view_id: str, user: User, **kwargs):
     """Revoke permission from one user to another.
@@ -395,14 +390,15 @@ def revoke_privilege(view_id: str, user: User, **kwargs):
         view_id => The id of the view to revoke administrative privilege of
 
     Arguments:
-        None
+        view_id: The id of the view to revoke administrative privilege of
+        user: The user making the request (injected by the api_login decorator)
 
     Optional Arguments:
         None
 
     Data Block:
         {
-            "privilege": "privilege to give",  # [member, administrator, owner]
+            "privilege": "privilege to revoke",  # [member, administrator, owner]
             "user_id": "user to remove permission from",
         }
 
@@ -412,12 +408,13 @@ def revoke_privilege(view_id: str, user: User, **kwargs):
         }
     """
     temp_value: tuple[HowlerDatastore, str, str] | str = get_require_data_helper(request.json)
+    refresh = kwargs.get("refresh", True)
 
     if isinstance(temp_value, str):
         return bad_request(err=temp_value)
 
     storage, priv_requested, user_to_remove = temp_value
-    result = privilege_value_verifications(
+    result = verify_privilege_values(
         item_id=escape(str(view_id)),
         level_requested=priv_requested,
         member_to_modify=user_to_remove,
@@ -428,31 +425,27 @@ def revoke_privilege(view_id: str, user: User, **kwargs):
     if isinstance(result, str):
         return bad_request(err=result)
 
-    if not isinstance(result[1], View):
-        return bad_request(err=f"Wrong request type. Object of type {type(result[1])} was requested insted of View")
+    if not isinstance(result, View):
+        return bad_request(err=f"Wrong request type. Object of type {type(result)} was requested insted of View")
 
-    storage, existing_view = result
-
-    priv_map = existing_view.get_privilege_mapping()
+    priv_map = result.get_privilege_mapping()
 
     priv_request: str = escape(str(priv_requested))
-    is_allowed: bool = is_allowed_to_change(level_requested=priv_request, user=user, existing_item=existing_view)
+    is_allowed: bool = is_allowed_to_change(level_requested=priv_request, user=user, existing_item=result)
 
     if not is_allowed:
-        return bad_request(err=f"You are not allowed to give {priv_request} on view {view_id}")
+        return forbidden(err=f"You do not have the necessary permissions to revoke {priv_request} on view {view_id}")
 
     if priv_request == "owner":
-        return bad_request(err="You cannot remove the owner of a view. Transfer ownership instead.")
+        return bad_request(err="You cannot remove the owner privilege of a view. Transfer ownership instead.")
 
     if user_to_remove not in priv_map[priv_request]:
-        return bad_request(err=f"{user_to_remove} is not in the {priv_request} premission group")
-    existing_view.remove_privilege_mapping(priv_request, user_to_remove)
+        return bad_request(err=f"{user_to_remove} is not in the {priv_request} permission group")
+    result.remove_privilege_mapping(priv_request, user_to_remove)
 
-    storage.view.save(existing_view.view_id, existing_view)
+    storage.view.save(result.view_id, result, refresh=refresh)
 
-    storage.view.commit()
-
-    return ok(storage.view.get_if_exists(existing_view.view_id, as_obj=False))
+    return ok(storage.view.get_if_exists(result.view_id, as_obj=False))
 
 
 @generate_swagger_docs()

@@ -1,16 +1,7 @@
-import {
-  hdelete,
-  hget,
-  hpatch,
-  hpost,
-  hput,
-  joinAllUri,
-  joinUri,
-  uri as parentUri,
-  type HowlerRefreshParam
-} from 'api';
+import { hdelete, hpatch, hpost, hput, joinAllUri, joinUri, uri as parentUri, type HowlerRefreshParam } from 'api';
 import * as execute from 'api/action/execute';
 import * as operations from 'api/action/operations';
+import * as permission from 'api/action/permission';
 import { action } from 'api/search';
 import type { Action } from 'models/entities/generated/Action';
 
@@ -43,16 +34,4 @@ export const del = (id: string, refresh?: HowlerRefreshParam): Promise<void> => 
   return hdelete(uri(id), undefined, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
-export const permission = {
-  put: (id: string, data: { privilege: string; user_id: string }) => {
-    return hput(joinAllUri(uri(id), 'permission'), data);
-  },
-  delete: (id: string, data: { privilege: string; user_id: string }) => {
-    return hdelete(joinAllUri(uri(id), 'permission'), data);
-  },
-  getOptions: (id: string) => {
-    return hget(joinAllUri(uri(id), 'permission_options'));
-  }
-};
-
-export { execute, operations };
+export { execute, operations, permission };

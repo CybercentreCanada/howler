@@ -1,5 +1,6 @@
 from markupsafe import escape
 
+from howler.common.exceptions import HowlerAttributeError, InvalidDataException
 from howler.common.loader import datastore
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.models.action import Action
@@ -36,9 +37,9 @@ def is_allowed_to_change(level_requested: str, user: User, existing_item: Dossie
     return True
 
 
-def privilege_value_verifications(
+def verify_privilege_values(
     item_id: str, level_requested: str, member_to_modify: str, is_adding: bool = True, item_type: type = Dossier
-) -> tuple[HowlerDatastore, Dossier | View | Action] | str:
+) -> Dossier | View | Action:
     """Verify base value for privilege request are usable.
 
     If they are it return them else it return the error.
@@ -50,36 +51,25 @@ def privilege_value_verifications(
     """
     storage = datastore()
 
-    if is_adding:
-        temp_user = storage.user.get_if_exists(member_to_modify)
-        if not temp_user:
-            return f"Invalid data format. user id {member_to_modify} does not exist"
-
-    existing_item: Dossier | View | Action | None = None
-
-    if item_type == Dossier:
-        existing_item = storage.dossier.get_if_exists(item_id)
-
-    elif item_type == View:
-        existing_item = storage.view.get_if_exists(item_id)
-
-    elif item_type == Action:
-        existing_item = storage.action.get_if_exists(item_id)
+    try:
+        existing_item = storage.get_collection(item_type.__name__.lower()).get_if_exists(item_id)
+    except HowlerAttributeError as e:
+        raise InvalidDataException("Invalid item type") from e
 
     # Making sur we never continue with empty
     if existing_item is None:
-        return "Invalide object type."
+        raise InvalidDataException(f"This {item_type.__name__} does not exist")
 
     if not existing_item:
         temp_type = type(existing_item)
-        return f"This {temp_type.__name__} does not exist"
+        raise InvalidDataException(f"This {temp_type.__name__} does not exist")
     if level_requested not in existing_item.get_privilege_mapping().keys():
-        return f"Permission {level_requested} does not exist options are \
-            {existing_item.get_privilege_mapping().keys()}"
+        raise InvalidDataException(f"{level_requested} is not a valid privilege level for this {item_type.__name__}")
 
-    return storage, existing_item
+    return existing_item
 
 
+# TODO : Make a new ODM object insted and return an instantiated object
 def get_require_data_helper(
     priv_change: dict,
 ) -> tuple[HowlerDatastore, str, str] | str:
