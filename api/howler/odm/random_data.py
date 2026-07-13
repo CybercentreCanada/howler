@@ -22,7 +22,6 @@ import textwrap
 from datetime import datetime
 from random import choice, randint, sample
 from typing import Any, Callable, cast
-from uuid import uuid4
 
 import yaml
 
@@ -34,10 +33,9 @@ from howler.datastore.operations import OdmHelper
 from howler.helper.hit import assess_hit
 from howler.helper.oauth import VALID_CHARS
 from howler.odm.base import Keyword
-from howler.odm.helper import generate_useful_dossier, generate_useful_event, generate_useful_hit
+from howler.odm.helper import generate_useful_case, generate_useful_dossier, generate_useful_event, generate_useful_hit
 from howler.odm.models.action import Action
 from howler.odm.models.analytic import Analytic, Comment, Notebook, TriageOptions
-from howler.odm.models.case import Case, CaseItem, CaseRule, CaseTask
 from howler.odm.models.ecs.event import EVENT_CATEGORIES
 from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import Assessment, Escalation, Scrutiny, Status
@@ -47,7 +45,7 @@ from howler.odm.models.user import User
 from howler.odm.models.view import View
 from howler.odm.randomizer import get_random_string, get_random_user, get_random_word, random_model_obj
 from howler.security.utils import get_password_hash
-from howler.services import analytic_service, case_service, user_service
+from howler.services import analytic_service, user_service
 
 classification = loader.get_classification()
 
@@ -635,419 +633,24 @@ def wipe_events(ds):
 
 def create_cases(ds: HowlerDatastore, num_cases: int = 5):
     """Create random cases using references to random alerts and events."""
-    users = ds.user.search("uname:*", rows=200, as_obj=True)["items"]
-    hits = ds.hit.search("howler.id:*", rows=200, as_obj=True)["items"]
-    events = ds.event.search("howler.id:*", rows=200, as_obj=True)["items"]
-    existing_case_ids = [case.get("case_id") for case in ds.case.search("case_id:*", rows=200, as_obj=False)["items"]]
     generated_case_ids: list[str] = []
 
-    case_titles = [
-        "Suspicious Domain Investigation",
-        "Credential Abuse Review",
-        "Potential Lateral Movement",
-        "Malware Activity Follow-up",
-        "Phishing Campaign Triage",
-        "Command-and-Control Infrastructure Review",
-        "Account Takeover Investigation",
-        "Data Exfiltration Assessment",
-        "Endpoint Persistence Hunt",
-        "Cloud Identity Abuse Case",
-        "Ransomware Precursor Analysis",
-        "Privileged Access Misuse Inquiry",
-        "Suspicious Authentication Wave",
-        "Infrastructure Reconnaissance Tracking",
-        "Incident Correlation Workup",
-        "Unusual Process Chain Investigation",
-        "Network Beaconing Validation",
-    ]
-    case_summaries = [
-        "Correlate alerts and events tied to suspicious infrastructure.",
-        "Track and validate activity linked to potential credential misuse.",
-        "Review telemetry associated with suspicious movement indicators.",
-        "Aggregate related detections to determine likely attack progression.",
-        "Evaluate whether suspicious events represent coordinated malicious activity.",
-        "Document impacted entities and prioritize response and containment actions.",
-        "Identify high-confidence indicators and map likely attacker objectives.",
-        "Assess scope and confidence of signals before escalation decisions.",
-        "Compare observed behaviors with known threat tradecraft patterns.",
-        "Triangulate evidence from endpoint, network, and identity sources.",
-        "Validate detections and eliminate benign explanations where possible.",
-        "Build a concise evidence trail to support investigation handoff.",
-        "Track suspicious artifacts and define follow-up hunting pivots.",
-    ]
-    target_pool = [
-        "victim1",
-        "victim2",
-        "workstation-22",
-        "server-01",
-        "mail-gateway",
-        "domain-controller-01",
-        "vpn-gateway",
-        "finance-laptop-07",
-        "hr-workstation-03",
-        "prod-k8s-node-2",
-        "jump-host-1",
-        "db-cluster-primary",
-    ]
-    threat_pool = [
-        "evildomain.com",
-        "badc2.example",
-        "evilcomputer1",
-        "198.51.100.42",
-        "malicious-user",
-        "stealth-update.net",
-        "cdn-sync-check.com",
-        "45.77.11.90",
-        "dropbox-mirror.app",
-        "backup-telemetry.co",
-        "ntp-anomaly.host",
-        "88.198.22.17",
-    ]
-    reference_name_pool = [
-        "Initial Report",
-        "Incident Timeline",
-        "Executive Summary",
-        "Technical Notes",
-        "Containment Plan",
-        "External Advisory",
-        "Threat Brief",
-        "Stakeholder Update",
-        "Evidence Index",
-        "Detection Review",
-    ]
-    markdown_template_pool = [
-        (
-            "# Analyst Notes\n\n"
-            "## Hypothesis\n"
-            "{hypothesis}\n\n"
-            "## Observations\n"
-            "- Target: `{target}`\n"
-            "- Threat: `{threat}`\n"
-            "- Confidence: {confidence}\n"
-        ),
-        (
-            "# Investigation Update\n\n"
-            "## Timeline\n"
-            "1. Collected initial indicators.\n"
-            "2. Validated event overlap.\n"
-            "3. Prepared containment recommendation.\n\n"
-            "## Current Focus\n"
-            "{focus}\n"
-        ),
-        (
-            "# Triage Checklist\n\n"
-            "- [x] Validate alert context\n"
-            "- [x] Correlate related events\n"
-            "- [ ] Confirm blast radius\n"
-            "- [ ] Draft handoff summary\n\n"
-            "## Assigned Analyst\n"
-            "{analyst}\n"
-        ),
-        (
-            "# IOC Notes\n\n"
-            "| Type | Value |\n"
-            "| --- | --- |\n"
-            "| Host | {target} |\n"
-            "| Indicator | {threat} |\n\n"
-            "## Next Action\n"
-            "{next_action}\n"
-        ),
-    ]
-    confidence_pool = ["Low", "Moderate", "High", "High (pending confirmation)"]
-    focus_pool = [
-        "Verify whether this activity is tied to an active intrusion set.",
-        "Compare endpoint and identity telemetry for shared artifacts.",
-        "Validate if suspicious authentication events match known attacker tradecraft.",
-        "Identify additional systems that should be prioritized for containment.",
-    ]
-    next_action_pool = [
-        "Pivot on destination infrastructure across the previous 14 days.",
-        "Request endpoint triage package and memory capture for impacted host.",
-        "Confirm privileged account exposure and reset credentials if required.",
-        "Escalate to incident commander with correlated evidence bundle.",
-    ]
-
-    def _parse_timestamp(value: str | datetime | None) -> datetime | None:
-        if not value:
-            return None
-
-        if isinstance(value, datetime):
-            return value
-
-        try:
-            return datetime.fromisoformat(value.replace("Z", "+00:00"))
-        except ValueError:
-            return None
-
     for _ in range(num_cases):
-        case_id = f"case-{get_random_string(12).lower()}"
+        case = generate_useful_case(ds, generated_case_ids)
 
-        selected_hits = sample(hits, k=min(len(hits), randint(5, 15))) if hits else []
-        selected_events = sample(events, k=min(len(events), randint(3, 9))) if events else []
+        case = run_modifications("case", case)
 
-        selected_targets = sample(target_pool, k=randint(1, min(3, len(target_pool))))
-        selected_threats = sample(threat_pool, k=randint(1, min(3, len(threat_pool))))
-        selected_participants = [
-            user.get("uname") for user in sample(users, k=min(len(users), randint(1, 3))) if user.get("uname")
-        ]
-
-        timeline_datetimes = [
-            parsed
-            for parsed in (_parse_timestamp(record.timestamp) for record in [*selected_hits, *selected_events])
-            if parsed is not None
-        ]
-
-        case_start = min(timeline_datetimes).isoformat() if timeline_datetimes else None
-        case_end = max(timeline_datetimes).isoformat() if timeline_datetimes else None
-        case_created = case_start or datetime.now().isoformat()
-        case_updated = choice(
-            [
-                None,
-                datetime.now().isoformat(),
-                case_end,
-            ]
-        )
-
-        case = Case(
-            {
-                "case_id": case_id,
-                "title": choice(case_titles),
-                "escalation": choice(["normal", "focus", "crisis"]),
-                "summary": choice(case_summaries),
-                "overview": f"# {choice(case_titles)}\n\n{choice(case_summaries)}",
-                "created": case_created,
-                "updated": case_updated,
-                "start": case_start,
-                "end": case_end,
-                "targets": selected_targets,
-                "threats": selected_threats,
-                "indicators": list(set(selected_targets + selected_threats))[:5],
-                "participants": selected_participants,
-                "enrichments": [],
-            }
-        )
-
-        for hit in selected_hits:
-            parent = case_service.get_parent_from_path(case, "alerts", create_if_missing=True)
-
-            case.items.append(
-                CaseItem(
-                    {
-                        "name": f"{hit.howler.analytic} ({hit.howler.id})",
-                        "parent": parent.id if parent else None,
-                        "type": "hit",
-                        "value": hit.howler.id,
-                    }
-                )
-            )
-
-        for event in selected_events:
-            parent = case_service.get_parent_from_path(case, "events", create_if_missing=True)
-
-            case.items.append(
-                CaseItem(
-                    {
-                        "name": f"{get_random_word()} ({event.howler.id})",
-                        "parent": parent.id if parent else None,
-                        "type": "event",
-                        "value": event.howler.id,
-                    }
-                )
-            )
-
-        # Add a few additional deeply nested paths for existing hits/events
-        nested_hit_candidates = sample(selected_hits, k=min(len(selected_hits), randint(1, 3))) if selected_hits else []
-        for hit in nested_hit_candidates:
-            parent = case_service.get_parent_from_path(
-                case, f"alerts/{get_random_word()}/{get_random_word()}", create_if_missing=True
-            )
-
-            case.items.append(
-                CaseItem(
-                    {
-                        "name": f"{get_random_word()} ({hit.howler.id})",
-                        "parent": parent.id if parent else None,
-                        "type": "hit",
-                        "value": hit.howler.id,
-                    }
-                )
-            )
-
-        nested_event_candidates = (
-            sample(
-                selected_events,
-                k=min(len(selected_events), randint(1, 2)),
-            )
-            if selected_events
-            else []
-        )
-        for event in nested_event_candidates:
-            parent = case_service.get_parent_from_path(
-                case, f"alerts/{get_random_word()}/{get_random_word()}", create_if_missing=True
-            )
-
-            case.items.append(
-                CaseItem(
-                    {
-                        "name": f"{get_random_word()} ({event.howler.id})",
-                        "parent": parent.id if parent else None,
-                        "type": "event",
-                        "value": event.howler.id,
-                    }
-                )
-            )
-
-        available_related_case_ids = [
-            cid for cid in [*existing_case_ids, *generated_case_ids] if isinstance(cid, str) and cid != case_id
-        ]
-        selected_related_case_ids = (
-            sample(available_related_case_ids, k=min(len(available_related_case_ids), randint(0, 3)))
-            if available_related_case_ids
-            else []
-        )
-
-        for idx, related_case_id in enumerate(selected_related_case_ids, start=1):
-            case.items.append(
-                CaseItem(
-                    {
-                        "name": f"Related Case {idx}",
-                        "type": "case",
-                        "value": related_case_id,
-                    }
-                )
-            )
-
-        selected_reference_names = sample(reference_name_pool, k=randint(1, 3))
-        for reference_name in selected_reference_names:
-            parent = case_service.get_parent_from_path(case, "references", create_if_missing=True)
-            case.items.append(
-                CaseItem(
-                    {
-                        "name": reference_name,
-                        "type": "reference",
-                        "value": "https://example.com",
-                        "parent": parent.id if parent else None,
-                    }
-                )
-            )
-
-        markdown_item_count = randint(2, 4)
-        for index in range(markdown_item_count):
-            markdown_parent = case_service.get_parent_from_path(
-                case,
-                choice(
-                    [
-                        "analysis/notes",
-                        "analysis/notes/daily",
-                        "analysis/notes/triage",
-                        f"analysis/{get_random_word()}",
-                    ]
-                ),
-                create_if_missing=True,
-            )
-            markdown_value = choice(markdown_template_pool).format(
-                hypothesis=choice(
-                    [
-                        "Potential credential theft followed by lateral movement.",
-                        "Suspicious beaconing indicates possible command-and-control traffic.",
-                        "Observed activity may represent staged data exfiltration.",
-                        "Alerts suggest a coordinated phishing-to-access chain.",
-                    ]
-                ),
-                target=choice(selected_targets),
-                threat=choice(selected_threats),
-                confidence=choice(confidence_pool),
-                focus=choice(focus_pool),
-                analyst=choice(selected_participants or ["admin"]),
-                next_action=choice(next_action_pool),
-            )
-
-            case.items.append(
-                CaseItem(
-                    {
-                        "name": f"Markdown Note {index + 1}",
-                        "type": "markdown",
-                        "value": markdown_value,
-                        "parent": markdown_parent.id if markdown_parent else None,
-                    }
-                )
-            )
-
-        task_count = randint(3, 7)
-        for _ in range(task_count):
-            case.tasks.append(
-                CaseTask(
-                    {
-                        "id": str(uuid4()),
-                        "complete": choice([True, False]),
-                        "assignment": choice(selected_participants or ["admin"]),
-                        "status": choice(Status.list()),
-                        "summary": choice(
-                            [
-                                "Review related indicators and determine additional pivots.",
-                                "Validate event context and identify correlations.",
-                                "Confirm scope and impacted entities for this thread.",
-                                "Assess whether this path supports active compromise.",
-                                "Collect supporting evidence and update confidence level.",
-                                "Compare this artifact against recent detection patterns.",
-                                "Identify additional systems requiring triage for this lead.",
-                                "Map this task output to containment or remediation actions.",
-                                "Verify timeline consistency with known suspicious activity.",
-                                "Check for related user and host activity across the same window.",
-                                "Validate whether this indicator appears in prior incidents.",
-                                "Document findings and propose next investigation pivots.",
-                            ]
-                        ),
-                        "item": choice([item.id for item in case.items]) if case.items else None,
-                    }
-                )
-            )
-
-        for _ in range(randint(1, 3)):
-            timeframe = choice([7, 14, 28, None])
-
-            case.rules.append(
-                CaseRule(
-                    {
-                        "destination": choice(
-                            [
-                                "alerts/{{howler.analytic}}",
-                                "incoming/{{event.kind}}",
-                                "alerts/{{howler.analytic}}/{{event.category}}",
-                                "correlated/{{source.ip}}",
-                                "triage/{{howler.escalation}}",
-                            ]
-                        ),
-                        "query": choice(
-                            [
-                                f"destination.domain:{choice(threat_pool)}",
-                                "source.ip:10.0.0.0/8 AND howler.analytic:Suspicious*",
-                                "event.category:authentication AND event.outcome:failure",
-                                "howler.escalation:focus OR howler.escalation:crisis",
-                                f"destination.domain:{choice(threat_pool)} AND event.kind:alert",
-                            ]
-                        ),
-                        "author": choice(selected_participants or ["admin"]),
-                        "enabled": choice([True, True, True, False]),
-                        "timeframe": timeframe,
-                        "expire_after_resolved": choice([True, False]) if timeframe is not None else False,
-                    }
-                )
-            )
-
-        case_data = run_modifications("case", case)
-
-        ds.case.save(case_id, case_data)
-        generated_case_ids.append(case_id)
+        ds.case.save(case.case_id, case)
+        generated_case_ids.append(case.case_id)
 
         case_hit_ids = list({item.value for item in case.items if item.type == "hit"})
         case_event_ids = list({item.value for item in case.items if item.type == "event"})
 
         for hit_id in case_hit_ids:
-            ds.hit.update(hit_id, [hit_helper.list_add("howler.related", case_id)])
+            ds.hit.update(hit_id, [hit_helper.list_add("howler.related", case.case_id)])
 
         for event_id in case_event_ids:
-            ds.event.update(event_id, [hit_helper.list_add("howler.related", case_id)])
+            ds.event.update(event_id, [hit_helper.list_add("howler.related", case.case_id)])
 
     ds.case.commit()
 
