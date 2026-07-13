@@ -50,12 +50,12 @@ RESPONSES = {
 
 
 PYTHON_TO_SWAGGER_TYPE_MAP = {
-    str: "string",
-    int: "integer",
-    float: "number",
-    bool: "boolean",
-    list: "array",
-    dict: "object",
+    "str": "string",
+    "int": "integer",
+    "float": "number",
+    "bool": "boolean",
+    "list": "array",
+    "dict": "object",
 }
 
 
@@ -81,7 +81,7 @@ def generate_swagger_docs(responses: dict[int, str] = {}):  # noqa: C901
             for param_name, param in func_signature.parameters.items()
             if param_name not in ["kwargs", "_", "user"]
             and not param_name.startswith("_")
-            and param.kind != inspect.Parameter.KEYWORD_ONLY
+            and param.kind not in (inspect.Parameter.KEYWORD_ONLY, inspect.Parameter.VAR_KEYWORD)
         ]
 
         query_params: list[dict[str, Any]] = _get_query_parameters(func_signature, func_doc)
@@ -133,8 +133,11 @@ def _get_query_parameters(func_signature: inspect.Signature, func_doc: Optional[
 
                 arg_def = re.sub(r" =>.+", "", line).strip()
 
+                type: str | None
                 if ": " in arg_def:
                     name, type = arg_def.split(": ")
+                    if type not in PYTHON_TO_SWAGGER_TYPE_MAP.values():
+                        type = PYTHON_TO_SWAGGER_TYPE_MAP.get(type.strip(), None)
                 else:
                     name = arg_def
                     type = None
@@ -145,13 +148,28 @@ def _get_query_parameters(func_signature: inspect.Signature, func_doc: Optional[
     return query_params
 
 
-def _get_annotated_classname(param: inspect.Parameter) -> dict[str, list[dict[str, str]] | str | bool | None]:
+def _get_annotated_classname(param: inspect.Parameter) -> dict[str, list[dict[str, str | None]] | str | bool | None]:
     if param.annotation == inspect.Parameter.empty:
         return {"type": None}
 
+    param_type = param.annotation
+    required = True
+
     if isinstance(param.annotation, types.UnionType):
         required = types.NoneType not in param.annotation.__args__
-        types_list = [PYTHON_TO_SWAGGER_TYPE_MAP.get(t, "object") for t in param.annotation.__args__]
-        return {"oneOf": [{"type": t} for t in types_list], "required": required}
+        types_without_none = (
+            tuple(t for t in param.annotation.__args__ if t is not types.NoneType)
+            if not required
+            else param.annotation.__args__
+        )
 
-    return {"type": PYTHON_TO_SWAGGER_TYPE_MAP.get(param.annotation, "object"), "required": True}
+        if len(types_without_none) == 1:
+            param_type = types_without_none[0]
+        else:
+            types_list = [PYTHON_TO_SWAGGER_TYPE_MAP.get(getattr(t, "__name__", "")) for t in types_without_none]
+            return {"oneOf": [{"type": t} for t in types_list], "required": required}
+
+    return {
+        "type": PYTHON_TO_SWAGGER_TYPE_MAP.get(getattr(param_type, "__name__", "")),
+        "required": required,
+    }
