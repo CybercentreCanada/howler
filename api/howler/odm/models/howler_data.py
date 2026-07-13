@@ -160,17 +160,17 @@ class Log(odm.Model):
 
 @odm.model(index=True, store=True, description="Hit outline header.")
 class Header(odm.Model):
-    threat: Optional[str] = odm.Optional(odm.Keyword(description="The IP of the threat."))
-    target: Optional[str] = odm.Optional(odm.Keyword(description="The target of the hit."))
+    threat: str | None = odm.Optional(odm.Keyword(description="The IP of the threat."))
+    target: str | None = odm.Optional(odm.Keyword(description="The target of the hit."))
     indicators: list[str] = odm.List(odm.Keyword(description="Indicators of the hit."), default=[])
-    summary: Optional[str] = odm.Optional(odm.Keyword(description="Summary of the hit."))
+    summary: str | None = odm.Optional(odm.Keyword(description="Summary of the hit."))
 
 
 @odm.model(index=True, store=True, description="Fields describing the location where this alert has been retained.")
 class Incident(odm.Model):
     platform: str = odm.Keyword(description="The name of the platform for this incident.")
-    incident_id: Optional[str] = odm.Keyword(description="The ID of the incident.", optional=True)
-    url: Optional[str] = odm.Keyword(description="The url where the incident can be found.", optional=True)
+    incident_id: str | None = odm.Keyword(description="The ID of the incident.", optional=True)
+    url: str | None = odm.Keyword(description="The url where the incident can be found.", optional=True)
 
 
 @odm.model(index=True, store=True, description="Labels for the hit")
@@ -206,11 +206,11 @@ DEFAULT_ASSIGNMENT = "unassigned"
 class HowlerData(odm.Model):
     id: str = odm.UUID(description="A UUID for this hit.")
     analytic: str = odm.CaseInsensitiveKeyword(description="Title of the analytic.")
-    assignment: Optional[str] = odm.Keyword(
+    assignment: str | None = odm.Keyword(
         description="Unique identifier of the assigned user.",
         default=DEFAULT_ASSIGNMENT,
     )
-    assessor: Optional[str] = odm.Optional(
+    assessor: str | None = odm.Optional(
         odm.Keyword(
             description="The most recent person to assess a hit",
             default=None,
@@ -232,7 +232,7 @@ class HowlerData(odm.Model):
         default=[],
         description="A list of links associated with this hit.",
     )
-    detection: Optional[str] = odm.Optional(
+    detection: str | None = odm.Optional(
         odm.CaseInsensitiveKeyword(description="The detection that produced this hit.")
     )
     hash: str = odm.HowlerHash(
@@ -273,13 +273,13 @@ class HowlerData(odm.Model):
     score: Optional[float] = odm.Optional(
         odm.Float(description="A score assigned by an enrichment to help prioritize triage.", default=0)
     )
-    status = odm.Enum(values=HitStatus, default=HitStatus.OPEN, description="Status of the hit.")
-    scrutiny = odm.Enum(
+    status: str = odm.Enum(values=HitStatus, default=HitStatus.OPEN, description="Status of the hit.")
+    scrutiny: str = odm.Enum(
         values=Scrutiny,
         default=Scrutiny.UNSEEN,
         description="Level of scrutiny done to this hit.",
     )
-    escalation = odm.Enum(
+    escalation: str = odm.Enum(
         values=Escalation,
         default=Escalation.HIT,
         description="Level of escalation of this hit.",
@@ -289,8 +289,8 @@ class HowlerData(odm.Model):
             description="User selected time for hit expiry",
         )
     )
-    assessment: Optional[str] = odm.Optional(odm.Enum(values=Assessment, description="Assessment of the hit."))
-    rationale: Optional[str] = odm.Optional(
+    assessment: str | None = odm.Optional(odm.Enum(values=Assessment, description="Assessment of the hit."))
+    rationale: str | None = odm.Optional(
         odm.Keyword(
             description=(
                 "The rationale behind the hit assessment. Allows it to be understood and verified by other analysts."
@@ -307,9 +307,9 @@ class HowlerData(odm.Model):
         default=[],
         description="A list of changes to the hit with timestamps and attribution.",
     )
-    monitored: Optional[str] = odm.Optional(odm.Keyword(description="Link to the incident monitoring dashboard."))
-    reported: Optional[str] = odm.Optional(odm.Keyword(description="Link to the incident report."))
-    mitigated: Optional[str] = odm.Optional(odm.Keyword(description="Link to the mitigation record (tool dependent)."))
+    monitored: str | None = odm.Optional(odm.Keyword(description="Link to the incident monitoring dashboard."))
+    reported: str | None = odm.Optional(odm.Keyword(description="Link to the incident report."))
+    mitigated: str | None = odm.Optional(odm.Keyword(description="Link to the mitigation record (tool dependent)."))
     outline: Optional[Header] = odm.Optional(odm.Compound(Header), description="The user specified header of the hit")
     incidents: list[Incident] = odm.List(
         odm.Compound(Incident), default=[], description="Fields describing an incident associated with this alert."

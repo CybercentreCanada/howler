@@ -348,6 +348,19 @@ def convert_hit(data: dict[str, Any], unique: bool, ignore_extra_values: bool = 
             "See howler's documentation for more information."
         )
 
+    if odm.howler.assessment and odm.howler.escalation != AssessmentEscalationMap[odm.howler.assessment]:
+        target_escalation = cast(Escalation, AssessmentEscalationMap[odm.howler.assessment])
+
+        warnings.append(
+            f"Hits with assessment {odm.howler.assessment} must also have escalation set to {target_escalation.value}."
+        )
+
+        odm.howler.escalation = target_escalation.value
+
+    if odm.howler.escalation in [Escalation.MISS, Escalation.EVIDENCE] and odm.howler.status != HitStatus.RESOLVED:
+        warnings.append("Hits with escalation miss or evidence must also have their status set to resolved.")
+        odm.howler.status = HitStatus.RESOLVED.value
+
     if odm.event:
         odm.event.id = odm.howler.id
         if not odm.event.created:
