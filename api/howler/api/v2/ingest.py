@@ -85,25 +85,27 @@ def create(index: str, user: User, **kwargs):
     if "," in index:
         return bad_request(err="You cannot create in multiple indexes.")
 
-    hits = request.json
+    records = request.json
 
-    if hits is None:
+    if records is None:
         return bad_request(err="No records were sent.")
 
-    if not isinstance(hits, list):
+    if not isinstance(records, list):
         return bad_request(err="JSON Payload must be a list of records.")
     ignore_extra_values = request.args.get("ignore_extra_values", False, type=lambda v: v.lower() == "true")
 
     ids: list[str] = []
     warnings = []
-    for i, hit in enumerate(hits):
+    for i, record in enumerate(records):
         try:
             odm: Hit | Event
             if index == "event":
-                odm, _warnings = event_service.convert_event(hit, unique=True, ignore_extra_values=ignore_extra_values)
+                odm, _warnings = event_service.convert_event(
+                    record, unique=True, ignore_extra_values=ignore_extra_values
+                )
                 event_service.create_event(odm.howler.id, odm, user.uname, skip_exists=True)
             else:
-                odm, _warnings = hit_service.convert_hit(hit, unique=True, ignore_extra_values=ignore_extra_values)
+                odm, _warnings = hit_service.convert_hit(record, unique=True, ignore_extra_values=ignore_extra_values)
                 hit_service.create_hit(odm.howler.id, odm, user.uname, skip_exists=True)
 
             ids.append(odm.howler.id)
@@ -143,7 +145,7 @@ def delete(indexes: str, user: User, **kwargs):
 
     Result Example:
     {
-     "success": True             # Deleting the hits succeded
+     "success": True             # Deleting the records succeded
     }
     """
     ids = request.json
@@ -227,17 +229,17 @@ def validate(index: str, **kwargs):
         ]
     }
     """
-    hits = request.json
+    records = request.json
 
     if "," in index:
         return bad_request(err="You cannot validate across multiple indexes.")
 
-    if hits is None:
-        return bad_request(err="No hits were sent.")
+    if records is None:
+        return bad_request(err="No records were sent.")
 
     validation: dict[str, list[dict[str, Any]]] = {"valid": [], "invalid": []}
 
-    for hit in hits:
+    for hit in records:
         try:
             if index == "event":
                 event_service.convert_event(hit, unique=True)
@@ -314,7 +316,7 @@ def overwrite(index: str, id: str, **kwargs):
 @ingest_api.route("/<indexes>/update", methods=["PUT"])
 @api_login(audit=False, required_priv=["W"])
 def update_by_query(indexes: str, **kwargs):
-    """Update a set of hits using a query.
+    """Update a set of records using a query.
 
     Variables:
     indexes => Comma-separated list of indexes to update
