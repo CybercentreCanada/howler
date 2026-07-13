@@ -49,9 +49,7 @@ class CaseItemTypes(StrEnum):
 
     EVENT = "event"
     HIT = "hit"
-    TABLE = "table"
     CASE = "case"
-    LEAD = "lead"
     REFERENCE = "reference"
     FOLDER = "folder"
     MARKDOWN = "markdown"
