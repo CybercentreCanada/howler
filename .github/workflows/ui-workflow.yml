@@ -12,7 +12,6 @@ on:
       - develop
       - rc/*
       - patch/*
-      - cases
     paths:
       # Only run when UI-related files change
       - "ui/**"
@@ -27,7 +26,6 @@ on:
       - develop
       - rc/*
       - patch/*
-      - cases
     paths:
       # Same path filters as push events
       - "ui/**"
