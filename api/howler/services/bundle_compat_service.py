@@ -52,12 +52,11 @@ def find_case_for_bundle(bundle_hit_id: str) -> Case | None:
     return None
 
 
-# TODO: Properly implement refresh logic for compatibility
 def create_bundle(
     bundle_hit_data: dict[str, Any],
     child_hit_ids: list[str],
     user: str,
-    refresh: Literal["true", "false", "wait_for"] | None,
+    refresh: Literal["true", "false", "wait_for"] | None = "wait_for",
 ) -> dict[str, Any]:
     """Create a hit + case that together represent a legacy bundle.
 
@@ -102,16 +101,19 @@ def create_bundle(
     case_title = f"{analytic} - {detection}"
 
     case = case_service.create_case(
-        {"title": case_title, "summary": f"Auto-created case for bundle {odm.howler.id}"},
-        user=user,
+        {"title": case_title, "summary": f"Auto-created case for bundle {odm.howler.id}"}, user=user
     )
 
     # Root hit
     case_service.append_case_item(
-        case, item_type="hit", item_value=odm.howler.id, item_name=f"{odm.howler.analytic} ({odm.howler.id})"
+        case,
+        item_type="hit",
+        item_value=odm.howler.id,
+        item_name=f"{odm.howler.analytic} ({odm.howler.id})",
+        refresh=refresh,
     )
 
-    folder = case_service.get_parent_from_path(case, "hits", create_if_missing=True)
+    folder = case_service.get_parent_from_path(case, "hits", create_if_missing=True, refresh=refresh)
 
     for child_id in child_hit_ids:
         child_hit = hit_service.get_hit(child_id, as_odm=True)
@@ -129,9 +131,6 @@ def create_bundle(
         except (InvalidDataException, NotFoundException, DataStoreException) as exc:  # pragma: no cover
             logger.warning("Could not add child hit %s to case: %s", child_id, exc)
 
-    datastore().hit.commit()
-    datastore().case.commit()
-
     updated_case: Case | None = datastore().case.get(case.case_id)
     if updated_case is None:  # pragma: no cover
         raise NotFoundException(f"Case {case.case_id} disappeared after creation")
@@ -139,9 +138,8 @@ def create_bundle(
     return synthesize_bundle_response(updated_case, odm, warnings=warnings)
 
 
-# TODO: Properly implement refresh logic for compatibility
 def add_to_bundle(
-    bundle_id: str, hit_ids: list[str], refresh: Literal["true", "false", "wait_for"] | None
+    bundle_id: str, hit_ids: list[str], refresh: Literal["true", "false", "wait_for"] | None = "wait_for"
 ) -> dict[str, Any]:
     """Add hits to an existing bundle (case).
 
@@ -164,13 +162,7 @@ def add_to_bundle(
             {"title": f"{analytic} - {detection}", "summary": f"Auto-created case for bundle {bundle_id}"},
             user="system",
         )
-        case_service.append_case_item(
-            case.case_id,
-            item_type="hit",
-            item_value=bundle_id,
-        )
-        datastore().hit.commit()
-        datastore().case.commit()
+        case_service.append_case_item(case.case_id, item_type="hit", item_value=bundle_id, refresh=refresh)
 
     case_id = case.case_id
 
@@ -195,11 +187,7 @@ def add_to_bundle(
             logger.warning("Hit %s does not exist, skipping", hit_id)
             continue
 
-        case_service.append_case_item(
-            case_id,
-            item_type="hit",
-            item_value=hit_id,
-        )
+        case_service.append_case_item(case_id, item_type="hit", item_value=hit_id, refresh=refresh)
 
     updated_case: Case | None = datastore().case.get(case_id)
     if updated_case is None:  # pragma: no cover
@@ -209,7 +197,7 @@ def add_to_bundle(
 
 
 def remove_from_bundle(
-    bundle_id: str, hit_ids: list[str], refresh: Literal["true", "false", "wait_for"] | None
+    bundle_id: str, hit_ids: list[str], refresh: Literal["true", "false", "wait_for"] | None = "wait_for"
 ) -> dict[str, Any]:
     """Remove hits from an existing bundle (case).
 
@@ -244,7 +232,7 @@ def remove_from_bundle(
             # force=True is required when removing all children via wildcard because the "hits/" folder
             # item is included in the removal set and may still have children at removal time.
             use_force = hit_ids == ["*"]
-            case_service.remove_case_items(_case, item_ids_to_remove, force=use_force)
+            case_service.remove_case_items(_case, item_ids_to_remove, force=use_force, refresh=refresh)
 
     updated_case: Case | None = datastore().case.get(_case.case_id)
     if updated_case is None:  # pragma: no cover
