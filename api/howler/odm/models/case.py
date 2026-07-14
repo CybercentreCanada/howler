@@ -83,11 +83,11 @@ class CaseItem(odm.Model):
         default=None,
     )
     name: Optional[str] = odm.Optional(
-        odm.Keyword(description="Display name for the item. Optional; the UI falls back to value when absent."),
+        odm.Text(description="Display name for the item. Optional; the UI falls back to value when absent."),
         default=None,
     )
     type: str = odm.Enum(values=CaseItemTypes, description="Type of case item.")
-    value: str = odm.Keyword(description="String reference value for the item (ID, URL, or token), or markdown.")
+    value: str = odm.Text(description="String reference value for the item (ID, URL, or token), or markdown.")
     visible: bool = odm.Boolean(default=True, description="Whether the item is visible/accessible in the frontend.")
     classification: Optional[str] = odm.Optional(
         odm.Classification(
@@ -174,7 +174,7 @@ class Case(DatastoreMixin["Case"], odm.Model):
         default=CLASSIFICATION.UNRESTRICTED,
         description="Maximum classification for the case",
     )
-    title: str = odm.Keyword(description="Case title.")
+    title: str = odm.Text(description="Case title.")
     summary: str = odm.Text(description="Short case summary.")
     overview: str = odm.Optional(odm.Text(description="Markdown overview of the case."))
     escalation: Literal["normal", "focus", "crisis"] = odm.Enum(

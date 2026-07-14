@@ -1,4 +1,5 @@
 import re
+from collections.abc import Callable
 from copy import deepcopy
 from typing import Any
 
@@ -9,6 +10,7 @@ from flask import request
 from howler.api import bad_request, internal_error, make_subapi_blueprint, ok
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
+from howler.common.logging.audit import audit
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import SearchException
 from howler.helper.search import get_collection, has_access_control
@@ -22,6 +24,11 @@ search_api = make_subapi_blueprint(SUB_API, api_version=2)
 search_api._doc = "Perform search queries"  # type: ignore
 
 logger = get_logger(__file__)
+
+
+def _audit_request(user: User, func: Callable[..., Any], **fields):
+    """Emit an audit event with search-specific request details."""
+    audit([], fields, user["uname"], user, func)
 
 
 @generate_swagger_docs()
@@ -97,6 +104,8 @@ def search(indexes: str, user: User, **kwargs):
     if not query:
         return bad_request(err="There was no search query.")
 
+    _audit_request(user, search, index=indexes, query=query)
+
     metadata = params.pop("metadata", [])
 
     try:
@@ -157,6 +166,8 @@ def explain_query(index, **kwargs):
     query = req_data.get("query", None)
     if not query:
         return bad_request(err="There was no query.")
+
+    _audit_request(user, explain_query, index=index, query=query)
 
     # This regex checks for lucene phrases (i.e. the "Example Analytic" part of howler.analytic:"Example Analytic")
     # And then escapes them.
@@ -234,6 +245,8 @@ def count(index, **kwargs):
     if not query:
         return bad_request(err="There was no search query.")
 
+    _audit_request(user, count, index=index, query=query)
+
     filters = params.pop("filters", [])
     try:
         return ok(collection().count(query, filters, access_control=access_control))
@@ -285,6 +298,8 @@ def facet(indexes: str, **kwargs):
     multi_fields = ["filters", "fields"]
 
     params = generate_params(request, fields, multi_fields)[0]
+
+    _audit_request(user, facet, index=indexes, query=params.get("query", ""))
 
     try:
         fields = params.pop("fields")

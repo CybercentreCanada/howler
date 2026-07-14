@@ -100,6 +100,20 @@ class TestDetectTokenType:
 
 
 class TestBuildFuzzyQuery:
+    def test_wildcard_query_returns_match_all(self):
+        result = build_fuzzy_query("*", ["hit", "event"])
+
+        assert result == {"query": {"match_all": {}}}
+
+    def test_wildcard_query_with_filters_uses_bool_filter(self):
+        result = build_fuzzy_query("*", ["hit"], filters=["howler.status:open"], access_control="access_control:TLP:W")
+
+        assert result["query"]["bool"]["must"] == [{"match_all": {}}]
+        assert result["query"]["bool"]["filter"] == [
+            {"query_string": {"query": "howler.status:open"}},
+            {"query_string": {"query": "access_control:TLP:W"}},
+        ]
+
     def test_field_without_explicit_boost_defaults_to_one_and_text_partition(self, monkeypatch):
         """Fields without ^boost should default to 1 and text fields should feed phrase_prefix."""
         monkeypatch.setattr(fuzzy_service, "_get_fields_for_index", lambda _index: ["fake.text"])

@@ -2,6 +2,7 @@ from flask import request
 
 from howler.api import bad_request, make_subapi_blueprint, ok
 from howler.common.logging import get_logger
+from howler.common.logging.audit import audit
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import SearchException
 from howler.helper.search import has_access_control
@@ -17,7 +18,7 @@ logger = get_logger(__file__)
 
 @generate_swagger_docs()
 @fuzzy_api.route("/search", methods=["POST"])
-@api_login(required_priv=["R"])
+@api_login(audit=False, required_priv=["R"])
 def fuzzy_search(**kwargs):  # noqa: C901
     """Perform a plain-text fuzzy search across hits, events, and cases.
 
@@ -78,6 +79,14 @@ def fuzzy_search(**kwargs):  # noqa: C901
     if not indexes:
         return bad_request(err="At least one index must be specified.")
 
+    audit(
+        [],
+        {**kwargs, "index": ",".join(indexes), "query": query},
+        user["uname"],
+        user,
+        fuzzy_search,
+    )
+
     filters = req_data.get("filters", None)
     if isinstance(filters, str):
         filters = [filters]
@@ -93,6 +102,8 @@ def fuzzy_search(**kwargs):  # noqa: C901
     access_control = None
     if has_access_control(indexes):
         access_control = user["access_control"]
+
+    logger.info("%s: %s", ", ".join(indexes), query)
 
     try:
         result = fuzzy_service.fuzzy_search(

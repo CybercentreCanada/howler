@@ -9,6 +9,7 @@ from elasticsearch import Elasticsearch
 
 from howler import odm
 from howler.common.loader import APP_NAME, datastore
+from howler.common.logging import get_logger
 from howler.datastore.exceptions import SearchException, SearchRetryException
 from howler.datastore.types import SearchResult
 from howler.odm.base import (
@@ -30,6 +31,8 @@ from howler.utils.str_utils import sanitize_lucene_query
 DEFAULT_OFFSET = 0
 DEFAULT_ROW_SIZE = 100
 VALID_INDEXES = {"hit", "event", "case"}
+
+logger = get_logger(__file__)
 
 
 def _escape_query_string(query: str) -> str:
@@ -193,7 +196,32 @@ def build_fuzzy_query(  # noqa: C901
         An Elasticsearch query body dict.
     """
     query = query.strip()
+    logger.debug("Building fuzzy query for indexes=%s", indexes)
+
+    # Build filter clauses early so they can also apply to match-all queries.
+    filter_clauses: list[dict[str, Any]] = []
+    if filters:
+        for f in filters:
+            filter_clauses.append({"query_string": {"query": f}})
+    if access_control:
+        filter_clauses.append({"query_string": {"query": access_control}})
+
+    # Literal wildcard means list all visible records.
+    if query == "*":
+        logger.debug("Building wildcard match_all fuzzy query")
+        if filter_clauses:
+            return {
+                "query": {
+                    "bool": {
+                        "must": [{"match_all": {}}],
+                        "filter": filter_clauses,
+                    }
+                }
+            }
+        return {"query": {"match_all": {}}}
+
     token_type = _detect_token_type(query)
+    logger.debug("Detected fuzzy token type=%s", token_type)
 
     # Collect all boosted fields across requested indexes
     all_fields: list[str] = []
@@ -287,14 +315,6 @@ def build_fuzzy_query(  # noqa: C901
             {"query_string": {"query": f"*{escaped_q}*", "default_field": "*", "boost": 0.5, "analyze_wildcard": True}}
         )
 
-    # Build filter clauses
-    filter_clauses: list[dict[str, Any]] = []
-    if filters:
-        for f in filters:
-            filter_clauses.append({"query_string": {"query": f}})
-    if access_control:
-        filter_clauses.append({"query_string": {"query": access_control}})
-
     query_body: dict[str, Any] = {
         "query": {
             "bool": {
@@ -307,6 +327,7 @@ def build_fuzzy_query(  # noqa: C901
     if filter_clauses:
         query_body["query"]["bool"]["filter"] = filter_clauses
 
+    logger.debug("Built fuzzy query with %d should clauses", len(should_clauses))
     return query_body
 
 
@@ -333,9 +354,18 @@ def fuzzy_search(
     Returns:
         A SearchResult containing matched items with __index and _score.
     """
+    logger.info(
+        "Running fuzzy search indexes=%s offset=%d rows=%d track_total_hits=%s",
+        indexes,
+        offset,
+        rows,
+        track_total_hits,
+    )
+
     # Validate indexes
     for idx in indexes:
         if idx not in VALID_INDEXES:
+            logger.warning("Rejected fuzzy search due to invalid index=%s", idx)
             raise SearchException(f"Invalid index for fuzzy search: {idx}")
 
     client: Elasticsearch = datastore().ds.client
@@ -357,10 +387,13 @@ def fuzzy_search(
             **query_body,
         )
     except (elasticsearch.exceptions.ConnectionError, elasticsearch.exceptions.ConnectionTimeout) as error:
+        logger.exception("Fuzzy search retryable failure indexes=%s", parsed_indexes)
         raise SearchRetryException(f"indexes: {parsed_indexes}, query: {query}, error: {str(error)}") from error
     except (elasticsearch.exceptions.TransportError, elasticsearch.exceptions.RequestError) as error:
+        logger.exception("Fuzzy search request failure indexes=%s", parsed_indexes)
         raise SearchException(str(error)) from error
     except Exception as error:
+        logger.exception("Fuzzy search unexpected failure indexes=%s", parsed_indexes)
         raise SearchException(f"indexes: {parsed_indexes}, query: {query}, error: {str(error)}") from error
 
     total = result.get("hits", {}).get("total", {}).get("value", 0)
@@ -375,6 +408,7 @@ def fuzzy_search(
         "items": items,
     }
 
+    logger.info("Fuzzy search completed indexes=%s total=%d returned=%d", parsed_indexes, total, len(items))
     return response
 
 

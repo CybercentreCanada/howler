@@ -1,6 +1,8 @@
 import { Topic } from '@mui/icons-material';
 import { Stack, Typography } from '@mui/material';
 import api from 'api';
+import type { HowlerSearchResponse } from 'api/search';
+import type { FuzzySearchItem, FuzzySearchRequest } from 'api/v2/fuzzy';
 import SearchResponseProvider, {
   SearchResponseContext,
   type SearchResponseContextType
@@ -21,19 +23,6 @@ import CaseAssigneeFilter from './search/CaseAssigneeFilter';
 import CaseDateFilter, { type DateRangeOption } from './search/CaseDateFilter';
 import CaseStatusFilter from './search/CaseStatusFilter';
 
-const buildPhraseQuery = (phrase: string | null) => {
-  const sanitized = sanitizeLuceneQuery(phrase);
-
-  if (!phrase) {
-    return '(title:* OR summary:* OR overview:* OR participants:* OR tasks.summary:* OR tasks.assignment:*)';
-  }
-
-  return (
-    `(title:*${sanitized}* OR summary:*${sanitized}* OR overview:*${sanitized}* OR participants:*${sanitized}* ` +
-    `OR tasks.summary:*${sanitized}* OR tasks.assignment:*${sanitized}*)`
-  );
-};
-
 const CasesBase: FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -41,7 +30,7 @@ const CasesBase: FC = () => {
   const { load } = useContext<TuiListMethodsState<Case>>(TuiListMethodContext);
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
-  const { response, request } = useContext<SearchResponseContextType<Case>>(SearchResponseContext);
+  const { response, request } = useContext<SearchResponseContextType<FuzzySearchItem<Case>>>(SearchResponseContext);
 
   const [phrase, setPhrase] = useState<string>('');
   const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
@@ -95,13 +84,17 @@ const CasesBase: FC = () => {
       setSearchParams(searchParams, { replace: true });
 
       const filters = buildFilters();
-      await request(api.search.case.post, {
-        query: buildPhraseQuery(phrase),
-        filters,
-        rows: pageCount,
-        offset
-      });
-    } catch (e) {
+      await request(
+        api.v2.fuzzy.post as (request: FuzzySearchRequest) => Promise<HowlerSearchResponse<FuzzySearchItem<Case>>>,
+        {
+          query: phrase.trim() || '*',
+          filters,
+          rows: pageCount,
+          offset,
+          indexes: ['case']
+        }
+      );
+    } catch {
       setHasError(true);
     } finally {
       setLoading(false);
