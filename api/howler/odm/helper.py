@@ -165,6 +165,7 @@ def generate_useful_hit(lookups: dict[str, dict[str, Any]], users: list[str], pr
 
     hit.howler.assessment = None
     hit.howler.rationale = None
+    hit.howler.triaged = None
     hit.howler.status = "open"
     hit.howler.assignment = "unassigned"
     hit.howler.escalation = choice([Escalation.HIT, Escalation.ALERT])
