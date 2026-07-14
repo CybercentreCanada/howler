@@ -224,12 +224,12 @@ def update_view(view_id: str, user: User, **kwargs):
         if "query" in new_data:
             # Make sure the query is valid
             storage.hit.search(new_data["query"])
-
-        return ok(storage.view.get_if_exists(existing_view.view_id, as_obj=False))
     except SearchException:
         return bad_request(err="You must use a valid query when updating a view.")
     except HowlerException as e:
         return bad_request(err=str(e))
+
+    return ok(new_view.as_primitives())
 
 
 @generate_swagger_docs()
@@ -367,7 +367,7 @@ def give_privilege(view_id: str, user: User, **kwargs):
     if success:
         storage.view.save(result.view_id, result, refresh=refresh)
 
-    return ok(storage.view.get_if_exists(result.view_id, as_obj=False))
+    return ok(result.as_primitives())
 
 
 @generate_swagger_docs()
@@ -433,41 +433,7 @@ def revoke_privilege(view_id: str, user: User, **kwargs):
     if success:
         storage.view.save(result.view_id, result, refresh=refresh)
 
-    return ok(storage.view.get_if_exists(result.view_id, as_obj=False))
-
-
-@generate_swagger_docs()
-@view_api.route("/<view_id>/permission_options", methods=["GET"])
-@api_login(required_priv=["R"])
-def get_view_permission_options(view_id: str, user: User, **kwargs):
-    """Get privilege/permission mapping for a given view
-
-    Variables:
-        view_id => The id of the view to get permissions for
-    Arguments:
-        view_id: The id of the view to get permissions for
-        user: The user making the request (injected by the api_login decorator)
-    Optional Arguments:
-        None
-    Result Example:
-        {
-            "admins": [ # Each entry corresponds to a given privilege level
-                "user1", "user2" # A list of users that have this privilege
-            ],
-            "members": [
-                "user3"],
-            "owner": "user4"
-        }
-    returns a dict with the possible permissions for the view and the users that have them.
-
-    """
-    ds = datastore()
-
-    view: View = ds.view.get(view_id)
-    if not view:
-        return not_found(err="The specified view does not exist")
-
-    return ok({"owner": view.owner, "admins": view.admins, "members": view.members})
+    return ok(result.as_primitives())
 
 
 # endregion

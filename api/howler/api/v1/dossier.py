@@ -185,7 +185,7 @@ def delete_dossier(id: str, user: User, **kwargs):
     if not existing_dossier:
         return not_found(err="This dossier does not exist")
 
-    if user.uname != existing_dossier.owner and "admin" not in user.type:
+    if existing_dossier.owner != user.uname and "admin" not in user.type:
         return forbidden(err="You cannot delete a dossier unless you are a global administrator or the owner.")
 
     success = storage.dossier.delete(id, refresh=refresh)
@@ -297,7 +297,7 @@ def give_privilege(id: str, user: User, **kwargs):
     if success:
         storage.dossier.save(result.dossier_id, result, refresh=kwargs.get("refresh"))
 
-    return ok(storage.dossier.get_if_exists(result.dossier_id, as_obj=False))
+    return ok(result.as_primitives())
 
 
 @generate_swagger_docs()
@@ -360,38 +360,7 @@ def revoke_privilege(id: str, user: User, **kwargs):
     if success:
         storage.dossier.save(result.dossier_id, result, refresh=kwargs.get("refresh"))
 
-    return ok(storage.dossier.get_if_exists(result.dossier_id, as_obj=False))
-
-
-@generate_swagger_docs()
-@dossier_api.route("/<id>/permission_options", methods=["GET"])
-@api_login(required_priv=["R"])
-def get_dossier_permission_options(id: str, user: User):
-    """Get the privilege/permission mapping for a given dossier
-
-    Variables:
-        id: The id of the dossier to get permissions for
-
-    Arguments:
-        id: The id of the dossier to get permissions for
-        user: The user making the request (injected by the api_login decorator)
-
-    Result Example:
-        {
-            "admins": [ # Each entry corresponds to a given privilege level
-                "user1", "user2" # A list of users that have this privilege ],
-            "members": [ # Each entry corresponds to a given privilege level]
-            "owner": "user4"
-        }
-    returns a dict with the possible permissions for the dossier and the users that have them.
-    """
-    ds = datastore()
-    dossier: Dossier = ds.dossier.get(id)
-    if not dossier:
-        return not_found(err="The specified dossier does not exist")
-
-    # Returns a dict containing owner, administrator, and member lists
-    return ok({"owner": dossier.owner, "admins": dossier.admins, "members": dossier.members})
+    return ok(result.as_primitives())
 
 
 # endregion

@@ -474,7 +474,7 @@ def give_privilege(id: str, user: User, **kwargs):
     if success:
         storage.action.save(result.action_id, result, refresh=refresh)
 
-    return ok(storage.action.get_if_exists(result.action_id, as_obj=False))
+    return ok(result.as_primitives())
 
 
 @generate_swagger_docs()
@@ -539,40 +539,7 @@ def revoke_privilege(id: str, user: User, **kwargs):
     if success:
         storage.action.save(result.action_id, result, refresh=refresh)
 
-    return ok(storage.action.get_if_exists(result.action_id, as_obj=False))
-
-
-@generate_swagger_docs()
-@action_api.route("/<id>/permission_options", methods=["GET"])
-@api_login(required_priv=["R"])
-def get_action_permission(id: str, user: User, **kwargs):
-    """Get details for a specific action
-
-    Variables:
-        id => The unique ID of the action embedded in the URL path
-    Arguments:
-        id: The id of the Action to get permissions for
-        user: The user making the request (injected by the api_login decorator)
-
-    Optional Arguments:
-        None
-    Result Example:
-         {
-            "admins": [ # Each entry corresponds to a given privilege level
-                "user1", "user2" # A list of users that have this privilege
-            ],
-        }
-    returns a dict with the possible permissions for the action and the users that have them.
-    """
-    storage = datastore()
-
-    action: Action = storage.action.get_if_exists(id, as_obj=True)
-    if not action or not isinstance(action, Action):
-        return not_found(err="This action does not exist")
-
-    if action.get("type") == "personal" and user.uname != action.get("owner"):
-        return forbidden(err="You cannot access a personal action that is not owned by you.")
-    return ok({"owner": action.owner, "admins": action.admins, "members": action.members})
+    return ok(result.as_primitives())
 
 
 # endregion

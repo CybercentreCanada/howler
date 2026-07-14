@@ -29,9 +29,6 @@ export const permission = {
   },
   delete: (id: string, data: { privilege: string; user_id: string }) => {
     return hdelete(joinAllUri(uri(id), 'permission'), data);
-  },
-  getOptions: (id: string) => {
-    return hget(joinAllUri(uri(id), 'permission_options'));
   }
 };
 

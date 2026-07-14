@@ -37,14 +37,6 @@ export const permission = {
 
   delete: (view_id: string, data: { privilege: string; user_id: string }) => {
     return hdelete(joinAllUri(uri(view_id), 'permission'), data);
-  },
-
-  getOptions: (view_id: string) => {
-    return hget(joinAllUri(uri(view_id), 'permission_options'));
-  },
-
-  getMembers: (id: string) => {
-    return hget(joinAllUri(uri(id), 'permission_options'));
   }
 };
 
