@@ -64,9 +64,9 @@ export const MembershipManagement = ({ open, onClose, entityId, entityType = 'ac
     if (!entity) return;
 
     const memberList: MemberItem[] = [
-      ...(entity.owner ? [{ user_id: entity.owner, privilege: 'owner' }] : []),
-      ...entity.admins.map(admin => ({ user_id: admin, privilege: 'admins' })),
-      ...entity.members.map(member => ({ user_id: member, privilege: 'members' }))
+      ...(entity.owner ? [{ user_id: entity.owner, privilege: 'owner' as const }] : []),
+      ...entity.admins.map(admin => ({ user_id: admin, privilege: 'admins' as const })),
+      ...entity.members.map(member => ({ user_id: member, privilege: 'members' as const }))
     ];
     setMembers(memberList);
   }, [entityId, dispatchApi, entityType]);

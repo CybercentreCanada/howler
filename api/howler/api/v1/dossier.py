@@ -276,10 +276,11 @@ def give_privilege(id: str, user: User, **kwargs):
 
     if not {"privilege", "user_id"}.issubset(priv_change.keys()):
         return bad_request(err="Invalid data format. Need new privilege and user_id")
+    try:
+        priv_requested, user_to_add = permission_service.get_require_data_helper(priv_change)
+    except InvalidDataException as e:
+        return bad_request(err=e.message)
 
-    _, priv_requested, user_to_add = permission_service.get_require_data_helper(
-        priv_change
-    )  # TODO : AG : Correct this as well when time
     result = storage.dossier.get_if_exists(id, as_obj=True)
 
     if not result:
@@ -330,12 +331,15 @@ def revoke_privilege(id: str, user: User, **kwargs):
     priv_change: dict = request.json
     if not isinstance(priv_change, dict):
         return bad_request(err="Invalid data format")
+
     if not {"privilege", "user_id"}.issubset(priv_change.keys()):
         return bad_request(err="Invalid data format. Need new privilege and user_id")
 
-    _, priv_requested, user_to_add = permission_service.get_require_data_helper(
-        priv_change
-    )  # TODO : AG : Correct this as well when time
+    try:
+        priv_requested, user_to_add = permission_service.get_require_data_helper(priv_change)
+    except InvalidDataException as e:
+        return bad_request(err=e.message)
+
     result = storage.dossier.get_if_exists(id, as_obj=True)
 
     if not result:

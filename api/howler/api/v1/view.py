@@ -16,7 +16,6 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import SearchException
-from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.models.user import User
 from howler.odm.models.view import View
 from howler.security import api_login
@@ -340,12 +339,12 @@ def give_privilege(view_id: str, user: User, **kwargs):
         "success": True     # If the operation succeeded
     }
     """
-    temp_value: tuple[HowlerDatastore, str, str] | str = permission_service.get_require_data_helper(request.json)
-    refresh = kwargs.get("refresh")
-    if isinstance(temp_value, str):
-        return bad_request(err=temp_value)
+    try:
+        priv_requested, user_to_add = permission_service.get_require_data_helper(request.json)
+    except InvalidDataException as e:
+        return bad_request(err=e.message)
 
-    storage, priv_requested, user_to_add = temp_value  # TODO: storage is not used here
+    storage = datastore()
 
     result = storage.view.get_if_exists(escape(str(view_id)))
 
@@ -365,7 +364,7 @@ def give_privilege(view_id: str, user: User, **kwargs):
         return bad_request(err=e.message)
 
     if success:
-        storage.view.save(result.view_id, result, refresh=refresh)
+        storage.view.save(result.view_id, result, refresh=kwargs.get("refresh"))
 
     return ok(result.as_primitives())
 
@@ -399,13 +398,13 @@ def revoke_privilege(view_id: str, user: User, **kwargs):
             "success": True
         }
     """
-    temp_value: tuple[HowlerDatastore, str, str] | str = permission_service.get_require_data_helper(request.json)
-    refresh = kwargs.get("refresh")
+    try:
+        priv_requested, user_to_remove = permission_service.get_require_data_helper(request.json)
+    except InvalidDataException as e:
+        return bad_request(err=e.message)
 
-    if isinstance(temp_value, str):
-        return bad_request(err=temp_value)
+    storage = datastore()
 
-    storage, priv_requested, user_to_remove = temp_value
     result = storage.view.get_if_exists(escape(str(view_id)))
 
     if not result:
@@ -431,7 +430,7 @@ def revoke_privilege(view_id: str, user: User, **kwargs):
         return bad_request(err=e.message)
 
     if success:
-        storage.view.save(result.view_id, result, refresh=refresh)
+        storage.view.save(result.view_id, result, refresh=kwargs.get("refresh"))
 
     return ok(result.as_primitives())
 

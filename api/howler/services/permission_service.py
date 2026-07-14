@@ -5,7 +5,6 @@ from howler.common.exceptions import (
     InvalidDataException,
 )
 from howler.common.loader import datastore
-from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.models.ownership_object import OwnershipObject
 from howler.odm.models.user import User
 
@@ -32,21 +31,19 @@ def __is_allowed_to_change(level_requested: str, user: User, existing_item: Owne
     return True
 
 
-# TODO : AG : Make a new ODM object insted and return an instantiated object
 def get_require_data_helper(
     priv_change: dict,
-) -> tuple[HowlerDatastore, str, str] | str:
+) -> tuple[str, str]:
     """Utils to get the requested information from the API"""
     if not isinstance(priv_change, dict):
-        return "Invalid data format"
+        raise InvalidDataException("Invalid data format")
 
     if not {"privilege", "user_id"}.issubset(priv_change.keys()):
-        return "Invalid data format. Need new privilege and user_id"
+        raise InvalidDataException("Invalid data format. Need new privilege and user_id")
 
-    storage = datastore()
     priv_requested: str = escape(str(priv_change["privilege"]))
     user_to_move: str = escape(str(priv_change["user_id"]))
-    return storage, priv_requested, user_to_move
+    return priv_requested, user_to_move
 
 
 def set_privilege(

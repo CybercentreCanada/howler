@@ -16,7 +16,6 @@ from howler.common.loader import datastore
 from howler.common.logging.audit import audit
 from howler.common.swagger import generate_swagger_docs
 from howler.config import CLASSIFICATION
-from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.models.action import Action
 from howler.odm.models.user import User
 from howler.security import api_login
@@ -445,14 +444,12 @@ def give_privilege(id: str, user: User, **kwargs):
         "success": True     # If the operation succeeded
     }
     """
-    # TODO: AG : update this as well for every object type that has permission mapping
-    temp_value: tuple[HowlerDatastore, str, str] | str = permission_service.get_require_data_helper(request.json)
-    refresh = kwargs.get("refresh")
+    try:
+        priv_requested, user_to_add = permission_service.get_require_data_helper(request.json)
+    except InvalidDataException as e:
+        return bad_request(err=e.message)
 
-    if isinstance(temp_value, str):
-        return bad_request(err=temp_value)
-
-    storage, priv_requested, user_to_add = temp_value  # TODO : AG : remember this place for the storage section
+    storage = datastore()
     result = storage.action.get_if_exists(escape(str(id)), as_obj=True)
 
     if not result:
@@ -472,7 +469,7 @@ def give_privilege(id: str, user: User, **kwargs):
         return bad_request(err=e.message)
 
     if success:
-        storage.action.save(result.action_id, result, refresh=refresh)
+        storage.action.save(result.action_id, result, refresh=kwargs.get("refresh"))
 
     return ok(result.as_primitives())
 
@@ -506,12 +503,13 @@ def revoke_privilege(id: str, user: User, **kwargs):
             "success": True
         }
     """
-    temp_value: tuple[HowlerDatastore, str, str] | str = permission_service.get_require_data_helper(request.json)
-    refresh = kwargs.get("refresh")
-    if isinstance(temp_value, str):
-        return bad_request(err=temp_value)
+    try:
+        priv_requested, user_to_remove = permission_service.get_require_data_helper(request.json)
+    except InvalidDataException as e:
+        return bad_request(err=e.message)
 
-    storage, priv_requested, user_to_remove = temp_value
+    storage = datastore()
+    refresh = kwargs.get("refresh")
     result = storage.action.get_if_exists(escape(str(id)), as_obj=True)
 
     if not result:

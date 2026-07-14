@@ -1,7 +1,11 @@
 {
   "extends": ["airbnb-typescript", "prettier", "plugin:import/recommended", "plugin:react/recommended"],
   "parser": "@typescript-eslint/parser",
-  "ignorePatterns": ["vite.config.ts", "src/commons/**"],
+  "ignorePatterns": [
+    "vite.config.ts",
+    "src/commons/**",
+    "dist/**"
+  ],
   "parserOptions": {
     "project": "tsconfig.json"
   },
