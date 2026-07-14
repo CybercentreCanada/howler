@@ -29,6 +29,46 @@ const UserList: FC<{
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userIds]);
 
+  const renderInput = params => <TextField {...params} label={t(i18nLabel)} size="small" />;
+
+  const renderOption = (props, optionUserId) => {
+    const { key, ...optionProps } = props;
+    const user = users[optionUserId];
+
+    return (
+      <li key={key} {...optionProps}>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: 'auto 1fr',
+            gridTemplateRows: 'auto auto',
+            gridTemplateAreas: `"profile name"\n"profile email"`,
+            columnGap: 1.5
+          }}
+        >
+          <HowlerAvatar
+            sx={{ gridArea: 'profile', alignSelf: 'center', height: '32px', width: '32px' }}
+            userId={user?.username}
+          />
+          <Typography sx={{ gridArea: 'name' }} variant="body1">
+            {user?.name ?? optionUserId}
+          </Typography>
+          <Typography sx={{ gridArea: 'email' }} variant="caption">
+            {user?.email ?? ''}
+          </Typography>
+        </Box>
+      </li>
+    );
+  };
+
+  const sharedAutocompleteProps = {
+    disabled,
+    sx: { minWidth: '300px' },
+    options: allUserIds,
+    renderInput,
+    renderOption
+  };
+
   return (
     <>
       {multiple ? (
@@ -54,49 +94,24 @@ const UserList: FC<{
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
       >
         <Box sx={{ p: 2 }}>
-          <Autocomplete
-            disabled={disabled}
-            multiple={multiple}
-            sx={{ minWidth: '300px' }}
-            options={allUserIds}
-            renderInput={params => <TextField {...params} label={t(i18nLabel)} size="small" />}
-            renderOption={(props, _userId) => {
-              const user = users[_userId];
-
-              return (
-                <li {...props}>
-                  <Box
-                    sx={{
-                      display: 'grid',
-                      gridTemplateColumns: 'auto 1fr',
-                      gridTemplateRows: 'auto auto',
-                      gridTemplateAreas: `"profile name"\n"profile email"`,
-                      columnGap: 1.5
-                    }}
-                  >
-                    <HowlerAvatar
-                      sx={{ gridArea: 'profile', alignSelf: 'center', height: '32px', width: '32px' }}
-                      userId={user.username}
-                    />
-                    <Typography sx={{ gridArea: 'name' }} variant="body1">
-                      {user.name}
-                    </Typography>
-                    <Typography sx={{ gridArea: 'email' }} variant="caption">
-                      {user.email}
-                    </Typography>
-                  </Box>
-                </li>
-              );
-            }}
-            value={userIds}
-            onChange={(__, options) => {
-              if (multiple) {
-                onChange(Array.isArray(options) ? options : [options]);
-              } else {
-                onChange([Array.isArray(options) ? (options[0] ?? null) : options]);
-              }
-            }}
-          />
+          {multiple ? (
+            <Autocomplete
+              {...sharedAutocompleteProps}
+              multiple
+              value={userIds}
+              onChange={(__, options) => {
+                onChange(options);
+              }}
+            />
+          ) : (
+            <Autocomplete
+              {...sharedAutocompleteProps}
+              value={userIds?.[0] ?? null}
+              onChange={(__, option) => {
+                onChange(option ? [option] : []);
+              }}
+            />
+          )}
         </Box>
       </Popover>
     </>
