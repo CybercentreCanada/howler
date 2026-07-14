@@ -22,8 +22,10 @@
 
 - **ODM Inheritance and Plugin Support** *(new feature)*: Added compatibility shims and improved enum/model type handling, `id_field` validation, and caching so plugins can define ODM subclasses ([#331](https://github.com/CybercentreCanada/howler/pull/331)).
 - **Action Execution Queue** *(improvement)*: Added a queue and worker for action execution to limit Elasticsearch query pressure and improve action-service reliability ([#385](https://github.com/CybercentreCanada/howler/pull/385)).
+- **Action Runner Roles** *(new feature)*: Added granular roles that control which users may execute actions ([#316](https://github.com/CybercentreCanada/howler/pull/316)).
 - **Index Lifecycle Management Support** *(new feature)*: Added configuration and datastore support for ILM, including lifecycle settings, improved collection handling, and integration coverage ([#386](https://github.com/CybercentreCanada/howler/pull/386)).
 - **Reindexing Improvements** *(improvement)*: Refactored the reindexing process for more reliable index and mapping operations ([#416](https://github.com/CybercentreCanada/howler/pull/416)).
+- **Stale Analytics Cleanup** *(new feature)*: Added a scheduled job to remove analytics that no longer have matching hits ([#353](https://github.com/CybercentreCanada/howler/pull/353)).
 - **Redis Resiliency and Health Checks** *(improvement)*: Upgraded Redis handling, added connection resiliency, and exposed Redis ping status through the health endpoint ([#428](https://github.com/CybercentreCanada/howler/pull/428), [#427](https://github.com/CybercentreCanada/howler/pull/427)).
 - **Domain Validation** *(new feature)*: Added special-use and private top-level domains to domain validation ([#422](https://github.com/CybercentreCanada/howler/pull/422)).
 - **OAuth Client Callbacks** *(new feature)*: Added authentication callbacks for alternative client authentication implementations and corrected related client alert-deduplication behavior ([#392](https://github.com/CybercentreCanada/howler/pull/392)).
@@ -31,6 +33,8 @@
 - **Assessment Assessor Tracking** *(new feature)*: Stores the user who submitted the latest hit assessment and clears the value when the assessment changes ([#406](https://github.com/CybercentreCanada/howler/pull/406)).
 - **Long-Value Schema Updates** *(breaking change)*: Changed `process.pid` and `file.size` from integer to long fields, requiring the corresponding Elasticsearch mappings to be reindexed ([#414](https://github.com/CybercentreCanada/howler/pull/414), [#391](https://github.com/CybercentreCanada/howler/pull/391)).
 - **Search and Datastore Fixes** *(bugfix)*: Preserved bare `*` field-list searches, ignored empty field-list entries, allowed long fields in numeric stats, handled uninitialized dossier mappings, and improved datastore behavior after Elasticsearch certificate resets ([#404](https://github.com/CybercentreCanada/howler/pull/404)).
+- **ODM and Validation Fixes** *(bugfix)*: Allowed nested identifier fields, corrected certificate-reset handling, and fixed dossier mapping initialization and classification edge cases.
+- **ECS Host Field** *(new feature)*: Added `host.hostname` to the supported ECS fields.
 - **Audit Logging Fallback** *(bugfix)*: Audit events generated outside a request context now use a safe fallback instead of failing.
 - **Classification Type Corrections** *(bugfix)*: Corrected classification type handling across configuration, ODM serialization, and classification helpers.
 - **Swagger Query Parameter Documentation** *(improvement)*: API documentation now derives query parameter names, requiredness, and Swagger types from endpoint signatures and docstrings, with improved optional-parameter handling ([#485](https://github.com/CybercentreCanada/howler/pull/485)).
