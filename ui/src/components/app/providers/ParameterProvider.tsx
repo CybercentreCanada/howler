@@ -97,7 +97,10 @@ const WRITE_THROTTLER = new Throttler(100);
  * @returns
  */
 const parseOffset = (_offset: string | number) => {
-  if (typeof _offset === 'number') return _offset;
+  if (typeof _offset === 'number') {
+    return _offset;
+  }
+
   const candidate = parseInt(_offset);
   return isNaN(candidate) ? 0 : candidate;
 };
@@ -106,8 +109,12 @@ const parseOffset = (_offset: string | number) => {
  * Helper function to determine the selected value based on URL params and route context.
  */
 const getSelectedValue = (params: URLSearchParams, pathname: string, bundleId?: string) => {
-  if (params.has('selected')) return params.get('selected');
-  if (pathname.startsWith('/bundles') && bundleId) return bundleId;
+  if (params.has('selected')) {
+    return params.get('selected');
+  }
+  if (pathname.startsWith('/bundles') && bundleId) {
+    return bundleId;
+  }
   return null;
 };
 
@@ -141,7 +148,9 @@ const useListHandlers = <T,>(
     (pos: number, item: T) =>
       _setValues(c => {
         const arr = c[key] as T[];
-        if (pos < 0 || pos >= arr.length) return c;
+        if (pos < 0 || pos >= arr.length) {
+          return c;
+        }
         const next = [...arr] as T[];
         next[pos] = item;
         return { ...c, [key]: next };
@@ -185,7 +194,9 @@ const useUrlSync = (
     PARAM_MAPPINGS.forEach(([urlKey, stateKey]) => {
       const stateValue = values[stateKey];
       const urlValue = params.get(urlKey);
-      if (stateValue === urlValue) return;
+      if (stateValue === urlValue) {
+        return;
+      }
 
       if (params.has(urlKey) && stateValue === defaults[stateKey]) {
         changes[urlKey] = null; // remove
@@ -199,7 +210,9 @@ const useUrlSync = (
       const stateArr = values[stateKey] as string[];
       const urlArr = params.getAll(urlKey);
       const defaultValue = stateKey === 'indexes' ? defaults.indexes : undefined;
-      if (isEqual(stateArr, urlArr)) return;
+      if (isEqual(stateArr, urlArr)) {
+        return;
+      }
 
       const isDefault = defaultValue ? isEqual(stateArr, defaultValue) : stateArr.length === 0;
       if (!isDefault) {
@@ -248,11 +261,15 @@ const useUrlSync = (
 
     // selected
     const selectedValue = getSelectedValue(params, pathname, routeId);
-    if (selectedValue !== values.selected) changes.selected = selectedValue;
+    if (selectedValue !== values.selected) {
+      changes.selected = selectedValue;
+    }
 
     // offset
     const urlOffset = parseOffset(params.get('offset'));
-    if (urlOffset !== values.offset) changes.offset = urlOffset;
+    if (urlOffset !== values.offset) {
+      changes.offset = urlOffset;
+    }
 
     return omitBy(omitBy(changes, isUndefined), (val, key) => val == (values as any)[key]);
   }, [values, defaults, params, pathname, routeId]);
@@ -260,7 +277,9 @@ const useUrlSync = (
   // State → URL
   useEffect(() => {
     const changes = getUrlFromState();
-    if (isEmpty(changes)) return;
+    if (isEmpty(changes)) {
+      return;
+    }
 
     setParams(
       _params => {
@@ -285,7 +304,9 @@ const useUrlSync = (
   // URL → State
   useEffect(() => {
     const changes = getStateFromUrl();
-    if (isEmpty(changes)) return;
+    if (isEmpty(changes)) {
+      return;
+    }
     _setValues(c => ({ ...c, ...changes }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, pathname, routeId]);
@@ -326,7 +347,9 @@ const ParameterProvider: FC<PropsWithChildren<{ defaults?: Partial<SearchValues>
   const set = useCallback(
     <K extends keyof SearchValues>(key: K) =>
       (value: SearchValues[K]) => {
-        if (value === values[key]) return;
+        if (value === values[key]) {
+          return;
+        }
 
         if (key === 'selected') {
           pendingChanges.current.selected = value as string | null;
