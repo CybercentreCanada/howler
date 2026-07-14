@@ -42,6 +42,10 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
     Arguments:
     None
 
+    Optional Arguments:
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
+
     Data Block:
     {
         "map": {            # For each field in the hit, list of field data will be copied to
