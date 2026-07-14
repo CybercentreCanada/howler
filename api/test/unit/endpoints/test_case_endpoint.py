@@ -150,7 +150,7 @@ class TestDeleteCases:
             result: Response = delete_cases(user=user)
 
             assert result.status_code == 204
-            mock_case_service.delete_cases.assert_called_once_with(["case-del"])
+            mock_case_service.delete_cases.assert_called_once_with(["case-del"], refresh=None)
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
@@ -306,7 +306,9 @@ class TestUpdateCaseEndpoint:
             result: Response = update_case("case-001", user=user)
 
             assert result.status_code == 200
-            mock_case_service.update_case.assert_called_once_with("case-001", {"title": "Updated Title"}, user)
+            mock_case_service.update_case.assert_called_once_with(
+                "case-001", {"title": "Updated Title"}, user, refresh=None
+            )
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
@@ -574,7 +576,7 @@ class TestAppendItemEndpoint:
             result: Response = update_case("case-001", user=user)
 
             assert result.status_code == 400
-            mock_case_service.update_case.assert_called_once_with("case-001", {"case_id": "new-id"}, user)
+            mock_case_service.update_case.assert_called_once_with("case-001", {"case_id": "new-id"}, user, refresh=None)
 
 
 # ---------------------------------------------------------------------------
@@ -605,7 +607,9 @@ class TestHideCasesEndpoint:
             result: Response = hide_cases(user=user)
 
             assert result.status_code == 204
-            mock_case_service.hide_cases.assert_called_once_with(["case-001", "case-002"], user=user.uname)
+            mock_case_service.hide_cases.assert_called_once_with(
+                ["case-001", "case-002"], user=user.uname, refresh=None
+            )
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
@@ -698,7 +702,9 @@ class TestDeleteItemEndpoint:
             result: Response = delete_item("case-001")
 
             assert result.status_code == 200
-            mock_case_service.remove_case_items.assert_called_once_with("case-001", ["hit-001"], force=False)
+            mock_case_service.remove_case_items.assert_called_once_with(
+                "case-001", ["hit-001"], force=False, refresh=None
+            )
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
@@ -720,7 +726,7 @@ class TestDeleteItemEndpoint:
 
             assert result.status_code == 200
             mock_case_service.remove_case_items.assert_called_once_with(
-                "case-001", ["hit-001", "hit-002", "obs-003"], force=False
+                "case-001", ["hit-001", "hit-002", "obs-003"], force=False, refresh=None
             )
 
     @patch("howler.api.v2.case.case_service")
@@ -829,7 +835,9 @@ class TestDeleteItemEndpoint:
             result: Response = delete_item("case-001")
 
             assert result.status_code == 400
-            mock_case_service.remove_case_items.assert_called_once_with("case-001", ["missing-item"], force=False)
+            mock_case_service.remove_case_items.assert_called_once_with(
+                "case-001", ["missing-item"], force=False, refresh=None
+            )
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
@@ -945,7 +953,9 @@ class TestRenameItemEndpoint:
             result: Response = rename_item(case_id="case-001")
 
             assert result.status_code == 200
-            mock_case_service.rename_case_item.assert_called_once_with("case-001", "item-uuid", "Renamed Item")
+            mock_case_service.rename_case_item.assert_called_once_with(
+                "case-001", "item-uuid", "Renamed Item", refresh=None
+            )
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
@@ -1098,7 +1108,9 @@ class TestRenameItemEndpoint:
             result: Response = rename_item(case_id="case-001")
 
             assert result.status_code == 200
-            mock_case_service.move_case_item.assert_called_once_with("case-001", "item-uuid", "folder-abc")
+            mock_case_service.move_case_item.assert_called_once_with(
+                "case-001", "item-uuid", "folder-abc", refresh=None
+            )
             mock_case_service.rename_case_item.assert_not_called()
 
     @patch("howler.api.v2.case.case_service")
@@ -1245,7 +1257,7 @@ class TestDeleteRule:
             result: Response = delete_rule(id="case-001", rule_id="rule-1", user=user)
 
             assert result.status_code == 200
-            mock_case_service.remove_case_rule.assert_called_once_with("case-001", "rule-1", user)
+            mock_case_service.remove_case_rule.assert_called_once_with("case-001", "rule-1", user, refresh=None)
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
@@ -1299,7 +1311,9 @@ class TestUpdateRule:
             result: Response = update_rule(id="case-001", rule_id="rule-1", user=user)
 
             assert result.status_code == 200
-            mock_case_service.update_case_rule.assert_called_once_with("case-001", "rule-1", {"enabled": False}, user)
+            mock_case_service.update_case_rule.assert_called_once_with(
+                "case-001", "rule-1", {"enabled": False}, user, refresh=None
+            )
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
