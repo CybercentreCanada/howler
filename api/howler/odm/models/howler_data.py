@@ -1,4 +1,5 @@
 # mypy: ignore-errors
+from datetime import datetime
 from typing import Optional
 
 from howler import odm
@@ -291,6 +292,7 @@ class HowlerData(odm.Model):
             )
         )
     )
+    triaged: Optional[datetime] = odm.Optional(odm.Date(description="Timestamp at which the hit was triaged."))
     comment: list[Comment] = odm.List(
         odm.Compound(Comment),
         default=[],
