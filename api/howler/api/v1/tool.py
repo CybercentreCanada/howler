@@ -210,7 +210,7 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
             analytic_service.save_from_hits(odms, user)
             child_ids = [odm.howler.id for odm in child_odms]
             bundle_data = bundle_odm.as_primitives()
-            result = bundle_compat_service.create_bundle(bundle_data, child_ids, user=user.uname, refresh="wait_for")
+            result = bundle_compat_service.create_bundle(bundle_data, child_ids, user=user, refresh="wait_for")
             warnings.append(bundle_compat_service.DEPRECATION_MESSAGE)
 
             # Replace the bundle entry in the output with the created bundle id

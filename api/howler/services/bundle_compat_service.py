@@ -17,6 +17,7 @@ from howler.common.logging import get_logger
 from howler.datastore.exceptions import DataStoreException
 from howler.odm.models.case import Case, CaseItemTypes
 from howler.odm.models.hit import Hit
+from howler.odm.models.user import User
 from howler.services import analytic_service, case_service, hit_service
 
 
@@ -55,7 +56,7 @@ def find_case_for_bundle(bundle_hit_id: str) -> Case | None:
 def create_bundle(
     bundle_hit_data: dict[str, Any],
     child_hit_ids: list[str],
-    user: str,
+    user: User,
     refresh: Literal["true", "false", "wait_for"] | None = "wait_for",
 ) -> dict[str, Any]:
     """Create a hit + case that together represent a legacy bundle.
@@ -93,8 +94,8 @@ def create_bundle(
             )
 
     odm, warnings = hit_service.convert_hit(bundle_hit_data, unique=True, ignore_extra_values=True)
-    hit_service.create_hit(odm.howler.id, odm, user=user, refresh=refresh)
-    analytic_service.save_from_hits(odm, {"uname": user}, refresh)  # type: ignore[arg-type]
+    hit_service.create_hit(odm.howler.id, odm, user=user.uname, refresh=refresh)
+    analytic_service.save_from_hits(odm, user, refresh)
 
     analytic = odm.howler.analytic or "Unknown"
     detection = odm.howler.detection or "Alert"
@@ -160,7 +161,6 @@ def add_to_bundle(
         detection = root_hit.howler.detection or "Alert"
         case = case_service.create_case(
             {"title": f"{analytic} - {detection}", "summary": f"Auto-created case for bundle {bundle_id}"},
-            user="system",
         )
         case_service.append_case_item(case.case_id, item_type="hit", item_value=bundle_id, refresh=refresh)
 

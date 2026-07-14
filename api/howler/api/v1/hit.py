@@ -1071,7 +1071,7 @@ def create_bundle(user: User, **kwargs):
     child_hits: list[str] = data.get("hits", [])
 
     try:
-        result = bundle_compat_service.create_bundle(bundle_hit, child_hits, user=user.uname, refresh=refresh)
+        result = bundle_compat_service.create_bundle(bundle_hit, child_hits, user=user, refresh=refresh)
         return _deprecation_headers(created(result))
     except HowlerException as e:
         return bad_request(err=str(e))
