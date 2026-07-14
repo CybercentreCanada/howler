@@ -110,6 +110,9 @@ def search(indexes: str, user: User, **kwargs):
 
     try:
         result = search_service.search(indexes, query, user=user, **params)
+    except (SearchException, BadRequestError) as e:
+        logger.exception(f"SearchException on query {query}")
+        return bad_request(err=f"SearchException on query {query}: {str(e)}")
     except Exception as e:
         logger.exception(f"Exception on search with query {query}")
         return internal_error(f"Exception on search with query {query}: {e}")

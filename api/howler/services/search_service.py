@@ -101,8 +101,8 @@ def search(  # noqa: C901
     query: str | None = None,
     deep_paging_id: str | None = None,
     filters: list[str] | str | None = None,
-    offset: int = DEFAULT_OFFSET,
-    rows: int = DEFAULT_ROW_SIZE,
+    offset: int | None = None,
+    rows: int | None = None,
     sort: str | dict[str, str] | list[dict[str, str]] | None = None,
     fl: str | list[str] | None = None,
     timeout: int | None = None,
@@ -157,6 +157,16 @@ def search(  # noqa: C901
 
     if sort is None:
         sort = DEFAULT_SORT
+
+    if rows is None:
+        rows = DEFAULT_ROW_SIZE
+    else:
+        rows = int(rows)
+
+    if offset is None:
+        offset = DEFAULT_OFFSET
+    else:
+        offset = int(offset)
 
     source_fields: list[str] | None
     if fl is None:
