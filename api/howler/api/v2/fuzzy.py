@@ -18,7 +18,7 @@ logger = get_logger(__file__)
 
 @generate_swagger_docs()
 @fuzzy_api.route("/search", methods=["POST"])
-@api_login(audit=False, required_priv=["R"])
+@api_login(required_priv=["R"])
 def fuzzy_search(**kwargs):  # noqa: C901
     """Perform a plain-text fuzzy search across hits, events, and cases.
 

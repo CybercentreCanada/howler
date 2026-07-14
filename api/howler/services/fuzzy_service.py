@@ -80,11 +80,13 @@ FIELD_BOOSTS: dict[str, dict[str, int]] = {
         "message": 1,
     },
     "case": {
-        "case_id": 5,
+        "title": 5,
+        "summary": 5,
         "indicators": 4,
         "targets": 4,
         "items.value": 3,
-        "items.path": 2,
+        "task.summary": 3,
+        "task.assignment": 3,
     },
 }
 
