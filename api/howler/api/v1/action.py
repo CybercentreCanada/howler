@@ -421,7 +421,7 @@ def give_privilege(id: str, user: User, **kwargs):
     """give permission from one user to an other.
 
         The json object need to send "privilege", "user_id" as a key.
-        privilege : The value need to be one of ["administrator", "member", "owner"]
+        privilege : The value need to be one of ["admins", "members", "owner"]
         user_id : the value need to be the user to add or remove from the permission
     Variables:
     action_id => The id of the action to give administrative privilege of
@@ -436,7 +436,7 @@ def give_privilege(id: str, user: User, **kwargs):
 
     Data Block:
     {
-        "privilege": "privilege to give"  # [member, administrator, owner]
+        "privilege": "privilege to give"  # [members, admins, owner]
         "user_id": "user to give permission to"
     }
 
@@ -453,9 +453,10 @@ def give_privilege(id: str, user: User, **kwargs):
         return bad_request(err=temp_value)
 
     storage, priv_requested, user_to_add = temp_value  # TODO : AG : remember this place for the storage section
-    result = permission_service.verify_privilege_values(
-        item_id=escape(str(id)), level_requested=priv_requested, member_to_modify=user_to_add, item_type=Action
-    )
+    result = storage.action.get_if_exists(escape(str(id)), as_obj=True)
+
+    if not result:
+        return not_found(err="This action does not exist")
 
     # is requesting the wrong object type
     if not isinstance(result, Action):
@@ -496,7 +497,7 @@ def revoke_privilege(id: str, user: User, **kwargs):
 
     Data Block:
         {
-            "privilege": "privilege to revoke",  # [member, administrator, owner]
+            "privilege": "privilege to revoke",  # [members, admins, owner]
             "user_id": "user to remove permission from",
         }
 
@@ -511,18 +512,15 @@ def revoke_privilege(id: str, user: User, **kwargs):
         return bad_request(err=temp_value)
 
     storage, priv_requested, user_to_remove = temp_value
-    result = permission_service.verify_privilege_values(
-        item_id=escape(str(id)),
-        level_requested=priv_requested,
-        member_to_modify=user_to_remove,
-        is_adding=False,
-        item_type=Action,
-    )
+    result = storage.action.get_if_exists(escape(str(id)), as_obj=True)
+
+    if not result:
+        return not_found(err="This action does not exist")
 
     if not isinstance(result, Action):
         return bad_request(err=f"Wrong request type. Object of type {type(result)} was requested insted of Action")
 
-    current_members = result.admins if priv_requested == "administrator" else result.members
+    current_members = result.admins if priv_requested == "admins" else result.members
     if user_to_remove not in current_members:
         return bad_request(err=f"{user_to_remove} is not in the {priv_requested} permission group")
 
@@ -560,7 +558,7 @@ def get_action_permission(id: str, user: User, **kwargs):
         None
     Result Example:
          {
-            "administrator": [ # Each entry corresponds to a given privilege level
+            "admins": [ # Each entry corresponds to a given privilege level
                 "user1", "user2" # A list of users that have this privilege
             ],
         }
@@ -574,7 +572,7 @@ def get_action_permission(id: str, user: User, **kwargs):
 
     if action.get("type") == "personal" and user.uname != action.get("owner"):
         return forbidden(err="You cannot access a personal action that is not owned by you.")
-    return ok({"owner": action.owner, "administrator": action.admins, "member": action.members})
+    return ok({"owner": action.owner, "admins": action.admins, "members": action.members})
 
 
 # endregion

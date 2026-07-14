@@ -331,7 +331,7 @@ def give_privilege(view_id: str, user: User, **kwargs):
 
     Data Block:
     {
-        "privilege": "privilege to grant"  # [member, administrator, owner]
+        "privilege": "privilege to grant"  # [members, admins, owner]
         "user_id": "user to grant permission to"
     }
 
@@ -347,15 +347,10 @@ def give_privilege(view_id: str, user: User, **kwargs):
 
     storage, priv_requested, user_to_add = temp_value  # TODO: storage is not used here
 
-    result = permission_service.verify_privilege_values(
-        item_id=escape(str(view_id)),
-        level_requested=priv_requested,
-        member_to_modify=user_to_add,
-        item_type=View,
-    )
+    result = storage.view.get_if_exists(escape(str(view_id)))
 
-    if isinstance(result, str):
-        return bad_request(err=result)
+    if not result:
+        return not_found(err="This view does not exist")
 
     if not isinstance(result, View):
         return bad_request(err=f"Wrong request type. Object of type {type(result)} was requested insted of View")
@@ -395,7 +390,7 @@ def revoke_privilege(view_id: str, user: User, **kwargs):
 
     Data Block:
         {
-            "privilege": "privilege to revoke",  # [member, administrator, owner]
+            "privilege": "privilege to revoke",  # [members, admins, owner]
             "user_id": "user to remove permission from",
         }
 
@@ -411,16 +406,10 @@ def revoke_privilege(view_id: str, user: User, **kwargs):
         return bad_request(err=temp_value)
 
     storage, priv_requested, user_to_remove = temp_value
-    result = permission_service.verify_privilege_values(
-        item_id=escape(str(view_id)),
-        level_requested=priv_requested,
-        member_to_modify=user_to_remove,
-        is_adding=False,
-        item_type=View,
-    )
+    result = storage.view.get_if_exists(escape(str(view_id)))
 
-    if isinstance(result, str):
-        return bad_request(err=result)
+    if not result:
+        return not_found(err="This view does not exist")
 
     if not isinstance(result, View):
         return bad_request(err=f"Wrong request type. Object of type {type(result)} was requested insted of View")
@@ -430,7 +419,7 @@ def revoke_privilege(view_id: str, user: User, **kwargs):
     if priv_request == "owner":
         return bad_request(err="You cannot remove the owner privilege of a view. Transfer ownership instead.")
 
-    current_members = result.admins if priv_request == "administrator" else result.members
+    current_members = result.admins if priv_request == "admins" else result.members
     if user_to_remove not in current_members:
         return bad_request(err=f"{user_to_remove} is not in the {priv_request} permission group")
 
@@ -462,10 +451,10 @@ def get_view_permission_options(view_id: str, user: User, **kwargs):
         None
     Result Example:
         {
-            "administrator": [ # Each entry corresponds to a given privilege level
+            "admins": [ # Each entry corresponds to a given privilege level
                 "user1", "user2" # A list of users that have this privilege
             ],
-            "member": [
+            "members": [
                 "user3"],
             "owner": "user4"
         }
@@ -478,7 +467,7 @@ def get_view_permission_options(view_id: str, user: User, **kwargs):
     if not view:
         return not_found(err="The specified view does not exist")
 
-    return ok({"owner": view.owner, "administrator": view.admins, "member": view.members})
+    return ok({"owner": view.owner, "admins": view.admins, "members": view.members})
 
 
 # endregion

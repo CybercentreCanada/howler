@@ -258,10 +258,10 @@ def test_get_dossier_for_hit_user_scoping(datastore: HowlerDatastore, login_sess
             "title": "Other User Personal Dossier",
             "query": matching_query,
             "type": "personal",
-            "owner": ["other_user"],
+            "owner": "other_user",
             "leads": [],
-            "administrator": [],
-            "member": [],
+            "admins": [],
+            "members": [],
         }
     )
     other_user_dossier_id = other_user_dossier.dossier_id
@@ -305,7 +305,7 @@ def test_get_dossier_for_hit_user_scoping(datastore: HowlerDatastore, login_sess
 
 def add_permission_every_role(member_to_add: str, member_requesting, create_res, host, dossier):
     """Directly make requests to grant privileges across all roles without hiding crashes."""
-    for membership in ("administrator", "member"):
+    for membership in ("admins", "members"):
         priv_change = {"privilege": membership, "user_id": member_to_add}
         get_api_data(
             member_requesting,
@@ -317,7 +317,7 @@ def add_permission_every_role(member_to_add: str, member_requesting, create_res,
 
 def remove_permission_every_role(member_to_remove: str, member_requesting, create_res, host, dossier):
     """Directly make requests to revoke privileges across all roles."""
-    for membership in ("administrator", "member"):
+    for membership in ("admins", "members"):
         priv_change = {"privilege": membership, "user_id": member_to_remove}
         get_api_data(
             member_requesting,
@@ -532,7 +532,7 @@ def test_admin(datastore: HowlerDatastore, user_session: Callable[[str], tuple[r
         data=json.dumps(
             {
                 "user_id": admin_uname,
-                "privilege": "administrator",
+                "privilege": "admins",
             }
         ),
     )
@@ -547,7 +547,7 @@ def test_admin(datastore: HowlerDatastore, user_session: Callable[[str], tuple[r
             data=json.dumps(
                 {
                     "user_id": member_uname,
-                    "privilege": "administrator",
+                    "privilege": "admins",
                 }
             ),
         )
@@ -626,7 +626,7 @@ def test_admin(datastore: HowlerDatastore, user_session: Callable[[str], tuple[r
         data=json.dumps(
             {
                 "user_id": admin_uname,
-                "privilege": "administrator",
+                "privilege": "admins",
             }
         ),
     )
@@ -661,7 +661,7 @@ def test_member(datastore: HowlerDatastore, user_session: dict):
         data=json.dumps(
             {
                 "user_id": member_uname,
-                "privilege": "member",
+                "privilege": "members",
             }
         ),
     )
@@ -671,7 +671,7 @@ def test_member(datastore: HowlerDatastore, user_session: dict):
 
     # Member should not be able to add admin/owner/member
     # Loop through roles manually to assert each one throws an APIError
-    for membership in ("administrator", "member"):
+    for membership in ("admins", "members"):
         with pytest.raises(APIError) as err:
             get_api_data(
                 member_session,
@@ -700,7 +700,7 @@ def test_member(datastore: HowlerDatastore, user_session: dict):
     assert owner_uname in dossier.members
 
     # Assert that member_session gets blocked trying to remove roles
-    for membership in ("administrator", "member"):
+    for membership in ("admins", "members"):
         with pytest.raises(APIError):
             get_api_data(
                 member_session,

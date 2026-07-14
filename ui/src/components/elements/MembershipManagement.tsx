@@ -34,7 +34,7 @@ interface MembershipManagementProps {
 
 interface MemberItem {
   user_id: string;
-  privilege: string;
+  privilege: 'owner' | 'admins' | 'members';
 }
 
 type Entity = Action | Dossier | View;
@@ -65,8 +65,8 @@ export const MembershipManagement = ({ open, onClose, entityId, entityType = 'ac
 
     const memberList: MemberItem[] = [
       ...(entity.owner ? [{ user_id: entity.owner, privilege: 'owner' }] : []),
-      ...entity.admins.map(admin => ({ user_id: admin, privilege: 'administrator' })),
-      ...entity.members.map(member => ({ user_id: member, privilege: 'member' }))
+      ...entity.admins.map(admin => ({ user_id: admin, privilege: 'admins' })),
+      ...entity.members.map(member => ({ user_id: member, privilege: 'members' }))
     ];
     setMembers(memberList);
   }, [entityId, dispatchApi, entityType]);
@@ -115,7 +115,7 @@ export const MembershipManagement = ({ open, onClose, entityId, entityType = 'ac
     openUserPicker();
   }, [open, tab, openUserPicker]);
 
-  const availablePrivileges = ['administrator', 'member'];
+  const availablePrivileges: MemberItem['privilege'][] = ['admins', 'members'];
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">

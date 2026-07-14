@@ -756,7 +756,7 @@ def test_update_action_failed(datastore: HowlerDatastore, login_session):
 
 def add_action_permission_every_role(member_to_add: str, member_requesting, action_id: str, host: str, action_obj):
     """Directly make requests to grant privileges across all roles."""
-    for membership in ("administrator", "member"):
+    for membership in ("admins", "members"):
         priv_change = {"privilege": membership, "user_id": member_to_add}
         get_api_data(
             member_requesting,
@@ -770,7 +770,7 @@ def remove_action_permission_every_role(
     member_to_remove: str, member_requesting, action_id: str, host: str, action_obj
 ):
     """Directly make requests to revoke privileges across all roles."""
-    for membership in ("administrator", "member"):
+    for membership in ("admins", "members"):
         priv_change = {"privilege": membership, "user_id": member_to_remove}
         get_api_data(
             member_requesting,
@@ -838,16 +838,16 @@ def test_action_give_remove_membership(
     datastore.action.commit()
 
     action = datastore.action.get(action_id, as_obj=True)
-    for membership in ("administrator", "member"):
-        assert member_uname in getattr(action, "admins" if membership == "administrator" else "members")
+    for membership in ("admins", "members"):
+        assert member_uname in getattr(action, membership)
 
     # Remove every membership (not owner) from owner
     remove_action_permission_every_role(member_uname, owner_session, action_id, host, action)
     datastore.action.commit()
 
     action = datastore.action.get(action_id, as_obj=True)
-    for membership in ("administrator", "member"):
-        assert member_uname not in getattr(action, "admins" if membership == "administrator" else "members")
+    for membership in ("admins", "members"):
+        assert member_uname not in getattr(action, membership)
 
     # Transfer ownership
     get_api_data(
@@ -891,8 +891,8 @@ def test_action_owner_privilege(datastore: HowlerDatastore, user_session: dict):
     datastore.action.commit()
 
     action = datastore.action.get(action_id, as_obj=True)
-    for membership in ("administrator", "member"):
-        assert member_uname in getattr(action, "admins" if membership == "administrator" else "members")
+    for membership in ("admins", "members"):
+        assert member_uname in getattr(action, membership)
 
     # Remove user from every role except owner
     remove_action_permission_every_role(member_uname, owner_session, action_id, host, action)
@@ -969,7 +969,7 @@ def test_action_admin_privilege(datastore: HowlerDatastore, user_session, login_
         owner_session,
         f"{host}/api/v1/action/{action_id}/permission",
         method="PUT",
-        data=json.dumps({"user_id": admin_uname, "privilege": "administrator"}),
+        data=json.dumps({"user_id": admin_uname, "privilege": "admins"}),
     )
 
     # Admin should be able to add|remove member and other admin
@@ -978,7 +978,7 @@ def test_action_admin_privilege(datastore: HowlerDatastore, user_session, login_
             admin_session,
             f"{host}/api/v1/action/{action_id}/permission",
             method=method,
-            data=json.dumps({"user_id": member_uname, "privilege": "administrator"}),
+            data=json.dumps({"user_id": member_uname, "privilege": "admins"}),
         )
         datastore.action.commit()
         action = datastore.action.get(action_id, as_obj=True)
@@ -1023,7 +1023,7 @@ def test_action_admin_privilege(datastore: HowlerDatastore, user_session, login_
         admin_session,
         f"{host}/api/v1/action/{action_id}/permission",
         method="DELETE",
-        data=json.dumps({"user_id": admin_uname, "privilege": "administrator"}),
+        data=json.dumps({"user_id": admin_uname, "privilege": "admins"}),
     )
     datastore.action.commit()
     action = datastore.action.get(action_id, as_obj=True)
@@ -1054,14 +1054,14 @@ def test_action_member_privilege(datastore: HowlerDatastore, user_session: dict)
         owner_session,
         f"{host}/api/v1/action/{action_id}/permission",
         method="PUT",
-        data=json.dumps({"user_id": member_uname, "privilege": "member"}),
+        data=json.dumps({"user_id": member_uname, "privilege": "members"}),
     )
     datastore.action.commit()
     action = datastore.action.get(action_id, as_obj=True)
 
     # Member should not be able to add admin/owner/member
     # Fix: Have the member try to add the OWNER to roles, not themselves
-    for membership in ("administrator", "member"):
+    for membership in ("admins", "members"):
         with pytest.raises(APIError):
             get_api_data(
                 member_session,
@@ -1076,7 +1076,7 @@ def test_action_member_privilege(datastore: HowlerDatastore, user_session: dict)
     action = datastore.action.get(action_id, as_obj=True)
 
     # Fix: Have the member try to remove the OWNER from roles, not themselves
-    for membership in ("administrator", "member"):
+    for membership in ("admins", "members"):
         with pytest.raises(APIError):
             get_api_data(
                 member_session,

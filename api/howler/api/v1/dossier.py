@@ -248,7 +248,7 @@ def give_privilege(id: str, user: User, **kwargs):
     """give permission from one user to an other.
 
     The json object need to send "privilege", "user_id" as a key.
-    privilege : The value need to be one of ["administrator", "member", "owner"]
+    privilege : The value need to be one of ["admins", "members", "owner"]
     user_id : the value need to be the user to add or remove from the permission
     is_adding: The value neeed to be a boolean representing if we add or remove a user.
 
@@ -260,7 +260,7 @@ def give_privilege(id: str, user: User, **kwargs):
 
     Data Block:
     {
-        "privilege": "privilege to give"  # [member, administrator, owner]
+        "privilege": "privilege to give"  # [members, admins, owner]
         "user_id": "user to give permission to"
     }
 
@@ -280,12 +280,10 @@ def give_privilege(id: str, user: User, **kwargs):
     _, priv_requested, user_to_add = permission_service.get_require_data_helper(
         priv_change
     )  # TODO : AG : Correct this as well when time
-    result = permission_service.verify_privilege_values(
-        item_id=id,
-        level_requested=priv_requested,
-        member_to_modify=user_to_add,
-        item_type=Dossier,
-    )
+    result = storage.dossier.get_if_exists(id, as_obj=True)
+
+    if not result:
+        return not_found(err="This dossier does not exist")
 
     try:
         success, result = permission_service.set_privilege(
@@ -319,7 +317,7 @@ def revoke_privilege(id: str, user: User, **kwargs):
 
     Data Block:
         {
-            "privilege": "privilege to give",  # [member, administrator, owner]
+            "privilege": "privilege to give",  # [members, admins, owner]
             "user_id": "user to remove permission from",
         }
 
@@ -338,18 +336,15 @@ def revoke_privilege(id: str, user: User, **kwargs):
     _, priv_requested, user_to_add = permission_service.get_require_data_helper(
         priv_change
     )  # TODO : AG : Correct this as well when time
-    result = permission_service.verify_privilege_values(
-        item_id=id,
-        level_requested=priv_requested,
-        member_to_modify=user_to_add,
-        is_adding=False,
-        item_type=Dossier,
-    )
+    result = storage.dossier.get_if_exists(id, as_obj=True)
+
+    if not result:
+        return not_found(err="This dossier does not exist")
 
     if priv_requested == "owner":
         return bad_request(err="You cannot remove the owner privilege. Transfer ownership instead.")
 
-    current_members = result.admins if priv_requested == "administrator" else result.members
+    current_members = result.admins if priv_requested == "admins" else result.members
     if user_to_add not in current_members:
         return bad_request(err=f"{user_to_add} is not in the {priv_requested} permission group")
 
@@ -383,9 +378,9 @@ def get_dossier_permission_options(id: str, user: User):
 
     Result Example:
         {
-            "administrator": [ # Each entry corresponds to a given privilege level
+            "admins": [ # Each entry corresponds to a given privilege level
                 "user1", "user2" # A list of users that have this privilege ],
-            "member": [ # Each entry corresponds to a given privilege level]
+            "members": [ # Each entry corresponds to a given privilege level]
             "owner": "user4"
         }
     returns a dict with the possible permissions for the dossier and the users that have them.
@@ -396,7 +391,7 @@ def get_dossier_permission_options(id: str, user: User):
         return not_found(err="The specified dossier does not exist")
 
     # Returns a dict containing owner, administrator, and member lists
-    return ok({"owner": dossier.owner, "administrator": dossier.admins, "member": dossier.members})
+    return ok({"owner": dossier.owner, "admins": dossier.admins, "members": dossier.members})
 
 
 # endregion

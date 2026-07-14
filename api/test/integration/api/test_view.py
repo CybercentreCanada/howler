@@ -187,7 +187,7 @@ def test_favourite(datastore: HowlerDatastore, login_session):
 
 def add_permission_every_role(member_to_add: str, member_requesting, create_res, host, view, datastore):
     try:
-        for membership in ("administrator", "member"):
+        for membership in ("admins", "members"):
             get_api_data(
                 member_requesting,
                 f"{host}/api/v1/view/{create_res['view_id']}/permission",
@@ -203,7 +203,7 @@ def add_permission_every_role(member_to_add: str, member_requesting, create_res,
 
             # Verify the database state using a fresh object fetch
             updated_view = datastore.view.get(create_res["view_id"], as_obj=True)
-            assert member_to_add in getattr(updated_view, "admins" if membership == "administrator" else "members")
+            assert member_to_add in getattr(updated_view, membership)
     except APIError:
         # Expected to fail and abort when called by unauthorized users
         return
@@ -211,7 +211,7 @@ def add_permission_every_role(member_to_add: str, member_requesting, create_res,
 
 def remove_permission_every_role(member_to_remove: str, member_requesting, create_res, host, view, datastore):
     try:
-        for membership in ("administrator", "member"):
+        for membership in ("admins", "members"):
             get_api_data(
                 member_requesting,
                 f"{host}/api/v1/view/{create_res['view_id']}/permission",
@@ -227,9 +227,7 @@ def remove_permission_every_role(member_to_remove: str, member_requesting, creat
 
             # Verify the database state using a fresh object fetch
             updated_view = datastore.view.get(create_res["view_id"], as_obj=True)
-            assert member_to_remove not in getattr(
-                updated_view, "admins" if membership == "administrator" else "members"
-            )
+            assert member_to_remove not in getattr(updated_view, membership)
     except APIError:
         # Expected to fail and abort when called by unauthorized users
         return
@@ -275,7 +273,7 @@ def test_give_remove_membership(
     # Test standard privileges (administrator, member) where auth state doesn't change
     for request in ("PUT", "DELETE"):
         view: View = datastore.view.get(create_res["view_id"], as_obj=True)
-        for membership in ("administrator", "member"):
+        for membership in ("admins", "members"):
             get_api_data(
                 owner_session,
                 f"{host}/api/v1/view/{create_res['view_id']}/permission",
@@ -292,9 +290,9 @@ def test_give_remove_membership(
             # Update the view object to verify DB state
             view = datastore.view.get(create_res["view_id"], as_obj=True)
             if request == "PUT":
-                assert member_uname in getattr(view, "admins" if membership == "administrator" else "members")
+                assert member_uname in getattr(view, membership)
             else:
-                assert member_uname not in getattr(view, "admins" if membership == "administrator" else "members")
+                assert member_uname not in getattr(view, membership)
 
     # Test Ownership Transfer
     get_api_data(
@@ -477,7 +475,7 @@ def test_admin(datastore: HowlerDatastore, user_session: dict, login_session):
         data=json.dumps(
             {
                 "user_id": admin_uname,
-                "privilege": "administrator",
+                "privilege": "admins",
             }
         ),
     )
@@ -492,7 +490,7 @@ def test_admin(datastore: HowlerDatastore, user_session: dict, login_session):
             data=json.dumps(
                 {
                     "user_id": member_uname,
-                    "privilege": "administrator",
+                    "privilege": "admins",
                 }
             ),
         )
@@ -569,7 +567,7 @@ def test_admin(datastore: HowlerDatastore, user_session: dict, login_session):
         data=json.dumps(
             {
                 "user_id": admin_uname,
-                "privilege": "administrator",
+                "privilege": "admins",
             }
         ),
     )
@@ -605,7 +603,7 @@ def test_member(datastore: HowlerDatastore, user_session: dict):
         data=json.dumps(
             {
                 "user_id": member_uname,
-                "privilege": "member",
+                "privilege": "members",
             }
         ),
     )
