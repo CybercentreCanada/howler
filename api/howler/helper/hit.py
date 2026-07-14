@@ -30,7 +30,7 @@ def assess_hit(
 
     Args:
         assessment (Optional[str], optional): The assessment to set the hit to. Defaults to None.
-        hit (Optional[dict[str, Any]], optional): The hit to update. Defaults to None.
+        hit (Optional[Union[dict[str, Any], Hit]], optional): The hit to update. Defaults to None.
 
     Raises:
         InvalidDataException: An invalid assessment was provided

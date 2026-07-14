@@ -33,10 +33,9 @@ const Assigned: FC<{ hit: Hit; layout: HitLayout; hideLabel?: boolean }> = ({ hi
           }}
           icon={userAvatar}
           label={
-            !hideLabel &&
-            (hit?.howler.assignment !== 'unassigned'
+            hit?.howler.assignment !== 'unassigned'
               ? hit?.howler.assignment
-              : t('app.drawer.hit.assignment.unassigned.name'))
+              : t('app.drawer.hit.assignment.unassigned.name')
           }
           size={layout !== HitLayout.COMFY ? 'small' : 'medium'}
         />
