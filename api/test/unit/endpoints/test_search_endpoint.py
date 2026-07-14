@@ -418,19 +418,14 @@ class TestExplain:
 class TestFacet:
     """Tests for the facet endpoint."""
 
-    @patch("howler.api.v2.search.has_access_control")
-    @patch("howler.api.v2.search.get_collection")
+    @patch("howler.api.v2.search.search_service")
     @patch("howler.security.auth_service")
-    def test_facet_success(self, mock_auth_service, mock_get_collection, mock_has_ac, request_context: Flask):
+    def test_facet_success(self, mock_auth_service, mock_search_service, request_context: Flask):
         """Returns 200 with facet results for a valid request."""
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        mock_has_ac.return_value = False
-        mock_collection = MagicMock()
-        mock_collection.return_value.fields.return_value = {"howler.analytic": {}}
-        mock_collection.return_value.facet.return_value = {"AnalyticA": 5, "AnalyticB": 3}
-        mock_get_collection.return_value = mock_collection
+        mock_search_service.facet.return_value = {"howler.analytic": {"AnalyticA": 5, "AnalyticB": 3}}
 
         with request_context.test_request_context(
             method="POST",
@@ -444,19 +439,18 @@ class TestFacet:
             assert result.status_code == 200
             body = result.get_json()
             assert body["api_response"]["howler.analytic"]["AnalyticA"] == 5
+            mock_search_service.facet.assert_called_once()
 
-    @patch("howler.api.v2.search.has_access_control")
-    @patch("howler.api.v2.search.get_collection")
+    @patch("howler.api.v2.search.search_service")
     @patch("howler.security.auth_service")
-    def test_facet_invalid_index_returns_400(
-        self, mock_auth_service, mock_get_collection, mock_has_ac, request_context: Flask
-    ):
-        """Returns 400 when the index is not valid."""
+    def test_facet_service_exception_returns_400(self, mock_auth_service, mock_search_service, request_context: Flask):
+        """Returns 400 when the service raises SearchException."""
+        from howler.datastore.exceptions import SearchException
+
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        mock_has_ac.return_value = False
-        mock_get_collection.return_value = None
+        mock_search_service.facet.side_effect = SearchException("Not a valid index to search in: badindex")
 
         with request_context.test_request_context(
             method="POST",
@@ -469,25 +463,24 @@ class TestFacet:
 
             assert result.status_code == 400
 
-    @patch("howler.api.v2.search.has_access_control")
-    @patch("howler.api.v2.search.get_collection")
+    @patch("howler.api.v2.search.search_service")
     @patch("howler.security.auth_service")
-    def test_facet_skips_invalid_field(
-        self, mock_auth_service, mock_get_collection, mock_has_ac, request_context: Flask
-    ):
-        """Facet skips fields that are not in the collection's field list."""
+    def test_facet_passes_expected_params(self, mock_auth_service, mock_search_service, request_context: Flask):
+        """Facet passes parsed params through to search_service.facet."""
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        mock_has_ac.return_value = False
-        mock_collection = MagicMock()
-        mock_collection.return_value.fields.return_value = {"howler.analytic": {}}
-        mock_collection.return_value.facet.return_value = {"AnalyticA": 5}
-        mock_get_collection.return_value = mock_collection
+        mock_search_service.facet.return_value = {"howler.analytic": {"AnalyticA": 5}}
 
         with request_context.test_request_context(
             method="POST",
-            json={"query": "howler.id:*", "fields": ["howler.analytic", "nonexistent.field"]},
+            json={
+                "query": "howler.id:*",
+                "fields": ["howler.analytic"],
+                "filters": ["howler.status:open"],
+                "mincount": 2,
+                "rows": 11,
+            },
             headers={"Authorization": "Bearer ."},
         ):
             from howler.api.v2.search import facet
@@ -495,8 +488,12 @@ class TestFacet:
             result: Response = facet(indexes="hit", user=user)
 
             assert result.status_code == 200
-            body = result.get_json()
-            # Valid field was faceted
-            assert "howler.analytic" in body["api_response"]
-            # Invalid field has empty dict (initialized but never populated)
-            assert body["api_response"]["nonexistent.field"] == {}
+            mock_search_service.facet.assert_called_once_with(
+                indexes="hit",
+                fields=["howler.analytic"],
+                query="howler.id:*",
+                mincount=2,
+                rows=11,
+                filters=["howler.status:open"],
+                user=user,
+            )

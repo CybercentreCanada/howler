@@ -52,7 +52,7 @@ def create_case(user: User, **kwargs):
         return bad_request(err="Request body must be a JSON object with case data.")
 
     try:
-        return created(case_service.create_case(case_data, user.uname))
+        return created(case_service.create_case(case_data, user))
     except InvalidDataException as e:
         return bad_request(err=str(e))
     except ResourceExists as e:
@@ -199,6 +199,9 @@ def update_case(id: str, user: User, refresh: Literal["true", "false", "wait_for
 
     try:
         updated_case = case_service.update_case(id, case_data, user, refresh=refresh)
+
+        case_service.filter_case_items_by_classification(updated_case, user.classification)
+
         return ok(updated_case)
     except NotFoundException as e:
         return not_found(err=str(e))
@@ -255,7 +258,11 @@ def append_item(id: str, user: User, refresh: Literal["true", "false", "wait_for
 
             body["parent"] = parent.id if parent else None
 
-        return ok(case_service.append_case_item(id, item=CaseItem(body), refresh=refresh))
+        updated_case = case_service.append_case_item(id, item=CaseItem(body), refresh=refresh)
+
+        case_service.filter_case_items_by_classification(updated_case, user.classification)
+
+        return ok(updated_case)
     except DataStoreException as e:
         logger.exception("Save Error")
         return internal_error(err=str(e))
@@ -269,7 +276,7 @@ def append_item(id: str, user: User, refresh: Literal["true", "false", "wait_for
 @case_api.route("/<case_id>/items", methods=["DELETE"])
 @api_login(required_priv=["R", "W"])
 @parse_parameters(refresh=parse_refresh)
-def delete_item(case_id: str, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs):
+def delete_item(case_id: str, user: User, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs):
     """Delete one or more items from a case
 
     This endpoint removes items from a case's items list. If an item is a hit or
@@ -309,7 +316,11 @@ def delete_item(case_id: str, refresh: Literal["true", "false", "wait_for"] | No
         return bad_request(err="All items in 'ids' must be strings.")
 
     try:
-        return ok(case_service.remove_case_items(case_id, ids, force=force, refresh=refresh))
+        updated_case = case_service.remove_case_items(case_id, ids, force=force, refresh=refresh)
+
+        case_service.filter_case_items_by_classification(updated_case, user.classification)
+
+        return ok(updated_case)
     except DataStoreException as e:
         logger.exception("Save Error")
         return internal_error(err=str(e))
@@ -321,7 +332,7 @@ def delete_item(case_id: str, refresh: Literal["true", "false", "wait_for"] | No
 @case_api.route("/<case_id>/items", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
 @parse_parameters(refresh=parse_refresh)
-def rename_item(case_id: str, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs):
+def rename_item(case_id: str, user: User, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs):
     """Move an item within a case
 
     Updates the parent of a single item identified by its id.
@@ -356,13 +367,17 @@ def rename_item(case_id: str, refresh: Literal["true", "false", "wait_for"] | No
     try:
         result: Case | None = None
         if "name" in body:
-            result = case_service.rename_case_item(case_id, item_id, body["name"], refresh=refresh)
+            result = case_service.rename_case_item(
+                case_id, item_id, body["name"], refresh="wait_for" if "parent" in body else refresh
+            )
 
         if "parent" in body:
             result = case_service.move_case_item(case_id, item_id, body["parent"], refresh=refresh)
 
         if not result:
             return bad_request(err="At least one of 'name' or 'parent' is required.")
+
+        case_service.filter_case_items_by_classification(result, user.classification)
 
         return ok(result)
     except DataStoreException as e:
@@ -407,7 +422,11 @@ def add_rule(id: str, user: User, refresh: Literal["true", "false", "wait_for"] 
         return bad_request(err="Request body must be a JSON object with rule data.")
 
     try:
-        return ok(case_service.add_case_rule(id, body, user, refresh=refresh))
+        updated_case = case_service.add_case_rule(id, body, user, refresh=refresh)
+
+        case_service.filter_case_items_by_classification(updated_case, user.classification)
+
+        return ok(updated_case)
     except NotFoundException as e:
         return not_found(err=str(e))
     except InvalidDataException as e:
@@ -436,7 +455,11 @@ def delete_rule(
     }
     """
     try:
-        return ok(case_service.remove_case_rule(id, rule_id, user, refresh=refresh))
+        updated_case = case_service.remove_case_rule(id, rule_id, user, refresh=refresh)
+
+        case_service.filter_case_items_by_classification(updated_case, user.classification)
+
+        return ok(updated_case)
     except NotFoundException as e:
         return not_found(err=str(e))
 
@@ -478,7 +501,11 @@ def update_rule(
         return bad_request(err="Request body must be a JSON object with fields to update.")
 
     try:
-        return ok(case_service.update_case_rule(id, rule_id, body, user, refresh=refresh))
+        updated_case = case_service.update_case_rule(id, rule_id, body, user, refresh=refresh)
+
+        case_service.filter_case_items_by_classification(updated_case, user.classification)
+
+        return ok(updated_case)
     except NotFoundException as e:
         return not_found(err=str(e))
     except InvalidDataException as e:

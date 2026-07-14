@@ -223,7 +223,7 @@ class TestCreateCaseEndpoint:
             assert result.status_code == 201
             body = result.get_json()
             assert body["api_response"]["case_id"] == "case-new-case"
-            mock_case_service.create_case.assert_called_once_with({"title": "New Case", "summary": "S"}, user.uname)
+            mock_case_service.create_case.assert_called_once_with({"title": "New Case", "summary": "S"}, user)
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")

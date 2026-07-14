@@ -6,10 +6,11 @@ import elasticsearch
 from elasticsearch import Elasticsearch
 
 from howler.common.loader import APP_NAME, datastore
+from howler.common.logging import get_logger
 from howler.datastore.collection import parse_sort
 from howler.datastore.exceptions import SearchException, SearchRetryException
 from howler.datastore.types import SearchResult
-from howler.helper.search import has_access_control
+from howler.helper.search import get_collection, has_access_control
 from howler.odm.models.user import User
 from howler.services import case_service
 
@@ -18,6 +19,8 @@ DEFAULT_ROW_SIZE = 25
 DEFAULT_SORT: list[dict[str, str]] = [{"_id": "asc"}]
 DEFAULT_SEARCH_FIELD = "__text__"
 SCROLL_TIMEOUT = "5m"
+
+logger = get_logger(__file__)
 
 
 def _normalize_indexes(indexes: str | list[str]) -> str:
@@ -228,6 +231,145 @@ def search(  # noqa: C901
         response["next_deep_paging_id"] = next_deep_paging_id
 
     return response
+
+
+def _parse_index_list(indexes: str | list[str]) -> list[str]:
+    if isinstance(indexes, str):
+        return [index.strip() for index in indexes.split(",") if index.strip()]
+    return [index.strip() for index in indexes if index.strip()]
+
+
+def _parse_filters(filters: list[str] | str | None) -> list[str]:
+    if filters is None:
+        return []
+    if isinstance(filters, str):
+        return [filters]
+    return list(filters)
+
+
+def _resolve_facet_context(index_list: list[str], user: User | None) -> tuple[list[str], list[set[str]]]:
+    normalized_indexes: list[str] = []
+    index_fields: list[set[str]] = []
+
+    for index in index_list:
+        collection = get_collection(index, user) if user else None
+        if collection is None:
+            raise SearchException(f"Not a valid index to search in: {index}")
+
+        resolved_collection = collection()
+        normalized_indexes.append(resolved_collection.index_name)
+        index_fields.append(set(resolved_collection.fields().keys()))
+
+    return normalized_indexes, index_fields
+
+
+def _build_facet_aggregations(
+    valid_fields: list[str], rows: int, mincount: int
+) -> dict[str, dict[str, dict[str, Any]]]:
+    return {
+        field: {
+            "terms": {
+                "field": field,
+                "size": rows,
+                "min_doc_count": mincount,
+            }
+        }
+        for field in valid_fields
+    }
+
+
+def _build_facet_query(query: str, parsed_filters: list[str]) -> dict[str, dict[str, Any]]:
+    return {
+        "bool": {
+            "must": {
+                "query_string": {
+                    "query": query,
+                    "default_field": DEFAULT_SEARCH_FIELD,
+                }
+            },
+            "filter": [{"query_string": {"query": filter_query}} for filter_query in parsed_filters],
+        }
+    }
+
+
+def _get_valid_facet_fields(fields: list[str], index_fields: list[set[str]]) -> list[str]:
+    valid_fields: list[str] = []
+    for field in fields:
+        if any(field in available_fields for available_fields in index_fields):
+            valid_fields.append(field)
+        else:
+            logger.warning("Invalid field %s requested for faceting, skipping", field)
+
+    return valid_fields
+
+
+def _format_facet_result(
+    valid_fields: list[str],
+    base_result: dict[str, dict[str, Any]],
+    raw_result: dict[str, Any],
+) -> dict[str, dict[str, Any]]:
+    for field in valid_fields:
+        base_result[field] = {
+            row.get("key_as_string", row["key"]): row["doc_count"]
+            for row in raw_result.get("aggregations", {}).get(field, {}).get("buckets", [])
+        }
+
+    return base_result
+
+
+def facet(
+    indexes: str | list[str],
+    fields: list[str],
+    query: str | None = None,
+    mincount: int = 1,
+    rows: int = 10,
+    filters: list[str] | str | None = None,
+    user: User | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Facet one or more fields across one or more indexes in a single Elasticsearch request."""
+    if not fields:
+        return {}
+
+    index_list = _parse_index_list(indexes)
+
+    if not index_list:
+        raise SearchException("No indexes were provided.")
+
+    facet_result: dict[str, dict[str, Any]] = {field: {} for field in fields}
+
+    normalized_indexes, index_fields = _resolve_facet_context(index_list, user)
+
+    valid_fields = _get_valid_facet_fields(fields, index_fields)
+
+    if not valid_fields:
+        return facet_result
+
+    parsed_filters = _parse_filters(filters)
+
+    if user and user.access_control and has_access_control(index_list):
+        parsed_filters.append(user.access_control)
+
+    effective_query = query or "id:*"
+
+    aggregations = _build_facet_aggregations(valid_fields, rows, mincount)
+    facet_query = _build_facet_query(effective_query, parsed_filters)
+
+    client: Elasticsearch = datastore().ds.client
+
+    try:
+        result: Any = client.search(index=",".join(normalized_indexes), query=facet_query, aggs=aggregations, size=0)
+    except (elasticsearch.exceptions.ConnectionError, elasticsearch.exceptions.ConnectionTimeout) as error:
+        raise SearchRetryException(
+            f"indexes: {','.join(normalized_indexes)}, query: {effective_query}, error: {str(error)}"
+        ) from error
+    except (elasticsearch.exceptions.TransportError, elasticsearch.exceptions.RequestError) as error:
+        raise SearchException(str(error)) from error
+    except Exception as error:
+        raise SearchException(
+            f"indexes: {','.join(normalized_indexes)}, query: {effective_query}, error: {str(error)}"
+        ) from error
+
+    return _format_facet_result(valid_fields, facet_result, result)
 
 
 if __name__ == "__main__":

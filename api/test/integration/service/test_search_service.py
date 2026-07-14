@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import elasticsearch
@@ -5,6 +6,7 @@ import pytest
 
 from howler.common.loader import APP_NAME
 from howler.datastore.exceptions import SearchException, SearchRetryException
+from howler.odm.models.user import User
 from howler.odm.random_data import (
     create_events,
     create_hits,
@@ -13,6 +15,7 @@ from howler.odm.random_data import (
     wipe_hits,
     wipe_users,
 )
+from howler.odm.randomizer import random_model_obj
 from howler.services import search_service
 
 TEST_SIZE = 12
@@ -855,3 +858,113 @@ class TestSearch:
         assert result["total"] == 0
         assert result["rows"] == 0
         assert result["items"] == []
+
+
+def _build_user(user_type: list[str] | None = None) -> User:
+    user_data: User = random_model_obj(User)  # type: ignore[arg-type]
+    user_data.type = user_type or ["admin", "user"]
+    user_data.access_control = "howler.classification:TLP:C"
+    return user_data
+
+
+class TestFacet:
+    def test_facet_multi_index_uses_single_search_call(self, monkeypatch):
+        user = _build_user()
+
+        hit_collection = MagicMock()
+        hit_collection.return_value.index_name = "howler-hit_hot"
+        hit_collection.return_value.fields.return_value = {"howler.analytic": {}}
+
+        event_collection = MagicMock()
+        event_collection.return_value.index_name = "howler-event_hot"
+        event_collection.return_value.fields.return_value = {"howler.analytic": {}}
+
+        get_collection_mock = MagicMock(side_effect=[hit_collection, event_collection])
+        monkeypatch.setattr(search_service, "get_collection", get_collection_mock)
+        monkeypatch.setattr(search_service, "has_access_control", lambda _index: False)
+
+        search_mock = MagicMock(
+            return_value={"aggregations": {"howler.analytic": {"buckets": [{"key": "AnalyticA", "doc_count": 8}]}}}
+        )
+        monkeypatch.setattr(
+            search_service,
+            "datastore",
+            lambda: SimpleNamespace(ds=SimpleNamespace(client=SimpleNamespace(search=search_mock))),
+        )
+
+        result = search_service.facet(
+            indexes="hit,event",
+            fields=["howler.analytic"],
+            query="howler.id:*",
+            user=user,
+        )
+
+        assert result["howler.analytic"]["AnalyticA"] == 8
+        assert get_collection_mock.call_count == 2
+
+        search_kwargs = search_mock.call_args.kwargs
+        assert search_kwargs["index"] == "howler-hit_hot,howler-event_hot"
+
+    def test_facet_invalid_index_raises_search_exception(self, monkeypatch):
+        user = _build_user()
+        monkeypatch.setattr(search_service, "get_collection", lambda _index, _user: None)
+
+        with pytest.raises(SearchException, match="Not a valid index to search in: badindex"):
+            search_service.facet(indexes="badindex", fields=["howler.analytic"], user=user)
+
+    def test_facet_skips_invalid_field_and_keeps_empty_bucket(self, monkeypatch):
+        user = _build_user()
+
+        collection = MagicMock()
+        collection.return_value.index_name = "howler-hit_hot"
+        collection.return_value.fields.return_value = {"howler.analytic": {}}
+        monkeypatch.setattr(search_service, "get_collection", lambda _index, _user: collection)
+        monkeypatch.setattr(search_service, "has_access_control", lambda _index: False)
+
+        search_mock = MagicMock(
+            return_value={"aggregations": {"howler.analytic": {"buckets": [{"key": "AnalyticA", "doc_count": 5}]}}}
+        )
+        monkeypatch.setattr(
+            search_service,
+            "datastore",
+            lambda: SimpleNamespace(ds=SimpleNamespace(client=SimpleNamespace(search=search_mock))),
+        )
+
+        result = search_service.facet(
+            indexes="hit",
+            fields=["howler.analytic", "nonexistent.field"],
+            query="howler.id:*",
+            user=user,
+        )
+
+        assert result["howler.analytic"] == {"AnalyticA": 5}
+        assert result["nonexistent.field"] == {}
+        assert set(search_mock.call_args.kwargs["aggs"].keys()) == {"howler.analytic"}
+
+    def test_facet_applies_access_control_filter_when_needed(self, monkeypatch):
+        user = _build_user()
+
+        collection = MagicMock()
+        collection.return_value.index_name = "howler-hit_hot"
+        collection.return_value.fields.return_value = {"howler.analytic": {}}
+        monkeypatch.setattr(search_service, "get_collection", lambda _index, _user: collection)
+        monkeypatch.setattr(search_service, "has_access_control", lambda _index: True)
+
+        search_mock = MagicMock(return_value={"aggregations": {"howler.analytic": {"buckets": []}}})
+        monkeypatch.setattr(
+            search_service,
+            "datastore",
+            lambda: SimpleNamespace(ds=SimpleNamespace(client=SimpleNamespace(search=search_mock))),
+        )
+
+        search_service.facet(
+            indexes="hit",
+            fields=["howler.analytic"],
+            query="howler.id:*",
+            filters=["howler.status:open"],
+            user=user,
+        )
+
+        filters = search_mock.call_args.kwargs["query"]["bool"]["filter"]
+        assert {"query_string": {"query": "howler.status:open"}} in filters
+        assert {"query_string": {"query": user.access_control}} in filters

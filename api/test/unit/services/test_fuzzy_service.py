@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 import elasticsearch
 import pytest
 from elastic_transport import ApiResponseMeta
+from flask import Flask
 
 from howler.datastore.exceptions import SearchException, SearchRetryException
 from howler.odm.base import List, Optional, Text
@@ -354,3 +355,59 @@ class TestFuzzySearch:
 
         with pytest.raises(SearchException, match="indexes: howler-hit, query: abc, error: boom"):
             fuzzy_search(indexes=["hit"], query="abc")
+
+
+class TestFuzzyEndpointAudit:
+    @pytest.fixture(scope="module")
+    def request_context(self):
+        app = Flask("test_app")
+        app.config.update(SECRET_KEY="test test")
+        return app
+
+    def test_audits_search_with_trimmed_query_and_indexes(self, monkeypatch, request_context):
+        """Fuzzy endpoint should emit an audit event with normalized query and index list."""
+        from howler.api.v2.fuzzy import fuzzy_search as fuzzy_endpoint
+
+        user = {"uname": "audit_user", "type": ["admin", "user"], "api_quota": 1000, "access_control": "ac:TLP:W"}
+        audit_mock = MagicMock()
+        fuzzy_search_mock = MagicMock(return_value={"offset": 0, "rows": 0, "total": 0, "items": []})
+
+        monkeypatch.setattr("howler.security.auth_service.bearer_auth", lambda *_args, **_kwargs: (user, ["R"]))
+        monkeypatch.setattr("howler.api.v2.fuzzy.audit", audit_mock)
+        monkeypatch.setattr("howler.api.v2.fuzzy.has_access_control", lambda _indexes: False)
+        monkeypatch.setattr("howler.api.v2.fuzzy.fuzzy_service.fuzzy_search", fuzzy_search_mock)
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"query": "  suspicious login  ", "indexes": ["hit", "event"]},
+            headers={"Authorization": "Bearer ."},
+        ):
+            response = fuzzy_endpoint()
+
+        assert response.status_code == 200
+        audit_mock.assert_called_once()
+        audit_args = audit_mock.call_args.args
+        assert audit_args[1]["index"] == "hit,event"
+        assert audit_args[1]["query"] == "suspicious login"
+        assert audit_args[2] == "audit_user"
+        fuzzy_search_mock.assert_called_once()
+
+    def test_does_not_audit_when_query_missing_or_empty(self, monkeypatch, request_context):
+        """Invalid empty query should fail before the endpoint emits an audit event."""
+        from howler.api.v2.fuzzy import fuzzy_search as fuzzy_endpoint
+
+        user = {"uname": "audit_user", "type": ["admin", "user"], "api_quota": 1000, "access_control": "ac:TLP:W"}
+        audit_mock = MagicMock()
+
+        monkeypatch.setattr("howler.security.auth_service.bearer_auth", lambda *_args, **_kwargs: (user, ["R"]))
+        monkeypatch.setattr("howler.api.v2.fuzzy.audit", audit_mock)
+
+        with request_context.test_request_context(
+            method="POST",
+            json={"query": "   "},
+            headers={"Authorization": "Bearer ."},
+        ):
+            response = fuzzy_endpoint()
+
+        assert response.status_code == 400
+        audit_mock.assert_not_called()

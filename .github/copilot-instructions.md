@@ -347,6 +347,13 @@ Always set `id="..."` on elements you need to query by test ID. Do not use `data
 
 The correct test command for the API is `poetry run test <path>` (not `pytest` directly), run from the `api/` directory.
 
+If you need to run only a subset of tests from a file (e.g. `-k facet`), use direct pytest invocation:
+```bash
+cd api
+poetry run pytest -k <expr> <path>
+```
+The wrapper command `poetry run test <path>` may still execute the full file even when selector flags are provided.
+
 ---
 
 ### Flask: Never Return `(Response, version_string)` Tuples Without `@add_etag`

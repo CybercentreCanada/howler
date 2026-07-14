@@ -196,7 +196,7 @@ def build_fuzzy_query(  # noqa: C901
         An Elasticsearch query body dict.
     """
     query = query.strip()
-    logger.debug("Building fuzzy query for indexes=%s", indexes)
+    logger.debug("Building fuzzy query for indexes=%s and query=%s", indexes, query)
 
     # Build filter clauses early so they can also apply to match-all queries.
     filter_clauses: list[dict[str, Any]] = []
@@ -208,7 +208,6 @@ def build_fuzzy_query(  # noqa: C901
 
     # Literal wildcard means list all visible records.
     if query == "*":
-        logger.debug("Building wildcard match_all fuzzy query")
         if filter_clauses:
             return {
                 "query": {
@@ -221,7 +220,6 @@ def build_fuzzy_query(  # noqa: C901
         return {"query": {"match_all": {}}}
 
     token_type = _detect_token_type(query)
-    logger.debug("Detected fuzzy token type=%s", token_type)
 
     # Collect all boosted fields across requested indexes
     all_fields: list[str] = []

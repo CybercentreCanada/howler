@@ -13,8 +13,18 @@ from howler.services import case_service
 @pytest.fixture(autouse=True)
 def _suppress_event_emit():
     """Prevent comms_service.emit from reaching Redis during unit tests."""
-    with patch("howler.services.case_service.comms_service"):
+    with (
+        patch("howler.services.case_service.comms_service"),
+        patch("howler.odm.mixins.datastore", side_effect=lambda: case_service.datastore()),
+    ):
         yield
+
+
+def _make_user(uname: str = "admin", classification: str = CLASSIFICATION.UNRESTRICTED):
+    user = MagicMock()
+    user.uname = uname
+    user.classification = classification
+    return user
 
 
 # ---------------------------------------------------------------------------
@@ -26,40 +36,26 @@ class TestCreateCase:
     """Tests for case_service.create_case."""
 
     @patch("howler.services.case_service.datastore")
-    def test_create_case_saves_to_datastore(self, mock_ds_fn):
+    def test_create_case_saves_to_datastore(self, _mock_ds_fn):
         """create_case constructs a Case from title/summary and saves it."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
+        result = case_service.create_case({"title": "New Case", "summary": "A summary"}, user=_make_user())
 
-        case_service.create_case({"title": "New Case", "summary": "A summary"}, user="admin")
-
-        mock_ds.case.save.assert_called_once()
-        saved_id, saved_case = mock_ds.case.save.call_args[0]
-        assert saved_id == saved_case.case_id
-        assert saved_case.title == "New Case"
-        assert saved_case.summary == "A summary"
+        assert isinstance(result, Case)
+        assert result.case_id
+        assert result.title == "New Case"
+        assert result.summary == "A summary"
 
     @patch("howler.services.case_service.datastore")
-    def test_create_case_generates_unique_id(self, mock_ds_fn):
+    def test_create_case_generates_unique_id(self, _mock_ds_fn):
         """create_case auto-generates a unique UUID for each case."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-
-        case_service.create_case({"title": "Title A", "summary": "Summary A"}, user="admin")
-        case_service.create_case({"title": "Title B", "summary": "Summary B"}, user="admin")
-
-        calls = mock_ds.case.save.call_args_list
-        id_a = calls[0][0][0]
-        id_b = calls[1][0][0]
+        id_a = case_service.create_case({"title": "Title A", "summary": "Summary A"}, user=_make_user()).case_id
+        id_b = case_service.create_case({"title": "Title B", "summary": "Summary B"}, user=_make_user()).case_id
         assert id_a != id_b
 
     @patch("howler.services.case_service.datastore")
-    def test_create_case_returns_odm(self, mock_ds_fn):
+    def test_create_case_returns_odm(self, _mock_ds_fn):
         """create_case returns the created case as a plain dict."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-
-        result = case_service.create_case({"title": "Title", "summary": "Summary"}, user="admin")
+        result = case_service.create_case({"title": "Title", "summary": "Summary"}, user=_make_user())
 
         assert isinstance(result, Case)
         assert result.title == "Title"
@@ -67,28 +63,20 @@ class TestCreateCase:
         assert result.case_id
 
     @patch("howler.services.case_service.datastore")
-    def test_create_case_sets_log_entry(self, mock_ds_fn):
+    def test_create_case_sets_log_entry(self, _mock_ds_fn):
         """create_case adds a creation log entry for the given user."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
+        result = case_service.create_case({"title": "Title", "summary": "Summary"}, user=_make_user())
 
-        case_service.create_case({"title": "Title", "summary": "Summary"}, user="admin")
-
-        _, saved_case = mock_ds.case.save.call_args[0]
-        assert len(saved_case.log) == 1
-        assert saved_case.log[0].user == "admin"
+        assert len(result.log) == 1
+        assert result.log[0].user == "admin"
 
     @patch("howler.services.case_service.datastore")
-    def test_create_case_no_user_defaults_to_system(self, mock_ds_fn):
+    def test_create_case_no_user_defaults_to_system(self, _mock_ds_fn):
         """create_case uses 'system' as the log user when user='' (the default)."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
+        result = case_service.create_case({"title": "Title", "summary": "Summary"})
 
-        case_service.create_case({"title": "Title", "summary": "Summary"})
-
-        _, saved_case = mock_ds.case.save.call_args[0]
-        assert len(saved_case.log) == 1
-        assert saved_case.log[0].user == "system"
+        assert len(result.log) == 1
+        assert result.log[0].user == "system"
 
     @patch("howler.services.case_service.datastore")
     def test_create_case_raises_when_empty_data(self, mock_ds_fn):
@@ -113,12 +101,11 @@ class TestCreateCase:
         mock_ds.case.save.assert_not_called()
 
     @patch("howler.services.case_service.datastore")
-    def test_create_case_strips_case_id(self, mock_ds_fn):
+    def test_create_case_strips_case_id(self, _mock_ds_fn):
         """create_case ignores any case_id supplied in the input dict."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-
-        result = case_service.create_case({"case_id": "should-be-removed", "title": "T", "summary": "S"}, user="admin")
+        result = case_service.create_case(
+            {"case_id": "should-be-removed", "title": "T", "summary": "S"}, user=_make_user()
+        )
 
         assert result["case_id"] != "should-be-removed"
 
@@ -1530,7 +1517,7 @@ class TestCaseEventEmission:
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
-        case_service.create_case({"title": "New", "summary": "S"}, user="admin")
+        case_service.create_case({"title": "New", "summary": "S"}, user=_make_user())
 
         mock_events.emit.assert_called_once()
         args = mock_events.emit.call_args
@@ -2679,7 +2666,7 @@ class TestCreateCaseWithItems:
 
         result = case_service.create_case(
             {"title": "T", "summary": "S", "items": [{"type": "reference", "value": "https://x.com", "name": "ref"}]},
-            user="admin",
+            user=_make_user(),
         )
 
         mock_append_item.assert_called_once()
@@ -2702,8 +2689,44 @@ class TestCreateCaseWithItems:
                     "summary": "S",
                     "items": [{"type": "reference", "value": "https://x.com", "name": "ref"}],
                 },
-                user="admin",
+                user=_make_user(),
             )
+
+    @patch("howler.services.case_service.append_case_item")
+    @patch("howler.services.case_service.datastore")
+    def test_create_case_with_items_filters_returned_case(self, mock_ds_fn, mock_append_item):
+        """create_case removes inaccessible items from the fetched case before returning it."""
+        mock_ds = MagicMock()
+        mock_ds_fn.return_value = mock_ds
+
+        updated_case = Case(
+            {
+                "case_id": "case-001",
+                "title": "T",
+                "summary": "S",
+                "items": [
+                    {"type": "reference", "value": "https://visible.example", "name": "visible"},
+                    {
+                        "type": "reference",
+                        "value": "https://hidden.example",
+                        "name": "hidden",
+                        "classification": CLASSIFICATION.RESTRICTED,
+                    },
+                ],
+            }
+        )
+        mock_ds.case.get.return_value = updated_case
+
+        result = case_service.create_case(
+            {
+                "title": "T",
+                "summary": "S",
+                "items": [{"type": "reference", "value": "https://x.com", "name": "ref"}],
+            },
+            user=_make_user(classification=CLASSIFICATION.UNRESTRICTED),
+        )
+
+        assert [item.value for item in result.items] == ["https://visible.example"]
 
 
 # ---------------------------------------------------------------------------

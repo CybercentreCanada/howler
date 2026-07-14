@@ -251,8 +251,8 @@ def count(index, **kwargs):
     try:
         return ok(collection().count(query, filters, access_control=access_control))
     except (SearchException, BadRequestError) as e:
-        logger.exception(f"SearchException on query {params['query']}")
-        return bad_request(err=f"SearchException on query {params['query']}: {str(e)}")
+        logger.exception(f"SearchException on query {query}")
+        return bad_request(err=f"SearchException on query {query}: {str(e)}")
 
 
 @generate_swagger_docs()
@@ -303,27 +303,18 @@ def facet(indexes: str, **kwargs):
 
     try:
         fields = params.pop("fields")
-        facet_result: dict[str, dict[str, Any]] = {}
-        index_list = indexes.split(",")
-
-        # TODO: rewrite this to facet acess all indices at the same time instead of separate network calls
-        for index in index_list:
-            collection = get_collection(index, user)
-            if collection is None:
-                return bad_request(err=f"Not a valid index to search in: {index}")
-
-            if has_access_control(index):
-                params.update({"access_control": user["access_control"]})
-            for field in fields:
-                facet_result.setdefault(field, {})
-
-                if field not in collection().fields():
-                    logger.warning("Invalid field %s requested for faceting, skipping", field)
-                    continue
-
-                facet_result[field].update(collection().facet(field, **params))
+        facet_result = search_service.facet(
+            indexes=indexes,
+            fields=fields,
+            query=params.get("query"),
+            mincount=params.get("mincount") or 1,
+            rows=params.get("rows") or 10,
+            filters=params.get("filters"),
+            user=user,
+        )
 
         return ok(facet_result)
     except (SearchException, BadRequestError) as e:
-        logger.exception(f"SearchException on query {params['query']}")
-        return bad_request(err=f"SearchException on query {params['query']}: {str(e)}")
+        query = params.get("query", "id:*")
+        logger.exception(f"SearchException on query {query}")
+        return bad_request(err=f"SearchException on query {query}: {str(e)}")
