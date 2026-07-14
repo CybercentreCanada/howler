@@ -1,7 +1,6 @@
-/// <reference types="vitest" />
 import type { Hit } from 'models/entities/generated/Hit';
 import { describe, expect, it } from 'vitest';
-import { getUserList } from './hitFunctions';
+import { getUserList } from './recordFunctions';
 
 const makeHit = (howlerOverrides: Partial<NonNullable<Hit['howler']>> = {}): Hit =>
   ({

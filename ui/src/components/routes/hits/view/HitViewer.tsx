@@ -43,7 +43,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
-import { getUserList } from 'utils/hitFunctions';
+import { getUserList } from 'utils/recordFunctions';
 import { tryParse } from 'utils/utils';
 import LeadRenderer from './LeadRenderer';
 

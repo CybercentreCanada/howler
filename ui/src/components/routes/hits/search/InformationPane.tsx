@@ -37,7 +37,7 @@ import { useTranslation } from 'react-i18next';
 import { usePluginStore } from 'react-pluggable';
 import { useLocation } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
-import { getUserList } from 'utils/hitFunctions';
+import { getUserList } from 'utils/recordFunctions';
 import { validateRegex } from 'utils/stringUtils';
 import { isHit } from 'utils/typeUtils';
 import { tryParse } from 'utils/utils';
