@@ -26,32 +26,6 @@ logger = get_logger(__file__)
 CREATED_CASES = Counter(f"{APP_NAME.replace('-', '_')}_created_cases_total", "The number of created cases")
 
 
-def _save_case(
-    ds: Any,
-    case: Case,
-    refresh: Literal["true", "false", "wait_for"] | None = None,
-) -> bool:
-    """Persist a case through the datastore collection.
-
-    Avoid passing refresh when it is None so mocks expecting positional-only
-    save calls remain compatible.
-    """
-    if refresh is None:
-        return bool(ds.case.save(case.case_id, case))
-    return bool(ds.case.save(case.case_id, case, refresh=refresh))
-
-
-def _delete_cases_by_query(
-    ds: Any,
-    query: str,
-    refresh: Literal["true", "false", "wait_for"] | None = None,
-) -> bool:
-    """Delete cases by query with optional refresh passthrough."""
-    if refresh is None:
-        return bool(ds.case.delete_by_query(query))
-    return bool(ds.case.delete_by_query(query, refresh=refresh))
-
-
 def create_case(
     case_data: dict,
     user: User | None = None,
@@ -75,7 +49,7 @@ def create_case(
     items = case_data.pop("items", [])
 
     case = Case(case_data)
-    case.log = [CaseLog({"timestamp": "NOW", "explanation": "Case created", "user": user.uname if user else "system"})]
+    case.log = [CaseLog({"timestamp": "NOW", "explanation": "Case created", "user": user or "system"})]
     case.save(refresh="wait_for")
     CREATED_CASES.inc()
 
@@ -92,7 +66,7 @@ def create_case(
 
     comms_service.emit("cases", {"case": case.as_primitives()})
 
-    if user and isinstance(case, (Case, dict)):
+    if user:
         filter_case_items_by_classification(case, user.classification)
 
     return case
@@ -135,7 +109,7 @@ def hide_cases(case_ids: set[str], user: str, refresh: Literal["true", "false", 
                     }
                 )
             )
-            _save_case(ds, related_case, refresh=refresh)
+            related_case.save(refresh=refresh)
 
     # Second pass: mark each target case itself as not visible.
     for case_id in case_ids:
@@ -154,7 +128,7 @@ def hide_cases(case_ids: set[str], user: str, refresh: Literal["true", "false", 
                 }
             )
         )
-        _save_case(ds, case, refresh=refresh)
+        case.save(refresh=refresh)
 
 
 def delete_cases(case_ids: set[str], refresh: Literal["true", "false", "wait_for"] | None = None) -> bool:
@@ -178,9 +152,9 @@ def delete_cases(case_ids: set[str], refresh: Literal["true", "false", "wait_for
         related_case = ds.case.get(related_case_id)
         if related_case:
             related_case.items = [item for item in related_case.items if item.value not in case_ids]
-            _save_case(ds, related_case, refresh=refresh)
+            related_case.save(refresh=refresh)
 
-    return _delete_cases_by_query(ds, f"case_id:({' OR '.join(case_ids)})", refresh=refresh)
+    return ds.case.delete_by_query(f"case_id:({' OR '.join(case_ids)})", refresh=refresh)
 
 
 def filter_case_items_by_classification(case_data: dict | Case, user_classification: str):
@@ -345,7 +319,7 @@ def update_case(
         setattr(case, key, new_value)
 
     case.updated = "NOW"
-    _save_case(ds, case, refresh=refresh)
+    case.save(refresh=refresh)
 
     comms_service.emit("cases", {"case": case.as_primitives()})
 
@@ -406,10 +380,7 @@ def get_parent_from_path(
             folder_item = CaseItem({"type": CaseItemTypes.FOLDER, "name": part, "parent": current_parent, "value": ""})
             case.items.append(folder_item)
             current_parent = folder_item.id
-            if refresh is None:
-                case.save()
-            else:
-                case.save(refresh=refresh)
+            case.save(refresh)
         else:
             current_parent = folder.id
 
@@ -503,26 +474,15 @@ def append_case_item(  # noqa: C901
 
     match item.type:
         case CaseItemTypes.HIT:
-            if refresh is None:
-                return append_hit(case, item)
             return append_hit(case, item, refresh)
         case CaseItemTypes.EVENT:
-            if refresh is None:
-                return append_event(case, item)
             return append_event(case, item, refresh)
         case CaseItemTypes.CASE:
-            if refresh is None:
-                return append_case(case, item)
             return append_case(case, item, refresh)
         case CaseItemTypes.REFERENCE | CaseItemTypes.MARKDOWN | CaseItemTypes.FOLDER:
             case.items.append(item)
 
-            if refresh is None:
-                saved = case.save()
-            else:
-                saved = case.save(refresh=refresh)
-
-            if not saved:  # pragma: no cover
+            if not case.save(refresh):  # pragma: no cover
                 raise DataStoreException(f"Failed to save {case.case_id} with new {item.type} {item.name}")
 
             comms_service.emit("cases", {"case": case.as_primitives()})
@@ -624,7 +584,7 @@ def move_case_item(
 
     item.parent = new_parent
 
-    if not _save_case(ds, case, refresh=refresh):  # pragma: no cover
+    if not case.save(refresh=refresh):  # pragma: no cover
         raise DataStoreException("Failed to save case after item move")
 
     comms_service.emit("cases", {"case": case.as_primitives()})
@@ -716,7 +676,7 @@ def remove_case_items(  # noqa: C901
 
     case.items = [item for item in case.items if item.id not in ids_to_remove]
 
-    if not _save_case(ds, case, refresh=refresh):  # pragma: no cover
+    if not case.save(refresh=refresh):  # pragma: no cover
         raise DataStoreException("Failed to save case after item removal")
 
     for backing_obj in backing_objs:
@@ -916,10 +876,7 @@ def _sync_case_metadata(  # noqa: C901
     case.targets = sorted(targets)
     case.threats = sorted(threats)
     case.indicators = sorted(indicators)
-    if refresh is None:
-        case.save()
-    else:
-        case.save(refresh=refresh)
+    case.save(refresh=refresh)
 
     return case
 
@@ -1027,12 +984,7 @@ def rename_case_item(
     if item.type == CaseItemTypes.FOLDER:
         item.value = item.name
 
-    if refresh is None:
-        saved = case.save()
-    else:
-        saved = case.save(refresh=refresh)
-
-    if not saved:  # pragma: no cover
+    if not case.save(refresh=refresh):  # pragma: no cover
         raise DataStoreException("Failed to save case after item rename")
 
     comms_service.emit("cases", {"case": case.as_primitives()})
@@ -1096,7 +1048,7 @@ def add_case_rule(
     )
 
     case.updated = "NOW"
-    _save_case(ds, case, refresh=refresh)
+    case.save(refresh=refresh)
     comms_service.emit("cases", {"case": case.as_primitives()})
     return case
 
@@ -1140,7 +1092,7 @@ def remove_case_rule(
     )
 
     case.updated = "NOW"
-    _save_case(ds, case, refresh=refresh)
+    case.save(refresh)
     comms_service.emit("cases", {"case": case.as_primitives()})
     return case
 
@@ -1212,6 +1164,6 @@ def update_case_rule(
     )
 
     case.updated = "NOW"
-    _save_case(ds, case, refresh=refresh)
+    case.save(refresh=refresh)
     comms_service.emit("cases", {"case": case.as_primitives()})
     return case
