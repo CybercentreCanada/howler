@@ -31,7 +31,6 @@ PERMITTED_KEYS = {
     "leads",
     "pivots",
     "type",
-    "owner",
 }
 
 

@@ -821,7 +821,7 @@ def create_actions(ds: HowlerDatastore, num_actions: int = 30):
         action = Action(
             {
                 "name": get_random_word(),
-                "owner_id": choice([user["uname"] for user in users]),
+                "owner": choice([user["uname"] for user in users]),
                 "query": f"{choice(key_list)}:*{choice(VALID_CHARS)}* OR {choice(key_list)}:*{choice(VALID_CHARS)}*",
                 "operations": operations,
             }

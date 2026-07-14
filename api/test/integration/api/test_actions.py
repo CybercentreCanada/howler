@@ -262,7 +262,7 @@ def test_valid_action_on_triage(datastore: HowlerDatastore, login_session):
         {
             "triggers": ["demote"],
             "name": "Test demote on triage",
-            "owner_id": "admin",
+            "owner": "admin",
             "query": "howler.id:*",
             "operations": [
                 {
@@ -282,7 +282,7 @@ def test_valid_action_on_triage(datastore: HowlerDatastore, login_session):
         {
             "triggers": ["promote"],
             "name": "Test promote on triage",
-            "owner_id": "admin",
+            "owner": "admin",
             "query": "howler.id:*",
             "operations": [
                 {
@@ -658,7 +658,7 @@ def test_create_action_success(datastore: HowlerDatastore, login_session):
 
     req = {
         "name": "Test Create action",
-        "owner_id": "admin",
+        "owner": "admin",
         "query": "howler.id:*",
         "operations": [
             {
@@ -688,7 +688,7 @@ def test_update_action_success(datastore: HowlerDatastore, login_session):
     req = {
         "name": "Test Update action",
         "query": "howler.id:*",
-        "owner_id": "admin",
+        "owner": "admin",
         "operations": [
             {
                 "operation_id": "add_label",
@@ -818,7 +818,7 @@ def test_action_give_remove_membership(
     # Create the action
     req = {
         "name": "test_membership_action",
-        "owner_id": "user",
+        "owner": "user",
         "query": "howler.id:*",
         "operations": [
             {"operation_id": "add_label", "data_json": json.dumps({"category": "generic", "label": "test"})}
@@ -874,7 +874,7 @@ def test_action_owner_privilege(datastore: HowlerDatastore, user_session: dict):
 
     req = {
         "name": "test_owner_action",
-        "owner_id": "user",
+        "owner": "user",
         "query": "howler.id:*",
         "operations": [
             {"operation_id": "add_label", "data_json": json.dumps({"category": "generic", "label": "test"})}
@@ -954,7 +954,7 @@ def test_action_admin_privilege(datastore: HowlerDatastore, user_session, login_
 
     req = {
         "name": "test_admin_action",
-        "owner_id": owner_uname,
+        "owner": owner_uname,
         "query": "howler.id:*",
         "operations": [
             {"operation_id": "add_label", "data_json": json.dumps({"category": "generic", "label": "test"})}
@@ -1039,7 +1039,7 @@ def test_action_member_privilege(datastore: HowlerDatastore, user_session: dict)
 
     req = {
         "name": "test_member_action",
-        "owner_id": owner_uname,
+        "owner": owner_uname,
         "query": "howler.id:*",
         "operations": [
             {"operation_id": "add_label", "data_json": json.dumps({"category": "generic", "label": "test"})}

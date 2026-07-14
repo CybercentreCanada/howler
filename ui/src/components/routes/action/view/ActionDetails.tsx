@@ -121,7 +121,7 @@ const ActionDetails = () => {
       <Stack spacing={1}>
         <Stack direction="row" justifyContent="space-between">
           <Typography variant="h5">{action?.name}</Typography>
-          {action?.owner_id && <HowlerAvatar sx={{ width: 32, height: 32 }} userId={action.owner_id} />}
+          {action?.owner && <HowlerAvatar sx={{ width: 32, height: 32 }} userId={action.owner} />}
         </Stack>
         <Phrase
           fullWidth
@@ -138,7 +138,7 @@ const ActionDetails = () => {
         <Stack direction="row" alignItems="center" spacing={1}>
           {response && <QueryResultText count={response.total} query={action?.query} />}
           <FlexOne />
-          {((action?.owner_id === user.username && editRoles) || user.roles?.includes('admin')) && (
+          {((action?.owner === user.username && editRoles) || user.roles?.includes('admin')) && (
             <Button startIcon={<Delete />} size="small" variant="outlined" color="error" onClick={onDelete}>
               {t('button.delete')}
             </Button>
@@ -155,7 +155,7 @@ const ActionDetails = () => {
             </Button>
           )}
 
-          {((action?.owner_id === user.username && editRoles) ||
+          {((action?.owner === user.username && editRoles) ||
             (user.roles?.includes('admin') && editRoles) ||
             (adminList.includes(user.username) && editRoles) ||
             (action?.member?.includes(user.username) && editRoles)) && (
@@ -170,9 +170,7 @@ const ActionDetails = () => {
             </Button>
           )}
           {/* Only the owner and Admins should be able to add members */}
-          {(action?.owner_id === user.username ||
-            adminList.includes(user.username) ||
-            user.roles?.includes('admin')) && (
+          {(action?.owner === user.username || adminList.includes(user.username) || user.roles?.includes('admin')) && (
             <Button startIcon={<PersonAdd />} size="small" variant="outlined" onClick={() => setMemberModalOpen(true)}>
               {t('route.actions.permission')}
             </Button>

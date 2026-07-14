@@ -94,7 +94,7 @@ def add_action(user: User, **_) -> Response:
         return error
 
     try:
-        new_action["owner_id"] = user.uname
+        new_action["owner"] = user.uname
 
         action_obj = Action(new_action)
 
@@ -160,7 +160,7 @@ def update_action(id: str, user: User, **_) -> Response:
     ):
         return forbidden(err="Updating triggers requires the role 'automation_advanced'.")
     allowed_list = (
-        ([existing_action["owner_id"]] or []) + (existing_action["admins"] or []) + (existing_action["members"] or [])
+        ([existing_action["owner"]] or []) + (existing_action["admins"] or []) + (existing_action["members"] or [])
     )
 
     if user.uname not in allowed_list and "admin" not in user.type:
@@ -213,7 +213,7 @@ def delete_action(id: str, user: User, **kwargs) -> Response:
 
     action: Action = result["items"][0]
 
-    if user.uname != action.owner_id and "admin" not in user.type:
+    if user.uname != action.owner and "admin" not in user.type:
         return forbidden(err="You do not have the permissions necessary to delete this action.")
 
     try:

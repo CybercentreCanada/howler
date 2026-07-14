@@ -19,22 +19,6 @@ class Operation(odm.Model):
 @odm.model(index=True, store=True, description="Model of actions")
 class Action(ownership_object.OwnershipObject):
     action_id: str = odm.UUID(description="A UUID for this action")
-    owner: str = odm.Keyword(
-        description="The person to whom this action belongs.",
-        optional=True,
-    )
-    members: list[str] = odm.List(
-        odm.Keyword(),
-        description="group of person to whom can modify this action.",
-        default=[],
-        optional=True,
-    )
-    admins: list[str] = odm.List(
-        odm.Keyword(),
-        description="group of person to whom can administer this action.",
-        default=[],
-        optional=True,
-    )
     name: str = odm.Keyword(description="The name of the action.")
     query: str = odm.Keyword(description="The query this action is run against.")
     triggers: list[str] = odm.List(
@@ -47,9 +31,3 @@ class Action(ownership_object.OwnershipObject):
         default=[],
         description="A list of the operations this action consists of.",
     )
-
-    def __init__(self, data: dict = None, *args, **kwargs):
-        if "owner" not in data and "owner_id" in data:
-            data["owner"] = data.pop("owner_id")
-
-        super().__init__(data, *args, **kwargs)
