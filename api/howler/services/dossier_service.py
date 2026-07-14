@@ -7,23 +7,20 @@ Dossiers can be personal (private to the creator) or global (shared with the tea
 
 from typing import Any, Literal, Optional, cast, overload
 
-from markupsafe import escape
 from mergedeep.mergedeep import merge
 
 from howler.common.exceptions import (
     ForbiddenException,
     HowlerException,
-    HowlerInvalidPermissionException,
     InvalidDataException,
     NotFoundException,
 )
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.datastore.exceptions import SearchException
-from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.models.dossier import Dossier
 from howler.odm.models.user import User
-from howler.services import lucene_service, permission_service
+from howler.services import lucene_service
 
 logger = get_logger(__file__)
 
@@ -287,194 +284,3 @@ def get_matching_dossiers(
             matching_dossiers.append(dossier)
 
     return matching_dossiers
-
-
-# region privilege
-
-
-def change_privilege(
-    dossier_id: str, user: User, level_requested: str, new_member: str, is_adding: bool, refresh: bool = True
-) -> Dossier | str:
-    """Transfer ownership from one user to an other.
-
-    The json object need to send "privilege", "user_id" as key.
-    The value need to be one of "administrator", "member" or "owner"
-
-    Variables:
-    dossier_id => The id of the dossier to give memberships privilege of
-
-
-    user => user requesting the change
-
-
-    level_requested => what level requested [member, administrator, owner]
-
-
-    new_member => uname of the user to add to the list of member ship
-
-    Optional Arguments:
-        None
-
-    Result Example:
-    {
-        "success": True     # If the operation succeeded
-    }
-    """
-    storage = datastore()
-
-    existing_dossier: Dossier = storage.dossier.get_if_exists(dossier_id)
-    if not existing_dossier:
-        return "This dossier does not exist"
-
-    priv_map: dict = existing_dossier.get_privilege_mapping()
-
-    if level_requested not in priv_map:
-        raise InvalidDataException("The requested level does not exist in dossier. Use member, administrator or owner.")
-
-    is_dossier_admin: bool = user.uname in existing_dossier.admins or user.uname == existing_dossier.owner
-    if not is_dossier_admin and "admin" not in user.type:
-        raise InvalidDataException("You cannot give administrative privilege for this dossier.")
-
-    # Global admin or owner should be the only one able to transfer ownership
-    if level_requested == "owner" and user.uname != existing_dossier.owner or "admin" not in user.type:
-        raise InvalidDataException("You cannot give owner privilege for this dossier.")
-
-    elif is_adding:
-        existing_dossier.set_privilege_mapping(level_requested, new_member)
-    else:
-        existing_dossier.remove_privilege_mapping(level_requested, new_member)
-
-    storage.dossier.save(existing_dossier.dossier_id, existing_dossier, refresh=refresh)
-
-    return existing_dossier
-
-
-# Region: Permissions
-
-
-def give_privilege(received_data: dict, dossier_id: str, user: User, refresh: bool = True) -> Dossier:
-    """give permission from one user to an other.
-
-    The json object need to send "privilege", "user_id" as a key.
-    privilege : The value need to be one of ["administrator", "member", "owner"]
-    user_id : the value need to be the user to add or remove from the permission
-    is_adding: The value neeed to be a boolean representing if we add or remove a user.
-
-    Variables:
-    dossier_id => The id of the dossier to give administrative privilege of
-    received_data => The data received from the request containing the privilege change information
-    user => user requesting the change
-
-    Optional Arguments:
-        None
-
-    Result Example:
-    {
-        "success": True     # If the operation succeeded
-    }
-    """
-    temp_value: tuple[HowlerDatastore, str, str] | str = permission_service.get_require_data_helper(received_data)
-    # TODO: AG : update this once the get require data helper is updated to return the correct types
-    if isinstance(temp_value, str):
-        raise InvalidDataException(
-            f"{received_data} is not valid. It should be a dictionary with the keys 'privilege' and 'user_id'."
-        )
-
-    storage, priv_requested, user_to_add = temp_value
-
-    result = permission_service.verify_privilege_values(
-        item_id=escape(str(dossier_id)),
-        level_requested=priv_requested,
-        member_to_modify=user_to_add,
-        is_adding=True,
-    )
-    if not isinstance(result, Dossier):
-        raise InvalidDataException(f"Wrong object instance of {type(result)} insted of Dossier")
-
-    is_allowed: bool = permission_service.is_allowed_to_change(
-        level_requested=priv_requested, user=user, existing_item=result
-    )
-
-    if not is_allowed:
-        raise HowlerInvalidPermissionException(
-            f"You are not allowed to give {user_to_add} the permission {priv_requested}"
-        )
-
-    priv_map: dict = result.get_privilege_mapping()
-
-    if user_to_add in priv_map[priv_requested]:
-        raise HowlerInvalidPermissionException(f"{user_to_add} already have the permission {priv_requested}")
-
-    if priv_requested == "owner":
-        result.set_privilege_mapping("owner", user_to_add)
-    else:
-        result.set_privilege_mapping(priv_requested, user_to_add)
-
-    storage.dossier.save(result.dossier_id, result, refresh=refresh)
-
-    return result
-
-
-def revoke_privilege(received_data: dict, dossier_id: str, user: User, refresh: bool = True) -> Dossier:
-    """give permission from one user to an other.
-
-    The json object need to send "privilege", "user_id" as a key.
-    privilege : The value need to be one of ["administrator", "member", "owner"]
-    user_id : the value need to be the user to add or remove from the permission
-    is_adding: The value neeed to be a boolean representing if we add or remove a user.
-
-    Variables:
-    dossier_id => The id of the dossier to give administrative privilege of
-
-    Optional Arguments:
-        None
-
-    Result Example:
-    {
-        "success": True     # If the operation succeeded
-    }
-    """
-    temp_value: tuple[HowlerDatastore, str, str] | str = permission_service.get_require_data_helper(received_data)
-
-    if isinstance(temp_value, str):
-        raise InvalidDataException(
-            f"{received_data} is not valid. It should be a dictionary with the keys 'privilege' and 'user_id'."
-        )
-
-    storage, priv_requested, user_to_remove = temp_value
-
-    result = permission_service.verify_privilege_values(
-        item_id=escape(str(dossier_id)),
-        level_requested=priv_requested,
-        member_to_modify=user_to_remove,
-        is_adding=False,
-    )
-
-    if not isinstance(result, Dossier):
-        raise InvalidDataException(f"Wrong object instance of {type(result)} insted of Dossier")
-
-    is_allowed: bool = permission_service.is_allowed_to_change(
-        level_requested=priv_requested, user=user, existing_item=result
-    )
-
-    if not is_allowed:
-        raise HowlerInvalidPermissionException(f"You are not allowed to remove {user_to_remove} from {priv_requested}")
-
-    priv_map: dict = result.get_privilege_mapping()
-
-    if priv_requested == "owner":
-        raise HowlerInvalidPermissionException(
-            "Ownership cannot be revoked. It must be transferred to another user via an ownership assignment."
-        )
-
-    if user_to_remove not in priv_map[priv_requested]:
-        raise HowlerInvalidPermissionException(f"{user_to_remove} is not in the {priv_requested} premission group")
-
-    result.remove_privilege_mapping(priv_requested, user_to_remove)
-
-    storage.dossier.save(result.dossier_id, result, refresh=refresh)
-
-    return result
-
-
-# endregion

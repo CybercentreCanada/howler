@@ -6,7 +6,12 @@ from mergedeep.mergedeep import merge
 
 from howler.api import bad_request, created, forbidden, make_subapi_blueprint, no_content, not_found, ok
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
-from howler.common.exceptions import HowlerException, HowlerInvalidParameterException, InvalidDataException
+from howler.common.exceptions import (
+    HowlerException,
+    HowlerInvalidParameterException,
+    HowlerInvalidPermissionException,
+    InvalidDataException,
+)
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
@@ -183,43 +188,48 @@ def update_view(view_id: str, user: User, **kwargs):
         ...view     # The updated view data
     }
     """
-    new_data = request.json
-    try:
-        refresh = parse_refresh(request.args.get("refresh"))
-    except (InvalidDataException, ValueError) as e:
-        return bad_request(err=f"Invalid refresh parameter: {str(e)}")
+    refresh = kwargs.get("refresh")
 
+    storage = datastore()
+
+    new_data = request.json
     if not isinstance(new_data, dict):
         return bad_request(err="Invalid data format")
 
     if set(new_data.keys()) & {"view_id", "owner"}:
         return bad_request(err="You cannot change the owner or id of a view.")
 
-    storage = datastore()
     existing_view: View = storage.view.get_if_exists(view_id)
-
     if not existing_view:
         return not_found(err="This view does not exist")
 
-    # Delegate the heavy auth checks to the helper function
-    auth_error = permission_service._get_edit_auth_error(existing_view, user)
-    if auth_error:
-        return forbidden(err=auth_error)
+    if existing_view.type == "readonly":
+        return forbidden(err="You cannot edit a built-in view.")
 
-    if "query" in new_data:
-        try:
-            storage.hit.search(new_data["query"])
-        except SearchException:
-            return bad_request(err="You must use a valid query when updating a view.")
-        except HowlerException as e:
-            return bad_request(err=str(e))
+    if existing_view.type == "personal" and existing_view.owner != user.uname:
+        return forbidden(err="You cannot update a personal view that is not owned by you.")
+    is_member = (
+        existing_view.owner != user.uname
+        or user.uname not in existing_view.admins
+        or user.uname not in existing_view.members
+    )
+    if existing_view.type == "global" and is_member and "admin" not in user.type:
+        return forbidden(err="Only the owner of a view and administrators can edit a global view.")
 
-    updated_primitives = merge({}, existing_view.as_primitives(), new_data)
-    new_view = View(cast(dict, updated_primitives))
+    new_view = View(cast(dict, merge({}, existing_view.as_primitives(), new_data)))
 
     storage.view.save(new_view.view_id, new_view, refresh=refresh)
 
-    return ok(storage.view.get_if_exists(new_view.view_id, as_obj=False))
+    try:
+        if "query" in new_data:
+            # Make sure the query is valid
+            storage.hit.search(new_data["query"])
+
+        return ok(storage.view.get_if_exists(existing_view.view_id, as_obj=False))
+    except SearchException:
+        return bad_request(err="You must use a valid query when updating a view.")
+    except HowlerException as e:
+        return bad_request(err=str(e))
 
 
 @generate_swagger_docs()
@@ -309,6 +319,7 @@ def remove_as_favourite(view_id: str, **kwargs):
 @generate_swagger_docs()
 @view_api.route("/<view_id>/permission", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
+@parse_parameters(refresh=parse_refresh)
 def give_privilege(view_id: str, user: User, **kwargs):
     """Grant a privilege on a view to another user.
 
@@ -316,7 +327,7 @@ def give_privilege(view_id: str, user: User, **kwargs):
     view_id => The ID of the view for which to grant a privilege
 
     Optional Arguments:
-        None
+        refresh : boolean requesting to refresh DB before returning
 
     Data Block:
     {
@@ -330,11 +341,11 @@ def give_privilege(view_id: str, user: User, **kwargs):
     }
     """
     temp_value: tuple[HowlerDatastore, str, str] | str = permission_service.get_require_data_helper(request.json)
-
+    refresh = kwargs.get("refresh")
     if isinstance(temp_value, str):
         return bad_request(err=temp_value)
 
-    storage, priv_requested, user_to_add = temp_value
+    storage, priv_requested, user_to_add = temp_value  # TODO: storage is not used here
 
     result = permission_service.verify_privilege_values(
         item_id=escape(str(view_id)),
@@ -349,27 +360,17 @@ def give_privilege(view_id: str, user: User, **kwargs):
     if not isinstance(result, View):
         return bad_request(err=f"Wrong request type. Object of type {type(result)} was requested insted of View")
 
-    priv_map: dict = result.get_privilege_mapping()
-
     priv_request: str = escape(str(priv_requested))
-    is_allowed: bool = permission_service.is_allowed_to_change(
-        level_requested=priv_request, user=user, existing_item=result
-    )
 
-    if not is_allowed:
-        return bad_request(err=f'You are not allowed to give the privilege "{priv_request}" for this view ')
+    try:
+        success, result = permission_service.set_privilege(priv_request, user_to_add, result, user)
+    except HowlerInvalidPermissionException as e:
+        return forbidden(err=e.message)
+    except InvalidDataException as e:
+        return bad_request(err=e.message)
 
-    if priv_request == "owner":
-        if result.owner == user_to_add:
-            return bad_request(err=f"{user_to_add} already have the permission {priv_request}")
-        result.set_privilege_mapping(priv_request, user_to_add)
-    else:
-        if user_to_add in priv_map[priv_request]:
-            return bad_request(err=f"{user_to_add} already have the permission {priv_request}")
-
-        result.set_privilege_mapping(priv_request, priv_map[priv_request] + [user_to_add])
-
-    storage.view.save(result.view_id, result)
+    if success:
+        storage.view.save(result.view_id, result, refresh=refresh)
 
     return ok(storage.view.get_if_exists(result.view_id, as_obj=False))
 
@@ -424,24 +425,24 @@ def revoke_privilege(view_id: str, user: User, **kwargs):
     if not isinstance(result, View):
         return bad_request(err=f"Wrong request type. Object of type {type(result)} was requested insted of View")
 
-    priv_map = result.get_privilege_mapping()
-
     priv_request: str = escape(str(priv_requested))
-    is_allowed: bool = permission_service.is_allowed_to_change(
-        level_requested=priv_request, user=user, existing_item=result
-    )
-
-    if not is_allowed:
-        return forbidden(err=f"You do not have the necessary permissions to revoke {priv_request} on view {view_id}")
 
     if priv_request == "owner":
         return bad_request(err="You cannot remove the owner privilege of a view. Transfer ownership instead.")
 
-    if user_to_remove not in priv_map[priv_request]:
+    current_members = result.admins if priv_request == "administrator" else result.members
+    if user_to_remove not in current_members:
         return bad_request(err=f"{user_to_remove} is not in the {priv_request} permission group")
-    result.remove_privilege_mapping(priv_request, user_to_remove)
 
-    storage.view.save(result.view_id, result, refresh=refresh)
+    try:
+        success, result = permission_service.remove_privilege(priv_request, user_to_remove, result, user)
+    except HowlerInvalidPermissionException as e:
+        return forbidden(err=e.message)
+    except InvalidDataException as e:
+        return bad_request(err=e.message)
+
+    if success:
+        storage.view.save(result.view_id, result, refresh=refresh)
 
     return ok(storage.view.get_if_exists(result.view_id, as_obj=False))
 
@@ -477,8 +478,7 @@ def get_view_permission_options(view_id: str, user: User, **kwargs):
     if not view:
         return not_found(err="The specified view does not exist")
 
-    # Returns ONLY the dictionary with owner, administrator, and member lists
-    return ok(view.get_privilege_mapping())
+    return ok({"owner": view.owner, "administrator": view.admins, "member": view.members})
 
 
 # endregion

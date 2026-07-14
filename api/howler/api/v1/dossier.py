@@ -5,17 +5,17 @@ from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import (
     ForbiddenException,
     HowlerException,
+    HowlerInvalidPermissionException,
     InvalidDataException,
     NotFoundException,
 )
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
-from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.models.dossier import Dossier
 from howler.odm.models.user import User
 from howler.security import api_login
-from howler.services import dossier_service
+from howler.services import dossier_service, permission_service
 
 SUB_API = "dossier"
 dossier_api = make_subapi_blueprint(SUB_API, api_version=1)
@@ -243,6 +243,7 @@ def update_dossier(id: str, user: User, **kwargs):
 @generate_swagger_docs()
 @dossier_api.route("/<id>/permission", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
+@parse_parameters(refresh=parse_refresh)
 def give_privilege(id: str, user: User, **kwargs):
     """give permission from one user to an other.
 
@@ -268,6 +269,7 @@ def give_privilege(id: str, user: User, **kwargs):
         "success": True     # If the operation succeeded
     }
     """
+    storage = datastore()
     priv_change: dict = request.json
     if not isinstance(priv_change, dict):
         return bad_request(err="Invalid data format")
@@ -275,13 +277,29 @@ def give_privilege(id: str, user: User, **kwargs):
     if not {"privilege", "user_id"}.issubset(priv_change.keys()):
         return bad_request(err="Invalid data format. Need new privilege and user_id")
 
-    success: tuple[Dossier, HowlerDatastore] | str = dossier_service.give_privilege(
-        dossier_id=id, received_data=priv_change, user=user
+    _, priv_requested, user_to_add = permission_service.get_require_data_helper(
+        priv_change
+    )  # TODO : AG : Correct this as well when time
+    result = permission_service.verify_privilege_values(
+        item_id=id,
+        level_requested=priv_requested,
+        member_to_modify=user_to_add,
+        item_type=Dossier,
     )
-    if isinstance(success, str):
-        return bad_request(err=success)
-    existing_dossier, storage = success
-    return ok(storage.dossier.get_if_exists(existing_dossier.dossier_id, as_obj=False))
+
+    try:
+        success, result = permission_service.set_privilege(
+            priv_requested, user_to_add, existing_item=result, user_requesting_change=user
+        )
+    except HowlerInvalidPermissionException as e:
+        return forbidden(err=e.message)
+    except InvalidDataException as e:
+        return bad_request(err=e.message)
+
+    if success:
+        storage.dossier.save(result.dossier_id, result, refresh=kwargs.get("refresh"))
+
+    return ok(storage.dossier.get_if_exists(result.dossier_id, as_obj=False))
 
 
 @generate_swagger_docs()
@@ -310,20 +328,44 @@ def revoke_privilege(id: str, user: User, **kwargs):
             "success": True
         }
     """
+    storage = datastore()
     priv_change: dict = request.json
     if not isinstance(priv_change, dict):
         return bad_request(err="Invalid data format")
     if not {"privilege", "user_id"}.issubset(priv_change.keys()):
         return bad_request(err="Invalid data format. Need new privilege and user_id")
 
-    success: tuple[Dossier, HowlerDatastore] | str = dossier_service.revoke_privilege(
-        dossier_id=id, received_data=priv_change, user=user
+    _, priv_requested, user_to_add = permission_service.get_require_data_helper(
+        priv_change
+    )  # TODO : AG : Correct this as well when time
+    result = permission_service.verify_privilege_values(
+        item_id=id,
+        level_requested=priv_requested,
+        member_to_modify=user_to_add,
+        is_adding=False,
+        item_type=Dossier,
     )
 
-    if isinstance(success, str):
-        return bad_request(err=success)
-    existing_dossier, storage = success
-    return ok(storage.dossier.get_if_exists(existing_dossier.dossier_id, as_obj=False))
+    if priv_requested == "owner":
+        return bad_request(err="You cannot remove the owner privilege. Transfer ownership instead.")
+
+    current_members = result.admins if priv_requested == "administrator" else result.members
+    if user_to_add not in current_members:
+        return bad_request(err=f"{user_to_add} is not in the {priv_requested} permission group")
+
+    try:
+        success, result = permission_service.remove_privilege(
+            priv_requested, user_to_add, existing_item=result, user_requesting_change=user
+        )
+    except HowlerInvalidPermissionException as e:
+        return forbidden(err=e.message)
+    except InvalidDataException as e:
+        return bad_request(err=e.message)
+
+    if success:
+        storage.dossier.save(result.dossier_id, result, refresh=kwargs.get("refresh"))
+
+    return ok(storage.dossier.get_if_exists(result.dossier_id, as_obj=False))
 
 
 @generate_swagger_docs()
@@ -354,7 +396,7 @@ def get_dossier_permission_options(id: str, user: User):
         return not_found(err="The specified dossier does not exist")
 
     # Returns a dict containing owner, administrator, and member lists
-    return ok(dossier.get_privilege_mapping())
+    return ok({"owner": dossier.owner, "administrator": dossier.admins, "member": dossier.members})
 
 
 # endregion

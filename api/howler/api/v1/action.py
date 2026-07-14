@@ -6,7 +6,12 @@ from markupsafe import escape
 import howler.actions as actions
 from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
-from howler.common.exceptions import HowlerException, HowlerInvalidParameterException
+from howler.common.exceptions import (
+    HowlerException,
+    HowlerInvalidParameterException,
+    HowlerInvalidPermissionException,
+    InvalidDataException,
+)
 from howler.common.loader import datastore
 from howler.common.logging.audit import audit
 from howler.common.swagger import generate_swagger_docs
@@ -440,6 +445,7 @@ def give_privilege(id: str, user: User, **kwargs):
         "success": True     # If the operation succeeded
     }
     """
+    # TODO: AG : update this as well for every object type that has permission mapping
     temp_value: tuple[HowlerDatastore, str, str] | str = permission_service.get_require_data_helper(request.json)
     refresh = kwargs.get("refresh")
 
@@ -451,32 +457,23 @@ def give_privilege(id: str, user: User, **kwargs):
         item_id=escape(str(id)), level_requested=priv_requested, member_to_modify=user_to_add, item_type=Action
     )
 
-    if isinstance(result, str):
-        return bad_request(err=result)
-
+    # is requesting the wrong object type
     if not isinstance(result, Action):
         return bad_request(err=f"Wrong request type. Object of type {type(result)} was requested insted of Action")
 
-    existing_action = result
-
-    priv_map = existing_action.get_privilege_mapping()
-
     priv_request: str = escape(str(priv_requested))
-    is_allowed: bool = permission_service.is_allowed_to_change(
-        level_requested=priv_request, user=user, existing_item=existing_action
-    )
 
-    if not is_allowed:
-        return forbidden(err="You do not have the necessary permissions to modify this privilege level.")
+    try:
+        success, result = permission_service.set_privilege(priv_request, user_to_add, result, user)
+    except HowlerInvalidPermissionException as e:
+        return forbidden(err=e.message)
+    except InvalidDataException as e:
+        return bad_request(err=e.message)
 
-    if user_to_add in priv_map[priv_request]:
-        return bad_request(err=f"{user_to_add} already have the permission {priv_request}")
+    if success:
+        storage.action.save(result.action_id, result, refresh=refresh)
 
-    existing_action.set_privilege_mapping(priv_request, user_to_add)
-
-    storage.action.save(existing_action.action_id, existing_action, refresh=refresh)
-
-    return ok(storage.action.get_if_exists(existing_action.action_id, as_obj=False))
+    return ok(storage.action.get_if_exists(result.action_id, as_obj=False))
 
 
 @generate_swagger_docs()
@@ -522,26 +519,11 @@ def revoke_privilege(id: str, user: User, **kwargs):
         item_type=Action,
     )
 
-    if isinstance(result, str):
-        return bad_request(err=result)
-
     if not isinstance(result, Action):
         return bad_request(err=f"Wrong request type. Object of type {type(result)} was requested insted of Action")
 
-    priv_map = result.get_privilege_mapping()
-    is_allowed: bool = permission_service.is_allowed_to_change(
-        level_requested=priv_requested,
-        user=user,
-        existing_item=result,
-    )
-
-    if isinstance(is_allowed, Response):
-        return is_allowed
-
-    if not is_allowed:
-        return forbidden(err="You do not have the necessary permissions to modify this privilege level.")
-
-    if user_to_remove not in priv_map[priv_requested]:
+    current_members = result.admins if priv_requested == "administrator" else result.members
+    if user_to_remove not in current_members:
         return bad_request(err=f"{user_to_remove} is not in the {priv_requested} permission group")
 
     if priv_requested == "owner":
@@ -549,9 +531,15 @@ def revoke_privilege(id: str, user: User, **kwargs):
             err="You cannot remove the owner privilege. Only transfer is allowed. (Use the give_privilege endpoint)"
         )
 
-    result.remove_privilege_mapping(priv_requested, user_to_remove)
+    try:
+        success, result = permission_service.remove_privilege(priv_requested, user_to_remove, result, user)
+    except HowlerInvalidPermissionException as e:
+        return forbidden(err=e.message)
+    except InvalidDataException as e:
+        return bad_request(err=e.message)
 
-    storage.action.save(result.action_id, result, refresh=refresh)
+    if success:
+        storage.action.save(result.action_id, result, refresh=refresh)
 
     return ok(storage.action.get_if_exists(result.action_id, as_obj=False))
 
@@ -586,7 +574,7 @@ def get_action_permission(id: str, user: User, **kwargs):
 
     if action.get("type") == "personal" and user.uname != action.get("owner"):
         return forbidden(err="You cannot access a personal action that is not owned by you.")
-    return ok(action.get_privilege_mapping())
+    return ok({"owner": action.owner, "administrator": action.admins, "member": action.members})
 
 
 # endregion
