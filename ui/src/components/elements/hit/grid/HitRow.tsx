@@ -2,8 +2,8 @@ import { KeyboardArrowUp } from '@mui/icons-material';
 import { Box, Collapse, IconButton, lighten, Stack, TableCell, TableRow, Typography, useTheme } from '@mui/material';
 import { HitContext } from 'components/app/providers/HitProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
+import Assigned from 'components/elements/hit/elements/Assigned';
 import EscalationChip from 'components/elements/hit/elements/EscalationChip';
-import HitUsers from 'components/elements/hit/elements/HitUsers';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import { get } from 'lodash-es';
@@ -90,7 +90,7 @@ const HitRow: FC<{
                   {hit.howler.detection && ': '}
                   {hit.howler.detection}
                 </Typography>
-                <HitUsers hit={hit} layout={HitLayout.DENSE} hideLabel />
+                {hit.howler.assignment !== 'unassigned' && <Assigned hit={hit} layout={HitLayout.DENSE} hideLabel />}
               </Stack>
             </Collapse>
           </Stack>

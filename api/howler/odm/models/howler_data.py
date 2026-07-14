@@ -210,12 +210,6 @@ class HowlerData(odm.Model):
         description="Unique identifier of the assigned user.",
         default=DEFAULT_ASSIGNMENT,
     )
-    assessor: Optional[str] = odm.Optional(
-        odm.Keyword(
-            description="The most recent person to assess a hit",
-            default=None,
-        )
-    )
     bundles: list[str] = odm.List(
         odm.Keyword(
             description="A list of bundle IDs this hit is a part of. Corresponds to the howler.id of the bundle."

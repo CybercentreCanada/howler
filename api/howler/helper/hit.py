@@ -24,16 +24,13 @@ def assess_hit(
     assessment: Optional[str] = None,
     rationale: Optional[str] = None,
     hit: Optional[Union[dict[str, Any], Hit]] = None,
-    *,
-    user: User | str,
     **kwargs,
 ) -> list[OdmUpdateOperation]:
     """Update the assessment and esclation of a hit
 
     Args:
-        user (User | str): The user making the assessment
         assessment (Optional[str], optional): The assessment to set the hit to. Defaults to None.
-        hit (Optional[Union[dict[str, Any], Hit]], optional): The hit to update. Defaults to None.
+        hit (Optional[dict[str, Any]], optional): The hit to update. Defaults to None.
 
     Raises:
         InvalidDataException: An invalid assessment was provided
@@ -66,16 +63,10 @@ def assess_hit(
         escalation,
     )
 
-    if assessment is None:
-        assessor_id = None
-    else:
-        assessor_id = user.get("uname", user.get("username", None)) if isinstance(user, User) else user
-
     return [
         odm_helper.update("howler.assessment", assessment),
         odm_helper.update("howler.escalation", escalation),
         odm_helper.update("howler.rationale", rationale, silent=True),
-        odm_helper.update("howler.assessor", assessor_id, silent=True),
     ]
 
 

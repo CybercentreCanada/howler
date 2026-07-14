@@ -66,23 +66,17 @@ def test_full_transition_flow(datastore: HowlerDatastore, login_session):
 
         return check
 
-    def check_assessor(user: str):
-        def check():
-            assert datastore.hit.get(HIT_ID).howler.assessor == user
-
-        return check
-
     transition_data: list[dict[str, Any]] = [
         {
             "transition": HitStatusTransition.ASSESS,
             "data": {"assessment": Assessment.AMBIGUOUS},
             "dest": HitStatus.RESOLVED,
-            "check": [check_assessor("admin")],
+            "check": [check_assignment("admin")],
         },
         {
             "transition": HitStatusTransition.RE_EVALUATE,
             "dest": HitStatus.IN_PROGRESS,
-            "check": [check_assessment(None), check_assignment("admin"), check_assessor(None)],
+            "check": [check_assessment(None), check_assignment("admin")],
         },
         {
             "transition": HitStatusTransition.RELEASE,
@@ -148,12 +142,15 @@ def test_full_transition_flow(datastore: HowlerDatastore, login_session):
             "transition": HitStatusTransition.ASSESS,
             "data": {"assessment": Assessment.AMBIGUOUS},
             "dest": HitStatus.RESOLVED,
-            "check": [check_assessment(Assessment.AMBIGUOUS), check_assessor("admin")],
+            "check": [
+                check_assessment(Assessment.AMBIGUOUS),
+                check_assignment("admin"),
+            ],
         },
         {
             "transition": HitStatusTransition.RE_EVALUATE,
             "dest": HitStatus.IN_PROGRESS,
-            "check": [check_assessment(None), check_assignment("admin"), check_assessor(None)],
+            "check": [check_assessment(None), check_assignment("admin")],
         },
         {
             "transition": HitStatusTransition.RELEASE,

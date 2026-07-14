@@ -111,7 +111,7 @@ def get_hit_workflow() -> Workflow:
                     "source": [HitStatus.OPEN, HitStatus.IN_PROGRESS],
                     "transition": HitStatusTransition.ASSESS,
                     "dest": HitStatus.RESOLVED,
-                    "actions": [assess_hit],
+                    "actions": [assess_hit, assign_hit],
                 }
             ),
             Transition(

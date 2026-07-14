@@ -76,7 +76,6 @@ def execute(
                     *hit_helper.demote_hit(escalation=escalation),
                     odm_helper.update("howler.assessment", None),
                     odm_helper.update("howler.rationale", None),
-                    odm_helper.update("howler.assignment", None),
                 ],
             )
         else:
@@ -94,7 +93,7 @@ def execute(
             ds.hit.update_by_query(
                 query,
                 [
-                    *hit_helper.assess_hit(assessment, rationale, user=(user if user else "automation")),
+                    *hit_helper.assess_hit(assessment, rationale),
                     odm_helper.update(
                         "howler.assignment",
                         user.get("uname", "automation") if user else "automation",
