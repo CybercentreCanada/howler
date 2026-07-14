@@ -5,7 +5,7 @@ cases - collections of security alerts and investigation data organized by analy
 """
 
 from datetime import datetime, timezone
-from typing import Any, overload
+from typing import Any, Literal, overload
 
 from prometheus_client import Counter
 
@@ -26,7 +26,10 @@ logger = get_logger(__file__)
 CREATED_CASES = Counter(f"{APP_NAME.replace('-', '_')}_created_cases_total", "The number of created cases")
 
 
-def create_case(case_data: dict, user: str = None) -> Case:  # type: ignore
+def create_case(
+    case_data: dict,
+    user: str | None = None,
+) -> Case:  # type: ignore
     """Create a new case in the datastore.
 
     Args:
@@ -47,11 +50,11 @@ def create_case(case_data: dict, user: str = None) -> Case:  # type: ignore
 
     case = Case(case_data)
     case.log = [CaseLog({"timestamp": "NOW", "explanation": "Case created", "user": user or "system"})]
-    datastore().case.save(case.case_id, case)
+    case.save(refresh="wait_for")
     CREATED_CASES.inc()
 
     for item in items:
-        append_case_item(case.case_id, item=CaseItem(item))
+        append_case_item(case.case_id, item=CaseItem(item), refresh="wait_for")
 
     if items:
         updated_case = datastore().case.get(case.case_id)
@@ -66,7 +69,7 @@ def create_case(case_data: dict, user: str = None) -> Case:  # type: ignore
     return case
 
 
-def hide_cases(case_ids: set[str], user: str) -> None:
+def hide_cases(case_ids: set[str], user: str, refresh: Literal["true", "false", "wait_for"] | None = None) -> None:
     """Hide a set of cases by marking them and their references as not visible.
 
     Sets visible=False on all matching cases, and also sets visible=False on any
@@ -103,7 +106,7 @@ def hide_cases(case_ids: set[str], user: str) -> None:
                     }
                 )
             )
-            ds.case.save(related_case.case_id, related_case)
+            related_case.save(refresh=refresh)
 
     # Second pass: mark each target case itself as not visible.
     for case_id in case_ids:
@@ -122,10 +125,10 @@ def hide_cases(case_ids: set[str], user: str) -> None:
                 }
             )
         )
-        ds.case.save(case_id, case)
+        case.save(refresh=refresh)
 
 
-def delete_cases(case_ids: set[str]) -> bool:
+def delete_cases(case_ids: set[str], refresh: Literal["true", "false", "wait_for"] | None = None) -> bool:
     """Delete a set of cases from the datastore.
 
     Also removes any CaseItem references to the deleted cases from other cases.
@@ -146,9 +149,9 @@ def delete_cases(case_ids: set[str]) -> bool:
         related_case = ds.case.get(related_case_id)
         if related_case:
             related_case.items = [item for item in related_case.items if item.value not in case_ids]
-            ds.case.save(related_case_id, related_case)
+            related_case.save(refresh=refresh)
 
-    return ds.case.delete_by_query(f"case_id:({' OR '.join(case_ids)})")
+    return ds.case.delete_by_query(f"case_id:({' OR '.join(case_ids)})", refresh=refresh)
 
 
 def filter_case_items_by_classification(case_data: dict, user_classification: str):
@@ -241,7 +244,12 @@ def _describe_field_change(
     )
 
 
-def update_case(case_id: str, case_data: dict[str, Any], user: User) -> Case:
+def update_case(
+    case_id: str,
+    case_data: dict[str, Any],
+    user: User,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+) -> Case:
     """Update one or more properties of a case in the database.
 
     This function validates the provided fields, applies changes to the case object,
@@ -296,14 +304,19 @@ def update_case(case_id: str, case_data: dict[str, Any], user: User) -> Case:
         setattr(case, key, new_value)
 
     case.updated = "NOW"
-    ds.case.save(case_id, case)
+    case.save(refresh=refresh)
 
     comms_service.emit("cases", {"case": case.as_primitives()})
 
     return case
 
 
-def get_parent_from_path(case: str | Case | None, path: str | None, create_if_missing: bool = False) -> CaseItem | None:
+def get_parent_from_path(
+    case: str | Case | None,
+    path: str | None,
+    create_if_missing: bool = False,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+) -> CaseItem | None:
     """Given a path, return the lowest parent of the path in the case.
 
     If ensure is set to true, create folders in the case until the path exists.
@@ -352,6 +365,7 @@ def get_parent_from_path(case: str | Case | None, path: str | None, create_if_mi
             folder_item = CaseItem({"type": CaseItemTypes.FOLDER, "name": part, "parent": current_parent, "value": ""})
             case.items.append(folder_item)
             current_parent = folder_item.id
+            case.save(refresh)
         else:
             current_parent = folder.id
 
@@ -363,7 +377,15 @@ def get_parent_from_path(case: str | Case | None, path: str | None, create_if_mi
 
 
 @overload
-def append_case_item(case: str | Case | None, item: CaseItem) -> Case: ...
+def append_case_item(
+    case: str | Case | None,
+    item: CaseItem,
+    item_type: str | None = None,
+    item_value: str | None = None,
+    item_parent: str | None = None,
+    item_name: str | None = None,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+) -> Case: ...
 
 
 @overload
@@ -374,6 +396,7 @@ def append_case_item(
     item_value: str = ...,
     item_parent: str | None = ...,
     item_name: str | None = ...,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
 ) -> Case: ...
 
 
@@ -384,6 +407,7 @@ def append_case_item(  # noqa: C901
     item_value: str | None = None,
     item_parent: str | None = None,
     item_name: str | None = None,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
 ) -> Case:
     """Append an item to a case, dispatching to the appropriate handler based on item type.
 
@@ -435,15 +459,15 @@ def append_case_item(  # noqa: C901
 
     match item.type:
         case CaseItemTypes.HIT:
-            return append_hit(case, item)
+            return append_hit(case, item, refresh)
         case CaseItemTypes.EVENT:
-            return append_event(case, item)
+            return append_event(case, item, refresh)
         case CaseItemTypes.CASE:
-            return append_case(case, item)
+            return append_case(case, item, refresh)
         case CaseItemTypes.REFERENCE | CaseItemTypes.MARKDOWN | CaseItemTypes.FOLDER:
             case.items.append(item)
 
-            if not case.save():  # pragma: no cover
+            if not case.save(refresh):  # pragma: no cover
                 raise DataStoreException(f"Failed to save {case.case_id} with new {item.type} {item.name}")
 
             comms_service.emit("cases", {"case": case.as_primitives()})
@@ -493,7 +517,12 @@ def _ensure_parent_exists(case: Case, parent_id: str) -> None:
         raise InvalidDataException(f"Parent item '{parent_id}' is not a folder (type: {parent.type})")
 
 
-def move_case_item(case: str | Case | None, item_id: str, new_parent: str | None) -> Case:
+def move_case_item(
+    case: str | Case | None,
+    item_id: str,
+    new_parent: str | None,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+) -> Case:
     """Move an item to a different parent folder (or to root).
 
     Args:
@@ -540,7 +569,7 @@ def move_case_item(case: str | Case | None, item_id: str, new_parent: str | None
 
     item.parent = new_parent
 
-    if not ds.case.save(case.case_id, case):  # pragma: no cover
+    if not case.save(refresh=refresh):  # pragma: no cover
         raise DataStoreException("Failed to save case after item move")
 
     comms_service.emit("cases", {"case": case.as_primitives()})
@@ -570,7 +599,12 @@ def _is_descendant(items: list[CaseItem], candidate_id: str, ancestor_id: str) -
     return False
 
 
-def remove_case_items(case: str | Case | None, item_ids: list[str], force: bool = False) -> Case:  # noqa: C901
+def remove_case_items(  # noqa: C901
+    case: str | Case | None,
+    item_ids: list[str],
+    force: bool = False,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+) -> Case:  # noqa: C901
     """Remove items from a case by their IDs.
 
     Args:
@@ -627,7 +661,7 @@ def remove_case_items(case: str | Case | None, item_ids: list[str], force: bool 
 
     case.items = [item for item in case.items if item.id not in ids_to_remove]
 
-    if not ds.case.save(case.case_id, case):  # pragma: no cover
+    if not case.save(refresh=refresh):  # pragma: no cover
         raise DataStoreException("Failed to save case after item removal")
 
     for backing_obj in backing_objs:
@@ -650,7 +684,7 @@ def _collect_descendant_ids(items: list[CaseItem], parent_id: str) -> set[str]:
     return result
 
 
-def append_hit(case: Case, item: CaseItem) -> Case:
+def append_hit(case: Case, item: CaseItem, refresh: Literal["true", "false", "wait_for"] | None = None) -> Case:
     """Append a hit item to a case and create a back-reference on the hit.
 
     Validates that the case and hit both exist and that the hit is not already
@@ -677,7 +711,7 @@ def append_hit(case: Case, item: CaseItem) -> Case:
 
     case.items.append(item)
 
-    if not ds.case.save(case.case_id, case):  # pragma: no cover
+    if not case.save(refresh=refresh):  # pragma: no cover
         raise DataStoreException(f"Failed to save {case.case_id} with new item {item.value}")
 
     _add_backreference(hit, case.case_id)
@@ -691,7 +725,7 @@ def append_hit(case: Case, item: CaseItem) -> Case:
     return case
 
 
-def append_event(case: Case, item: CaseItem) -> Case:
+def append_event(case: Case, item: CaseItem, refresh: Literal["true", "false", "wait_for"] | None = None) -> Case:
     """Append an event item to a case and create a back-reference on the event.
 
     Validates that the case and event both exist and that the event is
@@ -718,7 +752,7 @@ def append_event(case: Case, item: CaseItem) -> Case:
 
     case.items.append(item)
 
-    if not case.save():  # pragma: no cover
+    if not case.save(refresh=refresh):  # pragma: no cover
         raise DataStoreException(f"Failed to save {case.case_id} with new item {item.value}")
 
     _add_backreference(event, case.case_id)
@@ -729,7 +763,7 @@ def append_event(case: Case, item: CaseItem) -> Case:
     return updated_case or case
 
 
-def append_case(case: Case, item: CaseItem) -> Case:
+def append_case(case: Case, item: CaseItem, refresh: Literal["true", "false", "wait_for"] | None = None) -> Case:
     """Append a case reference item to a case.
 
     Validates that both the parent case and the referenced case exist, and that
@@ -760,7 +794,7 @@ def append_case(case: Case, item: CaseItem) -> Case:
 
     case.items.append(item)
 
-    if not case.save():  # pragma: no cover
+    if not case.save(refresh=refresh):  # pragma: no cover
         raise DataStoreException(f"Failed to save {case.case_id} with new item {item.name}")
 
     comms_service.emit("cases", {"case": case.as_primitives()})
@@ -782,7 +816,10 @@ def _collect_indicators_from_related(related: Related | None) -> set[str]:
     return indicators
 
 
-def _sync_case_metadata(case: Case | None) -> Case | None:  # noqa: C901
+def _sync_case_metadata(  # noqa: C901
+    case: Case | None,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+) -> Case | None:  # noqa: C901
     """Re-compute and persist threat/target/indicator lists from all case items.
 
     Iterates over hit and event items in the case and re-derives the
@@ -824,12 +861,16 @@ def _sync_case_metadata(case: Case | None) -> Case | None:  # noqa: C901
     case.targets = sorted(targets)
     case.threats = sorted(threats)
     case.indicators = sorted(indicators)
-    case.save()
+    case.save(refresh=refresh)
 
     return case
 
 
-def _add_backreference(backing_obj: Hit | Event | None, case_id: str):
+def _add_backreference(
+    backing_obj: Hit | Event | None,
+    case_id: str,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+):
     """Add a back-reference from a hit or event to a case.
 
     Records the case ID in the backing object's ``howler.related_ids`` set so
@@ -853,10 +894,14 @@ def _add_backreference(backing_obj: Hit | Event | None, case_id: str):
         return
 
     backing_obj.howler.related.append(case_id)
-    backing_obj.save()
+    backing_obj.save(refresh=refresh)
 
 
-def remove_backreference(backing_obj: Hit | Event | None, case_id: str):
+def remove_backreference(
+    backing_obj: Hit | Event | None,
+    case_id: str,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+):
     """Remove a back-reference from a hit or event to a case.
 
     Removes the case ID from the backing object's ``howler.related`` list
@@ -878,10 +923,15 @@ def remove_backreference(backing_obj: Hit | Event | None, case_id: str):
 
     if case_id in backing_obj.howler.related:
         backing_obj.howler.related.remove(case_id)
-        backing_obj.save()
+        backing_obj.save(refresh=refresh)
 
 
-def rename_case_item(case_id: str, item_id: str, new_name: str) -> Case:
+def rename_case_item(
+    case_id: str,
+    item_id: str,
+    new_name: str,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+) -> Case:
     """Rename a single item within a case by updating its display name.
 
     Args:
@@ -919,7 +969,7 @@ def rename_case_item(case_id: str, item_id: str, new_name: str) -> Case:
     if item.type == CaseItemTypes.FOLDER:
         item.value = item.name
 
-    if not case.save():  # pragma: no cover
+    if not case.save(refresh=refresh):  # pragma: no cover
         raise DataStoreException("Failed to save case after item rename")
 
     comms_service.emit("cases", {"case": case.as_primitives()})
@@ -927,7 +977,9 @@ def rename_case_item(case_id: str, item_id: str, new_name: str) -> Case:
     return case
 
 
-def add_case_rule(case_id: str, rule_data: dict, user: User) -> Case:
+def add_case_rule(
+    case_id: str, rule_data: dict, user: User, refresh: Literal["true", "false", "wait_for"] | None = None
+) -> Case:
     """Add a correlation rule to a case.
 
     Injects a unique id and the author from the current user, then appends
@@ -947,8 +999,8 @@ def add_case_rule(case_id: str, rule_data: dict, user: User) -> Case:
     """
     ds = datastore()
 
-    _case = ds.case.get(case_id)
-    if _case is None:
+    case = ds.case.get(case_id)
+    if case is None:
         raise NotFoundException(f"Case {case_id} does not exist")
 
     if not rule_data.get("query"):
@@ -968,9 +1020,9 @@ def add_case_rule(case_id: str, rule_data: dict, user: User) -> Case:
     except HowlerValueError as ex:
         raise InvalidDataException(str(ex)) from ex
 
-    _case.rules.append(rule)
+    case.rules.append(rule)
 
-    _case.log.append(
+    case.log.append(
         CaseLog(
             {
                 "timestamp": "NOW",
@@ -980,13 +1032,15 @@ def add_case_rule(case_id: str, rule_data: dict, user: User) -> Case:
         )
     )
 
-    _case.updated = "NOW"
-    ds.case.save(case_id, _case)
-    comms_service.emit("cases", {"case": _case.as_primitives()})
-    return _case
+    case.updated = "NOW"
+    case.save(refresh=refresh)
+    comms_service.emit("cases", {"case": case.as_primitives()})
+    return case
 
 
-def remove_case_rule(case_id: str, rule_id: str, user: User) -> Case:
+def remove_case_rule(
+    case_id: str, rule_id: str, user: User, refresh: Literal["true", "false", "wait_for"] | None = None
+) -> Case:
     """Remove a correlation rule from a case.
 
     Args:
@@ -1002,17 +1056,17 @@ def remove_case_rule(case_id: str, rule_id: str, user: User) -> Case:
     """
     ds = datastore()
 
-    _case = ds.case.get(case_id)
-    if _case is None:
+    case = ds.case.get(case_id)
+    if case is None:
         raise NotFoundException(f"Case {case_id} does not exist")
 
-    original_len = len(_case.rules)
-    _case.rules = [r for r in _case.rules if r.rule_id != rule_id]
+    original_len = len(case.rules)
+    case.rules = [r for r in case.rules if r.rule_id != rule_id]
 
-    if len(_case.rules) == original_len:
+    if len(case.rules) == original_len:
         raise NotFoundException(f"Rule {rule_id} not found in case {case_id}")
 
-    _case.log.append(
+    case.log.append(
         CaseLog(
             {
                 "timestamp": "NOW",
@@ -1022,13 +1076,19 @@ def remove_case_rule(case_id: str, rule_id: str, user: User) -> Case:
         )
     )
 
-    _case.updated = "NOW"
-    ds.case.save(case_id, _case)
-    comms_service.emit("cases", {"case": _case.as_primitives()})
-    return _case
+    case.updated = "NOW"
+    case.save(refresh)
+    comms_service.emit("cases", {"case": case.as_primitives()})
+    return case
 
 
-def update_case_rule(case_id: str, rule_id: str, update_data: dict, user: User) -> Case:
+def update_case_rule(
+    case_id: str,
+    rule_id: str,
+    update_data: dict,
+    user: User,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+) -> Case:
     """Update fields on an existing correlation rule.
 
     Allowed fields: ``enabled``, ``query``, ``destination``, ``timeframe``,
@@ -1049,8 +1109,8 @@ def update_case_rule(case_id: str, rule_id: str, update_data: dict, user: User) 
     """
     ds = datastore()
 
-    _case = ds.case.get(case_id)
-    if _case is None:
+    case = ds.case.get(case_id)
+    if case is None:
         raise NotFoundException(f"Case {case_id} does not exist")
 
     allowed_fields = {"enabled", "query", "destination", "timeframe", "expire_after_resolved"}
@@ -1060,7 +1120,7 @@ def update_case_rule(case_id: str, rule_id: str, update_data: dict, user: User) 
             f"No valid fields provided for update. Allowed fields: {', '.join(sorted(allowed_fields))}"
         )
 
-    rule = next((r for r in _case.rules if r.rule_id == rule_id), None)
+    rule = next((r for r in case.rules if r.rule_id == rule_id), None)
     if rule is None:
         raise NotFoundException(f"Rule {rule_id} not found in case {case_id}")
 
@@ -1078,7 +1138,7 @@ def update_case_rule(case_id: str, rule_id: str, update_data: dict, user: User) 
     elif rule.timeframe is None and rule.expire_after_resolved:
         raise InvalidDataException("Rule cannot expire after resolved when no timeframe is set")
 
-    _case.log.append(
+    case.log.append(
         CaseLog(
             {
                 "timestamp": "NOW",
@@ -1088,7 +1148,7 @@ def update_case_rule(case_id: str, rule_id: str, update_data: dict, user: User) 
         )
     )
 
-    _case.updated = "NOW"
-    ds.case.save(case_id, _case)
-    comms_service.emit("cases", {"case": _case.as_primitives()})
-    return _case
+    case.updated = "NOW"
+    case.save(refresh=refresh)
+    comms_service.emit("cases", {"case": case.as_primitives()})
+    return case

@@ -94,8 +94,8 @@ def create_bundle(
             )
 
     odm, warnings = hit_service.convert_hit(bundle_hit_data, unique=True, ignore_extra_values=True)
-    hit_service.create_hit(odm.howler.id, odm, user=user)
-    analytic_service.save_from_hits(odm, {"uname": user})  # type: ignore[arg-type]
+    hit_service.create_hit(odm.howler.id, odm, user=user, refresh=refresh)
+    analytic_service.save_from_hits(odm, {"uname": user}, refresh)  # type: ignore[arg-type]
 
     analytic = odm.howler.analytic or "Unknown"
     detection = odm.howler.detection or "Alert"
@@ -208,7 +208,6 @@ def add_to_bundle(
     return synthesize_bundle_response(updated_case, root_hit)
 
 
-# TODO: Properly implement refresh logic for compatibility
 def remove_from_bundle(
     bundle_id: str, hit_ids: list[str], refresh: Literal["true", "false", "wait_for"] | None
 ) -> dict[str, Any]:

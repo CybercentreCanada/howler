@@ -1269,6 +1269,11 @@ class ESCollection(Generic[ModelType]):
         elif version:
             seq_no, primary_term = version.split("---")
 
+        if refresh == "true":
+            logger.warning(
+                "refresh set to true when saving %s to index %s - this is very costly for performance!", key, self.name
+            )
+
         try:
             self.with_retries(
                 self.datastore.client.index,

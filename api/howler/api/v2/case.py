@@ -1,7 +1,10 @@
+from typing import Literal
+
 from flask import request
 from werkzeug.exceptions import UnsupportedMediaType
 
 from howler.api import bad_request, created, internal_error, make_subapi_blueprint, no_content, not_found, ok
+from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import HowlerException, InvalidDataException, NotFoundException, ResourceExists
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -90,7 +93,8 @@ def get_case(id: str, user: User, **kwargs):
 @generate_swagger_docs()
 @case_api.route("/", methods=["DELETE"])
 @api_login(required_priv=["W"], required_type=["admin"])
-def delete_cases(user: User, **kwargs):
+@parse_parameters(refresh=parse_refresh)
+def delete_cases(user: User, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs):
     """Delete cases.
 
     Variables:
@@ -121,7 +125,7 @@ def delete_cases(user: User, **kwargs):
     if non_existing_case_ids:
         return not_found(err=f"Case id(s) {', '.join(non_existing_case_ids)} do not exist.")
 
-    case_service.delete_cases(case_ids)
+    case_service.delete_cases(case_ids, refresh=refresh)
 
     return no_content()
 
@@ -129,7 +133,8 @@ def delete_cases(user: User, **kwargs):
 @generate_swagger_docs()
 @case_api.route("/hide", methods=["POST"])
 @api_login(required_priv=["W"])
-def hide_cases(user: User, **kwargs):
+@parse_parameters(refresh=parse_refresh)
+def hide_cases(user: User, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs):
     """Hide cases.
 
     Variables:
@@ -160,7 +165,7 @@ def hide_cases(user: User, **kwargs):
     if non_existing_case_ids:
         return not_found(err=f"Case id(s) {', '.join(non_existing_case_ids)} do not exist.")
 
-    case_service.hide_cases(case_ids, user=user.uname)
+    case_service.hide_cases(case_ids, user=user.uname, refresh=refresh)
 
     return no_content()
 
@@ -168,7 +173,8 @@ def hide_cases(user: User, **kwargs):
 @generate_swagger_docs()
 @case_api.route("/<id>", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
-def update_case(id: str, user: User, **kwargs):
+@parse_parameters(refresh=parse_refresh)
+def update_case(id: str, user: User, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs):
     """Update a case
 
     Variables:
@@ -194,7 +200,7 @@ def update_case(id: str, user: User, **kwargs):
         return bad_request(err="Request body must be a JSON object with fields to update.")
 
     try:
-        updated_case = case_service.update_case(id, case_data, user)
+        updated_case = case_service.update_case(id, case_data, user, refresh=refresh)
         return ok(updated_case)
     except NotFoundException as e:
         return not_found(err=str(e))
@@ -205,7 +211,8 @@ def update_case(id: str, user: User, **kwargs):
 @generate_swagger_docs()
 @case_api.route("/<id>/items", methods=["POST"])
 @api_login(required_priv=["R", "W"])
-def append_item(id: str, user: User, **kwargs):  # noqa: C901
+@parse_parameters(refresh=parse_refresh)
+def append_item(id: str, user: User, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs):  # noqa: C901
     """Append an item to a case
 
     This endpoint adds a new item to a case's items list. The item can reference
@@ -250,7 +257,7 @@ def append_item(id: str, user: User, **kwargs):  # noqa: C901
 
             body["parent"] = parent.id if parent else None
 
-        return ok(case_service.append_case_item(id, item=CaseItem(body)))
+        return ok(case_service.append_case_item(id, item=CaseItem(body), refresh=refresh))
     except DataStoreException as e:
         logger.exception("Save Error")
         return internal_error(err=str(e))
@@ -263,7 +270,8 @@ def append_item(id: str, user: User, **kwargs):  # noqa: C901
 @generate_swagger_docs()
 @case_api.route("/<case_id>/items", methods=["DELETE"])
 @api_login(required_priv=["R", "W"])
-def delete_item(case_id: str, **kwargs):
+@parse_parameters(refresh=parse_refresh)
+def delete_item(case_id: str, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs):
     """Delete one or more items from a case
 
     This endpoint removes items from a case's items list. If an item is a hit or
@@ -303,7 +311,7 @@ def delete_item(case_id: str, **kwargs):
         return bad_request(err="All items in 'ids' must be strings.")
 
     try:
-        return ok(case_service.remove_case_items(case_id, ids, force=force))
+        return ok(case_service.remove_case_items(case_id, ids, force=force, refresh=refresh))
     except DataStoreException as e:
         logger.exception("Save Error")
         return internal_error(err=str(e))
@@ -314,7 +322,8 @@ def delete_item(case_id: str, **kwargs):
 @generate_swagger_docs()
 @case_api.route("/<case_id>/items", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
-def rename_item(case_id: str, **kwargs):
+@parse_parameters(refresh=parse_refresh)
+def rename_item(case_id: str, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs):
     """Move an item within a case
 
     Updates the parent of a single item identified by its id.
@@ -349,10 +358,10 @@ def rename_item(case_id: str, **kwargs):
     try:
         result: Case | None = None
         if "name" in body:
-            result = case_service.rename_case_item(case_id, item_id, body["name"])
+            result = case_service.rename_case_item(case_id, item_id, body["name"], refresh=refresh)
 
         if "parent" in body:
-            result = case_service.move_case_item(case_id, item_id, body["parent"])
+            result = case_service.move_case_item(case_id, item_id, body["parent"], refresh=refresh)
 
         if not result:
             return bad_request(err="At least one of 'name' or 'parent' is required.")
@@ -368,7 +377,8 @@ def rename_item(case_id: str, **kwargs):
 @generate_swagger_docs()
 @case_api.route("/<id>/rules", methods=["POST"])
 @api_login(required_priv=["R", "W"])
-def add_rule(id: str, user: User, **kwargs):
+@parse_parameters(refresh=parse_refresh)
+def add_rule(id: str, user: User, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs):
     """Add a correlation rule to a case
 
     Creates a new correlation rule that will match incoming alerts into the case.
@@ -399,7 +409,7 @@ def add_rule(id: str, user: User, **kwargs):
         return bad_request(err="Request body must be a JSON object with rule data.")
 
     try:
-        return ok(case_service.add_case_rule(id, body, user))
+        return ok(case_service.add_case_rule(id, body, user, refresh=refresh))
     except NotFoundException as e:
         return not_found(err=str(e))
     except InvalidDataException as e:
@@ -409,7 +419,10 @@ def add_rule(id: str, user: User, **kwargs):
 @generate_swagger_docs()
 @case_api.route("/<id>/rules/<rule_id>", methods=["DELETE"])
 @api_login(required_priv=["R", "W"])
-def delete_rule(id: str, rule_id: str, user: User, **kwargs):
+@parse_parameters(refresh=parse_refresh)
+def delete_rule(
+    id: str, rule_id: str, user: User, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs
+):
     """Delete a correlation rule from a case
 
     Variables:
@@ -425,7 +438,7 @@ def delete_rule(id: str, rule_id: str, user: User, **kwargs):
     }
     """
     try:
-        return ok(case_service.remove_case_rule(id, rule_id, user))
+        return ok(case_service.remove_case_rule(id, rule_id, user, refresh=refresh))
     except NotFoundException as e:
         return not_found(err=str(e))
 
@@ -433,7 +446,10 @@ def delete_rule(id: str, rule_id: str, user: User, **kwargs):
 @generate_swagger_docs()
 @case_api.route("/<id>/rules/<rule_id>", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
-def update_rule(id: str, rule_id: str, user: User, **kwargs):
+@parse_parameters(refresh=parse_refresh)
+def update_rule(
+    id: str, rule_id: str, user: User, refresh: Literal["true", "false", "wait_for"] | None = None, **kwargs
+):
     """Update a correlation rule on a case
 
     Allows updating individual fields on a rule: enabled, query, destination,
@@ -464,7 +480,7 @@ def update_rule(id: str, rule_id: str, user: User, **kwargs):
         return bad_request(err="Request body must be a JSON object with fields to update.")
 
     try:
-        return ok(case_service.update_case_rule(id, rule_id, body, user))
+        return ok(case_service.update_case_rule(id, rule_id, body, user, refresh=refresh))
     except NotFoundException as e:
         return not_found(err=str(e))
     except InvalidDataException as e:

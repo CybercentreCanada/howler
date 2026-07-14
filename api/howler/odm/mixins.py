@@ -82,7 +82,7 @@ class DatastoreMixin(Generic[ModelType]):
         """
         return datastore()
 
-    def save(self, refresh: Literal["true", "false", "wait_for"] = "wait_for") -> bool:
+    def save(self, refresh: Literal["true", "false", "wait_for"] | None = None) -> bool:
         """Persist the current model instance to the datastore.
 
         Determines the target index from the lowercase class name, extracts the
@@ -90,6 +90,9 @@ class DatastoreMixin(Generic[ModelType]):
         Returns:
             bool: True if the save operation succeeded, False otherwise.
         """
+        if refresh is None:
+            refresh = "wait_for"
+
         index_name = self.__class__.__name__.lower()
         id_field = self.__class__._Model__id_field  # type: ignore[attr-defined]
         current_id = attrgetter(id_field)(self)
