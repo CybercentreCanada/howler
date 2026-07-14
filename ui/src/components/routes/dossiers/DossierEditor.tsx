@@ -65,7 +65,7 @@ const DossierEditor: FC = () => {
   // Permission Check Logic
   const canManageMembership = useMemo(() => {
     if (!user || !dossier) return false;
-    const adminList = (dossier as any).admins || dossier.administrator || [];
+    const adminList = dossier.admins || [];
     const isAdministrator = adminList.includes(user.username) || dossier.owner === user.username;
     return isAdministrator || user.roles?.includes('admin');
   }, [user, dossier]);

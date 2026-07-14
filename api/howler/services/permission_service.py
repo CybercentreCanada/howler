@@ -69,7 +69,7 @@ def verify_privilege_values(
     return existing_item
 
 
-# TODO : Make a new ODM object insted and return an instantiated object
+# TODO : AG : Make a new ODM object insted and return an instantiated object
 def get_require_data_helper(
     priv_change: dict,
 ) -> tuple[HowlerDatastore, str, str] | str:

@@ -446,7 +446,7 @@ def give_privilege(id: str, user: User, **kwargs):
     if isinstance(temp_value, str):
         return bad_request(err=temp_value)
 
-    storage, priv_requested, user_to_add = temp_value
+    storage, priv_requested, user_to_add = temp_value  # TODO : AG : remember this place for the storage section
     result = permission_service.verify_privilege_values(
         item_id=escape(str(id)), level_requested=priv_requested, member_to_modify=user_to_add, item_type=Action
     )
