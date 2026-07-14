@@ -51,9 +51,12 @@ class Related(odm.Model):
     )
 
     def __init__(self, data: dict = None, *args, **kwargs):
-        if data and "id" in data and data["id"] is not None:
+        if data is not None and "id" in data and data["id"] is not None:
+            # Avoid mutating the caller-provided dict
+            data = dict(data)
+
             existing_ids = data.get("ids")
-            if isinstance(existing_ids, list):
+            if isinstance(existing_ids, (list, tuple)):
                 merged_ids = list(existing_ids)
             elif existing_ids is None:
                 merged_ids = []
