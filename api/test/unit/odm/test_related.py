@@ -15,6 +15,12 @@ class TestRelated:
         assert related.id == "indicator-2"
         assert related.ids == ["indicator-1", "indicator-2"]
 
+    def test_related_id_merges_into_existing_ids_tuple(self):
+        related = Related({"id": "indicator-2", "ids": ("indicator-1", "indicator-2")})
+
+        assert related.id == "indicator-2"
+        assert related.ids == ["indicator-1", "indicator-2"]
+
     def test_parent_odm_related_id_key_is_copied_to_related_ids(self):
         hit = Hit({"howler.analytic": "Test Analytic", "howler.hash": "a", "related.id": "indicator-3"})
 
