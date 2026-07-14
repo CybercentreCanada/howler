@@ -1,5 +1,48 @@
 # Howler Releases
 
+## Howler UI `v2.19.0`
+
+- **View Grid Preferences** *(new feature)*: Added list/grid display preferences to views, including configurable grid columns and widths, persisted local settings, view-composer controls, and safeguards for views whose grid configuration is inactive ([#444](https://github.com/CybercentreCanada/howler/pull/444)).
+- **Dossier Tooltips in Hits** *(new feature)*: Added tooltips for dossier information displayed inside hit rows and cards.
+- **Last Assessment Submitter** *(new feature)*: Displays the user who submitted the latest assessment on hits, clears the assessor when an assessment is reassigned or removed, and keeps the UI and API models synchronized ([#406](https://github.com/CybercentreCanada/howler/pull/406)).
+- **In-place Search Result Updates** *(new feature)*: Search results now update in place after entity modifications instead of always issuing another search request; delete and write operations can wait for Elasticsearch refresh and provide consistent success/error feedback ([#401](https://github.com/CybercentreCanada/howler/pull/401)).
+- **Deletion Confirmation Dialogues** *(new feature)*: Added confirmation prompts before deleting actions, dossiers, overviews, templates, views, rules, and analytics ([#390](https://github.com/CybercentreCanada/howler/pull/390)).
+- **Query Summary Graph Toggle** *(new feature)*: Added a user preference to show or hide the query summary graph ([#346](https://github.com/CybercentreCanada/howler/pull/346)).
+- **Template Edit Persistence** *(bugfix)*: Preserved template edits and session state when switching tabs, and removed deleted or saved templates from stale lists ([#361](https://github.com/CybercentreCanada/howler/pull/361)).
+- **Custom Timespan Persistence** *(bugfix)*: Fixed custom search timespans being lost during navigation or reloads ([#388](https://github.com/CybercentreCanada/howler/pull/388)).
+- **Detection Template Removal Handling** *(bugfix)*: Added an error and deletion prompt when a detection's backing template no longer exists ([#362](https://github.com/CybercentreCanada/howler/pull/362)).
+- **Search Refresh Dependency Fix** *(bugfix)*: Search callbacks now react to changed result rows, preventing stale results when a response changes ([#477](https://github.com/CybercentreCanada/howler/pull/477)).
+- **Hostname and Markdown Safety Fix** *(bugfix)*: Hostname parsing in rendered markdown now fails safely instead of producing an invalid result.
+- **Localization Fixes** *(bugfix)*: Corrected several UI localization issues ([#387](https://github.com/CybercentreCanada/howler/pull/387)).
+- **Open Links in New Tabs** *(improvement)*: Added safer, more convenient new-tab behavior for links and clickable source-alert links on hit cards ([#301](https://github.com/CybercentreCanada/howler/pull/301)).
+- **Dependency and Test Maintenance** *(technical update)*: Updated UI dependencies and expanded utility/component test coverage; package updates are grouped here rather than listed individually.
+<!-- The hostname, localization, and test-maintenance changes are included because they affect user-visible behavior or release quality, although they were not all part of a dedicated feature PR. -->
+
+## Howler API `v4.0.0`
+
+- **ODM Inheritance and Plugin Support** *(new feature)*: Added compatibility shims and improved enum/model type handling, `id_field` validation, and caching so plugins can define ODM subclasses ([#331](https://github.com/CybercentreCanada/howler/pull/331)).
+- **Action Execution Queue** *(improvement)*: Added a queue and worker for action execution to limit Elasticsearch query pressure and improve action-service reliability ([#385](https://github.com/CybercentreCanada/howler/pull/385)).
+- **Index Lifecycle Management Support** *(new feature)*: Added configuration and datastore support for ILM, including lifecycle settings, improved collection handling, and integration coverage ([#386](https://github.com/CybercentreCanada/howler/pull/386)).
+- **Reindexing Improvements** *(improvement)*: Refactored the reindexing process for more reliable index and mapping operations ([#416](https://github.com/CybercentreCanada/howler/pull/416)).
+- **Redis Resiliency and Health Checks** *(improvement)*: Upgraded Redis handling, added connection resiliency, and exposed Redis ping status through the health endpoint ([#428](https://github.com/CybercentreCanada/howler/pull/428), [#427](https://github.com/CybercentreCanada/howler/pull/427)).
+- **Domain Validation** *(new feature)*: Added special-use and private top-level domains to domain validation ([#422](https://github.com/CybercentreCanada/howler/pull/422)).
+- **OAuth Client Callbacks** *(new feature)*: Added authentication callbacks for alternative client authentication implementations and corrected related client alert-deduplication behavior ([#392](https://github.com/CybercentreCanada/howler/pull/392)).
+- **Configurable Eureka Discovery** *(new feature)*: Added configuration to enable or disable Eureka discovery and removed the obsolete discovery flag ([#384](https://github.com/CybercentreCanada/howler/pull/384), [#400](https://github.com/CybercentreCanada/howler/pull/400)).
+- **Assessment Assessor Tracking** *(new feature)*: Stores the user who submitted the latest hit assessment and clears the value when the assessment changes ([#406](https://github.com/CybercentreCanada/howler/pull/406)).
+- **Long-Value Schema Updates** *(breaking change)*: Changed `process.pid` and `file.size` from integer to long fields, requiring the corresponding Elasticsearch mappings to be reindexed ([#414](https://github.com/CybercentreCanada/howler/pull/414), [#391](https://github.com/CybercentreCanada/howler/pull/391)).
+- **Search and Datastore Fixes** *(bugfix)*: Preserved bare `*` field-list searches, ignored empty field-list entries, allowed long fields in numeric stats, handled uninitialized dossier mappings, and improved datastore behavior after Elasticsearch certificate resets ([#404](https://github.com/CybercentreCanada/howler/pull/404)).
+- **Audit Logging Fallback** *(bugfix)*: Audit events generated outside a request context now use a safe fallback instead of failing.
+- **Classification Type Corrections** *(bugfix)*: Corrected classification type handling across configuration, ODM serialization, and classification helpers.
+- **Swagger Query Parameter Documentation** *(improvement)*: API documentation now derives query parameter names, requiredness, and Swagger types from endpoint signatures and docstrings, with improved optional-parameter handling ([#485](https://github.com/CybercentreCanada/howler/pull/485)).
+- **API Release and Deployment Updates** *(infrastructure update)*: Updated the API to version 4 to reflect reindexing changes and modernized deployment configuration, including Helm chart alignment and removal of obsolete Elasticsearch deployment templates.
+- **Dependency and Validation Maintenance** *(technical update)*: Updated dependencies across the API, client, and plugins and expanded regression, integration, type-checking, and coverage validation; package updates are grouped here rather than listed individually.
+<!-- The unnumbered fixes are included because they change API correctness or operational behavior, but their commit messages do not reference a pull request. -->
+
+## Howler Client `v2.4.0`
+
+- **Authentication Callbacks** *(new feature)*: Added callbacks for alternative authentication implementations and incorporated general client fixes and updates ([#392](https://github.com/CybercentreCanada/howler/pull/392)).
+- **Client Test and Dependency Maintenance** *(technical update)*: Updated client dependencies and corrected unit-test coverage for the new API/client behavior.
+
 ## Howler UI `v2.18.0`
 
 - **Action Outcome Messages** *(new feature)*: Actions now display an appropriate success or failure message according to the outcome of the operation.
