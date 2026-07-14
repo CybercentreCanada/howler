@@ -73,6 +73,7 @@ def execute(
                     *hit_helper.promote_hit(escalation=escalation),
                     odm_helper.update("howler.assessment", None),
                     odm_helper.update("howler.rationale", None),
+                    odm_helper.update("howler.triaged", None),
                 ],
             )
         else:

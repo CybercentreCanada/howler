@@ -52,6 +52,9 @@ def assess_hit(
     if assessment is None and rationale:
         rationale = None
 
+    # reset the timestamp to None if removing assessment (re-assessing)
+    triaged_timestamp = "NOW" if assessment is not None else None
+
     logger.debug(
         "Updating assessment of %s to %s",
         hit["howler"]["id"] if hit else "unknown",
@@ -67,6 +70,7 @@ def assess_hit(
         odm_helper.update("howler.assessment", assessment),
         odm_helper.update("howler.escalation", escalation),
         odm_helper.update("howler.rationale", rationale, silent=True),
+        odm_helper.update("howler.triaged", triaged_timestamp),
     ]
 
 
