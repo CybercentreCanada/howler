@@ -21,6 +21,7 @@ const ACCEPTED_SORTS = [
   'event.provider',
   'organization.name',
   'howler.score',
+  'howler.triaged',
   CUSTOM
 ];
 
