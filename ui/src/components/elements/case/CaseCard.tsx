@@ -1,16 +1,5 @@
 import { CheckCircleOutline, HourglassBottom, RadioButtonUnchecked, UpdateOutlined } from '@mui/icons-material';
-import {
-  Card,
-  Chip,
-  Divider,
-  Grid,
-  Skeleton,
-  Stack,
-  Tooltip,
-  Typography,
-  useTheme,
-  type CardProps
-} from '@mui/material';
+import { Chip, Divider, Grid, Skeleton, Stack, Tooltip, Typography, useTheme, type CardProps } from '@mui/material';
 import api from 'api';
 import StatusIcon from 'components/elements/case/StatusIcon';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
@@ -22,6 +11,7 @@ import type { Case } from 'models/entities/generated/Case';
 import { useEffect, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { twitterShort } from 'utils/utils';
+import HowlerCard from '../display/HowlerCard';
 
 const STATUS_COLORS = {
   resolved: 'success'
@@ -56,9 +46,8 @@ const CaseCard: FC<{
   }
 
   return (
-    <Card
+    <HowlerCard
       key={_case.case_id}
-      variant="outlined"
       {...slotProps?.card}
       sx={[
         { p: 1, mb: 1, borderColor: theme.palette[STATUS_COLORS[_case.status]]?.main },
@@ -178,7 +167,7 @@ const CaseCard: FC<{
           )}
         </Stack>
       </Stack>
-    </Card>
+    </HowlerCard>
   );
 };
 

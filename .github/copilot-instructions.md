@@ -338,6 +338,20 @@ Always set `id="..."` on elements you need to query by test ID. Do not use `data
 
 ---
 
+### Frontend UI Tests: Flush Fake Timers Directly
+
+Do not use `waitFor` after advancing Vitest fake timers; its polling timers are also paused and the test can time out. Flush the scheduled work inside `act` instead:
+
+```ts
+await act(async () => {
+  await vi.advanceTimersByTimeAsync(200);
+});
+```
+
+Restore real timers in `afterEach` when a test enables fake timers.
+
+---
+
 ### Terminal Output Restriction
 
 **This repository's VS Code settings suppress terminal output from being returned to the agent.** Running commands via the terminal tool will yield no output — the terminal appears to complete with exit code 0 but all stdout/stderr is suppressed.
