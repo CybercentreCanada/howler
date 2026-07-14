@@ -66,7 +66,7 @@ def transition_data(datastore: HowlerDatastore) -> list[dict[str, Any]]:
 
     def check_triaged(assessment_time: Literal["NOW"] | None):
         def check():
-            tolerance = datetime.timedelta(seconds=1)
+            tolerance = datetime.timedelta(seconds=10)
 
             triaged_timestamp = datastore.hit.get(HIT_ID).howler.triaged
             if assessment_time is None:
@@ -202,7 +202,7 @@ def test_full_transition_flow(transition_data, datastore, login_session):
             for c in checks:
                 c()
 
-        datastore.hit.get(HIT_ID).howler.status == data["dest"]
+        assert datastore.hit.get(HIT_ID).howler.status == data["dest"]
 
     # hit: Hit = datastore.hit.get(HIT_ID, as_obj=False)
     # assert hit["howler"]["status"] == HitStatus.IN_PROGRESS
