@@ -1073,7 +1073,6 @@ def test_action_member_privilege(datastore: HowlerDatastore, user_session: dict)
     # Member should not be able to remove admin/owner/member
     add_action_permission_every_role(owner_uname, owner_session, action_id, host, action)
     datastore.action.commit()
-    action = datastore.action.get(action_id, as_obj=True)
 
     # Fix: Have the member try to remove the OWNER from roles, not themselves
     for membership in ("admins", "members"):

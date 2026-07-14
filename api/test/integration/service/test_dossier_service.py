@@ -68,18 +68,17 @@ def test_update_dossier_fails(datastore: HowlerDatastore):
     user = datastore.user.search("uname:admin")["items"][0]
 
     with pytest.raises(NotFoundException):
-        dossier_service.update_dossier("potatopotatopotato", {"owner": ["test"]}, user).owner == "test"
-
+        dossier_service.update_dossier("potatopotatopotato", {"owner": "test"}, user)
     existing_dossier: Dossier = datastore.dossier.search("type:personal", as_obj=True)["items"][0]
 
     with pytest.raises(ForbiddenException):
         other_user = datastore.user.search(f"-uname:{existing_dossier.owner} AND -type:admin")["items"][0]
-        dossier_service.update_dossier(existing_dossier.dossier_id, {"owner": [other_user.uname]}, other_user)
+        dossier_service.update_dossier(existing_dossier.dossier_id, {"owner": other_user.uname}, other_user)
 
     existing_dossier = datastore.dossier.search("type:global", as_obj=True)["items"][0]
     with pytest.raises(ForbiddenException):
         other_user = datastore.user.search(f"-uname:{existing_dossier.owner} AND -type:admin")["items"][0]
-        dossier_service.update_dossier(existing_dossier.dossier_id, {"owner": [other_user.uname]}, other_user)
+        dossier_service.update_dossier(existing_dossier.dossier_id, {"owner": other_user.uname}, other_user)
 
     user = datastore.user.search(f"uname:{existing_dossier.owner}")["items"][0]
     with pytest.raises(InvalidDataException):
