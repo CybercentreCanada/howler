@@ -206,7 +206,7 @@ DEFAULT_ASSIGNMENT = "unassigned"
 class HowlerData(odm.Model):
     id: str = odm.UUID(description="A UUID for this hit.")
     analytic: str = odm.CaseInsensitiveKeyword(description="Title of the analytic.")
-    assignment: str | None = odm.Keyword(
+    assignment: str = odm.Keyword(
         description="Unique identifier of the assigned user.",
         default=DEFAULT_ASSIGNMENT,
     )
