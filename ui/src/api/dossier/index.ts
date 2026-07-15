@@ -23,13 +23,5 @@ export const del = (id: string, refresh?: HowlerRefreshParam): Promise<void> => 
   return hdelete(uri(id), undefined, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
-export const permission = {
-  put: (id: string, data: { privilege: string; user_id: string }) => {
-    return hput(joinAllUri(uri(id), 'permission'), data);
-  },
-  delete: (id: string, data: { privilege: string; user_id: string }) => {
-    return hdelete(joinAllUri(uri(id), 'permission'), data);
-  }
-};
-
+export * as permission from 'api/dossier/permission';
 export { hit };

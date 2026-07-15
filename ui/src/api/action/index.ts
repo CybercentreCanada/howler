@@ -1,7 +1,6 @@
 import { hdelete, hpatch, hpost, hput, joinAllUri, joinUri, uri as parentUri, type HowlerRefreshParam } from 'api';
 import * as execute from 'api/action/execute';
 import * as operations from 'api/action/operations';
-import * as permission from 'api/action/permission';
 import { action } from 'api/search';
 import type { Action } from 'models/entities/generated/Action';
 
@@ -34,4 +33,5 @@ export const del = (id: string, refresh?: HowlerRefreshParam): Promise<void> => 
   return hdelete(uri(id), undefined, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
-export { execute, operations, permission };
+export * as permission from 'api/action/permission';
+export { execute, operations };

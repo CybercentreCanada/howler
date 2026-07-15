@@ -23,7 +23,7 @@ import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { MembershipManagement } from 'components/elements/MembershipManagement';
 import useMyApi from 'components/hooks/useMyApi';
 import useMySnackbar from 'components/hooks/useMySnackbar';
-import { isEqual } from 'lodash-es';
+import { isEqual, omit, uniqBy } from 'lodash-es';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import { memo, useCallback, useEffect, useMemo, useState, type FC } from 'react';
@@ -157,6 +157,25 @@ const DossierEditor: FC = () => {
         // You are missing an icon, or the specified icon does not exist for pivot with label <label>
         return t('route.dossiers.manager.validation.error.pivots.icon', { label: pivot.label[i18n.language] });
       }
+
+      if (!pivot.mappings || pivot.mappings.length < 1) {
+        continue;
+      }
+
+      if ((pivot.mappings ?? []).length !== uniqBy(pivot.mappings ?? [], 'key').length) {
+        // You have a duplicate for pivot with label <label>
+        return t('route.dossiers.manager.validation.error.pivots.duplicate', { label: pivot.label[i18n.language] });
+      }
+
+      if (pivot.mappings?.some(mapping => !mapping.key)) {
+        // You have not configured a key for a mapping for pivot with label <label>
+        return t('route.dossiers.manager.validation.error.pivots.key', { label: pivot.label[i18n.language] });
+      }
+
+      if (pivot.mappings?.some(mapping => !mapping.field || (mapping.field === 'custom' && !mapping.custom_value))) {
+        // You have not configured a field or custom value for a mapping for pivot with label <label>
+        return t('route.dossiers.manager.validation.error.pivots.field', { label: pivot.label[i18n.language] });
+      }
     }
 
     return null;
@@ -172,17 +191,9 @@ const DossierEditor: FC = () => {
         showSuccessMessage(t('route.dossiers.manager.create.success'));
         navigate(`/dossiers/${result.dossier_id}/edit`);
       } else {
-        // Construct a clean payload with ONLY permitted fields.
-        // Removed 'owner' to prevent accidental ownership transfers via PUT.
-        const updatePayload = {
-          title: dossier.title,
-          query: dossier.query,
-          leads: dossier.leads,
-          pivots: dossier.pivots,
-          type: dossier.type
-        };
-
-        const updated = await dispatchApi(api.dossier.put(dossier.dossier_id, updatePayload));
+        const updated = await dispatchApi(
+          api.dossier.put(dossier.dossier_id, omit(dossier, ['dossier_id', 'id', 'owner']))
+        );
         setDossier(updated);
         showSuccessMessage(t('route.dossiers.manager.edit.success'));
       }
@@ -227,12 +238,14 @@ const DossierEditor: FC = () => {
   }, [dispatchApi, dossier.query, setQuery]);
 
   useEffect(() => {
-    if (searchParams.get('tab') !== tab) {
-      searchParams.set('tab', tab);
+    if (searchParams.get('tab') === tab) {
+      return;
     }
 
-    setSearchParams(searchParams, { replace: true });
-  }, [setSearchParams, tab]);
+    const nextSearchParams = new URLSearchParams(searchParams);
+    nextSearchParams.set('tab', tab);
+    setSearchParams(nextSearchParams, { replace: true });
+  }, [searchParams, setSearchParams, tab]);
 
   return (
     <PageCenter maxWidth="1000px" width="100%" textAlign="left" height="97%">
