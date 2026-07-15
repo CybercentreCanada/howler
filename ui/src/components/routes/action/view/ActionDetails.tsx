@@ -157,7 +157,7 @@ const ActionDetails = () => {
           {((action?.owner === user.username && editRoles) ||
             (user.roles?.includes('admin') && editRoles) ||
             (adminList.includes(user.username) && editRoles) ||
-            (action?.member?.includes(user.username) && editRoles)) && (
+            (action?.members?.includes(user.username) && editRoles)) && (
             <Button
               startIcon={<Edit />}
               size="small"
@@ -238,7 +238,7 @@ const ActionDetails = () => {
           })}
       </Stack>
 
-      <MembershipManagement open={memberModalOpen} onClose={() => setMemberModalOpen(false)} actionId={params.id} />
+      <MembershipManagement open={memberModalOpen} onClose={() => setMemberModalOpen(false)} entityId={params.id} />
     </PageCenter>
   );
 };

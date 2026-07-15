@@ -1,5 +1,3 @@
-from markupsafe import escape
-
 from howler.common.exceptions import (
     HowlerInvalidPermissionException,
     InvalidDataException,
@@ -29,21 +27,6 @@ def __is_allowed_to_change(level_requested: str, user: User, existing_item: Owne
     if level_requested == "owner" and not in_owner:
         return False
     return True
-
-
-def get_require_data_helper(
-    priv_change: dict,
-) -> tuple[str, str]:
-    """Utils to get the requested information from the API"""
-    if not isinstance(priv_change, dict):
-        raise InvalidDataException("Invalid data format")
-
-    if not {"privilege", "user_id"}.issubset(priv_change.keys()):
-        raise InvalidDataException("Invalid data format. Need new privilege and user_id")
-
-    priv_requested: str = escape(str(priv_change["privilege"]))
-    user_to_move: str = escape(str(priv_change["user_id"]))
-    return priv_requested, user_to_move
 
 
 def set_privilege(

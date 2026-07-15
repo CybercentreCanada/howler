@@ -3,6 +3,7 @@ import * as execute from 'api/action/execute';
 import * as operations from 'api/action/operations';
 import { action } from 'api/search';
 import type { Action } from 'models/entities/generated/Action';
+import { createPermissionApi } from '../../utils/permission';
 
 export const uri = (id?: string) => {
   return id ? joinAllUri(parentUri(), 'action', id) : joinUri(parentUri(), 'action');
@@ -33,5 +34,6 @@ export const del = (id: string, refresh?: HowlerRefreshParam): Promise<void> => 
   return hdelete(uri(id), undefined, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
-export * as permission from 'api/action/permission';
+export const permission = createPermissionApi(uri, joinAllUri, hput, hdelete);
+
 export { execute, operations };

@@ -16,6 +16,7 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import SearchException
+from howler.odm.models.permission_request import PermissionRequest
 from howler.odm.models.user import User
 from howler.odm.models.view import View
 from howler.security import api_login
@@ -340,9 +341,12 @@ def give_privilege(view_id: str, user: User, **kwargs):
     }
     """
     try:
-        priv_requested, user_to_add = permission_service.get_require_data_helper(request.json)
-    except InvalidDataException as e:
-        return bad_request(err=e.message)
+        permission_request = PermissionRequest(request.json)
+    except ValueError as e:
+        return bad_request(err=str(e))
+
+    priv_requested = escape(str(permission_request.privilege))
+    user_to_add = escape(str(permission_request.user_id))
 
     storage = datastore()
 
@@ -399,9 +403,12 @@ def revoke_privilege(view_id: str, user: User, **kwargs):
         }
     """
     try:
-        priv_requested, user_to_remove = permission_service.get_require_data_helper(request.json)
-    except InvalidDataException as e:
-        return bad_request(err=e.message)
+        permission_request = PermissionRequest(request.json)
+    except ValueError as e:
+        return bad_request(err=str(e))
+
+    priv_requested = escape(str(permission_request.privilege))
+    user_to_remove = escape(str(permission_request.user_id))
 
     storage = datastore()
 
