@@ -24,10 +24,6 @@ const EventViewer: FC<{ event?: Event; eventId?: string }> = ({ event: provided,
     }
   }, [dispatchApi, eventId]);
 
-  if (!event) {
-    return;
-  }
-
   return <Box p={1}>{event ? <ObjectDetails obj={event} /> : <Skeleton height={120} />}</Box>;
 };
 
