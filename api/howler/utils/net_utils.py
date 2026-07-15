@@ -20,7 +20,8 @@ def generate_params(request: Request, fields: list[str], multi_fields: list[str]
         params = {}
 
     if request.method == "POST":
-        req_data = request.get_json(silent=True) or {"query": "*:*"}
+        parsed = request.get_json(silent=True)
+        req_data = {"query": "*:*"} if parsed is None else parsed
 
         params = {
             **params,

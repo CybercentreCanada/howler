@@ -30,10 +30,20 @@ def main():  # noqa: C901
 
         time.sleep(5)
         print("Running pytest")
-        _path = sys.argv[1] if len(sys.argv) > 1 else "test"
+        pytest_args = sys.argv[1:] if len(sys.argv) > 1 else ["test"]
+        pytest_cmd = [
+            "pytest",
+            "--cov=howler",
+            "--cov-branch",
+            "--cov-config=.coveragerc.pytest",
+            "-rFE",
+            "-v",
+            *pytest_args,
+        ]
+        print(">", shlex.join(pytest_cmd))
 
         pytest = subprocess.Popen(
-            prep_command(f"pytest --cov=howler --cov-branch --cov-config=.coveragerc.pytest -rFE -v {_path}"),
+            pytest_cmd,
             stdout=subprocess.PIPE,
         )
 

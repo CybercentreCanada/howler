@@ -4,10 +4,9 @@ from howler import odm
 from howler.common.exceptions import HowlerValueError
 from howler.config import CLASSIFICATION
 from howler.odm.constants import CaseEscalation, Status
+from howler.odm.howler_enum import HowlerEnum
 from howler.odm.mixins import DatastoreMixin
 from howler.utils.compat import StrEnum
-
-CASE_ITEM_TYPES = {"event", "hit", "case", "lead", "reference", "folder", "markdown"}
 
 RULE_INDEX_TYPES = {"hit", "event"}
 
@@ -23,7 +22,7 @@ class RuleIndexTypes(StrEnum):
     EVENT = "event"
 
 
-class CaseItemTypes(StrEnum):
+class CaseItemTypes(StrEnum, HowlerEnum):
     """Enumeration of valid case item types.
 
     Case items represent different types of objects that can be associated with a case.

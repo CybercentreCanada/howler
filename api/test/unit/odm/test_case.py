@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import pytest
 
 from howler.common.exceptions import HowlerValueError
-from howler.odm.models.case import CASE_ITEM_TYPES, Case, CaseEnrichment, CaseItem, CaseLog, CaseRule, CaseTask
+from howler.odm.models.case import Case, CaseEnrichment, CaseItem, CaseItemTypes, CaseLog, CaseRule, CaseTask
 from howler.odm.randomizer import random_model_obj
 
 
@@ -79,7 +79,7 @@ class TestCaseItem:
 
         assert item.value == "obs-001"
 
-    @pytest.mark.parametrize("item_type", sorted(CASE_ITEM_TYPES))
+    @pytest.mark.parametrize("item_type", sorted(CaseItemTypes.list()))
     def test_valid_item_types(self, item_type):
         """All declared CASE_ITEM_TYPES are accepted by the enum field."""
         if item_type == "folder":
@@ -733,7 +733,7 @@ class TestCaseItemIdParent:
         assert item.type == "markdown"
         assert item.value == "# Hello\n\nWorld"
 
-    @pytest.mark.parametrize("item_type", sorted(CASE_ITEM_TYPES))
+    @pytest.mark.parametrize("item_type", sorted(CaseItemTypes.list()))
     def test_all_item_types_accepted(self, item_type):
         """All CASE_ITEM_TYPES including folder and markdown are accepted."""
         if item_type == "folder":
