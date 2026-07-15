@@ -55,7 +55,7 @@ EVENT_OUTCOME = ["failure", "success", "unknown"]
     store=True,
     description="The event fields are used for context information about the log or metric event itself.",
 )
-class Event(odm.Model):
+class ECSEvent(odm.Model):
     action = odm.Optional(odm.Keyword(description="The action captured by the event."))
     category = odm.Optional(
         odm.List(

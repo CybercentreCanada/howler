@@ -19,7 +19,7 @@ import PageCenter from 'commons/components/pages/PageCenter';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { Check, DarkMode, Delete, SsidChart, WbSunny } from '@mui/icons-material';
+import { Check, DarkMode, Delete, WbSunny } from '@mui/icons-material';
 import { useApp } from 'commons/components/app/hooks';
 import AppInfoPanel from 'commons/components/display/AppInfoPanel';
 import useThemeBuilder from 'commons/components/utils/hooks/useThemeBuilder';
@@ -35,7 +35,7 @@ import type { Overview } from 'models/entities/generated/Overview';
 import { useSearchParams } from 'react-router-dom';
 import hitsData from 'utils/hit.json';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
-import OverviewEditor from './OverviewEditor';
+import MarkdownEditor from '../../elements/MarkdownEditor';
 import { useStartingTemplate } from './startingTemplate';
 
 const OverviewViewer = () => {
@@ -261,24 +261,18 @@ const OverviewViewer = () => {
               )}
             />
           </FormControl>
-          {!analytics.find(_analytic => _analytic.name === analytic)?.rule ? (
-            <FormControl sx={{ minWidth: { sm: '200px' } }} disabled={!analytic}>
-              <Autocomplete
-                id="detection"
-                options={['ANY', ...detections.sort()]}
-                getOptionLabel={option => option}
-                value={detection ?? ''}
-                onChange={(_event, newValue) => setDetection(newValue)}
-                renderInput={autocompleteDetectionParams => (
-                  <TextField {...autocompleteDetectionParams} label={t('route.overviews.detection')} size="small" />
-                )}
-              />
-            </FormControl>
-          ) : (
-            <Tooltip title={t('route.overviews.rule.explanation')}>
-              <SsidChart color="info" sx={{ alignSelf: 'center' }} />
-            </Tooltip>
-          )}
+          <FormControl sx={{ minWidth: { sm: '200px' } }} disabled={!analytic}>
+            <Autocomplete
+              id="detection"
+              options={['ANY', ...detections.sort()]}
+              getOptionLabel={option => option}
+              value={detection ?? ''}
+              onChange={(_event, newValue) => setDetection(newValue)}
+              renderInput={autocompleteDetectionParams => (
+                <TextField {...autocompleteDetectionParams} label={t('route.overviews.detection')} size="small" />
+              )}
+            />
+          </FormControl>
           {selectedOverview && (
             <Button variant="outlined" startIcon={<Delete />} onClick={onDelete}>
               {t('button.delete')}
@@ -342,7 +336,7 @@ const OverviewViewer = () => {
                   pr: 1.5
                 }}
               >
-                <OverviewEditor height="100%" content={content} setContent={setContent} />
+                <MarkdownEditor height="100%" content={content} setContent={setContent} />
               </Box>
             </Box>
             <Box

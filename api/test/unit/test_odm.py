@@ -4,7 +4,7 @@ import os
 import pytest
 
 from howler.common.classification import InvalidClassification
-from howler.common.exceptions import HowlerException, HowlerTypeError
+from howler.common.exceptions import HowlerException, HowlerTypeError, HowlerValueError
 from howler.odm import (
     UUID,
     Classification,
@@ -22,6 +22,7 @@ from howler.odm import (
     flat_to_nested,
     model,
 )
+from howler.odm.base import Long
 from howler.odm.models.ecs.client import Client
 from howler.odm.models.ecs.email import Email
 
@@ -1116,3 +1117,39 @@ def test_model_inheritance_no_cache_skips_cache():
     # Cache object should not have been replaced by the no_cache call
     cached = NoCacheModel.fields()
     assert cached is not result, "no_cache=True result should be a fresh dict, not the stored cache"
+
+
+def test_integer_min_max():
+    """Test the the minimum and maximum values for an odm.Integer are enforced"""
+
+    @model(index=True, store=True, description="IntegerMinMaxTest")
+    class IntegerModel(Model):
+        val: int = Integer(min=1, max=3)  # type: ignore
+
+    # test min
+    with pytest.raises(HowlerValueError):
+        IntegerModel({"val": 0})
+
+    # test max
+    with pytest.raises(HowlerValueError):
+        IntegerModel({"val": 5})
+
+    assert IntegerModel({"val": 2}).val == 2
+
+
+def test_long_min_max():
+    """Test the the minimum and maximum values for an odm.Integer are enforced"""
+
+    @model(index=True, store=True, description="LongMinMaxTest")
+    class LongModel(Model):
+        val: int = Long(min=1, max=3)  # type: ignore
+
+    # test min
+    with pytest.raises(HowlerValueError):
+        LongModel({"val": 0})
+
+    # test max
+    with pytest.raises(HowlerValueError):
+        LongModel({"val": 5})
+
+    assert LongModel({"val": 2}).val == 2

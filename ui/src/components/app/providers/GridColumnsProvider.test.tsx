@@ -3,8 +3,8 @@ import { useContext, type ReactNode } from 'react';
 import { setupContextSelectorMock, setupLocalStorageMock, setupReactRouterMock } from 'tests/mocks';
 import { StorageKey } from 'utils/constants';
 import GridColumnsProvider, { GridColumnsContext } from './GridColumnsProvider';
-import { HitSearchContext, type HitSearchContextType } from './HitSearchProvider';
 import { ParameterContext, type ParameterContextType } from './ParameterProvider';
+import { RecordSearchContext, type RecordSearchContextType } from './RecordSearchProvider';
 import { ViewContext, type ViewContextType } from './ViewProvider';
 
 setupContextSelectorMock();
@@ -21,7 +21,7 @@ const mockViewsContext: Partial<ViewContextType> = {
   getCurrentViews: mockGetCurrentViews
 };
 
-const mockHitSearchContext: Partial<HitSearchContextType> = {
+const mockRecordSearchContext: Partial<RecordSearchContextType> = {
   setDisplayType: mockSetDisplayType
 };
 
@@ -35,9 +35,9 @@ const makeWrapper = (parameterViewIds: string[] = [], routeId?: string) => {
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <ParameterContext.Provider value={parameterContextValue as ParameterContextType}>
       <ViewContext.Provider value={mockViewsContext as ViewContextType}>
-        <HitSearchContext.Provider value={mockHitSearchContext as HitSearchContextType}>
+        <RecordSearchContext.Provider value={mockRecordSearchContext as RecordSearchContextType}>
           <GridColumnsProvider viewSource={routeId ? 'path' : 'params'}>{children}</GridColumnsProvider>
-        </HitSearchContext.Provider>
+        </RecordSearchContext.Provider>
       </ViewContext.Provider>
     </ParameterContext.Provider>
   );

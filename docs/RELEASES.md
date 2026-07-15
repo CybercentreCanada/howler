@@ -16,7 +16,15 @@
 - **Localization Fixes** *(bugfix)*: Corrected several UI localization issues ([#387](https://github.com/CybercentreCanada/howler/pull/387)).
 - **Open Links in New Tabs** *(improvement)*: Added safer, more convenient new-tab behavior for links and clickable source-alert links on hit cards ([#301](https://github.com/CybercentreCanada/howler/pull/301)).
 - **Dependency and Test Maintenance** *(technical update)*: Updated UI dependencies and expanded utility/component test coverage; package updates are grouped here rather than listed individually.
-<!-- The hostname, localization, and test-maintenance changes are included because they affect user-visible behavior or release quality, although they were not all part of a dedicated feature PR. -->
+- **Case Viewer Shell** *(new feature)*: Added the core case workspace shell for opening, browsing, and managing a case from one place, including the viewer, dashboard, details, overview, and supporting panels.
+- **Case Navigation and Structure** *(new feature)*: Added the sidebar, folder tree, root drop zone, folder context menu, and item pages so case content can be organized hierarchically instead of as a flat bundle of alerts.
+- **Add and Create Flow** *(new feature)*: Added the create case modal, add-to-case modal, and add-record-to-case modal so cases can be created and populated from the UI without bouncing between workflows.
+- **Case Item Operations** *(new feature)*: Added moving items between folders, renaming case folders, deleting items, and handling related case links so analysts can reshape a case as it evolves.
+- **Evidence and Observable Views** *(new feature)*: Added dedicated observables, alert, related-case, and markdown views so case content can show alerts, supporting evidence, and context-specific rendering.
+- **Case Search and Filters** *(improvement)*: Improved case search with fuzzy matching, date/status/assignee filters, and better sidebar-driven filtering so large cases remain navigable.
+- **Case Timeline and Tasks** *(new feature)*: Added the case timeline page and task panel to show case progression, task state, and triage activity over time.
+- **Case Rules and Resolution** *(new feature)*: Added the case rules page and resolve modal flow, including multistage triage and the ability to change case escalation during case handling.
+- **Case UI Consistency** *(improvement)*: Standardized observable terminology and related UI interactions across the case pages so the overall experience behaves like a unified incident-management workspace.
 
 ## Howler API `v4.0.0`
 
@@ -40,7 +48,14 @@
 - **Swagger Query Parameter Documentation** *(improvement)*: API documentation now derives query parameter names, requiredness, and Swagger types from endpoint signatures and docstrings, with improved optional-parameter handling ([#485](https://github.com/CybercentreCanada/howler/pull/485)).
 - **API Release and Deployment Updates** *(infrastructure update)*: Updated the API to version 4 to reflect reindexing changes and modernized deployment configuration, including Helm chart alignment and removal of obsolete Elasticsearch deployment templates.
 - **Dependency and Validation Maintenance** *(technical update)*: Updated dependencies across the API, client, and plugins and expanded regression, integration, type-checking, and coverage validation; package updates are grouped here rather than listed individually.
-<!-- The unnumbered fixes are included because they change API correctness or operational behavior, but their commit messages do not reference a pull request. -->
+- **Case Correlation Rules** *(new feature)*: Added backend support for creating and updating case correlation rules, including validation that `expire_after_resolved` is only allowed when a finite timeframe exists.
+- **Incident-Compatible Hierarchies** *(new feature)*: Added the case-backed hierarchical item model needed to represent an incident with multiple alerts, folders, and supporting evidence instead of a single flat bundle.
+- **Add to Case Automation** *(new feature)*: Added the case automation action that can search for matching alerts and append them into a case with configurable item names, paths, and titles.
+- **Bundle Migration Compatibility** *(technical update)*: Reworked the legacy bundle add/remove actions so they resolve through case storage, preserving older automation while the incident model replaces bundles.
+- **Case Item Services** *(technical update)*: Added service-layer support for case item creation, removal, parent-folder resolution, reference handling, and duplicate/skipped item behavior.
+- **Case API Surface** *(technical update)*: Updated the API blueprint, viewer query endpoints, and websocket/comms plumbing required for the new case workflow and case viewer screens.
+- **Case Model and Access Support** *(technical update)*: Added backend model and datastore updates for case-aware operations, including case lookup, item traversal, and related metadata used by the UI.
+- **Case Workflow Validation** *(technical update)*: Added service validation and workflow safeguards so rule and automation behavior stays consistent when cases are created, updated, or resolved.
 
 ## Howler Client `v2.4.0`
 

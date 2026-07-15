@@ -30,7 +30,7 @@ Les index suivants peuvent être remplis avec des données de test :
 - **templates** - Modèles d'affichage de hits pour différentes analytiques et détections
 - **overviews** - Modèles de vue d'ensemble basés sur Markdown avec support Handlebars
 - **views** - Requêtes de recherche et filtres sauvegardés
-- **hits** - Données d'alertes/détections incluant des bundles
+- **hits** - Données d'alertes/détections
 - **analytics** - Définitions d'analytiques avec règles et paramètres de triage
 - **actions** - Configurations d'actions automatisées
 - **dossiers** - Dossiers d'enquête
@@ -69,8 +69,6 @@ Par défaut, le script génère **200 hits aléatoires** avec des données réal
 - Assignations aléatoires aux utilisateurs
 - Données d'évaluation (escalades et niveaux de scrutiny)
 - Catégories d'événements et métadonnées
-
-Le script crée également des **bundles** - groupes de hits liés ensemble.
 
 ### Analytiques
 

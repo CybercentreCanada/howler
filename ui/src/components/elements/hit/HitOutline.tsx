@@ -14,14 +14,15 @@ import DefaultOutline from './outlines/DefaultOutline';
 
 export const DEFAULT_FIELDS = ['event.created', 'howler.id', 'howler.hash'];
 
-const HitOutline: FC<{ hit: WithMetadata<Hit>; layout: HitLayout; forceAllFields?: boolean }> = ({
+const HitOutline: FC<{ hit: WithMetadata<Hit>; lazy?: boolean; layout: HitLayout; forceAllFields?: boolean }> = ({
   hit,
   layout,
+  lazy = false,
   forceAllFields = false
 }) => {
   const { t } = useTranslation();
 
-  const { getMatchingTemplate } = useMatchers();
+  const { getMatchingTemplate } = useMatchers(lazy);
 
   const [templateFieldCount] = useMyLocalStorageItem(StorageKey.TEMPLATE_FIELD_COUNT, null);
 
@@ -50,7 +51,7 @@ const HitOutline: FC<{ hit: WithMetadata<Hit>; layout: HitLayout; forceAllFields
         fields: DEFAULT_FIELDS
       });
     }
-  }, [hit, layout, template, templateFieldCount]);
+  }, [forceAllFields, hit, layout, template, templateFieldCount]);
 
   return (
     <Box sx={{ py: 1, width: '100%', pr: 2 }}>

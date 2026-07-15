@@ -33,12 +33,12 @@ from howler.datastore.operations import OdmHelper
 from howler.helper.hit import assess_hit
 from howler.helper.oauth import VALID_CHARS
 from howler.odm.base import Keyword
-from howler.odm.helper import generate_useful_dossier, generate_useful_hit
+from howler.odm.helper import generate_useful_case, generate_useful_dossier, generate_useful_event, generate_useful_hit
 from howler.odm.models.action import Action
 from howler.odm.models.analytic import Analytic, Comment, Notebook, TriageOptions
 from howler.odm.models.ecs.event import EVENT_CATEGORIES
 from howler.odm.models.hit import Hit
-from howler.odm.models.howler_data import Assessment, Escalation, HitStatus, Scrutiny
+from howler.odm.models.howler_data import Assessment, Escalation, Scrutiny, Status
 from howler.odm.models.overview import Overview
 from howler.odm.models.template import Template
 from howler.odm.models.user import User
@@ -323,6 +323,8 @@ def wipe_users(ds):
     """Wipe the users index"""
     ds.user.wipe()
     ds.user_avatar.wipe()
+    ds.user.commit()
+    ds.user_avatar.commit()
 
 
 def create_templates(ds: HowlerDatastore):
@@ -496,22 +498,6 @@ def create_views(ds: HowlerDatastore):
         view,
     )
 
-    view = View(
-        {
-            "title": "Howler Bundles",
-            "query": "howler.is_bundle:true",
-            "type": "readonly",
-            "owner": "none",
-        }
-    )
-
-    view = run_modifications("view", view)
-
-    ds.view.save(
-        view.view_id,
-        view,
-    )
-
     fields = Hit.flat_fields()
     key_list = [key for key in fields.keys() if isinstance(fields[key], Keyword)]
     for _ in range(10):
@@ -540,12 +526,43 @@ def wipe_views(ds):
     ds.view.wipe()
 
 
-def create_hits(ds: HowlerDatastore, hit_count: int = 200):
-    """Create some random hits"""
+def create_events(ds: HowlerDatastore, event_count: int = 200):
+    """Create random events in the datastore.
+
+    Args:
+        ds (HowlerDatastore): The datastore instance to save events to.
+        event_count (int, optional): Number of events to create. Defaults to 200.
+    """
     lookups = loader.get_lookups()
     users = ds.user.search("*:*")["items"]
+    for event_index in range(event_count):
+        event = generate_useful_event(lookups, [user.uname for user in users], prune=False)
+        ds.event.save(event.howler.id, event)
+
+        if event_index % 25 == 0 and "pytest" not in sys.modules:
+            logger.info("\tCreated %s/%s", event_index, event_count)
+
+    logger.info(
+        "%s total events in datastore",
+        ds.event.search(query="howler.id:*", track_total_hits=True, rows=0)["total"],
+    )
+
+
+def create_hits(ds: HowlerDatastore, hit_count: int = 200):
+    """Create some random records"""
+    lookups = loader.get_lookups()
+    users = ds.user.search("*:*")["items"]
+    event_ids = [obs["howler"]["id"] for obs in ds.event.search("howler.id:*", rows=200, as_obj=False)["items"]]
+    created_hit_ids: list[str] = []
+    hit_idx = 0
     for hit_idx in range(hit_count):
-        hit = generate_useful_hit(lookups, [user.uname for user in users], prune_hit=False)
+        hit = generate_useful_hit(
+            lookups,
+            [user.uname for user in users],
+            prune_hit=False,
+            hit_ids=created_hit_ids,
+            event_ids=event_ids,
+        )
 
         # Ensure the first 20 hits have unrestricted classification for test access
         if hit_idx < 20:
@@ -568,6 +585,7 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
             )
 
         ds.hit.save(hit.howler.id, hit)
+        created_hit_ids.append(hit.howler.id)
         analytic_service.save_from_hits(hit, random.choice(users))
         ds.analytic.commit()
 
@@ -586,7 +604,7 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
                         "howler.assignment",
                         user.get("uname", user.get("username", None)),
                     ),
-                    hit_helper.update("howler.status", HitStatus.RESOLVED),
+                    hit_helper.update("howler.status", Status.RESOLVED),
                 ],
             )
 
@@ -603,38 +621,43 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
     )
 
 
-def create_bundles(ds: HowlerDatastore):
-    """Create some random bundles"""
-    lookups = loader.get_lookups()
-    users = [user.uname for user in ds.user.search("*:*")["items"]]
-
-    hits = {}
-
-    for i in range(3):
-        bundle_hit: Hit = generate_useful_hit(lookups, users)
-        bundle_hit.howler.is_bundle = True
-        bundle_hit.classification = classification.UNRESTRICTED
-
-        for hit in ds.hit.search("howler.is_bundle:false", rows=randint(3, 10), offset=(i * 2))["items"]:
-            if hit.howler.id not in hits:
-                hits[hit.howler.id] = hit
-
-            bundle_hit.howler.hits.append(hit.howler.id)
-            hits[hit.howler.id].howler.bundles.append(bundle_hit.howler.id)
-
-        analytic_service.save_from_hits(bundle_hit, random.choice(ds.user.search("*:*")["items"]))
-        bundle_hit.howler.bundle_size = len(bundle_hit.howler.hits)
-        ds.hit.save(bundle_hit.howler.id, bundle_hit)
-
-    for hit in hits.values():
-        ds.hit.save(hit.howler.id, hit)
-
-    ds.hit.commit()
-
-
 def wipe_hits(ds):
     """Wipe the hits index"""
     ds.hit.wipe()
+
+
+def wipe_events(ds):
+    """Wipe the events index"""
+    ds.event.wipe()
+
+
+def create_cases(ds: HowlerDatastore, num_cases: int = 5):
+    """Create random cases using references to random alerts and events."""
+    generated_case_ids: list[str] = []
+
+    for _ in range(num_cases):
+        case = generate_useful_case(ds, generated_case_ids)
+
+        case = run_modifications("case", case)
+
+        ds.case.save(case.case_id, case)
+        generated_case_ids.append(case.case_id)
+
+        case_hit_ids = list({item.value for item in case.items if item.type == "hit"})
+        case_event_ids = list({item.value for item in case.items if item.type == "event"})
+
+        for hit_id in case_hit_ids:
+            ds.hit.update(hit_id, [hit_helper.list_add("howler.related", case.case_id)])
+
+        for event_id in case_event_ids:
+            ds.event.update(event_id, [hit_helper.list_add("howler.related", case.case_id)])
+
+    ds.case.commit()
+
+
+def wipe_cases(ds):
+    """Wipe the cases index"""
+    ds.case.wipe()
 
 
 def random_escalations() -> list[Escalation]:
@@ -694,6 +717,7 @@ def create_analytics(ds: HowlerDatastore, num_analytics: int = 10):
 
     fields = Hit.flat_fields()
     key_list = [key for key in fields.keys() if isinstance(fields[key], Keyword)]
+    assessments = Assessment.list()
     for _ in range(num_analytics):
         a: Analytic = random_model_obj(cast(Any, Analytic))
         a.name = " ".join([get_random_word().capitalize() for _ in range(random.randint(1, 3))])
@@ -703,8 +727,6 @@ def create_analytics(ds: HowlerDatastore, num_analytics: int = 10):
         a.rule = None
         a.rule_crontab = None
         a.rule_type = None
-
-        assessments = Assessment.list()
 
         cast(TriageOptions, a.triage_settings).valid_assessments = list(
             set(random.sample(assessments, counts=([3] * len(assessments)), k=random.randint(1, len(assessments) * 3)))
@@ -805,7 +827,7 @@ def create_actions(ds: HowlerDatastore, num_actions: int = 30):
 
             for step in available_operations[operation_id].specification()["steps"]:
                 for key in step["args"].keys():
-                    potential_values = step["options"].get(key, None)
+                    potential_values = step.get("options", {}).get(key, None)
                     if potential_values:
                         if isinstance(potential_values, dict):
                             try:
@@ -866,6 +888,14 @@ def setup_hits(ds):
     ds.hit.fix_replicas()
 
 
+def setup_events(ds):
+    "Set up events index"
+    os.environ["ELASTIC_HIT_SHARDS"] = "1"
+    os.environ["ELASTIC_HIT_REPLICAS"] = "1"
+    ds.event.fix_shards()
+    ds.event.fix_replicas()
+
+
 def setup_users(ds):
     "Set up users index"
     os.environ["ELASTIC_USER_REPLICAS"] = "1"
@@ -879,12 +909,13 @@ INDEXES: dict[str, tuple[Callable, list[Callable]]] = {
     "templates": (wipe_templates, [create_templates]),
     "overviews": (wipe_overviews, [create_overviews]),
     "views": (wipe_views, [create_views]),
-    "hits": (wipe_hits, [create_hits, create_bundles]),
+    "events": (wipe_events, [create_events]),
+    "hits": (wipe_hits, [create_hits]),
+    "cases": (wipe_cases, [create_cases]),
     "analytics": (wipe_analytics, [create_analytics]),
     "actions": (wipe_actions, [create_actions]),
     "dossiers": (wipe_dossiers, [create_dossiers]),
 }
-
 
 if __name__ == "__main__":
     # TODO: Implement a solid command line interface for running this
@@ -913,6 +944,9 @@ if __name__ == "__main__":
     logger.info("Running setup steps.")
     if "hits" in args:
         setup_hits(ds)
+
+    if "events" in args:
+        setup_events(ds)
 
     if "users" in args:
         setup_users(ds)

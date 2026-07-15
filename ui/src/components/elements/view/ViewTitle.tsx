@@ -8,12 +8,13 @@ interface ViewTitleProps {
   title?: string;
   type?: string;
   query?: string;
+  indexes?: string[];
   sort?: string;
   span?: string;
   settings?: { display?: string };
 }
 
-export const ViewTitle: FC<ViewTitleProps> = ({ title, type, query, sort, span, settings }) => {
+export const ViewTitle: FC<ViewTitleProps> = ({ title, type, query, sort, span, indexes, settings }) => {
   const { t } = useTranslation();
   const spanLabel = useMemo(() => {
     if (!span) {
@@ -26,6 +27,12 @@ export const ViewTitle: FC<ViewTitleProps> = ({ title, type, query, sort, span, 
       return t(span);
     }
   }, [span, t]);
+
+  const indexLabel = useMemo(() => {
+    if (!indexes || indexes.length === 0) {
+      return '';
+    } else return `(${indexes.join(', ')})`;
+  }, [indexes]);
 
   return (
     <Stack>
@@ -54,7 +61,7 @@ export const ViewTitle: FC<ViewTitleProps> = ({ title, type, query, sort, span, 
       <Typography variant="caption">
         <code>{query}</code>
       </Typography>
-      {(sort || span) && (
+      {(sort || span || indexLabel) && (
         <Stack direction="row" sx={{ mt: 1 }} spacing={1}>
           {sort?.split(',').map(_sort => (
             <Chip
@@ -64,7 +71,8 @@ export const ViewTitle: FC<ViewTitleProps> = ({ title, type, query, sort, span, 
               icon={_sort.endsWith('desc') ? <ArrowDownward /> : <ArrowUpward />}
             />
           ))}
-          {spanLabel && <Chip size="small" label={spanLabel} />}
+          {spanLabel && <Chip label={spanLabel} />}
+          {indexLabel && <Chip label={indexLabel} />}
         </Stack>
       )}
     </Stack>

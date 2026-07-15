@@ -1,4 +1,4 @@
-import { SsidChart, Star, StarBorder } from '@mui/icons-material';
+import { Star, StarBorder } from '@mui/icons-material';
 import {
   AvatarGroup,
   Card,
@@ -8,7 +8,6 @@ import {
   Divider,
   Grid,
   IconButton,
-  InputAdornment,
   Stack,
   Tooltip,
   Typography,
@@ -16,7 +15,6 @@ import {
 } from '@mui/material';
 import api from 'api';
 import { useAppUser } from 'commons/components/app/hooks';
-import useLocalStorageItem from 'commons/components/utils/hooks/useLocalStorageItem';
 import SearchResponseProvider, {
   SearchResponseContext,
   type SearchResponseContextType
@@ -36,8 +34,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { StorageKey } from 'utils/constants';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
 
-type RuleTypes = -1 | 0 | 1;
-
 const AnalyticSearchBase: FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
@@ -50,7 +46,6 @@ const AnalyticSearchBase: FC = () => {
 
   const { response, request } = useContext<SearchResponseContextType<Analytic>>(SearchResponseContext);
 
-  const [onlyRules, setOnlyRules] = useLocalStorageItem<RuleTypes>(StorageKey.ONLY_RULES, 0);
   const [searching, setSearching] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);
   const [phrase, setPhrase] = useState(searchParams.get('phrase') || '');
@@ -95,19 +90,17 @@ const AnalyticSearchBase: FC = () => {
     try {
       const sanitizedPhrase = sanitizeLuceneQuery(phrase);
       const _response = await request(api.search.analytic.post, {
-        query:
-          `name:*${sanitizedPhrase}* OR detections:*${sanitizedPhrase}*` +
-          (onlyRules > 0 ? ' AND _exists_:rule_type' : onlyRules < 0 ? ' AND -_exists_:rule_type' : ''),
+        query: `name:*${sanitizedPhrase}* OR detections:*${sanitizedPhrase}*`,
         rows: pageCount,
         offset
       });
       load(_response.items.map(u => ({ id: u.analytic_id, item: u })));
-    } catch (e) {
+    } catch {
       setHasError(true);
     } finally {
       setSearching(false);
     }
-  }, [request, load, offset, onlyRules, pageCount, phrase, searchParams, setSearchParams]);
+  }, [request, load, offset, pageCount, phrase, searchParams, setSearchParams]);
 
   const onPageChange = useCallback(
     (_offset: number) => {
@@ -145,7 +138,7 @@ const AnalyticSearchBase: FC = () => {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [onlyRules]
+    []
   );
 
   useEffect(() => {
@@ -187,24 +180,6 @@ const AnalyticSearchBase: FC = () => {
             title={
               <Stack direction="row" spacing={1} alignItems="center">
                 <span>{item.item.name}</span>
-                {item.item.rule_type && (
-                  <>
-                    <Tooltip title={t('route.analytics.rule')}>
-                      <SsidChart color="info" />
-                    </Tooltip>
-                    <code
-                      style={{
-                        fontSize: '.55em',
-                        backgroundColor: theme.palette.background.paper,
-                        padding: theme.spacing(0.5),
-                        borderRadius: theme.shape.borderRadius,
-                        border: `thin solid ${theme.palette.divider}`
-                      }}
-                    >
-                      {item.item.rule_type}
-                    </code>
-                  </>
-                )}
                 <FlexOne />
                 <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                   {item.item.owner && <HowlerAvatar sx={{ width: 24, height: 24 }} userId={item.item.owner} />}
@@ -228,7 +203,7 @@ const AnalyticSearchBase: FC = () => {
               <Grid container spacing={0.5} sx={{ marginTop: `${theme.spacing(-0.5)} !important` }}>
                 {item.item.detections.slice(0, 5).map(d => (
                   <Grid item key={d}>
-                    <Chip size="small" variant="outlined" label={d} />
+                    <Chip variant="outlined" label={d} />
                   </Grid>
                 ))}
                 {item.item.detections.length > 5 && (
@@ -242,7 +217,7 @@ const AnalyticSearchBase: FC = () => {
                         </Stack>
                       }
                     >
-                      <Chip size="small" variant="outlined" label={`+ ${item.item.detections.length - 5}`} />
+                      <Chip variant="outlined" label={`+ ${item.item.detections.length - 5}`} />
                     </Tooltip>
                   </Grid>
                 )}
@@ -263,22 +238,6 @@ const AnalyticSearchBase: FC = () => {
       setPhrase={setPhrase}
       hasError={hasError}
       searching={searching}
-      searchAdornment={
-        <InputAdornment position="end">
-          <Tooltip
-            title={t(
-              `route.analytics.search.filter.rules.${onlyRules < 0 ? 'hide' : onlyRules > 0 ? 'show' : 'toggle'}`
-            )}
-          >
-            <IconButton onClick={() => setOnlyRules((((onlyRules + 2) % 3) - 1) as -1 | 0 | 1)}>
-              <SsidChart
-                color={onlyRules < 0 ? 'error' : onlyRules > 0 ? 'info' : 'inherit'}
-                sx={{ transition: theme.transitions.create(['color']) }}
-              />
-            </IconButton>
-          </Tooltip>
-        </InputAdornment>
-      }
       aboveSearch={
         <Typography sx={{ fontStyle: 'italic', color: theme.palette.text.disabled, mb: 0.5 }} variant="body2">
           {t('route.analytics.search.prompt')}

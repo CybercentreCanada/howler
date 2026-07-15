@@ -1,6 +1,7 @@
 import { joinUri, uri as parentUri } from 'api';
 import * as action from 'api/search/action';
 import * as analytic from 'api/search/analytic';
+import * as case_ from 'api/search/case';
 import * as count from 'api/search/count';
 import * as dossier from 'api/search/dossier';
 import * as facet from 'api/search/facet';
@@ -27,6 +28,7 @@ export type HowlerSearchRequest = {
   timeout?: number;
   filters?: string[];
   metadata?: string[];
+  indexes?: string[];
 };
 
 export type HowlerSearchResponse<T> = {
@@ -69,4 +71,19 @@ export type HowlerExplainSearchResponse = {
   explanations: { valid: boolean; explanation: string }[];
 };
 
-export { action, analytic, count, dossier, facet, fields, grouped, histogram, hit, overview, template, user, view };
+export {
+  action,
+  analytic,
+  case_ as case,
+  count,
+  dossier,
+  facet,
+  fields,
+  grouped,
+  histogram,
+  hit,
+  overview,
+  template,
+  user,
+  view
+};

@@ -581,10 +581,21 @@ def wildcard_hits(datastore: HowlerDatastore):
 
 
 def _search_ids(session, host: str, query: str) -> set[str]:
-    """Return the set of howler.id values from a search, fetching up to 25 rows."""
+    """Return the set of howler.id values from a v1 search, fetching up to 25 rows."""
     result = get_api_data(
         session,
         f"{host}/api/v1/search/hit/",
+        data=json.dumps({"query": query, "rows": 25, "fl": "howler.id"}),
+        method="POST",
+    )
+    return {item["howler"]["id"] for item in result["items"]}
+
+
+def _search_ids_v2(session, host: str, query: str) -> set[str]:
+    """Return the set of howler.id values from a v2 multi-index search, fetching up to 25 rows."""
+    result = get_api_data(
+        session,
+        f"{host}/api/v2/search/hit",
         data=json.dumps({"query": query, "rows": 25, "fl": "howler.id"}),
         method="POST",
     )
@@ -663,6 +674,211 @@ class TestWildcardSearchFiltering:
         """
         session, host = admin_session
         ids = _search_ids(session, host, _WC_QUERY)
+        assert ids == {
+            _WC_UNRESTRICTED_ID,
+            _WC_RESTRICTED_ID,
+            _WC_D1_ID,
+            _WC_D2_ID,
+            _WC_BOTH_ID,
+        }
+
+
+# ===================================================================
+# Group J -- V2 search endpoint access control (level-based)
+# ===================================================================
+
+
+@_enforce_only
+class TestV2SearchAccessControl:
+    """Verify v2 multi-index search endpoint (/api/v2/search/hit) applies ACL filtering.
+
+    Mirrors Group F tests but uses the v2 search endpoint backed by search_service.search().
+    """
+
+    def test_unrestricted_user_v2_search_excludes_restricted_hits(self, huey_session, classified_hits):
+        """huey (UNRESTRICTED) searching via v2 cannot see RESTRICTED hits."""
+        session, host = huey_session
+        _, restricted_id = classified_hits
+
+        result = get_api_data(
+            session,
+            f"{host}/api/v2/search/hit",
+            data=json.dumps({"query": f"howler.id:{restricted_id}"}),
+            method="POST",
+        )
+        assert result["total"] == 0
+
+    def test_unrestricted_user_v2_search_includes_unrestricted_hits(self, huey_session, classified_hits):
+        """huey (UNRESTRICTED) searching via v2 can see UNRESTRICTED hits."""
+        session, host = huey_session
+        unrestricted_id, _ = classified_hits
+
+        result = get_api_data(
+            session,
+            f"{host}/api/v2/search/hit",
+            data=json.dumps({"query": f"howler.id:{unrestricted_id}"}),
+            method="POST",
+        )
+        assert result["total"] == 1
+
+    def test_restricted_user_v2_search_includes_restricted_hits(self, user_session, classified_hits):
+        """'user' (RESTRICTED) searching via v2 can see RESTRICTED hits."""
+        session, host = user_session
+        _, restricted_id = classified_hits
+
+        result = get_api_data(
+            session,
+            f"{host}/api/v2/search/hit",
+            data=json.dumps({"query": f"howler.id:{restricted_id}"}),
+            method="POST",
+        )
+        assert result["total"] == 1
+
+    def test_restricted_user_v2_search_includes_unrestricted_hits(self, user_session, classified_hits):
+        """'user' (RESTRICTED) searching via v2 can see UNRESTRICTED hits."""
+        session, host = user_session
+        unrestricted_id, _ = classified_hits
+
+        result = get_api_data(
+            session,
+            f"{host}/api/v2/search/hit",
+            data=json.dumps({"query": f"howler.id:{unrestricted_id}"}),
+            method="POST",
+        )
+        assert result["total"] == 1
+
+    def test_admin_v2_search_bypasses_classification(self, admin_session, classified_hits):
+        """admin can see RESTRICTED hits via v2 search (admin bypasses ACL)."""
+        session, host = admin_session
+        _, restricted_id = classified_hits
+
+        result = get_api_data(
+            session,
+            f"{host}/api/v2/search/hit",
+            data=json.dumps({"query": f"howler.id:{restricted_id}"}),
+            method="POST",
+        )
+        assert result["total"] == 1
+
+
+# ===================================================================
+# Group K -- V2 search endpoint group membership access control
+# ===================================================================
+
+
+@_enforce_only
+class TestV2GroupMembershipAccessControl:
+    """Verify v2 search endpoint enforces group-based classification filtering.
+
+    Mirrors Group H tests but uses /api/v2/search/hit.
+    """
+
+    def test_d1_user_v2_can_see_d1_hit(self, d1_session, group_hits):
+        """D1 user can see a D1-classified hit via v2 search."""
+        session, host = d1_session
+        d1_id, _, _ = group_hits
+        result = get_api_data(
+            session,
+            f"{host}/api/v2/search/hit",
+            data=json.dumps({"query": f"howler.id:{d1_id}"}),
+            method="POST",
+        )
+        assert result["total"] == 1
+
+    def test_d1_user_v2_cannot_see_d2_hit(self, d1_session, group_hits):
+        """D1 user cannot see a D2-only hit via v2 search."""
+        session, host = d1_session
+        _, d2_id, _ = group_hits
+        result = get_api_data(
+            session,
+            f"{host}/api/v2/search/hit",
+            data=json.dumps({"query": f"howler.id:{d2_id}"}),
+            method="POST",
+        )
+        assert result["total"] == 0
+
+    def test_d2_user_v2_cannot_see_d1_hit(self, d2_session, group_hits):
+        """D2 user cannot see a D1-only hit via v2 search."""
+        session, host = d2_session
+        d1_id, _, _ = group_hits
+        result = get_api_data(
+            session,
+            f"{host}/api/v2/search/hit",
+            data=json.dumps({"query": f"howler.id:{d1_id}"}),
+            method="POST",
+        )
+        assert result["total"] == 0
+
+    def test_d2_user_v2_can_see_d2_hit(self, d2_session, group_hits):
+        """D2 user can see a D2-classified hit via v2 search."""
+        session, host = d2_session
+        _, d2_id, _ = group_hits
+        result = get_api_data(
+            session,
+            f"{host}/api/v2/search/hit",
+            data=json.dumps({"query": f"howler.id:{d2_id}"}),
+            method="POST",
+        )
+        assert result["total"] == 1
+
+    def test_admin_v2_can_see_all_group_hits(self, admin_session, group_hits):
+        """admin sees all group-restricted hits via v2 search."""
+        session, host = admin_session
+        d1_id, d2_id, both_id = group_hits
+        for hit_id in [d1_id, d2_id, both_id]:
+            result = get_api_data(
+                session,
+                f"{host}/api/v2/search/hit",
+                data=json.dumps({"query": f"howler.id:{hit_id}"}),
+                method="POST",
+            )
+            assert result["total"] == 1, f"admin should see hit {hit_id}"
+
+
+# ===================================================================
+# Group L -- V2 wildcard search access control
+# ===================================================================
+
+
+@_enforce_only
+class TestV2WildcardSearchFiltering:
+    """Verify v2 wildcard queries honour classification access control.
+
+    Mirrors Group I tests but uses /api/v2/search/hit via _search_ids_v2.
+    """
+
+    def test_huey_v2_wildcard_returns_only_unrestricted(self, huey_session, wildcard_hits):
+        """huey (UNRESTRICTED) sees only the UNRESTRICTED hit via v2 wildcard search."""
+        session, host = huey_session
+        ids = _search_ids_v2(session, host, _WC_QUERY)
+        assert ids == {_WC_UNRESTRICTED_ID}
+
+    def test_user_v2_wildcard_returns_allowed_hits(self, user_session, wildcard_hits):
+        """'user' (RESTRICTED//ADMIN//ANY) sees four hits via v2 wildcard search."""
+        session, host = user_session
+        ids = _search_ids_v2(session, host, _WC_QUERY)
+        assert ids == {_WC_UNRESTRICTED_ID, _WC_RESTRICTED_ID, _WC_D1_ID, _WC_BOTH_ID}
+
+    def test_d1_user_v2_wildcard_excludes_d2(self, d1_session, wildcard_hits, group_accounts):
+        """D1 user cannot see D2-only hit via v2 wildcard search."""
+        session, host = d1_session
+        ids = _search_ids_v2(session, host, _WC_QUERY)
+        assert _WC_D1_ID in ids
+        assert _WC_BOTH_ID in ids
+        assert _WC_D2_ID not in ids
+
+    def test_d2_user_v2_wildcard_excludes_d1(self, d2_session, wildcard_hits, group_accounts):
+        """D2 user cannot see D1-only hit via v2 wildcard search."""
+        session, host = d2_session
+        ids = _search_ids_v2(session, host, _WC_QUERY)
+        assert _WC_D2_ID in ids
+        assert _WC_BOTH_ID in ids
+        assert _WC_D1_ID not in ids
+
+    def test_admin_v2_wildcard_returns_all(self, admin_session, wildcard_hits):
+        """admin sees all five hits via v2 wildcard search."""
+        session, host = admin_session
+        ids = _search_ids_v2(session, host, _WC_QUERY)
         assert ids == {
             _WC_UNRESTRICTED_ID,
             _WC_RESTRICTED_ID,

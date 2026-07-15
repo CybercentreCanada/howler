@@ -375,6 +375,19 @@ class TestEnsureCollectionILMDispatch:
             col._ensure_collection()
             mock_ilm.assert_not_called()
 
+    def test_legacy_creation_includes_alias(self, mock_datastore):
+        """Legacy collection creation creates its hot index and alias atomically."""
+        col = _make_collection(mock_datastore, ilm_config=None)
+        mock_datastore.client.indices.exists.return_value = False
+
+        with patch.object(col, "_check_fields"):
+            col._ensure_collection()
+
+        create_kwargs = mock_datastore.client.indices.create.call_args.kwargs
+        assert create_kwargs["index"] == col.index_name
+        assert create_kwargs["aliases"] == {col.name: {}}
+        mock_datastore.client.indices.put_alias.assert_not_called()
+
 
 class TestAddFieldsILMTemplateSync:
     """Tests that _add_fields updates the index template when ILM is active."""

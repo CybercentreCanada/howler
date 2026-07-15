@@ -17,9 +17,9 @@ import api from 'api';
 import type { Chart, ChartDataset, ChartOptions } from 'chart.js';
 import 'chartjs-adapter-dayjs-4';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
-import { HitContext } from 'components/app/providers/HitProvider';
-import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
+import { RecordContext } from 'components/app/providers/RecordProvider';
+import { RecordSearchContext } from 'components/app/providers/RecordSearchProvider';
 import useMyApi from 'components/hooks/useMyApi';
 import useMyChart from 'components/hooks/useMyChart';
 import dayjs from 'dayjs';
@@ -56,13 +56,13 @@ const HitGraph: FC = () => {
   const span = useContextSelector(ParameterContext, ctx => ctx.span);
   const views = useContextSelector(ParameterContext, ctx => ctx.views);
 
-  const selectedHits = useContextSelector(HitContext, ctx => ctx.selectedHits);
-  const addHitToSelection = useContextSelector(HitContext, ctx => ctx.addHitToSelection);
-  const removeHitFromSelection = useContextSelector(HitContext, ctx => ctx.removeHitFromSelection);
+  const selectedHits = useContextSelector(RecordContext, ctx => ctx.selectedRecords);
+  const addHitToSelection = useContextSelector(RecordContext, ctx => ctx.addRecordToSelection);
+  const removeHitFromSelection = useContextSelector(RecordContext, ctx => ctx.removeRecordFromSelection);
 
-  const error = useContextSelector(HitSearchContext, ctx => ctx.error);
-  const response = useContextSelector(HitSearchContext, ctx => ctx.response);
-  const getFilters = useContextSelector(HitSearchContext, ctx => ctx.getFilters);
+  const error = useContextSelector(RecordSearchContext, ctx => ctx.error);
+  const response = useContextSelector(RecordSearchContext, ctx => ctx.response);
+  const getFilters = useContextSelector(RecordSearchContext, ctx => ctx.getFilters);
 
   const chartRef = useRef<Chart<'scatter'>>();
 

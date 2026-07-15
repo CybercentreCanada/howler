@@ -7,7 +7,7 @@ import type { PivotLinkProps } from 'components/elements/hit/related/PivotLink';
 import type { PluginChipProps } from 'components/elements/PluginChip';
 import type { PluginTypographyProps } from 'components/elements/PluginTypography';
 import type { PivotFormProps } from 'components/routes/dossiers/PivotForm';
-import { type i18n as I18N } from 'i18next';
+import type { i18n as I18N } from 'i18next';
 import get from 'lodash-es/get';
 import type { Hit } from 'models/entities/generated/Hit';
 import HowlerPlugin from 'plugins/HowlerPlugin';

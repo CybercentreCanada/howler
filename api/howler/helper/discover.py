@@ -1,5 +1,4 @@
-import typing
-from typing import Optional
+from typing import Any
 
 import requests
 
@@ -11,40 +10,41 @@ logger = get_logger(__file__)
 DISCO_CACHE = {}
 
 
-def get_apps_list(discovery_url: Optional[str]) -> list[dict[str, str]]:
+def get_apps_list() -> list[dict[str, str]]:
     """Get a list of apps from the discovery service
 
     Returns:
         list[dict[str, str]]: A list of other apps
     """
-    if not config.discovery.enabled or discovery_url is None:
+    if not config.discovery.enabled or not config.discovery.url:
         return []
 
-    if discovery_url not in DISCO_CACHE:
-        apps = []
+    if config.discovery.url not in DISCO_CACHE:
+        apps: list[dict[str, Any]] = []
 
         if TESTING:
             logger.info("Skipping discovery, running in a test environment")
 
         try:
             resp = requests.get(
-                typing.cast(str, discovery_url or config.discovery.url),
+                config.discovery.url,
                 headers={"accept": "application/json"},
                 timeout=5,
             )
+
             if resp.ok:
                 data = resp.json()
                 for app in data["applications"]["application"]:
                     try:
-                        url = app["instance"][0]["hostName"]
-                        if "howler" not in url:
+                        app_url = app["instance"][0]["hostName"]
+                        if "howler" not in app_url:
                             apps.append(
                                 {
                                     "alt": app["instance"][0]["metadata"]["alternateText"],
                                     "name": app["name"],
                                     "img_d": app["instance"][0]["metadata"]["imageDark"],
                                     "img_l": app["instance"][0]["metadata"]["imageLight"],
-                                    "route": url,
+                                    "route": app_url,
                                     "classification": app["instance"][0]["metadata"]["classification"],
                                 }
                             )
@@ -52,11 +52,11 @@ def get_apps_list(discovery_url: Optional[str]) -> list[dict[str, str]]:
                     except Exception:
                         logger.exception("Failed to parse get app: %s", str(app))
             else:
-                logger.warning("Invalid response from server for apps discovery: %s", discovery_url)
+                logger.warning("Invalid response from server for apps discovery: %s", config.discovery.url)
         except Exception:
-            logger.exception("Failed to get apps from discover URL: %s", discovery_url)
+            logger.exception("Failed to get apps from discover URL: %s", config.discovery.url)
 
-        DISCO_CACHE[discovery_url] = sorted(apps, key=lambda k: k["name"])
+        DISCO_CACHE[config.discovery.url] = sorted(apps, key=lambda k: k["name"])
         return sorted(apps, key=lambda k: k["name"])
     else:
-        return DISCO_CACHE[discovery_url]
+        return DISCO_CACHE[config.discovery.url]
