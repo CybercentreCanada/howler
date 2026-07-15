@@ -398,3 +398,9 @@ The v2 `POST /case/<id>/items` endpoint now requires a `name` field in the JSON 
 When updating the Python client, avoid value/path-based delete/rename payloads and resolve item IDs from the returned case data first.
 
 ---
+
+### Elasticsearch Collection Creation: Attach Aliases Atomically
+
+For legacy collections, pass the collection alias through the `aliases` argument to `indices.create`. Creating the hot index and adding its alias in separate calls lets concurrent writes auto-create a concrete index with the alias name, which prevents alias creation.
+
+---

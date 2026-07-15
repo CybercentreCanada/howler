@@ -2827,17 +2827,12 @@ class ESCollection(Generic[ModelType]):
                     index=self.index_name,
                     mappings=self._get_index_mappings(),
                     settings=self._get_index_settings(),
+                    aliases={self.name: {}},
                 )
             except elasticsearch.exceptions.RequestError as e:
                 if "resource_already_exists_exception" not in str(e):
                     raise
                 logger.warning("Tried to create an index template that already exists: %s", self.name.upper())
-
-            self.with_retries(
-                self.datastore.client.indices.put_alias,
-                index=self.index_name,
-                name=self.name,
-            )
         elif not self.with_retries(
             self.datastore.client.indices.exists, index=self.index_name
         ) and not self.with_retries(self.datastore.client.indices.exists_alias, name=self.name):
