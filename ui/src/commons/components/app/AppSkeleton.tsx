@@ -19,14 +19,14 @@ import { AppUserAvatar } from 'commons/components/topnav/UserProfile';
  * @param props
  */
 interface LeftNavElementsSkeletonProps {
-  // oxlint-disable-next-line react/require-default-props
+  // eslint-disable-next-line react/require-default-props
   withText?: boolean;
   elements: AppLeftNavElement[];
 }
 
 interface ButtonSkeletonProps {
   style: { [styleAttr: string]: any };
-  // oxlint-disable-next-line react/require-default-props
+  // eslint-disable-next-line react/require-default-props
   withText?: boolean;
   [propName: string]: any;
 }

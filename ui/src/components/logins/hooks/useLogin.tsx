@@ -73,7 +73,7 @@ const useLogin = () => {
       if (!userCredential) {
         showErrorMessage(t('user.login.failed'));
       } else if (saveLoginCredential(userCredential)) {
-        void getUser();
+        getUser();
       }
     },
     [dispatchApi, getUser, showErrorMessage, t]
@@ -83,7 +83,7 @@ const useLogin = () => {
   const doOAuth = useCallback(async () => {
     const userCredential = await dispatchApi(api.auth.login.get(searchParams));
     if (saveLoginCredential(userCredential)) {
-      void getUser();
+      getUser();
     }
   }, [dispatchApi, searchParams, getUser]);
 

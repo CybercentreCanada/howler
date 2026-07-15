@@ -69,7 +69,7 @@ const AnalyticComments: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
       }
 
       if (e.ctrlKey && e.key === 'Enter' && !loading) {
-        void onSubmit();
+        onSubmit();
       }
     },
     [loading, onSubmit]
@@ -124,7 +124,7 @@ const AnalyticComments: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
         setAnalytic({
           ...analytic,
           comment: analytic.comment.map(cmt =>
-            cmt.id !== commentId ? cmt : { ...cmt, reactions: { ...cmt?.reactions, [user.username]: type } }
+            cmt.id !== commentId ? cmt : { ...cmt, reactions: { ...(cmt?.reactions ?? {}), [user.username]: type } }
           )
         });
       } else {
@@ -133,7 +133,9 @@ const AnalyticComments: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
         setAnalytic({
           ...analytic,
           comment: analytic.comment.map(cmt =>
-            cmt.id !== commentId ? cmt : { ...cmt, reactions: { ...cmt?.reactions, [user.username]: undefined } }
+            cmt.id !== commentId
+              ? cmt
+              : { ...cmt, reactions: { ...(cmt?.reactions ?? {}), [user.username]: undefined } }
           )
         });
       }
@@ -143,7 +145,7 @@ const AnalyticComments: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
 
   useEffect(() => {
     setUserIds(new Set(analytic?.comment.map(c => c.user)));
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analytic?.analytic_id]);
 
   const comments = useMemo(

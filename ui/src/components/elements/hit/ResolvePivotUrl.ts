@@ -22,7 +22,7 @@ const resolvePivotUrl = (pivot: NonNullable<Dossier['pivots']>[number], currentH
   try {
     return Handlebars.compile(pivot.value)(templateObject);
   } catch (e) {
-    // oxlint-disable-next-line no-console
+    // eslint-disable-next-line no-console
     console.error(`Failed to compile pivot template for value "${pivot.value}":`, e);
     return pivot.value;
   }

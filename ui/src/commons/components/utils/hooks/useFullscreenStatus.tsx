@@ -4,15 +4,15 @@ const getBrowserFullscreenElementProp = () => {
   if (typeof document.fullscreenElement !== 'undefined') {
     return 'fullscreenElement';
   }
-  // oxlint-disable-next-line @typescript-eslint/dot-notation
+  // eslint-disable-next-line @typescript-eslint/dot-notation
   if (typeof document['mozFullScreenElement'] !== 'undefined') {
     return 'mozFullScreenElement';
   }
-  // oxlint-disable-next-line @typescript-eslint/dot-notation
+  // eslint-disable-next-line @typescript-eslint/dot-notation
   if (typeof document['msFullscreenElement'] !== 'undefined') {
     return 'msFullscreenElement';
   }
-  // oxlint-disable-next-line @typescript-eslint/dot-notation
+  // eslint-disable-next-line @typescript-eslint/dot-notation
   if (typeof document['webkitFullscreenElement'] !== 'undefined') {
     return 'webkitFullscreenElement';
   }

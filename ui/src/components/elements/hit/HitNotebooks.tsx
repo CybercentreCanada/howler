@@ -79,7 +79,7 @@ const HitNotebooks: FC<{ analytic: Analytic; selectedNotebook?: string; hit?: Hi
 
         window.open(`${envs[0].url}lab/tree/${filename}`, '_blank');
         setOpen(false);
-      } catch {
+      } catch (e) {
         showErrorMessage(t('hit.notebook.error.failToPost'));
       }
     },
@@ -99,16 +99,16 @@ const HitNotebooks: FC<{ analytic: Analytic; selectedNotebook?: string; hit?: Hi
         showModal(
           <ConfirmNotebookModal
             onConfirm={() => {
-              void goToJupyhub(nbFileName, `${envs[0].url}post/${nbFileName}`);
+              goToJupyhub(nbFileName, `${envs[0].url}post/${nbFileName}`);
             }}
           />
         );
       } else {
-        void goToJupyhub(nbFileName, `${envs[0].url}post/${nbFileName}`);
+        goToJupyhub(nbFileName, `${envs[0].url}post/${nbFileName}`);
       }
-    } catch {
+    } catch (e) {
       // error means notebook doesn't exist, we can proceed with posting
-      void goToJupyhub(nbFileName, `${envs[0].url}post/${nbFileName}`);
+      goToJupyhub(nbFileName, `${envs[0].url}post/${nbFileName}`);
     }
 
     setLoading(false);
@@ -150,9 +150,9 @@ const HitNotebooks: FC<{ analytic: Analytic; selectedNotebook?: string; hit?: Hi
 
   useEffect(() => {
     if (open) {
-      void fetchEnvs(); //retrieve env info from howler-api/nbgallery
+      fetchEnvs(); //retrieve env info from howler-api/nbgallery
       if (selectedNotebook) {
-        void fetchNb();
+        fetchNb();
       }
     } else {
       setLoadedNotebook({
@@ -160,7 +160,7 @@ const HitNotebooks: FC<{ analytic: Analytic; selectedNotebook?: string; hit?: Hi
         name: ''
       });
     }
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   return (
@@ -185,7 +185,7 @@ const HitNotebooks: FC<{ analytic: Analytic; selectedNotebook?: string; hit?: Hi
                       label="Notebook"
                       select
                       onChange={e => {
-                        void fetchNb(e.target.value);
+                        fetchNb(e.target.value);
                       }}
                       SelectProps={{
                         MenuProps: {

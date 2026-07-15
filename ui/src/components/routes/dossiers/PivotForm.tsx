@@ -58,7 +58,7 @@ const LinkForm: FC<PivotFormProps> = ({ pivot, update }) => {
       <Divider flexItem />
       <Typography>{t('route.dossiers.manager.pivot.mappings')}</Typography>
       {pivot?.mappings?.map((_mapping, index) => (
-        // oxlint-disable-next-line react/no-array-index-key
+        // eslint-disable-next-line react/no-array-index-key
         <Fragment key={index}>
           <Stack direction="row" spacing={1}>
             <TextField
@@ -189,7 +189,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
     }
 
     setSearchParams(searchParams, { replace: true });
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setSearchParams, tab]);
 
   return (

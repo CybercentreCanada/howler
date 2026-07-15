@@ -92,7 +92,7 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard) =>
   };
 
   useEffect(() => {
-    void fetchAllAnalytics();
+    fetchAllAnalytics();
   }, []);
 
   const filteredAnalyticVisualizations = useMemo(() => {

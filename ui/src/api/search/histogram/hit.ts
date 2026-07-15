@@ -8,5 +8,5 @@ export const uri = (field: string) => {
 };
 
 export const post = (field: string, request?: HowlerHistogramSearchRequest): Promise<HowlerHistogramSearchResponse> => {
-  return hpost(uri(field), { ...request, query: request?.query || DEFAULT_QUERY });
+  return hpost(uri(field), { ...(request || {}), query: request?.query || DEFAULT_QUERY });
 };

@@ -80,7 +80,7 @@ const ActionSearch: FC = () => {
         rows: pageCount,
         offset
       });
-    } catch {
+    } catch (e) {
       setHasError(true);
     } finally {
       setSearching(false);
@@ -121,14 +121,14 @@ const ActionSearch: FC = () => {
   // Effect to initialize list of users.
   useEffect(
     () => {
-      void onSearch();
+      onSearch();
 
       if (!searchParams.has('offset')) {
         searchParams.set('offset', '0');
         setSearchParams(searchParams, { replace: true });
       }
     },
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -142,14 +142,14 @@ const ActionSearch: FC = () => {
 
   useEffect(() => {
     if (!searching) {
-      void onSearch();
+      onSearch();
     }
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offset]);
 
   useEffect(() => {
-    void onSearch();
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    onSearch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchModifiers]);
 
   const editRoles = user.roles.includes('automation_basic') || user.roles.includes('automation_advanced');
@@ -205,7 +205,7 @@ const ActionSearch: FC = () => {
             <Grid container spacing={1}>
               {item.item.operations.map(d => (
                 <Grid item key={d.operation_id}>
-                  <Chip size="small" label={t(`operations.${d.operation_id}`)} />
+                  <Chip label={t(`operations.${d.operation_id}`)} />
                 </Grid>
               ))}
             </Grid>

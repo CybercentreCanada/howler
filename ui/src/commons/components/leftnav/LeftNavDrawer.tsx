@@ -1,4 +1,4 @@
-/* oxlint-disable jsx-a11y/no-static-element-interactions */
+/* eslint-disable jsx-a11y/no-static-element-interactions */
 import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from '@mui/icons-material';
 import {
   Box,
@@ -117,7 +117,6 @@ const LeftNavDrawer = () => {
   return (
     <ClickAwayListener mouseEvent="onMouseDown" touchEvent="onTouchStart" onClickAway={onCloseDrawerIfOpen}>
       <StyledDrawer
-        PaperProps={{ elevation: 1 }}
         variant="permanent"
         style={{ height: '100%' }}
         width={preferences.leftnav.width}

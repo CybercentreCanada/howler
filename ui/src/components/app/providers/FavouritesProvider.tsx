@@ -131,20 +131,20 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
       .filter(el => !['views', 'analytics'].includes(el.element?.id as any))
       .filter(el => !!el);
 
-    void (async () => {
+    (async () => {
       const analyticElement = processAnalyticElement();
       if (analyticElement) {
-        newElements.splice(1, 0, analyticElement);
+        newElements.splice(2, 0, analyticElement);
       }
 
       const viewElement = await processViewElement();
       if (viewElement) {
-        newElements.splice(1, 0, viewElement);
+        newElements.splice(2, 0, viewElement);
       }
 
       leftNav.setElements(newElements);
     })();
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analytics.ready, appUser]);
 
   return <FavouriteContext.Provider value={{}}>{children}</FavouriteContext.Provider>;

@@ -66,7 +66,7 @@ const Stacked = forwardRef<
     } finally {
       setLoading(false);
     }
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analytic?.name, color, field]);
 
   useEffect(() => {
@@ -74,7 +74,7 @@ const Stacked = forwardRef<
       return;
     }
 
-    void fetchData();
+    fetchData();
   }, [analytic, fetchData]);
 
   const options: ChartOptions<'line'> = useMemo(() => {

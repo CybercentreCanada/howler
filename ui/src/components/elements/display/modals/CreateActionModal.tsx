@@ -42,7 +42,7 @@ const CreateActionModal: FC<{ onSubmit: (rationale: string) => void }> = ({ onSu
       <TextField
         label={t('modal.action.label')}
         value={actionName}
-        // oxlint-disable-next-line jsx-a11y/no-autofocus
+        // eslint-disable-next-line jsx-a11y/no-autofocus
         autoFocus
         fullWidth
         onChange={e => setActionName(e.target.value)}

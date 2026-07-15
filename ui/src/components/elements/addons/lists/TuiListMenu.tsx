@@ -29,7 +29,7 @@ const TuiListMenuRoot = styled('div', { shouldForwardProp: prop => !MY_PROPS.inc
 }>(({ theme, permanent, placement }) => {
   const position = PLACEMENTS[placement];
   return {
-    ...position,
+    ...(position || {}),
     zIndex: position ? 100 : null,
     display: permanent ? 'flex' : 'none',
     position: position ? 'absolute' : 'inherit',

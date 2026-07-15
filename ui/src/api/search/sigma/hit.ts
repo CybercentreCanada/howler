@@ -8,5 +8,5 @@ export const uri = () => {
 };
 
 export const post = (request?: HowlerSigmaSearchRequest): Promise<HowlerSearchResponse<Hit>> => {
-  return hpost(uri(), { ...request, sigma: request?.sigma || '' });
+  return hpost(uri(), { ...(request || {}), sigma: request?.sigma || '' });
 };

@@ -33,7 +33,7 @@ const ColumnHeader: FC<{
         direction="row"
         spacing={1}
         alignItems="center"
-        sx={[{ minWidth: '220px' }, width ? { width, maxWidth: width } : { maxWidth: '300px' }]}
+        sx={[{ minWidth: '220px' }, !!width ? { width, maxWidth: width } : { maxWidth: '300px' }]}
       >
         <Tooltip title={config.indexes.hit[col].description}>
           <span>{col}</span>

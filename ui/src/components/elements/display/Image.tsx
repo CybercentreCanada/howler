@@ -7,7 +7,7 @@ const Image: FC<DetailedHTMLProps<ImgHTMLAttributes<HTMLImageElement>, HTMLImage
 
   return (
     <>
-      <img {...props} style={{ ...props.style, cursor: 'pointer' }} onClick={() => setShowModal(true)} />
+      <img {...props} style={{ ...(props.style ?? {}), cursor: 'pointer' }} onClick={() => setShowModal(true)} />
       <Modal open={showModal} onClose={() => setShowModal(false)}>
         <Box
           sx={{
@@ -33,7 +33,7 @@ const Image: FC<DetailedHTMLProps<ImgHTMLAttributes<HTMLImageElement>, HTMLImage
           >
             <Close />
           </IconButton>
-          <img {...props} style={{ ...props.style, maxWidth: '70vw', maxHeight: '70vh' }} />
+          <img {...props} style={{ ...(props.style ?? {}), maxWidth: '70vw', maxHeight: '70vh' }} />
         </Box>
       </Modal>
     </>

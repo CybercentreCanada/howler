@@ -29,7 +29,7 @@ const useMySnackbar = () => {
           ...snackBarOptions,
           ...options,
           SnackbarProps: {
-            ...options.SnackbarProps,
+            ...(options.SnackbarProps ?? {}),
             onClick: options.SnackbarProps?.onClick
               ? e => {
                   options.SnackbarProps?.onClick(e);
@@ -41,16 +41,16 @@ const useMySnackbar = () => {
     [enqueueSnackbar, snackBarOptions]
   );
 
-  // oxlint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const showErrorMessage = useCallback(enqueue('error'), [enqueue]);
 
-  // oxlint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const showWarningMessage = useCallback(enqueue('warning'), [enqueue]);
 
-  // oxlint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const showSuccessMessage = useCallback(enqueue('success'), [enqueue]);
 
-  // oxlint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const showInfoMessage = useCallback(enqueue('info'), [enqueue]);
 
   return useMemo(

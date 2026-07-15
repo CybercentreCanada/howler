@@ -63,7 +63,7 @@ const TemplatesBase: FC = () => {
         rows: pageCount,
         offset
       });
-    } catch {
+    } catch (e) {
       setHasError(true);
     } finally {
       setSearching(false);
@@ -105,13 +105,13 @@ const TemplatesBase: FC = () => {
   );
 
   useEffect(() => {
-    void onSearch();
+    onSearch();
 
     if (!searchParams.has('offset')) {
       searchParams.set('offset', '0');
       setSearchParams(searchParams, { replace: true });
     }
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatchApi, types]);
 
   useEffect(() => {
@@ -124,9 +124,9 @@ const TemplatesBase: FC = () => {
 
   useEffect(() => {
     if (!searching) {
-      void onSearch();
+      onSearch();
     }
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offset]);
 
   const removeTemplate = useCallback(

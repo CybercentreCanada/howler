@@ -27,7 +27,7 @@ export default function AppBreadcrumbsProvider({ children }: AppBreadcrumbsProvi
   // Reset the breadcrumbs if the user ready state changes.
   useEffect(() => {
     setItems(appendRoute([getRoute('/', sitemap.routes)], getRoute(pathname, sitemap.routes)));
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isUserReady]);
 
   // The return callback will ensure the event handler deregisters when component

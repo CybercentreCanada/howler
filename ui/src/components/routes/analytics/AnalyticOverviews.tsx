@@ -23,7 +23,7 @@ const AnalyticOverviews: FC<{ analytic: Analytic }> = ({ analytic }) => {
 
   useEffect(() => {
     setLoading(true);
-    void getOverviews().finally(() => setLoading(false));
+    getOverviews().finally(() => setLoading(false));
   }, [getOverviews]);
 
   if (!analytic) {

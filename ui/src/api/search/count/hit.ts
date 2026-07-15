@@ -8,5 +8,5 @@ export const uri = () => {
 };
 
 export const post = (request?: HowlerCountSearchRequest): Promise<HowlerCountResult> => {
-  return hpost(uri(), { ...request, query: request?.query || DEFAULT_QUERY });
+  return hpost(uri(), { ...(request || {}), query: request?.query || DEFAULT_QUERY });
 };

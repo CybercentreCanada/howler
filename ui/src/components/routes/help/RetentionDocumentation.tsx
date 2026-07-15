@@ -31,7 +31,7 @@ const RetentionDocumentation: FC = () => {
   }, [i18n.language, pluginStore]);
 
   useEffect(() => {
-    void api.search.hit
+    api.search.hit
       .post({
         query: 'howler.id:*',
         sort: 'event.created asc',

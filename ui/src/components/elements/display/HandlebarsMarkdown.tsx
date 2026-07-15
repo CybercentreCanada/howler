@@ -1,4 +1,4 @@
-/* oxlint-disable no-console */
+/* eslint-disable no-console */
 import Handlebars, { type Exception } from 'handlebars';
 import asyncHelpers from 'handlebars-async-helpers';
 import type { FC, ReactElement } from 'react';
@@ -63,7 +63,7 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
             const result = helper.componentCallback(...args);
 
             if (result instanceof Promise) {
-              void result.then(_result => setMdComponents(_components => ({ ..._components, [id]: _result })));
+              result.then(_result => setMdComponents(_components => ({ ..._components, [id]: _result })));
             } else {
               setMdComponents(_components => ({ ..._components, [id]: result }));
             }
@@ -81,7 +81,7 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
     THROTTLER.debounce(async () => {
       const compiled = handlebars.compile(md || '');
       try {
-        setRendered(compiled(object));
+        setRendered(await compiled(object));
       } catch (err) {
         if ((err as Exception).message?.startsWith('Missing helper')) {
           const missingHelper = (err as Exception).message.replace(/.+"(.+)"/, '$1');
@@ -93,11 +93,11 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
               )
           );
 
-          setRendered(compiled(object));
+          setRendered(await compiled(object));
           return;
         }
 
-        // oxlint-disable-next-line no-console
+        // eslint-disable-next-line no-console
         console.error(err);
 
         setRendered(`

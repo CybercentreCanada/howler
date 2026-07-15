@@ -7,15 +7,15 @@ export type SearchResponseState<T> = HowlerSearchResponse<T> & {
   removeCount: number;
 };
 
-export type SearchResponseContextType<T> = {
+export type SearchResponseContextType<T, R = HowlerSearchResponse<T>> = {
   push: (item: T) => void;
   remove: (id: string) => void;
   replace: (id: string, item: T) => void;
   request: (
-    endpoint: (request: HowlerSearchRequest) => Promise<HowlerSearchResponse<T>>,
+    endpoint: (request: HowlerSearchRequest) => Promise<R>,
     requestData: HowlerSearchRequest,
     config?: DispatchApiConfig
-  ) => Promise<HowlerSearchResponse<T>>;
+  ) => Promise<R>;
   getSearchRequestData: (requestData: Partial<HowlerSearchRequest>) => Partial<HowlerSearchRequest>;
   response: SearchResponseState<T> | null;
 };

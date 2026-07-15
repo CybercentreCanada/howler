@@ -42,7 +42,7 @@ const AnalyticProvider: FC<PropsWithChildren> = ({ children }) => {
 
   useEffect(() => {
     if (!ready && appUser.isReady()) {
-      void fetchAnalytics();
+      fetchAnalytics();
     }
   }, [ready, appUser, fetchAnalytics]);
 
@@ -70,7 +70,7 @@ const AnalyticProvider: FC<PropsWithChildren> = ({ children }) => {
           return analytic;
         }
       } catch (e) {
-        // oxlint-disable-next-line no-console
+        // eslint-disable-next-line no-console
         console.error(e);
       }
 

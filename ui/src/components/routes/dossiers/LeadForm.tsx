@@ -26,7 +26,7 @@ const LeadForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Parti
     }
 
     setSearchParams(searchParams, { replace: true });
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setSearchParams, tab]);
 
   return (

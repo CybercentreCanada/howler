@@ -68,8 +68,8 @@ const OverviewProvider: FC<PropsWithChildren> = ({ children }) => {
 
   const refresh = useCallback(() => {
     setLoaded(false);
-    void getOverviews();
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    getOverviews();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

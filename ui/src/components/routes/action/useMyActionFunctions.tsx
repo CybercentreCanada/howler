@@ -61,7 +61,7 @@ const useMyActionFunctions = () => {
     addListener<{ processed: number; total: number }>('action', handler);
 
     return () => removeListener('action');
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handler]);
 
   return {
@@ -144,7 +144,7 @@ const useMyActionFunctions = () => {
           setLoading(false);
           setRequestId(null);
           setProgress([0, 0]);
-          void onSearch(query);
+          onSearch(query);
         }
       },
       [dispatchApi, onSearch, showErrorMessage, t]

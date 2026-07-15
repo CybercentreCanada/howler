@@ -61,7 +61,7 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false, dossier, r
       }
 
       handlebars.registerHelper(helper.keyword, (...args: any[]) => {
-        // oxlint-disable-next-line no-console
+        // eslint-disable-next-line no-console
         console.debug(`Running helper ${helper.keyword}`);
 
         return helper.callback(...args);
@@ -71,7 +71,7 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false, dossier, r
     try {
       return handlebars.compile(pivot.value)(templateObject);
     } catch (e) {
-      // oxlint-disable-next-line no-console
+      // eslint-disable-next-line no-console
       console.error(`Failed to compile pivot template for value "${pivot.value}":`, e);
       return pivot.value;
     }
@@ -92,17 +92,17 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false, dossier, r
   }
 
   // Hide a relatively useless console error, we'll show a UI component instead
-  // oxlint-disable-next-line no-console
+  // eslint-disable-next-line no-console
   const oldError = console.error;
 
   let pluginPivot: React.ReactElement = null;
   try {
-    // oxlint-disable-next-line no-console
+    // eslint-disable-next-line no-console
     console.error = () => {};
 
     pluginPivot = pluginStore.executeFunction(`pivot.${pivot.format}`, { pivot, hit, compact });
   } finally {
-    // oxlint-disable-next-line no-console
+    // eslint-disable-next-line no-console
     console.error = oldError;
   }
 

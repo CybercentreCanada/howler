@@ -110,7 +110,7 @@ const Comment: FC<{
       e.stopPropagation();
 
       if (e.ctrlKey && e.key === 'Enter' && !loading) {
-        void onEdit();
+        onEdit();
       } else if (e.key === 'Escape') {
         setEditing(false);
       }

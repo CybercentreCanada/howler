@@ -31,7 +31,7 @@ const ActionIntroductionDocumentation: FC = () => {
       .get()
       .then(_operations => _operations.filter(a => difference(a.roles, user.roles).length < a.roles.length))
       .then(setOperations)
-      // oxlint-disable-next-line no-console
+      // eslint-disable-next-line no-console
       .catch(console.debug);
   }, [user.roles]);
 

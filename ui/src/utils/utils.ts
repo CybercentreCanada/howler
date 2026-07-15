@@ -67,7 +67,7 @@ export const stringToColor = (string: string) => {
   const colorKeys = Object.keys(colors).filter(key => key !== 'common');
 
   const colorKey = colorKeys[number % colorKeys.length];
-  // oxlint-disable-next-line import/namespace
+  // eslint-disable-next-line import/namespace
   const color = colors[colorKey] as { [shade: string]: string };
 
   const shade = Math.max(Math.floor((number / 1000) % 10), 1) * 100;
@@ -137,7 +137,7 @@ export const searchObject = (o: any, query: string, returnFlat = false) => {
       Object.fromEntries(Object.entries(flatten(o)).filter(([k, v]) => regex.test(k) || regex.test(v))) ?? {};
 
     return returnFlat ? filteredData : unflatten(filteredData);
-  } catch {
+  } catch (e) {
     return returnFlat ? flatten(o) : o;
   }
 };
@@ -182,7 +182,7 @@ export const convertLuceneToDate = (lucene: string) => {
 export const tryParse = (json: string) => {
   try {
     return JSON.parse(json);
-  } catch {
+  } catch (e) {
     return json;
   }
 };

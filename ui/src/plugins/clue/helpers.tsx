@@ -1,4 +1,4 @@
-/* oxlint-disable no-console */
+/* eslint-disable no-console */
 import EnrichedTypography, { type EnrichedTypographyProps } from '@cccsaurora/clue-ui/components/EnrichedTypography';
 import Fetcher from '@cccsaurora/clue-ui/components/fetchers/Fetcher';
 import Entry from '@cccsaurora/clue-ui/components/group/Entry';
@@ -73,7 +73,7 @@ const ClueGroup: FC<PropsWithChildren<{ type: string; enabled?: boolean }>> = pr
     return (
       <Stack spacing={1}>
         <strong style={{ color: 'red' }}>{i18nInstance.t('markdown.error')}</strong>
-        {/* oxlint-disable-next-line react/jsx-no-literals */}
+        {/* eslint-disable-next-line react/jsx-no-literals */}
         <code style={{ fontSize: '0.8rem' }}>{i18nInstance.t('markdown.props.missing')}: type</code>
       </Stack>
     );
@@ -120,7 +120,7 @@ const HELPERS: HowlerHelper[] = [
         return (
           <Stack spacing={1}>
             <strong style={{ color: 'red' }}>{i18nInstance.t('markdown.error')}</strong>
-            {/* oxlint-disable-next-line react/jsx-no-literals */}
+            {/* eslint-disable-next-line react/jsx-no-literals */}
             <code style={{ fontSize: '0.8rem' }}>{i18nInstance.t('markdown.helpers.clue.arguments')}</code>
           </Stack>
         );
@@ -310,10 +310,10 @@ où clue_table_cells est un tableau avec les propriétés :
                             {!!cell.clue_fetcher && !!cell.clue_type ? (
                               <Fetcher
                                 slotProps={{
-                                  image: { width: cell.fetcher_width ? cell.fetcher_width : 'fit-content' },
+                                  image: { width: !!cell.fetcher_width ? cell.fetcher_width : 'fit-content' },
                                   stack: {
                                     component: 'span',
-                                    sx: cell.fetcher_width
+                                    sx: !!cell.fetcher_width
                                       ? { width: cell.fetcher_width, display: 'block' }
                                       : { width: 'fit-content' }
                                   }
@@ -322,7 +322,7 @@ où clue_table_cells est un tableau avec les propriétés :
                                 value={cell.value}
                                 type={cell.clue_type}
                               />
-                            ) : cell.clue_type ? (
+                            ) : !!cell.clue_type ? (
                               <MarkdownTypography
                                 slotProps={{
                                   stack: {

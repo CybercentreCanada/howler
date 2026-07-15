@@ -13,7 +13,7 @@ const Escalation = forwardRef<any, { analytic: Analytic; maxWidth?: string }>(({
   const { doughnut } = useMyChart();
 
   const [loading, setLoading] = useState(false);
-  const [escalationData, setEscalationData] = useState<HowlerFacetSearchResponse>({});
+  const [escalationData, setEscalationData] = useState<HowlerFacetSearchResponse[string]>({});
 
   const escalationColors = useMemo(
     () =>
@@ -30,7 +30,7 @@ const Escalation = forwardRef<any, { analytic: Analytic; maxWidth?: string }>(({
 
     setLoading(true);
 
-    void api.search.facet.hit
+    api.search.facet.hit
       .post({
         query: `howler.analytic:("${analytic.name}")`,
         fields: ['howler.escalation']

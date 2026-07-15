@@ -20,7 +20,7 @@ import PageCenter from 'commons/components/pages/PageCenter';
 import { FieldContext } from 'components/app/providers/FieldProvider';
 import SocketBadge from 'components/elements/display/icons/SocketBadge';
 import useMyApi from 'components/hooks/useMyApi';
-import HitQuery from 'components/routes/hits/search/HitQuery';
+import RecordQuery from 'components/routes/hits/search/RecordQuery';
 import { difference, uniq } from 'lodash-es';
 import type { ActionOperation } from 'models/ActionTypes';
 import type { HowlerUser } from 'models/entities/HowlerUser';
@@ -107,14 +107,14 @@ const ActionEditor: FC = () => {
   );
 
   useEffect(() => {
-    void dispatchApi(api.action.operations.get())
+    dispatchApi(api.action.operations.get())
       .then(_operations => _operations.filter(a => difference(a.roles, user.roles).length < a.roles.length))
       .then(setOperations);
 
     if (responseQuery) {
-      void onSearch(responseQuery);
+      onSearch(responseQuery);
     }
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatchApi, getHitFields]);
 
   useEffect(() => {
@@ -128,7 +128,7 @@ const ActionEditor: FC = () => {
   useEffect(() => {
     if (params.id) {
       setLoading(true);
-      void dispatchApi(
+      dispatchApi(
         api.search.action.post({
           query: `action_id:${params.id}`,
           rows: 1
@@ -146,10 +146,10 @@ const ActionEditor: FC = () => {
         setSearchParams(new URLSearchParams(searchParams), { replace: true });
         setUserOperations(existingAction.operations);
         setLoading(false);
-        void onSearch(existingAction.query);
+        onSearch(existingAction.query);
       });
     }
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatchApi, params.id]);
 
   return (
@@ -174,7 +174,13 @@ const ActionEditor: FC = () => {
               !name ||
               loading ||
               userOperations.length < 1 ||
-              userOperations.some(a => !operationReady(a?.data_json, operations.find(_a => _a.id === a.operation_id)))
+              userOperations.some(
+                a =>
+                  !operationReady(
+                    a?.data_json,
+                    operations.find(_a => _a.id === a.operation_id)
+                  )
+              )
             }
             onClick={() => saveAction(name, responseQuery, userOperations, triggers)}
           >
@@ -234,7 +240,7 @@ const ActionEditor: FC = () => {
           </Typography>
           <SocketBadge size="small" />
         </Stack>
-        <HitQuery triggerSearch={onSearch} />
+        <RecordQuery triggerSearch={onSearch} />
         {response ? (
           <QueryResultText count={response.total} query={responseQuery} />
         ) : (
@@ -330,7 +336,13 @@ const ActionEditor: FC = () => {
                 !response ||
                 loading ||
                 userOperations.length < 1 ||
-                userOperations.some(a => !operationReady(a?.data_json, operations.find(_a => _a.id === a.operation_id)))
+                userOperations.some(
+                  a =>
+                    !operationReady(
+                      a?.data_json,
+                      operations.find(_a => _a.id === a.operation_id)
+                    )
+                )
               }
               onClick={_submitAction}
             >

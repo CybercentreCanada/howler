@@ -71,7 +71,7 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
 
         return ids.map(id => views[id] ?? newViews[id]);
       } catch (e) {
-        // oxlint-disable-next-line no-console
+        // eslint-disable-next-line no-console
         console.warn(e);
 
         return [];
@@ -85,7 +85,7 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
       return;
     }
 
-    void (async () => {
+    (async () => {
       const result = await fetchViews([defaultView]);
 
       if (!result.length) {
@@ -124,7 +124,7 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
 
       setViews(_views => ({
         ..._views,
-        [id]: { ..._views[id], ...partialView }
+        [id]: { ...(_views[id] ?? {}), ...partialView }
       }));
 
       return result;
@@ -150,7 +150,7 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
 
       setViews(_views => ({ ..._views, [newView.view_id]: newView }));
 
-      void addFavourite(newView.view_id);
+      addFavourite(newView.view_id);
 
       return newView;
     },

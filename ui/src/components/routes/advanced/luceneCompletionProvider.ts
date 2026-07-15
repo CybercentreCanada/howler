@@ -13,7 +13,7 @@ const useLuceneCompletionProvider = (): languages.CompletionItemProvider => {
   const { hitFields, getHitFields } = useContext(FieldContext);
 
   useEffect(() => {
-    void getHitFields();
+    getHitFields();
   }, [getHitFields]);
 
   // Using fuse for fuzzy searching

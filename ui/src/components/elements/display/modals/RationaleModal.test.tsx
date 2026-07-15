@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { ModalContext } from 'components/app/providers/ModalProvider';
@@ -543,7 +544,7 @@ describe('RationaleModal', () => {
 
       const specialText = 'Test <>&"\'{}[]()';
       const input = screen.getByLabelText(i18n.t('modal.rationale.label'));
-      await user.type(input, specialText.replace(/([{[])/g, '$1$1'));
+      await user.type(input, specialText.replace(/([{\[])/g, '$1$1'));
 
       const submitButton = screen.getByText(i18n.t('submit'));
       await user.click(submitButton);

@@ -100,7 +100,7 @@ const Home: FC = () => {
       }
 
       debounceTimerRef.current = setTimeout(() => {
-        void setRefreshRateBackend(newRate);
+        setRefreshRateBackend(newRate);
       }, 500);
     },
     [setRefreshRateBackend, setUser]
@@ -146,7 +146,7 @@ const Home: FC = () => {
   );
 
   useEffect(() => {
-    void api.search.hit
+    api.search.hit
       .post({
         query: updateQuery,
         rows: 0

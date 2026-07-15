@@ -32,7 +32,7 @@ const resources = {
 
 const i18nInstance: i18n = createInstance();
 
-void i18nInstance
+i18nInstance
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({

@@ -16,34 +16,34 @@ import {
 } from '@mui/material';
 import PageCenter from 'commons/components/pages/PageCenter';
 import useMatchers from 'components/app/hooks/useMatchers';
-import { HitContext } from 'components/app/providers/HitProvider';
+import { RecordContext } from 'components/app/providers/RecordProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import HowlerCard from 'components/elements/display/HowlerCard';
-import BundleButton from 'components/elements/display/icons/BundleButton';
 import SocketBadge from 'components/elements/display/icons/SocketBadge';
 import JSONViewer from 'components/elements/display/json/JSONViewer';
 import HitActions from 'components/elements/hit/HitActions';
 import HitBanner from 'components/elements/hit/HitBanner';
-import HitComments from 'components/elements/hit/HitComments';
-import HitDetails from 'components/elements/hit/HitDetails';
 import HitLabels from 'components/elements/hit/HitLabels';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import HitLinks from 'components/elements/hit/HitLinks';
 import HitOutline from 'components/elements/hit/HitOutline';
 import HitOverview from 'components/elements/hit/HitOverview';
-import HitRelated from 'components/elements/hit/HitRelated';
-import HitWorklog from 'components/elements/hit/HitWorklog';
+import ObjectDetails from 'components/elements/ObjectDetails';
+import RecordComments from 'components/elements/record/RecordComments';
+import RecordRelated from 'components/elements/record/RecordRelated';
+import RecordWorklog from 'components/elements/record/RecordWorklog';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useMyUserList from 'components/hooks/useMyUserList';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Dossier } from 'models/entities/generated/Dossier';
+import type { Hit } from 'models/entities/generated/Hit';
 import type { FC } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
-import { getUserList } from 'utils/hitFunctions';
+import { getUserList } from 'utils/recordFunctions';
 import { tryParse } from 'utils/utils';
 import LeadRenderer from './LeadRenderer';
 
@@ -61,8 +61,8 @@ const HitViewer: FC = () => {
   const [orientation, setOrientation] = useMyLocalStorageItem(StorageKey.VIEWER_ORIENTATION, Orientation.VERTICAL);
   const { getMatchingOverview, getMatchingDossiers, getMatchingAnalytic } = useMatchers();
 
-  const getHit = useContextSelector(HitContext, ctx => ctx.getHit);
-  const hit = useContextSelector(HitContext, ctx => ctx.hits[params.id]);
+  const getHit = useContextSelector(RecordContext, ctx => ctx.getRecord);
+  const hit = useContextSelector(RecordContext, ctx => ctx.records[params.id] as Hit);
 
   const [userIds, setUserIds] = useState<Set<string>>(new Set());
   const users = useMyUserList(userIds);
@@ -95,7 +95,7 @@ const HitViewer: FC = () => {
   }, [isUnderLg, setOrientation]);
 
   useEffect(() => {
-    void fetchData();
+    fetchData();
   }, [params.id, fetchData, hit]);
 
   const onOrientationChange = useCallback(
@@ -104,7 +104,7 @@ const HitViewer: FC = () => {
   );
 
   useEffect(() => {
-    void getMatchingOverview(hit).then(_overview => setHasOverview(!!_overview));
+    getMatchingOverview(hit).then(_overview => setHasOverview(!!_overview));
   }, [getMatchingOverview, hit]);
 
   useEffect(() => {
@@ -113,7 +113,7 @@ const HitViewer: FC = () => {
     } else if (!hasOverview && tab === 'overview') {
       setTab('details');
     }
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasOverview]);
 
   const tabContent = useMemo(() => {
@@ -123,12 +123,12 @@ const HitViewer: FC = () => {
 
     return {
       overview: () => <HitOverview hit={hit} />,
-      details: () => <HitDetails hit={hit} />,
-      hit_comments: () => <HitComments hit={hit} users={users} />,
+      details: () => <ObjectDetails obj={hit} />,
+      hit_comments: () => <RecordComments record={hit} users={users} />,
       hit_raw: () => <JSONViewer data={hit} />,
       hit_data: () => <JSONViewer data={hit?.howler?.data?.map(entry => tryParse(entry))} collapse={false} />,
-      hit_worklog: () => <HitWorklog hit={hit} users={users} />,
-      hit_related: () => <HitRelated hit={hit} />,
+      hit_worklog: () => <RecordWorklog record={hit} users={users} />,
+      hit_related: () => <RecordRelated record={hit} />,
       ...Object.fromEntries(
         hit?.howler.dossier?.map((lead, index) => ['lead:' + index, () => <LeadRenderer lead={lead} hit={hit} />]) ?? []
       ),
@@ -148,7 +148,7 @@ const HitViewer: FC = () => {
       return;
     }
 
-    void getMatchingDossiers(hit).then(setDossiers);
+    getMatchingDossiers(hit).then(setDossiers);
   }, [getMatchingDossiers, hit]);
 
   if (!hit) {
@@ -212,13 +212,12 @@ const HitViewer: FC = () => {
               </Tooltip>
               <SocketBadge size="medium" />
               {analytic && (
-                <Tooltip title={t('hit.panel.analytic.open')}>
+                <Tooltip title={t('analytic.open')}>
                   <IconButton onClick={() => navigate(`/analytics/${analytic.analytic_id}`)}>
                     <QueryStats />
                   </IconButton>
                 </Tooltip>
               )}
-              {hit?.howler.bundles?.length > 0 && <BundleButton ids={hit.howler.bundles} />}
             </Stack>
           )}
         </Box>
@@ -232,9 +231,6 @@ const HitViewer: FC = () => {
             value={tab === 'overview' && !hasOverview ? 'details' : tab}
             sx={{ display: 'flex', flexDirection: 'row', pr: 2, alignItems: 'center' }}
           >
-            {hit?.howler?.is_bundle && (
-              <Tab label={t('hit.viewer.aggregate')} value="hit_aggregate" onClick={() => setTab('hit_aggregate')} />
-            )}
             {hasOverview && (
               <Tab label={t('hit.viewer.overview')} value="overview" onClick={() => setTab('overview')} />
             )}
@@ -242,7 +238,7 @@ const HitViewer: FC = () => {
 
             {hit?.howler.dossier?.map((lead, index) => (
               <Tab
-                // oxlint-disable-next-line react/no-array-index-key
+                // eslint-disable-next-line react/no-array-index-key
                 key={'lead:' + index}
                 label={
                   <Stack direction="row" spacing={0.5}>
@@ -258,7 +254,7 @@ const HitViewer: FC = () => {
             {dossiers.flatMap((_dossier, dossierIndex) =>
               (_dossier.leads ?? []).map((_lead, leadIndex) => (
                 <Tab
-                  // oxlint-disable-next-line react/no-array-index-key
+                  // eslint-disable-next-line react/no-array-index-key
                   key={`external-lead:${dossierIndex}:${leadIndex}`}
                   label={
                     <Stack direction="row" spacing={0.5}>

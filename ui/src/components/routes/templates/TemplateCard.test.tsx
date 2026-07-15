@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { render, screen } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { ModalContext } from 'components/app/providers/ModalProvider';

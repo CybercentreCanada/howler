@@ -14,7 +14,7 @@ const Assessment = forwardRef<any, { analytic: Analytic }>(({ analytic }, ref) =
   const { bar } = useMyChart();
 
   const [loading, setLoading] = useState(false);
-  const [assessmentData, setAssessmentData] = useState<HowlerFacetSearchResponse>({});
+  const [assessmentData, setAssessmentData] = useState<HowlerFacetSearchResponse[string]>({});
 
   useEffect(() => {
     if (!analytic) {
@@ -23,7 +23,7 @@ const Assessment = forwardRef<any, { analytic: Analytic }>(({ analytic }, ref) =
 
     setLoading(true);
 
-    void api.search.facet.hit
+    api.search.facet.hit
       .post({
         fields: ['howler.assessment'],
         query: `howler.analytic:("${analytic.name}")`

@@ -55,7 +55,7 @@ const TemplateViewer = () => {
   useEffect(() => {
     setLoading(true);
 
-    void dispatchApi(api.search.analytic.post({ query: 'analytic_id:*', rows: 1000 }), {
+    dispatchApi(api.search.analytic.post({ query: 'analytic_id:*', rows: 1000 }), {
       logError: false,
       showError: true,
       throwError: true
@@ -70,8 +70,8 @@ const TemplateViewer = () => {
         setAnalytics(_analytics);
       });
 
-    void dispatchApi(api.template.get()).then(setTemplateList);
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    dispatchApi(api.template.get()).then(setTemplateList);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analytic, dispatchApi]);
 
   useEffect(() => {
@@ -81,7 +81,7 @@ const TemplateViewer = () => {
 
     setLoading(true);
 
-    void dispatchApi(
+    dispatchApi(
       api.search.grouped.hit.post('howler.detection', {
         limit: 0,
         query: `howler.analytic:"${sanitizeLuceneQuery(analytic)}"`

@@ -74,14 +74,14 @@ const HitSort: FC<{ size?: 'small' | 'medium' }> = ({ size = 'small' }) => {
       return;
     }
 
-    void (async () => {
+    (async () => {
       const selectedViewSort = (await getCurrentViews({ lazy: true })).find(view => view?.sort)?.sort;
 
       if (selectedViewSort && !location.search.includes('sort')) {
         setSavedSort(selectedViewSort);
       }
     })();
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getCurrentViews, views]);
 
   return (

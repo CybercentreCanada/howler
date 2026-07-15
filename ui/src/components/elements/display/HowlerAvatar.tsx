@@ -41,14 +41,14 @@ const HowlerAvatar: FC<HowlerAvatarProps> = ({ userId, ...avatarProps }) => {
           av && !av.startsWith('http') && !av.startsWith('data:') ? setProps(stringAvatar(av)) : setProps({ src: av })
         )
         .catch(e => {
-          // oxlint-disable-next-line no-console
+          // eslint-disable-next-line no-console
           console.debug(e);
           setProps({
             src: null
           });
         });
     }
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   if (userId) {
@@ -58,7 +58,7 @@ const HowlerAvatar: FC<HowlerAvatarProps> = ({ userId, ...avatarProps }) => {
           aria-label={displayId}
           {...avatarProps}
           {...props}
-          sx={{ ...avatarProps?.sx, ...props?.sx } as SxProps<Theme>}
+          sx={{ ...(avatarProps?.sx || {}), ...(props?.sx || {}) } as SxProps<Theme>}
         />
       </Tooltip>
     );
@@ -68,7 +68,7 @@ const HowlerAvatar: FC<HowlerAvatarProps> = ({ userId, ...avatarProps }) => {
         aria-label={t('unknown')}
         {...avatarProps}
         {...props}
-        sx={{ ...avatarProps?.sx, ...props?.sx } as SxProps<Theme>}
+        sx={{ ...(avatarProps?.sx || {}), ...(props?.sx || {}) } as SxProps<Theme>}
       />
     );
   }

@@ -20,7 +20,7 @@ const useMyApi = () => {
   const { showErrorMessage } = useMySnackbar();
 
   const dispatchApi = useCallback(
-    // oxlint-disable-next-line comma-spacing
+    // eslint-disable-next-line comma-spacing
     async <R,>(apiCall: Promise<R>, config: DispatchApiConfig = DEFAULT_CONFIG): Promise<R> => {
       const { throwError, logError, showError, onConflict } = { ...DEFAULT_CONFIG, ...config };
       try {
@@ -29,7 +29,7 @@ const useMyApi = () => {
       } catch (error) {
         if (error instanceof Error) {
           if (onConflict && [409, 412].includes((error.cause as HowlerResponse<any>)?.api_status_code)) {
-            void onConflict();
+            onConflict();
             return null;
           }
 
@@ -38,7 +38,7 @@ const useMyApi = () => {
           }
 
           if (logError) {
-            // oxlint-disable-next-line no-console
+            // eslint-disable-next-line no-console
             console.error(error);
           }
 

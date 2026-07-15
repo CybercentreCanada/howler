@@ -33,7 +33,7 @@ interface ItemManagerProps {
   createIcon?: ReactNode;
 }
 
-// oxlint-disable-next-line comma-spacing
+// eslint-disable-next-line comma-spacing
 const ItemManager: FC<ItemManagerProps> = ({
   aboveSearch,
   afterSearch,
@@ -78,14 +78,16 @@ const ItemManager: FC<ItemManagerProps> = ({
                     pr: 1
                   }
                 }}
-                startAdornment={
-                  <Tooltip title={t(searchPrompt)}>
-                    <IconButton onClick={() => onSearch()}>
-                      <Search />
-                    </IconButton>
-                  </Tooltip>
+                endAdornment={
+                  <Stack direction="row" spacing={1}>
+                    <Tooltip title={t(searchPrompt)}>
+                      <IconButton onClick={() => onSearch()}>
+                        <Search />
+                      </IconButton>
+                    </Tooltip>
+                    {searchAdornment}
+                  </Stack>
                 }
-                endAdornment={<>{searchAdornment}</>}
               />
               {searching && (
                 <LinearProgress

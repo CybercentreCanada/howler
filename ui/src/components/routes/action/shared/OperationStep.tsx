@@ -112,7 +112,7 @@ const OperationStep: FC<{
     } finally {
       setValidating(false);
     }
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step.validation?.error, step.validation?.warn, dispatchApi, query, substitute]);
 
   useEffect(() => {
@@ -121,7 +121,7 @@ const OperationStep: FC<{
     }
 
     THROTTLER.debounce(validate);
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filled, validate, query, values]);
 
   return (

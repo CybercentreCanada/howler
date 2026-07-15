@@ -31,7 +31,7 @@ const Integrations: FC = () => {
   useEffect(() => {
     searchParams.set('tab', tab);
     setSearchParams(searchParams);
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
   const tabData = useMemo(() => {

@@ -47,7 +47,7 @@ const SearchSpan: FC<{
       return;
     }
 
-    void (async () => {
+    (async () => {
       const selectedViewSpan = (await getCurrentViews({ lazy: true })).find(view => view?.span)?.span;
 
       if (!selectedViewSpan) {
@@ -60,7 +60,7 @@ const SearchSpan: FC<{
         setSpan(selectedViewSpan);
       }
     })();
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getCurrentViews, views]);
 
   return (

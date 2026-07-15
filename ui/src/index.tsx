@@ -1,4 +1,4 @@
-import '@fontsource/roboto/index.css';
+import '@fontsource/roboto';
 import App from 'components/app/App';
 import 'i18n';
 import 'index.css';

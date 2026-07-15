@@ -92,7 +92,7 @@ const CluePivotForm: FC<PivotFormProps> = ({ pivot, update }) => {
     // Clone and adapt the action's parameter schema
     const clueAdaptedSchema = cloneDeep({
       ...adaptSchema(actions[value].params),
-      ...actions[value].extra_schema
+      ...(actions[value].extra_schema ?? {})
     });
 
     // Enhance string properties with hit index options for better UX

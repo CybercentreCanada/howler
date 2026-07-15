@@ -38,7 +38,7 @@ const useMyUserFunctions = () => {
 
     editQuota: useCallback(
       async (user: HowlerUser, quota: string) => {
-        // oxlint-disable-next-line @typescript-eslint/naming-convention
+        // eslint-disable-next-line @typescript-eslint/naming-convention
         const api_quota = parseInt(quota);
 
         await dispatchApi(api.user.put(user.username, { api_quota }), { throwError: true });

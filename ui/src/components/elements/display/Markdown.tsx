@@ -1,4 +1,4 @@
-/* oxlint-disable prefer-arrow/prefer-arrow-functions */
+/* eslint-disable prefer-arrow/prefer-arrow-functions */
 import {
   Alert,
   Box,
@@ -79,7 +79,7 @@ const Markdown: FC<MarkdownProps> = ({ md, components = {}, disableLinks = false
   }, [isDark, theme]);
 
   useEffect(() => {
-    void mermaid.run();
+    mermaid.run();
   });
 
   return (
@@ -110,14 +110,14 @@ const Markdown: FC<MarkdownProps> = ({ md, components = {}, disableLinks = false
           if (match?.[1] === 'json') {
             try {
               return <JSONViewer data={JSON.parse((node.children[0] as any).value)} />;
-            } catch {
+            } catch (e) {
               return <code style={{ color: 'red' }}>{t('markdown.json.invalid')}</code>;
             }
           }
 
           return match ? (
             <SyntaxHighlighter
-              // oxlint-disable-next-line react/no-children-prop
+              // eslint-disable-next-line react/no-children-prop
               children={String(children).replace(/\n$/, '')}
               style={isDark ? oneDark : oneLight}
               language={match[1]}
@@ -133,9 +133,9 @@ const Markdown: FC<MarkdownProps> = ({ md, components = {}, disableLinks = false
         blockquote({ children }) {
           return <Box sx={{ pl: 1, borderLeft: `2px solid ${theme.palette.divider}` }}>{children}</Box>;
         },
-        // oxlint-disable-next-line @typescript-eslint/no-unused-vars
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         img({ node, ...props }) {
-          // oxlint-disable-next-line jsx-a11y/alt-text
+          // eslint-disable-next-line jsx-a11y/alt-text
           return <Image {...props} style={{ ...props.style, maxWidth: '75%' }} />;
         },
         table({ children }) {
@@ -182,7 +182,7 @@ const Markdown: FC<MarkdownProps> = ({ md, components = {}, disableLinks = false
           try {
             parsed = new URL(props.href);
           } catch (e) {
-            // oxlint-disable-next-line no-console
+            // eslint-disable-next-line no-console
             console.warn('error when parsing URL:', e);
           }
 

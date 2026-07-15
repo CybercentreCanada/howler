@@ -81,7 +81,7 @@ const UserSearch: FC = () => {
     (event: KeyboardEvent<HTMLElement>) => {
       const { isEnter } = parseEvent(event);
       if (isEnter) {
-        void onSearch();
+        onSearch();
       }
     },
     [onSearch]
@@ -90,20 +90,20 @@ const UserSearch: FC = () => {
   // Clean button handler.
   const onClear = useCallback(() => {
     setPhrase('');
-    void onSearch();
+    onSearch();
   }, [onSearch]);
 
   // Effect to initialize list of users.
   useEffect(
     () => {
-      void onSearch();
+      onSearch();
 
       if (!searchParams.has('offset')) {
         searchParams.set('offset', '0');
         setSearchParams(searchParams);
       }
     },
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -117,9 +117,9 @@ const UserSearch: FC = () => {
 
   useEffect(() => {
     if (!searching) {
-      void onSearch();
+      onSearch();
     }
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offset]);
 
   // TuiTable cell renderer

@@ -23,7 +23,7 @@ const CustomSort: FC = () => {
   );
 
   useEffect(() => {
-    void getHitFields();
+    getHitFields();
   }, [getHitFields]);
 
   useEffect(() => {
@@ -38,7 +38,7 @@ const CustomSort: FC = () => {
     }
 
     setSavedSort(uniqBy([...sortEntries, `${field} ${sort}`], entry => entry.replace(/ .+/, '')).join(','));
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [field]);
 
   return (

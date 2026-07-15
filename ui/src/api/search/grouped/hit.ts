@@ -12,5 +12,5 @@ export const post = (
   field: string,
   request?: HowlerGroupedSearchRequest
 ): Promise<HowlerGroupedSearchResponse<Hit>> => {
-  return hpost(uri(field), { ...request, query: request?.query || DEFAULT_QUERY });
+  return hpost(uri(field), { ...(request || {}), query: request?.query || DEFAULT_QUERY });
 };

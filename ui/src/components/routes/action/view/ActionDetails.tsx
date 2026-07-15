@@ -87,7 +87,7 @@ const ActionDetails = () => {
   useEffect(() => {
     setLoading(true);
 
-    void Promise.all([
+    Promise.all([
       dispatchApi(api.action.operations.get()).then(setOperations),
       dispatchApi(api.action.get(params.id).then(setAction))
     ]).finally(() => setLoading(false));
@@ -95,9 +95,9 @@ const ActionDetails = () => {
 
   useEffect(() => {
     if (action?.query) {
-      void onSearch(action?.query);
+      onSearch(action?.query);
     }
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [action?.query]);
 
   const editRoles = user.roles.includes('automation_basic') || user.roles.includes('automation_advanced');

@@ -15,7 +15,7 @@ export default function useAppColor(
 ) {
   const { isDark } = useAppTheme();
   return useMemo(() => {
-    // oxlint-disable-next-line import/namespace
+    // eslint-disable-next-line import/namespace
     return (colors[color] as MuiColor)[isDark ? darkVariant : lightVariant];
   }, [isDark, color, lightVariant, darkVariant]);
 }

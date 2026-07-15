@@ -1,14 +1,15 @@
+/// <reference types="vitest" />
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
-import { type PropsWithChildren } from 'react';
+import type { PropsWithChildren } from 'react';
 import { setupReactRouterMock } from 'tests/mocks';
 import { vi } from 'vitest';
 
 setupReactRouterMock();
 
 // Import component after mocks
-import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
+import { RecordSearchContext } from 'components/app/providers/RecordSearchProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import i18n from 'i18n';
 import type { View } from 'models/entities/generated/View';
@@ -29,7 +30,7 @@ let mockParameterContext = {
   setView: vi.fn()
 };
 
-let mockHitSearchContext = {
+let mockRecordSearchContext = {
   search: vi.fn()
 };
 
@@ -46,9 +47,9 @@ const Wrapper = ({ children }: PropsWithChildren) => {
   return (
     <I18nextProvider i18n={i18n as any}>
       <ParameterContext.Provider value={mockParameterContext as any}>
-        <HitSearchContext.Provider value={mockHitSearchContext as any}>
+        <RecordSearchContext.Provider value={mockRecordSearchContext as any}>
           <ViewContext.Provider value={mockViewContext as any}>{children}</ViewContext.Provider>
-        </HitSearchContext.Provider>
+        </RecordSearchContext.Provider>
       </ParameterContext.Provider>
     </I18nextProvider>
   );
@@ -68,7 +69,7 @@ describe('ViewLink', () => {
     mockParameterContext.views = ['test-view-id'];
     mockParameterContext.removeView = vi.fn();
     mockParameterContext.setView = vi.fn();
-    mockHitSearchContext.search = vi.fn();
+    mockRecordSearchContext.search = vi.fn();
     mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([createMockView()]);
     mockViewContext.views = {
       'test-view-id': createMockView(),
@@ -324,7 +325,7 @@ describe('ViewLink', () => {
       const refreshButton = await screen.findByLabelText(i18n.t('view.refresh'));
       await user.click(refreshButton);
 
-      expect(mockHitSearchContext.search).toHaveBeenCalledWith('howler.id:*');
+      expect(mockRecordSearchContext.search).toHaveBeenCalledWith('howler.id:*');
     });
 
     it('should display open button', async () => {
@@ -429,7 +430,7 @@ describe('ViewLink', () => {
       const refreshButton = await screen.findByLabelText(i18n.t('view.refresh'));
       await user.click(refreshButton);
 
-      expect(mockHitSearchContext.search).toHaveBeenCalledWith(undefined);
+      expect(mockRecordSearchContext.search).toHaveBeenCalledWith(undefined);
     });
 
     it('should handle custom span correctly', async () => {
@@ -562,7 +563,7 @@ describe('ViewLink', () => {
       }
     });
 
-    it('should use search from HitSearchContext', async () => {
+    it('should use search from RecordSearchContext', async () => {
       mockViewContext.getCurrentViews = vi.fn().mockResolvedValue([createMockView()]);
 
       render(<ViewLink id={0} viewId="test-view-id" />, { wrapper: Wrapper });
@@ -573,7 +574,7 @@ describe('ViewLink', () => {
       const refreshButton = await screen.findByLabelText(i18n.t('view.refresh'));
       await user.click(refreshButton);
 
-      expect(mockHitSearchContext.search).toHaveBeenCalledWith('howler.id:*');
+      expect(mockRecordSearchContext.search).toHaveBeenCalledWith('howler.id:*');
     });
 
     it('should filter available views using currentViews from ParameterContext', async () => {

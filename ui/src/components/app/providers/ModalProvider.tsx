@@ -1,10 +1,10 @@
-// oxlint-disable-next-line import/no-cycle
 import ConfirmDeleteModal from 'components/elements/display/modals/ConfirmDeleteModal';
 import type { FC, PropsWithChildren, ReactNode } from 'react';
 import { createContext, useCallback, useEffect, useState } from 'react';
 
 export interface ModalOptions {
   disableClose?: boolean;
+  height?: number | string | null;
   maxWidth?: string;
   maxHeight?: string;
 }

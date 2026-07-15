@@ -54,7 +54,7 @@ const AnalyticOverview: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
 
     setLoading(true);
 
-    void api.search.count.hit
+    api.search.count.hit
       .post({ query: `howler.analytic:"${sanitizeLuceneQuery(analytic.name)}"` })
       .then(({ count }) => setEmpty(!count))
       .finally(() => setLoading(false));

@@ -1,12 +1,12 @@
 const getXSRFCookie = () => {
   if (document.cookie !== undefined) {
     try {
-      // oxlint-disable-next-line prefer-destructuring
+      // eslint-disable-next-line prefer-destructuring
       return document.cookie
         .split('; ')
         .find(row => row.startsWith('XSRF-TOKEN'))
         .split('=')[1];
-    } catch {
+    } catch (ex) {
       // Ignore... we will return null
     }
   }

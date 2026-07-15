@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { act, renderHook } from '@testing-library/react';
 import { createElement, type FC, type PropsWithChildren } from 'react';
 import { MemoryRouter, useSearchParams } from 'react-router-dom';
@@ -6,7 +7,7 @@ import useParamState from './useParamState';
 
 // Creates a MemoryRouter wrapper using createElement to avoid JSX in a .ts file
 const makeWrapper = (search = ''): FC<PropsWithChildren> => {
-  // oxlint-disable-next-line react/function-component-definition
+  // eslint-disable-next-line react/function-component-definition
   return ({ children }) => createElement(MemoryRouter, { initialEntries: [search ? `/?${search}` : '/'] }, children);
 };
 

@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { render } from '@testing-library/react';
 import TypingIndicator from './TypingIndicator';
 

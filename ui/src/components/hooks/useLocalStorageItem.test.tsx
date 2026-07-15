@@ -1,5 +1,5 @@
-/* oxlint-disable @typescript-eslint/no-unused-vars */
-
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/// <reference types="vitest" />
 import { act, renderHook } from '@testing-library/react';
 import { setupLocalStorageMock } from 'tests/mocks';
 import { vi } from 'vitest';
@@ -61,7 +61,7 @@ describe('useLocalStorageItem', () => {
     it('skips persisting to storage when save=false', () => {
       const { result } = renderHook(() => useLocalStorageItem('testkey', 0));
       vi.mocked(mockLocalStorage.setItem).mockClear();
-      void act(() => (result.current[1] as any)(10, false));
+      act(() => (result.current[1] as any)(10, false));
       expect(result.current[0]).toBe(10);
       expect(mockLocalStorage.setItem).not.toHaveBeenCalled();
     });
@@ -118,7 +118,7 @@ describe('useLocalStorageItem', () => {
       const { result: a } = renderHook(() => useLocalStorageItem('testkey', 0));
       const { result: b } = renderHook(() => useLocalStorageItem('testkey', 0));
 
-      void act(() => (a.current[1] as any)(10, false));
+      act(() => (a.current[1] as any)(10, false));
 
       expect(b.current[0]).toBe(10);
     });

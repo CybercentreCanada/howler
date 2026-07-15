@@ -100,7 +100,7 @@ const RationaleModal: FC<{ hits: Hit[]; onSubmit: (rationale: string) => void }>
   }, [hits, getMatchingAnalytic]);
 
   useEffect(() => {
-    void (async () => {
+    (async () => {
       setLoading(true);
 
       try {

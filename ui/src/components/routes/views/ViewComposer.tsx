@@ -18,12 +18,13 @@ import {
 } from '@mui/material';
 import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
+import type { SearchIndex } from 'api/v2/search';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
 import PageCenter from 'commons/components/pages/PageCenter';
 import { GridColumnsContext } from 'components/app/providers/GridColumnsProvider';
-import { HitContext } from 'components/app/providers/HitProvider';
-import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
+import { RecordContext } from 'components/app/providers/RecordProvider';
+import { RecordSearchContext } from 'components/app/providers/RecordSearchProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import CustomButton from 'components/elements/addons/buttons/CustomButton';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
@@ -33,8 +34,9 @@ import VSBoxContent from 'components/elements/addons/layout/vsbox/VSBoxContent';
 import VSBoxHeader from 'components/elements/addons/layout/vsbox/VSBoxHeader';
 import SearchTotal from 'components/elements/addons/search/SearchTotal';
 import ChipPopper from 'components/elements/display/ChipPopper';
+import EventCard from 'components/elements/event/EventCard';
 import AddColumnModal from 'components/elements/hit/grid/AddColumnModal';
-import HitTable from 'components/elements/hit/grid/HitTable';
+import RecordTable from 'components/elements/hit/grid/RecordTable';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
 import LayoutToggle, { type HowlerViewLayoutType } from 'components/elements/view/LayoutToggle';
@@ -42,6 +44,7 @@ import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import { uniq } from 'lodash-es';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
@@ -49,8 +52,9 @@ import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
 import { convertDateToLucene } from 'utils/utils';
 import { buildViewUrl } from 'utils/viewUtils';
 import ErrorBoundary from '../ErrorBoundary';
-import HitQuery from '../hits/search/HitQuery';
+import RecordQuery from '../hits/search/RecordQuery';
 import HitSort from '../hits/search/shared/HitSort';
+import IndexPicker from '../hits/search/shared/IndexPicker';
 import SearchSpan from '../hits/search/shared/SearchSpan';
 
 const ViewComposer: FC = () => {
@@ -63,10 +67,12 @@ const ViewComposer: FC = () => {
   const addView = useContextSelector(ViewContext, ctx => ctx.addView);
   const editView = useContextSelector(ViewContext, ctx => ctx.editView);
   const getCurrentViews = useContextSelector(ViewContext, ctx => ctx.getCurrentViews);
+  const indexes = useContextSelector(ParameterContext, ctx => ctx.indexes);
+  const setIndexes = useContextSelector(ParameterContext, ctx => ctx.setIndexes);
 
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
-  const loadHits = useContextSelector(HitContext, ctx => ctx.loadHits);
+  const loadRecords = useContextSelector(RecordContext, ctx => ctx.loadRecords);
 
   // view state
   const [title, setTitle] = useState('');
@@ -86,9 +92,10 @@ const ViewComposer: FC = () => {
   const [isSearchDirty, setIsSearchDirty] = useState(false);
   const [searching, setSearching] = useState<boolean>(false);
   const [error, setError] = useState<string>(null);
-  const [response, setResponse] = useState<HowlerSearchResponse<Hit>>();
-  const displayType = useContextSelector(HitSearchContext, ctx => ctx.displayType);
-  const setDisplayType = useContextSelector(HitSearchContext, ctx => ctx.setDisplayType);
+  const [response, setResponse] = useState<HowlerSearchResponse<Hit | Event>>();
+  const [isLoadingView, setIsLoadingView] = useState(!!routeParams.id);
+  const displayType = useContextSelector(RecordSearchContext, ctx => ctx.displayType);
+  const setDisplayType = useContextSelector(RecordSearchContext, ctx => ctx.setDisplayType);
 
   const onSave = useCallback(async () => {
     setLoading(true);
@@ -99,11 +106,13 @@ const ViewComposer: FC = () => {
     }));
 
     try {
+      const normalizedIndexes = indexes?.length > 0 ? indexes : ['hit'];
       if (!routeParams.id) {
         const newView = await addView({
           title,
           type,
           query,
+          indexes: normalizedIndexes,
           sort: sort || null,
           span: span || null,
           settings: {
@@ -119,6 +128,7 @@ const ViewComposer: FC = () => {
           title,
           type,
           query,
+          indexes: normalizedIndexes,
           sort,
           span,
           settings: {
@@ -146,6 +156,7 @@ const ViewComposer: FC = () => {
     sort,
     span,
     advanceOnTriage,
+    indexes,
     displayType,
     columns,
     navigate,
@@ -154,26 +165,25 @@ const ViewComposer: FC = () => {
     showErrorMessage
   ]);
 
-  const search = useCallback(
-    async (_query: string) => {
-      setQuery(_query);
-
+  const performSearch = useCallback(
+    async (searchQuery: string, searchIndexes: SearchIndex[], searchSort: string, searchSpan: string) => {
       setSearching(true);
       setError(null);
 
       try {
+        const normalizedIndexes = searchIndexes?.length > 0 ? searchIndexes : ['hit' as const];
         const _response = await dispatchApi(
-          api.search.hit.post({
+          api.v2.search.post(normalizedIndexes, {
             rows: pageCount,
-            query: _query,
-            sort,
-            filters: span ? [`event.created:${convertDateToLucene(span)}`] : [],
+            query: searchQuery,
+            sort: searchSort,
+            filters: searchSpan ? [`event.created:${convertDateToLucene(searchSpan)}`] : [],
             metadata: ['template', 'analytic']
           }),
           { showError: false, throwError: true }
         );
 
-        loadHits(_response.items);
+        loadRecords(_response.items);
         setResponse(_response);
       } catch (e) {
         setError(e.message);
@@ -181,28 +191,39 @@ const ViewComposer: FC = () => {
         setSearching(false);
       }
     },
-    [dispatchApi, loadHits, pageCount, setQuery, sort, span]
+    [dispatchApi, loadRecords, pageCount]
+  );
+
+  const search = useCallback(
+    async (_query: string) => {
+      setQuery(_query);
+      await performSearch(_query, indexes, sort, span);
+    },
+    [performSearch, indexes, sort, span, setQuery]
   );
 
   useEffect(() => {
-    void search(query || DEFAULT_QUERY);
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // Only run initial search if we're NOT editing an existing view
+    if (!routeParams.id) {
+      search(query || DEFAULT_QUERY);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeParams.id]);
 
   // We only run this when ancillary properties (i.e. filters, sorting) change
   useEffect(() => {
-    if (query) {
-      void search(query);
+    if (query && !isLoadingView) {
+      search(query);
     }
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [sort, span]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sort, span, indexes, isLoadingView]);
 
   useEffect(() => {
     if (!routeParams.id) {
       return;
     }
 
-    void (async () => {
+    (async () => {
       const viewToEdit = (await getCurrentViews({ views: [routeParams.id] }))[0];
 
       if (!viewToEdit) {
@@ -214,19 +235,31 @@ const ViewComposer: FC = () => {
 
       setTitle(viewToEdit.title);
       setAdvanceOnTriage(viewToEdit.settings?.advance_on_triage ?? false);
-      setQuery(viewToEdit.query);
       setDisplayType((viewToEdit.settings?.display ?? null) as HowlerViewLayoutType);
       setType(viewToEdit.type);
 
+      const loadedQuery = viewToEdit.query || DEFAULT_QUERY;
+      const loadedIndexes = (viewToEdit.indexes as SearchIndex[]) || indexes;
+      const loadedSort = viewToEdit.sort || sort;
+      const loadedSpan = viewToEdit.span || span;
+
+      setQuery(loadedQuery);
+      if (viewToEdit.indexes) {
+        setIndexes(loadedIndexes);
+      }
       if (viewToEdit.sort) {
-        setSort(viewToEdit.sort);
+        setSort(loadedSort);
+      }
+      if (viewToEdit.span) {
+        setSpan(loadedSpan);
       }
 
-      if (viewToEdit.span) {
-        setSpan(viewToEdit.span);
-      }
+      // Perform search with the loaded values to avoid using stale state
+      await performSearch(loadedQuery, loadedIndexes, loadedSort, loadedSpan);
+
+      setIsLoadingView(false);
     })();
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeParams.id]);
 
   return (
@@ -289,12 +322,13 @@ const ViewComposer: FC = () => {
                 </Typography>
                 <Stack direction="row" width="100%" spacing={2} alignItems="flex-start" paddingBottom={1}>
                   <Stack direction="column" width="100%" spacing={1}>
-                    <HitQuery
+                    <RecordQuery
                       triggerSearch={search}
                       searching={searching}
                       onChange={(_query, isDirty) => setIsSearchDirty(isDirty)}
                     />
                     <Stack direction="row" spacing={1}>
+                      <IndexPicker />
                       <HitSort />
                       <SearchSpan omitCustom />
                       <div style={{ flex: 1 }} />
@@ -360,14 +394,18 @@ const ViewComposer: FC = () => {
             <VSBoxContent>
               {displayType === 'grid' ? (
                 <Stack component={Paper} spacing={1} width="100%" height="100%" sx={{ overflow: 'auto', flex: 1 }}>
-                  <HitTable query={query} items={response?.items} />
+                  <RecordTable query={query} items={response?.items} />
                 </Stack>
               ) : (
                 <Stack spacing={1}>
                   {!response?.total && <AppListEmpty />}
-                  {response?.items.map(hit => (
-                    <HitCard key={hit.howler.id} id={hit.howler.id} layout={HitLayout.DENSE} />
-                  ))}
+                  {response?.items.map(record =>
+                    record.__index === 'hit' ? (
+                      <HitCard key={record.howler.id} id={record.howler.id} layout={HitLayout.DENSE} />
+                    ) : (
+                      <EventCard key={record.howler.id} event={record} />
+                    )
+                  )}
                 </Stack>
               )}
             </VSBoxContent>

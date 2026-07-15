@@ -84,7 +84,7 @@ vi.mock('../../elements/display/QueryResultText', () => ({
   )
 }));
 
-vi.mock('../hits/search/HitQuery', () => ({
+vi.mock('../hits/search/RecordQuery', () => ({
   default: ({ onChange, triggerSearch, disabled }) => {
     return (
       <div id="hit-query">
@@ -117,7 +117,7 @@ import DossierEditor from './DossierEditor';
 
 const mockUseParams = vi.mocked(useParams);
 const mockUseSearchParams = vi.mocked(useSearchParams);
-// oxlint-disable-next-line react-hooks/rules-of-hooks
+// eslint-disable-next-line react-hooks/rules-of-hooks
 const mockNavigate = vi.mocked(useNavigate());
 
 // Mock ParameterContext
@@ -441,7 +441,7 @@ describe('DossierEditor', () => {
         await user.type(titleInput, 'Test Title');
 
         const queryInput = screen.getByTestId('query-input');
-        void user.click(queryInput);
+        user.click(queryInput);
         await user.keyboard('test query');
         await user.keyboard('{Enter}');
 

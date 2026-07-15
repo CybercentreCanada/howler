@@ -17,7 +17,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { ParameterContext, type ParameterContextType } from 'components/app/providers/ParameterProvider';
 import dayjs from 'dayjs';
 import minMax from 'dayjs/plugin/minMax';
-import { type PropsWithChildren } from 'react';
+import type { PropsWithChildren } from 'react';
 
 dayjs.extend(minMax);
 
@@ -37,13 +37,12 @@ const defaultCtx: Partial<ParameterContextType> = {
 
 const makeWrapper =
   (ctx: Partial<ParameterContextType>) =>
-  ({ children }: PropsWithChildren) => {
-    return (
-      <ParameterContext.Provider value={{ ...defaultCtx, ...ctx } as ParameterContextType}>
-        {children}
-      </ParameterContext.Provider>
-    );
-  };
+  // eslint-disable-next-line react/function-component-definition
+  ({ children }: PropsWithChildren) => (
+    <ParameterContext.Provider value={{ ...defaultCtx, ...ctx } as ParameterContextType}>
+      {children}
+    </ParameterContext.Provider>
+  );
 
 describe('CustomSpan', () => {
   beforeEach(() => {

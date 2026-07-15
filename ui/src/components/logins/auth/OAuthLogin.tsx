@@ -22,7 +22,7 @@ const OAuthLogin: FC<OAuthLoginProps> = ({ providers }) => {
   useEffect(() => {
     if (searchParams.get('code')) {
       setButtonLoading(true);
-      void doOAuth().finally(() => setButtonLoading(false));
+      doOAuth().finally(() => setButtonLoading(false));
     }
   }, [doOAuth, searchParams]);
 

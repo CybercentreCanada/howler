@@ -13,8 +13,8 @@ import { useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
 import { parsePixelSizeStringToInt } from 'utils/stringUtils';
-import { HitSearchContext } from './HitSearchProvider';
 import { ParameterContext } from './ParameterProvider';
+import { RecordSearchContext } from './RecordSearchProvider';
 import { ViewContext } from './ViewProvider';
 
 /**
@@ -78,7 +78,7 @@ const GridColumnsProvider = ({
   const viewIds = viewSource === 'params' ? parameterViewIds : pathViewIds;
 
   const getCurrentViews = useContextSelector(ViewContext, ctx => ctx.getCurrentViews);
-  const setDisplayType = useContextSelector(HitSearchContext, ctx => ctx.setDisplayType);
+  const setDisplayType = useContextSelector(RecordSearchContext, ctx => ctx.setDisplayType);
 
   // --- Local storage state (user's personal preferences) ---
   const [localStorageColumns, setLocalStorageColumns] = useMyLocalStorageItem(StorageKey.GRID_COLUMNS, [
@@ -137,7 +137,7 @@ const GridColumnsProvider = ({
 
     setIsReady(false);
 
-    void getCurrentViews({ views: viewIds }).then(_views => {
+    getCurrentViews({ views: viewIds }).then(_views => {
       // Discard stale results: either the user already made a manual edit, or viewIds changed.
       if (currentLoadRef.current.hasLocalEdits) {
         setIsReady(true);
@@ -197,7 +197,7 @@ const GridColumnsProvider = ({
 
       setIsReady(true);
     });
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewIds, hasViews, getCurrentViews, localStorageColumns, setDisplayType]);
 
   const setColumns = useCallback(

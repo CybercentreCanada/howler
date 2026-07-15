@@ -20,7 +20,7 @@ const ActionButton: FC<{ actionId: string; hitId: string; label: string } & Butt
   const [action, setAction] = useState<Action | null>(null);
 
   useEffect(() => {
-    void dispatchApi(api.search.action.post({ query: `action_id:${actionId}`, rows: 1 })).then(result =>
+    dispatchApi(api.search.action.post({ query: `action_id:${actionId}`, rows: 1 })).then(result =>
       setAction(result.items[0])
     );
   }, [actionId, dispatchApi]);
@@ -29,7 +29,7 @@ const ActionButton: FC<{ actionId: string; hitId: string; label: string } & Butt
     return (
       <Stack spacing={1}>
         <strong style={{ color: 'red' }}>{t('markdown.error')}</strong>
-        {/* oxlint-disable-next-line react/jsx-no-literals */}
+        {/* eslint-disable-next-line react/jsx-no-literals */}
         <code style={{ fontSize: '0.8rem' }}>{t('markdown.actionbutton.error')}</code>
       </Stack>
     );

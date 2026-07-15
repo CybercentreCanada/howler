@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { afterEach, describe, expect, it } from 'vitest';
 import getXSRFCookie from './xsrf';
 

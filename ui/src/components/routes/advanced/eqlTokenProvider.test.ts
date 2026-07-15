@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { describe, expect, it } from 'vitest';
 import TOKEN_PROVIDER from './eqlTokenProvider';
 
