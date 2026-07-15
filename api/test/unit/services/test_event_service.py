@@ -232,7 +232,7 @@ def test_create_event_success(mock_exists, mock_datastore):
     result = event_service.create_event("test_id", event)
 
     assert result is True
-    mock_event_collection.save.assert_called_once_with("test_id", event)
+    mock_event_collection.save.assert_called_once_with("test_id", event, refresh=None)
 
 
 @patch("howler.services.event_service.datastore")
@@ -252,7 +252,7 @@ def test_create_event_with_user(mock_exists, mock_datastore):
     assert event.howler.log[0].user == "test_user"
     assert event.howler.log[0].explanation == "Created event"
 
-    mock_event_collection.save.assert_called_once_with("test_id", event)
+    mock_event_collection.save.assert_called_once_with("test_id", event, refresh=None)
 
 
 @patch("howler.services.event_service.datastore")
@@ -270,7 +270,7 @@ def test_create_event_without_user(mock_exists, mock_datastore):
     # Verify no log was added
     assert len(event.howler.log) == 0
 
-    mock_event_collection.save.assert_called_once_with("test_id", event)
+    mock_event_collection.save.assert_called_once_with("test_id", event, refresh=None)
 
 
 @patch("howler.services.event_service.datastore")

@@ -242,7 +242,7 @@ class TestBuildFuzzyQuery:
         fields = should[0]["multi_match"]["fields"]
         # Should contain text/keyword fields from all three indexes
         assert any("howler.id" in f for f in fields)
-        assert any("case_id" in f for f in fields)
+        assert any("title" in f for f in fields)
         # IP fields should NOT be in multi_match for text queries
         assert not any("source.ip" in f for f in fields)
         assert not any("destination.ip" in f for f in fields)

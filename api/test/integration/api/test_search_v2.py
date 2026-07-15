@@ -185,26 +185,21 @@ def test_count_with_filters(datastore, login_session):
 
 
 def test_count_missing_query(datastore, login_session):
-    """GET without a query fails, while an empty POST body falls back to the default query."""
+    """Omitting the query parameter returns a 400 error for both GET and POST."""
     session, host = login_session
 
     with pytest.raises(APIError) as api_err:
         get_api_data(session, f"{host}/api/v2/search/count/user")
     assert "400" in str(api_err)
 
-    default_post_resp = get_api_data(
-        session,
-        f"{host}/api/v2/search/count/user",
-        method="POST",
-        data=json.dumps({}),
-    )
-    explicit_default_resp = get_api_data(
-        session,
-        f"{host}/api/v2/search/count/user",
-        method="POST",
-        data=json.dumps({"query": "*:*"}),
-    )
-    assert default_post_resp["count"] == explicit_default_resp["count"]
+    with pytest.raises(APIError) as api_err:
+        get_api_data(
+            session,
+            f"{host}/api/v2/search/count/user",
+            method="POST",
+            data=json.dumps({}),
+        )
+    assert "400" in str(api_err)
 
     with pytest.raises(APIError) as api_err:
         get_api_data(
@@ -486,22 +481,16 @@ def test_explain_query_invalid_syntax(datastore, login_session):
 
 
 def test_explain_query_missing_query(datastore, login_session):
-    """GET without a query fails, while an empty POST body uses the default query."""
+    """Omitting the query parameter returns a 400 error for both GET and POST."""
     session, host = login_session
 
     with pytest.raises(APIError) as api_err:
         get_api_data(session, f"{host}/api/v2/search/hit/explain", params={})
     assert "400" in str(api_err)
 
-    default_post_resp = get_api_data(session, f"{host}/api/v2/search/hit/explain", method="POST", data=json.dumps({}))
-    explicit_default_resp = get_api_data(
-        session,
-        f"{host}/api/v2/search/hit/explain",
-        method="POST",
-        data=json.dumps({"query": "*:*"}),
-    )
-    assert default_post_resp["valid"] is True
-    assert default_post_resp["valid"] == explicit_default_resp["valid"]
+    with pytest.raises(APIError) as api_err:
+        get_api_data(session, f"{host}/api/v2/search/hit/explain", method="POST", data=json.dumps({}))
+    assert "400" in str(api_err)
 
     with pytest.raises(APIError) as api_err:
         get_api_data(session, f"{host}/api/v2/search/hit/explain", method="POST", data=json.dumps({"query": ""}))
