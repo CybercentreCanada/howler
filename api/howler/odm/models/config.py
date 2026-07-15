@@ -431,6 +431,18 @@ class ViewCleanup(BaseModel):
     )
 
 
+class Correlation(BaseModel):
+    """Correlation worker configuration.
+
+    Controls the background worker that matches newly ingested alerts
+    against active case rules.
+    """
+
+    enabled: bool = Field(default=True, description="Enable the correlation worker?")
+    batch_size: int = Field(default=100, description="Max alerts per batch.")
+    batch_timeout: int = Field(default=10, description="Seconds to wait before flushing a partial batch.")
+
+
 class ActionQueue(BaseModel):
     """Action queue worker configuration.
 
@@ -457,6 +469,8 @@ class System(BaseModel):
     "Retention Configuration"
     view_cleanup: ViewCleanup = ViewCleanup()
     "View Cleanup Configuration"
+    correlation: Correlation = Correlation()
+    "Correlation Worker Configuration"
     action_queue: ActionQueue = ActionQueue()
     "Action Queue Worker Configuration"
 

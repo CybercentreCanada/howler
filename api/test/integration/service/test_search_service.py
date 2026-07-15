@@ -1,0 +1,970 @@
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
+
+import elasticsearch
+import pytest
+
+from howler.common.loader import APP_NAME
+from howler.datastore.exceptions import SearchException, SearchRetryException
+from howler.odm.models.user import User
+from howler.odm.random_data import (
+    create_events,
+    create_hits,
+    create_users,
+    wipe_events,
+    wipe_hits,
+    wipe_users,
+)
+from howler.odm.randomizer import random_model_obj
+from howler.services import search_service
+
+TEST_SIZE = 12
+
+
+@pytest.fixture(scope="module")
+def datastore(datastore_connection):
+    ds = datastore_connection
+
+    try:
+        wipe_users(ds)
+        create_users(ds)
+        if ds.hit.search("howler.id:*")["total"] != 40:
+            wipe_hits(ds)
+            create_hits(ds, hit_count=40)
+
+        if ds.event.search("howler.id:*")["total"] != 40:
+            wipe_events(ds)
+            create_events(ds, event_count=40)
+
+        for index in range(TEST_SIZE - 5):
+            user = ds.user.get("user")
+            user.uname = f"svc_test_{index}"
+            user.name = f"SVC_TEST_{index}"
+            ds.user.save(user.uname, user)
+
+        ds.user.commit()
+        ds.hit.commit()
+        ds.event.commit()
+
+        yield ds
+    finally:
+        wipe_users(ds)
+        create_users(ds)
+
+
+def test_normalize_indexes_string():
+    assert search_service._normalize_indexes("user,hit") == f"{APP_NAME}-user,{APP_NAME}-hit"
+
+
+def test_normalize_indexes_list_and_special_values():
+    assert search_service._normalize_indexes(["*", "_all", "custom-index", "event*"]) == "*,_all,custom-index,event*"
+
+
+@pytest.mark.parametrize("indexes", ["", " , ", [], [" "]])
+def test_normalize_indexes_fails_on_empty(indexes):
+    with pytest.raises(SearchException, match="No indexes were provided"):
+        search_service._normalize_indexes(indexes)
+
+
+def test_format_items():
+    items = search_service._format_items(
+        [
+            {
+                "_id": "id-1",
+                "_index": "idx-1",
+                "_score": 1.23,
+                "_source": {"uname": "admin", "name": "Administrator"},
+            }
+        ],
+        None,
+    )
+
+    assert items[0]["uname"] == "admin"
+    assert items[0]["name"] == "Administrator"
+
+
+def test_search_defaults(datastore):
+    result = search_service.search("hit", query="howler.id:*")
+
+    assert result["total"] >= TEST_SIZE
+    assert result["offset"] == search_service.DEFAULT_OFFSET
+    assert result["rows"] == search_service.DEFAULT_ROW_SIZE
+    assert len(result["items"]) > 0
+
+
+def test_search_query_none_uses_wildcard(datastore):
+    result = search_service.search("hit", query=None, rows=5)
+
+    assert result["total"] >= TEST_SIZE
+    assert len(result["items"]) <= 5
+
+
+def test_search_with_filters_string(datastore):
+    result = search_service.search("user", query="uname:*", filters="uname:admin", rows=25)
+
+    assert result["total"] >= 1
+    assert all(item.get("uname") == "admin" for item in result["items"])
+
+
+def test_search_with_filters_list(datastore):
+    result = search_service.search("user", query="uname:*", filters=["uname:admin", 'name:"Michael Scott"'], rows=25)
+
+    assert result["total"] >= 1
+    assert all(item.get("uname") == "admin" for item in result["items"])
+
+
+def test_search_with_offset_and_rows(datastore):
+    result = search_service.search("user", query="uname:*", offset=1, rows=3)
+
+    assert result["offset"] == 1
+    assert result["rows"] == 3
+    assert len(result["items"]) <= 3
+
+
+@pytest.mark.parametrize(
+    "sort_value",
+    [
+        "uname asc",
+        {"uname": "asc"},
+        [{"uname": "asc"}],
+    ],
+)
+def test_search_with_sort_variants(datastore, sort_value):
+    result = search_service.search("user", query="uname:*", sort=sort_value, rows=5)
+
+    assert result["total"] >= TEST_SIZE
+    assert len(result["items"]) <= 5
+
+
+def test_search_with_fl_string(datastore):
+    result = search_service.search("user", query="uname:*", fl="uname,name", rows=5)
+
+    assert len(result["items"]) > 0
+    for item in result["items"]:
+        assert "uname" in item
+        assert "name" in item
+        assert "__index" in item
+        assert item["__index"] == "user"
+        assert len(list(item.keys())) == 3
+
+
+def test_search_with_fl_list(datastore):
+    result = search_service.search("user", query="uname:*", fl=["uname", "name"], rows=5)
+
+    assert len(result["items"]) > 0
+    for item in result["items"]:
+        assert "uname" in item
+        assert "name" in item
+        assert "__index" in item
+        assert item["__index"] == "user"
+        assert len(list(item.keys())) == 3
+
+
+def test_search_with_empty_fl_string(datastore):
+    result = search_service.search("user", query="uname:*", fl="", rows=5)
+
+    assert len(result["items"]) > 0
+    for item in result["items"]:
+        assert item.get("uname") is not None
+
+
+def test_search_with_timeout_and_track_total_hits(datastore):
+    result = search_service.search("user", query="uname:*", timeout=2000, track_total_hits=True, rows=5)
+
+    assert result["total"] >= TEST_SIZE
+    assert len(result["items"]) <= 5
+
+
+def test_search_with_metadata_argument_ignored(datastore):
+    result = search_service.search("user", query="uname:*", metadata=["template", "overview"], rows=3)
+
+    assert len(result["items"]) <= 3
+    for item in result["items"]:
+        assert "__template" not in item
+        assert "__overview" not in item
+
+
+def test_search_with_deep_paging(datastore):
+    first_page = search_service.search("user", query="uname:*", rows=2, deep_paging_id="*")
+
+    assert len(first_page["items"]) <= 2
+
+    deep_paging_id = first_page.get("next_deep_paging_id")
+    if deep_paging_id:
+        second_page = search_service.search("user", query="uname:*", rows=2, deep_paging_id=deep_paging_id)
+        assert len(second_page["items"]) <= 2
+
+
+def test_search_raises_search_retry_exception_on_connection_error(datastore):
+    client = search_service.datastore().ds.client
+
+    with patch.object(client, "search", side_effect=elasticsearch.exceptions.ConnectionError("N/A", "down")):
+        with pytest.raises(SearchRetryException):
+            search_service.search("user", query="uname:*")
+
+
+def test_search_raises_search_retry_exception_on_timeout(datastore):
+    client = search_service.datastore().ds.client
+
+    with patch.object(client, "search", side_effect=elasticsearch.exceptions.ConnectionTimeout("N/A", "slow")):
+        with pytest.raises(SearchRetryException):
+            search_service.search("user", query="uname:*")
+
+
+def test_search_raises_search_exception_on_unexpected_error(datastore):
+    client = search_service.datastore().ds.client
+
+    with patch.object(client, "search", side_effect=RuntimeError("unexpected")):
+        with pytest.raises(SearchException, match="unexpected"):
+            search_service.search("user", query="uname:*")
+
+
+def test_search_clears_scroll_on_deep_paging_end(datastore):
+    client = search_service.datastore().ds.client
+
+    with patch.object(client, "scroll", return_value={"hits": {"total": {"value": 0}, "hits": []}}):
+        with patch.object(client, "clear_scroll") as clear_scroll:
+            search_service.search("user", query="uname:*", deep_paging_id="scroll-token", rows=10)
+
+            clear_scroll.assert_called_once_with(scroll_id="scroll-token")
+
+
+def test_search_ignores_not_found_on_clear_scroll(datastore):
+    client = search_service.datastore().ds.client
+
+    with patch.object(client, "scroll", return_value={"hits": {"total": {"value": 0}, "hits": []}}):
+        with patch.object(client, "clear_scroll", side_effect=elasticsearch.exceptions.NotFoundError("404", "", {})):
+            result = search_service.search("user", query="uname:*", deep_paging_id="missing-scroll", rows=10)
+
+    assert result["total"] == 0
+    assert result["items"] == []
+
+
+def test_search_clears_next_scroll_when_last_page(datastore):
+    client = search_service.datastore().ds.client
+
+    scroll_result = {
+        "_scroll_id": "next-token",
+        "hits": {
+            "total": {"value": 1},
+            "hits": [
+                {
+                    "_id": "admin",
+                    "_index": f"{APP_NAME}-user",
+                    "_score": 1.0,
+                    "_source": {"uname": "admin"},
+                }
+            ],
+        },
+    }
+
+    with patch.object(client, "search", return_value=scroll_result):
+        with patch.object(client, "clear_scroll") as clear_scroll:
+            result = search_service.search("user", query="uname:*", deep_paging_id="*", rows=10)
+
+    clear_scroll.assert_called_once_with(scroll_id="next-token")
+    assert "next_deep_paging_id" not in result
+
+
+def test_search_multiple(datastore):
+    result = search_service.search(
+        indexes="hit",
+        query="howler.id:*",
+        sort="timestamp desc",
+        rows=80,
+    )
+
+    assert result["rows"] == 40
+    assert len(result["items"]) > 0
+    assert len(result["items"]) <= 40
+
+    result = search_service.search(
+        indexes="event",
+        query="howler.id:*",
+        sort="timestamp desc",
+        rows=80,
+    )
+
+    assert result["rows"] == 40
+    assert len(result["items"]) > 0
+    assert len(result["items"]) <= 40
+
+    result = search_service.search(
+        indexes="hit,event",
+        query="howler.id:*",
+        sort="timestamp desc",
+        rows=80,
+    )
+
+    assert result["rows"] == 80
+    assert len(result["items"]) > 0
+    assert len(result["items"]) <= 80
+
+
+def test_search_access_control_added_to_filters(datastore):
+    """When a user with access_control is provided, it is appended as an additional filter in the ES query."""
+    client = search_service.datastore().ds.client
+
+    captured_kwargs = {}
+    original_search = client.search
+
+    def capture_search(**kwargs):
+        captured_kwargs.update(kwargs)
+        return original_search(**kwargs)
+
+    user = MagicMock()
+    user.access_control = "__access_lvl__:[0 TO 100]"
+    user.classification = None
+
+    with patch.object(client, "search", side_effect=capture_search):
+        search_service.search("hit", query="howler.id:*", user=user)
+
+    query_body_filter = captured_kwargs["query"]["bool"]["filter"]
+    acl_filters = [
+        f for f in query_body_filter if f.get("query_string", {}).get("query") == "__access_lvl__:[0 TO 100]"
+    ]
+    assert len(acl_filters) == 1
+
+
+def test_search_access_control_none_adds_no_extra_filter(datastore):
+    """When a user has no access_control, no extra filter is appended."""
+    client = search_service.datastore().ds.client
+
+    captured_kwargs = {}
+    original_search = client.search
+
+    def capture_search(**kwargs):
+        captured_kwargs.update(kwargs)
+        return original_search(**kwargs)
+
+    user = MagicMock()
+    user.access_control = None
+    user.classification = None
+
+    with patch.object(client, "search", side_effect=capture_search):
+        search_service.search("hit", query="howler.id:*", user=user)
+
+    query_body_filter = captured_kwargs["query"]["bool"]["filter"]
+    assert len(query_body_filter) == 0
+
+
+def test_search_access_control_combined_with_filters(datastore):
+    """access_control is appended alongside explicit filters."""
+    client = search_service.datastore().ds.client
+
+    captured_kwargs = {}
+    original_search = client.search
+
+    def capture_search(**kwargs):
+        captured_kwargs.update(kwargs)
+        return original_search(**kwargs)
+
+    user = MagicMock()
+    user.access_control = "__access_lvl__:[0 TO 200]"
+    user.classification = None
+
+    with patch.object(client, "search", side_effect=capture_search):
+        search_service.search(
+            "hit",
+            query="howler.id:*",
+            filters=["howler.id:*"],
+            user=user,
+        )
+
+    query_body_filter = captured_kwargs["query"]["bool"]["filter"]
+    filter_queries = [f["query_string"]["query"] for f in query_body_filter]
+    assert "howler.id:*" in filter_queries
+    assert "__access_lvl__:[0 TO 200]" in filter_queries
+    assert len(filter_queries) == 2
+
+
+class TestNormalizeIndexes:
+    """Tests for search_service._normalize_indexes."""
+
+    def test_single_index_adds_prefix_and_suffix(self):
+        """A plain index name gets the APP_NAME prefix."""
+        result = search_service._normalize_indexes("hit")
+
+        assert result == f"{APP_NAME}-hit"
+
+    def test_multiple_indexes_comma_separated(self):
+        """Comma-separated indexes are each normalized."""
+        result = search_service._normalize_indexes("hit,event")
+
+        parts = result.split(",")
+        assert len(parts) == 2
+        assert parts[0] == f"{APP_NAME}-hit"
+        assert parts[1] == f"{APP_NAME}-event"
+
+    def test_wildcard_preserved(self):
+        """Wildcard '*' is kept as-is."""
+        result = search_service._normalize_indexes("*")
+
+        assert result == "*"
+
+    def test_exclusion_pattern_preserved(self):
+        """Indexes with a dash (exclusion pattern) are kept as-is."""
+        result = search_service._normalize_indexes("custom-index")
+
+        assert result == "custom-index"
+
+    def test_list_input(self):
+        """A list of indexes is handled correctly."""
+        result = search_service._normalize_indexes(["hit", "event"])
+
+        parts = result.split(",")
+        assert len(parts) == 2
+        assert all(p.startswith(APP_NAME) for p in parts)
+
+    def test_empty_string_raises(self):
+        """An empty string raises SearchException."""
+        with pytest.raises(SearchException):
+            search_service._normalize_indexes("")
+
+    def test_empty_list_raises(self):
+        """An empty list raises SearchException."""
+        with pytest.raises(SearchException):
+            search_service._normalize_indexes([])
+
+    def test_whitespace_stripped(self):
+        """Leading/trailing whitespace in index names is stripped."""
+        result = search_service._normalize_indexes("  hit , event  ")
+
+        parts = result.split(",")
+        assert len(parts) == 2
+        assert all(p.startswith(APP_NAME) for p in parts)
+
+    def test_all_keyword_preserved(self):
+        """The '_all' keyword is preserved as-is."""
+        result = search_service._normalize_indexes("_all")
+
+        assert result == "_all"
+
+    def test_mixed_wildcard_and_plain(self):
+        """Mix of wildcards and plain indexes normalizes correctly."""
+        result = search_service._normalize_indexes("*,hit")
+
+        parts = result.split(",")
+        assert parts[0] == "*"
+        assert parts[1] == f"{APP_NAME}-hit"
+
+
+# ---------------------------------------------------------------------------
+# _format_items
+# ---------------------------------------------------------------------------
+
+
+class TestFormatItems:
+    """Tests for search_service._format_items."""
+
+    def test_extracts_source(self):
+        """Each hit's _source is returned as an item."""
+        hits = [
+            {"_source": {"howler": {"id": "hit-1"}}, "_index": "howler-hit"},
+        ]
+
+        items = search_service._format_items(hits, None)
+
+        assert len(items) == 1
+        assert items[0]["howler"]["id"] == "hit-1"
+
+    def test_sets_index_field(self):
+        """The __index field is set to the cleaned-up index name."""
+        hits = [
+            {"_source": {"howler": {"id": "hit-1"}}, "_index": "howler-hit"},
+        ]
+
+        items = search_service._format_items(hits, None)
+
+        assert items[0]["__index"] == "hit"
+
+    def test_skips_hits_without_source(self):
+        """Hits without _source are not included in the result."""
+        hits = [
+            {"_index": "howler-hit"},
+            {"_source": {"howler": {"id": "hit-2"}}, "_index": "howler-hit"},
+        ]
+
+        items = search_service._format_items(hits, None)
+
+        assert len(items) == 1
+        assert items[0]["howler"]["id"] == "hit-2"
+
+    def test_no_index_field_omits_index(self):
+        """When _index is missing from a hit, __index is not set."""
+        hits = [{"_source": {"howler": {"id": "hit-1"}}}]
+
+        items = search_service._format_items(hits, None)
+
+        assert "__index" not in items[0]
+
+    def test_empty_hits_returns_empty_list(self):
+        """An empty hits list returns an empty items list."""
+        assert search_service._format_items([], None) == []
+
+    @patch("howler.services.search_service.case_service")
+    def test_case_index_triggers_classification_filter(self, mock_case_svc):
+        """Items with __index='case' are passed through filter_case_items_by_classification."""
+        hits = [
+            {"_source": {"case_id": "case-001", "items": []}, "_index": "howler-case"},
+        ]
+
+        search_service._format_items(hits, "RESTRICTED")
+
+        mock_case_svc.filter_case_items_by_classification.assert_called_once()
+        call_args = mock_case_svc.filter_case_items_by_classification.call_args
+        assert call_args[0][1] == "RESTRICTED"
+
+    @patch("howler.services.search_service.case_service")
+    def test_case_index_skips_filter_when_no_user_classification(self, mock_case_svc):
+        """Items with __index='case' are NOT filtered when user_classification is None."""
+        hits = [
+            {"_source": {"case_id": "case-001", "items": []}, "_index": "howler-case"},
+        ]
+
+        search_service._format_items(hits, None)
+
+        mock_case_svc.filter_case_items_by_classification.assert_not_called()
+
+    @patch("howler.services.search_service.case_service")
+    def test_non_case_index_skips_classification_filter(self, mock_case_svc):
+        """Items with __index != 'case' are never passed to the classification filter."""
+        hits = [
+            {"_source": {"howler": {"id": "hit-1"}}, "_index": "howler-hit"},
+            {"_source": {"howler": {"id": "evt-1"}}, "_index": "howler-event"},
+        ]
+
+        search_service._format_items(hits, "RESTRICTED")
+
+        mock_case_svc.filter_case_items_by_classification.assert_not_called()
+
+    @patch("howler.services.search_service.case_service")
+    def test_mixed_indexes_only_filters_cases(self, mock_case_svc):
+        """When results span multiple indexes, only 'case' items are filtered."""
+        hits = [
+            {"_source": {"howler": {"id": "hit-1"}}, "_index": "howler-hit"},
+            {"_source": {"case_id": "case-001", "items": []}, "_index": "howler-case"},
+        ]
+
+        items = search_service._format_items(hits, "UNRESTRICTED")
+
+        assert len(items) == 2
+        assert mock_case_svc.filter_case_items_by_classification.call_count == 1
+
+
+# ---------------------------------------------------------------------------
+# search
+# ---------------------------------------------------------------------------
+
+
+class TestSearch:
+    """Tests for search_service.search."""
+
+    @patch("howler.services.search_service.datastore")
+    def test_basic_search_returns_result(self, mock_ds_fn):
+        """A basic search returns formatted results with total, offset, rows, items."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+
+        mock_client.search.return_value = {
+            "hits": {
+                "total": {"value": 1},
+                "hits": [
+                    {"_source": {"howler": {"id": "hit-1"}}, "_index": "howler-hit"},
+                ],
+            }
+        }
+
+        result = search_service.search("hit", query="howler.id:*")
+
+        assert result["total"] == 1
+        assert result["offset"] == 0
+        assert result["rows"] == 1
+        assert len(result["items"]) == 1
+        assert result["items"][0]["howler"]["id"] == "hit-1"
+
+    @patch("howler.services.search_service.datastore")
+    def test_search_default_query(self, mock_ds_fn):
+        """When query is None, the default 'id:*' query is used."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+
+        mock_client.search.return_value = {"hits": {"total": {"value": 0}, "hits": []}}
+
+        search_service.search("hit", query=None)
+
+        call_kwargs = mock_client.search.call_args
+        query_string = call_kwargs.kwargs["query"]["bool"]["must"]["query_string"]["query"]
+        assert query_string == "id:*"
+
+    @patch("howler.services.search_service.datastore")
+    def test_search_with_filters(self, mock_ds_fn):
+        """Filters are included in the bool query's filter clause."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+
+        mock_client.search.return_value = {"hits": {"total": {"value": 0}, "hits": []}}
+
+        search_service.search("hit", query="*:*", filters=["howler.status:open", "event.kind:alert"])
+
+        call_kwargs = mock_client.search.call_args
+        filter_clauses = call_kwargs.kwargs["query"]["bool"]["filter"]
+        assert len(filter_clauses) == 2
+
+    @patch("howler.services.search_service.datastore")
+    def test_search_with_string_filter(self, mock_ds_fn):
+        """A single string filter is converted to a list."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+
+        mock_client.search.return_value = {"hits": {"total": {"value": 0}, "hits": []}}
+
+        search_service.search("hit", query="*:*", filters="howler.status:open")
+
+        call_kwargs = mock_client.search.call_args
+        filter_clauses = call_kwargs.kwargs["query"]["bool"]["filter"]
+        assert len(filter_clauses) == 1
+
+    @patch("howler.services.search_service.datastore")
+    def test_search_with_fl_string(self, mock_ds_fn):
+        """A comma-separated fl string is parsed into a source fields list."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+
+        mock_client.search.return_value = {"hits": {"total": {"value": 0}, "hits": []}}
+
+        search_service.search("hit", query="*:*", fl="howler.id,event.kind")
+
+        call_kwargs = mock_client.search.call_args
+        assert call_kwargs.kwargs["_source"] == ["howler.id", "event.kind"]
+
+    @patch("howler.services.search_service.datastore")
+    def test_search_with_fl_list(self, mock_ds_fn):
+        """A list fl is passed through as source fields."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+
+        mock_client.search.return_value = {"hits": {"total": {"value": 0}, "hits": []}}
+
+        search_service.search("hit", query="*:*", fl=["howler.id"])
+
+        call_kwargs = mock_client.search.call_args
+        assert call_kwargs.kwargs["_source"] == ["howler.id"]
+
+    @patch("howler.services.search_service.datastore")
+    def test_search_no_fl_omits_source(self, mock_ds_fn):
+        """When fl is None, _source is not constrained."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+
+        mock_client.search.return_value = {"hits": {"total": {"value": 0}, "hits": []}}
+
+        search_service.search("hit", query="*:*", fl=None)
+
+        call_kwargs = mock_client.search.call_args
+        assert "_source" not in call_kwargs.kwargs
+
+    @patch("howler.services.search_service.datastore")
+    def test_search_with_timeout(self, mock_ds_fn):
+        """A timeout value is formatted as milliseconds string."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+
+        mock_client.search.return_value = {"hits": {"total": {"value": 0}, "hits": []}}
+
+        search_service.search("hit", query="*:*", timeout=5000)
+
+        call_kwargs = mock_client.search.call_args
+        assert call_kwargs.kwargs["timeout"] == "5000ms"
+
+    @patch("howler.services.search_service.datastore")
+    def test_search_connection_error_raises_retry(self, mock_ds_fn):
+        """ConnectionError from ES is wrapped in SearchRetryException."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+
+        mock_client.search.side_effect = elasticsearch.exceptions.ConnectionError("conn refused")
+
+        with pytest.raises(SearchRetryException):
+            search_service.search("hit", query="*:*")
+
+    @patch("howler.services.search_service.datastore")
+    def test_search_transport_error_raises_search_exception(self, mock_ds_fn):
+        """TransportError from ES is wrapped in SearchException."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+
+        mock_client.search.side_effect = elasticsearch.exceptions.TransportError("bad request")
+
+        with pytest.raises(SearchException):
+            search_service.search("hit", query="*:*")
+
+    @patch("howler.services.search_service.datastore")
+    def test_search_generic_error_raises_search_exception(self, mock_ds_fn):
+        """A generic exception from ES is wrapped in SearchException."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+
+        mock_client.search.side_effect = RuntimeError("unexpected")
+
+        with pytest.raises(SearchException):
+            search_service.search("hit", query="*:*")
+
+    @patch("howler.services.search_service.datastore")
+    def test_search_with_offset_and_rows(self, mock_ds_fn):
+        """Custom offset and rows are passed to the ES query."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+
+        mock_client.search.return_value = {"hits": {"total": {"value": 100}, "hits": []}}
+
+        result = search_service.search("hit", query="*:*", offset=50, rows=10)
+
+        call_kwargs = mock_client.search.call_args
+        assert call_kwargs.kwargs["from_"] == 50
+        assert call_kwargs.kwargs["size"] == 10
+        assert result["offset"] == 50
+
+    @patch("howler.services.search_service.datastore")
+    def test_deep_paging_uses_scroll(self, mock_ds_fn):
+        """When deep_paging_id='*', client.search is called with scroll param."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+
+        mock_client.search.return_value = {
+            "hits": {
+                "total": {"value": 5},
+                "hits": [{"_source": {"howler": {"id": "h1"}}, "_index": "howler-hit"}],
+            },
+            "_scroll_id": "scroll-abc",
+        }
+
+        result = search_service.search("hit", query="*:*", deep_paging_id="*", rows=1)
+
+        call_kwargs = mock_client.search.call_args
+        assert call_kwargs.kwargs["scroll"] == search_service.SCROLL_TIMEOUT
+        assert result["next_deep_paging_id"] == "scroll-abc"
+
+    @patch("howler.services.search_service.datastore")
+    def test_deep_paging_continuation_uses_scroll_api(self, mock_ds_fn):
+        """When deep_paging_id is an actual scroll ID, client.scroll is called."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+
+        mock_client.scroll.return_value = {
+            "hits": {"total": {"value": 5}, "hits": []},
+        }
+
+        search_service.search("hit", query="*:*", deep_paging_id="scroll-abc", rows=100)
+
+        mock_client.scroll.assert_called_once()
+        mock_client.search.assert_not_called()
+
+    @patch("howler.services.search_service.datastore")
+    def test_deep_paging_clears_scroll_when_exhausted(self, mock_ds_fn):
+        """When deep paging has no more results, the scroll is cleared."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+
+        # Return fewer items than rows → scroll exhausted
+        mock_client.search.return_value = {
+            "hits": {
+                "total": {"value": 2},
+                "hits": [
+                    {"_source": {"howler": {"id": "h1"}}, "_index": "howler-hit"},
+                ],
+            },
+            "_scroll_id": "scroll-xyz",
+        }
+
+        result = search_service.search("hit", query="*:*", deep_paging_id="*", rows=100)
+
+        mock_client.clear_scroll.assert_called_once_with(scroll_id="scroll-xyz")
+        assert "next_deep_paging_id" not in result
+
+    @patch("howler.services.search_service.datastore")
+    def test_deep_paging_clears_old_scroll_when_none_returned(self, mock_ds_fn):
+        """When scroll continuation returns no new scroll ID, old one is cleared."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+
+        mock_client.scroll.return_value = {
+            "hits": {"total": {"value": 0}, "hits": []},
+        }
+
+        search_service.search("hit", query="*:*", deep_paging_id="old-scroll-id")
+
+        mock_client.clear_scroll.assert_called_once_with(scroll_id="old-scroll-id")
+
+    @patch("howler.services.search_service.datastore")
+    def test_track_total_hits(self, mock_ds_fn):
+        """track_total_hits=True is passed to ES when not deep paging."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+
+        mock_client.search.return_value = {"hits": {"total": {"value": 0}, "hits": []}}
+
+        search_service.search("hit", query="*:*", track_total_hits=True)
+
+        call_kwargs = mock_client.search.call_args
+        assert call_kwargs.kwargs["track_total_hits"] is True
+
+    @patch("howler.services.search_service.datastore")
+    def test_empty_result(self, mock_ds_fn):
+        """An ES result with no hits returns zeros and empty items."""
+        mock_client = MagicMock()
+        mock_ds = MagicMock()
+        mock_ds.ds.client = mock_client
+        mock_ds_fn.return_value = mock_ds
+
+        mock_client.search.return_value = {"hits": {"total": {"value": 0}, "hits": []}}
+
+        result = search_service.search("hit", query="howler.id:nonexistent")
+
+        assert result["total"] == 0
+        assert result["rows"] == 0
+        assert result["items"] == []
+
+
+def _build_user(user_type: list[str] | None = None) -> User:
+    user_data: User = random_model_obj(User)  # type: ignore[arg-type]
+    user_data.type = user_type or ["admin", "user"]
+    user_data.access_control = "howler.classification:TLP:C"
+    return user_data
+
+
+class TestFacet:
+    def test_facet_multi_index_uses_single_search_call(self, monkeypatch):
+        user = _build_user()
+
+        hit_collection = MagicMock()
+        hit_collection.return_value.index_name = "howler-hit_hot"
+        hit_collection.return_value.fields.return_value = {"howler.analytic": {}}
+
+        event_collection = MagicMock()
+        event_collection.return_value.index_name = "howler-event_hot"
+        event_collection.return_value.fields.return_value = {"howler.analytic": {}}
+
+        get_collection_mock = MagicMock(side_effect=[hit_collection, event_collection])
+        monkeypatch.setattr(search_service, "get_collection", get_collection_mock)
+        monkeypatch.setattr(search_service, "has_access_control", lambda _index: False)
+
+        search_mock = MagicMock(
+            return_value={"aggregations": {"howler.analytic": {"buckets": [{"key": "AnalyticA", "doc_count": 8}]}}}
+        )
+        monkeypatch.setattr(
+            search_service,
+            "datastore",
+            lambda: SimpleNamespace(ds=SimpleNamespace(client=SimpleNamespace(search=search_mock))),
+        )
+
+        result = search_service.facet(
+            indexes="hit,event",
+            fields=["howler.analytic"],
+            query="howler.id:*",
+            user=user,
+        )
+
+        assert result["howler.analytic"]["AnalyticA"] == 8
+        assert get_collection_mock.call_count == 2
+
+        search_kwargs = search_mock.call_args.kwargs
+        assert search_kwargs["index"] == "howler-hit_hot,howler-event_hot"
+
+    def test_facet_invalid_index_raises_search_exception(self, monkeypatch):
+        user = _build_user()
+        monkeypatch.setattr(search_service, "get_collection", lambda _index, _user: None)
+
+        with pytest.raises(SearchException, match="Not a valid index to search in: badindex"):
+            search_service.facet(indexes="badindex", fields=["howler.analytic"], user=user)
+
+    def test_facet_skips_invalid_field_and_keeps_empty_bucket(self, monkeypatch):
+        user = _build_user()
+
+        collection = MagicMock()
+        collection.return_value.index_name = "howler-hit_hot"
+        collection.return_value.fields.return_value = {"howler.analytic": {}}
+        monkeypatch.setattr(search_service, "get_collection", lambda _index, _user: collection)
+        monkeypatch.setattr(search_service, "has_access_control", lambda _index: False)
+
+        search_mock = MagicMock(
+            return_value={"aggregations": {"howler.analytic": {"buckets": [{"key": "AnalyticA", "doc_count": 5}]}}}
+        )
+        monkeypatch.setattr(
+            search_service,
+            "datastore",
+            lambda: SimpleNamespace(ds=SimpleNamespace(client=SimpleNamespace(search=search_mock))),
+        )
+
+        result = search_service.facet(
+            indexes="hit",
+            fields=["howler.analytic", "nonexistent.field"],
+            query="howler.id:*",
+            user=user,
+        )
+
+        assert result["howler.analytic"] == {"AnalyticA": 5}
+        assert result["nonexistent.field"] == {}
+        assert set(search_mock.call_args.kwargs["aggs"].keys()) == {"howler.analytic"}
+
+    def test_facet_applies_access_control_filter_when_needed(self, monkeypatch):
+        user = _build_user()
+
+        collection = MagicMock()
+        collection.return_value.index_name = "howler-hit_hot"
+        collection.return_value.fields.return_value = {"howler.analytic": {}}
+        monkeypatch.setattr(search_service, "get_collection", lambda _index, _user: collection)
+        monkeypatch.setattr(search_service, "has_access_control", lambda _index: True)
+
+        search_mock = MagicMock(return_value={"aggregations": {"howler.analytic": {"buckets": []}}})
+        monkeypatch.setattr(
+            search_service,
+            "datastore",
+            lambda: SimpleNamespace(ds=SimpleNamespace(client=SimpleNamespace(search=search_mock))),
+        )
+
+        search_service.facet(
+            indexes="hit",
+            fields=["howler.analytic"],
+            query="howler.id:*",
+            filters=["howler.status:open"],
+            user=user,
+        )
+
+        filters = search_mock.call_args.kwargs["query"]["bool"]["filter"]
+        assert {"query_string": {"query": "howler.status:open"}} in filters
+        assert {"query_string": {"query": user.access_control}} in filters

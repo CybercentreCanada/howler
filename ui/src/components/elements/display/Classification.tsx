@@ -1,4 +1,4 @@
-import { Chip, useMediaQuery, useTheme } from '@mui/material';
+import { Chip, useMediaQuery, useTheme, type ChipOwnProps } from '@mui/material';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import type { FC } from 'react';
 import { useContext, useMemo } from 'react';
@@ -19,7 +19,8 @@ const Classification: FC = () => {
   }, [config.c12nDef?.RESTRICTED, isSm]);
 
   const color = useMemo(
-    () => config.c12nDef?.levels_styles_map?.[label.replace(/\/\/.+/, '')]?.color ?? 'default',
+    () =>
+      (config.c12nDef?.levels_styles_map?.[label.replace(/\/\/.+/, '')]?.color ?? 'default') as ChipOwnProps['color'],
     [config.c12nDef?.levels_styles_map, label]
   );
 

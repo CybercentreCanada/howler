@@ -1,11 +1,18 @@
 import type { AppThemeConfigs } from 'commons/components/app/AppConfigs';
 
-const DEFAULT_THEME = {
+const DEFAULT_THEME: AppThemeConfigs = {
+  components: {
+    MuiChip: {
+      defaultProps: {
+        size: 'small'
+      }
+    }
+  },
   palette: {
     dark: {
       background: {
-        default: '#202020',
-        paper: '#202020'
+        default: '#181818',
+        paper: '#181818'
       },
       primary: {
         main: '#7DA1DB'

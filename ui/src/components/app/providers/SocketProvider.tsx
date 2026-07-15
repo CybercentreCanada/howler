@@ -1,11 +1,12 @@
 /* eslint-disable no-console */
 import api from 'api';
+import useMyApi from 'components/hooks/useMyApi';
 import useMyLocalStorage from 'components/hooks/useMyLocalStorage';
 import type { PropsWithChildren } from 'react';
-import { createContext, useCallback, useEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StorageKey } from 'utils/constants';
 import { getStored, setAxiosCache, setStored } from 'utils/sessionStorage';
-import { isHitUpdate } from 'utils/socketUtils';
+import { isHitUpdate, isViewersUpdate } from 'utils/socketUtils';
 
 export type ListenerType<K extends keyof WebSocketEventMap> = (this: WebSocket, ev: WebSocketEventMap[K]) => void;
 
@@ -60,15 +61,27 @@ interface SocketContextType {
   reconnect: () => void;
 
   /**
-   * Helper function to tell if the socket is open
+   * Helper to tell if the socket is open
    */
-  isOpen: () => boolean;
+  open: boolean;
+
+  /**
+   * A map of entity IDs to their current viewers.
+   */
+  viewers: Record<string, string[]>;
+
+  /**
+   * Fetch the current viewers for an entity via REST, then keep in sync via socket.
+   * @param entityId The entity ID to fetch viewers for
+   */
+  fetchViewers: (entityId: string) => Promise<void>;
 }
 
 export const SocketContext = createContext<SocketContextType>(null);
 
 const SocketProvider: React.FC<PropsWithChildren> = ({ children }) => {
   const { get } = useMyLocalStorage();
+  const { dispatchApi } = useMyApi();
 
   // In order to persist the connection through state changes, we use a ref
   const socket = useRef<WebSocket>();
@@ -85,6 +98,8 @@ const SocketProvider: React.FC<PropsWithChildren> = ({ children }) => {
   const [retry, setRetry] = useState(true);
   // Track the number of failed attempts when connecting to the server
   const [failedAttempts, setFailedAttempts] = useState(0);
+  // Track active viewers per entity ID
+  const [viewers, setViewers] = useState<Record<string, string[]>>({});
 
   const onClose: ListenerType<'close'> = useCallback(
     e => {
@@ -264,7 +279,7 @@ const SocketProvider: React.FC<PropsWithChildren> = ({ children }) => {
   const addListener: SocketContextType['addListener'] = useCallback((key, callback) => {
     // If a listener with the same key already exists, remove it.
     if (listeners.current[key]) {
-      socket.current?.removeEventListener('message', listeners[key]);
+      socket.current?.removeEventListener('message', listeners.current[key]);
     }
 
     // We wrap the callback so that all the listeners don't need to JSON.parse the data
@@ -283,6 +298,10 @@ const SocketProvider: React.FC<PropsWithChildren> = ({ children }) => {
           api_server_version: '',
           api_status_code: parsedData.status
         });
+      }
+
+      if (isViewersUpdate(parsedData)) {
+        setViewers(prev => ({ ...prev, [parsedData.id]: parsedData.viewers }));
       }
 
       callback(parsedData as RecievedDataType<any>);
@@ -315,12 +334,24 @@ const SocketProvider: React.FC<PropsWithChildren> = ({ children }) => {
     [status]
   );
 
-  const isOpen = useCallback(() => status === Status.OPEN, [status]);
+  const open = useMemo(() => status === Status.OPEN, [status]);
 
   const reconnect: SocketContextType['reconnect'] = useCallback(() => setRetry(true), []);
 
+  const fetchViewers: SocketContextType['fetchViewers'] = useCallback(
+    async (entityId: string) => {
+      const result = await dispatchApi(api.socket.viewers.get(entityId), { throwError: false });
+      if (result) {
+        setViewers(prev => ({ ...prev, [entityId]: result }));
+      }
+    },
+    [dispatchApi]
+  );
+
   return (
-    <SocketContext.Provider value={{ addListener, removeListener, emit, status, reconnect, isOpen }}>
+    <SocketContext.Provider
+      value={{ addListener, removeListener, emit, status, reconnect, open, viewers, fetchViewers }}
+    >
       {children}
     </SocketContext.Provider>
   );

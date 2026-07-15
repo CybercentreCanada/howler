@@ -3,7 +3,7 @@ import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
-const QueryResultText: FC<{ count: number; query: string }> = ({ count, query }) => {
+const QueryResultText: FC<{ count: number; query: string; mb?: number }> = ({ count, query, mb = 0.5 }) => {
   const { t } = useTranslation();
 
   return (
@@ -12,7 +12,7 @@ const QueryResultText: FC<{ count: number; query: string }> = ({ count, query })
         color: theme.palette.text.secondary,
         fontSize: '0.9em',
         fontStyle: 'italic',
-        mb: 0.5,
+        mb,
         '& a': { color: theme.palette.text.secondary }
       })}
       variant="body2"

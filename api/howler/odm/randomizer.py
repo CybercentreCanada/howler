@@ -490,10 +490,14 @@ def random_data_for_field(field: _Field, name: str, minimal: bool = False) -> _A
     elif isinstance(field, Date):
         return get_random_iso_date()
     elif isinstance(field, Integer):
-        return random.randint(-2_147_483_648, 2_147_483_647)
+        lo = field.min if field.min is not None else -2_147_483_648
+        hi = field.max if field.max is not None else 2_147_483_647
+        return random.randint(lo, hi)
     elif isinstance(field, Long):
         # Generate a random 64-bit signed integer
-        return random.randint(-9_223_372_036_854_775_808, 9_223_372_036_854_775_807)
+        lo = field.min if field.min is not None else -9_223_372_036_854_775_808
+        hi = field.max if field.max is not None else 9_223_372_036_854_775_807
+        return random.randint(lo, hi)
     elif isinstance(field, Float):
         # Generate a random float in a reasonable range
         return random.uniform(-1e6, 1e6)

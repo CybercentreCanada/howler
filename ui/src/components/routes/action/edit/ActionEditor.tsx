@@ -20,7 +20,7 @@ import PageCenter from 'commons/components/pages/PageCenter';
 import { FieldContext } from 'components/app/providers/FieldProvider';
 import SocketBadge from 'components/elements/display/icons/SocketBadge';
 import useMyApi from 'components/hooks/useMyApi';
-import HitQuery from 'components/routes/hits/search/HitQuery';
+import RecordQuery from 'components/routes/hits/search/RecordQuery';
 import { difference, uniq } from 'lodash-es';
 import type { ActionOperation } from 'models/ActionTypes';
 import type { HowlerUser } from 'models/entities/HowlerUser';
@@ -240,7 +240,7 @@ const ActionEditor: FC = () => {
           </Typography>
           <SocketBadge size="small" />
         </Stack>
-        <HitQuery triggerSearch={onSearch} />
+        <RecordQuery triggerSearch={onSearch} />
         {response ? (
           <QueryResultText count={response.total} query={responseQuery} />
         ) : (

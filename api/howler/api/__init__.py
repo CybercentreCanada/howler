@@ -25,7 +25,29 @@ logger = get_logger(__file__)
 
 def make_subapi_blueprint(name, api_version=1):
     """Create a flask Blueprint for a subapi in a standard way."""
-    return Blueprint(name, name, url_prefix="/".join([API_PREFIX, f"v{api_version}", name]))
+    full_name = f"v{api_version}_{name}"
+    return Blueprint(full_name, full_name, url_prefix="/".join([API_PREFIX, f"v{api_version}", name]))
+
+
+def _format_api_error_message(err: Exception) -> str:
+    """Format an exception for API responses using the innermost traceback frame only."""
+    trace = exc_info()[2]
+    trace_lines = format_tb(trace)
+    if trace_lines:
+        trace_lines = trace_lines[-1:]
+
+    return "".join(["\n"] + trace_lines + ["%s: %s\n" % (err.__class__.__name__, str(err))]).rstrip("\n")
+
+
+def _coerce_response_data(data: Any) -> Any:
+    """Convert ODM model responses into JSON-serializable primitives."""
+    if isinstance(data, odm.Model):
+        return data.as_primitives()
+
+    if isinstance(data, list) and len(data) > 0 and isinstance(data[0], odm.Model):
+        return [item.as_primitives() for item in data]
+
+    return data
 
 
 def _make_api_response(
@@ -43,17 +65,12 @@ def _make_api_response(
     if quota_user and quota_set and not request.path.startswith("/api/v1/clue"):
         QUOTA_TRACKER.end(quota_user)
 
-    if type(err) is Exception:  # pragma: no cover
+    if isinstance(err, Exception):  # pragma: no cover
         trace = exc_info()[2]
-        err = "".join(["\n"] + format_tb(trace) + ["%s: %s\n" % (err.__class__.__name__, str(err))]).rstrip("\n")
+        err = _format_api_error_message(err)
         log_with_traceback(trace, "Exception", is_exception=True)
 
-    if isinstance(data, odm.Model):
-        data = data.as_primitives()
-
-    if isinstance(data, list) and len(data) > 0 and isinstance(data[0], odm.Model):
-        for i in range(len(data)):
-            data[i] = data[i].as_primitives()
+    data = _coerce_response_data(data)
 
     resp = make_response(
         jsonify(

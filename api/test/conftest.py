@@ -208,23 +208,22 @@ def get_api_data(  # noqa: C901
 
         if raw:
             return res
+        elif res.ok:
+            if res.status_code == 204:
+                return None
+
+            try:
+                res_data = res.json()
+                return res_data["api_response"]
+            except Exception:
+                raise APIError(f"{res.status_code}: {res.content or None}")
         else:
-            if res.ok:
-                if res.status_code == 204:
-                    return None
+            try:
+                res_data = res.json()
 
-                try:
-                    res_data = res.json()
-                    return res_data["api_response"]
-                except Exception:
-                    raise APIError(f"{res.status_code}: {res.content or None}")
-            else:
-                try:
-                    res_data = res.json()
-
-                    raise APIError(
-                        f"{res.status_code}: {res_data['api_error_message']}",
-                        json=res_data,
-                    )
-                except JSONDecodeError:
-                    raise APIError(f"{res.status_code}: {res.content}", content=res.content)
+                raise APIError(
+                    f"{res.status_code}: {res_data['api_error_message']}",
+                    json=res_data,
+                )
+            except JSONDecodeError:
+                raise APIError(f"{res.status_code}: {res.content}", content=res.content)

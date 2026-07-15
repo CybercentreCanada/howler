@@ -275,6 +275,34 @@ When both of the following are true:
 
 ---
 
+### Case Rules: `expire_after_resolved` Requires `timeframe`
+
+When creating or updating case correlation rules, reject configurations where:
+- `timeframe` is `None` (no expiry), and
+- `expire_after_resolved` is `True`.
+
+`expire_after_resolved` only makes sense when a finite timeframe exists. Enforce this in service-layer validation for both add and update flows.
+
+---
+
+### TypeScript: Always Use Braces on `if` Statements
+
+Never use single-line, braceless `if` statements. Always add braces and a newline for the body:
+
+```ts
+// Preferred
+if (!value) {
+  return;
+}
+
+// Avoid
+if (!value) return;
+```
+
+This applies to `for`/`while` loop bodies as well.
+
+---
+
 ### TypeScript: Prefer `const` Arrow Functions
 
 Use `const` arrow functions instead of named `function` declarations for all TypeScript/React code in `ui/`:
@@ -297,6 +325,33 @@ const myFn: {
 
 ---
 
+### Frontend UI Tests: Use `id` as the Test ID Attribute
+
+Vitest/testing-library queries that target elements by test ID (e.g. `getByTestId`, `queryByTestId`) use the `id` attribute, **not** `data-testid`. This is configured via `vite.config.ts`:
+
+```ts
+// vite.config.ts (test section)
+testIdAttribute: 'id'
+```
+
+Always set `id="..."` on elements you need to query by test ID. Do not use `data-testid`.
+
+---
+
+### Frontend UI Tests: Flush Fake Timers Directly
+
+Do not use `waitFor` after advancing Vitest fake timers; its polling timers are also paused and the test can time out. Flush the scheduled work inside `act` instead:
+
+```ts
+await act(async () => {
+  await vi.advanceTimersByTimeAsync(200);
+});
+```
+
+Restore real timers in `afterEach` when a test enables fake timers.
+
+---
+
 ### Terminal Output Restriction
 
 **This repository's VS Code settings suppress terminal output from being returned to the agent.** Running commands via the terminal tool will yield no output — the terminal appears to complete with exit code 0 but all stdout/stderr is suppressed.
@@ -305,5 +360,47 @@ const myFn: {
 > "I can't read terminal output due to repository settings. Please run `<command>` and share the result."
 
 The correct test command for the API is `poetry run test <path>` (not `pytest` directly), run from the `api/` directory.
+
+If you need to run only a subset of tests from a file (e.g. `-k facet`), use direct pytest invocation:
+```bash
+cd api
+poetry run pytest -k <expr> <path>
+```
+The wrapper command `poetry run test <path>` may still execute the full file even when selector flags are provided.
+
+---
+
+### Flask: Never Return `(Response, version_string)` Tuples Without `@add_etag`
+
+Flask interprets `return response, value` as `(Response, status_code)`. If the second element is an ES version string like `"344---1"`, Flask uses it as the HTTP status code, producing a malformed response (e.g. `HTTP/1.1 0 344---1`) that causes `BadStatusLine` errors on the client side. The error manifests as `ConnectionError('Connection aborted.', BadStatusLine(...))` with retries exhausted — **not** as a clear server-side traceback — making it difficult to diagnose.
+
+The v1 endpoints avoid this because `@add_etag(getter=...)` intercepts the tuple and moves the version into the `ETag` header. For v2 endpoints (or any endpoint without a getter), use `@add_etag()` (no getter) which handles the `(Response, version)` → `ETag` header conversion without the pre-fetch/caching/If-Match logic.
+
+```python
+# Correct — decorator handles the tuple
+@add_etag()
+def my_endpoint(...):
+    return ok(data), version
+
+# Wrong — Flask interprets version as status code
+def my_endpoint(...):
+    return ok(data), version
+```
+
+---
+
+### Client v2 Case Items: `name` Is Required, Delete/Rename Use Item `id`
+
+The v2 `POST /case/<id>/items` endpoint now requires a `name` field in the JSON body, even when clients only care about `type` and `value`.
+
+`DELETE /case/<id>/items` expects `{"ids": [...]}` (item UUIDs), not values, and `PUT /case/<id>/items` expects `{"id": ..., "name": ...}` and/or `parent`.
+
+When updating the Python client, avoid value/path-based delete/rename payloads and resolve item IDs from the returned case data first.
+
+---
+
+### Elasticsearch Collection Creation: Attach Aliases Atomically
+
+For legacy collections, pass the collection alias through the `aliases` argument to `indices.create`. Creating the hot index and adding its alias in separate calls lets concurrent writes auto-create a concrete index with the alias name, which prevents alias creation.
 
 ---

@@ -154,7 +154,7 @@ def test_duplicate(client):
         }
     )
 
-    time.sleep(1)
+    time.sleep(5)
 
     total = client.search.hit("howler.id:*")["total"]
 
@@ -163,17 +163,17 @@ def test_duplicate(client):
             {
                 "howler.analytic": "Test Dupes",
                 "howler.score": 0,
-                "howler.hash": _random_hash,
+                "howler.hash": random_hash(),
             },
             {
                 "howler.analytic": "Test Dupes",
                 "howler.score": 0,
-                "howler.hash": random_hash(),
+                "howler.hash": _random_hash,
             },
         ]
     )
 
-    time.sleep(1)
+    time.sleep(5)
 
     assert client.search.hit("howler.id:*")["total"] == total + 1
 
