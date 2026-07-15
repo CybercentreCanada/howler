@@ -51,7 +51,7 @@ class Related(odm.Model):
     )
 
     def __init__(self, data: dict = None, *args, **kwargs):
-        if data is not None and "id" in data and data["id"] is not None:
+        if data is not None and data.get("id") is not None:
             # Avoid mutating the caller-provided dict
             data = dict(data)
 
