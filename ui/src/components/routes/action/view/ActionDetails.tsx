@@ -71,11 +71,10 @@ const ActionDetails = () => {
 
         setAction(prevAction => {
           if (!prevAction) return prevAction;
-          const cleanAction: Omit<Action, keyof any> = prevAction;
           return {
-            ...cleanAction,
+            ...prevAction,
             triggers: newTriggers
-          } as Action;
+          };
         });
       } finally {
         setLoading(false);
