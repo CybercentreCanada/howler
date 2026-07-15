@@ -221,35 +221,6 @@ apparaîtra sous **Vues sauvegardées** dans la barre latérale de gauche.
 Les membres d'une équipe utilisent souvent les mêmes filtres. En spécifiant une vue comme **globale** lors de sa
 création, les autres utilisateurs verront cette vue dans la page Vues globales sous le filtre GLOBAL.
 
-## Groupes des Hits
-
-Lorsque plusieurs événements semblent liés les uns aux autres, ils peuvent être regroupés sous la forme d'un ensemble.
-Il s'agit d'un type spécial de résultat qui renvoie à d'autres résultats. Ils peuvent être identifiés par le filtre
-`howler.is_bundle:true`. Les hits associés peuvent être trouvés dans la liste `howler.hits` qui contient la valeur
-`howler.id` de chacun.
-
-Pour plus d'informations sur la création et la gestion des ensembles par programmation, consultez le
-[guide d'ingestion des ensembles](../ingestion/bundles.md).
-
-Lorsqu'un analyste de triage clique sur la carte d'une liasse, la bannière de la liasse est déplacée au-dessus de la
-barre de filtre et les cartes des occurrences de la liasse sont affichées sous la barre de filtre. Tout filtre fourni
-ne s'appliquera qu'aux occurrences associées à la liasse.
-
-Tout contrôle utilisé sur l'offre groupée sera automatiquement propagé aux résultats qui lui sont associés.
-
-Un bon exemple de résultats que vous souhaiteriez regrouper serait une séquence de résultats se produisant sur le même
-hôte dans un court laps de temps. Individuellement, ces résultats pourraient être beaucoup trop peu fiables pour
-envisager de les trier, mais avec le contexte supplémentaire que plusieurs d'entre eux se produisent sur le même hôte
-dans une courte fenêtre de temps, il serait raisonnable de promouvoir automatiquement le regroupement en alerte pour
-s'assurer que quelqu'un le triera. En les regroupant, nous nous assurons que non seulement un analyste de triage
-examine l'hôte, mais qu'il est également au courant de toutes les autres activités potentiellement liées qui ont lieu.
-
-### Résumé de l'offre groupée
-
-Les offres groupées disposent d'un onglet supplémentaire dans le dossier de l'offre groupée, appelé **Résumé**. Si vous
-cliquez sur le bouton Créer un résumé, il comptera les valeurs distinctes de chaque fichier des occurrences. Utilisez
-cette fonction pour vous faire une idée de la situation globale.
-
 ## Documentation connexe
 
 - **[Guide des ingénieurs de détection](detection_engineers.md)** - Comprendre comment les alertes sont créées et quels

@@ -1,7 +1,7 @@
 import { Chip, type ChipProps } from '@mui/material';
 import type { Hit } from 'models/entities/generated/Hit';
 import howlerPluginStore from 'plugins/store';
-import { type FC, type ReactNode } from 'react';
+import type { FC, ReactNode } from 'react';
 import { usePluginStore } from 'react-pluggable';
 
 export type PluginChipProps = ChipProps & {

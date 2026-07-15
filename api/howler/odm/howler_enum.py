@@ -19,6 +19,9 @@ class HowlerEnumMeta(EnumMeta):
 class HowlerEnum(Enum, metaclass=HowlerEnumMeta):
     "Custom Enum Implementation for Howler"
 
+    def __str__(self) -> str:
+        return self.value
+
     @classmethod
     def list(cls):
         "Convert the enum into a list"

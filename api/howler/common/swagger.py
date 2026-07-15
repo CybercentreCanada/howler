@@ -1,5 +1,6 @@
 import inspect
 import re
+import types
 from functools import wraps
 from typing import Any, Callable, Optional, cast
 
@@ -48,6 +49,16 @@ RESPONSES = {
 }
 
 
+PYTHON_TO_SWAGGER_TYPE_MAP = {
+    "str": "string",
+    "int": "integer",
+    "float": "number",
+    "bool": "boolean",
+    "list": "array",
+    "dict": "object",
+}
+
+
 def generate_swagger_docs(responses: dict[int, str] = {}):  # noqa: C901
     "Generate swagger documentation for a given endpoint"
 
@@ -62,34 +73,18 @@ def generate_swagger_docs(responses: dict[int, str] = {}):  # noqa: C901
 
         path_params = [
             {
-                "name": param,
+                "name": param_name,
                 "in": "path",
                 "type": "string",
+                "required": True,
             }
-            for param in func_signature.parameters
-            if param not in ["kwargs", "_"] and not param.startswith("_")
+            for param_name, param in func_signature.parameters.items()
+            if param_name not in ["kwargs", "_", "user"]
+            and not param_name.startswith("_")
+            and param.kind not in (inspect.Parameter.KEYWORD_ONLY, inspect.Parameter.VAR_KEYWORD)
         ]
 
-        query_params: list[dict[str, Any]] = []
-        if func_doc:
-            for section in func_doc.split("\n\n"):
-                lines = section.splitlines()
-                if not lines[0].lower().endswith("arguments:"):
-                    continue
-
-                lines = [re.sub(r" =>.+", "", line).strip() for line in lines[1:]]
-
-                for line in lines:
-                    if line.lower() == "none" or "=>" not in line:
-                        continue
-
-                    if ": " in line:
-                        name, type = line.split(": ")
-                    else:
-                        name = line
-                        type = None
-
-                    query_params.append({"name": name, "in": "query", "type": type})
+        query_params: list[dict[str, Any]] = _get_query_parameters(func_signature, func_doc)
 
         tags: list[str] = []
         if module := inspect.getmodule(function):
@@ -116,3 +111,65 @@ def generate_swagger_docs(responses: dict[int, str] = {}):  # noqa: C901
         return wrapper
 
     return decorator
+
+
+def _get_query_parameters(func_signature: inspect.Signature, func_doc: Optional[str]) -> list[dict[str, Any]]:
+    query_params = [
+        {"name": param_name, "in": "query", **_get_annotated_classname(param)}
+        for param_name, param in func_signature.parameters.items()
+        if param.kind == inspect.Parameter.KEYWORD_ONLY  # query parameters requested using @parse_parameters
+    ]
+
+    # compatibility with old method of docstring-based query parameter definitions, prefer params in signature
+    if func_doc:
+        for section in func_doc.split("\n\n"):
+            lines = section.splitlines()
+            if not lines[0].lower().endswith("arguments:"):
+                continue
+
+            for line in lines:
+                if line.lower() == "none" or "=>" not in line:
+                    continue
+
+                arg_def = re.sub(r" =>.+", "", line).strip()
+
+                type: str | None
+                if ": " in arg_def:
+                    name, type = arg_def.split(": ")
+                    if type not in PYTHON_TO_SWAGGER_TYPE_MAP.values():
+                        type = PYTHON_TO_SWAGGER_TYPE_MAP.get(type.strip(), None)
+                else:
+                    name = arg_def
+                    type = None
+
+                if not any(param["name"] == name for param in query_params):
+                    query_params.append({"name": name, "in": "query", "type": type})
+
+    return query_params
+
+
+def _get_annotated_classname(param: inspect.Parameter) -> dict[str, list[dict[str, str | None]] | str | bool | None]:
+    if param.annotation == inspect.Parameter.empty:
+        return {"type": None}
+
+    param_type = param.annotation
+    required = True
+
+    if isinstance(param.annotation, types.UnionType):
+        required = types.NoneType not in param.annotation.__args__
+        types_without_none = (
+            tuple(t for t in param.annotation.__args__ if t is not types.NoneType)
+            if not required
+            else param.annotation.__args__
+        )
+
+        if len(types_without_none) == 1:
+            param_type = types_without_none[0]
+        else:
+            types_list = [PYTHON_TO_SWAGGER_TYPE_MAP.get(getattr(t, "__name__", "")) for t in types_without_none]
+            return {"oneOf": [{"type": t} for t in types_list], "required": required}
+
+    return {
+        "type": PYTHON_TO_SWAGGER_TYPE_MAP.get(getattr(param_type, "__name__", "")),
+        "required": required,
+    }

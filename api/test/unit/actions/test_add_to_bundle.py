@@ -1,126 +1,138 @@
-import pytest
+"""Unit tests for the add_to_bundle action."""
 
-from howler.actions.add_to_bundle import execute
-from howler.common import loader
-from howler.common.loader import datastore
-from howler.datastore.howler_store import HowlerDatastore
-from howler.odm.helper import generate_useful_hit
-from howler.odm.models.hit import Hit
-from howler.odm.random_data import wipe_hits
-from howler.odm.randomizer import random_model_obj
-from howler.services import hit_service
+from unittest.mock import MagicMock, patch
 
+from howler.actions.add_to_bundle import execute, specification
+from howler.common.exceptions import NotFoundException
 
-@pytest.fixture(scope="module", autouse=True)
-def setup_datastore(datastore_connection: HowlerDatastore):
-    try:
-        wipe_hits(datastore_connection)
-        datastore_connection.hit.commit()
-
-        yield datastore_connection
-    finally:
-        wipe_hits(datastore_connection)
+# ---------------------------------------------------------------------------
+# Validation – no live datastore required
+# ---------------------------------------------------------------------------
 
 
-def test_execute_no_bundle_id():
-    result = execute("howler.id:*", "not_a_valid_id")
+def test_execute_missing_bundle_id():
+    """Returns an error when bundle_id is not provided."""
+    result = execute("howler.id:*")
 
     assert len(result) == 1
-
-    result = result[0]
-
-    assert result["outcome"] == "error"
-    assert result["title"] == "Invalid Bundle"
-    assert result["message"] == "Either a hit with ID not_a_valid_id does not exist, or it is not a bundle."
-    assert result["message"] == "Either a hit with ID not_a_valid_id does not exist, or it is not a bundle."
+    r = result[0]
+    assert r["outcome"] == "error"
+    assert r["title"] == "Invalid Bundle ID"
 
 
-def test_execute():
-    bundle: Hit = random_model_obj(Hit)
-    bundle.howler.is_bundle = True
-    bundle.howler.hits = []
-    datastore().hit.save(bundle.howler.id, bundle)
-
-    for i in range(3):
-        hit: Hit = random_model_obj(Hit)
-        hit.howler.analytic = "TestingAddToBundle"
-        if i == 0:
-            hit.howler.is_bundle = True
-        elif i == 1:
-            hit.howler.is_bundle = False
-            hit.howler.bundles = [bundle.howler.id]
-            bundle.howler.hits.append(hit.howler.id)
-        else:
-            hit.howler.is_bundle = False
-            hit.howler.bundles = []
-        datastore().hit.save(hit.howler.id, hit)
-
-    datastore().hit.commit()
-
-    result = execute("howler.analytic:TestingAddToBundle", bundle.howler.id)
-
-    assert len(result) == 3
-
-    assert result[0]["outcome"] == "skipped"
-    assert result[0]["title"] == "Skipped Bundles"
-    assert result[0]["query"] == "(howler.analytic:TestingAddToBundle) AND howler.is_bundle:true"
-    assert result[0]["message"] == "Bundles cannot be added to a bundle."
-
-    assert result[1]["outcome"] == "skipped"
-    assert result[1]["title"] == "Skipped Hits"
-    assert result[1]["query"] == f"(howler.analytic:TestingAddToBundle) AND (howler.bundles:{bundle.howler.id})"
-    assert result[1]["message"] == "These hits have already been added to the specified bundle."
-
-    assert result[2]["outcome"] == "success"
-    assert result[2]["title"] == "Executed Successfully"
-    assert result[2]["message"] == "The specified bundle has had all matching hits added."
-
-
-def test_execute_failed():
-    lookups = loader.get_lookups()
-    users = datastore().user.search("*:*")["items"]
-    bundle: Hit = generate_useful_hit(lookups, [user["uname"] for user in users], prune_hit=True)
-    bundle.howler.is_bundle = True
-    bundle.howler.hits = []
-    datastore().hit.save(bundle.howler.id, bundle)
-
-    result = execute("howler.analytic:T^R&*H%^J&G%^E", bundle.howler.id)
+def test_execute_missing_bundle_id_empty_string():
+    """Returns an error when bundle_id is an empty string."""
+    result = execute("howler.id:*", bundle_id="")
 
     assert len(result) == 1
-    result = result[0]
-
-    assert result["outcome"] == "error"
-    assert result["title"] == "Failed to Execute"
-    assert "Failed to parse query " in result["message"]
+    assert result[0]["outcome"] == "error"
+    assert result[0]["title"] == "Invalid Bundle ID"
 
 
-def test_get_bundle_size():
-    lookups = loader.get_lookups()
-    users = datastore().user.search("*:*")["items"]
-    hit_1: Hit = generate_useful_hit(lookups, [user["uname"] for user in users])
-    hit_1.howler.analytic = "TestingBundleSize"
-    hit_1.howler.is_bundle = False
-    datastore().hit.save(hit_1.howler.id, hit_1)
+@patch("howler.actions.add_to_bundle.bundle_compat_service")
+def test_execute_case_not_found_for_bundle(mock_compat):
+    """Returns an error report when find_case_for_bundle returns None."""
+    mock_compat.find_case_for_bundle.return_value = None
 
-    hit_2: Hit = generate_useful_hit(lookups, [user["uname"] for user in users])
-    hit_2.howler.analytic = "TestingBundleSize"
-    hit_2.howler.is_bundle = False
-    datastore().hit.save(hit_2.howler.id, hit_2)
+    result = execute("howler.id:*", bundle_id="bundle-001")
 
-    hit_3: Hit = generate_useful_hit(lookups, [user["uname"] for user in users])
-    hit_3.howler.analytic = "TestingBundleSize"
-    hit_3.howler.is_bundle = False
-    datastore().hit.save(hit_3.howler.id, hit_3)
+    assert len(result) == 1
+    r = result[0]
+    assert r["outcome"] == "error"
+    assert r["title"] == "Invalid Bundle"
 
-    bundle_1: Hit = generate_useful_hit(lookups, [user["uname"] for user in users])
-    bundle_1.howler.is_bundle = True
-    bundle_1.howler.hits = [hit_1.howler.id]
-    bundle_1.howler.bundle_size = 1
-    datastore().hit.save(bundle_1.howler.id, bundle_1)
-    datastore().hit.commit()
 
-    execute("howler.analytic:TestingBundleSize", bundle_1.howler.id)
+@patch("howler.actions.add_to_bundle.case_service")
+@patch("howler.actions.add_to_bundle.datastore")
+@patch("howler.actions.add_to_bundle.bundle_compat_service")
+def test_execute_no_matching_hits(mock_compat, mock_ds_fn, mock_case_svc):
+    """Returns a skipped report when the query returns no matching hits."""
+    mock_case = MagicMock()
+    mock_compat.find_case_for_bundle.return_value = mock_case
 
-    bundle_hit = hit_service.get_hit(bundle_1.howler.id, as_odm=True)
+    mock_ds = MagicMock()
+    mock_ds_fn.return_value = mock_ds
+    mock_ds.hit.search.return_value = {"items": []}
 
-    assert bundle_hit.howler.bundle_size == 3
+    result = execute("howler.analytic:NoSuchThing", bundle_id="bundle-001")
+
+    assert len(result) == 1
+    r = result[0]
+    assert r["outcome"] == "skipped"
+    assert r["title"] == "No Matching Hits"
+
+
+@patch("howler.actions.add_to_bundle.case_service")
+@patch("howler.actions.add_to_bundle.datastore")
+@patch("howler.actions.add_to_bundle.check_hit_limit")
+@patch("howler.actions.add_to_bundle.bundle_compat_service")
+def test_execute_hit_limit_error_with_user(mock_compat, mock_limit, mock_ds_fn, mock_case_svc):
+    """Returns the limit error immediately when the user exceeds the hit limit."""
+    mock_case = MagicMock()
+    mock_compat.find_case_for_bundle.return_value = mock_case
+
+    limit_error = {
+        "query": "howler.id:*",
+        "outcome": "error",
+        "title": "Hit Limit Exceeded",
+        "message": "Too many hits.",
+    }
+    mock_limit.return_value = limit_error
+
+    user = MagicMock()
+    result = execute("howler.id:*", bundle_id="bundle-001", user=user)
+
+    assert result == [limit_error]
+
+
+@patch("howler.actions.add_to_bundle.case_service")
+@patch("howler.actions.add_to_bundle.datastore")
+@patch("howler.actions.add_to_bundle.bundle_compat_service")
+def test_execute_not_found_exception(mock_compat, mock_ds_fn, mock_case_svc):
+    """Returns an error report when NotFoundException is raised during execution."""
+    mock_compat.find_case_for_bundle.side_effect = NotFoundException("Bundle not found")
+
+    result = execute("howler.id:*", bundle_id="bundle-001")
+
+    assert len(result) == 1
+    r = result[0]
+    assert r["outcome"] == "error"
+    assert r["title"] == "Failed to Execute"
+    assert "Bundle not found" in r["message"]
+
+
+@patch("howler.actions.add_to_bundle.case_service")
+@patch("howler.actions.add_to_bundle.datastore")
+@patch("howler.actions.add_to_bundle.bundle_compat_service")
+def test_execute_adds_hits_successfully(mock_compat, mock_ds_fn, mock_case_svc):
+    """Returns a success report when all matching hits are added."""
+    mock_case = MagicMock()
+    mock_compat.find_case_for_bundle.return_value = mock_case
+
+    mock_ds = MagicMock()
+    mock_ds_fn.return_value = mock_ds
+
+    hit1 = MagicMock()
+    hit1.howler.id = "hit-001"
+    hit1.howler.analytic = "TestAnalytic"
+
+    mock_ds.hit.search.return_value = {"items": [hit1]}
+
+    folder = MagicMock()
+    folder.id = "folder-uuid"
+    mock_case_svc.get_parent_from_path.return_value = folder
+
+    result = execute("howler.analytic:TestAnalytic", bundle_id="bundle-001")
+
+    assert any(r["outcome"] == "success" for r in result)
+    mock_case_svc.append_case_item.assert_called_once()
+
+
+def test_specification():
+    """Verifies the action specification is correctly structured."""
+    spec = specification()
+
+    assert spec["id"] == "add_to_bundle"
+    assert "title" in spec
+    assert "roles" in spec
+    assert "steps" in spec

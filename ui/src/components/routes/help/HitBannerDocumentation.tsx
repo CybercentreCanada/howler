@@ -13,6 +13,7 @@ const HitBannerDocumentation: FC = () => {
 
   const dummyHit = useMemo<Hit>(
     () => ({
+      __index: 'hit',
       timestamp: '2023-02-11T15:10:31.585826Z',
       howler: {
         id: 'howler.id',

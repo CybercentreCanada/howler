@@ -31,7 +31,7 @@ on:
       - "ui/**"
       - "!ui/LICENSE"
       - "!ui/README.md"
-      - .github/workflows/ui-workflow.yml
+      - .github/workflows/ui-workflow.yml  # Run when this workflow changes
   workflow_dispatch: {}  # Allow manual triggering
 
 # Required permissions for the workflow
@@ -82,10 +82,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Check translations
-        run: python build_scripts/check_translation.py
+        run: python ../hooks/check_translation.py
 
       - name: Check for banned imports
-        run: python build_scripts/find_bad_imports.py
+        run: python ../hooks/find_bad_imports.py
 
       - name: Run type checking
         run: pnpm tsc --noEmit
@@ -191,6 +191,10 @@ jobs:
             echo "is_prerelease=true" >> $GITHUB_OUTPUT
             echo "npm_tag=patch-prerelease" >> $GITHUB_OUTPUT
             echo "Detected patch prerelease version: $VERSION (will publish with --tag patch-prerelease)"
+          elif echo "$VERSION" | grep -qE '\-cases'; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            echo "npm_tag=cases" >> $GITHUB_OUTPUT
+            echo "Detected cases version: $VERSION (will publish with --tag cases)"
           else
             echo "is_prerelease=false" >> $GITHUB_OUTPUT
             echo "npm_tag=latest" >> $GITHUB_OUTPUT
@@ -289,7 +293,7 @@ jobs:
 
       - name: Extract Howler UI version
         id: version
-        run: python -c "import json;print('version='+json.load(open('package.json', 'r'))['version'])" >> $GITHUB_OUTPUT
+        run: python -c "import json;v=json.load(open('package.json','r'))['version'];print('version='+v.split('-')[0])" >> $GITHUB_OUTPUT
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
@@ -300,7 +304,6 @@ jobs:
             type=raw,event=branch,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
             type=raw,event=branch,value=nightly,enable=${{ github.ref == format('refs/heads/{0}', 'develop') }}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags') }}
-            type=semver,pattern={{version}}
             type=raw,value=${{steps.version.outputs.version}}_{{branch}}
             type=raw,value=${{steps.version.outputs.version}}_{{branch}}_{{sha}}
 

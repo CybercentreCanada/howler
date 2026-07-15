@@ -43,8 +43,10 @@
   },
   "git.enableCommitSigning": true,
   "editor.formatOnSave": true,
-  "editor.rulers": [120],
-  "editor.tabSize": 4,
+  "editor.rulers": [
+    120
+  ],
+  "editor.tabSize": 2,
   "files.insertFinalNewline": true,
   "files.trimFinalNewlines": true,
   "files.trimTrailingWhitespace": true,
@@ -95,7 +97,10 @@
     "python"
   ],
   "eslint.workingDirectories": [
-    { "directory": "./ui", "changeProcessCWD": true }
+    {
+      "directory": "./ui",
+      "changeProcessCWD": true
+    }
   ],
   "search.exclude": {
     "**/node_modules": true,
@@ -112,6 +117,7 @@
       "tables": false
     }
   },
+  "editor.autoIndentOnPaste": true,
   "python-envs.defaultEnvManager": "ms-python.python:system",
   "python-envs.pythonProjects": [
     {

@@ -31,12 +31,74 @@ def execute():
 
     logger.debug("Deletion complete")
 
+    _execute_rules(ds)
+
     logger.debug("Cleaning analytics with no matching hits")
     _remove_analytics_without_hits(ds)
 
 
-def _remove_analytics_without_hits(ds: HowlerDatastore):
+def _execute_rules(ds: HowlerDatastore) -> None:
+    """Execute dynamic retention rules from config.
 
+    Iterates each enabled rule, computes its cutoff date, and deletes
+    hits that match the rule's query and are older than the cutoff.
+    Errors for individual rules are logged and skipped so that
+    remaining rules still execute. Emits a structured result log
+    for each rule execution.
+
+    Note: Rules are independent. If multiple rules match the same hit,
+    the hit is deleted by whichever rule runs first; subsequent matching
+    rules will no-op against the already-deleted document.
+
+    Args:
+        ds: Active HowlerDatastore instance.
+    """
+    rules = config.system.retention.rules
+    if not rules:
+        return
+
+    logger.info("Processing dynamic retention rules:")
+
+    for rule in rules:
+        result = {}
+
+        if not rule.enabled:
+            logger.debug("Skipping disabled retention rule '%s'", rule.name)
+            result = {"rule": rule.name, "status": "skipped", "reason": "disabled"}
+            logger.info("Rule result: '%s'", result)
+            continue
+
+        delta_kwargs = {str(rule.limit_unit): rule.limit_amount}
+        cutoff_dt = datetime.now(tz=timezone("UTC")) - timedelta(**delta_kwargs)
+        cutoff = cutoff_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+        combined_query = f"({rule.query}) AND event.created:{{* TO {cutoff}}}"
+
+        logger.debug(
+            "Executing retention rule '%s': query=%s cutoff=%s",
+            rule.name,
+            rule.query,
+            cutoff,
+        )
+
+        try:
+            count = ds.hit.count(combined_query, filters=None).get("count", -1)
+            ds.hit.delete_by_query(combined_query)
+            ds.hit.commit()
+            logger.debug("Retention rule '%s' complete", rule.name)
+            result = {"rule": rule.name, "status": "ok", "deleted": count, "cutoff": cutoff}
+        except Exception:
+            logger.error(
+                "Retention rule '%s' failed — skipping. query=%s",
+                rule.name,
+                combined_query,
+                exc_info=True,
+            )
+            result = {"rule": rule.name, "status": "error", "query": combined_query}
+
+        logger.info("Rule result: '%s'", result)
+
+
+def _remove_analytics_without_hits(ds: HowlerDatastore):
     matched_analytics = _find_analytics_with_hits(ds)
 
     if matched_analytics is not None:
@@ -66,7 +128,6 @@ def _remove_analytics_without_hits(ds: HowlerDatastore):
 
 
 def _find_analytics_with_hits(ds: HowlerDatastore) -> list[str] | None:
-
     total_analytics = ds.analytic.count("id:*", filters=None)["count"]
 
     if total_analytics:
@@ -127,3 +188,7 @@ def setup_job(sched: BaseScheduler):
         **_kwargs,
     )
     logger.debug("Initialization complete")
+
+
+if __name__ == "__main__":
+    execute()

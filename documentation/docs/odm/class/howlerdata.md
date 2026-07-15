@@ -10,14 +10,10 @@
 | id | UUID | A UUID for this hit. | :material-checkbox-marked-outline: Yes | `None` |
 | analytic | CaseInsensitiveKeyword | Title of the analytic. | :material-checkbox-marked-outline: Yes | `None` |
 | assignment | Keyword | Unique identifier of the assigned user. | :material-checkbox-marked-outline: Yes | `unassigned` |
-| bundles | List [Keyword] | None | :material-checkbox-marked-outline: Yes | `[]` |
 | data | List [Keyword] | None | :material-checkbox-marked-outline: Yes | `[]` |
 | links | List [[Link](/howler/odm/class/link)] | A list of links associated with this hit. | :material-checkbox-marked-outline: Yes | `[]` |
 | detection | CaseInsensitiveKeyword | The detection that produced this hit. | :material-minus-box-outline: Optional | `None` |
 | hash | HowlerHash | A hash of the event used for deduplicating hits. Supports any hexadecimal string between 1 and 64 characters long. | :material-checkbox-marked-outline: Yes | `None` |
-| hits | List [Keyword] | None | :material-checkbox-marked-outline: Yes | `[]` |
-| bundle_size | Integer | Number of hits in bundle | :material-checkbox-marked-outline: Yes | `0` |
-| is_bundle | Boolean | Is this hit a bundle or a normal hit? | :material-checkbox-marked-outline: Yes | `False` |
 | related | List [Keyword] | None | :material-checkbox-marked-outline: Yes | `[]` |
 | reliability | Float | Metric decoupled from the value in the detection information. | :material-minus-box-outline: Optional | `None` |
 | severity | Float | Metric decoupled from the value in the detection information. | :material-minus-box-outline: Optional | `None` |

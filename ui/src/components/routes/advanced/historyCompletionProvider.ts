@@ -1,5 +1,5 @@
 import { useMonaco } from '@monaco-editor/react';
-import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
+import { RecordSearchContext } from 'components/app/providers/RecordSearchProvider';
 import Fuse from 'fuse.js';
 import type { languages } from 'monaco-editor';
 import { useMemo } from 'react';
@@ -8,8 +8,8 @@ import { twitterShort } from 'utils/utils';
 
 const useHistoryCompletionProvider = (): languages.CompletionItemProvider => {
   const monaco = useMonaco();
-  const fzfSearch = useContextSelector(HitSearchContext, ctx => ctx?.fzfSearch);
-  const queryHistory = useContextSelector(HitSearchContext, ctx => ctx?.queryHistory ?? {});
+  const fzfSearch = useContextSelector(RecordSearchContext, ctx => ctx?.fzfSearch);
+  const queryHistory = useContextSelector(RecordSearchContext, ctx => ctx?.queryHistory ?? {});
 
   // Using fuse for fuzzy searching
   const fuse = useMemo(() => new Fuse(Object.keys(queryHistory), { keys: ['key'], threshold: 0.4 }), [queryHistory]);

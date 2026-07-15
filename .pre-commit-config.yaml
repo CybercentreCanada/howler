@@ -27,7 +27,7 @@ repos:
   - repo: local
     hooks:
       - id: poetry-check-api
-        name: poetry-check-api
+        name: Poetry Check (API)
         entry: hooks/check_poetry.sh
         args: [api]
         language: script
@@ -60,22 +60,28 @@ repos:
         language: script
         stages: [pre-commit]
         files: ^ui/.*
+      - id: tsc
+        name: Typescript Checks
+        entry: hooks/tsc.sh
+        language: script
+        stages: [pre-commit]
+        files: ^ui/.*\.(ts|tsx)
       - id: bad-ui-imports
         name: Check for bad UI imports
-        entry: ui/build_scripts/find_bad_imports.py
-        language: python
-        stages: [pre-commit]
-        files: ^ui/.*
-      - id: check-translation
-        name: check-translation
-        entry: ui/build_scripts/check_translation.py
+        entry: hooks/find_bad_imports.py
         language: python
         stages: [pre-commit]
         files: ^ui/.*
       - id: check-commit-msg
         name: Validate Commit Message
-        entry: hooks/commit-msg.py
+        entry: hooks/commit_msg.py
         language: python
         stages: [commit-msg]
         additional_dependencies: ["conventional-pre-commit", "rich"]
         verbose: true
+      - id: check-translation
+        name: Check for Mismatched Translations
+        entry: hooks/check_translation.py
+        language: python
+        stages: [pre-commit]
+        files: ^ui/.*

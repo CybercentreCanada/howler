@@ -6,7 +6,7 @@ from howler.odm.models.ecs.container import Container
 from howler.odm.models.ecs.dns import DNS
 from howler.odm.models.ecs.email import Email
 from howler.odm.models.ecs.error import Error
-from howler.odm.models.ecs.event import Event
+from howler.odm.models.ecs.event import ECSEvent
 from howler.odm.models.ecs.faas import FAAS
 from howler.odm.models.ecs.file import File
 from howler.odm.models.ecs.group import Group
@@ -27,7 +27,7 @@ from howler.odm.models.ecs.url import URL
 from howler.odm.models.ecs.user import User
 from howler.odm.models.ecs.user_agent import UserAgent
 from howler.odm.models.ecs.vulnerability import Vulnerability
-from howler.odm.models.hit import ECSVersion
+from howler.odm.models.record import ECSVersion
 
 
 @odm.model(
@@ -111,9 +111,9 @@ class Evidence(odm.Model):
             reference="https://www.elastic.co/guide/en/ecs/8.5/ecs-error.html",
         )
     )
-    event: Event = odm.Optional(
+    event: ECSEvent = odm.Optional(
         odm.Compound(
-            Event,
+            ECSEvent,
             description="The event fields are used for context information about the log or metric event itself.",
         )
     )
