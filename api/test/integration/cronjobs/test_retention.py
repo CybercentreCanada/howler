@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -257,7 +257,8 @@ def test_execute_rules_preserves_recent_hits(
     datastore_connection_no_extra_analytics: HowlerDatastore, monkeypatch, retention_rule_factory
 ):
     ds = datastore_connection_no_extra_analytics
-    set_all_hit_created(ds, f"{datetime.now().isoformat()}Z")
+    future = (datetime.now(tz=timezone.utc) + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    set_all_hit_created(ds, future)
     rule = retention_rule_factory(query="howler.id:*", limit_amount=0)
     monkeypatch.setattr(retention_cronjob.config.system.retention, "rules", [rule])
     before_count = get_hit_count(ds)
