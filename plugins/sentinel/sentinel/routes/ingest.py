@@ -7,6 +7,7 @@ from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
+from howler.odm.models.user import User
 from howler.services import action_service, analytic_service, case_service, hit_service
 
 from sentinel.mapping.sentinel_incident import SentinelIncident
@@ -17,6 +18,8 @@ sentinel_api = make_subapi_blueprint(SUB_API, api_version=1)
 sentinel_api._doc = "Ingest Microsoft Sentinel XDR incidents into Howler"  # type: ignore
 
 logger = get_logger(__file__)
+
+SYSTEM_USER = User({"uname": "system", "type": ["admin", "user"]})
 
 
 @generate_swagger_docs()
@@ -186,7 +189,7 @@ def _create_alert_hits(alerts: list[dict[str, Any]], tenant_id: str, alert_mappe
                     alert_hit_odm.event.id = alert_hit_odm.howler.id
                 logger.info("Creating individual alert hit %s with ID %s", i, alert_hit_odm.howler.id)
                 hit_service.create_hit(alert_hit_odm.howler.id, alert_hit_odm, user="system")
-                analytic_service.save_from_hits(alert_hit_odm, {"uname": "system"})
+                analytic_service.save_from_hits(alert_hit_odm, SYSTEM_USER)
                 child_hit_ids.append(alert_hit_odm.howler.id)
                 logger.debug("Successfully created alert hit %s: %s", i, alert_hit_odm.howler.id)
             else:
@@ -229,7 +232,7 @@ def _create_new_incident(
 
         logger.info("Creating incident hit with ID %s", bundle_odm.howler.id)
         hit_service.create_hit(bundle_odm.howler.id, bundle_odm, user="system")
-        analytic_service.save_from_hits(bundle_odm, {"uname": "system"})
+        analytic_service.save_from_hits(bundle_odm, SYSTEM_USER)
 
         # Create a case linking root hit and children
         if child_hit_ids:
@@ -273,7 +276,7 @@ def _create_new_incident(
         datastore().hit.commit()
 
         if child_hit_ids:
-            action_service.bulk_execute_on_query(f"howler.id:{bundle_odm.howler.id}", user={"uname": "system"})
+            action_service.bulk_execute_on_query(f"howler.id:{bundle_odm.howler.id}", user=SYSTEM_USER)
 
         logger.info("Successfully completed XDR incident ingestion")
         response_body = {
