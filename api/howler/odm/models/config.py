@@ -356,6 +356,26 @@ class Auth(BaseModel):
     oauth: OAuth = OAuth()
 
 
+class RetentionRule(BaseModel):
+    """A dynamic, query-scoped retention rule.
+
+    Pairs a Lucene query with a retention window. During the retention
+    cronjob run, hits matching the query that are older than the
+    specified window will be deleted.
+    """
+
+    name: str = Field(description="A human-readable label for this rule (used in logs).")
+    enabled: bool = Field(default=True, description="Whether this rule is active.")
+    query: str = Field(description="Lucene query that scopes which hits this rule applies to.")
+    limit_unit: Literal["days", "seconds", "microseconds", "milliseconds", "minutes", "hours", "weeks"] = Field(
+        default="days",
+        description="The unit to use when computing the retention limit for this rule.",
+    )
+    limit_amount: int = Field(
+        description="The number of limit_units to use when computing the retention limit for this rule.",
+    )
+
+
 class Retention(BaseModel):
     """Hit retention policy configuration.
 
@@ -381,6 +401,13 @@ class Retention(BaseModel):
     crontab: str = Field(
         default="0 0 * * *",
         description="The crontab that denotes how often to run the retention job",
+    )
+    rules: list[RetentionRule] = Field(
+        default=[],
+        description=(
+            "Optional list of dynamic retention rules. Each rule pairs a Lucene query "
+            "with a retention window. Rules run after the global sweep."
+        ),
     )
 
 
