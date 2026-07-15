@@ -15,9 +15,6 @@ class Escalation(str, HowlerEnum):
     ALERT = "alert"
     EVIDENCE = "evidence"
 
-    def __str__(self) -> str:
-        return self.value
-
 
 @odm.model(index=True, store=True, description="Comment definition.")
 class Comment(odm.Model):

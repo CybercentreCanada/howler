@@ -6,12 +6,11 @@ from howler.config import CLASSIFICATION
 from howler.odm.constants import CaseEscalation, Status
 from howler.odm.howler_enum import HowlerEnum
 from howler.odm.mixins import DatastoreMixin
-from howler.utils.compat import StrEnum
 
 RULE_INDEX_TYPES = {"hit", "event"}
 
 
-class RuleIndexTypes(StrEnum):
+class RuleIndexTypes(str, HowlerEnum):
     """Enumeration of valid index types for case rules.
 
     Determines which Elasticsearch indexes a case rule query runs against
@@ -22,7 +21,7 @@ class RuleIndexTypes(StrEnum):
     EVENT = "event"
 
 
-class CaseItemTypes(StrEnum, HowlerEnum):
+class CaseItemTypes(str, HowlerEnum):
     """Enumeration of valid case item types.
 
     Case items represent different types of objects that can be associated with a case.

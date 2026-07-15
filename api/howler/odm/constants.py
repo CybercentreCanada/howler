@@ -16,9 +16,6 @@ class Status(str, HowlerEnum):
     ON_HOLD = "on-hold"
     RESOLVED = "resolved"
 
-    def __str__(self) -> str:
-        return self.value
-
 
 class CaseEscalation(str, HowlerEnum):
     """Enum representing the escalation of a case in Howler.
@@ -32,6 +29,3 @@ class CaseEscalation(str, HowlerEnum):
     NORMAL = "normal"
     FOCUS = "focus"
     CRISIS = "crisis"
-
-    def __str__(self) -> str:
-        return self.value

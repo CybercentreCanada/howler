@@ -240,7 +240,7 @@ def _create_new_incident(
             detection = bundle_odm.howler.detection or "XDR Incident"
             case = case_service.create_case(
                 {"title": f"{analytic} - {detection}", "summary": f"Sentinel incident {bundle_odm.howler.id}"},
-                user="system",
+                user=SYSTEM_USER,
             )
 
             case_service.append_case_item(

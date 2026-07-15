@@ -15,9 +15,6 @@ class Scrutiny(str, HowlerEnum):
     INSPECTED = "inspected"
     INVESTIGATED = "investigated"
 
-    def __str__(self) -> str:
-        return self.value
-
 
 class HitStatusTransition(str, HowlerEnum):
     ASSIGN_TO_ME = "assign_to_me"
@@ -32,17 +29,11 @@ class HitStatusTransition(str, HowlerEnum):
     PROMOTE = "promote"
     DEMOTE = "demote"
 
-    def __str__(self) -> str:
-        return self.value
-
 
 class HitOperationType(str, HowlerEnum):
     APPENDED = "appended"
     REMOVED = "removed"
     SET = "set"
-
-    def __str__(self) -> str:
-        return self.value
 
 
 class Escalation(str, HowlerEnum):
@@ -51,17 +42,11 @@ class Escalation(str, HowlerEnum):
     ALERT = "alert"
     EVIDENCE = "evidence"
 
-    def __str__(self) -> str:
-        return self.value
-
 
 class Vote(str, HowlerEnum):
     MALICIOUS = "malicious"
     OBSCURE = "obscure"
     BEINIGN = "benign"
-
-    def __str__(self) -> str:
-        return self.value
 
 
 class Assessment(str, HowlerEnum):
@@ -78,9 +63,6 @@ class Assessment(str, HowlerEnum):
     COMPROMISE = "compromise"
     MITIGATED = "mitigated"
 
-    def __str__(self) -> str:
-        return self.value
-
 
 class AssessmentEscalationMap(str, HowlerEnum):
     AMBIGUOUS = Escalation.MISS.value
@@ -96,9 +78,6 @@ class AssessmentEscalationMap(str, HowlerEnum):
 
     def __int__(self) -> int:
         return self.value
-
-    def __str__(self) -> str:
-        return str(self.value)
 
 
 @odm.model(index=True, store=True, description="Howler Link definition.")
