@@ -5,7 +5,7 @@ logger = get_logger(__file__)
 
 
 def check_action(
-    id: str, action: str, broadcast: bool, outstanding_actions: list[tuple[str, str, bool]] = [], **kwargs
+    id: str, action: str, broadcast: bool, outstanding_actions: list[tuple[str, str, bool]] | None = None, **kwargs
 ) -> list[tuple[str, str, bool]]:
     """Emit an event based on the specified action for use by websocket clients
 
@@ -14,11 +14,16 @@ def check_action(
         action (str): The action we are running
         broadcast (bool): Whether to advertise this action to other users
         outstanding_actions (list[tuple[str, str, bool]], optional): A list of actions that must be run after the
-        user is disconnected. Defaults to [].
+        user is disconnected. Defaults to None.
 
     Returns:
         list[tuple[str, str, bool]]: The new list of outstanding actions
     """
+    if outstanding_actions is None:
+        outstanding_actions = []
+    else:
+        outstanding_actions = outstanding_actions.copy()
+
     if broadcast:
         comms_service.emit(
             "broadcast",
