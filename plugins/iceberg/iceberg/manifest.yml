@@ -1,4 +1,0 @@
-name: iceberg
-modules:
-  routes:
-    - sync:iceberg_api

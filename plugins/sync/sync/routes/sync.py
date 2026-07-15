@@ -5,16 +5,16 @@ from howler.api.v1.utils.params import parse_parameters
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 
-from iceberg.services import sync_service
+from sync.services import sync_service
 
 SUB_API = "sync"
-iceberg_api = make_subapi_blueprint(SUB_API, api_version=1)
+sync_api = make_subapi_blueprint(SUB_API, api_version=1)
 
 logger = get_logger(__file__)
 
 
 @generate_swagger_docs()
-@iceberg_api.route("/hit_diffs", methods=["GET"])
+@sync_api.route("/hit_diffs", methods=["GET"])
 @parse_parameters(from_date="required", to_date=None)
 def get_upserted_hits(*, from_date: str, to_date: str | None = None, **_extra_args):
     """Get the hits that have been created or updated since the last sync.

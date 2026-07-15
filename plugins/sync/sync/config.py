@@ -5,7 +5,7 @@ from howler.plugins.config import BasePluginConfig
 from pydantic_settings import SettingsConfigDict
 
 APP_NAME = os.environ.get("APP_NAME", "howler")
-PLUGIN_NAME = "iceberg"
+PLUGIN_NAME = "sync"
 
 root_path = Path("/etc") / APP_NAME.replace("-dev", "").replace("-stg", "")
 
@@ -16,8 +16,8 @@ config_locations = [
 ]
 
 
-class IcebergConfig(BasePluginConfig):
-    "Iceberg Plugin Configuration Model"
+class SyncConfig(BasePluginConfig):
+    "Sync Plugin Configuration Model"
 
     name: str = PLUGIN_NAME
 
@@ -30,10 +30,10 @@ class IcebergConfig(BasePluginConfig):
     )
 
 
-config = IcebergConfig()
+config = SyncConfig()
 
 if __name__ == "__main__":
     # When executed, the config model will print the default values of the configuration
     import yaml
 
-    print(yaml.safe_dump(IcebergConfig().model_dump(mode="json")))  # noqa: T201
+    print(yaml.safe_dump(SyncConfig().model_dump(mode="json")))  # noqa: T201

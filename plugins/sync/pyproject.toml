@@ -1,5 +1,5 @@
 [project]
-name = "howler-iceberg-plugin"
+name = "howler-sync-plugin"
 version = "0.0.0"
 description = "A howler plugin for integration with Microsoft's Sentinel API"
 authors = [{ name = "CCCS", email = "analysis-development@cyber.gc.ca" }]
@@ -120,14 +120,14 @@ suppress-dummy-args = true
 suppress-none-returning = true
 
 [tool.ruff.lint.per-file-ignores]
-"iceberg/**/__init__.py" = ["F401"]
-"iceberg/odm/hit.py" = ["S311"]
-"iceberg/odm/models/*" = ["D", "ANN", "C901"]
+"sync/**/__init__.py" = ["F401"]
+"sync/odm/hit.py" = ["S311"]
+"sync/odm/models/*" = ["D", "ANN", "C901"]
 "test/*" = ["D", "ANN", "S", "N818", "TRY", "PIE", "E402"]
 "build_scripts/*" = ["D", "ANN", "S", "N818", "T20", "TRY"]
 
 [tool.poetry]
-packages = [{ include = "iceberg" }]
+packages = [{ include = "sync" }]
 
 
 [tool.poetry.group.dev.dependencies]

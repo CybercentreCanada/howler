@@ -36,7 +36,7 @@ def datastore_connection():
 
 @pytest.fixture(scope="module")
 def test_client():
-    config.core.plugins.add("iceberg")
+    config.core.plugins.add("sync")
 
     from howler.app import app
 
