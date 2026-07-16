@@ -1,4 +1,4 @@
-import { ArrowDownward, ArrowUpward, Language, Lock, Person } from '@mui/icons-material';
+import { ArrowDownward, ArrowUpward, Language, List, Lock, Person, TableChart } from '@mui/icons-material';
 import { Chip, Stack, Tooltip, Typography } from '@mui/material';
 import { useMemo, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -8,11 +8,13 @@ interface ViewTitleProps {
   title?: string;
   type?: string;
   query?: string;
+  indexes?: string[];
   sort?: string;
   span?: string;
+  settings?: { display?: string };
 }
 
-export const ViewTitle: FC<ViewTitleProps> = ({ title, type, query, sort, span }) => {
+export const ViewTitle: FC<ViewTitleProps> = ({ title, type, query, sort, span, indexes, settings }) => {
   const { t } = useTranslation();
   const spanLabel = useMemo(() => {
     if (!span) {
@@ -26,6 +28,12 @@ export const ViewTitle: FC<ViewTitleProps> = ({ title, type, query, sort, span }
     }
   }, [span, t]);
 
+  const indexLabel = useMemo(() => {
+    if (!indexes || indexes.length === 0) {
+      return '';
+    } else return `(${indexes.join(', ')})`;
+  }, [indexes]);
+
   return (
     <Stack>
       <Stack direction="row" alignItems="start" spacing={1}>
@@ -38,12 +46,22 @@ export const ViewTitle: FC<ViewTitleProps> = ({ title, type, query, sort, span }
             }[type]
           }
         </Tooltip>
+        {settings?.display && (
+          <Tooltip title={t(`page.settings.local.hits.display_type.${settings.display}`)}>
+            {
+              {
+                list: <List fontSize="small" />,
+                grid: <TableChart fontSize="small" />
+              }[settings.display]
+            }
+          </Tooltip>
+        )}
         <Typography variant="body1">{t(title)}</Typography>
       </Stack>
       <Typography variant="caption">
         <code>{query}</code>
       </Typography>
-      {(sort || span) && (
+      {(sort || span || indexLabel) && (
         <Stack direction="row" sx={{ mt: 1 }} spacing={1}>
           {sort?.split(',').map(_sort => (
             <Chip
@@ -53,7 +71,8 @@ export const ViewTitle: FC<ViewTitleProps> = ({ title, type, query, sort, span }
               icon={_sort.endsWith('desc') ? <ArrowDownward /> : <ArrowUpward />}
             />
           ))}
-          {spanLabel && <Chip size="small" label={spanLabel} />}
+          {spanLabel && <Chip label={spanLabel} />}
+          {indexLabel && <Chip label={indexLabel} />}
         </Stack>
       )}
     </Stack>

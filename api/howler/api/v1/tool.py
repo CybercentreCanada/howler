@@ -91,8 +91,11 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
     ]
     # Validate field_map targets
     hit_fields = Hit.flat_fields()
+    _bundle_compat_fields = {"howler.is_bundle", "howler.hits", "howler.bundle_size", "howler.bundles"}
     for targets in field_map.values():
         for target in targets:
+            if target in _bundle_compat_fields:
+                continue
             # This is checking to see if the target matches one of two cases:
             # Simple fields - hit.obj.key of type str (should match)
             # Compound fields - hit.obj of type dict (should also match)
@@ -107,8 +110,8 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
                     return bad_request(err=warning)
 
     out: list[dict[str, Any]] = []
-    odms = []
-    bundle_hit: Optional[Hit] = None
+    odms: list[Hit] = []
+    bundle_id: str | None = None
     for hit in hits:
         cur_id = get_random_id()
         cur_time = now_as_iso()
@@ -150,14 +153,19 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
                         obj[target] = _val
 
         try:
+            is_bundle = obj.pop("howler.is_bundle", False)
+            obj.pop("howler.hits", None)
+            obj.pop("howler.bundle_size", None)
+            obj.pop("howler.bundles", None)
+
             odm, warns = hit_service.convert_hit(obj, unique=True, ignore_extra_values=ignore_extra_values)
 
-            if odm.howler.is_bundle and bundle_hit is None:
-                bundle_hit = odm
-            elif odm.howler.is_bundle:
-                return bad_request(err="You can only specify one bundle hit!")
-            else:
-                odms.append(odm)
+            if is_bundle:
+                if bundle_id is not None:
+                    return bad_request(err="You can only specify one bundle hit!")
+                bundle_id = odm.howler.id
+
+            odms.append(odm)
 
             out.append(
                 {
@@ -196,17 +204,35 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
     if any([obj["error"] for obj in out]):
         return bad_request(out, warnings=warnings, err="No valid hits were provided")
 
-    for odm in odms:
-        if bundle_hit is not None:
-            bundle_hit.howler.hits.append(odm.howler.id)
-            bundle_hit.howler.bundle_size += 1
-            odm.howler.bundles.append(bundle_hit.howler.id)
+    if bundle_id is not None:
+        # Route through bundle compat service -> creates a case
+        from howler.services import bundle_compat_service
 
-    if bundle_hit:
-        odms.append(bundle_hit)
+        bundle_odm = next((odm for odm in odms if odm.howler.id == bundle_id), None)
+        if bundle_odm is not None:
+            child_odms = [odm for odm in odms if odm.howler.id != bundle_id]
 
-    hit_service.create_hits(odms, user=user.uname, refresh="true" if DEBUG_FORCE_REFRESH else refresh)
-    analytic_service.save_from_hits(odms, user, refresh=refresh)
+            hit_service.create_hits(child_odms, user=user.uname, refresh="true" if DEBUG_FORCE_REFRESH else refresh)
+
+            analytic_service.save_from_hits(odms, user)
+            child_ids = [odm.howler.id for odm in child_odms]
+            bundle_data = bundle_odm.as_primitives()
+            result = bundle_compat_service.create_bundle(bundle_data, child_ids, user=user, refresh="wait_for")
+            warnings.append(bundle_compat_service.DEPRECATION_MESSAGE)
+
+            # Replace the bundle entry in the output with the created bundle id
+            for entry in out:
+                if entry.get("id") == bundle_id:
+                    entry["id"] = result["howler"]["id"]
+                    entry["_case_id"] = result.get("_case_id")
+        else:
+            # The bundle hit may have been dropped by de-duplication; ingest remaining hits directly.
+            hit_service.create_hits(odms, user=user.uname, refresh="true" if DEBUG_FORCE_REFRESH else refresh)
+            analytic_service.save_from_hits(odms, user)
+    else:
+        hit_service.create_hits(odms, user=user.uname, refresh="true" if DEBUG_FORCE_REFRESH else refresh)
+        analytic_service.save_from_hits(odms, user)
+
     action_service.enqueue_action_execution([entry["id"] for entry in out], trigger="create", user=user)
 
     return created(out, warnings=warnings)

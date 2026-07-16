@@ -1,96 +1,147 @@
-import os
-from typing import Any, Callable
+import json
+from hashlib import sha256
+from typing import Any, Literal, Optional
 
-import requests
 from opentelemetry import trace
-from requests.auth import HTTPBasicAuth
+from prometheus_client import Counter
 
+from howler.common.exceptions import HowlerTypeError, HowlerValueError, ResourceExists
+from howler.common.loader import APP_NAME, datastore
 from howler.common.logging import get_logger
-from howler.config import DEBUG, HWL_USE_WEBSOCKET_API, config
+from howler.odm.models.ecs.event import ECSEvent
+from howler.odm.models.event import Event
+from howler.odm.models.event import Log as EventLog
+from howler.utils.dict_utils import extra_keys, flatten
+from howler.utils.uid import get_random_id
 
 logger = get_logger(__file__)
 tracer = trace.get_tracer(__name__)
 
-handlers: dict[str, list[Callable]] = {}
 
-HWL_INTERPOD_COMMS_SECRET = os.getenv("HWL_INTERPOD_COMMS_SECRET", "secret")
-
-
-@tracer.start_as_current_span(f"{__name__}.emit")
-def emit(event: str, data: Any):
-    """Emit a new instance of the specified event, with additional data related to that event
+@tracer.start_as_current_span(f"{__name__}.exists")
+def exists(id: str) -> bool:
+    """Check if an event exists in the datastore.
 
     Args:
-        event (str): The event id
-        data (Any): A JSON-serializable package of data related to the event id
+        id: The unique identifier of the event to check
+
+    Returns:
+        bool: True if the event exists, otherwise False
     """
-    logger.debug("Recieved emit request for event type %s", event)
+    return datastore().event.exists(id)
 
-    if not DEBUG and not HWL_USE_WEBSOCKET_API:
-        res = None
-        if config.ui.websocket_url:
-            logger.debug("POST %s - event:%s", config.ui.websocket_url, event)
 
-            if HWL_INTERPOD_COMMS_SECRET == "secret":  # noqa: S105
-                logger.warning("Using default interpod secret! DO NOT allow this on a production instance.")
+def convert_event(data: dict[str, Any], unique: bool, ignore_extra_values: bool = False) -> tuple[Event, list[str]]:
+    """Validate and convert a dictionary to an Event ODM object.
 
-            try:
-                res = requests.post(
-                    f"{config.ui.websocket_url}/{event}",
-                    json=data,
-                    auth=HTTPBasicAuth("user", HWL_INTERPOD_COMMS_SECRET),
-                    timeout=5,
-                )
-            except Exception:
-                logger.exception("Error on connection to websocket server.")
+    This function performs validation on input data to ensure it can be safely
+    converted to an Event object. It handles hash generation, ID assignment,
+    data normalization, and validation warnings.
 
-        if res is None or not res.ok:
-            logger.fatal(
-                "Event propagation failed: %s",
-                (
-                    "No websocket_url provided"
-                    if res is None
-                    else f"Status code: {res.status_code}, Error message: {res.json().get('api_error_message', 'None')}"
-                ),
-            )
+    Args:
+        data: Dictionary containing event data to validate and convert
+        unique: Whether to enforce uniqueness by checking if the event ID already exists
+        ignore_extra_values: Whether to ignore invalid extra fields (True) or raise an exception (False)
+
+    Returns:
+        Tuple containing:
+        - Event: The validated and converted ODM object
+        - list[str]: List of validation warnings (unused fields, deprecated fields)
+
+    Raises:
+        HowlerValueError: If invalid parameters are provided
+        HowlerTypeError: If the data cannot be converted to an Event ODM object
+        ResourceExists: If unique=True and an event with the generated ID already exists
+    """
+    data = flatten(data, odm=Event)
+
+    if "howler.hash" not in data:
+        hash_contents = {
+            "raw_data": data.get("howler.data", {}),
+        }
+
+        data["howler.hash"] = sha256(
+            json.dumps(hash_contents, sort_keys=True, ensure_ascii=True).encode("utf-8")
+        ).hexdigest()
+
+    data["howler.id"] = get_random_id()
+
+    if "howler.data" in data:
+        parsed_data = []
+        for entry in data["howler.data"]:
+            if isinstance(entry, str):
+                parsed_data.append(entry)
+            else:
+                parsed_data.append(json.dumps(entry))
+
+        data["howler.data"] = parsed_data
+
+    try:
+        odm = Event(data, ignore_extra_values=ignore_extra_values)
+    except TypeError as e:
+        raise HowlerTypeError(str(e), cause=e) from e
+
+    odm_flatten = odm.flat_fields(show_compound=True)
+    unused_keys = extra_keys(Event, data)
+
+    if unused_keys and not ignore_extra_values:
+        raise HowlerValueError(f"Event was created with invalid parameters: {', '.join(unused_keys)}")
+    deprecated_keys = set(key for key in odm_flatten.keys() & data.keys() if odm_flatten[key].deprecated)
+
+    warnings = [f"{key} is not currently used by howler." for key in unused_keys]
+    warnings.extend(
+        [f"{key} is deprecated." for key in deprecated_keys],
+    )
+
+    if odm.event:
+        odm.event.id = odm.howler.id
+        if not odm.event.created:
+            odm.event.created = "NOW"
     else:
-        if event not in handlers:
-            return
+        odm.event = ECSEvent({"created": "NOW", "id": odm.howler.id})
 
-        logger.debug("event:%s - emitting data", event)
+    if unique and exists(odm.howler.id):
+        raise ResourceExists("Resource with id %s already exists" % odm.howler.id)
 
-        for handler in handlers[event]:
-            handler(data)
+    return odm, warnings
 
 
-def on(event: str, handler: Callable):
-    """Add a new listener to the specified event
+CREATED_EVENTS = Counter(
+    f"{APP_NAME.replace('-', '_')}_created_events_total",
+    "The number of created events",
+)
+
+
+def create_event(
+    id: str,
+    event: Event,
+    user: Optional[str] = None,
+    skip_exists: bool = False,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+    **kwargs: Any,
+) -> bool:
+    """Create a new event in the database.
+
+    This function saves an event to the datastore, optionally adding a creation
+    log entry and updating metrics.
 
     Args:
-        event (str): The id of the event to listen for
-        handler (Callable): Then function that will handle any instances of this event being emitted
+        id: The unique identifier for the event
+        event: The Event ODM object to save
+        user: Optional username to record in the creation log
+        skip_exists: Whether to skip the existence check
+
+    Returns:
+        bool: True if the event was successfully created
+
+    Raises:
+        ResourceExists: If an event with the same ID already exists and skip_exists=False
     """
-    if event not in handlers:
-        handlers[event] = []
+    if not skip_exists and exists(id):
+        raise ResourceExists(f"Event {id} already exists in datastore")
 
-    handlers[event].append(handler)
+    if user:
+        event.howler.log = [EventLog({"timestamp": "NOW", "explanation": "Created event", "user": user})]
 
-    logger.debug("event:%s - added listener", event)
-
-
-def off(event: str, handler: Callable):
-    """Remove an existing listener from the specified event
-
-    Args:
-        event (str): The id to remove the handler from
-        handler (Callable): The handler to remove from the specified id
-    """
-    if event not in handlers:
-        return
-
-    if handler not in handlers[event]:
-        return
-
-    handlers[event] = [h for h in handlers[event] if h != handler]
-
-    logger.debug("event:%s - removed listener", event)
+    CREATED_EVENTS.inc()
+    return datastore().event.save(id, event, refresh=refresh)

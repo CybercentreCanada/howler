@@ -28,6 +28,14 @@ import UserSearchProvider from 'components/routes/admin/users/UserSearch';
 import QueryBuilder from 'components/routes/advanced/QueryBuilder';
 import AnalyticDetails from 'components/routes/analytics/AnalyticDetails';
 import AnalyticSearch from 'components/routes/analytics/AnalyticSearch';
+import CaseViewer from 'components/routes/cases/CaseViewer';
+import Cases from 'components/routes/cases/Cases';
+import CaseDashboard from 'components/routes/cases/detail/CaseDashboard';
+import CaseObservables from 'components/routes/cases/detail/CaseObservables';
+import CaseRules from 'components/routes/cases/detail/CaseRules';
+import CaseSearch from 'components/routes/cases/detail/CaseSearch';
+import CaseTimeline from 'components/routes/cases/detail/CaseTimeline';
+import ItemPage from 'components/routes/cases/detail/ItemPage';
 import DossierEditor from 'components/routes/dossiers/DossierEditor';
 import Dossiers from 'components/routes/dossiers/Dossiers';
 import ActionDocumentation from 'components/routes/help/ActionDocumentation';
@@ -42,7 +50,7 @@ import RetentionDocumentation from 'components/routes/help/RetentionDocumentatio
 import SearchDocumentation from 'components/routes/help/SearchDocumentation';
 import TemplateDocumentation from 'components/routes/help/TemplateDocumentation';
 import ViewDocumentation from 'components/routes/help/ViewDocumentation';
-import HitBrowser from 'components/routes/hits/search/HitBrowser';
+import RecordBrowser from 'components/routes/hits/search/RecordBrowser';
 import HitViewer from 'components/routes/hits/view/HitViewer';
 import Home from 'components/routes/home';
 import OverviewViewer from 'components/routes/overviews/OverviewViewer';
@@ -78,11 +86,13 @@ import AvatarProvider from './providers/AvatarProvider';
 import CustomPluginProvider from './providers/CustomPluginProvider';
 import FavouriteProvider from './providers/FavouritesProvider';
 import FieldProvider from './providers/FieldProvider';
-import HitProvider from './providers/HitProvider';
+import GridColumnsProvider from './providers/GridColumnsProvider';
 import LocalStorageProvider from './providers/LocalStorageProvider';
 import ModalProvider from './providers/ModalProvider';
 import OverviewProvider from './providers/OverviewProvider';
 import ParameterProvider from './providers/ParameterProvider';
+import RecordProvider from './providers/RecordProvider';
+import RecordSearchProvider from './providers/RecordSearchProvider';
 import SocketProvider from './providers/SocketProvider';
 import UserListProvider from './providers/UserListProvider';
 import ViewProvider from './providers/ViewProvider';
@@ -197,7 +207,7 @@ const MyAppProvider: FC<PropsWithChildren> = ({ children }) => {
                     <FieldProvider>
                       <LocalStorageProvider>
                         <SocketProvider>
-                          <HitProvider>
+                          <RecordProvider>
                             <OverviewProvider>
                               <AnalyticProvider>
                                 <FavouriteProvider>
@@ -205,7 +215,7 @@ const MyAppProvider: FC<PropsWithChildren> = ({ children }) => {
                                 </FavouriteProvider>
                               </AnalyticProvider>
                             </OverviewProvider>
-                          </HitProvider>
+                          </RecordProvider>
                         </SocketProvider>
                       </LocalStorageProvider>
                     </FieldProvider>
@@ -257,19 +267,54 @@ const createRouter = () =>
         },
         {
           path: 'hits',
-          element: <HitBrowser />
+          element: <RecordBrowser />
         },
         {
           path: 'search',
-          element: <HitBrowser />
+          element: <RecordBrowser />
         },
         {
           path: 'hits/:id',
           element: <HitViewer />
         },
+
         {
-          path: 'bundles/:id',
-          element: <HitBrowser />
+          path: 'cases',
+          element: <Cases />
+        },
+        {
+          path: 'cases/:id',
+          element: (
+            <ParameterProvider defaults={{ query: '', indexes: ['hit', 'event', 'case'] }}>
+              <CaseViewer />
+            </ParameterProvider>
+          ),
+          children: [
+            {
+              index: true,
+              element: <CaseDashboard />
+            },
+            {
+              path: 'observables',
+              element: <CaseObservables />
+            },
+            {
+              path: 'timeline',
+              element: <CaseTimeline />
+            },
+            {
+              path: 'rules',
+              element: <CaseRules />
+            },
+            {
+              path: 'search',
+              element: <CaseSearch />
+            },
+            {
+              path: '*',
+              element: <ItemPage />
+            }
+          ]
         },
         {
           path: 'templates',
@@ -315,19 +360,27 @@ const createRouter = () =>
           path: 'views/create',
           element: (
             <ParameterProvider>
-              <ViewComposer />
+              <RecordSearchProvider>
+                <GridColumnsProvider viewSource="path">
+                  <ViewComposer />
+                </GridColumnsProvider>
+              </RecordSearchProvider>
             </ParameterProvider>
           )
         },
         {
           path: 'views/:id',
-          element: <HitBrowser />
+          element: <RecordBrowser />
         },
         {
           path: 'views/:id/edit',
           element: (
             <ParameterProvider>
-              <ViewComposer />
+              <RecordSearchProvider>
+                <GridColumnsProvider viewSource="path">
+                  <ViewComposer />
+                </GridColumnsProvider>
+              </RecordSearchProvider>
             </ParameterProvider>
           )
         },

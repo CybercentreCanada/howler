@@ -8,11 +8,12 @@ import {
   Person,
   Refresh,
   SavedSearch,
-  SelectAll
+  SelectAll,
+  Warning
 } from '@mui/icons-material';
 import { Autocomplete, Chip, CircularProgress, IconButton, Stack, TextField, Tooltip, Typography } from '@mui/material';
-import { HitSearchContext } from 'components/app/providers/HitSearchProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
+import { RecordSearchContext } from 'components/app/providers/RecordSearchProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import ChipPopper from 'components/elements/display/ChipPopper';
 import type { View } from 'models/entities/generated/View';
@@ -35,7 +36,8 @@ const ViewLink: FC<{ id: number; viewId: string }> = ({ id, viewId }) => {
   const removeView = useContextSelector(ParameterContext, ctx => ctx.removeView);
   const setParamView = useContextSelector(ParameterContext, ctx => ctx.setView);
 
-  const search = useContextSelector(HitSearchContext, ctx => ctx.search);
+  const search = useContextSelector(RecordSearchContext, ctx => ctx.search);
+  const displayType = useContextSelector(RecordSearchContext, ctx => ctx.displayType);
 
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>(null);
@@ -74,7 +76,7 @@ const ViewLink: FC<{ id: number; viewId: string }> = ({ id, viewId }) => {
   );
 
   if (loading) {
-    return <Chip size="small" icon={<CircularProgress size={12} />} />;
+    return <Chip icon={<CircularProgress size={12} />} />;
   }
 
   if (viewId === '') {
@@ -147,18 +149,25 @@ const ViewLink: FC<{ id: number; viewId: string }> = ({ id, viewId }) => {
         </Tooltip>
       }
       label={
-        <Tooltip title={view.query}>
-          <Typography
-            role="link"
-            sx={{ color: 'text.primary' }}
-            variant="body2"
-            component={Link}
-            to={`/views/${view.view_id}/edit`}
-            aria-label={`${t(view.title)} - ${view.query ?? t('unknown')}`}
-          >
-            {t(view.title)}
-          </Typography>
-        </Tooltip>
+        <Stack direction="row" spacing={0.5} alignItems="center">
+          <Tooltip title={view.query}>
+            <Typography
+              role="link"
+              sx={{ color: 'text.primary' }}
+              variant="body2"
+              component={Link}
+              to={`/views/${view.view_id}/edit`}
+              aria-label={`${t(view.title)} - ${view.query ?? t('unknown')}`}
+            >
+              {t(view.title)}
+            </Typography>
+          </Tooltip>
+          {view.settings?.display === 'grid' && displayType !== 'grid' && (
+            <Tooltip title={t('view.display.grid.inactive_warning')}>
+              <Warning fontSize="small" color="warning" />
+            </Tooltip>
+          )}
+        </Stack>
       }
       onDelete={() => removeView(viewId)}
     >

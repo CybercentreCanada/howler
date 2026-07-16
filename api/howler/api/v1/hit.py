@@ -18,11 +18,7 @@ from howler.api import (
 )
 from howler.api.v1.utils.etag import add_etag
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
-from howler.common.exceptions import (
-    HowlerException,
-    HowlerValueError,
-    InvalidDataException,
-)
+from howler.common.exceptions import HowlerException, HowlerValueError, InvalidDataException, NotFoundException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
@@ -34,7 +30,7 @@ from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import Comment, HitOperationType, HitStatusTransition
 from howler.odm.models.user import User
 from howler.security import api_login
-from howler.services import action_service, analytic_service, event_service, hit_service
+from howler.services import action_service, analytic_service, comms_service, hit_service
 from howler.utils.constants import DEBUG_FORCE_REFRESH
 from howler.utils.str_utils import sanitize_lucene_query
 
@@ -163,11 +159,9 @@ def delete_hits(user: User, **kwargs):
         'wait_for' will wait for the change to be visible in search.
 
     Data Block:
-    {
-        [
-            hitId, hitId, hitId
-        ]
-    }
+    [
+        hitId, hitId, hitId
+    ]
 
     Result Example:
     {
@@ -183,17 +177,11 @@ def delete_hits(user: User, **kwargs):
     if "admin" not in user["type"]:
         return forbidden(err="Cannot delete hit, only admin is allowed to delete")
 
+    hit_ids = set(hit_ids)
     non_existing_hit_ids = [hit_id for hit_id in hit_ids if not hit_service.exists(hit_id)]
 
-    if len(non_existing_hit_ids) == 1:
-        return not_found(err=f"Hit id {non_existing_hit_ids[0]} does not exist.")
-
-    if len(non_existing_hit_ids) > 1:
-        return not_found(err=f"Hit ids {', '.join(non_existing_hit_ids)} do not exist.")
-
-    for hit_id in hit_ids:
-        if not hit_service.exists(hit_id):
-            return not_found(err=f"Hit id {hit_id} does not exist.")
+    if non_existing_hit_ids:
+        return not_found(err=f"Hit id(s) {', '.join(non_existing_hit_ids)} do not exist.")
 
     hit_service.delete_hits(hit_ids, refresh=refresh)
 
@@ -264,7 +252,7 @@ def validate_hits(**kwargs):
 
 @generate_swagger_docs()
 @hit_api.route("/<id>", methods=["GET"])
-@api_login(audit=False, required_priv=["R"])
+@api_login(audit=True, required_priv=["R"])
 @add_etag(getter=hit_service.get_hit)
 def get_hit(id: str, server_version: str, **kwargs):
     """Get a hit.
@@ -418,7 +406,7 @@ def update_hit(id: str, server_version: str, **kwargs):
             hit.howler.id, operations, kwargs["user"]["uname"], server_version, refresh=refresh
         )
 
-        event_service.emit("hits", {"hit": new_hit, "version": new_version})
+        comms_service.emit("hits", {"hit": new_hit, "version": new_version})
 
         return ok(new_hit), new_version
     except HowlerValueError as e:
@@ -561,7 +549,7 @@ def add_label(id, label_set, user, **kwargs):
     """
     refresh = kwargs.get("refresh")
 
-    if not hit_service.does_hit_exist(id):
+    if not hit_service.exists(id):
         return not_found(err=f"Hit {id} does not exist")
 
     existing_hit: Hit = hit_service.get_hit(id, as_odm=True)
@@ -624,7 +612,7 @@ def remove_labels(id, label_set, user, **kwargs):
     """
     refresh = kwargs.get("refresh")
 
-    if not hit_service.does_hit_exist(id):
+    if not hit_service.exists(id):
         return not_found(err=f"Hit {id} does not exist")
 
     if f"howler.labels.{label_set}" not in hit_service.get_hit(id, as_odm=True).flat_fields():
@@ -842,7 +830,7 @@ def edit_comment(id: str, comment_id: str, user: dict[str, Any], **kwargs):
     if len(comment_value) > MAX_COMMENT_LEN:
         return bad_request(err="Comment is too long.")
 
-    if not hit_service.does_hit_exist(id):
+    if not hit_service.exists(id):
         return not_found(err=f"Hit {id} does not exist")
 
     hit: Hit = kwargs["cached_hit"]
@@ -903,7 +891,7 @@ def delete_comments(id: str, user: User, **kwargs):
         ...hit            # The new data for the hit
     }
     """
-    if not hit_service.does_hit_exist(id):
+    if not hit_service.exists(id):
         return not_found(err=f"Hit {id} does not exist")
 
     comment_ids: list[str] = request.json or []
@@ -1025,12 +1013,24 @@ def remove_react_comment(id: str, comment_id: str, user: dict[str, Any], **kwarg
     return ok(new_hit), version
 
 
+# ---------------------------------------------------------------------------
+# Deprecated bundle shim endpoints
+# ---------------------------------------------------------------------------
+
+
+def _deprecation_headers(response):
+    """Inject deprecation headers into a Flask Response."""
+    response.headers["Deprecation"] = "true"
+    response.headers["Sunset"] = "2027-01-01"
+    return response
+
+
 @generate_swagger_docs()
 @hit_api.route("/bundle", methods=["POST"])
 @api_login(audit=False, required_priv=["W"])
 @parse_parameters(refresh=parse_refresh)
 def create_bundle(user: User, **kwargs):
-    """Create a new bundle
+    """Create a new bundle (deprecated — creates a case instead).
 
     Variables:
     None
@@ -1052,48 +1052,25 @@ def create_bundle(user: User, **kwargs):
 
     Result Example:
     {
-        ...hit      # The created bundle
+        ...hit      # The created bundle (synthesized from the underlying case)
     }
     """
+    from howler.services import bundle_compat_service
+
     data = request.json
     refresh = kwargs.get("refresh")
     if not isinstance(data, dict):
         return bad_request(err="Invalid data format")
 
     bundle_hit: Optional[dict[str, Any]] = data.get("bundle")
-
     if bundle_hit is None:
         return bad_request(err="You did not provide a bundle hit.")
 
+    child_hits: list[str] = data.get("hits", [])
+
     try:
-        odm, _ = hit_service.convert_hit(bundle_hit, unique=True)
-        odm.howler.is_bundle = True
-
-        child_hits = data.get("hits", [])
-
-        if len(odm.howler.hits) < 1 and len(child_hits) < 1:
-            return bad_request(err="You did not provide any child hits.")
-
-        odm.howler.hits.extend(hit_id for hit_id in child_hits if hit_id not in odm.howler.hits)
-
-        hit_service.create_hit(odm.howler.id, odm, user=user.uname, refresh=refresh)
-        analytic_service.save_from_hits(odm, user, refresh=refresh)
-
-        child_hits = []
-        for hit_id in odm.howler.hits:
-            child_hit: Hit = hit_service.get_hit(hit_id, as_odm=True)
-            child_hits.append(child_hit)
-
-            if child_hit.howler.is_bundle:
-                return bad_request(
-                    err=f"You cannot specify a bundle as a child of another bundle - {child_hit.howler.id} is a bundle."
-                )
-
-            child_hit.howler.bundles.append(odm.howler.id)
-
-        hit_service.overwrite_hits(child_hits, refresh=refresh)
-
-        return created(odm)
+        result = bundle_compat_service.create_bundle(bundle_hit, child_hits, user=user, refresh=refresh)
+        return _deprecation_headers(created(result))
     except HowlerException as e:
         return bad_request(err=str(e))
 
@@ -1101,10 +1078,9 @@ def create_bundle(user: User, **kwargs):
 @generate_swagger_docs()
 @hit_api.route("/bundle/<id>", methods=["PUT"])
 @api_login(audit=False, required_priv=["W"])
-@add_etag(getter=hit_service.get_hit, check_if_match=False)
 @parse_parameters(refresh=parse_refresh)
 def update_bundle(id, **kwargs):
-    """Update a hit's child hits. Can be used to convert an existing hit into a bundle, or to update an existing bundle.
+    """Add hits to a bundle (deprecated — adds items to the underlying case).
 
     Variables:
     id  => The ID of the bundle to update
@@ -1123,50 +1099,24 @@ def update_bundle(id, **kwargs):
 
     Result Example:
     {
-        ...hit      # The updated bundle
+        ...hit      # The updated bundle (synthesized from the underlying case)
     }
     """
+    from howler.services import bundle_compat_service
+
     refresh = kwargs.get("refresh")
-    bundle_hit: Hit = cast(Hit, kwargs.get("cached_hit", None))
-    if not bundle_hit:
-        return not_found(err="This bundle does not exist.")
 
     hit_ids = request.json
     if not isinstance(hit_ids, list):
         return bad_request(err="Invalid data format")
 
-    new_hit_list = bundle_hit.howler.as_primitives().get("hits", [])
-    if bundle_hit.howler.is_bundle:
-        for hit_id in hit_ids:
-            if hit_id not in new_hit_list:
-                new_hit_list.append(hit_id)
-            else:
-                return conflict(err=f"The hit {hit_id} is already in the bundle {bundle_hit.howler.id}.")
-    else:
-        new_hit_list = hit_ids
-
-    bundle_hit.howler.hits = new_hit_list
-    bundle_hit.howler.is_bundle = True
-
     try:
-        hits_to_save = []
-        for hit_id in new_hit_list:
-            child_hit: Hit = hit_service.get_hit(hit_id, as_odm=True)
-            hits_to_save.append(child_hit)
-
-            if child_hit.howler.is_bundle:
-                return bad_request(
-                    err=f"You cannot specify a bundle as a child of another bundle - {child_hit.howler.id} is a bundle."
-                )
-
-            new_bundle_list = child_hit.howler.as_primitives().get("bundles", [])
-            new_bundle_list.append(bundle_hit.howler.id)
-            child_hit.howler.bundles = new_bundle_list
-
-        hits_to_save.append(bundle_hit)
-        hit_service.overwrite_hits(hits_to_save, refresh=refresh)
-
-        return ok(bundle_hit)
+        result = bundle_compat_service.add_to_bundle(id, hit_ids, refresh=refresh)
+        return _deprecation_headers(ok(result))
+    except bundle_compat_service.BundleConflictException as e:
+        return conflict(err=str(e))
+    except NotFoundException as e:
+        return not_found(err=str(e))
     except HowlerException as e:
         return bad_request(err=str(e))
 
@@ -1174,13 +1124,9 @@ def update_bundle(id, **kwargs):
 @generate_swagger_docs()
 @hit_api.route("/bundle/<id>", methods=["DELETE"])
 @api_login(audit=False, required_priv=["W"])
-@add_etag(getter=hit_service.get_hit, check_if_match=False)
 @parse_parameters(refresh=parse_refresh)
 def remove_bundle_children(id, **kwargs):
-    """Remove a bundle's child hits.
-
-    Can be used to convert an existing bundle back into a normal hit, or to remove a subset of
-    existing hits from the bundle.
+    """Remove hits from a bundle (deprecated — removes items from the underlying case).
 
     Variables:
     id  => The ID of the bundle to update
@@ -1199,45 +1145,21 @@ def remove_bundle_children(id, **kwargs):
 
     Result Example:
     {
-        ...hit      # The updated hit
+        ...hit      # The updated hit (synthesized from the underlying case)
     }
     """
+    from howler.services import bundle_compat_service
+
     refresh = kwargs.get("refresh")
-    bundle_hit = kwargs.get("cached_hit", None)
-    if not bundle_hit:
-        return not_found(err="This bundle does not exist.")
 
     hit_ids = request.json
     if not isinstance(hit_ids, list):
         return bad_request(err="Invalid data format")
 
-    new_hit_list = bundle_hit.howler.get("hits", [])
-    if bundle_hit.howler.is_bundle:
-        if hit_ids == ["*"]:
-            hit_ids = new_hit_list
-            new_hit_list = []
-        else:
-            new_hit_list = [_id for _id in new_hit_list if _id not in hit_ids]
-    else:
-        return bad_request(err="The specified hit must be a bundle.")
-
-    bundle_hit.howler.hits = new_hit_list
-    bundle_hit.howler.is_bundle = len(new_hit_list) > 0
-
     try:
-        hits_to_save = []
-        for hit_id in hit_ids:
-            child_hit: Hit = hit_service.get_hit(hit_id, as_odm=True)
-            hits_to_save.append(child_hit)
-
-            try:
-                child_hit.howler.bundles.remove(bundle_hit.howler.id)
-            except ValueError:
-                logger.warning("Bundle isn't included in child %s!", bundle_hit.howler.id)
-
-        hits_to_save.append(bundle_hit)
-        hit_service.overwrite_hits(hits_to_save, refresh=refresh)
-
-        return ok(bundle_hit)
+        result = bundle_compat_service.remove_from_bundle(id, hit_ids, refresh=refresh)
+        return _deprecation_headers(ok(result))
+    except NotFoundException as e:
+        return not_found(err=str(e))
     except HowlerException as e:
         return bad_request(err=str(e))

@@ -12,4 +12,5 @@ export interface View {
   title?: string;
   type?: string;
   view_id?: string;
+  indexes?: string[];
 }

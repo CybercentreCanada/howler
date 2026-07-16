@@ -17,6 +17,7 @@ so the isinstance() guard inside get_client keeps working correctly, while still
 assertions."""
 
 import json
+from itertools import chain, repeat
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -160,10 +161,11 @@ def test_retry_call_retries_on_busy_loading():
 def test_retry_call_gives_up_after_deadline():
     """A sustained outage must re-raise once RETRY_DEADLINE is exceeded."""
     func = MagicMock(side_effect=redis.ConnectionError("down"))
+    monotonic_values = chain([0.0, 61.0], repeat(61.0))
     # The first failure starts the retry deadline. A subsequent failure after the
     # deadline expires must re-raise.
     with (
-        patch("howler.remote.datatypes.time.monotonic", side_effect=[0.0, 61.0]),
+        patch("howler.remote.datatypes.time.monotonic", side_effect=monotonic_values),
         patch("howler.remote.datatypes.log.warning"),
         patch("howler.remote.datatypes.log.exception"),
         patch("time.sleep"),

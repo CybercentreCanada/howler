@@ -15,8 +15,6 @@ export interface Howler {
   assessment?: string;
   assessor?: string;
   assignment: string;
-  bundle_size?: number;
-  bundles?: string[];
   comment?: HowlerComment[];
   confidence?: number;
   data?: string[];
@@ -25,10 +23,8 @@ export interface Howler {
   escalation?: string;
   expiry?: string;
   hash: string;
-  hits?: string[];
   id: string;
   incidents?: Incident[];
-  is_bundle?: boolean;
   labels?: Labels;
   links?: Link[];
   log?: Log[];
@@ -43,7 +39,6 @@ export interface Howler {
   scrutiny?: string;
   severity?: number;
   status?: string;
-  viewers?: string[];
   volume?: number;
   votes?: Votes;
 }

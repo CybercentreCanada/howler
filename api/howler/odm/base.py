@@ -18,8 +18,8 @@ import typing
 from datetime import datetime
 from enum import Enum as PyEnum
 from enum import EnumMeta
+from typing import TYPE_CHECKING, Callable
 from typing import Any as _Any
-from typing import Callable
 from venv import logger
 
 import arrow
@@ -83,6 +83,9 @@ URI_PATH = r"(?:[/?#]\S*)"
 FULL_URI = f"^((?:(?:[A-Za-z]*:)?//)?(?:\\S+(?::\\S*)?@)?({IP_REGEX}|{DOMAIN_REGEX})(?::\\d{{2,5}})?){URI_PATH}?$"
 PLATFORM_REGEX = r"^(Windows|Linux|MacOS|Android|iOS)$"
 PROCESSOR_REGEX = r"^x(64|86)$"
+
+if TYPE_CHECKING:
+    from howler.common.classification import Classification as ClassificationEngine
 
 
 def flat_to_nested(data: dict[str, _Any]) -> dict[str, _Any]:
@@ -637,6 +640,11 @@ class IndexText(_Field):
 class Integer(_Field):
     """A field storing an integer value."""
 
+    def __init__(self, *args, min=None, max=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.min = min
+        self.max = max
+
     def check(self, value, context=[], **kwargs):
         if self.optional and value is None:
             return None
@@ -646,9 +654,16 @@ class Integer(_Field):
                 return self.default
 
         try:
-            return int(value)
+            result = int(value)
         except ValueError as e:
             raise HowlerValueError(f"[{'.'.join(context)}]: {str(e)}")
+
+        if self.min is not None and result < self.min:
+            raise HowlerValueError(f"[{'.'.join(context)}]: {result} is less than minimum value {self.min}")
+        if self.max is not None and result > self.max:
+            raise HowlerValueError(f"[{'.'.join(context)}]: {result} is greater than maximum value {self.max}")
+
+        return result
 
 
 class Long(_Field):
@@ -658,6 +673,11 @@ class Long(_Field):
     In Elasticsearch, Integer supports values from -2^31 to 2^31-1, while Long supports values from -2^63 to 2^63-1.
     """
 
+    def __init__(self, *args, min=None, max=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.min = min
+        self.max = max
+
     def check(self, value, context=[], **kwargs):
         if self.optional and value is None:
             return None
@@ -667,9 +687,16 @@ class Long(_Field):
                 return self.default
 
         try:
-            return int(value)
+            result = int(value)
         except ValueError as e:
             raise HowlerValueError(f"[{'.'.join(context)}]: {str(e)}")
+
+        if self.min is not None and result < self.min:
+            raise HowlerValueError(f"[{'.'.join(context)}]: {result} is less than minimum value {self.min}")
+        if self.max is not None and result > self.max:
+            raise HowlerValueError(f"[{'.'.join(context)}]: {result} is greater than maximum value {self.max}")
+
+        return result
 
 
 class Float(_Field):
@@ -689,10 +716,10 @@ class Float(_Field):
 
 
 class ClassificationObject(object):
-    def __init__(self, engine, value, is_uc=False):
-        self.engine = engine
-        self.is_uc = is_uc
-        self.value = engine.normalize_classification(value, skip_auto_select=is_uc)
+    def __init__(self, engine: "ClassificationEngine", value, is_uc=False):
+        self.engine: "ClassificationEngine" = engine
+        self.is_uc: bool = is_uc
+        self.value: str = engine.normalize_classification(value, skip_auto_select=is_uc)
 
     def get_access_control_parts(self):
         return self.engine.get_access_control_parts(self.value, user_classification=self.is_uc)

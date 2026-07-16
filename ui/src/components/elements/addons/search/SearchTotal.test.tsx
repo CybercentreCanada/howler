@@ -20,9 +20,9 @@ describe('SearchTotal', () => {
       expect(screen.getByText('No results')).toBeInTheDocument();
     });
 
-    it('renders "No results" text when total is 1', () => {
+    it('renders "Showing 1 to 1 of 1 results" text when total is 1', () => {
       render(<SearchTotal total={1} offset={0} pageLength={1} />, { wrapper: Wrapper });
-      expect(screen.getByText('No results')).toBeInTheDocument();
+      expect(screen.getByText('Showing 1 to 1 of 1 results')).toBeInTheDocument();
     });
 
     it('renders range text when total is greater than 1', () => {

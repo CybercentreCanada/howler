@@ -93,6 +93,7 @@
             "reportAttributeAccessIssue": "none",
             "reportCallIssue": "none",
             "reportGeneralTypeIssues": "none",
+            "reportInvalidTypeForm": "none",
             "reportOperatorIssue": "none",
             "reportOptionalIterable": "none",
             "reportOptionalMemberAccess": "none",
@@ -114,6 +115,11 @@
             "reportArgumentType": "none",
             "root": "plugins/sentinel/test"
         }
+    ],
+    "ignore": [
+        "**/build",
+        "**/.venv",
+        "ui"
     ],
     "reportMissingImports": "error",
     "reportOptionalMemberAccess": "error",

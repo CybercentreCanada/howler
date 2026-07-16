@@ -1,7 +1,7 @@
 import PageCenter from 'commons/components/pages/PageCenter';
 import HandlebarsMarkdown from 'components/elements/display/HandlebarsMarkdown';
 import { useScrollRestoration } from 'components/hooks/useScrollRestoration';
-import { type FC } from 'react';
+import type { FC } from 'react';
 import ErrorBoundary from '../ErrorBoundary';
 import { useStartingTemplate } from '../overviews/startingTemplate';
 

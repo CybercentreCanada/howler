@@ -6,7 +6,7 @@ import pytest
 from howler.config import CLASSIFICATION
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.helper import create_users_with_username
-from howler.odm.models.howler_data import Assessment, HitStatus, HitStatusTransition
+from howler.odm.models.howler_data import Assessment, HitStatusTransition, Status
 from howler.odm.random_data import create_users, wipe_hits
 from test.conftest import get_api_data
 
@@ -42,11 +42,11 @@ def datastore(datastore_connection: HowlerDatastore):
         wipe_hits(datastore_connection)
 
 
-def test_full_transition_flow(datastore: HowlerDatastore, login_session):
+def test_full_transition_flow(datastore: HowlerDatastore, login_session):  # noqa: C901
     """Test that /api/v1/hit/<id>/transitions/start endpoint performs the correct transition"""
     session, host = login_session
 
-    assert datastore.hit.get(HIT_ID).howler.status == HitStatus.OPEN
+    assert datastore.hit.get(HIT_ID).howler.status == Status.OPEN
 
     def check_assignment(user: str):
         def check():
@@ -76,94 +76,94 @@ def test_full_transition_flow(datastore: HowlerDatastore, login_session):
         {
             "transition": HitStatusTransition.ASSESS,
             "data": {"assessment": Assessment.AMBIGUOUS},
-            "dest": HitStatus.RESOLVED,
+            "dest": Status.RESOLVED,
             "check": [check_assessor("admin")],
         },
         {
             "transition": HitStatusTransition.RE_EVALUATE,
-            "dest": HitStatus.IN_PROGRESS,
+            "dest": Status.IN_PROGRESS,
             "check": [check_assessment(None), check_assignment("admin"), check_assessor(None)],
         },
         {
             "transition": HitStatusTransition.RELEASE,
-            "dest": HitStatus.OPEN,
+            "dest": Status.OPEN,
             "check": [check_assessment(None), check_assignment("unassigned")],
         },
         {
             "transition": HitStatusTransition.ASSIGN_TO_ME,
-            "dest": HitStatus.IN_PROGRESS,
+            "dest": Status.IN_PROGRESS,
             "check": [check_assessment(None), check_assignment("admin")],
         },
         {
             "transition": HitStatusTransition.RELEASE,
-            "dest": HitStatus.OPEN,
+            "dest": Status.OPEN,
             "check": [check_assessment(None), check_assignment("unassigned")],
         },
         {
             "transition": HitStatusTransition.ASSIGN_TO_OTHER,
             "data": {"assignee": "user"},
-            "dest": HitStatus.OPEN,
+            "dest": Status.OPEN,
             "check": [check_assessment(None), check_assignment("user")],
         },
         {
             "transition": HitStatusTransition.ASSIGN_TO_ME,
-            "dest": HitStatus.IN_PROGRESS,
+            "dest": Status.IN_PROGRESS,
             "check": [check_assessment(None), check_assignment("admin")],
         },
         {
             "transition": HitStatusTransition.ASSIGN_TO_OTHER,
             "data": {"assignee": "user"},
-            "dest": HitStatus.IN_PROGRESS,
+            "dest": Status.IN_PROGRESS,
             "check": [check_assessment(None), check_assignment("user")],
         },
         {
             "transition": HitStatusTransition.ASSIGN_TO_ME,
-            "dest": HitStatus.IN_PROGRESS,
+            "dest": Status.IN_PROGRESS,
             "check": [check_assessment(None), check_assignment("admin")],
         },
         {
             "transition": HitStatusTransition.PAUSE,
-            "dest": HitStatus.ON_HOLD,
+            "dest": Status.ON_HOLD,
         },
         {
             "transition": HitStatusTransition.RESUME,
-            "dest": HitStatus.IN_PROGRESS,
+            "dest": Status.IN_PROGRESS,
         },
         {
             "transition": HitStatusTransition.ASSIGN_TO_ME,
-            "dest": HitStatus.IN_PROGRESS,
+            "dest": Status.IN_PROGRESS,
             "check": [check_assessment(None), check_assignment("admin")],
         },
         {
             "transition": HitStatusTransition.RELEASE,
-            "dest": HitStatus.OPEN,
+            "dest": Status.OPEN,
             "check": [check_assessment(None), check_assignment("unassigned")],
         },
         {
             "transition": HitStatusTransition.ASSIGN_TO_ME,
-            "dest": HitStatus.IN_PROGRESS,
+            "dest": Status.IN_PROGRESS,
             "check": [check_assessment(None), check_assignment("admin")],
         },
         {
             "transition": HitStatusTransition.ASSESS,
             "data": {"assessment": Assessment.AMBIGUOUS},
-            "dest": HitStatus.RESOLVED,
+            "dest": Status.RESOLVED,
             "check": [check_assessment(Assessment.AMBIGUOUS), check_assessor("admin")],
         },
         {
             "transition": HitStatusTransition.RE_EVALUATE,
-            "dest": HitStatus.IN_PROGRESS,
+            "dest": Status.IN_PROGRESS,
             "check": [check_assessment(None), check_assignment("admin"), check_assessor(None)],
         },
         {
             "transition": HitStatusTransition.RELEASE,
-            "dest": HitStatus.OPEN,
+            "dest": Status.OPEN,
             "check": [check_assessment(None), check_assignment("unassigned")],
         },
         {
             "transition": HitStatusTransition.VOTE,
             "data": {"vote": "benign", "email": "user@user.com"},
-            "dest": HitStatus.OPEN,
+            "dest": Status.OPEN,
             "check": [check_assessment(None), check_vote("user@user.com")],
         },
     ]
@@ -189,5 +189,5 @@ def test_full_transition_flow(datastore: HowlerDatastore, login_session):
         datastore.hit.get(HIT_ID).howler.status == data["dest"]
 
     # hit: Hit = datastore.hit.get(HIT_ID, as_obj=False)
-    # assert hit["howler"]["status"] == HitStatus.IN_PROGRESS
+    # assert hit["howler"]["status"] == Status.IN_PROGRESS
     # assert hit["howler"]["assignment"] == "admin"

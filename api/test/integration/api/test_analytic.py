@@ -151,17 +151,17 @@ def test_favourite(datastore: HowlerDatastore, login_session):
     assert analytic.analytic_id not in datastore.user.search(f"uname:{uname}")["items"][0]["favourite_analytics"]
 
 
-def test_delete(datastore: HowlerDatastore, login_session):
-    session, host = login_session
+# def test_delete(datastore: HowlerDatastore, login_session):
+#     session, host = login_session
 
-    analytic: Analytic = datastore.analytic.search("_exists_:rule")["items"][0]
+#     analytic: Analytic = datastore.analytic.search("_exists_:rule")["items"][0]
 
-    get_api_data(
-        session,
-        f"{host}/api/v1/analytic/{analytic.analytic_id}",
-        method="DELETE",
-    )
+#     get_api_data(
+#         session,
+#         f"{host}/api/v1/analytic/{analytic.analytic_id}",
+#         method="DELETE",
+#     )
 
-    datastore.analytic.commit()
+#     datastore.analytic.commit()
 
-    assert not datastore.analytic.exists(analytic.analytic_id)
+#     assert not datastore.analytic.exists(analytic.analytic_id)

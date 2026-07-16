@@ -95,12 +95,16 @@ def get_matching_analytics(hits: Union[list[Hit], list[dict[str, Any]]]) -> list
         return []
 
 
-def save_from_hits(hits: Hit | list[Hit], user: User, refresh: str | None = None):
+def save_from_hits(
+    hits: Hit | list[Hit],
+    user: User,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+):
     """Save updates to analytics based on new hits that have been created
 
     Args:
         hits (Hit | list[Hit]): The newly created hit(s) to use to update the analytic entry/entries
-        refresh (str | None): The refresh strategy to use when saving the analytic(s).
+        refresh (Literal["true", "false", "wait_for"] | None): Refresh strategy used when saving analytics.
     """
     storage = datastore()
 

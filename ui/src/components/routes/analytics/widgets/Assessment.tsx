@@ -14,7 +14,7 @@ const Assessment = forwardRef<any, { analytic: Analytic }>(({ analytic }, ref) =
   const { bar } = useMyChart();
 
   const [loading, setLoading] = useState(false);
-  const [assessmentData, setAssessmentData] = useState<HowlerFacetSearchResponse>({});
+  const [assessmentData, setAssessmentData] = useState<HowlerFacetSearchResponse[string]>({});
 
   useEffect(() => {
     if (!analytic) {

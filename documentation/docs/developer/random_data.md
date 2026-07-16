@@ -30,7 +30,7 @@ The following indexes can be populated with test data:
 - **templates** - Hit display templates for different analytics and detections
 - **overviews** - Markdown-based overview templates with Handlebars support
 - **views** - Saved search queries and filters
-- **hits** - Alert/detection data including bundles
+- **hits** - Alert data
 - **analytics** - Analytic definitions with rules and triage settings
 - **actions** - Automated action configurations
 - **dossiers** - Investigation case files
@@ -69,8 +69,6 @@ By default, the script generates **200 random hits** with realistic data includi
 - Random assignments to users
 - Assessment data (escalations and scrutiny levels)
 - Event categories and metadata
-
-The script also creates **bundles** - groups of related hits linked together.
 
 ### Analytics
 

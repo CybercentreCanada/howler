@@ -117,7 +117,6 @@ const LeftNavDrawer = () => {
   return (
     <ClickAwayListener mouseEvent="onMouseDown" touchEvent="onTouchStart" onClickAway={onCloseDrawerIfOpen}>
       <StyledDrawer
-        PaperProps={{ elevation: 1 }}
         variant="permanent"
         style={{ height: '100%' }}
         width={preferences.leftnav.width}

@@ -61,6 +61,21 @@ def api_path(prefix, *args, **kw):
     return f"{path}?{params}"
 
 
+def api_path_v2(prefix, *args, **kw):
+    """Calculate the API path for v2 endpoints as shown:
+
+    /api/v2/<prefix>/[arg1/[arg2/[...]]][?k1=v1[...]]
+    """
+    path = "/".join(["api", "v2", prefix] + list(args))
+
+    params_tuples = kw.pop("params_tuples", [])
+    params = "&".join([_join_kw(kw)] + [_join_param(*e) for e in params_tuples if _param_ok(e)])
+    if not params:
+        return path
+
+    return f"{path}?{params}"
+
+
 def stream_output(output):
     "Stream the output of a response"
 
