@@ -1,5 +1,6 @@
 import { Delete } from '@mui/icons-material';
 import {
+  Alert,
   Box,
   Button,
   Dialog,
@@ -12,18 +13,19 @@ import {
   MenuItem,
   Tab,
   Tabs,
-  TextField,
-  Typography
+  TextField
 } from '@mui/material';
 import api from 'api';
 import { useAppUser } from 'commons/components/app/hooks';
 import useMyApi from 'components/hooks/useMyApi';
-import type { HowlerUser } from 'models/entities/HowlerUser';
+import useMyUserList from 'components/hooks/useMyUserList';
 import type { Action } from 'models/entities/generated/Action';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import type { View } from 'models/entities/generated/View';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import type { HowlerUser } from 'models/entities/HowlerUser';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import HowlerAvatar from './display/HowlerAvatar';
 import UserList from './UserList';
 
 interface MembershipManagementProps {
@@ -49,29 +51,31 @@ export const MembershipManagement = ({
   actionId
 }: MembershipManagementProps) => {
   const translation = useTranslation();
-  const myApi = useMyApi();
+  const { dispatchApi } = useMyApi();
   const appUser = useAppUser<HowlerUser>();
-  const userPickerContainerRef = useRef<HTMLDivElement | null>(null);
   const finalEntityId = entityId || actionId;
-
-  const openUserPicker = useCallback(() => {
-    const button = userPickerContainerRef.current?.querySelector('button');
-    button?.click();
-  }, []);
 
   const [tab, setTab] = useState(0);
   const [members, setMembers] = useState<MemberItem[]>([]);
-  const [username, setUsername] = useState('');
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [memberSearch, setMemberSearch] = useState('');
   const [privilege, setPrivilege] = useState(''); // Used for adding
+  const [addResultMessage, setAddResultMessage] = useState<string>('');
+  const [addResultSeverity, setAddResultSeverity] = useState<'success' | 'warning'>('success');
+
+  const normalizeUserId = useCallback((value: string) => value.trim().toLowerCase(), []);
+
+  const memberUserIds = useMemo(() => new Set(members.map(member => member.user_id)), [members]);
+  const users = useMyUserList(memberUserIds);
 
   const refresh = useCallback(async () => {
     if (!finalEntityId) {
-      return;
+      return [] as MemberItem[];
     }
 
-    const entity = (await myApi.dispatchApi(api[entityType].get(finalEntityId), { throwError: false })) as Entity;
+    const entity = (await dispatchApi(api[entityType].get(finalEntityId), { throwError: false })) as Entity;
 
-    if (!entity) return;
+    if (!entity) return [] as MemberItem[];
 
     const memberList: MemberItem[] = [
       ...(entity.owner ? [{ user_id: entity.owner, privilege: 'owner' as const }] : []),
@@ -79,22 +83,65 @@ export const MembershipManagement = ({
       ...(entity.members ?? []).map(member => ({ user_id: member, privilege: 'members' as const }))
     ];
     setMembers(memberList);
-  }, [finalEntityId, myApi, entityType]);
+    return memberList;
+  }, [dispatchApi, finalEntityId, entityType]);
 
   const handleAddMember = useCallback(async () => {
     if (!finalEntityId) {
       return;
     }
 
-    await myApi.dispatchApi(api[entityType].permission.put(finalEntityId, { user_id: username, privilege }), {
-      throwError: false
-    });
+    const uniqueUserIds = Array.from(new Set(selectedUserIds.map(id => id.trim()).filter(Boolean)));
 
-    setUsername('');
+    await Promise.all(
+      uniqueUserIds.map(user_id =>
+        dispatchApi(api[entityType].permission.put(finalEntityId, { user_id, privilege }), {
+          throwError: false
+        })
+      )
+    );
+
+    let updatedMembers: MemberItem[] = [];
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      updatedMembers = await refresh();
+      const memberIdSet = new Set(updatedMembers.map(member => normalizeUserId(member.user_id)));
+      const allAdded = uniqueUserIds.every(user_id => memberIdSet.has(normalizeUserId(user_id)));
+
+      if (allAdded) {
+        break;
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+
+    const memberIdSet = new Set(updatedMembers.map(member => normalizeUserId(member.user_id)));
+    const addedUserIds = uniqueUserIds.filter(user_id => memberIdSet.has(normalizeUserId(user_id)));
+    const missingUserIds = uniqueUserIds.filter(user_id => !memberIdSet.has(normalizeUserId(user_id)));
+
+    if (missingUserIds.length === 0) {
+      setAddResultSeverity('success');
+      setAddResultMessage(
+        translation.t('members') + ': ' + translation.t('add') + ' OK (' + addedUserIds.join(', ') + ')'
+      );
+    } else {
+      setAddResultSeverity('warning');
+      setAddResultMessage(
+        translation.t('members') +
+          ': ' +
+          translation.t('add') +
+          ' partial. Added [' +
+          addedUserIds.join(', ') +
+          '], missing [' +
+          missingUserIds.join(', ') +
+          ']'
+      );
+    }
+
+    setSelectedUserIds([]);
+    setMemberSearch('');
     setPrivilege('');
-    refresh();
     setTab(0);
-  }, [finalEntityId, myApi, entityType, privilege, refresh, username]);
+  }, [dispatchApi, finalEntityId, entityType, normalizeUserId, privilege, refresh, selectedUserIds, translation]);
 
   // Keep the targeted privilege explicit so we remove the intended permission entry.
   const handleRemoveMember = useCallback(
@@ -103,16 +150,13 @@ export const MembershipManagement = ({
         return;
       }
 
-      await myApi.dispatchApi(
-        api[entityType].permission.delete(finalEntityId, { user_id, privilege: targetPrivilege }),
-        {
-          throwError: false
-        }
-      );
+      await dispatchApi(api[entityType].permission.delete(finalEntityId, { user_id, privilege: targetPrivilege }), {
+        throwError: false
+      });
 
       refresh();
     },
-    [finalEntityId, myApi, entityType, refresh]
+    [dispatchApi, finalEntityId, entityType, refresh]
   );
 
   useEffect(() => {
@@ -120,26 +164,50 @@ export const MembershipManagement = ({
       // Reset modal state each time it opens to avoid leaking stale UI state.
       refresh();
       setTab(0);
+      setSelectedUserIds([]);
+      setMemberSearch('');
+      setPrivilege('');
+      setAddResultMessage('');
     }
   }, [open, refresh]);
 
-  useEffect(() => {
-    if (!open || tab !== 1) {
-      return;
-    }
-
-    // Auto-open the existing UserList picker so users can type immediately.
-    openUserPicker();
-  }, [open, tab, openUserPicker]);
-
+  const currentUser = appUser?.user;
   const canAssignOwner =
-    !!appUser.user &&
-    (appUser.user.roles?.includes('admin') ||
-      members.some(member => member.privilege === 'owner' && member.user_id === appUser.user.username));
+    !!currentUser &&
+    (currentUser.roles?.includes('admin') ||
+      members.some(member => member.privilege === 'owner' && member.user_id === currentUser.username));
 
   const availablePrivileges: MemberItem['privilege'][] = canAssignOwner
     ? ['owner', 'admins', 'members']
     : ['admins', 'members'];
+
+  const getPrivilegeSearchTerms = useCallback((privilegeValue: MemberItem['privilege']) => {
+    switch (privilegeValue) {
+      case 'owner':
+        return ['owner', 'owners', 'proprietaire', 'proprietaires'];
+      case 'admins':
+        return ['admin', 'admins', 'administrator', 'administrators', 'administrateur', 'administrateurs'];
+      case 'members':
+        return ['member', 'members', 'membre', 'membres'];
+      default:
+        return [privilegeValue];
+    }
+  }, []);
+
+  const filteredMembers = members.filter(member => {
+    const query = normalizeUserId(memberSearch);
+    if (!query) {
+      return true;
+    }
+
+    const roleMatches = getPrivilegeSearchTerms(member.privilege).some(term => normalizeUserId(term).includes(query));
+
+    return (
+      normalizeUserId(member.user_id).includes(query) ||
+      normalizeUserId(member.privilege).includes(query) ||
+      roleMatches
+    );
+  });
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
@@ -149,44 +217,54 @@ export const MembershipManagement = ({
         <Tab label={translation.t('add')} />
       </Tabs>
       <DialogContent sx={{ minHeight: '280px', mt: 1 }}>
+        {!!addResultMessage && (
+          <Alert severity={addResultSeverity} sx={{ mb: 2 }}>
+            {addResultMessage}
+          </Alert>
+        )}
         {tab === 0 ? (
-          <List>
-            {members.map(m => (
-              <ListItem
-                key={`${m.user_id}-${m.privilege}`}
-                secondaryAction={
-                  m.privilege !== 'owner' && (
-                    <IconButton onClick={() => handleRemoveMember(m.user_id, m.privilege)}>
-                      <Delete color="error" />
-                    </IconButton>
-                  )
-                }
-              >
-                <ListItemText primary={m.user_id} secondary={m.privilege} />
-              </ListItem>
-            ))}
-          </List>
+          <>
+            <TextField
+              fullWidth
+              size="small"
+              label={translation.t('search')}
+              value={memberSearch}
+              onChange={event => setMemberSearch(event.target.value)}
+              sx={{ mb: 2 }}
+            />
+            <List>
+              {filteredMembers.map(m => (
+                <ListItem
+                  key={`${m.user_id}-${m.privilege}`}
+                  secondaryAction={
+                    m.privilege !== 'owner' && (
+                      <IconButton onClick={() => handleRemoveMember(m.user_id, m.privilege)}>
+                        <Delete color="error" />
+                      </IconButton>
+                    )
+                  }
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <HowlerAvatar userId={m.user_id || 'Unknown'} />
+                    <ListItemText
+                      primary={users[m.user_id]?.name || m.user_id}
+                      secondary={users[m.user_id]?.email ? `${m.privilege} - ${users[m.user_id].email}` : m.privilege}
+                    />
+                  </Box>
+                </ListItem>
+              ))}
+            </List>
+          </>
         ) : (
           <Box sx={{ mt: 1 }}>
-            <Box ref={userPickerContainerRef} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <UserList userId={username} onChange={setUsername} i18nLabel="username" />
-              <Box
-                role="button"
-                tabIndex={0}
-                onClick={openUserPicker}
-                onKeyDown={event => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    openUserPicker();
-                  }
-                }}
-                sx={{ cursor: 'pointer' }}
-              >
-                <Typography variant="caption" color="text.secondary">
-                  {translation.t('username')}
-                </Typography>
-                <Typography variant="body2">{username || '-'}</Typography>
-              </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <UserList
+                i18nLabel="username"
+                isModified
+                allowMultiple
+                selectedUserIds={selectedUserIds}
+                onChangeSelectedUserIds={setSelectedUserIds}
+              />
             </Box>
             <TextField
               select
@@ -207,7 +285,9 @@ export const MembershipManagement = ({
               sx={{ mt: 3 }}
               variant="contained"
               fullWidth
-              disabled={!username || !privilege}
+              disabled={
+                selectedUserIds.length === 0 || !privilege || (privilege === 'owner' && selectedUserIds.length > 1)
+              }
             >
               {translation.t('add')}
             </Button>
