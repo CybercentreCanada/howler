@@ -1,7 +1,7 @@
 [project]
 name = "howler-sync-plugin"
 version = "0.0.0"
-description = "A howler plugin for integration with Microsoft's Sentinel API"
+description = "A howler plugin for syncing hit data"
 authors = [{ name = "CCCS", email = "analysis-development@cyber.gc.ca" }]
 license = { text = "MIT" }
 readme = "README.md"
