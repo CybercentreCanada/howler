@@ -64,7 +64,7 @@ const ViewComposer: FC = () => {
   const { showSuccessMessage, showErrorMessage } = useMySnackbar();
   const routeParams = useParams();
   const navigate = useNavigate();
-  const { user } = useAppUser<HowlerUser>();
+  const appUser = useAppUser<HowlerUser>();
 
   const addView = useContextSelector(ViewContext, ctx => ctx.addView);
   const editView = useContextSelector(ViewContext, ctx => ctx.editView);
@@ -239,7 +239,9 @@ const ViewComposer: FC = () => {
   }, [routeParams.id]);
 
   const canManageMembership =
-    view?.owner === user.username || view?.admins?.includes(user.username) || user.roles?.includes('admin');
+    view?.owner === appUser.user.username ||
+    view?.admins?.includes(appUser.user.username) ||
+    appUser.user.roles?.includes('admin');
 
   return (
     <FlexPort>

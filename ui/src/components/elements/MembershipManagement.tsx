@@ -48,9 +48,9 @@ export const MembershipManagement = ({
   entityType = 'action',
   actionId
 }: MembershipManagementProps) => {
-  const { t } = useTranslation();
-  const { dispatchApi } = useMyApi();
-  const { user } = useAppUser<HowlerUser>();
+  const translation = useTranslation();
+  const myApi = useMyApi();
+  const appUser = useAppUser<HowlerUser>();
   const userPickerContainerRef = useRef<HTMLDivElement | null>(null);
   const finalEntityId = entityId || actionId;
 
@@ -69,7 +69,7 @@ export const MembershipManagement = ({
       return;
     }
 
-    const entity = (await dispatchApi(api[entityType].get(finalEntityId), { throwError: false })) as Entity;
+    const entity = (await myApi.dispatchApi(api[entityType].get(finalEntityId), { throwError: false })) as Entity;
 
     if (!entity) return;
 
@@ -79,14 +79,14 @@ export const MembershipManagement = ({
       ...(entity.members ?? []).map(member => ({ user_id: member, privilege: 'members' as const }))
     ];
     setMembers(memberList);
-  }, [finalEntityId, dispatchApi, entityType]);
+  }, [finalEntityId, myApi, entityType]);
 
   const handleAddMember = useCallback(async () => {
     if (!finalEntityId) {
       return;
     }
 
-    await dispatchApi(api[entityType].permission.put(finalEntityId, { user_id: username, privilege }), {
+    await myApi.dispatchApi(api[entityType].permission.put(finalEntityId, { user_id: username, privilege }), {
       throwError: false
     });
 
@@ -94,7 +94,7 @@ export const MembershipManagement = ({
     setPrivilege('');
     refresh();
     setTab(0);
-  }, [finalEntityId, dispatchApi, entityType, privilege, refresh, username]);
+  }, [finalEntityId, myApi, entityType, privilege, refresh, username]);
 
   // Keep the targeted privilege explicit so we remove the intended permission entry.
   const handleRemoveMember = useCallback(
@@ -103,13 +103,16 @@ export const MembershipManagement = ({
         return;
       }
 
-      await dispatchApi(api[entityType].permission.delete(finalEntityId, { user_id, privilege: targetPrivilege }), {
-        throwError: false
-      });
+      await myApi.dispatchApi(
+        api[entityType].permission.delete(finalEntityId, { user_id, privilege: targetPrivilege }),
+        {
+          throwError: false
+        }
+      );
 
       refresh();
     },
-    [finalEntityId, dispatchApi, entityType, refresh]
+    [finalEntityId, myApi, entityType, refresh]
   );
 
   useEffect(() => {
@@ -130,9 +133,9 @@ export const MembershipManagement = ({
   }, [open, tab, openUserPicker]);
 
   const canAssignOwner =
-    !!user &&
-    (user.roles?.includes('admin') ||
-      members.some(member => member.privilege === 'owner' && member.user_id === user.username));
+    !!appUser.user &&
+    (appUser.user.roles?.includes('admin') ||
+      members.some(member => member.privilege === 'owner' && member.user_id === appUser.user.username));
 
   const availablePrivileges: MemberItem['privilege'][] = canAssignOwner
     ? ['owner', 'admins', 'members']
@@ -140,10 +143,10 @@ export const MembershipManagement = ({
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle>{t('route.actions.permission')}</DialogTitle>
+      <DialogTitle>{translation.t('route.actions.permission')}</DialogTitle>
       <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="fullWidth">
-        <Tab label={t('members')} />
-        <Tab label={t('add')} />
+        <Tab label={translation.t('members')} />
+        <Tab label={translation.t('add')} />
       </Tabs>
       <DialogContent sx={{ minHeight: '280px', mt: 1 }}>
         {tab === 0 ? (
@@ -180,14 +183,14 @@ export const MembershipManagement = ({
                 sx={{ cursor: 'pointer' }}
               >
                 <Typography variant="caption" color="text.secondary">
-                  {t('username')}
+                  {translation.t('username')}
                 </Typography>
                 <Typography variant="body2">{username || '-'}</Typography>
               </Box>
             </Box>
             <TextField
               select
-              label={t('privilege')}
+              label={translation.t('privilege')}
               fullWidth
               value={privilege}
               onChange={e => setPrivilege(e.target.value)}
@@ -206,7 +209,7 @@ export const MembershipManagement = ({
               fullWidth
               disabled={!username || !privilege}
             >
-              {t('add')}
+              {translation.t('add')}
             </Button>
           </Box>
         )}

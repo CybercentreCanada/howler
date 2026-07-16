@@ -18,13 +18,10 @@ def __is_allowed_to_change(level_requested: str, user: User, existing_item: Owne
     if "admin" in user.type:
         return True
 
-    is_admin: bool = user.uname in existing_item.admins or user.uname == existing_item.owner
-
-    if not is_admin:
+    if user.uname not in existing_item.admins and user.uname != existing_item.owner:
         return False
 
-    in_owner = user.uname == existing_item.owner
-    if level_requested == "owner" and not in_owner:
+    if level_requested == "owner" and user.uname != existing_item.owner:
         return False
     return True
 

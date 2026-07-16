@@ -44,12 +44,11 @@ def give_privilege(id: str, user: User, object_type: type[Ownership], j_request:
     except ValueError as e:
         return bad_request(err=str(e))
 
-    collection_name = object_type.__name__.lower()
     storage = datastore()
-    result = storage[collection_name].get_if_exists(str(id), as_obj=True)
+    result = storage[object_type.__name__.lower()].get_if_exists(str(id), as_obj=True)
 
     if not result:
-        return not_found(err=f"This {collection_name} does not exist")
+        return not_found(err=f"This {object_type.__name__.lower()} does not exist")
 
     if not isinstance(result, object_type):
         return bad_request(
@@ -66,8 +65,11 @@ def give_privilege(id: str, user: User, object_type: type[Ownership], j_request:
         return bad_request(err=e.message)
 
     if success:
-        object_id = getattr(result, f"{collection_name}_id")
-        storage[collection_name].save(object_id, result, refresh=refresh)
+        storage[object_type.__name__.lower()].save(
+            getattr(result, f"{object_type.__name__.lower()}_id"),
+            result,
+            refresh=refresh,
+        )
 
     return ok(result.as_primitives())
 
@@ -103,20 +105,20 @@ def revoke_privilege(id: str, user: User, object_type: type[Ownership], j_reques
     except ValueError as e:
         return bad_request(err=str(e))
 
-    collection_name = object_type.__name__.lower()
     storage = datastore()
-    result = storage[collection_name].get_if_exists(str(id), as_obj=True)
+    result = storage[object_type.__name__.lower()].get_if_exists(str(id), as_obj=True)
 
     if not result:
-        return not_found(err=f"This {collection_name} does not exist")
+        return not_found(err=f"This {object_type.__name__.lower()} does not exist")
 
     if not isinstance(result, object_type):
         return bad_request(
             err=f"Wrong request type. Object of type {type(result)} was requested insted of {object_type.__name__}"
         )
 
-    current_members = result.admins if permission_request.privilege == "admins" else result.members
-    if permission_request.user_id not in current_members:
+    if permission_request.user_id not in (
+        result.admins if permission_request.privilege == "admins" else result.members
+    ):
         return bad_request(
             err=f"{permission_request.user_id} is not in the {permission_request.privilege} permission group"
         )
@@ -136,7 +138,10 @@ def revoke_privilege(id: str, user: User, object_type: type[Ownership], j_reques
         return bad_request(err=e.message)
 
     if success:
-        object_id = getattr(result, f"{collection_name}_id")
-        storage[collection_name].save(object_id, result, refresh=refresh)
+        storage[object_type.__name__.lower()].save(
+            getattr(result, f"{object_type.__name__.lower()}_id"),
+            result,
+            refresh=refresh,
+        )
 
     return ok(result.as_primitives())
