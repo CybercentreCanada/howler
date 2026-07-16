@@ -55,10 +55,10 @@ def assess_hit(
     if assessment is None:
         # reset the timestamp and set state to in progress if removing assessment (re-assessing)
         triaged_timestamp = None
-        status = HitStatus.IN_PROGRESS
+        status = Status.IN_PROGRESS
     else:
         triaged_timestamp = "NOW"
-        status = HitStatus.RESOLVED
+        status = Status.RESOLVED
 
     logger.debug(
         "Updating assessment of %s to %s",
