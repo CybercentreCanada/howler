@@ -213,8 +213,8 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
             child_odms = [odm for odm in odms if odm.howler.id != bundle_id]
 
             hit_service.create_hits(child_odms, user=user.uname, refresh="true" if DEBUG_FORCE_REFRESH else refresh)
+            analytic_service.save_from_hits(odms, user, refresh=refresh)
 
-            analytic_service.save_from_hits(odms, user)
             child_ids = [odm.howler.id for odm in child_odms]
             bundle_data = bundle_odm.as_primitives()
             result = bundle_compat_service.create_bundle(bundle_data, child_ids, user=user, refresh="wait_for")
@@ -228,10 +228,10 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
         else:
             # The bundle hit may have been dropped by de-duplication; ingest remaining hits directly.
             hit_service.create_hits(odms, user=user.uname, refresh="true" if DEBUG_FORCE_REFRESH else refresh)
-            analytic_service.save_from_hits(odms, user)
+            analytic_service.save_from_hits(odms, user, refresh=refresh)
     else:
         hit_service.create_hits(odms, user=user.uname, refresh="true" if DEBUG_FORCE_REFRESH else refresh)
-        analytic_service.save_from_hits(odms, user)
+        analytic_service.save_from_hits(odms, user, refresh=refresh)
 
     action_service.enqueue_action_execution([entry["id"] for entry in out], trigger="create", user=user)
 
