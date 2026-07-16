@@ -99,7 +99,7 @@ const CaseFolder: FC<CaseFolderProps> = ({
 
       if (!shouldFetch) return;
 
-      dispatchApi(api.v2.case.get(item.value!), { throwError: false })
+      void dispatchApi(api.v2.case.get(item.value!), { throwError: false })
         .then(caseResponse => {
           if (!caseResponse) return;
           setCaseStates(current => ({ ...current, [item.value]: { ...current[item.value], data: caseResponse } }));

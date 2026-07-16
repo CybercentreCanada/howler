@@ -40,7 +40,7 @@ const TaskPanel: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promise<
 
     let cancelled = false;
 
-    dispatchApi(
+    void dispatchApi(
       api.v2.search.post('case', { query: `case_id:(${childCaseItems.map(item => item.value).join(' OR ')})` }),
       { throwError: false }
     )
@@ -165,7 +165,6 @@ const TaskPanel: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promise<
         <CaseTask
           key={task.id}
           task={task}
-
           case={_case}
           onEdit={onEdit(task)}
           onDelete={() => updateCase({ tasks: _case.tasks.filter(_task => _task.id !== task.id) })}

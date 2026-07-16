@@ -128,7 +128,7 @@ const CasesBase: FC = () => {
   );
 
   useEffect(() => {
-    onSearch();
+    void onSearch();
 
     if (!searchParams.has('offset')) {
       searchParams.set('offset', '0');
@@ -147,7 +147,7 @@ const CasesBase: FC = () => {
 
   useEffect(() => {
     if (!loading) {
-      onSearch();
+      void onSearch();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offset]);
@@ -159,7 +159,7 @@ const CasesBase: FC = () => {
       return;
     }
     if (!loading) {
-      onSearch();
+      void onSearch();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter, assigneeFilter, dateRange, customStart, customEnd]);

@@ -62,7 +62,7 @@ const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
       const onConfirm = () => wrappedUpdate({ status });
       showModal(<ResolveModal case={_case} onConfirm={onConfirm} />, { maxHeight: '80vh' });
     } else {
-      wrappedUpdate({ status });
+      void wrappedUpdate({ status });
     }
   };
 
@@ -134,7 +134,7 @@ const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
             renderInput={params => <TextField {...params} size="small" />}
             onChange={(_ev, escalation) => {
               if (escalation) {
-                wrappedUpdate({ escalation });
+                void wrappedUpdate({ escalation });
               }
             }}
           />

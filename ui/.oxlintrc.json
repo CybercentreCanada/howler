@@ -4,13 +4,7 @@
     "typeAware": true,
     "typeCheck": true
   },
-  "plugins": [
-    "unicorn",
-    "import",
-    "react",
-    "typescript",
-    "jsx-a11y"
-  ],
+  "plugins": ["unicorn", "import", "react", "typescript", "jsx-a11y"],
   "categories": {
     "correctness": "warn"
   },
@@ -61,33 +55,16 @@
     "jsx-a11y/anchor-is-valid": [
       "error",
       {
-        "components": [
-          "Link"
-        ],
-        "specialLink": [
-          "to",
-          "hrefLeft",
-          "hrefRight"
-        ],
-        "aspects": [
-          "noHref",
-          "invalidHref",
-          "preferButton"
-        ]
+        "components": ["Link"],
+        "specialLink": ["to", "hrefLeft", "hrefRight"],
+        "aspects": ["noHref", "invalidHref", "preferButton"]
       }
     ],
-    "no-console": [
-      "warn"
-    ],
+    "no-console": ["warn"],
     "react/jsx-filename-extension": [
       "warn",
       {
-        "extensions": [
-          ".js",
-          ".jsx",
-          ".ts",
-          ".tsx"
-        ]
+        "extensions": [".js", ".jsx", ".ts", ".tsx"]
       }
     ],
     "react/no-array-index-key": "warn",
@@ -95,15 +72,7 @@
       "warn",
       {
         "noStrings": false,
-        "allowedStrings": [
-          "/",
-          ":",
-          "(",
-          ")",
-          ":&nbsp;",
-          "-",
-          "."
-        ],
+        "allowedStrings": ["/", ":", "(", ")", ":&nbsp;", "-", "."],
         "ignoreProps": false,
         "noAttributeStrings": false
       }
@@ -134,36 +103,28 @@
   },
   "overrides": [
     {
-      "files": [
-        "src/components/routes/help/SearchDocumentation.tsx"
-      ],
+      "files": ["src/components/routes/help/SearchDocumentation.tsx"],
       "rules": {
         "react/jsx-no-literals": "off"
       }
     },
     {
-      "files": [
-        "src/models/entities/generated/**"
-      ],
+      "files": ["src/models/entities/generated/**"],
       "rules": {
         "typescript/ban-types": "off"
       }
     },
     {
-      "files": [
-        "src/**/*.test.tsx"
-      ],
+      "files": ["src/**/*.test.tsx"],
       "rules": {
         "react/jsx-no-literals": "off",
         "react/rules-of-hooks": "off"
       }
     },
     {
-      "files": [
-        "src/api/**/*.ts"
-      ],
+      "files": ["src/api/**/*.ts"],
       "rules": {
-        "import/no-cycle": "off",
+        "import/no-cycle": "off"
       }
     }
   ]

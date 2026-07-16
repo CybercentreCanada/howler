@@ -423,7 +423,7 @@ describe('delay', () => {
   it('does not resolve before the specified time', async () => {
     vi.useFakeTimers();
     let resolved = false;
-    delay(200).then(() => {
+    void delay(200).then(() => {
       resolved = true;
     });
     vi.advanceTimersByTime(100);

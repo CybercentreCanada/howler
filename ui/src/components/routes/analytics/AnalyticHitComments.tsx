@@ -39,7 +39,7 @@ const AnalyticHitComments: FC<{ analytic: Analytic }> = ({ analytic }) => {
     }
 
     setLoading(true);
-    api.search.hit
+    void api.search.hit
       .post({
         query: `howler.analytic:"${sanitizeLuceneQuery(analytic.name)}" AND _exists_:howler.comment`,
         rows: pageCount

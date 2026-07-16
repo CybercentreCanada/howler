@@ -89,7 +89,7 @@ const NewLabelForm: FC<{ handleSubmit: (label: LabelState) => Promise<void> }> =
             onChange={e => setLabel(e.currentTarget.value)}
             onKeyDown={e => {
               if (e.key === 'Enter') {
-                handleAdd();
+                void handleAdd();
               } else if (error) {
                 setError('');
               }

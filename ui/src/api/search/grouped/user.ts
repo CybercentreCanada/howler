@@ -14,7 +14,7 @@ export const post = async (
   body?: HowlerGroupedSearchRequest
 ): Promise<HowlerGroupedSearchResponse<HowlerUser>> => {
   const response = await hpost<HowlerGroupedSearchResponse<HowlerApiUser>>(uri(field), {
-    ...(body || {}),
+    ...body,
     query: body?.query || 'uname:*'
   });
   return {

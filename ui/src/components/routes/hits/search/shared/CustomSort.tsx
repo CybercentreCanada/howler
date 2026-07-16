@@ -23,7 +23,7 @@ const CustomSort: FC = () => {
   );
 
   useEffect(() => {
-    getHitFields();
+    void getHitFields();
   }, [getHitFields]);
 
   useEffect(() => {

@@ -11,7 +11,7 @@ export const uri = () => {
 
 export const post = async (request?: HowlerSearchRequest): Promise<HowlerSearchResponse<HowlerUser>> => {
   const response = await hpost<HowlerSearchResponse<HowlerApiUser>>(uri(), {
-    ...(request || {}),
+    ...request,
     query: request?.query || 'name:*'
   });
   return {

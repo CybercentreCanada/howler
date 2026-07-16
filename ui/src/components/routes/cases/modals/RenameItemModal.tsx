@@ -56,10 +56,9 @@ const RenameItemModal: FC<{ _case: Case; item: Item; onRenamed?: (updatedCase: C
         error={!!nameError}
         helperText={nameError ?? ' '}
         fullWidth
-        autoFocus
         onKeyDown={ev => {
           if (ev.key === 'Enter' && isValid && !submitting) {
-            onSubmit();
+            void onSubmit();
           }
         }}
       />

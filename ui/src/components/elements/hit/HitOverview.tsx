@@ -15,7 +15,7 @@ const HitOverview: FC<{ content?: string; hit: Hit }> = ({ content, hit }) => {
   const [matchingOverview, setMatchingOverview] = useState<Overview>(null);
 
   useEffect(() => {
-    getMatchingOverview(hit).then(setMatchingOverview);
+    void getMatchingOverview(hit).then(setMatchingOverview);
   }, [getMatchingOverview, hit]);
 
   const link = useMemo(

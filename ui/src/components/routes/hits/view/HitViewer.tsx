@@ -95,7 +95,7 @@ const HitViewer: FC = () => {
   }, [isUnderLg, setOrientation]);
 
   useEffect(() => {
-    fetchData();
+    void fetchData();
   }, [params.id, fetchData, hit]);
 
   const onOrientationChange = useCallback(
@@ -104,7 +104,7 @@ const HitViewer: FC = () => {
   );
 
   useEffect(() => {
-    getMatchingOverview(hit).then(_overview => setHasOverview(!!_overview));
+    void getMatchingOverview(hit).then(_overview => setHasOverview(!!_overview));
   }, [getMatchingOverview, hit]);
 
   useEffect(() => {
@@ -148,7 +148,7 @@ const HitViewer: FC = () => {
       return;
     }
 
-    getMatchingDossiers(hit).then(setDossiers);
+    void getMatchingDossiers(hit).then(setDossiers);
   }, [getMatchingDossiers, hit]);
 
   if (!hit) {

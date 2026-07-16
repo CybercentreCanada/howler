@@ -137,7 +137,7 @@ export const searchObject = (o: any, query: string, returnFlat = false) => {
       Object.fromEntries(Object.entries(flatten(o)).filter(([k, v]) => regex.test(k) || regex.test(v))) ?? {};
 
     return returnFlat ? filteredData : unflatten(filteredData);
-  } catch (e) {
+  } catch {
     return returnFlat ? flatten(o) : o;
   }
 };
@@ -182,7 +182,7 @@ export const convertLuceneToDate = (lucene: string) => {
 export const tryParse = (json: string) => {
   try {
     return JSON.parse(json);
-  } catch (e) {
+  } catch {
     return json;
   }
 };

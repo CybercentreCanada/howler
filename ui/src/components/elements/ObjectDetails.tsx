@@ -148,7 +148,7 @@ const ObjectRenderer: FC<{
   showParentKey?: boolean;
   data: any;
   indent?: boolean;
-}> = memo(({ obj: obj, data, parentKey, indent = false }) => {
+}> = memo(({ obj, data, parentKey, indent = false }) => {
   const theme = useTheme();
 
   const entries = useMemo(() => {

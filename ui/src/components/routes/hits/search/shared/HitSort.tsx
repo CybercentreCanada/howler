@@ -74,7 +74,7 @@ const HitSort: FC<{ size?: 'small' | 'medium' }> = ({ size = 'small' }) => {
       return;
     }
 
-    (async () => {
+    void (async () => {
       const selectedViewSort = (await getCurrentViews({ lazy: true })).find(view => view?.sort)?.sort;
 
       if (selectedViewSort && !location.search.includes('sort')) {
