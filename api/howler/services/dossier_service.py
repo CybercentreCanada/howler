@@ -26,7 +26,6 @@ PERMITTED_KEYS = {
     "leads",
     "pivots",
     "type",
-    "owner",
 }
 
 
@@ -146,8 +145,8 @@ def create_dossier(  # noqa: C901
             if len(pivot.mappings) != len(set(mapping.key for mapping in pivot.mappings)):
                 raise InvalidDataException("One of your pivots has duplicate keys set.")
 
-        # Ensure the owner is set to the current user (security measure)
-        dossier.owner = [username]
+        # Ensure the owner is set to the current user.
+        dossier.owner = username
 
         # Save the dossier to the datastore
         storage.dossier.save(dossier.dossier_id, dossier, refresh=refresh)
@@ -203,14 +202,14 @@ def update_dossier(  # noqa: C901
 
     # Enforce access control for personal dossiers
     # Only the owner or admin users can modify personal dossiers
-    is_dossier_admin: bool = user.uname in existing_dossier.owner or user.name in existing_dossier.admin
+    is_dossier_admin = user.uname == existing_dossier.owner or user.uname in existing_dossier.admins
     if existing_dossier.type == "personal" and not is_dossier_admin and "admin" not in user.type:
         raise ForbiddenException("You cannot update a personal dossier that is not owned by you.")
 
     # Enforce access control for global dossiers
     # Only the owner or admin users can modify global dossiers
-    is_member: bool = user.uname in (existing_dossier.owner + existing_dossier.admin + existing_dossier.member)
-    if not is_member and "admin" not in user.type:
+    is_member = user.uname in [existing_dossier.owner, *existing_dossier.admins, *existing_dossier.members]
+    if existing_dossier.type == "global" and not is_member and "admin" not in user.type:
         raise ForbiddenException("Only the members of a dossier and administrators can edit a global dossier.")
 
     # Validate pivot configurations if they're being updated
@@ -288,64 +287,3 @@ def get_matching_dossiers(
             matching_dossiers.append(dossier)
 
     return matching_dossiers
-
-
-# TODO : AG : find a better name
-def change_priviledge(dossier_id: str, user: User, level_requested: str, new_member: str, is_adding: bool):
-    """Transfer ownership from one user to an other.
-
-    The json object need to send "priviledge", "user_id" as key.
-    The value need to be one of "administrator", "member" or "owner"
-
-    Variables:
-    dossier_id => The id of the dossier to give memberships priviledge of
-
-
-    user => user requesting the change
-
-
-    level_requested => what level requested [member, administrator, owner]
-
-
-    new_member => uname of the user to add to the list of member ship
-
-    Optional Arguments:
-        None
-
-    Result Example:
-    {
-        "success": True     # If the operation succeeded
-    }
-    """
-    storage = datastore()
-
-    existing_dossier: Dossier = storage.dossier.get_if_exists(dossier_id)
-    if not existing_dossier:
-        return NotFoundException("This view does not exist")
-
-    priv_map: dict = {
-        "administrator": existing_dossier.admin,
-        "member": existing_dossier.member,
-        "owner": existing_dossier.owner,
-    }
-
-    if level_requested not in priv_map:
-        raise InvalidDataException("The requested level does not exist in dossier. Use member, administrator or owner.")
-
-    is_dossier_admin: bool = user.uname in existing_dossier.admin or user.uname in existing_dossier.owner
-    if not is_dossier_admin and "admin" not in user.type:
-        raise InvalidDataException("You cannot give administrative priviledge for this view.")
-
-    if level_requested == "owner" and user.uname not in existing_dossier.owner and not "admin" not in user.type:
-        raise InvalidDataException("You cannot give owner priviledge for this view.")
-    # use the maping to update the list to the proper priviledge
-    if is_adding:
-        priv_map[level_requested].append(str(new_member))
-    else:
-        priv_map[level_requested].remove(str(new_member))
-
-    storage.dossier.save(existing_dossier.dossier_id, existing_dossier)
-
-    storage.dossier.commit()
-
-    return existing_dossier

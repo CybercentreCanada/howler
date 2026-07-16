@@ -4,6 +4,7 @@ from flask import Response, request
 
 import howler.actions as actions
 from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
+from howler.api.v1.utils import permission_helper
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
@@ -20,6 +21,7 @@ classification_definition = CLASSIFICATION.get_parsed_classification_definition(
 
 action_api = make_subapi_blueprint(SUB_API, api_version=1)
 action_api._doc = "Endpoints relating to bulk actions and automation"  # type: ignore
+permission_helper.add_access_control_endpoints(action_api, Action)
 
 
 @generate_swagger_docs()
@@ -88,7 +90,7 @@ def add_action(user: User, **kwargs) -> Response:
         return error
 
     try:
-        new_action["owner_id"] = user.uname
+        new_action["owner"] = user.uname
 
         action_obj = Action(new_action)
 
@@ -148,12 +150,18 @@ def update_action(id: str, user: User, **kwargs) -> Response:
     if not existing_action:
         return not_found(err="The specified automation does not exist")
 
-    # TODO: AG : This is clearly the section to modify actions
-    # to verify I should look how the user object work
     if "automation_advanced" not in user.type and updated_action.get("triggers", []) != existing_action.get(
         "triggers", []
     ):
         return forbidden(err="Updating triggers requires the role 'automation_advanced'.")
+
+    allowed_list = [
+        existing_action.get("owner"),
+        *existing_action.get("admins", []),
+        *existing_action.get("members", []),
+    ]
+    if user.uname not in allowed_list and "admin" not in user.type:
+        return forbidden(err="You do not have the permission to update this action")
 
     updated_action = {
         **existing_action,
@@ -203,8 +211,7 @@ def delete_action(id: str, user: User, **kwargs) -> Response:
 
     action: Action = result["items"][0]
 
-    # TODO AG : verify if this work same as dossier and view
-    if (action.owner_id != user.uname or action.admin_id != user.uname) and "admin" not in user.type:
+    if action.owner != user.uname and "admin" not in user.type:
         return forbidden(err="You do not have the permissions necessary to delete this action.")
 
     try:
@@ -398,65 +405,3 @@ def execute_operations(**kwargs) -> Response:
         reports[operation["operation_id"]].extend(report)
 
     return ok(reports)
-
-
-@generate_swagger_docs()
-@action_api.route("/<id>", methods=["PUT", "PATCH"])
-@api_login(
-    audit=False,
-    check_xsrf_token=False,
-    required_type=["automation_basic"],
-)
-def give_priviledge(action_id: str, user: User, **kwargs):
-    """Transfer ownership from one user to an other.
-
-    The json object need to send "priviledge", "user_id" as key.
-    The value need to be one of "administrator", "member" or "owner"
-
-    Variables:
-    action_id => The id of the action to give permission to
-
-    Optional Arguments:
-        None
-
-    Result Example:
-    {
-        "success": True     # If the operation succeeded
-    }
-    """
-    storage = datastore()
-    priv_change = request.json
-    if not isinstance(priv_change, dict):
-        return bad_request(err="Invalid data format")
-
-    if not set(priv_change.keys()) & {"priviledge", "user_id"}:
-        return bad_request(err="Invalid data format. Need new priviledge and user_id")
-
-    existing_action: Action = storage.action.get_if_exists(action_id)
-    if not existing_action:
-        return not_found(err="This view does not exist")
-
-    priv_map: dict = {
-        "administrator": existing_action.admin,
-        "member": existing_action.member,
-        "owner": existing_action.owner,
-    }
-    priv_request: str = priv_change["priviledge"]
-
-    if priv_request not in priv_map:
-        return bad_request(err=f"Wrong request. This priviledge {priv_request} does not exist.")
-
-    is_view_admin: bool = user.uname in existing_action.admin or user.uname in existing_action.owner
-    if not is_view_admin and "admin" not in user.type:
-        return bad_request(err="You cannot give administrative priviledge for this view.")
-
-    if priv_request == "owner" and user.uname not in existing_action.owner and not "admin" not in user.type:
-        return bad_request(err="You cannot give owner priviledge for this view.")
-    # use the maping to update the list to the proper priviledge
-    priv_map[priv_request].append(str(priv_change["user_id"]))
-
-    storage.view.save(existing_action.view_id, existing_action)
-
-    storage.view.commit()
-
-    return ok(storage.view.get_if_exists(existing_action.view_id, as_obj=False))

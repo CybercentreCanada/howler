@@ -1,6 +1,7 @@
 from flask import request
 
 from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
+from howler.api.v1.utils import permission_helper
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import (
     ForbiddenException,
@@ -19,6 +20,7 @@ from howler.services import dossier_service
 SUB_API = "dossier"
 dossier_api = make_subapi_blueprint(SUB_API, api_version=1)
 dossier_api._doc = "Manage the different dossiers created for filtering hits"  # type: ignore
+permission_helper.add_access_control_endpoints(dossier_api, Dossier)
 
 logger = get_logger(__file__)
 
@@ -184,10 +186,8 @@ def delete_dossier(id: str, user: User, **kwargs):
     if not existing_dossier:
         return not_found(err="This dossier does not exist")
 
-    if user.uname != existing_dossier.owner and "admin" not in user.type:
-        return forbidden(
-            err="You cannot delete a dossier unless you are an administrator, the owner or dossier administrator."
-        )
+    if existing_dossier.owner != user.uname and "admin" not in user.type:
+        return forbidden(err="You cannot delete a dossier unless you are a global administrator or the owner.")
 
     success = storage.dossier.delete(id, refresh=refresh)
 
@@ -229,64 +229,6 @@ def update_dossier(id: str, user: User, **kwargs):
         updated_dossier = dossier_service.update_dossier(id, new_data, user, refresh=refresh)
 
         return ok(updated_dossier)
-    except ForbiddenException as e:
-        return forbidden(err=e.message)
-    except InvalidDataException as e:
-        return bad_request(err=e.message)
-    except NotFoundException as e:
-        return not_found(err=e.message)
-    except HowlerException as e:
-        logger.exception("Unknown error on dossier update:")
-        return internal_error(err=e.message)
-
-
-@generate_swagger_docs()
-@dossier_api.route("/<id>", methods=["PUT"])
-@api_login(required_priv=["R", "W"])
-def give_permission(id: str, user: User, **kwargs):
-    """Update a dossier
-
-    Variables:
-    id => The id of the dossier to give new permission
-    user => user requesting the change
-
-    Optional Arguments:
-    None
-
-    Data Block:
-    {
-        "priviledge": "priviledge to give"  # [member, administrator, owner]
-        "user_id": "user to give permission to"
-        "is_adding: True # True = add False = remove
-    }
-
-    Result Example:
-    {
-        ...dossier     # The updated dossier data
-    }
-    """
-    priv_change = request.json
-    if not isinstance(priv_change, dict):
-        return bad_request(err="Invalid data format")
-
-    if not set(priv_change.keys()) & {"priviledge", "user_id", "is_adding"}:
-        return bad_request(err="Invalid data format. Need new priviledge and user_id")
-
-    storage = datastore()
-
-    existing_dossier: Dossier = storage.dossier.get_if_exists(id)
-    if not existing_dossier:
-        return not_found(err="This view does not exist")
-
-    try:
-        update_dossier = dossier_service.change_priviledge(
-            dossier_id=id,
-            level_requested=priv_change["priviledge"],
-            new_member=priv_change["user_id"],
-            user=user,
-            is_adding=priv_change["is_adding"],
-        )
-        return ok(update_dossier)
     except ForbiddenException as e:
         return forbidden(err=e.message)
     except InvalidDataException as e:

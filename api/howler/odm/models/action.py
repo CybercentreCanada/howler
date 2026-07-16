@@ -2,6 +2,7 @@
 from typing import Optional
 
 from howler import odm
+from howler.odm.models.ownership import Ownership
 
 VALID_TRIGGERS = ["create", "demote", "promote", "add_label", "remove_label"]
 
@@ -16,24 +17,8 @@ class Operation(odm.Model):
 
 
 @odm.model(index=True, store=True, description="Model of actions")
-class Action(odm.Model):
+class Action(Ownership):
     action_id: str = odm.UUID(description="A UUID for this action")
-    # TODO: AG : here as well same as the other ones. This is a highlight. Will try and ask more question on monday.
-    owner_id: list[str] = odm.List(
-        odm.Keyword(), description="The id of the user that created this action", default=[], optional=True
-    )
-    member_id: list[str] = odm.List(
-        odm.Keyword(),
-        description="group of person to whom can modify this action.",
-        default=[],
-        optional=True,
-    )
-    admin_id: list[str] = odm.List(
-        odm.Keyword(),
-        description="group of person to whom can administer this action.",
-        default=[],
-        optional=True,
-    )
     name: str = odm.Keyword(description="The name of the action.")
     query: str = odm.Keyword(description="The query this action is run against.")
     triggers: list[str] = odm.List(

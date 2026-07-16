@@ -2,6 +2,7 @@
 from typing import Literal, Optional, Union
 
 from howler import odm
+from howler.odm.models.ownership import Ownership
 
 
 @odm.model(index=True, store=True, description="The field and width of a column to display in a grid view.")
@@ -30,7 +31,7 @@ DEFAULT_INDEXES = ["hit"]
 
 
 @odm.model(index=True, store=True, description="Model of views")
-class View(odm.Model):
+class View(Ownership):
     view_id: str = odm.UUID(description="A UUID for this view")
     indexes: list[str] = odm.List(
         odm.Keyword(),
@@ -49,32 +50,6 @@ class View(odm.Model):
         description="The type of view",
     )
 
-    owner: list[str] = odm.List(
-        odm.Keyword(),
-        description="The group of person to whom this view belongs.",
-        default=[],
-        optional=True,
-    )
-
-    admin: list[str] = odm.List(
-        odm.Keyword(),
-        description="The group of person to whom administer this view.",
-        default=[],
-        optional=True,
-    )
-    member: list[str] = odm.List(
-        odm.Keyword(),
-        description="The group of person to whom can modify the view.",
-        default=[],
-        optional=True,
-    )
     settings: Settings = odm.Compound(
         Settings, description="Additional View Settings", default={"advance_on_triage": False}
     )
-
-    def get_priviledge_mapping(self) -> dict[str, list[str]]:
-        return {
-            "administrator": self.admin,
-            "member": self.member,
-            "owner": self.owner,
-        }
