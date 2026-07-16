@@ -273,6 +273,22 @@ def give_privilege(id: str, user: User, **kwargs):
 
 
 @generate_swagger_docs()
+@dossier_api.route("/<id>/multi_permission", methods=["PUT"])
+@api_login(required_priv=["R", "W"])
+@parse_parameters(refresh=parse_refresh)
+def give_multi_privilege(id: str, user: User, **kwargs):
+    """Give the same privilege to multiple users in a single request.
+
+    Data Block:
+    {
+        "privilege": "privilege to give",  # [members, admins, owner]
+        "user_id": ["user1", "user2"]
+    }
+    """
+    return permission_helper.give_multi_privilege(id, user, Dossier, request.json, refresh=kwargs.get("refresh"))
+
+
+@generate_swagger_docs()
 @dossier_api.route("/<id>/permission", methods=["DELETE"])
 @api_login(required_priv=["R", "W"])
 def revoke_privilege(id: str, user: User, **kwargs):

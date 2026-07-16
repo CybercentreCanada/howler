@@ -67,6 +67,18 @@ export const MembershipManagement = ({
 
   const memberUserIds = useMemo(() => new Set(members.map(member => member.user_id)), [members]);
   const users = useMyUserList(memberUserIds);
+  const normalizedSelectedUserIds = useMemo(
+    () => Array.from(new Set(selectedUserIds.map(id => id.trim()).filter(Boolean))),
+    [selectedUserIds]
+  );
+
+  const mapEntityToMembers = useCallback((entity: Entity): MemberItem[] => {
+    return [
+      ...(entity.owner ? [{ user_id: entity.owner, privilege: 'owner' as const }] : []),
+      ...(entity.admins ?? []).map(admin => ({ user_id: admin, privilege: 'admins' as const })),
+      ...(entity.members ?? []).map(member => ({ user_id: member, privilege: 'members' as const }))
+    ];
+  }, []);
 
   const refresh = useCallback(async () => {
     if (!finalEntityId) {
@@ -77,46 +89,50 @@ export const MembershipManagement = ({
 
     if (!entity) return [] as MemberItem[];
 
-    const memberList: MemberItem[] = [
-      ...(entity.owner ? [{ user_id: entity.owner, privilege: 'owner' as const }] : []),
-      ...(entity.admins ?? []).map(admin => ({ user_id: admin, privilege: 'admins' as const })),
-      ...(entity.members ?? []).map(member => ({ user_id: member, privilege: 'members' as const }))
-    ];
+    const memberList = mapEntityToMembers(entity);
     setMembers(memberList);
     return memberList;
-  }, [dispatchApi, finalEntityId, entityType]);
+  }, [dispatchApi, finalEntityId, entityType, mapEntityToMembers]);
 
   const handleAddMember = useCallback(async () => {
     if (!finalEntityId) {
       return;
     }
 
-    const uniqueUserIds = Array.from(new Set(selectedUserIds.map(id => id.trim()).filter(Boolean)));
+    if (normalizedSelectedUserIds.length === 0) {
+      setAddResultSeverity('warning');
+      setAddResultMessage(translation.t('members') + ': ' + translation.t('add') + ' invalid selection');
+      return;
+    }
 
-    await Promise.all(
-      uniqueUserIds.map(user_id =>
-        dispatchApi(api[entityType].permission.put(finalEntityId, { user_id, privilege }), {
-          throwError: false
-        })
-      )
-    );
+    let updatedEntity: Entity | null = null;
 
-    let updatedMembers: MemberItem[] = [];
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      updatedMembers = await refresh();
-      const memberIdSet = new Set(updatedMembers.map(member => normalizeUserId(member.user_id)));
-      const allAdded = uniqueUserIds.every(user_id => memberIdSet.has(normalizeUserId(user_id)));
+    if ((api[entityType].permission as { putMany?: (id: string, data: any) => any }).putMany) {
+      updatedEntity = (await dispatchApi(
+        (api[entityType].permission as { putMany?: (id: string, data: any) => any }).putMany!(finalEntityId, {
+          privilege,
+          user_id: normalizedSelectedUserIds
+        }),
+        { throwError: false }
+      )) as Entity | null;
+    } else {
+      await Promise.all(
+        normalizedSelectedUserIds.map(user_id =>
+          dispatchApi(api[entityType].permission.put(finalEntityId, { user_id, privilege }), {
+            throwError: false
+          })
+        )
+      );
+    }
 
-      if (allAdded) {
-        break;
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 250));
+    const updatedMembers = updatedEntity ? mapEntityToMembers(updatedEntity) : await refresh();
+    if (updatedEntity) {
+      setMembers(updatedMembers);
     }
 
     const memberIdSet = new Set(updatedMembers.map(member => normalizeUserId(member.user_id)));
-    const addedUserIds = uniqueUserIds.filter(user_id => memberIdSet.has(normalizeUserId(user_id)));
-    const missingUserIds = uniqueUserIds.filter(user_id => !memberIdSet.has(normalizeUserId(user_id)));
+    const addedUserIds = normalizedSelectedUserIds.filter(user_id => memberIdSet.has(normalizeUserId(user_id)));
+    const missingUserIds = normalizedSelectedUserIds.filter(user_id => !memberIdSet.has(normalizeUserId(user_id)));
 
     if (missingUserIds.length === 0) {
       setAddResultSeverity('success');
@@ -141,7 +157,17 @@ export const MembershipManagement = ({
     setMemberSearch('');
     setPrivilege('');
     setTab(0);
-  }, [dispatchApi, finalEntityId, entityType, normalizeUserId, privilege, refresh, selectedUserIds, translation]);
+  }, [
+    dispatchApi,
+    finalEntityId,
+    entityType,
+    mapEntityToMembers,
+    normalizeUserId,
+    normalizedSelectedUserIds,
+    privilege,
+    refresh,
+    translation
+  ]);
 
   // Keep the targeted privilege explicit so we remove the intended permission entry.
   const handleRemoveMember = useCallback(
@@ -150,13 +176,21 @@ export const MembershipManagement = ({
         return;
       }
 
-      await dispatchApi(api[entityType].permission.delete(finalEntityId, { user_id, privilege: targetPrivilege }), {
-        throwError: false
-      });
+      const updatedEntity = (await dispatchApi(
+        api[entityType].permission.delete(finalEntityId, { user_id, privilege: targetPrivilege }),
+        {
+          throwError: false
+        }
+      )) as Entity | null;
 
-      refresh();
+      if (updatedEntity) {
+        setMembers(mapEntityToMembers(updatedEntity));
+        return;
+      }
+
+      await refresh();
     },
-    [dispatchApi, finalEntityId, entityType, refresh]
+    [dispatchApi, finalEntityId, entityType, mapEntityToMembers, refresh]
   );
 
   useEffect(() => {
@@ -218,7 +252,11 @@ export const MembershipManagement = ({
       </Tabs>
       <DialogContent sx={{ minHeight: '280px', mt: 1 }}>
         {!!addResultMessage && (
-          <Alert severity={addResultSeverity} sx={{ mb: 2 }}>
+          <Alert
+            severity={addResultSeverity}
+            variant={addResultSeverity === 'warning' ? 'outlined' : 'standard'}
+            sx={{ mb: 2 }}
+          >
             {addResultMessage}
           </Alert>
         )}
@@ -286,7 +324,9 @@ export const MembershipManagement = ({
               variant="contained"
               fullWidth
               disabled={
-                selectedUserIds.length === 0 || !privilege || (privilege === 'owner' && selectedUserIds.length > 1)
+                normalizedSelectedUserIds.length === 0 ||
+                !privilege ||
+                (privilege === 'owner' && normalizedSelectedUserIds.length > 1)
               }
             >
               {translation.t('add')}

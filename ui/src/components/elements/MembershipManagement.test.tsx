@@ -62,6 +62,11 @@ vi.mock('api', () => ({
     action: {
       get: (id: string) => ({ __op: 'get', id }),
       permission: {
+        putMany: (id: string, payload: { user_id: string[]; privilege: 'owner' | 'admins' | 'members' }) => ({
+          __op: 'putMany',
+          id,
+          payload
+        }),
         put: (id: string, payload: { user_id: string; privilege: 'owner' | 'admins' | 'members' }) => ({
           __op: 'put',
           id,
@@ -101,6 +106,22 @@ describe('MembershipManagement', () => {
         } else {
           entityState.members = Array.from(new Set([...(entityState.members || []), userId]));
         }
+
+        return { ok: true };
+      }
+
+      if (request?.__op === 'putMany') {
+        const { user_id: userIds, privilege } = request.payload;
+
+        userIds.forEach((userId: string) => {
+          if (privilege === 'owner') {
+            entityState.owner = userId;
+          } else if (privilege === 'admins') {
+            entityState.admins = Array.from(new Set([...(entityState.admins || []), userId]));
+          } else {
+            entityState.members = Array.from(new Set([...(entityState.members || []), userId]));
+          }
+        });
 
         return { ok: true };
       }
@@ -172,8 +193,35 @@ describe('MembershipManagement', () => {
       expect(screen.getByText('Name new2')).toBeInTheDocument();
     });
 
+    const putManyCalls = dispatchApiMock.mock.calls.filter(call => call[0]?.__op === 'putMany');
+    expect(putManyCalls).toHaveLength(1);
+    expect(putManyCalls[0][0].payload.user_id.sort()).toEqual(['new1', 'new2']);
+
     const putCalls = dispatchApiMock.mock.calls.filter(call => call[0]?.__op === 'put');
-    expect(putCalls).toHaveLength(2);
-    expect(putCalls.map(call => call[0].payload.user_id).sort()).toEqual(['new1', 'new2']);
+    expect(putCalls).toHaveLength(0);
+  });
+
+  it('removes a member and refreshes the list', async () => {
+    const user = userEvent.setup();
+
+    render(<MembershipManagement open onClose={vi.fn()} entityId="entity-1" entityType="action" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Name member1')).toBeInTheDocument();
+    });
+
+    const memberRow = screen.getByText('Name member1').closest('li');
+    expect(memberRow).toBeTruthy();
+
+    const removeButton = within(memberRow as HTMLElement).getByRole('button');
+    await user.click(removeButton);
+
+    await waitFor(() => {
+      expect(screen.queryByText('Name member1')).not.toBeInTheDocument();
+    });
+
+    const deleteCalls = dispatchApiMock.mock.calls.filter(call => call[0]?.__op === 'delete');
+    expect(deleteCalls).toHaveLength(1);
+    expect(deleteCalls[0][0].payload).toEqual({ user_id: 'member1', privilege: 'members' });
   });
 });

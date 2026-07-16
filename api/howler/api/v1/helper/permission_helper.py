@@ -74,6 +74,62 @@ def give_privilege(id: str, user: User, object_type: type[Ownership], j_request:
     return ok(result.as_primitives())
 
 
+def give_multi_privilege(
+    id: str,
+    user: User,
+    object_type: type[Ownership],
+    j_request: dict,
+    refresh: str | None = None,
+):
+    """Give the same privilege to multiple users in a single request.
+
+    Data Block:
+    {
+        "privilege": "privilege to give",  # [members, admins, owner]
+        "user_id": ["user1", "user2"],
+    }
+    """
+    if not isinstance(j_request, dict):
+        return bad_request(err="Invalid data format")
+
+    if "privilege" not in j_request or "user_id" not in j_request:
+        return bad_request(err="Missing required keys: 'privilege' and 'user_id' are required.")
+
+    if not isinstance(j_request["user_id"], list) or len(j_request["user_id"]) == 0:
+        return bad_request(err="The key 'user_id' must be a non-empty list.")
+
+    storage = datastore()
+    result = storage[object_type.__name__.lower()].get_if_exists(str(id), as_obj=True)
+
+    if not result:
+        return not_found(err=f"This {object_type.__name__.lower()} does not exist")
+
+    if not isinstance(result, object_type):
+        return bad_request(
+            err=f"Wrong request type. Object of type {type(result)} was requested insted of {object_type.__name__}"
+        )
+
+    any_success = False
+    for user_id in j_request["user_id"]:
+        try:
+            success, result = permission_service.set_privilege(j_request["privilege"], user_id, result, user)
+        except HowlerInvalidPermissionException as e:
+            return forbidden(err=e.message)
+        except InvalidDataException as e:
+            return bad_request(err=e.message)
+
+        any_success = any_success or success
+
+    if any_success:
+        storage[object_type.__name__.lower()].save(
+            getattr(result, f"{object_type.__name__.lower()}_id"),
+            result,
+            refresh=refresh,
+        )
+
+    return ok(result.as_primitives())
+
+
 def revoke_privilege(id: str, user: User, object_type: type[Ownership], j_request: dict, refresh: str | None = None):
     """Revoke permission from one user.
 

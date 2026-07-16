@@ -341,6 +341,33 @@ def give_privilege(view_id: str, user: User, **kwargs):
 
 
 @generate_swagger_docs()
+@view_api.route("/<view_id>/multi_permission", methods=["PUT"])
+@parse_parameters(refresh=parse_refresh)
+@api_login(required_priv=["R", "W"])
+def give_multi_privilege(view_id: str, user: User, **kwargs):
+    """Grant the same privilege on a view to multiple users.
+
+    Variables:
+    view_id => The ID of the view for which to grant a privilege
+
+    Optional Arguments:
+        refresh : boolean requesting to refresh DB before returning
+
+    Data Block:
+    {
+        "privilege": "privilege to grant",  # [members, admins, owner]
+        "user_id": ["user to grant permission to"]
+    }
+
+    Result Example:
+    {
+        "success": True     # If the operation succeeded
+    }
+    """
+    return permission_helper.give_multi_privilege(view_id, user, View, request.json, refresh=kwargs.get("refresh"))
+
+
+@generate_swagger_docs()
 @view_api.route("/<view_id>/permission", methods=["DELETE"])
 @parse_parameters(refresh=parse_refresh)
 @api_login(required_priv=["R", "W"])
