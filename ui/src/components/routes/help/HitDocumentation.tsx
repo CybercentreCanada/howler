@@ -5,7 +5,6 @@ import type { FC } from 'react';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
-import BundleDocumentation from './BundleDocumentation';
 import HelpTabs from './components/HelpTabs';
 import HitBannerDocumentation from './HitBannerDocumentation';
 import HitLabelsDocumentation from './HitLabelsDocumentation';
@@ -45,11 +44,6 @@ const HitDocumentation: FC = () => {
             onClick={() => onChange('header')}
           />
           <Tab
-            label={<Typography variant="caption">{t('help.hit.bundle.title')}</Typography>}
-            value="bundle"
-            onClick={() => onChange('bundle')}
-          />
-          <Tab
             label={<Typography variant="caption">{t('help.hit.links.title')}</Typography>}
             value="links"
             onClick={() => onChange('links')}
@@ -62,7 +56,6 @@ const HitDocumentation: FC = () => {
         </HelpTabs>
         <Box>
           {{
-            bundle: () => <BundleDocumentation />,
             header: () => <HitBannerDocumentation />,
             links: () => <HitLinksDocumentation />,
             labels: () => <HitLabelsDocumentation />,

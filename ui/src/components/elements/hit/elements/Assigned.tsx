@@ -1,45 +1,78 @@
-import { avatarClasses, AvatarGroup, Chip, Stack } from '@mui/material';
+import { avatarClasses, AvatarGroup, Chip, Divider, Stack, Typography } from '@mui/material';
 import { useAppUser } from 'commons/components/app/hooks';
+import { SocketContext } from 'components/app/providers/SocketProvider';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
+import { uniq } from 'lodash-es';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { FC } from 'react';
+import { useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { HitLayout } from '../HitLayout';
 
-const Assigned: FC<{ hit: Hit; layout: HitLayout; hideLabel?: boolean }> = ({ hit, layout, hideLabel = false }) => {
-  const { t } = useTranslation();
-  const { user } = useAppUser<HowlerUser>();
+type AvatarChipProps = {
+  userId: string;
+  noUser: string;
+  placeholder: string;
+  layout: HitLayout;
+  hideLabel?: boolean;
+};
 
+const AvatarChip = ({ userId, noUser, placeholder, layout, hideLabel }: AvatarChipProps) => {
   const userAvatar = (
     <HowlerAvatar
-      userId={hit.howler.assignment}
+      userId={userId}
       sx={{ height: layout !== HitLayout.COMFY ? 24 : 32, width: layout !== HitLayout.COMFY ? 24 : 32 }}
     />
   );
 
+  return hideLabel ? (
+    userAvatar
+  ) : (
+    <Chip
+      variant="outlined"
+      sx={{
+        width: 'fit-content',
+        '& .MuiChip-icon': {
+          marginLeft: 0
+        }
+      }}
+      icon={userAvatar}
+      label={userId && userId !== noUser ? userId : placeholder}
+      size={layout !== HitLayout.COMFY ? 'small' : 'medium'}
+    />
+  );
+};
+
+const Assigned: FC<{
+  hit: Hit;
+  layout: HitLayout;
+  hideLabel?: boolean;
+  showAssigned?: boolean;
+}> = ({ hit, layout, hideLabel = false, showAssigned = false }) => {
+  const { t } = useTranslation();
+  const { user } = useAppUser<HowlerUser>();
+  const { viewers } = useContext(SocketContext);
+
+  const hitViewers = uniq(viewers[hit?.howler?.id] ?? []).filter(viewer => viewer !== user.username);
+
+  const assigneeVisible = showAssigned || hit.howler.assignment !== 'unassigned';
+
   return (
     <Stack direction="row" spacing={0.5}>
-      {hideLabel ? (
-        userAvatar
-      ) : (
-        <Chip
-          variant="outlined"
-          sx={{
-            width: 'fit-content',
-            '& .MuiChip-icon': {
-              marginLeft: 0
-            }
-          }}
-          icon={userAvatar}
-          label={
-            hit?.howler.assignment !== 'unassigned'
-              ? hit?.howler.assignment
-              : t('app.drawer.hit.assignment.unassigned.name')
-          }
-          size={layout !== HitLayout.COMFY ? 'small' : 'medium'}
-        />
+      {assigneeVisible && (
+        <>
+          {!hideLabel && <Typography variant="caption">{t('app.drawer.hit.assignment.assignee')}:</Typography>}
+          <AvatarChip
+            userId={hit?.howler.assignment}
+            noUser="unassigned"
+            placeholder={t('app.drawer.hit.assignment.unassigned.name')}
+            layout={layout}
+            hideLabel={hideLabel}
+          />
+        </>
       )}
+      {hitViewers.length > 0 && hideLabel && <Divider orientation="vertical" flexItem variant="middle" />}
       <AvatarGroup
         max={3}
         sx={{ [`.${avatarClasses.root}`]: { border: 0, marginLeft: 0.5 } }}
@@ -53,15 +86,13 @@ const Assigned: FC<{ hit: Hit; layout: HitLayout; hideLabel?: boolean }> = ({ hi
           }
         }}
       >
-        {[...new Set(hit?.howler.viewers)]
-          .filter(viewer => viewer !== user.username)
-          .map(viewer => (
-            <HowlerAvatar
-              key={viewer}
-              userId={viewer}
-              sx={{ height: layout !== HitLayout.COMFY ? 24 : 32, width: layout !== HitLayout.COMFY ? 24 : 32 }}
-            />
-          ))}
+        {hitViewers.map(viewer => (
+          <HowlerAvatar
+            key={viewer}
+            userId={viewer}
+            sx={{ height: layout !== HitLayout.COMFY ? 24 : 32, width: layout !== HitLayout.COMFY ? 24 : 32 }}
+          />
+        ))}
       </AvatarGroup>
     </Stack>
   );

@@ -8,7 +8,7 @@ from typing import Any, Literal, Optional, Union, cast, overload
 from opentelemetry import trace
 from prometheus_client import Counter
 
-import howler.services.event_service as event_service
+import howler.services.comms_service as comms_service
 from howler.actions.promote import Escalation
 from howler.common.exceptions import HowlerTypeError, HowlerValueError, NotFoundException, ResourceExists
 from howler.common.loader import APP_NAME, datastore
@@ -27,9 +27,9 @@ from howler.helper.hit import (
     vote_hit,
 )
 from howler.helper.workflow import Transition, Workflow
-from howler.odm.models.ecs.event import Event
+from howler.odm.models.ecs.event import ECSEvent
 from howler.odm.models.hit import Hit
-from howler.odm.models.howler_data import HitOperationType, HitStatus, HitStatusTransition, Log
+from howler.odm.models.howler_data import HitOperationType, HitStatusTransition, Log, Status
 from howler.odm.models.user import User
 from howler.services import action_service, analytic_service, dossier_service, overview_service, template_service
 from howler.utils.dict_utils import extra_keys, flatten
@@ -54,99 +54,99 @@ def get_hit_workflow() -> Workflow:
             Transition(
                 {
                     # current user starts investigation
-                    "source": HitStatus.OPEN,
+                    "source": Status.OPEN,
                     "transition": HitStatusTransition.ASSIGN_TO_ME,
-                    "dest": HitStatus.IN_PROGRESS,
+                    "dest": Status.IN_PROGRESS,
                     "actions": [assign_hit],
                 }
             ),
             Transition(
                 {
                     # assign to other user and starts investigation
-                    "source": HitStatus.OPEN,
+                    "source": Status.OPEN,
                     "transition": HitStatusTransition.ASSIGN_TO_OTHER,
-                    "dest": HitStatus.OPEN,
+                    "dest": Status.OPEN,
                     "actions": [assign_hit],
                 }
             ),
             Transition(
                 {
                     # assign to other user and starts investigation
-                    "source": HitStatus.OPEN,
+                    "source": Status.OPEN,
                     "transition": HitStatusTransition.START,
-                    "dest": HitStatus.IN_PROGRESS,
+                    "dest": Status.IN_PROGRESS,
                     "actions": [check_ownership],
                 }
             ),
             Transition(
                 {
                     # provides vote
-                    "source": HitStatus.OPEN,
+                    "source": Status.OPEN,
                     "transition": HitStatusTransition.VOTE,
-                    "dest": HitStatus.OPEN,
+                    "dest": Status.OPEN,
                     "actions": [vote_hit],
                 }
             ),
             Transition(
                 {
                     # assign to another user
-                    "source": HitStatus.IN_PROGRESS,
+                    "source": Status.IN_PROGRESS,
                     "transition": HitStatusTransition.ASSIGN_TO_OTHER,
-                    "dest": HitStatus.IN_PROGRESS,
+                    "dest": Status.IN_PROGRESS,
                     "actions": [assign_hit],
                 }
             ),
             Transition(
                 {
                     # removes assignment
-                    "source": HitStatus.IN_PROGRESS,
+                    "source": Status.IN_PROGRESS,
                     "transition": HitStatusTransition.RELEASE,
-                    "dest": HitStatus.OPEN,
+                    "dest": Status.OPEN,
                     "actions": [unassign_hit],
                 }
             ),
             Transition(
                 {
                     # user completes investigation
-                    "source": [HitStatus.OPEN, HitStatus.IN_PROGRESS],
+                    "source": [Status.OPEN, Status.IN_PROGRESS],
                     "transition": HitStatusTransition.ASSESS,
-                    "dest": HitStatus.RESOLVED,
+                    "dest": Status.RESOLVED,
                     "actions": [assess_hit, assign_hit],
                 }
             ),
             Transition(
                 {
                     # vote on in_progress hit
-                    "source": HitStatus.IN_PROGRESS,
+                    "source": Status.IN_PROGRESS,
                     "transition": HitStatusTransition.VOTE,
-                    "dest": HitStatus.IN_PROGRESS,
+                    "dest": Status.IN_PROGRESS,
                     "actions": [vote_hit],
                 }
             ),
             Transition(
                 {
                     # removes assignment
-                    "source": HitStatus.OPEN,
+                    "source": Status.OPEN,
                     "transition": HitStatusTransition.RELEASE,
-                    "dest": HitStatus.OPEN,
+                    "dest": Status.OPEN,
                     "actions": [unassign_hit],
                 }
             ),
             Transition(
                 {
                     # user pauses investigation
-                    "source": HitStatus.IN_PROGRESS,
+                    "source": Status.IN_PROGRESS,
                     "transition": HitStatusTransition.PAUSE,
-                    "dest": HitStatus.ON_HOLD,
+                    "dest": Status.ON_HOLD,
                     "actions": [check_ownership],
                 }
             ),
             Transition(
                 {
                     # user restarts investigation after pausing it
-                    "source": HitStatus.ON_HOLD,
+                    "source": Status.ON_HOLD,
                     "transition": HitStatusTransition.RESUME,
-                    "dest": HitStatus.IN_PROGRESS,
+                    "dest": Status.IN_PROGRESS,
                     "actions": [check_ownership],
                 }
             ),
@@ -154,17 +154,17 @@ def get_hit_workflow() -> Workflow:
                 {
                     # current user starts investigation
                     "transition": HitStatusTransition.ASSIGN_TO_ME,
-                    "source": HitStatus.IN_PROGRESS,
-                    "dest": HitStatus.IN_PROGRESS,
+                    "source": Status.IN_PROGRESS,
+                    "dest": Status.IN_PROGRESS,
                     "actions": [assign_hit],
                 }
             ),
             Transition(
                 {
                     # user restarts investigation after pausing it
-                    "source": HitStatus.ON_HOLD,
+                    "source": Status.ON_HOLD,
                     "transition": HitStatusTransition.ASSIGN_TO_OTHER,
-                    "dest": HitStatus.IN_PROGRESS,
+                    "dest": Status.IN_PROGRESS,
                     "actions": [assign_hit],
                 }
             ),
@@ -172,26 +172,26 @@ def get_hit_workflow() -> Workflow:
                 {
                     # user restarts investigation after pausing it
                     "transition": HitStatusTransition.VOTE,
-                    "source": HitStatus.ON_HOLD,
-                    "dest": HitStatus.ON_HOLD,
+                    "source": Status.ON_HOLD,
+                    "dest": Status.ON_HOLD,
                     "actions": [vote_hit],
                 }
             ),
             Transition(
                 {
                     # Reopen a task after resolving it
-                    "source": HitStatus.RESOLVED,
+                    "source": Status.RESOLVED,
                     "transition": HitStatusTransition.RE_EVALUATE,
-                    "dest": HitStatus.IN_PROGRESS,
+                    "dest": Status.IN_PROGRESS,
                     "actions": [assess_hit, assign_hit],
                 }
             ),
             Transition(
                 {
                     # Reopen a task after resolving it
-                    "source": HitStatus.RESOLVED,
+                    "source": Status.RESOLVED,
                     "transition": HitStatusTransition.VOTE,
-                    "dest": HitStatus.RESOLVED,
+                    "dest": Status.RESOLVED,
                     "actions": [vote_hit],
                 }
             ),
@@ -229,34 +229,9 @@ def _modifies_prop(prop: str, operations: list[OdmUpdateOperation]) -> bool:
     return any(op for op in operations if op.key == prop)
 
 
-@tracer.start_as_current_span(f"{__name__}.does_hit_exist")
-def does_hit_exist(hit_id: str) -> bool:
-    """Checks if the provided ID matches any entries in the database
-
-    Args:
-        hit_id (str): The ID to check for in the database
-
-    Returns:
-        bool: Does the ID match a document in the database?
-    """
-    return datastore().hit.exists(hit_id)
-
-
-@tracer.start_as_current_span(f"{__name__}.validate_hit_ids")
-def validate_hit_ids(hit_ids: list[str]) -> bool:
-    """Checks if all hit_ids are available
-
-    Args:
-        hit_ids (list[str]): A list of hit ids to validate
-
-    Returns:
-        bool: Whether all of the hit ids are free to use
-    """
-    return not any(does_hit_exist(hit_id) for hit_id in hit_ids)
-
-
-@tracer.start_as_current_span(f"{__name__}.convert_hit")
-def convert_hit(data: dict[str, Any], unique: bool, ignore_extra_values: bool = False) -> tuple[Hit, list[str]]:  # noqa: C901
+def convert_hit(  # noqa: C901
+    data: dict[str, Any], unique: bool, ignore_extra_values: bool = False
+) -> tuple[Hit, list[str]]:
     """Validate and convert a dictionary to a Hit ODM object.
 
     This function performs comprehensive validation on input data to ensure it can be
@@ -268,6 +243,7 @@ def convert_hit(data: dict[str, Any], unique: bool, ignore_extra_values: bool = 
         data: Dictionary containing hit data to validate and convert
         unique: Whether to enforce uniqueness by checking if the hit ID already exists
         ignore_extra_values: Whether to ignore invalid extra fields (True) or raise an exception (False)
+        index: The index to validate against
 
     Returns:
         Tuple containing:
@@ -275,8 +251,7 @@ def convert_hit(data: dict[str, Any], unique: bool, ignore_extra_values: bool = 
         - list[str]: List of validation warnings (unused fields, deprecated fields, naming issues)
 
     Raises:
-        HowlerValueError: If bundle is specified during creation, invalid parameters are provided,
-                         or naming conventions are violated
+        HowlerValueError: If invalid parameters are provided or naming conventions are violated
         HowlerTypeError: If the data cannot be converted to a Hit ODM object
         ResourceExists: If unique=True and a hit with the generated ID already exists
 
@@ -301,9 +276,6 @@ def convert_hit(data: dict[str, Any], unique: bool, ignore_extra_values: bool = 
 
     data["howler.id"] = get_random_id()
 
-    if "howler.bundles" in data and len(data["howler.bundles"]) > 0:
-        raise HowlerValueError("You cannot specify a bundle when creating a hit.")
-
     if "howler.data" in data:
         parsed_data = []
         for entry in data["howler.data"]:
@@ -313,9 +285,6 @@ def convert_hit(data: dict[str, Any], unique: bool, ignore_extra_values: bool = 
                 parsed_data.append(json.dumps(entry))
 
         data["howler.data"] = parsed_data
-
-    if "bundle_size" not in data and "howler.hits" in data:
-        data["howler.bundle_size"] = len(data["howler.hits"])
 
     # TODO: This is a really strange double-validation check we should look to refactor
     try:
@@ -353,23 +322,23 @@ def convert_hit(data: dict[str, Any], unique: bool, ignore_extra_values: bool = 
         if not odm.event.created:
             odm.event.created = "NOW"
     else:
-        odm.event = Event({"created": "NOW", "id": odm.howler.id})
+        odm.event = ECSEvent({"created": "NOW", "id": odm.howler.id})
 
-    if unique and does_hit_exist(odm.howler.id):
+    if unique and exists(odm.howler.id):
         raise ResourceExists("Resource with id %s already exists" % odm.howler.id)
 
     return odm, warnings
 
 
 @tracer.start_as_current_span(f"{__name__}.exists")
-def exists(id: str):
+def exists(id: str) -> bool:
     """Check if a hit exists in the datastore.
 
     Args:
         id: The unique identifier of the hit to check
 
     Returns:
-        bool: True if the hit exists, False otherwise
+        bool: True if the hit exists, otherwise False
     """
     return datastore().hit.exists(id)
 
@@ -403,11 +372,7 @@ def get_hit(id: str, as_odm: Literal[False]) -> dict[str, Any]: ...
 
 
 @tracer.start_as_current_span(f"{__name__}.get_hit")
-def get_hit(
-    id: str,
-    as_odm: bool = False,
-    version: bool = False,
-):
+def get_hit(id: str, as_odm=False, version=False):
     """Retrieve a hit from the datastore.
 
     Args:
@@ -431,7 +396,11 @@ CREATED_HITS = Counter(
 
 @tracer.start_as_current_span(f"{__name__}.create_hit")
 def create_hit(
-    id: str, hit: Hit, user: Optional[str] = None, overwrite: bool = False, refresh: str | None = None
+    id: str,
+    hit: Hit,
+    user: Optional[str] = None,
+    skip_exists: bool = False,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
 ) -> bool:
     """Create a new hit in the database.
 
@@ -442,8 +411,8 @@ def create_hit(
         id: The unique identifier for the hit
         hit: The Hit ODM object to save
         user: Optional username to record in the creation log
-        overwrite: Whether to allow overwriting an existing hit with the same ID
-        refresh: Optional refresh parameter for the datastore
+        skip_exists: Whether to check for an existing record
+        refresh: Optional datastore refresh strategy ("true", "false", "wait_for")
 
     Returns:
         bool: True if the hit was successfully created
@@ -451,8 +420,8 @@ def create_hit(
     Raises:
         ResourceExists: If a hit with the same ID already exists and overwrite=False
     """
-    if not overwrite and does_hit_exist(id):
-        raise ResourceExists("Hit %s already exists in datastore" % id)
+    if not skip_exists and exists(id):
+        raise ResourceExists(f"Hit {id} already exists in datastore")
 
     if user:
         hit.howler.log = [Log({"timestamp": "NOW", "explanation": "Created hit", "user": user})]
@@ -513,7 +482,7 @@ def save_hit(hit: Hit, version: Optional[str] = None, refresh: str | None = None
     """
     datastore().hit.save(hit.howler.id, hit, version=version, refresh=refresh)
     data, _version = datastore().hit.get(hit.howler.id, as_obj=False, version=True)
-    event_service.emit("hits", {"hit": data, "version": _version})
+    comms_service.emit("hits", {"hit": data, "version": _version})
 
     return data, _version
 
@@ -600,16 +569,16 @@ def _update_hit(
             )
 
     datastore().hit.update(hit_id, final_operations, version, refresh=refresh)
-    # Need to fetch the new data of the hit for the event_service
+    # Need to fetch the new data of the hit for the comms_service
     data, _version = datastore().hit.get(hit_id, as_obj=False, version=True) or (None, None)
     if data and _version:
-        event_service.emit("hits", {"hit": data, "version": _version})
+        comms_service.emit("hits", {"hit": data, "version": _version})
 
     return data, _version
 
 
 @tracer.start_as_current_span(f"{__name__}.get_transitions")
-def get_transitions(status: HitStatus) -> list[str]:
+def get_transitions(status: Status) -> list[str]:
     """Get a list of the valid transitions beginning from the specified status
 
     Args:
@@ -621,35 +590,6 @@ def get_transitions(status: HitStatus) -> list[str]:
     return get_hit_workflow().get_transitions(status)
 
 
-@tracer.start_as_current_span(f"{__name__}.get_all_children")
-def get_all_children(hit: dict[str, Any]) -> list[dict[str, Any]]:
-    """Get a list of all child hits for a given hit, including nested children.
-
-    This function recursively traverses bundle structures to find all child hits.
-    If a child hit is itself a bundle, it will recursively get its children too.
-
-    Args:
-        hit: The parent hit to get children for
-
-    Returns:
-        List of all child hits (may include None values for missing hits)
-    """
-    # Get immediate child hits from the hit's bundle
-    child_hits = [get_hit(hit_id, as_odm=False) for hit_id in hit["howler"].get("hits", [])]
-
-    # Recursively process child hits that are themselves bundles
-    for entry in child_hits:
-        if not entry:
-            continue
-
-        # If this child is a bundle, get its children too
-        if entry["howler"]["is_bundle"]:
-            child_hits.extend(get_all_children(entry))
-
-    return child_hits
-
-
-@tracer.start_as_current_span(f"{__name__}.transition_hit")
 def transition_hit(
     id: str,
     transition: HitStatusTransition,
@@ -660,9 +600,7 @@ def transition_hit(
 ):
     """Transition a hit from one status to another while updating related properties.
 
-    This function handles status transitions for both individual hits and bundles,
-    applying the same transition to all child hits in a bundle. For certain transitions
-    (PROMOTE, DEMOTE, ASSESS, RE_EVALUATE), it also executes bulk actions and emits events.
+    For certain transitions (PROMOTE, DEMOTE, ASSESS, RE_EVALUATE), it also executes bulk actions and emits events.
 
     Args:
         id: The id of the hit to transition
@@ -675,42 +613,26 @@ def transition_hit(
         NotFoundException: If the hit does not exist
     """
     # Get the primary hit (either provided in kwargs or fetch from database)
-    primary_hit: dict[str, Any] | None = cast(dict[str, Any] | None, kwargs.pop("hit", None)) or get_hit(
-        id, as_odm=False
-    )
+    hit: dict[str, Any] | None = cast(dict[str, Any] | None, kwargs.pop("hit", None)) or get_hit(id, as_odm=False)
 
-    if not primary_hit:
+    if not hit:
         raise NotFoundException("Hit does not exist")
 
     workflow: Workflow = get_hit_workflow()
 
-    # Get all child hits that need to be processed along with the primary hit
-    child_hits = get_all_children(primary_hit)
-    primary_hit_status = primary_hit["howler"]["status"]
-
-    # Log all hits that will be transitioned
-    all_hit_ids = [h["howler"]["id"] for h in ([primary_hit] + [ch for ch in child_hits if ch])]
-    logger.debug("Transitioning (%s)", ", ".join(all_hit_ids))
+    # Log hit that will be transitioned
+    logger.debug("Transitioning (%s)", hit)
 
     # Process each hit (primary + children) with the workflow transition
-    for current_hit in [primary_hit] + [ch for ch in child_hits if ch]:
-        current_hit_status = current_hit["howler"]["status"]
-        current_hit_id = current_hit["howler"]["id"]
+    hit_status = hit["howler"]["status"]
+    hit_id = hit["howler"]["id"]
 
-        # Skip hits that don't match the primary hit's status
-        # This ensures consistent state transitions across bundles
-        if current_hit_status != primary_hit_status:
-            logger.debug("Skipping %s (status mismatch)", current_hit_id)
-            continue
+    # Apply the workflow transition to get required updates
+    updates = workflow.transition(hit_status, transition, user=user, hit=hit, **kwargs)
 
-        # Apply the workflow transition to get required updates
-        updates = workflow.transition(current_hit_status, transition, user=user, hit=current_hit, **kwargs)
-
-        # Apply updates if any were generated by the workflow
-        if updates:
-            # Only apply version validation to the primary hit
-            hit_version = version if (current_hit_id == primary_hit["howler"]["id"] and version) else None
-            _update_hit(current_hit_id, updates, user.uname, version=hit_version, refresh=refresh)
+    # Apply updates if any were generated by the workflow
+    if updates:
+        _update_hit(hit_id, updates, user.uname, version=version, refresh=refresh)
 
     # Execute bulk actions for transitions that require them
     # These transitions need additional processing beyond the workflow
@@ -727,7 +649,7 @@ def transition_hit(
 
         if transition == HitStatusTransition.ASSESS:
             # For assessments, determine promotion/demotion based on escalation level
-            new_escalation = AssessmentEscalationMap[kwargs["assessment"]]
+            new_escalation = AssessmentEscalationMap[kwargs["assessment"]]  # pyright: ignore[reportInvalidTypeArguments]
             trigger = "promote" if new_escalation == Escalation.EVIDENCE else "demote"
         elif transition == HitStatusTransition.RE_EVALUATE:
             # Re-evaluation always promotes the hit
@@ -739,28 +661,23 @@ def transition_hit(
         # Commit database changes before executing bulk actions
         datastore().hit.commit()
 
-        # Build query for all processed hits (primary + children), excluding missing hits
-        all_processed_hits = [primary_hit] + [ch for ch in child_hits if ch]
-        hit_ids = [h["howler"]["id"] for h in all_processed_hits]
-
         # Enqueue action execution for all hits
-        action_service.enqueue_action_execution(hit_ids, trigger=trigger, user=user)
+        action_service.enqueue_action_execution([hit_id], trigger=trigger, user=user)
 
-        # Emit events for all processed hits to notify other systems
-        for processed_hit in all_processed_hits:
-            data, hit_version = datastore().hit.get(processed_hit["howler"]["id"], as_obj=False, version=True)
-            event_service.emit("hits", {"hit": data, "version": hit_version})
+        # Emit events for processed hit to notify other systems
+        data, hit_version = datastore().hit.get(hit_id, as_obj=False, version=True)
+        comms_service.emit("hits", {"hit": data, "version": hit_version})
 
 
 DELETED_HITS = Counter(f"{APP_NAME.replace('-', '_')}_deleted_hits_total", "The number of deleted hits")
 
 
 @tracer.start_as_current_span(f"{__name__}.delete_hits")
-def delete_hits(hit_ids: list[str], refresh: str | None = None) -> bool:
+def delete_hits(hit_ids: set[str], refresh: str | None = None) -> bool:
     """Delete a set of hits from the database
 
     Args:
-        hit_ids (list[str]): The IDs of the hits to delete
+        hit_ids (set[str]): The IDs of the hits to delete
         refresh (str | None): Whether to refresh the datastore before returning.
 
     Returns:
@@ -768,18 +685,16 @@ def delete_hits(hit_ids: list[str], refresh: str | None = None) -> bool:
     """
     ds = datastore()
 
-    operations = []
-    result = True
+    success = True
+    operations: list[OdmUpdateOperation] = []
 
     for hit_id in hit_ids:
-        operations.append(odm_helper.list_remove("howler.hits", hit_id, silent=True))
+        success = success and ds.hit.delete(hit_id)
+        operations.append(odm_helper.list_remove("howler.related", hit_id, silent=True))
 
-        result = result and ds.hit.delete(hit_id)
-        DELETED_HITS.inc()
+    ds.hit.update_by_query(f"howler.related:({' OR '.join(hit_ids)})", operations, refresh=refresh)
 
-    ds.hit.update_by_query("howler.is_bundle:true", operations, refresh=refresh)
-
-    return result
+    return success
 
 
 @overload
@@ -812,15 +727,15 @@ def search(
 
 @tracer.start_as_current_span(f"{__name__}.search")
 def search(
-    query: str,
-    as_obj: bool = True,
-    offset: int = 0,
-    rows: int | None = None,
-    sort: Any | None = None,
-    fl: str | None = None,
-    timeout: int | None = None,
-    deep_paging_id: str | None = None,
-    track_total_hits: bool = False,
+    query,
+    as_obj=True,
+    offset=0,
+    rows=None,
+    sort=None,
+    fl=None,
+    timeout=None,
+    deep_paging_id=None,
+    track_total_hits=False,
 ):
     """Search for hits in the datastore using a query.
 
@@ -922,6 +837,8 @@ def augment_metadata(data: list[dict[str, Any]] | dict[str, Any] | None, metadat
         hits = [data]
     else:
         hits = []
+
+    hits = [hit for hit in hits if hit.get("__index", "hit") == "hit"]
 
     if len(hits) < 1:
         return

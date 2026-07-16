@@ -19,8 +19,8 @@ vi.mock('components/hooks/useMyApi', () => ({
   })
 }));
 
-vi.mock('components/app/providers/HitProvider', () => ({
-  HitContext: {}
+vi.mock('components/app/providers/RecordProvider', () => ({
+  RecordContext: {}
 }));
 
 vi.mock('use-context-selector', () => ({

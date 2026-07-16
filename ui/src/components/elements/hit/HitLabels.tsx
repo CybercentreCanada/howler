@@ -21,7 +21,7 @@ import {
   Typography
 } from '@mui/material';
 import api from 'api';
-import { HitContext } from 'components/app/providers/HitProvider';
+import { RecordContext } from 'components/app/providers/RecordProvider';
 import useMyApi from 'components/hooks/useMyApi';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Labels } from 'models/entities/generated/Labels';
@@ -115,7 +115,7 @@ const HitLabels: FC<{ hit: Hit; readOnly?: boolean }> = ({ hit, readOnly = false
   const { dispatchApi } = useMyApi();
   const { t } = useTranslation();
 
-  const updateHit = useContextSelector(HitContext, ctx => ctx.updateHit);
+  const updateHit = useContextSelector(RecordContext, ctx => ctx.updateRecord);
 
   const [openDrawer, setOpenDrawer] = useState(false);
   const [loading, setLoading] = useState(false);

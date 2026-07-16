@@ -147,7 +147,7 @@ const Phrase = ({
           disablePortal
         >
           <Paper
-            elevation={2}
+            elevation={1}
             sx={{ maxHeight: 200, overflow: 'auto', borderTopRightRadius: 0, borderTopLeftRadius: 0 }}
           >
             <MenuList

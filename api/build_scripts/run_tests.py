@@ -14,7 +14,7 @@ def prep_command(cmd: str):
     return shlex.split(cmd)
 
 
-def main():
+def main():  # noqa: C901
     background_server = None
     try:
         print("Removing existing coverage files")
@@ -30,10 +30,20 @@ def main():
 
         time.sleep(5)
         print("Running pytest")
-        _path = sys.argv[1] if len(sys.argv) > 1 else "test"
+        pytest_args = sys.argv[1:] if len(sys.argv) > 1 else ["test"]
+        pytest_cmd = [
+            "pytest",
+            "--cov=howler",
+            "--cov-branch",
+            "--cov-config=.coveragerc.pytest",
+            "-rFE",
+            "-v",
+            *pytest_args,
+        ]
+        print(">", shlex.join(pytest_cmd))
 
         pytest = subprocess.Popen(
-            prep_command(f"pytest --cov=howler --cov-branch --cov-config=.coveragerc.pytest -rP -vv {_path}"),
+            pytest_cmd,
             stdout=subprocess.PIPE,
         )
 
@@ -63,19 +73,23 @@ def main():
                 """
                 ).strip()
 
-                markdown_output += "\n".join(
-                    ("    " + line)
-                    for line in re.sub(
-                        r"[\s\S]+=+ FAILURES =+([\S\s]+)-+ coverage[\s\S]+",
-                        r"\n\1",
-                        output,
-                    ).splitlines()
+                raw_failures = re.sub(
+                    r"[\s\S]+=+ FAILURES =+([\S\s]+)-+ coverage[\s\S]+",
+                    r"\n\1",
+                    output,
                 )
+
+                markdown_output += "\n".join(("    " + line) for line in raw_failures.splitlines())
 
                 markdown_output += "\n</details>"
 
                 print("Markdown result:")
                 print(markdown_output)
+
+                summary_file = os.getenv("GITHUB_STEP_SUMMARY")
+                if summary_file:
+                    print(f"Writing to {summary_file}")
+                    Path(summary_file).write_text(f"```\n{raw_failures}\n```")
 
                 (Path(__file__).parent.parent / "test-results.md").write_text(markdown_output)
 

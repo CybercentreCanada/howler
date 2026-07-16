@@ -203,32 +203,6 @@ right of a filter here, it will appear under **Saved Views** in the left side-ba
 Members of a team often rely on the same filters. By specifying a view as **global** during it's creation, other users
 will see this view in the Global Views page under the GLOBAL filter.
 
-## Bundles
-
-In instances where multiple events appear to be related to each-other, they can be packaged together as a bundle. This
-is a special type of hit that points to other hits. They can be identified by the `howler.is_bundle:true` filter. The
-related hits can be found in the `howler.hits` list which contains the `howler.id` value of each.
-
-For more information on creating and managing bundles programmatically, see the
-[Bundles ingestion guide](../ingestion/bundles.md).
-
-When a triage analysts clicks on a bundle's card, the banner for the bundle is moved above the filter bar and the
-bundle hits' cards are displayed under the filter bar. Any filter provided will only apply to the hits associated with
-the bundle.
-
-Any controls used on the bundle will automatically be propagated to its related hits.
-
-A good example of hits you'd want to bundle would be a sequence of hits occurring on the same host within a short
-window of time. Individually, those hits might be far too unreliable to consider triaging them, but with the added
-context that several of them happening on the same host in a short time window, it would be reasonable to automatically
-promote the bundle to alert to ensure someone triages it. By bundling them, we ensure that not only does a triage
-analyst review the host, but knows of all other potentially related activity taking place.
-
-### Bundle Summary
-
-Bundles have an additional tab in the bundle's dossier called **Summary**. If you click the Create Summary button, it
-will count the distinct values of each field of the hits. Use this to get an idea of the overall situation.
-
 ## Related Documentation
 
 - **[Detection Engineers Guide](detection_engineers.md)** - Understand how alerts are created and what fields detection

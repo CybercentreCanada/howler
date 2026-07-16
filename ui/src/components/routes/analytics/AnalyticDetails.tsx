@@ -1,66 +1,47 @@
-import { Check, Delete, Edit, OpenInNew, SsidChart } from '@mui/icons-material';
+import { OpenInNew } from '@mui/icons-material';
 import {
   Autocomplete,
-  CircularProgress,
   Divider,
-  FormControl,
   Grid,
   IconButton,
-  InputLabel,
-  MenuItem,
-  Select,
   Skeleton,
   Stack,
   Tab,
   Tabs,
   TextField,
-  Tooltip,
   Typography,
   useTheme
 } from '@mui/material';
 import api from 'api';
-import { useAppUser } from 'commons/components/app/hooks';
 import PageCenter from 'commons/components/pages/PageCenter';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
-import { ModalContext } from 'components/app/providers/ModalProvider';
 import { UserListContext } from 'components/app/providers/UserListProvider';
 import UserList from 'components/elements/UserList';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
 import useMyApi from 'components/hooks/useMyApi';
-import useMySnackbar from 'components/hooks/useMySnackbar';
-import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { RULE_INTERVALS } from 'utils/constants';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import AnalyticComments from './AnalyticComments';
 import AnalyticHitComments from './AnalyticHitComments';
 import AnalyticNotebooks from './AnalyticNotebooks';
 import AnalyticOverview from './AnalyticOverview';
 import AnalyticOverviews from './AnalyticOverviews';
 import AnalyticTemplates from './AnalyticTemplates';
-import RuleView from './RuleView';
 import TriageSettings from './TriageSettings';
 
 const AnalyticDetails = () => {
   const { t } = useTranslation();
   const params = useParams();
-  const navigate = useNavigate();
-  const { user } = useAppUser<HowlerUser>();
   const [searchParams, setSearchParams] = useSearchParams();
   const { dispatchApi } = useMyApi();
   const theme = useTheme();
-  const { showSuccessMessage } = useMySnackbar();
-  const { withConfirmDeleteModal } = useContext(ModalContext);
   const { users, searchUsers } = useContext(UserListContext);
   const { config } = useContext(ApiConfigContext);
 
   const [analytic, setAnalytic] = useState<Analytic>(null);
   const [tab, setTab] = useState(searchParams.get('tab') ?? 'overview');
-  const [editingInterval, setEditingInterval] = useState(false);
-  const [intervalLoading, setIntervalLoading] = useState(false);
-  const [crontab, setCrontab] = useState(RULE_INTERVALS[3].crontab);
 
   const filteredContributors = useMemo(
     () => (analytic?.contributors ?? []).filter(_user => _user !== analytic?.owner),
@@ -84,7 +65,7 @@ const AnalyticDetails = () => {
   );
 
   const onOwnerChange = useCallback(
-    async (ownerId: string) => {
+    async ([ownerId]: string[]) => {
       const result = await dispatchApi(api.analytic.owner.post(analytic.analytic_id, { username: ownerId }), {
         throwError: true,
         showError: true
@@ -94,40 +75,6 @@ const AnalyticDetails = () => {
     },
     [analytic?.analytic_id, dispatchApi]
   );
-
-  const onDelete = useCallback(() => {
-    withConfirmDeleteModal(async () => {
-      await dispatchApi(api.analytic.del(analytic?.analytic_id, 'wait_for'));
-
-      showSuccessMessage(t('route.analytics.deleted'));
-      navigate('/analytics');
-    });
-  }, [analytic?.analytic_id, dispatchApi, navigate, withConfirmDeleteModal, showSuccessMessage, t]);
-
-  const onEdit = useCallback(async () => {
-    if (editingInterval) {
-      setIntervalLoading(true);
-
-      try {
-        await dispatchApi(
-          api.analytic.put(analytic?.analytic_id, {
-            rule_crontab: crontab
-          })
-        );
-
-        setAnalytic(_analytic => ({
-          ..._analytic,
-          rule_crontab: crontab
-        }));
-
-        setEditingInterval(false);
-      } finally {
-        setIntervalLoading(false);
-      }
-    } else {
-      setEditingInterval(true);
-    }
-  }, [analytic?.analytic_id, crontab, dispatchApi, editingInterval]);
 
   useEffect(() => {
     if (searchParams.get('tab') !== tab) {
@@ -167,18 +114,6 @@ const AnalyticDetails = () => {
               </Stack>
             )}
 
-            {analytic?.rule && (
-              <>
-                <Tooltip title={t('route.analytics.rule')}>
-                  <SsidChart fontSize="large" color="info" />
-                </Tooltip>
-                {(analytic?.owner === user.username || user.roles.includes('admin')) && (
-                  <IconButton onClick={onDelete}>
-                    <Delete />
-                  </IconButton>
-                )}
-              </>
-            )}
             <IconButton component={Link} to={`/hits?query=howler.analytic:"${analytic?.name}"`}>
               <OpenInNew />
             </IconButton>
@@ -201,20 +136,16 @@ const AnalyticDetails = () => {
               {t('owner')}
             </Typography>
             <Stack direction="row" spacing={1} alignItems="center">
-              {!analytic?.rule ? (
-                <UserList
-                  buttonSx={{
-                    marginTop: '0 !important',
-                    marginLeft: `${theme.spacing(-1)} !important`,
-                    marginRight: `${theme.spacing(-1)} !important`
-                  }}
-                  userId={analytic?.owner}
-                  onChange={onOwnerChange}
-                  i18nLabel="route.analytics.set.owner"
-                />
-              ) : (
-                <HowlerAvatar userId={analytic?.owner} />
-              )}
+              <UserList
+                buttonSx={{
+                  marginTop: '0 !important',
+                  marginLeft: `${theme.spacing(-1)} !important`,
+                  marginRight: `${theme.spacing(-1)} !important`
+                }}
+                userIds={[analytic?.owner]}
+                onChange={onOwnerChange}
+                i18nLabel="route.analytics.set.owner"
+              />
               <Stack>
                 {users[analytic?.owner] ? (
                   <>
@@ -249,52 +180,6 @@ const AnalyticDetails = () => {
               </Stack>
             </Stack>
           )}
-          {analytic?.rule_crontab && (
-            <Stack direction="row" spacing={1}>
-              <Stack spacing={1} justifyContent="space-between">
-                <Typography variant="body1" color="text.secondary">
-                  {t('rule.interval')}
-                </Typography>
-                {editingInterval ? (
-                  <FormControl sx={{ minWidth: '200px' }}>
-                    <InputLabel>{t('rule.interval')}</InputLabel>
-                    <Select
-                      size="small"
-                      label={t('rule.interval')}
-                      onChange={event => setCrontab(event.target.value)}
-                      value={crontab}
-                    >
-                      {RULE_INTERVALS.map(interval => (
-                        <MenuItem key={interval.key} value={interval.crontab}>
-                          {t(interval.key)}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                ) : (
-                  <code
-                    style={{
-                      backgroundColor: theme.palette.background.paper,
-                      padding: theme.spacing(0.5),
-                      alignSelf: 'start',
-                      borderRadius: theme.shape.borderRadius,
-                      border: `thin solid ${theme.palette.divider}`,
-                      width: '100%'
-                    }}
-                  >
-                    {analytic.rule_crontab}
-                  </code>
-                )}
-              </Stack>
-              {(analytic?.owner === user.username || user.roles.includes('admin')) && (
-                <Tooltip title={editingInterval ? t('rule.interval.save') : t('rule.interval.edit')}>
-                  <IconButton disabled={intervalLoading} sx={{ alignSelf: 'end' }} onClick={onEdit}>
-                    {intervalLoading ? <CircularProgress size={20} /> : editingInterval ? <Check /> : <Edit />}
-                  </IconButton>
-                </Tooltip>
-              )}
-            </Stack>
-          )}
         </Stack>
         <Grid container>
           <Grid item xs={12} md={9}>
@@ -304,7 +189,6 @@ const AnalyticDetails = () => {
               <Tab label={t('route.analytics.tab.hit_comments')} value="hit_comments" />
               <Tab label={t('route.analytics.tab.templates')} value="templates" />
               <Tab label={t('route.analytics.tab.overviews')} value="overviews" />
-              {analytic?.rule && <Tab label={t('route.analytics.tab.rule')} value="rule" />}
               {config?.configuration.features.notebook && (
                 <Tab label={t('route.analytics.tab.notebooks')} value="notebooks" />
               )}
@@ -329,7 +213,6 @@ const AnalyticDetails = () => {
             hit_comments: <AnalyticHitComments analytic={analytic} />,
             overview: <AnalyticOverview analytic={analytic} setAnalytic={setAnalytic} />,
             overviews: <AnalyticOverviews analytic={analytic} />,
-            rule: <RuleView analytic={analytic} setAnalytic={setAnalytic} />,
             templates: <AnalyticTemplates analytic={analytic} />,
             triage: <TriageSettings analytic={analytic} setAnalytic={setAnalytic} />,
             ...(config?.configuration.features.notebook

@@ -6,20 +6,13 @@ import AxiosClient from './AxiosClient';
 // vi.hoisted() ensures these values are available when the vi.mock factories
 // run (which happens before any module code executes).
 // ---------------------------------------------------------------------------
-const {
-  mockAxiosInstance,
-  mockAxiosError,
-  mockInterceptorResponseUse,
-  interceptorRef
-} = vi.hoisted(() => {
+const { mockAxiosInstance, mockAxiosError, mockInterceptorResponseUse, interceptorRef } = vi.hoisted(() => {
   // Ref object used to capture the response interceptor across test resets
   const _interceptorRef: { fn: ((res: any) => Promise<any>) | null } = { fn: null };
 
-  const _mockInterceptorResponseUse = vi.fn().mockImplementation(
-    (onFulfilled: (res: any) => Promise<any>) => {
-      _interceptorRef.fn = onFulfilled;
-    }
-  );
+  const _mockInterceptorResponseUse = vi.fn().mockImplementation((onFulfilled: (res: any) => Promise<any>) => {
+    _interceptorRef.fn = onFulfilled;
+  });
 
   const _mockAxiosInstance = vi.fn() as any;
   _mockAxiosInstance.interceptors = {
