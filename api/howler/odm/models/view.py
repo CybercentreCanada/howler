@@ -2,7 +2,7 @@
 from typing import Literal, Optional, Union
 
 from howler import odm
-from howler.odm.models import ownership_object
+from howler.odm.models.ownership import Ownership
 
 
 @odm.model(index=True, store=True, description="The field and width of a column to display in a grid view.")
@@ -28,7 +28,7 @@ class Settings(odm.Model):
 
 
 @odm.model(index=True, store=True, description="Model of views")
-class View(ownership_object.OwnershipObject):
+class View(Ownership):
     view_id: str = odm.UUID(description="A UUID for this view")
     title: str = odm.CaseInsensitiveKeyword(description="The name of this view.")
     query: str = odm.Keyword(description="The query to run in this view.")

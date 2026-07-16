@@ -1,26 +1,21 @@
+// eslint-disable-next-line import/no-cycle
+import { hdelete, hput, joinAllUri } from 'api';
+
 export type PermissionData = { privilege: string; user_id: string };
 
 type ParentUri = (id: string) => string;
-type JoinAllUri = (...parts: string[]) => string;
-type PutRequest = (uri: string, data: PermissionData) => Promise<unknown>;
-type DeleteRequest = (uri: string, data: PermissionData) => Promise<unknown>;
 
-export const createPermissionApi = (
-  parentUri: ParentUri,
-  joinAllUri: JoinAllUri,
-  putRequest: PutRequest,
-  deleteRequest: DeleteRequest
-) => {
+export const createPermissionApi = <T>(parentUri: ParentUri) => {
   const uri = (id: string) => {
     return joinAllUri(parentUri(id), 'permission');
   };
 
   return {
-    put: (id: string, data: PermissionData) => {
-      return putRequest(uri(id), data);
+    put: (id: string, data: PermissionData): Promise<T> => {
+      return hput<T>(uri(id), data);
     },
-    delete: (id: string, data: PermissionData) => {
-      return deleteRequest(uri(id), data);
+    delete: (id: string, data: PermissionData): Promise<T> => {
+      return hdelete<T>(uri(id), data);
     }
   };
 };

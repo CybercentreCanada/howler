@@ -1,26 +1,23 @@
 from typing import cast
 
 from flask import request
-from markupsafe import escape
 from mergedeep.mergedeep import merge
 
 from howler.api import bad_request, created, forbidden, make_subapi_blueprint, no_content, not_found, ok
+from howler.api.v1.helper import permission_helper
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import (
     HowlerException,
     HowlerInvalidParameterException,
-    HowlerInvalidPermissionException,
     InvalidDataException,
 )
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.datastore.exceptions import SearchException
-from howler.odm.models.permission_request import PermissionRequest
 from howler.odm.models.user import User
 from howler.odm.models.view import View
 from howler.security import api_login
-from howler.services import permission_service
 
 SUB_API = "view"
 view_api = make_subapi_blueprint(SUB_API, api_version=1)
@@ -340,37 +337,7 @@ def give_privilege(view_id: str, user: User, **kwargs):
         "success": True     # If the operation succeeded
     }
     """
-    try:
-        permission_request = PermissionRequest(request.json)
-    except ValueError as e:
-        return bad_request(err=str(e))
-
-    priv_requested = escape(str(permission_request.privilege))
-    user_to_add = escape(str(permission_request.user_id))
-
-    storage = datastore()
-
-    result = storage.view.get_if_exists(escape(str(view_id)))
-
-    if not result:
-        return not_found(err="This view does not exist")
-
-    if not isinstance(result, View):
-        return bad_request(err=f"Wrong request type. Object of type {type(result)} was requested insted of View")
-
-    priv_request: str = escape(str(priv_requested))
-
-    try:
-        success, result = permission_service.set_privilege(priv_request, user_to_add, result, user)
-    except HowlerInvalidPermissionException as e:
-        return forbidden(err=e.message)
-    except InvalidDataException as e:
-        return bad_request(err=e.message)
-
-    if success:
-        storage.view.save(result.view_id, result, refresh=kwargs.get("refresh"))
-
-    return ok(result.as_primitives())
+    return permission_helper.give_privilege(view_id, user, View, request.json, refresh=kwargs.get("refresh"))
 
 
 @generate_swagger_docs()
@@ -402,44 +369,7 @@ def revoke_privilege(view_id: str, user: User, **kwargs):
             "success": True
         }
     """
-    try:
-        permission_request = PermissionRequest(request.json)
-    except ValueError as e:
-        return bad_request(err=str(e))
-
-    priv_requested = escape(str(permission_request.privilege))
-    user_to_remove = escape(str(permission_request.user_id))
-
-    storage = datastore()
-
-    result = storage.view.get_if_exists(escape(str(view_id)))
-
-    if not result:
-        return not_found(err="This view does not exist")
-
-    if not isinstance(result, View):
-        return bad_request(err=f"Wrong request type. Object of type {type(result)} was requested insted of View")
-
-    priv_request: str = escape(str(priv_requested))
-
-    if priv_request == "owner":
-        return bad_request(err="You cannot remove the owner privilege of a view. Transfer ownership instead.")
-
-    current_members = result.admins if priv_request == "admins" else result.members
-    if user_to_remove not in current_members:
-        return bad_request(err=f"{user_to_remove} is not in the {priv_request} permission group")
-
-    try:
-        success, result = permission_service.remove_privilege(priv_request, user_to_remove, result, user)
-    except HowlerInvalidPermissionException as e:
-        return forbidden(err=e.message)
-    except InvalidDataException as e:
-        return bad_request(err=e.message)
-
-    if success:
-        storage.view.save(result.view_id, result, refresh=kwargs.get("refresh"))
-
-    return ok(result.as_primitives())
+    return permission_helper.revoke_privilege(view_id, user, View, request.json, refresh=kwargs.get("refresh"))
 
 
 # endregion

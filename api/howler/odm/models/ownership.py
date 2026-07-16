@@ -1,7 +1,7 @@
 from howler import odm
 
 
-class OwnershipObject(odm.Model):
+class Ownership(odm.Model):
     owner: str = odm.Keyword(
         description="The person to whom this object belongs.",
         optional=True,

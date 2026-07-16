@@ -259,6 +259,8 @@ README.md, LICENSE, .gitignore, .pre-commit-config.yaml, pyrightconfig.json
 
 > **IMPORTANT FOR ALL FUTURE AGENTS**: When you learn something new, encounter a pitfall, or discover a non-obvious convention in this repository, **add a note to this section** before finishing your task. This keeps institutional knowledge available across conversations.
 
+- Membership permission privilege values for actions/views/dossiers are backend literals `owner`, `admins`, and `members` (not `administrator`/`member`). Using mismatched strings in UI role pickers can make add/remove flows appear broken.
+
 ---
 
 ### Changelog Entries for Bug Fixes

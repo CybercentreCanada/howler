@@ -3,17 +3,17 @@ from howler.common.exceptions import (
     InvalidDataException,
 )
 from howler.common.loader import datastore
-from howler.odm.models.ownership_object import OwnershipObject
+from howler.odm.models.ownership import Ownership
 from howler.odm.models.user import User
 
 
-def __is_allowed_to_change(level_requested: str, user: User, existing_item: OwnershipObject) -> bool:
+def __is_allowed_to_change(level_requested: str, user: User, existing_item: Ownership) -> bool:
     """Verify for privilege request if they are allowed to request the change or not.
 
     Variables:
     level_requested => The privilege level requested base on the string from the object [admins, members, owner]
     user => The user requesting the change
-    existing_dossier => The dossier that will be change
+    existing_item => The ownership object that will be changed
     """
     if "admin" in user.type:
         return True
@@ -30,8 +30,8 @@ def __is_allowed_to_change(level_requested: str, user: User, existing_item: Owne
 
 
 def set_privilege(
-    requested_level: str, user_to_modify: str, existing_item: OwnershipObject, user_requesting_change: User
-) -> tuple[bool, OwnershipObject]:
+    requested_level: str, user_to_modify: str, existing_item: Ownership, user_requesting_change: User
+) -> tuple[bool, Ownership]:
     """Set privilege for a user on a ownership object.
 
     Variables:
@@ -54,7 +54,9 @@ def set_privilege(
         raise HowlerInvalidPermissionException("The user requesting the change is not allowed to make the change.")
 
     # Does the permission exist
-    if requested_level not in existing_item.__dict__.keys():
+    # NOTE: ODM models may not materialize optional/default fields in __dict__ until touched,
+    # so validating against __dict__ can incorrectly reject valid ownership fields.
+    if not hasattr(existing_item, requested_level):
         raise HowlerInvalidPermissionException(f"{requested_level} is not a valid privilege level for this object")
 
     # Permission update
@@ -73,8 +75,8 @@ def set_privilege(
 
 
 def remove_privilege(
-    requested_level: str, user_to_modify: str, existing_item: OwnershipObject, user_requesting_change: User
-) -> tuple[bool, OwnershipObject]:
+    requested_level: str, user_to_modify: str, existing_item: Ownership, user_requesting_change: User
+) -> tuple[bool, Ownership]:
     """Remove privilege for a user on a ownership object.
 
     Variables:
@@ -97,7 +99,9 @@ def remove_privilege(
         raise HowlerInvalidPermissionException("The user requesting the change is not allowed to make the change.")
 
     # Does the permission exist
-    if requested_level not in existing_item.__dict__.keys():
+    # NOTE: ODM models may not materialize optional/default fields in __dict__ until touched,
+    # so validating against __dict__ can incorrectly reject valid ownership fields.
+    if not hasattr(existing_item, requested_level):
         raise HowlerInvalidPermissionException(f"{requested_level} is not a valid privilege level for this object")
 
     # Permission update

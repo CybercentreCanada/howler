@@ -1,26 +1,23 @@
 import json
 
 from flask import Response, request
-from markupsafe import escape
 
 import howler.actions as actions
 from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
+from howler.api.v1.helper import permission_helper
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import (
     HowlerException,
     HowlerInvalidParameterException,
-    HowlerInvalidPermissionException,
-    InvalidDataException,
 )
 from howler.common.loader import datastore
 from howler.common.logging.audit import audit
 from howler.common.swagger import generate_swagger_docs
 from howler.config import CLASSIFICATION
 from howler.odm.models.action import Action
-from howler.odm.models.permission_request import PermissionRequest
 from howler.odm.models.user import User
 from howler.security import api_login
-from howler.services import action_service, permission_service
+from howler.services import action_service
 
 SUB_API = "action"
 classification_definition = CLASSIFICATION.get_parsed_classification_definition()
@@ -445,37 +442,7 @@ def give_privilege(id: str, user: User, **kwargs):
         "success": True     # If the operation succeeded
     }
     """
-    try:
-        permission_request = PermissionRequest(request.json)
-    except ValueError as e:
-        return bad_request(err=str(e))
-
-    priv_requested = escape(str(permission_request.privilege))
-    user_to_add = escape(str(permission_request.user_id))
-
-    storage = datastore()
-    result = storage.action.get_if_exists(escape(str(id)), as_obj=True)
-
-    if not result:
-        return not_found(err="This action does not exist")
-
-    # is requesting the wrong object type
-    if not isinstance(result, Action):
-        return bad_request(err=f"Wrong request type. Object of type {type(result)} was requested insted of Action")
-
-    priv_request: str = escape(str(priv_requested))
-
-    try:
-        success, result = permission_service.set_privilege(priv_request, user_to_add, result, user)
-    except HowlerInvalidPermissionException as e:
-        return forbidden(err=e.message)
-    except InvalidDataException as e:
-        return bad_request(err=e.message)
-
-    if success:
-        storage.action.save(result.action_id, result, refresh=kwargs.get("refresh"))
-
-    return ok(result.as_primitives())
+    return permission_helper.give_privilege(id, user, Action, request.json, refresh=kwargs.get("refresh"))
 
 
 @generate_swagger_docs()
@@ -507,44 +474,7 @@ def revoke_privilege(id: str, user: User, **kwargs):
             "success": True
         }
     """
-    try:
-        permission_request = PermissionRequest(request.json)
-    except ValueError as e:
-        return bad_request(err=str(e))
-
-    priv_requested = escape(str(permission_request.privilege))
-    user_to_remove = escape(str(permission_request.user_id))
-
-    storage = datastore()
-    refresh = kwargs.get("refresh")
-    result = storage.action.get_if_exists(escape(str(id)), as_obj=True)
-
-    if not result:
-        return not_found(err="This action does not exist")
-
-    if not isinstance(result, Action):
-        return bad_request(err=f"Wrong request type. Object of type {type(result)} was requested insted of Action")
-
-    current_members = result.admins if priv_requested == "admins" else result.members
-    if user_to_remove not in current_members:
-        return bad_request(err=f"{user_to_remove} is not in the {priv_requested} permission group")
-
-    if priv_requested == "owner":
-        return bad_request(
-            err="You cannot remove the owner privilege. Only transfer is allowed. (Use the give_privilege endpoint)"
-        )
-
-    try:
-        success, result = permission_service.remove_privilege(priv_requested, user_to_remove, result, user)
-    except HowlerInvalidPermissionException as e:
-        return forbidden(err=e.message)
-    except InvalidDataException as e:
-        return bad_request(err=e.message)
-
-    if success:
-        storage.action.save(result.action_id, result, refresh=refresh)
-
-    return ok(result.as_primitives())
+    return permission_helper.revoke_privilege(id, user, Action, request.json, refresh=kwargs.get("refresh"))
 
 
 # endregion

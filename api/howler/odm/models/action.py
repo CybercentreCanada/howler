@@ -2,7 +2,7 @@
 from typing import Optional
 
 from howler import odm
-from howler.odm.models import ownership_object
+from howler.odm.models.ownership import Ownership
 
 VALID_TRIGGERS = ["create", "demote", "promote", "add_label", "remove_label"]
 
@@ -17,7 +17,7 @@ class Operation(odm.Model):
 
 
 @odm.model(index=True, store=True, description="Model of actions")
-class Action(ownership_object.OwnershipObject):
+class Action(Ownership):
     action_id: str = odm.UUID(description="A UUID for this action")
     name: str = odm.Keyword(description="The name of the action.")
     query: str = odm.Keyword(description="The query this action is run against.")

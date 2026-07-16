@@ -1,12 +1,11 @@
 from flask import request
-from markupsafe import escape
 
 from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
+from howler.api.v1.helper import permission_helper
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import (
     ForbiddenException,
     HowlerException,
-    HowlerInvalidPermissionException,
     InvalidDataException,
     NotFoundException,
 )
@@ -14,10 +13,9 @@ from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
 from howler.odm.models.dossier import Dossier
-from howler.odm.models.permission_request import PermissionRequest
 from howler.odm.models.user import User
 from howler.security import api_login
-from howler.services import dossier_service, permission_service
+from howler.services import dossier_service
 
 SUB_API = "dossier"
 dossier_api = make_subapi_blueprint(SUB_API, api_version=1)
@@ -247,7 +245,7 @@ def update_dossier(id: str, user: User, **kwargs):
 @api_login(required_priv=["R", "W"])
 @parse_parameters(refresh=parse_refresh)
 def give_privilege(id: str, user: User, **kwargs):
-    """give permission from one user to an other.
+    """Give permission from one user to another.
 
     The json object need to send "privilege", "user_id" as a key.
     privilege : The value need to be one of ["admins", "members", "owner"]
@@ -271,44 +269,17 @@ def give_privilege(id: str, user: User, **kwargs):
         "success": True     # If the operation succeeded
     }
     """
-    storage = datastore()
-
-    try:
-        permission_request = PermissionRequest(request.json)
-    except ValueError as e:
-        return bad_request(err=str(e))
-
-    priv_requested = escape(str(permission_request.privilege))
-    user_to_add = escape(str(permission_request.user_id))
-
-    result = storage.dossier.get_if_exists(id, as_obj=True)
-
-    if not result:
-        return not_found(err="This dossier does not exist")
-
-    try:
-        success, result = permission_service.set_privilege(
-            priv_requested, user_to_add, existing_item=result, user_requesting_change=user
-        )
-    except HowlerInvalidPermissionException as e:
-        return forbidden(err=e.message)
-    except InvalidDataException as e:
-        return bad_request(err=e.message)
-
-    if success:
-        storage.dossier.save(result.dossier_id, result, refresh=kwargs.get("refresh"))
-
-    return ok(result.as_primitives())
+    return permission_helper.give_privilege(id, user, Dossier, request.json, refresh=kwargs.get("refresh"))
 
 
 @generate_swagger_docs()
 @dossier_api.route("/<id>/permission", methods=["DELETE"])
 @api_login(required_priv=["R", "W"])
 def revoke_privilege(id: str, user: User, **kwargs):
-    """Give permission from one user to another.
+    """Revoke permission from one user to another.
 
     Variables:
-        dossier_id => The id of the dossier to give administrative privilege of
+        dossier_id => The id of the dossier to revoke administrative privilege of
 
     Arguments:
         None
@@ -318,7 +289,7 @@ def revoke_privilege(id: str, user: User, **kwargs):
 
     Data Block:
         {
-            "privilege": "privilege to give",  # [members, admins, owner]
+            "privilege": "privilege to revoke",  # [members, admins, owner]
             "user_id": "user to remove permission from",
         }
 
@@ -327,41 +298,7 @@ def revoke_privilege(id: str, user: User, **kwargs):
             "success": True
         }
     """
-    storage = datastore()
-
-    try:
-        permission_request = PermissionRequest(request.json)
-    except ValueError as e:
-        return bad_request(err=str(e))
-
-    priv_requested = escape(str(permission_request.privilege))
-    user_to_add = escape(str(permission_request.user_id))
-
-    result = storage.dossier.get_if_exists(id, as_obj=True)
-
-    if not result:
-        return not_found(err="This dossier does not exist")
-
-    if priv_requested == "owner":
-        return bad_request(err="You cannot remove the owner privilege. Transfer ownership instead.")
-
-    current_members = result.admins if priv_requested == "admins" else result.members
-    if user_to_add not in current_members:
-        return bad_request(err=f"{user_to_add} is not in the {priv_requested} permission group")
-
-    try:
-        success, result = permission_service.remove_privilege(
-            priv_requested, user_to_add, existing_item=result, user_requesting_change=user
-        )
-    except HowlerInvalidPermissionException as e:
-        return forbidden(err=e.message)
-    except InvalidDataException as e:
-        return bad_request(err=e.message)
-
-    if success:
-        storage.dossier.save(result.dossier_id, result, refresh=kwargs.get("refresh"))
-
-    return ok(result.as_primitives())
+    return permission_helper.revoke_privilege(id, user, Dossier, request.json, refresh=kwargs.get("refresh"))
 
 
 # endregion

@@ -18,25 +18,25 @@ from howler.plugins import get_plugins
 if TYPE_CHECKING:
     from howler.datastore.store import ESStore
 
-INDEXES = [
-    ("hit", Hit),
-    ("template", Template),
-    ("overview", Overview),
-    ("analytic", Analytic),
-    ("action", Action),
-    ("user", User),
-    ("view", View),
-    ("dossier", Dossier),
-    ("user_avatar", None),
-]
+INDEXES = {
+    "hit": Hit,
+    "template": Template,
+    "overview": Overview,
+    "analytic": Analytic,
+    "action": Action,
+    "user": User,
+    "view": View,
+    "dossier": Dossier,
+    "user_avatar": None,
+}
 
 
 class HowlerDatastore(object):
     def __init__(self, datastore_object: "ESStore"):
-        self.ds = datastore_object
+        self.ds: "ESStore" = datastore_object
 
         for plugin in get_plugins():
-            for _index, _odm in INDEXES:
+            for _index, _odm in INDEXES.items():
                 if _odm is None:
                     continue
 
@@ -50,7 +50,7 @@ class HowlerDatastore(object):
                 Compound(Clue, description="Clue-specific overrides for this alert", default=None, optional=True),
             )
 
-        for _index, _odm in INDEXES:
+        for _index, _odm in INDEXES.items():
             ilm_index_config = config.datastore.ilm.indices.get(_index) if config.datastore.ilm.enabled else None
             self.ds.register(_index, _odm, ilm_config=ilm_index_config)
 
@@ -59,6 +59,9 @@ class HowlerDatastore(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.ds.close()
+
+    def __getitem__(self, key: str):
+        return self.ds[key]
 
     def stop_model_validation(self):
         self.ds.validate = False

@@ -1,8 +1,8 @@
 from typing import Literal, Optional, Union
 
 from howler import odm
-from howler.odm.models import ownership_object
 from howler.odm.models.lead import Lead
+from howler.odm.models.ownership import Ownership
 from howler.odm.models.pivot import Pivot
 
 
@@ -11,7 +11,7 @@ from howler.odm.models.pivot import Pivot
     store=True,
     description="The dossier object stores individual tabs/fields for a given alert.",
 )
-class Dossier(ownership_object.OwnershipObject):
+class Dossier(Ownership):
     dossier_id: str = odm.UUID(description="A UUID for this dossier.")
     leads: list[Lead] = odm.List(
         odm.Compound(Lead),

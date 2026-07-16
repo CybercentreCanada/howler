@@ -24,6 +24,6 @@ export const del = (id: string, refresh?: HowlerRefreshParam): Promise<void> => 
   return hdelete(uri(id), undefined, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
-export const permission = createPermissionApi(uri, joinAllUri, hput, hdelete);
+export const permission = createPermissionApi<Dossier>(uri);
 
 export { hit };
