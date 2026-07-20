@@ -198,6 +198,47 @@ describe('UserList', () => {
     });
   });
 
+  it('supports non-modified multiple mode with userIds via popover picker', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    const StatefulMultiPopoverUserList = () => {
+      const [value, setValue] = React.useState<string[]>(['alice']);
+
+      return (
+        <UserList
+          i18nLabel="username"
+          multiple
+          userIds={value}
+          onChange={(nextValue: string[] | string) => {
+            const normalized = Array.isArray(nextValue) ? nextValue : [nextValue].filter(Boolean);
+            setValue(normalized);
+            onChange(normalized);
+          }}
+        />
+      );
+    };
+
+    renderWithProviders({
+      users: {
+        alice: { username: 'alice', name: 'Alice Example', email: 'alice@example.com' },
+        bob: { username: 'bob', name: 'Bob Example', email: 'bob@example.com' }
+      },
+      children: <StatefulMultiPopoverUserList />
+    });
+
+    expect(screen.getByText('alice')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button'));
+    await user.click(screen.getByRole('combobox'));
+
+    const listbox = await screen.findByRole('listbox');
+    await user.click(within(listbox).getByRole('option', { name: /bob/i }));
+
+    expect(onChange).toHaveBeenCalled();
+    expect(onChange.mock.calls.some(call => call[0].includes('alice') && call[0].includes('bob'))).toBe(true);
+  });
+
   it('calls onChange with selected user id from picker', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();

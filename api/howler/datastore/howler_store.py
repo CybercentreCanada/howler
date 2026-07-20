@@ -6,8 +6,10 @@ from howler.datastore.collection import ESCollection, logger
 from howler.odm.base import Compound
 from howler.odm.models.action import Action
 from howler.odm.models.analytic import Analytic
+from howler.odm.models.case import Case
 from howler.odm.models.clue import Clue
 from howler.odm.models.dossier import Dossier
+from howler.odm.models.event import Event
 from howler.odm.models.hit import Hit
 from howler.odm.models.overview import Overview
 from howler.odm.models.template import Template
@@ -20,6 +22,8 @@ if TYPE_CHECKING:
 
 INDEXES = {
     "hit": Hit,
+    "event": Event,
+    "case": Case,
     "template": Template,
     "overview": Overview,
     "analytic": Analytic,
@@ -33,6 +37,7 @@ INDEXES = {
 
 class HowlerDatastore(object):
     def __init__(self, datastore_object: "ESStore"):
+        self.ds: "ESStore" = datastore_object
         self.ds: "ESStore" = datastore_object
 
         for plugin in get_plugins():
@@ -78,6 +83,14 @@ class HowlerDatastore(object):
     @property
     def hit(self) -> ESCollection[Hit]:
         return self.ds.hit
+
+    @property
+    def event(self) -> ESCollection[Event]:
+        return self.ds.event
+
+    @property
+    def case(self) -> ESCollection[Case]:
+        return self.ds.case
 
     @property
     def template(self) -> ESCollection[Template]:
