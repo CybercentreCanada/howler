@@ -19,10 +19,21 @@ const mockFetchUsers = vi.fn();
 const mockSearchUsers = vi.fn();
 
 const defaultUsers: Record<string, any> = {
-  alice: { username: 'alice', name: 'Alice Example', email: 'alice@example.com' },
-  bob: { username: 'bob', name: 'Bob Example', email: 'bob@example.com' },
-  analystA: { username: 'analystA', name: 'Alice Analyst', email: 'alice@example.com' },
-  analystB: { username: 'analystB', name: 'Bob Analyst', email: 'bob@example.com' }
+  analystA: {
+    username: 'analystA',
+    name: 'Alice Analyst',
+    email: 'alice@example.com'
+  },
+  analystB: {
+    username: 'analystB',
+    name: 'Bob Analyst',
+    email: 'bob@example.com'
+  },
+  analystC: {
+    username: 'analystC',
+    name: 'Chris Analyst',
+    email: 'chris@example.com'
+  }
 };
 
 const createWrapper = (users: Record<string, any>) => {

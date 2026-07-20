@@ -200,7 +200,7 @@ def delete_action(id: str, user: User, **kwargs) -> Response:
 
     action: Action = result["items"][0]
 
-    if user.uname != action.owner and "admin" not in user.type:
+    if action.owner != user.uname and "admin" not in user.type:
         return forbidden(err="You do not have the permissions necessary to delete this action.")
 
     try:

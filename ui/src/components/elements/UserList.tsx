@@ -86,7 +86,7 @@ const UserList: FC<{
             display: 'grid',
             gridTemplateColumns: 'auto 1fr',
             gridTemplateRows: 'auto auto',
-            gridTemplateAreas: '"profile name" "profile email"',
+            gridTemplateAreas: `"profile name"\n"profile email"`,
             columnGap: 1.5
           }}
         >

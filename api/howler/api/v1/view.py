@@ -6,9 +6,7 @@ from mergedeep.mergedeep import merge
 from howler.api import bad_request, created, forbidden, make_subapi_blueprint, no_content, not_found, ok
 from howler.api.v1.helper import permission_helper
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
-from howler.common.exceptions import (
-    HowlerException,
-)
+from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
@@ -62,7 +60,8 @@ def create_view(**kwargs):
     None
 
     Optional Arguments:
-    None
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+
 
     Data Block:
     {
@@ -77,7 +76,6 @@ def create_view(**kwargs):
     }
     """
     view_data = request.json
-    refresh = kwargs.get("refresh")
 
     if not isinstance(view_data, dict):
         return bad_request(err="Invalid data format")
@@ -108,7 +106,7 @@ def create_view(**kwargs):
 
             storage.user.save(current_user["uname"], current_user)
 
-        storage.view.save(view.view_id, view, refresh=refresh)
+        storage.view.save(view.view_id, view, refresh=kwargs.get("refresh"))
         return created(view)
     except SearchException:
         return bad_request(err="You must use a valid query when creating a view.")
@@ -127,7 +125,8 @@ def delete_view(view_id: str, user: User, **kwargs):
     view_id => The id of the view to delete
 
     Optional Arguments:
-    None
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+
 
     Data Block:
     None
@@ -138,7 +137,6 @@ def delete_view(view_id: str, user: User, **kwargs):
     }
     """
     storage = datastore()
-    refresh = kwargs.get("refresh")
 
     existing_view: View = storage.view.get_if_exists(view_id)
 
@@ -151,7 +149,7 @@ def delete_view(view_id: str, user: User, **kwargs):
     if existing_view.type == "readonly":
         return forbidden(err="You cannot delete built-in views.")
 
-    success = storage.view.delete(view_id, refresh=refresh)
+    success = storage.view.delete(view_id, refresh=kwargs.get("refresh"))
 
     return no_content({"success": success})
 
@@ -167,7 +165,7 @@ def update_view(view_id: str, user: User, **kwargs):
     view_id => The view_id of the view to modify
 
     Optional Arguments:
-    None
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
 
     Data Block:
     {
@@ -180,8 +178,6 @@ def update_view(view_id: str, user: User, **kwargs):
         ...view     # The updated view data
     }
     """
-    refresh = kwargs.get("refresh")
-
     storage = datastore()
 
     new_data = request.json
@@ -206,7 +202,7 @@ def update_view(view_id: str, user: User, **kwargs):
 
     new_view = View(cast(dict, merge({}, existing_view.as_primitives(), new_data)))
 
-    storage.view.save(new_view.view_id, new_view, refresh=refresh)
+    storage.view.save(new_view.view_id, new_view, refresh=kwargs.get("refresh"))
 
     try:
         if "query" in new_data:
@@ -315,7 +311,7 @@ def give_privilege(view_id: str, user: User, **kwargs):
     view_id => The ID of the view for which to grant a privilege
 
     Optional Arguments:
-        refresh : boolean requesting to refresh DB before returning
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
 
     Data Block:
     {
@@ -342,7 +338,7 @@ def give_multi_privilege(view_id: str, user: User, **kwargs):
     view_id => The ID of the view for which to grant a privilege
 
     Optional Arguments:
-        refresh : boolean requesting to refresh DB before returning
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
 
     Data Block:
     {

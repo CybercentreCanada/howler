@@ -31,3 +31,9 @@ class Action(Ownership):
         default=[],
         description="A list of the operations this action consists of.",
     )
+
+    def __init__(self, data: dict = None, *args, **kwargs):
+        if "owner" not in data and "owner_id" in data:
+            data["owner"] = data.pop("owner_id")
+
+        super().__init__(data, *args, **kwargs)

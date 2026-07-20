@@ -69,13 +69,7 @@ const ActionDetails = () => {
           })
         );
 
-        setAction(prevAction => {
-          if (!prevAction) return prevAction;
-          return {
-            ...prevAction,
-            triggers: newTriggers
-          };
-        });
+        setAction({ ...action, triggers: newTriggers });
       } finally {
         setLoading(false);
       }
@@ -97,7 +91,7 @@ const ActionDetails = () => {
 
     Promise.all([
       dispatchApi(api.action.operations.get()).then(setOperations),
-      dispatchApi(api.action.get(params.id)).then(setAction)
+      dispatchApi(api.action.get(params.id).then(setAction))
     ]).finally(() => setLoading(false));
   }, [dispatchApi, params.id, setLoading]);
 
