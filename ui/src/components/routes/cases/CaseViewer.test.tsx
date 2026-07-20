@@ -1,4 +1,4 @@
-import { render, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { SocketContext } from 'components/app/providers/SocketProvider';
 import type { ReactNode } from 'react';
 import { createMockCase } from 'tests/utils';
@@ -47,11 +47,11 @@ vi.mock('api', () => ({
 }));
 
 vi.mock('./detail/CaseDetails', () => ({
-  default: () => <div id="case-details" />
+  default: ({ case: _case }: { case: ReturnType<typeof createMockCase> }) => <div id="case-details">{_case?.title}</div>
 }));
 
 vi.mock('./detail/CaseSidebar', () => ({
-  default: () => <div id="case-sidebar" />
+  default: ({ case: _case }: { case: ReturnType<typeof createMockCase> }) => <div id="case-sidebar">{_case?.title}</div>
 }));
 
 // ---------------------------------------------------------------------------
@@ -167,5 +167,30 @@ describe('CaseViewer', () => {
     await waitFor(() => {
       expect(mockFetchViewers).toHaveBeenCalledWith('case-1');
     });
+  });
+
+  it('propagates socket case updates to the sidebar and details', async () => {
+    const initialCase = createMockCase({ case_id: 'case-1', title: 'Original title' });
+    const updatedCase = createMockCase({ case_id: 'case-1', title: 'Updated title' });
+    mockDispatchApi.mockResolvedValue(initialCase);
+
+    render(<CaseViewer />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(mockAddListener).toHaveBeenCalledOnce();
+    });
+
+    act(() => {
+      mockAddListener.mock.calls[0][1]({
+        type: 'cases',
+        case: updatedCase,
+        error: false,
+        message: '',
+        status: 200
+      });
+    });
+
+    expect(screen.getByTestId('case-sidebar')).toHaveTextContent('Updated title');
+    expect(screen.getByTestId('case-details')).toHaveTextContent('Updated title');
   });
 });
