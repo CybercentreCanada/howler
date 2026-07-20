@@ -1,7 +1,7 @@
 """Parameter parsing and error handling reused across multiple endpoints."""
 
 import functools
-from typing import Callable, Literal
+from typing import Callable, Literal, cast
 
 from flask import request
 
@@ -68,4 +68,4 @@ def parse_refresh(refresh: str | None):
         refresh = refresh.lower()
         if refresh not in REFRESH_ARG_OPTIONS:
             raise HowlerInvalidParameterException(f"Invalid refresh option: [{refresh}]")
-    return refresh
+    return cast(Literal["true", "false", "wait_for"] | None, refresh)

@@ -17,7 +17,7 @@ def give_privilege(
     user: User,
     object_type: type[Ownership],
     j_request: dict,
-    refresh: Literal["true", "false", "wait_for"],
+    refresh: Literal["true", "false", "wait_for"] | None = None,
 ):
     """give permission from one user to an other.
 
@@ -87,7 +87,7 @@ def give_multi_privilege(
     user: User,
     object_type: type[Ownership],
     j_request: dict,
-    refresh: Literal["true", "false", "wait_for"],
+    refresh: Literal["true", "false", "wait_for"] | None = None,
 ):
     """Give the same privilege to multiple users in a single request.
 
@@ -142,7 +142,11 @@ def give_multi_privilege(
 
 
 def revoke_privilege(
-    id: str, user: User, object_type: type[Ownership], j_request: dict, refresh: Literal["true", "false", "wait_for"]
+    id: str,
+    user: User,
+    object_type: type[Ownership],
+    j_request: dict,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
 ):
     """Revoke permission from one user.
 

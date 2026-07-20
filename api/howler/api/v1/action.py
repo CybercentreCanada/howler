@@ -1,4 +1,5 @@
 import json
+from typing import Literal, cast
 
 from flask import Response, request
 
@@ -84,6 +85,7 @@ def add_action(user: User, **_) -> Response:
         refresh = parse_refresh(request.args.get("refresh"))
     except HowlerInvalidParameterException as e:
         return bad_request(err=str(e))
+    refresh = cast(Literal["true", "false", "wait_for"] | None, refresh)
     if new_action is None:
         return bad_request(err="You must specify an action")
 
@@ -138,9 +140,12 @@ def update_action(id: str, user: User, **_) -> Response:
     """
     updated_action = request.json
     try:
-        refresh = parse_refresh(request.args.get("refresh"))
+        refresh: Literal["true", "false", "wait_for"] | None | HowlerException = parse_refresh(
+            request.args.get("refresh")
+        )
     except HowlerInvalidParameterException as e:
         return bad_request(err=str(e))
+    refresh = cast(Literal["true", "false", "wait_for"] | None, refresh)
 
     if not isinstance(updated_action, dict):
         return bad_request(err="Incorrect data structure!")
@@ -441,7 +446,9 @@ def give_privilege(id: str, user: User, **kwargs):
         "success": True     # If the operation succeeded
     }
     """
-    return permission_helper.give_privilege(id, user, Action, request.json, refresh=kwargs.get("refresh"))
+    refresh = cast(Literal["true", "false", "wait_for"], kwargs.get("refresh") or "true")
+
+    return permission_helper.give_privilege(id, user, Action, request.json, refresh=refresh)
 
 
 @generate_swagger_docs()
@@ -473,7 +480,12 @@ def give_multi_privilege(id: str, user: User, **kwargs):
         "success": True
     }
     """
-    return permission_helper.give_multi_privilege(id, user, Action, request.json, refresh=kwargs.get("refresh"))
+    try:
+        refresh = parse_refresh(kwargs.get("refresh"))
+    except HowlerInvalidParameterException as e:
+        return bad_request(err=str(e))
+    refresh = cast(Literal["true", "false", "wait_for"] | None, refresh)
+    return permission_helper.give_multi_privilege(id, user, Action, request.json, refresh=refresh)
 
 
 @generate_swagger_docs()
@@ -505,7 +517,12 @@ def revoke_privilege(id: str, user: User, **kwargs):
             "success": True
         }
     """
-    return permission_helper.revoke_privilege(id, user, Action, request.json, refresh=kwargs.get("refresh"))
+    try:
+        refresh = parse_refresh(kwargs.get("refresh"))
+    except HowlerInvalidParameterException as e:
+        return bad_request(err=str(e))
+    refresh = cast(Literal["true", "false", "wait_for"] | None, refresh)
+    return permission_helper.revoke_privilege(id, user, Action, request.json, refresh=refresh)
 
 
 # endregion
