@@ -102,11 +102,22 @@ def test_execute_advanced_user_higher_limit(mock_ds):
     assert all(r["title"] != "Hit limit exceeded" for r in result)
 
 
+@patch("howler.actions.add_label.execute")
 @patch("howler.actions.datastore")
-def test_execute_admin_user_bypasses_role_check_and_gets_advanced_limit(mock_ds):
+def test_execute_admin_user_bypasses_role_check_and_gets_advanced_limit(mock_ds, mock_add_label_execute):
     """Test that admin users bypass role checks and get the advanced hit limit."""
     admin_user: User = random_model_obj(User)
     admin_user.type = ["admin", "user"]  # Admin without explicit actionrunner roles
+
+    # Isolate execute() role/limit behavior from add_label's own datastore interactions.
+    mock_add_label_execute.return_value = [
+        {
+            "query": "howler.id:*",
+            "outcome": "success",
+            "title": "Executed Successfully",
+            "message": "ok",
+        }
+    ]
 
     # Mock datastore to return a hit count that exceeds basic (20) but not advanced (1000)
     mock_ds.return_value.hit.search.return_value = {"total": 500, "items": []}
@@ -119,11 +130,22 @@ def test_execute_admin_user_bypasses_role_check_and_gets_advanced_limit(mock_ds)
     assert all(r["title"] != "Hit limit exceeded" for r in result)
 
 
+@patch("howler.actions.add_label.execute")
 @patch("howler.actions.datastore")
-def test_execute_user_with_both_basic_and_advanced_roles(mock_ds):
+def test_execute_user_with_both_basic_and_advanced_roles(mock_ds, mock_add_label_execute):
     """Test that users with both basic and advanced roles get the higher (advanced) limit."""
     mixed_user: User = random_model_obj(User)
     mixed_user.type = ["user", "actionrunner_basic", "actionrunner_advanced"]
+
+    # Isolate execute() role/limit behavior from add_label's own datastore interactions.
+    mock_add_label_execute.return_value = [
+        {
+            "query": "howler.id:*",
+            "outcome": "success",
+            "title": "Executed Successfully",
+            "message": "ok",
+        }
+    ]
 
     # Mock datastore to return a hit count that exceeds basic (20) but not advanced (1000)
     mock_ds.return_value.hit.search.return_value = {"total": 50, "items": []}
