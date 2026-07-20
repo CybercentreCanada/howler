@@ -437,3 +437,7 @@ For legacy collections, pass the collection alias through the `aliases` argument
 `SocketProvider.addListener` replaces an existing listener with the same key. Case views can mount several `useCase` consumers for one case (viewer, dashboard, and details), so each hook instance must include a stable per-instance identifier in its listener key. A key based only on the case ID causes later consumers to silently remove earlier subscriptions.
 
 ---
+
+### React Testing Library: Do Not Wrap `userEvent` in `act`
+
+`userEvent` already manages React updates through Testing Library. Wrapping awaited `userEvent` calls in `act` conflicts with its async wrapper, which temporarily disables `IS_REACT_ACT_ENVIRONMENT`, and produces `The current testing environment is not configured to support act(...)` warnings. Await `userEvent` calls directly; reserve `act` for direct state-changing operations that Testing Library does not wrap.
