@@ -221,8 +221,8 @@ describe('UserList', () => {
     const input = screen.getByRole('combobox');
     await user.click(input);
     const listbox = await screen.findByRole('listbox');
-    await user.click(within(listbox).getByRole('option', { name: /bob/i }));
+    await user.click(within(listbox).getByRole('option', { name: /analystb/i }));
 
-    expect(screen.getAllByText('bob').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('analystB').length).toBeGreaterThan(0);
   });
 });
