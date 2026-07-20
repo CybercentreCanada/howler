@@ -2,7 +2,7 @@ import api from 'api';
 import { SocketContext } from 'components/app/providers/SocketProvider';
 import useMyApi from 'components/hooks/useMyApi';
 import type { Case } from 'models/entities/generated/Case';
-import { useCallback, useContext, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useId, useState } from 'react';
 import { isCaseUpdate } from 'utils/socketUtils';
 
 interface CaseArguments {
@@ -20,6 +20,7 @@ interface CaseResult {
 const useCase: (args: CaseArguments) => CaseResult = ({ caseId, case: providedCase }) => {
   const { dispatchApi } = useMyApi();
   const { addListener, removeListener } = useContext(SocketContext);
+  const listenerId = useId();
 
   const [loading, setLoading] = useState(false);
   const [missing, setMissing] = useState(false);
@@ -47,7 +48,7 @@ const useCase: (args: CaseArguments) => CaseResult = ({ caseId, case: providedCa
       return;
     }
 
-    const listenerKey = `case-update-${activeCaseId}`;
+    const listenerKey = `case-update-${activeCaseId}-${listenerId}`;
     addListener(listenerKey, data => {
       if (isCaseUpdate(data) && data.case.case_id === activeCaseId) {
         setCase(data.case);
@@ -57,7 +58,7 @@ const useCase: (args: CaseArguments) => CaseResult = ({ caseId, case: providedCa
     return () => {
       removeListener(listenerKey);
     };
-  }, [activeCaseId, addListener, removeListener]);
+  }, [activeCaseId, addListener, listenerId, removeListener]);
 
   const update = useCallback(
     async (_updatedCase: Partial<Case>, publish = true) => {
