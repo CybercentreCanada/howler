@@ -130,6 +130,10 @@ suppress-none-returning = true
 packages = [{ include = "sync" }]
 
 
+[tool.poetry.dependencies]
+pyspark = "3.5.6"
+
+
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.15.20"
 mypy = "^1.20.2"

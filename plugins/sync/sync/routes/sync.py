@@ -60,3 +60,26 @@ def get_upserted_hits(*, from_date: str, to_date: str | None = None, **_extra_ar
     )
 
     return ok(res)
+
+
+@generate_swagger_docs()
+@sync_api.route("/hit_schema", methods=["GET"])
+def get_hit_struct_schema():
+    """Get the hit schema for the current Howler version.
+
+    Result Example:
+    {  # The hit schema as a struct json
+        "fields": [
+            {
+                "metadata": {},
+                "name": "timestamp",
+                "nullable": true,
+                "type": "timestamp"
+            },
+            ...
+        ],
+        "type": "struct"
+    }
+    """
+    schema = sync_service.get_hit_struct_schema()
+    return ok(schema.json())
