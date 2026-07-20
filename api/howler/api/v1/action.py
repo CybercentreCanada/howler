@@ -80,11 +80,12 @@ def add_action(user: User, **_) -> Response:
         ...action   # The saved action data
     }
     """
-    new_action = request.json
     try:
         refresh = parse_refresh(request.args.get("refresh"))
     except HowlerInvalidParameterException as e:
         return bad_request(err=str(e))
+
+    new_action = request.json
     refresh = cast(Literal["true", "false", "wait_for"] | None, refresh)
     if new_action is None:
         return bad_request(err="You must specify an action")
@@ -444,9 +445,7 @@ def give_privilege(id: str, user: User, **kwargs):
         "success": True     # If the operation succeeded
     }
     """
-    refresh = cast(Literal["true", "false", "wait_for"], kwargs.get("refresh") or "true")
-
-    return permission_helper.give_privilege(id, user, Action, request.json, refresh=refresh)
+    return permission_helper.give_privilege(id, user, Action, request.json, refresh=kwargs.get("refresh"))
 
 
 @generate_swagger_docs()
@@ -478,12 +477,7 @@ def give_multi_privilege(id: str, user: User, **kwargs):
         "success": True
     }
     """
-    try:
-        refresh = parse_refresh(kwargs.get("refresh"))
-    except HowlerInvalidParameterException as e:
-        return bad_request(err=str(e))
-    refresh = cast(Literal["true", "false", "wait_for"] | None, refresh)
-    return permission_helper.give_multi_privilege(id, user, Action, request.json, refresh=refresh)
+    return permission_helper.give_multi_privilege(id, user, Action, request.json, refresh=kwargs.get("refresh"))
 
 
 @generate_swagger_docs()
@@ -515,12 +509,7 @@ def revoke_privilege(id: str, user: User, **kwargs):
             "success": True
         }
     """
-    try:
-        refresh = parse_refresh(kwargs.get("refresh"))
-    except HowlerInvalidParameterException as e:
-        return bad_request(err=str(e))
-    refresh = cast(Literal["true", "false", "wait_for"] | None, refresh)
-    return permission_helper.revoke_privilege(id, user, Action, request.json, refresh=refresh)
+    return permission_helper.revoke_privilege(id, user, Action, request.json, refresh=kwargs.get("refresh"))
 
 
 # endregion

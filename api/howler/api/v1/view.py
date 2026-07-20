@@ -165,6 +165,7 @@ def delete_view(view_id: str, user: User, **kwargs):
 @generate_swagger_docs()
 @view_api.route("/<view_id>", methods=["PUT"])
 @api_login(required_priv=["R", "W"])
+@parse_parameters(refresh=parse_refresh)
 def update_view(view_id: str, user: User, **kwargs):
     """Update a view
 
