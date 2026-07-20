@@ -361,7 +361,9 @@ def test_give_remove_membership(
         method="POST",
         data=json.dumps({"title": "testremove", "type": "global", "query": "howler.hash:*"}),
     )
-    dossier: Dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
+    dossier: Dossier | None = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
+
+    assert isinstance(dossier, Dossier), f"Dossier {create_res['dossier_id']} not found in datastore."
 
     # Give every membership ( not owner ) from owner
     add_permission_every_role(member_uname, owner_session, create_res, host, dossier)
@@ -413,7 +415,9 @@ def test_owner_privilege(datastore: HowlerDatastore, user_session: dict):
     )
     datastore.dossier.commit()
 
-    dossier: Dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
+    dossier: Dossier | None = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
+
+    assert isinstance(dossier, Dossier), f"Dossier {create_res['dossier_id']} not found in datastore."
 
     # Add user to every role except owner
     add_permission_every_role(
@@ -523,7 +527,10 @@ def test_admin(datastore: HowlerDatastore, user_session: Callable[[str], tuple[r
         data=json.dumps({"title": "test_membership", "type": "global", "query": "howler.hash:*"}),
     )
     datastore.dossier.commit()
-    dossier: Dossier = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
+    dossier: Dossier | None = datastore.dossier.get(create_res["dossier_id"], as_obj=True)
+
+    assert isinstance(dossier, Dossier), f"Dossier {create_res['dossier_id']} not found in datastore."
+
     # giving admin to admin
     get_api_data(
         owner_session,

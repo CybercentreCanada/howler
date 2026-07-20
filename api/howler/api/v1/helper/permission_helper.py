@@ -1,3 +1,5 @@
+from typing import Literal
+
 from howler.api import bad_request, forbidden, not_found, ok
 from howler.common.exceptions import (
     HowlerInvalidPermissionException,
@@ -10,7 +12,13 @@ from howler.odm.models.user import User
 from howler.services import permission_service
 
 
-def give_privilege(id: str, user: User, object_type: type[Ownership], j_request: dict, refresh: str | None = None):
+def give_privilege(
+    id: str,
+    user: User,
+    object_type: type[Ownership],
+    j_request: dict,
+    refresh: Literal["true", "false", "wait_for"],
+):
     """give permission from one user to an other.
 
         The json object need to send "privilege", "user_id" as a key.
@@ -79,7 +87,7 @@ def give_multi_privilege(
     user: User,
     object_type: type[Ownership],
     j_request: dict,
-    refresh: str | None = None,
+    refresh: Literal["true", "false", "wait_for"],
 ):
     """Give the same privilege to multiple users in a single request.
 
@@ -133,7 +141,9 @@ def give_multi_privilege(
     return ok(result.as_primitives())
 
 
-def revoke_privilege(id: str, user: User, object_type: type[Ownership], j_request: dict, refresh: str | None = None):
+def revoke_privilege(
+    id: str, user: User, object_type: type[Ownership], j_request: dict, refresh: Literal["true", "false", "wait_for"]
+):
     """Revoke permission from one user.
 
     Variables:

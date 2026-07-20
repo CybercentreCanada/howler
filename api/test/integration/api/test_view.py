@@ -272,7 +272,10 @@ def test_give_remove_membership(
 
     # Test standard privileges (administrator, member) where auth state doesn't change
     for request in ("PUT", "DELETE"):
-        view: View = datastore.view.get(create_res["view_id"], as_obj=True)
+        view: View | None = datastore.view.get(create_res["view_id"], as_obj=True)
+
+        assert isinstance(view, View), f"View {create_res['view_id']} not found in datastore."
+
         for membership in ("admins", "members"):
             get_api_data(
                 owner_session,
@@ -345,7 +348,9 @@ def test_owner_privilege(datastore: HowlerDatastore, user_session: dict):
         data=json.dumps({"title": "test_membership", "type": "global", "query": "howler.hash:*"}),
     )
     datastore.view.commit()
-    view: View = datastore.view.get(create_res["view_id"], as_obj=True)
+    view: View | None = datastore.view.get(create_res["view_id"], as_obj=True)
+
+    assert isinstance(view, View), f"View {create_res['view_id']} not found in datastore."
 
     # Add member to every role except owner
     add_permission_every_role(
@@ -466,7 +471,10 @@ def test_admin(datastore: HowlerDatastore, user_session: dict, login_session):
         data=json.dumps({"title": "test_membership", "type": "global", "query": "howler.hash:*"}),
     )
     datastore.view.commit()
-    view: View = datastore.view.get(create_res["view_id"], as_obj=True)
+    view: View | None = datastore.view.get(create_res["view_id"], as_obj=True)
+
+    assert isinstance(view, View), f"View {create_res['view_id']} not found in datastore."
+
     # giving admin to admin
     get_api_data(
         owner_session,
@@ -479,7 +487,7 @@ def test_admin(datastore: HowlerDatastore, user_session: dict, login_session):
             }
         ),
     )
-    assert owner_uname not in view.admins  # ensure user is admin
+    assert owner_uname not in view.admins  # ensure user is in admin category
 
     # Admin should be able to add|remove member and other admin
     for method in ["PUT", "DELETE"]:

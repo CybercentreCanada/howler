@@ -57,6 +57,7 @@ def test_give_multi_privilege_requires_user_id_list(request_context):
             MagicMock(),
             DummyOwnership,
             {"privilege": "members", "user_id": "user1"},
+            refresh="true",
         )
 
     assert response.status_code == 400
@@ -71,10 +72,7 @@ def test_give_multi_privilege_returns_not_found(request_context, monkeypatch):
 
     with request_context.test_request_context():
         response = permission_helper.give_multi_privilege(
-            "missing-id",
-            MagicMock(),
-            DummyOwnership,
-            {"privilege": "members", "user_id": ["user1"]},
+            "missing-id", MagicMock(), DummyOwnership, {"privilege": "members", "user_id": ["user1"]}, "true"
         )
 
     assert response.status_code == 404
@@ -93,10 +91,7 @@ def test_give_multi_privilege_maps_invalid_data_exception(request_context, monke
 
     with request_context.test_request_context():
         response = permission_helper.give_multi_privilege(
-            "dummy-id",
-            MagicMock(),
-            DummyOwnership,
-            {"privilege": "members", "user_id": ["user1"]},
+            "dummy-id", MagicMock(), DummyOwnership, {"privilege": "members", "user_id": ["user1"]}, "true"
         )
 
     assert response.status_code == 400

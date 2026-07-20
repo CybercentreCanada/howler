@@ -830,39 +830,40 @@ def test_action_give_remove_membership(
         method="POST",
         data=json.dumps(req),
     )
-    action_id = create_res["action_id"]
-    action: Action = datastore.action.get(action_id, as_obj=True)
+    action: Action | None = datastore.action.get(create_res["action_id"], as_obj=True)
+
+    assert isinstance(action, Action), f"Action {create_res['action_id']} not found in datastore."
 
     # Give every membership (not owner) from owner
-    add_action_permission_every_role(member_uname, owner_session, action_id, host, action)
+    add_action_permission_every_role(member_uname, owner_session, create_res["action_id"], host, action)
     datastore.action.commit()
 
-    action = datastore.action.get(action_id, as_obj=True)
+    action = datastore.action.get(create_res["action_id"], as_obj=True)
     for membership in ("admins", "members"):
         assert member_uname in getattr(action, membership)
 
     # Remove every membership (not owner) from owner
-    remove_action_permission_every_role(member_uname, owner_session, action_id, host, action)
+    remove_action_permission_every_role(member_uname, owner_session, create_res["action_id"], host, action)
     datastore.action.commit()
 
-    action = datastore.action.get(action_id, as_obj=True)
+    action = datastore.action.get(create_res["action_id"], as_obj=True)
     for membership in ("admins", "members"):
         assert member_uname not in getattr(action, membership)
 
     # Transfer ownership
     get_api_data(
         owner_session,
-        f"{host}/api/v1/action/{action_id}/permission",
+        f"{host}/api/v1/action/{create_res['action_id']}/permission",
         method="PUT",
         data=json.dumps({"user_id": member_uname, "privilege": "owner"}),
     )
     datastore.action.commit()
 
-    action = datastore.action.get(action_id, as_obj=True)
+    action = datastore.action.get(create_res["action_id"], as_obj=True)
     assert member_uname == action.owner
 
     # Delete the action [member is now owner]
-    get_api_data(member_session, f"{host}/api/v1/action/{action_id}/", method="DELETE")
+    get_api_data(member_session, f"{host}/api/v1/action/{create_res['action_id']}/", method="DELETE")
 
 
 def test_action_owner_privilege(datastore: HowlerDatastore, user_session: dict):
@@ -881,28 +882,28 @@ def test_action_owner_privilege(datastore: HowlerDatastore, user_session: dict):
         ],
     }
     create_res = get_api_data(owner_session, f"{host}/api/v1/action/", method="POST", data=json.dumps(req))
-    action_id = create_res["action_id"]
     datastore.action.commit()
 
-    action: Action = datastore.action.get(action_id, as_obj=True)
+    action: Action | None = datastore.action.get(create_res["action_id"], as_obj=True)
+    assert isinstance(action, Action), f"Action {create_res['action_id']} not found in datastore."
 
     # Add user to every role except owner
-    add_action_permission_every_role(member_uname, owner_session, action_id, host, action)
+    add_action_permission_every_role(member_uname, owner_session, create_res["action_id"], host, action)
     datastore.action.commit()
 
-    action = datastore.action.get(action_id, as_obj=True)
+    action = datastore.action.get(create_res["action_id"], as_obj=True)
     for membership in ("admins", "members"):
         assert member_uname in getattr(action, membership)
 
     # Remove user from every role except owner
-    remove_action_permission_every_role(member_uname, owner_session, action_id, host, action)
+    remove_action_permission_every_role(member_uname, owner_session, create_res["action_id"], host, action)
     datastore.action.commit()
 
     # Owner should be able to modify the action
-    modifying_action(member_requesting=owner_session, action_id=action_id, host=host)
+    modifying_action(member_requesting=owner_session, action_id=create_res["action_id"], host=host)
     datastore.action.commit()
 
-    action = datastore.action.get(action_id, as_obj=True)
+    action = datastore.action.get(create_res["action_id"], as_obj=True)
     assert action.name == "renamed_action"
 
     # Transfer ownership
