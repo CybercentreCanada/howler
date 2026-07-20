@@ -32,6 +32,7 @@
 - **Action Execution Queue** *(improvement)*: Added a queue and worker for action execution to limit Elasticsearch query pressure and improve action-service reliability ([#385](https://github.com/CybercentreCanada/howler/pull/385)).
 - **Action Runner Roles** *(new feature)*: Added granular roles that control which users may execute actions ([#316](https://github.com/CybercentreCanada/howler/pull/316)).
 - **Index Lifecycle Management Support** *(new feature)*: Added configuration and datastore support for ILM, including lifecycle settings, improved collection handling, and integration coverage ([#386](https://github.com/CybercentreCanada/howler/pull/386)).
+- **ILM Index Scope** *(bugfix)*: Disabled ILM by default for non-telemetry indices and added per-index opt-out support.
 - **Reindexing Improvements** *(improvement)*: Refactored the reindexing process for more reliable index and mapping operations ([#416](https://github.com/CybercentreCanada/howler/pull/416)).
 - **Stale Analytics Cleanup** *(new feature)*: Added a scheduled job to remove analytics that no longer have matching hits ([#353](https://github.com/CybercentreCanada/howler/pull/353)).
 - **Redis Resiliency and Health Checks** *(improvement)*: Upgraded Redis handling, added connection resiliency, and exposed Redis ping status through the health endpoint ([#428](https://github.com/CybercentreCanada/howler/pull/428), [#427](https://github.com/CybercentreCanada/howler/pull/427)).
