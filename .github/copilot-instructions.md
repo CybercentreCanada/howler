@@ -302,6 +302,7 @@ When both of the following are true:
 ### Case Rules: `expire_after_resolved` Requires `timeframe`
 
 When creating or updating case correlation rules, reject configurations where:
+
 - `timeframe` is `None` (no expiry), and
 - `expire_after_resolved` is `True`.
 
@@ -356,7 +357,7 @@ Vitest/testing-library queries that target elements by test ID (e.g. `getByTestI
 
 ```ts
 // vite.config.ts (test section)
-testIdAttribute: 'id'
+testIdAttribute: "id";
 ```
 
 Always set `id="..."` on elements you need to query by test ID. Do not use `data-testid`.
@@ -388,10 +389,12 @@ Restore real timers in `afterEach` when a test enables fake timers.
 The correct test command for the API is `poetry run test <path>` (not `pytest` directly), run from the `api/` directory.
 
 If you need to run only a subset of tests from a file (e.g. `-k facet`), use direct pytest invocation:
+
 ```bash
 cd api
 poetry run pytest -k <expr> <path>
 ```
+
 The wrapper command `poetry run test <path>` may still execute the full file even when selector flags are provided.
 
 ---
@@ -430,3 +433,13 @@ When updating the Python client, avoid value/path-based delete/rename payloads a
 For legacy collections, pass the collection alias through the `aliases` argument to `indices.create`. Creating the hot index and adding its alias in separate calls lets concurrent writes auto-create a concrete index with the alias name, which prevents alias creation.
 
 ---
+
+### Case Websocket Listeners: Keys Must Be Per Consumer
+
+`SocketProvider.addListener` replaces an existing listener with the same key. Case views can mount several `useCase` consumers for one case (viewer, dashboard, and details), so each hook instance must include a stable per-instance identifier in its listener key. A key based only on the case ID causes later consumers to silently remove earlier subscriptions.
+
+---
+
+### React Testing Library: Do Not Wrap `userEvent` in `act`
+
+`userEvent` already manages React updates through Testing Library. Wrapping awaited `userEvent` calls in `act` conflicts with its async wrapper, which temporarily disables `IS_REACT_ACT_ENVIRONMENT`, and produces `The current testing environment is not configured to support act(...)` warnings. Await `userEvent` calls directly; reserve `act` for direct state-changing operations that Testing Library does not wrap.

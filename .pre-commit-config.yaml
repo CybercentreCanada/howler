@@ -56,7 +56,7 @@ repos:
         files: ^plugins/sentinel/.*\.(toml|lock)
       - id: oxlint
         name: Run oxlint
-        entry: ui/build_scripts/oxlint.sh
+        entry: hooks/oxlint.sh
         language: script
         stages: [pre-commit]
         files: ^ui/.*

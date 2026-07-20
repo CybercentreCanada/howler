@@ -7,13 +7,25 @@ import { useTranslation } from 'react-i18next';
 import Throttler from 'utils/Throttler';
 import { hashCode } from 'utils/utils';
 import Markdown, { type MarkdownProps } from '../display/Markdown';
-import { useHelpers } from './handlebars/helpers';
+import { HowlerHelperError, useHelpers } from './handlebars/helpers';
 
 type HandlebarsInstance = typeof Handlebars;
 
 interface HandlebarsMarkdownProps extends MarkdownProps {
   object?: { [index: string]: any };
   disableLinks?: boolean;
+}
+
+class HowlerHandlebarsRenderError extends Error {
+  helper: string;
+  hint?: string;
+
+  constructor(message: string, helper: string, hint?: string) {
+    super(Handlebars.escapeExpression(message));
+    this.name = 'HowlerHandlebarsRenderError';
+    this.helper = Handlebars.escapeExpression(helper);
+    this.hint = hint ? Handlebars.escapeExpression(hint) : undefined;
+  }
 }
 
 const THROTTLER = new Throttler(500);
@@ -39,7 +51,7 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
       }
 
       const props = Object.entries(hash)
-        .map(([key, val]) => `${key}="${val}"`)
+        .map(([key, val]: [string, string]) => `${key}="${val}"`)
         .join(' ');
 
       return new Handlebars.SafeString(`<img ${props} >`);
@@ -71,8 +83,22 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
 
           return new Handlebars.SafeString(`\`${id}\``);
         }
-
-        return helper.callback(...args);
+        try {
+          const result = helper.callback(...args);
+          return result instanceof Promise
+            ? result.catch(err => {
+                if (err instanceof HowlerHelperError) {
+                  throw new HowlerHandlebarsRenderError(err.message, helper.keyword, helper.hint);
+                }
+                throw err;
+              })
+            : result;
+        } catch (err) {
+          if (err instanceof HowlerHelperError) {
+            throw new HowlerHandlebarsRenderError(err.message, helper.keyword, helper.hint);
+          }
+          throw err;
+        }
       });
     });
   }, [handlebars, helpers, mdComponents]);
@@ -94,6 +120,15 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
           );
 
           setRendered(compiled(object));
+          return;
+        }
+
+        if (err instanceof HowlerHandlebarsRenderError) {
+          setRendered(`
+<h2 style="color: red">${t('markdown.error')}</h2>
+<span style="color: red; font-weight: bold; font-family: monospace;">Invalid Usage [${err.helper}]: ${err.message}</span>
+${err.hint ? `<br/><span style="color: gray; font-family: monospace;">${err.hint}</span>` : ''}
+          `);
           return;
         }
 
