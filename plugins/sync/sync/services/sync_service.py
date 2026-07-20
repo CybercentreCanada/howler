@@ -5,16 +5,30 @@ from howler.common.loader import datastore
 LUCENE_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S"
 
 
-def get_upserted_hits(data_interval_start: datetime | None = None, data_interval_end: datetime | None = None):
+def get_upserted_hits(
+    data_interval_start: datetime | None = None,
+    data_interval_end: datetime | None = None,
+    deep_paging_id: str | None = None,
+    offset: int = 0,
+    rows: int | None = None,
+    timeout: int | None = None,
+):
     """Get the hits that have been created or updated within the specified time interval."""
     storage = datastore()
 
     range_query = _range_query_from_interval(data_interval_start, data_interval_end)
     query = f"timestamp:{range_query} OR howler.log.timestamp:{range_query}"
 
-    res = storage.hit.search(query=query)
+    res = storage.hit.search(
+        query=query,
+        deep_paging_id=deep_paging_id,
+        offset=offset,
+        rows=rows,
+        timeout=timeout,
+        as_obj=False,
+    )
 
-    return res["items"] if res else []
+    return res
 
 
 def _range_query_from_interval(data_interval_start: datetime | None, data_interval_end: datetime | None) -> str:

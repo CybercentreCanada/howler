@@ -1,5 +1,7 @@
 from datetime import datetime
+from typing import Any
 
+from flask import request
 from howler.api import make_subapi_blueprint, ok
 from howler.api.v1.utils.params import parse_parameters
 from howler.common.logging import get_logger
@@ -22,24 +24,39 @@ def get_upserted_hits(*, from_date: str, to_date: str | None = None, **_extra_ar
     """Get the hits that have been created or updated since the last sync.
 
     Arguments:
-    from_date   => The date to check for new or updated hits since, required.
+    from_date       =>   The date to check for new or updated hits since, required.
 
     Optional Arguments:
-    to_date     => The date beyond which to ignore any new or updated hits.
+    to_date         =>   The date beyond which to ignore any new or updated hits.
+    deep_paging_id  =>   ID of the next page or * to start deep paging
+    offset          =>   Offset in the results
+    rows            =>   Number of results per page
+    timeout         =>   Maximum execution time (ms)
 
     Result Example:
-    [
-        ...hits  # list of hits that have been created or updated since the last sync
-    ]
+    {
+        "total": 201,                          # Total results found, not accurate if more than 10000
+        "offset": 0,                           # Offset in the result list
+        "rows": 100,                           # Number of results returned
+        "next_deep_paging_id": "asX3f...342",  # ID to pass back for the next page during deep paging
+        "items": [
+            ...hits  # list of hits that have been created or updated since the last sync
+        ]
+    }
     """
+    # don't use parse_parameters because we don't want to forward None if the parameter is not present
+    search_params = [("deep_paging_id", str), ("offset", int), ("rows", int), ("timeout", int)]
+    search_args: dict[str, Any] = {
+        param: request.args.get(param, type=type_cast)
+        for param, type_cast in search_params
+        if request.args.get(param) is not None
+    }
+
     last_sync_time = datetime.fromisoformat(from_date)
     optional_end_time = datetime.fromisoformat(to_date) if to_date else None
 
-    hits = [
-        hit.json()
-        for hit in sync_service.get_upserted_hits(
-            data_interval_start=last_sync_time, data_interval_end=optional_end_time
-        )
-    ]
+    res = sync_service.get_upserted_hits(
+        data_interval_start=last_sync_time, data_interval_end=optional_end_time, **search_args
+    )
 
-    return ok(hits)
+    return ok(res)
