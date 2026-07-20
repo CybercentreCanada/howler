@@ -16,7 +16,7 @@ def request_context():
 
 
 def _auth_user():
-    return {"uname": "admin", "type": ["admin", "user"], "api_quota": 1000}
+    return {"uname": "admin", "type": ["admin", "user", "automation_basic"], "api_quota": 1000}
 
 
 @patch("howler.security.auth_service.basic_auth")

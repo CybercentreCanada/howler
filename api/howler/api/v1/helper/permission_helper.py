@@ -92,11 +92,14 @@ def give_multi_privilege(
     if not isinstance(j_request, dict):
         return bad_request(err="Invalid data format")
 
-    if "privilege" not in j_request or "user_id" not in j_request:
-        return bad_request(err="Missing required keys: 'privilege' and 'user_id' are required.")
+    privilege = j_request.get("privilege")
+    user_ids = j_request.get("user_id")
 
-    if not isinstance(j_request["user_id"], list) or len(j_request["user_id"]) == 0:
+    if not isinstance(privilege, str) or not privilege or not isinstance(user_ids, list) or len(user_ids) == 0:
         return bad_request(err="The key 'user_id' must be a non-empty list.")
+
+    if any(not isinstance(user_id, str) or not user_id.strip() for user_id in user_ids):
+        return bad_request(err="Each value in 'user_id' must be a non-empty string.")
 
     storage = datastore()
     result = storage[object_type.__name__.lower()].get_if_exists(str(id), as_obj=True)
@@ -110,9 +113,9 @@ def give_multi_privilege(
         )
 
     any_success = False
-    for user_id in j_request["user_id"]:
+    for user_id in user_ids:
         try:
-            success, result = permission_service.set_privilege(j_request["privilege"], user_id, result, user)
+            success, result = permission_service.set_privilege(privilege, user_id.strip(), result, user)
         except HowlerInvalidPermissionException as e:
             return forbidden(err=e.message)
         except InvalidDataException as e:

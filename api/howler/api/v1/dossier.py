@@ -279,10 +279,26 @@ def give_privilege(id: str, user: User, **kwargs):
 def give_multi_privilege(id: str, user: User, **kwargs):
     """Give the same privilege to multiple users in a single request.
 
+    Variables:
+        id => The unique ID of the dossier embedded in the URL path
+
+    Arguments:
+        id: The id of the dossier to modify permissions for
+        user: The user making the request (injected by the api_login decorator)
+
+    Optional Arguments:
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
+
     Data Block:
     {
         "privilege": "privilege to give",  # [members, admins, owner]
         "user_id": ["user1", "user2"]
+    }
+
+    Result Example:
+    {
+        "success": True
     }
     """
     return permission_helper.give_multi_privilege(id, user, Dossier, request.json, refresh=kwargs.get("refresh"))

@@ -205,12 +205,8 @@ def update_view(view_id: str, user: User, **kwargs):
 
     if existing_view.type == "personal" and existing_view.owner != user.uname:
         return forbidden(err="You cannot update a personal view that is not owned by you.")
-    is_member = (
-        existing_view.owner != user.uname
-        or user.uname not in existing_view.admins
-        or user.uname not in existing_view.members
-    )
-    if existing_view.type == "global" and is_member and "admin" not in user.type:
+    is_member = user.uname in ([existing_view.owner] + existing_view.admins + existing_view.members)
+    if existing_view.type == "global" and not is_member and "admin" not in user.type:
         return forbidden(err="Only the owner of a view and administrators can edit a global view.")
 
     new_view = View(cast(dict, merge({}, existing_view.as_primitives(), new_data)))
