@@ -127,7 +127,4 @@
       "packageManager": "ms-python.python:poetry"
     }
   ],
-  "chat.tools.terminal.autoApprove": {
-    "git remote": true
-  }
 }

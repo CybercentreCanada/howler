@@ -6,9 +6,7 @@ import howler.actions as actions
 from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
 from howler.api.v1.helper import permission_helper
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
-from howler.common.exceptions import (
-    HowlerException,
-)
+from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
 from howler.common.logging.audit import audit
 from howler.common.swagger import generate_swagger_docs
@@ -60,7 +58,7 @@ def add_action(user: User, **kwargs) -> Response:
     None
 
     Optional Arguments:
-    None
+        refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
 
     Data Block:
     {
@@ -115,7 +113,7 @@ def update_action(id: str, user: User, **kwargs) -> Response:
     id  => id of the action to update
 
     Optional Arguments:
-    None
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
 
     Data Block:
     {
@@ -187,7 +185,7 @@ def delete_action(id: str, user: User, **kwargs) -> Response:
     id  => The id of the action to delete
 
     Optional Arguments:
-    None
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
 
     Result Example:
     None
