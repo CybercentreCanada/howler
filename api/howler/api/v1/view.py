@@ -8,8 +8,6 @@ from howler.api.v1.helper import permission_helper
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import (
     HowlerException,
-    HowlerInvalidParameterException,
-    InvalidDataException,
 )
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -56,6 +54,7 @@ def get_views(user: User, **kwargs):
 @generate_swagger_docs()
 @view_api.route("/", methods=["POST"])
 @api_login(required_priv=["R", "W"])
+@parse_parameters(refresh=parse_refresh)
 def create_view(**kwargs):
     """Create a new view
 
@@ -78,10 +77,7 @@ def create_view(**kwargs):
     }
     """
     view_data = request.json
-    try:
-        refresh = parse_refresh(request.args.get("refresh"))
-    except HowlerInvalidParameterException as e:
-        return bad_request(err=str(e))
+    refresh = kwargs.get("refresh")
 
     if not isinstance(view_data, dict):
         return bad_request(err="Invalid data format")
@@ -123,6 +119,7 @@ def create_view(**kwargs):
 @generate_swagger_docs()
 @view_api.route("/<view_id>", methods=["DELETE"])
 @api_login(required_priv=["W"])
+@parse_parameters(refresh=parse_refresh)
 def delete_view(view_id: str, user: User, **kwargs):
     """Delete a view
 
@@ -141,10 +138,7 @@ def delete_view(view_id: str, user: User, **kwargs):
     }
     """
     storage = datastore()
-    try:
-        refresh = parse_refresh(request.args.get("refresh"))
-    except (InvalidDataException, ValueError) as e:
-        return bad_request(err=f"Invalid refresh parameter: {str(e)}")
+    refresh = kwargs.get("refresh")
 
     existing_view: View = storage.view.get_if_exists(view_id)
 

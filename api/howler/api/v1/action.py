@@ -1,5 +1,4 @@
 import json
-from typing import Literal, cast
 
 from flask import Response, request
 
@@ -9,7 +8,6 @@ from howler.api.v1.helper import permission_helper
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import (
     HowlerException,
-    HowlerInvalidParameterException,
 )
 from howler.common.loader import datastore
 from howler.common.logging.audit import audit
@@ -54,7 +52,8 @@ def get_actions(**_) -> Response:
 @generate_swagger_docs()
 @action_api.route("/", methods=["POST"])
 @api_login(audit=False, check_xsrf_token=False, required_type=["admin", "automation_basic", "automation_advanced"])
-def add_action(user: User, **_) -> Response:
+@parse_parameters(refresh=parse_refresh)
+def add_action(user: User, **kwargs) -> Response:
     """Create a new action
 
     Variables:
@@ -80,13 +79,8 @@ def add_action(user: User, **_) -> Response:
         ...action   # The saved action data
     }
     """
-    try:
-        refresh = parse_refresh(request.args.get("refresh"))
-    except HowlerInvalidParameterException as e:
-        return bad_request(err=str(e))
-
+    refresh = kwargs.get("refresh")
     new_action = request.json
-    refresh = cast(Literal["true", "false", "wait_for"] | None, refresh)
     if new_action is None:
         return bad_request(err="You must specify an action")
 
@@ -113,7 +107,8 @@ def add_action(user: User, **_) -> Response:
     check_xsrf_token=False,
     required_type=["admin", "automation_basic", "automation_advanced"],
 )
-def update_action(id: str, user: User, **_) -> Response:
+@parse_parameters(refresh=parse_refresh)
+def update_action(id: str, user: User, **kwargs) -> Response:
     """Update an existing action
 
     Variables:
@@ -140,11 +135,7 @@ def update_action(id: str, user: User, **_) -> Response:
     }
     """
     updated_action = request.json
-    try:
-        refresh = parse_refresh(request.args.get("refresh"))
-    except HowlerInvalidParameterException as e:
-        return bad_request(err=str(e))
-    refresh = cast(Literal["true", "false", "wait_for"] | None, refresh)
+    refresh = kwargs.get("refresh")
 
     if not isinstance(updated_action, dict):
         return bad_request(err="Incorrect data structure!")
@@ -188,6 +179,7 @@ def update_action(id: str, user: User, **_) -> Response:
 @generate_swagger_docs()
 @action_api.route("/<id>", methods=["DELETE"])
 @api_login(audit=True, check_xsrf_token=False, required_type=["admin", "automation_basic", "automation_advanced"])
+@parse_parameters(refresh=parse_refresh)
 def delete_action(id: str, user: User, **kwargs) -> Response:
     """Delete an existing action
 
@@ -203,11 +195,7 @@ def delete_action(id: str, user: User, **kwargs) -> Response:
     ds = datastore()
 
     result = ds.action.search(f"action_id:{id}", rows=1)
-
-    try:
-        refresh = parse_refresh(request.args.get("refresh"))
-    except HowlerInvalidParameterException as e:
-        return bad_request(err=str(e))
+    refresh = kwargs.get("refresh")
 
     if not result["total"]:
         return not_found(err="Action does not exist")
