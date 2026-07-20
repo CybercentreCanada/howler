@@ -1,4 +1,5 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
+import { createElement } from 'react';
 import { createMockCase } from 'tests/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -57,6 +58,20 @@ const renderUseCaseHook = (args: Parameters<typeof useCase>[0]) => {
   return renderHook(() => useCase(args));
 };
 
+const CaseConsumers = ({ case: providedCase }: { case: ReturnType<typeof createMockCase> }) => {
+  const sidebarCase = useCase({ case: providedCase });
+  const dashboardCase = useCase({ case: providedCase });
+  const detailsCase = useCase({ case: providedCase });
+
+  return createElement(
+    'div',
+    null,
+    createElement('span', { id: 'sidebar-case-title' }, sidebarCase.case.title),
+    createElement('span', { id: 'dashboard-case-title' }, dashboardCase.case.title),
+    createElement('span', { id: 'details-case-title' }, detailsCase.case.title)
+  );
+};
+
 // ---------------------------------------------------------------------------
 // Setup
 // ---------------------------------------------------------------------------
@@ -97,11 +112,11 @@ describe('useCase', () => {
   });
 
   describe('socket listener', () => {
-    it('registers a listener keyed by case ID', () => {
+    it('registers a listener keyed by case ID and hook instance', () => {
       const mockCase = createMockCase({ case_id: 'c3' });
       renderUseCaseHook({ case: mockCase });
 
-      expect(mockAddListener).toHaveBeenCalledWith('case-update-c3', expect.any(Function));
+      expect(mockAddListener).toHaveBeenCalledWith(expect.stringMatching(/^case-update-c3-/), expect.any(Function));
     });
 
     it('updates state when a matching case update is received', () => {
@@ -170,7 +185,33 @@ describe('useCase', () => {
 
       unmount();
 
-      expect(mockRemoveListener).toHaveBeenCalledWith('case-update-c7');
+      expect(mockRemoveListener).toHaveBeenCalledWith(expect.stringMatching(/^case-update-c7-/));
+    });
+
+    it('updates every concurrent case consumer for the same case', () => {
+      const mockCase = createMockCase({ case_id: 'c8', title: 'Original' });
+      render(createElement(CaseConsumers, { case: mockCase }));
+
+      const listenerKeys = mockAddListener.mock.calls.map(([key]) => key);
+      expect(listenerKeys).toHaveLength(3);
+      expect([...new Set(listenerKeys)]).toHaveLength(3);
+
+      const updatedCase = createMockCase({ case_id: 'c8', title: 'Updated via socket' });
+      act(() => {
+        mockAddListener.mock.calls.forEach(([, listener]) => {
+          listener({
+            type: 'cases',
+            case: updatedCase,
+            error: false,
+            message: '',
+            status: 200
+          });
+        });
+      });
+
+      expect(screen.getByTestId('sidebar-case-title')).toHaveTextContent('Updated via socket');
+      expect(screen.getByTestId('dashboard-case-title')).toHaveTextContent('Updated via socket');
+      expect(screen.getByTestId('details-case-title')).toHaveTextContent('Updated via socket');
     });
   });
 });
