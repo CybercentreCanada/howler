@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -97,9 +97,7 @@ describe('CreateRuleDialog', () => {
 
     render(<CreateRuleDialog {...defaultProps} />);
 
-    await act(async () => {
-      await user.type(screen.getByTestId('rule-query-editor'), 'event.kind:alert');
-    });
+    await user.type(screen.getByTestId('rule-query-editor'), 'event.kind:alert');
 
     expect(screen.getByTestId('rule-submit-button')).toBeDisabled();
   });
@@ -111,17 +109,11 @@ describe('CreateRuleDialog', () => {
 
     render(<CreateRuleDialog {...defaultProps} />);
 
-    await act(async () => {
-      await user.type(screen.getByTestId('rule-query-editor'), 'event.kind:alert');
-    });
+    await user.type(screen.getByTestId('rule-query-editor'), 'event.kind:alert');
 
-    await act(async () => {
-      await user.click(screen.getByTestId('rule-search-button'));
-    });
+    await user.click(screen.getByTestId('rule-search-button'));
 
-    await act(async () => {
-      await user.type(screen.getByTestId('rule-destination-input'), 'alerts/incoming');
-    });
+    await user.type(screen.getByTestId('rule-destination-input'), 'alerts/incoming');
 
     await waitFor(() => {
       expect(screen.getByTestId('rule-submit-button')).not.toBeDisabled();
@@ -136,21 +128,13 @@ describe('CreateRuleDialog', () => {
 
     render(<CreateRuleDialog {...defaultProps} onSubmit={onSubmit} />);
 
-    await act(async () => {
-      await user.type(screen.getByTestId('rule-query-editor'), 'event.kind:alert');
-    });
+    await user.type(screen.getByTestId('rule-query-editor'), 'event.kind:alert');
 
-    await act(async () => {
-      await user.click(screen.getByTestId('rule-search-button'));
-    });
+    await user.click(screen.getByTestId('rule-search-button'));
 
-    await act(async () => {
-      await user.type(screen.getByTestId('rule-destination-input'), 'alerts/incoming');
-    });
+    await user.type(screen.getByTestId('rule-destination-input'), 'alerts/incoming');
 
-    await act(async () => {
-      await user.click(screen.getByTestId('rule-submit-button'));
-    });
+    await user.click(screen.getByTestId('rule-submit-button'));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
@@ -169,9 +153,7 @@ describe('CreateRuleDialog', () => {
 
     render(<CreateRuleDialog {...defaultProps} onClose={onClose} />);
 
-    await act(async () => {
-      await user.click(screen.getByText('cancel'));
-    });
+    await user.click(screen.getByText('cancel'));
 
     expect(onClose).toHaveBeenCalled();
   });
@@ -183,13 +165,9 @@ describe('CreateRuleDialog', () => {
 
     render(<CreateRuleDialog {...defaultProps} />);
 
-    await act(async () => {
-      await user.type(screen.getByTestId('rule-query-editor'), 'event.kind:alert');
-    });
+    await user.type(screen.getByTestId('rule-query-editor'), 'event.kind:alert');
 
-    await act(async () => {
-      await user.click(screen.getByTestId('rule-search-button'));
-    });
+    await user.click(screen.getByTestId('rule-search-button'));
 
     await waitFor(() => {
       expect(screen.getByTestId('query-result-text')).toBeInTheDocument();
@@ -212,21 +190,13 @@ describe('CreateRuleDialog', () => {
 
     render(<CreateRuleDialog {...defaultProps} onSubmit={onSubmit} />);
 
-    await act(async () => {
-      await user.type(screen.getByTestId('rule-query-editor'), 'event.kind:alert');
-    });
+    await user.type(screen.getByTestId('rule-query-editor'), 'event.kind:alert');
 
-    await act(async () => {
-      await user.click(screen.getByTestId('rule-search-button'));
-    });
+    await user.click(screen.getByTestId('rule-search-button'));
 
-    await act(async () => {
-      await user.type(screen.getByTestId('rule-destination-input'), 'alerts/incoming');
-    });
+    await user.type(screen.getByTestId('rule-destination-input'), 'alerts/incoming');
 
-    await act(async () => {
-      await user.click(screen.getByTestId('rule-submit-button'));
-    });
+    await user.click(screen.getByTestId('rule-submit-button'));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
@@ -245,25 +215,15 @@ describe('CreateRuleDialog', () => {
 
     render(<CreateRuleDialog {...defaultProps} onSubmit={onSubmit} />);
 
-    await act(async () => {
-      await user.click(screen.getByTestId('rule-no-expiry-checkbox'));
-    });
+    await user.click(screen.getByTestId('rule-no-expiry-checkbox'));
 
-    await act(async () => {
-      await user.type(screen.getByTestId('rule-query-editor'), 'event.kind:alert');
-    });
+    await user.type(screen.getByTestId('rule-query-editor'), 'event.kind:alert');
 
-    await act(async () => {
-      await user.click(screen.getByTestId('rule-search-button'));
-    });
+    await user.click(screen.getByTestId('rule-search-button'));
 
-    await act(async () => {
-      await user.type(screen.getByTestId('rule-destination-input'), 'alerts/incoming');
-    });
+    await user.type(screen.getByTestId('rule-destination-input'), 'alerts/incoming');
 
-    await act(async () => {
-      await user.click(screen.getByTestId('rule-submit-button'));
-    });
+    await user.click(screen.getByTestId('rule-submit-button'));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
@@ -284,25 +244,15 @@ describe('CreateRuleDialog', () => {
 
     render(<CreateRuleDialog {...defaultProps} onSubmit={onSubmit} />);
 
-    await act(async () => {
-      await user.click(screen.getByTestId('rule-expire-after-resolved'));
-    });
+    await user.click(screen.getByTestId('rule-expire-after-resolved'));
 
-    await act(async () => {
-      await user.type(screen.getByTestId('rule-query-editor'), 'event.kind:alert');
-    });
+    await user.type(screen.getByTestId('rule-query-editor'), 'event.kind:alert');
 
-    await act(async () => {
-      await user.click(screen.getByTestId('rule-search-button'));
-    });
+    await user.click(screen.getByTestId('rule-search-button'));
 
-    await act(async () => {
-      await user.type(screen.getByTestId('rule-destination-input'), 'alerts/incoming');
-    });
+    await user.type(screen.getByTestId('rule-destination-input'), 'alerts/incoming');
 
-    await act(async () => {
-      await user.click(screen.getByTestId('rule-submit-button'));
-    });
+    await user.click(screen.getByTestId('rule-submit-button'));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
@@ -332,29 +282,17 @@ describe('CreateRuleDialog', () => {
     render(<CreateRuleDialog {...defaultProps} onSubmit={onSubmit} />);
 
     // Open the index Autocomplete and select 'event'
-    await act(async () => {
-      await user.click(screen.getByRole('combobox'));
-    });
+    await user.click(screen.getByRole('combobox'));
 
-    await act(async () => {
-      await user.click(screen.getByRole('option', { name: 'hit.search.index.event' }));
-    });
+    await user.click(screen.getByRole('option', { name: 'hit.search.index.event' }));
 
-    await act(async () => {
-      await user.type(screen.getByTestId('rule-query-editor'), 'event.kind:alert');
-    });
+    await user.type(screen.getByTestId('rule-query-editor'), 'event.kind:alert');
 
-    await act(async () => {
-      await user.click(screen.getByTestId('rule-search-button'));
-    });
+    await user.click(screen.getByTestId('rule-search-button'));
 
-    await act(async () => {
-      await user.type(screen.getByTestId('rule-destination-input'), 'alerts/incoming');
-    });
+    await user.type(screen.getByTestId('rule-destination-input'), 'alerts/incoming');
 
-    await act(async () => {
-      await user.click(screen.getByTestId('rule-submit-button'));
-    });
+    await user.click(screen.getByTestId('rule-submit-button'));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
@@ -371,13 +309,9 @@ describe('CreateRuleDialog', () => {
     render(<CreateRuleDialog {...defaultProps} />);
 
     // 'hit' is selected by default; open the dropdown and try to deselect it
-    await act(async () => {
-      await user.click(screen.getByRole('combobox'));
-    });
+    await user.click(screen.getByRole('combobox'));
 
-    await act(async () => {
-      await user.click(screen.getByRole('option', { name: 'hit.search.index.hit' }));
-    });
+    await user.click(screen.getByRole('option', { name: 'hit.search.index.hit' }));
 
     // 'hit' should still be selected because deselecting the last index is prevented
     expect(screen.getAllByText('hit.search.index.hit').length).toBeGreaterThan(0);

@@ -361,11 +361,9 @@ describe('QuerySettings', () => {
 
       const addFilterButton = screen.getByLabelText(i18n.t('hit.search.filter.add'));
 
-      await act(async () => {
-        await user.click(addFilterButton);
-        await user.click(addFilterButton);
-        await user.click(addFilterButton);
-      });
+      await user.click(addFilterButton);
+      await user.click(addFilterButton);
+      await user.click(addFilterButton);
 
       expect(mockAddFilter).toHaveBeenCalledTimes(3);
       expect(mockAddFilter).toHaveBeenCalledWith('howler.assessment:*');
