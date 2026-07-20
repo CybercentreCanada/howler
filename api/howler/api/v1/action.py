@@ -140,9 +140,7 @@ def update_action(id: str, user: User, **_) -> Response:
     """
     updated_action = request.json
     try:
-        refresh: Literal["true", "false", "wait_for"] | None | HowlerException = parse_refresh(
-            request.args.get("refresh")
-        )
+        refresh = parse_refresh(request.args.get("refresh"))
     except HowlerInvalidParameterException as e:
         return bad_request(err=str(e))
     refresh = cast(Literal["true", "false", "wait_for"] | None, refresh)
