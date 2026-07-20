@@ -180,6 +180,10 @@ describe('CaseViewer', () => {
       expect(mockAddListener).toHaveBeenCalledOnce();
     });
 
+    await waitFor(() => {
+      expect(screen.getByTestId('case-sidebar')).toHaveTextContent('Original title');
+    });
+
     act(() => {
       mockAddListener.mock.calls[0][1]({
         type: 'cases',

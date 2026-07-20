@@ -58,7 +58,7 @@ const useCase: (args: CaseArguments) => CaseResult = ({ caseId, case: providedCa
     return () => {
       removeListener(listenerKey);
     };
-  }, [activeCaseId, addListener, removeListener]);
+  }, [activeCaseId, addListener, listenerId, removeListener]);
 
   const update = useCallback(
     async (_updatedCase: Partial<Case>, publish = true) => {
