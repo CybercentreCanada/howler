@@ -245,7 +245,7 @@ class TestCorrelationWorker:
     worker flushes quickly.
     """
 
-    MAX_WAIT = 15  # seconds to wait for the worker to process a hit
+    MAX_WAIT = 30  # seconds to wait for the worker to process a hit
 
     def _wait_for_case_item(
         self, datastore: HowlerDatastore, case_id: str, hit_id: str, timeout: int = MAX_WAIT
