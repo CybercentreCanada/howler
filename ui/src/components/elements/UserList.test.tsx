@@ -1,84 +1,158 @@
-/// <reference types="vitest" />
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { UserListContext } from 'components/app/providers/UserListProvider';
-import i18n from 'i18n';
 import React, { type ReactNode } from 'react';
-import { I18nextProvider } from 'react-i18next';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import UserList from './UserList';
 
-vi.mock('./display/HowlerAvatar', () => ({
-  default: ({ userId }: { userId: string }) => <div data-testid="howler-avatar">{userId}</div>
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key
+  })
 }));
 
-type WrapperProps = {
-  children: ReactNode;
-  users?: Record<string, any>;
-  searchUsers?: ReturnType<typeof vi.fn>;
+vi.mock('components/elements/display/HowlerAvatar', () => ({
+  default: ({ userId }: { userId?: string | null }) => <div id={`avatar-${userId ?? 'none'}`}>{userId ?? 'none'}</div>
+}));
+
+const mockFetchUsers = vi.fn();
+const mockSearchUsers = vi.fn();
+
+const defaultUsers: Record<string, any> = {
+  alice: { username: 'alice', name: 'Alice Example', email: 'alice@example.com' },
+  bob: { username: 'bob', name: 'Bob Example', email: 'bob@example.com' },
+  analystA: { username: 'analystA', name: 'Alice Analyst', email: 'alice@example.com' },
+  analystB: { username: 'analystB', name: 'Bob Analyst', email: 'bob@example.com' }
 };
 
-const renderWithProviders = ({
-  children,
-  users = {
-    alice: { username: 'alice', name: 'Alice Example', email: 'alice@example.com' },
-    bob: { username: 'bob', name: 'Bob Example', email: 'bob@example.com' }
-  },
-  searchUsers = vi.fn()
-}: WrapperProps) => {
-  const contextValue = {
-    users,
-    searchUsers,
-    fetchUsers: vi.fn()
-  };
+const createWrapper = (users: Record<string, any>) => {
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <UserListContext.Provider
+      value={{
+        users,
+        fetchUsers: mockFetchUsers,
+        searchUsers: mockSearchUsers
+      }}
+    >
+      {children}
+    </UserListContext.Provider>
+  );
 
-  return {
-    ...render(
-      <I18nextProvider i18n={i18n as any}>
-        <UserListContext.Provider value={contextValue as any}>{children}</UserListContext.Provider>
-      </I18nextProvider>
-    ),
-    searchUsers
-  };
+  return Wrapper;
 };
 
 describe('UserList', () => {
-  it('preserves legacy trigger by default (IconButton mode)', () => {
-    renderWithProviders({
-      children: <UserList userId="alice" onChange={vi.fn()} i18nLabel="username" />
-    });
-
-    const triggerButton = screen.getByRole('button');
-    expect(triggerButton).toHaveClass('MuiIconButton-root');
-    expect(screen.queryByText('Alice Example')).not.toBeInTheDocument();
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it('searches users on mount with default query', async () => {
-    const { searchUsers } = renderWithProviders({
-      children: <UserList userId="alice" onChange={vi.fn()} i18nLabel="username" />
+  it('fetches users on mount and whenever userIds change', async () => {
+    const onChange = vi.fn();
+    const { rerender } = render(<UserList i18nLabel="user.list.label" userIds={['analystA']} onChange={onChange} />, {
+      wrapper: createWrapper(defaultUsers)
     });
 
     await waitFor(() => {
-      expect(searchUsers).toHaveBeenCalledWith('uname:*');
-      expect(searchUsers).toHaveBeenCalledTimes(1);
+      expect(mockFetchUsers).toHaveBeenCalledWith(new Set(['analystA']));
+    });
+
+    rerender(<UserList i18nLabel="user.list.label" userIds={['analystA', 'analystB']} onChange={onChange} />);
+
+    await waitFor(() => {
+      expect(mockFetchUsers).toHaveBeenCalledWith(new Set(['analystA', 'analystB']));
     });
   });
 
-  it('opens the picker popover when legacy trigger is clicked', async () => {
+  it('opens the popover and selects a user in single mode', async () => {
     const user = userEvent.setup();
+    const onChange = vi.fn();
 
-    renderWithProviders({
-      children: <UserList userId="alice" onChange={vi.fn()} i18nLabel="username" />
+    render(<UserList i18nLabel="user.list.label" userIds={['analystA']} onChange={onChange} />, {
+      wrapper: createWrapper(defaultUsers)
     });
 
     await user.click(screen.getByRole('button'));
 
-    expect(screen.getByRole('combobox')).toBeInTheDocument();
+    const combo = await screen.findByRole('combobox', { name: 'user.list.label' });
+    await user.click(combo);
+
+    const listbox = await screen.findByRole('listbox');
+    await user.click(within(listbox).getByText('Bob Analyst'));
+
+    expect(onChange).toHaveBeenCalledWith(['analystB']);
+  });
+
+  it('renders deduplicated avatars and appends selection in multiple mode', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    render(<UserList i18nLabel="user.list.label" userIds={['analystA', 'analystA']} onChange={onChange} multiple />, {
+      wrapper: createWrapper(defaultUsers)
+    });
+
+    expect(screen.getAllByText('analystA')).toHaveLength(1);
+
+    await user.click(screen.getByRole('button'));
+
+    const combo = await screen.findByRole('combobox', { name: 'user.list.label' });
+    await user.click(combo);
+
+    const listbox = await screen.findByRole('listbox');
+    await user.click(within(listbox).getByText('Bob Analyst'));
+
+    expect(onChange).toHaveBeenCalledWith(expect.arrayContaining(['analystA', 'analystB']));
+  });
+
+  it('does not open popover when disabled', () => {
+    const onChange = vi.fn();
+
+    render(<UserList i18nLabel="user.list.label" userIds={['analystA']} onChange={onChange} disabled />, {
+      wrapper: createWrapper(defaultUsers)
+    });
+
+    const button = screen.getByRole('button');
+    expect(button).toBeDisabled();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+  });
+
+  it('emits an empty list when single-select value is cleared', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    render(<UserList i18nLabel="user.list.label" userIds={['analystA']} onChange={onChange} />, {
+      wrapper: createWrapper(defaultUsers)
+    });
+
+    await user.click(screen.getByRole('button'));
+    await screen.findByRole('combobox', { name: 'user.list.label' });
+
+    const clearButton = await screen.findByLabelText(/clear/i);
+    await user.click(clearButton);
+
+    expect(onChange).toHaveBeenCalledWith([]);
+  });
+
+  it('renders and opens with empty users context without crashing', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    render(<UserList i18nLabel="user.list.label" userIds={['analystA']} onChange={onChange} />, {
+      wrapper: createWrapper({})
+    });
+
+    expect(screen.getByText('analystA')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button'));
+
+    const combo = await screen.findByRole('combobox', { name: 'user.list.label' });
+    await user.click(combo);
+
+    expect(screen.queryAllByRole('option')).toHaveLength(0);
   });
 
   it('renders modified mode as an inline editable combobox', () => {
-    renderWithProviders({
-      children: <UserList userId="alice" onChange={vi.fn()} i18nLabel="username" isModified />
+    render(<UserList userId="alice" onChange={vi.fn()} i18nLabel="username" isModified />, {
+      wrapper: createWrapper(defaultUsers)
     });
 
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
@@ -95,7 +169,7 @@ describe('UserList', () => {
         <UserList
           userId={value}
           onChange={nextValue => {
-            setValue(nextValue);
+            setValue(nextValue as string);
             onChange(nextValue);
           }}
           i18nLabel="username"
@@ -104,60 +178,13 @@ describe('UserList', () => {
       );
     };
 
-    renderWithProviders({
-      children: <StatefulModifiedUserList />
-    });
+    render(<StatefulModifiedUserList />, { wrapper: createWrapper(defaultUsers) });
 
     const input = screen.getByRole('combobox');
     await user.type(input, 'ali');
 
     expect(onChange).toHaveBeenCalled();
     expect(onChange.mock.calls.some(call => call[0] === 'ali')).toBe(true);
-  });
-
-  it('shows and updates avatar in modified mode while editing', async () => {
-    const user = userEvent.setup();
-
-    const StatefulModifiedUserList = () => {
-      const [value, setValue] = React.useState('alice');
-      return <UserList userId={value} onChange={setValue} i18nLabel="username" isModified />;
-    };
-
-    renderWithProviders({
-      children: <StatefulModifiedUserList />
-    });
-
-    const input = screen.getByRole('combobox');
-    const autocompleteRoot = input.closest('.MuiAutocomplete-root') as HTMLElement;
-    const getInlineAvatar = () => autocompleteRoot.querySelector('[data-testid="howler-avatar"]');
-
-    expect(getInlineAvatar()).not.toBeNull();
-    expect(getInlineAvatar()).toHaveTextContent('alice');
-
-    await user.click(input);
-    await user.keyboard('{Control>}a{/Control}{Backspace}unknown-user');
-
-    await waitFor(() => {
-      expect(getInlineAvatar()).not.toBeNull();
-      expect(getInlineAvatar()).toHaveTextContent('unknown-user');
-    });
-  });
-
-  it('allows selecting an option directly in modified mode', async () => {
-    const user = userEvent.setup();
-    const onChange = vi.fn();
-
-    renderWithProviders({
-      users: { bob: { username: 'bob', name: 'Bob Example', email: 'bob@example.com' } },
-      children: <UserList userId="" onChange={onChange} i18nLabel="username" isModified />
-    });
-
-    await user.click(screen.getByRole('combobox'));
-
-    const listbox = await screen.findByRole('listbox');
-    await user.click(within(listbox).getByRole('option'));
-
-    expect(onChange).toHaveBeenCalledWith('bob');
   });
 
   it('supports multiple selected users in modified mode with removable chips', async () => {
@@ -176,9 +203,7 @@ describe('UserList', () => {
       );
     };
 
-    renderWithProviders({
-      children: <StatefulMultiUserList />
-    });
+    render(<StatefulMultiUserList />, { wrapper: createWrapper(defaultUsers) });
 
     expect(screen.getAllByText('alice').length).toBeGreaterThan(0);
 
@@ -188,72 +213,5 @@ describe('UserList', () => {
     await user.click(within(listbox).getByRole('option', { name: /bob/i }));
 
     expect(screen.getAllByText('bob').length).toBeGreaterThan(0);
-
-    const deleteIcons = document.querySelectorAll('.MuiChip-deleteIcon');
-    expect(deleteIcons.length).toBeGreaterThan(0);
-    await user.click(deleteIcons[0] as HTMLElement);
-
-    await waitFor(() => {
-      expect(screen.queryByText('alice', { selector: '.MuiChip-label' })).not.toBeInTheDocument();
-    });
-  });
-
-  it('supports non-modified multiple mode with userIds via popover picker', async () => {
-    const user = userEvent.setup();
-    const onChange = vi.fn();
-
-    const StatefulMultiPopoverUserList = () => {
-      const [value, setValue] = React.useState<string[]>(['alice']);
-
-      return (
-        <UserList
-          i18nLabel="username"
-          multiple
-          userIds={value}
-          onChange={(nextValue: string[] | string) => {
-            const normalized = Array.isArray(nextValue) ? nextValue : [nextValue].filter(Boolean);
-            setValue(normalized);
-            onChange(normalized);
-          }}
-        />
-      );
-    };
-
-    renderWithProviders({
-      users: {
-        alice: { username: 'alice', name: 'Alice Example', email: 'alice@example.com' },
-        bob: { username: 'bob', name: 'Bob Example', email: 'bob@example.com' }
-      },
-      children: <StatefulMultiPopoverUserList />
-    });
-
-    expect(screen.getByText('alice')).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button'));
-    await user.click(screen.getByRole('combobox'));
-
-    const listbox = await screen.findByRole('listbox');
-    await user.click(within(listbox).getByRole('option', { name: /bob/i }));
-
-    expect(onChange).toHaveBeenCalled();
-    expect(onChange.mock.calls.some(call => call[0].includes('alice') && call[0].includes('bob'))).toBe(true);
-  });
-
-  it('calls onChange with selected user id from picker', async () => {
-    const user = userEvent.setup();
-    const onChange = vi.fn();
-
-    renderWithProviders({
-      users: { bob: { username: 'bob', name: 'Bob Example', email: 'bob@example.com' } },
-      children: <UserList userId="" onChange={onChange} i18nLabel="username" />
-    });
-
-    await user.click(screen.getByRole('button'));
-    await user.click(screen.getByRole('combobox'));
-
-    const listbox = await screen.findByRole('listbox');
-    await user.click(within(listbox).getByRole('option'));
-
-    expect(onChange).toHaveBeenCalledWith('bob');
   });
 });

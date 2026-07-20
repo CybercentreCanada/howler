@@ -1,4 +1,5 @@
 import { Typography, type TypographyProps } from '@mui/material';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
 import howlerPluginStore from 'plugins/store';
 import { memo, type FC, type ReactNode } from 'react';
@@ -8,10 +9,10 @@ export type PluginTypographyProps = TypographyProps & {
   value: string;
   context: string;
   field?: string;
-  hit?: Hit;
+  obj?: Hit | Event;
 };
 
-const PluginTypography: FC<PluginTypographyProps> = ({ children, value, context, field, hit, ...props }) => {
+const PluginTypography: FC<PluginTypographyProps> = ({ children, value, context, field, obj, ...props }) => {
   const pluginStore = usePluginStore();
   for (const plugin of howlerPluginStore.plugins) {
     const component = pluginStore.executeFunction(`${plugin}.typography`, {
@@ -19,7 +20,8 @@ const PluginTypography: FC<PluginTypographyProps> = ({ children, value, context,
       value,
       context,
       field,
-      hit,
+      hit: obj as Hit,
+      obj,
       ...props
     }) as ReactNode;
 

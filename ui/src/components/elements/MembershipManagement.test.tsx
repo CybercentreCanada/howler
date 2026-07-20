@@ -123,7 +123,11 @@ describe('MembershipManagement', () => {
           }
         });
 
-        return { ok: true };
+        return {
+          owner: entityState.owner,
+          admins: [...(entityState.admins || [])],
+          members: [...(entityState.members || [])]
+        };
       }
 
       if (request?.__op === 'delete') {

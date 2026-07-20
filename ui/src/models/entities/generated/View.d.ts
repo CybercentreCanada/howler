@@ -12,6 +12,7 @@ export interface View {
   title?: string;
   type?: string;
   view_id?: string;
+  indexes?: string[];
   admins?: string[];
   members?: string[];
 }

@@ -14,15 +14,14 @@ CLASSIFICATION = loader.get_classification(os.getenv("HWL_CLASSIFICATION_PATH", 
 
 AUDIT = config.ui.audit
 
-SECRET_KEY = config.ui.secret_key
-DEBUG = config.ui.debug
-MAX_CLASSIFICATION = CLASSIFICATION.UNRESTRICTED
+SECRET_KEY: str = config.ui.secret_key
+DEBUG: bool = config.ui.debug
+MAX_CLASSIFICATION: str = CLASSIFICATION.UNRESTRICTED
 
 HWL_UNSECURED_UI = os.environ.get("HWL_UNSECURED_UI", "false").lower() == "true"
 HWL_USE_REST_API = os.environ.get("HWL_USE_REST_API", "true").lower() == "true"
 HWL_USE_WEBSOCKET_API = os.environ.get("HWL_USE_WEBSOCKET_API", "false").lower() == "true"
 HWL_USE_JOB_SYSTEM = os.environ.get("HWL_USE_JOB_SYSTEM", "false").lower() == "true"
-HWL_ENABLE_RULES = os.environ.get("HWL_ENABLE_RULES", "false").lower() == "true"
 HWL_ENABLE_COVERAGE = os.environ.get("HWL_ENABLE_COVERAGE", "false").lower() == "true"
 HWL_PLUGIN_DIRECTORY = os.environ.get("HWL_PLUGIN_DIRECTORY", "/etc/howler/plugins")
 

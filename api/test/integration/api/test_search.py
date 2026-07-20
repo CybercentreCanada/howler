@@ -1,8 +1,8 @@
 import json
 from typing import cast
+from unittest.mock import MagicMock, patch
 
 import pytest
-from unittest.mock import MagicMock, patch
 
 from howler.datastore.collection import ESCollection
 from howler.datastore.howler_store import HowlerDatastore
@@ -22,13 +22,14 @@ from test.conftest import APIError, get_api_data
 TEST_SIZE = 10
 collections = ["user"]
 
+
 def _make_collection():
     mock_datastore = MagicMock()
-    with patch.object(ESCollection, "_ensure_collection"), \
-         patch.object(ESCollection, "_check_fields"):
+    with patch.object(ESCollection, "_ensure_collection"), patch.object(ESCollection, "_check_fields"):
         coll = ESCollection(mock_datastore, "hit")
     coll.with_retries = MagicMock(return_value={"count": 7})
     return coll
+
 
 @pytest.fixture(scope="module")
 def datastore(datastore_connection):
@@ -166,6 +167,7 @@ def test_count(datastore, login_session):
         )
         assert search_resp["total"] == count_resp["count"]
 
+
 def test_count_via_post(datastore, login_session):
     session, host = login_session
 
@@ -207,6 +209,7 @@ def test_count_with_filters_vs_total(datastore, login_session):
     assert "count" in filtered_resp
     assert filtered_resp["count"] <= total_resp["count"]
 
+
 def test_count_zero_results(datastore, login_session):
     session, host = login_session
 
@@ -219,6 +222,7 @@ def test_count_zero_results(datastore, login_session):
         )
         assert "count" in resp
         assert resp["count"] == 0
+
 
 def test_count_with_filters(datastore, login_session):
     session, host = login_session
@@ -258,6 +262,7 @@ def test_count_missing_query(datastore, login_session):
         )
     assert "400" in str(api_err)
 
+
 def test_count_invalid_index(datastore, login_session):
     session, host = login_session
 
@@ -268,6 +273,7 @@ def test_count_invalid_index(datastore, login_session):
             params={"query": "id:*"},
         )
     assert "400" in str(api_err)
+
 
 def test_count_hit_matches_search_total(datastore, login_session):
     """Count result for the hit index is consistent with the total from a full search."""
@@ -285,6 +291,7 @@ def test_count_hit_matches_search_total(datastore, login_session):
     )
     assert count_resp["count"] == search_resp["total"]
 
+
 def test_count_filters_none_becomes_empty_list():
     coll = _make_collection()
 
@@ -295,6 +302,7 @@ def test_count_filters_none_becomes_empty_list():
     _, kwargs = coll.with_retries.call_args
     assert kwargs["query"]["bool"]["filter"] == []
 
+
 def test_count_single_filter():
     coll = _make_collection()
 
@@ -302,9 +310,8 @@ def test_count_single_filter():
 
     assert result == {"count": 7}
     _, kwargs = coll.with_retries.call_args
-    assert kwargs["query"]["bool"]["filter"] == [
-        {"query_string": {"query": "howler.status:open"}}
-    ]
+    assert kwargs["query"]["bool"]["filter"] == [{"query_string": {"query": "howler.status:open"}}]
+
 
 def test_count_multiple_filters():
     coll = _make_collection()
@@ -715,9 +722,7 @@ def test_search_fl_wildcard_expands_prefix(datastore: HowlerDatastore, login_ses
     for key in item:
         if key == "id":
             continue
-        assert key == "howler" or key.startswith("howler."), (
-            f"Unexpected key {key!r} returned when fl='howler.*'"
-        )
+        assert key == "howler" or key.startswith("howler."), f"Unexpected key {key!r} returned when fl='howler.*'"
 
     # At least howler.id and howler.status should be present in the nested dict
     assert "howler" in item

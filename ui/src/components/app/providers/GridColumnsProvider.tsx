@@ -13,8 +13,8 @@ import { useParams } from 'react-router-dom';
 import { useContextSelector } from 'use-context-selector';
 import { StorageKey } from 'utils/constants';
 import { parsePixelSizeStringToInt } from 'utils/stringUtils';
-import { HitSearchContext } from './HitSearchProvider';
 import { ParameterContext } from './ParameterProvider';
+import { RecordSearchContext } from './RecordSearchProvider';
 import { ViewContext } from './ViewProvider';
 
 /**
@@ -78,7 +78,7 @@ const GridColumnsProvider = ({
   const viewIds = viewSource === 'params' ? parameterViewIds : pathViewIds;
 
   const getCurrentViews = useContextSelector(ViewContext, ctx => ctx.getCurrentViews);
-  const setDisplayType = useContextSelector(HitSearchContext, ctx => ctx.setDisplayType);
+  const setDisplayType = useContextSelector(RecordSearchContext, ctx => ctx.setDisplayType);
 
   // --- Local storage state (user's personal preferences) ---
   const [localStorageColumns, setLocalStorageColumns] = useMyLocalStorageItem(StorageKey.GRID_COLUMNS, [

@@ -38,7 +38,6 @@ INDEXES = {
 class HowlerDatastore(object):
     def __init__(self, datastore_object: "ESStore"):
         self.ds: "ESStore" = datastore_object
-        self.ds: "ESStore" = datastore_object
 
         for plugin in get_plugins():
             for _index, _odm in INDEXES.items():

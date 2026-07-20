@@ -1,6 +1,6 @@
 /* eslint-disable no-useless-escape */
 import { useMonaco } from '@monaco-editor/react';
-import { OpenInNew, PlayArrowOutlined, SsidChart } from '@mui/icons-material';
+import { OpenInNew, PlayArrowOutlined } from '@mui/icons-material';
 import {
   Alert,
   AlertTitle,
@@ -29,11 +29,9 @@ import type { HowlerGroupedSearchResponse } from 'api/search/grouped';
 import PageCenter from 'commons/components/pages/PageCenter';
 import { parseEvent } from 'commons/components/utils/keyboard';
 import { FieldContext } from 'components/app/providers/FieldProvider';
-import { ModalContext } from 'components/app/providers/ModalProvider';
 import CustomButton from 'components/elements/addons/buttons/CustomButton';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import JSONViewer from 'components/elements/display/json/JSONViewer';
-import useMySnackbar from 'components/hooks/useMySnackbar';
 import dayjs from 'dayjs';
 import type { Hit } from 'models/entities/generated/Hit';
 import {
@@ -51,7 +49,6 @@ import { Link } from 'react-router-dom';
 import { sanitizeMultilineLucene } from 'utils/stringUtils';
 import { v4 as uuid } from 'uuid';
 import QueryEditor from './QueryEditor';
-import RuleModal from './RuleModal';
 
 const QUERY_TYPES = ['eql', 'lucene', 'yaml'];
 
@@ -107,7 +104,7 @@ const LUCENE_QUERY_OPTIONS: ('default' | 'facet' | 'groupby' | 'explain')[] = [
 type SearchResponse<T> =
   | HowlerSearchResponse<T>
   | HowlerEQLSearchResponse<T>
-  | { [index: string]: HowlerFacetSearchResponse }
+  | HowlerFacetSearchResponse
   | HowlerGroupedSearchResponse<T>;
 
 const CustomPopper = (props: PopperProps) => {
@@ -121,8 +118,6 @@ const QueryBuilder: FC = () => {
   const compactLayout = useMediaQuery('(max-width:870px)');
   const monaco = useMonaco();
   const { hitFields, getHitFields } = useContext(FieldContext);
-  const { showModal } = useContext(ModalContext);
-  const { showWarningMessage } = useMySnackbar();
 
   const [type, setType] = useState<'eql' | 'lucene' | 'yaml'>('lucene');
   const [loading, setLoading] = useState(false);
@@ -222,20 +217,6 @@ const QueryBuilder: FC = () => {
     window.addEventListener('mouseup', onMouseUp);
   }, [onMouseMove, onMouseUp]);
 
-  const onCreateRule = useCallback(async () => {
-    if (!response) {
-      showWarningMessage(t('route.advanced.create.rule.disabled'));
-      return;
-    }
-
-    await new Promise<void>(res =>
-      showModal(<RuleModal onSubmit={res} fileData={query} type={type} />, {
-        maxWidth: '85vw',
-        maxHeight: '85vh'
-      })
-    );
-  }, [query, response, showModal, showWarningMessage, t, type]);
-
   const searchDisabled = useMemo(
     () => type === 'lucene' && queryType === 'groupby' && !groupByField,
     [groupByField, queryType, type]
@@ -260,19 +241,10 @@ const QueryBuilder: FC = () => {
       run: execute
     });
 
-    const ruleDisposable = monaco.editor.addEditorAction({
-      id: 'save-query',
-      label: t('route.advanced.create.rule'),
-      contextMenuGroupId: 'howler',
-      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS],
-      run: onCreateRule
-    });
-
     return () => {
       queryDisposable.dispose();
-      ruleDisposable.dispose();
     };
-  }, [execute, monaco, onCreateRule, t]);
+  }, [execute, monaco, t]);
 
   useEffect(() => {
     getHitFields();
@@ -434,7 +406,7 @@ const QueryBuilder: FC = () => {
                 values.length <= 3 ? (
                   <Stack direction="row" spacing={0.5}>
                     {values.map(_value => (
-                      <Chip size="small" key={_value} label={_value} />
+                      <Chip key={_value} label={_value} />
                     ))}
                   </Stack>
                 ) : (
@@ -447,7 +419,7 @@ const QueryBuilder: FC = () => {
                       </Stack>
                     }
                   >
-                    <Chip size="small" label={values.length} />
+                    <Chip label={values.length} />
                   </Tooltip>
                 )
               }
@@ -489,33 +461,6 @@ const QueryBuilder: FC = () => {
                 {t('route.advanced.open')}
               </CustomButton>
             ))}
-          {smallButtons ? (
-            <Tooltip title={response ? t('route.advanced.create.rule') : t('route.advanced.create.rule.disabled')}>
-              <IconButton
-                size="small"
-                sx={{ alignSelf: 'center' }}
-                color="info"
-                onClick={onCreateRule}
-                disabled={!response}
-              >
-                <SsidChart />
-              </IconButton>
-            </Tooltip>
-          ) : (
-            <CustomButton
-              size="small"
-              variant="outlined"
-              color="info"
-              startIcon={<SsidChart />}
-              onClick={onCreateRule}
-              disabled={!response}
-              // TuiButton doesn't accept this prop even through the underlying component does, so we do a hack
-              {...({ to: `/hits?query=${sanitizeMultilineLucene(query).replaceAll('\n', ' ').trim()}` } as any)}
-              tooltip={!response && t('route.advanced.create.rule.disabled')}
-            >
-              {t('route.advanced.create.rule')}
-            </CustomButton>
-          )}
         </Stack>
         <Box
           width="100%"

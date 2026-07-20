@@ -4,9 +4,10 @@ import type { Overview } from './entities/generated/Overview';
 import type { Template } from './entities/generated/Template';
 
 export type WithMetadata<T> = T & {
+  __index?: string;
+
   __analytic?: Analytic;
   __overview?: Overview;
   __template?: Template;
-
   __dossiers?: Dossier[];
 };

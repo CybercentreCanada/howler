@@ -1,7 +1,7 @@
 import functools
 import json
 import uuid
-from typing import Optional, cast
+from typing import Any, Optional, cast
 
 from flask import request
 from jwt import InvalidTokenError
@@ -41,9 +41,32 @@ def websocket_auth(required_type: Optional[list[str]] = None, required_priv: Opt
             ws_id = str(uuid.uuid4())
             ws = None
             try:
+                logger.info("%s: Incoming websocket request", ws_id)
+                handshake_ctx: dict[str, Any] = {
+                    "remote_addr": request.environ.get("REMOTE_ADDR"),
+                    "remote_port": request.environ.get("REMOTE_PORT"),
+                    "x_forwarded_for": request.environ.get("HTTP_X_FORWARDED_FOR"),
+                    "x_forwarded_proto": request.environ.get("HTTP_X_FORWARDED_PROTO"),
+                    "host": request.environ.get("HTTP_HOST"),
+                    "connection": request.environ.get("HTTP_CONNECTION"),
+                    "upgrade": request.environ.get("HTTP_UPGRADE"),
+                    "sec_websocket_key": request.environ.get("HTTP_SEC_WEBSOCKET_KEY"),
+                    "sec_websocket_version": request.environ.get("HTTP_SEC_WEBSOCKET_VERSION"),
+                    "sec_websocket_protocol": request.environ.get("HTTP_SEC_WEBSOCKET_PROTOCOL"),
+                    "path_info": request.environ.get("PATH_INFO"),
+                    "request_id": request.environ.get("HTTP_X_REQUEST_ID"),
+                }
+                logger.debug("%s: Websocket request context: %s", ws_id, handshake_ctx)
                 ws = Server(request.environ, ping_interval=5)
+                logger.info("%s: Websocket upgrade established", ws_id)
 
                 auth_header = cast(str, ws.receive())
+                logger.debug(
+                    "%s: Received auth header; bearer_prefix=%s; length=%s",
+                    ws_id,
+                    bool(auth_header and auth_header.strip().lower().startswith("bearer ")),
+                    len(auth_header) if auth_header is not None else 0,
+                )
 
                 user, privs = auth_service.bearer_auth(auth_header)
 
@@ -74,6 +97,7 @@ def websocket_auth(required_type: Optional[list[str]] = None, required_priv: Opt
                         },
                     )
                 )
+                logger.debug("%s: Privileges: %s", ws_id, privs)
 
                 f(ws, *args, ws_id=ws_id, username=user["uname"], privs=privs, **kwargs)
             except ConnectionClosed:
@@ -101,10 +125,11 @@ def websocket_auth(required_type: Optional[list[str]] = None, required_priv: Opt
                     try:
                         ws.close()
                     except Exception as e:
-                        logger.debug("Exception on WS close: %s", str(e))
+                        logger.debug("%s: Exception on WS close: %s", ws_id, str(e))
                     finally:
                         ws.connected = False
 
+                logger.info("%s: Websocket request finished", ws_id)
                 return ok()
 
         return auth

@@ -4,7 +4,7 @@ import time
 
 from howler.common import loader
 from howler.datastore.howler_store import HowlerDatastore
-from howler.helper.hit import HitStatus, HitStatusTransition
+from howler.helper.hit import HitStatusTransition, Status
 from howler.odm.helper import generate_useful_hit
 from howler.odm.models.action import VALID_TRIGGERS, Action
 from howler.odm.models.howler_data import Assessment
@@ -41,13 +41,13 @@ def test_execute_action(datastore_connection: HowlerDatastore):
     test_hit_promote = generate_useful_hit(lookups, users, False)
     test_hit_promote.howler.assessment = None
     test_hit_promote.howler.escalation = "alert"
-    test_hit_promote.howler.status = HitStatus.OPEN
+    test_hit_promote.howler.status = Status.OPEN
     test_hit_promote.howler.analytic = "test_triage_assess_promote"
     datastore_connection.hit.save(test_hit_promote.howler.id, test_hit_promote)
 
     test_hit_demote = generate_useful_hit(lookups, users, False)
     test_hit_promote.howler.assessment = None
-    test_hit_promote.howler.status = HitStatus.OPEN
+    test_hit_promote.howler.status = Status.OPEN
     test_hit_promote.howler.escalation = "alert"
     test_hit_demote.howler.analytic = "test_triage_assess_demote"
     datastore_connection.hit.save(test_hit_demote.howler.id, test_hit_demote)
@@ -186,7 +186,7 @@ def test_process_action_batch_create_trigger(datastore_connection: HowlerDatasto
     test_hit = generate_useful_hit(lookups, users, False)
     test_hit.howler.assessment = None
     test_hit.howler.escalation = "alert"
-    test_hit.howler.status = HitStatus.OPEN
+    test_hit.howler.status = Status.OPEN
     test_hit.howler.analytic = "test_batch_create"
     datastore_connection.hit.save(test_hit.howler.id, test_hit)
 
@@ -288,14 +288,14 @@ def test_process_action_batch_coalesces_duplicates(datastore_connection: HowlerD
     hit1 = generate_useful_hit(lookups, users, False)
     hit1.howler.assessment = None
     hit1.howler.escalation = "alert"
-    hit1.howler.status = HitStatus.OPEN
+    hit1.howler.status = Status.OPEN
     hit1.howler.analytic = "test_coalesce_1"
     datastore_connection.hit.save(hit1.howler.id, hit1)
 
     hit2 = generate_useful_hit(lookups, users, False)
     hit2.howler.assessment = None
     hit2.howler.escalation = "alert"
-    hit2.howler.status = HitStatus.OPEN
+    hit2.howler.status = Status.OPEN
     hit2.howler.analytic = "test_coalesce_2"
     datastore_connection.hit.save(hit2.howler.id, hit2)
 

@@ -225,7 +225,6 @@ const UserList: FC<{
           <HowlerAvatar userId={selectedIds[0] || 'Unknown'} sx={{ height: avatarHeight, width: avatarHeight }} />
         </IconButton>
       )}
-
       <Popover
         open={!!anchorEl}
         onClose={() => setAnchorEl(null)}
@@ -244,7 +243,7 @@ const UserList: FC<{
             <Autocomplete
               {...sharedAutocompleteProps}
               value={selectedIds[0] || null}
-              onChange={(__, option) => callSingleOnChange(option || '')}
+              onChange={(__, option) => callMultiOnChange(option ? [option] : [])}
             />
           )}
         </Box>
