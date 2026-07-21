@@ -1,3 +1,4 @@
+import ipaddress
 import logging
 
 from mcp.server.auth.settings import AuthSettings
@@ -6,7 +7,7 @@ from pydantic import AnyHttpUrl
 
 from .api import HowlerApiClient
 from .auth import KeycloakTokenVerifier
-from .config import AUTH, MCPSettings
+from .config import AUTH, HOWLER_API, MCPSettings
 from .prompts import RegisterPrompts
 from .tools import RegisterTools
 
@@ -15,6 +16,20 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)-8s %(name)s | %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+# Validate and convert the port to an integer, defaulting to 8000 if invalid
+try:
+    port: int = int(MCPSettings.PORT)
+except ValueError:
+    logger.error("Invalid port number: %s", MCPSettings.PORT)
+    port: int = 8000
+
+# Validate the IP format, default to 0.0.0.0 if invalid
+try:
+    ipaddress.ip_address(MCPSettings.HOST)
+except ValueError:
+    logger.error("Invalid IP address: %s", MCPSettings.HOST)
+    MCPSettings.HOST = "0.0.0.0"
 
 mcp = FastMCP(
     "Howler MCP",
@@ -29,7 +44,8 @@ mcp = FastMCP(
         resource_server_url=AnyHttpUrl(MCPSettings.BASE_URL),
         required_scopes=[MCPSettings.SCOPE],
     ),
-    host="0.0.0.0",
+    host=MCPSettings.HOST,
+    port=port,
 )
 
 api_client = HowlerApiClient()
@@ -43,8 +59,8 @@ if __name__ == "__main__":
     logger.info(
         "Starting Howler MCP server on %s:%s",
         MCPSettings.HOST,
-        MCPSettings.PORT,
+        port,
     )
-    logger.info("Targeting Howler instance at %s", MCPSettings.BASE_URL)
+    logger.info("Targeting Howler instance at %s", HOWLER_API.BASE_URL)
 
     mcp.run(transport="streamable-http")

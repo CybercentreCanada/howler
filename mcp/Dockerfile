@@ -37,8 +37,8 @@ USER root
 
 RUN apk update && apk add --no-cache build-base gcc libffi-dev openssl-dev musl-dev && rm -rf /var/cache/apk/*
 
-# FIX 2: Tell pip to trust PyPI hosts explicitly and be more tolerant of slow links
-ENV PIP_TRUSTED_HOST="pypi.org files.pythonhosted.org pypi.python.org python-poetry.org" \
+ARG PIP_CERT=
+ENV PIP_CERT=${PIP_CERT} \
     PIP_DEFAULT_TIMEOUT=120 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
@@ -78,4 +78,4 @@ ENV PATH=/var/lib/howler/.venv/bin:$PATH \
 
 EXPOSE 8000
 
-CMD ["python", "howler_mcp/mcp_server/server.py"]
+CMD ["python", "-m", "howler_mcp.mcp_server.server"]
