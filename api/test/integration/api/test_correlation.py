@@ -247,6 +247,14 @@ class TestCorrelationWorker:
 
     MAX_WAIT = 30  # seconds to wait for the worker to process a hit
 
+    @pytest.fixture(autouse=True)
+    def clear_ingestion_queue(self):
+        """Keep worker assertions independent of records queued by other tests."""
+        queue = correlation_service._build_queue()
+        queue.delete()
+        yield
+        queue.delete()
+
     def _wait_for_case_item(
         self, datastore: HowlerDatastore, case_id: str, hit_id: str, timeout: int = MAX_WAIT
     ) -> bool:
@@ -258,6 +266,22 @@ class TestCorrelationWorker:
             if case is not None:
                 hit_values = [item.value for item in case.items if item.type == "hit"]
                 if hit_id in hit_values:
+                    return True
+            time.sleep(0.5)
+        return False
+
+    def _wait_for_case_items(
+        self, datastore: HowlerDatastore, case_id: str, hit_ids: list[str], timeout: int = MAX_WAIT
+    ) -> bool:
+        """Poll until every expected hit appears in the case or timeout is reached."""
+        expected_hit_ids = set(hit_ids)
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            datastore.case.commit()
+            case = datastore.case.get(case_id)
+            if case is not None:
+                hit_values = {item.value for item in case.items if item.type == "hit"}
+                if expected_hit_ids <= hit_values:
                     return True
             time.sleep(0.5)
         return False
@@ -358,7 +382,6 @@ class TestCorrelationWorker:
 
         datastore.hit.commit()
 
-        for hit_id in hit_ids:
-            assert self._wait_for_case_item(datastore, case_id, hit_id), (
-                f"Worker did not add hit {hit_id} to case {case_id} within {self.MAX_WAIT}s"
-            )
+        assert self._wait_for_case_items(datastore, case_id, hit_ids), (
+            f"Worker did not add all hits {hit_ids} to case {case_id} within {self.MAX_WAIT}s"
+        )
