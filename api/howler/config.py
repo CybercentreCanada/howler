@@ -24,6 +24,7 @@ HWL_USE_WEBSOCKET_API = os.environ.get("HWL_USE_WEBSOCKET_API", "false").lower()
 HWL_USE_JOB_SYSTEM = os.environ.get("HWL_USE_JOB_SYSTEM", "false").lower() == "true"
 HWL_ENABLE_COVERAGE = os.environ.get("HWL_ENABLE_COVERAGE", "false").lower() == "true"
 HWL_PLUGIN_DIRECTORY = os.environ.get("HWL_PLUGIN_DIRECTORY", "/etc/howler/plugins")
+CORRELATION_QUEUE_NAME = os.environ.get("HWL_CORRELATION_QUEUE_NAME", "howler.ingestion_queue")
 
 
 def get_version() -> str:

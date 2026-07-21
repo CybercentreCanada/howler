@@ -16,6 +16,7 @@ from opentelemetry import trace
 from howler.common.exceptions import InvalidDataException, NotFoundException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
+from howler.config import CORRELATION_QUEUE_NAME
 from howler.odm.models.case import CaseRule, RuleIndexTypes
 from howler.odm.models.config import config
 from howler.remote.datatypes.queues.named import NamedQueue
@@ -181,7 +182,7 @@ def process_batch(record_ids: list[str]) -> int:  # noqa: C901
 def _build_queue() -> NamedQueue[str]:
     """Create the NamedQueue backed by persistent Redis."""
     return NamedQueue(
-        "howler.ingestion_queue",
+        CORRELATION_QUEUE_NAME,
         host=config.core.redis.persistent.host,
         port=config.core.redis.persistent.port,
         private=False,
