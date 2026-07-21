@@ -595,7 +595,6 @@ def create_hits(ds: HowlerDatastore, hit_count: int = 200):
                 hit.howler.id,
                 [
                     *assess_hit(
-                        user=user,
                         assessment=choice(Assessment.list()),
                         rationale=get_random_string(),
                         hit=hit,

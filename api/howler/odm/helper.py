@@ -178,10 +178,10 @@ def generate_useful_hit(  # noqa: C901
 
     hit.howler.assessment = None
     hit.howler.rationale = None
+    hit.howler.triaged = None
     hit.howler.status = "open"
     hit.howler.assignment = "unassigned"
     hit.howler.escalation = choice([Escalation.HIT, Escalation.ALERT])
-    hit.howler.assessor = None
 
     if randint(1, 10) > 9:
         hit.howler.expiry = datetime.now() + timedelta(days=randint(1, 60))

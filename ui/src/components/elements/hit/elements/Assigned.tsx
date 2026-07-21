@@ -48,46 +48,30 @@ const Assigned: FC<{
   hit: Hit;
   layout: HitLayout;
   hideLabel?: boolean;
-  showAssessor?: boolean;
   showAssigned?: boolean;
-}> = ({ hit, layout, hideLabel = false, showAssessor = false, showAssigned = false }) => {
+}> = ({ hit, layout, hideLabel = false, showAssigned = false }) => {
   const { t } = useTranslation();
   const { user } = useAppUser<HowlerUser>();
   const { viewers } = useContext(SocketContext);
 
   const hitViewers = uniq(viewers[hit?.howler?.id] ?? []).filter(viewer => viewer !== user.username);
 
-  const assessorVisible = showAssessor || hit.howler.assessment != null;
-  const assigneeVisible = !hit.howler.assessor && (showAssigned || hit.howler.assignment !== 'unassigned');
+  const assigneeVisible = showAssigned || hit.howler.assignment !== 'unassigned';
 
   return (
     <Stack direction="row" spacing={0.5}>
-      <Stack display="grid" gridTemplateColumns="repeat(2, 1fr)" alignItems="center" columnGap={0.5} rowGap={0.25}>
-        {assigneeVisible && (
-          <>
-            {!hideLabel && <Typography variant="caption">{t('app.drawer.hit.assignment.assignee')}:</Typography>}
-            <AvatarChip
-              userId={hit?.howler.assignment}
-              noUser="unassigned"
-              placeholder={t('app.drawer.hit.assignment.unassigned.name')}
-              layout={layout}
-              hideLabel={hideLabel}
-            />
-          </>
-        )}
-        {assessorVisible && (
-          <>
-            {!hideLabel && <Typography variant="caption">{t('app.drawer.hit.assessment.assessor')}:</Typography>}
-            <AvatarChip
-              userId={hit.howler.assessor}
-              noUser="unknown"
-              placeholder={t('app.drawer.hit.assessment.unknown.name')}
-              layout={layout}
-              hideLabel={hideLabel}
-            />
-          </>
-        )}
-      </Stack>
+      {assigneeVisible && (
+        <>
+          {!hideLabel && <Typography variant="caption">{t('app.drawer.hit.assignment.assignee')}:</Typography>}
+          <AvatarChip
+            userId={hit?.howler.assignment}
+            noUser="unassigned"
+            placeholder={t('app.drawer.hit.assignment.unassigned.name')}
+            layout={layout}
+            hideLabel={hideLabel}
+          />
+        </>
+      )}
       {hitViewers.length > 0 && hideLabel && <Divider orientation="vertical" flexItem variant="middle" />}
       <AvatarGroup
         max={3}
