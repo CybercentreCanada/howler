@@ -6,6 +6,7 @@ import subprocess
 import sys
 import textwrap
 import time
+import uuid
 from pathlib import Path
 
 
@@ -17,6 +18,12 @@ def prep_command(cmd: str):
 def main():  # noqa: C901
     background_server = None
     try:
+        test_env = {
+            **os.environ,
+            "TESTING": "true",
+            "HWL_CORRELATION_QUEUE_NAME": f"howler.ingestion_queue.test.{uuid.uuid4().hex}",
+        }
+
         print("Removing existing coverage files")
         subprocess.check_call(
             prep_command("coverage erase --data-file=.coverage"),
@@ -25,7 +32,7 @@ def main():  # noqa: C901
         print("Running howler server (with coverage)")
         background_server = subprocess.Popen(
             prep_command("coverage run -m flask --app howler.app run --no-reload"),
-            env={"TESTING": "true", **os.environ},
+            env=test_env,
         )
 
         time.sleep(5)
@@ -45,6 +52,7 @@ def main():  # noqa: C901
         pytest = subprocess.Popen(
             pytest_cmd,
             stdout=subprocess.PIPE,
+            env=test_env,
         )
 
         output = ""

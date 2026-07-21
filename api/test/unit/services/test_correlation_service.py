@@ -4,6 +4,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from howler.common.exceptions import InvalidDataException, NotFoundException
 from howler.odm.models.case import CaseRule
 from howler.services import correlation_service
@@ -177,6 +179,40 @@ class TestGetActiveRules:
 
         assert len(result) == 1
         assert result[0][0] == "case-1"
+
+
+class TestCorrelationWorker:
+    """Tests for correlation worker batching behavior."""
+
+    @patch("howler.services.correlation_service.process_batch")
+    @patch("howler.services.correlation_service._build_queue")
+    @patch.object(correlation_service, "BATCH_TIMEOUT", 1)
+    @patch.object(correlation_service, "BATCH_SIZE", 3)
+    def test_processes_full_batch(self, mock_build_queue, mock_process_batch):
+        """A full queue batch is delivered to process_batch without waiting for a timeout."""
+        queue = MagicMock()
+        queue.pop.side_effect = ["hit-1", "hit-2", "hit-3", KeyboardInterrupt]
+        mock_build_queue.return_value = queue
+
+        with pytest.raises(KeyboardInterrupt):
+            correlation_service.run_worker()
+
+        mock_process_batch.assert_called_once_with(["hit-1", "hit-2", "hit-3"])
+
+    @patch("howler.services.correlation_service.process_batch")
+    @patch("howler.services.correlation_service._build_queue")
+    @patch.object(correlation_service, "BATCH_TIMEOUT", 1)
+    @patch.object(correlation_service, "BATCH_SIZE", 3)
+    def test_flushes_partial_batch_after_timeout(self, mock_build_queue, mock_process_batch):
+        """A timeout flushes queued records when the batch is not yet full."""
+        queue = MagicMock()
+        queue.pop.side_effect = ["hit-1", None, KeyboardInterrupt]
+        mock_build_queue.return_value = queue
+
+        with pytest.raises(KeyboardInterrupt):
+            correlation_service.run_worker()
+
+        mock_process_batch.assert_called_once_with(["hit-1"])
 
     @patch("howler.services.correlation_service.case_service")
     @patch("howler.services.correlation_service.datastore")
