@@ -18,7 +18,7 @@ services:
       AUTH_REALM: ${AUTH_REALM:-HogwartsMini}
       AUTH_TOKEN_URL: ${AUTH_TOKEN_URL:-http://localhost:9100/realms/HogwartsMini/protocol/openid-connect/token}
       AUTH_CLIENT_ID: ${AUTH_CLIENT_ID:-howlermcp}
-      AUTH_CLIENT_SECRET: ${AUTH_CLIENT_SECRET:-lalala:)}
+      AUTH_CLIENT_SECRET: ${AUTH_CLIENT_SECRET}
       AUTH_JWKS_URI: ${AUTH_JWKS_URI:-http://localhost:9100/realms/HogwartsMini/protocol/openid-connect/certs}
       AUTH_ISSUER: ${AUTH_ISSUER:-http://localhost:9100/realms/HogwartsMini}
       AUTH_AS_SERVER_URL: ${AUTH_AS_SERVER_URL:-http://localhost:9100/realms/HogwartsMini}

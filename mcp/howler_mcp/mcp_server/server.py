@@ -1,17 +1,14 @@
 import logging
-import sys
-import os
-from mcp.server.fastmcp import FastMCP
+
 from mcp.server.auth.settings import AuthSettings
+from mcp.server.fastmcp import FastMCP
 from pydantic import AnyHttpUrl
 
-sys.path.append(os.getcwd())
-from auth import KeycloakTokenVerifier
-from config import AUTH, MCPSettings
-from tools import RegisterTools
-from prompts import RegisterPrompts
-from api import HowlerApiClient
-
+from .api import HowlerApiClient
+from .auth import KeycloakTokenVerifier
+from .config import AUTH, MCPSettings
+from .prompts import RegisterPrompts
+from .tools import RegisterTools
 
 logging.basicConfig(
     level=logging.INFO,

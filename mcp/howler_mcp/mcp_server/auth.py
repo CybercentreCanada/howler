@@ -1,11 +1,9 @@
-import jwt
 import logging
-
 from typing import Any
+
+import jwt
 from jwt import PyJWKClient
 from mcp.server.auth.provider import AccessToken, TokenVerifier
-
-# Assuming config is in your local path
 
 logging.basicConfig(
     level=logging.INFO,
@@ -35,7 +33,6 @@ class KeycloakTokenVerifier(TokenVerifier):
                     "verify_aud": False,
                 },
             )
-            logger.info("DEBUG ACTUAL TOKEN CLAIMS: %s", claims)
 
             if not self._audience_matches(claims):
                 logger.warning(

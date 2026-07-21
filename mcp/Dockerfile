@@ -23,8 +23,7 @@ RUN mkdir -p /var/lib/howler && \
 WORKDIR /var/lib/howler
 
 # FIX 1: Force Alpine to use plain HTTP repositories to bypass corporate TLS inspection blocks
-RUN sed -i 's/https/http/g' /etc/apk/repositories && \
-    apk update && \
+RUN apk update && \
     apk add --no-cache tzdata && \
     rm -rf /var/cache/apk/*
 

@@ -1,15 +1,46 @@
-import pytest
-import requests
 import json
 import os
 from urllib.parse import urlparse, urlunparse
-from howler_mcp.mcp_server.config import AUTH, MCPSettings, HOWLER_API
 
+import pytest
+import requests
+from howler_mcp.mcp_server.config import AUTH, HOWLER_API, MCPSettings
 
-TEST_USERNAME = os.environ.get("TEST_AUTH_USERNAME", "goose")
-TEST_PASSWORD = os.environ.get("TEST_AUTH_PASSWORD", "goose")
+RUN_MCP_NETWORK_TESTS = os.environ.get("RUN_MCP_NETWORK_TESTS", "").lower() in {
+    "1",
+    "true",
+    "yes",
+}
+
+pytestmark = pytest.mark.skipif(
+    not RUN_MCP_NETWORK_TESTS,
+    reason=(
+        "Live MCP network tests are disabled by default. "
+        "Set RUN_MCP_NETWORK_TESTS=1 to enable."
+    ),
+)
+
+TEST_USERNAME = os.environ.get("TEST_AUTH_USERNAME")
+TEST_PASSWORD = os.environ.get("TEST_AUTH_PASSWORD")
 TEST_SCOPE = os.environ.get("TEST_AUTH_SCOPE", MCPSettings.SCOPE)
-TEST_EMAIL = os.environ.get("TEST_AUTH_EMAIL", "goose@howler.cyber.gc.ca")
+TEST_EMAIL = os.environ.get("TEST_AUTH_EMAIL")
+
+if RUN_MCP_NETWORK_TESTS:
+    missing_vars = [
+        name
+        for name, value in {
+            "TEST_AUTH_USERNAME": TEST_USERNAME,
+            "TEST_AUTH_PASSWORD": TEST_PASSWORD,
+            "TEST_AUTH_EMAIL": TEST_EMAIL,
+        }.items()
+        if not value
+    ]
+    if missing_vars:
+        pytest.skip(
+            "Missing required environment variables for live MCP network tests: "
+            + ", ".join(missing_vars),
+            allow_module_level=True,
+        )
 
 
 def _mcp_request_url() -> str:
@@ -315,30 +346,39 @@ def test_tool_add_comment_to_hit():
 
 def test_tool_get_false_positive_hit():
     token = get_token()
+    lookback_in_days = 7
+    limit = 25
     howler_answer = requests.post(
         headers={"Authorization": f"Bearer {token}"},
         url=f"{HOWLER_API.BASE_URL}/search/hit",
         json={
             "query": r"howler.assessment: false-positive",
             "fl": None,
-            "filters": [],
-            "rows": 1,
+            "filters": [f"event.created:[now-{lookback_in_days}d TO now]"],
+            "rows": limit,
         },
     ).json()
-    is_answering = False
-    if not howler_answer["api_response"]["total"] == 0:
-        is_answering = True
 
-    response = call_mcp_tool(token, "GetFalsePositiveHits")
-    if not is_answering:
-        assert json.loads(response["content"][0]["text"])["total"] == 0, (
-            "Expected empty structured content for no false positive hits."
-        )
-    else:
-        assert (
-            howler_answer["api_response"]["items"][0]["howler"]["id"]
-            == response["structuredContent"]["howler"]["id"]
-        ), "Expected hit ID from MCP does not match the API response."
+    response = call_mcp_tool(
+        token,
+        "GetFalsePositiveHits",
+        {"lookback_in_days": lookback_in_days, "limit": limit},
+    )
+
+    structured_content = response["structuredContent"]
+    api_response = howler_answer["api_response"]
+
+    assert not response.get("isError", False)
+    assert structured_content["total"] == api_response["total"]
+    assert structured_content["rows"] == api_response["rows"]
+
+    expected_ids = {item["howler"]["id"] for item in (api_response.get("items") or [])}
+    returned_ids = {
+        hit["howler"]["id"] for hit in (structured_content.get("hits") or [])
+    }
+    assert returned_ids == expected_ids, (
+        "Expected false-positive hit IDs from MCP do not match direct API results."
+    )
 
 
 def test_tool_list_hits_by_analytic():

@@ -22,7 +22,7 @@ class AUTH:
         f"http://{HOST}:{PORT}/realms/{REALM}/protocol/openid-connect/token",
     )
     CLIENT_ID = os.environ.get("AUTH_CLIENT_ID", "howlermcp")
-    CLIENT_SECRET = os.environ.get("AUTH_CLIENT_SECRET", "lalala:)")
+    CLIENT_SECRET = os.environ.get("AUTH_CLIENT_SECRET")
     JWKS_URI = os.environ.get(
         "AUTH_JWKS_URI",
         f"http://{HOST}:{PORT}/realms/{REALM}/protocol/openid-connect/certs",

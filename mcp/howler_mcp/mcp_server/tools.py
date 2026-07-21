@@ -273,4 +273,3 @@ def RegisterTools(mcp, api_client):
             body={"value": f"From MCP Client: {comment}"},
         )
         return "Comment added successfully."
-        # Need error handling here, but the API client will raise an exception if the call fails, which will be returned to the user as an error message. We can customize this message if needed.

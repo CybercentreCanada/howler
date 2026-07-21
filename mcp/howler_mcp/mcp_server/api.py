@@ -1,12 +1,11 @@
-import httpx
 import logging
-
 from typing import Any, Literal
 
+import httpx
 from mcp.server.auth.provider import AccessToken
 
-from auth import AuthProvider
-from config import HOWLER_API
+from .auth import AuthProvider
+from .config import HOWLER_API
 
 HttpVerb = Literal["GET", "POST", "OPTIONS"]
 logger = logging.getLogger(__name__)

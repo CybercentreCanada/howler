@@ -7,8 +7,8 @@ This MCP server exposes a small set of security triage tools backed by the Howle
 
 For each tool call, the server:
 1. Receives the caller access token from MCP runtime context.
-2. Exchanges it for a backend token using OAuth 2.0 Token Exchange (OBO pattern).
-3. Calls the Howler backend API with the exchanged token.
+2. Verifies the token signature and required scopes using Keycloak JWKS.
+3. Passes the same token to the Howler backend API (token pass-through).
 4. Returns the backend payload to the MCP client.
 
 ---
@@ -45,12 +45,12 @@ MCP Client (e.g. VS Code, AI Agent)
         │
         ▼
 Howler MCP Server (FastMCP, streamable-HTTP)
-        │  ← OAuth 2.0 token exchange (OBO)
+        │ ← Token verification + pass-through
         ▼
 Howler Backend API
 ```
 
-Every tool call is authenticated: the server validates the caller's JWT, exchanges it for a backend token, and proxies the request to the Howler API — ensuring least-privilege access and full audit traceability.
+Every tool call is authenticated: the server validates the caller's JWT signature and required scopes using Keycloak JWKS, then passes the same token to the backend API — ensuring that only authorized clients can access the Howler platform while maintaining full audit traceability.
 
 
 ## Code review
@@ -69,9 +69,8 @@ Every tool call is authenticated: the server validates the caller's JWT, exchang
   - Requires a configured scope (`howlermcp:access`).
   - Converts claims into MCP `AccessToken`.
 - `AuthProvider`:
-  - Performs OAuth token exchange (`urn:ietf:params:oauth:grant-type:token-exchange`).
-  - Uses the incoming user token as `subject_token`.
-  - Requests a backend audience token for Howler.
+  - Implements token pass-through: returns the verified user token as-is to the backend.
+  - No token exchange or transformation occurs — the user token is sufficient for backend API access.
 
 ### `api.py`
 - `HowlerApiClient` wraps HTTP calls to the backend API.
@@ -148,9 +147,9 @@ sequenceDiagram
     end
 ```
 
-### OBO flow (backend API)
+### Token pass-through flow (backend API)
 
-Once the MCP client has an access token, every tool call triggers the On-Behalf-Of token exchange flow:
+Once the MCP client has an access token, every tool call triggers token verification and pass-through:
 
 ```mermaid
 sequenceDiagram
@@ -182,49 +181,40 @@ sequenceDiagram
     Verifier-->>MCP: AccessToken (audience: howlermcp, scope: howlermcp:access ✓)
     end
 
-    rect rgb(255, 243, 224)
-    Note over MCP,KC: Token Exchange (OBO)
-    MCP->>KC: Token Exchange<br/>(grant_type: urn:ietf:params:oauth:grant-type:token-exchange,<br/>subject_token: user token,<br/>audience: howler, scope: howler)
-    KC-->>MCP: Exchanged token (audience: howler)
-    end
-
     rect rgb(224, 255, 230)
-    Note over MCP,Backend: Backend API Call
-    MCP->>Backend: API request + exchanged token<br/>(audience: howler)
+    Note over MCP,Backend: Backend API Call (Token Pass-through)
+    MCP->>Backend: API request + same user token<br/>(no transformation)
     Backend-->>MCP: JSON payload (api_response)
     end
 
     MCP-->>Client: Tool result
 ```
 
-
   ## Keycloak configuration
 
-  Configure Keycloak in this order so OBO token exchange works for this MCP server:
+  Configure Keycloak in this order to enable token pass-through for this MCP server:
 
   1. Create a client named `howlermcp`.
-  2. Enable service accounts on `howlermcp`.
-  3. Create a scope named `howlermcp:access` and grant it to callers that will use this server.
-  4. Configure an audience mapper so audience `howler` maps to the `howler` client.
-  5. In the `howler` client, add a token-exchange policy that allows exchanges coming from `howlermcp`.
-  6. Remove the Trusted Hosts policy used for dynamic client registration if it is not required in your environment.
+  2. Create a scope named `howlermcp:access` and assign it to users who will use this server.
+  3. Ensure the `howler` backend client accepts tokens from the MCP client (verify token audience validation is configured correctly).
 
   This setup matches the server behavior in `auth.py`, `server.py`, and `config.py`:
-  - Incoming tokens must include the expected audience and `howlermcp:access` scope.
-  - The MCP server exchanges the incoming token for a backend token with audience `howler`.
+  - Incoming tokens must include the expected audience (`howlermcp`) and `howlermcp:access` scope.
+  - The token is passed through to the backend unchanged — the user token itself must already be valid for the Howler API.
 
 ## Run locally
 
-From `mcp/`:
+From `mcp/howler_mcp/mcp_server/`:
 
 ```bash
-poetry install
-poetry run python server.py
+cd ../..  # Go to mcp root
+PYTHONPATH=. poetry install
+PYTHONPATH=. poetry run python howler_mcp/mcp_server/server.py
 ```
 
-The server listens with streamable HTTP transport and uses values defined in `config.py`.
+The server listens with streamable HTTP transport and uses values defined in `config.py`. Environment variables override defaults.
 
 ## Notes
 
-- This implementation currently keeps auth and API settings in code.
-- For production use, move secrets and host values to environment variables or a secret manager.
+- Sensitive credentials (e.g., `AUTH_CLIENT_SECRET`) must be set via environment variables; no defaults should be used in production.
+- For production use, move all secrets and host values to a secret manager or environment.
