@@ -22,7 +22,6 @@ RUN mkdir -p /var/lib/howler && \
 
 WORKDIR /var/lib/howler
 
-# FIX 1: Force Alpine to use plain HTTP repositories to bypass corporate TLS inspection blocks
 RUN apk update && \
     apk add --no-cache tzdata && \
     rm -rf /var/cache/apk/*
@@ -34,10 +33,8 @@ USER nonroot
 # ==========================================
 FROM base AS builder
 
-# Keep root privileges to install system packages and global Python modules
 USER root
 
-# (Repositories remain HTTP here as it inherits from base)
 RUN apk update && apk add --no-cache build-base gcc libffi-dev openssl-dev musl-dev && rm -rf /var/cache/apk/*
 
 # FIX 2: Tell pip to trust PyPI hosts explicitly and be more tolerant of slow links
@@ -45,10 +42,8 @@ ENV PIP_TRUSTED_HOST="pypi.org files.pythonhosted.org pypi.python.org python-poe
     PIP_DEFAULT_TIMEOUT=120 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Switch to nonroot before setting up the project dependencies
 USER nonroot
 
-# Keep all nonroot tool state under writable app/cache directories.
 ENV HOME=/var/lib/howler \
     XDG_CACHE_HOME=/var/cache/howler
 
@@ -57,7 +52,6 @@ COPY --chown=nonroot:nonroot requirements-main.txt ./
 COPY --chown=nonroot:nonroot . .
 
 # Create the app venv and install dependencies.
-# Use local wheels when available; otherwise install from package indexes.
 RUN --mount=type=cache,target=/var/cache/howler/pip,uid=65532,gid=65532 \
     python -m venv /var/lib/howler/.venv && \
     if [ -d /var/lib/howler/wheels ] && [ "$(ls -A /var/lib/howler/wheels)" ]; then \
