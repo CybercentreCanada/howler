@@ -8,6 +8,7 @@ from howler.odm.models.action import Action
 from howler.odm.models.analytic import Analytic
 from howler.odm.models.case import Case
 from howler.odm.models.clue import Clue
+from howler.odm.models.config import ILMIndexConfig
 from howler.odm.models.dossier import Dossier
 from howler.odm.models.event import Event
 from howler.odm.models.hit import Hit
@@ -34,6 +35,8 @@ INDEXES = {
     "user_avatar": None,
 }
 
+ILM_ENABLED_INDEXES = {"hit", "event", "case"}
+
 
 class HowlerDatastore(object):
     def __init__(self, datastore_object: "ESStore"):
@@ -55,7 +58,12 @@ class HowlerDatastore(object):
             )
 
         for _index, _odm in INDEXES.items():
-            ilm_index_config = config.datastore.ilm.indices.get(_index) if config.datastore.ilm.enabled else None
+            ilm_index_config = config.datastore.ilm.indices.get(_index)
+            if ilm_index_config is None:
+                ilm_index_config = ILMIndexConfig(enabled=_index in ILM_ENABLED_INDEXES)
+            if not (config.datastore.ilm.enabled and ilm_index_config.enabled):
+                ilm_index_config = None
+
             self.ds.register(_index, _odm, ilm_config=ilm_index_config)
 
     def __enter__(self):

@@ -33,7 +33,13 @@ class Related(odm.Model):
     )
 
     # Extra fields not defined in ECS but added for outline purposes
-    id = odm.Optional(odm.Keyword(description="The id related to the event."))
+    id = odm.Optional(
+        odm.Keyword(
+            description="The id related to the event.",
+            deprecated=True,
+            deprecated_description="related.ids should be used instead of related.id.",
+        )
+    )
 
     uri = odm.Optional(odm.List(odm.URI(), description="All of the URIs related to the event."))
 
@@ -43,3 +49,23 @@ class Related(odm.Model):
             description="All the signatures/rules that were triggered by the event.",
         )
     )
+
+    def __init__(self, data: dict = None, *args, **kwargs):
+        if data is not None and data.get("id") is not None:
+            # Avoid mutating the caller-provided dict
+            data = dict(data)
+
+            existing_ids = data.get("ids")
+            if isinstance(existing_ids, (list, tuple)):
+                merged_ids = list(existing_ids)
+            elif existing_ids is None:
+                merged_ids = []
+            else:
+                merged_ids = [existing_ids]
+
+            if data["id"] not in merged_ids:
+                merged_ids.append(data["id"])
+
+            data["ids"] = merged_ids
+
+        super().__init__(data, *args, **kwargs)
