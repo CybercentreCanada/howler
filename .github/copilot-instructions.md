@@ -101,7 +101,7 @@ poetry run pyright --level warning
 
 ```bash
 pnpm run lint        # oxfmt + oxlint
-pnpm eslint src      # ESLint
+pnpm oxlint src      # oxlint
 pnpm tsc --noEmit    # TypeScript type-check
 ```
 
