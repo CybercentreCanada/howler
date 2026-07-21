@@ -1,4 +1,5 @@
 # mypy: ignore-errors
+from datetime import datetime
 from typing import Optional
 
 from howler import odm
@@ -180,12 +181,6 @@ class HowlerData(odm.Model):
         description="Unique identifier of the assigned user.",
         default=DEFAULT_ASSIGNMENT,
     )
-    assessor: Optional[str] = odm.Optional(
-        odm.Keyword(
-            description="The most recent person to assess a hit",
-            default=None,
-        )
-    )
     data: list[str] = odm.List(
         odm.Keyword(description="Raw telemetry records associated with this hit."),
         default=[],
@@ -248,6 +243,7 @@ class HowlerData(odm.Model):
             )
         )
     )
+    triaged: Optional[datetime] = odm.Optional(odm.Date(description="Timestamp at which the hit was triaged."))
     comment: list[Comment] = odm.List(
         odm.Compound(Comment),
         default=[],

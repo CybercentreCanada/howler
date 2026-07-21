@@ -24,14 +24,11 @@ def assess_hit(
     assessment: Optional[str] = None,
     rationale: Optional[str] = None,
     hit: Optional[Union[dict[str, Any], Hit]] = None,
-    *,
-    user: User | str,
     **kwargs,
 ) -> list[OdmUpdateOperation]:
     """Update the assessment and esclation of a hit
 
     Args:
-        user (User | str): The user making the assessment
         assessment (Optional[str], optional): The assessment to set the hit to. Defaults to None.
         hit (Optional[Union[dict[str, Any], Hit]], optional): The hit to update. Defaults to None.
 
@@ -55,6 +52,14 @@ def assess_hit(
     if assessment is None and rationale:
         rationale = None
 
+    if assessment is None:
+        # reset the timestamp and set state to in progress if removing assessment (re-assessing)
+        triaged_timestamp = None
+        status = Status.IN_PROGRESS
+    else:
+        triaged_timestamp = "NOW"
+        status = Status.RESOLVED
+
     logger.debug(
         "Updating assessment of %s to %s",
         hit["howler"]["id"] if hit else "unknown",
@@ -66,16 +71,12 @@ def assess_hit(
         escalation,
     )
 
-    if assessment is None:
-        assessor_id = None
-    else:
-        assessor_id = user.get("uname", user.get("username", None)) if isinstance(user, User) else user
-
     return [
         odm_helper.update("howler.assessment", assessment),
         odm_helper.update("howler.escalation", escalation),
         odm_helper.update("howler.rationale", rationale, silent=True),
-        odm_helper.update("howler.assessor", assessor_id, silent=True),
+        odm_helper.update("howler.triaged", triaged_timestamp),
+        odm_helper.update("howler.status", status),
     ]
 
 

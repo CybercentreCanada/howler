@@ -13,7 +13,6 @@ import type { Votes } from './Votes';
 export interface Howler {
   analytic: string;
   assessment?: string;
-  assessor?: string;
   assignment: string;
   comment?: HowlerComment[];
   confidence?: number;
@@ -39,6 +38,7 @@ export interface Howler {
   scrutiny?: string;
   severity?: number;
   status?: string;
+  triaged?: string;
   volume?: number;
   votes?: Votes;
 }
