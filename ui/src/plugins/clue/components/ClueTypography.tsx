@@ -5,8 +5,8 @@ import type { PluginTypographyProps } from 'components/elements/PluginTypography
 import { memo, type FC } from 'react';
 import { useType } from '../utils';
 
-const ClueTypography: FC<PluginTypographyProps> = ({ children, value, context, field, hit, ...props }) => {
-  const type = useType(hit, field, value);
+const ClueTypography: FC<PluginTypographyProps> = ({ children, value, context, field, obj, ...props }) => {
+  const type = useType(obj, field, value);
 
   if (!type) {
     return <Typography {...props}>{children ?? value}</Typography>;

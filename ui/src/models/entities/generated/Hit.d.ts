@@ -9,9 +9,9 @@ import type { Container } from './Container';
 import type { Destination } from './Destination';
 import type { Dns } from './Dns';
 import type { Ecs } from './Ecs';
+import type { ECSEvent } from './ECSEvent';
 import type { Email } from './Email';
 import type { Error } from './Error';
-import type { Event } from './Event';
 import type { Faas } from './Faas';
 import type { Gcp } from './Gcp';
 import type { Group } from './Group';
@@ -40,6 +40,7 @@ import type { Vulnerability } from './Vulnerability';
  * NOTE: This is an auto-generated file. Don't edit this manually.
  */
 export interface Hit {
+  __index: 'hit';
   agent?: Agent;
   assemblyline?: Assemblyline;
   aws?: Aws;
@@ -54,7 +55,7 @@ export interface Hit {
   ecs?: Ecs;
   email?: Email;
   error?: Error;
-  event?: Event;
+  event?: ECSEvent;
   faas?: Faas;
   file?: HitFile;
   gcp?: Gcp;

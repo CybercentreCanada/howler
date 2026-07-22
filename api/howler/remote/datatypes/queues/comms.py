@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 import redis
 
@@ -7,7 +8,7 @@ from howler.remote.datatypes import decode, get_client, log, retry_call
 
 class CommsQueue(object):
     def __init__(self, names, host=None, port=None, private=False):
-        self.c = get_client(host, port, private)
+        self.c: Any = get_client(host, port, private)
         self.p = retry_call(self.c.pubsub)
         if not isinstance(names, list):
             names = [names]

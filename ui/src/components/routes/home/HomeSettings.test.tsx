@@ -22,12 +22,7 @@ describe('HomeSettings', () => {
 
   it('renders the settings icon button', () => {
     render(
-      <HomeSettings
-        isEditing={false}
-        refreshRate={30}
-        onRefreshRateChange={onRefreshRateChange}
-        onEdit={onEdit}
-      />,
+      <HomeSettings isEditing={false} refreshRate={30} onRefreshRateChange={onRefreshRateChange} onEdit={onEdit} />,
       { wrapper: Wrapper }
     );
     expect(screen.getByRole('button')).toBeInTheDocument();
@@ -36,12 +31,7 @@ describe('HomeSettings', () => {
   it('opens the settings menu when the icon button is clicked', async () => {
     const user = userEvent.setup();
     render(
-      <HomeSettings
-        isEditing={false}
-        refreshRate={30}
-        onRefreshRateChange={onRefreshRateChange}
-        onEdit={onEdit}
-      />,
+      <HomeSettings isEditing={false} refreshRate={30} onRefreshRateChange={onRefreshRateChange} onEdit={onEdit} />,
       { wrapper: Wrapper }
     );
 
@@ -53,12 +43,7 @@ describe('HomeSettings', () => {
   it('calls onEdit when the Edit menu item is clicked', async () => {
     const user = userEvent.setup();
     render(
-      <HomeSettings
-        isEditing={false}
-        refreshRate={30}
-        onRefreshRateChange={onRefreshRateChange}
-        onEdit={onEdit}
-      />,
+      <HomeSettings isEditing={false} refreshRate={30} onRefreshRateChange={onRefreshRateChange} onEdit={onEdit} />,
       { wrapper: Wrapper }
     );
 
@@ -71,12 +56,7 @@ describe('HomeSettings', () => {
   it('disables the Edit menu item when isEditing=true', async () => {
     const user = userEvent.setup();
     render(
-      <HomeSettings
-        isEditing={true}
-        refreshRate={30}
-        onRefreshRateChange={onRefreshRateChange}
-        onEdit={onEdit}
-      />,
+      <HomeSettings isEditing={true} refreshRate={30} onRefreshRateChange={onRefreshRateChange} onEdit={onEdit} />,
       { wrapper: Wrapper }
     );
 

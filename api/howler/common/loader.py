@@ -10,8 +10,11 @@ from howler.odm.models.config import config
 
 if TYPE_CHECKING:
     from howler.common.classification import Classification
+    from howler.datastore.howler_store import HowlerDatastore
+
 
 APP_NAME = os.environ.get("APP_NAME", "howler")
+DATASTORE_INDEX_PREFIX = os.environ.get("HWL_DATASTORE_INDEX_PREFIX", APP_NAME)
 APP_PREFIX = os.environ.get("APP_PREFIX", "hwl")
 USER_TYPES = {"admin", "user", "automation_basic", "automation_advanced", "actionrunner_basic", "actionrunner_advanced"}
 
@@ -31,7 +34,7 @@ def env_substitute(buffer):
 _CLASSIFICATIONS: dict[Union[str, Path], "Classification"] = {}
 
 
-def get_classification(yml_config: Optional[str] = None):  # noqa: C901
+def get_classification(yml_config: Optional[str] = None) -> "Classification":  # noqa: C901
     "Get the classification from a given classification.yml file, caching results"
     if yml_config in _CLASSIFICATIONS:
         return _CLASSIFICATIONS[yml_config]
@@ -137,18 +140,15 @@ def get_lookups(lookup_folder: Optional[str] = None):
 
 
 # Lazy load the datastore
-_datastore = None
+_datastore: "HowlerDatastore | None" = None
 
 
-def datastore(_config=None, archive_access=True):
+def datastore(archive_access: bool = True) -> "HowlerDatastore":
     """Get a datastore connection"""
     global _datastore
 
     from howler.datastore.howler_store import HowlerDatastore
     from howler.datastore.store import ESStore
-
-    if not _config:
-        _config = config
 
     if _datastore is None:
         _datastore = HowlerDatastore(ESStore(config=config, archive_access=archive_access))

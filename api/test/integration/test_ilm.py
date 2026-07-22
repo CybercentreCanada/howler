@@ -12,6 +12,7 @@ import time
 
 import pytest
 
+from howler.common.loader import DATASTORE_INDEX_PREFIX
 from howler.datastore.collection import ESCollection
 from howler.datastore.store import ESStore
 from howler.odm.models.config import ILMIndexConfig
@@ -51,35 +52,35 @@ def ilm_collection(es_store, request):
 
         # Delete all indices matching the collection name
         try:
-            client.indices.delete(index=f"howler-{name}-*", ignore_unavailable=True)
-            logger.debug("Deleted indices howler-%s-*", name)
+            client.indices.delete(index=f"{DATASTORE_INDEX_PREFIX}-{name}-*", ignore_unavailable=True)
+            logger.debug("Deleted indices %s-%s-*", DATASTORE_INDEX_PREFIX, name)
         except Exception:
             logger.warning("Failed to delete indices howler-%s-*", name, exc_info=True)
 
         try:
-            client.indices.delete(index=f"howler-{name}_hot", ignore_unavailable=True)
-            logger.debug("Deleted index howler-%s_hot", name)
+            client.indices.delete(index=f"{DATASTORE_INDEX_PREFIX}-{name}_hot", ignore_unavailable=True)
+            logger.debug("Deleted index %s-%s_hot", DATASTORE_INDEX_PREFIX, name)
         except Exception:
             logger.warning("Failed to delete index howler-%s_hot", name, exc_info=True)
 
         # Delete alias if it exists
         try:
-            client.indices.delete_alias(index="_all", name=f"howler-{name}")
-            logger.debug("Deleted alias howler-%s", name)
+            client.indices.delete_alias(index="_all", name=f"{DATASTORE_INDEX_PREFIX}-{name}")
+            logger.debug("Deleted alias %s-%s", DATASTORE_INDEX_PREFIX, name)
         except Exception:
             logger.warning("Failed to delete alias howler-%s", name, exc_info=True)
 
         # Delete ILM policy
         try:
-            client.ilm.delete_lifecycle(name=f"howler-{name}_policy")
-            logger.debug("Deleted ILM policy howler-%s_policy", name)
+            client.ilm.delete_lifecycle(name=f"{DATASTORE_INDEX_PREFIX}-{name}_policy")
+            logger.debug("Deleted ILM policy %s-%s_policy", DATASTORE_INDEX_PREFIX, name)
         except Exception:
             logger.warning("Failed to delete ILM policy howler-%s_policy", name, exc_info=True)
 
         # Delete index template
         try:
-            client.indices.delete_index_template(name=f"howler-{name}_template")
-            logger.debug("Deleted index template howler-%s_template", name)
+            client.indices.delete_index_template(name=f"{DATASTORE_INDEX_PREFIX}-{name}_template")
+            logger.debug("Deleted index template %s-%s_template", DATASTORE_INDEX_PREFIX, name)
         except Exception:
             logger.warning("Failed to delete index template howler-%s_template", name, exc_info=True)
 
@@ -102,14 +103,14 @@ def non_ilm_collection(es_store, request):
         client = es_store.client
         # Delete all indices matching the collection name
         try:
-            client.indices.delete(index=f"howler-{name}_hot", ignore_unavailable=True)
-            logger.debug("Deleted index howler-%s_hot", name)
+            client.indices.delete(index=f"{DATASTORE_INDEX_PREFIX}-{name}_hot", ignore_unavailable=True)
+            logger.debug("Deleted index %s-%s_hot", DATASTORE_INDEX_PREFIX, name)
         except Exception:
             logger.warning("Failed to delete index howler-%s_hot", name, exc_info=True)
 
         try:
-            client.indices.delete_alias(index="_all", name=f"howler-{name}")
-            logger.debug("Deleted alias howler-%s", name)
+            client.indices.delete_alias(index="_all", name=f"{DATASTORE_INDEX_PREFIX}-{name}")
+            logger.debug("Deleted alias %s-%s", DATASTORE_INDEX_PREFIX, name)
         except Exception:
             logger.warning("Failed to delete alias howler-%s", name, exc_info=True)
 
@@ -331,7 +332,7 @@ class TestILMLegacyMigration:
     def test_migrate_from_hot_to_ilm(self, es_store: ESStore, request):
         """A legacy _hot index should be migrated to -000001 when ILM is enabled."""
         name = _random_name()
-        full_name = f"howler-{name}"
+        full_name = f"{DATASTORE_INDEX_PREFIX}-{name}"
         hot_index = f"{full_name}_hot"
         ilm_initial = f"{full_name}-000001"
 

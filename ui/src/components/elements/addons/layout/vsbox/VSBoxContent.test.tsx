@@ -5,14 +5,22 @@ import VSBoxContent from './VSBoxContent';
 
 describe('VSBoxContent', () => {
   it('renders children inside a div with data-vsbox-content attribute', () => {
-    render(<VSBoxContent><span>hello</span></VSBoxContent>);
+    render(
+      <VSBoxContent>
+        <span>hello</span>
+      </VSBoxContent>
+    );
     const el = document.querySelector('[data-vsbox-content]');
     expect(el).toBeInTheDocument();
     expect(el).toHaveAttribute('data-vsbox-content', 'true');
   });
 
   it('renders children correctly', () => {
-    render(<VSBoxContent><span id="child">content</span></VSBoxContent>);
+    render(
+      <VSBoxContent>
+        <span id="child">content</span>
+      </VSBoxContent>
+    );
     expect(screen.getByTestId('child')).toBeInTheDocument();
   });
 

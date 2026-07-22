@@ -11,7 +11,7 @@ from copy import deepcopy
 from datetime import datetime
 from os import environ
 from random import random
-from typing import Any, Dict, Generic, Literal, Optional, TypeVar, Union, overload
+from typing import Any, Callable, Dict, Generic, Literal, Optional, TypeVar, Union, cast, overload
 
 import elasticsearch
 from datemath import dm
@@ -20,7 +20,7 @@ from opentelemetry import trace
 
 from howler import odm
 from howler.common.exceptions import HowlerRuntimeError, HowlerValueError, NonRecoverableError
-from howler.common.loader import APP_NAME
+from howler.common.loader import DATASTORE_INDEX_PREFIX
 from howler.common.logging.format import HWL_DATE_FORMAT, HWL_LOG_FORMAT
 from howler.datastore.constants import BACK_MAPPING, TYPE_MAPPING
 from howler.datastore.exceptions import (
@@ -70,6 +70,7 @@ logger.addHandler(console)
 tracer = trace.get_tracer(__name__)
 
 ModelType = TypeVar("ModelType", bound=Model)
+_R = TypeVar("_R")
 
 
 write_block_settings = {"index.blocks.write": True}
@@ -228,7 +229,7 @@ class ESCollection(Generic[ModelType]):
         self._index_list: list[str] = []
 
         self.datastore = datastore
-        self.name = f"{APP_NAME}-{name}"
+        self.name = f"{DATASTORE_INDEX_PREFIX}-{name}"
         self.ilm_config = ilm_config
         self.index_name = f"{self.name}_hot"
         self.model_class = model_class
@@ -327,14 +328,12 @@ class ESCollection(Generic[ModelType]):
                 except elasticsearch.exceptions.NotFoundError:
                     pass
 
-    def with_retries(self, func, *args, raise_conflicts=False, **kwargs):
+    def with_retries(self, func: Callable[..., _R], *args: Any, raise_conflicts: bool = False, **kwargs: Any) -> _R:
         """This function performs the passed function with the given args and kwargs and reconnect if it fails
 
         :return: return the output of the function passed
         """
         retries = 0
-        updated = 0
-        deleted = 0
 
         while True:
             if retries >= self.max_attempts:
@@ -345,12 +344,6 @@ class ESCollection(Generic[ModelType]):
 
                 if retries:
                     logger.info("Reconnected to elasticsearch!")
-
-                if updated:
-                    ret_val["updated"] += updated
-
-                if deleted:
-                    ret_val["deleted"] += deleted
 
                 return ret_val
             except elasticsearch.exceptions.NotFoundError as e:
@@ -368,8 +361,6 @@ class ESCollection(Generic[ModelType]):
                     # De-sync potential treads trying to write to the index
                     time.sleep(random() * 0.1)  # noqa: S311
                     raise VersionConflictException(str(ce))
-                updated += ce.info.get("updated", 0)
-                deleted += ce.info.get("deleted", 0)
 
                 time.sleep(min(retries, self.MAX_RETRY_BACKOFF))
                 self.datastore.connection_reset()
@@ -594,7 +585,7 @@ class ESCollection(Generic[ModelType]):
                 logger.info("The target shards is not a factor of the current shards, aborting...")
                 return
             else:
-                target_node = self.with_retries(self.datastore.client.cat.nodes, format="json")[0]["name"]
+                target_node = self.with_retries(self.datastore.client.cat.nodes, format="json")[0]["name"]  # type: ignore
                 clone_setup_settings = {
                     "index.number_of_replicas": 0,
                     "index.routing.allocation.require._name": target_node,
@@ -845,11 +836,11 @@ class ESCollection(Generic[ModelType]):
                     alias_actions.append({"remove_index": {"index": new_name}})
                     self.with_retries(self.datastore.client.indices.update_aliases, actions=alias_actions)
 
-                    if self.with_retries(self.datastore.client.indices.exists, index=new_name):
+                    if bool(self.with_retries(self.datastore.client.indices.exists, index=new_name)):
                         logger.warning("Deleting reindex target %s", new_name)
                         self.with_retries(self.datastore.client.indices.delete, index=new_name)
                 finally:
-                    if self.with_retries(self.datastore.client.indices.exists, index=index):
+                    if bool(self.with_retries(self.datastore.client.indices.exists, index=index)):
                         logger.warning("Unblock writes to the index")
                         self.with_retries(
                             self.datastore.client.indices.put_settings,
@@ -857,7 +848,7 @@ class ESCollection(Generic[ModelType]):
                             settings=write_unblock_settings,
                         )
             except Exception:
-                if source_writes_blocked and self.with_retries(self.datastore.client.indices.exists, index=index):
+                if source_writes_blocked and bool(self.with_retries(self.datastore.client.indices.exists, index=index)):
                     logger.warning("Unblock writes to source index %s after failed reindex", index)
                     self.with_retries(
                         self.datastore.client.indices.put_settings,
@@ -1081,13 +1072,13 @@ class ESCollection(Generic[ModelType]):
 
         return data
 
-    def exists(self, key):
+    def exists(self, key) -> bool:
         """Check if a document exists in the datastore.
 
         :param key: key of the document to get from the datastore
         :return: true/false depending if the document exists or not
         """
-        return self.with_retries(self.datastore.client.exists, index=self.name, id=key, _source=False)
+        return cast(bool, self.with_retries(self.datastore.client.exists, index=self.name, id=key, _source=False))
 
     @overload
     def _get(self, key, retries, version: Literal[False]) -> dict[str, Any]: ...
@@ -1142,25 +1133,25 @@ class ESCollection(Generic[ModelType]):
         return None
 
     @overload
-    def get(self, key, as_obj: Literal[True], version: Literal[True]) -> tuple[ModelType, str]: ...
+    def get(self, key, as_obj: Literal[True], version: Literal[True]) -> tuple[ModelType | None, str]: ...
 
     @overload
-    def get(self, key, as_obj: Literal[True], version: Literal[False]) -> ModelType: ...
+    def get(self, key, as_obj: Literal[True], version: Literal[False]) -> ModelType | None: ...
 
     @overload
-    def get(self, key, as_obj: Literal[True]) -> ModelType: ...
+    def get(self, key, as_obj: Literal[True]) -> ModelType | None: ...
 
     @overload
-    def get(self, key) -> ModelType: ...
+    def get(self, key) -> ModelType | None: ...
 
     @overload
-    def get(self, key, as_obj: Literal[False], version: Literal[True]) -> tuple[dict[str, Any], str]: ...
+    def get(self, key, as_obj: Literal[False], version: Literal[True]) -> tuple[dict[str, Any] | None, str]: ...
 
     @overload
-    def get(self, key, as_obj: Literal[False], version: Literal[False]) -> dict[str, Any]: ...
+    def get(self, key, as_obj: Literal[False], version: Literal[False]) -> dict[str, Any] | None: ...
 
     @overload
-    def get(self, key, as_obj: Literal[False]) -> dict[str, Any]: ...
+    def get(self, key, as_obj: Literal[False]) -> dict[str, Any] | None: ...
 
     def get(self, key, as_obj=True, version=False):
         """Get a document from the datastore, retry a few times if not found and normalize the
@@ -1242,7 +1233,7 @@ class ESCollection(Generic[ModelType]):
             return self.normalize(data, as_obj=as_obj), version
         return self.normalize(data, as_obj=as_obj)
 
-    def save(self, key, data, version=None, refresh=None):
+    def save(self, key, data, version=None, refresh: Literal["true", "false", "wait_for"] | None = None):
         """Save to document to the datastore using the key as its document id.
 
         The document data will be normalized before being saved in the datastore.
@@ -1250,6 +1241,9 @@ class ESCollection(Generic[ModelType]):
         :param key: ID of the document to save
         :param data: raw data or instance of the model class to save as the document
         :param version: version of the document to save over, if the version check fails this will raise an exception
+        :param refresh: 'true' | 'false' | 'wait_for' | None
+             Whether to refresh the datastore before returning. 'wait_for' will wait for the change to be visible
+             in search.
         :return: True if the document was saved properly
         """
         if " " in key:
@@ -1274,6 +1268,11 @@ class ESCollection(Generic[ModelType]):
             operation = "create"
         elif version:
             seq_no, primary_term = version.split("---")
+
+        if refresh == "true":
+            logger.warning(
+                "refresh set to true when saving %s to index %s - this is very costly for performance!", key, self.name
+            )
 
         try:
             self.with_retries(
@@ -1308,12 +1307,11 @@ class ESCollection(Generic[ModelType]):
         except elasticsearch.NotFoundError:
             return False
 
-    def delete_by_query(self, query: str, sort=None, max_docs=None, refresh=None):
+    def delete_by_query(self, query: str, sort=None, max_docs=None, refresh=None) -> bool:
         """This function should delete the underlying documents referenced by the query.
         It should return true if the documents were in fact properly deleted.
 
         :param query: Query of the documents to download
-        :param workers: Number of workers used for deletion if basic currency delete is used
         :return: True is delete successful
         """
         query_obj = {"bool": {"must": {"query_string": {"query": query}}}}
@@ -1616,6 +1614,7 @@ class ESCollection(Generic[ModelType]):
                     extra_fields["_index"] = result["_index"]
                 if "*" in fields:
                     fields = None
+
                 return self.model_class(source_data, mask=fields, docid=item_id, extra_fields=extra_fields)
             else:
                 source_data = recursive_update(source_data, extra_fields, allow_recursion=False)
@@ -2027,6 +2026,30 @@ class ESCollection(Generic[ModelType]):
 
         return ret_data
 
+    @overload
+    def stream_search(
+        self,
+        query: str,
+        fl: str | None = None,
+        filters: list[str] | str | None = None,
+        access_control: typing.Any = None,
+        item_buffer_size: int = 200,
+        *,
+        as_obj: Literal[True] = True,
+    ) -> typing.Generator[ModelType, None, None]: ...
+
+    @overload
+    def stream_search(
+        self,
+        query: str,
+        fl: str | None = None,
+        filters: list[str] | str | None = None,
+        access_control: typing.Any = None,
+        item_buffer_size: int = 200,
+        *,
+        as_obj: Literal[False],
+    ) -> typing.Generator[dict[str, typing.Any], None, None]: ...
+
     def stream_search(
         self,
         query,
@@ -2234,7 +2257,7 @@ class ESCollection(Generic[ModelType]):
         search result object that consists of the following:
 
             {
-                "total": 123456,  # Total number of documents matching the query
+                "count": 123456,  # Total number of documents matching the query
             }
 
         :param query: lucene query to search for
@@ -2804,17 +2827,12 @@ class ESCollection(Generic[ModelType]):
                     index=self.index_name,
                     mappings=self._get_index_mappings(),
                     settings=self._get_index_settings(),
+                    aliases={self.name: {}},
                 )
             except elasticsearch.exceptions.RequestError as e:
                 if "resource_already_exists_exception" not in str(e):
                     raise
                 logger.warning("Tried to create an index template that already exists: %s", self.name.upper())
-
-            self.with_retries(
-                self.datastore.client.indices.put_alias,
-                index=self.index_name,
-                name=self.name,
-            )
         elif not self.with_retries(
             self.datastore.client.indices.exists, index=self.index_name
         ) and not self.with_retries(self.datastore.client.indices.exists_alias, name=self.name):
