@@ -269,11 +269,14 @@ class ESCollection(Generic[ModelType]):
         if not self.ilm_config:
             return
 
-        ilm_indices = self.with_retries(
-            self.datastore.client.indices.get,
-            index=f"{self.name}-0*",
-            ignore_unavailable=True,
-        )
+        try:
+            ilm_indices = self.datastore.client.indices.get(
+                index=f"{self.name}-0*",
+                ignore_unavailable=True,
+            )
+        except elasticsearch.exceptions.NotFoundError:
+            return
+
         if ilm_indices:
             self.index_name = sorted(ilm_indices)[-1]
 
@@ -2893,12 +2896,13 @@ class ESCollection(Generic[ModelType]):
         if existing_ilm_indices:
             # ILM already bootstrapped — ensure the alias exists
             latest = sorted(existing_ilm_indices)[-1]
+            legacy_hot_index = f"{self.name}_hot"
             if self.with_retries(self.datastore.client.indices.exists_alias, name=self.name):
                 alias_indices = self.with_retries(self.datastore.client.indices.get_alias, name=self.name)
                 alias_actions = []
                 for alias_index, alias_index_data in alias_indices.items():
                     alias_data = alias_index_data.get("aliases", {}).get(self.name, {})
-                    if alias_index == self.index_name:
+                    if alias_index == legacy_hot_index:
                         alias_actions.append({"remove": {"index": alias_index, "alias": self.name}})
                     elif alias_index != latest and alias_data.get("is_write_index", False):
                         alias_actions.append(

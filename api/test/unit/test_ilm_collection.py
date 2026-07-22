@@ -6,6 +6,7 @@ index template, and _ensure_collection_ilm logic without requiring a running ES.
 
 from unittest.mock import MagicMock, patch
 
+import elasticsearch
 import pytest
 
 from howler.datastore.collection import ESCollection
@@ -238,6 +239,19 @@ class TestEnsureCollectionILM:
         assert col.index_name == f"{col.name}-000002"
         assert col.index_list_full == [f"{col.name}-000002", f"{col.name}-000001"]
 
+    def test_refresh_ilm_index_name_does_not_bootstrap_when_indices_are_missing(self, mock_datastore):
+        """Maintenance probes tolerate missing ILM indexes without ensuring the collection."""
+        col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"))
+        mock_datastore.client.indices.get.side_effect = elasticsearch.exceptions.NotFoundError(
+            "404", "index not found", {"error": {"type": "index_not_found_exception"}}
+        )
+
+        with patch.object(col, "_ensure_collection") as mock_ensure:
+            col._refresh_ilm_index_name()
+
+        assert col.index_name == f"{col.name}_hot"
+        mock_ensure.assert_not_called()
+
     def test_fresh_install_creates_initial_index(self, mock_datastore, ilm_global):
         """On a fresh install, creates {name}-000001 with alias and ILM settings."""
         ilm_index = ILMIndexConfig(warm="30d", cold="90d")
@@ -346,6 +360,32 @@ class TestEnsureCollectionILM:
         assert {"remove": {"index": hot_index_name, "alias": col.name}} in alias_actions
         assert {"add": {"index": latest_index_name, "alias": col.name, "is_write_index": True}} in alias_actions
         assert col.index_name == latest_index_name
+
+    def test_existing_ilm_indices_remove_legacy_alias_after_reentry(self, mock_datastore, ilm_global):
+        """Re-entering ensure does not remove the alias from the active ILM index."""
+        ilm_index = ILMIndexConfig(warm="30d")
+        col = _make_collection(mock_datastore, ilm_config=ilm_index)
+        legacy_hot_index = f"{col.name}_hot"
+        latest_index_name = f"{col.name}-000001"
+        col.index_name = latest_index_name
+
+        mock_datastore.client.indices.get.return_value = {latest_index_name: {}}
+        mock_datastore.client.indices.exists_alias.return_value = True
+        mock_datastore.client.indices.get_alias.return_value = {
+            legacy_hot_index: {"aliases": {col.name: {}}},
+            latest_index_name: {"aliases": {col.name: {"is_write_index": True}}},
+        }
+
+        with (
+            patch.object(col, "_create_ilm_policy"),
+            patch.object(col, "_create_index_template"),
+            patch.object(col, "_check_fields"),
+        ):
+            col._ensure_collection_ilm()
+
+        alias_actions = mock_datastore.client.indices.update_aliases.call_args.kwargs["actions"]
+        assert {"remove": {"index": legacy_hot_index, "alias": col.name}} in alias_actions
+        assert {"remove": {"index": latest_index_name, "alias": col.name}} not in alias_actions
 
     def test_existing_ilm_indices_preserve_alias_metadata_when_updating_write_index(self, mock_datastore, ilm_global):
         """Write-index corrections retain alias filters and routing settings."""
