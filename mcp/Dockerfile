@@ -47,23 +47,21 @@ ENV PIP_CERT=${PIP_CERT} \
     PIP_DEFAULT_TIMEOUT=120 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
+RUN python -m pip install --no-cache-dir poetry
+
 USER nonroot
 
 ENV HOME=/var/lib/howler \
-    XDG_CACHE_HOME=/var/cache/howler
+    XDG_CACHE_HOME=/var/cache/howler \
+    POETRY_VIRTUALENVS_IN_PROJECT=true
 
-# Copy project files (including optional wheels/) before dependency install.
-COPY --chown=nonroot:nonroot requirements-main.txt ./
+# Install only locked production dependencies before copying application code.
+COPY --chown=nonroot:nonroot pyproject.toml poetry.lock ./
+
+RUN --mount=type=cache,target=/var/cache/howler/pypoetry,uid=65532,gid=65532 \
+    poetry install --only main --no-root --no-interaction --no-ansi
+
 COPY --chown=nonroot:nonroot . .
-
-# Create the app venv and install dependencies.
-RUN --mount=type=cache,target=/var/cache/howler/pip,uid=65532,gid=65532 \
-    python -m venv /var/lib/howler/.venv && \
-    if [ -d /var/lib/howler/wheels ] && [ "$(ls -A /var/lib/howler/wheels)" ]; then \
-        /var/lib/howler/.venv/bin/pip install --find-links=/var/lib/howler/wheels --cache-dir /var/cache/howler/pip --retries 10 --timeout 120 -r /var/lib/howler/requirements-main.txt; \
-    else \
-        /var/lib/howler/.venv/bin/pip install --cache-dir /var/cache/howler/pip --retries 10 --timeout 120 -r /var/lib/howler/requirements-main.txt; \
-    fi
 
 
 
