@@ -6,16 +6,22 @@ These run in the normal CI test suite. The network_connection_test.py
 file contains opt-in integration tests for live-server validation.
 """
 
+import sys
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
+from uuid import uuid4
 
 import pytest
-from howler_mcp.mcp_server.tools import MAXIMUM_LOOK_BACK, MAXIMUM_TICKET, RegisterTools
 from mcp.server.auth.provider import AccessToken
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from mcp_server.tools import MAXIMUM_LOOK_BACK, MAXIMUM_TICKET, RegisterTools
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
 FAKE_TOKEN = AccessToken(token="fake-bearer", client_id="test-client", scopes=[])
-GET_ACCESS_TOKEN_PATH = "howler_mcp.mcp_server.tools.get_access_token"
+GET_ACCESS_TOKEN_PATH = "mcp_server.tools.get_access_token"
 
 
 class _CaptureMCP:
@@ -227,7 +233,8 @@ async def test_list_hits_by_analytic_escapes_closing_quote(tools_and_api):
 
     query = mock_api.call.call_args.kwargs["body"]["query"]
     assert '\\"' in query  # the injected quote must be escaped
-    assert "OR howler.id:*" not in query  # injection must not escape the phrase
+    assert query.startswith('howler.analytic:"')
+    assert query.endswith('"')
 
 
 # ── Happy path: GetFalsePositiveHits ─────────────────────────────────────────
@@ -263,7 +270,7 @@ async def test_get_false_positive_hits_shapes_response(tools_and_api):
 async def test_add_comment_sends_correct_payload(tools_and_api):
     tools, mock_api = tools_and_api
     mock_api.call.return_value = {}
-    hit_id = "550e8400-e29b-41d4-a716-446655440000"
+    hit_id = str(uuid4())
     with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
         result = await tools["AddCommentToHit"](hit_id=hit_id, comment="test note")
 
@@ -280,10 +287,45 @@ async def test_add_comment_sends_correct_payload(tools_and_api):
 @pytest.mark.asyncio
 async def test_get_hit_by_id_calls_correct_path(tools_and_api):
     tools, mock_api = tools_and_api
-    hit_id = "550e8400-e29b-41d4-a716-446655440000"
+    hit_id = str(uuid4())
     mock_api.call.return_value = {"howler": {"id": hit_id}}
     with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
         result = await tools["GetHitById"](hit_id=hit_id)
 
     assert mock_api.call.call_args.kwargs["path"] == f"/hit/{hit_id}"
     assert result["howler"]["id"] == hit_id
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "tool_name,kwargs",
+    [
+        ("WhoAmI", {}),
+        ("GetHitById", {"hit_id": "__VALID_HIT_ID__"}),
+        ("ListAlerts", {}),
+        ("ListAssignedHits", {}),
+        ("SearchHitsWithIndicators", {"indicators": ["ioc-value"]}),
+        ("GetFalsePositiveHits", {}),
+        ("ListHitsByAnalytic", {"analytic_name": "Valid analytic"}),
+        (
+            "AddCommentToHit",
+            {
+                "hit_id": "__VALID_HIT_ID__",
+                "comment": "note",
+            },
+        ),
+    ],
+)
+async def test_tool_call_error_is_propagated(tools_and_api, tool_name, kwargs):
+    """Tools should surface api_client.call failures instead of swallowing them."""
+    tools, mock_api = tools_and_api
+    mock_api.call.side_effect = ValueError("Missing 'api_response' in response JSON")
+    valid_hit_id = str(uuid4())
+    effective_kwargs = {
+        key: (valid_hit_id if value == "__VALID_HIT_ID__" else value)
+        for key, value in kwargs.items()
+    }
+
+    with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
+        with pytest.raises(ValueError, match="Missing 'api_response'"):
+            await tools[tool_name](**effective_kwargs)

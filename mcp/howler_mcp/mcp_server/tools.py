@@ -148,14 +148,20 @@ def RegisterTools(mcp, api_client):
     async def search_hits_with_indicators(
         indicators: list[str], limit: int = 25
     ) -> Howler_response:
-        """Return hits with matching indicators . Indicators must be a non-empty array of strings.
+        """Return hits with matching indicators. Indicators must be a non-empty array of strings.
         Always try to invoke the tool once, even if there are wildcard characters in the list and if the user uses 'and'.
-        Only use the limit paramters if the user asks for it (default is 25)."""
+        Only use the limit parameters if the user asks for it (default is 25)."""
         if not indicators:
             raise ValueError("indicators must be a non-empty list.")
 
         if limit < 1 or limit > MAXIMUM_TICKET:
             raise ValueError(f"limit must be between 1 and {MAXIMUM_TICKET}.")
+        for i in range(len(indicators)):
+            indicators[i] = re.sub(r"[\r\n\t]+", " ", indicators[i]).strip()
+            if not indicators[i]:
+                raise ValueError(
+                    "indicators cannot contain empty strings after whitespace normalization."
+                )
 
         access_token: AccessToken | None = get_access_token()
         if not isinstance(access_token, AccessToken):
@@ -181,8 +187,8 @@ def RegisterTools(mcp, api_client):
             body={"query": query, "fl": None, "rows": limit},
         )
         return Howler_response(
-            rows=data.get("rows"),
-            total=data.get("total"),
+            rows=data.get("rows") if data.get("rows") is not None else 0,
+            total=data.get("total") if data.get("total") is not None else 0,
             hits=[
                 {
                     "classification": item.get("classification"),
@@ -231,8 +237,8 @@ def RegisterTools(mcp, api_client):
             },
         )
         return Howler_response(
-            rows=data.get("rows"),
-            total=data.get("total"),
+            rows=data.get("rows") if data.get("rows") is not None else 0,
+            total=data.get("total") if data.get("total") is not None else 0,
             hits=[
                 {
                     "classification": item.get("classification"),
@@ -293,8 +299,8 @@ def RegisterTools(mcp, api_client):
             },
         )
         return Howler_response(
-            rows=data.get("rows"),
-            total=data.get("total"),
+            rows=data.get("rows") if data.get("rows") is not None else 0,
+            total=data.get("total") if data.get("total") is not None else 0,
             hits=[
                 {
                     "classification": item.get("classification"),

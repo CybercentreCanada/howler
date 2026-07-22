@@ -50,4 +50,7 @@ class HowlerApiClient:
                 json=body if method == "POST" else None,
             )
             response.raise_for_status()
-            return response.json().get("api_response")
+            api_res = response.json().get("api_response")
+            if api_res is None:
+                raise ValueError("Missing 'api_response' in response JSON")
+            return api_res

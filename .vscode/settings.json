@@ -113,12 +113,18 @@
       "tables": false
     }
   },
-  "python-envs.defaultEnvManager": "ms-python.python:system",
+  "python-envs.defaultEnvManager": "ms-python.python:poetry",
   "python-envs.pythonProjects": [
     {
-      "path": ".",
+      "path": "mcp/.venv",
       "envManager": "ms-python.python:poetry",
       "packageManager": "ms-python.python:poetry"
+    },
+    {
+      "path": "mcp",
+      "envManager": "ms-python.python:system",
+      "packageManager": "ms-python.python:pip"
     }
-  ]
+  ],
+  "python-envs.defaultPackageManager": "ms-python.python:poetry"
 }

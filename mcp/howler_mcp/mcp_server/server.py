@@ -1,5 +1,6 @@
 import ipaddress
 import logging
+import re
 
 from mcp.server.auth.settings import AuthSettings
 from mcp.server.fastmcp import FastMCP
@@ -27,9 +28,16 @@ except ValueError:
 # Validate the IP format, default to 0.0.0.0 if invalid
 try:
     ipaddress.ip_address(MCPSettings.HOST)
+
 except ValueError:
-    logger.error("Invalid IP address: %s", MCPSettings.HOST)
-    MCPSettings.HOST = "0.0.0.0"
+    if MCPSettings.HOST.lower() != "localhost" and not re.match(
+        r"^(((?!-)[\p{L}0-9-]{1,63}(?<!-)\.)+[\p{L}]{2,})$", MCPSettings.HOST
+    ):
+        logger.error(
+            "Invalid IP address or domain: %s, defaulted to 0.0.0.0", MCPSettings.HOST
+        )
+        MCPSettings.HOST = "0.0.0.0"
+
 
 mcp = FastMCP(
     "Howler MCP",
