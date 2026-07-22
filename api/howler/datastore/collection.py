@@ -254,7 +254,7 @@ class ESCollection(Generic[ModelType]):
         if not self._index_list:
             self._index_list = list(self.with_retries(self.datastore.client.indices.get, index=f"{self.name}-*").keys())
 
-        return [self.index_name] + sorted(self._index_list, reverse=True)
+        return list(dict.fromkeys([self.index_name, *sorted(self._index_list, reverse=True)]))
 
     @property
     def index_list(self):
@@ -263,6 +263,19 @@ class ESCollection(Generic[ModelType]):
         :return: list of valid indexes for this collection
         """
         return [self.index_name]
+
+    def _refresh_ilm_index_name(self):
+        """Set ``index_name`` to the latest existing ILM index, when one exists."""
+        if not self.ilm_config:
+            return
+
+        ilm_indices = self.with_retries(
+            self.datastore.client.indices.get,
+            index=f"{self.name}-0*",
+            ignore_unavailable=True,
+        )
+        if ilm_indices:
+            self.index_name = sorted(ilm_indices)[-1]
 
     def scan_with_retry(
         self,
@@ -729,6 +742,7 @@ class ESCollection(Generic[ModelType]):
             operation can be recovered with :meth:`reindex_cleanup`.
         """
         logger.warning("Beginning Reindex")
+        self._refresh_ilm_index_name()
         for index in self.index_list:
             new_name = f"{index}__reindex"
             index_data = None
@@ -943,6 +957,7 @@ class ESCollection(Generic[ModelType]):
         :return: ``True`` when cleanup completed on all indexes
         """
         logger.warning("Beginning reindex cleanup")
+        self._refresh_ilm_index_name()
         for index in self.index_list:
             new_name = f"{index}__reindex"
 

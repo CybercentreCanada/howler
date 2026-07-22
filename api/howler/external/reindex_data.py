@@ -99,6 +99,7 @@ if __name__ == "__main__":
 
     for index_name in selected:
         collection: ESCollection = getattr(ds, index_name)
+        collection._refresh_ilm_index_name()
 
         if args.verbose:
             print(f"Index schema for '{index_name}':")

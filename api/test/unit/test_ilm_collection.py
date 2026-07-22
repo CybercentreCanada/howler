@@ -225,6 +225,19 @@ class TestCreateIndexTemplate:
 class TestEnsureCollectionILM:
     """Tests for _ensure_collection_ilm bootstrap logic."""
 
+    def test_refresh_ilm_index_name_uses_latest_existing_index(self, mock_datastore):
+        """Maintenance commands select the active ILM index when bootstrap is skipped."""
+        col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"))
+        mock_datastore.client.indices.get.return_value = {
+            f"{col.name}-000001": {},
+            f"{col.name}-000002": {},
+        }
+
+        col._refresh_ilm_index_name()
+
+        assert col.index_name == f"{col.name}-000002"
+        assert col.index_list_full == [f"{col.name}-000002", f"{col.name}-000001"]
+
     def test_fresh_install_creates_initial_index(self, mock_datastore, ilm_global):
         """On a fresh install, creates {name}-000001 with alias and ILM settings."""
         ilm_index = ILMIndexConfig(warm="30d", cold="90d")
@@ -342,6 +355,7 @@ class TestEnsureCollectionILM:
 
         mock_datastore.client.indices.exists.side_effect = [True, True]
         mock_datastore.client.indices.get.side_effect = [
+            {col.index_name: {}},
             {col.index_name: {"aliases": {}}},
             {reindex_index_name: {"aliases": {}}},
         ]
