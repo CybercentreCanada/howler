@@ -81,3 +81,12 @@ def test_hit_diffs_pagination(test_client, current_time):
 
     hit_id_set.update(item["howler"]["id"] for item in res["items"])
     assert len(hit_id_set) == 10
+
+
+def test_hit_schema(test_client):
+    response = test_client.get("/api/v1/sync/hit_schema")
+
+    assert response.status_code == 200
+    schema = response.json.get("api_response")
+    assert "fields" in schema
+    assert schema.get("type") == "struct"

@@ -78,4 +78,4 @@ def get_hit_struct_schema():
     }
     """
     schema = sync_service.get_hit_struct_schema()
-    return ok(schema.json())
+    return ok(schema.jsonValue())
