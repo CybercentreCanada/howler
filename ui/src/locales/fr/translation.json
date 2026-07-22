@@ -250,6 +250,7 @@
   "hit.search.keyboard.shortcuts": "Raccourcis",
   "hit.search.keyboard.shortcuts_hints": "Raccourcis avec indice",
   "hit.search.prompt": "Rechercher en fournissant une requête lucene. Activer l'autocomplétion en utilisant [ctrl + espace].",
+  "hit.search.record.invalid": "Type d'enregistrement invalide",
   "hit.search.save.button": "Sauvegarder la requête en tant que vue",
   "hit.search.save.view": "Sauvegarder la vue",
   "hit.search.select.all": "Sélectionner tous les résultats de la page",

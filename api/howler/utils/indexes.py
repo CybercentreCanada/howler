@@ -1,3 +1,5 @@
+import re
+
 from howler.common.loader import APP_NAME, DATASTORE_INDEX_PREFIX
 from howler.datastore.exceptions import SearchException
 
@@ -53,4 +55,4 @@ def get_logical_index_name(raw_index: str) -> str:
             raw_index = raw_index.removeprefix(f"{index_prefix}-")
             break
 
-    return raw_index.removesuffix("_hot")
+    return re.sub(r"-\d+$", "", raw_index).removesuffix("_hot")

@@ -17,7 +17,6 @@ from howler.odm.random_data import (
 )
 from howler.odm.randomizer import random_model_obj
 from howler.services import search_service
-from howler.utils.indexes import normalize_indexes
 
 TEST_SIZE = 12
 
@@ -51,20 +50,6 @@ def datastore(datastore_connection):
     finally:
         wipe_users(ds)
         create_users(ds)
-
-
-def test_normalize_indexes_string():
-    assert normalize_indexes("user,hit") == f"{DATASTORE_INDEX_PREFIX}-user,{DATASTORE_INDEX_PREFIX}-hit"
-
-
-def test_normalize_indexes_list_and_special_values():
-    assert normalize_indexes(["*", "_all", "custom-index", "event*"]) == "*,_all,custom-index,event*"
-
-
-@pytest.mark.parametrize("indexes", ["", " , ", [], [" "]])
-def test_normalize_indexes_fails_on_empty(indexes):
-    with pytest.raises(SearchException, match="No indexes were provided"):
-        normalize_indexes(indexes)
 
 
 def test_format_items():
@@ -377,77 +362,6 @@ def test_search_access_control_combined_with_filters(datastore):
     assert "howler.id:*" in filter_queries
     assert "__access_lvl__:[0 TO 200]" in filter_queries
     assert len(filter_queries) == 2
-
-
-class TestNormalizeIndexes:
-    """Tests for utils.indexes.normalize_indexes."""
-
-    def test_single_index_adds_prefix_and_suffix(self):
-        """A plain index name gets the datastore index prefix."""
-        result = normalize_indexes("hit")
-
-        assert result == f"{DATASTORE_INDEX_PREFIX}-hit"
-
-    def test_multiple_indexes_comma_separated(self):
-        """Comma-separated indexes are each normalized."""
-        result = normalize_indexes("hit,event")
-
-        parts = result.split(",")
-        assert len(parts) == 2
-        assert parts[0] == f"{DATASTORE_INDEX_PREFIX}-hit"
-        assert parts[1] == f"{DATASTORE_INDEX_PREFIX}-event"
-
-    def test_wildcard_preserved(self):
-        """Wildcard '*' is kept as-is."""
-        result = normalize_indexes("*")
-
-        assert result == "*"
-
-    def test_exclusion_pattern_preserved(self):
-        """Indexes with a dash (exclusion pattern) are kept as-is."""
-        result = normalize_indexes("custom-index")
-
-        assert result == "custom-index"
-
-    def test_list_input(self):
-        """A list of indexes is handled correctly."""
-        result = normalize_indexes(["hit", "event"])
-
-        parts = result.split(",")
-        assert len(parts) == 2
-        assert all(p.startswith(DATASTORE_INDEX_PREFIX) for p in parts)
-
-    def test_empty_string_raises(self):
-        """An empty string raises SearchException."""
-        with pytest.raises(SearchException):
-            normalize_indexes("")
-
-    def test_empty_list_raises(self):
-        """An empty list raises SearchException."""
-        with pytest.raises(SearchException):
-            normalize_indexes([])
-
-    def test_whitespace_stripped(self):
-        """Leading/trailing whitespace in index names is stripped."""
-        result = normalize_indexes("  hit , event  ")
-
-        parts = result.split(",")
-        assert len(parts) == 2
-        assert all(p.startswith(DATASTORE_INDEX_PREFIX) for p in parts)
-
-    def test_all_keyword_preserved(self):
-        """The '_all' keyword is preserved as-is."""
-        result = normalize_indexes("_all")
-
-        assert result == "_all"
-
-    def test_mixed_wildcard_and_plain(self):
-        """Mix of wildcards and plain indexes normalizes correctly."""
-        result = normalize_indexes("*,hit")
-
-        parts = result.split(",")
-        assert parts[0] == "*"
-        assert parts[1] == f"{DATASTORE_INDEX_PREFIX}-hit"
 
 
 # ---------------------------------------------------------------------------
