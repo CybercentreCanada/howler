@@ -3,6 +3,7 @@ from typing import Any, Optional
 from flask import request
 
 from howler.api import bad_request, created, make_subapi_blueprint
+from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
@@ -13,6 +14,7 @@ from howler.odm.models.hit import Hit
 from howler.odm.models.user import User
 from howler.security import api_login
 from howler.services import action_service, analytic_service, hit_service
+from howler.utils.constants import DEBUG_FORCE_REFRESH
 from howler.utils.dict_utils import flatten
 from howler.utils.isotime import now_as_iso
 from howler.utils.str_utils import get_parent_key
@@ -30,6 +32,7 @@ hit_helper = OdmHelper(Hit)
 @generate_swagger_docs()
 @tool_api.route("/<tool_name>/hits", methods=["POST", "PUT"])
 @api_login(required_priv=["W"])
+@parse_parameters(refresh=parse_refresh)
 def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
     """Create one or many hits for a tool using field mapping.
 
@@ -38,6 +41,10 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
 
     Arguments:
     None
+
+    Optional Arguments:
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     {
@@ -64,6 +71,7 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
         Use POST /api/v1/hit/ directly with pre-mapped hit data instead.
     """
     data = request.json
+    refresh = kwargs.get("refresh", None)
     if not isinstance(data, dict):
         return bad_request(err="Invalid data format")
 
@@ -204,10 +212,9 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
         if bundle_odm is not None:
             child_odms = [odm for odm in odms if odm.howler.id != bundle_id]
 
-            for odm in child_odms:
-                hit_service.create_hit(odm.howler.id, odm, user=user.uname)
+            hit_service.create_hits(child_odms, user=user.uname, refresh="true" if DEBUG_FORCE_REFRESH else refresh)
+            analytic_service.save_from_hits(odms, user, refresh=refresh)
 
-            analytic_service.save_from_hits(odms, user)
             child_ids = [odm.howler.id for odm in child_odms]
             bundle_data = bundle_odm.as_primitives()
             result = bundle_compat_service.create_bundle(bundle_data, child_ids, user=user, refresh="wait_for")
@@ -220,15 +227,11 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
                     entry["_case_id"] = result.get("_case_id")
         else:
             # The bundle hit may have been dropped by de-duplication; ingest remaining hits directly.
-            for odm in odms:
-                hit_service.create_hit(odm.howler.id, odm, user=user.uname)
-            analytic_service.save_from_hits(odms, user)
+            hit_service.create_hits(odms, user=user.uname, refresh="true" if DEBUG_FORCE_REFRESH else refresh)
+            analytic_service.save_from_hits(odms, user, refresh=refresh)
     else:
-        for odm in odms:
-            hit_service.create_hit(odm.howler.id, odm, user=user.uname)
-        analytic_service.save_from_hits(odms, user)
-
-    datastore().hit.commit()
+        hit_service.create_hits(odms, user=user.uname, refresh="true" if DEBUG_FORCE_REFRESH else refresh)
+        analytic_service.save_from_hits(odms, user, refresh=refresh)
 
     action_service.enqueue_action_execution([entry["id"] for entry in out], trigger="create", user=user)
 

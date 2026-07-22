@@ -153,6 +153,34 @@ def es_connection(request):
         return pytest.skip("Connection to the Elasticsearch server failed. This test cannot be performed...")
 
 
+def _test_bulk(c: ESCollection):
+    delete_plan = c.get_bulk_plan()
+    delete_plan.add_delete_operation("test1")
+    delete_plan.add_delete_operation("test2")
+    delete_plan.add_delete_operation("test3")
+    delete_plan.add_delete_operation("test4")
+    c.bulk(delete_plan)
+    c.commit()
+
+    assert not c.exists("test1")
+    assert not c.exists("test2")
+    assert not c.exists("test3")
+    assert not c.exists("test4")
+
+    insert_plan = c.get_bulk_plan()
+    insert_plan.add_insert_operation("test1", test_map.get("test1"))
+    insert_plan.add_insert_operation("test2", test_map.get("test2"))
+    insert_plan.add_index_operation("test3", test_map.get("test3"))
+    insert_plan.add_index_operation("test4", test_map.get("test4"))
+    c.bulk(insert_plan)
+    c.commit()
+
+    assert c.exists("test1")
+    assert c.exists("test2")
+    assert c.exists("test3")
+    assert c.exists("test4")
+
+
 def _test_exists(c: ESCollection):
     """
     Test that all expected keys exist in the collection.
@@ -588,6 +616,7 @@ def _test_oversized_agg_search(c: ESCollection):
 
 
 TEST_FUNCTIONS = [
+    (_test_bulk, "bulk"),
     (_test_exists, "exists"),
     (_test_get, "get"),
     (_test_require, "require"),
