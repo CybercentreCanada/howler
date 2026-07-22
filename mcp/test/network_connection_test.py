@@ -367,7 +367,7 @@ def test_tool_get_false_positive_hit():
         headers={"Authorization": f"Bearer {token}"},
         url=f"{HOWLER_API.BASE_URL}/search/hit",
         json={
-            "query": r"howler.assessment: false-positive",
+            "query": "howler.assessment:false-positive",
             "fl": None,
             "filters": [f"event.created:[now-{lookback_in_days}d TO now]"],
             "rows": limit,

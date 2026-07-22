@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from mcp.server.auth.provider import AccessToken
 
 logger = logging.getLogger(__name__)
-LUCENE_SPECIAL_CHARS = frozenset(' +-!(){}[]^"~:\\/&|')
+LUCENE_SPECIAL_CHARS = frozenset(' +-!(){}[]^"~:\\/&|?*')
 
 
 class WhoAmIResponse(BaseModel):
