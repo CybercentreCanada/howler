@@ -90,7 +90,7 @@ Registers **8 MCP tools** and maps them to backend API endpoints:
 - `ListHitsByAnalytic` -> `POST /search/hit` (analytic name query)
 - `AddCommentToHit` -> `POST /hit/{hit_id}/comments`
 
-Also defines typed response models (`WhoAmI_response`, `Howler_response`).
+Also defines typed response models (`WhoAmIResponse`, `HowlerResponse`).
 
 ### `prompts.py`
 Registers **3 MCP prompts** that generate structured instructions for the AI assistant:
@@ -312,7 +312,7 @@ These tests are intentionally disabled by default and require explicit environme
     export TEST_AUTH_PASSWORD="<password>"
     export TEST_AUTH_EMAIL="<email>"
     export TEST_AUTH_SCOPE="howlermcp:access"
-    PYTHONPATH=. poetry run pytest howler_mcp/unittest/network_connection_test.py -v
+    poetry run pytest test/network_connection_test.py -v
 
 ### 8) Container deployment
 

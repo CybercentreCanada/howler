@@ -32,7 +32,7 @@ class HowlerApiClient:
         method: HttpVerb,
         body: dict[str, Any] | None = None,
         params: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+    ) -> Any:
         if method != "POST" and body is not None:
             raise ValueError("Request body is only allowed for POST")
 

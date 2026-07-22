@@ -8,14 +8,11 @@ from pydantic import BaseModel, Field
 
 from mcp.server.auth.provider import AccessToken
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)-8s %(name)s | %(message)s",
-)
 logger = logging.getLogger(__name__)
+LUCENE_SPECIAL_CHARS = frozenset('+-!(){}[]^"~:\\/&|')
 
 
-class WhoAmI_response(BaseModel):
+class WhoAmIResponse(BaseModel):
     username: str = Field(
         description="Unique login name used to identify the current user in Howler."
     )
@@ -47,12 +44,11 @@ class HowlerResponse(BaseModel):
 
 def RegisterTools(mcp, api_client):
     @mcp.tool(name="WhoAmI", description="Get information about the current user")
-    async def whoami() -> WhoAmI_response:
+    async def whoami() -> WhoAmIResponse:
         access_token: AccessToken | None = get_access_token()
         if not access_token:
             raise ValueError("Access token is not available.")
 
-        print(get_access_token())
         logger.info(
             "Tool called: whoami. Client: %s User:%s",
             access_token.client_id,
@@ -63,7 +59,7 @@ def RegisterTools(mcp, api_client):
             path="/user/whoami",
             method="GET",
         )
-        return WhoAmI_response(
+        return WhoAmIResponse(
             username=data.get("username", ""),
             email=data.get("email", ""),
             groups=data.get("groups") or [],
@@ -178,7 +174,7 @@ def RegisterTools(mcp, api_client):
 
         converted_indicators = " OR ".join(
             "".join(
-                f"\\{char}" if char in set('+-!(){}[]^"~:\\/&|') else char
+                f"\\{char}" if char in LUCENE_SPECIAL_CHARS else char
                 for char in indicator
             )
             for indicator in indicators
