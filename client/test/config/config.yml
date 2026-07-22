@@ -53,6 +53,9 @@ logging:
 
 system:
   type: development
+  correlation:
+    batch_size: 5
+    batch_timeout: 3
 
 ui:
   audit: false

@@ -211,7 +211,7 @@ def run_worker() -> None:  # pragma: no cover – long-running loop, tested via 
                 logger.debug("Processing correlation batch of %d hit(s)", len(batch))
                 try:
                     added = process_batch(batch)
-                    logger.info("Correlation batch complete: %d/%d hit(s) added", added, len(batch))
+                    logger.info("Correlation batch complete: %d case item(s) added for %d record(s)", added, len(batch))
                 except Exception:
                     logger.exception("Error processing correlation batch")
                 finally:
