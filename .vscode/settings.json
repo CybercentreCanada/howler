@@ -6,10 +6,10 @@
     "typescriptreact"
   ],
   "[css]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "oxc.oxc-vscode"
   },
   "[scss]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "oxc.oxc-vscode"
   },
   "[json]": {
     "editor.defaultFormatter": "vscode.json-language-features"
@@ -18,16 +18,16 @@
     "editor.defaultFormatter": "vscode.json-language-features"
   },
   "[javascript]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "oxc.oxc-vscode"
   },
   "[javascriptreact]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "oxc.oxc-vscode"
   },
   "[typescript]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "oxc.oxc-vscode"
   },
   "[typescriptreact]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "oxc.oxc-vscode"
   },
   "[yaml]": {
     "editor.insertSpaces": true,
@@ -102,7 +102,6 @@
       "changeProcessCWD": true
     }
   ],
-  "prettier.configPath": "ui/.prettierrc",
   "search.exclude": {
     "**/node_modules": true,
     "**/bower_components": true,
@@ -118,13 +117,24 @@
       "tables": false
     }
   },
+  "python-envs.defaultEnvManager": "ms-python.python:poetry",
   "editor.autoIndentOnPaste": true,
-  "python-envs.defaultEnvManager": "ms-python.python:system",
   "python-envs.pythonProjects": [
     {
-      "path": ".",
+      "path": "mcp",
+      "envManager": "ms-python.python:poetry",
+      "packageManager": "ms-python.python:poetry"
+    },
+    {
+      "path": "api",
+      "envManager": "ms-python.python:poetry",
+      "packageManager": "ms-python.python:poetry"
+    },
+    {
+      "path": "client",
       "envManager": "ms-python.python:poetry",
       "packageManager": "ms-python.python:poetry"
     }
   ],
+  "python-envs.defaultPackageManager": "ms-python.python:poetry"
 }

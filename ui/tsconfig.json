@@ -22,9 +22,24 @@
     "verbatimModuleSyntax": true,
 
     /* for imports. */
-    "baseUrl": "./src",
     "rootDir": "./src",
-    "paths": {},
+    "paths": {
+      "api": ["./src/api/index.ts"],
+      "api/*": ["./src/api/*"],
+      "branding/*": ["./src/branding/*"],
+      "commons/*": ["./src/commons/*"],
+      "components/*": ["./src/components/*"],
+      "globals.d.ts": ["./src/globals.d.ts"],
+      "i18n": ["./src/i18n.ts"],
+      "index.css": ["./src/index.css"],
+      "locales/*": ["./src/locales/*"],
+      "models/*": ["./src/models/*"],
+      "plugins/*": ["./src/plugins/*"],
+      "rest": ["./src/rest/index.ts"],
+      "rest/*": ["./src/rest/*"],
+      "tests/*": ["./src/tests/*"],
+      "utils/*": ["./src/utils/*"]
+    },
 
     "outDir": "dist"
   },
