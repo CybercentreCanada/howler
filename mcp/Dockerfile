@@ -40,7 +40,7 @@ FROM base AS builder
 
 USER root
 
-RUN apk update && apk add --no-cache build-base gcc libffi-dev openssl-dev musl-dev && rm -rf /var/cache/apk/*
+RUN apk update && apk add --no-cache build-base gcc libffi-dev openssl-dev && rm -rf /var/cache/apk/*
 
 ARG PIP_CERT=
 ENV PIP_CERT=${PIP_CERT} \
