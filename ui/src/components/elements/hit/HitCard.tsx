@@ -23,7 +23,7 @@ const HitCard: FC<{
 
   useEffect(() => {
     if (!hit && !lazy) {
-      getRecord(id);
+      void getRecord(id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);

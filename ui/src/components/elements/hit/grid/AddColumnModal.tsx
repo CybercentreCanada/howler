@@ -25,7 +25,7 @@ const AddColumnModal: FC<{
   const [suggestions, setSuggestions] = useState<string[]>([]);
 
   useEffect(() => {
-    (async () => {
+    void (async () => {
       setSuggestions(
         uniq(
           (

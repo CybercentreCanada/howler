@@ -24,6 +24,11 @@ repos:
   #   hooks:
   #     - id: conventional-pre-commit
   #       stages: [commit-msg]
+  - repo: https://github.com/oxc-project/mirrors-oxfmt
+    rev: v0.58.0
+    hooks:
+      - id: oxfmt
+        name: Run oxfmt
   - repo: local
     hooks:
       - id: poetry-check-api
@@ -54,9 +59,9 @@ repos:
         language: script
         stages: [pre-commit]
         files: ^plugins/sentinel/.*\.(toml|lock)
-      - id: prettier
-        name: Prettier Formatting Checks
-        entry: hooks/prettier.sh
+      - id: oxlint
+        name: Run oxlint
+        entry: hooks/oxlint.sh
         language: script
         stages: [pre-commit]
         files: ^ui/.*

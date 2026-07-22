@@ -18,7 +18,7 @@ const CaseViewer: FC = () => {
       return;
     }
 
-    fetchViewers(params.id);
+    void fetchViewers(params.id);
 
     if (open) {
       emit({

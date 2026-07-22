@@ -8,5 +8,5 @@ export const uri = () => {
 };
 
 export const post = (request?: HowlerSearchRequest): Promise<HowlerSearchResponse<Dossier>> => {
-  return hpost(uri(), { ...(request || {}), query: request?.query || 'title:*' });
+  return hpost(uri(), { ...request, query: request?.query || 'title:*' });
 };

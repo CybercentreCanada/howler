@@ -96,7 +96,7 @@ const ViewsBase: FC = () => {
         rows: pageCount,
         offset
       });
-    } catch (e) {
+    } catch {
       setHasError(true);
     } finally {
       setSearching(false);
@@ -226,7 +226,7 @@ const ViewsBase: FC = () => {
 
   useEffect(() => {
     if (!searching) {
-      onSearch();
+      void onSearch();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offset, favouritesOnly, type]);

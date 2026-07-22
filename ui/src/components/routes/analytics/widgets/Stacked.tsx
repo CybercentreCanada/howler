@@ -74,7 +74,7 @@ const Stacked = forwardRef<
       return;
     }
 
-    fetchData();
+    void fetchData();
   }, [analytic, fetchData]);
 
   const options: ChartOptions<'line'> = useMemo(() => {

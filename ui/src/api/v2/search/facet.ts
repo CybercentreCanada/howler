@@ -15,5 +15,5 @@ export const post = (
     indexes = indexes.split(',');
   }
 
-  return hpost(uri(indexes), { ...(request || {}), query: request?.query || 'howler.id:*' });
+  return hpost(uri(indexes), { ...request, query: request?.query || 'howler.id:*' });
 };

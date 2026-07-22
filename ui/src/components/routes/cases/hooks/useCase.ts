@@ -37,7 +37,7 @@ const useCase: (args: CaseArguments) => CaseResult = ({ caseId, case: providedCa
   useEffect(() => {
     if (caseId) {
       setLoading(true);
-      dispatchApi(api.v2.case.get(caseId), { throwError: false })
+      void dispatchApi(api.v2.case.get(caseId), { throwError: false })
         .then(setCase)
         .finally(() => setLoading(false));
     }
@@ -81,10 +81,8 @@ const useCase: (args: CaseArguments) => CaseResult = ({ caseId, case: providedCa
             };
           });
         }
-      } catch (e) {
+      } catch {
         setMissing(true);
-      } finally {
-        return;
       }
     },
     [activeCaseId, dispatchApi]

@@ -12,7 +12,7 @@ export const uri = () => {
 };
 
 export const post = (request?: HowlerSearchRequest): Promise<HowlerSearchResponse<Hit>> => {
-  return hpost(uri(), { ...(request || {}), query: request?.query || DEFAULT_QUERY });
+  return hpost(uri(), { ...request, query: request?.query || DEFAULT_QUERY });
 };
 
 export { eql, explain, sigma };

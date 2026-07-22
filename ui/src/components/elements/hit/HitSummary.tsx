@@ -182,7 +182,7 @@ const HitSummary: FC<{
       return;
     }
 
-    performAggregation();
+    void performAggregation();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, views, searching, error]);
 

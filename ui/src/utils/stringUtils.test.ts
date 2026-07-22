@@ -80,7 +80,7 @@ describe('safeFieldValue', () => {
   });
 
   it('escapes backslash before escaping quotes (order matters)', () => {
-    expect(safeFieldValue('\\"')).toBe('"\\\\\\"\"');
+    expect(safeFieldValue('\\"')).toBe('"\\\\\\""');
   });
 });
 

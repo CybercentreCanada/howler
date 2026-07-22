@@ -182,7 +182,7 @@ const TriageSettings: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => voi
                       onChange={e => setRationale(e.target.value)}
                       onKeyDown={e => {
                         if (e.key === 'Enter' && !!rationale) {
-                          updateAnalytic({
+                          void updateAnalytic({
                             triage_settings: {
                               rationales: uniq([...rationales, rationale])
                             }
@@ -199,7 +199,7 @@ const TriageSettings: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => voi
                               size="small"
                               disabled={!rationale}
                               onClick={() => {
-                                updateAnalytic({
+                                void updateAnalytic({
                                   triage_settings: {
                                     rationales: uniq([...rationales, rationale])
                                   }

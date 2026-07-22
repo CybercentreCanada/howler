@@ -1,0 +1,131 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "options": {
+    "typeAware": true,
+    "typeCheck": true
+  },
+  "plugins": ["unicorn", "import", "react", "typescript", "jsx-a11y"],
+  "categories": {
+    "correctness": "warn"
+  },
+  "env": {
+    "builtin": true,
+    "es2018": true,
+    "commonjs": true,
+    "mocha": true
+  },
+  "ignorePatterns": [
+    "vite.config.ts",
+    "src/commons/**",
+    "src/commons_deprecated/**",
+    "build/**",
+    "src/react-app-env.d.ts",
+    "src/serviceWorker.ts",
+    "src/config-overrides.js"
+  ],
+  "rules": {
+    "import/namespace": "error",
+    "import/default": "error",
+    "import/no-named-as-default": "warn",
+    "import/no-named-as-default-member": "warn",
+    "import/no-duplicates": "warn",
+    "react/jsx-key": "error",
+    "react/jsx-no-comment-textnodes": "error",
+    "react/jsx-no-duplicate-props": "error",
+    "react/jsx-no-target-blank": "error",
+    "react/jsx-no-undef": "error",
+    "react/no-children-prop": "error",
+    "react/no-danger-with-children": "error",
+    "react/no-direct-mutation-state": "error",
+    "react/no-find-dom-node": "error",
+    "react/no-is-mounted": "error",
+    "react/no-render-return-value": "error",
+    "react/no-string-refs": "error",
+    "react/no-unescaped-entities": "error",
+    "react/no-unknown-property": "error",
+    "import/newline-after-import": "error",
+    "import/no-cycle": "warn",
+    "typescript/no-misused-spread": "off",
+    "typescript/unbound-method": "off",
+    "typescript/no-useless-default-assignment": "off",
+    "jsx-a11y/click-events-have-key-events": "off",
+    "jsx-a11y/no-static-element-interactions": "off",
+    "jsx-a11y/prefer-tag-over-role": "off",
+    "jsx-a11y/aria-role": "off",
+    "jsx-a11y/anchor-is-valid": [
+      "error",
+      {
+        "components": ["Link"],
+        "specialLink": ["to", "hrefLeft", "hrefRight"],
+        "aspects": ["noHref", "invalidHref", "preferButton"]
+      }
+    ],
+    "no-console": ["warn"],
+    "react/jsx-filename-extension": [
+      "warn",
+      {
+        "extensions": [".js", ".jsx", ".ts", ".tsx"]
+      }
+    ],
+    "react/no-array-index-key": "warn",
+    "react/jsx-no-literals": [
+      "warn",
+      {
+        "noStrings": false,
+        "allowedStrings": ["/", ":", "(", ")", ":&nbsp;", "-", "."],
+        "ignoreProps": false,
+        "noAttributeStrings": false
+      }
+    ],
+    "eslint/prefer-arrow-callback": "warn",
+    "prefer-arrow-callback": [
+      "warn",
+      {
+        "allowNamedFunctions": true
+      }
+    ],
+    "func-style": [
+      "warn",
+      "expression",
+      {
+        "allowArrowFunctions": true
+      }
+    ],
+    "no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_"
+      }
+    ],
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "warn",
+    "typescript/consistent-type-imports": "error"
+  },
+  "overrides": [
+    {
+      "files": ["src/components/routes/help/SearchDocumentation.tsx"],
+      "rules": {
+        "react/jsx-no-literals": "off"
+      }
+    },
+    {
+      "files": ["src/models/entities/generated/**"],
+      "rules": {
+        "typescript/ban-types": "off"
+      }
+    },
+    {
+      "files": ["src/**/*.test.tsx"],
+      "rules": {
+        "react/jsx-no-literals": "off",
+        "react/rules-of-hooks": "off"
+      }
+    },
+    {
+      "files": ["src/api/**/*.ts"],
+      "rules": {
+        "import/no-cycle": "off"
+      }
+    }
+  ]
+}

@@ -100,8 +100,8 @@ poetry run pyright --level warning
 **Lint/Check**
 
 ```bash
-pnpm run lint        # Prettier
-pnpm eslint src      # ESLint
+pnpm run lint        # oxfmt + oxlint
+pnpm oxlint src      # oxlint
 pnpm tsc --noEmit    # TypeScript type-check
 ```
 
@@ -187,7 +187,7 @@ README.md, LICENSE, .gitignore, .pre-commit-config.yaml, pyrightconfig.json
 - **Pre-commit** via `.pre-commit-config.yaml` (Ruff, formatters, commit message, poetry lock check).
 - **Type checks** for Python (Ruff, mypy, pyright).
 - **Type checks** for frontend (TypeScript).
-- **Formatting**: Prettier for UI, Ruff for Python.
+- **Formatting**: oxfmt and oxlint for UI, Ruff for Python.
 
 ### **Frontend UI Unit Tests**
 
@@ -227,7 +227,7 @@ README.md, LICENSE, .gitignore, .pre-commit-config.yaml, pyrightconfig.json
 
 - Install deps (with lockfile validation).
 - Typecheck (Ruff/mypy/pyright for Python, tsc for TypeScript).
-- Lint/format (Ruff, Prettier, ESLint).
+- Lint/format (Ruff, oxfmt, oxlint).
 - Complete test suite.
 - PR title validation (.github/workflows/pr-title-check.yml).
 - All jobs **must pass** for UI/API/plugins—PRs will be blocked otherwise.
@@ -279,6 +279,8 @@ README.md, LICENSE, .gitignore, .pre-commit-config.yaml, pyrightconfig.json
 ## Agent Notes & Learned Pitfalls
 
 > **IMPORTANT FOR ALL FUTURE AGENTS**: When you learn something new, encounter a pitfall, or discover a non-obvious convention in this repository, **add a note to this section** before finishing your task. This keeps institutional knowledge available across conversations.
+
+- In `ui/`, `@fontsource/roboto` may fail TypeScript side-effect import resolution at the package root even when the dependency is installed; prefer importing the explicit CSS entry `@fontsource/roboto/index.css` from the app entrypoint.
 
 ---
 
