@@ -8,7 +8,7 @@ import elasticsearch
 from elasticsearch import Elasticsearch
 
 from howler import odm
-from howler.common.loader import APP_NAME, datastore
+from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.datastore.exceptions import SearchException, SearchRetryException
 from howler.datastore.types import SearchResult
@@ -25,7 +25,7 @@ from howler.odm.base import (
     Text,
     _Field,
 )
-from howler.services.search_service import _normalize_indexes
+from howler.utils.indexes import get_logical_index_name, normalize_indexes
 from howler.utils.str_utils import sanitize_lucene_query
 
 DEFAULT_OFFSET = 0
@@ -369,7 +369,7 @@ def fuzzy_search(
             raise SearchException(f"Invalid index for fuzzy search: {idx}")
 
     client: Elasticsearch = datastore().ds.client
-    parsed_indexes = _normalize_indexes(indexes)
+    parsed_indexes = normalize_indexes(indexes)
 
     query_body = build_fuzzy_query(query, indexes, filters, access_control)
 
@@ -420,7 +420,7 @@ def _format_items_with_score(hits: list[dict[str, Any]]) -> list[dict[str, Any]]
         if source:
             raw_index = hit.get("_index", None)
             if raw_index:
-                source["__index"] = raw_index.replace(f"{APP_NAME}-", "").replace("_hot", "")
+                source["__index"] = get_logical_index_name(raw_index)
             source["_score"] = hit.get("_score", 0)
             items.append(source)
     return items
