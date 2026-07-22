@@ -9,10 +9,6 @@ ui_path = (Path(__file__).parent.parent).resolve()
 src_path = (ui_path / "src").resolve()
 dist_path = (ui_path / "dist").resolve()
 
-if not (dist_path / ".npmrc").exists():
-    print("\tCopying .npmrc")
-    shutil.copy(ui_path / ".npmrc", dist_path / ".npmrc")
-
 if not (dist_path / "README.md").exists():
     print("\tCopying .README.md")
     shutil.copy(ui_path.parent / "README.md", dist_path / "README.md")

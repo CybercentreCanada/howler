@@ -97,10 +97,11 @@ class Host(BaseModel):
 class ILMIndexConfig(BaseModel):
     """Per-index ILM phase configuration.
 
-    Controls when an index transitions to warm and cold phases.
+    Controls whether an index uses ILM and when it transitions to warm and cold phases.
     Values are Elasticsearch age strings (e.g. "30d", "90d").
     """
 
+    enabled: bool = Field(default=True, description="Enable ILM for this index")
     warm: Optional[str] = Field(
         default=None,
         description="Min age before the index enters the warm phase (e.g. '30d'). None to skip.",
@@ -135,7 +136,7 @@ class ILMConfig(BaseModel):
         description="Maximum primary shard size before rollover (e.g. '50gb')",
     )
     indices: dict[str, ILMIndexConfig] = Field(
-        default={},
+        default_factory=dict,
         description="Per-index ILM configuration, keyed by collection name (e.g. 'hit')",
     )
 
@@ -356,6 +357,26 @@ class Auth(BaseModel):
     oauth: OAuth = OAuth()
 
 
+class RetentionRule(BaseModel):
+    """A dynamic, query-scoped retention rule.
+
+    Pairs a Lucene query with a retention window. During the retention
+    cronjob run, hits matching the query that are older than the
+    specified window will be deleted.
+    """
+
+    name: str = Field(description="A human-readable label for this rule (used in logs).")
+    enabled: bool = Field(default=True, description="Whether this rule is active.")
+    query: str = Field(description="Lucene query that scopes which hits this rule applies to.")
+    limit_unit: Literal["days", "seconds", "microseconds", "milliseconds", "minutes", "hours", "weeks"] = Field(
+        default="days",
+        description="The unit to use when computing the retention limit for this rule.",
+    )
+    limit_amount: int = Field(
+        description="The number of limit_units to use when computing the retention limit for this rule.",
+    )
+
+
 class Retention(BaseModel):
     """Hit retention policy configuration.
 
@@ -382,6 +403,13 @@ class Retention(BaseModel):
         default="0 0 * * *",
         description="The crontab that denotes how often to run the retention job",
     )
+    rules: list[RetentionRule] = Field(
+        default=[],
+        description=(
+            "Optional list of dynamic retention rules. Each rule pairs a Lucene query "
+            "with a retention window. Rules run after the global sweep."
+        ),
+    )
 
 
 class ViewCleanup(BaseModel):
@@ -402,6 +430,18 @@ class ViewCleanup(BaseModel):
         default="0 0 * * *",
         description="The crontab that denotes how often to run the view_cleanup job",
     )
+
+
+class Correlation(BaseModel):
+    """Correlation worker configuration.
+
+    Controls the background worker that matches newly ingested alerts
+    against active case rules.
+    """
+
+    enabled: bool = Field(default=True, description="Enable the correlation worker?")
+    batch_size: int = Field(default=100, description="Max alerts per batch.")
+    batch_timeout: int = Field(default=10, description="Seconds to wait before flushing a partial batch.")
 
 
 class ActionQueue(BaseModel):
@@ -430,6 +470,8 @@ class System(BaseModel):
     "Retention Configuration"
     view_cleanup: ViewCleanup = ViewCleanup()
     "View Cleanup Configuration"
+    correlation: Correlation = Correlation()
+    "Correlation Worker Configuration"
     action_queue: ActionQueue = ActionQueue()
     "Action Queue Worker Configuration"
 

@@ -14,6 +14,7 @@
   - Web-based frontend and REST API backend.
 
 **Primary Technologies:**
+
 - Python (51.4%): Backend API (Flask), plugins, orchestration scripts.
 - TypeScript (48.4%): Web frontend (React, Vite, Vitest, pnpm).
 - Docker, Docker Compose: Local development, dev/demo, and deployment environments.
@@ -43,6 +44,7 @@ Always ensure the correct versions are used. Inconsistent Python versions (<3.12
 ### **Backend API (`api/`)**
 
 **Setup**
+
 1. Ensure `/etc/howler/conf`, `/var/cache/howler`, `/var/lib/howler`, `/var/log/howler` exist and are `$USER`-owned.
 2. Configure Python (3.12+/venv), Poetry, Docker and Docker Compose as above.
 3. Run:
@@ -55,35 +57,40 @@ Always ensure the correct versions are used. Inconsistent Python versions (<3.12
    ```
 
 **Env Setup**
+
 - Start backing services:
   ```bash
   (cd api/dev && docker-compose up)
   ```
 
 **Run API Server**
-  ```bash
-  poetry run server
-  ```
+
+```bash
+poetry run server
+```
 
 **Test**
-  ```bash
-  # install test deps if not already
-  poetry install --with test
-  poetry run mitre /etc/howler/lookups
-  poetry run test
-  ```
+
+```bash
+# install test deps if not already
+poetry install --with test
+poetry run mitre /etc/howler/lookups
+poetry run test
+```
 
 **Lint/Typecheck**
-  ```bash
-  poetry run ruff format howler --diff
-  poetry run ruff check howler --output-format=github
-  poetry run type_check
-  poetry run pyright --level warning
-  ```
+
+```bash
+poetry run ruff format howler --diff
+poetry run ruff check howler --output-format=github
+poetry run type_check
+poetry run pyright --level warning
+```
 
 ### **Frontend UI (`ui/`)**
 
 **Setup**
+
 1. Install dependencies:
    ```bash
    cd ui
@@ -91,21 +98,24 @@ Always ensure the correct versions are used. Inconsistent Python versions (<3.12
    ```
 
 **Lint/Check**
-  ```bash
-  pnpm run lint        # Prettier
-  pnpm eslint src      # ESLint
-  pnpm tsc --noEmit    # TypeScript type-check
-  ```
+
+```bash
+pnpm run lint        # Prettier
+pnpm eslint src      # ESLint
+pnpm tsc --noEmit    # TypeScript type-check
+```
 
 **Test**
-  ```bash
-  pnpm test
-  ```
+
+```bash
+pnpm test
+```
 
 **Dev Server**
-  ```bash
-  pnpm start           # (or consult vite/README)
-  ```
+
+```bash
+pnpm start           # (or consult vite/README)
+```
 
 #### **Client (`client/`)**
 
@@ -141,6 +151,7 @@ poetry run test
 ### **Monorepo Root**
 
 Key directories:
+
 - `.github/`: GitHub Actions workflows, dependabot, API tokens/GraphQL.
 - `api/`: Python backend API (Flask), builds, plugins, test infra.
 - `ui/`: TypeScript React frontend (Vite project).
@@ -150,17 +161,20 @@ Key directories:
 - Build assets and configs, e.g., Helm charts in `howler-helm/`, Ansible in `ansible/`.
 
 **Root files:**
+
 ```
 README.md, LICENSE, .gitignore, .pre-commit-config.yaml, pyrightconfig.json
 ```
 
 **API Directory (`api/`):**
+
 - `howler/`: main source
 - `build_scripts/`: utility/test/typecheck/generate scripts
 - `dev/`: Docker Compose, Keycloak, Elastic, Redis for local dev
 - `test/`: test suite
 
 **UI Directory (`ui/`):**
+
 - `src/`: main TypeScript source (React)
 - `build_scripts/`: e.g., lint_staged.sh
 - `public/`
@@ -169,6 +183,7 @@ README.md, LICENSE, .gitignore, .pre-commit-config.yaml, pyrightconfig.json
 **Plugins structure:** Follows Python package/plugin conventions.
 
 ### **Configuration & Linting**
+
 - **Pre-commit** via `.pre-commit-config.yaml` (Ruff, formatters, commit message, poetry lock check).
 - **Type checks** for Python (Ruff, mypy, pyright).
 - **Type checks** for frontend (TypeScript).
@@ -186,10 +201,15 @@ README.md, LICENSE, .gitignore, .pre-commit-config.yaml, pyrightconfig.json
   - `setupLocalStorageMock()` — replaces `window.localStorage` with a `MockLocalStorage` instance whose `getItem`/`setItem`/`removeItem`/`clear` methods are Vitest spies. Call `mockLocalStorage.clear()` and clear the spies in `beforeEach`.
   - `setupContextSelectorMock()` — re-wires `use-context-selector` to use React's native context so providers work without the full library in tests.
   - `setupReactRouterMock()` — stubs `react-router-dom` (location, params, navigate, etc.).
-- **`MockLocalStorage` caveat**: `setItem` stores values as strings (`this[key] = \`${val}\``). The key `'key'` is a reserved property name on the object and is read-only — **do not use `'key'` as a storage key in tests**; use descriptive names like `'testkey'`.
+- **`MockLocalStorage` caveat**: `setItem` stores values as strings (`this[key] = \`${val}\``). The key `'key'`is a reserved property name on the object and is read-only — **do not use`'key'`as a storage key in tests**; use descriptive names like`'testkey'`.
 - **Cross-tab events**: jsdom does not propagate `StorageEvent` automatically. Dispatch them manually:
   ```ts
-  window.dispatchEvent(new StorageEvent('storage', { key: 'mykey', newValue: JSON.stringify(value) }));
+  window.dispatchEvent(
+    new StorageEvent("storage", {
+      key: "mykey",
+      newValue: JSON.stringify(value),
+    }),
+  );
   ```
   The `key` field of the event **must exactly match** the key string the hook was initialized with.
 - **Hook state updates** must be wrapped in `act()`; assertions go after the `act()` call.
@@ -204,6 +224,7 @@ README.md, LICENSE, .gitignore, .pre-commit-config.yaml, pyrightconfig.json
   - `.github/workflows/sentinel-plugin-workflow.yml`
 
 **Checks include:**
+
 - Install deps (with lockfile validation).
 - Typecheck (Ruff/mypy/pyright for Python, tsc for TypeScript).
 - Lint/format (Ruff, Prettier, ESLint).
@@ -264,14 +285,44 @@ README.md, LICENSE, .gitignore, .pre-commit-config.yaml, pyrightconfig.json
 ### Changelog Entries for Bug Fixes
 
 When both of the following are true:
+
 1. The agent is relatively confident in a bug fix (i.e. root cause identified, fix verified by tests), AND
 2. The current branch is a trunk branch (`develop`, `main`) or a patch/RC branch (e.g. `patch/*`, `rc/*`)
 
 ...then a changelog entry **must** be added to `docs/RELEASES.md` under the appropriate version heading before finishing the task. Follow the existing format:
 
 ```markdown
-- **Short Title** *(bugfix)*: One-sentence description of what was broken and what was fixed.
+- **Short Title** _(bugfix)_: One-sentence description of what was broken and what was fixed.
 ```
+
+---
+
+### Case Rules: `expire_after_resolved` Requires `timeframe`
+
+When creating or updating case correlation rules, reject configurations where:
+
+- `timeframe` is `None` (no expiry), and
+- `expire_after_resolved` is `True`.
+
+`expire_after_resolved` only makes sense when a finite timeframe exists. Enforce this in service-layer validation for both add and update flows.
+
+---
+
+### TypeScript: Always Use Braces on `if` Statements
+
+Never use single-line, braceless `if` statements. Always add braces and a newline for the body:
+
+```ts
+// Preferred
+if (!value) {
+  return;
+}
+
+// Avoid
+if (!value) return;
+```
+
+This applies to `for`/`while` loop bodies as well.
 
 ---
 
@@ -288,6 +339,7 @@ function myFn<T>(arg: T): T { ... }
 ```
 
 For overloaded functions, express overload signatures as a typed `const`:
+
 ```ts
 const myFn: {
   (key: string, list?: false): Scalar;
@@ -297,13 +349,95 @@ const myFn: {
 
 ---
 
+### Frontend UI Tests: Use `id` as the Test ID Attribute
+
+Vitest/testing-library queries that target elements by test ID (e.g. `getByTestId`, `queryByTestId`) use the `id` attribute, **not** `data-testid`. This is configured via `vite.config.ts`:
+
+```ts
+// vite.config.ts (test section)
+testIdAttribute: "id";
+```
+
+Always set `id="..."` on elements you need to query by test ID. Do not use `data-testid`.
+
+---
+
+### Frontend UI Tests: Flush Fake Timers Directly
+
+Do not use `waitFor` after advancing Vitest fake timers; its polling timers are also paused and the test can time out. Flush the scheduled work inside `act` instead:
+
+```ts
+await act(async () => {
+  await vi.advanceTimersByTimeAsync(200);
+});
+```
+
+Restore real timers in `afterEach` when a test enables fake timers.
+
+---
+
 ### Terminal Output Restriction
 
 **This repository's VS Code settings suppress terminal output from being returned to the agent.** Running commands via the terminal tool will yield no output — the terminal appears to complete with exit code 0 but all stdout/stderr is suppressed.
 
 **Workaround**: Ask the user to run the command and paste the result back. Phrase it clearly:
+
 > "I can't read terminal output due to repository settings. Please run `<command>` and share the result."
 
 The correct test command for the API is `poetry run test <path>` (not `pytest` directly), run from the `api/` directory.
 
+If you need to run only a subset of tests from a file (e.g. `-k facet`), use direct pytest invocation:
+
+```bash
+cd api
+poetry run pytest -k <expr> <path>
+```
+
+The wrapper command `poetry run test <path>` may still execute the full file even when selector flags are provided.
+
 ---
+
+### Flask: Never Return `(Response, version_string)` Tuples Without `@add_etag`
+
+Flask interprets `return response, value` as `(Response, status_code)`. If the second element is an ES version string like `"344---1"`, Flask uses it as the HTTP status code, producing a malformed response (e.g. `HTTP/1.1 0 344---1`) that causes `BadStatusLine` errors on the client side. The error manifests as `ConnectionError('Connection aborted.', BadStatusLine(...))` with retries exhausted — **not** as a clear server-side traceback — making it difficult to diagnose.
+
+The v1 endpoints avoid this because `@add_etag(getter=...)` intercepts the tuple and moves the version into the `ETag` header. For v2 endpoints (or any endpoint without a getter), use `@add_etag()` (no getter) which handles the `(Response, version)` → `ETag` header conversion without the pre-fetch/caching/If-Match logic.
+
+```python
+# Correct — decorator handles the tuple
+@add_etag()
+def my_endpoint(...):
+    return ok(data), version
+
+# Wrong — Flask interprets version as status code
+def my_endpoint(...):
+    return ok(data), version
+```
+
+---
+
+### Client v2 Case Items: `name` Is Required, Delete/Rename Use Item `id`
+
+The v2 `POST /case/<id>/items` endpoint now requires a `name` field in the JSON body, even when clients only care about `type` and `value`.
+
+`DELETE /case/<id>/items` expects `{"ids": [...]}` (item UUIDs), not values, and `PUT /case/<id>/items` expects `{"id": ..., "name": ...}` and/or `parent`.
+
+When updating the Python client, avoid value/path-based delete/rename payloads and resolve item IDs from the returned case data first.
+
+---
+
+### Elasticsearch Collection Creation: Attach Aliases Atomically
+
+For legacy collections, pass the collection alias through the `aliases` argument to `indices.create`. Creating the hot index and adding its alias in separate calls lets concurrent writes auto-create a concrete index with the alias name, which prevents alias creation.
+
+---
+
+### Case Websocket Listeners: Keys Must Be Per Consumer
+
+`SocketProvider.addListener` replaces an existing listener with the same key. Case views can mount several `useCase` consumers for one case (viewer, dashboard, and details), so each hook instance must include a stable per-instance identifier in its listener key. A key based only on the case ID causes later consumers to silently remove earlier subscriptions.
+
+---
+
+### React Testing Library: Do Not Wrap `userEvent` in `act`
+
+`userEvent` already manages React updates through Testing Library. Wrapping awaited `userEvent` calls in `act` conflicts with its async wrapper, which temporarily disables `IS_REACT_ACT_ENVIRONMENT`, and produces `The current testing environment is not configured to support act(...)` warnings. Await `userEvent` calls directly; reserve `act` for direct state-changing operations that Testing Library does not wrap.

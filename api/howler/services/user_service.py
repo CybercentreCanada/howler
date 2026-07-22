@@ -296,13 +296,19 @@ def add_access_control(user: dict[str, Any]):
     user["access_control"] = safe_str(query)
 
 
-def save_user_account(username: str, data: dict[str, Any], user: dict[str, Any], refresh: str | None = None) -> bool:
+def save_user_account(
+    username: str,
+    data: dict[str, Any],
+    user: dict[str, Any],
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+) -> bool:
     """Create or update a user in the database
 
     Args:
         username (str): The username to create or update the user under
         data (dict[str, Any]): The user's data
         user (dict[str, Any]): The account that is creating this new user
+        refresh (Literal["true", "false", "wait_for"] | None): Refresh strategy used when saving the user.
 
     Raises:
         AccessDeniedException: Parts of the user data is overwriting fields that cannot be changed.

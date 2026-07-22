@@ -1,0 +1,43 @@
+auth:
+  allow_apikeys: true
+  max_apikey_duration_amount: 180
+  max_apikey_duration_unit: days
+  internal:
+    enabled: true
+  oauth:
+    enabled: false
+
+core:
+  spellbook:
+    enabled: false
+  alfred:
+    enabled: false
+  redis:
+    persistent:
+      host: localhost
+      port: 6379
+    nonpersistent:
+      host: localhost
+      port: 6379
+
+datastore:
+  ilm:
+    enabled: false
+    indexes: {}
+
+  hosts:
+    - name: elasticsearch
+      scheme: http
+      host: localhost:9200
+
+logging:
+  log_level: INFO
+  log_as_json: false
+
+system:
+  type: development
+
+ui:
+  audit: false
+  debug: true
+  enforce_quota: true

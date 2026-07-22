@@ -5,7 +5,11 @@ import FlexVertical from './FlexVertical';
 
 describe('FlexVertical', () => {
   it('renders a div with display:flex and flex-direction:column', () => {
-    const { container } = render(<FlexVertical><span>child</span></FlexVertical>);
+    const { container } = render(
+      <FlexVertical>
+        <span>child</span>
+      </FlexVertical>
+    );
     const div = container.firstChild as HTMLElement;
     expect(div).toBeInTheDocument();
     expect(div).toHaveStyle({ display: 'flex', flexDirection: 'column' });
@@ -32,13 +36,21 @@ describe('FlexVertical', () => {
   });
 
   it('applies the default flex value of 1', () => {
-    const { container } = render(<FlexVertical><span>child</span></FlexVertical>);
+    const { container } = render(
+      <FlexVertical>
+        <span>child</span>
+      </FlexVertical>
+    );
     const div = container.firstChild as HTMLElement;
     expect(div).toHaveStyle({ flex: 1 });
   });
 
   it('applies a custom flex value when provided', () => {
-    const { container } = render(<FlexVertical flex={2}><span>child</span></FlexVertical>);
+    const { container } = render(
+      <FlexVertical flex={2}>
+        <span>child</span>
+      </FlexVertical>
+    );
     const div = container.firstChild as HTMLElement;
     expect(div).toHaveStyle({ flex: 2 });
   });

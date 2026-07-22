@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 import socket
 import time
 from datetime import datetime, timezone
@@ -13,7 +14,6 @@ from packaging.version import parse
 from redis.backoff import ExponentialBackoff
 from redis.retry import Retry
 
-from howler.common import loader
 from howler.odm.models.config import config
 from howler.utils.uid import get_random_id
 
@@ -27,8 +27,9 @@ if parse(redis.__version__) <= parse("2.10.0"):
         " redis %s. You should upgrade." % (__name__, redis.__version__)
     )
 
+APP_NAME = os.environ.get("APP_NAME", "howler")
 
-log = logging.getLogger(f"{loader.APP_NAME}.queue")
+log = logging.getLogger(f"{APP_NAME}.queue")
 pool: dict[tuple[str, str, bool], redis.BlockingConnectionPool] = {}
 
 # TCP keepalive tuning so a connection to a primary that has gone away (e.g.
@@ -135,7 +136,9 @@ def retry_call(func, *args, **kw):
 
 
 def get_client(
-    host: str | redis.Redis | redis.StrictRedis | redis.RedisCluster | None, port: int | None, private: bool = False
+    host: str | redis.Redis | redis.StrictRedis | redis.RedisCluster | None,
+    port: int | None,
+    private: bool = False,
 ):
     """
     Get Redis instance.
@@ -233,7 +236,11 @@ def get_pool(host, port, **kwargs):
             # SSLConnection class doesn't accept 'ssl' parameter as it implicitly uses SSL
             kwargs.pop("ssl")
             connection_pool = redis.BlockingConnectionPool(
-                host=host, port=port, max_connections=200, connection_class=redis.SSLConnection, **kwargs
+                host=host,
+                port=port,
+                max_connections=200,
+                connection_class=redis.SSLConnection,
+                **kwargs,
             )
         else:
             connection_pool = redis.BlockingConnectionPool(host=host, port=port, max_connections=200, **kwargs)

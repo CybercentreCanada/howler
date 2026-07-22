@@ -1,7 +1,12 @@
+from typing import cast
+
 import pytest
 from flask import Flask
 
 import howler.api as api
+from howler.odm import Model
+from howler.odm.models.user import User
+from howler.odm.randomizer import random_model_obj
 
 
 @pytest.fixture(scope="module")
@@ -82,3 +87,74 @@ def test_http_response_functions(request_context):
         service_unavailable_result = api.service_unavailable()
         assert service_unavailable_result.json["api_response"] == api.DEFAULT_DATA[False]
         assert service_unavailable_result.status_code == 503
+
+
+def test_internal_error_clips_traceback_to_innermost_frame(request_context):
+    """API error responses should expose only the original traceback frame."""
+
+    def _inner_failure():
+        raise ValueError("boom")
+
+    def _outer_failure():
+        _inner_failure()
+
+    with request_context.test_request_context():
+        try:
+            _outer_failure()
+        except Exception as err:
+            response = api._make_api_response(None, err=err, status_code=500)
+
+    message = response.json["api_error_message"]
+
+    assert "_outer_failure" not in message
+    assert "test_internal_error_clips_traceback_to_innermost_frame" not in message
+    assert "_inner_failure" in message
+    assert "ValueError: boom" in message
+
+
+def test_format_api_error_message_clips_to_innermost_frame(request_context):
+    """The dedicated traceback formatter should keep only the innermost frame."""
+
+    def _inner_failure():
+        raise RuntimeError("boom")
+
+    def _outer_failure():
+        _inner_failure()
+
+    with request_context.test_request_context():
+        try:
+            _outer_failure()
+        except Exception as err:
+            message = api._format_api_error_message(err)
+
+    assert "_outer_failure" not in message
+    assert "test_format_api_error_message_clips_to_innermost_frame" not in message
+    assert "_inner_failure" in message
+    assert "RuntimeError: boom" in message
+
+
+def test_coerce_response_data_handles_model_instances():
+    """Model instances should be converted to primitive dictionaries."""
+    user = random_model_obj(cast(Model, User))
+
+    coerced = api._coerce_response_data(user)
+
+    assert coerced == user.as_primitives()
+
+
+def test_coerce_response_data_handles_lists_of_models():
+    """Lists of ODM models should be converted element by element."""
+    users = [random_model_obj(cast(Model, User)), random_model_obj(cast(Model, User))]
+
+    coerced = api._coerce_response_data(users)
+
+    assert coerced == [user.as_primitives() for user in users]
+
+
+def test_coerce_response_data_passthrough_for_plain_values():
+    """Plain JSON-serializable values should be returned unchanged."""
+    payload = {"success": True, "count": 3}
+
+    coerced = api._coerce_response_data(payload)
+
+    assert coerced is payload

@@ -86,7 +86,13 @@ class Workflow:
 
                 updates_dict[update.key] = update
 
-        if self.status_prop not in updates_dict and _transition.get("dest", False):
+        if _transition.get("dest", False):
+            if self.status_prop in updates_dict and updates_dict[self.status_prop].value != _transition["dest"]:
+                raise WorkflowException(
+                    f"Transition {transition} attempted to update the status {self.status_prop} with \
+                        a different value than the transition destination."
+                )
+
             updates_dict[self.status_prop] = OdmUpdateOperation(
                 ESCollection.UPDATE_SET,
                 self.status_prop,

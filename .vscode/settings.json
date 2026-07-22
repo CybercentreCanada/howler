@@ -46,7 +46,7 @@
   "editor.rulers": [
     120
   ],
-  "editor.tabSize": 4,
+  "editor.tabSize": 2,
   "files.insertFinalNewline": true,
   "files.trimFinalNewlines": true,
   "files.trimTrailingWhitespace": true,
@@ -119,6 +119,7 @@
     }
   },
   "python-envs.defaultEnvManager": "ms-python.python:poetry",
+  "editor.autoIndentOnPaste": true,
   "python-envs.pythonProjects": [
     {
       "path": "mcp",
