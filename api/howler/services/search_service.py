@@ -5,7 +5,7 @@ from typing import Any
 import elasticsearch
 from elasticsearch import Elasticsearch
 
-from howler.common.loader import DATASTORE_INDEX_PREFIX, datastore
+from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.datastore.collection import parse_sort
 from howler.datastore.exceptions import SearchException, SearchRetryException
@@ -13,6 +13,7 @@ from howler.datastore.types import SearchResult
 from howler.helper.search import get_collection, has_access_control
 from howler.odm.models.user import User
 from howler.services import case_service
+from howler.utils.indexes import get_logical_index_name, normalize_indexes
 
 DEFAULT_OFFSET = 0
 DEFAULT_ROW_SIZE = 25
@@ -21,50 +22,6 @@ DEFAULT_SEARCH_FIELD = "__text__"
 SCROLL_TIMEOUT = "5m"
 
 logger = get_logger(__file__)
-
-
-def _normalize_indexes(indexes: str | list[str]) -> str:
-    """Normalizes Elasticsearch index names into a comma-separated string.
-
-    Parses the input indexes and applies naming conventions. Special patterns like
-    wildcards, exclusions, and explicitly formatted indexes are preserved as-is.
-    Regular indexes are formatted with the datastore index prefix and '_hot' suffix.
-
-    Args:
-        indexes: A comma-separated string or list of index names to normalize.
-
-    Returns:
-        A comma-separated string of normalized index names ready for Elasticsearch queries.
-
-    Raises:
-        SearchException: If no valid indexes are provided after parsing and stripping whitespace.
-
-    Examples:
-        >>> _normalize_indexes("logs,metrics")
-        "howler-logs_hot,howler-metrics_hot"
-
-        >>> _normalize_indexes(["*", "custom-index"])
-        "*,custom-index"
-
-        >>> _normalize_indexes("alerts, events")
-        "howler-alerts_hot,howler-events_hot"
-    """
-    if isinstance(indexes, str):
-        parsed_indexes = [item.strip() for item in indexes.split(",") if item.strip()]
-    else:
-        parsed_indexes = [item.strip() for item in indexes if item.strip()]
-
-    if not parsed_indexes:
-        raise SearchException("No indexes were provided.")
-
-    normalized_indexes: list[str] = []
-    for index in parsed_indexes:
-        if index in {"*", "_all"} or "-" in index or "*" in index:
-            normalized_indexes.append(index)
-        else:
-            normalized_indexes.append(f"{DATASTORE_INDEX_PREFIX}-{index}")
-
-    return ",".join(normalized_indexes)
 
 
 def _format_items(hits: list[dict[str, Any]], user_classification: str | None) -> list[dict[str, Any]]:
@@ -86,7 +43,7 @@ def _format_items(hits: list[dict[str, Any]], user_classification: str | None) -
             raw_index = hit.get("_index", None)
 
             if raw_index:
-                source["__index"] = raw_index.replace(f"{DATASTORE_INDEX_PREFIX}-", "").replace("_hot", "")
+                source["__index"] = get_logical_index_name(raw_index)
 
             if source.get("__index") == "case" and user_classification:
                 case_service.filter_case_items_by_classification(source, user_classification)
@@ -137,7 +94,7 @@ def search(  # noqa: C901
     del metadata
 
     client: Elasticsearch = datastore().ds.client
-    parsed_indexes = _normalize_indexes(indexes)
+    parsed_indexes = normalize_indexes(indexes)
 
     if filters is None:
         parsed_filters: list[str] = []

@@ -300,7 +300,7 @@ class TestFuzzySearch:
             "datastore",
             lambda: SimpleNamespace(ds=SimpleNamespace(client=mock_client)),
         )
-        monkeypatch.setattr(fuzzy_service, "_normalize_indexes", lambda indexes: "howler-hit")
+        monkeypatch.setattr(fuzzy_service, "normalize_indexes", lambda indexes: "howler-hit")
         monkeypatch.setattr(fuzzy_service, "build_fuzzy_query", lambda *_args, **_kwargs: {"query": {"match_all": {}}})
 
         fuzzy_search(indexes=["hit"], query="abc", track_total_hits=True)
@@ -317,7 +317,7 @@ class TestFuzzySearch:
             "datastore",
             lambda: SimpleNamespace(ds=SimpleNamespace(client=mock_client)),
         )
-        monkeypatch.setattr(fuzzy_service, "_normalize_indexes", lambda indexes: "howler-hit")
+        monkeypatch.setattr(fuzzy_service, "normalize_indexes", lambda indexes: "howler-hit")
         monkeypatch.setattr(fuzzy_service, "build_fuzzy_query", lambda *_args, **_kwargs: {"query": {"match_all": {}}})
 
         with pytest.raises(SearchRetryException, match="indexes: howler-hit"):
@@ -334,7 +334,7 @@ class TestFuzzySearch:
             "datastore",
             lambda: SimpleNamespace(ds=SimpleNamespace(client=mock_client)),
         )
-        monkeypatch.setattr(fuzzy_service, "_normalize_indexes", lambda indexes: "howler-hit")
+        monkeypatch.setattr(fuzzy_service, "normalize_indexes", lambda indexes: "howler-hit")
         monkeypatch.setattr(fuzzy_service, "build_fuzzy_query", lambda *_args, **_kwargs: {"query": {"match_all": {}}})
 
         with pytest.raises(SearchException):
@@ -350,7 +350,7 @@ class TestFuzzySearch:
             "datastore",
             lambda: SimpleNamespace(ds=SimpleNamespace(client=mock_client)),
         )
-        monkeypatch.setattr(fuzzy_service, "_normalize_indexes", lambda indexes: "howler-hit")
+        monkeypatch.setattr(fuzzy_service, "normalize_indexes", lambda indexes: "howler-hit")
         monkeypatch.setattr(fuzzy_service, "build_fuzzy_query", lambda *_args, **_kwargs: {"query": {"match_all": {}}})
 
         with pytest.raises(SearchException, match="indexes: howler-hit, query: abc, error: boom"):
