@@ -7,6 +7,7 @@ background worker.
 
 import json
 import time
+import uuid
 
 import pytest
 
@@ -23,15 +24,17 @@ def _make_case(title: str = "Correlation Integration Test") -> dict:
     }
 
 
-def _make_hit(analytic: str = "Test Analytic", kind: str = "alert") -> dict:
+def _make_hit(analytic: str = "Test Analytic", kind: str = "alert", provider: str | None = None) -> dict:
+    event = {"kind": kind}
+    if provider is not None:
+        event["provider"] = provider
+
     return {
         "howler": {
             "analytic": analytic,
             "detection": "Test Detection",
         },
-        "event": {
-            "kind": kind,
-        },
+        "event": event,
     }
 
 
@@ -66,7 +69,7 @@ def test_case(datastore: HowlerDatastore, login_session):
 
     yield case_id, session, host
 
-    datastore.case.delete(case_id)
+    datastore.case.delete(case_id, refresh="wait_for")
 
 
 class TestCorrelationPipeline:
@@ -239,24 +242,31 @@ class TestCorrelationPipeline:
 class TestCorrelationWorker:
     """End-to-end tests for the background correlation worker."""
 
-    MAX_WAIT = 30
+    MAX_WAIT = 15
     POLL_INTERVAL = 0.25
 
-    def _wait_for_case_items(self, datastore: HowlerDatastore, case_id: str, hit_ids: list[str]) -> bool:
-        """Wait until every expected hit has been added to the case."""
+    @pytest.fixture()
+    def worker_event_provider(self) -> str:
+        """Create an event provider that cannot match another test's broad rule."""
+        return f"correlationworker{uuid.uuid4().hex}"
+
+    def _wait_for_case_items(self, datastore: HowlerDatastore, case_id: str, hit_ids: list[str]) -> list[str]:
+        """Wait for expected hits and return those that were added to the case."""
         deadline = time.monotonic() + self.MAX_WAIT
         expected_hit_ids = set(hit_ids)
+        seen_hit_ids: list[str] = []
 
         while time.monotonic() < deadline:
             datastore.case.commit()
             case = datastore.case.get(case_id)
             if case is not None:
                 actual_hit_ids = {item.value for item in case.items if item.type == "hit"}
+                seen_hit_ids = [hit_id for hit_id in hit_ids if hit_id in actual_hit_ids]
                 if expected_hit_ids <= actual_hit_ids:
-                    return True
+                    return seen_hit_ids
             time.sleep(self.POLL_INTERVAL)
 
-        return False
+        return seen_hit_ids
 
     def _add_rule(self, session, host: str, case_id: str, query: str, destination: str) -> None:
         get_api_data(
@@ -266,35 +276,43 @@ class TestCorrelationWorker:
             data=json.dumps({"query": query, "destination": destination}),
         )
 
-    def test_worker_adds_matching_hit(self, test_case, datastore: HowlerDatastore):
+    def test_worker_adds_matching_hit(self, test_case, datastore: HowlerDatastore, worker_event_provider: str):
         """The worker adds a newly ingested hit that matches an active rule."""
         case_id, session, host = test_case
-        self._add_rule(session, host, case_id, "event.kind:alert", "worker")
+        self._add_rule(session, host, case_id, f"event.provider:{worker_event_provider}", "worker")
         datastore.case.commit()
 
         ingest_resp = get_api_data(
             session,
             f"{host}/api/v2/ingest/hit",
             method="POST",
-            data=json.dumps([_make_hit(kind="alert")]),
+            data=json.dumps([_make_hit(provider=worker_event_provider)]),
         )
 
-        assert self._wait_for_case_items(datastore, case_id, ingest_resp)
+        seen_hit_ids = self._wait_for_case_items(datastore, case_id, ingest_resp)
+        missing_hit_ids = set(ingest_resp) - set(seen_hit_ids)
+        assert not missing_hit_ids, (
+            f"Worker did not add hits {missing_hit_ids} to case {case_id} within {self.MAX_WAIT}s"
+        )
 
-    def test_worker_renders_destination_path(self, test_case, datastore: HowlerDatastore):
+    def test_worker_renders_destination_path(self, test_case, datastore: HowlerDatastore, worker_event_provider: str):
         """The worker renders the matching hit's destination path."""
         case_id, session, host = test_case
-        self._add_rule(session, host, case_id, "event.kind:alert", "worker/{{howler.analytic}}")
+        self._add_rule(session, host, case_id, f"event.provider:{worker_event_provider}", "worker/{{howler.analytic}}")
         datastore.case.commit()
 
         ingest_resp = get_api_data(
             session,
             f"{host}/api/v2/ingest/hit",
             method="POST",
-            data=json.dumps([_make_hit(analytic="Worker Detection", kind="alert")]),
+            data=json.dumps([_make_hit(analytic="Worker Detection", provider=worker_event_provider)]),
         )
 
-        assert self._wait_for_case_items(datastore, case_id, ingest_resp)
+        seen_hit_ids = self._wait_for_case_items(datastore, case_id, ingest_resp)
+        missing_hit_ids = set(ingest_resp) - set(seen_hit_ids)
+        assert not missing_hit_ids, (
+            f"Worker did not add hits {missing_hit_ids} to case {case_id} within {self.MAX_WAIT}s"
+        )
         case = datastore.case.get(case_id)
         assert case is not None
         matching_item = next(item for item in case.items if item.value == ingest_resp[0])
@@ -302,10 +320,16 @@ class TestCorrelationWorker:
         assert matching_item.name == "Worker Detection"
         assert matching_item.parent == worker_folder.id
 
-    def test_worker_handles_multiple_hits(self, test_case, datastore: HowlerDatastore):
+    def test_worker_handles_multiple_hits(self, test_case, datastore: HowlerDatastore, worker_event_provider: str):
         """Multiple hits ingested in sequence are each processed by the worker."""
         case_id, session, host = test_case
-        self._add_rule(session, host, case_id, "event.kind:alert", "worker-multi/{{howler.analytic}}")
+        self._add_rule(
+            session,
+            host,
+            case_id,
+            f"event.provider:{worker_event_provider}",
+            "worker-multi/{{howler.analytic}}",
+        )
         datastore.case.commit()
 
         hit_ids = []
@@ -314,10 +338,12 @@ class TestCorrelationWorker:
                 session,
                 f"{host}/api/v2/ingest/hit",
                 method="POST",
-                data=json.dumps([_make_hit(analytic=f"Multi-{index}", kind="alert")]),
+                data=json.dumps([_make_hit(analytic=f"Multi-{index}", provider=worker_event_provider)]),
             )
             hit_ids.append(ingest_resp[0])
 
-        assert self._wait_for_case_items(datastore, case_id, hit_ids), (
-            f"Worker did not add all hits {hit_ids} to case {case_id} within {self.MAX_WAIT}s"
+        seen_hit_ids = self._wait_for_case_items(datastore, case_id, hit_ids)
+        missing_hit_ids = set(hit_ids) - set(seen_hit_ids)
+        assert not missing_hit_ids, (
+            f"Worker did not add hits {missing_hit_ids} to case {case_id} within {self.MAX_WAIT}s"
         )
