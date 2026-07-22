@@ -442,6 +442,31 @@ def create_hit(
     return datastore().hit.save(id, hit, refresh=refresh)
 
 
+@tracer.start_as_current_span(f"{__name__}.create_hits")
+def create_hits(
+    hits: list[Hit], user: Optional[str] = None, overwrite: bool = False, refresh: str | None = None
+) -> bool:
+    """Bulk create multiple hits in the database.
+
+    Similar to create_hit for batch.
+    Will raise and abort the entire batch if any hit already exists and overwrite=False.
+    """
+    storage = datastore()
+    bulk_plan = storage.hit.get_bulk_plan()
+
+    for hit in hits:
+        if not overwrite and storage.hit.exists(hit.howler.id):
+            raise ResourceExists("Hit %s already exists in datastore" % hit.howler.id)
+
+        if user:
+            hit.howler.log = [Log({"timestamp": "NOW", "explanation": "Created hit", "user": user})]
+
+        CREATED_HITS.labels(hit.howler.analytic).inc()
+        bulk_plan.add_insert_operation(hit.howler.id, hit)
+
+    return storage.hit.bulk(bulk_plan, refresh=refresh)
+
+
 @tracer.start_as_current_span(f"{__name__}.update_hit")
 def update_hit(
     hit_id: str,
@@ -474,6 +499,21 @@ def update_hit(
         )
 
     return _update_hit(hit_id, operations, user, version=version, refresh=refresh)
+
+
+@tracer.start_as_current_span(f"{__name__}.overwrite_hits")
+def overwrite_hits(hits: list[Hit], refresh: str | None = None) -> bool:
+    """Bulk save multiple hits to the datastore.
+
+    Similar to save_hit for batch without versioning. Will overwrite existing hits with the same ID.
+    """
+    storage = datastore()
+    bulk_plan = storage.hit.get_bulk_plan()
+
+    for hit in hits:
+        bulk_plan.add_index_operation(hit.howler.id, hit)
+
+    return storage.hit.bulk(bulk_plan, refresh=refresh)
 
 
 @typing.no_type_check

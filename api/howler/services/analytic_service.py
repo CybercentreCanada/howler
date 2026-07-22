@@ -123,11 +123,11 @@ def save_from_hits(
             analytics.append(analytic_update)
 
     if analytics:
-        for analytic in analytics[:-1]:
-            storage.analytic.save(analytic.analytic_id, analytic)
+        bulk_plan = storage.analytic.get_bulk_plan()
+        for analytic in analytics:
+            bulk_plan.add_index_operation(analytic.analytic_id, analytic)
 
-        # save the last one passing on the refresh parameter
-        storage.analytic.save(analytics[-1].analytic_id, analytics[-1], refresh=refresh)
+        storage.analytic.bulk(bulk_plan, refresh=refresh)
 
 
 def _get_analytic_updates_from_hit_group(analytic_name: str, hit_group: list[Hit], user: User) -> Analytic | None:

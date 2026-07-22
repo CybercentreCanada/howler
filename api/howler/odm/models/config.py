@@ -149,7 +149,15 @@ class Datastore(BaseModel):
     """
 
     hosts: list[Host] = Field(
-        default=[Host(name="elastic", username="elastic", password="devpass", scheme="http", host="localhost:9200")],  # noqa: S106
+        default=[
+            Host(
+                name="elastic",
+                username="elastic",
+                password="devpass",  # noqa: S106
+                scheme="http",
+                host="localhost:9200",
+            )
+        ],
         description="List of hosts used for the datastore",
     )
     type: Literal["elasticsearch"] = Field(
@@ -159,6 +167,8 @@ class Datastore(BaseModel):
         default_factory=ILMConfig,
         description="Index Lifecycle Management configuration",
     )
+    max_request_size: Optional[int] = Field(description="Maximum request size in bytes", default=100_000_000)  # 100MB
+    request_batch_size: Optional[int] = Field(description="Default number of operations for bulk requests", default=500)
 
 
 class Logging(BaseModel):
