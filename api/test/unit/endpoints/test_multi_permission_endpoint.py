@@ -4,8 +4,6 @@ import pytest
 from flask import Flask
 from flask import Response as FlaskResponse
 
-from howler.api import ok
-
 
 @pytest.fixture(scope="module")
 def request_context():
@@ -30,7 +28,7 @@ def test_action_multi_permission_endpoint_exists(audit, mock_basic_auth, request
     ):
         from howler.api.v1.action import give_multi_privilege
 
-        with patch("howler.api.v1.action.permission_helper.give_multi_privilege", return_value=ok({"exists": True})):
+        with patch("howler.api.v1.action.permission_helper.give_multi_privilege", return_value={"exists": True}):
             response: FlaskResponse = give_multi_privilege("action-1")
 
     assert response.status_code == 200
@@ -48,7 +46,7 @@ def test_dossier_multi_permission_endpoint_exists(audit, mock_basic_auth, reques
     ):
         from howler.api.v1.dossier import give_multi_privilege
 
-        with patch("howler.api.v1.dossier.permission_helper.give_multi_privilege", return_value=ok({"exists": True})):
+        with patch("howler.api.v1.dossier.permission_helper.give_multi_privilege", return_value={"exists": True}):
             response: FlaskResponse = give_multi_privilege("dossier-1")
 
     assert response.status_code == 200
@@ -66,7 +64,7 @@ def test_view_multi_permission_endpoint_exists(audit, mock_basic_auth, request_c
     ):
         from howler.api.v1.view import give_multi_privilege
 
-        with patch("howler.api.v1.view.permission_helper.give_multi_privilege", return_value=ok({"exists": True})):
+        with patch("howler.api.v1.view.permission_helper.give_multi_privilege", return_value={"exists": True}):
             response: FlaskResponse = give_multi_privilege("view-1")
 
     assert response.status_code == 200

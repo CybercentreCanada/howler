@@ -60,8 +60,7 @@ def create_hits(user: User, **kwargs):
     None
 
     Optional Arguments:
-    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
-        'wait_for' will wait for the change to be visible in search.
+    refresh =>  'true' or None (until batch updates merge is done)
 
     Data Block:
     {

@@ -1,7 +1,7 @@
 // eslint-disable-next-line import/no-cycle
 import { hdelete, hget, hpost, hput, joinAllUri, joinUri, uri as parentUri, type HowlerRefreshParam } from 'api';
 import type { Dossier } from 'models/entities/generated/Dossier';
-import { createPermissionApi } from '../../utils/permission';
+import { createPermissionApi } from '../permission';
 import * as hit from './hit';
 
 export const uri = (id?: string) => {

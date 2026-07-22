@@ -1,7 +1,7 @@
 import { hdelete, hget, hpost, hput, joinAllUri, joinUri, uri as parentUri, type HowlerRefreshParam } from 'api';
 import * as favourite from 'api/view/favourite';
 import type { View } from 'models/entities/generated/View';
-import { createPermissionApi } from '../../utils/permission';
+import { createPermissionApi } from '../permission';
 
 export const uri = (id?: string) => {
   return id ? joinAllUri(parentUri(), 'view', id) : joinUri(parentUri(), 'view');

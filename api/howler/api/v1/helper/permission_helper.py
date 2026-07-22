@@ -1,6 +1,5 @@
-from typing import Literal
+from typing import Any, Literal
 
-from howler.api import bad_request, forbidden, not_found, ok
 from howler.common.exceptions import (
     HowlerInvalidPermissionException,
     InvalidDataException,
@@ -9,7 +8,113 @@ from howler.common.loader import datastore
 from howler.odm.models.ownership import Ownership
 from howler.odm.models.permission_request import PermissionRequest
 from howler.odm.models.user import User
-from howler.services import permission_service
+
+
+def _is_allowed_to_change(level_requested: str, user: User, existing_item: Ownership) -> bool:
+    """Verify for privilege request if they are allowed to request the change or not.
+
+    Variables:
+    level_requested => The privilege level requested base on the string from the object [admins, members, owner]
+    user => The user requesting the change
+    existing_item => The ownership object that will be changed
+    """
+    if "admin" in user.type:
+        return True
+
+    if user.uname not in existing_item.admins and user.uname != existing_item.owner:
+        return False
+
+    if level_requested == "owner" and user.uname != existing_item.owner:
+        return False
+
+    return True
+
+
+def set_privilege(
+    requested_level: str, user_to_modify: str, existing_item: Ownership, user_requesting_change: User
+) -> tuple[bool, Ownership]:
+    """Set privilege for a user on a ownership object.
+
+    Variables:
+        requested_level => The privilege level requested base on the string ["admins", "members", "owner"]
+        user_to_modify => The user to add or remove from the privilege level
+        existing_item => The ownership object to modify
+        user_requesting_change => The user requesting the change
+
+
+    return : Boolean of the change and the original object
+    """
+    # does the user to change exist
+    storage = datastore()
+    user = storage.get_collection("user").get_if_exists(user_to_modify)
+    if not user:
+        raise InvalidDataException("The user to modify does not exist")
+
+    # is the requesting user allowed to update permission
+    if not _is_allowed_to_change(requested_level, user_requesting_change, existing_item):
+        raise HowlerInvalidPermissionException("The user requesting the change is not allowed to make the change.")
+
+    # Does the permission exist
+    if requested_level not in existing_item:
+        raise HowlerInvalidPermissionException(f"{requested_level} is not a valid privilege level for this object")
+
+    # Permission update
+    if requested_level == "owner":
+        if existing_item["owner"] == user_to_modify:
+            return False, existing_item
+        existing_item["owner"] = user_to_modify
+        return True, existing_item
+
+    current_members = existing_item[requested_level]
+    if user_to_modify in current_members:
+        return False, existing_item
+    existing_item[requested_level] = [*current_members, user_to_modify]
+
+    return True, existing_item
+
+
+def remove_privilege(
+    requested_level: str, user_to_modify: str, existing_item: Ownership, user_requesting_change: User
+) -> tuple[bool, Ownership]:
+    """Remove privilege for a user on a ownership object.
+
+    Variables:
+        requested_level => The privilege level requested base on the string ["admins", "members", "owner"]
+        user_to_modify => The user to add or remove from the privilege level
+        existing_item => The ownership object to modify
+        user_requesting_change => The user requesting the change
+
+
+    return : boolean representing change and the original object
+    """
+    # does the user to change exist
+    storage = datastore()
+    user = storage.get_collection("user").get_if_exists(user_to_modify)
+    if not user:
+        raise InvalidDataException("The user to modify does not exist")
+
+    # is the requesting user allowed to update permission
+    if not _is_allowed_to_change(requested_level, user_requesting_change, existing_item):
+        raise HowlerInvalidPermissionException("The user requesting the change is not allowed to make the change.")
+
+    # Does the permission exist
+    if requested_level not in existing_item:
+        raise HowlerInvalidPermissionException(f"{requested_level} is not a valid privilege level for this object")
+
+    # Permission update
+    if requested_level == "owner":
+        if existing_item["owner"] == user_to_modify:
+            return False, existing_item
+        # transfer ownership to None or empty string
+        existing_item["owner"] = user_to_modify
+        return True, existing_item
+
+    current_members = existing_item[requested_level]
+    if user_to_modify not in current_members:
+        return False, existing_item
+    existing_item[requested_level] = [m for m in current_members if m != user_to_modify]
+
+    return True, existing_item
 
 
 def give_privilege(
@@ -18,7 +123,7 @@ def give_privilege(
     object_type: type[Ownership],
     j_request: dict,
     refresh: Literal["true", "false", "wait_for"] | None = None,
-):
+) -> dict[str, Any]:
     """give permission from one user to an other.
 
         The json object need to send "privilege", "user_id" as a key.
@@ -50,27 +155,20 @@ def give_privilege(
     try:
         permission_request = PermissionRequest(j_request)
     except ValueError as e:
-        return bad_request(err=str(e))
+        raise InvalidDataException(message=str(e))
 
     storage = datastore()
     result = storage[object_type.__name__.lower()].get_if_exists(str(id), as_obj=True)
 
     if not result:
-        return not_found(err=f"This {object_type.__name__.lower()} does not exist")
-
-    if not isinstance(result, object_type):
-        return bad_request(
-            err=f"Wrong request type. Object of type {type(result)} was requested insted of {object_type.__name__}"
-        )
+        raise InvalidDataException(message=f"This {object_type.__name__.lower()} does not exist")
 
     try:
-        success, result = permission_service.set_privilege(
-            permission_request.privilege, permission_request.user_id, result, user
-        )
+        success, result = set_privilege(permission_request.privilege, permission_request.user_id, result, user)
     except HowlerInvalidPermissionException as e:
-        return forbidden(err=e.message)
+        raise HowlerInvalidPermissionException(message=e.message)
     except InvalidDataException as e:
-        return bad_request(err=e.message)
+        raise InvalidDataException(message=e.message)
 
     if success:
         storage[object_type.__name__.lower()].save(
@@ -79,7 +177,7 @@ def give_privilege(
             refresh=refresh,
         )
 
-    return ok(result.as_primitives())
+    return result.as_primitives()
 
 
 def give_multi_privilege(
@@ -88,7 +186,7 @@ def give_multi_privilege(
     object_type: type[Ownership],
     j_request: dict,
     refresh: Literal["true", "false", "wait_for"] | None = None,
-):
+) -> dict[str, Any]:
     """Give the same privilege to multiple users in a single request.
 
     Data Block:
@@ -98,42 +196,33 @@ def give_multi_privilege(
     }
     """
     if not isinstance(j_request, dict):
-        return bad_request(err="Invalid data format")
+        raise InvalidDataException("Request body must be a JSON object.")
 
     user_ids = j_request.get("user_id")
 
-    if (
-        not isinstance(j_request.get("privilege"), str)
-        or not j_request.get("privilege")
-        or not isinstance(user_ids, list)
-        or len(user_ids) == 0
-    ):
-        return bad_request(err="The key 'user_id' must be a non-empty list.")
+    if not isinstance(user_ids, list) or len(user_ids) == 0:
+        raise InvalidDataException("The key 'user_id' must be a non-empty list.")
+
+    if not isinstance(j_request.get("privilege"), str) or not j_request.get("privilege"):
+        raise InvalidDataException("The key 'privilege' must be a string.")
 
     if any(not isinstance(user_id, str) or not user_id.strip() for user_id in user_ids):
-        return bad_request(err="Each value in 'user_id' must be a non-empty string.")
+        raise InvalidDataException("Each value in 'user_id' must be a non-empty string.")
 
     storage = datastore()
     result = storage[object_type.__name__.lower()].get_if_exists(str(id), as_obj=True)
 
     if not result:
-        return not_found(err=f"This {object_type.__name__.lower()} does not exist")
-
-    if not isinstance(result, object_type):
-        return bad_request(
-            err=f"Wrong request type. Object of type {type(result)} was requested insted of {object_type.__name__}"
-        )
+        raise InvalidDataException(message=f"This {object_type.__name__.lower()} does not exist")
 
     any_success = False
     for user_id in user_ids:
         try:
-            success, result = permission_service.set_privilege(
-                str(j_request.get("privilege")), user_id.strip(), result, user
-            )
+            success, result = set_privilege(str(j_request.get("privilege")), user_id.strip(), result, user)
         except HowlerInvalidPermissionException as e:
-            return forbidden(err=e.message)
+            raise HowlerInvalidPermissionException(message=e.message)
         except InvalidDataException as e:
-            return bad_request(err=e.message)
+            raise InvalidDataException(message=e.message)
 
         any_success = any_success or success
 
@@ -144,7 +233,7 @@ def give_multi_privilege(
             refresh=refresh,
         )
 
-    return ok(result.as_primitives())
+    return result.as_primitives()
 
 
 def revoke_privilege(
@@ -153,7 +242,7 @@ def revoke_privilege(
     object_type: type[Ownership],
     j_request: dict,
     refresh: Literal["true", "false", "wait_for"] | None = None,
-):
+) -> dict[str, Any]:
     """Revoke permission from one user.
 
     Variables:
@@ -182,39 +271,34 @@ def revoke_privilege(
     try:
         permission_request = PermissionRequest(j_request)
     except ValueError as e:
-        return bad_request(err=str(e))
+        raise InvalidDataException(message=str(e))
 
     storage = datastore()
     result = storage[object_type.__name__.lower()].get_if_exists(str(id), as_obj=True)
 
     if not result:
-        return not_found(err=f"This {object_type.__name__.lower()} does not exist")
-
-    if not isinstance(result, object_type):
-        return bad_request(
-            err=f"Wrong request type. Object of type {type(result)} was requested insted of {object_type.__name__}"
-        )
+        raise InvalidDataException(message=f"This {object_type.__name__.lower()} does not exist")
 
     if permission_request.user_id not in (
         result.admins if permission_request.privilege == "admins" else result.members
     ):
-        return bad_request(
-            err=f"{permission_request.user_id} is not in the {permission_request.privilege} permission group"
+        raise HowlerInvalidPermissionException(
+            message=(
+                f"The user '{permission_request.user_id}' does not have the '{permission_request.privilege}' privilege."
+            )
         )
 
     if permission_request.privilege == "owner":
-        return bad_request(
-            err="You cannot remove the owner privilege. Only transfer is allowed. (Use the give_privilege endpoint)"
+        raise HowlerInvalidPermissionException(
+            message="You cannot remove the owner privilege. Only transfer is allowed. (Use the give_privilege endpoint)"
         )
 
     try:
-        success, result = permission_service.remove_privilege(
-            permission_request.privilege, permission_request.user_id, result, user
-        )
+        success, result = remove_privilege(permission_request.privilege, permission_request.user_id, result, user)
     except HowlerInvalidPermissionException as e:
-        return forbidden(err=e.message)
+        raise HowlerInvalidPermissionException(message=e.message)
     except InvalidDataException as e:
-        return bad_request(err=e.message)
+        raise InvalidDataException(message=e.message)
 
     if success:
         storage[object_type.__name__.lower()].save(
@@ -223,4 +307,4 @@ def revoke_privilege(
             refresh=refresh,
         )
 
-    return ok(result.as_primitives())
+    return result.as_primitives()

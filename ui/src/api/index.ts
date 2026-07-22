@@ -25,6 +25,9 @@ import {
 import { getStored as getSessionStored, setStored as setSessionStored } from 'utils/sessionStorage';
 import getXSRFCookie from 'utils/xsrf';
 
+/**
+ * Concrete Rest HTTP client implementation.
+ */
 const client = new AxiosClient();
 
 const api = {

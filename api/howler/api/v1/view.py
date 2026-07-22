@@ -6,7 +6,7 @@ from mergedeep.mergedeep import merge
 from howler.api import bad_request, created, forbidden, make_subapi_blueprint, no_content, not_found, ok
 from howler.api.v1.helper import permission_helper
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
-from howler.common.exceptions import HowlerException
+from howler.common.exceptions import HowlerException, HowlerInvalidPermissionException, InvalidDataException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
@@ -324,7 +324,11 @@ def give_privilege(view_id: str, user: User, **kwargs):
         "success": True     # If the operation succeeded
     }
     """
-    return permission_helper.give_privilege(view_id, user, View, request.json, refresh=kwargs.get("refresh"))
+    try:
+        result = permission_helper.give_privilege(view_id, user, View, request.json, refresh=kwargs.get("refresh"))
+    except (ValueError, HowlerInvalidPermissionException, InvalidDataException) as e:
+        return bad_request(err=str(e))
+    return ok(result)
 
 
 @generate_swagger_docs()
@@ -351,7 +355,13 @@ def give_multi_privilege(view_id: str, user: User, **kwargs):
         "success": True     # If the operation succeeded
     }
     """
-    return permission_helper.give_multi_privilege(view_id, user, View, request.json, refresh=kwargs.get("refresh"))
+    try:
+        result = permission_helper.give_multi_privilege(
+            view_id, user, View, request.json, refresh=kwargs.get("refresh")
+        )
+    except (ValueError, HowlerInvalidPermissionException, InvalidDataException) as e:
+        return bad_request(err=str(e))
+    return ok(result)
 
 
 @generate_swagger_docs()
@@ -383,7 +393,11 @@ def revoke_privilege(view_id: str, user: User, **kwargs):
             "success": True
         }
     """
-    return permission_helper.revoke_privilege(view_id, user, View, request.json, refresh=kwargs.get("refresh"))
+    try:
+        result = permission_helper.revoke_privilege(view_id, user, View, request.json, refresh=kwargs.get("refresh"))
+    except (ValueError, HowlerInvalidPermissionException, InvalidDataException) as e:
+        return bad_request(err=str(e))
+    return ok(result)
 
 
 # endregion

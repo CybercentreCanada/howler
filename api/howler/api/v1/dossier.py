@@ -6,6 +6,7 @@ from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import (
     ForbiddenException,
     HowlerException,
+    HowlerInvalidPermissionException,
     InvalidDataException,
     NotFoundException,
 )
@@ -269,7 +270,11 @@ def give_privilege(id: str, user: User, **kwargs):
         "success": True     # If the operation succeeded
     }
     """
-    return permission_helper.give_privilege(id, user, Dossier, request.json, refresh=kwargs.get("refresh"))
+    try:
+        result = permission_helper.give_privilege(id, user, Dossier, request.json, refresh=kwargs.get("refresh"))
+    except (ValueError, HowlerInvalidPermissionException, InvalidDataException) as e:
+        return bad_request(err=str(e))
+    return ok(result)
 
 
 @generate_swagger_docs()
@@ -301,7 +306,11 @@ def give_multi_privilege(id: str, user: User, **kwargs):
         "success": True
     }
     """
-    return permission_helper.give_multi_privilege(id, user, Dossier, request.json, refresh=kwargs.get("refresh"))
+    try:
+        result = permission_helper.give_multi_privilege(id, user, Dossier, request.json, refresh=kwargs.get("refresh"))
+    except (ValueError, HowlerInvalidPermissionException, InvalidDataException) as e:
+        return bad_request(err=str(e))
+    return ok(result)
 
 
 @generate_swagger_docs()
@@ -330,7 +339,11 @@ def revoke_privilege(id: str, user: User, **kwargs):
             "success": True
         }
     """
-    return permission_helper.revoke_privilege(id, user, Dossier, request.json, refresh=kwargs.get("refresh"))
+    try:
+        result = permission_helper.revoke_privilege(id, user, Dossier, request.json, refresh=kwargs.get("refresh"))
+    except (ValueError, HowlerInvalidPermissionException, InvalidDataException) as e:
+        return bad_request(err=str(e))
+    return ok(result)
 
 
 # endregion
