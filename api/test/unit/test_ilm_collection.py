@@ -309,6 +309,47 @@ class TestEnsureCollectionILM:
         # index_name should be updated to the latest ILM index
         assert col.index_name == f"{col.name}-000002"
 
+    def test_existing_ilm_indices_replace_legacy_hot_alias(self, mock_datastore, ilm_global):
+        """An existing legacy write alias is moved to the latest ILM index."""
+        ilm_index = ILMIndexConfig(warm="30d")
+        col = _make_collection(mock_datastore, ilm_config=ilm_index)
+        hot_index_name = col.index_name
+        latest_index_name = f"{col.name}-000001"
+
+        mock_datastore.client.indices.get.return_value = {latest_index_name: {}}
+        mock_datastore.client.indices.exists_alias.return_value = True
+        mock_datastore.client.indices.get_alias.return_value = {
+            hot_index_name: {"aliases": {col.name: {"is_write_index": True}}}
+        }
+
+        with (
+            patch.object(col, "_create_ilm_policy"),
+            patch.object(col, "_create_index_template"),
+            patch.object(col, "_check_fields"),
+        ):
+            col._ensure_collection_ilm()
+
+        alias_actions = mock_datastore.client.indices.update_aliases.call_args.kwargs["actions"]
+        assert {"remove": {"index": hot_index_name, "alias": col.name}} in alias_actions
+        assert {"add": {"index": latest_index_name, "alias": col.name, "is_write_index": True}} in alias_actions
+        assert col.index_name == latest_index_name
+
+    def test_reindex_cleanup_does_not_restore_missing_collection_alias(self, mock_datastore):
+        """Cleanup must not make an alias writable when the source did not own it."""
+        col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"))
+        col.index_name = f"{col.name}-000001"
+        reindex_index_name = f"{col.index_name}__reindex"
+
+        mock_datastore.client.indices.exists.side_effect = [True, True]
+        mock_datastore.client.indices.get.side_effect = [
+            {col.index_name: {"aliases": {}}},
+            {reindex_index_name: {"aliases": {}}},
+        ]
+
+        assert col.reindex_cleanup() is True
+        mock_datastore.client.indices.update_aliases.assert_not_called()
+        mock_datastore.client.indices.delete.assert_called_once_with(index=reindex_index_name)
+
     def test_legacy_hot_index_migration(self, mock_datastore, ilm_global):
         """Legacy _hot index gets cloned to -000001 and alias is swapped."""
         ilm_index = ILMIndexConfig(warm="30d")
