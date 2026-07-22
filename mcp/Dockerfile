@@ -81,4 +81,4 @@ ENV PATH=/var/lib/howler/.venv/bin:$PATH \
 
 EXPOSE 8000
 
-CMD ["python", "-m", "howler_mcp.server"]
+ENTRYPOINT ["python", "-m", "howler_mcp.server"]
