@@ -185,12 +185,13 @@ async def test_search_hits_escapes_lucene_special_chars(tools_and_api):
     mock_api.call.return_value = {"rows": 0, "total": 0, "items": []}
     with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
         result = await tools["SearchHitsWithIndicators"](
-            indicators=["foo+bar", "192.168.1.1:80", "baz"]
+            indicators=["foo+bar", "192.168.1.1:80", "foo OR bar"]
         )
 
     query = mock_api.call.call_args.kwargs["body"]["query"]
     assert "foo\\+bar" in query  # '+' escaped
     assert "192.168.1.1\\:80" in query  # ':' escaped
+    assert "foo\\ OR\\ bar" in query  # spaces escaped
     assert result.total == 0
 
 

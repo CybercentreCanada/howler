@@ -70,6 +70,9 @@ def get_token():
         "password": TEST_PASSWORD,
         "scope": TEST_SCOPE,
     }
+    if AUTH.CLIENT_SECRET:
+        payload["client_secret"] = AUTH.CLIENT_SECRET
+
     response = requests.post(url_token, data=payload, timeout=HOWLER_API.TIMEOUT)
     response.raise_for_status()
     return response.json().get("access_token")
@@ -235,12 +238,14 @@ def test_tool_list_alerts():
 def test_tool_search_hits_with_indicators():
     """Test the SearchHitsWithIndicators tool ensuring lists are processed properly."""
     token = get_token()
-    response = requests.post(
+    api_response = requests.post(
         headers={"Authorization": f"Bearer {token}"},
         url=f"{HOWLER_API.BASE_URL}/search/hit",
         json={"query": r"howler.comment.id:*", "fl": None, "filters": [], "rows": 1},
         timeout=HOWLER_API.TIMEOUT,
-    ).json()  # we still use comment since it basically ensure we have an alert insted or at least something with indicator
+    )
+    api_response.raise_for_status()
+    response = api_response.json()
 
     indicators = [
         response["api_response"]["items"][0]["howler"]["outline"]["target"],
@@ -279,12 +284,14 @@ def test_tool_search_hits_with_indicators():
 def test_tool_get_hit_by_id():
     """Test fetching a specific hit by ID."""
     token = get_token()
-    response = requests.post(
+    api_response = requests.post(
         headers={"Authorization": f"Bearer {token}"},
         url=f"{HOWLER_API.BASE_URL}/search/hit",
         json={"query": r"howler.comment.id:*", "fl": None, "filters": [], "rows": 1},
         timeout=HOWLER_API.TIMEOUT,
-    ).json()
+    )
+    api_response.raise_for_status()
+    response = api_response.json()
 
     hit_id = response["api_response"]["items"][0]["howler"]["id"]
 
@@ -318,12 +325,14 @@ def test_tool_get_hit_by_id():
 def test_tool_add_comment_to_hit():
     """Test adding a comment to a hit via the POST tool."""
     token = get_token()
-    hit_id = requests.post(
+    api_response = requests.post(
         headers={"Authorization": f"Bearer {token}"},
         url=f"{HOWLER_API.BASE_URL}/search/hit",
         json={"query": r"howler.comment.id:*", "fl": None, "filters": [], "rows": 1},
         timeout=HOWLER_API.TIMEOUT,
-    ).json()["api_response"]["items"][0]["howler"]["id"]
+    )
+    api_response.raise_for_status()
+    hit_id = api_response.json()["api_response"]["items"][0]["howler"]["id"]
 
     call_mcp_tool(
         token,
@@ -332,12 +341,14 @@ def test_tool_add_comment_to_hit():
     )  # write : "From MCP Client: unit testing making the comment"
 
     # get comment back :
-    comment = requests.post(
+    comment_response = requests.post(
         headers={"Authorization": f"Bearer {token}"},
         url=f"{HOWLER_API.BASE_URL}/search/hit",
         json={"query": f"howler.id:{hit_id}", "fl": None, "filters": [], "rows": 1},
         timeout=HOWLER_API.TIMEOUT,
-    ).json()["api_response"]["items"][0]["howler"]["comment"]
+    )
+    comment_response.raise_for_status()
+    comment = comment_response.json()["api_response"]["items"][0]["howler"]["comment"]
 
     is_pass = False
     for e in comment:
@@ -352,7 +363,7 @@ def test_tool_get_false_positive_hit():
     token = get_token()
     lookback_in_days = 7
     limit = 25
-    howler_answer = requests.post(
+    http_response = requests.post(
         headers={"Authorization": f"Bearer {token}"},
         url=f"{HOWLER_API.BASE_URL}/search/hit",
         json={
@@ -362,7 +373,9 @@ def test_tool_get_false_positive_hit():
             "rows": limit,
         },
         timeout=HOWLER_API.TIMEOUT,
-    ).json()
+    )
+    http_response.raise_for_status()
+    howler_answer = http_response.json()
 
     response = call_mcp_tool(
         token,
@@ -387,14 +400,15 @@ def test_tool_get_false_positive_hit():
 
 
 def test_tool_list_hits_by_analytic():
-    # TODO : make it
     token = get_token()
-    howler_ticket = requests.post(
+    api_response = requests.post(
         headers={"Authorization": f"Bearer {token}"},
         url=f"{HOWLER_API.BASE_URL}/search/hit",
         json={"query": r"howler.comment.id:*", "fl": None, "filters": [], "rows": 1},
         timeout=HOWLER_API.TIMEOUT,
-    ).json()
+    )
+    api_response.raise_for_status()
+    howler_ticket = api_response.json()
     analytic = howler_ticket["api_response"]["items"][0]["howler"]["analytic"]
     get_analytic = call_mcp_tool(
         token,

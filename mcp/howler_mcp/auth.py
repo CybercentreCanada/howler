@@ -3,6 +3,7 @@ from typing import Any
 
 import jwt
 from jwt import PyJWKClient
+
 from mcp.server.auth.provider import AccessToken, TokenVerifier
 
 logger = logging.getLogger(__name__)
@@ -63,8 +64,8 @@ class KeycloakTokenVerifier(TokenVerifier):
                 resource=self.audience,
             )
 
-        except Exception as e:
-            logger.error("TOKEN REJECTED: exception during verification: %s", repr(e))
+        except Exception:
+            logger.exception("TOKEN REJECTED: Exception during verification.")
             return None
 
     def _audience_matches(self, claims: dict[str, Any]) -> bool:

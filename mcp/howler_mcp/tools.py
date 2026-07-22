@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from mcp.server.auth.provider import AccessToken
 
 logger = logging.getLogger(__name__)
-LUCENE_SPECIAL_CHARS = frozenset('+-!(){}[]^"~:\\/&|')
+LUCENE_SPECIAL_CHARS = frozenset(' +-!(){}[]^"~:\\/&|')
 
 
 class WhoAmIResponse(BaseModel):
@@ -276,7 +276,7 @@ def RegisterTools(mcp, api_client):
             access_token.client_id,
             access_token.subject,
         )
-        # Removing special character and making the \ odd to ensure no escape.
+        # Escape backslashes and quotes before embedding the value in a Lucene phrase.
         analytic_name = analytic_name.replace("\\", "\\\\").replace('"', '\\"')
 
         analytic_name = re.sub(r"[\r\n\t]+", " ", analytic_name).strip()
@@ -284,9 +284,6 @@ def RegisterTools(mcp, api_client):
             raise ValueError(
                 "analytic_name cannot be empty after whitespace normalization."
             )
-
-        # Escape quotes so user input stays data within the Lucene phrase.
-        # Remove the ValueError block for "\\"
 
         data = await api_client.call(
             user_access_token=access_token,
