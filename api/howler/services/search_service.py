@@ -5,7 +5,7 @@ from typing import Any
 import elasticsearch
 from elasticsearch import Elasticsearch
 
-from howler.common.loader import APP_NAME, datastore
+from howler.common.loader import DATASTORE_INDEX_PREFIX, datastore
 from howler.common.logging import get_logger
 from howler.datastore.collection import parse_sort
 from howler.datastore.exceptions import SearchException, SearchRetryException
@@ -28,7 +28,7 @@ def _normalize_indexes(indexes: str | list[str]) -> str:
 
     Parses the input indexes and applies naming conventions. Special patterns like
     wildcards, exclusions, and explicitly formatted indexes are preserved as-is.
-    Regular indexes are formatted with the APP_NAME prefix and '_hot' suffix.
+    Regular indexes are formatted with the datastore index prefix and '_hot' suffix.
 
     Args:
         indexes: A comma-separated string or list of index names to normalize.
@@ -62,7 +62,7 @@ def _normalize_indexes(indexes: str | list[str]) -> str:
         if index in {"*", "_all"} or "-" in index or "*" in index:
             normalized_indexes.append(index)
         else:
-            normalized_indexes.append(f"{APP_NAME}-{index}")
+            normalized_indexes.append(f"{DATASTORE_INDEX_PREFIX}-{index}")
 
     return ",".join(normalized_indexes)
 
@@ -86,7 +86,7 @@ def _format_items(hits: list[dict[str, Any]], user_classification: str | None) -
             raw_index = hit.get("_index", None)
 
             if raw_index:
-                source["__index"] = raw_index.replace(f"{APP_NAME}-", "").replace("_hot", "")
+                source["__index"] = raw_index.replace(f"{DATASTORE_INDEX_PREFIX}-", "").replace("_hot", "")
 
             if source.get("__index") == "case" and user_classification:
                 case_service.filter_case_items_by_classification(source, user_classification)

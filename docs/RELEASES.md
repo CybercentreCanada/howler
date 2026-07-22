@@ -29,7 +29,7 @@
 
 ## Howler API `v4.0.0`
 
-- **Correlation Worker Test Isolation** _(bugfix)_: Isolated each API test run's correlation queue so parallel runs cannot consume one another's records.
+- **Correlation Worker Test Isolation** _(bugfix)_: Isolated each API test run's HTTP endpoint, correlation queue, and datastore indices so parallel runs cannot consume or delete one another's records.
 - **ODM Inheritance and Plugin Support** _(new feature)_: Added compatibility shims and improved enum/model type handling, `id_field` validation, and caching so plugins can define ODM subclasses ([#331](https://github.com/CybercentreCanada/howler/pull/331)).
 - **Action Execution Queue** _(improvement)_: Added a queue and worker for action execution to limit Elasticsearch query pressure and improve action-service reliability ([#385](https://github.com/CybercentreCanada/howler/pull/385)).
 - **Action Runner Roles** _(new feature)_: Added granular roles that control which users may execute actions ([#316](https://github.com/CybercentreCanada/howler/pull/316)).

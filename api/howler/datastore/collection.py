@@ -20,7 +20,7 @@ from opentelemetry import trace
 
 from howler import odm
 from howler.common.exceptions import HowlerRuntimeError, HowlerValueError, NonRecoverableError
-from howler.common.loader import APP_NAME
+from howler.common.loader import DATASTORE_INDEX_PREFIX
 from howler.common.logging.format import HWL_DATE_FORMAT, HWL_LOG_FORMAT
 from howler.datastore.constants import BACK_MAPPING, TYPE_MAPPING
 from howler.datastore.exceptions import (
@@ -229,7 +229,7 @@ class ESCollection(Generic[ModelType]):
         self._index_list: list[str] = []
 
         self.datastore = datastore
-        self.name = f"{APP_NAME}-{name}"
+        self.name = f"{DATASTORE_INDEX_PREFIX}-{name}"
         self.ilm_config = ilm_config
         self.index_name = f"{self.name}_hot"
         self.model_class = model_class
