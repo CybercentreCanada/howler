@@ -108,7 +108,6 @@ const AddToCaseModal: FC<AddItemToCaseModalProps> = ({ case: _case, parentId = n
           value={title}
           onChange={ev => setTitle(ev.target.value)}
           fullWidth
-          autoFocus
         />
       </Stack>
 

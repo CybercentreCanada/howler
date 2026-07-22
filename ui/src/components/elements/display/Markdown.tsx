@@ -79,7 +79,7 @@ const Markdown: FC<MarkdownProps> = ({ md, components = {}, disableLinks = false
   }, [isDark, theme]);
 
   useEffect(() => {
-    mermaid.run();
+    void mermaid.run();
   });
 
   return (
@@ -110,7 +110,7 @@ const Markdown: FC<MarkdownProps> = ({ md, components = {}, disableLinks = false
           if (match?.[1] === 'json') {
             try {
               return <JSONViewer data={JSON.parse((node.children[0] as any).value)} />;
-            } catch (e) {
+            } catch {
               return <code style={{ color: 'red' }}>{t('markdown.json.invalid')}</code>;
             }
           }

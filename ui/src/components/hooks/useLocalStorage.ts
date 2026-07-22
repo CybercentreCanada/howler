@@ -11,7 +11,7 @@ const useLocalStorage = (prefix?: string) => {
     <T>(key: string): T => {
       try {
         return JSON.parse(localStorage.getItem(_buildKey(key)));
-      } catch (e) {
+      } catch {
         return null;
       }
     },

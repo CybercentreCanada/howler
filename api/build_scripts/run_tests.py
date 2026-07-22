@@ -2,10 +2,12 @@ import os
 import platform
 import re
 import shlex
+import socket
 import subprocess
 import sys
 import textwrap
 import time
+import uuid
 from pathlib import Path
 
 
@@ -14,9 +16,27 @@ def prep_command(cmd: str):
     return shlex.split(cmd)
 
 
+def get_available_port() -> int:
+    """Reserve an ephemeral local port number for the test API server."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return sock.getsockname()[1]
+
+
 def main():  # noqa: C901
     background_server = None
     try:
+        run_id = uuid.uuid4().hex
+        api_port = get_available_port()
+        test_env = {
+            **os.environ,
+            "FLASK_RUN_PORT": str(api_port),
+            "HWL_DATASTORE_INDEX_PREFIX": f"howler-test-{run_id}",
+            "HWL_TEST_API_HOST": f"http://localhost:{api_port}",
+            "TESTING": "true",
+            "HWL_CORRELATION_QUEUE_NAME": f"howler.ingestion_queue.test.{run_id}",
+        }
+
         print("Removing existing coverage files")
         subprocess.check_call(
             prep_command("coverage erase --data-file=.coverage"),
@@ -25,7 +45,7 @@ def main():  # noqa: C901
         print("Running howler server (with coverage)")
         background_server = subprocess.Popen(
             prep_command("coverage run -m flask --app howler.app run --no-reload"),
-            env={"TESTING": "true", **os.environ},
+            env=test_env,
         )
 
         time.sleep(5)
@@ -45,6 +65,7 @@ def main():  # noqa: C901
         pytest = subprocess.Popen(
             pytest_cmd,
             stdout=subprocess.PIPE,
+            env=test_env,
         )
 
         output = ""

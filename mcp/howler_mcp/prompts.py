@@ -1,0 +1,94 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def RegisterPrompts(mcp):
+
+    @mcp.prompt(name="ReviewFalsePositive")
+    def review_false_positive() -> str:
+        """Review analytics marked as false positives."""
+        logger.info("Prompt called: ReviewFalsePositive")
+        return """Retrieve all hits marked as false positives in the last 90 days using GetFalsePositiveHits.
+
+            Then analyze and present a comprehensive false-positive review report with the following structure:
+
+            ## Summary Statistics
+            - Total false positives found
+            - Distribution by analytic (group the counts)
+            - Percentage breakdown showing which analytics produce the most false positives
+
+            ## Detailed False Positive Analysis
+            For each unique analytic identified, provide:
+            - Analytic name
+            - Count of false positives
+            - Sample hit IDs
+            - Common patterns or characteristics of the false positives
+
+            ## Root Cause Assessment
+            Based on the false positive hits returned, identify and categorize the reasons:
+            - Configuration issues (e.g., overly broad rules, missing context filters)
+            - Environment-specific noise (e.g., internal testing, legitimate security tools triggering alerts)
+            - Data quality problems (e.g., incomplete or duplicate data)
+            - Timing or threshold issues
+
+            ## Actionable Recommendations
+            Provide specific, prioritized recommendations to reduce false positives:
+            1. Analytics with highest false positive rates and suggested fixes
+            2. Quick wins (easy configuration changes with high impact)
+            3. Detection engineering improvements (rule refinement, filter additions)
+            4. Monitoring and tuning strategy going forward
+
+            Format with clear sections, bullet points, and a summary table. Make it suitable for sharing with detection engineers."""
+
+    @mcp.prompt(name="HitReview")
+    def hit_review(hit_id: str) -> str:
+        """Review a hit and provide an analysis."""
+        return f"""Generate a report for hit {hit_id} that includes the following sections:
+        1) Summary: A brief overview of the hit, including the analytic that generated it and the reason for its creation.
+        2) Evidence: A detailed list of all evidence associated with the hit, including timestamps, sources, and any relevant metadata.
+        3) Analyst Comments: A compilation of all comments made by analysts regarding this hit, including their insights and any actions taken.
+        4) Recommendations: Based on the evidence and analyst comments, provide recommendations for next steps or further investigation.
+        Format the report in a clear and organized manner, using bullet points and headings where appropriate."""
+
+    @mcp.prompt(name="SearchMatchingIndicatorsInOtherSystem")
+    def search_indicators(hit_id: str, target_system: str) -> str:
+        """Retrieve all indicators from a hit and query a third party system for matching alerts, then produce an action plan.
+        This requires to have a third party system connected through an MCP tool."""
+        return f"""Perform the following steps for hit {hit_id}:
+        1) Retrieve the hit details using GetHitById and extract all indicators (IPs, domains, hashes, URLs, email addresses, etc.) attached to this hit.
+        2) For each indicator, query {target_system} for alerts or incidents that contain or reference that indicator. Use the available MCP tools for {target_system} to search for matching alerts, incidents, or security events.
+        3) Produce a report with the following sections:
+
+        ## Executive Summary
+        A very short summary of the key findings from the {target_system} search, suitable for a non-technical audience.
+
+        ## Indicator Summary
+        A table listing each indicator extracted from the hit, its type (IP, domain, hash, etc.), and whether any matches were found in {target_system}.
+
+        ## {target_system} Findings
+        For each alert or incident found in {target_system}, provide:
+        - Alert/incident name, ID, and severity
+        - Timestamp
+        - Which indicator(s) from the hit matched
+        - Status (New, In Progress, Resolved, Closed, etc.)
+        - Assigned owner or team (if available)
+        - Associated entities (hosts, users, services affected)
+        - Related context or metadata from {target_system}
+
+        ## Correlation Analysis
+        Identify patterns across the {target_system} findings:
+        - Are multiple indicators appearing in the same alert or incident?
+        - Is there a timeline pattern suggesting a coordinated attack or attack chain?
+        - Are there findings from different detection sources or alert types converging on the same indicators?
+        - How do the {target_system} findings correlate with the original hit in Howler?
+
+        ## Recommended Action Plan
+        Based on the {target_system} findings and their current status, suggest concrete next steps:
+        - Which alerts/incidents need immediate escalation (high/critical severity, still active)?
+        - Which findings can be correlated or merged with existing investigations?
+        - What containment or remediation actions should be prioritized?
+        - What additional investigation queries should be run in {target_system} to expand scope?
+        - Should the hit in Howler be escalated, reassigned, or closed based on {target_system} findings?
+
+        Format the report clearly with markdown headings, tables, and bullet points. Make it suitable for sharing with security analysts and response teams."""

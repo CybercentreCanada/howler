@@ -65,7 +65,7 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
       return;
     }
 
-    dispatchApi(
+    void dispatchApi(
       api.v2.search.post(['hit', 'event'], {
         query: `howler.id:(${missingIds.join(' OR ')})`,
         metadata: ['template', 'analytic']

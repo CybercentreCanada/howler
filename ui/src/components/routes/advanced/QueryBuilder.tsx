@@ -193,7 +193,7 @@ const QueryBuilder: FC = () => {
       const parsedEvent = parseEvent(event);
 
       if (parsedEvent.isCtrl && parsedEvent.isEnter) {
-        execute();
+        void execute();
       }
     },
     [execute]
@@ -247,7 +247,7 @@ const QueryBuilder: FC = () => {
   }, [execute, monaco, t]);
 
   useEffect(() => {
-    getHitFields();
+    void getHitFields();
   }, [getHitFields]);
 
   useEffect(() => {

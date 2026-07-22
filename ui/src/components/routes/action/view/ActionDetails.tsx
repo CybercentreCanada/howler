@@ -89,7 +89,7 @@ const ActionDetails = () => {
   useEffect(() => {
     setLoading(true);
 
-    Promise.all([
+    void Promise.all([
       dispatchApi(api.action.operations.get()).then(setOperations),
       dispatchApi(api.action.get(params.id).then(setAction))
     ]).finally(() => setLoading(false));
@@ -97,7 +97,7 @@ const ActionDetails = () => {
 
   useEffect(() => {
     if (action?.query) {
-      onSearch(action?.query);
+      void onSearch(action?.query);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [action?.query, onSearch]);

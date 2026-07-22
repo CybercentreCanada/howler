@@ -32,7 +32,7 @@ const Created = forwardRef<any, { analytic: Analytic }>(({ analytic }, ref) => {
       });
     }
 
-    queryRef.current
+    void queryRef.current
       .then(result => {
         setIngestionData(result);
         queryRef.current = null;

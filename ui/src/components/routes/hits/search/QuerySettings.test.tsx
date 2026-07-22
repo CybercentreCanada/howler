@@ -353,7 +353,7 @@ describe('QuerySettings', () => {
       expect(screen.getByLabelText(i18n.t('hit.search.view.add'))).toBeInTheDocument();
     });
 
-    it('should allow multiple clicks to add multiple filters', async () => {
+    it('should close after adding a filter', async () => {
       render(<QuerySettings />, { wrapper: Wrapper });
 
       const chipButton = screen.getByRole('button');
@@ -361,14 +361,11 @@ describe('QuerySettings', () => {
 
       const addFilterButton = screen.getByLabelText(i18n.t('hit.search.filter.add'));
 
-      await act(async () => {
-        await user.click(addFilterButton);
-        await user.click(addFilterButton);
-        await user.click(addFilterButton);
-      });
+      await user.click(addFilterButton);
 
-      expect(mockAddFilter).toHaveBeenCalledTimes(3);
+      expect(mockAddFilter).toHaveBeenCalledTimes(1);
       expect(mockAddFilter).toHaveBeenCalledWith('howler.assessment:*');
+      await waitFor(() => expect(screen.queryByLabelText(i18n.t('hit.search.filter.add'))).not.toBeInTheDocument());
     });
   });
 

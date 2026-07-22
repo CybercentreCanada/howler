@@ -31,6 +31,7 @@ from howler.odm.models.howler_data import Comment, HitOperationType, HitStatusTr
 from howler.odm.models.user import User
 from howler.security import api_login
 from howler.services import action_service, analytic_service, comms_service, hit_service
+from howler.utils.constants import DEBUG_FORCE_REFRESH
 from howler.utils.str_utils import sanitize_lucene_query
 
 MAX_COMMENT_LEN = 5000
@@ -60,7 +61,8 @@ def create_hits(user: User, **kwargs):
     None
 
     Optional Arguments:
-    refresh =>  'true' or None (until batch updates merge is done)
+    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+        'wait_for' will wait for the change to be visible in search.
 
     Data Block:
     {
@@ -121,17 +123,12 @@ def create_hits(user: User, **kwargs):
 
     if len(response_body["invalid"]) == 0:
         if len(odms) > 0:
-            for odm in odms:  # Save all but the last hit without refreshing
+            for odm in odms:
                 # Ensure all ids are consistent
                 if odm.event is not None:
                     odm.event.id = odm.howler.id
-                # TODO keeping the commit approach until we can batch create hits
-                # passing refresh to each one is potentially even more inefficient
-                hit_service.create_hit(odm.howler.id, odm, user=user.uname, refresh="false")
 
-            if refresh == "true":
-                datastore().hit.commit()
-
+            hit_service.create_hits(odms, user=user.uname, refresh="true" if DEBUG_FORCE_REFRESH else refresh)
             analytic_service.save_from_hits(odms, user, refresh=refresh)
             action_service.enqueue_action_execution([odm.howler.id for odm in odms], trigger="create", user=user)
 
@@ -577,7 +574,7 @@ def add_label(id, label_set, user, **kwargs):
         id,
         [hit_helper.list_add(f"howler.labels.{label_set}", label) for label in labels],
         user["uname"],
-        refresh=refresh,
+        refresh="true" if DEBUG_FORCE_REFRESH else refresh,
     )
 
     action_service.enqueue_action_execution([id], trigger="add_label", user=user)
@@ -634,7 +631,7 @@ def remove_labels(id, label_set, user, **kwargs):
         id,
         [hit_helper.list_remove(f"howler.labels.{label_set}", label) for label in labels],
         user["uname"],
-        refresh=refresh,
+        refresh="true" if DEBUG_FORCE_REFRESH else refresh,
     )
 
     action_service.enqueue_action_execution([id], trigger="remove_label", user=user)

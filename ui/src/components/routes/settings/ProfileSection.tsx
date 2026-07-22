@@ -29,7 +29,7 @@ const ProfileSection: FC<{
     async (r: string, fn: (arg: string) => Promise<void>) => {
       const delayedLoad = delay(250);
 
-      delayedLoad.then(() => {
+      void delayedLoad.then(() => {
         setLoading({
           ...loading,
           [r]: true

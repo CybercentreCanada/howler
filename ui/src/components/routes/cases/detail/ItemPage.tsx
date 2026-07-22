@@ -95,7 +95,7 @@ const ItemPage: FC<{ case?: Case }> = ({ case: providedCase }) => {
     };
 
     if (_case) {
-      resolveItem();
+      void resolveItem();
     }
 
     return () => {

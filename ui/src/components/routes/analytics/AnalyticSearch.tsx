@@ -130,7 +130,7 @@ const AnalyticSearchBase: FC = () => {
   // Effect to initialize list of users.
   useEffect(
     () => {
-      onSearch();
+      void onSearch();
 
       if (!searchParams.has('offset')) {
         searchParams.set('offset', '0');
@@ -151,7 +151,7 @@ const AnalyticSearchBase: FC = () => {
 
   useEffect(() => {
     if (!searching) {
-      onSearch();
+      void onSearch();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offset]);

@@ -209,7 +209,7 @@ const DossierEditor: FC = () => {
 
     setLoading(true);
 
-    dispatchApi(api.dossier.get(params.id) as Promise<Dossier>)
+    void dispatchApi(api.dossier.get(params.id) as Promise<Dossier>)
       .then(_dossier => {
         setOriginalDossier(_dossier);
         setDossier(_dossier);
@@ -224,7 +224,7 @@ const DossierEditor: FC = () => {
 
     setQuery(dossier.query);
 
-    (async () => {
+    void (async () => {
       setLoading(true);
 
       try {

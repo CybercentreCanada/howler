@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import elasticsearch
 import pytest
 
-from howler.common.loader import APP_NAME
+from howler.common.loader import DATASTORE_INDEX_PREFIX
 from howler.datastore.exceptions import SearchException, SearchRetryException
 from howler.odm.models.user import User
 from howler.odm.random_data import (
@@ -50,20 +50,6 @@ def datastore(datastore_connection):
     finally:
         wipe_users(ds)
         create_users(ds)
-
-
-def test_normalize_indexes_string():
-    assert search_service._normalize_indexes("user,hit") == f"{APP_NAME}-user,{APP_NAME}-hit"
-
-
-def test_normalize_indexes_list_and_special_values():
-    assert search_service._normalize_indexes(["*", "_all", "custom-index", "event*"]) == "*,_all,custom-index,event*"
-
-
-@pytest.mark.parametrize("indexes", ["", " , ", [], [" "]])
-def test_normalize_indexes_fails_on_empty(indexes):
-    with pytest.raises(SearchException, match="No indexes were provided"):
-        search_service._normalize_indexes(indexes)
 
 
 def test_format_items():
@@ -250,7 +236,7 @@ def test_search_clears_next_scroll_when_last_page(datastore):
             "hits": [
                 {
                     "_id": "admin",
-                    "_index": f"{APP_NAME}-user",
+                    "_index": f"{DATASTORE_INDEX_PREFIX}-user",
                     "_score": 1.0,
                     "_source": {"uname": "admin"},
                 }
@@ -376,77 +362,6 @@ def test_search_access_control_combined_with_filters(datastore):
     assert "howler.id:*" in filter_queries
     assert "__access_lvl__:[0 TO 200]" in filter_queries
     assert len(filter_queries) == 2
-
-
-class TestNormalizeIndexes:
-    """Tests for search_service._normalize_indexes."""
-
-    def test_single_index_adds_prefix_and_suffix(self):
-        """A plain index name gets the APP_NAME prefix."""
-        result = search_service._normalize_indexes("hit")
-
-        assert result == f"{APP_NAME}-hit"
-
-    def test_multiple_indexes_comma_separated(self):
-        """Comma-separated indexes are each normalized."""
-        result = search_service._normalize_indexes("hit,event")
-
-        parts = result.split(",")
-        assert len(parts) == 2
-        assert parts[0] == f"{APP_NAME}-hit"
-        assert parts[1] == f"{APP_NAME}-event"
-
-    def test_wildcard_preserved(self):
-        """Wildcard '*' is kept as-is."""
-        result = search_service._normalize_indexes("*")
-
-        assert result == "*"
-
-    def test_exclusion_pattern_preserved(self):
-        """Indexes with a dash (exclusion pattern) are kept as-is."""
-        result = search_service._normalize_indexes("custom-index")
-
-        assert result == "custom-index"
-
-    def test_list_input(self):
-        """A list of indexes is handled correctly."""
-        result = search_service._normalize_indexes(["hit", "event"])
-
-        parts = result.split(",")
-        assert len(parts) == 2
-        assert all(p.startswith(APP_NAME) for p in parts)
-
-    def test_empty_string_raises(self):
-        """An empty string raises SearchException."""
-        with pytest.raises(SearchException):
-            search_service._normalize_indexes("")
-
-    def test_empty_list_raises(self):
-        """An empty list raises SearchException."""
-        with pytest.raises(SearchException):
-            search_service._normalize_indexes([])
-
-    def test_whitespace_stripped(self):
-        """Leading/trailing whitespace in index names is stripped."""
-        result = search_service._normalize_indexes("  hit , event  ")
-
-        parts = result.split(",")
-        assert len(parts) == 2
-        assert all(p.startswith(APP_NAME) for p in parts)
-
-    def test_all_keyword_preserved(self):
-        """The '_all' keyword is preserved as-is."""
-        result = search_service._normalize_indexes("_all")
-
-        assert result == "_all"
-
-    def test_mixed_wildcard_and_plain(self):
-        """Mix of wildcards and plain indexes normalizes correctly."""
-        result = search_service._normalize_indexes("*,hit")
-
-        parts = result.split(",")
-        assert parts[0] == "*"
-        assert parts[1] == f"{APP_NAME}-hit"
 
 
 # ---------------------------------------------------------------------------

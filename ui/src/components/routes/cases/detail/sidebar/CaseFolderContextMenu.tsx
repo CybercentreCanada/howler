@@ -107,7 +107,7 @@ const CaseFolderContextMenu: FC<CaseFolderContextMenuProps> = ({ case: _case, it
           return;
         }
 
-        dispatchApi(api.v2.case.items.del(_case.case_id!, [item.id], isFolder), { throwError: false }).then(
+        void dispatchApi(api.v2.case.items.del(_case.case_id!, [item.id], isFolder), { throwError: false }).then(
           updatedCase => {
             if (updatedCase) {
               onUpdate?.(updatedCase);

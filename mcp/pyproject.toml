@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "howler-mcp"
+version = "0.1.0"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.12"
+mcp = "^1.0.0"
+fastmcp = {extras = ["server"], version = "^3.4.0"}
+pydantic = "^2.8.0"
+httpx = ">=0.27.1"
+pyjwt = {extras = ["crypto"], version = "^2.8.0"}
+cryptography = "^41.0.0"
+requests = "^2.34.0"
+howler-client = "^2.4.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.4.2"
+pytest-asyncio = "0.24.0"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+pythonpath = ["."]
+testpaths = ["test"]

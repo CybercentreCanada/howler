@@ -55,7 +55,7 @@ const RecordTable = ({
         return;
       }
 
-      getMatchingAnalytic(record).then(_analytic => {
+      void getMatchingAnalytic(record).then(_analytic => {
         if (_analytic) {
           setAnalyticIds(_analyticIds => ({ ..._analyticIds, [record.howler.analytic]: _analytic.analytic_id }));
         }

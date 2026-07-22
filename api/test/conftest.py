@@ -84,6 +84,7 @@ def datastore_connection(config, auth_fail_queue):
 
 # Under different test setups, the host may have a different address
 POSSIBLE_HOSTS = [
+    os.environ.get("HWL_TEST_API_HOST"),
     "https://localhost:443",
     "https://nginx",
     "http://localhost:5000",
@@ -134,7 +135,7 @@ def host():
     errors = {}
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        for host in POSSIBLE_HOSTS:
+        for host in filter(None, POSSIBLE_HOSTS):
             try:
                 result = requests.get(
                     f"{host}/api/v1/user/whoami/",

@@ -95,7 +95,7 @@ const EditRow = <T extends string | number | boolean>({
       if (type !== 'checkbox') {
         setEditValue(_value);
       } else {
-        onEdit(_value.toString());
+        void onEdit(_value.toString());
       }
     },
     [failOnValidate, max, min, onEdit, type, validate]
@@ -125,7 +125,7 @@ const EditRow = <T extends string | number | boolean>({
   const checkForActions: KeyboardEventHandler<HTMLDivElement> = useCallback(
     e => {
       if (e.ctrlKey && e.key === 'Enter' && !loading) {
-        onSubmit();
+        void onSubmit();
       }
 
       if (e.key === 'Escape') {
@@ -232,7 +232,7 @@ const EditRow = <T extends string | number | boolean>({
                 <IconButton
                   onClick={() => {
                     setEditing(false);
-                    onEdit(null);
+                    void onEdit(null);
                   }}
                   disabled={loading}
                 >

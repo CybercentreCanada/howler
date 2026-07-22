@@ -1,9 +1,12 @@
 """Unit tests for ILM configuration models."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
 import yaml
 from pydantic import ValidationError
 
+from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.models.config import Config, Datastore, ILMConfig, ILMIndexConfig
 
 
@@ -12,9 +15,14 @@ class TestILMIndexConfig:
 
     def test_defaults(self):
         cfg = ILMIndexConfig()
+        assert cfg.enabled is True
         assert cfg.warm is None
         assert cfg.warm_forcemerge_segments == 3  # Default for warm
         assert cfg.cold is None
+
+    def test_disabled(self):
+        cfg = ILMIndexConfig(enabled=False)
+        assert cfg.enabled is False
 
     def test_warm_only(self):
         cfg = ILMIndexConfig(warm="30d")
@@ -72,6 +80,41 @@ class TestILMConfig:
     def test_index_lookup_miss(self):
         cfg = ILMConfig(enabled=True, indices={"hit": ILMIndexConfig(warm="30d")})
         assert cfg.indices.get("nonexistent") is None
+
+    def test_registration_uses_default_telemetry_ilm_config(self):
+        cfg = Config(datastore=Datastore(ilm=ILMConfig(enabled=True)))
+        datastore = MagicMock()
+
+        with (
+            patch("howler.datastore.howler_store.config", cfg),
+            patch("howler.datastore.howler_store.get_plugins", return_value=[]),
+        ):
+            HowlerDatastore(datastore)
+
+        registered_configs = {call.args[0]: call.kwargs["ilm_config"] for call in datastore.register.call_args_list}
+        for name in ("hit", "event", "case"):
+            assert registered_configs[name] is not None
+            assert registered_configs[name].enabled is True
+        for name in ("template", "overview", "analytic", "action", "user", "view", "dossier", "user_avatar"):
+            assert registered_configs[name] is None
+
+    def test_registration_skips_disabled_indices(self):
+        cfg = Config(datastore=Datastore(ilm=ILMConfig(enabled=True)))
+        cfg.datastore.ilm.indices["event"] = ILMIndexConfig(enabled=False)
+        datastore = MagicMock()
+
+        with (
+            patch("howler.datastore.howler_store.config", cfg),
+            patch("howler.datastore.howler_store.get_plugins", return_value=[]),
+        ):
+            HowlerDatastore(datastore)
+
+        registered_configs = {call.args[0]: call.kwargs["ilm_config"] for call in datastore.register.call_args_list}
+        for name in ("hit", "case"):
+            assert registered_configs[name] is not None
+            assert registered_configs[name].enabled is True
+        for name in ("event", "template", "overview", "analytic", "action", "user", "view", "dossier", "user_avatar"):
+            assert registered_configs[name] is None
 
 
 class TestDatastoreILMIntegration:

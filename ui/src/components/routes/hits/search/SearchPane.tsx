@@ -1,5 +1,15 @@
 import { ErrorOutline } from '@mui/icons-material';
-import { Box, LinearProgress, Stack, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
+import {
+  Alert,
+  AlertTitle,
+  Box,
+  LinearProgress,
+  Stack,
+  Tooltip,
+  Typography,
+  useMediaQuery,
+  useTheme
+} from '@mui/material';
 import { grey } from '@mui/material/colors';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
 import PageCenter from 'commons/components/pages/PageCenter';
@@ -13,6 +23,7 @@ import VSBoxContent from 'components/elements/addons/layout/vsbox/VSBoxContent';
 import VSBoxHeader from 'components/elements/addons/layout/vsbox/VSBoxHeader';
 import SearchPagination from 'components/elements/addons/search/SearchPagination';
 import SearchTotal from 'components/elements/addons/search/SearchTotal';
+import HowlerCard from 'components/elements/display/HowlerCard';
 import EventCard from 'components/elements/event/EventCard';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
@@ -37,6 +48,7 @@ const Item: FC<{
   onClick: (event: React.MouseEvent<HTMLDivElement>, record: Hit | Event) => void;
 }> = memo(({ record, onClick }) => {
   const theme = useTheme();
+  const { t } = useTranslation();
 
   const selectedRecords = useContextSelector(RecordContext, ctx => ctx.selectedRecords);
 
@@ -93,6 +105,13 @@ const Item: FC<{
     >
       {isHit(record) && <HitCard id={record.howler.id} layout={layout} />}
       {isEvent(record) && <EventCard id={record.howler.id} event={record} />}
+      {!isHit(record) && !isEvent(record) && (
+        <HowlerCard tabIndex={0} sx={{ position: 'relative' }}>
+          <Alert variant="outlined" severity="error">
+            <AlertTitle>{t('hit.search.record.invalid')}</AlertTitle>
+          </Alert>
+        </HowlerCard>
+      )}
     </Box>
   );
 });

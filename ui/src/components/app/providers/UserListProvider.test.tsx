@@ -68,11 +68,11 @@ describe('UserListProvider', () => {
     const hook = renderHook(() => useContext(UserListContext), { wrapper: Wrapper });
 
     await act(async () => {
-      await hook.result.current.searchUsers('name:alpha');
+      hook.result.current.searchUsers('name:alpha');
     });
 
     await act(async () => {
-      await hook.result.current.searchUsers('name:(alpha OR bravo)');
+      hook.result.current.searchUsers('name:(alpha OR bravo)');
     });
 
     expect(hook.result.current.users).toEqual({
@@ -96,8 +96,8 @@ describe('UserListProvider', () => {
     const hook = renderHook(() => useContext(UserListContext), { wrapper: Wrapper });
 
     await act(async () => {
-      await hook.result.current.searchUsers('name:alpha');
-      await hook.result.current.searchUsers('name:bravo');
+      hook.result.current.searchUsers('name:alpha');
+      hook.result.current.searchUsers('name:bravo');
     });
 
     expect(hook.result.current.users).toEqual({ alpha });
@@ -143,7 +143,7 @@ describe('UserListProvider', () => {
     const hook = renderHook(() => useContext(UserListContext), { wrapper: Wrapper });
 
     await act(async () => {
-      await hook.result.current.searchUsers('id:alpha');
+      hook.result.current.searchUsers('id:alpha');
     });
 
     act(() => {
@@ -168,7 +168,7 @@ describe('UserListProvider', () => {
     const hook = renderHook(() => useContext(UserListContext), { wrapper: Wrapper });
 
     await act(async () => {
-      await hook.result.current.searchUsers('id:alpha');
+      hook.result.current.searchUsers('id:alpha');
     });
 
     act(() => {

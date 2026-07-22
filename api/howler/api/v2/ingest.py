@@ -11,7 +11,7 @@ from howler.common.exceptions import HowlerException, HowlerValueError
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
-from howler.config import config
+from howler.config import CORRELATION_QUEUE_NAME, config
 from howler.datastore.collection import ESCollection
 from howler.datastore.exceptions import DataStoreException
 from howler.datastore.howler_store import INDEXES
@@ -46,7 +46,7 @@ def _get_ingestion_queue() -> NamedQueue[str]:
 
     if _ingestion_queue is None:
         _ingestion_queue = NamedQueue(
-            "howler.ingestion_queue",
+            CORRELATION_QUEUE_NAME,
             host=config.core.redis.persistent.host,
             port=config.core.redis.persistent.port,
             private=False,

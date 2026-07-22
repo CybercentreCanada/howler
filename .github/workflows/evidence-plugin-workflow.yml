@@ -50,7 +50,7 @@ jobs:
           python-version: "3.12"
       - name: Install Poetry
         uses: abatilo/actions-poetry@v4
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         name: Define a cache for the virtual environment based on the dependencies lock file
         with:
           path: ./plugins/evidence/.venv
@@ -110,7 +110,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install Poetry
         uses: abatilo/actions-poetry@v4
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         name: Define a cache for the virtual environment based on the dependencies lock file
         with:
           path: ./plugins/evidence/.venv
@@ -176,7 +176,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Install Poetry
         uses: abatilo/actions-poetry@v4
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         name: Define a cache for the virtual environment based on the dependencies lock file
         with:
           path: ./plugins/evidence/.venv

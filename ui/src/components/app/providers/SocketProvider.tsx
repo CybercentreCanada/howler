@@ -131,12 +131,12 @@ const SocketProvider: React.FC<PropsWithChildren> = ({ children }) => {
           // If we are unauthorized, we can update the token through the usual process and tell
           // the connection to retry with the new token
           if (data.status === 401) {
-            api.user.whoami.get().then(() => setRetry(true));
+            void api.user.whoami.get().then(() => setRetry(true));
           } else {
             console.error(data);
             setRetry(false);
           }
-        } catch (err) {
+        } catch {
           // There's no useful data, or the refresh attempt failed.
           // Either way, we can't really do anything
         }
@@ -172,7 +172,7 @@ const SocketProvider: React.FC<PropsWithChildren> = ({ children }) => {
       if (data?.error || data?.status >= 400) {
         console.warn(data?.message || 'Websocket Error');
       }
-    } catch (err) {
+    } catch {
       console.warn('Websocket Error');
     }
   }, []);

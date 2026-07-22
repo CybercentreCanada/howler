@@ -21,6 +21,7 @@ const ACCEPTED_SORTS = [
   'event.provider',
   'organization.name',
   'howler.score',
+  'howler.triaged',
   CUSTOM
 ];
 
@@ -74,7 +75,7 @@ const HitSort: FC<{ size?: 'small' | 'medium' }> = ({ size = 'small' }) => {
       return;
     }
 
-    (async () => {
+    void (async () => {
       const selectedViewSort = (await getCurrentViews({ lazy: true })).find(view => view?.sort)?.sort;
 
       if (selectedViewSort && !location.search.includes('sort')) {

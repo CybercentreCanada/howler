@@ -69,7 +69,7 @@ const OverviewViewer = () => {
   const startingTemplate = useStartingTemplate();
 
   useEffect(() => {
-    (async () => {
+    void (async () => {
       setLoading(true);
 
       try {
@@ -110,7 +110,7 @@ const OverviewViewer = () => {
   }, [analytic, analytics, detection]);
 
   useEffect(() => {
-    (async () => {
+    void (async () => {
       const result = await dispatchApi(
         api.search.hit.post({
           query:
@@ -316,7 +316,7 @@ const OverviewViewer = () => {
             onKeyDown={e => {
               if (e.ctrlKey && e.key === 's') {
                 if (!noChange) {
-                  onSave();
+                  void onSave();
                 }
                 e.preventDefault();
               }

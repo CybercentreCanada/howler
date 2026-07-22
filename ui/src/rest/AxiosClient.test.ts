@@ -37,6 +37,7 @@ const { mockAxiosInstance, mockAxiosError, mockInterceptorResponseUse, intercept
 });
 
 vi.mock('axios', () => ({
+  create: vi.fn(() => mockAxiosInstance),
   default: { create: vi.fn(() => mockAxiosInstance) },
   AxiosError: mockAxiosError
 }));

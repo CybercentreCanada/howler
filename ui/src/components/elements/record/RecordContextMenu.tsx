@@ -200,8 +200,8 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
       return;
     }
 
-    getMatchingAnalytic(record).then(setAnalytic);
-    getMatchingTemplate(record).then(setTemplate);
+    void getMatchingAnalytic(record).then(setAnalytic);
+    void getMatchingTemplate(record).then(setTemplate);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [record]);
 

@@ -57,9 +57,9 @@ const JSONViewer: FC<{ data: object; collapse?: boolean; hideSearch?: boolean; f
           style={{ flex: 1, overflow: 'auto', height: '100%', fontSize: compact ? 'small' : 'smaller' }}
           enableClipboard={_data => {
             if (typeof _data.src === 'string') {
-              navigator.clipboard.writeText(_data.src);
+              void navigator.clipboard.writeText(_data.src);
             } else {
-              navigator.clipboard.writeText(JSON.stringify(_data.src));
+              void navigator.clipboard.writeText(JSON.stringify(_data.src));
             }
           }}
           {...({

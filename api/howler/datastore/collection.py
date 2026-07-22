@@ -20,8 +20,9 @@ from opentelemetry import trace
 
 from howler import odm
 from howler.common.exceptions import HowlerRuntimeError, HowlerValueError, NonRecoverableError
-from howler.common.loader import APP_NAME
+from howler.common.loader import DATASTORE_INDEX_PREFIX
 from howler.common.logging.format import HWL_DATE_FORMAT, HWL_LOG_FORMAT
+from howler.datastore.bulk import ElasticBulkPlan
 from howler.datastore.constants import BACK_MAPPING, TYPE_MAPPING
 from howler.datastore.exceptions import (
     DataStoreException,
@@ -229,7 +230,7 @@ class ESCollection(Generic[ModelType]):
         self._index_list: list[str] = []
 
         self.datastore = datastore
-        self.name = f"{APP_NAME}-{name}"
+        self.name = f"{DATASTORE_INDEX_PREFIX}-{name}"
         self.ilm_config = ilm_config
         self.index_name = f"{self.name}_hot"
         self.model_class = model_class
@@ -522,6 +523,26 @@ class ESCollection(Generic[ModelType]):
                 return res
             else:
                 updated += res["updated"]
+
+    def bulk(self, operations: ElasticBulkPlan, refresh: str | None = None):
+        """
+        Execute a bulk plan.
+
+        :return: True if the operation completed without errors
+        """
+        responses = []
+        for operation_batch in operations.get_plan_batches():
+            response = self.with_retries(self.datastore.client.bulk, operations=operation_batch, refresh=refresh)
+            responses.append(response)
+        return not any(response["errors"] for response in responses)
+
+    def get_bulk_plan(self):
+        """
+        Create a BulkPlan tailored for the current datastore
+
+        :return: The BulkPlan object
+        """
+        return ElasticBulkPlan(self.index_list, self.model_class)
 
     @tracer.start_as_current_span(f"{__name__}.commit")
     def commit(self):

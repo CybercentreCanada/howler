@@ -142,7 +142,7 @@ const MyApp: FC = () => {
   // Simulate app loading time...
   // e.g. fetching initial app data, etc.
   useEffect(() => {
-    dispatchApi(api.configs.get()).then(data => {
+    void dispatchApi(api.configs.get()).then(data => {
       apiConfig.setConfig(data);
 
       if (data?.configuration?.ui?.apps) {
@@ -154,7 +154,7 @@ const MyApp: FC = () => {
       return;
     }
 
-    getUser();
+    void getUser();
     // eslint-disable-next-line
   }, []);
 

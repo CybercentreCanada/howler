@@ -93,7 +93,7 @@ const RecordComments: FC<RecordCommentsProps> = ({ record, users }) => {
 
   useEffect(() => {
     if (isHit(record) && record.howler.analytic) {
-      getMatchingAnalytic(record).then(analytic => {
+      void getMatchingAnalytic(record).then(analytic => {
         setAnalyticId(analytic?.analytic_id);
         setAnalyticComments(sortByTimestamp(analytic?.comment ?? []));
       });
@@ -161,7 +161,7 @@ const RecordComments: FC<RecordCommentsProps> = ({ record, users }) => {
       }
 
       if (e.ctrlKey && e.key === 'Enter' && !loading) {
-        onSubmit();
+        void onSubmit();
       }
     },
     [loading, onSubmit]
@@ -212,7 +212,7 @@ const RecordComments: FC<RecordCommentsProps> = ({ record, users }) => {
 
         setComments(
           comments.map(cmt =>
-            cmt.id !== commentId ? cmt : { ...cmt, reactions: { ...(cmt?.reactions ?? {}), [user.username]: type } }
+            cmt.id !== commentId ? cmt : { ...cmt, reactions: { ...cmt?.reactions, [user.username]: type } }
           )
         );
       } else {
@@ -220,9 +220,7 @@ const RecordComments: FC<RecordCommentsProps> = ({ record, users }) => {
 
         setComments(
           comments.map(cmt =>
-            cmt.id !== commentId
-              ? cmt
-              : { ...cmt, reactions: { ...(cmt?.reactions ?? {}), [user.username]: undefined } }
+            cmt.id !== commentId ? cmt : { ...cmt, reactions: { ...cmt?.reactions, [user.username]: undefined } }
           )
         );
       }

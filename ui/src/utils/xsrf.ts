@@ -6,7 +6,7 @@ const getXSRFCookie = () => {
         .split('; ')
         .find(row => row.startsWith('XSRF-TOKEN'))
         .split('=')[1];
-    } catch (ex) {
+    } catch {
       // Ignore... we will return null
     }
   }

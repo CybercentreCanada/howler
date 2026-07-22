@@ -1,12 +1,13 @@
 """Integration tests for the correlation pipeline.
 
 These tests exercise the full path: create case → add rule → ingest hit →
-process_batch → verify case items.  They call ``process_batch`` directly
-rather than going through the background worker thread, for determinism.
+correlate it into the case. They cover both direct processing and the
+background worker.
 """
 
 import json
 import time
+import uuid
 
 import pytest
 
@@ -24,15 +25,17 @@ def _make_case(title: str = "Correlation Integration Test") -> dict:
     }
 
 
-def _make_hit(analytic: str = "Test Analytic", kind: str = "alert") -> dict:
+def _make_hit(analytic: str = "Test Analytic", kind: str = "alert", provider: str | None = None) -> dict:
+    event = {"kind": kind}
+    if provider is not None:
+        event["provider"] = provider
+
     return {
         "howler": {
             "analytic": analytic,
             "detection": "Test Detection",
         },
-        "event": {
-            "kind": kind,
-        },
+        "event": event,
     }
 
 
@@ -70,7 +73,7 @@ def test_case(datastore: HowlerDatastore, login_session):
 
     yield case_id, session, host
 
-    datastore.case.delete(case_id)
+    datastore.case.delete(case_id, refresh="wait_for")
 
 
 class TestCorrelationPipeline:
@@ -241,128 +244,110 @@ class TestCorrelationPipeline:
 
 
 class TestCorrelationWorker:
-    """Tests that rely on the background correlation worker processing hits.
+    """End-to-end tests for the background correlation worker."""
 
-    These tests ingest hits via the API and poll the case until the worker
-    thread picks them up, without calling ``process_batch`` directly.
-    The test config sets ``batch_size=1`` and ``batch_timeout=1`` so the
-    worker flushes quickly.
-    """
+    MAX_WAIT = 15
+    POLL_INTERVAL = 0.25
 
-    MAX_WAIT = 15  # seconds to wait for the worker to process a hit
+    @pytest.fixture()
+    def worker_event_provider(self) -> str:
+        """Create an event provider that cannot match another test's broad rule."""
+        return f"correlationworker{uuid.uuid4().hex}"
 
-    def _wait_for_case_item(
-        self, datastore: HowlerDatastore, case_id: str, hit_id: str, timeout: int = MAX_WAIT
-    ) -> bool:
-        """Poll until the hit appears in the case's items or timeout is reached."""
-        deadline = time.monotonic() + timeout
+    def _wait_for_case_items(self, datastore: HowlerDatastore, case_id: str, hit_ids: list[str]) -> list[str]:
+        """Wait for expected hits and return those that were added to the case."""
+        deadline = time.monotonic() + self.MAX_WAIT
+        expected_hit_ids = set(hit_ids)
+        seen_hit_ids: list[str] = []
+
         while time.monotonic() < deadline:
             datastore.case.commit()
             case = datastore.case.get(case_id)
             if case is not None:
-                hit_values = [item.value for item in case.items if item.type == "hit"]
-                if hit_id in hit_values:
-                    return True
-            time.sleep(0.5)
-        return False
+                actual_hit_ids = {item.value for item in case.items if item.type == "hit"}
+                seen_hit_ids = [hit_id for hit_id in hit_ids if hit_id in actual_hit_ids]
+                if expected_hit_ids <= actual_hit_ids:
+                    return seen_hit_ids
+            time.sleep(self.POLL_INTERVAL)
 
-    def test_worker_processes_ingested_hit(self, test_case, datastore: HowlerDatastore):
-        """A hit ingested via the API is automatically correlated by the worker."""
-        case_id, session, host = test_case
+        return seen_hit_ids
 
-        rule_data = {
-            "query": "event.kind:alert",
-            "destination": "worker-test/{{howler.analytic}}",
-        }
+    def _add_rule(self, session, host: str, case_id: str, query: str, destination: str) -> None:
         get_api_data(
             session,
             f"{host}/api/v2/case/{case_id}/rules",
             method="POST",
-            data=json.dumps(rule_data),
+            data=json.dumps({"query": query, "destination": destination}),
         )
+
+    def test_worker_adds_matching_hit(self, test_case, datastore: HowlerDatastore, worker_event_provider: str):
+        """The worker adds a newly ingested hit that matches an active rule."""
+        case_id, session, host = test_case
+        self._add_rule(session, host, case_id, f"event.provider:{worker_event_provider}", "worker")
         datastore.case.commit()
 
         ingest_resp = get_api_data(
             session,
             f"{host}/api/v2/ingest/hit",
             method="POST",
-            data=json.dumps([_make_hit(analytic="WorkerDetection", kind="alert")]),
-        )
-        hit_id = ingest_resp[0]
-        datastore.hit.commit()
-
-        assert self._wait_for_case_item(datastore, case_id, hit_id), (
-            f"Worker did not add hit {hit_id} to case {case_id} within {self.MAX_WAIT}s"
+            data=json.dumps([_make_hit(provider=worker_event_provider)]),
         )
 
+        seen_hit_ids = self._wait_for_case_items(datastore, case_id, ingest_resp)
+        missing_hit_ids = set(ingest_resp) - set(seen_hit_ids)
+        assert not missing_hit_ids, (
+            f"Worker did not add hits {missing_hit_ids} to case {case_id} within {self.MAX_WAIT}s"
+        )
+
+    def test_worker_renders_destination_path(self, test_case, datastore: HowlerDatastore, worker_event_provider: str):
+        """The worker renders the matching hit's destination path."""
+        case_id, session, host = test_case
+        self._add_rule(session, host, case_id, f"event.provider:{worker_event_provider}", "worker/{{howler.analytic}}")
+        datastore.case.commit()
+
+        ingest_resp = get_api_data(
+            session,
+            f"{host}/api/v2/ingest/hit",
+            method="POST",
+            data=json.dumps([_make_hit(analytic="Worker Detection", provider=worker_event_provider)]),
+        )
+
+        seen_hit_ids = self._wait_for_case_items(datastore, case_id, ingest_resp)
+        missing_hit_ids = set(ingest_resp) - set(seen_hit_ids)
+        assert not missing_hit_ids, (
+            f"Worker did not add hits {missing_hit_ids} to case {case_id} within {self.MAX_WAIT}s"
+        )
         case = datastore.case.get(case_id)
-        matching_item = next(item for item in case.items if item.value == hit_id)
-        worker_folder = next(item for item in case.items if item.type == "folder" and item.name == "worker-test")
-        assert matching_item.name == "WorkerDetection"
+        assert case is not None
+        matching_item = next(item for item in case.items if item.value == ingest_resp[0])
+        worker_folder = next(item for item in case.items if item.type == "folder" and item.name == "worker")
+        assert matching_item.name == "Worker Detection"
         assert matching_item.parent == worker_folder.id
 
-    def test_worker_ignores_non_matching_hit(self, test_case, datastore: HowlerDatastore):
-        """A hit that doesn't match any rule is not added by the worker."""
-        case_id, session, host = test_case
-
-        rule_data = {
-            "query": "event.kind:signal",
-            "destination": "worker-no-match",
-        }
-        get_api_data(
-            session,
-            f"{host}/api/v2/case/{case_id}/rules",
-            method="POST",
-            data=json.dumps(rule_data),
-        )
-        datastore.case.commit()
-
-        ingest_resp = get_api_data(
-            session,
-            f"{host}/api/v2/ingest/hit",
-            method="POST",
-            data=json.dumps([_make_hit(analytic="Nope", kind="alert")]),
-        )
-        hit_id = ingest_resp[0]
-        datastore.hit.commit()
-
-        # Wait long enough for the worker to have processed it
-        time.sleep(5)
-        datastore.case.commit()
-
-        case = datastore.case.get(case_id)
-        hit_values = [item.value for item in case.items if item.type == "hit"]
-        assert hit_id not in hit_values
-
-    def test_worker_handles_multiple_hits(self, test_case, datastore: HowlerDatastore):
+    def test_worker_handles_multiple_hits(self, test_case, datastore: HowlerDatastore, worker_event_provider: str):
         """Multiple hits ingested in sequence are each processed by the worker."""
         case_id, session, host = test_case
-
-        rule_data = {
-            "query": "event.kind:alert",
-            "destination": "worker-multi/{{howler.analytic}}",
-        }
-        get_api_data(
+        self._add_rule(
             session,
-            f"{host}/api/v2/case/{case_id}/rules",
-            method="POST",
-            data=json.dumps(rule_data),
+            host,
+            case_id,
+            f"event.provider:{worker_event_provider}",
+            "worker-multi/{{howler.analytic}}",
         )
         datastore.case.commit()
 
         hit_ids = []
-        for i in range(3):
+        for index in range(3):
             ingest_resp = get_api_data(
                 session,
                 f"{host}/api/v2/ingest/hit",
                 method="POST",
-                data=json.dumps([_make_hit(analytic=f"Multi-{i}", kind="alert")]),
+                data=json.dumps([_make_hit(analytic=f"Multi-{index}", provider=worker_event_provider)]),
             )
             hit_ids.append(ingest_resp[0])
 
-        datastore.hit.commit()
-
-        for hit_id in hit_ids:
-            assert self._wait_for_case_item(datastore, case_id, hit_id), (
-                f"Worker did not add hit {hit_id} to case {case_id} within {self.MAX_WAIT}s"
-            )
+        seen_hit_ids = self._wait_for_case_items(datastore, case_id, hit_ids)
+        missing_hit_ids = set(hit_ids) - set(seen_hit_ids)
+        assert not missing_hit_ids, (
+            f"Worker did not add hits {missing_hit_ids} to case {case_id} within {self.MAX_WAIT}s"
+        )

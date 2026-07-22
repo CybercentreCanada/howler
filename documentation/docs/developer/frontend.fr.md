@@ -28,7 +28,7 @@ L'interface utilisateur fournit plusieurs scripts npm pour le développement :
 - `pnpm dev` ou `pnpm start` - Démarrer le serveur de développement Vite
 - `pnpm build` - Construire l'application pour la production (exécute le compilateur TypeScript et la construction Vite)
 - `pnpm serve` - Prévisualiser la construction de production localement
-- `pnpm lint` - Formater le code en utilisant Prettier
+- `pnpm lint` - Formater le code en utilisant oxfmt et oxlint
 - `pnpm test` - Exécuter les tests avec couverture en utilisant Vitest
 - `pnpm test-ui` - Exécuter les tests avec interface et couverture
 
@@ -67,10 +67,9 @@ L'interface utilisateur Howler est construite avec des technologies web modernes
 ### Outils de développement
 
 - **Vitest** - Framework de tests unitaires rapide (natif Vite)
-- **ESLint** - Linting de code avec intégration TypeScript, React et Prettier
-- **Prettier** - Formatage de code
+- **oxfmt et oxlint** - Formatage et Linting de code avec intégration TypeScript, React
 
 ## Visual Studio Code
 
 Si vous développez dans VS Code, il est recommandé d'installer les extensions recommandées de l'espace de travail pour
-le support intégré de Prettier et ESLint. Celles-ci se trouvent dans le fichier `.vscode/extensions.json`.
+le support intégré de oxfmt et oxlint. Celles-ci se trouvent dans le fichier `.vscode/extensions.json`.

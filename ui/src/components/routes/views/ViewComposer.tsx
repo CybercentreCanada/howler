@@ -211,7 +211,7 @@ const ViewComposer: FC = () => {
   useEffect(() => {
     // Only run initial search if we're NOT editing an existing view
     if (!routeParams.id) {
-      search(query || DEFAULT_QUERY);
+      void search(query || DEFAULT_QUERY);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeParams.id]);
@@ -219,7 +219,7 @@ const ViewComposer: FC = () => {
   // We only run this when ancillary properties (i.e. filters, sorting) change
   useEffect(() => {
     if (query && !isLoadingView) {
-      search(query);
+      void search(query);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sort, span, indexes, isLoadingView]);
@@ -229,7 +229,7 @@ const ViewComposer: FC = () => {
       return;
     }
 
-    (async () => {
+    void (async () => {
       const viewToEdit = (await getCurrentViews({ views: [routeParams.id] }))[0];
 
       if (!viewToEdit) {

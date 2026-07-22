@@ -97,10 +97,11 @@ class Host(BaseModel):
 class ILMIndexConfig(BaseModel):
     """Per-index ILM phase configuration.
 
-    Controls when an index transitions to warm and cold phases.
+    Controls whether an index uses ILM and when it transitions to warm and cold phases.
     Values are Elasticsearch age strings (e.g. "30d", "90d").
     """
 
+    enabled: bool = Field(default=True, description="Enable ILM for this index")
     warm: Optional[str] = Field(
         default=None,
         description="Min age before the index enters the warm phase (e.g. '30d'). None to skip.",
@@ -135,7 +136,7 @@ class ILMConfig(BaseModel):
         description="Maximum primary shard size before rollover (e.g. '50gb')",
     )
     indices: dict[str, ILMIndexConfig] = Field(
-        default={},
+        default_factory=dict,
         description="Per-index ILM configuration, keyed by collection name (e.g. 'hit')",
     )
 
@@ -148,7 +149,15 @@ class Datastore(BaseModel):
     """
 
     hosts: list[Host] = Field(
-        default=[Host(name="elastic", username="elastic", password="devpass", scheme="http", host="localhost:9200")],  # noqa: S106
+        default=[
+            Host(
+                name="elastic",
+                username="elastic",
+                password="devpass",  # noqa: S106
+                scheme="http",
+                host="localhost:9200",
+            )
+        ],
         description="List of hosts used for the datastore",
     )
     type: Literal["elasticsearch"] = Field(
@@ -158,6 +167,8 @@ class Datastore(BaseModel):
         default_factory=ILMConfig,
         description="Index Lifecycle Management configuration",
     )
+    max_request_size: Optional[int] = Field(description="Maximum request size in bytes", default=100_000_000)  # 100MB
+    request_batch_size: Optional[int] = Field(description="Default number of operations for bulk requests", default=500)
 
 
 class Logging(BaseModel):

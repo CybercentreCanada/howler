@@ -32,7 +32,7 @@ const AvatarProvider: FC<PropsWithChildren> = ({ children }) => {
         promises[id] = dispatchApi(api.user.avatar.get(id), { logError: false, showError: false, throwError: false });
 
         return promises[id];
-      } catch (e) {
+      } catch {
         promises[id] = api.user.get(id).then(user => user.name);
 
         return promises[id];

@@ -27,7 +27,7 @@ const AddRecordToCaseModal: FC<{ records: (Hit | Event)[] }> = ({ records }) => 
   const [entries, updateEntry] = useRecordEntries(records);
 
   useEffect(() => {
-    dispatchApi(api.search.case.post({ query: 'case_id:*', rows: 100 }), { throwError: false }).then(result => {
+    void dispatchApi(api.search.case.post({ query: 'case_id:*', rows: 100 }), { throwError: false }).then(result => {
       if (result) {
         setCases(result.items);
       }

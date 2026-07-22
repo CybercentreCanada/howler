@@ -59,7 +59,7 @@ const CaseTask: FC<{
   useEffect(() => {
     if (!readOnly && !editing && task?.assignment !== assignment) {
       setLoading(true);
-      onEdit({ assignment }).finally(() => setLoading(false));
+      void onEdit({ assignment }).finally(() => setLoading(false));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assignment]);
@@ -67,7 +67,7 @@ const CaseTask: FC<{
   useEffect(() => {
     if (!readOnly && !editing && task?.complete !== complete) {
       setLoading(true);
-      onEdit({ complete }).finally(() => setLoading(false));
+      void onEdit({ complete }).finally(() => setLoading(false));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [complete]);
@@ -140,7 +140,7 @@ const CaseTask: FC<{
               color="error"
               onClick={() => {
                 setLoading(true);
-                onDelete().then(() => setLoading(false));
+                void onDelete().then(() => setLoading(false));
               }}
               disabled={loading}
             >
@@ -176,7 +176,7 @@ const CaseTask: FC<{
               size="small"
               onClick={() => {
                 if (newTask) {
-                  onDelete();
+                  void onDelete();
                 } else {
                   setEditing(false);
                 }

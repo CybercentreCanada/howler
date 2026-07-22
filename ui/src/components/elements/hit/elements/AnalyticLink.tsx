@@ -18,7 +18,7 @@ const AnalyticLink: FC<{ hit: Hit; lazy?: boolean; compressed?: boolean; alignSe
       return;
     }
 
-    getMatchingAnalytic(hit).then(analytic => setAnalyticId(analytic?.analytic_id));
+    void getMatchingAnalytic(hit).then(analytic => setAnalyticId(analytic?.analytic_id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hit?.howler.analytic]);
 
