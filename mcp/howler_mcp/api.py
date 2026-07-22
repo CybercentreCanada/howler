@@ -18,12 +18,19 @@ class HowlerApiClient:
         base_url: str = HOWLER_API.BASE_URL,
         auth_provider: AuthProvider | None = None,
         timeout: float = HOWLER_API.TIMEOUT,
+        client: httpx.AsyncClient | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.auth_provider = auth_provider or AuthProvider()
         self.timeout = timeout
+        self._client = client or httpx.AsyncClient(timeout=timeout)
+        self._owns_client = client is None
         self._obo_token_cache: dict[str, tuple[str, int]] = {}
         self._default_cache_ttl_seconds = 300
+
+    async def aclose(self) -> None:
+        if self._owns_client:
+            await self._client.aclose()
 
     async def call(
         self,
@@ -42,19 +49,18 @@ class HowlerApiClient:
         headers = {"Authorization": f"Bearer {exchanged_token}"}
         url = f"{self.base_url}/{path.lstrip('/')}"
 
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.request(
-                method=method,
-                url=url,
-                headers=headers,
-                params=params,
-                json=body if method == "POST" else None,
-            )
-            response.raise_for_status()
+        response = await self._client.request(
+            method=method,
+            url=url,
+            headers=headers,
+            params=params,
+            json=body if method == "POST" else None,
+        )
+        response.raise_for_status()
 
-            _json = response.json()
+        _json = response.json()
 
-            if "api_response" not in _json:
-                raise ValueError("Howler API did not return in expected format")
+        if "api_response" not in _json:
+            raise ValueError("Howler API did not return in expected format")
 
-            return _json["api_response"]
+        return _json["api_response"]

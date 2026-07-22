@@ -1,4 +1,6 @@
 import logging
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 from pydantic import AnyHttpUrl
 
@@ -25,6 +27,17 @@ except ValueError:
     port: int = 8000
 
 
+api_client = HowlerApiClient()
+
+
+@asynccontextmanager
+async def lifespan(_: FastMCP) -> AsyncGenerator[dict[str, None]]:
+    try:
+        yield {}
+    finally:
+        await api_client.aclose()
+
+
 mcp = FastMCP(
     "Howler MCP",
     token_verifier=KeycloakTokenVerifier(
@@ -40,9 +53,9 @@ mcp = FastMCP(
     ),
     host=MCPSettings.HOST,
     port=port,
+    lifespan=lifespan,
 )
 
-api_client = HowlerApiClient()
 RegisterTools(mcp, api_client)
 RegisterPrompts(mcp)
 

@@ -441,3 +441,9 @@ For legacy collections, pass the collection alias through the `aliases` argument
 ### React Testing Library: Do Not Wrap `userEvent` in `act`
 
 `userEvent` already manages React updates through Testing Library. Wrapping awaited `userEvent` calls in `act` conflicts with its async wrapper, which temporarily disables `IS_REACT_ACT_ENVIRONMENT`, and produces `The current testing environment is not configured to support act(...)` warnings. Await `userEvent` calls directly; reserve `act` for direct state-changing operations that Testing Library does not wrap.
+
+---
+
+### MCP Async Client Lifecycle
+
+`mcp.server.fastmcp.FastMCP` accepts an `@asynccontextmanager` `lifespan` callback. Use it to close long-lived async resources, such as `httpx.AsyncClient`, so cleanup occurs on the server's event loop. `HowlerApiClient` accepts an injected client but only closes clients it creates itself.
