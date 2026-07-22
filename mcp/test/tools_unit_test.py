@@ -6,22 +6,18 @@ These run in the normal CI test suite. The network_connection_test.py
 file contains opt-in integration tests for live-server validation.
 """
 
-import sys
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
+from howler_mcp.tools import MAXIMUM_LOOK_BACK, MAXIMUM_TICKET, RegisterTools
+
 from mcp.server.auth.provider import AccessToken
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-from mcp_server.tools import MAXIMUM_LOOK_BACK, MAXIMUM_TICKET, RegisterTools
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
 FAKE_TOKEN = AccessToken(token="fake-bearer", client_id="test-client", scopes=[])
-GET_ACCESS_TOKEN_PATH = "mcp_server.tools.get_access_token"
+GET_ACCESS_TOKEN_PATH = "howler_mcp.tools.get_access_token"
 
 
 class _CaptureMCP:

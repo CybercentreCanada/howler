@@ -276,10 +276,10 @@ Important: Current server behavior is token pass-through, not token exchange. Th
 From repository path `howler/mcp`:
 
     poetry install
-    poetry run python -m howler_mcp.mcp_server.server
+    poetry run python -m howler_mcp.server
 
 Why module execution is required:
-- The server uses package-relative imports within `howler_mcp.mcp_server`.
+- The server uses package-relative imports within `howler_mcp`.
 - Running with `-m` ensures Python resolves package imports correctly.
 
 ### 5) Manual token check

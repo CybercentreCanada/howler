@@ -1,13 +1,18 @@
 # syntax=docker/dockerfile:1.7
 
 # Fully open fallback from standard Docker Hub
-FROM python:3.12-alpine AS base
+FROM cgr.dev/ssc-spc.gc.ca/python:3.12-dev AS base
 
 USER root
 
-# Explicitly create the nonroot user to match expected security profiles
-RUN addgroup -g 65532 nonroot && \
-    adduser -u 65532 -G nonroot -D -H nonroot
+# Must pass the branch and commit as parameter
+ARG branch
+ARG commit
+ARG version
+
+ENV BRANCH=$branch
+ENV COMMIT_HASH=$commit
+ENV HOWLER_VERSION=$version
 
 RUN mkdir -p /var/lib/howler && \
     mkdir -p /var/log/howler && \
@@ -78,4 +83,4 @@ ENV PATH=/var/lib/howler/.venv/bin:$PATH \
 
 EXPOSE 8000
 
-CMD ["python", "-m", "howler_mcp.mcp_server.server"]
+CMD ["python", "-m", "howler_mcp.server"]

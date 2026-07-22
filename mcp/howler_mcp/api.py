@@ -2,6 +2,7 @@ import logging
 from typing import Any, Literal
 
 import httpx
+
 from mcp.server.auth.provider import AccessToken
 
 from .auth import AuthProvider
@@ -50,7 +51,10 @@ class HowlerApiClient:
                 json=body if method == "POST" else None,
             )
             response.raise_for_status()
-            api_res = response.json().get("api_response")
-            if api_res is None:
-                raise ValueError("Missing 'api_response' in response JSON")
-            return api_res
+
+            _json = response.json()
+
+            if "api_response" not in _json:
+                raise ValueError("Howler API did not return in expected format")
+
+            return _json["api_response"]

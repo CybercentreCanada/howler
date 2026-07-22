@@ -48,7 +48,7 @@ jobs:
           python-version: "3.12"
       - name: Install Poetry
         uses: abatilo/actions-poetry@v4
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         name: Define a cache for the virtual environment based on the dependencies lock file
         with:
           path: ./client/.venv
@@ -120,7 +120,7 @@ jobs:
           compose-file: "client/test/docker-compose.yml"
       - name: Install Poetry
         uses: abatilo/actions-poetry@v4
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         name: Define a cache for the virtual environment based on the dependencies lock file
         with:
           path: ./client/.venv
@@ -201,7 +201,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Install Poetry
         uses: abatilo/actions-poetry@v4
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         name: Define a cache for the virtual environment based on the dependencies lock file
         with:
           path: ./client/.venv

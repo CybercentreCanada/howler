@@ -4,8 +4,9 @@ import uuid
 from typing import Any
 
 from fastmcp.server.dependencies import get_access_token
-from mcp.server.auth.provider import AccessToken
 from pydantic import BaseModel, Field
+
+from mcp.server.auth.provider import AccessToken
 
 logging.basicConfig(
     level=logging.INFO,
@@ -36,7 +37,7 @@ MAXIMUM_LOOK_BACK: int = 3650  # 10 years (3650 days = ~120 months = ~521 weeks)
 
 
 # Howler_response is a wrapper around the response_api to have a more structured output for the tools.
-class Howler_response(BaseModel):
+class HowlerResponse(BaseModel):
     rows: int = Field(description="Number of rows returned in the search results.")
     total: int = Field(description="Total number of hits matching the search criteria.")
     hits: list[dict[str, Any]] = Field(
@@ -45,11 +46,10 @@ class Howler_response(BaseModel):
 
 
 def RegisterTools(mcp, api_client):
-
     @mcp.tool(name="WhoAmI", description="Get information about the current user")
     async def whoami() -> WhoAmI_response:
         access_token: AccessToken | None = get_access_token()
-        if not isinstance(access_token, AccessToken):
+        if not access_token:
             raise ValueError("Access token is not available.")
 
         print(get_access_token())
@@ -78,8 +78,9 @@ def RegisterTools(mcp, api_client):
         except ValueError:
             raise ValueError("hit_id must be a valid UUID.")
         access_token: AccessToken | None = get_access_token()
-        if not isinstance(access_token, AccessToken):
+        if not access_token:
             raise ValueError("Access token is not available.")
+
         logger.info(
             "Tool called: GetHitById. Client: %s User:%s",
             access_token.client_id,
@@ -106,8 +107,9 @@ def RegisterTools(mcp, api_client):
             raise ValueError(f"limit must be between 1 and {MAXIMUM_TICKET}.")
 
         access_token: AccessToken | None = get_access_token()
-        if not isinstance(access_token, AccessToken):
+        if not access_token:
             raise ValueError("Access token is not available.")
+
         logger.info(
             "Tool called: ListAlerts. Client: %s User:%s",
             access_token.client_id,
@@ -131,13 +133,14 @@ def RegisterTools(mcp, api_client):
     async def list_assigned_hits() -> list[dict[str, Any]]:
         """Return hits assigned to the currently signed in user. Only use this tool if the user asks for hits assigned to them or to their team."""
         access_token: AccessToken | None = get_access_token()
-        if not isinstance(access_token, AccessToken):
+        if not access_token:
             raise ValueError("Access token is not available.")
         logger.info(
             "Tool called: ListAssignedHits. Client: %s User:%s",
             access_token.client_id,
             access_token.subject,
         )
+
         return await api_client.call(
             user_access_token=access_token,
             path="/hit/user",
@@ -147,7 +150,7 @@ def RegisterTools(mcp, api_client):
     @mcp.tool(name="SearchHitsWithIndicators")
     async def search_hits_with_indicators(
         indicators: list[str], limit: int = 25
-    ) -> Howler_response:
+    ) -> HowlerResponse:
         """Return hits with matching indicators. Indicators must be a non-empty array of strings.
         Always try to invoke the tool once, even if there are wildcard characters in the list and if the user uses 'and'.
         Only use the limit parameters if the user asks for it (default is 25)."""
@@ -164,8 +167,9 @@ def RegisterTools(mcp, api_client):
                 )
 
         access_token: AccessToken | None = get_access_token()
-        if not isinstance(access_token, AccessToken):
+        if not access_token:
             raise ValueError("Access token is not available.")
+
         logger.info(
             "Tool called: SearchHitsWithIndicators. Client: %s User:%s",
             access_token.client_id,
@@ -179,16 +183,17 @@ def RegisterTools(mcp, api_client):
             )
             for indicator in indicators
         )
-        query = f"howler.outline.indicators: ({converted_indicators}) OR howler.outline.target: ({converted_indicators}) OR howler.outline.threat:({converted_indicators})"
+        query = f"howler.outline.indicators:({converted_indicators}) OR howler.outline.target:({converted_indicators}) OR howler.outline.threat:({converted_indicators})"
         data = await api_client.call(
             user_access_token=access_token,
             path="/search/hit",
             method="POST",
             body={"query": query, "fl": None, "rows": limit},
         )
-        return Howler_response(
-            rows=data.get("rows") if data.get("rows") is not None else 0,
-            total=data.get("total") if data.get("total") is not None else 0,
+
+        return HowlerResponse(
+            rows=data.get("rows", 0),
+            total=data.get("total", 0),
             hits=[
                 {
                     "classification": item.get("classification"),
@@ -202,7 +207,7 @@ def RegisterTools(mcp, api_client):
     @mcp.tool(name="GetFalsePositiveHits")
     async def get_false_positive_hits(
         lookback_in_days: int = 7, limit: int = 25
-    ) -> Howler_response:
+    ) -> HowlerResponse:
         """Return hits marked as false positives.
         The search using a lookback period in days (default is 7 days), and returns a limit of 25 hits unless asked for more with the limit parameter.
         Only use the limit parameters if the user asks for it."""
@@ -215,13 +220,14 @@ def RegisterTools(mcp, api_client):
             raise ValueError(f"limit must be between 1 and {MAXIMUM_TICKET}.")
 
         access_token: AccessToken | None = get_access_token()
-        if not isinstance(access_token, AccessToken):
+        if not access_token:
             raise ValueError("Access token is not available.")
         logger.info(
             "Tool called: GetFalsePositiveHits. Client: %s User:%s",
             access_token.client_id,
             access_token.subject,
         )
+
         data = await api_client.call(
             user_access_token=access_token,
             path="/search/hit",
@@ -236,9 +242,9 @@ def RegisterTools(mcp, api_client):
                 "rows": limit,
             },
         )
-        return Howler_response(
-            rows=data.get("rows") if data.get("rows") is not None else 0,
-            total=data.get("total") if data.get("total") is not None else 0,
+        return HowlerResponse(
+            rows=data.get("rows", 0),
+            total=data.get("total", 0),
             hits=[
                 {
                     "classification": item.get("classification"),
@@ -253,7 +259,7 @@ def RegisterTools(mcp, api_client):
     @mcp.tool(name="ListHitsByAnalytic")
     async def list_hits_by_analytic(
         analytic_name: str, lookback_in_days: int = 30, limit: int = 25
-    ) -> Howler_response:
+    ) -> HowlerResponse:
         """Return hits generated by a specific analytic name. It needs to be an exact match on the analytic name. Not the id.
         The search using a lookback period in days (default is 30 days), and returns a limit of 25 hits unless asked for more with the limit parameter.
         Only use the limit parameters if the user asks for it."""
@@ -266,8 +272,9 @@ def RegisterTools(mcp, api_client):
             raise ValueError(f"limit must be between 1 and {MAXIMUM_TICKET}.")
 
         access_token: AccessToken | None = get_access_token()
-        if not isinstance(access_token, AccessToken):
+        if not access_token:
             raise ValueError("Access token is not available.")
+
         logger.info(
             "Tool called: ListHitsByAnalytic. Client: %s User:%s",
             access_token.client_id,
@@ -298,9 +305,9 @@ def RegisterTools(mcp, api_client):
                 "rows": limit,
             },
         )
-        return Howler_response(
-            rows=data.get("rows") if data.get("rows") is not None else 0,
-            total=data.get("total") if data.get("total") is not None else 0,
+        return HowlerResponse(
+            rows=data.get("rows", 0),
+            total=data.get("total", 0),
             hits=[
                 {
                     "classification": item.get("classification"),
@@ -319,8 +326,9 @@ def RegisterTools(mcp, api_client):
         except ValueError:
             raise ValueError("hit_id must be a valid UUID.")
         access_token: AccessToken | None = get_access_token()
-        if not isinstance(access_token, AccessToken):
+        if not access_token:
             raise ValueError("Access token is not available.")
+
         logger.info(
             "Tool called: AddCommentToHit. Client: %s User:%s",
             access_token.client_id,

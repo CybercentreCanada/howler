@@ -43,7 +43,9 @@
   },
   "git.enableCommitSigning": true,
   "editor.formatOnSave": true,
-  "editor.rulers": [120],
+  "editor.rulers": [
+    120
+  ],
   "editor.tabSize": 4,
   "files.insertFinalNewline": true,
   "files.trimFinalNewlines": true,
@@ -95,7 +97,10 @@
     "python"
   ],
   "eslint.workingDirectories": [
-    { "directory": "./ui", "changeProcessCWD": true }
+    {
+      "directory": "./ui",
+      "changeProcessCWD": true
+    }
   ],
   "prettier.configPath": "ui/.prettierrc",
   "search.exclude": {
@@ -116,14 +121,19 @@
   "python-envs.defaultEnvManager": "ms-python.python:poetry",
   "python-envs.pythonProjects": [
     {
-      "path": "mcp/.venv",
+      "path": "mcp",
       "envManager": "ms-python.python:poetry",
       "packageManager": "ms-python.python:poetry"
     },
     {
-      "path": "mcp",
-      "envManager": "ms-python.python:system",
-      "packageManager": "ms-python.python:pip"
+      "path": "api",
+      "envManager": "ms-python.python:poetry",
+      "packageManager": "ms-python.python:poetry"
+    },
+    {
+      "path": "client",
+      "envManager": "ms-python.python:poetry",
+      "packageManager": "ms-python.python:poetry"
     }
   ],
   "python-envs.defaultPackageManager": "ms-python.python:poetry"

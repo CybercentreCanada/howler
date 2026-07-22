@@ -14,6 +14,11 @@ repos:
       # Run the formatter.
       - id: ruff-format
         name: Ruff Formatting
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.12
+    hooks:
+      - id: actionlint
+        name: Github Actions Linting
   # - repo: https://github.com/compilerla/conventional-pre-commit
   #   rev: v4.3.0
   #   hooks:

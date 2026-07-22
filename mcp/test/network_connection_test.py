@@ -4,7 +4,7 @@ from urllib.parse import urlparse, urlunparse
 
 import pytest
 import requests
-from howler_mcp.mcp_server.config import AUTH, HOWLER_API, MCPSettings
+from howler_mcp.config import AUTH, HOWLER_API, MCPSettings
 
 RUN_MCP_NETWORK_TESTS = os.environ.get("RUN_MCP_NETWORK_TESTS", "").lower() in {
     "1",
@@ -239,6 +239,7 @@ def test_tool_search_hits_with_indicators():
         headers={"Authorization": f"Bearer {token}"},
         url=f"{HOWLER_API.BASE_URL}/search/hit",
         json={"query": r"howler.comment.id:*", "fl": None, "filters": [], "rows": 1},
+        timeout=HOWLER_API.TIMEOUT,
     ).json()  # we still use comment since it basically ensure we have an alert insted or at least something with indicator
 
     indicators = [
@@ -282,12 +283,13 @@ def test_tool_get_hit_by_id():
         headers={"Authorization": f"Bearer {token}"},
         url=f"{HOWLER_API.BASE_URL}/search/hit",
         json={"query": r"howler.comment.id:*", "fl": None, "filters": [], "rows": 1},
+        timeout=HOWLER_API.TIMEOUT,
     ).json()
 
     hit_id = response["api_response"]["items"][0]["howler"]["id"]
 
     result = call_mcp_tool(token, "GetHitById", {"hit_id": hit_id})
-    # ensure we grabed the same ticket that I requested from the API :
+    # ensure we grabbed the same ticket that I requested from the API :
     is_same = (
         (
             result["structuredContent"]["howler"]["id"]
@@ -320,6 +322,7 @@ def test_tool_add_comment_to_hit():
         headers={"Authorization": f"Bearer {token}"},
         url=f"{HOWLER_API.BASE_URL}/search/hit",
         json={"query": r"howler.comment.id:*", "fl": None, "filters": [], "rows": 1},
+        timeout=HOWLER_API.TIMEOUT,
     ).json()["api_response"]["items"][0]["howler"]["id"]
 
     call_mcp_tool(
@@ -333,6 +336,7 @@ def test_tool_add_comment_to_hit():
         headers={"Authorization": f"Bearer {token}"},
         url=f"{HOWLER_API.BASE_URL}/search/hit",
         json={"query": f"howler.id:{hit_id}", "fl": None, "filters": [], "rows": 1},
+        timeout=HOWLER_API.TIMEOUT,
     ).json()["api_response"]["items"][0]["howler"]["comment"]
 
     is_pass = False
@@ -357,6 +361,7 @@ def test_tool_get_false_positive_hit():
             "filters": [f"event.created:[now-{lookback_in_days}d TO now]"],
             "rows": limit,
         },
+        timeout=HOWLER_API.TIMEOUT,
     ).json()
 
     response = call_mcp_tool(
@@ -388,6 +393,7 @@ def test_tool_list_hits_by_analytic():
         headers={"Authorization": f"Bearer {token}"},
         url=f"{HOWLER_API.BASE_URL}/search/hit",
         json={"query": r"howler.comment.id:*", "fl": None, "filters": [], "rows": 1},
+        timeout=HOWLER_API.TIMEOUT,
     ).json()
     analytic = howler_ticket["api_response"]["items"][0]["howler"]["analytic"]
     get_analytic = call_mcp_tool(

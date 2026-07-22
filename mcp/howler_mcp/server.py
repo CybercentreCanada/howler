@@ -1,10 +1,9 @@
-import ipaddress
 import logging
-import re
+
+from pydantic import AnyHttpUrl
 
 from mcp.server.auth.settings import AuthSettings
 from mcp.server.fastmcp import FastMCP
-from pydantic import AnyHttpUrl
 
 from .api import HowlerApiClient
 from .auth import KeycloakTokenVerifier
@@ -24,19 +23,6 @@ try:
 except ValueError:
     logger.error("Invalid port number: %s", MCPSettings.PORT)
     port: int = 8000
-
-# Validate the IP format, default to 0.0.0.0 if invalid
-try:
-    ipaddress.ip_address(MCPSettings.HOST)
-
-except ValueError:
-    if MCPSettings.HOST.lower() != "localhost" and not re.match(
-        r"^(((?!-)[\p{L}0-9-]{1,63}(?<!-)\.)+[\p{L}]{2,})$", MCPSettings.HOST
-    ):
-        logger.error(
-            "Invalid IP address or domain: %s, defaulted to 0.0.0.0", MCPSettings.HOST
-        )
-        MCPSettings.HOST = "0.0.0.0"
 
 
 mcp = FastMCP(

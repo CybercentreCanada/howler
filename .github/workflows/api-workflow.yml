@@ -61,7 +61,7 @@ jobs:
         shell: bash
         run: python3 -m pip install poetry
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         name: Define a cache for the virtual environment based on the dependencies lock file
         with:
           path: ./api/.venv
@@ -139,7 +139,7 @@ jobs:
         shell: bash
         run: python3 -m pip install poetry
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         name: Define a cache for the virtual environment based on the dependencies lock file
         with:
           path: ./api/.venv
@@ -298,7 +298,7 @@ jobs:
         shell: bash
         run: python3 -m pip install poetry
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         name: Define a cache for the virtual environment based on the dependencies lock file
         with:
           path: ./api/.venv
@@ -377,7 +377,7 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@v3
+        uses: docker/metadata-action@v6
         with:
           images: cccs/howler-api
           tags: |
@@ -389,14 +389,14 @@ jobs:
             type=raw,value=${{steps.version.outputs.version}}_{{branch}}_{{sha}}
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build and push API Docker image
         id: push
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v6
         with:
           context: api
           file: api/Dockerfile
@@ -404,7 +404,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            version=${{ steps.meta.outputs.version }}
+            version=${{ steps.version.outputs.version }}
             branch=${{ github.ref }}
             commit=${{ github.sha }}
 

@@ -67,7 +67,7 @@ jobs:
         id: pnpm-cache-dir
         run: echo "PNPM_CACHE_DIR=$(pnpm store path)" >> $GITHUB_OUTPUT
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         name: Define a cache for node_modules
         with:
           path: |
@@ -146,7 +146,7 @@ jobs:
         id: pnpm-cache-dir
         run: echo "PNPM_CACHE_DIR=$(pnpm store path)" >> $GITHUB_OUTPUT
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         name: Define a cache for node_modules
         with:
           path: |
@@ -247,7 +247,7 @@ jobs:
         id: pnpm-cache-dir
         run: echo "PNPM_CACHE_DIR=$(pnpm store path)" >> $GITHUB_OUTPUT
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         name: Define a cache for node_modules
         with:
           path: |
@@ -293,7 +293,7 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@v3
+        uses: docker/metadata-action@v6
         with:
           images: cccs/howler-ui
           tags: |
@@ -305,14 +305,14 @@ jobs:
             type=raw,value=${{steps.version.outputs.version}}_{{branch}}_{{sha}}
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build and push UI Docker image
         id: push
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v6
         with:
           context: ui              # Build context is the ui/ directory
           file: ui/Dockerfile      # Dockerfile location
