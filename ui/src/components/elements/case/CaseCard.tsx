@@ -37,7 +37,7 @@ const CaseCard: FC<{
 
   useEffect(() => {
     if (caseId) {
-      dispatchApi(api.v2.case.get(caseId), { throwError: false }).then(setCase);
+      void dispatchApi(api.v2.case.get(caseId), { throwError: false }).then(setCase);
     }
   }, [caseId, dispatchApi]);
 

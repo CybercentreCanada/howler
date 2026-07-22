@@ -61,7 +61,7 @@ describe('useLocalStorageItem', () => {
     it('skips persisting to storage when save=false', () => {
       const { result } = renderHook(() => useLocalStorageItem('testkey', 0));
       vi.mocked(mockLocalStorage.setItem).mockClear();
-      act(() => (result.current[1] as any)(10, false));
+      void act(() => (result.current[1] as any)(10, false));
       expect(result.current[0]).toBe(10);
       expect(mockLocalStorage.setItem).not.toHaveBeenCalled();
     });
@@ -118,7 +118,7 @@ describe('useLocalStorageItem', () => {
       const { result: a } = renderHook(() => useLocalStorageItem('testkey', 0));
       const { result: b } = renderHook(() => useLocalStorageItem('testkey', 0));
 
-      act(() => (a.current[1] as any)(10, false));
+      void act(() => (a.current[1] as any)(10, false));
 
       expect(b.current[0]).toBe(10);
     });

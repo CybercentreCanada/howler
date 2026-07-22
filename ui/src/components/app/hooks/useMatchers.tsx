@@ -27,7 +27,7 @@ const useMatchers = (lazy = false) => {
       // should also exist
       try {
         return (await getRecord(hit.howler.id, true)).__template;
-      } catch (e) {
+      } catch {
         return null;
       }
     },
@@ -52,7 +52,7 @@ const useMatchers = (lazy = false) => {
       // should also exist
       try {
         return (await getRecord(hit.howler.id, true)).__overview;
-      } catch (e) {
+      } catch {
         return null;
       }
     },
@@ -77,7 +77,7 @@ const useMatchers = (lazy = false) => {
       // should also exist
       try {
         return (await getRecord(hit.howler.id, true)).__dossiers ?? [];
-      } catch (e) {
+      } catch {
         return [];
       }
     },
@@ -101,7 +101,7 @@ const useMatchers = (lazy = false) => {
       // This is a fallback in case metadata is not included.
       try {
         return (await getRecord(hit.howler.id, true)).__analytic;
-      } catch (e) {
+      } catch {
         return null;
       }
     },

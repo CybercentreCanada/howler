@@ -47,7 +47,7 @@ const SearchSpan: FC<{
       return;
     }
 
-    (async () => {
+    void (async () => {
       const selectedViewSpan = (await getCurrentViews({ lazy: true })).find(view => view?.span)?.span;
 
       if (!selectedViewSpan) {

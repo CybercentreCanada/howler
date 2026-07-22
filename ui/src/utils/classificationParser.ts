@@ -353,7 +353,7 @@ const getGroups = (
   // Check if there are any required group assignments
   for (const subgroup of g2Set) {
     const required = c12nDef.params_map?.[subgroup]?.require_group;
-    if (!!required) {
+    if (required) {
       g1Set.add(required);
     }
   }
@@ -484,25 +484,25 @@ export const normalizedClassification = (
   if (!c12nDef.enforce || !!c12nDef.invalid_mode) return c12nDef.UNRESTRICTED;
 
   const longFormat = format === 'short' || !!isMobile ? false : true;
-  const groupDelim = !!longFormat ? 'REL TO ' : 'REL ';
+  const groupDelim = longFormat ? 'REL TO ' : 'REL ';
   const { lvlIdx, lvl } = parts;
   let { groups, subgroups, req } = parts;
 
   // convert to correct format
   req = req.map(r => {
-    if (!!longFormat) {
+    if (longFormat) {
       return c12nDef.access_req_map_stl[r] || r;
     }
     return c12nDef.access_req_map_lts[r] || r;
   });
   groups = groups.map(g => {
-    if (!!longFormat) {
+    if (longFormat) {
       return c12nDef.groups_map_stl[g] || g;
     }
     return c12nDef.groups_map_lts[g] || g;
   });
   subgroups = subgroups.map(g => {
-    if (!!longFormat) {
+    if (longFormat) {
       return c12nDef.subgroups_map_stl[g] || g;
     }
     return c12nDef.subgroups_map_lts[g] || g;
@@ -512,7 +512,7 @@ export const normalizedClassification = (
   let out = lvl;
   let requiredLvlIdx = 0;
   for (const r of req) {
-    const rl = !!c12nDef.params_map?.[r]?.require_lvl ? c12nDef.params_map[r].require_lvl : 0;
+    const rl = c12nDef.params_map?.[r]?.require_lvl ? c12nDef.params_map[r].require_lvl : 0;
     requiredLvlIdx = Math.max(requiredLvlIdx, rl);
   }
   out = getLevelText(Math.max(lvlIdx, requiredLvlIdx), c12nDef, format, isMobile);
@@ -520,7 +520,7 @@ export const normalizedClassification = (
   // 2. Check for all required items if they should be shown inside the groups display part
   const reqGrp = new Set<string>();
   for (const r of req) {
-    if (!!c12nDef.params_map[r]?.is_required_group) {
+    if (c12nDef.params_map[r]?.is_required_group) {
       reqGrp.add(r);
     }
   }
@@ -534,7 +534,7 @@ export const normalizedClassification = (
 
   // 3. Add auto-selected subgroups
   let tempSubGroups = [...subgroups];
-  if (!!longFormat) {
+  if (longFormat) {
     if (subgroups.length > 0 && c12nDef.subgroups_auto_select.length > 0 && !skipAutoSelect) {
       tempSubGroups = Array.from(new Set([...subgroups, ...c12nDef.subgroups_auto_select])).sort();
     }
@@ -548,12 +548,12 @@ export const normalizedClassification = (
   let tempGroups: string[] = [];
   for (const sg of tempSubGroups) {
     const rGrp = c12nDef.params_map[sg]?.require_group;
-    if (!!rGrp) {
+    if (rGrp) {
       tempGroups.push(rGrp);
     }
 
     const limToGrp = c12nDef.params_map[sg]?.limited_to_group;
-    if (!!limToGrp) {
+    if (limToGrp) {
       if (limToGrp in tempGroups) {
         tempGroups = [limToGrp];
       } else {
@@ -563,7 +563,7 @@ export const normalizedClassification = (
   }
 
   for (const g of tempGroups) {
-    if (!!longFormat) {
+    if (longFormat) {
       groups.push(c12nDef.groups_map_stl[g] || g);
     } else {
       groups.push(c12nDef.groups_map_lts[g] || g);
@@ -572,7 +572,7 @@ export const normalizedClassification = (
   groups = Array.from(new Set(groups));
 
   // 5. Add auto-selected groups
-  if (!!longFormat) {
+  if (longFormat) {
     if (groups.length > 0 && c12nDef.groups_auto_select.length > 0 && !skipAutoSelect) {
       groups = Array.from(new Set([...groups, ...c12nDef.groups_auto_select])).sort();
     }
@@ -747,40 +747,40 @@ export const applyClassificationRules = (
 
   // Sort all lists and format all returns
   retParts.req = retParts.req.sort().map(r => {
-    if (!!longFormat) {
+    if (longFormat) {
       return c12nDef.access_req_map_stl[r] || r;
     }
     return c12nDef.access_req_map_lts[r] || r;
   });
 
   retParts.groups = retParts.groups.sort().map(g => {
-    if (!!longFormat) {
+    if (longFormat) {
       return c12nDef.groups_map_stl[g] || g;
     }
     return c12nDef.groups_map_lts[g] || g;
   });
 
   retParts.subgroups = retParts.subgroups.sort().map(sg => {
-    if (!!longFormat) {
+    if (longFormat) {
       return c12nDef.subgroups_map_stl[sg] || sg;
     }
     return c12nDef.subgroups_map_lts[sg] || sg;
   });
 
   disabledList.groups = disabledList.groups.sort().map(g => {
-    if (!!longFormat) {
+    if (longFormat) {
       return c12nDef.groups_map_stl[g] || g;
     }
     return c12nDef.groups_map_lts[g] || g;
   });
   disabledList.levels = disabledList.levels.sort().map(l => {
-    if (!!longFormat) {
+    if (longFormat) {
       return c12nDef.levels_map_stl[l] || l;
     }
     return c12nDef.levels_map_lts[l] || l;
   });
 
-  if (!!longFormat) {
+  if (longFormat) {
     retParts.lvl = c12nDef.levels_map_stl[retParts.lvl] || retParts.lvl;
   } else {
     retParts.lvl = c12nDef.levels_map_lts[retParts.lvl] || retParts.lvl;
@@ -893,7 +893,7 @@ export const isAccessible = (
   enforce: boolean = false,
   ignoreInvalid: boolean = true
 ) => {
-  if (!!c12nDef.invalid_mode) return false;
+  if (c12nDef.invalid_mode) return false;
   if (!enforce) return true;
   if (!c12n) return true;
 
@@ -910,7 +910,7 @@ export const isAccessible = (
     return false;
   } catch (e) {
     if (e instanceof InvalidClassification) {
-      if (!!ignoreInvalid) {
+      if (ignoreInvalid) {
         return false;
       }
     }

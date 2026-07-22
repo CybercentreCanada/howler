@@ -43,7 +43,7 @@ const CaseRules: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, c
       }
 
       const updatedCase = await dispatchApi(api.v2.case.rules.post(_case.case_id, ruleData));
-      update(updatedCase, false);
+      void update(updatedCase, false);
     },
     [_case, dispatchApi, update]
   );
@@ -59,7 +59,7 @@ const CaseRules: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, c
           onConfirm={async () => {
             const updatedCase = await dispatchApi(api.v2.case.rules.del(_case.case_id, ruleId), { throwError: false });
             if (updatedCase) {
-              update(updatedCase, false);
+              void update(updatedCase, false);
             }
           }}
         />,
@@ -76,7 +76,7 @@ const CaseRules: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, c
       }
 
       const updatedCase = await dispatchApi(api.v2.case.rules.put(_case.case_id, ruleId, { enabled }));
-      update(updatedCase, false);
+      void update(updatedCase, false);
     },
     [_case, dispatchApi, update]
   );

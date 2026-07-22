@@ -62,9 +62,6 @@ class AppMenuBuilder {
 
     if (!Array.isArray(target) && this.isGroupElement(target)) {
       if (item.type === 'divider') {
-        console.warn(
-          `Skipping DIVIDER Operation: INSERT on Target: ${targetId}, Dividers cannot be inserted to sub-menus`
-        );
         return;
       }
       const group = target.element;
@@ -80,9 +77,6 @@ class AppMenuBuilder {
 
     if (menuLocation.index !== -1 && isNil(menuLocation.subIndex)) {
       if (item.type === 'divider') {
-        console.warn(
-          `Skipping DIVIDER Operation: INSERT on Target: ${targetId}, Dividers cannot be inserted to sub-menus`
-        );
         return;
       }
 
@@ -122,9 +116,6 @@ class AppMenuBuilder {
 
     if (!isNil(menuLocation.subIndex)) {
       if (item.type === 'divider') {
-        console.warn(
-          `Skipping DIVIDER Operation: INSERT on Target: ${targetId}, Dividers cannot be inserted to sub-menus`
-        );
         return;
       }
       const parentElement = this.menuFromIndex(menuLocation.index);
@@ -158,9 +149,6 @@ class AppMenuBuilder {
 
     if (!isNil(menuLocation.subIndex)) {
       if (item.type === 'divider') {
-        console.warn(
-          `Skipping DIVIDER Operation: INSERT on Target: ${targetId}, Dividers cannot be inserted to sub-menus`
-        );
         return;
       }
       const parentElement = this.menuFromIndex(menuLocation.index);

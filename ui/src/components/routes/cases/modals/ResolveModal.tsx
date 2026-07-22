@@ -172,7 +172,7 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
   }, []);
 
   useEffect(() => {
-    (async () => {
+    void (async () => {
       try {
         const result = await dispatchApi(
           api.search.hit.post({

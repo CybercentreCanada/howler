@@ -49,7 +49,7 @@ const CaseObservables: FC<{ case?: Case; caseId?: string }> = ({ case: providedC
       return;
     }
 
-    dispatchApi(
+    void dispatchApi(
       api.v2.search.post<Hit | Event>(['hit', 'event'], {
         query: `howler.id:(${ids.join(' OR ')})`,
         fl: `howler.id,${RELATED_FIELDS},${EXTRA_FIELDS}`
@@ -77,7 +77,7 @@ const CaseObservables: FC<{ case?: Case; caseId?: string }> = ({ case: providedC
       return;
     }
 
-    dispatchApi(
+    void dispatchApi(
       api.v2.search.facet.post(['hit', 'event'], {
         fields: ['howler.escalation'],
         filters: [`howler.id:(${ids.join(' OR ')})`]

@@ -51,7 +51,7 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
       }
 
       const props = Object.entries(hash)
-        .map(([key, val]) => `${key}="${val}"`)
+        .map(([key, val]: [string, string]) => `${key}="${val}"`)
         .join(' ');
 
       return new Handlebars.SafeString(`<img ${props} >`);
@@ -75,7 +75,7 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
             const result = helper.componentCallback(...args);
 
             if (result instanceof Promise) {
-              result.then(_result => setMdComponents(_components => ({ ..._components, [id]: _result })));
+              void result.then(_result => setMdComponents(_components => ({ ..._components, [id]: _result })));
             } else {
               setMdComponents(_components => ({ ..._components, [id]: result }));
             }
@@ -107,7 +107,7 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
     THROTTLER.debounce(async () => {
       const compiled = handlebars.compile(md || '');
       try {
-        setRendered(await compiled(object));
+        setRendered(compiled(object));
       } catch (err) {
         if ((err as Exception).message?.startsWith('Missing helper')) {
           const missingHelper = (err as Exception).message.replace(/.+"(.+)"/, '$1');
@@ -119,7 +119,7 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
               )
           );
 
-          setRendered(await compiled(object));
+          setRendered(compiled(object));
           return;
         }
 

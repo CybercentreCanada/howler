@@ -102,7 +102,10 @@ const LUCENE_QUERY_OPTIONS: ('default' | 'facet' | 'groupby' | 'explain')[] = [
 ];
 
 type SearchResponse<T> =
-  HowlerSearchResponse<T> | HowlerEQLSearchResponse<T> | HowlerFacetSearchResponse | HowlerGroupedSearchResponse<T>;
+  | HowlerSearchResponse<T>
+  | HowlerEQLSearchResponse<T>
+  | HowlerFacetSearchResponse
+  | HowlerGroupedSearchResponse<T>;
 
 const CustomPopper = (props: PopperProps) => {
   return <Popper {...props} style={{ width: 'fit-content' }} placement="bottom-start" />;
@@ -190,7 +193,7 @@ const QueryBuilder: FC = () => {
       const parsedEvent = parseEvent(event);
 
       if (parsedEvent.isCtrl && parsedEvent.isEnter) {
-        execute();
+        void execute();
       }
     },
     [execute]
@@ -244,7 +247,7 @@ const QueryBuilder: FC = () => {
   }, [execute, monaco, t]);
 
   useEffect(() => {
-    getHitFields();
+    void getHitFields();
   }, [getHitFields]);
 
   useEffect(() => {

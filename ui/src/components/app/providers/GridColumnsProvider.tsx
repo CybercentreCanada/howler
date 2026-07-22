@@ -137,7 +137,7 @@ const GridColumnsProvider = ({
 
     setIsReady(false);
 
-    getCurrentViews({ views: viewIds }).then(_views => {
+    void getCurrentViews({ views: viewIds }).then(_views => {
       // Discard stale results: either the user already made a manual edit, or viewIds changed.
       if (currentLoadRef.current.hasLocalEdits) {
         setIsReady(true);

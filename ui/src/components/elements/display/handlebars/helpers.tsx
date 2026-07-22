@@ -185,7 +185,7 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
               const json = await FETCH_RESULTS[url];
 
               return flatten(json)[key];
-            } catch (e) {
+            } catch {
               return '';
             }
           },
@@ -274,7 +274,7 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
             }
             try {
               return JSON.parse(str);
-            } catch (e) {
+            } catch {
               throw new HowlerHelperError('Invalid JSON string');
             }
           },
@@ -292,7 +292,7 @@ export const useHelpers = (opts = { async: true, components: true }): HowlerHelp
 
             try {
               return get(data, key);
-            } catch (e) {
+            } catch {
               return '';
             }
           },

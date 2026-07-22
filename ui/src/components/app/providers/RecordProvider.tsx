@@ -127,7 +127,7 @@ const RecordProvider: FC<PropsWithChildren> = ({ children }) => {
   }, []);
 
   const clearSelectedRecords: RecordContextType['clearSelectedRecords'] = useCallback((except: string) => {
-    setSelectedHitIds(!!except ? [except] : []);
+    setSelectedHitIds(except ? [except] : []);
   }, []);
 
   const selectedRecords = useMemo(
@@ -138,7 +138,7 @@ const RecordProvider: FC<PropsWithChildren> = ({ children }) => {
   useEffect(() => {
     selectedHitIds.forEach(id => {
       if (!recordRequests.current[id]) {
-        getRecord(id);
+        void getRecord(id);
       }
     });
   }, [getRecord, selectedHitIds]);

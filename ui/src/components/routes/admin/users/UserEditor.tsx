@@ -28,7 +28,7 @@ const UserEditor: FC = () => {
 
   useEffect(() => {
     if (id && !user) {
-      dispatchApi(api.user.get(id)).then(setUser);
+      void dispatchApi(api.user.get(id)).then(setUser);
     }
   }, [dispatchApi, id, user]);
 

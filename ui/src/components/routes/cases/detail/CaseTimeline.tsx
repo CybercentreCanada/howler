@@ -79,7 +79,7 @@ const CaseTimeline: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase
       return;
     }
 
-    dispatchApi(
+    void dispatchApi(
       api.v2.search.facet.post(['hit', 'event'], {
         fields: ['threat.tactic.id', 'threat.technique.id', 'howler.escalation'],
         filters: [`howler.id:(${ids.join(' OR ')})`]
@@ -118,7 +118,7 @@ const CaseTimeline: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase
 
     const filters = buildFilters(selectedMitres, selectedEscalations);
 
-    dispatchApi(
+    void dispatchApi(
       api.v2.search.post<Hit | Event>(['hit', 'event'], {
         query: `howler.id:(${ids.join(' OR ')})`,
         sort: 'event.created asc',

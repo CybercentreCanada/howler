@@ -12,7 +12,7 @@ const EventCard: FC<{ id?: string; event?: Event }> = ({ id, event: _event }) =>
 
   useEffect(() => {
     if (!event) {
-      getRecord(id);
+      void getRecord(id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
