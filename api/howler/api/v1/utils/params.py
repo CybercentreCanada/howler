@@ -1,7 +1,7 @@
 """Parameter parsing and error handling reused across multiple endpoints."""
 
 import functools
-from typing import Callable, Literal
+from typing import Any, Callable, Literal
 
 from flask import request
 
@@ -10,8 +10,10 @@ from howler.common.exceptions import HowlerInvalidParameterException
 
 REFRESH_ARG_OPTIONS = ["true", "false", "wait_for"]
 
+parser_t = Callable[[str | None], Any]
 
-def parse_parameters(**requested_params: Callable[[str | None], str | None] | Literal["required"] | None):
+
+def parse_parameters(**requested_params: parser_t | Literal["required"] | tuple[parser_t, Literal["required"]] | None):
     """A decorator to parse required parameters from the request args.
 
     Usage:
@@ -40,16 +42,17 @@ def parse_parameters(**requested_params: Callable[[str | None], str | None] | Li
         def wrapper(*args, **kwargs):
             try:
                 for param_name, parser in requested_params.items():
+                    required_flag = None
+                    if isinstance(parser, tuple):
+                        parser, required_flag = parser
+
                     raw_value = request.args.get(param_name, None)
 
-                    parsed_value: str | None
-                    if parser == "required":
+                    if parser == "required" or required_flag == "required":
                         if raw_value is None:
                             return bad_request(err=f"Missing required parameter: [{param_name}]")
-                        parsed_value = raw_value
-                    else:
-                        parsed_value = parser(raw_value) if parser else raw_value
 
+                    parsed_value = parser(raw_value) if callable(parser) else raw_value
                     kwargs[param_name] = parsed_value
 
             except HowlerInvalidParameterException as e:

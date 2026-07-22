@@ -85,7 +85,7 @@ def hits_with_timestamps(datastore_connection, current_time):
     return hits
 
 
-@pytest.fixture(scope="module", autouse=True)
+@pytest.fixture(scope="module")
 def datastore_with_hits(datastore_connection, hits_with_timestamps):
     current_hits = datastore_connection.hit.search("*:*")["items"]
 

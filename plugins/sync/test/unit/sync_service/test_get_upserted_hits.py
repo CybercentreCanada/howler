@@ -1,5 +1,12 @@
 from datetime import timedelta
 
+import pytest
+
+
+@pytest.fixture(scope="module", autouse=True)
+def setup_datastore_with_hits(datastore_with_hits):
+    yield datastore_with_hits
+
 
 def test_no_interval_gets_all_hits():
     from sync.services import sync_service

@@ -1,7 +1,14 @@
 import base64
 from datetime import timedelta
 
+import pytest
+
 _TEST_TOKEN = f"Basic {base64.b64encode(b'admin:devkey:admin').decode('utf-8')}"
+
+
+@pytest.fixture(scope="module", autouse=True)
+def setup_datastore_with_hits(datastore_with_hits):
+    yield datastore_with_hits
 
 
 def _request(client, from_date, to_date=None, deep_paging_id=None, offset=None, rows=None, timeout=None):

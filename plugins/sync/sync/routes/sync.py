@@ -9,6 +9,7 @@ from howler.common.swagger import generate_swagger_docs
 from howler.security import api_login
 
 from sync.services import sync_service
+from sync.utils.parsers import parse_datetime
 
 SUB_API = "sync"
 sync_api = make_subapi_blueprint(SUB_API, api_version=1)
@@ -18,9 +19,9 @@ logger = get_logger(__file__)
 
 @generate_swagger_docs()
 @sync_api.route("/hit_diffs", methods=["GET"])
-@parse_parameters(from_date="required", to_date=None)
+@parse_parameters(from_date=(parse_datetime, "required"), to_date=parse_datetime)
 @api_login(required_priv=["R"])
-def get_upserted_hits(*, from_date: str, to_date: str | None = None, **_extra_args):
+def get_upserted_hits(*, from_date: datetime, to_date: datetime | None = None, **_extra_args):
     """Get the hits that have been created or updated since the last sync.
 
     Arguments:
@@ -52,12 +53,7 @@ def get_upserted_hits(*, from_date: str, to_date: str | None = None, **_extra_ar
         if request.args.get(param) is not None
     }
 
-    last_sync_time = datetime.fromisoformat(from_date)
-    optional_end_time = datetime.fromisoformat(to_date) if to_date else None
-
-    res = sync_service.get_upserted_hits(
-        data_interval_start=last_sync_time, data_interval_end=optional_end_time, **search_args
-    )
+    res = sync_service.get_upserted_hits(data_interval_start=from_date, data_interval_end=to_date, **search_args)
 
     return ok(res)
 
