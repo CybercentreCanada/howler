@@ -255,7 +255,7 @@ class ESCollection(Generic[ModelType]):
         if not self._index_list:
             self._index_list = list(self.with_retries(self.datastore.client.indices.get, index=f"{self.name}-*").keys())
 
-        return [self.index_name] + sorted(self._index_list, reverse=True)
+        return list(dict.fromkeys([self.index_name, *sorted(self._index_list, reverse=True)]))
 
     @property
     def index_list(self):
@@ -264,6 +264,22 @@ class ESCollection(Generic[ModelType]):
         :return: list of valid indexes for this collection
         """
         return [self.index_name]
+
+    def _refresh_ilm_index_name(self):
+        """Set ``index_name`` to the latest existing ILM index, when one exists."""
+        if not self.ilm_config:
+            return
+
+        try:
+            ilm_indices = self.datastore.client.indices.get(
+                index=f"{self.name}-0*",
+                ignore_unavailable=True,
+            )
+        except elasticsearch.exceptions.NotFoundError:
+            return
+
+        if ilm_indices:
+            self.index_name = sorted(ilm_indices)[-1]
 
     def scan_with_retry(
         self,
@@ -750,6 +766,7 @@ class ESCollection(Generic[ModelType]):
             operation can be recovered with :meth:`reindex_cleanup`.
         """
         logger.warning("Beginning Reindex")
+        self._refresh_ilm_index_name()
         for index in self.index_list:
             new_name = f"{index}__reindex"
             index_data = None
@@ -847,12 +864,10 @@ class ESCollection(Generic[ModelType]):
                     )
 
                     alias_actions = []
-                    aliases = index_data.get("aliases", {}) or {self.name: {"is_write_index": True}}
+                    aliases = index_data.get("aliases", {})
                     for alias, alias_data in aliases.items():
                         alias_action = {"index": index, "alias": alias}
                         alias_action.update(alias_data)
-                        if alias == self.name or alias_data.get("is_write_index", False):
-                            alias_action["is_write_index"] = True
                         alias_actions.append({"add": alias_action})
                     alias_actions.append({"remove_index": {"index": new_name}})
                     self.with_retries(self.datastore.client.indices.update_aliases, actions=alias_actions)
@@ -957,15 +972,16 @@ class ESCollection(Generic[ModelType]):
         """Recover from a failed or interrupted :meth:`reindex` run.
 
         For every index that still has a leftover ``__reindex`` index, restore the source
-        index as the writable target and delete the orphaned ``__reindex`` index. If the
-        source index is missing, raise an error instead of deleting ``__reindex`` because
-        it may be the only remaining copy of the data.
+        index's original aliases and delete the orphaned ``__reindex`` index. If the source
+        index is missing, raise an error instead of deleting ``__reindex`` because it may
+        be the only remaining copy of the data.
 
         Write blocks set during reindexing are cleared so the collection is usable again.
 
         :return: ``True`` when cleanup completed on all indexes
         """
         logger.warning("Beginning reindex cleanup")
+        self._refresh_ilm_index_name()
         for index in self.index_list:
             new_name = f"{index}__reindex"
 
@@ -987,17 +1003,13 @@ class ESCollection(Generic[ModelType]):
             reindex_aliases = new_index_data.get("aliases", {})
 
             alias_actions = []
-            for alias in sorted(set(source_aliases) | set(reindex_aliases) | {self.name}):
+            for alias in sorted(set(source_aliases) | set(reindex_aliases)):
                 source_alias_data = source_aliases.get(alias, {})
                 reindex_alias_data = reindex_aliases.get(alias, {})
 
                 add_alias_data = {"index": index, "alias": alias}
                 add_alias_data.update(source_alias_data)
-                if (
-                    alias == self.name
-                    or source_alias_data.get("is_write_index", False)
-                    or reindex_alias_data.get("is_write_index", False)
-                ):
+                if source_alias_data.get("is_write_index", False) or reindex_alias_data.get("is_write_index", False):
                     add_alias_data["is_write_index"] = True
 
                 alias_actions.append({"add": add_alias_data})
@@ -2905,7 +2917,42 @@ class ESCollection(Generic[ModelType]):
         if existing_ilm_indices:
             # ILM already bootstrapped — ensure the alias exists
             latest = sorted(existing_ilm_indices)[-1]
-            if not self.with_retries(self.datastore.client.indices.exists_alias, name=self.name):
+            legacy_hot_index = f"{self.name}_hot"
+            if self.with_retries(self.datastore.client.indices.exists_alias, name=self.name):
+                alias_indices = self.with_retries(self.datastore.client.indices.get_alias, name=self.name)
+                alias_actions = []
+                for alias_index, alias_index_data in alias_indices.items():
+                    alias_data = alias_index_data.get("aliases", {}).get(self.name, {})
+                    if alias_index == legacy_hot_index:
+                        alias_actions.append({"remove": {"index": alias_index, "alias": self.name}})
+                    elif alias_index != latest and alias_data.get("is_write_index", False):
+                        alias_actions.append(
+                            {
+                                "add": {
+                                    "index": alias_index,
+                                    "alias": self.name,
+                                    **alias_data,
+                                    "is_write_index": False,
+                                }
+                            }
+                        )
+
+                latest_alias_data = alias_indices.get(latest, {}).get("aliases", {}).get(self.name, {})
+                if not latest_alias_data.get("is_write_index", False):
+                    alias_actions.append(
+                        {
+                            "add": {
+                                "index": latest,
+                                "alias": self.name,
+                                **latest_alias_data,
+                                "is_write_index": True,
+                            }
+                        }
+                    )
+
+                if alias_actions:
+                    self.with_retries(self.datastore.client.indices.update_aliases, actions=alias_actions)
+            else:
                 # Find the latest index to set as write index
                 self.with_retries(
                     self.datastore.client.indices.put_alias,
