@@ -317,6 +317,18 @@ def convert_hit(  # noqa: C901
             "See howler's documentation for more information."
         )
 
+    if odm.howler.assessment:
+        target_escalation = AssessmentEscalationMap[odm.howler.assessment]
+        if odm.howler.escalation != target_escalation:
+            warnings.append(
+                f"Hits with assessment {odm.howler.assessment} must also have escalation set to {target_escalation}."
+            )
+            odm.howler.escalation = str(target_escalation)
+
+    if odm.howler.escalation in [Escalation.MISS, Escalation.EVIDENCE] and odm.howler.status != Status.RESOLVED:
+        warnings.append("Hits with escalation miss or evidence must also have their status set to resolved.")
+        odm.howler.status = Status.RESOLVED.value
+
     if odm.event:
         odm.event.id = odm.howler.id
         if not odm.event.created:

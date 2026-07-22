@@ -111,3 +111,51 @@ def test_howler_hashing():
 
     for _hash in EXAMPLE_HASHES.split("\n"):
         Hit({"howler.analytic": "Test Hash Analytic", "howler.hash": _hash})
+
+
+def test_convert_hit_assessment_normalizes_escalation_with_warning():
+    hit, warnings = hit_service.convert_hit(
+        {
+            "howler.analytic": "Assessment Test",
+            "howler.assessment": "security",
+            "howler.escalation": "alert",
+        },
+        unique=False,
+    )
+
+    assert hit.howler.assessment == "security"
+    assert hit.howler.escalation == "miss"
+    assert "Hits with assessment security must also have escalation set to miss." in warnings
+
+
+def test_convert_hit_escalation_normalizes_status_with_warning():
+    hit, warnings = hit_service.convert_hit(
+        {
+            "howler.analytic": "Escalation Test",
+            "howler.escalation": "evidence",
+            "howler.status": "open",
+        },
+        unique=False,
+    )
+
+    assert hit.howler.escalation == "evidence"
+    assert hit.howler.status == "resolved"
+    assert "Hits with escalation miss or evidence must also have their status set to resolved." in warnings
+
+
+def test_convert_hit_assessment_and_escalation_normalize_together():
+    hit, warnings = hit_service.convert_hit(
+        {
+            "howler.analytic": "Combined Assessment Test",
+            "howler.assessment": "security",
+            "howler.escalation": "evidence",
+            "howler.status": "open",
+        },
+        unique=False,
+    )
+
+    assert hit.howler.assessment == "security"
+    assert hit.howler.escalation == "miss"
+    assert hit.howler.status == "resolved"
+    assert "Hits with assessment security must also have escalation set to miss." in warnings
+    assert "Hits with escalation miss or evidence must also have their status set to resolved." in warnings
