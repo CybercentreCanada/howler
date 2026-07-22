@@ -867,8 +867,12 @@ def wipe_actions(ds: HowlerDatastore):
 def create_dossiers(ds: HowlerDatastore, num_dossiers: int = 5):
     "Create random dossiers"
     users = ds.user.search("*:*")["items"]
-    for _ in range(num_dossiers):
+    for index in range(num_dossiers):
         dossier = generate_useful_dossier(users)
+        if index == 0:
+            dossier.type = "personal"
+        elif index == 1:
+            dossier.type = "global"
         ds.dossier.save(dossier.dossier_id, dossier)
 
     ds.dossier.commit()
