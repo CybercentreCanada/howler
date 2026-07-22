@@ -347,6 +347,59 @@ class TestEnsureCollectionILM:
         assert {"add": {"index": latest_index_name, "alias": col.name, "is_write_index": True}} in alias_actions
         assert col.index_name == latest_index_name
 
+    def test_existing_ilm_indices_preserve_alias_metadata_when_updating_write_index(self, mock_datastore, ilm_global):
+        """Write-index corrections retain alias filters and routing settings."""
+        ilm_index = ILMIndexConfig(warm="30d")
+        col = _make_collection(mock_datastore, ilm_config=ilm_index)
+        old_index_name = f"{col.name}-000001"
+        latest_index_name = f"{col.name}-000002"
+        old_alias_data = {
+            "filter": {"term": {"tenant": "alpha"}},
+            "routing": "alpha",
+            "is_write_index": True,
+        }
+        latest_alias_data = {
+            "filter": {"term": {"tenant": "alpha"}},
+            "search_routing": "alpha",
+        }
+
+        mock_datastore.client.indices.get.return_value = {
+            old_index_name: {},
+            latest_index_name: {},
+        }
+        mock_datastore.client.indices.exists_alias.return_value = True
+        mock_datastore.client.indices.get_alias.return_value = {
+            old_index_name: {"aliases": {col.name: old_alias_data}},
+            latest_index_name: {"aliases": {col.name: latest_alias_data}},
+        }
+
+        with (
+            patch.object(col, "_create_ilm_policy"),
+            patch.object(col, "_create_index_template"),
+            patch.object(col, "_check_fields"),
+        ):
+            col._ensure_collection_ilm()
+
+        alias_actions = mock_datastore.client.indices.update_aliases.call_args.kwargs["actions"]
+        assert {
+            "add": {
+                "index": old_index_name,
+                "alias": col.name,
+                "filter": {"term": {"tenant": "alpha"}},
+                "routing": "alpha",
+                "is_write_index": False,
+            }
+        } in alias_actions
+        assert {
+            "add": {
+                "index": latest_index_name,
+                "alias": col.name,
+                "filter": {"term": {"tenant": "alpha"}},
+                "search_routing": "alpha",
+                "is_write_index": True,
+            }
+        } in alias_actions
+
     def test_reindex_cleanup_does_not_restore_missing_collection_alias(self, mock_datastore):
         """Cleanup must not make an alias writable when the source did not own it."""
         col = _make_collection(mock_datastore, ilm_config=ILMIndexConfig(warm="30d"))

@@ -2902,12 +2902,28 @@ class ESCollection(Generic[ModelType]):
                         alias_actions.append({"remove": {"index": alias_index, "alias": self.name}})
                     elif alias_index != latest and alias_data.get("is_write_index", False):
                         alias_actions.append(
-                            {"add": {"index": alias_index, "alias": self.name, "is_write_index": False}}
+                            {
+                                "add": {
+                                    "index": alias_index,
+                                    "alias": self.name,
+                                    **alias_data,
+                                    "is_write_index": False,
+                                }
+                            }
                         )
 
                 latest_alias_data = alias_indices.get(latest, {}).get("aliases", {}).get(self.name, {})
                 if not latest_alias_data.get("is_write_index", False):
-                    alias_actions.append({"add": {"index": latest, "alias": self.name, "is_write_index": True}})
+                    alias_actions.append(
+                        {
+                            "add": {
+                                "index": latest,
+                                "alias": self.name,
+                                **latest_alias_data,
+                                "is_write_index": True,
+                            }
+                        }
+                    )
 
                 if alias_actions:
                     self.with_retries(self.datastore.client.indices.update_aliases, actions=alias_actions)
