@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
 
 APP_NAME = os.environ.get("APP_NAME", "howler")
+DATASTORE_INDEX_PREFIX = os.environ.get("HWL_DATASTORE_INDEX_PREFIX", APP_NAME)
 APP_PREFIX = os.environ.get("APP_PREFIX", "hwl")
 USER_TYPES = {"admin", "user", "automation_basic", "automation_advanced", "actionrunner_basic", "actionrunner_advanced"}
 
