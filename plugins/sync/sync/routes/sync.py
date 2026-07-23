@@ -53,6 +53,10 @@ def get_upserted_hits(*, from_date: datetime, to_date: datetime | None = None, *
         if request.args.get(param) is not None
     }
 
+    if to_date is not None and from_date > to_date:
+        logger.warning("to_date is earlier than from_date, ignoring to_date and using current date instead")
+        to_date = None
+
     res = sync_service.get_upserted_hits(data_interval_start=from_date, data_interval_end=to_date, **search_args)
 
     return ok(res)
