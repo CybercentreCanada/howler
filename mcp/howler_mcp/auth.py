@@ -80,7 +80,7 @@ class KeycloakTokenVerifier(TokenVerifier):
         return False
 
     def _extract_scopes(self, claims: dict[str, Any]) -> list[str]:
-        scope_value = claims.get("scope", "")
+        scope_value = claims.get("scope", claims.get("scp", ""))
         if isinstance(scope_value, str) and scope_value.strip():
             return scope_value.strip().split()
         return []
