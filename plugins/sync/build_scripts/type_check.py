@@ -8,7 +8,7 @@ def prep_command(cmd: str):
 
 
 def main():
-    result = subprocess.check_output(prep_command('find iceberg -type f -name "*.py"')).decode().strip().split("\n")
+    result = subprocess.check_output(prep_command('find sync -type f -name "*.py"')).decode().strip().split("\n")
 
     subprocess.check_call(prep_command(f"python -m mypy {' '.join(result)}"))
 
