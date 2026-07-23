@@ -1,4 +1,4 @@
-import { avatarClasses, AvatarGroup, Chip, Divider, Stack, Typography } from '@mui/material';
+import { avatarClasses, AvatarGroup, Chip, Divider, Stack } from '@mui/material';
 import { useAppUser } from 'commons/components/app/hooks';
 import { SocketContext } from 'components/app/providers/SocketProvider';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
@@ -61,16 +61,13 @@ const Assigned: FC<{
   return (
     <Stack direction="row" spacing={0.5}>
       {assigneeVisible && (
-        <>
-          {!hideLabel && <Typography variant="caption">{t('app.drawer.hit.assignment.assignee')}:</Typography>}
-          <AvatarChip
-            userId={hit?.howler.assignment}
-            noUser="unassigned"
-            placeholder={t('app.drawer.hit.assignment.unassigned.name')}
-            layout={layout}
-            hideLabel={hideLabel}
-          />
-        </>
+        <AvatarChip
+          userId={hit?.howler.assignment}
+          noUser="unassigned"
+          placeholder={t('app.drawer.hit.assignment.unassigned.name')}
+          layout={layout}
+          hideLabel={hideLabel}
+        />
       )}
       {hitViewers.length > 0 && hideLabel && <Divider orientation="vertical" flexItem variant="middle" />}
       <AvatarGroup
