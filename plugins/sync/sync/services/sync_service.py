@@ -1,15 +1,14 @@
-from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime
-from typing import cast
+from typing import Any, Generator, cast
 
+from howler import odm
 from howler.common.loader import datastore
+from howler.datastore.types import SearchResult
 from howler.odm.models.hit import Hit
 from howler.odm.randomizer import Model, random_model_obj
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType
-
-LUCENE_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S"
 
 
 def get_upserted_hits(
@@ -19,7 +18,7 @@ def get_upserted_hits(
     offset: int = 0,
     rows: int | None = None,
     timeout: int | None = None,
-):
+) -> SearchResult[dict[str, Any]]:
     """Get the hits that have been created or updated within the specified time interval."""
     storage = datastore()
 
@@ -50,8 +49,8 @@ def get_hit_struct_schema() -> StructType:
 
 def _range_query_from_interval(data_interval_start: datetime | None, data_interval_end: datetime | None) -> str:
     """Construct a range query string for the specified time interval."""
-    query_range_start: str = data_interval_start.strftime(LUCENE_DATE_FORMAT) if data_interval_start else "*"
-    query_range_end: str = data_interval_end.strftime(LUCENE_DATE_FORMAT) if data_interval_end else "*"
+    query_range_start: str = data_interval_start.strftime(odm.DATEFORMAT) if data_interval_start else "*"
+    query_range_end: str = data_interval_end.strftime(odm.DATEFORMAT) if data_interval_end else "*"
 
     return f"[{query_range_start} TO {query_range_end}]"
 
