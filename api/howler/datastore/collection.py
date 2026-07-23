@@ -252,34 +252,49 @@ class ESCollection(Generic[ModelType]):
 
     @property
     def index_list_full(self):
+        """Return every physical index for this collection, newest ILM index first.
+
+        Maintenance operations that must visit historical rollover indexes should use this
+        property. The active index is included even when no ILM rollover index exists.
+        """
         if not self._index_list:
-            self._index_list = list(self.with_retries(self.datastore.client.indices.get, index=f"{self.name}-*").keys())
+            self._index_list = self._get_ilm_index_names()
 
         return list(dict.fromkeys([self.index_name, *sorted(self._index_list, reverse=True)]))
 
     @property
     def index_list(self):
-        """This property contains the list of valid indexes for the current collection.
+        """Return the active physical write index for this collection.
 
-        :return: list of valid indexes for this collection
+        Historical ILM rollover indexes are intentionally excluded. Bulk plans use this
+        list for default write, update, and delete targets, and widening it would fan those
+        operations out across historical indexes.
         """
         return [self.index_name]
+
+    def _get_ilm_index_names(self) -> list[str]:
+        """Return physical ILM rollover indexes, excluding temporary maintenance indexes."""
+        try:
+            indices = self.datastore.client.indices.get(
+                index=f"{self.name}-0*",
+                ignore_unavailable=True,
+            )
+        except elasticsearch.exceptions.NotFoundError:
+            return []
+
+        index_pattern = re.compile(rf"^{re.escape(self.name)}-\d{{6}}$")
+        return sorted(index for index in indices if index_pattern.fullmatch(index))
 
     def _refresh_ilm_index_name(self):
         """Set ``index_name`` to the latest existing ILM index, when one exists."""
         if not self.ilm_config:
             return
 
-        try:
-            ilm_indices = self.datastore.client.indices.get(
-                index=f"{self.name}-0*",
-                ignore_unavailable=True,
-            )
-        except elasticsearch.exceptions.NotFoundError:
-            return
+        ilm_indices = self._get_ilm_index_names()
 
         if ilm_indices:
-            self.index_name = sorted(ilm_indices)[-1]
+            self._index_list = ilm_indices
+            self.index_name = ilm_indices[-1]
 
     def scan_with_retry(
         self,
@@ -746,7 +761,7 @@ class ESCollection(Generic[ModelType]):
     def reindex(self, allow_failures: bool = False, request_timeout: int = 60):
         """Reindex all the data of the collection into a freshly mapped index.
 
-        For every index in ``self.index_list`` the data is copied into a temporary
+        For every physical index in ``self.index_list_full`` the data is copied into a temporary
         ``__reindex`` index that uses the current mappings/settings. Writes to the source
         index are blocked while the copy runs so the reindex result and document counts can
         be validated before the original index is deleted. The temporary index is only
@@ -767,7 +782,7 @@ class ESCollection(Generic[ModelType]):
         """
         logger.warning("Beginning Reindex")
         self._refresh_ilm_index_name()
-        for index in self.index_list:
+        for index in self.index_list_full:
             new_name = f"{index}__reindex"
             index_data = None
             source_count = None
@@ -815,7 +830,7 @@ class ESCollection(Generic[ModelType]):
                     self.datastore.client.indices.create,
                     index=new_name,
                     mappings=self._get_index_mappings(),
-                    settings=self._get_index_settings(),
+                    settings=self._get_reindex_settings(index_data),
                 )
 
                 # Reindex data into target
@@ -895,6 +910,14 @@ class ESCollection(Generic[ModelType]):
 
         return True
 
+    def _get_reindex_settings(self, index_data: dict) -> dict:
+        """Build settings for a reindex target without dropping ILM lifecycle metadata."""
+        settings = self._get_index_settings()
+        lifecycle = index_data.get("settings", {}).get("index", {}).get("lifecycle")
+        if lifecycle:
+            settings["index"]["lifecycle"] = deepcopy(lifecycle)
+        return settings
+
     def _validate_reindex_result(self, index, new_name, reindex_result, allow_failures):
         """Validate the result of an Elasticsearch reindex task.
 
@@ -971,7 +994,7 @@ class ESCollection(Generic[ModelType]):
     def reindex_cleanup(self):
         """Recover from a failed or interrupted :meth:`reindex` run.
 
-        For every index that still has a leftover ``__reindex`` index, restore the source
+        For every physical index that still has a leftover ``__reindex`` index, restore the source
         index's original aliases and delete the orphaned ``__reindex`` index. If the source
         index is missing, raise an error instead of deleting ``__reindex`` because it may
         be the only remaining copy of the data.
@@ -982,7 +1005,7 @@ class ESCollection(Generic[ModelType]):
         """
         logger.warning("Beginning reindex cleanup")
         self._refresh_ilm_index_name()
-        for index in self.index_list:
+        for index in self.index_list_full:
             new_name = f"{index}__reindex"
 
             if not self.with_retries(self.datastore.client.indices.exists, index=new_name):

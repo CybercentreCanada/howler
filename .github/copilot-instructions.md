@@ -450,3 +450,9 @@ For legacy collections, pass the collection alias through the `aliases` argument
 ### MCP Async Client Lifecycle
 
 `mcp.server.fastmcp.FastMCP` accepts an `@asynccontextmanager` `lifespan` callback. Use it to close long-lived async resources, such as `httpx.AsyncClient`, so cleanup occurs on the server's event loop. `HowlerApiClient` accepts an injected client but only closes clients it creates itself.
+
+---
+
+### ILM Reindex Index Discovery
+
+Reindex and cleanup must enumerate `index_list_full`, not `index_list`, so existing physical ILM rollover indices are handled even when ILM is currently disabled in configuration. Canonical rollover names are exactly `{collection}-NNNNNN`; exclude `__reindex` temporary indices from discovery and preserve source lifecycle metadata on the reindex target.

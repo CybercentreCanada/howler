@@ -29,6 +29,7 @@
 
 ## Howler API `v4.0.0`
 
+- **ILM Reindex Index Discovery** _(bugfix)_: Reindexing now migrates existing physical ILM rollover indices even when the current configuration no longer enables ILM, while preserving lifecycle metadata.
 - **ILM Reindex Alias Recovery** _(bugfix)_: Reconciled legacy collection aliases during ILM bootstrap, selected the active ILM backing index for maintenance reindexing, and prevented recovery from creating conflicting write aliases.
 - **Correlation Worker Test Isolation** _(bugfix)_: Isolated each API test run's HTTP endpoint, correlation queue, and datastore indices so parallel runs cannot consume or delete one another's records.
 - **ODM Inheritance and Plugin Support** _(new feature)_: Added compatibility shims and improved enum/model type handling, `id_field` validation, and caching so plugins can define ODM subclasses ([#331](https://github.com/CybercentreCanada/howler/pull/331)).

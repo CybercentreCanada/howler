@@ -232,12 +232,42 @@ class TestEnsureCollectionILM:
         mock_datastore.client.indices.get.return_value = {
             f"{col.name}-000001": {},
             f"{col.name}-000002": {},
+            f"{col.name}-000002__reindex": {},
         }
 
         col._refresh_ilm_index_name()
 
         assert col.index_name == f"{col.name}-000002"
         assert col.index_list_full == [f"{col.name}-000002", f"{col.name}-000001"]
+
+    def test_reindex_uses_discovered_ilm_indexes_when_ilm_is_disabled(self, mock_datastore):
+        """Reindex must migrate existing rollover indexes even if ILM is no longer configured."""
+        col = _make_collection(mock_datastore)
+        ilm_index_name = f"{col.name}-000001"
+
+        mock_datastore.client.indices.get.side_effect = [
+            {ilm_index_name: {}},
+            {ilm_index_name: {"aliases": {}}},
+        ]
+        mock_datastore.client.indices.exists.side_effect = [False, False, True, False, False, True]
+
+        with (
+            patch.object(col, "_index_doc_count", side_effect=[1, 1]),
+            patch.object(col, "_get_task_results", return_value={"failures": [], "version_conflicts": 0}),
+            patch.object(col, "_safe_index_copy"),
+        ):
+            assert col.reindex() is True
+
+        assert mock_datastore.client.reindex.call_args.kwargs["source"] == {"index": ilm_index_name}
+
+    def test_reindex_settings_preserve_ilm_lifecycle(self, mock_datastore):
+        """Reindex targets retain lifecycle settings from the physical source index."""
+        col = _make_collection(mock_datastore)
+        lifecycle = {"name": "howler-testcol_policy", "rollover_alias": col.name}
+
+        settings = col._get_reindex_settings({"settings": {"index": {"lifecycle": lifecycle}}})
+
+        assert settings["index"]["lifecycle"] == lifecycle
 
     def test_refresh_ilm_index_name_does_not_bootstrap_when_indices_are_missing(self, mock_datastore):
         """Maintenance probes tolerate missing ILM indexes without ensuring the collection."""
