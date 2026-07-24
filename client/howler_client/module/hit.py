@@ -2,7 +2,7 @@ import json
 import sys
 import warnings
 from hashlib import sha256
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, TypedDict
 
 from howler_client.common.dict_utils import flatten
 from howler_client.common.utils import ClientError, api_path
@@ -42,6 +42,14 @@ UPDATE_OPERATIONS = [
     UPDATE_SET,
     UPDATE_DELETE,
 ]
+
+
+class CreateHitsResponse(TypedDict):
+    """Response returned after successfully creating one or more hits."""
+
+    valid: list[dict[str, Any]]
+    invalid: list[dict[str, Any]]
+    warnings: list[str]
 
 
 class Hit(object):
@@ -147,7 +155,7 @@ class Hit(object):
         self: Self,
         data: dict[str, Any] | list[dict[str, Any]],
         ignore_extra_values: bool = False,
-    ):
+    ) -> CreateHitsResponse | None:
         """Create one or many hits using the howler schema.
 
         Args:
@@ -156,7 +164,7 @@ class Hit(object):
                 Defaults to False.
 
         Returns:
-            dict[str, list[dict[str, Any]]]: A list of valid and invalid hits
+            CreateHitsResponse | None: Created and invalid hits with warnings, or ``None`` when no hits are submitted
         """
         if not isinstance(data, list):
             data = [data]
