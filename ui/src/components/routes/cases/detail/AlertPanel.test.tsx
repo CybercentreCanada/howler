@@ -125,8 +125,8 @@ describe('AlertPanel', () => {
     const links = Array.from(container.querySelectorAll('a'));
 
     expect(links).toHaveLength(2);
-    expect(links[0]).toHaveAttribute('href', '/hits/hit-1');
-    expect(links[1]).toHaveAttribute('href', '/hits/hit-2');
+    expect(links[0]).toHaveAttribute('href', '/cases/case-3/hit-1');
+    expect(links[1]).toHaveAttribute('href', '/cases/case-3/hit-2');
   });
 
   it('shows pagination with multiple pages and switches to page 2 items', () => {
