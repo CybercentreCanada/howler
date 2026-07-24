@@ -14,7 +14,7 @@ const Created = forwardRef<any, { analytic: Analytic }>(({ analytic }, ref) => {
   const [loading, setLoading] = useState(false);
   const [ingestionData, setIngestionData] = useState<{ [timestamp: string]: number }>({});
 
-  const queryRef = useRef<Promise<HowlerHistogramSearchResponse>>();
+  const queryRef = useRef<Promise<HowlerHistogramSearchResponse> | null>(null);
 
   useEffect(() => {
     if (!analytic) {
@@ -52,10 +52,10 @@ const Created = forwardRef<any, { analytic: Analytic }>(({ analytic }, ref) => {
               x: new Date(time).getTime(),
               y: ingestionData[time]
             })),
-            borderColor: stringToColor(analytic?.name),
+            borderColor: stringToColor(analytic.name!),
             backgroundColor: 'transparent',
             pointBackgroundColor: Object.keys(ingestionData).map(time =>
-              ingestionData[time] ? stringToColor(analytic?.name) : 'transparent'
+              ingestionData[time] ? stringToColor(analytic.name!) : 'transparent'
             ),
             pointBorderWidth: Object.keys(ingestionData).map(time => (ingestionData[time] ? 2 : 0))
           }

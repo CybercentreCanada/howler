@@ -1,18 +1,18 @@
 import { act, renderHook } from '@testing-library/react';
 import type { HowlerSearchRequest } from 'api/search';
-import { useContext } from 'react';
 import SearchResponseProvider, {
-  SearchResponseContext,
-  type SearchResponseContextType,
+  createSearchResponseContext,
+  useSearchResponseContext,
   type SearchResponseState
 } from './SearchResponseProvider';
 
 const TEST_PAGE_SIZE = 25;
 const TEST_TOTAL_COUNT = 100;
+const SearchResponseContext = createSearchResponseContext<Item>();
 
 const makeWrapper = (initialResponse?: SearchResponseState<Item>) => {
   const Wrapper = ({ children }: { children: React.ReactNode }) => (
-    <SearchResponseProvider<Item> idField="id" initialResponse={initialResponse}>
+    <SearchResponseProvider<Item> context={SearchResponseContext} idField="id" initialResponse={initialResponse}>
       {children}
     </SearchResponseProvider>
   );
@@ -20,7 +20,7 @@ const makeWrapper = (initialResponse?: SearchResponseState<Item>) => {
 };
 
 const renderProvider = (initialResponse?: SearchResponseState<Item>) => {
-  return renderHook(() => useContext<SearchResponseContextType<Item>>(SearchResponseContext), {
+  return renderHook(() => useSearchResponseContext(SearchResponseContext), {
     wrapper: makeWrapper(initialResponse)
   });
 };

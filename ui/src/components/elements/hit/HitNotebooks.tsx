@@ -77,7 +77,7 @@ const HitNotebooks: FC<{ analytic: Analytic; selectedNotebook?: string; hit?: Hi
           body: `{"type":"notebook","content":${JSON.stringify(loadedNotebook.nb_content)}}`
         });
 
-        window.open(`${envs[0].url}lab/tree/${filename}`, '_blank');
+        window.open(`${envs[0]!.url}lab/tree/${filename}`, '_blank');
         setOpen(false);
       } catch {
         showErrorMessage(t('hit.notebook.error.failToPost'));
@@ -93,22 +93,22 @@ const HitNotebooks: FC<{ analytic: Analytic; selectedNotebook?: string; hit?: Hi
 
     //using fetch since we are going directly to jupyterhub
     try {
-      const response = await fetch(`${envs[0].url}api/contents/${nbFileName}`, FETCH_OPTIONS);
+      const response = await fetch(`${envs[0]!.url}api/contents/${nbFileName}`, FETCH_OPTIONS);
       if (response.status < 300) {
         // if it exists, we need to ask for overwrite
         showModal(
           <ConfirmNotebookModal
             onConfirm={() => {
-              void goToJupyhub(nbFileName, `${envs[0].url}post/${nbFileName}`);
+              void goToJupyhub(nbFileName, `${envs[0]!.url}post/${nbFileName}`);
             }}
           />
         );
       } else {
-        void goToJupyhub(nbFileName, `${envs[0].url}post/${nbFileName}`);
+        void goToJupyhub(nbFileName, `${envs[0]!.url}post/${nbFileName}`);
       }
     } catch {
       // error means notebook doesn't exist, we can proceed with posting
-      void goToJupyhub(nbFileName, `${envs[0].url}post/${nbFileName}`);
+      void goToJupyhub(nbFileName, `${envs[0]!.url}post/${nbFileName}`);
     }
 
     setLoading(false);
@@ -131,7 +131,7 @@ const HitNotebooks: FC<{ analytic: Analytic; selectedNotebook?: string; hit?: Hi
       try {
         const notebookResponse = await dispatchApi(
           api.notebook.post({
-            link: link ?? analytic?.notebooks.find(n => n.name === selectedNotebook).value,
+            link: link ?? analytic?.notebooks!.find(n => n.name === selectedNotebook)!.value!,
             analytic: analytic,
             ...(hit ? { hit: hit } : {})
           }),
@@ -193,13 +193,13 @@ const HitNotebooks: FC<{ analytic: Analytic; selectedNotebook?: string; hit?: Hi
                         }
                       }}
                       defaultValue={
-                        selectedNotebook ? analytic?.notebooks.find(n => n.name === selectedNotebook).value : ''
+                        selectedNotebook ? analytic?.notebooks!.find(n => n.name === selectedNotebook)!.value! : ''
                       }
                     >
                       <MenuItem disabled value="">
                         <em>{t('hit.notebook.select')}</em>
                       </MenuItem>
-                      {analytic?.notebooks.sort(safeStringPropertyCompare('detection')).map(e => (
+                      {analytic?.notebooks!.sort(safeStringPropertyCompare('detection')).map(e => (
                         <MenuItem value={e.value} key={e.value}>
                           <Stack direction={'row'} sx={{ width: '100%' }}>
                             {e.name}

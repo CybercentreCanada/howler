@@ -1,5 +1,3 @@
-import { type KeyboardEvent } from 'react';
-
 export const ENTER = 'Enter';
 export const ESCAPE = 'Escape';
 export const ARROW_LEFT = 'ArrowLeft';
@@ -45,7 +43,7 @@ export function isSpace(key: string) {
   return is(key, SPACE);
 }
 
-export function parseEvent(event: KeyboardEvent<HTMLElement>) {
+export function parseEvent(event: { key: string; ctrlKey: boolean }) {
   return {
     key: event.key,
     isCtrl: event.ctrlKey,

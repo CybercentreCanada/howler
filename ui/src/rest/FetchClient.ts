@@ -8,7 +8,7 @@ export default class FetchClient implements RestClient {
     body?: any,
     params?: URLSearchParams,
     headers?: HeadersInit
-  ): Promise<[HowlerResponse<R>, number, { [index: string]: any }]> {
+  ): Promise<[HowlerResponse<R>, number, { [index: string]: any }] | null> {
     const _url = `${url}${params ? `?${params.toString()}` : ''}`;
     const response = await fetch(_url, {
       method,

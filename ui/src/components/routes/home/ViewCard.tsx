@@ -4,6 +4,7 @@ import api from 'api';
 import type { SearchIndex } from 'api/v2/search';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
 import { useRecordContextSelector } from 'components/app/providers/RecordProvider';
+import type { RecordContextType } from 'components/app/providers/RecordProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import EventCard from 'components/elements/event/EventCard';
 import HitBanner from 'components/elements/hit/HitBanner';
@@ -21,15 +22,15 @@ import { convertDateToLucene } from 'utils/utils';
 import { buildViewUrl } from 'utils/viewUtils';
 
 // Custom hook to select records by IDs with proper memoization
-const useSelectRecordsByIds = (recordIds: string[]): Hit[] | Event[] => {
+const useSelectRecordsByIds = (recordIds: string[]): (Hit | Event)[] => {
   const recordIdsRef = useRef<string[]>(recordIds);
-  const prevResultRef = useRef<Hit[] | Event[]>([]);
+  const prevResultRef = useRef<(Hit | Event)[]>([]);
   const prevRecordIdsRef = useRef<string[]>([]);
 
   // Keep ref up to date with latest recordIds
   recordIdsRef.current = recordIds;
 
-  const selector = useCallback(ctx => {
+  const selector = useCallback((ctx: RecordContextType) => {
     const currentRecordIds = recordIdsRef.current;
 
     // Fast path: if recordIds array didn't change, check if record objects changed
@@ -70,8 +71,10 @@ const createRecordSignature = (record: Hit | Event) => {
   return `${record.howler?.id}:${normalize(record.howler?.status)}:${normalize(record.howler?.assignment)}:${normalize(record.howler?.assessment)}`;
 };
 
-const createSignatureFromRecords = (records: Hit[] | Event[]) => {
-  if (records.length === 0) return '';
+const createSignatureFromRecords = (records: (Hit | Event)[]) => {
+  if (records.length === 0) {
+    return '';
+  }
   return records.map(createRecordSignature).join('|');
 };
 
@@ -109,7 +112,7 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
   const refreshView = useCallback(async () => {
     if (!view?.query || isRefreshing.current) {
       onRefreshComplete?.();
-      return;
+      return '';
     }
 
     isRefreshing.current = true;
@@ -204,7 +207,7 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
     const selectedElement = target.closest('[id]') as HTMLElement;
 
     if (!selectedElement) {
-      return;
+      return '';
     }
 
     return selectedElement.id;
@@ -215,14 +218,14 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
       <Stack spacing={1} sx={{ p: 1, minHeight: 100 }}>
         <Stack direction="row" spacing={1} alignItems="center">
           <Typography variant="h6">
-            {t(view?.title) || <Skeleton variant="text" height="2em" width="100px" />}
+            {t(view?.title ?? '') || <Skeleton variant="text" height="2em" width="100px" />}
           </Typography>
           <IconButton
             size="small"
             component={Link}
             disabled={!view}
             to={view ? buildViewUrl(view) : ''}
-            onClick={() => onClick(view.query)}
+            onClick={() => onClick(view!.query!)}
           >
             <OpenInNew fontSize="small" />
           </IconButton>

@@ -460,3 +460,7 @@ Reindex and cleanup must enumerate `index_list_full`, not `index_list`, so exist
 ### ILM Collection Existence Checks
 
 Elasticsearch single-document `exists` requests cannot target an alias that resolves to multiple ILM rollover indexes. For ILM collections, use a zero-result `ids` search against the alias and derive existence from `hits.total`; retain the same search as a logged fallback when a legacy single-document check returns `BadRequestError`.
+
+### Generic React Contexts
+
+React context instances cannot safely vary a generic item type between provider instances. For generic providers such as `SearchResponseProvider`, create a typed context per consumer and pass it to the provider rather than casting a shared context.

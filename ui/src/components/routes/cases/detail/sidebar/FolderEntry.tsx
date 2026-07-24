@@ -106,7 +106,7 @@ const FolderEntry: FC<FolderEntryProps> = ({
 
   const isLink = to != null && !isDragging;
   const active = decodeURIComponent(location.pathname) === to;
-  const Icon = ICON_FOR_TYPE[entry?.type] ?? Folder;
+  const Icon = entry?.type ? (ICON_FOR_TYPE[entry.type] ?? Folder) : Folder;
 
   return (
     <Stack
@@ -155,7 +155,7 @@ const FolderEntry: FC<FolderEntryProps> = ({
             borderRadius: '5px',
             transition: theme.transitions.create('border-color')
           },
-          isOver && caseId && { borderColor: theme.palette.primary.main }
+          isOver && !!caseId && { borderColor: theme.palette.primary.main }
         ]}
       />
       <ChevronRight

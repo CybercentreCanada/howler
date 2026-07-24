@@ -21,7 +21,7 @@ export interface RecordContextType {
   getRecord: (id: string, force?: boolean) => Promise<WithMetadata<Hit | Event>>;
 }
 
-export const RecordContext = createContext<RecordContextType>(null);
+export const RecordContext = createContext<RecordContextType>(null!);
 
 /**
  * Central repository for storing individual hit data across the application. Allows efficient retrieval of hits across componenents.
@@ -99,7 +99,7 @@ const RecordProvider: FC<PropsWithChildren> = ({ children }) => {
   /**
    * Update a hit in the context locally
    */
-  const updateRecord = useCallback((newHit: Hit) => {
+  const updateRecord = useCallback((newHit: Hit | Event) => {
     recordRequests.current[newHit.howler.id] = Promise.resolve(newHit);
 
     setRecords(_hits => ({ ..._hits, [newHit.howler.id]: newHit }));
@@ -108,8 +108,8 @@ const RecordProvider: FC<PropsWithChildren> = ({ children }) => {
   /**
    * Add a large number of hits to the cache. Used for results of searches.
    */
-  const loadRecords = useCallback((newHits: Hit[]) => {
-    const mappedHits = newHits.map(hit => [hit.howler.id, hit] as [string, Hit]);
+  const loadRecords = useCallback((newHits: (Hit | Event)[]) => {
+    const mappedHits = newHits.map(hit => [hit.howler.id, hit] as [string, Hit | Event]);
 
     mappedHits.forEach(([id, hit]) => {
       recordRequests.current[id] = Promise.resolve(hit);
@@ -126,7 +126,7 @@ const RecordProvider: FC<PropsWithChildren> = ({ children }) => {
     setSelectedHitIds(_selected => _selected.filter(_id => _id !== id));
   }, []);
 
-  const clearSelectedRecords: RecordContextType['clearSelectedRecords'] = useCallback((except: string) => {
+  const clearSelectedRecords: RecordContextType['clearSelectedRecords'] = useCallback((except?: string) => {
     setSelectedHitIds(except ? [except] : []);
   }, []);
 

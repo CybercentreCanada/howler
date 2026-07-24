@@ -51,7 +51,8 @@ export const buildObservableEntries = (_case: Case, records: (Hit | Event)[]): O
       }
 
       const entry = map[key]!;
-      if (entry.sources.some(existingSource => existingSource.id === recordId)) {
+      const sources = (entry.sources ??= []);
+      if (sources.some(existingSource => existingSource.id === recordId)) {
         continue;
       }
 
@@ -60,7 +61,7 @@ export const buildObservableEntries = (_case: Case, records: (Hit | Event)[]): O
         continue;
       }
 
-      entry.sources.push(source);
+      sources.push(source);
     }
   }
 
@@ -126,7 +127,7 @@ export const classifyRole = (value: string, _case: Case, records: Partial<Hit | 
 };
 
 /** Resolve source metadata for an observable's record IDs */
-export const resolveSource = (record: Hit | Event, _case: Case): ObservableSource => {
+export const resolveSource = (record: Hit | Event, _case: Case): ObservableSource | null => {
   if (!_case?.items?.length) {
     return null;
   }

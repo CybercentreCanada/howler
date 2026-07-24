@@ -14,9 +14,9 @@ import AppSwitcher from 'commons/components/topnav/AppSwitcher';
 import { Notifications } from 'commons/components/topnav/Notifications';
 import ThemeSelectionIcon from 'commons/components/topnav/ThemeSelectionIcon';
 import UserProfile from 'commons/components/topnav/UserProfile';
-import { memo, useCallback, useLayoutEffect, useMemo } from 'react';
+import { memo, useCallback, useLayoutEffect, useMemo, type ReactNode } from 'react';
 
-export const AppBarBase = ({ children }) => {
+export const AppBarBase = ({ children }: { children: ReactNode }) => {
   const layout = useAppLayout();
   const configs = useAppConfigs();
   const appbar = useAppBar();
@@ -116,7 +116,7 @@ const AppBar = () => {
       <Toolbar
         disableGutters
         style={{
-          paddingLeft: !isXs && !isTopLayout ? muiTheme.spacing(2) : null,
+          paddingLeft: !isXs && !isTopLayout ? muiTheme.spacing(2) : undefined,
           paddingRight: muiTheme.spacing(1)
         }}
       >

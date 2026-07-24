@@ -34,18 +34,18 @@ const HitSort: FC<{ size?: 'small' | 'medium' }> = ({ size = 'small' }) => {
   const savedSort = useContextSelector(ParameterContext, ctx => ctx.sort);
   const setSavedSort = useContextSelector(ParameterContext, ctx => ctx.setSort);
 
-  const sortEntries = useMemo(() => savedSort.split(',').filter(part => !!part), [savedSort]);
+  const sortEntries = useMemo(() => savedSort?.split(',').filter(part => !!part) ?? [], [savedSort]);
 
   /**
    * The currently selected field when not using custom sorting
    */
-  const field = useMemo(() => (sortEntries.length === 1 ? sortEntries[0].split(' ')[0] : null), [sortEntries]);
+  const field = useMemo(() => (sortEntries.length === 1 ? sortEntries[0]!.split(' ')[0] : null), [sortEntries]);
 
   /**
    * The currently selected sorter when not using custom sorting
    */
   const sort = useMemo(
-    () => (sortEntries.length === 1 ? sortEntries[0].split(' ')[1] : null) as 'asc' | 'desc',
+    () => (sortEntries.length === 1 ? sortEntries[0]!.split(' ')[1] : null) as 'asc' | 'desc',
     [sortEntries]
   );
 
@@ -53,7 +53,7 @@ const HitSort: FC<{ size?: 'small' | 'medium' }> = ({ size = 'small' }) => {
    * Should the custom sorter be shown? Defaults to true if there's more than one sort field, or we're sorting on a field not supported by the default dropdown
    */
   const [showCustomSort, setShowCustomSort] = useState(
-    sortEntries.length > 1 || (sortEntries.length > 0 && !ACCEPTED_SORTS.includes(sortEntries[0]?.split(' ')[0]))
+    sortEntries.length > 1 || (sortEntries.length > 0 && !ACCEPTED_SORTS.includes(sortEntries[0]!.split(' ')[0]))
   );
 
   /**
@@ -63,7 +63,7 @@ const HitSort: FC<{ size?: 'small' | 'medium' }> = ({ size = 'small' }) => {
     (value: string) => {
       if (value === CUSTOM) {
         setShowCustomSort(true);
-      } else {
+      } else if (value) {
         setSavedSort(`${value} ${sort}`);
       }
     },
@@ -86,7 +86,7 @@ const HitSort: FC<{ size?: 'small' | 'medium' }> = ({ size = 'small' }) => {
   }, [getCurrentViews, views]);
 
   return (
-    <ChipPopper icon={<Sort fontSize="small" />} label={savedSort} slotProps={{ chip: { size: 'small' } }}>
+    <ChipPopper icon={<Sort fontSize="small" />} label={savedSort ?? ''} slotProps={{ chip: { size: 'small' } }}>
       {!showCustomSort ? (
         <Stack
           spacing={1}
@@ -104,7 +104,7 @@ const HitSort: FC<{ size?: 'small' | 'medium' }> = ({ size = 'small' }) => {
             getOptionLabel={option => (option === CUSTOM ? t('hit.search.custom') : option)}
             isOptionEqualToValue={(option, value) => option === value || (!value && option === ACCEPTED_SORTS[0])}
             renderInput={_params => <TextField {..._params} label={t('hit.search.sort.fields')} />}
-            onChange={(_, value) => handleChange(value)}
+            onChange={(_, value) => handleChange(value!)}
           />
           <Autocomplete
             fullWidth
@@ -112,7 +112,9 @@ const HitSort: FC<{ size?: 'small' | 'medium' }> = ({ size = 'small' }) => {
             sx={{ minWidth: '150px' }}
             value={sort}
             onChange={(_e, value) => {
-              setSavedSort(`${field} ${value as 'asc' | 'desc'}`);
+              if (field && value) {
+                setSavedSort(`${field} ${value as 'asc' | 'desc'}`);
+              }
             }}
             options={['asc', 'desc']}
             getOptionLabel={option => t(option)}

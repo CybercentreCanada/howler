@@ -40,7 +40,7 @@ const AnalyticDetails = () => {
   const { users, searchUsers } = useContext(UserListContext);
   const { config } = useContext(ApiConfigContext);
 
-  const [analytic, setAnalytic] = useState<Analytic>(null);
+  const [analytic, setAnalytic] = useState<Analytic>(null!);
   const [tab, setTab] = useState(searchParams.get('tab') ?? 'overview');
 
   const filteredContributors = useMemo(
@@ -49,7 +49,7 @@ const AnalyticDetails = () => {
   );
 
   useEffect(() => {
-    void dispatchApi(api.analytic.get(params.id) as Promise<Analytic>).then(setAnalytic);
+    void dispatchApi(api.analytic.get(params.id!) as Promise<Analytic>).then(setAnalytic);
   }, [dispatchApi, params.id]);
 
   const [filter, _setFilter] = useState<string | null>(searchParams.get('filter') ?? null);
@@ -66,7 +66,7 @@ const AnalyticDetails = () => {
 
   const onOwnerChange = useCallback(
     async ([ownerId]: string[]) => {
-      const result = await dispatchApi(api.analytic.owner.post(analytic.analytic_id, { username: ownerId }), {
+      const result = await dispatchApi(api.analytic.owner.post(analytic!.analytic_id!, { username: ownerId }), {
         throwError: true,
         showError: true
       });
@@ -142,21 +142,21 @@ const AnalyticDetails = () => {
                   marginLeft: `${theme.spacing(-1)} !important`,
                   marginRight: `${theme.spacing(-1)} !important`
                 }}
-                userIds={[analytic?.owner]}
+                userIds={analytic?.owner ? [analytic.owner] : []}
                 onChange={onOwnerChange}
                 i18nLabel="route.analytics.set.owner"
               />
               <Stack>
-                {users[analytic?.owner] ? (
+                {analytic?.owner && users[analytic.owner] ? (
                   <>
-                    <Typography variant="body1">{users[analytic?.owner].name}</Typography>
+                    <Typography variant="body1">{users[analytic.owner].name}</Typography>
                     <Typography
                       component="a"
-                      href={`mailto:${users[analytic?.owner].email}`}
+                      href={`mailto:${users[analytic.owner].email}`}
                       variant="caption"
                       color="text.secondary"
                     >
-                      {users[analytic?.owner].email}
+                      {users[analytic.owner].email}
                     </Typography>
                   </>
                 ) : (
@@ -202,7 +202,7 @@ const AnalyticDetails = () => {
                 options={analytic?.detections ?? []}
                 renderInput={param => <TextField {...param} label={t('route.analytics.dropdown.detection')} />}
                 value={filter}
-                onChange={(_, v) => setFilter(v)}
+                onChange={(_, v) => setFilter(v!)}
               />
             </Grid>
           )}

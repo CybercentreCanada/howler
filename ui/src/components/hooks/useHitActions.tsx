@@ -52,7 +52,7 @@ const useHitActions = (_hits: Hit | Hit[]) => {
   const canAssess = useMemo(
     () =>
       hits.every(
-        hit => !(['on-hold', 'resolved'].includes(hit?.howler.status) && hit?.howler.assignment === user.username)
+        hit => !(['on-hold', 'resolved'].includes(hit?.howler.status ?? '') && hit?.howler.assignment === user.username)
       ),
     [hits, user.username]
   );
@@ -64,11 +64,11 @@ const useHitActions = (_hits: Hit | Hit[]) => {
 
     const hit = hits[0];
 
-    return hit?.howler.votes.benign.includes(user.email)
+    return hit?.howler.votes?.benign?.includes(user.email!)
       ? 'benign'
-      : hit?.howler.votes.malicious.includes(user.email)
+      : hit?.howler.votes?.malicious?.includes(user.email!)
         ? 'malicious'
-        : hit?.howler.votes.obscure.includes(user.email)
+        : hit?.howler.votes?.obscure?.includes(user.email!)
           ? 'obscure'
           : '';
   }, [hits, user.email]);
@@ -85,7 +85,7 @@ const useHitActions = (_hits: Hit | Hit[]) => {
               skipSubmit
               ids={hits.map(hit => hit.howler.id)}
               assignment={
-                (hits.every(hit => hit.howler.assignment === hits[0].howler.assignment) &&
+                (hits.every(hit => hit.howler.assignment === hits[0]!.howler.assignment) &&
                   hits[0]?.howler.assessment) ||
                 'unassigned'
               }
@@ -115,11 +115,11 @@ const useHitActions = (_hits: Hit | Hit[]) => {
           await Promise.all(
             hits.map(async hit => {
               const _vote = () =>
-                api.hit.transition.post(hit?.howler.id, { transition: 'vote', data: { vote: v, email: user.email } });
+                api.hit.transition.post(hit.howler.id, { transition: 'vote', data: { vote: v, email: user.email } });
 
               const updatedHit: Hit = await dispatchApi(_vote(), {
                 onConflict: async () => {
-                  await api.hit.get(hit?.howler.id);
+                  await api.hit.get(hit.howler.id);
 
                   const newResult = await _vote();
 
@@ -141,7 +141,7 @@ const useHitActions = (_hits: Hit | Hit[]) => {
   );
 
   const assess = useCallback(
-    async (assessment: string, skipRationale = false, providedRationale = null) => {
+    async (assessment: string, skipRationale = false, providedRationale: string | null = null) => {
       const rationale = skipRationale
         ? (providedRationale ?? t('rationale.default', { assessment }))
         : await new Promise<string>(res => {
@@ -162,11 +162,11 @@ const useHitActions = (_hits: Hit | Hit[]) => {
 
             try {
               const update = () =>
-                api.hit.transition.post(hit?.howler.id, { transition: 'assess', data: { assessment, rationale } });
+                api.hit.transition.post(hit.howler.id, { transition: 'assess', data: { assessment, rationale } });
 
               const updatedHit = await dispatchApi(update(), {
                 onConflict: async () => {
-                  const updatedData = await api.hit.get(hit?.howler.id);
+                  const updatedData = await api.hit.get(hit.howler.id);
 
                   if (!updatedData.howler.assessment) {
                     const result = await update();
@@ -204,10 +204,10 @@ const useHitActions = (_hits: Hit | Hit[]) => {
 
         await Promise.all(
           hits.map(async hit => {
-            const update = () => api.hit.transition.post(hit?.howler.id, { transition, data });
+            const update = () => api.hit.transition.post(hit.howler.id, { transition, data });
             const updatedHit = await dispatchApi(update(), {
               onConflict: async () => {
-                const updatedData = await api.hit.get(hit?.howler.id);
+                const updatedData = await api.hit.get(hit.howler.id);
                 updateHit(updatedData);
                 showWarningMessage(t('hit.actions.conflict.manage'));
               }
@@ -232,12 +232,12 @@ const useHitActions = (_hits: Hit | Hit[]) => {
   const availableTransitions = useMemo(
     () =>
       MANAGE_OPTIONS.filter(option => {
-        const name = option.name.toLowerCase();
+        const name = option.name!.toLowerCase();
 
         // Is this option one that is valid for the current state?
         return hits.every(
           hit =>
-            config.config.lookups?.transitions[hit?.howler.status as TransitionStates]?.includes(name) &&
+            config.config.lookups?.transitions[hit.howler.status as TransitionStates]?.includes(name) &&
             // If we are assigning or voting, the hit can't be assigned to the current user
             ((name !== 'assign_to_me' && name !== 'vote') || hit?.howler.assignment !== user.username) &&
             // If we are running any of these actions, the current user must be assigned the hit
@@ -254,7 +254,7 @@ const useHitActions = (_hits: Hit | Hit[]) => {
             ...option,
             actionFunction: () => {
               if (!loading) {
-                void manage(option.name.toLowerCase());
+                void manage(option.name!.toLowerCase());
               }
             }
           }) as ActionButton

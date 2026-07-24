@@ -1,5 +1,5 @@
 import { Card, styled, useMediaQuery, useTheme } from '@mui/material';
-import { memo } from 'react';
+import { memo, type ReactNode } from 'react';
 
 const StyledCard = styled(Card)(({ theme }) => ({
   display: 'flex',
@@ -23,7 +23,7 @@ const StyledCard = styled(Card)(({ theme }) => ({
   }
 }));
 
-function PageCardCentered({ children }) {
+function PageCardCentered({ children }: { children: ReactNode }) {
   const theme = useTheme();
   const isXs = useMediaQuery(theme.breakpoints.only('xs'));
   return <StyledCard elevation={isXs ? 0 : 4}>{children}</StyledCard>;

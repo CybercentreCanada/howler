@@ -79,7 +79,7 @@ const AppTocElement: React.FC<AppTocElementProps> = ({ translation, item }) => {
   const location = useLocation();
   const { t } = useTranslation([translation]);
   const currentHash = location.hash && location.hash !== '' ? location.hash.substring(1) : null;
-  const active = currentHash && currentHash.startsWith(item.id) ? 'active' : null;
+  const active = currentHash && currentHash.startsWith(item.id) ? 'active' : undefined;
   const { user: currentUser } = useAppUser();
 
   return (

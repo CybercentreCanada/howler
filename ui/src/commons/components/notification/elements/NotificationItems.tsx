@@ -15,7 +15,7 @@ type NotificationListsProps = {
 };
 
 export const NotificationItems: FC<NotificationListsProps> = memo(
-  ({ notifications = [], handleLoading = () => null, pageSize = 10, ItemComponent = null, status = 'loading' }) => {
+  ({ notifications = [], handleLoading = () => null, pageSize = 10, ItemComponent, status = 'loading' }) => {
     const theme = useTheme();
 
     return status === 'loading' ? (

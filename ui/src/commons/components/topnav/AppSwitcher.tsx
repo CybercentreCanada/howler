@@ -17,7 +17,7 @@ import { memo, useCallback, useRef, useState } from 'react';
 
 const AppSwitcher = () => {
   const theme = useTheme();
-  const anchorRef = useRef();
+  const anchorRef = useRef<HTMLButtonElement>(null);
   const appSwitcher = useAppSwitcher();
   const [open, setOpen] = useState<boolean>(false);
   const isDarkTheme = theme.palette.mode === 'dark';
@@ -58,7 +58,7 @@ const AppSwitcher = () => {
                     <div key={`box-${i}`} style={{ width: '120px', padding: sp1, overflow: 'hidden' }}>
                       <Button
                         component={Link}
-                        target={a.newWindow ? '_blank' : null}
+                        target={a.newWindow ? '_blank' : undefined}
                         href={a.route}
                         key={`button-${i}`}
                         style={{ display: 'inherit', textDecoration: 'none', fontWeight: 400, color: 'inherit' }}
@@ -72,10 +72,10 @@ const AppSwitcher = () => {
                               isDarkTheme
                                 ? typeof a.img_d === 'string'
                                   ? a.img_d
-                                  : null
+                                  : undefined
                                 : typeof a.img_l === 'string'
                                   ? a.img_l
-                                  : null
+                                  : undefined
                             }
                             style={
                               a.img_d === null || typeof a.img_d === 'string'

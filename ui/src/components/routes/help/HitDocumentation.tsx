@@ -55,12 +55,14 @@ const HitDocumentation: FC = () => {
           />
         </HelpTabs>
         <Box>
-          {{
-            header: () => <HitBannerDocumentation />,
-            links: () => <HitLinksDocumentation />,
-            labels: () => <HitLabelsDocumentation />,
-            schema: () => <HitSchemaDocumentation />
-          }[tab]()}
+          {(
+            {
+              header: () => <HitBannerDocumentation />,
+              links: () => <HitLinksDocumentation />,
+              labels: () => <HitLabelsDocumentation />,
+              schema: () => <HitSchemaDocumentation />
+            } as Record<string, () => JSX.Element>
+          )[tab]()}
         </Box>
       </Stack>
     </PageCenter>

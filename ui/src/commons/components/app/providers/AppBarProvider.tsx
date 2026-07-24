@@ -27,7 +27,7 @@ export default function AppBarProvider({ search, notification, children }: AppTo
   const context = useMemo(
     () => ({
       show,
-      autoHide: configs.preferences.allowAutoHideTopbar && autoHide,
+      autoHide: !!(configs.preferences.allowAutoHideTopbar && autoHide),
       setShow,
       setAutoHide,
       toggleAutoHide: () => setAutoHide(!autoHide)

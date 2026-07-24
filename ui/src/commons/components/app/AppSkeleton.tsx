@@ -181,7 +181,7 @@ const SideLayoutSkeleton = () => {
           </StyledContentLeft>
           <StyledContentRight>
             <AppBarBase>
-              <Toolbar disableGutters style={{ paddingRight: sp2, paddingLeft: !isXs ? sp2 : null }}>
+              <Toolbar disableGutters style={{ paddingRight: sp2, paddingLeft: !isXs ? sp2 : undefined }}>
                 {isXs && (
                   <ButtonSkeleton
                     withText={leftnav.open}

@@ -161,19 +161,20 @@ const getEtagUrl = (_uri: string): string => {
 export const hfetch = async <R>(
   _uri: string,
   method: 'get' | 'post' | 'put' | 'delete' | 'patch' = 'get',
-  body?: any,
+  body?: unknown,
   searchParams?: URLSearchParams,
   requestHeaders?: HeadersInit
 ): Promise<R> => {
-  const authToken = getLocalStored(StorageKey.APP_TOKEN);
-  const etags = getSessionStored(StorageKey.ETAG) || {};
+  const authToken = getLocalStored<string>(StorageKey.APP_TOKEN);
+  const xsrfToken = getXSRFCookie();
+  const etags = getSessionStored<Record<string, string>>(StorageKey.ETAG) || {};
   const currentObject = etags[getEtagUrl(_uri)] || null;
 
   requestHeaders = {
     ...requestHeaders,
     ...(currentObject && setHeaders(currentObject)),
     'Content-Type': 'application/json',
-    'X-XSRF-TOKEN': getXSRFCookie()
+    ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {})
   };
 
   if (authToken) {
@@ -194,7 +195,7 @@ export const hfetch = async <R>(
   }
 
   if (!json) {
-    return null;
+    return null as R;
   }
 
   // Did it work?
@@ -208,11 +209,11 @@ export const hfetch = async <R>(
       setLocalStored(StorageKey.NEXT_SEARCH, window.location.search);
     }
 
-    if (!_uri.includes('/auth/login') && getLocalStored(StorageKey.REFRESH_TOKEN)) {
+    const refreshToken = getLocalStored<string>(StorageKey.REFRESH_TOKEN);
+    const provider = getLocalStored<string>(StorageKey.PROVIDER);
+    if (!_uri.includes('/auth/login') && refreshToken && provider) {
       //Refresh access token if possible
       //And re-execute the previous api call (seamless)
-      const refreshToken: string = getLocalStored(StorageKey.REFRESH_TOKEN);
-      const provider: string = getLocalStored(StorageKey.PROVIDER);
       const refreshResponse = await api.auth.login.post({ refresh_token: refreshToken, provider: provider });
 
       if (refreshResponse) {
@@ -231,7 +232,7 @@ export const hfetch = async <R>(
     if (window.location.pathname !== '/login') {
       window.location.pathname = '/login';
     }
-    return;
+    return undefined as R;
   }
 
   // Throw it back.
@@ -266,7 +267,7 @@ export const hget = <R = any>(_uri: string, searchParams?: URLSearchParams, head
  */
 export const hpost = <R = any>(
   _uri: string,
-  body: any,
+  body: unknown,
   headers: HeadersInit = {},
   searchParams?: URLSearchParams
 ): Promise<R> => {
@@ -284,7 +285,7 @@ export const hpost = <R = any>(
  */
 export const hput = <R = any>(
   _uri: string,
-  body: any,
+  body: unknown,
   headers: HeadersInit = {},
   searchParams?: URLSearchParams
 ): Promise<R> => {
@@ -302,7 +303,7 @@ export const hput = <R = any>(
  */
 export const hpatch = <R = any>(
   _uri: string,
-  body: any,
+  body: unknown,
   headers: HeadersInit = {},
   searchParams?: URLSearchParams
 ): Promise<R> => {
@@ -319,7 +320,7 @@ export const hpatch = <R = any>(
  */
 export const hdelete = <R = any>(
   _uri: string,
-  body = null,
+  body: unknown = null,
   headers: HeadersInit = {},
   searchParams?: URLSearchParams
 ): Promise<R> => {

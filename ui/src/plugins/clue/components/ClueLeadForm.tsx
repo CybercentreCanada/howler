@@ -21,21 +21,21 @@ const ClueLeadForm: FC<LeadFormProps> = ({ lead, metadata, update, updateMetadat
         disabled={!lead}
         options={Object.keys(fetchers)}
         renderInput={params => <TextField {...params} size="small" label={t('route.dossiers.manager.clue')} />}
-        value={Object.keys(fetchers).includes(lead?.content) ? lead.content : null}
-        onChange={(_ev, content) => update({ content, metadata: '{}' })}
+        value={lead?.content && Object.keys(fetchers).includes(lead.content) ? lead.content : null}
+        onChange={(_ev, content) => update({ content: content ?? undefined, metadata: '{}' })}
         renderOption={({ key, ...props }, option) => (
           <ListItemText
             key={key}
             {...(props as any)}
             sx={{ flexDirection: 'column', alignItems: 'start !important' }}
             primary={<code>{option}</code>}
-            secondary={fetchers[option].description}
+            secondary={fetchers[option]!.description}
           />
         )}
       />
       <Autocomplete
         options={
-          fetchers[lead?.content]?.supported_types ??
+          fetchers[lead?.content ?? '']?.supported_types ??
           uniq(Object.values(fetchers).flatMap(fetcher => fetcher.supported_types))
         }
         renderInput={params => <TextField {...params} size="small" label={t('route.dossiers.manager.clue.type')} />}

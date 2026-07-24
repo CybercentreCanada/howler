@@ -98,17 +98,23 @@ const DossierEditor: FC = () => {
 
       if (!lead.format) {
         // You have not set the format for the lead with label <label>
-        return t('route.dossiers.manager.validation.error.leads.format', { label: lead.label[i18n.language] });
+        return t('route.dossiers.manager.validation.error.leads.format', {
+          label: lead.label[i18n.language as 'en' | 'fr']
+        });
       }
 
       if (!lead.content) {
         // You have not set the content for the lead with label <label>
-        return t('route.dossiers.manager.validation.error.leads.content', { label: lead.label[i18n.language] });
+        return t('route.dossiers.manager.validation.error.leads.content', {
+          label: lead.label[i18n.language as 'en' | 'fr']
+        });
       }
 
       if (!lead.icon || !iconExists(lead.icon)) {
         // You are missing an icon, or the specified icon does not exist for lead with label <label>
-        return t('route.dossiers.manager.validation.error.leads.icon', { label: lead.label[i18n.language] });
+        return t('route.dossiers.manager.validation.error.leads.icon', {
+          label: lead.label[i18n.language as 'en' | 'fr']
+        });
       }
     }
 
@@ -130,17 +136,23 @@ const DossierEditor: FC = () => {
 
       if (!pivot.format) {
         // You have not set the format for the pivot with label <label>
-        return t('route.dossiers.manager.validation.error.pivots.format', { label: pivot.label[i18n.language] });
+        return t('route.dossiers.manager.validation.error.pivots.format', {
+          label: pivot.label[i18n.language as 'en' | 'fr']
+        });
       }
 
       if (!pivot.value) {
         // You have not set the value for the pivot with label <label>
-        return t('route.dossiers.manager.validation.error.pivots.value', { label: pivot.label[i18n.language] });
+        return t('route.dossiers.manager.validation.error.pivots.value', {
+          label: pivot.label[i18n.language as 'en' | 'fr']
+        });
       }
 
       if (!pivot.icon || !iconExists(pivot.icon)) {
         // You are missing an icon, or the specified icon does not exist for pivot with label <label>
-        return t('route.dossiers.manager.validation.error.pivots.icon', { label: pivot.label[i18n.language] });
+        return t('route.dossiers.manager.validation.error.pivots.icon', {
+          label: pivot.label[i18n.language as 'en' | 'fr']
+        });
       }
 
       if (!pivot.mappings || pivot.mappings.length < 1) {
@@ -149,17 +161,23 @@ const DossierEditor: FC = () => {
 
       if ((pivot.mappings ?? []).length !== uniqBy(pivot.mappings ?? [], 'key').length) {
         // You have a duplicate for pivot with label <label>
-        return t('route.dossiers.manager.validation.error.pivots.duplicate', { label: pivot.label[i18n.language] });
+        return t('route.dossiers.manager.validation.error.pivots.duplicate', {
+          label: pivot.label[i18n.language as 'en' | 'fr']
+        });
       }
 
       if (pivot.mappings?.some(mapping => !mapping.key)) {
         // You have not configured a key for a mapping for pivot with label <label>
-        return t('route.dossiers.manager.validation.error.pivots.key', { label: pivot.label[i18n.language] });
+        return t('route.dossiers.manager.validation.error.pivots.key', {
+          label: pivot.label[i18n.language as 'en' | 'fr']
+        });
       }
 
       if (pivot.mappings?.some(mapping => !mapping.field || (mapping.field === 'custom' && !mapping.custom_value))) {
         // You have not configured a field or custom value for a mapping for pivot with label <label>
-        return t('route.dossiers.manager.validation.error.pivots.field', { label: pivot.label[i18n.language] });
+        return t('route.dossiers.manager.validation.error.pivots.field', {
+          label: pivot.label[i18n.language as 'en' | 'fr']
+        });
       }
     }
 
@@ -174,9 +192,9 @@ const DossierEditor: FC = () => {
         const result = await dispatchApi(api.dossier.post(dossier));
 
         showSuccessMessage(t('route.dossiers.manager.create.success'));
-        navigate(`/dossiers/${result.dossier_id}/edit`);
+        navigate(`/dossiers/${result.dossier_id!}/edit`);
       } else {
-        setDossier(await dispatchApi(api.dossier.put(dossier.dossier_id, omit(dossier, ['dossier_id', 'id']))));
+        setDossier(await dispatchApi(api.dossier.put(dossier.dossier_id!, omit(dossier, ['dossier_id', 'id']))));
         showSuccessMessage(t('route.dossiers.manager.edit.success'));
       }
     } finally {
@@ -210,7 +228,7 @@ const DossierEditor: FC = () => {
       setLoading(true);
 
       try {
-        const result = await dispatchApi(api.search.hit.post({ query: dossier.query, rows: 0 }));
+        const result = await dispatchApi(api.search.hit.post({ query: dossier.query!, rows: 0 }));
 
         setSearchTotal(result.total);
       } finally {
@@ -300,7 +318,7 @@ const DossierEditor: FC = () => {
                 onChange={(_val, isDirty) => setSearchDirty(isDirty)}
                 triggerSearch={query => setDossier(_dossier => ({ ..._dossier, query }))}
               />
-              {searchTotal >= 0 && <QueryResultText count={searchTotal} query={dossier.query} />}
+              {searchTotal >= 0 && <QueryResultText count={searchTotal} query={dossier.query!} />}
             </Stack>
           </Paper>
           <Tabs value={tab} onChange={(_ev, value) => setTab(value)}>

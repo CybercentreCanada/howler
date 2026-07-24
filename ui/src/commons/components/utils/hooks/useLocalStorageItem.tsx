@@ -16,7 +16,7 @@ import { useEffect, useMemo, useState } from 'react';
  */
 export default function useLocalStorageItem<T>(key: string, initialValue?: T): [T, (value: T) => void, () => void] {
   const { get, set, has, remove } = useLocalStorage();
-  const [value, setValue] = useState<T>(get(key) ?? initialValue);
+  const [value, setValue] = useState<T>((get(key) ?? initialValue) as T);
 
   useEffect(() => {
     if (initialValue !== null && initialValue !== undefined && !has(key)) {

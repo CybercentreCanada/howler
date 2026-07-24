@@ -1,5 +1,6 @@
 import type { PaginationProps } from '@mui/material';
 import { Pagination } from '@mui/material';
+import type { ChangeEvent } from 'react';
 import { useCallback } from 'react';
 
 type SearchPaginationProps = Omit<PaginationProps, 'onChange'> & {
@@ -19,7 +20,7 @@ const SearchPagination = ({
   ...paginationProps
 }: SearchPaginationProps) => {
   const onPageChange = useCallback(
-    (_event, nextPage) => {
+    (_event: ChangeEvent<unknown>, nextPage: number) => {
       onChange(nextPage === 1 ? 0 : (nextPage - 1) * limit);
     },
     [limit, onChange]

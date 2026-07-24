@@ -46,7 +46,7 @@ const AnalyticNotebooks: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => 
     setLoading(true);
     try {
       const result = await dispatchApi(
-        api.analytic.notebooks.post(analytic.analytic_id, { ...formState, value: formState.link }),
+        api.analytic.notebooks.post(analytic.analytic_id!, { ...formState, value: formState.link }),
         {
           showError: true,
           throwError: false,
@@ -70,9 +70,9 @@ const AnalyticNotebooks: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => 
 
   const onDelete = useCallback(
     async (id: string) => {
-      await dispatchApi(api.analytic.notebooks.del(analytic.analytic_id, [id]));
+      await dispatchApi(api.analytic.notebooks.del(analytic.analytic_id!, [id]));
 
-      setAnalytic({ ...analytic, notebooks: analytic.notebooks.filter(n => n.id !== id) });
+      setAnalytic({ ...analytic, notebooks: (analytic.notebooks ?? []).filter(n => n.id !== id) });
     },
     [analytic, dispatchApi, setAnalytic]
   );
@@ -155,7 +155,7 @@ const AnalyticNotebooks: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => 
           <Stack direction="row" alignItems="center" spacing={1}>
             <HowlerAvatar
               sx={{ width: 24, height: 24, marginRight: '8px !important', marginLeft: '8px !important' }}
-              userId={n.user}
+              userId={n.user!}
             />
             <Stack>
               <Stack direction="row" alignItems="center" spacing={1}>
@@ -167,10 +167,10 @@ const AnalyticNotebooks: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => 
             </Stack>
             <FlexOne />
             <Typography variant="caption">{n.detection ?? ''}</Typography>
-            <HitNotebooks analytic={analytic} selectedNotebook={n.name} />
+            <HitNotebooks analytic={analytic} selectedNotebook={n.name!} />
             {(n?.user === user.username || user.roles?.includes('admin')) && (
               <Tooltip title={'Remove'}>
-                <IconButton onClick={() => onDelete(n.id)}>
+                <IconButton onClick={() => onDelete(n.id!)}>
                   <Delete />
                 </IconButton>
               </Tooltip>

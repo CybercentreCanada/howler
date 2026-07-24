@@ -2,18 +2,23 @@ import api from 'api';
 import useMyApi from 'components/hooks/useMyApi';
 import type { FC, PropsWithChildren } from 'react';
 import { createContext, useCallback } from 'react';
+import { missingContext } from './contextUtils';
 
 interface AvatarContextType {
   getAvatar: (id: string) => Promise<string>;
 }
 
-export const AvatarContext = createContext<AvatarContextType>(null);
+const DEFAULT_AVATAR_CONTEXT: AvatarContextType = {
+  getAvatar: () => missingContext('AvatarContext')
+};
+
+export const AvatarContext = createContext<AvatarContextType>(DEFAULT_AVATAR_CONTEXT);
 
 /**
  * Because of the nature of requesting avatars, there's often LOTS of requests firing off in rapid succession,
  * too quickly for React to react (pardon the pun). To circumvent this, we just use a global object to remove race conditions.
  */
-const promises: { [index: string]: Promise<string> } = {};
+const promises: { [index: string]: Promise<string> | undefined } = {};
 
 const AvatarProvider: FC<PropsWithChildren> = ({ children }) => {
   const { dispatchApi } = useMyApi();

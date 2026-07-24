@@ -9,11 +9,11 @@ export type DispatchApiConfig = {
   onConflict?: () => Promise<void>;
 };
 
-const DEFAULT_CONFIG = {
+const DEFAULT_CONFIG: DispatchApiConfig = {
   throwError: true,
   logError: false,
   showError: true,
-  onConflict: null
+  onConflict: undefined
 };
 
 const useMyApi = () => {
@@ -29,8 +29,8 @@ const useMyApi = () => {
       } catch (error) {
         if (error instanceof Error) {
           if (onConflict && [409, 412].includes((error.cause as HowlerResponse<any>)?.api_status_code)) {
-            onConflict();
-            return null;
+            void onConflict();
+            return null as R;
           }
 
           if (showError) {
@@ -47,7 +47,7 @@ const useMyApi = () => {
           }
         }
 
-        return null;
+        return null as R;
       }
     },
     [showErrorMessage]

@@ -51,6 +51,10 @@ describe('FetchClient', () => {
     const payload = { api_response: { items: [] } };
     mockFetch(200, payload);
     const result = await client.fetch('/api/v1/hit');
+    if (!result) {
+      throw new Error('Expected a response body.');
+    }
+
     expect(result[0]).toEqual(payload);
     expect(result[1]).toBe(200);
   });

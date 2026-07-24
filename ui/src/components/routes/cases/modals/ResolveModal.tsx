@@ -97,7 +97,7 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
 
   const [loading, setLoading] = useState(true);
   const [rationale, setRationale] = useState('');
-  const [assessment, setAssessment] = useState(null);
+  const [assessment, setAssessment] = useState<Hit['howler']['assessment'] | null>(null);
   const [allowUnresolvedHits, setAllowUnresolvedHits] = useState(false);
   const [selectedHitIds, setSelectedHitIds] = useState<Set<string>>(new Set());
 
@@ -107,14 +107,14 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
         (_case?.items ?? [])
           .filter(item => item.type === 'hit')
           .map(item => item.value)
-          .filter(Boolean)
+          .filter(Boolean) as string[]
       ),
     [_case?.items]
   );
 
   const loadRecords = useContextSelector(RecordContext, ctx => ctx.loadRecords);
   const records = useContextSelector(RecordContext, ctx => ctx.records);
-  const hits = useMemo(() => hitIds.map(id => records[id] as Hit).filter(Boolean), [hitIds, records]);
+  const hits = useMemo(() => hitIds.map(id => records[id] as Hit).filter(Boolean) as Hit[], [hitIds, records]);
 
   const selectedHits = useMemo(() => hits.filter(hit => selectedHitIds.has(hit.howler.id)), [hits, selectedHitIds]);
   const { assess } = useHitActions(selectedHits);
@@ -153,7 +153,7 @@ const ResolveModal: FC<{ case: Case; onConfirm: () => void }> = ({ case: _case, 
     setSelectedHitIds(new Set());
 
     try {
-      await assess(assessment, true, rationale);
+      await assess(assessment!, true, rationale);
     } finally {
       setLoading(false);
     }

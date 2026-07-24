@@ -10,7 +10,15 @@ import {
   type TextFieldProps
 } from '@mui/material';
 import { parseEvent } from 'commons/components/utils/keyboard';
-import { type ChangeEvent, type KeyboardEvent, type ReactElement, useEffect, useRef, useState } from 'react';
+import {
+  type ChangeEvent,
+  type KeyboardEvent,
+  type ReactElement,
+  type SyntheticEvent,
+  useEffect,
+  useRef,
+  useState
+} from 'react';
 import type { PhraseAnalysis, PhraseSuggester } from '.';
 import type PhraseLexer from './PhraseLexer';
 import WordLexer from './word/WordLexer';
@@ -42,9 +50,9 @@ const Phrase = ({
   onKeyDown,
   ...props
 }: PhraseProps) => {
-  const containerRef = useRef<HTMLDivElement>();
-  const inputRef = useRef<HTMLDivElement>();
-  const menuRef = useRef<HTMLUListElement>();
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLDivElement | null>(null);
+  const menuRef = useRef<HTMLUListElement | null>(null);
   const lexerRef = useRef<PhraseLexer>(lexer || new WordLexer());
   const analysisRef = useRef<PhraseAnalysis>();
   const suggesterRef = useRef<PhraseSuggester>(suggester || new WordSuggestor(suggestions));
@@ -56,16 +64,16 @@ const Phrase = ({
   }, [suggester, suggestions]);
 
   const lex = (inputValue: string, offset = 0): PhraseAnalysis => {
-    let cursor = inputRef.current.querySelector('input').selectionStart + offset;
+    let cursor = inputRef.current!.querySelector('input')!.selectionStart! + offset;
     cursor = cursor < 0 ? 0 : cursor > inputValue.length ? inputValue.length : cursor;
     analysisRef.current = lexerRef.current.parse(inputValue, cursor);
     return analysisRef.current;
   };
 
   const onWordClick = (word: string) => {
-    const { suggest } = analysisRef.current;
+    const { suggest } = analysisRef.current!;
 
-    const inputEl = inputRef.current.querySelector('input');
+    const inputEl = inputRef.current!.querySelector('input')!;
 
     // NOTE: this is the only thing that works well with UNDO/REDO
     // NOTE: the 'deprecated' insertText has no proper replacement to support this yet.
@@ -92,7 +100,7 @@ const Phrase = ({
     const { isEnter, isCtrl, isSpace, isEscape, isArrowDown } = parsedEvent;
     if (isArrowDown) {
       event.preventDefault(); // prevent native scroll.
-      menuRef.current.focus(); // ensure suggestion menu gets focus.
+      menuRef.current!.focus(); // ensure suggestion menu gets focus.
     } else if (isCtrl && isSpace) {
       setOptionsOpen(true);
       _suggest(value);
@@ -100,23 +108,23 @@ const Phrase = ({
       setOptionsOpen(!optionsOpen);
     }
     if (isEnter && optionsOpen && options.length === 1) {
-      onWordClick(options[0]);
+      onWordClick(options[0]!);
       event.preventDefault();
     } else if (onKeyDown) {
       onKeyDown(parsedEvent);
     }
   };
 
-  const _onSelectCapture = event => {
+  const _onSelectCapture = (event: SyntheticEvent<HTMLInputElement>) => {
     if (optionsOpen) {
-      _suggest(event.target.value);
+      _suggest((event.target as HTMLInputElement).value);
     }
   };
 
   const _onMenuKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     const { isEscape } = parseEvent(event);
     if (isEscape) {
-      inputRef.current.focus();
+      inputRef.current!.focus();
       setOptionsOpen(false);
     }
   };
@@ -143,7 +151,9 @@ const Phrase = ({
         <Popper
           anchorEl={containerRef.current}
           style={{ width: '100%', zIndex: 100 }}
-          open={optionsOpen && (options.length > 0 || (debug && analysisRef.current?.tokens.length > 0))}
+          open={
+            optionsOpen && (options.length > 0 || (debug === true && (analysisRef.current?.tokens?.length ?? 0) > 0))
+          }
           disablePortal
         >
           <Paper

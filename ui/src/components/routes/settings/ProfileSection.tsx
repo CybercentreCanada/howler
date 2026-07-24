@@ -13,10 +13,10 @@ import SettingsSection from './SettingsSection';
 
 const ProfileSection: FC<{
   user: HowlerUser;
-  editName?: (value: string) => Promise<void>;
+  editName?: (value: string | null) => Promise<void>;
   addRole?: (role: string) => Promise<void>;
   removeRole?: (role: string) => Promise<void>;
-  viewGroups: () => Promise<void>;
+  viewGroups?: () => Promise<void>;
 }> = ({ user, editName, addRole, removeRole, viewGroups }) => {
   const { t } = useTranslation();
   const { config } = useContext(ApiConfigContext);
@@ -52,7 +52,7 @@ const ProfileSection: FC<{
   const onViewGroups = useCallback(async () => {
     setLoadingGroups(true);
     try {
-      await viewGroups();
+      await viewGroups!();
     } finally {
       setLoadingGroups(false);
     }
@@ -66,7 +66,7 @@ const ProfileSection: FC<{
           {user?.username}
         </TableCell>
       </TableRow>
-      <EditRow titleKey="page.settings.profile.table.name" value={user?.name} onEdit={editName} />
+      <EditRow titleKey="page.settings.profile.table.name" value={user?.name ?? ''} onEdit={editName} />
       <TableRow>
         <TableCell style={{ whiteSpace: 'nowrap' }}>{t('page.settings.profile.table.email')}</TableCell>
         <TableCell width="100%" colSpan={2}>
@@ -115,15 +115,15 @@ const ProfileSection: FC<{
                     ) : addRole && !user?.roles?.includes(r) ? (
                       <Add />
                     ) : user?.roles?.includes(r) ? (
-                      removeRole ? null : (
+                      removeRole ? undefined : (
                         <Check />
                       )
                     ) : (
                       <Clear />
                     )
                   }
-                  onClick={addRole && !user?.roles?.includes(r) ? () => wrapChange(r, addRole) : null}
-                  onDelete={removeRole && user?.roles?.includes(r) ? () => wrapChange(r, removeRole) : null}
+                  onClick={addRole && !user?.roles?.includes(r) ? () => wrapChange(r, addRole) : undefined}
+                  onDelete={removeRole && user?.roles?.includes(r) ? () => wrapChange(r, removeRole) : undefined}
                 />
               </Grid>
             ))}

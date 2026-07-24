@@ -54,9 +54,9 @@ const Home: FC = () => {
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [updatedHitTotal, setUpdatedHitTotal] = useState(0);
-  const [dashboard, setStateDashboard] = useState(user.dashboard ?? []);
+  const [dashboard, setStateDashboard] = useState<NonNullable<HowlerUser['dashboard']>>(user.dashboard ?? []);
   const [refreshRate, setRefreshRate] = useState(user.refresh_rate ?? 15);
-  const [refreshTick, setRefreshTick] = useState<symbol | null>(null);
+  const [refreshTick, setRefreshTick] = useState<symbol | undefined>(undefined);
   const viewRefreshRef = useRef<ViewRefreshHandle>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -66,7 +66,7 @@ const Home: FC = () => {
     [lastViewed, user.username]
   );
 
-  const getIdFromEntry = useCallback((entry: HowlerUser['dashboard'][0]) => {
+  const getIdFromEntry = useCallback((entry: NonNullable<HowlerUser['dashboard']>[0]) => {
     const settings = JSON.parse(entry.config);
 
     if (entry.type === 'analytic') {
@@ -79,7 +79,7 @@ const Home: FC = () => {
   }, []);
 
   const setLocalDashboard = useCallback((_dashboard: HowlerUser['dashboard']) => {
-    setStateDashboard(_dashboard);
+    setStateDashboard(_dashboard ?? []);
   }, []);
 
   const handleRefreshComplete = useCallback(() => {
@@ -127,7 +127,7 @@ const Home: FC = () => {
   }, [dashboard, setDashboard, setUser, user]);
 
   const discardChanges = useCallback(() => {
-    setStateDashboard(user.dashboard);
+    setStateDashboard(user.dashboard ?? []);
     setIsEditing(false);
   }, [user.dashboard]);
 
@@ -135,7 +135,7 @@ const Home: FC = () => {
     (event: DragEndEvent) => {
       const { active, over } = event;
 
-      if (active.id !== over.id) {
+      if (over && active.id !== over.id) {
         const oldIndex = (dashboard ?? []).findIndex(entry => getIdFromEntry(entry) === active.id);
         const newIndex = (dashboard ?? []).findIndex(entry => getIdFromEntry(entry) === over.id);
 

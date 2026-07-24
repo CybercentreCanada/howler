@@ -18,8 +18,8 @@ const useMySearch = (): AppSearchService<Hit> => {
 
   return useMemo(
     () => ({
-      onEnter: async (value: string, state: AppSearchServiceState<Hit>) => {
-        state.set({ ...state, searching: true });
+      onEnter: async (value: string, state?: AppSearchServiceState<Hit>) => {
+        state!.set({ ...state!, searching: true });
         //dispatchApi not available here since snackbarProvider isn't initialised yet
 
         try {
@@ -32,21 +32,21 @@ const useMySearch = (): AppSearchService<Hit> => {
               `howler.detection:*${sanitizedValue}* OR howler.status:*${sanitizedValue}*`
           });
 
-          state.set({
-            ...state,
+          state!.set({
+            ...state!,
             searching: false,
-            result: null,
+            result: undefined,
             items: searchResult.items.map(r => ({ id: r.howler.id, item: r }))
           });
         } catch {
-          state.set({ ...state, searching: false, result: { error: true }, items: null });
+          state!.set({ ...state!, searching: false, result: { error: true }, items: [] });
         }
       },
       onItemSelect: ({ item }) => {
         navigate(`/hits/${item.howler.id}`);
       },
       headerRenderer: (state: AppSearchServiceState<Hit>) =>
-        (state.result?.error || !state.items) && (
+        state.result?.error || !state.items ? (
           <Box sx={{ p: 1, pb: 0, textAlign: 'center' }}>
             {state.result?.error ? (
               <Alert severity="error" color="error">
@@ -58,6 +58,8 @@ const useMySearch = (): AppSearchService<Hit> => {
               )
             )}
           </Box>
+        ) : (
+          <></>
         ),
       itemRenderer: (item, options) => {
         return (

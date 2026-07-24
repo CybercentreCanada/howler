@@ -30,7 +30,7 @@ const AnalyticHitComments: FC<{ analytic: Analytic }> = ({ analytic }) => {
   const users = useMyUserList(userIds);
 
   useEffect(() => {
-    setUserIds(new Set(comments.map(c => c.comment.user)));
+    setUserIds(new Set(comments.map(c => c.comment.user!)));
   }, [comments]);
 
   useEffect(() => {
@@ -41,17 +41,18 @@ const AnalyticHitComments: FC<{ analytic: Analytic }> = ({ analytic }) => {
     setLoading(true);
     void api.search.hit
       .post({
-        query: `howler.analytic:"${sanitizeLuceneQuery(analytic.name)}" AND _exists_:howler.comment`,
+        query: `howler.analytic:"${sanitizeLuceneQuery(analytic.name!)}" AND _exists_:howler.comment`,
         rows: pageCount
       })
       .then(response => {
         setComments(
-          response.items.flatMap(h =>
-            h.howler.comment.map(comment => ({
-              hitId: h.howler.id,
-              detection: h.howler.detection,
-              comment
-            }))
+          response.items.flatMap(
+            h =>
+              h.howler.comment?.map(comment => ({
+                hitId: h.howler.id!,
+                detection: h.howler.detection ?? 'Analytic',
+                comment
+              })) ?? []
           )
         );
       })
@@ -67,10 +68,10 @@ const AnalyticHitComments: FC<{ analytic: Analytic }> = ({ analytic }) => {
       ) : (
         comments
           .filter(c => !searchParams.has('filter') || c.detection === searchParams.get('filter'))
-          .sort((a, b) => compareTimestamp(b.comment.timestamp, a.comment.timestamp))
+          .sort((a, b) => compareTimestamp(b.comment.timestamp!, a.comment.timestamp!))
           .map(c => (
             <Comment
-              key={c.comment.id}
+              key={c.comment.id!}
               comment={c.comment}
               users={users}
               onClick={() => navigate(`/hits/${c.hitId}`)}

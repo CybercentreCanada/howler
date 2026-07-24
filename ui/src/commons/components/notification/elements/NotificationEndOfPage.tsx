@@ -1,7 +1,7 @@
 import { NotificationSkeleton } from 'commons/components/notification/elements/NotificationSkeleton';
 import { memo, useEffect, useRef, useState, type FC, type RefObject } from 'react';
 
-function useOnScreen(ref: RefObject<Element>, rootMargin = '0px') {
+const useOnScreen = (ref: RefObject<Element | null>, rootMargin = '0px') => {
   // State and setter for storing whether element is visible
   const [isIntersecting, setIntersecting] = useState(false);
   useEffect(() => {
@@ -26,11 +26,11 @@ function useOnScreen(ref: RefObject<Element>, rootMargin = '0px') {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty array ensures that effect is only run on mount and unmount
   return isIntersecting;
-}
+};
 
 export const NotificationEndOfPage: FC<{ endOfPage?: boolean; onLoading?: () => void }> = memo(
   ({ endOfPage = true, onLoading = () => null }) => {
-    const ref = useRef();
+    const ref = useRef<HTMLDivElement>(null);
     const onScreen = useOnScreen(ref);
 
     useEffect(() => {

@@ -12,7 +12,7 @@ import { StorageKey } from 'utils/constants';
 
 export interface ViewContextType {
   defaultView: string;
-  setDefaultView: (viewId: string) => void;
+  setDefaultView: (viewId: string | undefined) => void;
   views: { [viewId: string]: View };
   addFavourite: (id: string) => Promise<void>;
   removeFavourite: (id: string) => Promise<void>;
@@ -23,12 +23,22 @@ export interface ViewContextType {
   getCurrentViews: (config?: { views?: string[]; lazy?: boolean; ignoreParams?: boolean }) => Promise<View[]>;
 }
 
-export const ViewContext = createContext<ViewContextType>(null);
+export const ViewContext = createContext<ViewContextType>(null!);
 
 const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
   const { dispatchApi } = useMyApi();
   const appUser = useAppUser<HowlerUser>();
-  const [defaultView, setDefaultView] = useMyLocalStorageItem<string>(StorageKey.DEFAULT_VIEW);
+  const [defaultView, setDefaultViewRaw, removeDefaultView] = useMyLocalStorageItem<string>(StorageKey.DEFAULT_VIEW);
+  const setDefaultView = useCallback(
+    (viewId: string | undefined) => {
+      if (viewId === undefined) {
+        removeDefaultView();
+      } else {
+        setDefaultViewRaw(viewId);
+      }
+    },
+    [removeDefaultView, setDefaultViewRaw]
+  );
   const [searchParams] = useSearchParams();
 
   const [views, setViews] = useState<{ [viewId: string]: View }>({});
@@ -49,7 +59,7 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
       const missingIds = ids.filter(_id => !!_id && !has(views, _id));
 
       if (missingIds.length < 1) {
-        return ids.map(id => views[id]);
+        return ids.map(id => views[id]!);
       }
 
       try {
@@ -65,11 +75,11 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
 
         setViews(_views => ({
           ..._views,
-          ...Object.fromEntries(missingIds.map(_view_id => [_view_id, null])),
+          ...Object.fromEntries(missingIds.map((_view_id): [string, View] => [_view_id, null!])),
           ...newViews
         }));
 
-        return ids.map(id => views[id] ?? newViews[id]);
+        return ids.map(id => (views[id] ?? newViews[id])!);
       } catch (e) {
         // eslint-disable-next-line no-console
         console.warn(e);
@@ -107,7 +117,7 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
 
       currentViews.forEach(_view => {
         if (has(views, _view)) {
-          results.push(views[_view]);
+          results.push(views[_view]!);
         } else if (!lazy) {
           missing.push(_view);
         }
@@ -138,7 +148,7 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
 
       appUser.setUser({
         ...appUser.user,
-        favourite_views: [...appUser.user.favourite_views, id]
+        favourite_views: [...(appUser.user.favourite_views ?? []), id]
       });
     },
     [appUser, dispatchApi]
@@ -148,9 +158,9 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
     async (view: View) => {
       const newView = await dispatchApi(api.view.post(view));
 
-      setViews(_views => ({ ..._views, [newView.view_id]: newView }));
+      setViews(_views => ({ ..._views, [newView.view_id!]: newView }));
 
-      void addFavourite(newView.view_id);
+      void addFavourite(newView.view_id!);
 
       return newView;
     },
@@ -163,7 +173,7 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
 
       appUser.setUser({
         ...appUser.user,
-        favourite_views: appUser.user.favourite_views.filter(v => v !== id)
+        favourite_views: (appUser.user.favourite_views ?? []).filter(v => v !== id)
       });
     },
     [appUser, dispatchApi]
@@ -171,7 +181,7 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
 
   const removeView: ViewContextType['removeView'] = useCallback(
     async (id: string) => {
-      if (appUser.user?.favourite_views.includes(id)) {
+      if (appUser.user?.favourite_views?.includes(id)) {
         await removeFavourite(id);
       }
 

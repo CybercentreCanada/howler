@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
 
-export default function useLocalStorage(prefix?: string) {
+const useLocalStorage = (prefix?: string) => {
   // Build the name of the key.
   // If a 'prefix' was specified, the 'key' will be appended to the 'prefix' automatically.
   const _buildKey = useCallback((name: string): string => (prefix ? `${prefix}.${name}` : name), [prefix]);
@@ -8,10 +8,10 @@ export default function useLocalStorage(prefix?: string) {
   // Get an item from local storage.
   // If a 'prefix' was specified, the 'key' will be appended to the 'prefix' automatically.
   const get = useCallback(
-    <T>(key: string): T => {
+    <T>(key: string): T | null => {
       try {
-        return JSON.parse(localStorage.getItem(_buildKey(key)));
-      } catch (e) {
+        return JSON.parse(localStorage.getItem(_buildKey(key)) ?? 'null') as T | null;
+      } catch {
         return null;
       }
     },
@@ -72,4 +72,6 @@ export default function useLocalStorage(prefix?: string) {
     }),
     [get, set, remove, has, keys, items, clear]
   );
-}
+};
+
+export default useLocalStorage;

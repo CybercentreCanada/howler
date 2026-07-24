@@ -55,7 +55,7 @@ const AnalyticOverview: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
     setLoading(true);
 
     void api.search.count.hit
-      .post({ query: `howler.analytic:"${sanitizeLuceneQuery(analytic.name)}"` })
+      .post({ query: `howler.analytic:"${sanitizeLuceneQuery(analytic.name!)}"` })
       .then(({ count }) => setEmpty(!count))
       .finally(() => setLoading(false));
   }, [analytic]);
@@ -64,7 +64,7 @@ const AnalyticOverview: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
     try {
       if (editing) {
         setMarkdownLoading(true);
-        const result = await dispatchApi(api.analytic.put(analytic.analytic_id, { description: editValue }), {
+        const result = await dispatchApi(api.analytic.put(analytic.analytic_id!, { description: editValue }), {
           showError: true,
           throwError: true
         });
@@ -73,7 +73,7 @@ const AnalyticOverview: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
 
         showSuccessMessage(t('route.analytics.updated'));
       } else {
-        setEditValue(analytic.description);
+        setEditValue(analytic.description ?? '');
       }
     } finally {
       setEditing(!editing);
@@ -113,7 +113,7 @@ const AnalyticOverview: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
               sx={{ '& textarea': { fontFamily: 'monospace', fontSize: 13 } }}
             />
           ) : (
-            <Markdown md={analytic?.description} />
+            <Markdown md={analytic?.description ?? ''} />
           )}
         </Box>
         <Stack direction="column" spacing={2}>

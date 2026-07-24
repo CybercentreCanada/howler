@@ -6,5 +6,5 @@ import { uri as parentUri } from '.';
 const uri = (id: string) => joinAllUri(parentUri(), 'hit', id);
 
 export const get = (id?: string): Promise<Dossier[]> => {
-  return hget(uri(id));
+  return hget(uri(id!));
 };

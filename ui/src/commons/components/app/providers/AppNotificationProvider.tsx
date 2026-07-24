@@ -10,7 +10,7 @@ const DEFAULT_CONTEXT: AppNotificationServiceContextType = {
   provided: false,
   service: {
     feedUrls: [],
-    notificationRenderer: null
+    notificationRenderer: undefined
   },
   state: { urls: [], set: () => null }
 };
@@ -23,10 +23,10 @@ export default function AppNotificationServiceProvider({
   children: ReactElement | ReactElement[];
 }) {
   // Default implementation of the AppNotificationService using configuration preferences.
-  const defaultService: AppNotificationService = useMemo(() => {
+  const defaultService: AppNotificationService = useMemo<AppNotificationService>(() => {
     return {
-      feedUrls: null,
-      notificationRenderer: null
+      feedUrls: undefined,
+      notificationRenderer: undefined
     };
   }, []);
 

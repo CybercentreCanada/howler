@@ -7,7 +7,7 @@ import * as transition from 'api/hit/transition';
 import type { Hit } from 'models/entities/generated/Hit';
 
 export type HitActionBody = {
-  value: string;
+  value: string | null;
 };
 
 export type LabelActionBody = {

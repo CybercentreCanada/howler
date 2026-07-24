@@ -83,7 +83,7 @@ const HitSummary: FC<{
             .filter(key => !['howler.id', 'howler.hash'].includes(key))
             .map(key => ({
               key,
-              source: `${matchingTemplate.analytic}: ${matchingTemplate.detection ?? t('any')}`
+              source: `${matchingTemplate!.analytic}: ${matchingTemplate!.detection ?? t('any')}`
             }));
         })
       );
@@ -148,7 +148,7 @@ const HitSummary: FC<{
         }
       }
     } catch (e) {
-      showErrorMessage(e);
+      showErrorMessage(e instanceof Error ? e.message : String(e));
       setAggregateResults({});
     } finally {
       setLoading(false);
@@ -171,14 +171,14 @@ const HitSummary: FC<{
   ]);
 
   const setSearch = useCallback(
-    (key, value) => {
+    (key: string, value: string) => {
       setQuery(`${key}:${value}`);
     },
     [setQuery]
   );
 
   useEffect(() => {
-    if ((!query && views?.length < 1) || searching || error) {
+    if ((!query && (views?.length ?? 0) < 1) || searching || error) {
       return;
     }
 
@@ -206,7 +206,7 @@ const HitSummary: FC<{
             value={customKeys}
             options={hitFields.map(_field => _field.key)}
             renderInput={_params => <TextField {..._params} label={t('hit.summary.adhoc')} />}
-            onChange={(_, value) => setCustomKeys(value)}
+            onChange={(_, value) => setCustomKeys(value.filter(_value => _value !== undefined))}
           />
           <Button
             variant="outlined"

@@ -94,7 +94,7 @@ const OperationEntry: FC<{
           </Stack>
           <Divider orientation="horizontal" />
           {operation.steps
-            .filter((_, index, arr) => (index > 0 ? checkArgsAreFilled(arr[index - 1], values) : true))
+            .filter((_, index, arr) => (index > 0 ? checkArgsAreFilled(arr[index - 1]!, values!) : true))
             .map(step => {
               return (
                 <OperationStep
@@ -102,10 +102,10 @@ const OperationEntry: FC<{
                   key={Object.keys(step.args).join('')}
                   step={step}
                   query={query}
-                  values={values}
+                  values={values!}
                   setValues={_values =>
-                    onChange({
-                      operation_id: operation?.id,
+                    onChange?.({
+                      operation_id: operation.id!,
                       data_json: _values
                     })
                   }

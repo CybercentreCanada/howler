@@ -37,13 +37,13 @@ const RecordWorklog: FC<{ record: Hit | Event; users: { [id: string]: HowlerUser
 
       return (record?.howler?.log || [])
         .slice()
-        .sort((a, b) => compareTimestamp(b.timestamp, a.timestamp))
+        .sort((a, b) => compareTimestamp(b.timestamp!, a.timestamp!))
         .reduce((acc, l) => {
           if (!initialVersions[record.howler.id] && !setInitialVersion) {
             setInitialVersion = true;
             setInitialVersions({
               ...initialVersions,
-              [record.howler.id]: l.previous_version
+              [record.howler.id]: l.previous_version!
             });
           }
 
@@ -58,7 +58,7 @@ const RecordWorklog: FC<{ record: Hit | Event; users: { [id: string]: HowlerUser
             // Does this log version match the saved version?
             l.previous_version === initialVersions[record.howler.id] &&
             // Does the previous entry not match?
-            currArr[currArr.length - 1].previous_version !== initialVersions[record.howler.id]
+            currArr[currArr.length - 1]!.previous_version !== initialVersions[record.howler.id]
           ) {
             // If so, we've figured out where the new logs should start, so we start a new card.
             acc.push([l]);
@@ -66,7 +66,7 @@ const RecordWorklog: FC<{ record: Hit | Event; users: { [id: string]: HowlerUser
           }
 
           // If a different user added this to the log, or enough time has passed, we start a new card
-          if (currArr[0].user === l.user && compareTimestamp(currArr[0].timestamp, l.timestamp) < 60 * 5) {
+          if (currArr[0]!.user === l.user && compareTimestamp(currArr[0]!.timestamp!, l.timestamp!) < 60 * 5) {
             currArr.push(l);
             return acc;
           }
@@ -117,13 +117,13 @@ const RecordWorklog: FC<{ record: Hit | Event; users: { [id: string]: HowlerUser
         }
 
         result.push(
-          <HowlerCard key={ls[0].timestamp} elevation={4}>
+          <HowlerCard key={ls[0]!.timestamp!} elevation={4}>
             <CardHeader
-              avatar={<HowlerAvatar userId={ls[0].user} />}
-              title={users[ls[0].user]?.name ?? ls[0].user}
+              avatar={<HowlerAvatar userId={ls[0]!.user!} />}
+              title={users[ls[0]!.user!]?.name ?? ls[0]!.user}
               subheader={
-                <Tooltip title={new Date(ls[0].timestamp).toLocaleString()}>
-                  <Typography variant="caption">{twitterShort(ls[0].timestamp)}</Typography>
+                <Tooltip title={new Date(ls[0]!.timestamp!).toLocaleString()}>
+                  <Typography variant="caption">{twitterShort(ls[0]!.timestamp!)}</Typography>
                 </Tooltip>
               }
             />
@@ -131,7 +131,7 @@ const RecordWorklog: FC<{ record: Hit | Event; users: { [id: string]: HowlerUser
               <Stack spacing={1} divider={<Divider orientation="horizontal" />}>
                 {ls.map(l => (
                   <Typography
-                    key={l.timestamp}
+                    key={l.timestamp!}
                     variant="body2"
                     color="text.secondary"
                     component="div"
@@ -161,18 +161,18 @@ const RecordWorklog: FC<{ record: Hit | Event; users: { [id: string]: HowlerUser
                                 {l.new_value} {t('hit.worklog.removed')} {l.previous_value?.replace(/[[\]]/g, '')}
                               </span>
                             )
-                          }[l.type]
+                          }[l.type!]
                         }
                       </>
                     )}
                     {ls.length > 1 && (
-                      <Tooltip title={new Date(l.timestamp).toLocaleString()}>
+                      <Tooltip title={new Date(l.timestamp!).toLocaleString()}>
                         <Typography
                           sx={{ ml: 0.5, position: 'absolute', right: '1rem', top: 0 }}
                           variant="caption"
                           color={shiftColor(theme.palette.text.primary, 0.5)}
                         >
-                          {twitterShort(l.timestamp)}
+                          {twitterShort(l.timestamp!)}
                         </Typography>
                       </Tooltip>
                     )}

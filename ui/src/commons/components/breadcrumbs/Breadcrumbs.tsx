@@ -14,11 +14,11 @@ const Breadcrumbs = ({ disableStyle = false }) => {
   const isExpanded = isMedium;
 
   const items = useMemo(() => {
-    let _items: BreadcrumbItem[] = null;
+    let _items: BreadcrumbItem[];
     if (sitemap.is404(current)) {
       _items = [current];
     } else if (isStatic) {
-      const staticBreadcrumbs = current.route.breadcrumbs.map(path => sitemap.getRoute(path));
+      const staticBreadcrumbs = current.route.breadcrumbs!.map(path => sitemap.getRoute(path));
       _items = [...staticBreadcrumbs, current];
     } else {
       _items = breadcrumbs.items;

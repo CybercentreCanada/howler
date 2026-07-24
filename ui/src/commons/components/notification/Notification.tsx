@@ -1,4 +1,5 @@
 import { parseFeed, type Feed, type FeedItem } from 'commons/components/notification';
+import type { ItemComponentProps } from 'commons/components/app/AppNotificationService';
 import { NotificationContainer } from 'commons/components/notification/elements/NotificationContainer';
 import { NotificationTopNavButton } from 'commons/components/notification/elements/NotificationTopNavButton';
 import { NotificationItem } from 'commons/components/notification/elements/item/NotificationItem';
@@ -6,7 +7,7 @@ import { memo, useCallback, useEffect, useRef, useState, type FC } from 'react';
 
 type Props = {
   urls: string[];
-  notificationItem?: FC;
+  notificationItem?: FC<ItemComponentProps>;
   inDrawer?: boolean;
   openIfNew?: boolean;
   maxDrawerWidth?: string;
@@ -14,15 +15,15 @@ type Props = {
 
 export const Notification: FC<Props> = memo(
   ({
-    urls = null,
+    urls = [],
     notificationItem = NotificationItem,
     inDrawer = true,
     openIfNew = false,
     maxDrawerWidth = '500px'
   }) => {
     const [drawer, setDrawer] = useState<boolean>(false);
-    const [feeds, setFeeds] = useState<{ [k: string]: Feed }>(null);
-    const [notifications, setNotifications] = useState<FeedItem[]>(null);
+    const [feeds, setFeeds] = useState<{ [k: string]: Feed }>({});
+    const [notifications, setNotifications] = useState<FeedItem[]>([]);
     const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
 
     const lastTimeOpen = useRef<Date>(new Date(0));
@@ -37,7 +38,7 @@ export const Notification: FC<Props> = memo(
       setDrawer(false);
       localStorage.setItem(storageKey, JSON.stringify(lastTimeOpen.current.valueOf()));
       setNotifications(v =>
-        v.map((n: FeedItem) => ({ ...n, _isNew: n.date_published.valueOf() > lastTimeOpen.current.valueOf() }))
+        v.map((n: FeedItem) => ({ ...n, _isNew: n.date_published!.valueOf() > lastTimeOpen.current.valueOf() }))
       );
     }, [storageKey]);
 
@@ -95,12 +96,12 @@ export const Notification: FC<Props> = memo(
 
       fetchFeeds(urls).then(_feeds => {
         _feeds = _feeds.map(f => ({ ...f, items: f?.items?.map(i => ({ ...i, external_url: f.feed_url })) }));
-        setFeeds(Object.fromEntries(_feeds.map(f => [f?.feed_url, { ...f, items: [] }])));
+        setFeeds(Object.fromEntries(_feeds.map(f => [f?.feed_url, { ...f, items: [] as FeedItem[] }])));
         const _notifs = _feeds
           .flatMap(f => f?.items)
-          .filter(n => n.date_published > new Date(new Date().setFullYear(new Date().getFullYear() - 1)))
-          .sort((a, b) => b.date_published.valueOf() - a.date_published.valueOf())
-          .map(n => ({ ...n, _isNew: n.date_published.valueOf() > lastTimeOpen.current.valueOf() }));
+          .filter(n => n.date_published! > new Date(new Date().setFullYear(new Date().getFullYear() - 1)))
+          .sort((a, b) => b.date_published!.valueOf() - a.date_published!.valueOf())
+          .map(n => ({ ...n, _isNew: n.date_published!.valueOf() > lastTimeOpen.current.valueOf() }));
         setNotifications(_notifs);
         if (openIfNew && _notifs?.some(n => n._isNew)) {
           onDrawerOpen();
@@ -141,7 +142,7 @@ export const Notification: FC<Props> = memo(
             drawer={drawer}
             onDrawerOpen={onDrawerOpen}
             onDrawerClose={onDrawerClose}
-            ItemComponent={notificationItem}
+            ItemComponent={notificationItem as FC<ItemComponentProps>}
             inDrawer={inDrawer}
             maxDrawerWidth={maxDrawerWidth}
           />

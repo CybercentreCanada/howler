@@ -13,7 +13,7 @@ import { StorageKey } from 'utils/constants';
 import EditRow from '../../elements/EditRow';
 import SettingsSection from './SettingsSection';
 
-const APIKEY_LABELS = {
+const APIKEY_LABELS: Record<string, string> = {
   R: 'apikey.read',
   W: 'apikey.write',
   E: 'apikey.extended',
@@ -40,7 +40,7 @@ const SecuritySection: FC<{
         <EditRow
           titleKey="page.settings.security.table.password"
           value="●●●●●●●●●●●"
-          onEdit={editPassword}
+          onEdit={value => editPassword(value!)}
           type="password"
         />
       )}
@@ -58,12 +58,12 @@ const SecuritySection: FC<{
                         ? ` (${apiKey[1].map(permission => t(APIKEY_LABELS[permission])).join(', ')})`
                         : '')
                     }
-                    style={{ backgroundColor: dayjs.utc(apiKey[2]).isBefore(dayjs().utc()) ? 'orange' : 'default' }}
-                    onDelete={removeApiKey ? () => removeApiKey(apiKey) : null}
+                    style={{ backgroundColor: dayjs.utc(apiKey[2]!).isBefore(dayjs().utc()) ? 'orange' : 'default' }}
+                    onDelete={removeApiKey ? () => removeApiKey(apiKey) : undefined}
                   />
                 </Grid>
               ))}
-              {user?.apikeys?.length < 1 && (
+              {(user?.apikeys?.length ?? 0) < 1 && (
                 <Grid item>
                   <Trans i18nKey="none" />
                 </Grid>
@@ -82,10 +82,10 @@ const SecuritySection: FC<{
       <EditRow
         titleKey="page.settings.security.table.apiquota"
         descriptionKey="page.settings.security.table.apiquota.description"
-        value={user?.api_quota}
-        validate={value => value && /^[0-9]*$/m.test(value.toString())}
+        value={user?.api_quota ?? ''}
+        validate={value => !!value && /^[0-9]*$/m.test(value.toString())}
         type="number"
-        onEdit={editQuota}
+        onEdit={editQuota ? value => editQuota(value ?? undefined) : undefined}
       />
       {howlerPluginStore.plugins.map(plugin => pluginStore.executeFunction(`${plugin}.settings`, 'security'))}
     </SettingsSection>

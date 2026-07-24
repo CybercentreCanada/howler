@@ -40,8 +40,8 @@ const UserSearch: FC = () => {
 
   const [searching, setSearching] = useState<boolean>(false);
   const [phrase, setPhrase] = useState('');
-  const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
-  const [response, setResponse] = useState<HowlerSearchResponse<HowlerUser>>(null);
+  const [offset, setOffset] = useState(parseInt(searchParams.get('offset') ?? '0') || 0);
+  const [response, setResponse] = useState<HowlerSearchResponse<HowlerUser> | null>(null);
 
   // Search Handler.
   const onSearch = useCallback(async () => {
@@ -108,7 +108,7 @@ const UserSearch: FC = () => {
   );
 
   useEffect(() => {
-    if (response?.total <= offset) {
+    if (response && response.total! <= offset) {
       setOffset(0);
       searchParams.set('offset', '0');
       setSearchParams(searchParams);
@@ -191,16 +191,16 @@ const UserSearch: FC = () => {
         {response && (
           <Stack direction="row" alignItems="center" mt={0.5}>
             <SearchTotal
-              total={response.total}
+              total={response.total!}
               pageLength={response.items.length}
-              offset={response.offset}
+              offset={response.offset!}
               sx={theme => ({ color: theme.palette.text.secondary, fontSize: '0.9em', fontStyle: 'italic' })}
             />
             <Box flex={1} />
             <SearchPagination
-              total={response.total}
-              limit={response.rows}
-              offset={response.offset}
+              total={response.total!}
+              limit={response.rows!}
+              offset={response.offset!}
               onChange={onPageChange}
             />
           </Stack>

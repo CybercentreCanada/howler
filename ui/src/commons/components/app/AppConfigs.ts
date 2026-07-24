@@ -13,10 +13,10 @@ export type AppConfigs = {
 
 // Specification interface for the AppProvider's 'preferences' attribute.
 export type AppPreferenceConfigs = {
-  appName: string; // Name of your app, it will show up in the drawer and the top nav bar
+  appName?: string; // Name of your app, it will show up in the drawer and the top nav bar
   appLink?: To; // Route to navigate to when the icon on the left nav bar is pressed
-  appIconDark: ReactElement<any>; // Small dark mode logo of your app used in drawer and top nav bar
-  appIconLight: ReactElement<any>; // Small light mode logo of your app used in drawer and top nav bar
+  appIconDark?: ReactElement<any>; // Small dark mode logo of your app used in drawer and top nav bar
+  appIconLight?: ReactElement<any>; // Small light mode logo of your app used in drawer and top nav bar
   bannerDark?: ReactElement<any>; // Your dark mode app banner, will be use in the loading screen, login and logout pages
   bannerLight?: ReactElement<any>; // Your dark mode app banner, will be use in the loading screen, login and logout pages
   allowAutoHideTopbar?: boolean; // Allow the user to toggle on/off the topbar autohide feature

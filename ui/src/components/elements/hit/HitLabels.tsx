@@ -50,7 +50,7 @@ const NewLabelForm: FC<{ handleSubmit: (label: LabelState) => Promise<void> }> =
         await handleSubmit({ label: label, category: category as keyof Labels });
         setLabel('');
       } catch (e) {
-        setError(e.message);
+        setError(e instanceof Error ? e.message : String(e));
       }
     }
   };
@@ -120,12 +120,12 @@ const HitLabels: FC<{ hit: Hit; readOnly?: boolean }> = ({ hit, readOnly = false
   const [openDrawer, setOpenDrawer] = useState(false);
   const [loading, setLoading] = useState(false);
   const [labels, setLabels] = useState<LabelState[]>(
-    Object.entries(hit.howler.labels).flatMap(([key, category]) => {
+    Object.entries(hit.howler.labels as Record<string, string | string[]>).flatMap(([key, category]) => {
       if (typeof category === 'string') {
         category = [category];
       }
 
-      return (category ?? []).map?.(label => ({ category: key, label: label })) ?? [];
+      return (category ?? []).map?.(label => ({ category: key as keyof Labels, label: label })) ?? [];
     })
   );
 
@@ -170,12 +170,12 @@ const HitLabels: FC<{ hit: Hit; readOnly?: boolean }> = ({ hit, readOnly = false
   useEffect(() => {
     if (hit.howler.labels) {
       setLabels(
-        Object.entries(hit.howler.labels).flatMap(([key, category]) => {
+        Object.entries(hit.howler.labels as Record<string, string | string[]>).flatMap(([key, category]) => {
           if (typeof category === 'string') {
             category = [category];
           }
 
-          return (category ?? []).map?.(label => ({ category: key, label: label })) ?? [];
+          return (category ?? []).map?.(label => ({ category: key as keyof Labels, label: label })) ?? [];
         })
       );
     }
@@ -212,12 +212,15 @@ const HitLabels: FC<{ hit: Hit; readOnly?: boolean }> = ({ hit, readOnly = false
                         mr: 1,
                         mb: 1
                       },
-                      LABEL_TYPES[category]?.color && {
-                        '&, & svg': {
-                          color: theme => theme.palette.getContrastText(LABEL_TYPES[category].color) + ' !important'
-                        },
-                        backgroundColor: LABEL_TYPES[category].color
-                      }
+                      LABEL_TYPES[category]?.color
+                        ? {
+                            '&, & svg': {
+                              color: theme =>
+                                theme.palette.getContrastText(LABEL_TYPES[category]!.color!) + ' !important'
+                            },
+                            backgroundColor: LABEL_TYPES[category]!.color
+                          }
+                        : {}
                     ]}
                   />
                 </Tooltip>
@@ -241,12 +244,14 @@ const HitLabels: FC<{ hit: Hit; readOnly?: boolean }> = ({ hit, readOnly = false
                 {
                   mr: 1
                 },
-                LABEL_TYPES[category]?.color && {
-                  '&, & svg': {
-                    color: theme => theme.palette.getContrastText(LABEL_TYPES[category].color) + ' !important'
-                  },
-                  backgroundColor: LABEL_TYPES[category].color
-                }
+                LABEL_TYPES[category]?.color
+                  ? {
+                      '&, & svg': {
+                        color: theme => theme.palette.getContrastText(LABEL_TYPES[category]!.color!) + ' !important'
+                      },
+                      backgroundColor: LABEL_TYPES[category]!.color
+                    }
+                  : {}
               ]}
             />
           </Tooltip>

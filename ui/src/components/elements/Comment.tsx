@@ -59,7 +59,7 @@ const Comment: FC<{
   comment: HowlerComment | AnalyticComment;
   handleDelete?: () => Promise<void>;
   handleEdit?: (value: string) => Promise<void>;
-  handleReact?: (type: string) => Promise<void>;
+  handleReact?: (type: string | null) => Promise<void>;
   handleQuote?: () => void;
   onClick?: () => void;
   users: { [id: string]: HowlerUser };
@@ -70,11 +70,11 @@ const Comment: FC<{
   const { shiftColor } = useMyUtils();
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [wasEdited, setEdited] = useState(compareTimestamp(comment.modified, comment.timestamp) > 1);
+  const [wasEdited, setEdited] = useState(compareTimestamp(comment.modified!, comment.timestamp!) > 1);
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showInteractions, setShowInteractions] = useState(false);
-  const [editValue, setEditValue] = useState(comment.value);
+  const [editValue, setEditValue] = useState(comment.value ?? '');
 
   const handleOpen = useCallback((event: React.MouseEvent<HTMLButtonElement>) => setAnchorEl(event.currentTarget), []);
   const handleClose = useCallback(() => setAnchorEl(null), []);
@@ -82,7 +82,7 @@ const Comment: FC<{
   const onDelete = useCallback(async () => {
     setLoading(true);
     try {
-      await handleDelete();
+      await handleDelete?.();
     } finally {
       setLoading(false);
       handleClose();
@@ -97,7 +97,7 @@ const Comment: FC<{
 
     try {
       setLoading(true);
-      await handleEdit(editValue);
+      await handleEdit?.(editValue);
       setEdited(true);
     } finally {
       setLoading(false);
@@ -119,12 +119,12 @@ const Comment: FC<{
   );
 
   const onQuote = useCallback(() => {
-    handleQuote();
+    handleQuote?.();
     handleClose();
   }, [handleClose, handleQuote]);
 
   const reactions = useMemo(() => {
-    return Object.keys(REACTION_ICONS).map(type => {
+    return (Object.keys(REACTION_ICONS) as (keyof typeof REACTION_ICONS)[]).map(type => {
       const quantity = Object.values(comment?.reactions ?? {}).filter(r => r === type).length;
       const Icon = REACTION_ICONS[type];
 
@@ -133,9 +133,11 @@ const Comment: FC<{
           <Chip
             size="small"
             variant="outlined"
-            color={comment.reactions?.[user.username] === type ? 'primary' : 'default'}
+            color={comment.reactions?.[user.username!] === type ? 'primary' : 'default'}
             icon={<Icon />}
-            onClick={handleReact ? () => handleReact(comment.reactions?.[user.username] !== type ? type : null) : null}
+            onClick={
+              handleReact ? () => handleReact(comment.reactions?.[user.username!] !== type ? type : null) : undefined
+            }
             sx={[
               !quantity && {
                 '& svg': { mr: '-14px !important' }
@@ -150,7 +152,7 @@ const Comment: FC<{
 
   return (
     <Stack direction="row" spacing={1} key={comment.id}>
-      <HowlerAvatar userId={comment.user} />
+      <HowlerAvatar userId={comment.user!} />
       <HowlerCard
         key={comment.timestamp}
         onClick={onClick}
@@ -158,13 +160,13 @@ const Comment: FC<{
         onMouseLeave={() => setShowInteractions(false)}
         sx={[
           { p: 2, pb: 0, pt: 1, border: 'thin solid transparent' },
-          editing && { flex: 1 },
-          onClick && { '&:hover': { cursor: 'pointer', borderColor: 'primary.main' } }
+          editing ? { flex: 1 } : {},
+          onClick ? { '&:hover': { cursor: 'pointer', borderColor: 'primary.main' } } : {}
         ]}
       >
         <CardContent sx={{ p: 0 }}>
           <Stack direction="row" alignItems="center" spacing={2}>
-            <Typography variant="body1">{users[comment.user]?.name ?? comment.user}</Typography>
+            <Typography variant="body1">{users[comment.user!]?.name ?? comment.user}</Typography>
             {wasEdited && (
               <Typography
                 variant="caption"
@@ -176,7 +178,7 @@ const Comment: FC<{
                 {t('comments.edited')}
               </Typography>
             )}
-            <Tooltip title={new Date(comment.timestamp).toLocaleString()}>
+            <Tooltip title={new Date(comment.timestamp!).toLocaleString()}>
               <Typography
                 variant="caption"
                 sx={theme => ({
@@ -184,7 +186,7 @@ const Comment: FC<{
                   color: shiftColor(theme.palette.text.primary, 0.25)
                 })}
               >
-                {twitterShort(comment.timestamp)}
+                {twitterShort(comment.timestamp!)}
               </Typography>
             </Tooltip>
             {extra}
@@ -271,7 +273,7 @@ const Comment: FC<{
                 }
               }}
             >
-              <Markdown md={comment.value} />
+              <Markdown md={comment.value ?? ''} />
             </Typography>
           ) : (
             <TextField

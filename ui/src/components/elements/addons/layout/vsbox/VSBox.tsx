@@ -2,7 +2,7 @@ import { Stack, type StackProps } from '@mui/material';
 import { useAppBar, useAppBarHeight } from 'commons/components/app/hooks';
 import { createContext, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
-type VSBoxProps = StackProps & {
+type VSBoxProps = Omit<StackProps, 'top'> & {
   top?: number;
 };
 
@@ -18,10 +18,10 @@ export const VSBoxContext = createContext<{ state: VSBoxState; setState?: (state
 });
 
 const VSBox = ({ top, children, ...stackProps }: VSBoxProps) => {
-  const ref = useRef<HTMLDivElement>();
+  const ref = useRef<HTMLDivElement>(null);
   const appbarHeight = useAppBarHeight();
   const { autoHide } = useAppBar();
-  const [state, setState] = useState<VSBoxState>({ top, scrollTop: top });
+  const [state, setState] = useState<VSBoxState>({ top: top ?? 0, scrollTop: top ?? 0 });
 
   useLayoutEffect(() => {
     // const tableHeader = content?.querySelector(':first-child[data-tuitable]') as HTMLDivElement;

@@ -44,7 +44,7 @@ export default class AxiosClient implements RestClient {
       retryCondition: err => {
         return (
           // Don't retry 502s, as we assume the server handles retries in those cases
-          isNetworkError(err) || (err?.response?.status >= 500 && err?.response?.status !== 502)
+          isNetworkError(err) || ((err?.response?.status ?? 0) >= 500 && err?.response?.status !== 502)
         );
       },
       retryDelay: exponentialDelay

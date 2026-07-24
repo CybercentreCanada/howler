@@ -32,8 +32,12 @@ const TYPES = {
 };
 
 const VISUALIZATIONS = ['assessment', 'created', 'escalation', 'status', 'detection'];
+type DashboardCard = NonNullable<HowlerUser['dashboard']>[number];
 
-const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard) => void }> = ({ dashboard, addCard }) => {
+const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard: DashboardCard) => void }> = ({
+  dashboard,
+  addCard
+}) => {
   const { t } = useTranslation();
   const views = useContextSelector(ViewContext, ctx => ctx.views ?? {});
   const fetchViews = useContextSelector(ViewContext, ctx => ctx.fetchViews);
@@ -96,7 +100,7 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard) =>
   }, []);
 
   const filteredAnalyticVisualizations = useMemo(() => {
-    const existingAnalyticCards = dashboard.filter(_card => _card.type === 'analytic');
+    const existingAnalyticCards = (dashboard ?? []).filter(_card => _card.type === 'analytic');
     return VISUALIZATIONS.filter(viz => {
       return !existingAnalyticCards.some(_card => {
         const parsedConfig = JSON.parse(_card.config);
@@ -167,13 +171,13 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard) =>
                 </Typography>
                 <Autocomplete
                   sx={{ pt: 1 }}
-                  onChange={(__, opt) => setConfig('analyticId', opt.analytic_id)}
+                  onChange={(__, opt) => setConfig('analyticId', opt!.analytic_id)}
                   loading={analyticsLoading}
                   options={analytics}
                   filterOptions={(options, state) =>
                     options.filter(
                       opt =>
-                        opt.name.toLowerCase().includes(state.inputValue.toLowerCase()) ||
+                        opt.name!.toLowerCase().includes(state.inputValue.toLowerCase()) ||
                         opt.description?.split('\n')[0]?.toLowerCase().includes(state.inputValue.toLowerCase())
                     )
                   }
@@ -187,7 +191,7 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard) =>
                       </Stack>
                     </li>
                   )}
-                  getOptionLabel={option => option.name}
+                  getOptionLabel={option => option.name ?? ''}
                   renderInput={params => <TextField {...params} label={t('route.home.add.analytic')} />}
                 />
                 <FormControl sx={theme => ({ mt: `${theme.spacing(2)} !important` })}>
@@ -224,7 +228,7 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard) =>
                 <Autocomplete
                   sx={{ pt: 1 }}
                   value={views[config.viewId] || null}
-                  onChange={(__, opt) => setConfig('viewId', opt.view_id)}
+                  onChange={(__, opt) => setConfig('viewId', opt!.view_id)}
                   onOpen={onViewOpen}
                   onClose={() => setViewOpen(false)}
                   open={viewOpen}
@@ -237,21 +241,21 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard) =>
                         !dashboard?.find(
                           entry => entry.type === 'view' && JSON.parse(entry.config).viewId === opt.view_id
                         ) &&
-                        (opt.title.toLowerCase().includes(state.inputValue.toLowerCase()) ||
-                          opt.query.toLowerCase().includes(state.inputValue.toLowerCase()))
+                        (opt.title!.toLowerCase().includes(state.inputValue.toLowerCase()) ||
+                          opt.query!.toLowerCase().includes(state.inputValue.toLowerCase()))
                     )
                   }
                   renderOption={(props, option) => (
-                    <li {...props} key={option.view_id}>
+                    <li {...props} key={option!.view_id}>
                       <Stack>
-                        <Typography variant="body1">{t(option.title)}</Typography>
+                        <Typography variant="body1">{t(option!.title!)}</Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {option.query}
+                          {option!.query}
                         </Typography>
                       </Stack>
                     </li>
                   )}
-                  getOptionLabel={option => t(option.title)}
+                  getOptionLabel={option => t(option!.title!)}
                   renderInput={params => <TextField {...params} label={t('route.home.add.view')} />}
                 />
                 <Typography variant="body1" sx={{ pt: 1 }}>
@@ -264,7 +268,9 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard) =>
                   <Slider
                     value={config.limit ?? 3}
                     valueLabelDisplay="auto"
-                    onChange={(_, value: number) => setConfig('limit', value)}
+                    onChange={(_, value: number | number[]) =>
+                      setConfig('limit', Array.isArray(value) ? value[0] : value)
+                    }
                     min={1}
                     max={10}
                     step={1}

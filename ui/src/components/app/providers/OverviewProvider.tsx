@@ -3,6 +3,7 @@ import type { Hit } from 'models/entities/generated/Hit';
 import type { Overview } from 'models/entities/generated/Overview';
 import type { FC, PropsWithChildren } from 'react';
 import { createContext, useCallback, useState } from 'react';
+import { missingContext } from './contextUtils';
 
 interface OverviewContextType {
   overviews: Overview[];
@@ -12,7 +13,15 @@ interface OverviewContextType {
   loaded: boolean;
 }
 
-export const OverviewContext = createContext<OverviewContextType>(null);
+const DEFAULT_OVERVIEW_CONTEXT: OverviewContextType = {
+  overviews: [],
+  getOverviews: () => missingContext('OverviewContext'),
+  getMatchingOverview: () => missingContext('OverviewContext'),
+  refresh: () => missingContext('OverviewContext'),
+  loaded: false
+};
+
+export const OverviewContext = createContext<OverviewContextType>(DEFAULT_OVERVIEW_CONTEXT);
 
 const OverviewProvider: FC<PropsWithChildren> = ({ children }) => {
   const [fetching, setFetching] = useState(false);
