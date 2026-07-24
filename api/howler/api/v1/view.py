@@ -6,7 +6,7 @@ from mergedeep.mergedeep import merge
 from howler.api import bad_request, created, forbidden, make_subapi_blueprint, no_content, not_found, ok
 from howler.api.v1.helper import permission_helper
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
-from howler.common.exceptions import HowlerException, HowlerInvalidPermissionException, InvalidDataException
+from howler.common.exceptions import HowlerException, InvalidDataException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
@@ -198,7 +198,7 @@ def update_view(view_id: str, user: User, **kwargs):
         return forbidden(err="You cannot update a personal view that is not owned by you.")
     is_member = user.uname in ([existing_view.owner] + existing_view.admins + existing_view.members)
     if existing_view.type == "global" and not is_member and "admin" not in user.type:
-        return forbidden(err="Only the owner of a view and administrators can edit a global view.")
+        return forbidden(err="Only member of a view or global admins can update a global view.")
 
     new_view = View(cast(dict, merge({}, existing_view.as_primitives(), new_data)))
 
@@ -326,40 +326,7 @@ def give_privilege(view_id: str, user: User, **kwargs):
     """
     try:
         result = permission_helper.give_privilege(view_id, user, View, request.json, refresh=kwargs.get("refresh"))
-    except (ValueError, HowlerInvalidPermissionException, InvalidDataException) as e:
-        return bad_request(err=str(e))
-    return ok(result)
-
-
-@generate_swagger_docs()
-@view_api.route("/<view_id>/multi_permission", methods=["PUT"])
-@parse_parameters(refresh=parse_refresh)
-@api_login(required_priv=["R", "W"])
-def give_multi_privilege(view_id: str, user: User, **kwargs):
-    """Grant the same privilege on a view to multiple users.
-
-    Variables:
-    view_id => The ID of the view for which to grant a privilege
-
-    Optional Arguments:
-    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
-
-    Data Block:
-    {
-        "privilege": "privilege to grant",  # [members, admins, owner]
-        "user_id": ["user to grant permission to"]
-    }
-
-    Result Example:
-    {
-        "success": True     # If the operation succeeded
-    }
-    """
-    try:
-        result = permission_helper.give_multi_privilege(
-            view_id, user, View, request.json, refresh=kwargs.get("refresh")
-        )
-    except (ValueError, HowlerInvalidPermissionException, InvalidDataException) as e:
+    except (ValueError, InvalidDataException, InvalidDataException) as e:
         return bad_request(err=str(e))
     return ok(result)
 
@@ -368,7 +335,7 @@ def give_multi_privilege(view_id: str, user: User, **kwargs):
 @view_api.route("/<view_id>/permission", methods=["DELETE"])
 @parse_parameters(refresh=parse_refresh)
 @api_login(required_priv=["R", "W"])
-def revoke_privilege(view_id: str, user: User, **kwargs):
+def remove_privilege(view_id: str, user: User, **kwargs):
     """Revoke permission from one user to another.
 
     Variables:
@@ -394,8 +361,8 @@ def revoke_privilege(view_id: str, user: User, **kwargs):
         }
     """
     try:
-        result = permission_helper.revoke_privilege(view_id, user, View, request.json, refresh=kwargs.get("refresh"))
-    except (ValueError, HowlerInvalidPermissionException, InvalidDataException) as e:
+        result = permission_helper.remove_privilege(view_id, user, View, request.json, refresh=kwargs.get("refresh"))
+    except (ValueError, InvalidDataException, InvalidDataException) as e:
         return bad_request(err=str(e))
     return ok(result)
 

@@ -16,6 +16,7 @@ import {
   TextField
 } from '@mui/material';
 import api from 'api';
+import type { PermissionData } from 'api/permission';
 import { useAppUser } from 'commons/components/app/hooks';
 import useMyApi from 'components/hooks/useMyApi';
 import useMyUserList from 'components/hooks/useMyUserList';
@@ -85,7 +86,21 @@ export const MembershipManagement = ({
       return [] as MemberItem[];
     }
 
-    const entity = (await dispatchApi(api[entityType].get(finalEntityId), { throwError: false })) as Entity;
+    // Made for type script compliance, could be done by api[entityType].get(finalEntityId) but Type script complain
+    let request;
+    switch (entityType) {
+      case 'action':
+        request = api.action.get(finalEntityId);
+        break;
+      case 'view':
+        request = api.view.get(finalEntityId);
+        break;
+      case 'dossier':
+        request = api.dossier.get(finalEntityId);
+        break;
+    }
+
+    const entity = (await dispatchApi(request, { throwError: false })) as Entity;
 
     if (!entity) return [] as MemberItem[];
 
@@ -107,23 +122,10 @@ export const MembershipManagement = ({
 
     let updatedEntity: Entity | null = null;
 
-    if ((api[entityType].permission as { putMany?: (id: string, data: any) => any }).putMany) {
-      updatedEntity = (await dispatchApi(
-        (api[entityType].permission as { putMany?: (id: string, data: any) => any }).putMany!(finalEntityId, {
-          privilege,
-          user_id: normalizedSelectedUserIds
-        }),
-        { throwError: false }
-      )) as Entity | null;
-    } else {
-      await Promise.all(
-        normalizedSelectedUserIds.map(user_id =>
-          dispatchApi(api[entityType].permission.put(finalEntityId, { user_id, privilege }), {
-            throwError: false
-          })
-        )
-      );
-    }
+    (api[entityType].permission as { put: (id: string, data: PermissionData) => Promise<Entity> }).put(finalEntityId, {
+      privilege,
+      user_id: normalizedSelectedUserIds
+    });
 
     const updatedMembers = updatedEntity ? mapEntityToMembers(updatedEntity) : await refresh();
     if (updatedEntity) {
@@ -177,7 +179,10 @@ export const MembershipManagement = ({
       }
 
       const updatedEntity = (await dispatchApi(
-        api[entityType].permission.delete(finalEntityId, { user_id, privilege: targetPrivilege }),
+        api[entityType].permission.delete(finalEntityId, {
+          privilege: targetPrivilege,
+          user_id: [user_id]
+        }),
         {
           throwError: false
         }
@@ -215,18 +220,12 @@ export const MembershipManagement = ({
     ? ['owner', 'admins', 'members']
     : ['admins', 'members'];
 
-  const getPrivilegeSearchTerms = useCallback((privilegeValue: MemberItem['privilege']) => {
-    switch (privilegeValue) {
-      case 'owner':
-        return ['owner', 'owners', 'proprietaire', 'proprietaires'];
-      case 'admins':
-        return ['admin', 'admins', 'administrator', 'administrators', 'administrateur', 'administrateurs'];
-      case 'members':
-        return ['member', 'members', 'membre', 'membres'];
-      default:
-        return [privilegeValue];
-    }
-  }, []);
+  const getPrivilegeLabel = useCallback(
+    (privilegeValue: MemberItem['privilege']) => {
+      return translation.t(`route.actions.privilege.${privilegeValue}`);
+    },
+    [translation]
+  );
 
   const filteredMembers = members.filter(member => {
     const query = normalizeUserId(memberSearch);
@@ -234,7 +233,7 @@ export const MembershipManagement = ({
       return true;
     }
 
-    const roleMatches = getPrivilegeSearchTerms(member.privilege).some(term => normalizeUserId(term).includes(query));
+    const roleMatches = normalizeUserId(getPrivilegeLabel(member.privilege)).includes(query);
 
     return (
       normalizeUserId(member.user_id).includes(query) ||
@@ -286,7 +285,11 @@ export const MembershipManagement = ({
                     <HowlerAvatar userId={m.user_id || 'Unknown'} />
                     <ListItemText
                       primary={users[m.user_id]?.name || m.user_id}
-                      secondary={users[m.user_id]?.email ? `${m.privilege} - ${users[m.user_id].email}` : m.privilege}
+                      secondary={
+                        users[m.user_id]?.email
+                          ? `${getPrivilegeLabel(m.privilege)} - ${users[m.user_id].email}`
+                          : getPrivilegeLabel(m.privilege)
+                      }
                     />
                   </Box>
                 </ListItem>
@@ -297,7 +300,7 @@ export const MembershipManagement = ({
           <Box sx={{ mt: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <UserList
-                i18nLabel="username"
+                i18nLabel={translation.t('page.login.username')}
                 isModified
                 allowMultiple
                 selectedUserIds={selectedUserIds}
@@ -306,7 +309,7 @@ export const MembershipManagement = ({
             </Box>
             <TextField
               select
-              label={translation.t('privilege')}
+              label={translation.t('route.action.privilege.privilege')}
               fullWidth
               value={privilege}
               onChange={e => setPrivilege(e.target.value)}
@@ -314,7 +317,7 @@ export const MembershipManagement = ({
             >
               {availablePrivileges.map(k => (
                 <MenuItem key={k} value={k}>
-                  {k}
+                  {getPrivilegeLabel(k)}
                 </MenuItem>
               ))}
             </TextField>

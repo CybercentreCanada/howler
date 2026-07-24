@@ -9,4 +9,9 @@ class PermissionRequest(odm.Model):
         values=["admins", "members", "owner"],
         description="The permission level to update",
     )
-    user_id: str = odm.Keyword(description="The user ID to add/remove for the requested privilege")
+    user_id: list[str] = odm.List(
+        odm.Keyword(),
+        description="The group administrator for this object.",
+        default=[],
+        optional=False,
+    )

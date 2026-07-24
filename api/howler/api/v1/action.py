@@ -149,9 +149,9 @@ def update_action(id: str, user: User, **kwargs) -> Response:
         "triggers", []
     ):
         return forbidden(err="Updating triggers requires the role 'automation_advanced'.")
-    allowed_list = (
-        ([existing_action["owner"]] or []) + (existing_action["admins"] or []) + (existing_action["members"] or [])
-    )
+    # Added for legacy owner_id field inside of Action.
+    owner = [existing_action.get("owner") or existing_action.get("owner_id")]
+    allowed_list = (owner) + (existing_action["admins"] or []) + (existing_action["members"] or [])
 
     if user.uname not in allowed_list and "admin" not in user.type:
         return forbidden(err="You do not have the permission to update this action")
@@ -404,46 +404,6 @@ def execute_operations(**kwargs) -> Response:
 @api_login(required_priv=["R", "W"], required_type=["automation_basic"])
 @parse_parameters(refresh=parse_refresh)
 def give_privilege(id: str, user: User, **kwargs):
-    """give permission from one user to an other.
-
-        The json object need to send "privilege", "user_id" as a key.
-        privilege : The value need to be one of ["admins", "members", "owner"]
-        user_id : the value need to be the user to add or remove from the permission
-    Variables:
-    action_id => The id of the action to give administrative privilege of
-
-    Arguments:
-        id : The id of the action to give administrative privilege of
-        user : the user requesting the privilege change (injected by the api_login decorator)
-
-    Optional Arguments:
-    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
-        'wait_for' will wait for the change to be visible in search.
-
-    Data Block:
-    {
-        "privilege": "privilege to give"  # [members, admins, owner]
-        "user_id": "user to give permission to"
-    }
-
-    Result Example:
-    {
-        "success": True     # If the operation succeeded
-    }
-    """
-    try:
-        result = permission_helper.give_privilege(id, user, Action, request.json, refresh=kwargs.get("refresh"))
-    except (ValueError, HowlerInvalidPermissionException, InvalidDataException) as e:
-        return bad_request(err=str(e))
-
-    return ok(result)
-
-
-@generate_swagger_docs()
-@action_api.route("/<id>/multi_permission", methods=["PUT"])
-@api_login(required_priv=["R", "W"], required_type=["automation_basic"])
-@parse_parameters(refresh=parse_refresh)
-def give_multi_privilege(id: str, user: User, **kwargs):
     """Give the same privilege to multiple users in a single request.
 
     Variables:
@@ -465,7 +425,7 @@ def give_multi_privilege(id: str, user: User, **kwargs):
     }
     """
     try:
-        result = permission_helper.give_multi_privilege(id, user, Action, request.json, refresh=kwargs.get("refresh"))
+        result = permission_helper.give_privilege(id, user, Action, request.json, refresh=kwargs.get("refresh"))
     except (ValueError, HowlerInvalidPermissionException, InvalidDataException) as e:
         return bad_request(err=str(e))
 
@@ -476,7 +436,7 @@ def give_multi_privilege(id: str, user: User, **kwargs):
 @action_api.route("/<id>/permission", methods=["DELETE"])
 @api_login(required_priv=["R", "W"], required_type=["automation_basic"])
 @parse_parameters(refresh=parse_refresh)
-def revoke_privilege(id: str, user: User, **kwargs):
+def remove_privilege(id: str, user: User, **kwargs):
     """Revoke permission from one user.
 
     Variables:
@@ -502,7 +462,7 @@ def revoke_privilege(id: str, user: User, **kwargs):
         }
     """
     try:
-        result = permission_helper.revoke_privilege(id, user, Action, request.json, refresh=kwargs.get("refresh"))
+        result = permission_helper.remove_privilege(id, user, Action, request.json, refresh=kwargs.get("refresh"))
     except (ValueError, HowlerInvalidPermissionException, InvalidDataException) as e:
         return bad_request(err=str(e))
 

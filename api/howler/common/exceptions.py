@@ -121,10 +121,6 @@ class HowlerInvalidParameterException(HowlerException):
     """Raised when an endpoint parameter is invalid."""
 
 
-class HowlerInvalidPermissionException(HowlerException):
-    """Raised when a user requested a permission level that is not valid for the given resource."""
-
-
 class Chain(object):
     """This class can be used as a decorator to override the type of exceptions returned by a function"""
 

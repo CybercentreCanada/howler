@@ -6,7 +6,6 @@ from howler.api.v1.utils.params import parse_parameters, parse_refresh
 from howler.common.exceptions import (
     ForbiddenException,
     HowlerException,
-    HowlerInvalidPermissionException,
     InvalidDataException,
     NotFoundException,
 )
@@ -262,7 +261,7 @@ def give_privilege(id: str, user: User, **kwargs):
     Data Block:
     {
         "privilege": "privilege to give"  # [members, admins, owner]
-        "user_id": "user to give permission to"
+        "user_id": ["user to give permission to", "other_user_to_give_permission"]
     }
 
     Result Example:
@@ -272,43 +271,7 @@ def give_privilege(id: str, user: User, **kwargs):
     """
     try:
         result = permission_helper.give_privilege(id, user, Dossier, request.json, refresh=kwargs.get("refresh"))
-    except (ValueError, HowlerInvalidPermissionException, InvalidDataException) as e:
-        return bad_request(err=str(e))
-    return ok(result)
-
-
-@generate_swagger_docs()
-@dossier_api.route("/<id>/multi_permission", methods=["PUT"])
-@api_login(required_priv=["R", "W"])
-@parse_parameters(refresh=parse_refresh)
-def give_multi_privilege(id: str, user: User, **kwargs):
-    """Give the same privilege to multiple users in a single request.
-
-    Variables:
-        id => The unique ID of the dossier embedded in the URL path
-
-    Arguments:
-        id: The id of the dossier to modify permissions for
-        user: The user making the request (injected by the api_login decorator)
-
-    Optional Arguments:
-    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
-        'wait_for' will wait for the change to be visible in search.
-
-    Data Block:
-    {
-        "privilege": "privilege to give",  # [members, admins, owner]
-        "user_id": ["user1", "user2"]
-    }
-
-    Result Example:
-    {
-        "success": True
-    }
-    """
-    try:
-        result = permission_helper.give_multi_privilege(id, user, Dossier, request.json, refresh=kwargs.get("refresh"))
-    except (ValueError, HowlerInvalidPermissionException, InvalidDataException) as e:
+    except (ValueError, InvalidDataException, InvalidDataException) as e:
         return bad_request(err=str(e))
     return ok(result)
 
@@ -316,7 +279,7 @@ def give_multi_privilege(id: str, user: User, **kwargs):
 @generate_swagger_docs()
 @dossier_api.route("/<id>/permission", methods=["DELETE"])
 @api_login(required_priv=["R", "W"])
-def revoke_privilege(id: str, user: User, **kwargs):
+def remove_privilege(id: str, user: User, **kwargs):
     """Revoke permission from one user to another.
 
     Variables:
@@ -340,8 +303,8 @@ def revoke_privilege(id: str, user: User, **kwargs):
         }
     """
     try:
-        result = permission_helper.revoke_privilege(id, user, Dossier, request.json, refresh=kwargs.get("refresh"))
-    except (ValueError, HowlerInvalidPermissionException, InvalidDataException) as e:
+        result = permission_helper.remove_privilege(id, user, Dossier, request.json, refresh=kwargs.get("refresh"))
+    except (ValueError, InvalidDataException, InvalidDataException) as e:
         return bad_request(err=str(e))
     return ok(result)
 

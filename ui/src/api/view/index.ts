@@ -7,7 +7,7 @@ export const uri = (id?: string) => {
   return id ? joinAllUri(parentUri(), 'view', id) : joinUri(parentUri(), 'view');
 };
 
-export const get = async (view_id?: string): Promise<any> => {
+export const get = async (view_id?: string): Promise<View[]> => {
   if (view_id) {
     const views = await hget(uri());
     return views.find((v: any) => v.view_id === view_id || v.id === view_id) || null;
