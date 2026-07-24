@@ -405,6 +405,7 @@
   "page.cases.dashboard.tasks.hide_child": "Hide child case tasks",
   "page.cases.dashboard.tasks.show_child": "Show child case tasks",
   "page.cases.dashboard.threat": "Threats",
+  "page.cases.detail.assignment": "Case Assignee(s)",
   "page.cases.detail.escalation": "Escalation",
   "page.cases.detail.participants": "Participants",
   "page.cases.detail.properties": "Properties",
