@@ -6,6 +6,7 @@ from howler.api import make_subapi_blueprint, ok
 from howler.api.v1.utils.params import parse_parameters
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
+from howler.odm.models.hit import Hit
 from howler.security import api_login
 
 from sync.services import sync_service
@@ -63,7 +64,7 @@ def get_upserted_hits(*, from_date: datetime, to_date: datetime | None = None, *
 
 
 @generate_swagger_docs()
-@sync_api.route("/hit_schema", methods=["GET"])
+@sync_api.route("/schema/hit", methods=["GET"])
 def get_hit_struct_schema():
     """Get the hit schema for the current Howler version.
 
@@ -81,5 +82,5 @@ def get_hit_struct_schema():
         "type": "struct"
     }
     """
-    schema = sync_service.get_hit_struct_schema()
+    schema = sync_service.get_model_struct_schema(Hit)
     return ok(schema.jsonValue())

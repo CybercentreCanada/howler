@@ -27,17 +27,18 @@ def _is_optional(field: base._Field) -> bool:
     return field.optional or field.default_set
 
 
-def _data_type_from_field(field: base._Field, allow_any_as_string: bool = False) -> tuple[DataType, bool]:
+def data_type_from_field(field: base._Field, allow_any_as_string: bool = False) -> tuple[DataType, bool]:
+    """Get the Spark data type and nullability for a given field."""
     field_name = field.__class__.__name__
     if field_name in TYPE_MAPPING:
         return TYPE_MAPPING[field_name], _is_optional(field)
     else:
         if isinstance(field, Optional):
-            child_type, nullable = _data_type_from_field(field.child_type, allow_any_as_string=allow_any_as_string)
+            child_type, nullable = data_type_from_field(field.child_type, allow_any_as_string=allow_any_as_string)
             return child_type, True
 
         elif isinstance(field, List):
-            child_type, nullable = _data_type_from_field(field.child_type, allow_any_as_string=allow_any_as_string)
+            child_type, nullable = data_type_from_field(field.child_type, allow_any_as_string=allow_any_as_string)
             return ArrayType(elementType=child_type, containsNull=nullable), _is_optional(field)
 
         elif isinstance(field, Compound):
@@ -45,7 +46,7 @@ def _data_type_from_field(field: base._Field, allow_any_as_string: bool = False)
             return schema, _is_optional(field)
 
         elif isinstance(field, Mapping):
-            child_type, nullable = _data_type_from_field(field.child_type, allow_any_as_string=allow_any_as_string)
+            child_type, nullable = data_type_from_field(field.child_type, allow_any_as_string=allow_any_as_string)
             return (
                 MapType(keyType=TYPE_MAPPING["Keyword"], valueType=child_type, valueContainsNull=nullable),
                 _is_optional(field),
@@ -71,7 +72,7 @@ def build_schema(model: type[odm.Model] | odm.Model) -> StructType:
             continue
 
         name: str = field.name  # type: ignore
-        data_type, nullable = _data_type_from_field(field)
+        data_type, nullable = data_type_from_field(field)
         fields.append(StructField(name, data_type, nullable=nullable))
 
     return StructType(fields=fields)

@@ -84,9 +84,10 @@ def test_hit_diffs_pagination(test_client, current_time):
 
 
 def test_hit_schema(test_client):
-    response = test_client.get("/api/v1/sync/hit_schema")
+    response = test_client.get("/api/v1/sync/schema/hit")
 
     assert response.status_code == 200
     schema = response.json.get("api_response")
     assert "fields" in schema
     assert schema.get("type") == "struct"
+    assert "howler" in (field.get("name") for field in schema["fields"])
