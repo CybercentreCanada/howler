@@ -12,7 +12,7 @@ import { buildViewUrl } from 'utils/viewUtils';
 import { AnalyticContext } from './AnalyticProvider';
 import { ViewContext } from './ViewProvider';
 
-export const FavouriteContext = createContext<object>(null);
+export const FavouriteContext = createContext<object>(null!);
 
 const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
   const { t } = useTranslation();
@@ -25,7 +25,7 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
 
   const fetchViews = useContextSelector(ViewContext, ctx => ctx.fetchViews);
 
-  const processViewMenu = useCallback(async (): Promise<LeftNavMenuProps> => {
+  const processViewMenu = useCallback(async (): Promise<LeftNavMenuProps | null> => {
     const favourites = uniq(favouriteViews || []);
 
     if (favourites.length < 1) {
@@ -37,9 +37,9 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
     const items: LeftNavRouteProps[] = sortBy(savedViews, 'title')
       .filter(view => !!view)
       .map(view => ({
-        id: view.view_id,
+        id: view.view_id!,
         type: 'route',
-        label: t(view.title),
+        label: t(view.title!),
         route: buildViewUrl(view)
       }));
 
@@ -52,26 +52,26 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
     };
   }, [favouriteViews, fetchViews, t]);
 
-  const processAnalyticMenu = useCallback((): LeftNavMenuProps => {
-    const favourites = favouriteAnalytics;
+  const processAnalyticMenu = useCallback((): LeftNavMenuProps | null => {
+    const favourites = favouriteAnalytics ?? [];
 
     if (favourites.length < 1) {
       return null;
     }
 
     const items: LeftNavRouteProps[] = favourites
-      .map(aid => {
+      .map((aid): LeftNavRouteProps | null => {
         const analytic = analytics.analytics.find(v => v.analytic_id === aid);
         return analytic
           ? {
-              id: analytic.analytic_id,
+              id: analytic.analytic_id!,
               type: 'route' as const,
-              label: t(analytic.name),
+              label: t(analytic.name!),
               route: `/analytics/${analytic.analytic_id}`
             }
           : null;
       })
-      .filter(v => !!v);
+      .filter((v): v is LeftNavRouteProps => !!v);
 
     return {
       id: 'analytics',

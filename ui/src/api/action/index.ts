@@ -14,22 +14,27 @@ export const get = (id: string): Promise<Action> => {
       query: `action_id:${id}`,
       rows: 1
     })
-    .then(res => res.items[0]);
+    .then(res => {
+      if (!res) {
+        throw new Error('Action search response was empty.');
+      }
+      return res.items[0];
+    });
 };
 
-export const post = (data: Action, refresh?: HowlerRefreshParam): Promise<Action> => {
-  return hpost(uri(), data, {}, refresh ? new URLSearchParams({ refresh }) : undefined);
+export const post = (data: Action, refresh?: HowlerRefreshParam) => {
+  return hpost<Action>(uri(), data, {}, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
-export const put = (id: string, data: Action, refresh?: HowlerRefreshParam): Promise<Action> => {
-  return hput(uri(id), data, {}, refresh ? new URLSearchParams({ refresh }) : undefined);
+export const put = (id: string, data: Action, refresh?: HowlerRefreshParam) => {
+  return hput<Action>(uri(id), data, {}, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
-export const patch = (id: string, data: Action, refresh?: HowlerRefreshParam): Promise<Action> => {
-  return hpatch(uri(id), data, {}, refresh ? new URLSearchParams({ refresh }) : undefined);
+export const patch = (id: string, data: Action, refresh?: HowlerRefreshParam) => {
+  return hpatch<Action>(uri(id), data, {}, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
-export const del = (id: string, refresh?: HowlerRefreshParam): Promise<void> => {
+export const del = (id: string, refresh?: HowlerRefreshParam) => {
   return hdelete(uri(id), undefined, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 

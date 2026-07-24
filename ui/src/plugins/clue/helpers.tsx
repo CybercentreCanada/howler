@@ -37,30 +37,30 @@ interface ClueCell {
 
 const MarkdownTypography: FC<EnrichedTypographyProps & TypographyProps> = ({ type, value, ...props }) => {
   const { t } = useTranslation();
-  const guessType = useClueEnrichSelector(ctx => ctx?.guessType);
-  let enrichedType = type;
 
   try {
+    const guessType = useClueEnrichSelector(ctx => ctx.guessType);
+
     if (!type || type?.toString().toLowerCase() === 'guess') {
-      enrichedType = guessType?.(value.toString());
+      type = guessType(value!.toString()) ?? undefined;
     }
+
+    if (!type) {
+      return <span>{value}</span>;
+    }
+
+    return <EnrichedTypography {...props} type={type} value={value} />;
   } catch (err) {
     return (
       <Stack>
         <strong style={{ color: 'red' }}>{t('markdown.error')}</strong>
-        <strong>{err.toString()}</strong>
+        <strong>{err instanceof Error ? err.toString() : String(err)}</strong>
         <code style={{ fontSize: '0.8rem' }}>
-          <pre>{err.stack}</pre>
+          <pre>{err instanceof Error ? err.stack : undefined}</pre>
         </code>
       </Stack>
     );
   }
-
-  if (!enrichedType) {
-    return <span>{value}</span>;
-  }
-
-  return <EnrichedTypography {...props} type={enrichedType} value={value} />;
 };
 
 const ClueGroup: FC<PropsWithChildren<{ type: string; enabled?: boolean }>> = props => {
@@ -131,7 +131,7 @@ const HELPERS: HowlerHelper[] = [
           slotProps={{ stack: { component: 'span', sx: { width: 'fit-content' } } }}
           component="span"
           type={type}
-          value={typeof value === 'string' ? value : null}
+          value={value}
         />
       );
     }

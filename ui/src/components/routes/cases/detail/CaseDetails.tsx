@@ -30,12 +30,16 @@ import SocketBadge from 'components/elements/display/icons/SocketBadge';
 import UserList from 'components/elements/UserList';
 import dayjs from 'dayjs';
 import type { Case } from 'models/entities/generated/Case';
-import { useContext, useState, type FC } from 'react';
+import { useContext, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ESCALATION_COLOR_MAP } from '../constants';
 import useCase from '../hooks/useCase';
 import ResolveModal from '../modals/ResolveModal';
 import SourceAggregate from './aggregates/SourceAggregate';
+
+const isStringArray = (value: unknown): value is string[] => {
+  return Array.isArray(value) && value.every(item => typeof item === 'string');
+};
 
 const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
   const { t } = useTranslation();
@@ -45,6 +49,10 @@ const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
 
   const { config } = useContext(ApiConfigContext);
   const [loading, setLoading] = useState(false);
+  const escalationOptions = useMemo(() => {
+    const lookup = Object.entries(config.lookups).find(([key]) => key === 'case.escalation')?.[1];
+    return isStringArray(lookup) ? lookup : [];
+  }, [config.lookups]);
 
   const caseViewers = _case?.case_id ? (viewers[_case.case_id] ?? []) : [];
 
@@ -83,6 +91,11 @@ const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
     );
   }
 
+  // SvgIcon doesn't support the 'default' color, so fall back to 'inherit' (its own default) to keep the same
+  // visual appearance the invalid value previously produced at runtime.
+  const escalationColor = ESCALATION_COLOR_MAP[_case.escalation as keyof typeof ESCALATION_COLOR_MAP];
+  const escalationIconColor = escalationColor === 'default' ? 'inherit' : escalationColor;
+
   return (
     <Card
       elevation={1}
@@ -104,7 +117,7 @@ const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
               'in-progress': <HourglassBottom color="warning" />,
               'on-hold': <Pause color="disabled" />,
               resolved: <Check color="success" />
-            }[_case.status] ?? <WarningRounded fontSize="small" />}
+            }[_case.status!] ?? <WarningRounded fontSize="small" />}
             <Typography variant="body1">{t('page.cases.detail.status')}</Typography>
           </Stack>
           <Autocomplete
@@ -112,7 +125,7 @@ const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
             disabled={loading}
             disableClearable
             value={_case.status}
-            options={config.lookups['howler.status']}
+            options={config.lookups['howler.status'] ?? []}
             renderInput={params => <TextField {...params} size="small" />}
             onChange={(_ev, status) => {
               if (status) {
@@ -122,15 +135,15 @@ const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
           />
 
           <Stack direction="row" spacing={1} alignItems="center">
-            <TrendingUp color={ESCALATION_COLOR_MAP[_case.escalation]} />
+            <TrendingUp color={escalationIconColor} />
             <Typography variant="body1">{t('page.cases.detail.escalation')}</Typography>
           </Stack>
           <Autocomplete
             size="small"
             disabled={loading}
             disableClearable
-            value={_case.escalation ?? null}
-            options={config.lookups['case.escalation']}
+            value={_case.escalation ?? undefined}
+            options={escalationOptions}
             renderInput={params => <TextField {...params} size="small" />}
             onChange={(_ev, escalation) => {
               if (escalation) {

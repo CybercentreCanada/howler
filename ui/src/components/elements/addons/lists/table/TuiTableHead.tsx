@@ -17,7 +17,7 @@ const TuiTableHead = ({ layout, columns }: TuiTableHeaderProps) => {
     <div
       data-tuitable-header="true"
       className="tui-table-head tui-table-divider"
-      style={{ position: scrollTop ? 'sticky' : null, top: scrollTop || null }}
+      style={{ position: scrollTop ? 'sticky' : undefined, top: scrollTop || undefined }}
     >
       {columns.map(column => (
         <TuiTableHeader key={column.column} width={layout.getWidth(column.column, true)} column={column} />

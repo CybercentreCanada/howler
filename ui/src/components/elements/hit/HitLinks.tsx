@@ -35,7 +35,7 @@ const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
         };
       })
     );
-    return sortBy(flattened, item => item.pivot.label?.[i18n.language]);
+    return sortBy(flattened, item => item.pivot.label?.[i18n.language as 'en' | 'fr']);
   }, [dossiers, i18n.language, hit]);
 
   const hasNotebooks = (analytic?.notebooks?.length ?? 0) > 0;
@@ -61,13 +61,13 @@ const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
       {displayPivots.map(({ pivot, dossier, resolvedUrl }) => {
         return (
           <Grid key={`${dossier.dossier_id}-${pivot.value}`}>
-            <PivotLink pivot={pivot} hit={hit} dossier={dossier} resolvedUrl={resolvedUrl} compact />
+            <PivotLink pivot={pivot} hit={hit!} dossier={dossier} resolvedUrl={resolvedUrl} compact />
           </Grid>
         );
       })}
       {hasNotebooks && (
         <Grid>
-          <HitNotebooks analytic={analytic} hit={hit} compact />
+          <HitNotebooks analytic={analytic!} hit={hit!} compact />
         </Grid>
       )}
     </Grid>

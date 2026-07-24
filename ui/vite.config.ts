@@ -42,7 +42,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
-      tsconfigPaths(),
+      tsconfigPaths({ projects: ['./tsconfig.vite.json'] }),
       {
         name: 'markdown-loader',
         transform(code, id) {

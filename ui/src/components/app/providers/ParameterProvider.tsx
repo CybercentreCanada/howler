@@ -6,9 +6,10 @@ import { useLocation, useParams, useSearchParams } from 'react-router';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY } from 'utils/constants';
 import Throttler from 'utils/Throttler';
+import { missingContext } from './contextUtils';
 
 export interface ParameterContextType {
-  selected?: string;
+  selected?: string | null;
   query?: string;
   offset: number;
   trackTotalHits: boolean;
@@ -16,11 +17,11 @@ export interface ParameterContextType {
   span?: string;
   indexes?: SearchIndex[];
   filters?: string[];
-  startDate?: string;
-  endDate?: string;
+  startDate?: string | null;
+  endDate?: string | null;
   views?: string[];
 
-  setSelected: (id: string) => void;
+  setSelected: (id: string | null) => void;
   setQuery: (id: string) => void;
   setOffset: (offset: string | number) => void;
   setSort: (sort: string) => void;
@@ -45,27 +46,57 @@ export interface ParameterContextType {
 }
 
 interface SearchValues {
-  selected: string;
+  selected: string | null;
   query: string;
   sort: string;
   span: string;
   indexes: SearchIndex[];
   filters: string[];
   views: string[];
-  startDate: string;
-  endDate: string;
+  startDate: string | null;
+  endDate: string | null;
   offset: number;
   trackTotalHits: boolean;
 }
 
-export const ParameterContext = createContext<ParameterContextType>(null);
-
-const DEFAULT_VALUES: Partial<SearchValues> = {
+const DEFAULT_VALUES: Pick<SearchValues, 'query' | 'sort' | 'span' | 'indexes'> = {
   query: DEFAULT_QUERY,
   sort: 'event.created desc',
   span: 'date.range.1.month',
   indexes: ['hit']
 };
+
+const DEFAULT_PARAMETER_CONTEXT: ParameterContextType = {
+  ...DEFAULT_VALUES,
+  selected: null,
+  offset: 0,
+  trackTotalHits: false,
+  filters: [],
+  startDate: null,
+  endDate: null,
+  views: [],
+  setSelected: () => missingContext('ParameterContext'),
+  setQuery: () => missingContext('ParameterContext'),
+  setOffset: () => missingContext('ParameterContext'),
+  setSort: () => missingContext('ParameterContext'),
+  setSpan: () => missingContext('ParameterContext'),
+  setCustomSpan: () => missingContext('ParameterContext'),
+  addFilter: () => missingContext('ParameterContext'),
+  removeFilter: () => missingContext('ParameterContext'),
+  setFilter: () => missingContext('ParameterContext'),
+  resetFilters: () => missingContext('ParameterContext'),
+  addIndex: () => missingContext('ParameterContext'),
+  removeIndex: () => missingContext('ParameterContext'),
+  setIndex: () => missingContext('ParameterContext'),
+  setIndexes: () => missingContext('ParameterContext'),
+  resetIndexes: () => missingContext('ParameterContext'),
+  addView: () => missingContext('ParameterContext'),
+  removeView: () => missingContext('ParameterContext'),
+  setView: () => missingContext('ParameterContext'),
+  resetViews: () => missingContext('ParameterContext')
+};
+
+export const ParameterContext = createContext<ParameterContextType>(DEFAULT_PARAMETER_CONTEXT);
 
 /** Scalar URL params that map 1:1 to a state key */
 const PARAM_MAPPINGS: [string, keyof SearchValues][] = [
@@ -96,9 +127,13 @@ const WRITE_THROTTLER = new Throttler(100);
  * Helper function to convert a number/string representation of a number into a valid offset.
  * @returns
  */
-const parseOffset = (_offset: string | number) => {
+const parseOffset = (_offset: string | number | null) => {
   if (typeof _offset === 'number') {
     return _offset;
+  }
+
+  if (!_offset) {
+    return 0;
   }
 
   const candidate = parseInt(_offset);
@@ -108,7 +143,7 @@ const parseOffset = (_offset: string | number) => {
 /**
  * Helper function to determine the selected value based on URL params and route context.
  */
-const getSelectedValue = (params: URLSearchParams, pathname: string, bundleId?: string) => {
+const getSelectedValue = (params: URLSearchParams, pathname: string, bundleId?: string): string | null => {
   if (params.has('selected')) {
     return params.get('selected');
   }
@@ -243,7 +278,11 @@ const useUrlSync = (
 
     // Scalar params: fall back to default when absent from URL
     PARAM_MAPPINGS.forEach(([urlKey, stateKey]) => {
-      const urlValue = params.has(urlKey) ? params.get(urlKey) : (defaults[stateKey] ?? undefined);
+      const urlValue = params.has(urlKey)
+        ? params.get(urlKey)
+        : stateKey === 'startDate' || stateKey === 'endDate'
+          ? null
+          : (defaults[stateKey] ?? undefined);
       if (urlValue !== values[stateKey]) {
         (changes as any)[stateKey] = urlValue;
       }
@@ -329,10 +368,10 @@ const ParameterProvider: FC<PropsWithChildren<{ defaults?: Partial<SearchValues>
 
   const [values, _setValues] = useState<SearchValues>({
     selected: getSelectedValue(params, location.pathname, routeParams.id),
-    query: params.get('query') ?? defaults.query,
-    sort: params.get('sort') ?? defaults.sort,
-    span: params.get('span') ?? defaults.span,
-    indexes: params.has('index') ? uniq(params.getAll('index') as SearchIndex[]).filter(identity) : defaults.indexes,
+    query: params.get('query') ?? defaults.query!,
+    sort: params.get('sort') ?? defaults.sort!,
+    span: params.get('span') ?? defaults.span!,
+    indexes: params.has('index') ? uniq(params.getAll('index') as SearchIndex[]).filter(identity) : defaults.indexes!,
     filters: params.getAll('filter'),
     views: params.getAll('view'),
     startDate: params.get('start_date'),
@@ -352,7 +391,7 @@ const ParameterProvider: FC<PropsWithChildren<{ defaults?: Partial<SearchValues>
         }
 
         if (key === 'selected') {
-          pendingChanges.current.selected = value as string | null;
+          pendingChanges.current.selected = value as SearchValues['selected'];
         } else {
           (pendingChanges.current as any)[key] = value ?? defaults[key] ?? null;
         }

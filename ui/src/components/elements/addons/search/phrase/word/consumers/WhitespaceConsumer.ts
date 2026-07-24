@@ -4,10 +4,10 @@ import type PhraseLexer from '../../PhraseLexer';
 
 export default class WhitespaceConsumer extends PhraseConsumer<PhraseLexer> {
   public lock(lexer: PhraseLexer): boolean {
-    return lexer.bufferValue().match(/\s/) && lexer.ahead(1) !== ' ';
+    return !!lexer.bufferValue().match(/\s/) && lexer.ahead(1) !== ' ';
   }
 
-  public consume(lexer: PhraseLexer): PhraseToken {
+  public consume(lexer: PhraseLexer): PhraseToken | null {
     if (lexer.ahead(1) !== ' ') {
       return {
         type: 'whitespace',

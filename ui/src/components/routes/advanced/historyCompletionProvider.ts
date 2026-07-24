@@ -44,7 +44,7 @@ const useHistoryCompletionProvider = (): languages.CompletionItemProvider => {
       const suggestions = fuzzyResults.map(result => {
         return {
           label: result.item, // The query string from previous searches
-          kind: monaco.languages.CompletionItemKind.Reference, // Simple reference type
+          kind: monaco!.languages.CompletionItemKind.Reference, // Simple reference type
           insertText: result.item, // Insert the plain text as it is
           detail: twitterShort(queryHistory[result.item]), // Optional additional detail
           range

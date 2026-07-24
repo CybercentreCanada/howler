@@ -14,6 +14,9 @@ export const post = async (request?: HowlerSearchRequest): Promise<HowlerSearchR
     ...request,
     query: request?.query || 'name:*'
   });
+  if (!response) {
+    throw new Error('Search response was empty.');
+  }
   return {
     ...response,
     items: response.items.map((i: HowlerApiUser) => ({ ...i, username: i.uname }))

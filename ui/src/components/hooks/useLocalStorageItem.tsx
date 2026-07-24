@@ -27,7 +27,7 @@ const notify = (key: string, value: unknown) => {
  */
 const useLocalStorageItem = <T,>(key: string, initialValue?: T): [T, (value: T) => void, () => void] => {
   const { get, set, has, remove } = useLocalStorage();
-  const [value, setValue] = useState<T>(get(key) ?? initialValue);
+  const [value, setValue] = useState<T>((get(key) ?? initialValue) as T);
 
   useEffect(() => {
     if (initialValue !== null && initialValue !== undefined && !has(key)) {
@@ -41,7 +41,7 @@ const useLocalStorageItem = <T,>(key: string, initialValue?: T): [T, (value: T) 
       SUBSCRIBERS.set(key, new Set());
     }
     const setter = (v: unknown) => setValue(v as T);
-    SUBSCRIBERS.get(key).add(setter);
+    SUBSCRIBERS.get(key)!.add(setter);
     return () => {
       SUBSCRIBERS.get(key)?.delete(setter);
       if (SUBSCRIBERS.get(key)?.size === 0) {
@@ -53,8 +53,10 @@ const useLocalStorageItem = <T,>(key: string, initialValue?: T): [T, (value: T) 
   // React to cross-tab storage changes via the native 'storage' event.
   useEffect(() => {
     const handler = (event: StorageEvent) => {
-      if (event.key !== key) return;
-      const next: T = event.newValue !== null ? JSON.parse(event.newValue) : initialValue;
+      if (event.key !== key) {
+        return;
+      }
+      const next: T = (event.newValue !== null ? JSON.parse(event.newValue) : initialValue) as T;
       notify(key, next);
     };
     window.addEventListener('storage', handler);

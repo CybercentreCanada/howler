@@ -9,7 +9,8 @@ import {
   Skeleton,
   Stack,
   TextField,
-  Typography
+  Typography,
+  type Theme
 } from '@mui/material';
 import { useAppUser } from '@tui/core';
 import api from 'api';
@@ -21,6 +22,7 @@ import type { HowlerUser } from 'models/entities/HowlerUser';
 import type { Comment as AnalyticComment } from 'models/entities/generated/Comment';
 import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
+import type { HowlerComment } from 'models/entities/generated/HowlerComment';
 import type { SocketEvent } from 'models/socket/HitUpdate';
 import {
   useCallback,
@@ -48,7 +50,7 @@ interface RecordCommentsProps {
 }
 
 const RecordComments: FC<RecordCommentsProps> = ({ record, users }) => {
-  const { user } = useAppUser();
+  const { user } = useAppUser<HowlerUser>();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { dispatchApi } = useMyApi();
@@ -61,9 +63,9 @@ const RecordComments: FC<RecordCommentsProps> = ({ record, users }) => {
   const [length, setLength] = useState(0);
   const [analyticId, setAnalyticId] = useState<string>();
   const [analyticComments, setAnalyticComments] = useState<AnalyticComment[]>([]);
-  const [comments, setComments] = useState(sortByTimestamp(record?.howler?.comment));
+  const [comments, setComments] = useState(sortByTimestamp(record?.howler?.comment ?? []));
 
-  const input = useRef<HTMLTextAreaElement>(undefined);
+  const input = useRef<HTMLTextAreaElement>(null);
 
   /**
    * Set the list of typers based on updates from the websocket
@@ -111,9 +113,15 @@ const RecordComments: FC<RecordCommentsProps> = ({ record, users }) => {
         throwError: true,
         logError: false
       });
-      setComments(sortByTimestamp(result.howler.comment));
+      if (!result) {
+        return;
+      }
 
-      input.current.value = '';
+      setComments(sortByTimestamp(result.howler.comment ?? []));
+
+      if (input.current) {
+        input.current.value = '';
+      }
       setShowClear(false);
     } finally {
       setLoading(false);
@@ -147,7 +155,7 @@ const RecordComments: FC<RecordCommentsProps> = ({ record, users }) => {
   );
 
   const onClear = useCallback(() => {
-    input.current.value = '';
+    input.current!.value = '';
     setShowClear(false);
   }, []);
 
@@ -167,7 +175,7 @@ const RecordComments: FC<RecordCommentsProps> = ({ record, users }) => {
     [loading, onSubmit]
   );
 
-  const checkLength = useCallback(() => setLength(input.current?.value.length), []);
+  const checkLength = useCallback(() => setLength(input.current?.value.length ?? 0), []);
 
   const handleDelete = useCallback(
     async (commentId: string) => {
@@ -198,15 +206,15 @@ const RecordComments: FC<RecordCommentsProps> = ({ record, users }) => {
         .join('\n')}\n\n`.trimStart();
 
       setTimeout(() => {
-        input.current.focus();
+        input.current!.focus();
         // SPBK-2197 Fix - https://stackoverflow.com/a/10576409
-        input.current.selectionStart = input.current.selectionEnd = input.current.value.length;
+        input.current!.selectionStart = input.current!.selectionEnd = input.current!.value.length;
       }, 10);
     }
   }, []);
 
   const handleReact = useCallback(
-    async (commentId: string, type: string) => {
+    async (commentId: string, type: string | null) => {
       if (type) {
         await dispatchApi(api.hit.comments.react.put(record.howler.id, commentId, type));
 
@@ -221,7 +229,7 @@ const RecordComments: FC<RecordCommentsProps> = ({ record, users }) => {
         setComments(
           comments.map(cmt =>
             cmt.id !== commentId ? cmt : { ...cmt, reactions: { ...cmt?.reactions, [user.username]: undefined } }
-          )
+          ) as HowlerComment[]
         );
       }
     },
@@ -233,7 +241,7 @@ const RecordComments: FC<RecordCommentsProps> = ({ record, users }) => {
    */
   useEffect(() => {
     if (record?.howler?.comment) {
-      setComments(record?.howler?.comment.slice().sort((a, b) => compareTimestamp(b.timestamp, a.timestamp)));
+      setComments(record?.howler?.comment.slice().sort((a, b) => compareTimestamp(b.timestamp!, a.timestamp!)));
     } else if (!record) {
       setComments([]);
     }
@@ -293,10 +301,10 @@ const RecordComments: FC<RecordCommentsProps> = ({ record, users }) => {
           key={c.id}
           comment={c}
           users={users}
-          handleDelete={() => handleDelete(c.id)}
-          handleEdit={value => handleEdit(c.id, value)}
-          handleReact={type => handleReact(c.id, type)}
-          handleQuote={() => handleQuote(c.value)}
+          handleDelete={() => handleDelete(c.id!)}
+          handleEdit={value => handleEdit(c.id!, value)}
+          handleReact={type => handleReact(c.id!, type)}
+          handleQuote={() => handleQuote(c.value!)}
         />
       )),
     [comments, handleDelete, handleEdit, handleQuote, handleReact, users]
@@ -306,9 +314,9 @@ const RecordComments: FC<RecordCommentsProps> = ({ record, users }) => {
     <Stack sx={{ py: 1, pr: 1 }} spacing={1}>
       {record && renderedAnalyticComments}
       <Stack direction="row" spacing={1}>
-        <HowlerAvatar userId={user.username} />
+        <HowlerAvatar userId={user.username!} />
         <TextField
-          inputProps={{ sx: theme => ({ fontSize: theme.typography.body2.fontSize }) }}
+          inputProps={{ sx: (theme: Theme) => ({ fontSize: theme.typography.body2.fontSize }) }}
           InputLabelProps={{ shrink: false }}
           placeholder={t('comments.add')}
           onKeyDown={checkForSubmit}

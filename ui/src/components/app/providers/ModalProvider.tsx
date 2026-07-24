@@ -1,6 +1,7 @@
 import ConfirmDeleteModal from 'components/elements/display/modals/ConfirmDeleteModal';
 import type { FC, PropsWithChildren, ReactNode } from 'react';
 import { createContext, useCallback, useEffect, useState } from 'react';
+import { missingContext } from './contextUtils';
 
 export interface ModalOptions {
   disableClose?: boolean;
@@ -22,7 +23,14 @@ interface ModalContextType {
   close: () => void;
 }
 
-export const ModalContext = createContext<ModalContextType>(null);
+const DEFAULT_MODAL_CONTEXT: ModalContextType = {
+  showModal: () => missingContext('ModalContext'),
+  withConfirmDeleteModal: () => missingContext('ModalContext'),
+  setContent: () => missingContext('ModalContext'),
+  close: () => missingContext('ModalContext')
+};
+
+export const ModalContext = createContext<ModalContextType>(DEFAULT_MODAL_CONTEXT);
 
 const ModalProvider: FC<PropsWithChildren> = ({ children }) => {
   const [content, setContent] = useState<ReactNode>(null);

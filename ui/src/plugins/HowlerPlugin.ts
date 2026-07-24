@@ -40,7 +40,7 @@ abstract class HowlerPlugin implements IPlugin {
   abstract author: string;
   abstract description: string;
 
-  pluginStore: PluginStore;
+  pluginStore!: PluginStore;
 
   private functionsToRemove: string[] = [];
 
@@ -58,8 +58,11 @@ abstract class HowlerPlugin implements IPlugin {
 
   activate() {
     difference(Object.getOwnPropertyNames(HowlerPlugin.prototype), INTERNAL_FUNCTIONS).forEach(_function => {
-      this.pluginStore.addFunction(`${this.name}.${_function}`, this[_function]);
-      this.functionsToRemove.push(`${this.name}.${_function}`);
+      const pluginFunction = this[_function as keyof this];
+      if (typeof pluginFunction === 'function') {
+        this.pluginStore.addFunction(`${this.name}.${_function}`, pluginFunction.bind(this));
+        this.functionsToRemove.push(`${this.name}.${_function}`);
+      }
     });
 
     this.localization(i18nInstance);
@@ -204,11 +207,11 @@ abstract class HowlerPlugin implements IPlugin {
     return [];
   }
 
-  typography(_props: PluginTypographyProps) {
+  typography(_props: PluginTypographyProps): React.ReactNode {
     return null;
   }
 
-  chip(_props: PluginChipProps) {
+  chip(_props: PluginChipProps): React.ReactNode {
     return null;
   }
 

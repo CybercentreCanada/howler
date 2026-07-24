@@ -138,7 +138,7 @@ const SearchPane: FC = () => {
     const selectedElement = target.closest('[id]') as HTMLElement;
 
     if (!selectedElement) {
-      return;
+      return '';
     }
 
     return selectedElement.id;
@@ -162,7 +162,7 @@ const SearchPane: FC = () => {
                 </Tooltip>
               )}
               <FlexOne />
-              <SearchActionMenu query={query} />
+              <SearchActionMenu query={query!} />
             </Stack>
           </Stack>
 

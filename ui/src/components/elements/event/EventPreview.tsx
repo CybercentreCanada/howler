@@ -23,15 +23,15 @@ const EventPreview: FC<PreviewProps> = ({ event }) => {
       <Stack>
         <Stack direction="row" spacing={1} alignItems="center">
           <Typography variant="body1" fontWeight="bold">
-            {event.event.provider}
+            {event.event!.provider}
           </Typography>
           <div style={{ flex: 1 }} />
-          <Chip label={event.event.kind} />
-          {event.event.reference && (
+          <Chip label={event.event!.kind} />
+          {event.event!.reference && (
             <IconButton
               size="small"
               component={Link}
-              to={event.event.reference}
+              to={event.event!.reference}
               sx={{ opacity: 1 }}
               target="_blank"
               rel="noopener noreferrer"
@@ -41,15 +41,15 @@ const EventPreview: FC<PreviewProps> = ({ event }) => {
           )}
         </Stack>
 
-        {event.event.type && (
+        {event.event!.type && (
           <Typography variant="caption">
-            {t('event.type')} - {event.event.type.join(', ')}
+            {t('event.type')} - {event.event!.type.join(', ')}
           </Typography>
         )}
 
-        {event.event.module && (
+        {event.event!.module && (
           <Typography variant="caption">
-            {t('event.module')} - {event.event.module}
+            {t('event.module')} - {event.event!.module}
           </Typography>
         )}
       </Stack>

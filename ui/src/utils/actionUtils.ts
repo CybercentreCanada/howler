@@ -44,13 +44,14 @@ export const getOptionsByContext = (
   arg: string,
   context: string
 ): string[] => {
-  if (!options[arg]) {
+  const argOptions = options[arg];
+  if (!argOptions) {
     return [];
   }
 
   // If it's just an array, there's no special conditional logic to deal with - we just return the array
-  if (Array.isArray(options[arg])) {
-    return options[arg] as string[];
+  if (Array.isArray(argOptions)) {
+    return argOptions;
   }
 
   // Build the context up from the raw values, and check to see if any of the context values matches the conditionals provided in the options.
@@ -62,9 +63,12 @@ export const getOptionsByContext = (
   //
   // Note that this restricts the options to a single key:value pair.
   // For more complex cases down the road (if those end up existing), we'll need to improve this
-  const matchingKey = buildContext(context).find(key => !!options[arg][key]);
+  const matchingKey = buildContext(context).find(key => !!argOptions[key]);
+  if (!matchingKey) {
+    return [];
+  }
 
-  return (options[arg][matchingKey] as string[]) ?? [];
+  return argOptions[matchingKey] ?? [];
 };
 
 /**

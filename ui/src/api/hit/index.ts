@@ -6,10 +6,6 @@ import * as overwrite from 'api/hit/overwrite';
 import * as transition from 'api/hit/transition';
 import type { Hit } from 'models/entities/generated/Hit';
 
-export type HitActionBody = {
-  value: string;
-};
-
 export type LabelActionBody = {
   value: string[];
 };
@@ -27,14 +23,14 @@ export const uri = (id?: string): string => {
   return id ? joinAllUri(parentUri(), 'hit', id) : joinUri(parentUri(), 'hit');
 };
 
-export const get = <T extends Hit>(id: string, metadata?: string[]): Promise<T> => {
+export const get = <T extends Hit>(id: string, metadata?: string[]) => {
   const params = new URLSearchParams();
 
   if (metadata) {
     params.append('metadata', metadata.join(','));
   }
 
-  return hget(uri(id), params);
+  return hget<T>(uri(id), params);
 };
 
 interface PostResponse {
@@ -45,11 +41,11 @@ interface PostResponse {
   }[];
 }
 
-export const post = (hits: Hit[], refresh?: HowlerRefreshParam): Promise<PostResponse> => {
-  return hpost(uri(), hits, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
+export const post = (hits: Hit[], refresh?: HowlerRefreshParam) => {
+  return hpost<PostResponse>(uri(), hits, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 
-export const del = (ids: string[], refresh?: HowlerRefreshParam): Promise<{ success: boolean }> => {
+export const del = (ids: string[], refresh?: HowlerRefreshParam) => {
   return hdelete(uri(), ids, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };
 

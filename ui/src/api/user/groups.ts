@@ -7,6 +7,6 @@ export const uri = () => {
   return joinUri(parentUri(), 'groups');
 };
 
-export const get = (): Promise<GroupDetailsResponse> => {
-  return hget(uri());
+export const get = () => {
+  return hget<GroupDetailsResponse>(uri());
 };

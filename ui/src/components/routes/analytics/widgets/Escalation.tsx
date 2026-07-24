@@ -18,7 +18,9 @@ const Escalation = forwardRef<any, { analytic: Analytic; maxWidth?: string }>(({
   const escalationColors = useMemo(
     () =>
       Object.keys(escalationData).map(e =>
-        ESCALATION_COLORS[e] ? theme.palette[ESCALATION_COLORS[e]].main : 'rgba(255, 255, 255, 0.16)'
+        ESCALATION_COLORS[e as keyof typeof ESCALATION_COLORS]
+          ? theme.palette[ESCALATION_COLORS[e as keyof typeof ESCALATION_COLORS]].main
+          : 'rgba(255, 255, 255, 0.16)'
       ),
     [escalationData, theme.palette]
   );
@@ -35,7 +37,7 @@ const Escalation = forwardRef<any, { analytic: Analytic; maxWidth?: string }>(({
         query: `howler.analytic:("${analytic.name}")`,
         fields: ['howler.escalation']
       })
-      .then(data => setEscalationData(data['howler.escalation']))
+      .then(data => setEscalationData(data?.['howler.escalation'] ?? {}))
       .finally(() => setLoading(false));
   }, [analytic]);
 

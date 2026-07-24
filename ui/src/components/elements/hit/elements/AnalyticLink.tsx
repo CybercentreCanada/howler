@@ -43,7 +43,7 @@ const AnalyticLink: FC<{ hit: Hit; lazy?: boolean; compressed?: boolean; alignSe
       </IconButton>
       <Typography
         variant={compressed ? 'body1' : 'h6'}
-        fontWeight={compressed && 'bold'}
+        fontWeight={compressed ? 'bold' : undefined}
         sx={{ alignSelf, '& a': { color: 'text.primary' } }}
       >
         {hit.howler.analytic}

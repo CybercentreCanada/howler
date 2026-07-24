@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { render, screen, waitFor } from '@testing-library/react';
 import { omit } from 'lodash-es';
 import { MemoryRouter } from 'react-router';

@@ -14,7 +14,7 @@ const Created = forwardRef<any, { analytic: Analytic }>(({ analytic }, ref) => {
   const [loading, setLoading] = useState(false);
   const [ingestionData, setIngestionData] = useState<{ [timestamp: string]: number }>({});
 
-  const queryRef = useRef<Promise<HowlerHistogramSearchResponse>>(undefined);
+  const queryRef = useRef<Promise<HowlerHistogramSearchResponse | null> | null>(null);
 
   useEffect(() => {
     if (!analytic) {
@@ -23,18 +23,19 @@ const Created = forwardRef<any, { analytic: Analytic }>(({ analytic }, ref) => {
 
     setLoading(true);
 
-    if (!queryRef.current) {
-      queryRef.current = api.search.histogram.hit.post('timestamp', {
+    const query =
+      queryRef.current ??
+      api.search.histogram.hit.post('timestamp', {
         query: `howler.analytic:("${analytic.name}")`,
         start: 'now-3M',
         gap: '1d',
         mincount: 0
       });
-    }
+    queryRef.current = query;
 
-    void queryRef.current
+    void query
       .then(result => {
-        setIngestionData(result);
+        setIngestionData(result ?? {});
         queryRef.current = null;
       })
       .finally(() => setLoading(false));
@@ -52,10 +53,10 @@ const Created = forwardRef<any, { analytic: Analytic }>(({ analytic }, ref) => {
               x: new Date(time).getTime(),
               y: ingestionData[time]
             })),
-            borderColor: stringToColor(analytic?.name),
+            borderColor: stringToColor(analytic.name!),
             backgroundColor: 'transparent',
             pointBackgroundColor: Object.keys(ingestionData).map(time =>
-              ingestionData[time] ? stringToColor(analytic?.name) : 'transparent'
+              ingestionData[time] ? stringToColor(analytic.name!) : 'transparent'
             ),
             pointBorderWidth: Object.keys(ingestionData).map(time => (ingestionData[time] ? 2 : 0))
           }

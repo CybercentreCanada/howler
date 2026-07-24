@@ -12,7 +12,7 @@ type TuiListProps<T> = {
 
 const TuiList = <T,>({ keyboard, children, onSelection }: TuiListProps<T>) => {
   return (
-    <TuiListBase keyboard={keyboard} onSelect={onSelection}>
+    <TuiListBase keyboard={keyboard} onSelect={onSelection!}>
       {(items, onSelect) =>
         items && items.length > 0 ? (
           items.map((element, i) => (
@@ -28,4 +28,4 @@ const TuiList = <T,>({ keyboard, children, onSelection }: TuiListProps<T>) => {
   );
 };
 
-export default memo(TuiList);
+export default memo(TuiList) as typeof TuiList;

@@ -66,6 +66,6 @@ export interface HelpResponse {
   blueprints: { [index: string]: string };
 }
 
-export const get = (): Promise<HelpResponse> => {
-  return hget(uri());
+export const get = () => {
+  return hget<HelpResponse>(uri());
 };

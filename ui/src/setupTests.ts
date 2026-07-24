@@ -7,6 +7,10 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 import utc from 'dayjs/plugin/utc';
 import { server } from 'tests/server';
 
+declare global {
+  var IS_REACT_ACT_ENVIRONMENT: boolean;
+}
+
 dayjs.extend(utc);
 dayjs.extend(relativeTime);
 

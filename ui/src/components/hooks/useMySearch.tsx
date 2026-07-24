@@ -1,5 +1,5 @@
 import { Alert, Box, Typography } from '@mui/material';
-import type { AppSearchService, AppSearchServiceState } from '@tui/core';
+import type { AppSearchItem, AppSearchItemRendererOption, AppSearchService, AppSearchServiceState } from '@tui/core';
 import api from 'api';
 import HitPreview from 'components/elements/hit/HitPreview';
 import type { Hit } from 'models/entities/generated/Hit';
@@ -18,7 +18,11 @@ const useMySearch = (): AppSearchService<Hit> => {
 
   return useMemo(
     () => ({
-      onEnter: async (value: string, state: AppSearchServiceState<Hit>) => {
+      onEnter: async (value: string, state?: AppSearchServiceState<Hit>) => {
+        if (!state) {
+          return;
+        }
+
         state.set({ ...state, searching: true });
         //dispatchApi not available here since snackbarProvider isn't initialised yet
 
@@ -32,6 +36,12 @@ const useMySearch = (): AppSearchService<Hit> => {
               `howler.detection:*${sanitizedValue}* OR howler.status:*${sanitizedValue}*`
           });
 
+          if (!searchResult) {
+            setError(true);
+            state.set({ ...state, searching: false, items: [] });
+            return;
+          }
+
           setError(false);
           state.set({
             ...state,
@@ -40,10 +50,10 @@ const useMySearch = (): AppSearchService<Hit> => {
           });
         } catch {
           setError(true);
-          state.set({ ...state, searching: false, items: null });
+          state.set({ ...state, searching: false, items: [] });
         }
       },
-      onItemSelect: ({ item }) => {
+      onItemSelect: ({ item }: AppSearchItem<Hit>) => {
         void navigate(`/hits/${item.howler.id}`);
       },
       headerRenderer: (state: AppSearchServiceState<Hit>) =>
@@ -60,7 +70,7 @@ const useMySearch = (): AppSearchService<Hit> => {
             )}
           </Box>
         ),
-      itemRenderer: (item, options) => {
+      itemRenderer: (item: AppSearchItem<Hit>, options?: AppSearchItemRendererOption<Hit>) => {
         return (
           <Link
             to={`/hits/${item.id}`}

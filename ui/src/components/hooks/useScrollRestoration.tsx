@@ -28,10 +28,10 @@ export const useScrollRestoration = (element: string = 'app-scrollct') => {
 
   //set scroll position on mount, save scroll position on unmount
   useLayoutEffect(() => {
-    document.getElementById(element).scrollTo(0, getScrollPosition(key));
+    document.getElementById(element)?.scrollTo(0, getScrollPosition(key));
 
     return () => {
-      setScrollPosition(key, document.getElementById(element).scrollTop ?? 0);
+      setScrollPosition(key, document.getElementById(element)?.scrollTop ?? 0);
     };
   }, [element, key]);
 };

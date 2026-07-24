@@ -6,6 +6,7 @@ import type { HowlerHelper } from 'components/elements/display/handlebars/helper
 import type { PivotLinkProps } from 'components/elements/hit/related/PivotLink';
 import type { PluginChipProps } from 'components/elements/PluginChip';
 import type { PluginTypographyProps } from 'components/elements/PluginTypography';
+import type { LeadFormProps } from 'components/routes/dossiers/LeadEditor';
 import type { PivotFormProps } from 'components/routes/dossiers/PivotForm';
 import type { i18n as I18N } from 'i18next';
 import get from 'lodash-es/get';
@@ -31,11 +32,11 @@ class CluePlugin extends HowlerPlugin {
   activate(): void {
     super.activate();
 
-    const leadForm = props => <ClueLeadForm {...props} />;
-    const leadRenderer = (content: string, metadata: string, hit: Hit) => {
+    const leadForm = (props: LeadFormProps) => <ClueLeadForm {...props} />;
+    const leadRenderer = (content: string, metadata: string, hit?: Hit) => {
       const parsedProps = JSON.parse(metadata);
 
-      const value = get(hit, parsedProps.value);
+      const value = get(hit!, parsedProps.value);
 
       if (Array.isArray(value)) {
         // TODO: Revisit handling for array values

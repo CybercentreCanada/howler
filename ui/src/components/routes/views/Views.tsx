@@ -16,8 +16,8 @@ import {
 import api from 'api';
 import { ModalContext } from 'components/app/providers/ModalProvider';
 import SearchResponseProvider, {
-  SearchResponseContext,
-  type SearchResponseContextType
+  createSearchResponseContext,
+  useSearchResponseContext
 } from 'components/app/providers/SearchResponseProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
@@ -40,6 +40,7 @@ import { sanitizeLuceneQuery } from 'utils/stringUtils';
 import { buildViewUrl } from 'utils/viewUtils';
 
 const FIELDS_TO_SEARCH = ['title', 'query', 'sort', 'type', 'owner'];
+const SearchResponseContext = createSearchResponseContext<View>();
 
 const ViewsBase: FC = () => {
   const { t } = useTranslation();
@@ -59,12 +60,13 @@ const ViewsBase: FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { load } = useContext<TuiListMethodsState<View>>(TuiListMethodContext);
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
-  const { response, request, remove, getSearchRequestData } =
-    useContext<SearchResponseContextType<View>>(SearchResponseContext);
+  const { response, request, remove, getSearchRequestData } = useSearchResponseContext(SearchResponseContext);
 
   const [phrase, setPhrase] = useState<string>('');
-  const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
-  const [type, setType] = useState<'personal' | 'global'>((searchParams.get('type') as 'personal' | 'global') || null);
+  const [offset, setOffset] = useState(parseInt(searchParams.get('offset')!) || 0);
+  const [type, setType] = useState<'personal' | 'global' | null>(
+    (searchParams.get('type') as 'personal' | 'global') || null
+  );
   const [hasError, setHasError] = useState(false);
   const [searching, setSearching] = useState(false);
   const [favouritesOnly, setFavouritesOnly] = useState(false);
@@ -89,7 +91,9 @@ const ViewsBase: FC = () => {
         type === 'personal' ? ' OR readonly' : ''
       })`;
       const favouritesQuery =
-        favouritesOnly && user.favourite_views.length > 0 ? ` AND view_id:(${user.favourite_views.join(' OR ')})` : '';
+        favouritesOnly && (user.favourite_views?.length ?? 0) > 0
+          ? ` AND view_id:(${user.favourite_views!.join(' OR ')})`
+          : '';
 
       await request(api.search.view.post, {
         query: `(${phraseQuery}) AND ${typeQuery}${favouritesQuery}`,
@@ -120,7 +124,7 @@ const ViewsBase: FC = () => {
     if (response) {
       load(
         response.items.map(item => ({
-          id: item.view_id,
+          id: item.view_id!,
           item,
           selected: false,
           cursor: false
@@ -134,9 +138,9 @@ const ViewsBase: FC = () => {
     (_offset: number) => {
       if (_offset !== offset) {
         const modifiedRequest = getSearchRequestData({ offset: _offset });
-        searchParams.set('offset', modifiedRequest.offset.toString());
+        searchParams.set('offset', modifiedRequest.offset!.toString());
         setSearchParams(searchParams, { replace: true });
-        setOffset(modifiedRequest.offset);
+        setOffset(modifiedRequest.offset!);
       }
     },
     [offset, searchParams, setSearchParams, getSearchRequestData]
@@ -206,7 +210,7 @@ const ViewsBase: FC = () => {
       changed = true;
     }
 
-    if (searchParams.has('type') && !['personal', 'global'].includes(searchParams.get('type'))) {
+    if (searchParams.has('type') && !['personal', 'global'].includes(searchParams.get('type')!)) {
       searchParams.delete('type');
       changed = true;
     }
@@ -217,7 +221,7 @@ const ViewsBase: FC = () => {
   }, [searchParams, setSearchParams]);
 
   useEffect(() => {
-    if (response?.total <= offset) {
+    if ((response?.total ?? 0) <= offset) {
       setOffset(0);
       searchParams.set('offset', '0');
       setSearchParams(searchParams, { replace: true });
@@ -272,11 +276,11 @@ const ViewsBase: FC = () => {
             loading={defaultViewLoading}
             onOpen={onDefaultViewOpen}
             onClose={() => setDefaultViewOpen(false)}
-            options={Object.values(omitBy(views, isNull))}
+            options={Object.values(omitBy(views, isNull)).filter((_view): _view is View => !!_view)}
             renderOption={({ key, ...props }, o) => (
               <li {...props} key={key}>
                 <Stack>
-                  <Typography variant="body1">{t(o.title)}</Typography>
+                  <Typography variant="body1">{t(o.title!)}</Typography>
                   <Typography variant="caption">
                     <code>{o.query}</code>
                   </Typography>
@@ -289,14 +293,14 @@ const ViewsBase: FC = () => {
             filterOptions={(_views, { inputValue }) =>
               _views.filter(
                 v =>
-                  t(v.title).toLowerCase().includes(inputValue.toLowerCase()) ||
-                  v.query.toLowerCase().includes(inputValue.toLowerCase())
+                  t(v.title!).toLowerCase().includes(inputValue.toLowerCase()) ||
+                  v.query!.toLowerCase().includes(inputValue.toLowerCase())
               )
             }
-            getOptionLabel={(v: View) => t(v.title)}
+            getOptionLabel={(v: View) => t(v.title!)}
             isOptionEqualToValue={(view, value) => view.view_id === value.view_id}
-            value={views[defaultView] ?? null}
-            onChange={(_, option: View) => setDefaultView(option?.view_id)}
+            value={views[defaultView!] ?? null}
+            onChange={(_, option: View | null) => setDefaultView(option?.view_id)}
           />
         ) : (
           <Skeleton variant="rounded" width="300px" height="initial" />
@@ -306,7 +310,7 @@ const ViewsBase: FC = () => {
         <Stack direction="row" spacing={1} alignItems="center">
           <Checkbox
             size="small"
-            disabled={user.favourite_views?.length < 1}
+            disabled={(user.favourite_views?.length ?? 0) < 1}
             checked={favouritesOnly}
             onChange={(_, checked) => setFavouritesOnly(checked)}
           />
@@ -335,14 +339,14 @@ const ViewsBase: FC = () => {
             {((item.item.owner === user.username && item.item.type !== 'readonly') ||
               (item.item.type === 'global' && user.is_admin)) && (
               <Tooltip title={t('button.edit')}>
-                <IconButton component={Link} to={`/views/${item.item.view_id}/edit?query=${item.item.query}`}>
+                <IconButton component={Link} to={`/views/${item.item.view_id}/edit?query=${item.item.query!}`}>
                   <Edit />
                 </IconButton>
               </Tooltip>
             )}
             {item.item.owner === user.username && item.item.type !== 'readonly' && (
               <Tooltip title={t('button.delete')}>
-                <IconButton onClick={event => onDelete(event, item.item.view_id)}>
+                <IconButton onClick={event => onDelete(event, item.item.view_id!)}>
                   <Clear />
                 </IconButton>
               </Tooltip>
@@ -352,20 +356,20 @@ const ViewsBase: FC = () => {
                 <div>
                   <HowlerAvatar
                     sx={{ width: 24, height: 24, marginRight: '8px !important', marginLeft: '8px !important' }}
-                    userId={item.item.owner}
+                    userId={item.item.owner!}
                   />
                 </div>
               </Tooltip>
             )}
             <Tooltip title={t('button.pin')}>
-              <IconButton onClick={e => onFavourite(e, item.item.view_id)}>
-                {user.favourite_views?.includes(item.item.view_id) ? <Star /> : <StarBorder />}
+              <IconButton onClick={e => onFavourite(e, item.item.view_id!)}>
+                {user.favourite_views?.includes(item.item.view_id!) ? <Star /> : <StarBorder />}
               </IconButton>
             </Tooltip>
           </Stack>
         </Card>
       )}
-      response={response}
+      response={response!}
       searchPrompt="route.views.manager.search"
       onCreate={() => navigate('/views/create')}
       createPrompt="route.views.create"
@@ -377,7 +381,7 @@ const ViewsBase: FC = () => {
 const Views = () => {
   return (
     <TuiListProvider>
-      <SearchResponseProvider idField="view_id">
+      <SearchResponseProvider context={SearchResponseContext} idField="view_id">
         <ViewsBase />
       </SearchResponseProvider>
     </TuiListProvider>

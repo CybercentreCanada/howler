@@ -14,8 +14,8 @@ import {
   Tooltip,
   useTheme
 } from '@mui/material';
-import { AppInfoPanel, PageCenter, useAppTheme, useAppThemeBuilder } from '@tui/core';
 import api from 'api';
+import { AppInfoPanel, PageCenter, useAppTheme, useAppThemeBuilder } from '@tui/core';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -29,7 +29,7 @@ import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Overview } from 'models/entities/generated/Overview';
 import { useSearchParams } from 'react-router';
-import hitsData from 'utils/hit.json';
+import { getExampleHit } from 'utils/exampleHit';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
 import MarkdownEditor from '../../elements/MarkdownEditor';
 import { useStartingTemplate } from './startingTemplate';
@@ -50,7 +50,7 @@ const OverviewViewer = () => {
   const { showSuccessMessage } = useMySnackbar();
 
   const [overviewList, setOverviewList] = useState<Overview[]>([]);
-  const [selectedOverview, setSelectedOverview] = useState<Overview>(null);
+  const [selectedOverview, setSelectedOverview] = useState<Overview | null>(null);
   const [content, setContent] = useState<string>('');
   const [chosenTheme, setChosenTheme] = useState(mode);
 
@@ -61,10 +61,10 @@ const OverviewViewer = () => {
   const [detection, setDetection] = useState<string>(params.get('detection') ?? 'ANY');
   const [loading, setLoading] = useState(false);
   const [overviewLoading, setOverviewLoading] = useState(false);
-  const [exampleHit, setExampleHit] = useState<Hit>(null);
+  const [exampleHit, setExampleHit] = useState<Hit | null>(null);
   const [x, setX] = useState(0);
 
-  const wrapper = useRef<HTMLDivElement>(undefined);
+  const wrapper = useRef<HTMLDivElement>(null);
 
   const startingTemplate = useStartingTemplate();
 
@@ -73,7 +73,7 @@ const OverviewViewer = () => {
       setLoading(true);
 
       try {
-        setOverviewList(await getOverviews(true));
+        setOverviewList((await getOverviews(true)) ?? []);
 
         const analyticsResult = await dispatchApi(api.search.analytic.post({ query: 'analytic_id:*', rows: 1000 }), {
           logError: false,
@@ -81,9 +81,9 @@ const OverviewViewer = () => {
           throwError: true
         });
 
-        const _analytics = analyticsResult.items;
+        const _analytics = analyticsResult?.items ?? [];
 
-        if (!_analytics.some(_analytic => _analytic.name.toLowerCase() === analytic.toLowerCase())) {
+        if (!_analytics.some(_analytic => _analytic.name!.toLowerCase() === analytic.toLowerCase())) {
           setAnalytic('');
         }
 
@@ -99,7 +99,7 @@ const OverviewViewer = () => {
   useEffect(() => {
     if (analytic && analytics) {
       const _detections =
-        analytics.find(_analytic => _analytic.name.toLowerCase() === analytic.toLowerCase())?.detections ?? [];
+        analytics.find(_analytic => _analytic.name!.toLowerCase() === analytic.toLowerCase())?.detections ?? [];
 
       setDetections(_detections);
 
@@ -127,7 +127,7 @@ const OverviewViewer = () => {
         return;
       }
 
-      const _hit = hitsData.GET[Object.keys(hitsData.GET)[0]];
+      const _hit = getExampleHit();
 
       if (analytic) {
         _hit.howler.analytic = analytic;
@@ -151,7 +151,7 @@ const OverviewViewer = () => {
 
       if (overview) {
         setSelectedOverview(overview);
-        setContent(overview.content);
+        setContent(overview.content ?? '');
       } else {
         setSelectedOverview(null);
         setContent('');
@@ -180,13 +180,19 @@ const OverviewViewer = () => {
   }, [analytic, detection, params, setParams]);
 
   const onDelete = useCallback(() => {
+    const overviewId = selectedOverview?.overview_id;
+
+    if (!overviewId) {
+      return;
+    }
+
     withConfirmDeleteModal(async () => {
-      await dispatchApi(api.overview.del(selectedOverview.overview_id), {
+      await dispatchApi(api.overview.del(overviewId), {
         logError: false,
         showError: true,
         throwError: true
       });
-      setOverviewList(l => l.filter(v => v.overview_id !== selectedOverview.overview_id));
+      setOverviewList(l => l.filter(v => v.overview_id !== overviewId));
       setSelectedOverview(null);
       setContent('');
       showSuccessMessage(t('route.overviews.manager.delete.success'));
@@ -194,35 +200,47 @@ const OverviewViewer = () => {
   }, [dispatchApi, selectedOverview?.overview_id, withConfirmDeleteModal, showSuccessMessage, t]);
 
   const onSave = useCallback(async () => {
-    if (analytic && detection) {
-      try {
-        setOverviewLoading(true);
-        const result = await dispatchApi(
-          selectedOverview
-            ? api.overview.put(selectedOverview.overview_id, content)
-            : api.overview.post({
-                analytic,
-                detection: detection !== 'ANY' ? detection : null,
-                content
-              } as any),
-          {
-            logError: false,
-            showError: true,
-            throwError: true
-          }
-        );
+    if (!analytic || !detection) {
+      return;
+    }
 
-        setSelectedOverview(result);
-        const newList = [result, ...overviewList];
-        setOverviewList(newList.filter((v1, i) => newList.findIndex(v2 => v1.overview_id === v2.overview_id) === i));
-      } finally {
-        setOverviewLoading(false);
+    const selectedOverviewId = selectedOverview?.overview_id;
+
+    if (selectedOverview && !selectedOverviewId) {
+      return;
+    }
+
+    try {
+      setOverviewLoading(true);
+      const result = await dispatchApi(
+        selectedOverviewId
+          ? api.overview.put(selectedOverviewId, content)
+          : api.overview.post({
+              analytic,
+              detection: detection !== 'ANY' ? detection : undefined,
+              content
+            }),
+        {
+          logError: false,
+          showError: true,
+          throwError: true
+        }
+      );
+
+      if (!result) {
+        return;
       }
+
+      setSelectedOverview(result);
+      const newList = [result, ...overviewList];
+      setOverviewList(newList.filter((v1, i) => newList.findIndex(v2 => v1.overview_id === v2.overview_id) === i));
+    } finally {
+      setOverviewLoading(false);
     }
   }, [analytic, detection, dispatchApi, selectedOverview, content, overviewList]);
 
   const onMouseMove = useCallback((event: MouseEvent) => {
-    const wrapperRect = wrapper.current?.getBoundingClientRect();
+    const wrapperRect = wrapper.current!.getBoundingClientRect();
 
     const offset = event.clientX - (wrapperRect.left + wrapperRect.width / 2);
 
@@ -252,10 +270,10 @@ const OverviewViewer = () => {
           <FormControl sx={{ maxWidth: { sm: '300px', lg: '450px' }, width: '100%' }}>
             <Autocomplete
               id="analytic"
-              options={analytics.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))}
-              getOptionLabel={option => option.name}
+              options={analytics.sort((a, b) => a.name!.toLowerCase().localeCompare(b.name!.toLowerCase()))}
+              getOptionLabel={option => option.name!}
               value={analytics.find(a => a.name === analytic) || null}
-              onChange={(_event, newValue) => setAnalytic(newValue ? newValue.name : '')}
+              onChange={(_event, newValue) => setAnalytic(newValue ? newValue.name! : '')}
               renderInput={autocompleteAnalyticParams => (
                 <TextField {...autocompleteAnalyticParams} label={t('route.overviews.analytic')} size="small" />
               )}
@@ -267,7 +285,7 @@ const OverviewViewer = () => {
               options={['ANY', ...detections.sort()]}
               getOptionLabel={option => option}
               value={detection ?? ''}
-              onChange={(_event, newValue) => setDetection(newValue)}
+              onChange={(_event, newValue) => setDetection(newValue ?? 'ANY')}
               renderInput={autocompleteDetectionParams => (
                 <TextField {...autocompleteDetectionParams} label={t('route.overviews.detection')} size="small" />
               )}
@@ -290,7 +308,7 @@ const OverviewViewer = () => {
           <ToggleButtonGroup
             exclusive
             value={chosenTheme}
-            onChange={(_event, value) => setChosenTheme(value)}
+            onChange={(_event, value) => setChosenTheme(value ?? chosenTheme)}
             sx={{ maxHeight: '40px' }}
           >
             <Tooltip title={t('route.overviews.theme.light')}>
@@ -375,7 +393,7 @@ const OverviewViewer = () => {
                   color: activeTheme.palette.text.primary
                 }}
               >
-                <HitOverview content={content || startingTemplate} hit={exampleHit} />
+                <HitOverview content={content || startingTemplate} hit={exampleHit!} />
               </Box>
             </ThemeProvider>
           </Stack>

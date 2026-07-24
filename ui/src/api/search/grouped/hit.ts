@@ -8,9 +8,6 @@ export const uri = (field: string) => {
   return joinAllUri(parentUri(), 'hit', field);
 };
 
-export const post = (
-  field: string,
-  request?: HowlerGroupedSearchRequest
-): Promise<HowlerGroupedSearchResponse<Hit>> => {
-  return hpost(uri(field), { ...request, query: request?.query || DEFAULT_QUERY });
+export const post = (field: string, request?: HowlerGroupedSearchRequest) => {
+  return hpost<HowlerGroupedSearchResponse<Hit>>(uri(field), { ...request, query: request?.query || DEFAULT_QUERY });
 };

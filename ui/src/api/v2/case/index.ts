@@ -10,19 +10,19 @@ export const uri = (id?: string) => {
   return id ? joinAllUri(parentUri(), 'case', id) : joinUri(parentUri(), 'case');
 };
 
-export const get = (id: string): Promise<Case> => {
-  return hget(uri(id));
+export const get = (id: string) => {
+  return hget<Case>(uri(id));
 };
 
-export const post = (newData: Partial<Case>): Promise<Case> => {
-  return hpost(uri(), newData);
+export const post = (newData: Partial<Case>) => {
+  return hpost<Case>(uri(), newData);
 };
 
-export const put = (id: string, _case: Partial<Case>): Promise<Case> => {
-  return hput(uri(id), _case);
+export const put = (id: string, _case: Partial<Case>) => {
+  return hput<Case>(uri(id), _case);
 };
 
-export const del = (id: string): Promise<void> => {
+export const del = (id: string) => {
   return hdelete(uri(id));
 };
 

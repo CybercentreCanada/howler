@@ -38,7 +38,7 @@ import useMyUserList from 'components/hooks/useMyUserList';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import type { Dossier } from 'models/entities/generated/Dossier';
 import type { Hit } from 'models/entities/generated/Hit';
-import type { FC } from 'react';
+import type { FC, ReactElement } from 'react';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
@@ -54,6 +54,15 @@ export enum Orientation {
   HORIZONTAL = 'horizontal'
 }
 
+const hasApiStatus = (error: unknown, status: number): boolean => {
+  if (typeof error !== 'object' || error === null || !('cause' in error)) {
+    return false;
+  }
+
+  const { cause } = error;
+  return typeof cause === 'object' && cause !== null && 'api_status_code' in cause && cause.api_status_code === status;
+};
+
 const HitViewer: FC = () => {
   const { t, i18n } = useTranslation();
   const params = useParams();
@@ -65,7 +74,7 @@ const HitViewer: FC = () => {
   const { emit, open } = useContext(SocketContext);
 
   const getHit = useContextSelector(RecordContext, ctx => ctx.getRecord);
-  const hit = useContextSelector(RecordContext, ctx => ctx.records[params.id] as Hit);
+  const hit = useContextSelector(RecordContext, ctx => ctx.records[params.id!] as Hit);
 
   const [userIds, setUserIds] = useState<Set<string>>(new Set());
   const users = useMyUserList(userIds);
@@ -77,15 +86,15 @@ const HitViewer: FC = () => {
   const fetchData = useCallback(async () => {
     try {
       if (!hit) {
-        await getHit(params.id, true);
+        await getHit(params.id!, true);
         return;
       }
 
       setUserIds(getUserList(hit));
 
-      setAnalytic(await getMatchingAnalytic(hit));
-    } catch (err) {
-      if (err.cause?.api_status_code === 404) {
+      setAnalytic((await getMatchingAnalytic(hit)) ?? undefined);
+    } catch (error) {
+      if (hasApiStatus(error, 404)) {
         void navigate('/404');
       }
     }
@@ -127,7 +136,9 @@ const HitViewer: FC = () => {
   );
 
   useEffect(() => {
-    void getMatchingOverview(hit).then(_overview => setHasOverview(!!_overview));
+    if (hit) {
+      void getMatchingOverview(hit).then(_overview => setHasOverview(!!_overview));
+    }
   }, [getMatchingOverview, hit]);
 
   useEffect(() => {
@@ -144,12 +155,14 @@ const HitViewer: FC = () => {
       return;
     }
 
-    return {
+    const tabSections: Record<string, () => ReactElement> = {
       overview: () => <HitOverview hit={hit} />,
       details: () => <ObjectDetails obj={hit} />,
       hit_comments: () => <RecordComments record={hit} users={users} />,
       hit_raw: () => <JSONViewer data={hit} />,
-      hit_data: () => <JSONViewer data={hit?.howler?.data?.map(entry => tryParse(entry))} collapse={false} />,
+      hit_data: () => (
+        <JSONViewer data={(hit?.howler?.data?.map(entry => tryParse(entry)) ?? []) as object} collapse={false} />
+      ),
       hit_worklog: () => <RecordWorklog record={hit} users={users} />,
       hit_related: () => <RecordRelated record={hit} />,
       ...Object.fromEntries(
@@ -163,7 +176,9 @@ const HitViewer: FC = () => {
           ])
         )
       )
-    }[tab]?.();
+    };
+
+    return tabSections[tab]?.();
   }, [dossiers, hit, tab, users]);
 
   useEffect(() => {
@@ -171,7 +186,7 @@ const HitViewer: FC = () => {
       return;
     }
 
-    void getMatchingDossiers(hit).then(setDossiers);
+    void getMatchingDossiers(hit).then(_dossiers => setDossiers(_dossiers ?? []));
   }, [getMatchingDossiers, hit]);
 
   if (!hit) {
@@ -267,7 +282,7 @@ const HitViewer: FC = () => {
                 label={
                   <Stack direction="row" spacing={0.5}>
                     {lead.icon && <Icon icon={lead.icon} />}
-                    <span>{i18n.language === 'en' ? lead.label.en : lead.label.fr}</span>
+                    <span>{i18n.language === 'en' ? lead.label?.en : lead.label?.fr}</span>
                   </Stack>
                 }
                 value={'lead:' + index}
@@ -283,7 +298,7 @@ const HitViewer: FC = () => {
                   label={
                     <Stack direction="row" spacing={0.5}>
                       {_lead.icon && <Icon icon={_lead.icon} />}
-                      <span>{i18n.language === 'en' ? _lead.label.en : _lead.label.fr}</span>
+                      <span>{i18n.language === 'en' ? _lead.label?.en : _lead.label?.fr}</span>
                     </Stack>
                   }
                   value={`external-lead:${dossierIndex}:${leadIndex}`}

@@ -87,13 +87,13 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
   const query = useContextSelector(ParameterContext, ctx => ctx?.query);
   const setQuery = useContextSelector(ParameterContext, ctx => ctx?.setQuery);
 
-  const [id, setId] = useState<string>(null);
+  const [id, setId] = useState<string | null>(null);
 
-  const record = useContextSelector(RecordContext, ctx => ctx.records[id] as Hit);
+  const record = useContextSelector(RecordContext, ctx => ctx.records[id!] as Hit);
   const selectedRecords = useContextSelector(RecordContext, ctx => ctx.selectedRecords);
 
-  const [analytic, setAnalytic] = useState<Analytic>(null);
-  const [template, setTemplate] = useState<Template>(null);
+  const [analytic, setAnalytic] = useState<Analytic | null>(null);
+  const [template, setTemplate] = useState<Template | null>(null);
 
   const [actions, setActions] = useState<Action[]>([]);
 
@@ -169,7 +169,7 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
           option =>
             ({
               ...option,
-              actionFunction: () => vote(option.name.toLowerCase())
+              actionFunction: () => vote(option.name!.toLowerCase())
             }) as ActionButton
         )
       ];
@@ -204,8 +204,8 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
       return;
     }
 
-    void getMatchingAnalytic(record).then(setAnalytic);
-    void getMatchingTemplate(record).then(setTemplate);
+    void getMatchingAnalytic(record).then(value => setAnalytic(value ?? null));
+    void getMatchingTemplate(record).then(value => setTemplate(value ?? null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [record]);
 
@@ -240,12 +240,12 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
         result.push({
           kind: 'submenu',
           id: type,
-          icon: ICON_MAP[type] ?? <Terminal />,
+          icon: ICON_MAP[type as keyof typeof ICON_MAP] ?? <Terminal />,
           label: t(`hit.details.actions.${type}`),
-          disabled: rowStatus[type] === false,
+          disabled: rowStatus[type as keyof typeof rowStatus] === false,
           items: typeItems.map(a => ({
-            key: a.name,
-            label: a.i18nKey ? t(a.i18nKey) : capitalize(a.name),
+            key: a.name!,
+            label: a.i18nKey ? t(a.i18nKey) : capitalize(a.name!),
             onClick: a.actionFunction
           }))
         });
@@ -258,9 +258,9 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
         label: t('route.actions.change'),
         disabled: actions.length < 1 || !canRunActions(),
         items: actions.map(action => ({
-          key: action.action_id,
-          label: action.name,
-          onClick: () => executeAction(action.action_id, `howler.id:(${records.map(r => r.howler.id).join(' OR ')})`)
+          key: action.action_id!,
+          label: action.name!,
+          onClick: () => executeAction(action.action_id!, `howler.id:(${records.map(r => r.howler.id).join(' OR ')})`)
         }))
       });
 

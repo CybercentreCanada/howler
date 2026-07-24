@@ -51,6 +51,10 @@ describe('FetchClient', () => {
     const payload = { api_response: { items: [] } };
     mockFetch(200, payload);
     const result = await client.fetch('/api/v1/hit');
+    if (!result) {
+      throw new Error('Expected a response body.');
+    }
+
     expect(result[0]).toEqual(payload);
     expect(result[1]).toBe(200);
   });
@@ -62,11 +66,11 @@ describe('FetchClient', () => {
     expect(callArgs.body).toBe(JSON.stringify({ key: 'val' }));
   });
 
-  it('sends null body when no body is provided', async () => {
+  it('omits the body when no body is provided', async () => {
     const spy = mockFetch(200, {});
     await client.fetch('/api/v1/hit', 'get');
     const callArgs = spy.mock.calls[0][1] as RequestInit;
-    expect(callArgs.body).toBeNull();
+    expect(callArgs.body).toBeUndefined();
   });
 
   it('forwards custom headers to fetch', async () => {

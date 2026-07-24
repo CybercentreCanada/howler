@@ -20,9 +20,9 @@ const ActionButton: FC<{ actionId: string; hitId: string; label: string } & Butt
   const [action, setAction] = useState<Action | null>(null);
 
   useEffect(() => {
-    void dispatchApi(api.search.action.post({ query: `action_id:${actionId}`, rows: 1 })).then(result =>
-      setAction(result.items[0])
-    );
+    void dispatchApi(api.search.action.post({ query: `action_id:${actionId}`, rows: 1 })).then(result => {
+      setAction(result?.items[0] ?? null);
+    });
   }, [actionId, dispatchApi]);
 
   if (!actionId || !hitId) {

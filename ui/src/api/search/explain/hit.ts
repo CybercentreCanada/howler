@@ -7,6 +7,6 @@ export const uri = () => {
   return joinAllUri(parentUri(), 'hit', 'explain');
 };
 
-export const post = (request?: HowlerExplainSearchRequest): Promise<HowlerExplainSearchResponse> => {
-  return hpost(uri(), { ...request, eql_query: request?.query || DEFAULT_QUERY });
+export const post = (request?: HowlerExplainSearchRequest) => {
+  return hpost<HowlerExplainSearchResponse>(uri(), { ...request, eql_query: request?.query || DEFAULT_QUERY });
 };

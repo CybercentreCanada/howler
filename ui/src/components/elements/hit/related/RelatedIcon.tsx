@@ -17,7 +17,7 @@ const RelatedIcon: FC<{ icon?: string; title?: string; href?: string; compact?: 
     return null;
   }
 
-  let avatarImage: string = null;
+  let avatarImage: string | null = null;
   const app = config.configuration.ui.apps.find(a => a.name.toLowerCase() === icon?.toLowerCase());
   if (app) {
     // use the image link for the configured related application instead

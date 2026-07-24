@@ -1,7 +1,7 @@
 import { PageCenter } from '@tui/core';
 import { Box, Stack, Tab, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { useScrollRestoration } from 'components/hooks/useScrollRestoration';
-import type { FC } from 'react';
+import type { FC, ReactElement } from 'react';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
@@ -55,12 +55,14 @@ const HitDocumentation: FC = () => {
           />
         </HelpTabs>
         <Box>
-          {{
-            header: () => <HitBannerDocumentation />,
-            links: () => <HitLinksDocumentation />,
-            labels: () => <HitLabelsDocumentation />,
-            schema: () => <HitSchemaDocumentation />
-          }[tab]()}
+          {(
+            {
+              header: () => <HitBannerDocumentation />,
+              links: () => <HitLinksDocumentation />,
+              labels: () => <HitLabelsDocumentation />,
+              schema: () => <HitSchemaDocumentation />
+            } as Record<string, () => ReactElement>
+          )[tab]()}
         </Box>
       </Stack>
     </PageCenter>
