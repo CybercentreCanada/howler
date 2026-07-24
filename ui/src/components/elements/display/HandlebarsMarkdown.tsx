@@ -105,9 +105,10 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
 
   useEffect(() => {
     THROTTLER.debounce(async () => {
-      const compiled = handlebars.compile(md || '');
+      // Types are a bit muddled here due to the async helpers
+      const compiled = handlebars.compile(md || '') as unknown as (obj: any) => PromiseLike<string>;
       try {
-        setRendered(compiled(object));
+        setRendered(await compiled(object));
       } catch (err) {
         if ((err as Exception).message?.startsWith('Missing helper')) {
           const missingHelper = (err as Exception).message.replace(/.+"(.+)"/, '$1');
@@ -119,7 +120,7 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
               )
           );
 
-          setRendered(compiled(object));
+          setRendered(await compiled(object));
           return;
         }
 
