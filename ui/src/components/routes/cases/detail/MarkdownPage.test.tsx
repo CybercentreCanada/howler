@@ -44,7 +44,6 @@ describe('MarkdownPage', () => {
 
     markdownItem = {
       id: 'item-1',
-      parent: null,
       type: 'markdown',
       name: 'Analyst Notes',
       value: 'Initial markdown value',
@@ -57,7 +56,6 @@ describe('MarkdownPage', () => {
         markdownItem,
         {
           id: 'item-2',
-          parent: null,
           type: 'markdown',
           name: 'Other Item',
           value: 'Keep this value'
@@ -125,7 +123,6 @@ describe('MarkdownPage', () => {
       items: [
         {
           id: 'item-1',
-          parent: null,
           type: 'markdown',
           name: 'Analyst Notes',
           value: 'Persisted value',
@@ -133,7 +130,6 @@ describe('MarkdownPage', () => {
         },
         {
           id: 'item-2',
-          parent: null,
           type: 'markdown',
           name: 'Other Item',
           value: 'Keep this value'

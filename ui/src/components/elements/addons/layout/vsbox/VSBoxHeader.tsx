@@ -14,8 +14,8 @@ const VSBoxHeader: FC<PropsWithChildren<VSBoxHeaderProps>> = ({ children, ...box
   const { state, setState } = useContext(VSBoxContext);
 
   useEffect(() => {
-    if (height !== heightRef.current) {
-      setState({ ...state, scrollTop: state.top + height });
+    if (height !== undefined && height !== heightRef.current) {
+      setState?.({ ...state, scrollTop: state.top + height });
       heightRef.current = height;
     }
   }, [height, state, setState]);

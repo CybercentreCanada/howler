@@ -134,12 +134,13 @@ describe('CaseFolderContextMenu', () => {
     });
   });
 
-  it('passes undefined item id through to delete API when id is missing', () => {
+  it('does not call the delete API when the item id is missing', () => {
     renderMenu({ item: { type: 'hit', value: 'h1', name: 'hit' } });
     act(() => {
       fireEvent.click(screen.getByText('page.cases.sidebar.item.remove'));
     });
-    expect(mockDel).toHaveBeenCalledWith('case-1', [undefined], false);
+    expect(mockDel).not.toHaveBeenCalled();
+    expect(mockDispatchApi).not.toHaveBeenCalled();
   });
 
   it('passes updated case to onUpdate after delete', async () => {

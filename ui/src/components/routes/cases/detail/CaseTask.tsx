@@ -36,9 +36,11 @@ const CaseTask: FC<{
   const [editing, setEditing] = useState(newTask);
 
   const [summary, setSummary] = useState(task?.summary || '');
-  const [item, setItem] = useState(task?.item ? _case?.items.find(_item => _item.id === task.item) : null);
+  const [item, setItem] = useState(task?.item ? _case.items?.find(_item => _item.id === task.item) : null);
   const [assignment, setAssignment] = useState(task?.assignment);
   const [complete, setComplete] = useState(task?.complete ?? false);
+  const canEdit = !readOnly && onEdit !== undefined;
+  const canDelete = canEdit && onDelete !== undefined;
 
   const dirty =
     summary !== task?.summary ||
@@ -49,15 +51,18 @@ const CaseTask: FC<{
   const options: Item[] = useMemo(() => _case?.items ?? [], [_case]);
 
   const onSubmit = async () => {
-    if (dirty && editing) {
+    if (dirty && editing && onEdit) {
       setLoading(true);
-      await onEdit({ summary, item: !item ? null : item.id, assignment, complete });
-      setLoading(false);
+      try {
+        await onEdit({ summary, item: item?.id, assignment, complete });
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    if (!readOnly && !editing && task?.assignment !== assignment) {
+    if (canEdit && !editing && task?.assignment !== assignment && onEdit) {
       setLoading(true);
       void onEdit({ assignment }).finally(() => setLoading(false));
     }
@@ -65,7 +70,7 @@ const CaseTask: FC<{
   }, [assignment]);
 
   useEffect(() => {
-    if (!readOnly && !editing && task?.complete !== complete) {
+    if (canEdit && !editing && task?.complete !== complete && onEdit) {
       setLoading(true);
       void onEdit({ complete }).finally(() => setLoading(false));
     }
@@ -74,9 +79,9 @@ const CaseTask: FC<{
 
   useEffect(() => {
     if (!editing && task) {
-      setSummary(task.summary);
-      setItem(task?.item ? _case?.items.find(_item => _item.id === task.item) : null);
-      setComplete(task.complete);
+      setSummary(task.summary ?? '');
+      setItem(task?.item ? _case.items?.find(_item => _item.id === task.item) : null);
+      setComplete(task.complete ?? false);
       setAssignment(task.assignment);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -86,13 +91,13 @@ const CaseTask: FC<{
     <Card sx={{ pl: 0.5, pr: 1, py: 0.5, position: 'relative' }}>
       <Stack direction="row" alignItems="center" spacing={1}>
         <Checkbox
-          disabled={loading || readOnly}
+          disabled={loading || !canEdit}
           color="success"
           checked={complete}
           size="small"
-          onChange={(_ev, _complete) => !readOnly && setComplete(_complete)}
+          onChange={(_ev, _complete) => setComplete(_complete)}
         />
-        {editing && !readOnly ? (
+        {editing && canEdit ? (
           <TextField
             disabled={loading}
             value={summary}
@@ -105,7 +110,7 @@ const CaseTask: FC<{
           <Typography sx={[complete && { textDecoration: 'line-through' }]}>{task?.summary || summary}</Typography>
         )}
 
-        {!editing && item && (
+        {!editing && item?.id && (
           <Chip
             clickable
             component={Link}
@@ -113,34 +118,34 @@ const CaseTask: FC<{
             label={item.name}
           />
         )}
-        {editing && !readOnly && (
+        {editing && canEdit && (
           <Autocomplete
             disabled={loading}
             value={item}
             options={options}
-            getOptionLabel={opt => buildPathFromID(_case, opt.id)}
-            isOptionEqualToValue={opt => opt.id === item.id}
+            getOptionLabel={opt => (opt.id ? buildPathFromID(_case, opt.id) : (opt.name ?? ''))}
+            isOptionEqualToValue={opt => opt.id === item?.id}
             onChange={(_ev, value) => setItem(value)}
             fullWidth
             renderInput={params => <TextField {...params} size="small" />}
           />
         )}
         <UserList
-          disabled={loading || readOnly}
-          userIds={[assignment]}
-          onChange={([_assigment]) => !readOnly && setAssignment(_assigment)}
+          disabled={loading || !canEdit}
+          userIds={assignment ? [assignment] : []}
+          onChange={([_assigment]) => setAssignment(_assigment)}
           i18nLabel="route.cases.task.set.assignment"
           avatarHeight={24}
         />
         <div style={{ flex: 1 }} />
-        {!readOnly && editing && !newTask && (
+        {canDelete && editing && !newTask && (
           <Tooltip title={t('route.cases.task.delete')}>
             <IconButton
               size="small"
               color="error"
               onClick={() => {
                 setLoading(true);
-                void onDelete().then(() => setLoading(false));
+                void onDelete().finally(() => setLoading(false));
               }}
               disabled={loading}
             >
@@ -148,7 +153,7 @@ const CaseTask: FC<{
             </IconButton>
           </Tooltip>
         )}
-        {!readOnly && (
+        {canEdit && (
           <Tooltip title={t(editing ? 'route.cases.task.edit.save' : 'route.cases.task.edit')}>
             <span>
               <IconButton
@@ -170,13 +175,17 @@ const CaseTask: FC<{
             </span>
           </Tooltip>
         )}
-        {!readOnly && editing && (
+        {canEdit && editing && (
           <Tooltip title={t('route.cases.task.edit.cancel')}>
             <IconButton
               size="small"
               onClick={() => {
                 if (newTask) {
-                  void onDelete();
+                  if (onDelete) {
+                    void onDelete();
+                  } else {
+                    setEditing(false);
+                  }
                 } else {
                   setEditing(false);
                 }

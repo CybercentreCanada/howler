@@ -53,7 +53,7 @@ interface ApiDescription {
   /**
    * Type of privileges needed by API keys to use API
    */
-  required_priv: string[];
+  required_priv: ('R' | 'W' | 'E' | 'I')[];
 
   /**
    * Is the API stable?
@@ -66,6 +66,6 @@ export interface HelpResponse {
   blueprints: { [index: string]: string };
 }
 
-export const get = (): Promise<HelpResponse> => {
-  return hget(uri());
+export const get = () => {
+  return hget<HelpResponse>(uri());
 };

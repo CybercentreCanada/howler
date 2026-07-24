@@ -2,7 +2,7 @@ import type { EnrichedTypographyProps } from '@cccsaurora/clue-ui/components/Enr
 import EnrichedTypography from '@cccsaurora/clue-ui/components/EnrichedTypography';
 import { Typography } from '@mui/material';
 import type { PluginTypographyProps } from 'components/elements/PluginTypography';
-import { memo, type FC } from 'react';
+import { memo, type FC, type MouseEvent } from 'react';
 import { useType } from '../utils';
 
 const ClueTypography: FC<PluginTypographyProps> = ({ children, value, context, field, obj, ...props }) => {
@@ -29,13 +29,13 @@ const ClueTypography: FC<PluginTypographyProps> = ({ children, value, context, f
       slotProps: {
         stack: {
           sx: { mr: 'auto' },
-          onClick: e => {
+          onClick: (e: MouseEvent) => {
             e.preventDefault();
             e.stopPropagation();
           }
         },
         popover: {
-          onClick: e => {
+          onClick: (e: MouseEvent) => {
             e.preventDefault();
             e.stopPropagation();
           }

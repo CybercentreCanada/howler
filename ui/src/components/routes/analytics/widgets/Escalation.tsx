@@ -6,7 +6,7 @@ import useMyChart from 'components/hooks/useMyChart';
 import type { Analytic } from 'models/entities/generated/Analytic';
 import { forwardRef, useEffect, useMemo, useState } from 'react';
 import { Doughnut } from 'react-chartjs-2';
-import { ESCALATION_COLORS } from 'utils/constants';
+import { getEscalationColor } from 'utils/utils';
 
 const Escalation = forwardRef<any, { analytic: Analytic; maxWidth?: string }>(({ analytic, maxWidth = '45%' }, ref) => {
   const theme = useTheme();
@@ -17,10 +17,8 @@ const Escalation = forwardRef<any, { analytic: Analytic; maxWidth?: string }>(({
 
   const escalationColors = useMemo(
     () =>
-      Object.keys(escalationData).map(e =>
-        ESCALATION_COLORS[e] ? theme.palette[ESCALATION_COLORS[e]].main : 'rgba(255, 255, 255, 0.16)'
-      ),
-    [escalationData, theme.palette]
+      Object.keys(escalationData).map(escalation => getEscalationColor(escalation, 'rgba(255, 255, 255, 0.16)', theme)),
+    [theme]
   );
 
   useEffect(() => {
@@ -35,7 +33,7 @@ const Escalation = forwardRef<any, { analytic: Analytic; maxWidth?: string }>(({
         query: `howler.analytic:("${analytic.name}")`,
         fields: ['howler.escalation']
       })
-      .then(data => setEscalationData(data['howler.escalation']))
+      .then(data => setEscalationData(data?.['howler.escalation'] ?? {}))
       .finally(() => setLoading(false));
   }, [analytic]);
 

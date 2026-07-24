@@ -93,7 +93,7 @@ const TuiTable = <T,>({
   const { width, ref } = useResizeDetector({ handleHeight: false });
   const { width: bodyWidth, ref: bodyRef } = useResizeDetector({ handleHeight: false });
   const [layout, setLayout] = useState<TuiTableLayout>();
-  const widthRef = useRef<number>(width);
+  const widthRef = useRef<number | undefined>(width);
 
   useEffect(() => {
     if (!flexPort || !layout) {
@@ -106,7 +106,7 @@ const TuiTable = <T,>({
 
   useEffect(() => {
     if (flexPort && layout) {
-      if (bodyWidth && bodyWidth !== widthRef.current) {
+      if (width && bodyWidth && bodyWidth !== widthRef.current) {
         setLayout(new TuiTableLayout(width, bodyWidth, columns));
       }
       widthRef.current = bodyWidth;

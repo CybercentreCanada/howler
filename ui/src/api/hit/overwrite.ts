@@ -6,6 +6,6 @@ export const uri = (id: string) => {
   return joinAllUri(parentUri(), id, 'overwrite');
 };
 
-export const put = <T extends Hit = Hit>(id: string, body: Partial<T>, refresh?: HowlerRefreshParam): Promise<T> => {
-  return hput(uri(id), body, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
+export const put = <T extends Hit = Hit>(id: string, body: Partial<T>, refresh?: HowlerRefreshParam) => {
+  return hput<T>(uri(id), body, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };

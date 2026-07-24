@@ -5,6 +5,6 @@ export const uri = (entityId?: string): string => {
   return entityId ? joinAllUri(parentUri(), 'viewers', entityId) : joinAllUri(parentUri(), 'viewers');
 };
 
-export const get = async (entityId: string): Promise<string[]> => {
-  return hget(uri(entityId));
+export const get = (entityId: string) => {
+  return hget<string[]>(uri(entityId));
 };

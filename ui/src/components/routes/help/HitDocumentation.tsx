@@ -1,5 +1,5 @@
-import { PageCenter } from '@tui/core';
 import { Box, Stack, Tab, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { PageCenter } from '@tui/core';
 import { useScrollRestoration } from 'components/hooks/useScrollRestoration';
 import type { FC } from 'react';
 import { useCallback, useState } from 'react';
@@ -11,6 +11,8 @@ import HitLabelsDocumentation from './HitLabelsDocumentation';
 import HitLinksDocumentation from './HitLinksDocumentation';
 import HitSchemaDocumentation from './HitSchemaDocumentation';
 
+type Tabs = 'header' | 'links' | 'labels' | 'schema';
+
 const HitDocumentation: FC = () => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -18,10 +20,10 @@ const HitDocumentation: FC = () => {
   useScrollRestoration();
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const [tab, setTab] = useState(searchParams.get('tab') ?? 'schema');
+  const [tab, setTab] = useState<Tabs>((searchParams.get('tab') ?? 'schema') as Tabs);
 
   const onChange = useCallback(
-    (_tab: string) => {
+    (_tab: Tabs) => {
       setTab(_tab);
       searchParams.set('tab', _tab);
       setSearchParams(new URLSearchParams(searchParams));
@@ -55,12 +57,14 @@ const HitDocumentation: FC = () => {
           />
         </HelpTabs>
         <Box>
-          {{
-            header: () => <HitBannerDocumentation />,
-            links: () => <HitLinksDocumentation />,
-            labels: () => <HitLabelsDocumentation />,
-            schema: () => <HitSchemaDocumentation />
-          }[tab]()}
+          {(
+            {
+              header: () => <HitBannerDocumentation />,
+              links: () => <HitLinksDocumentation />,
+              labels: () => <HitLabelsDocumentation />,
+              schema: () => <HitSchemaDocumentation />
+            } as const
+          )[tab]()}
         </Box>
       </Stack>
     </PageCenter>

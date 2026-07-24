@@ -16,7 +16,7 @@ import type { Case } from 'models/entities/generated/Case';
 import { memo, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
-import { ESCALATION_COLORS } from 'utils/constants';
+import { getEscalationColor } from 'utils/utils';
 import type { ObservableEntry, ObservableRole } from '../types';
 
 const ROLE_COLORS: Record<ObservableRole, 'error' | 'warning' | 'info'> = {
@@ -196,12 +196,7 @@ const ObservableTable: FC<{ observables: ObservableEntry[]; case: Case }> = ({ o
                 <TableCell>
                   <Stack direction="row" flexWrap="wrap" gap={0.5}>
                     {escalations.map(esc => (
-                      <Chip
-                        key={esc}
-                        size="small"
-                        label={esc}
-                        color={ESCALATION_COLORS[esc as keyof typeof ESCALATION_COLORS] ?? 'default'}
-                      />
+                      <Chip key={esc} size="small" label={esc} color={getEscalationColor(esc)} />
                     ))}
                   </Stack>
                 </TableCell>

@@ -8,6 +8,6 @@ export interface FolderOption {
 
 export interface RecordEntry {
   record: Hit | Event;
-  parent: string | null;
+  parent?: string;
   name: string;
 }

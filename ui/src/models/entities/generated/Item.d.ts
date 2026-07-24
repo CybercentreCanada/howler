@@ -4,8 +4,8 @@
 export interface Item {
   id?: string;
   classification?: string;
-  parent?: string | null;
-  name?: string | null;
+  parent?: string;
+  name?: string;
   type?: string;
   value?: string;
   visible?: boolean;

@@ -11,8 +11,7 @@ import {
   Stack,
   Typography
 } from '@mui/material';
-import type { LeftNavMenuProps, LeftNavRouteProps } from '@tui/core';
-import { PageCenter } from '@tui/core';
+import { PageCenter, type LeftNavRouteProps } from '@tui/core';
 import useMyPreferences from 'components/hooks/useMyPreferences';
 import { useScrollRestoration } from 'components/hooks/useScrollRestoration';
 import howlerPluginStore from 'plugins/store';
@@ -36,13 +35,8 @@ const HelpDashboard = () => {
     []
   );
 
-  const links = useMemo(
-    () =>
-      (leftnav.menus.find(menu => menu.id === 'help') as LeftNavMenuProps).items.filter(
-        _item => _item.id !== 'help.main'
-      ) as LeftNavRouteProps[],
-    [leftnav.menus]
-  );
+  const links = (leftnav?.menus?.find(menu => menu.id === 'help')?.items?.filter(_item => _item.id !== 'help.main') ??
+    []) as LeftNavRouteProps[];
 
   return (
     <PageCenter margin={4} width="100%" maxWidth="1750px" textAlign="left">
@@ -64,7 +58,7 @@ const HelpDashboard = () => {
                       sx={{ '& svg': { fontSize: 'inherit' }, '& > span': { ml: 1 } }}
                     >
                       {link.icon}
-                      <span>{t(link.i18nKey)}</span>
+                      {link.i18nKey && <span>{t(link.i18nKey)}</span>}
                       <IconButton component={Link} to={link.route} sx={{ ml: 'auto' }}>
                         <OpenInNew color="primary" fontSize="inherit" />
                       </IconButton>
@@ -74,9 +68,9 @@ const HelpDashboard = () => {
                 <CardContent sx={{ flex: 1 }}>
                   <Typography>{t(`helpMain:${link.i18nKey}.description`)}</Typography>
                 </CardContent>
-                {tabs[link.id] && (
+                {tabs[link.id as keyof typeof tabs] && (
                   <CardActions>
-                    {tabs[link.id].map(tab => (
+                    {tabs[link.id as keyof typeof tabs].map((tab: string) => (
                       <Button key={tab} size="small" component={Link} to={`${link.route}?tab=${tab}`}>
                         {tab}
                       </Button>

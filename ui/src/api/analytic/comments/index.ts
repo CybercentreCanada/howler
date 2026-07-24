@@ -8,19 +8,19 @@ export const uri = (analytic: string, comment?: string) => {
   return comment ? joinAllUri(parentUri(analytic), 'comments', comment) : joinUri(parentUri(analytic), 'comments');
 };
 
-export const get = (analytic: string, comment: string): Promise<Comment> => {
-  return hget(uri(analytic, comment));
+export const get = (analytic: string, comment: string) => {
+  return hget<Comment>(uri(analytic, comment));
 };
 
-export const put = (analytic: string, comment: string, value: string): Promise<{ success: boolean }> => {
-  return hput(uri(analytic, comment), { value });
+export const put = (analytic: string, comment: string, value: string) => {
+  return hput<{ success: boolean }>(uri(analytic, comment), { value });
 };
 
-export const post = (analytic: string, value: string, detection?: string): Promise<Analytic> => {
-  return hpost(uri(analytic), { value, detection });
+export const post = (analytic: string, value: string, detection?: string) => {
+  return hpost<Analytic>(uri(analytic), { value, detection });
 };
 
-export const del = (analytic: string, comments: string[]): Promise<{ success: boolean }> => {
+export const del = (analytic: string, comments: string[]) => {
   return hdelete(uri(analytic), comments);
 };
 

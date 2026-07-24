@@ -119,7 +119,7 @@ describe('OverviewCard', () => {
 
     render(<OverviewCard overview={overview as any} onRemove={mockOnDelete} />, { wrapper: Wrapper });
 
-    const deleteButton = document.querySelector('[data-testid="DeleteIcon"]').closest('button');
+    const deleteButton = document.querySelector('[data-testid="DeleteIcon"]')!.closest('button')!;
     await user.click(deleteButton);
 
     const confirmButton = screen.getByRole('button', { name: /delete/i });

@@ -19,11 +19,11 @@ const HitCard: FC<{
   elevation?: number;
 }> = ({ id, layout, readOnly = true, lazy = false, elevation, hit: _hit }) => {
   const getRecord = useContextSelector(RecordContext, ctx => ctx.getRecord);
-  const hit = useContextSelector(RecordContext, ctx => _hit ?? (ctx.records[id] as Hit));
+  const hit = useContextSelector(RecordContext, ctx => _hit ?? (ctx.records[id!] as Hit));
 
   useEffect(() => {
     if (!hit && !lazy) {
-      void getRecord(id);
+      void getRecord(id!);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);

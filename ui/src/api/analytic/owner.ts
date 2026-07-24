@@ -6,6 +6,6 @@ export const uri = (id: string) => {
   return joinAllUri(parentUri(), id, 'owner');
 };
 
-export const post = (id: string, body: { username: string }, refresh?: HowlerRefreshParam): Promise<Analytic> => {
-  return hpost(uri(id), body, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
+export const post = (id: string, body: { username: string }, refresh?: HowlerRefreshParam) => {
+  return hpost<Analytic>(uri(id), body, undefined, refresh ? new URLSearchParams({ refresh }) : undefined);
 };

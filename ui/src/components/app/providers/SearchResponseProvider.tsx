@@ -1,49 +1,79 @@
 import type { HowlerSearchRequest, HowlerSearchResponse } from 'api/search';
 import type { DispatchApiConfig } from 'components/hooks/useMyApi';
 import useMyApi from 'components/hooks/useMyApi';
-import { createContext, useCallback, useState, type PropsWithChildren } from 'react';
+import { isNil } from 'lodash-es';
+import { createContext, useCallback, useContext, useState, type Context, type PropsWithChildren } from 'react';
 
 export type SearchResponseState<T> = HowlerSearchResponse<T> & {
   removeCount: number;
 };
 
-export type SearchResponseContextType<T, R = HowlerSearchResponse<T>> = {
+export type SearchResponseContextType<T> = {
   push: (item: T) => void;
   remove: (id: string) => void;
   replace: (id: string, item: T) => void;
-  request: (
-    endpoint: (request: HowlerSearchRequest) => Promise<R>,
-    requestData: HowlerSearchRequest,
+  request: <Request extends HowlerSearchRequest>(
+    endpoint: (request: Request) => Promise<HowlerSearchResponse<T> | undefined>,
+    requestData: Request,
     config?: DispatchApiConfig
-  ) => Promise<R>;
+  ) => Promise<HowlerSearchResponse<T>>;
   getSearchRequestData: (requestData: Partial<HowlerSearchRequest>) => Partial<HowlerSearchRequest>;
-  response: SearchResponseState<T> | null;
+  response?: SearchResponseState<T>;
 };
 
-export const SearchResponseContext = createContext<SearchResponseContextType<any>>(null);
+export type SearchResponseContext<T> = Context<SearchResponseContextType<T> | null>;
+
+export const createSearchResponseContext = <T,>(): SearchResponseContext<T> =>
+  createContext<SearchResponseContextType<T> | null>(null);
+
+export const useSearchResponseContext = <T,>(context: SearchResponseContext<T>): SearchResponseContextType<T> => {
+  const value = useContext(context);
+
+  if (isNil(value)) {
+    throw new Error('useSearchResponseContext must be used within a SearchResponseProvider');
+  }
+
+  return value;
+};
 
 type SearchResponseProviderProps<T> = PropsWithChildren<{
+  context: SearchResponseContext<T>;
   idField: string;
   initialResponse?: SearchResponseState<T>;
 }>;
 
-const SearchResponseProvider = <T,>({ children, idField, initialResponse = null }: SearchResponseProviderProps<T>) => {
+const SearchResponseProvider = <T,>({
+  children,
+  context,
+  idField,
+  initialResponse
+}: SearchResponseProviderProps<T>) => {
   const { dispatchApi } = useMyApi();
-  const [response, setResponse] = useState<SearchResponseState<T> | null>(initialResponse);
+  const [response, setResponse] = useState<SearchResponseState<T> | undefined>(initialResponse);
+
+  // T has no known shape, so the id field lookup has to go through an untyped index access.
+  const getFieldValue = useCallback((item: T): unknown => (item as Record<string, unknown>)[idField], [idField]);
 
   const request = useCallback(
-    async (
-      endpoint: (request: HowlerSearchRequest) => Promise<HowlerSearchResponse<T>>,
-      requestData: HowlerSearchRequest,
+    async <Request extends HowlerSearchRequest>(
+      endpoint: (request: Request) => Promise<HowlerSearchResponse<T> | undefined>,
+      requestData: Request,
       config?: DispatchApiConfig
     ) => {
       const _response = await dispatchApi(endpoint(requestData), config);
+      const searchResponse = _response ?? {
+        items: [],
+        offset: requestData.offset ?? 0,
+        rows: requestData.rows ?? 0,
+        total: 0
+      };
 
       setResponse(_prevResponse => ({
-        ..._response,
-        removeCount: _response.offset <= _prevResponse?.offset ? 0 : (_prevResponse?.removeCount ?? 0)
+        ...searchResponse,
+        removeCount: searchResponse.offset <= (_prevResponse?.offset ?? 0) ? 0 : (_prevResponse?.removeCount ?? 0)
       }));
-      return _response;
+
+      return searchResponse;
     },
     [dispatchApi]
   );
@@ -53,7 +83,11 @@ const SearchResponseProvider = <T,>({ children, idField, initialResponse = null 
       const modifiedRequest = { ...requestData };
 
       if (response?.removeCount) {
-        if (response.offset < modifiedRequest.offset) {
+        if (
+          response.offset !== undefined &&
+          modifiedRequest.offset !== undefined &&
+          response.offset < modifiedRequest.offset
+        ) {
           modifiedRequest.offset = Math.max(0, modifiedRequest.offset - response.removeCount);
         }
       }
@@ -66,11 +100,11 @@ const SearchResponseProvider = <T,>({ children, idField, initialResponse = null 
   const push = useCallback(
     (item: T) => {
       setResponse(_response => {
-        if (_response === null) {
+        if (isNil(_response)) {
           return _response;
         }
 
-        const filteredItems = _response.items.filter(v => v[idField] !== item[idField]);
+        const filteredItems = _response.items.filter(v => getFieldValue(v) !== getFieldValue(item));
         const itemExists = filteredItems.length < _response.items.length;
         filteredItems.push(item);
 
@@ -83,26 +117,26 @@ const SearchResponseProvider = <T,>({ children, idField, initialResponse = null 
         };
       });
     },
-    [idField]
+    [getFieldValue]
   );
 
   const replace = useCallback(
     (id: string, item: T) => {
-      if (item[idField] !== undefined && id !== item[idField]) {
+      if (getFieldValue(item) !== undefined && id !== getFieldValue(item)) {
         throw new Error('Item id is defined but id does not match the id provided to replace function');
       }
 
       const newItem = {
         ...item,
-        [idField]: item[idField] !== undefined ? item[idField] : id
+        [idField]: getFieldValue(item) !== undefined ? getFieldValue(item) : id
       };
 
       setResponse(_response => {
-        if (_response === null) {
+        if (isNil(_response)) {
           return _response;
         }
         return {
-          items: _response.items.map(v => (v[idField] === id ? newItem : v)),
+          items: _response.items.map(v => (getFieldValue(v) === id ? newItem : v)),
           offset: _response.offset,
           rows: _response.rows,
           total: _response.total,
@@ -110,16 +144,16 @@ const SearchResponseProvider = <T,>({ children, idField, initialResponse = null 
         };
       });
     },
-    [idField]
+    [idField, getFieldValue]
   );
 
   const remove = useCallback(
     (id: string) => {
       setResponse(_response => {
-        if (_response === null) {
+        if (isNil(_response)) {
           return _response;
         }
-        const filteredItems = _response.items.filter(v => v[idField] !== id);
+        const filteredItems = _response.items.filter(v => getFieldValue(v) !== id);
         const itemExists = filteredItems.length < _response.items.length;
 
         return {
@@ -131,14 +165,12 @@ const SearchResponseProvider = <T,>({ children, idField, initialResponse = null 
         };
       });
     },
-    [idField]
+    [getFieldValue]
   );
 
-  return (
-    <SearchResponseContext.Provider value={{ push, remove, replace, request, getSearchRequestData, response }}>
-      {children}
-    </SearchResponseContext.Provider>
-  );
+  const Provider = context.Provider;
+
+  return <Provider value={{ push, remove, replace, request, getSearchRequestData, response }}>{children}</Provider>;
 };
 
 export default SearchResponseProvider;

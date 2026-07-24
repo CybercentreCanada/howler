@@ -41,7 +41,7 @@ const CaseAggregate: FC<{
   const values = records
     ? uniq(
         records
-          .map(_record => get(_record, field))
+          .map(_record => get(_record, field!))
           .flat()
           .filter(Boolean)
       )
@@ -58,7 +58,7 @@ const CaseAggregate: FC<{
                 !isEmpty(values) && (
                   <Stack spacing={0.5}>
                     {uniq(values).map(value => (
-                      <span key={value}>{value}</span>
+                      <span key={String(value)}>{String(value)}</span>
                     ))}
                   </Stack>
                 )

@@ -15,7 +15,7 @@ import useMySnackbar from './useMySnackbar';
 const useMyUserFunctions = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { showSuccessMessage } = useMySnackbar();
+  const { showSuccessMessage, showWarningMessage } = useMySnackbar();
   const { dispatchApi } = useMyApi();
   const { showModal } = useContext(ModalContext);
   const drawer = useContext(AppDrawerContext);
@@ -37,9 +37,9 @@ const useMyUserFunctions = () => {
     ),
 
     editQuota: useCallback(
-      async (user: HowlerUser, quota: string) => {
+      async (user: HowlerUser, quota?: string) => {
         // eslint-disable-next-line @typescript-eslint/naming-convention
-        const api_quota = parseInt(quota);
+        const api_quota = quota ? parseInt(quota) : 25;
 
         await dispatchApi(api.user.put(user.username, { api_quota }), { throwError: true });
 
@@ -70,7 +70,7 @@ const useMyUserFunctions = () => {
 
     addRole: useCallback(
       async (user: HowlerUser, role: string) => {
-        const newRoles = [...user.roles, role];
+        const newRoles = [...user.roles!, role];
 
         await dispatchApi(api.user.put(user.username, { type: newRoles }), {
           throwError: true,
@@ -95,7 +95,7 @@ const useMyUserFunctions = () => {
             onCreated={(newKeyName, privs, expiryDate) => {
               setUser({
                 ...currentUser,
-                apikeys: [...currentUser.apikeys, [newKeyName, privs, expiryDate]]
+                apikeys: [...(currentUser.apikeys ?? []), [newKeyName, privs, expiryDate]]
               });
 
               showSuccessMessage(t('api.user.apikey.updated'));
@@ -107,9 +107,9 @@ const useMyUserFunctions = () => {
 
     removeRole: useCallback(
       async (user: HowlerUser, role: string) => {
-        const newRoles = user.roles.filter(r => r !== role);
+        const newRoles = user.roles!.filter(r => r !== role);
 
-        await dispatchApi(api.user.put(user.username, { type: user.roles.filter(r => r !== role) }), {
+        await dispatchApi(api.user.put(user.username, { type: user.roles!.filter(r => r !== role) }), {
           throwError: true,
           showError: true
         });
@@ -125,18 +125,18 @@ const useMyUserFunctions = () => {
     ),
 
     removeApiKey: useCallback(
-      async (user: HowlerUser, apiKey: [string, string[]]) => {
+      async (user: HowlerUser, [keyId]: [string, string[], string]) => {
         await new Promise<void>(res => {
           showModal(<ConfirmDeleteModal onConfirm={res} />);
         });
 
-        await dispatchApi(api.auth.apikey.del(apiKey[0]), { throwError: true });
+        await dispatchApi(api.auth.apikey.del(keyId), { throwError: true });
 
         showSuccessMessage(t('api.user.apikey.removed'));
 
         return {
           ...user,
-          apikeys: user.apikeys.filter(([name, _]) => name !== apiKey[0])
+          apikeys: (user.apikeys ?? []).filter(([name, _]) => name !== keyId)
         };
       },
       [dispatchApi, showModal, showSuccessMessage, t]
@@ -145,11 +145,16 @@ const useMyUserFunctions = () => {
     viewGroups: useCallback(async () => {
       const groups = await dispatchApi(api.user.groups.get());
 
+      if (!groups?.length) {
+        showWarningMessage(t('api.user.groups.empty'));
+        return;
+      }
+
       drawer.open({
         titleKey: 'app.drawer.user.groups.title',
         children: <ViewGroupsDrawer groups={groups} />
       });
-    }, [dispatchApi, drawer]),
+    }, [dispatchApi, drawer, showWarningMessage, t]),
 
     setDashboard: useCallback(
       async (dashboard: HowlerUser['dashboard']) => {

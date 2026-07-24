@@ -12,7 +12,7 @@ export type AppDrawerContextState = {
 };
 
 const APPDRAWER_INIT_STATE: AppDrawerContextState = {
-  props: { titleKey: null, children: null, onClosed: () => null },
+  props: { titleKey: '', children: null, onClosed: () => null },
   close: () => null,
   open: () => null
 };

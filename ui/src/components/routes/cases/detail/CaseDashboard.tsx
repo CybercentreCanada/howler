@@ -5,6 +5,8 @@ import useMyApi from 'components/hooks/useMyApi';
 import dayjs from 'dayjs';
 import { difference, get, isNil } from 'lodash-es';
 import type { Case } from 'models/entities/generated/Case';
+import type { Event } from 'models/entities/generated/Event';
+import type { Hit } from 'models/entities/generated/Hit';
 import { useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useOutletContext } from 'react-router';
@@ -19,8 +21,8 @@ import TaskPanel from './TaskPanel';
 const AGGREGATE_FIELDS = [
   ['howler.outline.threat', 'material-symbols:warning-rounded', 'warning.main', 'page.cases.dashboard.threat'],
   ['howler.outline.target', 'material-symbols:group', 'primary.main', 'page.cases.dashboard.target'],
-  ['howler.outline.indicators', 'fluent:number-symbol-24-filled', null, 'page.cases.dashboard.indicators']
-];
+  ['howler.outline.indicators', 'fluent:number-symbol-24-filled', 'inherit', 'page.cases.dashboard.indicators']
+] as const;
 
 const getDuration = (case_: Case) => {
   if (case_?.start) {
@@ -44,9 +46,9 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
   const ids = useMemo(
     () =>
       (_case?.items ?? [])
-        .filter(item => ['hit', 'event'].includes(item.type))
+        .filter(item => ['hit', 'event'].includes(item.type!))
         .map(item => item.value)
-        .filter(val => !!val),
+        .filter(val => !isNil(val)),
     [_case?.items]
   );
 
@@ -66,11 +68,15 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
     }
 
     void dispatchApi(
-      api.v2.search.post(['hit', 'event'], {
+      api.v2.search.post<Hit | Event>(['hit', 'event'], {
         query: `howler.id:(${missingIds.join(' OR ')})`,
         metadata: ['template', 'analytic']
       })
     ).then(response => {
+      if (!response) {
+        return;
+      }
+
       loadRecords(response.items);
 
       setInvalidIds(
@@ -95,7 +101,7 @@ const CaseDashboard: FC<{ case?: Case; caseId?: string }> = ({ case: providedCas
         <Grid key={field} size={{ xs: 12, md: 6, xl: 3 }}>
           <CaseAggregate
             icon={icon}
-            iconColor={iconColor && get(theme.palette, iconColor)}
+            iconColor={iconColor !== 'inherit' ? get(theme.palette, iconColor) : iconColor}
             field={field}
             records={Object.values(caseRecords)}
             subtitle={t(subtitle)}

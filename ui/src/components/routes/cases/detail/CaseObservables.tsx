@@ -3,7 +3,7 @@ import { Chip, Grid, Skeleton, Stack, TextField, Typography } from '@mui/materia
 import api from 'api';
 import ChipPopper from 'components/elements/display/ChipPopper';
 import useMyApi from 'components/hooks/useMyApi';
-import { toArray, uniq } from 'lodash-es';
+import { isNil, toArray, uniq } from 'lodash-es';
 import type { Case } from 'models/entities/generated/Case';
 import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
@@ -36,9 +36,9 @@ const CaseObservables: FC<{ case?: Case; caseId?: string }> = ({ case: providedC
   const ids = useMemo(
     () =>
       (_case?.items ?? [])
-        .filter(item => ['hit', 'event'].includes(item.type))
+        .filter(item => ['hit', 'event'].includes(item.type!))
         .map(item => item.value)
-        .filter(val => !!val),
+        .filter(val => !isNil(val)),
     [_case?.items]
   );
 

@@ -12,27 +12,27 @@ import HandlebarsMarkdown from '../display/HandlebarsMarkdown';
 const HitOverview: FC<{ content?: string; hit: Hit }> = ({ content, hit }) => {
   const { getMatchingOverview } = useMatchers();
 
-  const [matchingOverview, setMatchingOverview] = useState<Overview>(null);
+  const [matchingOverview, setMatchingOverview] = useState<Overview | null>(null);
 
   useEffect(() => {
-    void getMatchingOverview(hit).then(setMatchingOverview);
+    void getMatchingOverview(hit).then(_overview => setMatchingOverview(_overview ?? null));
   }, [getMatchingOverview, hit]);
 
   const link = useMemo(
     () =>
       matchingOverview
-        ? `/overviews/view?analytic=${encodeURIComponent(matchingOverview.analytic)}${matchingOverview.detection && '&detection=' + encodeURIComponent(matchingOverview.detection)}`
+        ? `/overviews/view?analytic=${encodeURIComponent(matchingOverview.analytic!)}${matchingOverview.detection && '&detection=' + encodeURIComponent(matchingOverview.detection!)}`
         : hit
-          ? `/overviews/view?analytic=${encodeURIComponent(hit?.howler.analytic)}${hit?.howler.detection && '&detection=' + encodeURIComponent(hit?.howler.detection)}`
+          ? `/overviews/view?analytic=${encodeURIComponent(hit?.howler.analytic!)}${hit?.howler.detection && '&detection=' + encodeURIComponent(hit?.howler.detection!)}`
           : null,
     [hit, matchingOverview]
   );
 
   return (
     <Box className="no-margin-first-child" sx={{ position: 'relative', height: '100%', overflow: 'auto' }}>
-      {matchingOverview || content ? (
+      {content || matchingOverview?.content ? (
         <ErrorBoundary>
-          <HandlebarsMarkdown md={content ?? matchingOverview.content} object={hit} disableLinks />
+          <HandlebarsMarkdown md={(content || matchingOverview?.content)!} object={hit} disableLinks />
         </ErrorBoundary>
       ) : (
         <Skeleton variant="rounded" height="40vh" />

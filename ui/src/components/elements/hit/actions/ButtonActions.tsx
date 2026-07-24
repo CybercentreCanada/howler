@@ -51,7 +51,7 @@ const ButtonActions: FC<DesktopActionProps> = ({ actions, loading, orientation, 
     () =>
       actions
         .filter(action => action.type === 'action')
-        .reduce(
+        .reduce<[ActionButton[], ActionButton[]]>(
           ([top, bottom], action) => {
             if (top.length === bottom.length) {
               top.push(action);
@@ -61,7 +61,7 @@ const ButtonActions: FC<DesktopActionProps> = ({ actions, loading, orientation, 
 
             return [top, bottom];
           },
-          [[], []] as [ActionButton[], ActionButton[]]
+          [[], []]
         ),
     [actions]
   );
@@ -70,7 +70,7 @@ const ButtonActions: FC<DesktopActionProps> = ({ actions, loading, orientation, 
     () =>
       actions
         .filter(action => action.type === 'assessment')
-        .reduce(
+        .reduce<[ActionButton[], ActionButton[]]>(
           ([top, bottom], action) => {
             if (TOP_ROW.includes(action.name)) {
               top.push(action);
@@ -80,8 +80,8 @@ const ButtonActions: FC<DesktopActionProps> = ({ actions, loading, orientation, 
 
             return [top, bottom];
           },
-          [[], []] as [ActionButton[], ActionButton[]]
-        ) ?? [],
+          [[], []]
+        ),
     [actions]
   );
 
@@ -89,7 +89,7 @@ const ButtonActions: FC<DesktopActionProps> = ({ actions, loading, orientation, 
     <Stack
       direction={isHorizontal ? 'row' : 'column'}
       spacing={0.75}
-      alignItems={!isHorizontal && 'start'}
+      alignItems={isHorizontal ? undefined : 'start'}
       py={1}
       sx={{ position: 'relative', flex: 1 }}
       justifyContent="space-between"

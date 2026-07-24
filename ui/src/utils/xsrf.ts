@@ -1,13 +1,8 @@
 const getXSRFCookie = () => {
   if (document.cookie !== undefined) {
-    try {
-      // eslint-disable-next-line prefer-destructuring
-      return document.cookie
-        .split('; ')
-        .find(row => row.startsWith('XSRF-TOKEN'))
-        .split('=')[1];
-    } catch {
-      // Ignore... we will return null
+    const token = document.cookie.split('; ').find(row => row.startsWith('XSRF-TOKEN='));
+    if (token) {
+      return token.split('=')[1] ?? null;
     }
   }
 

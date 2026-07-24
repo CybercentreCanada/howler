@@ -32,10 +32,10 @@ const CasePreview: FC<PreviewProps> = ({ case: _case }) => {
             {_case.title}
           </Typography>
           <Typography variant="caption" color="textSecondary">
-            {_case.summary.trim().split('\n')[0]}
+            {_case.summary?.trim().split('\n')[0]}
           </Typography>
         </Stack>
-        <StatusIcon status={_case.status} />
+        <StatusIcon status={_case.status!} />
         <div style={{ flex: 1 }} />
         <Stack spacing={1} alignItems="end">
           {_case.start && _case.end && (
@@ -48,12 +48,12 @@ const CasePreview: FC<PreviewProps> = ({ case: _case }) => {
             </Tooltip>
           )}
           <Tooltip title={dayjs(_case.updated).toString()}>
-            <Chip icon={<UpdateOutlined fontSize="small" />} size="small" label={twitterShort(_case.updated)} />
+            <Chip icon={<UpdateOutlined fontSize="small" />} size="small" label={twitterShort(_case.updated!)} />
           </Tooltip>
         </Stack>
       </Stack>
       <Stack direction="row" spacing={1}>
-        {_case.participants?.length > 0 && (
+        {(_case.participants?.length ?? 0) > 0 && (
           <Stack direction="row" spacing={1}>
             {_case.participants?.map(participant => (
               <HowlerAvatar key={participant} sx={{ height: '24px', width: '24px' }} userId={participant} />

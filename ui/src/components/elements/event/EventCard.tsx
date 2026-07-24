@@ -8,11 +8,11 @@ import EventPreview from './EventPreview';
 
 const EventCard: FC<{ id?: string; event?: Event }> = ({ id, event: _event }) => {
   const getRecord = useContextSelector(RecordContext, ctx => ctx.getRecord);
-  const event = useContextSelector(RecordContext, ctx => _event ?? (ctx.records[id] as Event));
+  const event = useContextSelector(RecordContext, ctx => _event ?? (ctx.records[id!] as Event));
 
   useEffect(() => {
     if (!event) {
-      void getRecord(id);
+      void getRecord(id!);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);

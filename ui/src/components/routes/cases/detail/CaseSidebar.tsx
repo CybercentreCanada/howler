@@ -81,7 +81,7 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const data = event.active.data.current;
-    setActiveDragData({ type: data.type, label: data.label ?? '' });
+    setActiveDragData({ type: data!.type, label: data!.label ?? '' });
   }, []);
 
   const navItemSx = useCallback(
@@ -117,10 +117,11 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
     async (event: DragEndEvent) => {
       setActiveDragData(null);
 
-      if (!_case) {
+      if (!_case?.case_id) {
         return;
       }
 
+      const caseId = _case.case_id;
       const { active, over } = event;
 
       if (!over?.data.current || !active?.data.current) {
@@ -141,9 +142,11 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
       try {
         setLoading(true);
         const updatedCase = await dispatchApi(
-          api.v2.case.items.put(_case.case_id, movingEntry.id, { parent: targetFolderId })
+          api.v2.case.items.put(caseId, movingEntry.id!, { parent: targetFolderId })
         );
-        update(updatedCase);
+        if (updatedCase) {
+          update(updatedCase);
+        }
       } finally {
         setLoading(false);
       }
@@ -173,7 +176,10 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
             {t('started')}: {_case?.created ? dayjs(_case.created).toString() : <Skeleton height={14} />}
           </Typography>
           {_case?.escalation ? (
-            <Chip color={ESCALATION_COLOR_MAP[_case.escalation]} label={t(_case.escalation)} />
+            <Chip
+              color={ESCALATION_COLOR_MAP[_case.escalation as keyof typeof ESCALATION_COLOR_MAP]}
+              label={t(_case.escalation)}
+            />
           ) : (
             <Skeleton height={24} />
           )}
@@ -183,9 +189,9 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
       <Stack
         direction="row"
         alignItems="center"
-        sx={navItemSx(location.pathname.endsWith(_case?.case_id))}
+        sx={navItemSx(location.pathname.endsWith(_case.case_id!))}
         component={Link}
-        to={`/cases/${_case?.case_id}`}
+        to={`/cases/${_case.case_id!}`}
       >
         <Dashboard fontSize="small" />
         <Typography variant="body2" sx={{ pl: 1, textWrap: 'nowrap' }}>
@@ -198,7 +204,7 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
         alignItems="center"
         sx={navItemSx(location.pathname.endsWith('search'))}
         component={Link}
-        to={`/cases/${_case?.case_id}/search`}
+        to={`/cases/${_case.case_id!}/search`}
       >
         <Search fontSize="small" />
         <Typography variant="body2" sx={{ userSelect: 'none', pl: 1, textWrap: 'nowrap' }}>
@@ -211,7 +217,7 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
         alignItems="center"
         sx={navItemSx(location.pathname.endsWith('observables'))}
         component={Link}
-        to={`/cases/${_case?.case_id}/observables`}
+        to={`/cases/${_case.case_id!}/observables`}
       >
         <Dataset fontSize="small" />
         <Typography variant="body2" sx={{ userSelect: 'none', pl: 1, textWrap: 'nowrap' }}>
@@ -224,7 +230,7 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
         alignItems="center"
         sx={navItemSx(location.pathname.endsWith('timeline'))}
         component={Link}
-        to={`/cases/${_case?.case_id}/timeline`}
+        to={`/cases/${_case.case_id!}/timeline`}
       >
         <CalendarMonth fontSize="small" />
         <Typography variant="body2" sx={{ userSelect: 'none', pl: 1, textWrap: 'nowrap' }}>
@@ -237,7 +243,7 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
         alignItems="center"
         sx={navItemSx(location.pathname.endsWith('rules'))}
         component={Link}
-        to={`/cases/${_case?.case_id}/rules`}
+        to={`/cases/${_case.case_id!}/rules`}
       >
         <Rule />
         <Typography variant="body2" sx={{ userSelect: 'none', pl: 1, textWrap: 'nowrap' }}>
@@ -283,13 +289,15 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
                   try {
                     setLoading(true);
                     const updatedCase = await dispatchApi(
-                      api.v2.case.items.post(_case.case_id, {
+                      api.v2.case.items.post(_case.case_id!, {
                         type: 'folder',
                         name: t('page.cases.sidebar.new_folder'),
                         value: t('page.cases.sidebar.new_folder')
                       })
                     );
-                    update(updatedCase);
+                    if (updatedCase) {
+                      update(updatedCase);
+                    }
                   } finally {
                     setLoading(false);
                   }
@@ -318,7 +326,7 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
                 if (_case?.case_id) {
                   try {
                     setLoading(true);
-                    const refreshedCase = await dispatchApi(api.v2.case.get(_case.case_id));
+                    const refreshedCase = await dispatchApi(api.v2.case.get(_case.case_id!));
                     if (refreshedCase) {
                       update(refreshedCase);
                     }
@@ -359,9 +367,11 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
               onDragEnd={handleDragEnd}
             >
               <CaseFolder case={_case} onItemUpdated={update} collapseKey={collapseKey} />
-              <RootDropZone caseId={_case.case_id} />
+              <RootDropZone caseId={_case.case_id!} />
               <DragOverlay dropAnimation={null}>
-                {activeDragData && <FolderEntry caseId={null} indent={0} label={activeDragData.label} entry={null} />}
+                {activeDragData && (
+                  <FolderEntry caseId={_case.case_id!} indent={0} label={activeDragData.label} entry={undefined} />
+                )}
               </DragOverlay>
             </DndContext>
           </Box>

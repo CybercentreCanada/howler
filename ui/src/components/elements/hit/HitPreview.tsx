@@ -1,11 +1,10 @@
-import type { AppSearchItemRendererOption } from '@tui/core';
 import { Box, Chip, Divider, Stack, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
+import type { AppSearchItemRendererOption } from '@tui/core';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { FC } from 'react';
-import { memo, useMemo } from 'react';
+import { memo } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { ESCALATION_COLORS, PROVIDER_COLORS, STATUS_COLORS } from 'utils/constants';
-import { formatDate, stringToColor } from 'utils/utils';
+import { formatDate, getEscalationColor, getProviderColor, getStatusColor } from 'utils/utils';
 
 type PreviewProps = {
   hit: Hit;
@@ -17,10 +16,7 @@ const HitPreview: FC<PreviewProps> = ({ hit, options }) => {
   const theme = useTheme();
   const isUnderLg = useMediaQuery(theme.breakpoints.down('lg'));
 
-  const providerColor = useMemo(
-    () => PROVIDER_COLORS[hit.event?.provider ?? 'unknown'] ?? stringToColor(hit.event.provider),
-    [hit.event?.provider]
-  );
+  const providerColor = getProviderColor(hit?.event?.provider);
 
   return (
     <Box
@@ -60,7 +56,7 @@ const HitPreview: FC<PreviewProps> = ({ hit, options }) => {
                 <div>
                   <Trans i18nKey="hit.header.target" />: {hit.howler.outline.target}
                 </div>
-                <div>{hit.howler.outline.indicators.join(', ')}</div>
+                <div>{(hit.howler.outline.indicators ?? []).join(', ')}</div>
               </Stack>
             }
           >
@@ -88,7 +84,7 @@ const HitPreview: FC<PreviewProps> = ({ hit, options }) => {
             label={hit.organization?.name ?? <Trans i18nKey="unknown" />}
             size="small"
           />
-          <Chip label={hit.howler.escalation} size="small" color={ESCALATION_COLORS[hit.howler.escalation]} />
+          <Chip label={hit.howler.escalation} size="small" color={getEscalationColor(hit.howler.escalation)} />
         </Stack>
         <Stack direction="row" spacing={0.5}>
           <Chip
@@ -104,7 +100,7 @@ const HitPreview: FC<PreviewProps> = ({ hit, options }) => {
             }
             size="small"
           />
-          <Chip label={hit.howler.status} size="small" color={STATUS_COLORS[hit.howler.status]} />
+          <Chip label={hit.howler.status} size="small" color={getStatusColor(hit.howler.status)} />
         </Stack>
       </Stack>
     </Box>

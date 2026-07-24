@@ -1,6 +1,7 @@
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { RecordContext } from 'components/app/providers/RecordProvider';
 import { RecordSearchContext } from 'components/app/providers/RecordSearchProvider';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
 import type React from 'react';
 import { useCallback, useState } from 'react';
@@ -15,14 +16,14 @@ const useRecordSelection = () => {
 
   const setSelected = useContextSelector(ParameterContext, ctx => ctx.setSelected);
 
-  const [lastSelected, setLastSelected] = useState<string>(null);
+  const [lastSelected, setLastSelected] = useState<string | null>(null);
 
   const onClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>, hit: Hit) => {
+    (e: React.MouseEvent<HTMLDivElement>, hit: Hit | Event) => {
       setLastSelected(hit.howler.id);
 
       if (e.ctrlKey) {
-        document.getSelection().removeAllRanges();
+        document.getSelection()?.removeAllRanges();
 
         if (selectedHits.some(_hit => _hit.howler.id === hit.howler.id)) {
           removeHitFromSelection(hit.howler.id);
@@ -35,19 +36,19 @@ const useRecordSelection = () => {
       }
 
       if (e.shiftKey) {
-        document.getSelection().removeAllRanges();
+        document.getSelection()?.removeAllRanges();
 
         if (selectedHits.length < 1) {
           addHitToSelection(hit.howler.id);
         } else if (lastSelected) {
-          const lastSelectedIndex = response?.items.findIndex(_hit => _hit.howler.id === lastSelected);
-          const currentIndex = response?.items.findIndex(_hit => _hit.howler.id === hit.howler.id);
+          const lastSelectedIndex = response!.items.findIndex(_hit => _hit.howler.id === lastSelected);
+          const currentIndex = response!.items.findIndex(_hit => _hit.howler.id === hit.howler.id);
 
           const lowerBound = lastSelectedIndex < currentIndex ? lastSelectedIndex : currentIndex;
           const upperBound = lastSelectedIndex > currentIndex ? lastSelectedIndex : currentIndex;
 
           for (let i = lowerBound; i <= upperBound; i++) {
-            addHitToSelection(response.items[i]?.howler.id);
+            addHitToSelection(response!.items[i]!.howler.id);
           }
         }
 

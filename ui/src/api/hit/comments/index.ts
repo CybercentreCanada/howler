@@ -8,19 +8,19 @@ export const uri = (hit: string, comment?: string) => {
   return comment ? joinAllUri(parentUri(hit), 'comments', comment) : joinUri(parentUri(hit), 'comments');
 };
 
-export const get = (hit: string, comment: string): Promise<Comment> => {
-  return hget(uri(hit, comment));
+export const get = (hit: string, comment: string) => {
+  return hget<Comment>(uri(hit, comment));
 };
 
-export const put = (hit: string, comment: string, value: string): Promise<{ success: boolean }> => {
-  return hput(uri(hit, comment), { value });
+export const put = (hit: string, comment: string, value: string) => {
+  return hput<{ success: boolean }>(uri(hit, comment), { value });
 };
 
-export const post = (hit: string, value: string): Promise<Hit> => {
-  return hpost(uri(hit), { value });
+export const post = (hit: string, value: string) => {
+  return hpost<Hit>(uri(hit), { value });
 };
 
-export const del = (hit: string, comments: string[]): Promise<{ success: boolean }> => {
+export const del = (hit: string, comments: string[]) => {
   return hdelete(uri(hit), comments);
 };
 

@@ -1,4 +1,5 @@
 /// <reference types="vitest" />
+// @ts-nocheck
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import useMyTheme from './useMyTheme';

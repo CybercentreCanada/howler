@@ -1,5 +1,5 @@
-import { PageCenter } from '@tui/core';
 import { Box, Skeleton, Stack, Typography } from '@mui/material';
+import { PageCenter } from '@tui/core';
 import api from 'api';
 import type { HowlerSearchResponse } from 'api/search';
 import type { FuzzySearchItem } from 'api/v2/fuzzy';
@@ -23,13 +23,13 @@ import { isCase, isEvent, isHit } from 'utils/typeUtils';
 const CaseSearch: FC = () => {
   const parentCase = useOutletContext<Case>();
 
-  const indexes = useContextSelector(ParameterContext, ctx => ctx.indexes);
+  const indexes = useContextSelector(ParameterContext, ctx => ctx.indexes) ?? [];
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
 
-  const [hitLayout] = useMyLocalStorageItem(StorageKey.HIT_LAYOUT, HitLayout.NORMAL);
+  const [hitLayout] = useMyLocalStorageItem<HitLayout>(StorageKey.HIT_LAYOUT, HitLayout.NORMAL);
 
   const [loading, setLoading] = useState(false);
-  const [response, setResponse] = useState<HowlerSearchResponse<FuzzySearchItem> | null>(null);
+  const [response, setResponse] = useState<HowlerSearchResponse<FuzzySearchItem>>();
   const [error, setError] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
 
@@ -69,7 +69,7 @@ const CaseSearch: FC = () => {
         );
       } catch (err: any) {
         setError(err.message || 'An error occurred while searching.');
-        setResponse(null);
+        setResponse(undefined);
       } finally {
         setLoading(false);
       }

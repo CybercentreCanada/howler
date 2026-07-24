@@ -2,6 +2,6 @@ export const MuiButtonColors = ['inherit', 'primary', 'secondary', 'success', 'e
 
 export type MuiButtonColorType = (typeof MuiButtonColors)[number];
 
-export const isMuiButtonColor = (color: string): boolean => {
+export const isMuiButtonColor = (color: string): color is MuiButtonColorType => {
   return MuiButtonColors.some(c => c === color);
 };

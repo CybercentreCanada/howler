@@ -34,7 +34,7 @@ export class PhraseBuffer {
     this.type = type;
   }
 
-  private type: string;
+  private type?: string;
 
   private startIndex: number = 0;
 
@@ -73,7 +73,7 @@ export class PhraseBuffer {
     return this.endIndex;
   }
 
-  public token(): PhraseToken {
+  public token(): PhraseToken | null {
     return this.endIndex > 0
       ? {
           type: this.type,

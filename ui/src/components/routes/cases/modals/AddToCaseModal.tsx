@@ -16,11 +16,11 @@ const ITEM_TYPES = [
 
 interface AddItemToCaseModalProps {
   case: Case;
-  parentId?: string | null;
+  parentId?: string;
   onUpdated?: (updatedCase: Case) => void;
 }
 
-const AddToCaseModal: FC<AddItemToCaseModalProps> = ({ case: _case, parentId = null, onUpdated }) => {
+const AddToCaseModal: FC<AddItemToCaseModalProps> = ({ case: _case, parentId, onUpdated }) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const monaco = useMonaco();
@@ -30,7 +30,7 @@ const AddToCaseModal: FC<AddItemToCaseModalProps> = ({ case: _case, parentId = n
   const [itemType, setItemType] = useState<(typeof ITEM_TYPES)[number]>(ITEM_TYPES[0]);
   const [title, setTitle] = useState('');
   const [value, setValue] = useState('');
-  const [selectedParent, setSelectedParent] = useState<string | null>(parentId);
+  const [selectedParent, setSelectedParent] = useState<string | undefined>(parentId);
   const [submitting, setSubmitting] = useState(false);
 
   const folderOptions = useFolderOptions(_case);
@@ -142,9 +142,9 @@ const AddToCaseModal: FC<AddItemToCaseModalProps> = ({ case: _case, parentId = n
           options={folderOptions}
           getOptionLabel={opt => opt.label}
           isOptionEqualToValue={(opt, val) => opt.id === val.id}
-          value={folderOptions.find(f => f.id === selectedParent) ?? null}
+          value={folderOptions.find(f => f.id === selectedParent)}
           disablePortal
-          onChange={(_ev, newVal) => setSelectedParent(newVal?.id ?? null)}
+          onChange={(_ev, newVal) => setSelectedParent(newVal?.id)}
           renderInput={params => (
             <TextField
               {...params}

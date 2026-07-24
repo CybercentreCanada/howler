@@ -26,10 +26,10 @@ const useMyActionFunctions = () => {
   const { addListener, removeListener } = useContext(SocketContext);
 
   const [loading, setLoading] = useState(false);
-  const [response, setResponse] = useState<HowlerSearchResponse<Hit>>(null);
+  const [response, setResponse] = useState<HowlerSearchResponse<Hit>>();
   const [responseQuery, setResponseQuery] = useState('');
   const [progress, setProgress] = useState<[number, number]>([0, 0]);
-  const [requestId, setRequestId] = useState<string>(null);
+  const [requestId, setRequestId] = useState<string>();
   const [report, setReport] = useState<ActionReport>();
 
   const handler = useCallback(
@@ -58,7 +58,7 @@ const useMyActionFunctions = () => {
   );
 
   useEffect(() => {
-    addListener<{ processed: number; total: number }>('action', handler);
+    addListener<{ request_id: string; processed: number; total: number }>('action', handler);
 
     return () => removeListener('action');
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -127,7 +127,7 @@ const useMyActionFunctions = () => {
         setLoading(true);
         const reqId = uuid();
         setRequestId(reqId);
-        setReport(null);
+        setReport(undefined);
 
         try {
           setReport(
@@ -142,7 +142,7 @@ const useMyActionFunctions = () => {
           );
         } finally {
           setLoading(false);
-          setRequestId(null);
+          setRequestId(undefined);
           setProgress([0, 0]);
           void onSearch(query);
         }
@@ -154,18 +154,19 @@ const useMyActionFunctions = () => {
         setLoading(true);
         const reqId = uuid();
         setRequestId(reqId);
-        setReport(null);
+        setReport(undefined);
 
-        let key: SnackbarKey = null;
+        let key: SnackbarKey | null = null;
         try {
-          const action = api.search.action.post({ query: `action_id:${actionId}`, rows: 1 });
+          const actionResponse = await api.search.action.post({ query: `action_id:${actionId}`, rows: 1 });
+          const actionName = actionResponse?.items[0]?.name ?? t('unknown');
 
           key = showInfoMessage(
             <Stack spacing={1} width="100%" mb={-2} pb={1}>
               <Stack direction="row" spacing={1} px="20px" pt="6px" pb="2px">
                 <Terminal fontSize="small" sx={{ mr: 2 }} />
                 <span>
-                  <Trans i18nKey="actions.running" values={{ action: (await action).items[0]?.name || t('unknown') }} />
+                  <Trans i18nKey="actions.running" values={{ action: actionName }} />
                 </span>
               </Stack>
               <LinearProgress color="inherit" sx={theme => ({ borderRadius: theme.shape.borderRadius })} />
@@ -188,8 +189,6 @@ const useMyActionFunctions = () => {
           );
 
           setReport(result);
-
-          const actionName = (await action).items[0]?.name || t('unknown');
 
           if (!result) {
             showErrorMessage(<Trans i18nKey="actions.error" values={{ action: actionName, message: t('unknown') }} />);
@@ -230,7 +229,7 @@ const useMyActionFunctions = () => {
             closeSnackbar(key);
           }
           setLoading(false);
-          setRequestId(null);
+          setRequestId(undefined);
           setProgress([0, 0]);
         }
       },

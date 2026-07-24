@@ -1,4 +1,5 @@
 /// <reference types="vitest" />
+// @ts-nocheck
 import { render } from '@testing-library/react';
 import i18n from 'i18n';
 import { I18nextProvider } from 'react-i18next';

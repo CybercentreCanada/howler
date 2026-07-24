@@ -207,7 +207,7 @@ describe('CreateRuleDialog', () => {
     });
   });
 
-  it('omits timeframe when no expiry is checked', async () => {
+  it('sets timeframe to undefined when no expiry is checked', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     mockDispatchApi.mockResolvedValueOnce({ items: [], total: 1, offset: 0, rows: 0 });
@@ -230,7 +230,7 @@ describe('CreateRuleDialog', () => {
         expect.objectContaining({
           query: 'event.kind:alert',
           destination: 'alerts/incoming',
-          timeframe: null
+          timeframe: undefined
         })
       );
     });

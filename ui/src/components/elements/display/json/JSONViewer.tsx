@@ -1,7 +1,7 @@
-import { useAppTheme } from '@tui/core';
 import ReactJson, { type CollapsedFieldProps } from '@microlink/react-json-view';
 import { Clear } from '@mui/icons-material';
 import { IconButton, Skeleton, Stack } from '@mui/material';
+import { useAppTheme } from '@tui/core';
 import Phrase from 'components/elements/addons/search/phrase/Phrase';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import { useCallback, useEffect, useMemo, useState, type FC } from 'react';
@@ -20,7 +20,7 @@ const JSONViewer: FC<{ data: object; collapse?: boolean; hideSearch?: boolean; f
   const { t } = useTranslation();
   const { isDark } = useAppTheme();
   const [compact] = useMyLocalStorageItem<boolean>(StorageKey.COMPACT_JSON, true);
-  const [flat] = useMyLocalStorageItem<boolean>(StorageKey.FLATTEN_JSON);
+  const [flat] = useMyLocalStorageItem<boolean>(StorageKey.FLATTEN_JSON, false);
 
   const [query, setQuery] = useState('');
   const [result, setResult] = useState<any>(null);

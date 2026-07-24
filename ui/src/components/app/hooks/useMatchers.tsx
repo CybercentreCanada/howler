@@ -17,7 +17,7 @@ const useMatchers = (lazy = false) => {
       }
 
       if (!hit) {
-        return null;
+        return;
       }
 
       if (has(hit, '__template')) {
@@ -25,7 +25,7 @@ const useMatchers = (lazy = false) => {
       }
 
       if (lazy) {
-        return null;
+        return;
       }
 
       // This is a fallback in case metadata is not included. In most cases templates are shown, the template metadata
@@ -33,7 +33,7 @@ const useMatchers = (lazy = false) => {
       try {
         return (await getRecord(hit.howler.id, true)).__template;
       } catch {
-        return null;
+        return;
       }
     },
     [getRecord, lazy]
@@ -42,7 +42,7 @@ const useMatchers = (lazy = false) => {
   const getMatchingOverview = useCallback(
     async (hit: WithMetadata<Hit>) => {
       if (!hit) {
-        return null;
+        return;
       }
 
       if (has(hit, '__overview')) {
@@ -50,7 +50,7 @@ const useMatchers = (lazy = false) => {
       }
 
       if (lazy) {
-        return null;
+        return;
       }
 
       // This is a fallback in case metadata is not included. In most cases templates are shown, the template metadata
@@ -58,7 +58,7 @@ const useMatchers = (lazy = false) => {
       try {
         return (await getRecord(hit.howler.id, true)).__overview;
       } catch {
-        return null;
+        return;
       }
     },
     [getRecord, lazy]
@@ -67,15 +67,15 @@ const useMatchers = (lazy = false) => {
   const getMatchingDossiers = useCallback(
     async (hit: WithMetadata<Hit>) => {
       if (!hit) {
-        return null;
+        return [];
       }
 
       if (has(hit, '__dossiers')) {
-        return hit.__dossiers;
+        return hit.__dossiers ?? [];
       }
 
       if (lazy) {
-        return null;
+        return [];
       }
 
       // This is a fallback in case metadata is not included. In most cases templates are shown, the template metadata
@@ -92,7 +92,7 @@ const useMatchers = (lazy = false) => {
   const getMatchingAnalytic = useCallback(
     async (hit: WithMetadata<Hit>) => {
       if (!hit) {
-        return null;
+        return;
       }
 
       if (has(hit, '__analytic')) {
@@ -100,14 +100,14 @@ const useMatchers = (lazy = false) => {
       }
 
       if (lazy) {
-        return null;
+        return;
       }
 
       // This is a fallback in case metadata is not included.
       try {
         return (await getRecord(hit.howler.id, true)).__analytic;
       } catch {
-        return null;
+        return;
       }
     },
     [getRecord, lazy]

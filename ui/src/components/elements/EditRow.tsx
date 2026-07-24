@@ -18,26 +18,33 @@ import type { KeyboardEventHandler } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-type EditRowTypes<T extends string | number | boolean> = {
+type EditRowBase<T extends string | number | boolean> = {
   titleKey: string;
   descriptionKey?: string;
   value: T;
-  onEdit?: (value: string) => Promise<void>;
   validate?: (value: T) => boolean;
   failOnValidate?: boolean;
   type?: 'password' | 'number' | 'text' | 'checkbox' | 'range';
   min?: number;
   max?: number;
   step?: number;
-  optional?: boolean;
   valueLabelFormat?: SliderProps['valueLabelFormat'];
 };
+
+type EditRowTypes<T extends string | number | boolean> =
+  | (EditRowBase<T> & {
+      optional?: false;
+      onEdit?: (value: string) => Promise<void>;
+    })
+  | (EditRowBase<T> & {
+      optional: true;
+      onEdit?: (value: string | undefined) => Promise<void>;
+    });
 
 const EditRow = <T extends string | number | boolean>({
   titleKey,
   descriptionKey,
   value,
-  onEdit,
   validate,
   failOnValidate = false,
   type = 'text',
@@ -45,6 +52,7 @@ const EditRow = <T extends string | number | boolean>({
   max,
   step,
   valueLabelFormat,
+  onEdit,
   optional
 }: EditRowTypes<T>) => {
   const { t } = useTranslation();
@@ -95,7 +103,7 @@ const EditRow = <T extends string | number | boolean>({
       if (type !== 'checkbox') {
         setEditValue(_value);
       } else {
-        void onEdit(_value.toString());
+        void onEdit!(_value.toString());
       }
     },
     [failOnValidate, max, min, onEdit, type, validate]
@@ -115,7 +123,7 @@ const EditRow = <T extends string | number | boolean>({
 
     setLoading(true);
     try {
-      await onEdit(editValue.toString());
+      await onEdit!(editValue.toString());
       setEditing(false);
     } finally {
       setLoading(false);
@@ -232,7 +240,7 @@ const EditRow = <T extends string | number | boolean>({
                 <IconButton
                   onClick={() => {
                     setEditing(false);
-                    void onEdit(null);
+                    void onEdit?.(undefined);
                   }}
                   disabled={loading}
                 >
@@ -246,7 +254,11 @@ const EditRow = <T extends string | number | boolean>({
             {type === 'checkbox' ? (
               <Checkbox onChange={ev => onChange(ev.target.checked)} checked={value.toString() === 'true'} />
             ) : type === 'range' && !isNil(value) ? (
-              ((valueLabelFormat as any) ?? (val => `${val}px`))(value as number)
+              typeof valueLabelFormat === 'function' ? (
+                valueLabelFormat(Number(value), 0)
+              ) : (
+                `${value}px`
+              )
             ) : (
               (value ?? t('none'))
             )}

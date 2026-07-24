@@ -1,27 +1,33 @@
+import type { Theme } from '@mui/material';
 import * as colors from '@mui/material/colors';
 import dayjs from 'dayjs';
 import { flatten, unflatten } from 'flat';
 import { isArray, isEmpty, isNil, isObject, isPlainObject } from 'lodash-es';
+import type { PluginStore } from 'react-pluggable';
 
 export const bytesToSize = (bytes: number | null) => {
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  if (bytes === 0 || bytes === null) return '0 B';
+  if (bytes === 0 || bytes === null) {
+    return '0 B';
+  }
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${Math.round(bytes / Math.pow(1024, i))} ${sizes[i]}`;
+  return `${Math.round(bytes / Math.pow(1024, i))} ${sizes[i]!}`;
 };
 
 export const humanReadableNumber = (num: number | null) => {
   const sizes = ['', 'k', 'm', 'g', 't', 'p', 'e', 'z', 'y'];
-  if (num === 0 || num === null) return '0 ';
+  if (num === 0 || num === null) {
+    return '0 ';
+  }
   const i = Math.floor(Math.log(num) / Math.log(1000));
-  return `${Math.round(num / Math.pow(1000, i))}${sizes[i]} `;
+  return `${Math.round(num / Math.pow(1000, i))}${sizes[i]!} `;
 };
 
 export const getProvider = () => {
   if (window.location.pathname.indexOf(`${import.meta.env.PUBLIC_URL}/oauth/`) !== -1) {
     return window.location.pathname
       .split(`${import.meta.env.PUBLIC_URL}/oauth/`)
-      .pop()
+      .pop()!
       .slice(0, -1);
   }
   const params = new URLSearchParams(window.location.search);
@@ -32,7 +38,7 @@ export const searchResultsDisplay = (count: number, max: number = 10000) => {
   const params = new URLSearchParams(window.location.search);
   const trackedHits = params.get('track_total_hits');
 
-  if (count === parseInt(trackedHits) || (trackedHits === null && count === max)) {
+  if (count === parseInt(trackedHits ?? '') || (trackedHits === null && count === max)) {
     return `${count}+`;
   }
 
@@ -62,22 +68,101 @@ export const twitterShort = (date: string | Date | number): string => {
 
 export const hashCode = (s: string): number => s.split('').reduce((a, b) => ((a << 5) - a + b.charCodeAt(0)) | 0, 0);
 
+type ColorPalette = { [shade: number]: string };
+
+const isColorPalette = (value: unknown): value is ColorPalette => {
+  return typeof value === 'object' && value !== null && Object.values(value).every(entry => typeof entry === 'string');
+};
+
+const toColorPalette = (value: unknown): ColorPalette | undefined => {
+  return isColorPalette(value) ? value : undefined;
+};
+
 export const stringToColor = (string: string) => {
   const number = Math.abs(hashCode(string));
   const colorKeys = Object.keys(colors).filter(key => key !== 'common');
 
   const colorKey = colorKeys[number % colorKeys.length];
-  // eslint-disable-next-line import/namespace
-  const color = colors[colorKey] as { [shade: string]: string };
+  const color =
+    toColorPalette(Object.entries(colors).find(([key]) => key === colorKey)?.[1]) ?? toColorPalette(colors.blue);
 
   const shade = Math.max(Math.floor((number / 1000) % 10), 1) * 100;
 
-  return color[shade];
+  return color?.[shade] ?? colors.blue[500];
 };
+
+const isProperty = <T extends object>(key: PropertyKey, obj: T): key is keyof T => {
+  return key in obj;
+};
+
+type GetColor<T> = {
+  <D = 'default'>(status: string | undefined, _default?: D): T | D;
+  (status: string | undefined, _default: string, theme: Theme): string;
+};
+
+const PROVIDER_COLORS = {
+  HBS: colors.indigo[700],
+  NBS: colors.pink.A200,
+  CBS: colors.teal[700],
+  howler: '#1769bb',
+  unknown: colors.grey[700]
+} as const;
+
+export const getProviderColor = (name: string | null | undefined): string => {
+  if (!name) {
+    return PROVIDER_COLORS.unknown;
+  }
+
+  if (isProperty(name, PROVIDER_COLORS)) {
+    return PROVIDER_COLORS[name];
+  }
+
+  return stringToColor(name);
+};
+
+const STATUS_COLORS = {
+  open: 'primary',
+  'in-progress': 'warning',
+  resolved: 'success'
+} as const;
+
+type StatusColor = (typeof STATUS_COLORS)[keyof typeof STATUS_COLORS] | 'default';
+
+export const getStatusColor: GetColor<StatusColor> = ((
+  status: string | undefined,
+  _default: string = 'default',
+  theme?: Theme
+) => {
+  if (!status || !isProperty(status, STATUS_COLORS)) {
+    return _default;
+  }
+
+  return theme ? theme.palette[STATUS_COLORS[status]].main : STATUS_COLORS[status];
+}) as any;
+
+const ESCALATION_COLORS = {
+  alert: 'warning' as const,
+  evidence: 'error' as const,
+  hit: 'primary' as const
+};
+
+type EscalationColor = (typeof ESCALATION_COLORS)[keyof typeof ESCALATION_COLORS];
+
+export const getEscalationColor: GetColor<EscalationColor> = ((
+  status: string | undefined,
+  _default: string = 'default',
+  theme?: Theme
+) => {
+  if (!status || !isProperty(status, ESCALATION_COLORS)) {
+    return _default;
+  }
+
+  return theme ? theme.palette[ESCALATION_COLORS[status]].main : ESCALATION_COLORS[status];
+}) as any;
 
 // Adapted from here: https://stackoverflow.com/a/48429492
 export const delay = (ms: number, rejectOnCancel = false) => {
-  let timerId: number;
+  let timerId: ReturnType<typeof setTimeout>;
   let onCancel: () => void;
 
   class TimedPromise extends Promise<void> {
@@ -91,7 +176,7 @@ export const delay = (ms: number, rejectOnCancel = false) => {
   }
 
   return new TimedPromise((resolve, reject) => {
-    timerId = setTimeout(resolve, ms) as unknown as number;
+    timerId = setTimeout(resolve, ms);
     onCancel = reject;
   });
 };
@@ -101,19 +186,29 @@ type Timestamp = {
 };
 
 export const sortByTimestamp = <T extends Timestamp>(arr: T[]) => {
-  return (arr ?? []).slice().sort((a, b) => compareTimestamp(b.timestamp, a.timestamp));
+  return (arr ?? []).slice().sort((a, b) => compareTimestamp(b.timestamp!, a.timestamp!));
 };
 
 export const getTimeRange = (arr: string[]): [string, string] => {
   const sorted = arr.sort((a, b) => compareTimestamp(a, b));
 
-  return [sorted[0], sorted[sorted.length - 1]];
+  return [sorted[0]!, sorted[sorted.length - 1]!];
 };
 
-export const removeEmpty = (obj: any, aggressive = false) => {
+export const removeEmpty = (obj: unknown, aggressive = false): unknown => {
   if (aggressive && isEmpty(obj)) {
     return null;
-  } else if (isArray(obj)) {
+  }
+
+  if (obj === null) {
+    return {};
+  }
+
+  if (isArray(obj)) {
+    return obj;
+  }
+
+  if (!isPlainObject(obj)) {
     return obj;
   }
 
@@ -134,7 +229,9 @@ export const searchObject = (o: any, query: string, returnFlat = false) => {
     const regex = new RegExp(query, 'i');
 
     const filteredData =
-      Object.fromEntries(Object.entries(flatten(o)).filter(([k, v]) => regex.test(k) || regex.test(v))) ?? {};
+      Object.fromEntries(
+        Object.entries(flatten(o) as Record<string, unknown>).filter(([k, v]) => regex.test(k) || regex.test(String(v)))
+      ) ?? {};
 
     return returnFlat ? filteredData : unflatten(filteredData);
   } catch {
@@ -142,7 +239,7 @@ export const searchObject = (o: any, query: string, returnFlat = false) => {
   }
 };
 
-const DATE_TO_LUCENE_MAP = {
+const DATE_TO_LUCENE_MAP: Record<string, string> = {
   day: 'd',
   week: 'w',
   month: 'M',
@@ -160,7 +257,7 @@ export const convertDateToLucene = (date: string) => {
 
   const [amount, type] = date.replace('date.range.', '').split('.');
 
-  return `[now-${amount}${DATE_TO_LUCENE_MAP[type] ?? 'd'} TO now]`;
+  return `[now-${amount}${DATE_TO_LUCENE_MAP[type!] ?? 'd'} TO now]`;
 };
 
 export const convertCustomDateRangeToLucene = (startDate: string, endDate: string) => {
@@ -191,7 +288,7 @@ export const flattenDeep = (data: { [index: string]: any }): { [index: string]: 
   const partialFlat = flatten(data, { safe: true });
 
   const final: { [index: string]: any } = {};
-  Object.entries(partialFlat).forEach(([key, value]) => {
+  Object.entries(partialFlat as Record<string, any>).forEach(([key, value]) => {
     if (!Array.isArray(value) || value.length === 0 || !value.some(entry => isObject(entry))) {
       final[key] = value;
     } else {
@@ -221,7 +318,11 @@ export const flattenDeep = (data: { [index: string]: any }): { [index: string]: 
   return final;
 };
 
-export const modifyDocumentation = (original: string, howlerPluginStore, pluginStore) => {
+export const modifyDocumentation = (
+  original: string,
+  howlerPluginStore: { plugins: string[] },
+  pluginStore: PluginStore
+): string => {
   for (const plugin of howlerPluginStore.plugins) {
     original = pluginStore.executeFunction(`${plugin}.documentation`, original) as string;
   }

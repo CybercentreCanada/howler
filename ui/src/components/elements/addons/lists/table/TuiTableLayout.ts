@@ -7,7 +7,7 @@ export default class TuiTableLayout {
 
   private columns: TuiTableColumn[] = [];
 
-  private widths: { [column: string]: number };
+  private widths: { [column: string]: number } = {};
 
   constructor(tableWidth: number, bodyWidth: number, columns: TuiTableColumn[]) {
     this.tableWidth = tableWidth;
@@ -40,7 +40,7 @@ export default class TuiTableLayout {
 
     this.widths = {};
     _ww.forEach(c => {
-      const cw = this.columnWidth(c.width);
+      const cw = this.columnWidth(c.width!);
       this.widths[c.column] = cw;
       _rw -= cw;
     });
