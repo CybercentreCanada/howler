@@ -405,6 +405,7 @@
   "page.cases.dashboard.tasks.hide_child": "Masquer les tâches des cas enfants",
   "page.cases.dashboard.tasks.show_child": "Afficher les tâches des cas enfants",
   "page.cases.dashboard.threat": "Menaces",
+  "page.cases.detail.assignment": "Assigné(s) du cas",
   "page.cases.detail.escalation": "Escalade",
   "page.cases.detail.participants": "Participants",
   "page.cases.detail.properties": "Propriétés",

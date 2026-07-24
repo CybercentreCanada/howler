@@ -6,6 +6,7 @@ import type { Case } from 'models/entities/generated/Case';
 import { useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { buildPathFromID } from '../utils';
 
 const AlertPanel: FC<{ case: Case }> = ({ case: _case }) => {
   const theme = useTheme();
@@ -38,7 +39,7 @@ const AlertPanel: FC<{ case: Case }> = ({ case: _case }) => {
             <HitCard layout={HitLayout.DENSE} id={item.value} lazy />
             <Box
               component={Link}
-              to={`/hits/${item.value}`}
+              to={`/cases/${_case.case_id}/${buildPathFromID(_case, item.id)}`}
               sx={{
                 position: 'absolute',
                 top: 0,
