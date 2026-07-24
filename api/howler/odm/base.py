@@ -125,6 +125,7 @@ class _Field:
         reference=None,
         optional=False,
         deprecated=False,
+        sync=True,
     ):
         self.index = index
         self.store = store
@@ -134,6 +135,7 @@ class _Field:
             self.copyto.append(copyto)
         elif copyto:
             self.copyto.extend(copyto)
+        self.sync = sync
 
         self.name = name
         self.parent_name = None
