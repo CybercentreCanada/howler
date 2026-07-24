@@ -14,9 +14,9 @@ import AppSwitcher from 'commons/components/topnav/AppSwitcher';
 import { Notifications } from 'commons/components/topnav/Notifications';
 import ThemeSelectionIcon from 'commons/components/topnav/ThemeSelectionIcon';
 import UserProfile from 'commons/components/topnav/UserProfile';
-import { memo, useCallback, useLayoutEffect, useMemo } from 'react';
+import { memo, useCallback, useLayoutEffect, useMemo, type ReactNode } from 'react';
 
-export const AppBarBase = ({ children }) => {
+export const AppBarBase = ({ children }: { children: ReactNode }) => {
   const layout = useAppLayout();
   const configs = useAppConfigs();
   const appbar = useAppBar();

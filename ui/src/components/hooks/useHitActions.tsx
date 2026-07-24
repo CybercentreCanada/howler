@@ -141,7 +141,7 @@ const useHitActions = (_hits: Hit | Hit[]) => {
   );
 
   const assess = useCallback(
-    async (assessment: string, skipRationale = false, providedRationale = null) => {
+    async (assessment: string, skipRationale = false, providedRationale: string = null) => {
       const rationale = skipRationale
         ? (providedRationale ?? t('rationale.default', { assessment }))
         : await new Promise<string>(res => {

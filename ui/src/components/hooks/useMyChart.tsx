@@ -134,7 +134,7 @@ const useMyChart = () => {
 
     // https://www.chartjs.org/docs/latest/charts/doughnut.html
     doughnut: (titleKey: string, subtitleKey?: string) => {
-      const options = { ...generateOptions(titleKey, subtitleKey), scales: null };
+      const options: ReturnType<typeof generateOptions> = { ...generateOptions(titleKey, subtitleKey), scales: null };
 
       return options;
     },

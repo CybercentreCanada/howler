@@ -246,7 +246,7 @@ const EditRow = <T extends string | number | boolean>({
             {type === 'checkbox' ? (
               <Checkbox onChange={ev => onChange(ev.target.checked)} checked={value.toString() === 'true'} />
             ) : type === 'range' && !isNil(value) ? (
-              ((valueLabelFormat as any) ?? (val => `${val}px`))(value as number)
+              ((valueLabelFormat as any) ?? ((val: number) => `${val}px`))(value as number)
             ) : (
               (value ?? t('none'))
             )}

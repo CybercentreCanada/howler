@@ -143,13 +143,9 @@ const HitActions: FC<{
     (event: KeyboardEvent) => {
       THROTTLER.debounce(() => {
         const currentElement = document.activeElement.tagName;
-        if (
-          shortcuts !== HitShortcuts.NO_SHORTCUTS &&
-          event.key.toUpperCase() in actions &&
-          !event.ctrlKey &&
-          currentElement !== 'INPUT'
-        ) {
-          actions[event.key.toUpperCase()]();
+        const matchedAction = actions.find(_action => _action.key === event.key.toUpperCase());
+        if (shortcuts !== HitShortcuts.NO_SHORTCUTS && matchedAction && !event.ctrlKey && currentElement !== 'INPUT') {
+          matchedAction.actionFunction();
         }
       });
     },

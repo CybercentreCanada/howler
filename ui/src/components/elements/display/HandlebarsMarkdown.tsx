@@ -41,7 +41,7 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
   const handlebars: HandlebarsInstance = useMemo(() => {
     const instance = asyncHelpers(Handlebars);
 
-    instance.registerHelper('img', async context => {
+    instance.registerHelper('img', async (context: Handlebars.HelperOptions) => {
       const hash = Object.fromEntries(
         await Promise.all(Object.entries(context.hash).map(async ([key, val]) => [key, await val]))
       );

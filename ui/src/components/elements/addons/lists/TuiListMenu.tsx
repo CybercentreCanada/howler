@@ -4,13 +4,15 @@ import { memo } from 'react';
 
 const MY_PROPS = ['permanent', 'placement'];
 
+type PlacementBox = { top: number | null; right: number | null; bottom: number | null; left: number | null };
+
 const PLACEMENTS = {
-  right: { top: 0, right: 0, bottom: 0, left: null },
-  left: { top: 0, right: null, bottom: 0, left: 0 },
-  'top-left': { top: 0, right: null, bottom: null, left: 0 },
-  'top-right': { top: 0, right: 0, bottom: null, left: null },
-  'bottom-left': { top: null, right: null, bottom: 0, left: 0 },
-  'bottom-right': { top: null, right: 0, bottom: 0, left: null }
+  right: { top: 0, right: 0, bottom: 0, left: null } as PlacementBox,
+  left: { top: 0, right: null, bottom: 0, left: 0 } as PlacementBox,
+  'top-left': { top: 0, right: null, bottom: null, left: 0 } as PlacementBox,
+  'top-right': { top: 0, right: 0, bottom: null, left: null } as PlacementBox,
+  'bottom-left': { top: null, right: null, bottom: 0, left: 0 } as PlacementBox,
+  'bottom-right': { top: null, right: 0, bottom: 0, left: null } as PlacementBox
 };
 
 type TuiListMenuProps = {

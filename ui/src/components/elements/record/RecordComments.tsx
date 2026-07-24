@@ -9,7 +9,8 @@ import {
   Skeleton,
   Stack,
   TextField,
-  Typography
+  Typography,
+  type Theme
 } from '@mui/material';
 import api from 'api';
 import { useAppUser } from 'commons/components/app/hooks';
@@ -308,7 +309,7 @@ const RecordComments: FC<RecordCommentsProps> = ({ record, users }) => {
       <Stack direction="row" spacing={1}>
         <HowlerAvatar userId={user.username} />
         <TextField
-          inputProps={{ sx: theme => ({ fontSize: theme.typography.body2.fontSize }) }}
+          inputProps={{ sx: (theme: Theme) => ({ fontSize: theme.typography.body2.fontSize }) }}
           InputLabelProps={{ shrink: false }}
           placeholder={t('comments.add')}
           onKeyDown={checkForSubmit}

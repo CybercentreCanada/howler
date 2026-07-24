@@ -65,7 +65,7 @@ const ViewProvider: FC<PropsWithChildren> = ({ children }) => {
 
         setViews(_views => ({
           ..._views,
-          ...Object.fromEntries(missingIds.map(_view_id => [_view_id, null])),
+          ...Object.fromEntries(missingIds.map((_view_id): [string, View] => [_view_id, null])),
           ...newViews
         }));
 

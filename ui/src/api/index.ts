@@ -166,7 +166,7 @@ export const hfetch = async <R>(
   requestHeaders?: HeadersInit
 ): Promise<R> => {
   const authToken = getLocalStored(StorageKey.APP_TOKEN);
-  const etags = getSessionStored(StorageKey.ETAG) || {};
+  const etags = getSessionStored<Record<string, string>>(StorageKey.ETAG) || {};
   const currentObject = etags[getEtagUrl(_uri)] || null;
 
   requestHeaders = {
@@ -319,7 +319,7 @@ export const hpatch = <R = any>(
  */
 export const hdelete = <R = any>(
   _uri: string,
-  body = null,
+  body: any = null,
   headers: HeadersInit = {},
   searchParams?: URLSearchParams
 ): Promise<R> => {

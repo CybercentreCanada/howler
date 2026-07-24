@@ -173,7 +173,7 @@ const CaseSidebar: FC<CaseSidebarProps> = ({ case: _case, update }) => {
             {t('started')}: {_case?.created ? dayjs(_case.created).toString() : <Skeleton height={14} />}
           </Typography>
           {_case?.escalation ? (
-            <Chip color={ESCALATION_COLOR_MAP[_case.escalation]} label={t(_case.escalation)} />
+            <Chip color={ESCALATION_COLOR_MAP[_case.escalation as keyof typeof ESCALATION_COLOR_MAP]} label={t(_case.escalation)} />
           ) : (
             <Skeleton height={24} />
           )}

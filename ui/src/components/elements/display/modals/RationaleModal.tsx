@@ -10,7 +10,7 @@ import { isEqual, uniqBy } from 'lodash-es';
 import isString from 'lodash-es/isString';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { HowlerUser } from 'models/entities/HowlerUser';
-import type { FC } from 'react';
+import type { FC, KeyboardEventHandler } from 'react';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { sanitizeLuceneQuery } from 'utils/stringUtils';
@@ -52,7 +52,7 @@ const RationaleModal: FC<{ hits: Hit[]; onSubmit: (rationale: string) => void }>
    * - Ctrl+Enter: Submit the rationale
    * - Escape: Close the modal
    */
-  const handleKeydown = useCallback(
+  const handleKeydown: KeyboardEventHandler<HTMLDivElement> = useCallback(
     e => {
       const parsedEvent = parseEvent(e);
 

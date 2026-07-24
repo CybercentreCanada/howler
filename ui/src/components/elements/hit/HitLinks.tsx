@@ -35,7 +35,7 @@ const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
         };
       })
     );
-    return sortBy(flattened, item => item.pivot.label?.[i18n.language]);
+    return sortBy(flattened, item => item.pivot.label?.[i18n.language as 'en' | 'fr']);
   }, [dossiers, i18n.language, hit]);
 
   const hasNotebooks = (analytic?.notebooks?.length ?? 0) > 0;

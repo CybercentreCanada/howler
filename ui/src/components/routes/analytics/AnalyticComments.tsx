@@ -1,5 +1,5 @@
 import { Clear, Send } from '@mui/icons-material';
-import { Chip, Divider, IconButton, Stack, TextField, Typography } from '@mui/material';
+import { Chip, Divider, IconButton, Stack, TextField, Typography, type Theme } from '@mui/material';
 import api from 'api';
 import { useAppUser } from 'commons/components/app/hooks';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
@@ -180,7 +180,7 @@ const AnalyticComments: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
       <Stack direction="row" spacing={1}>
         <HowlerAvatar userId={user.username} />
         <TextField
-          inputProps={{ sx: theme => ({ fontSize: theme.typography.body2.fontSize }) }}
+          inputProps={{ sx: (theme: Theme) => ({ fontSize: theme.typography.body2.fontSize }) }}
           InputLabelProps={{ shrink: false }}
           placeholder={t(searchParams.get('filter') ? 'comments.add.detection' : 'comments.add.analytic')}
           onKeyDown={checkForSubmit}

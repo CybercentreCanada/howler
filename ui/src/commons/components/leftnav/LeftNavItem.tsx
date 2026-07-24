@@ -13,7 +13,14 @@ type LeftNavItemProps = {
   onClick: () => void;
 };
 
-const LeftNavItemInner = ({ item, context, popover, hideIcon, label, leftnavOpen }) => {
+const LeftNavItemInner = ({
+  item,
+  context,
+  popover,
+  hideIcon,
+  label,
+  leftnavOpen
+}: Pick<LeftNavItemProps, 'item' | 'context' | 'popover' | 'hideIcon'> & { label: string; leftnavOpen: boolean }) => {
   const theme = useTheme();
   const nested = item.nested !== undefined ? item.nested : context === 'group';
   const showIcon = useMemo(() => item.icon && !hideIcon, [item, hideIcon]);

@@ -16,6 +16,7 @@
 
     /* Linting */
     "strict": false,
+    "noImplicitAny": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
@@ -43,6 +44,14 @@
 
     "outDir": "dist"
   },
-  "include": ["src/*.d.ts", "src/**/*.ts", "src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.json"],
+  "include": ["src/*.d.ts", "src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.json"],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/**/*.spec.ts",
+    "src/**/*.spec.tsx",
+    "src/tests/**",
+    "src/setupTests.ts"
+  ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

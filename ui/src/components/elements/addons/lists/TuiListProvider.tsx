@@ -17,7 +17,7 @@ export type TuiListItemsState<T> = {
   movePrevious: () => void;
 };
 
-const DEFAULT_METHODS_STATE = {
+const DEFAULT_METHODS_STATE: TuiListMethodsState<any> = {
   load: () => null,
   move: () => null,
   select: () => null,
@@ -26,8 +26,7 @@ const DEFAULT_METHODS_STATE = {
   remove: () => null
 };
 
-const DEFAULT_ITEMS_STATE = {
-  size: 0,
+const DEFAULT_ITEMS_STATE: TuiListItemsState<any> = {
   items: [],
   movePrevious: () => null,
   moveNext: () => null

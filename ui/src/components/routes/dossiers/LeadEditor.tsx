@@ -27,7 +27,7 @@ const LeadEditor: FC<{ lead?: Lead; update: (lead: Partial<Lead>) => void }> = (
   const metadata = useMemo(() => JSON.parse(lead?.metadata ?? '{}'), [lead?.metadata]);
 
   const updateMetadata = useCallback(
-    _metadata => {
+    (_metadata: any) => {
       update({ metadata: JSON.stringify(merge({}, metadata, _metadata)) });
     },
     [metadata, update]

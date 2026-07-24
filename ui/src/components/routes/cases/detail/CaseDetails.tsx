@@ -83,6 +83,11 @@ const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
     );
   }
 
+  // SvgIcon doesn't support the 'default' color, so fall back to 'inherit' (its own default) to keep the same
+  // visual appearance the invalid value previously produced at runtime.
+  const escalationColor = ESCALATION_COLOR_MAP[_case.escalation as keyof typeof ESCALATION_COLOR_MAP];
+  const escalationIconColor = escalationColor === 'default' ? 'inherit' : escalationColor;
+
   return (
     <Card
       elevation={1}
@@ -122,7 +127,7 @@ const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
           />
 
           <Stack direction="row" spacing={1} alignItems="center">
-            <TrendingUp color={ESCALATION_COLOR_MAP[_case.escalation]} />
+            <TrendingUp color={escalationIconColor} />
             <Typography variant="body1">{t('page.cases.detail.escalation')}</Typography>
           </Stack>
           <Autocomplete
@@ -130,7 +135,7 @@ const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
             disabled={loading}
             disableClearable
             value={_case.escalation ?? null}
-            options={config.lookups['case.escalation']}
+            options={(config.lookups as unknown as Record<string, string[]>)['case.escalation']}
             renderInput={params => <TextField {...params} size="small" />}
             onChange={(_ev, escalation) => {
               if (escalation) {

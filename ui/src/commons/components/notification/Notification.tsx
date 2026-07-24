@@ -95,7 +95,7 @@ export const Notification: FC<Props> = memo(
 
       fetchFeeds(urls).then(_feeds => {
         _feeds = _feeds.map(f => ({ ...f, items: f?.items?.map(i => ({ ...i, external_url: f.feed_url })) }));
-        setFeeds(Object.fromEntries(_feeds.map(f => [f?.feed_url, { ...f, items: [] }])));
+        setFeeds(Object.fromEntries(_feeds.map(f => [f?.feed_url, { ...f, items: [] as FeedItem[] }])));
         const _notifs = _feeds
           .flatMap(f => f?.items)
           .filter(n => n.date_published > new Date(new Date().setFullYear(new Date().getFullYear() - 1)))

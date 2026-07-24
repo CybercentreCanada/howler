@@ -167,28 +167,30 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
     };
 
     if (!isHit(record)) {
-      return defaultContent[tab]?.();
+      return (defaultContent as Record<string, () => JSX.Element>)[tab]?.();
     }
 
-    return {
-      ...defaultContent,
-      overview: () => <HitOverview hit={record} />,
-      hit_aggregate: () => <HitSummary />,
-      ...Object.fromEntries(
-        (record?.howler.dossier ?? []).map((lead, index) => [
-          'lead:' + index,
-          () => <LeadRenderer lead={lead} hit={record} />
-        ])
-      ),
-      ...Object.fromEntries(
-        dossiers.flatMap((_dossier, dossierIndex) =>
-          (_dossier.leads ?? []).map((_lead, leadIndex) => [
-            `external-lead:${dossierIndex}:${leadIndex}`,
-            () => <LeadRenderer lead={_lead} hit={record} />
+    return (
+      {
+        ...defaultContent,
+        overview: () => <HitOverview hit={record} />,
+        hit_aggregate: () => <HitSummary />,
+        ...Object.fromEntries(
+          (record?.howler.dossier ?? []).map((lead, index) => [
+            'lead:' + index,
+            () => <LeadRenderer lead={lead} hit={record} />
           ])
+        ),
+        ...Object.fromEntries(
+          dossiers.flatMap((_dossier, dossierIndex) =>
+            (_dossier.leads ?? []).map((_lead, leadIndex) => [
+              `external-lead:${dossierIndex}:${leadIndex}`,
+              () => <LeadRenderer lead={_lead} hit={record} />
+            ])
+          )
         )
-      )
-    }[tab]?.();
+      } as Record<string, () => JSX.Element>
+    )[tab]?.();
   }, [dossiers, filter, record, loading, tab, users]);
 
   const hasError = useMemo(() => !validateRegex(filter), [filter]);

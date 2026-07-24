@@ -28,7 +28,7 @@ const TuiTableBody = <T,>({
   children
 }: TuiTableBodyProps<T>) => {
   const trowRenderer = useCallback(
-    (props: TuiListItemProps<T>, classRenderer) => {
+    (props: TuiListItemProps<T>, classRenderer: () => string) => {
       return (
         <div className={`tui-table-row ${classRenderer()}`}>
           <div style={{ display: 'flex', position: 'relative' }}>

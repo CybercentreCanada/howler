@@ -5,7 +5,7 @@ import { visit } from 'unist-util-visit';
 //this plugins aims to bring docusaurus tabs functionality to base react-markdown.
 //will expose a code tabs elements which can be later rendered with a custom component
 
-const findTabs = (index, parent) => {
+const findTabs = (index: number, parent: mdast.Parent) => {
   const { children } = parent;
   const tabs = [];
 

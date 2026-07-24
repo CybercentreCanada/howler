@@ -1,0 +1,65 @@
+src/commons/components/utils/hooks/useFullscreenStatus.tsx(8,23): error TS2551: Property 'mozFullScreenElement' does not exist on type 'Document'. Did you mean 'fullscreenElement'?
+src/commons/components/utils/hooks/useFullscreenStatus.tsx(12,23): error TS2551: Property 'msFullscreenElement' does not exist on type 'Document'. Did you mean 'fullscreenElement'?
+src/commons/components/utils/hooks/useFullscreenStatus.tsx(16,23): error TS2551: Property 'webkitFullscreenElement' does not exist on type 'Document'. Did you mean 'fullscreenElement'?
+src/commons/components/utils/hooks/useFullscreenStatus.tsx(23,61): error TS2551: Property 'mozFullScreenElement' does not exist on type 'Document'. Did you mean 'fullscreenElement'?
+src/commons/components/utils/hooks/useFullscreenStatus.tsx(31,34): error TS2551: Property 'mozFullScreenElement' does not exist on type 'Document'. Did you mean 'fullscreenElement'?
+src/commons/components/utils/hooks/useFullscreenStatus.tsx(39,66): error TS2551: Property 'mozFullScreenElement' does not exist on type 'Document'. Did you mean 'fullscreenElement'?
+src/components/routes/hits/search/InformationPane.tsx(170,14): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ details: () => Element; comments: () => Element; raw: () => Element; data: () => Element; related: () => Element; worklog: () => Element; }'.
+  No index signature with a parameter of type 'string' was found on type '{ details: () => Element; comments: () => Element; raw: () => Element; data: () => Element; related: () => Element; worklog: () => Element; }'.
+src/components/routes/hits/search/InformationPane.tsx(173,12): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ details: () => Element; comments: () => Element; raw: () => Element; data: () => Element; related: () => Element; worklog: () => Element; overview: () => Element; hit_aggregate: () => Element; }'.
+  No index signature with a parameter of type 'string' was found on type '{ details: () => Element; comments: () => Element; raw: () => Element; data: () => Element; related: () => Element; worklog: () => Element; overview: () => Element; hit_aggregate: () => Element; }'.
+src/components/routes/hits/search/shared/HitFilter.tsx(61,12): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type 'APILookups'.
+  No index signature with a parameter of type 'string' was found on type 'APILookups'.
+src/components/routes/hits/search/shared/HitFilter.tsx(119,25): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type 'APILookups'.
+  No index signature with a parameter of type 'string' was found on type 'APILookups'.
+src/components/routes/hits/search/shared/HitFilter.tsx(119,52): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type 'APILookups'.
+  No index signature with a parameter of type 'string' was found on type 'APILookups'.
+src/components/routes/hits/view/HitViewer.tsx(124,12): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ overview: () => Element; details: () => Element; hit_comments: () => Element; hit_raw: () => Element; hit_data: () => Element; hit_worklog: () => Element; hit_related: () => Element; }'.
+  No index signature with a parameter of type 'string' was found on type '{ overview: () => Element; details: () => Element; hit_comments: () => Element; hit_raw: () => Element; hit_data: () => Element; hit_worklog: () => Element; hit_related: () => Element; }'.
+src/components/routes/home/AddNewCard.tsx(36,70): error TS7006: Parameter 'newCard' implicitly has an 'any' type.
+src/components/routes/home/ViewCard.tsx(31,32): error TS7006: Parameter 'ctx' implicitly has an 'any' type.
+src/components/routes/overviews/OverviewViewer.tsx(130,20): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ "7dxHCat0Y2Sj48qyU7ZkVV": { timestamp: string; labels: { key_a: string; key_b: string; key_c: string; key_d: string; key_e: string; }; tags: string[]; howler: { id: string; analytic: string; assignment: string; ... 22 more ...; dossier: { ...; }; }; ... 27 more ...; vulnerability: { ...; }; }; ... 23 more ...; "56...'.
+  No index signature with a parameter of type 'string' was found on type '{ "7dxHCat0Y2Sj48qyU7ZkVV": { timestamp: string; labels: { key_a: string; key_b: string; key_c: string; key_d: string; key_e: string; }; tags: string[]; howler: { id: string; analytic: string; assignment: string; ... 22 more ...; dossier: { ...; }; }; ... 27 more ...; vulnerability: { ...; }; }; ... 23 more ...; "56...'.
+src/components/routes/settings/SecuritySection.tsx(58,62): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ R: string; W: string; E: string; I: string; }'.
+  No index signature with a parameter of type 'string' was found on type '{ R: string; W: string; E: string; I: string; }'.
+src/components/routes/templates/TemplateViewer.tsx(158,18): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ "7dxHCat0Y2Sj48qyU7ZkVV": { timestamp: string; labels: { key_a: string; key_b: string; key_c: string; key_d: string; key_e: string; }; tags: string[]; howler: { id: string; analytic: string; assignment: string; ... 22 more ...; dossier: { ...; }; }; ... 27 more ...; vulnerability: { ...; }; }; ... 23 more ...; "56...'.
+  No index signature with a parameter of type 'string' was found on type '{ "7dxHCat0Y2Sj48qyU7ZkVV": { timestamp: string; labels: { key_a: string; key_b: string; key_c: string; key_d: string; key_e: string; }; tags: string[]; howler: { id: string; analytic: string; assignment: string; ... 22 more ...; dossier: { ...; }; }; ... 27 more ...; vulnerability: { ...; }; }; ... 23 more ...; "56...'.
+src/plugins/HowlerPlugin.ts(64,65): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type 'HowlerPlugin'.
+  No index signature with a parameter of type 'string' was found on type 'HowlerPlugin'.
+src/plugins/HowlerPlugin.ts(327,3): error TS7010: 'on', which lacks return-type annotation, implicitly has an 'any' return type.
+src/plugins/HowlerPlugin.ts(343,3): error TS7010: 'typography', which lacks return-type annotation, implicitly has an 'any' return type.
+src/plugins/HowlerPlugin.ts(347,3): error TS7010: 'chip', which lacks return-type annotation, implicitly has an 'any' return type.
+src/plugins/clue/components/CluePivotForm.tsx(20,34): error TS7016: Could not find a declaration file for module 'json-schema'. '/home/runner/work/howler/howler/ui/node_modules/.pnpm/json-schema@0.4.0/node_modules/json-schema/lib/validate.js' implicitly has an 'any' type.
+  If the 'json-schema' package actually exposes this module, consider sending a pull request to amend 'https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/json-schema'
+src/plugins/clue/components/ClueTypography.tsx(38,20): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/plugins/clue/index.tsx(34,22): error TS7006: Parameter 'props' implicitly has an 'any' type.
+src/utils/actionUtils.ts(65,59): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type 'string[] | { [index: string]: string[]; }'.
+  No index signature with a parameter of type 'string' was found on type 'string[] | { [index: string]: string[]; }'.
+src/utils/classificationParser.ts(666,5): error TS7018: Object literal's property 'levels' implicitly has an 'any[]' type.
+src/utils/classificationParser.ts(667,5): error TS7018: Object literal's property 'groups' implicitly has an 'any[]' type.
+src/utils/classificationParser.ts(674,9): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{}'.
+  No index signature with a parameter of type 'string' was found on type '{}'.
+src/utils/classificationParser.ts(677,9): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{}'.
+  No index signature with a parameter of type 'string' was found on type '{}'.
+src/utils/classificationParser.ts(680,9): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{}'.
+  No index signature with a parameter of type 'string' was found on type '{}'.
+src/utils/classificationParser.ts(687,20): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ lvlIdx: number; lvl: string; req: string[]; groups: string[]; subgroups: string[]; }'.
+  No index signature with a parameter of type 'string' was found on type '{ lvlIdx: number; lvl: string; req: string[]; groups: string[]; subgroups: string[]; }'.
+src/utils/classificationParser.ts(692,35): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{}'.
+src/utils/classificationParser.ts(693,33): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{}'.
+src/utils/classificationParser.ts(694,43): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{}'.
+src/utils/classificationParser.ts(698,43): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{}'.
+src/utils/classificationParser.ts(704,54): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{}'.
+src/utils/classificationParser.ts(704,78): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{}'.
+src/utils/classificationParser.ts(705,55): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{}'.
+src/utils/classificationParser.ts(705,79): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{}'.
+src/utils/classificationParser.ts(719,54): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{}'.
+src/utils/classificationParser.ts(719,80): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{}'.
+src/utils/utils.ts(71,17): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type 'typeof import("/home/runner/work/howler/howler/ui/node_modules/.pnpm/@mui+material@5.18.0_@emotion+react@11.14.0_@types+react@18.3.23_react@18.3.1__@emotion_19a5ee0476da228d66b5ad5c143bb0c3/node_modules/@mui/material/colors/index")'.
+  No index signature with a parameter of type 'string' was found on type 'typeof import("/home/runner/work/howler/howler/ui/node_modules/.pnpm/@mui+material@5.18.0_@emotion+react@11.14.0_@types+react@18.3.23_react@18.3.1__@emotion_19a5ee0476da228d66b5ad5c143bb0c3/node_modules/@mui/material/colors/index")'.
+src/utils/utils.ts(113,14): error TS7023: 'removeEmpty' implicitly has return type 'any' because it does not have a return type annotation and is referenced directly or indirectly in one of its return expressions.
+src/utils/utils.ts(123,12): error TS7024: Function implicitly has return type 'any' because it does not have a return type annotation and is referenced directly or indirectly in one of its return expressions.
+src/utils/utils.ts(163,27): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ day: string; week: string; month: string; year: string; }'.
+  No index signature with a parameter of type 'string' was found on type '{ day: string; week: string; month: string; year: string; }'.
+src/utils/utils.ts(224,55): error TS7006: Parameter 'howlerPluginStore' implicitly has an 'any' type.
+src/utils/utils.ts(224,74): error TS7006: Parameter 'pluginStore' implicitly has an 'any' type.

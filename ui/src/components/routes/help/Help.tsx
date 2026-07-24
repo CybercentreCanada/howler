@@ -74,9 +74,9 @@ const HelpDashboard = () => {
                 <CardContent sx={{ flex: 1 }}>
                   <Typography>{t(`helpMain:${link.i18nKey}.description`)}</Typography>
                 </CardContent>
-                {tabs[link.id] && (
+                {tabs[link.id as keyof typeof tabs] && (
                   <CardActions>
-                    {tabs[link.id].map(tab => (
+                    {tabs[link.id as keyof typeof tabs].map((tab: string) => (
                       <Button key={tab} size="small" component={Link} to={`${link.route}?tab=${tab}`}>
                         {tab}
                       </Button>

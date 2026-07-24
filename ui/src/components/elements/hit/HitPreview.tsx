@@ -18,7 +18,7 @@ const HitPreview: FC<PreviewProps> = ({ hit, options }) => {
   const isUnderLg = useMediaQuery(theme.breakpoints.down('lg'));
 
   const providerColor = useMemo(
-    () => PROVIDER_COLORS[hit.event?.provider ?? 'unknown'] ?? stringToColor(hit.event.provider),
+    () => PROVIDER_COLORS[(hit.event?.provider ?? 'unknown') as keyof typeof PROVIDER_COLORS] ?? stringToColor(hit.event.provider),
     [hit.event?.provider]
   );
 
@@ -88,7 +88,7 @@ const HitPreview: FC<PreviewProps> = ({ hit, options }) => {
             label={hit.organization?.name ?? <Trans i18nKey="unknown" />}
             size="small"
           />
-          <Chip label={hit.howler.escalation} size="small" color={ESCALATION_COLORS[hit.howler.escalation]} />
+          <Chip label={hit.howler.escalation} size="small" color={ESCALATION_COLORS[hit.howler.escalation as keyof typeof ESCALATION_COLORS]} />
         </Stack>
         <Stack direction="row" spacing={0.5}>
           <Chip
@@ -104,7 +104,7 @@ const HitPreview: FC<PreviewProps> = ({ hit, options }) => {
             }
             size="small"
           />
-          <Chip label={hit.howler.status} size="small" color={STATUS_COLORS[hit.howler.status]} />
+          <Chip label={hit.howler.status} size="small" color={STATUS_COLORS[hit.howler.status as keyof typeof STATUS_COLORS]} />
         </Stack>
       </Stack>
     </Box>

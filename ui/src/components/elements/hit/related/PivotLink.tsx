@@ -80,7 +80,7 @@ const PivotLink: FC<PivotLinkProps> = ({ pivot, hit, compact = false, dossier, r
   if (href) {
     return (
       <RelatedLink
-        title={pivot.label[i18n.language]}
+        title={pivot.label[i18n.language as 'en' | 'fr']}
         href={href}
         compact={compact}
         icon={pivot.icon}

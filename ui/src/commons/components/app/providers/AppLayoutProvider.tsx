@@ -71,7 +71,7 @@ export default function AppLayoutProvider({ children }: AppLayoutProps) {
   const hideMenus = useCallback(() => setShowMenus(false), []);
 
   // Callback to indicate whether the app layout is ready to be fully rendered.
-  const setReady = useCallback(isReady => setLayoutReady(isReady), []);
+  const setReady = useCallback((isReady: boolean) => setLayoutReady(isReady), []);
 
   // Memoize the value of the context provider.
   const context = useMemo(() => {

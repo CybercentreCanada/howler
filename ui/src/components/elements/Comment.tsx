@@ -124,7 +124,7 @@ const Comment: FC<{
   }, [handleClose, handleQuote]);
 
   const reactions = useMemo(() => {
-    return Object.keys(REACTION_ICONS).map(type => {
+    return (Object.keys(REACTION_ICONS) as (keyof typeof REACTION_ICONS)[]).map(type => {
       const quantity = Object.values(comment?.reactions ?? {}).filter(r => r === type).length;
       const Icon = REACTION_ICONS[type];
 

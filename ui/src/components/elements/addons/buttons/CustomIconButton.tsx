@@ -66,7 +66,7 @@ const CustomIconButton = ({
   }, [requestedColor, solid, transparent, props.sx, isMuiColor, theme]);
 
   const progressColor = useMemo(() => {
-    const _color = isMuiColor ? theme.palette[requestedColor].main : requestedColor;
+    const _color = isMuiColor && requestedColor !== 'inherit' ? theme.palette[requestedColor].main : requestedColor;
     return solid ? emphasize(_color, 0.5) : _color;
   }, [solid, requestedColor, isMuiColor, theme]);
 

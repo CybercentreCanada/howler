@@ -171,7 +171,7 @@ const HitSummary: FC<{
   ]);
 
   const setSearch = useCallback(
-    (key, value) => {
+    (key: string, value: string) => {
       setQuery(`${key}:${value}`);
     },
     [setQuery]

@@ -58,7 +58,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, lazy = false, layout = HitLayout.N
       return PROVIDER_COLORS.unknown;
     }
 
-    return PROVIDER_COLORS[hit?.event.provider] ?? stringToColor(hit?.event.provider);
+    return PROVIDER_COLORS[hit?.event.provider as keyof typeof PROVIDER_COLORS] ?? stringToColor(hit?.event.provider);
   }, [hit?.event.provider]);
 
   const mitreId = useMemo(() => {
@@ -217,7 +217,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, lazy = false, layout = HitLayout.N
           <Typography
             flex={1}
             variant={textVariant}
-            color={ESCALATION_COLORS[hit.howler.escalation] + '.main'}
+            color={ESCALATION_COLORS[hit.howler.escalation as keyof typeof ESCALATION_COLORS] + '.main'}
             sx={{ fontWeight: 'bold' }}
           >
             {t('hit.header.rationale')}: {hit.howler.rationale}

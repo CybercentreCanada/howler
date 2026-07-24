@@ -12,7 +12,7 @@ export type PageProps = {
   mt?: number;
 };
 
-const PagePropsDefaults = { margin: null, mt: 2, mr: 2, mb: 2, ml: 2 };
+const PagePropsDefaults: PageProps = { margin: null, mt: 2, mr: 2, mb: 2, ml: 2 };
 
 export default function usePageProps({
   props,

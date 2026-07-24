@@ -4,12 +4,12 @@ import React, { type PropsWithChildren } from 'react';
 import ErrorOccured from './ErrorOccured';
 
 class ErrorBoundary extends React.Component<PropsWithChildren<{}>, { hasError: boolean; error: Error }> {
-  constructor(props) {
+  constructor(props: PropsWithChildren<{}>) {
     super(props);
     this.state = { hasError: false, error: null };
   }
 
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError(error: Error) {
     return { hasError: true, error: error };
   }
 

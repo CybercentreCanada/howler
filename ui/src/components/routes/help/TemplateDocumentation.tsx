@@ -62,7 +62,9 @@ const TemplateDocumentation: FC = () => {
             <CardContent>
               <DefaultOutline
                 hit={alert as any}
-                fields={Object.keys(alert).flatMap(key => Object.keys(alert[key]).map(key2 => [key, key2].join('.')))}
+                fields={Object.keys(alert).flatMap(key =>
+                  Object.keys(alert[key as keyof typeof alert]).map(key2 => [key, key2].join('.'))
+                )}
                 layout={HitLayout.NORMAL}
                 readonly
               />

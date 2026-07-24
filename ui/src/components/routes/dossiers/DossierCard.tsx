@@ -35,7 +35,7 @@ const DossierCard: FC<{
                 <Chip
                   sx={{ maxWidth: '300px' }}
                   clickable
-                  label={`${lead.label?.[i18n.language] ?? t('unknown')} (${lead.format})`}
+                  label={`${lead.label?.[i18n.language as 'en' | 'fr'] ?? t('unknown')} (${lead.format})`}
                   size="small"
                   component={Link}
                   to={`/dossiers/${dossier.dossier_id}/edit?tab=leads&lead=${index}`}
@@ -53,7 +53,7 @@ const DossierCard: FC<{
                 <Chip
                   sx={{ maxWidth: '300px' }}
                   clickable
-                  label={`${pivot.label?.[i18n.language] ?? t('unknown')} (${pivot.format})`}
+                  label={`${pivot.label?.[i18n.language as 'en' | 'fr'] ?? t('unknown')} (${pivot.format})`}
                   size="small"
                   component={Link}
                   to={`/dossiers/${dossier.dossier_id}/edit?tab=pivots&pivot=${index}`}

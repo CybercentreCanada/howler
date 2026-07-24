@@ -10,7 +10,7 @@ import {
   type TextFieldProps
 } from '@mui/material';
 import { parseEvent } from 'commons/components/utils/keyboard';
-import { type ChangeEvent, type KeyboardEvent, type ReactElement, useEffect, useRef, useState } from 'react';
+import { type ChangeEvent, type KeyboardEvent, type ReactElement, type SyntheticEvent, useEffect, useRef, useState } from 'react';
 import type { PhraseAnalysis, PhraseSuggester } from '.';
 import type PhraseLexer from './PhraseLexer';
 import WordLexer from './word/WordLexer';
@@ -107,9 +107,9 @@ const Phrase = ({
     }
   };
 
-  const _onSelectCapture = event => {
+  const _onSelectCapture = (event: SyntheticEvent<HTMLInputElement>) => {
     if (optionsOpen) {
-      _suggest(event.target.value);
+      _suggest((event.target as HTMLInputElement).value);
     }
   };
 

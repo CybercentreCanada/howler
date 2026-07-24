@@ -6,6 +6,7 @@ import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import ChipPopper from 'components/elements/display/ChipPopper';
 import useMyApi from 'components/hooks/useMyApi';
+import type { APILookups } from 'models/entities/generated/ApiType';
 import type { FC } from 'react';
 import { memo, useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -58,7 +59,7 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
       setCategory(_category);
       setFilter(null);
 
-      if (!config.lookups[_category]) {
+      if (!config.lookups[_category as keyof APILookups]) {
         setLoading(true);
 
         const facets = await dispatchApi(
@@ -116,7 +117,10 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
           loading={loading}
           size={size ?? 'small'}
           value={filter?.replaceAll('"', '').replaceAll('\\-', '-') || ''}
-          options={[...(config.lookups[category] ? config.lookups[category] : customLookups), '*']}
+          options={[
+            ...(config.lookups[category as keyof APILookups] ? config.lookups[category as keyof APILookups] : customLookups),
+            '*'
+          ]}
           renderInput={_params => <TextField {..._params} label={t('hit.search.filter.values')} />}
           getOptionLabel={option => t(option)}
           onChange={onValueChange}

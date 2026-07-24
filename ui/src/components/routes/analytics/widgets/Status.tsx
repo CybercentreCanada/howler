@@ -13,7 +13,7 @@ const Status = forwardRef<any, { analytic: Analytic }>(({ analytic }, ref) => {
       ref={ref as any}
       analytic={analytic}
       field="howler.status"
-      color={status => (status === 'on-hold' ? theme.palette.grey : theme.palette[STATUS_COLORS[status]].main)}
+      color={status => (status === 'on-hold' ? theme.palette.grey[500] : theme.palette[STATUS_COLORS[status as keyof typeof STATUS_COLORS]].main)}
     />
   );
 });

@@ -14,10 +14,12 @@ const useMyUser = (): AppUserService<HowlerUser> => {
       if (props === undefined) return true;
 
       return props.every((propDef: AppUserValidatedProp) => {
-        if (Array.isArray(user[propDef.prop])) {
-          return difference(propDef.value, user[propDef.prop]).length <= 0;
+        const prop = propDef.prop as keyof HowlerUser;
+
+        if (Array.isArray(user[prop])) {
+          return difference(propDef.value, user[prop]).length <= 0;
         } else {
-          return user[propDef.prop] === propDef.value;
+          return user[prop] === propDef.value;
         }
       });
     },

@@ -16,7 +16,7 @@ const EscalationChip: FC<{ hit: Hit; layout: HitLayout; hideLabel?: boolean }> =
       sx={[{ width: 'fit-content', display: 'inline-flex' }, HitLayout.DENSE && { minWidth: '20px' }]}
       label={hideLabel ? ' ' : label}
       size={layout !== HitLayout.COMFY ? 'small' : 'medium'}
-      color={ESCALATION_COLORS[hit.howler.escalation]}
+      color={ESCALATION_COLORS[hit.howler.escalation as keyof typeof ESCALATION_COLORS]}
     />
   );
 

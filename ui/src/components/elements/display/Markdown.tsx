@@ -47,7 +47,10 @@ const customComponents = (type: string, children: any) => {
   } else if (type === 'tabs') {
     return (
       <DynamicTabs
-        tabs={JSON.parse(child).map(t => ({ title: t.title, children: customComponents(t.lang, t.value) }))}
+        tabs={(JSON.parse(child) as { title: string; lang: string; value: string }[]).map(t => ({
+          title: t.title,
+          children: customComponents(t.lang, t.value)
+        }))}
       />
     );
   } else {

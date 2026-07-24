@@ -35,11 +35,13 @@ export const useFolderOptions = (selectedCase: Case | null): FolderOption[] => {
 
 export const useRecordEntries = (records: (Hit | Event)[]) => {
   const [entries, setEntries] = useState<RecordEntry[]>(() =>
-    (records ?? []).map(record => ({
-      record,
-      parent: null,
-      name: defaultTitle(record)
-    }))
+    (records ?? []).map(
+      (record): RecordEntry => ({
+        record,
+        parent: null,
+        name: defaultTitle(record)
+      })
+    )
   );
 
   const updateEntry = useCallback((index: number, field: 'name' | 'parent', value: string | null) => {

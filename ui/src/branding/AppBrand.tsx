@@ -78,7 +78,7 @@ export const SIZES = {
 
 export const BRAND_APPLICATIONS = ['analyticalplatform', 'assemblyline', 'howler'] as const;
 
-export const BRAND_SIZES = Object.keys(SIZES).filter(s => s !== 'app');
+export const BRAND_SIZES = (Object.keys(SIZES) as (keyof typeof SIZES)[]).filter(s => s !== 'app');
 
 export const BRAND_VARIANTS = ['app', 'logo', 'banner-vertical', 'banner-horizontal'] as const;
 
@@ -86,7 +86,7 @@ export type BrandApplication = (typeof BRAND_APPLICATIONS)[number];
 
 export type BrandVariant = (typeof BRAND_VARIANTS)[number];
 
-export type BrandSize = (typeof BRAND_SIZES)[number];
+export type BrandSize = keyof typeof SIZES;
 
 const AppLogo = ({
   src,

@@ -20,7 +20,7 @@ import { useAppSearchService } from 'commons/components/app/hooks/useAppSearchSe
 import AppSearchInput from 'commons/components/search/AppSearchInput';
 import AppSearchResult from 'commons/components/search/AppSearchResult';
 import { parseEvent } from 'commons/components/utils/keyboard';
-import { forwardRef, useCallback, useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react';
+import { forwardRef, useCallback, useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
 const MENU_LIST_SX = { maxHeight: 500, overflow: 'auto' };
@@ -79,7 +79,7 @@ export default function AppSearch() {
   // keyboard[window] handler.
   // this is to trigger the CTLR+K shortcut to appsearch.
   useEffect(() => {
-    const keyHandler = event => {
+    const keyHandler = (event: KeyboardEvent) => {
       const { key, isCtrl } = parseEvent(event);
       if (isCtrl && key === 'k') {
         event.preventDefault();
@@ -126,7 +126,7 @@ export default function AppSearch() {
 
   // Keyboard handler.
   const onKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLElement>) => {
+    (event: ReactKeyboardEvent<HTMLElement>) => {
       const { isEnter, isEscape, isArrowDown } = parseEvent(event);
       if (isEnter) {
         onEnter();

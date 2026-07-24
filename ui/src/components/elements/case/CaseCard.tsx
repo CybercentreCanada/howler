@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { twitterShort } from 'utils/utils';
 import HowlerCard from '../display/HowlerCard';
 
-const STATUS_COLORS = {
+const STATUS_COLORS: Partial<Record<string, 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success'>> = {
   resolved: 'success'
 };
 
@@ -45,12 +45,14 @@ const CaseCard: FC<{
     return <Skeleton variant="rounded" height={250} sx={{ mb: 1 }} className={className} />;
   }
 
+  const statusColor = STATUS_COLORS[_case.status];
+
   return (
     <HowlerCard
       key={_case.case_id}
       {...slotProps?.card}
       sx={[
-        { p: 1, mb: 1, borderColor: theme.palette[STATUS_COLORS[_case.status]]?.main },
+        { p: 1, mb: 1, borderColor: statusColor ? theme.palette[statusColor]?.main : undefined },
         ...(Array.isArray(slotProps?.card?.sx) ? slotProps.card.sx : slotProps?.card?.sx ? [slotProps.card.sx] : [])
       ]}
       className={className}

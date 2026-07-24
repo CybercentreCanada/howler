@@ -32,7 +32,7 @@ const splitItems = (
   return { before, after, hasEllipsis: hasEllipsis || expanded };
 };
 
-const BreadcrumbsEllipsis = ({ onClick, expanded }) => {
+const BreadcrumbsEllipsis = ({ onClick, expanded }: { onClick: () => void; expanded: boolean }) => {
   const { t } = useTranslation();
   return (
     <Tooltip title={t(expanded ? 'tooltip.breadcrumbs.min' : 'tooltip.breadcrumbs.max')}>

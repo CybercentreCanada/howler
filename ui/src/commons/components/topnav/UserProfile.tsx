@@ -53,7 +53,7 @@ const UserProfile = () => {
   const onClickAway = useCallback(() => setOpen(false), []);
 
   const renderThemeSelection = useCallback(
-    enabled => {
+    (enabled: boolean) => {
       if (
         enabled &&
         (configs.allowPersonalization || configs.preferences.allowTranslate || configs.preferences.allowReset)

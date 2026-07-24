@@ -20,7 +20,7 @@ export const useStartingTemplate = () => {
           `
 ### \`${helper.keyword}\`
 
-${helper.documentation[i18n.language]}
+${helper.documentation[i18n.language as 'en' | 'fr']}
 
 ---
 `.trim()
@@ -31,7 +31,7 @@ ${helper.documentation[i18n.language]}
 
   return useMemo(
     () => `
-${TEMPLATES[i18n.language] ?? TEMPLATES.en}
+${TEMPLATES[i18n.language as 'en' | 'fr'] ?? TEMPLATES.en}
 
 ${helperText}
 `,

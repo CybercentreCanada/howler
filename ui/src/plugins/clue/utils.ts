@@ -14,7 +14,7 @@ export const useType = (hit?: Hit | Event, field?: string, value?: string) => {
     return typeFromHit;
   }
 
-  const typeFromConfig = config.configuration?.mapping?.[field];
+  const typeFromConfig = (config.configuration?.mapping as unknown as Record<string, string>)?.[field];
   if (typeFromConfig) {
     return typeFromConfig;
   }

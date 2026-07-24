@@ -106,7 +106,7 @@ dayjs.locale(i18n.language === 'en' ? 'en' : 'fr-ca');
 
 loader.config({ monaco });
 
-const RoleRoute = ({ roles }) => {
+const RoleRoute = ({ roles }: { roles: string[] }) => {
   const appUser = useAppUser<HowlerUser>();
 
   if (roles.some((role: string) => appUser.user?.roles?.includes(role))) {

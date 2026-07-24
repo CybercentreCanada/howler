@@ -1,9 +1,11 @@
 import { useMonaco } from '@monaco-editor/react';
 import api from 'api';
+import type { HowlerFacetSearchResponse } from 'api/search/facet';
 import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import { FieldContext } from 'components/app/providers/FieldProvider';
 import Fuse from 'fuse.js';
 import type { languages } from 'monaco-editor';
+import type { APILookups } from 'models/entities/generated/ApiType';
 import { useContext, useEffect, useMemo } from 'react';
 import { DEFAULT_QUERY } from 'utils/constants';
 
@@ -32,7 +34,7 @@ const useLuceneCompletionProvider = (): languages.CompletionItemProvider => {
       // If the field is complete and we're autocompleting the value, we parse the field and see if it's an enum.
       // If it is, suggest the matching values
       if (before.trim().endsWith(':')) {
-        const key = before.trim().replace(/^.*?[^a-zA-Z._]?([a-zA-Z._]+):$/, '$1');
+        const key = before.trim().replace(/^.*?[^a-zA-Z._]?([a-zA-Z._]+):$/, '$1') as keyof APILookups;
 
         if (config.lookups[key]) {
           const _position = model.getWordUntilPosition(position);
@@ -53,7 +55,7 @@ const useLuceneCompletionProvider = (): languages.CompletionItemProvider => {
         } else {
           const options = await api.search.facet.hit
             .post({ query: DEFAULT_QUERY, rows: 250, fields: [key] })
-            .catch(() => ({}));
+            .catch(() => ({}) as HowlerFacetSearchResponse);
 
           const _position = model.getWordUntilPosition(position);
 

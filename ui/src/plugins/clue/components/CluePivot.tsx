@@ -112,7 +112,7 @@ const CluePivot: FC<PivotLinkProps> = ({ pivot, hit, compact }: PivotLinkProps) 
                 value
                   .filter(val => !isNil(val))
                   .map(val => ({
-                    type: config.configuration?.mapping?.[_mapping.field] || guessType(val.toString()),
+                    type: (config.configuration?.mapping as unknown as Record<string, string>)?.[_mapping.field] || guessType(val.toString()),
                     value: val
                   }))
               ];
@@ -121,7 +121,7 @@ const CluePivot: FC<PivotLinkProps> = ({ pivot, hit, compact }: PivotLinkProps) 
             return [
               _mapping.key,
               {
-                type: config.configuration?.mapping?.[_mapping.field] || guessType(value.toString()),
+                type: (config.configuration?.mapping as unknown as Record<string, string>)?.[_mapping.field] || guessType(value.toString()),
                 value
               }
             ];
@@ -185,7 +185,7 @@ const CluePivot: FC<PivotLinkProps> = ({ pivot, hit, compact }: PivotLinkProps) 
     >
       <Stack direction="row" p={compact ? 0.5 : 1} spacing={1} alignItems="center">
         <Icon fontSize="1.5rem" icon={pivot.icon} />
-        <Typography>{pivot.label[i18n.language]}</Typography>
+        <Typography>{pivot.label[i18n.language as 'en' | 'fr']}</Typography>
         <Divider orientation="vertical" flexItem />
         <IconButton size="small" onClick={e => onClueClick(e, true)}>
           <Settings fontSize="small" />

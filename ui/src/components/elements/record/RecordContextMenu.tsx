@@ -236,9 +236,9 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
         result.push({
           kind: 'submenu',
           id: type,
-          icon: ICON_MAP[type] ?? <Terminal />,
+          icon: ICON_MAP[type as keyof typeof ICON_MAP] ?? <Terminal />,
           label: t(`hit.details.actions.${type}`),
-          disabled: rowStatus[type] === false,
+          disabled: rowStatus[type as keyof typeof rowStatus] === false,
           items: typeItems.map(a => ({
             key: a.name,
             label: a.i18nKey ? t(a.i18nKey) : capitalize(a.name),

@@ -120,7 +120,7 @@ const HitLabels: FC<{ hit: Hit; readOnly?: boolean }> = ({ hit, readOnly = false
   const [openDrawer, setOpenDrawer] = useState(false);
   const [loading, setLoading] = useState(false);
   const [labels, setLabels] = useState<LabelState[]>(
-    Object.entries(hit.howler.labels).flatMap(([key, category]) => {
+    Object.entries(hit.howler.labels).flatMap(([key, category]: [keyof Labels, string | string[]]) => {
       if (typeof category === 'string') {
         category = [category];
       }
@@ -170,7 +170,7 @@ const HitLabels: FC<{ hit: Hit; readOnly?: boolean }> = ({ hit, readOnly = false
   useEffect(() => {
     if (hit.howler.labels) {
       setLabels(
-        Object.entries(hit.howler.labels).flatMap(([key, category]) => {
+        Object.entries(hit.howler.labels).flatMap(([key, category]: [keyof Labels, string | string[]]) => {
           if (typeof category === 'string') {
             category = [category];
           }

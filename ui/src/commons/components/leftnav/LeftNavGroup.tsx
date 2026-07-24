@@ -22,7 +22,7 @@ const GroupListItem = memo(
     group: AppLeftNavGroup;
     leftNavOpen: boolean;
     collapseOpen: boolean;
-    popoverOpen;
+    popoverOpen: boolean;
     onClick: (event: React.MouseEvent) => void;
   }) => {
     const { t } = useTranslation();

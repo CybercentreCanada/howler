@@ -9,7 +9,7 @@ export type DispatchApiConfig = {
   onConflict?: () => Promise<void>;
 };
 
-const DEFAULT_CONFIG = {
+const DEFAULT_CONFIG: DispatchApiConfig = {
   throwError: true,
   logError: false,
   showError: true,

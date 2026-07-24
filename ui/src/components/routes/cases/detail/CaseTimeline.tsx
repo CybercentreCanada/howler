@@ -177,7 +177,13 @@ const CaseTimeline: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase
           getOptionLabel={opt => t(`howler.escalation.${opt}`, opt)}
           renderTags={(value, getTagProps) =>
             value.map((opt, index) => (
-              <Chip {...getTagProps({ index })} key={opt} size="small" label={opt} color={ESCALATION_COLORS[opt]} />
+              <Chip
+                {...getTagProps({ index })}
+                key={opt}
+                size="small"
+                label={opt}
+                color={ESCALATION_COLORS[opt as keyof typeof ESCALATION_COLORS]}
+              />
             ))
           }
           renderInput={params => (
