@@ -1,4 +1,4 @@
-import { hdelete, hget, hpost, hput, joinAllUri, joinUri, uri as parentUri, type HowlerRefreshParam } from 'api';
+import api, { hdelete, hpost, hput, joinAllUri, joinUri, uri as parentUri, type HowlerRefreshParam } from 'api';
 import * as favourite from 'api/view/favourite';
 import type { View } from 'models/entities/generated/View';
 import { createPermissionApi } from '../permission';
@@ -8,11 +8,9 @@ export const uri = (id?: string) => {
 };
 
 export const get = async (view_id?: string): Promise<View[]> => {
-  if (view_id) {
-    const views = await hget(uri());
-    return views.find((v: any) => v.view_id === view_id || v.id === view_id) || null;
-  }
-  return hget(uri());
+  const view = await api.search.view.post({ query: `view_id:${view_id}`, rows: 1 });
+
+  return view.items;
 };
 
 export const post = (newData: Partial<View>, refresh?: HowlerRefreshParam): Promise<View> => {

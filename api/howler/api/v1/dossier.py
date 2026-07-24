@@ -271,7 +271,7 @@ def give_privilege(id: str, user: User, **kwargs):
     """
     try:
         result = permission_helper.give_privilege(id, user, Dossier, request.json, refresh=kwargs.get("refresh"))
-    except (ValueError, InvalidDataException, InvalidDataException) as e:
+    except (ValueError, InvalidDataException) as e:
         return bad_request(err=str(e))
     return ok(result)
 
@@ -279,6 +279,7 @@ def give_privilege(id: str, user: User, **kwargs):
 @generate_swagger_docs()
 @dossier_api.route("/<id>/permission", methods=["DELETE"])
 @api_login(required_priv=["R", "W"])
+@parse_parameters(refresh=parse_refresh)
 def remove_privilege(id: str, user: User, **kwargs):
     """Revoke permission from one user to another.
 
@@ -286,7 +287,8 @@ def remove_privilege(id: str, user: User, **kwargs):
         dossier_id => The id of the dossier to revoke administrative privilege of
 
     Arguments:
-        None
+        refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
+            'wait_for' will wait for the change to be visible in search.
 
     Optional Arguments:
         None
@@ -304,7 +306,7 @@ def remove_privilege(id: str, user: User, **kwargs):
     """
     try:
         result = permission_helper.remove_privilege(id, user, Dossier, request.json, refresh=kwargs.get("refresh"))
-    except (ValueError, InvalidDataException, InvalidDataException) as e:
+    except (ValueError, InvalidDataException) as e:
         return bad_request(err=str(e))
     return ok(result)
 

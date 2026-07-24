@@ -13,7 +13,6 @@ import pytest
 
 from howler.datastore.howler_store import HowlerDatastore
 from howler.odm.random_data import wipe_cases, wipe_hits
-from howler.remote.datatypes.queues.named import NamedQueue
 from howler.services import correlation_service
 from test.conftest import get_api_data
 
@@ -42,9 +41,7 @@ def _make_hit(analytic: str = "Test Analytic", kind: str = "alert", provider: st
 @pytest.fixture(scope="module")
 def datastore(datastore_connection):
     ds: HowlerDatastore = datastore_connection
-    ingestion_queue = NamedQueue("howler.ingestion_queue")
     try:
-        ingestion_queue.delete()
         wipe_cases(ds)
         wipe_hits(ds)
         ds.case.commit()
@@ -52,7 +49,6 @@ def datastore(datastore_connection):
         time.sleep(1)
         yield ds
     finally:
-        ingestion_queue.delete()
         wipe_cases(ds)
         wipe_hits(ds)
 

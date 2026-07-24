@@ -184,8 +184,16 @@ def update_view(view_id: str, user: User, **kwargs):
     if not isinstance(new_data, dict):
         return bad_request(err="Invalid data format")
 
-    if set(new_data.keys()) & {"view_id", "owner"}:
-        return bad_request(err="You cannot change the owner or id of a view.")
+    # Block the update of the view_id
+    if set(new_data.keys()) & {"view_id"}:
+        return bad_request(err="You cannot change the view ID.")
+
+    # Block the change of permission from this endpoint
+    if set(new_data.keys()) & {"owner", "admins", "members"}:
+        return bad_request(
+            err="You cannot change permission using this end point. "
+            "Use the give_privilege or remove_privilege endpoints."
+        )
 
     existing_view: View = storage.view.get_if_exists(view_id)
     if not existing_view:
@@ -196,22 +204,22 @@ def update_view(view_id: str, user: User, **kwargs):
 
     if existing_view.type == "personal" and existing_view.owner != user.uname:
         return forbidden(err="You cannot update a personal view that is not owned by you.")
+
+    # Block none Global admin or member from updating a global view
     is_member = user.uname in ([existing_view.owner] + existing_view.admins + existing_view.members)
     if existing_view.type == "global" and not is_member and "admin" not in user.type:
         return forbidden(err="Only member of a view or global admins can update a global view.")
 
+    # Block invalid querry to be added to the updated view
+    try:
+        if "query" in new_data:
+            storage.hit.search(new_data["query"])
+    except (SearchException, HowlerException) as e:
+        return bad_request(err="You must use a valid query when updating a view. " + e.message)
+
     new_view = View(cast(dict, merge({}, existing_view.as_primitives(), new_data)))
 
     storage.view.save(new_view.view_id, new_view, refresh=kwargs.get("refresh"))
-
-    try:
-        if "query" in new_data:
-            # Make sure the query is valid
-            storage.hit.search(new_data["query"])
-    except SearchException:
-        return bad_request(err="You must use a valid query when updating a view.")
-    except HowlerException as e:
-        return bad_request(err=str(e))
 
     return ok(new_view.as_primitives())
 
@@ -326,7 +334,7 @@ def give_privilege(view_id: str, user: User, **kwargs):
     """
     try:
         result = permission_helper.give_privilege(view_id, user, View, request.json, refresh=kwargs.get("refresh"))
-    except (ValueError, InvalidDataException, InvalidDataException) as e:
+    except (ValueError, InvalidDataException) as e:
         return bad_request(err=str(e))
     return ok(result)
 
@@ -362,7 +370,7 @@ def remove_privilege(view_id: str, user: User, **kwargs):
     """
     try:
         result = permission_helper.remove_privilege(view_id, user, View, request.json, refresh=kwargs.get("refresh"))
-    except (ValueError, InvalidDataException, InvalidDataException) as e:
+    except (ValueError, InvalidDataException) as e:
         return bad_request(err=str(e))
     return ok(result)
 

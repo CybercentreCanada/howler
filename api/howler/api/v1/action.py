@@ -6,7 +6,7 @@ import howler.actions as actions
 from howler.api import bad_request, created, forbidden, internal_error, make_subapi_blueprint, no_content, not_found, ok
 from howler.api.v1.helper import permission_helper
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
-from howler.common.exceptions import HowlerException, HowlerInvalidPermissionException, InvalidDataException
+from howler.common.exceptions import HowlerException, InvalidDataException
 from howler.common.loader import datastore
 from howler.common.logging.audit import audit
 from howler.common.swagger import generate_swagger_docs
@@ -426,7 +426,7 @@ def give_privilege(id: str, user: User, **kwargs):
     """
     try:
         result = permission_helper.give_privilege(id, user, Action, request.json, refresh=kwargs.get("refresh"))
-    except (ValueError, HowlerInvalidPermissionException, InvalidDataException) as e:
+    except (ValueError, InvalidDataException) as e:
         return bad_request(err=str(e))
 
     return ok(result)
@@ -463,7 +463,7 @@ def remove_privilege(id: str, user: User, **kwargs):
     """
     try:
         result = permission_helper.remove_privilege(id, user, Action, request.json, refresh=kwargs.get("refresh"))
-    except (ValueError, HowlerInvalidPermissionException, InvalidDataException) as e:
+    except (ValueError, InvalidDataException) as e:
         return bad_request(err=str(e))
 
     return ok(result)
