@@ -678,7 +678,7 @@ describe('HitContextMenu', () => {
       });
 
       await waitFor(() => {
-        expect(mockExecuteAction).toHaveBeenCalledWith('action-1', 'howler.id:test-hit-1');
+        expect(mockExecuteAction).toHaveBeenCalledWith('action-1', 'howler.id:(test-hit-1)');
       });
     });
 
