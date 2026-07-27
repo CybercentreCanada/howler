@@ -1,5 +1,5 @@
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -48,7 +48,7 @@ def test_client():
 
 @pytest.fixture(scope="module")
 def current_time():
-    return datetime.now()
+    return datetime.now(timezone.utc)
 
 
 @pytest.fixture(scope="module")

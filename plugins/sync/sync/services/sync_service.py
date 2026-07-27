@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from howler import odm
 from howler.common.loader import datastore
@@ -43,7 +43,14 @@ def get_model_struct_schema(model: type[odm.Model]) -> StructType:
 
 def _range_query_from_interval(data_interval_start: datetime | None, data_interval_end: datetime | None) -> str:
     """Construct a range query string for the specified time interval."""
-    query_range_start: str = data_interval_start.strftime(odm.DATEFORMAT) if data_interval_start else "*"
-    query_range_end: str = data_interval_end.strftime(odm.DATEFORMAT) if data_interval_end else "*"
+    query_range_start: str = _to_utc(data_interval_start).strftime(odm.DATEFORMAT) if data_interval_start else "*"
+    query_range_end: str = _to_utc(data_interval_end).strftime(odm.DATEFORMAT) if data_interval_end else "*"
 
     return f"[{query_range_start} TO {query_range_end}]"
+
+
+def _to_utc(dt: datetime) -> datetime:
+    """Convert a datetime to UTC."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)

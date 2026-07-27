@@ -3,11 +3,14 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from howler.common.exceptions import HowlerInvalidParameterException
 
-from sync.utils.parsers import parse_datetime
+from sync.utils.parsers import parse_tz_datetime
 
 VALID_DATES = {
-    "basic_datetime": ("2023-01-01T12:00:00", datetime(2023, 1, 1, 12, 0, 0)),
-    "datetime_with_microseconds": ("2023-01-01T12:00:00.123456", datetime(2023, 1, 1, 12, 0, 0, 123456)),
+    "basic_datetime": ("2023-01-01T12:00:00", datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc)),
+    "datetime_with_microseconds": (
+        "2023-01-01T12:00:00.123456",
+        datetime(2023, 1, 1, 12, 0, 0, 123456, tzinfo=timezone.utc),
+    ),
     "datetime_with_timezone+0": ("2023-01-01T12:00:00+00:00", datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc)),
     "datetime_with_timezone_z_format": ("2023-01-01T12:00:00Z", datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc)),
     "datetime_with_microseconds_and_non_utc_timezone": (
@@ -25,7 +28,7 @@ INVALID_DATES = {
 
 @pytest.mark.parametrize("date_str, expected_date", VALID_DATES.values(), ids=VALID_DATES.keys())
 def test_valid_datetime(date_str, expected_date):
-    parsed_date = parse_datetime(date_str)
+    parsed_date = parse_tz_datetime(date_str)
     assert isinstance(parsed_date, datetime)
     assert parsed_date == expected_date
 
@@ -33,6 +36,6 @@ def test_valid_datetime(date_str, expected_date):
 @pytest.mark.parametrize("invalid_date", INVALID_DATES.values(), ids=INVALID_DATES.keys())
 def test_invalid_datetime(invalid_date):
     with pytest.raises(HowlerInvalidParameterException) as exc_info:
-        parse_datetime(invalid_date)
+        parse_tz_datetime(invalid_date)
 
     assert str(exc_info.value) == f"Invalid datetime format: {invalid_date}"

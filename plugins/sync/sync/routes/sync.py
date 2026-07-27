@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any
 
 from flask import request
-from howler.api import make_subapi_blueprint, ok
+from howler.api import bad_request, make_subapi_blueprint, ok
 from howler.api.v1.utils.params import parse_parameters
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
@@ -11,7 +11,7 @@ from howler.odm.models.hit import Hit
 from howler.security import api_login
 
 from sync.services import sync_service
-from sync.utils.parsers import ip_format_type, parse_datetime, parse_ip_format
+from sync.utils.parsers import ip_format_type, parse_ip_format, parse_tz_datetime
 
 SUB_API = "sync"
 sync_api = make_subapi_blueprint(SUB_API, api_version=1)
@@ -21,7 +21,7 @@ logger = get_logger(__file__)
 
 @generate_swagger_docs()
 @sync_api.route("/hit_diffs", methods=["GET"])
-@parse_parameters(from_date=(parse_datetime, "required"), to_date=parse_datetime, ip_format=parse_ip_format)
+@parse_parameters(from_date=(parse_tz_datetime, "required"), to_date=parse_tz_datetime, ip_format=parse_ip_format)
 @api_login(required_priv=["R"])
 def get_upserted_hits(
     *,
@@ -56,11 +56,14 @@ def get_upserted_hits(
     """
     # don't use parse_parameters because we don't want to forward None if the parameter is not present
     search_params = [("deep_paging_id", str), ("offset", int), ("rows", int), ("timeout", int)]
-    search_args: dict[str, Any] = {
-        param: request.args.get(param, type=type_cast)
-        for param, type_cast in search_params
-        if request.args.get(param) is not None
-    }
+    search_args: dict[str, Any] = {}
+
+    for param, type_cast in search_params:
+        if param in request.args:
+            try:
+                search_args[param] = type_cast(request.args[param])
+            except ValueError:
+                return bad_request(f"Invalid value for {param}: {request.args[param]}")
 
     if to_date is not None and from_date > to_date:
         logger.warning("to_date is earlier than from_date, ignoring to_date")
