@@ -34,6 +34,9 @@ def parse_parameters(**requested_params: parser_t | Literal["required"] | tuple[
     and the raw string value from the request args will be passed to the endpoint function.
     Alternatively, if the parameter is required but does not need parsing,
     pass "required" as the value for the parameter.
+
+    Parser functions which normally accept None can also be marked as required
+    by passing a tuple of (parser_func, "required") as the value for the parameter.
     """
 
     def decorator(func):
