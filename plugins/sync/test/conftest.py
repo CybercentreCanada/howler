@@ -8,6 +8,7 @@ from howler.config import config
 from howler.datastore.howler_store import HowlerDatastore
 from howler.datastore.store import ESCollection, ESStore
 from howler.odm import random_data
+from howler.odm.models.ecs.client import Client
 from howler.odm.models.howler_data import Log
 
 sys.path.insert(0, str(Path.cwd()))
@@ -70,6 +71,9 @@ def hits_with_timestamps(datastore_connection, current_time):
                 }
             )
         ]
+
+        if "source" not in hit or hit.source is None:
+            hit.source = Client({"ip": "1.1.1.1"})
 
     for hit in hits[: len(hits) // 2]:
         hit.howler.log.append(

@@ -1,7 +1,10 @@
 import base64
+import re
 from datetime import timedelta
+from ipaddress import ip_address
 
 import pytest
+from howler import odm
 
 _TEST_TOKEN = f"Basic {base64.b64encode(b'admin:devkey:admin').decode('utf-8')}"
 
@@ -11,7 +14,9 @@ def setup_datastore_with_hits(datastore_with_hits):
     yield datastore_with_hits
 
 
-def _request(client, from_date, to_date=None, deep_paging_id=None, offset=None, rows=None, timeout=None):
+def _request(
+    client, from_date, to_date=None, deep_paging_id=None, offset=None, rows=None, timeout=None, ip_format=None
+):
     url = "/api/v1/sync/hit_diffs"
 
     query_args = {"from_date": from_date}
@@ -27,7 +32,19 @@ def _request(client, from_date, to_date=None, deep_paging_id=None, offset=None, 
     if timeout is not None:
         query_args["timeout"] = timeout
 
+    if ip_format is not None:
+        query_args["ip_format"] = ip_format
+
     return client.get(url, query_string=query_args, headers={"Authorization": _TEST_TOKEN})
+
+
+def _check_is_ip_address(ip_encoded_bytes):
+    try:
+        ip_bytes = base64.b64decode(ip_encoded_bytes)
+        ip_address(int.from_bytes(ip_bytes, byteorder="big"))
+        return True
+    except ValueError:
+        return False
 
 
 def test_hit_diffs_with_start_interval(test_client, current_time):
@@ -81,6 +98,30 @@ def test_hit_diffs_pagination(test_client, current_time):
 
     hit_id_set.update(item["howler"]["id"] for item in res["items"])
     assert len(hit_id_set) == 10
+
+
+def test_hit_diffs_ip_default_format(test_client, current_time):
+    start_time = current_time - timedelta(days=1)
+
+    response = _request(test_client, from_date=start_time.isoformat())
+
+    assert response.status_code == 200
+    hits = response.json.get("api_response")["items"]
+    for hit in hits:
+        assert _check_is_ip_address(hit["source"]["ip"]), f"IP address {hit['source']['ip']} is not valid encoded bytes"
+
+
+def test_hit_diffs_ip_str_format(test_client, current_time):
+    start_time = current_time - timedelta(days=1)
+
+    response = _request(test_client, from_date=start_time.isoformat(), ip_format="str")
+
+    assert response.status_code == 200
+    hits = response.json.get("api_response")["items"]
+    for hit in hits:
+        assert re.match(odm.IP_ONLY_REGEX, hit["source"]["ip"]), (
+            f"IP address {hit['source']['ip']} is not valid string format"
+        )
 
 
 def test_hit_schema(test_client):

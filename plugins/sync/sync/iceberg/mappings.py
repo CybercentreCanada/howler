@@ -47,7 +47,7 @@ BASE_TYPE_MAPPING = {
     ClassificationString: T.StringType(),
     Enum: T.StringType(),
     UUID: T.StringType(),
-    IP: T.StringType(),  # TODO we need to think about how to represent IP addresses (bytes all?)
+    IP: T.BinaryType(),  # store ip addresses as variable-length byte arrays to fit both IPv4 and IPv6
     Domain: T.StringType(),
     Email: T.StringType(),
     URI: T.StringType(),

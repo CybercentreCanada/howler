@@ -1,9 +1,9 @@
 from datetime import datetime
-from typing import Any
 
 from howler import odm
 from howler.common.loader import datastore
 from howler.datastore.types import SearchResult
+from howler.odm.models.hit import Hit
 from pyspark.sql.types import StructType
 
 from sync.iceberg.build import build_schema
@@ -16,7 +16,7 @@ def get_upserted_hits(
     offset: int = 0,
     rows: int | None = None,
     timeout: int | None = None,
-) -> SearchResult[dict[str, Any]]:
+) -> SearchResult[Hit]:
     """Get the hits that have been created or updated within the specified time interval."""
     storage = datastore()
 
@@ -29,7 +29,7 @@ def get_upserted_hits(
         offset=offset,
         rows=rows,
         timeout=timeout,
-        as_obj=False,
+        as_obj=True,
     )
 
     return res

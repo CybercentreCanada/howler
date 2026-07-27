@@ -6,11 +6,12 @@ from howler.api import make_subapi_blueprint, ok
 from howler.api.v1.utils.params import parse_parameters
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
+from howler.datastore.types import SearchResult
 from howler.odm.models.hit import Hit
 from howler.security import api_login
 
 from sync.services import sync_service
-from sync.utils.parsers import parse_datetime
+from sync.utils.parsers import ip_format_type, parse_datetime, parse_ip_format
 
 SUB_API = "sync"
 sync_api = make_subapi_blueprint(SUB_API, api_version=1)
@@ -20,9 +21,15 @@ logger = get_logger(__file__)
 
 @generate_swagger_docs()
 @sync_api.route("/hit_diffs", methods=["GET"])
-@parse_parameters(from_date=(parse_datetime, "required"), to_date=parse_datetime)
+@parse_parameters(from_date=(parse_datetime, "required"), to_date=parse_datetime, ip_format=parse_ip_format)
 @api_login(required_priv=["R"])
-def get_upserted_hits(*, from_date: datetime, to_date: datetime | None = None, **_extra_args):
+def get_upserted_hits(
+    *,
+    from_date: datetime,
+    to_date: datetime | None = None,
+    ip_format: ip_format_type | None = None,
+    **_extra_args,
+):
     """Get the hits that have been created or updated since the last sync.
 
     Arguments:
@@ -30,6 +37,7 @@ def get_upserted_hits(*, from_date: datetime, to_date: datetime | None = None, *
 
     Optional Arguments:
     to_date         =>   The date beyond which to ignore any new or updated hits.
+    ip_format       =>   The format of the IP addresses, default to encoded bytes, matching the schema from this api.
     deep_paging_id  =>   ID of the next page or * to start deep paging
     offset          =>   Offset in the results
     rows            =>   Number of results per page
@@ -55,12 +63,19 @@ def get_upserted_hits(*, from_date: datetime, to_date: datetime | None = None, *
     }
 
     if to_date is not None and from_date > to_date:
-        logger.warning("to_date is earlier than from_date, ignoring to_date and using current date instead")
+        logger.warning("to_date is earlier than from_date, ignoring to_date")
         to_date = None
 
-    res = sync_service.get_upserted_hits(data_interval_start=from_date, data_interval_end=to_date, **search_args)
+    if ip_format is None:
+        ip_format = "encoded_bytes"
 
-    return ok(res)
+    res = sync_service.get_upserted_hits(data_interval_start=from_date, data_interval_end=to_date, **search_args)
+    parsed: SearchResult[dict[str, Any]] = {
+        **res,
+        "items": [hit.as_primitives(ip_format=ip_format) for hit in res["items"]],
+    }
+
+    return ok(parsed)
 
 
 @generate_swagger_docs()
