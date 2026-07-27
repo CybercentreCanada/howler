@@ -77,6 +77,15 @@ def model_with_any_field() -> type[odm.Model]:
 
 
 @pytest.fixture(scope="module")
+def model_with_sync_false_field(model_with_basic_fields) -> type[odm.Model]:
+    @odm.model()
+    class TestModel(model_with_basic_fields):
+        sync_false_field = odm.Keyword(sync=False)
+
+    return TestModel
+
+
+@pytest.fixture(scope="module")
 def instance_with_basic_fields(model_with_basic_fields):
     return model_with_basic_fields(
         {
@@ -199,3 +208,10 @@ def test_build_schema_with_instance(instance_with_basic_fields):
     assert schema["float_field"].dataType == DoubleType()
     assert schema["text_field"].dataType == StringType()
     assert schema["date_field"].dataType == TimestampType()
+
+
+def test_build_schema_does_not_include_sync_false_fields(model_with_sync_false_field):
+    schema = build_schema(model_with_sync_false_field)
+
+    assert "sync_false_field" not in schema.fieldNames()
+    assert len(schema.fieldNames()) == len(model_with_sync_false_field.fields()) - 1
