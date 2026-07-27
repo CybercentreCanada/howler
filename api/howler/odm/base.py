@@ -11,6 +11,7 @@ independent data models in python. This gives us:
 
 from __future__ import annotations
 
+import base64
 import copy
 import json
 import re
@@ -18,7 +19,8 @@ import typing
 from datetime import datetime
 from enum import Enum as PyEnum
 from enum import EnumMeta
-from typing import TYPE_CHECKING, Callable
+from ipaddress import ip_address
+from typing import TYPE_CHECKING, Callable, Literal
 from typing import Any as _Any
 from venv import logger
 
@@ -1433,6 +1435,8 @@ class Model:
         self,
         hidden_fields=False,
         strip_null=True,
+        ip_format: Literal["str", "int", "encoded_bytes"] | None = None,
+        timestamp_format: Literal["iso", "posix"] | None = None,
     ) -> dict[str, typing.Any]:
         """Convert the object back into primitives that can be json serialized."""
         out = {}
@@ -1444,7 +1448,12 @@ class Model:
                 if strip_null and value is None:
                     continue
 
-                out[key] = self._as_primitive(value, strip_null=strip_null)
+                out[key] = self._as_primitive(
+                    value,
+                    strip_null=strip_null,
+                    ip_format=ip_format,
+                    timestamp_format=timestamp_format,
+                )
 
                 if hidden_fields and isinstance(value, ClassificationObject):
                     out.update(value.get_access_control_parts())
@@ -1514,19 +1523,41 @@ class Model:
         return name.rstrip("_") in self.fields()
 
     @staticmethod
-    def _as_primitive(value, strip_null=True):
+    def _as_primitive(value, strip_null=True, ip_format=None, timestamp_format=None):
         if isinstance(value, Model):
-            return value.as_primitives(strip_null=strip_null)
+            return value.as_primitives(strip_null=strip_null, ip_format=ip_format, timestamp_format=timestamp_format)
 
         if isinstance(value, datetime):
+            if timestamp_format == "iso":
+                return value.isoformat()
+
+            if timestamp_format == "posix":
+                return int(value.timestamp())
+
             return value.strftime(DATEFORMAT)
+
+        if value is not None and re.match(IP_ONLY_REGEX, str(value)):
+            if ip_format == "encoded_bytes":
+                ip_bytes = ip_address(value).packed
+                return base64.b64encode(ip_bytes).decode("utf-8")
+
+            if ip_format == "int":
+                return int(ip_address(value))
+
+            if ip_format == "str":
+                return str(ip_address(value))
 
         if isinstance(value, TypedMapping):
             return {
                 k: (
-                    v.as_primitives(strip_null=strip_null)
+                    v.as_primitives(strip_null=strip_null, ip_format=ip_format, timestamp_format=timestamp_format)
                     if isinstance(v, Model)
-                    else Model._as_primitive(v, strip_null=strip_null)
+                    else Model._as_primitive(
+                        v,
+                        strip_null=strip_null,
+                        ip_format=ip_format,
+                        timestamp_format=timestamp_format,
+                    )
                 )
                 for k, v in value.items()
             }
@@ -1534,9 +1565,14 @@ class Model:
         if isinstance(value, TypedList):
             return [
                 (
-                    v.as_primitives(strip_null=strip_null)
+                    v.as_primitives(strip_null=strip_null, ip_format=ip_format, timestamp_format=timestamp_format)
                     if isinstance(v, Model)
-                    else Model._as_primitive(v, strip_null=strip_null)
+                    else Model._as_primitive(
+                        v,
+                        strip_null=strip_null,
+                        ip_format=ip_format,
+                        timestamp_format=timestamp_format,
+                    )
                 )
                 for v in value
             ]
