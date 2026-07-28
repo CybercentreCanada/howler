@@ -210,6 +210,7 @@ def update_dossier(id: str, user: User, **kwargs):
     {
         "title": "New dossier Name"    # The name of this dossier
         "query": "howler.id:*"      # The query to run
+        "group": "group/name"          # The group to which this dossier belongs. Only used for global dossiers.
     }
 
     Result Example:

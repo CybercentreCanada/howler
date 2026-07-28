@@ -27,6 +27,7 @@ PERMITTED_KEYS = {
     "pivots",
     "type",
     "owner",
+    "group",
 }
 
 
