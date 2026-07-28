@@ -695,6 +695,8 @@
   "route.dossiers.create": "New Dossier",
   "route.dossiers.default": "Default",
   "route.dossiers.edit": "Edit Dossier",
+  "route.dossiers.groups.explanation": "Add a group value allowing this dossier to merge with other inside of the dossier buttons",
+  "route.dossiers.groups.label": "Dossier's Group",
   "route.dossiers.manager.create.success": "Dossier Created.",
   "route.dossiers.manager.delete": "Delete Dossier",
   "route.dossiers.manager.delete.success": "Dossier Removed.",

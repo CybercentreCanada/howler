@@ -47,7 +47,8 @@ const DossierEditor: FC = () => {
   const [dossier, setDossier] = useState<Partial<Dossier>>({
     type: 'global',
     leads: [],
-    pivots: []
+    pivots: [],
+    group: ''
   });
   const [tab, setTab] = useState<'leads' | 'pivots'>((searchParams.get('tab') as 'leads' | 'pivots') ?? 'leads');
   const [searchTotal, setSearchTotal] = useState(-1);
@@ -302,6 +303,27 @@ const DossierEditor: FC = () => {
               />
               {searchTotal >= 0 && <QueryResultText count={searchTotal} query={dossier.query} />}
             </Stack>
+            <Typography
+              sx={theme => ({
+                color: theme.palette.text.secondary,
+                fontSize: '0.9em',
+                fontStyle: 'italic',
+                mt: 0.5
+              })}
+              variant="body2"
+            >
+              {t('route.dossiers.groups.explanation')}
+            </Typography>
+            {/* TODO : AG :  Add a dropdown to select from existing groups, and allow creating new groups. For now, just a text field to enter a group name. */}
+            <TextField
+              id="dossier-group"
+              disabled={!dossier || loading}
+              label={t('route.dossiers.groups.label')}
+              size="small"
+              value={dossier.group ?? ''}
+              onChange={ev => setDossier(_dossier => ({ ..._dossier, group: ev.target.value }))}
+              fullWidth
+            />
           </Paper>
           <Tabs value={tab} onChange={(_ev, value) => setTab(value)}>
             <Tab label={t('route.dossiers.manager.tabs.leads')} value="leads" />

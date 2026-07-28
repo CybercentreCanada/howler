@@ -12,4 +12,5 @@ export interface Dossier {
   query?: string;
   title?: string;
   type?: string;
+  group?: string;
 }

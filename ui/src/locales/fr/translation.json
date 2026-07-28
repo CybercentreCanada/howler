@@ -695,6 +695,8 @@
   "route.dossiers.create": "Nouveau dossier",
   "route.dossiers.default": "Défaut",
   "route.dossiers.edit": "Modifier le dossier",
+  "route.dossiers.groups.explanation": "Ajouter un group a ce dossier pour permettre de fusionner avec d'autre bouttons sur les hits et alerts",
+  "route.dossiers.groups.label": "Group du dossier",
   "route.dossiers.manager.create.success": "Dossier crée.",
   "route.dossiers.manager.delete": "Supprimer un dossier",
   "route.dossiers.manager.delete.success": "Dossier supprimé.",
