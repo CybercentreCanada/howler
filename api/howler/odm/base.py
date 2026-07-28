@@ -1444,12 +1444,16 @@ class Model:
         fields = self.fields()
         for key, value in self._odm_py_obj.items():
             field_type = fields.get(key, Any)
+            if isinstance(field_type, Optional):
+                field_type = field_type.child_type
+
             if value is not None or (value is None and field_type.default_set):
                 if strip_null and value is None:
                     continue
 
                 out[key] = self._as_primitive(
                     value,
+                    field_type,
                     strip_null=strip_null,
                     ip_format=ip_format,
                     timestamp_format=timestamp_format,
@@ -1523,7 +1527,7 @@ class Model:
         return name.rstrip("_") in self.fields()
 
     @staticmethod
-    def _as_primitive(value, strip_null=True, ip_format=None, timestamp_format=None):
+    def _as_primitive(value, field_type, strip_null=True, ip_format=None, timestamp_format=None):
         if isinstance(value, Model):
             return value.as_primitives(strip_null=strip_null, ip_format=ip_format, timestamp_format=timestamp_format)
 
@@ -1536,7 +1540,7 @@ class Model:
 
             return value.strftime(DATEFORMAT)
 
-        if value is not None and re.match(IP_ONLY_REGEX, str(value)):
+        if value is not None and isinstance(field_type, IP):
             if ip_format == "encoded_bytes":
                 ip_bytes = ip_address(value).packed
                 return base64.b64encode(ip_bytes).decode("utf-8")
@@ -1554,6 +1558,7 @@ class Model:
                     if isinstance(v, Model)
                     else Model._as_primitive(
                         v,
+                        value.type,
                         strip_null=strip_null,
                         ip_format=ip_format,
                         timestamp_format=timestamp_format,
@@ -1569,6 +1574,7 @@ class Model:
                     if isinstance(v, Model)
                     else Model._as_primitive(
                         v,
+                        value.type,
                         strip_null=strip_null,
                         ip_format=ip_format,
                         timestamp_format=timestamp_format,

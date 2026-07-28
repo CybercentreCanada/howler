@@ -24,6 +24,8 @@ def dummy_model() -> type[odm.Model]:
         ip_as_optional = odm.Optional(odm.IP())
         timestamp_in_mapping = odm.Mapping(odm.Date())
         inner_model_field = odm.Compound(InnerModel)
+        list_of_ip_like_strings = odm.List(odm.Keyword())
+        optional_ip_like_string = odm.Optional(odm.Keyword())
 
     return TestModel
 
@@ -57,6 +59,8 @@ def model_data(timestamp_str) -> dict:
             "nested_timestamp_field": timestamp_str,
             "nested_keyword_field": f"nested_test_keyword_containing_a_{timestamp_str}_timestamp",
         },
+        "list_of_ip_like_strings": ["127.0.0.1", "192.168.0.1"],
+        "optional_ip_like_string": "1.1.1.1",
     }
 
 
