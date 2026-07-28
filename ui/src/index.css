@@ -19,3 +19,7 @@ body {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
+
+.no-margin-first-child > :first-child {
+  margin-top: 0 !important;
+}

@@ -43,14 +43,12 @@ const CaseOverview: FC<{ case: Case; updateCase: (_case: Partial<Case>) => Promi
         <Divider />
         <LinearProgress sx={{ opacity: +loading }} />
       </Stack>
-      <CardContent sx={{ position: 'relative' }}>
+      <CardContent>
         <Stack direction="row" spacing={1}>
           <Box
             flex={1}
+            className="no-margin-first-child"
             sx={{
-              '& > :first-child': {
-                marginTop: '0 !important'
-              },
               '& > h1,h2,h3,h4,h5': {
                 fontSize: theme.typography.h5.fontSize
               }

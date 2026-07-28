@@ -371,7 +371,6 @@ const OverviewViewer = () => {
                   pt: 1,
                   mt: -1,
                   '& > *': { width: '100%' },
-                  '& > div > :first-child': { mt: 0 },
                   backgroundColor: activeTheme.palette.background.default,
                   color: activeTheme.palette.text.primary
                 }}
