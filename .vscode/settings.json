@@ -77,7 +77,8 @@
   "editor.codeActionsOnSave": {
     "source.organizeImports": "explicit",
     "source.fixAll": "explicit",
-    "source.unusedImports": "explicit"
+    "source.unusedImports": "explicit",
+    "source.format.oxc": "explicit"
   },
   "python.defaultInterpreterPath": "${workspaceFolder}/api/.venv/bin/python",
   "python.analysis.autoImportCompletions": true,

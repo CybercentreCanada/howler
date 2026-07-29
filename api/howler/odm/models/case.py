@@ -153,17 +153,17 @@ class CaseTask(odm.Model):
     item: str = odm.Keyword(description="Associated case item id.", optional=True)
 
 
-@odm.model(index=True, store=True, description="Enrichment annotations associated with a case path.")
+@odm.model(index=True, store=True, description="Enrichment annotations associated with a case item id.")
 class CaseEnrichment(odm.Model):
-    path: str = odm.Keyword(description="Case item path associated with these annotations.")
+    item: str = odm.Keyword(description="Case item id associated with these annotations.")
     annotations: list[str] = odm.List(
         odm.Keyword(),
         default=[],
-        description="Annotation IDs associated with the path.",
+        description="Annotation IDs associated with the case item id.",
     )
 
 
-@odm.model(index=True, store=True, description="Case model with path-based items, enrichments, rules, and tasks.")
+@odm.model(index=True, store=True, description="Case model with items, enrichments, rules, and tasks.")
 class Case(DatastoreMixin["Case"], odm.Model):
     case_id: str = odm.UUID(description="A unique identifier for this case.")
     classification: str = odm.Classification(

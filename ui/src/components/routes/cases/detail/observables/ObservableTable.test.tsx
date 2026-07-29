@@ -1,4 +1,3 @@
-/// <reference types="vitest" />
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createElement } from 'react';
@@ -19,7 +18,7 @@ vi.mock('components/elements/PluginTypography', () => ({
 const makeObservable = (overrides: Partial<ObservableEntry> = {}): ObservableEntry => ({
   type: 'ip',
   value: '192.168.1.1',
-  seenIn: [],
+  sources: [],
   ...overrides
 });
 
@@ -53,12 +52,25 @@ describe('ObservableTable', () => {
     expect(getObservableValues()).toEqual(['bravo', 'charlie', 'alpha']);
   });
 
-  it('sorts observables numerically by their seen-in count', async () => {
+  it('sorts observables numerically by their source count', async () => {
     const user = userEvent.setup();
     renderTable([
-      makeObservable({ value: 'three', seenIn: ['one', 'two', 'three'] }),
-      makeObservable({ value: 'one', seenIn: ['one'] }),
-      makeObservable({ value: 'two', seenIn: ['one', 'two'] })
+      makeObservable({
+        value: 'three',
+        sources: [
+          { id: 'one', type: 'hit' },
+          { id: 'two', type: 'hit' },
+          { id: 'three', type: 'hit' }
+        ]
+      }),
+      makeObservable({ value: 'one', sources: [{ id: 'one', type: 'hit' }] }),
+      makeObservable({
+        value: 'two',
+        sources: [
+          { id: 'one', type: 'hit' },
+          { id: 'two', type: 'hit' }
+        ]
+      })
     ]);
 
     await user.click(screen.getByText('page.cases.observables.columns.seen_in'));
@@ -87,9 +99,9 @@ describe('ObservableTable', () => {
           { id: 'source-1', type: 'hit', path: 'alerts/one', label: 'Alert one', escalation: 'evidence' },
           {
             id: 'source-2',
-            type: 'observable',
-            path: 'observables/two',
-            label: 'Observable two',
+            type: 'event',
+            path: 'events/two',
+            label: 'Event two',
             escalation: 'evidence'
           },
           { id: 'source-3', type: 'case', escalation: 'malicious' }
