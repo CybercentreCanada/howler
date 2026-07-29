@@ -1,10 +1,11 @@
-import { PageCenter } from '@tui/core';
+import { PageCenter, useAppUser } from '@tui/core';
 import { iconExists } from '@iconify/react';
-import { Language, Person, Save } from '@mui/icons-material';
+import { Language, Person, PersonAdd, Save } from '@mui/icons-material';
 import {
   Box,
   CircularProgress,
   Fab,
+  IconButton,
   Paper,
   Stack,
   Tab,
@@ -18,10 +19,12 @@ import {
 } from '@mui/material';
 import api from 'api';
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
+import { MembershipManagement } from 'components/elements/MembershipManagement';
 import useMyApi from 'components/hooks/useMyApi';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import { isEqual, omit, uniqBy } from 'lodash-es';
 import type { Dossier } from 'models/entities/generated/Dossier';
+import type { HowlerUser } from 'models/entities/HowlerUser';
 import { memo, useCallback, useEffect, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
@@ -38,6 +41,7 @@ const DossierEditor: FC = () => {
   const { showSuccessMessage } = useMySnackbar();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { user } = useAppUser<HowlerUser>();
 
   const setQuery = useContextSelector(ParameterContext, ctx => ctx.setQuery);
 
@@ -53,8 +57,16 @@ const DossierEditor: FC = () => {
   const [searchTotal, setSearchTotal] = useState(-1);
   const [searchDirty, setSearchDirty] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [memberModalOpen, setMemberModalOpen] = useState(false);
 
   const dirty = useMemo(() => !isEqual(originalDossier, dossier), [dossier, originalDossier]);
+  const canManageMembership = useMemo(() => {
+    if (!dossier) {
+      return false;
+    }
+
+    return dossier.owner === user.username || dossier.admins?.includes(user.username) || user.roles?.includes('admin');
+  }, [dossier, user]);
   const validationError = useMemo(() => {
     if (!dossier) {
       return t('route.dossiers.manager.validation.error');
@@ -176,7 +188,11 @@ const DossierEditor: FC = () => {
         showSuccessMessage(t('route.dossiers.manager.create.success'));
         void navigate(`/dossiers/${result.dossier_id}/edit`);
       } else {
-        setDossier(await dispatchApi(api.dossier.put(dossier.dossier_id, omit(dossier, ['dossier_id', 'id']))));
+        setDossier(
+          await dispatchApi(
+            api.dossier.put(dossier.dossier_id, omit(dossier, ['dossier_id', 'id', 'owner', 'admins', 'members']))
+          )
+        );
         showSuccessMessage(t('route.dossiers.manager.edit.success'));
       }
     } finally {
@@ -256,7 +272,7 @@ const DossierEditor: FC = () => {
         <Stack spacing={1} height="100%">
           <Paper sx={{ p: 1 }}>
             <Stack spacing={1}>
-              <Stack spacing={1} direction="row">
+              <Stack spacing={1} direction="row" alignItems="center">
                 <TextField
                   id="dossier-title"
                   disabled={!dossier || loading}
@@ -283,6 +299,13 @@ const DossierEditor: FC = () => {
                     </ToggleButton>
                   </Tooltip>
                 </ToggleButtonGroup>
+                {dossier.dossier_id && canManageMembership && (
+                  <Tooltip title={t('members')}>
+                    <IconButton onClick={() => setMemberModalOpen(true)} disabled={loading}>
+                      <PersonAdd />
+                    </IconButton>
+                  </Tooltip>
+                )}
               </Stack>
               <Typography
                 sx={theme => ({
@@ -311,6 +334,7 @@ const DossierEditor: FC = () => {
           {tab === 'pivots' && <PivotForm dossier={dossier} setDossier={setDossier} loading={loading} />}
         </Stack>
       </Box>
+      {dossier.dossier_id && <MembershipManagement open={memberModalOpen} onClose={() => setMemberModalOpen(false)} />}
     </PageCenter>
   );
 };

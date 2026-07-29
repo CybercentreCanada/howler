@@ -1,5 +1,5 @@
 import { useAppUser, PageCenter } from '@tui/core';
-import { Delete, Edit, PlayCircleOutline, Search } from '@mui/icons-material';
+import { Delete, Edit, PersonAdd, PlayCircleOutline, Search } from '@mui/icons-material';
 import {
   Button,
   Checkbox,
@@ -15,6 +15,7 @@ import { ModalContext } from 'components/app/providers/ModalProvider';
 import FlexOne from 'components/elements/addons/layout/FlexOne';
 import Phrase from 'components/elements/addons/search/phrase/Phrase';
 import HowlerAvatar from 'components/elements/display/HowlerAvatar';
+import { MembershipManagement } from 'components/elements/MembershipManagement';
 import useMyApi from 'components/hooks/useMyApi';
 import useMySnackbar from 'components/hooks/useMySnackbar';
 import OperationEntry from 'components/routes/action/shared/OperationEntry';
@@ -43,6 +44,7 @@ const ActionDetails = () => {
 
   const [operations, setOperations] = useState<ActionOperation[]>([]);
   const [action, setAction] = useState<Action>();
+  const [memberModalOpen, setMemberModalOpen] = useState(false);
 
   const { withConfirmDeleteModal } = useContext(ModalContext);
   const { showSuccessMessage } = useMySnackbar();
@@ -105,13 +107,14 @@ const ActionDetails = () => {
     user.roles.includes('admin') ||
     user.roles.includes('actionrunner_basic') ||
     user.roles.includes('actionrunner_advanced');
+  const adminList = action?.admins ?? [];
 
   return (
     <PageCenter maxWidth="1500px" textAlign="left" height="100%">
       <Stack spacing={1}>
         <Stack direction="row" justifyContent="space-between">
           <Typography variant="h5">{action?.name}</Typography>
-          {action?.owner_id && <HowlerAvatar sx={{ width: 32, height: 32 }} userId={action.owner_id} />}
+          {action?.owner && <HowlerAvatar sx={{ width: 32, height: 32 }} userId={action.owner} />}
         </Stack>
         <Phrase
           fullWidth
@@ -128,7 +131,7 @@ const ActionDetails = () => {
         <Stack direction="row" alignItems="center" spacing={1}>
           {response && <QueryResultText count={response.total} query={action?.query} />}
           <FlexOne />
-          {((action?.owner_id === user.username && editRoles) || user.roles?.includes('admin')) && (
+          {((action?.owner === user.username && editRoles) || user.roles?.includes('admin')) && (
             <Button startIcon={<Delete />} size="small" variant="outlined" color="error" onClick={onDelete}>
               {t('button.delete')}
             </Button>
@@ -144,7 +147,10 @@ const ActionDetails = () => {
               {t('route.actions.execute')}
             </Button>
           )}
-          {((action?.owner_id === user.username && editRoles) || user.roles?.includes('admin')) && (
+          {((action?.owner === user.username && editRoles) ||
+            (adminList.includes(user.username) && editRoles) ||
+            (action?.members?.includes(user.username) && editRoles) ||
+            user.roles?.includes('admin')) && (
             <Button
               startIcon={<Edit />}
               size="small"
@@ -153,6 +159,11 @@ const ActionDetails = () => {
               to={`/action/${params.id}/edit`}
             >
               {t('route.actions.edit')}
+            </Button>
+          )}
+          {(action?.owner === user.username || adminList.includes(user.username) || user.roles?.includes('admin')) && (
+            <Button startIcon={<PersonAdd />} size="small" variant="outlined" onClick={() => setMemberModalOpen(true)}>
+              {t('route.actions.permission')}
             </Button>
           )}
         </Stack>
@@ -214,6 +225,7 @@ const ActionDetails = () => {
             );
           })}
       </Stack>
+      <MembershipManagement open={memberModalOpen} onClose={() => setMemberModalOpen(false)} />
     </PageCenter>
   );
 };

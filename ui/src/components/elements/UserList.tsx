@@ -1,6 +1,16 @@
 import { Add } from '@mui/icons-material';
 import type { SxProps, Theme } from '@mui/material';
-import { Autocomplete, AvatarGroup, Box, IconButton, Popover, Stack, TextField, Typography } from '@mui/material';
+import {
+  Autocomplete,
+  AvatarGroup,
+  Box,
+  Button,
+  IconButton,
+  Popover,
+  Stack,
+  TextField,
+  Typography
+} from '@mui/material';
 import { UserListContext } from 'components/app/providers/UserListProvider';
 import { uniq } from 'lodash-es';
 import type { FC } from 'react';
@@ -9,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import HowlerAvatar from './display/HowlerAvatar';
 
 const UserList: FC<{
+  variant?: 'compact' | 'list';
   buttonSx?: SxProps<Theme>;
   userIds: string[];
   onChange: (userIds: string[]) => void;
@@ -16,7 +27,16 @@ const UserList: FC<{
   avatarHeight?: number;
   disabled?: boolean;
   multiple?: boolean;
-}> = ({ buttonSx = {}, userIds, onChange, i18nLabel, avatarHeight = 32, multiple = false, disabled = false }) => {
+}> = ({
+  buttonSx = {},
+  userIds,
+  onChange,
+  i18nLabel,
+  avatarHeight = 32,
+  multiple = false,
+  disabled = false,
+  variant = 'compact'
+}) => {
   const { t } = useTranslation();
 
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement>(null);
@@ -71,21 +91,40 @@ const UserList: FC<{
 
   return (
     <>
-      {multiple ? (
-        <Stack direction="row" spacing={0.25} alignItems="center">
-          <AvatarGroup>
-            {uniq(userIds ?? [null]).map(userId => (
-              <HowlerAvatar key={userId} userId={userId} sx={{ height: avatarHeight, width: avatarHeight }} />
-            ))}
-          </AvatarGroup>
-          <IconButton size="small" sx={buttonSx} disabled={disabled} onClick={e => setAnchorEl(e.currentTarget)}>
-            <Add />
+      {variant === 'compact' ? (
+        multiple ? (
+          <Stack direction="row" spacing={0.25} alignItems="center">
+            <AvatarGroup>
+              {uniq(userIds ?? [null]).map(userId => (
+                <HowlerAvatar key={userId} userId={userId} sx={{ height: avatarHeight, width: avatarHeight }} />
+              ))}
+            </AvatarGroup>
+            <IconButton size="small" sx={buttonSx} disabled={disabled} onClick={e => setAnchorEl(e.currentTarget)}>
+              <Add />
+            </IconButton>
+          </Stack>
+        ) : (
+          <IconButton sx={buttonSx} disabled={disabled} onClick={e => setAnchorEl(e.currentTarget)}>
+            <HowlerAvatar userId={userIds[0]} sx={{ height: avatarHeight, width: avatarHeight }} />
           </IconButton>
+        )
+      ) : multiple ? (
+        <Stack width="100%" spacing={1} alignItems="stretch">
+          {uniq(userIds ?? [null]).map(userId => (
+            <Stack key={userId} direction="row">
+              <HowlerAvatar userId={userId} sx={{ height: avatarHeight, width: avatarHeight }} />
+              <Typography>{userId}</Typography>
+            </Stack>
+          ))}
+          <Button variant="outlined" onClick={e => setAnchorEl(e.currentTarget)}>
+            {t('add')}
+          </Button>
         </Stack>
       ) : (
-        <IconButton sx={buttonSx} disabled={disabled} onClick={e => setAnchorEl(e.currentTarget)}>
+        <Stack direction="row">
           <HowlerAvatar userId={userIds[0]} sx={{ height: avatarHeight, width: avatarHeight }} />
-        </IconButton>
+          <Typography>{userIds[0]}</Typography>
+        </Stack>
       )}
       <Popover
         open={!!anchorEl}

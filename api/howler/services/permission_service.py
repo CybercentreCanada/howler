@@ -76,7 +76,7 @@ def give_privilege(
     return result.as_primitives()
 
 
-def remove_privilege(
+def remove_privilege(  # noqa: C901
     id: str,
     user: User,
     object_type: type[Ownership],
@@ -98,6 +98,13 @@ def remove_privilege(
 
     if permission_request.privilege == "owner":
         raise InvalidDataException(message="You cannot remove the owner privilege. Only transfer is allowed.")
+
+    current_members = result.admins if permission_request.privilege == "admins" else result.members
+    for user_id in permission_request.user_ids:
+        if user_id not in current_members:
+            raise InvalidDataException(
+                message=f"The user '{user_id}' does not have the '{permission_request.privilege}' privilege."
+            )
 
     errors: list[tuple[str, str]] = []
     for user_id in permission_request.user_ids:

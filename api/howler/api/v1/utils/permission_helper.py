@@ -6,7 +6,7 @@ from howler.common.exceptions import InvalidDataException
 from howler.common.swagger import generate_swagger_docs
 from howler.odm.models.ownership import Ownership
 from howler.odm.models.user import User
-from howler.security import api_login
+from howler.security.login import api_login
 from howler.services import permission_service
 
 

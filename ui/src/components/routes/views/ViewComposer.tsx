@@ -1,9 +1,9 @@
-import { AppListEmpty, PageCenter } from '@tui/core';
+import { AppListEmpty, PageCenter, useAppUser } from '@tui/core';
 import type { FC } from 'react';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { HelpOutline, Save, Settings } from '@mui/icons-material';
+import { HelpOutline, PersonAdd, Save, Settings } from '@mui/icons-material';
 import {
   Alert,
   Checkbox,
@@ -45,11 +45,14 @@ import useMySnackbar from 'components/hooks/useMySnackbar';
 import { uniq } from 'lodash-es';
 import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
+import type { View } from 'models/entities/generated/View';
+import type { HowlerUser } from 'models/entities/HowlerUser';
 import { useNavigate, useParams } from 'react-router';
 import { useContextSelector } from 'use-context-selector';
 import { DEFAULT_QUERY, StorageKey } from 'utils/constants';
 import { convertDateToLucene } from 'utils/utils';
 import { buildViewUrl } from 'utils/viewUtils';
+import { MembershipManagement } from '../../elements/MembershipManagement';
 import ErrorBoundary from '../ErrorBoundary';
 import RecordQuery from '../hits/search/RecordQuery';
 import HitSort from '../hits/search/shared/HitSort';
@@ -62,6 +65,7 @@ const ViewComposer: FC = () => {
   const { showSuccessMessage, showErrorMessage } = useMySnackbar();
   const routeParams = useParams();
   const navigate = useNavigate();
+  const { user } = useAppUser<HowlerUser>();
 
   const addView = useContextSelector(ViewContext, ctx => ctx.addView);
   const editView = useContextSelector(ViewContext, ctx => ctx.editView);
@@ -74,9 +78,11 @@ const ViewComposer: FC = () => {
   const loadRecords = useContextSelector(RecordContext, ctx => ctx.loadRecords);
 
   // view state
+  const [view, setView] = useState<View>();
   const [title, setTitle] = useState('');
   const [type, setType] = useState('global');
   const [advanceOnTriage, setAdvanceOnTriage] = useState(false);
+  const [memberModalOpen, setMemberModalOpen] = useState(false);
   const { columns, setColumns, columnWidths, isReady } = useContext(GridColumnsContext);
 
   const query = useContextSelector(ParameterContext, ctx => ctx.query);
@@ -232,6 +238,7 @@ const ViewComposer: FC = () => {
         setError(null);
       }
 
+      setView(viewToEdit);
       setTitle(viewToEdit.title);
       setAdvanceOnTriage(viewToEdit.settings?.advance_on_triage ?? false);
       setDisplayType((viewToEdit.settings?.display ?? null) as HowlerViewLayoutType);
@@ -260,6 +267,9 @@ const ViewComposer: FC = () => {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeParams.id]);
+
+  const canManageMembership =
+    !!view && (view.owner === user.username || view.admins?.includes(user.username) || user.roles?.includes('admin'));
 
   return (
     <FlexPort>
@@ -307,6 +317,11 @@ const ViewComposer: FC = () => {
                   >
                     {t('save')}
                   </CustomButton>
+                  {routeParams.id && canManageMembership && (
+                    <CustomButton variant="outlined" startIcon={<PersonAdd />} onClick={() => setMemberModalOpen(true)}>
+                      {t('route.actions.permission')}
+                    </CustomButton>
+                  )}
                 </Stack>
                 <Typography
                   sx={theme => ({
@@ -409,6 +424,7 @@ const ViewComposer: FC = () => {
               )}
             </VSBoxContent>
           </VSBox>
+          {routeParams.id && <MembershipManagement open={memberModalOpen} onClose={() => setMemberModalOpen(false)} />}
         </PageCenter>
       </ErrorBoundary>
     </FlexPort>
