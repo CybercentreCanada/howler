@@ -69,7 +69,7 @@
   "npm.packageManager": "pnpm",
   "python.terminal.activateEnvironment": false,
   "python.testing.pytestEnabled": true,
-  "python.testing.pytestPath": "./api",
+  "python.testing.pytestPath": "./api/.venv/bin/python",
   "[python]": {
     "editor.defaultFormatter": "charliermarsh.ruff",
     "editor.formatOnSave": true
