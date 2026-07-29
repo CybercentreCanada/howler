@@ -1,9 +1,14 @@
 import { ExpandMore } from '@mui/icons-material';
 import { Accordion, AccordionDetails, AccordionSummary, Box, Typography } from '@mui/material';
 import React, { type PropsWithChildren } from 'react';
+import { useLocation } from 'react-router-dom';
 import ErrorOccured from './ErrorOccured';
 
-class ErrorBoundary extends React.Component<PropsWithChildren<{}>, { hasError: boolean; error: Error }> {
+type ErrorBoundaryProps = PropsWithChildren<{
+  locationKey?: string;
+}>;
+
+class ErrorBoundaryComponent extends React.Component<ErrorBoundaryProps, { hasError: boolean; error: Error | null }> {
   constructor(props) {
     super(props);
     this.state = { hasError: false, error: null };
@@ -15,6 +20,14 @@ class ErrorBoundary extends React.Component<PropsWithChildren<{}>, { hasError: b
 
   componentDidCatch(error: Error): void {
     this.setState({ hasError: true, error: error });
+  }
+
+  componentDidUpdate(previousProps: ErrorBoundaryProps): void {
+    console.log(previousProps, this.props);
+
+    if (this.props.locationKey !== previousProps.locationKey && this.state.hasError) {
+      this.setState({ hasError: false, error: null });
+    }
   }
 
   render() {
@@ -40,5 +53,11 @@ class ErrorBoundary extends React.Component<PropsWithChildren<{}>, { hasError: b
     return this.props.children;
   }
 }
+
+const ErrorBoundary = ({ children }: PropsWithChildren) => {
+  const location = useLocation();
+
+  return <ErrorBoundaryComponent locationKey={location.key}>{children}</ErrorBoundaryComponent>;
+};
 
 export default ErrorBoundary;

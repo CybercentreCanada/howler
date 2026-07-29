@@ -52,7 +52,9 @@ const CaseViewer: FC = () => {
             overflow: 'auto'
           }}
         >
-          <Outlet context={_case} />
+          <ErrorBoundary>
+            <Outlet context={_case} />
+          </ErrorBoundary>
         </Box>
         <CaseDetails case={_case} />
       </Stack>

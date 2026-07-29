@@ -292,51 +292,27 @@ const createRouter = () =>
           children: [
             {
               index: true,
-              element: (
-                <ErrorBoundary>
-                  <CaseDashboard />
-                </ErrorBoundary>
-              )
+              element: <CaseDashboard />
             },
             {
               path: 'observables',
-              element: (
-                <ErrorBoundary>
-                  <CaseObservables />
-                </ErrorBoundary>
-              )
+              element: <CaseObservables />
             },
             {
               path: 'timeline',
-              element: (
-                <ErrorBoundary>
-                  <CaseTimeline />
-                </ErrorBoundary>
-              )
+              element: <CaseTimeline />
             },
             {
               path: 'rules',
-              element: (
-                <ErrorBoundary>
-                  <CaseRules />
-                </ErrorBoundary>
-              )
+              element: <CaseRules />
             },
             {
               path: 'search',
-              element: (
-                <ErrorBoundary>
-                  <CaseSearch />
-                </ErrorBoundary>
-              )
+              element: <CaseSearch />
             },
             {
               path: '*',
-              element: (
-                <ErrorBoundary>
-                  <ItemPage />
-                </ErrorBoundary>
-              )
+              element: <ItemPage />
             }
           ]
         },
