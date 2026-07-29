@@ -64,8 +64,8 @@ abstract class HowlerPlugin implements IPlugin {
       const pluginFunction = this[_function as keyof this];
       if (typeof pluginFunction === 'function') {
         this.pluginStore.addFunction(`${this.name}.${_function}`, pluginFunction.bind(this));
+        this.functionsToRemove.push(`${this.name}.${_function}`);
       }
-      this.functionsToRemove.push(`${this.name}.${_function}`);
     });
 
     this.localization(i18nInstance);
