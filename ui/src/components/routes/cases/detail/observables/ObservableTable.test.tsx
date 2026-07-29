@@ -115,6 +115,6 @@ describe('ObservableTable', () => {
 
     await user.click(screen.getByText('Alert one (+1)'));
 
-    expect(screen.getByText('Observable two').closest('a')).toHaveAttribute('href', '/cases/case-123/observables/two');
+    expect(screen.getByText('Event two').closest('a')).toHaveAttribute('href', '/cases/case-123/events/two');
   });
 });
