@@ -4,6 +4,7 @@ import api from 'api';
 import type { SearchIndex } from 'api/v2/search';
 import AppListEmpty from 'commons/components/display/AppListEmpty';
 import { useRecordContextSelector } from 'components/app/providers/RecordProvider';
+import type { RecordContextType } from 'components/app/providers/RecordProvider';
 import { ViewContext } from 'components/app/providers/ViewProvider';
 import EventCard from 'components/elements/event/EventCard';
 import HitBanner from 'components/elements/hit/HitBanner';
@@ -20,15 +21,15 @@ import { isEvent } from 'utils/typeUtils';
 import { buildViewUrl } from 'utils/viewUtils';
 
 // Custom hook to select records by IDs with proper memoization
-const useSelectRecordsByIds = (recordIds: string[]): Hit[] | Event[] => {
+const useSelectRecordsByIds = (recordIds: string[]): (Hit | Event)[] => {
   const recordIdsRef = useRef<string[]>(recordIds);
-  const prevResultRef = useRef<Hit[] | Event[]>([]);
+  const prevResultRef = useRef<(Hit | Event)[]>([]);
   const prevRecordIdsRef = useRef<string[]>([]);
 
   // Keep ref up to date with latest recordIds
   recordIdsRef.current = recordIds;
 
-  const selector = useCallback(ctx => {
+  const selector = useCallback((ctx: RecordContextType) => {
     const currentRecordIds = recordIdsRef.current;
 
     // Fast path: if recordIds array didn't change, check if record objects changed
@@ -69,8 +70,10 @@ const createRecordSignature = (record: Hit | Event) => {
   return `${record.howler?.id}:${normalize(record.howler?.status)}:${normalize(record.howler?.assignment)}:${normalize(record.howler?.assessment)}`;
 };
 
-const createSignatureFromRecords = (records: Hit[] | Event[]) => {
-  if (records.length === 0) return '';
+const createSignatureFromRecords = (records: (Hit | Event)[]) => {
+  if (records.length === 0) {
+    return '';
+  }
   return records.map(createRecordSignature).join('|');
 };
 

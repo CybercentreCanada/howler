@@ -127,7 +127,8 @@ const OverviewViewer = () => {
         return;
       }
 
-      const _hit = hitsData.GET[Object.keys(hitsData.GET)[0]];
+      const firstHitKey = Object.keys(hitsData.GET)[0] as keyof typeof hitsData.GET;
+      const _hit = hitsData.GET[firstHitKey] as unknown as Hit;
 
       if (analytic) {
         _hit.howler.analytic = analytic;

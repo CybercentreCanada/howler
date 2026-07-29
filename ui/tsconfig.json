@@ -15,7 +15,10 @@
     "declaration": true,
 
     /* Linting */
-    "strict": false,
+    "strict": true,
+    "strictNullChecks": false,
+    "strictFunctionTypes": false,
+    "useUnknownInCatchVariables": false,
     "noImplicitAny": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,

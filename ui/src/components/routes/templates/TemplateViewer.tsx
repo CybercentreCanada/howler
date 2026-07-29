@@ -155,7 +155,8 @@ const TemplateViewer = () => {
   }, [analytic, detection, params, setParams, type]);
 
   const exampleHit = useMemo<Hit>(() => {
-    const _hit = hitsData.GET[Object.keys(hitsData.GET)[0]];
+    const firstHitKey = Object.keys(hitsData.GET)[0] as keyof typeof hitsData.GET;
+    const _hit = hitsData.GET[firstHitKey] as unknown as Hit;
 
     if (analytic) {
       _hit.howler.analytic = analytic;

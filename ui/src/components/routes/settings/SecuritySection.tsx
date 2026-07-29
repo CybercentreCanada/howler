@@ -13,7 +13,7 @@ import { StorageKey } from 'utils/constants';
 import EditRow from '../../elements/EditRow';
 import SettingsSection from './SettingsSection';
 
-const APIKEY_LABELS = {
+const APIKEY_LABELS: Record<string, string> = {
   R: 'apikey.read',
   W: 'apikey.write',
   E: 'apikey.extended',
