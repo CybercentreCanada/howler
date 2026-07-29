@@ -435,8 +435,6 @@ const ViewComposer: FC = () => {
             <MembershipManagement
               open={memberModalOpen}
               onClose={() => setMemberModalOpen(false)}
-              entityId={routeParams.id}
-              entityType="view"
             />
           )}
         </PageCenter>

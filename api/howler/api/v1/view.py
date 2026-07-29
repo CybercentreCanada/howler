@@ -4,9 +4,9 @@ from flask import request
 from mergedeep.mergedeep import merge
 
 from howler.api import bad_request, created, forbidden, make_subapi_blueprint, no_content, not_found, ok
-from howler.api.v1.helper import permission_helper
+from howler.api.v1.utils import permission_helper
 from howler.api.v1.utils.params import parse_parameters, parse_refresh
-from howler.common.exceptions import HowlerException, InvalidDataException
+from howler.common.exceptions import HowlerException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
@@ -18,6 +18,8 @@ from howler.security import api_login
 SUB_API = "view"
 view_api = make_subapi_blueprint(SUB_API, api_version=1)
 view_api._doc = "Manage the different views created for filtering hits"  # type: ignore
+
+permission_helper.add_access_control_endpoints(view_api, View)
 
 logger = get_logger(__file__)
 
@@ -303,76 +305,3 @@ def remove_as_favourite(view_id: str, **kwargs):
         return no_content()
     except ValueError as e:
         return bad_request(err=str(e))
-
-
-# region Permission
-
-
-@generate_swagger_docs()
-@view_api.route("/<view_id>/permission", methods=["PUT"])
-@api_login(required_priv=["R", "W"])
-@parse_parameters(refresh=parse_refresh)
-def give_privilege(view_id: str, user: User, **kwargs):
-    """Grant a privilege on a view to another user.
-
-    Variables:
-    view_id => The ID of the view for which to grant a privilege
-
-    Optional Arguments:
-    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
-
-    Data Block:
-    {
-        "privilege": "privilege to grant"  # [members, admins, owner]
-        "user_id": "user to grant permission to"
-    }
-
-    Result Example:
-    {
-        "success": True     # If the operation succeeded
-    }
-    """
-    try:
-        result = permission_helper.give_privilege(view_id, user, View, request.json, refresh=kwargs.get("refresh"))
-    except (ValueError, InvalidDataException) as e:
-        return bad_request(err=str(e))
-    return ok(result)
-
-
-@generate_swagger_docs()
-@view_api.route("/<view_id>/permission", methods=["DELETE"])
-@parse_parameters(refresh=parse_refresh)
-@api_login(required_priv=["R", "W"])
-def remove_privilege(view_id: str, user: User, **kwargs):
-    """Revoke permission from one user to another.
-
-    Variables:
-        view_id => The id of the view to revoke administrative privilege of
-
-    Arguments:
-        view_id: The id of the view to revoke administrative privilege of
-        user: The user making the request (injected by the api_login decorator)
-
-    Optional Arguments:
-    refresh =>  ('true' | 'false' | 'wait_for') Whether to refresh the datastore before returning.
-        'wait_for' will wait for the change to be visible in search.
-
-    Data Block:
-        {
-            "privilege": "privilege to revoke",  # [members, admins, owner]
-            "user_id": "user to remove permission from",
-        }
-
-    Result Example:
-        {
-            "success": True
-        }
-    """
-    try:
-        result = permission_helper.remove_privilege(view_id, user, View, request.json, refresh=kwargs.get("refresh"))
-    except (ValueError, InvalidDataException) as e:
-        return bad_request(err=str(e))
-    return ok(result)
-
-
-# endregion

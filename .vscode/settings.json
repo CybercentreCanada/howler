@@ -119,7 +119,7 @@
       "tables": false
     }
   },
-  "python-envs.defaultEnvManager": "ms-python.python:poetry",
+  "python-envs.defaultEnvManager": "ms-python.python:system",
   "editor.autoIndentOnPaste": true,
   "python-envs.pythonProjects": [
     {
@@ -138,5 +138,5 @@
       "packageManager": "ms-python.python:poetry"
     }
   ],
-  "python-envs.defaultPackageManager": "ms-python.python:poetry"
+  "python-envs.defaultPackageManager": "ms-python.python:pip"
 }

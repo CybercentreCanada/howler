@@ -9,7 +9,7 @@ class PermissionRequest(odm.Model):
         values=["admins", "members", "owner"],
         description="The permission level to update",
     )
-    user_id: list[str] = odm.List(
+    user_ids: list[str] = odm.List(
         odm.Keyword(),
         description="The group administrator for this object.",
         default=[],

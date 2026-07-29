@@ -232,7 +232,7 @@ const ActionDetails = () => {
           })}
       </Stack>
 
-      <MembershipManagement open={memberModalOpen} onClose={() => setMemberModalOpen(false)} entityId={params.id} />
+      <MembershipManagement open={memberModalOpen} onClose={() => setMemberModalOpen(false)} />
     </PageCenter>
   );
 };

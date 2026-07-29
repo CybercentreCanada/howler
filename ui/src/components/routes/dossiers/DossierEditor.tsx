@@ -343,8 +343,6 @@ const DossierEditor: FC = () => {
         <MembershipManagement
           open={memberModalOpen}
           onClose={() => setMemberModalOpen(false)}
-          entityId={dossier.dossier_id}
-          entityType="dossier"
         />
       )}
     </PageCenter>
