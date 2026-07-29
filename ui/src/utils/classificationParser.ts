@@ -682,7 +682,7 @@ export const applyClassificationRules = (
             retParts.lvlIdx = requireLvl[value];
             retParts.lvl = getLevelText(requireLvl[value], c12nDef, format, isMobile);
           }
-          for (const [levelIndex, levelLabel] of Object.entries(c12nDef.levels_map)) {
+          for (const [levelIndex, levelLabel] of Object.entries(c12nDef.levels_map as Record<string, string>)) {
             const numericLevel = Number.parseInt(levelIndex, 10);
             if (!Number.isNaN(numericLevel) && numericLevel < requireLvl[value]) {
               disabledList.levels.push(levelLabel);

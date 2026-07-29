@@ -92,7 +92,8 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
   );
 
   const filterValue = filter?.replaceAll('"', '').replaceAll('\\-', '-') || '';
-  const configuredLookup = category ? config.lookups[category as keyof APILookups] : undefined;
+  const configuredLookup =
+    category && category in config.lookups ? config.lookups[category as keyof APILookups] : undefined;
   const lookupOptions = Array.isArray(configuredLookup) ? configuredLookup : customLookups;
 
   return (

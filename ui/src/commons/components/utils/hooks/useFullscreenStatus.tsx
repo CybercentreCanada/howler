@@ -49,7 +49,7 @@ export default function useFullscreenStatus(elRef: MutableRefObject<any>) {
     return () => {
       document.onfullscreenchange = undefined;
     };
-  }, [fullscreenDocument]);
+  }, []);
 
   return useMemo(() => [isFullscreen, setFullscreen], [isFullscreen, setFullscreen]) as [boolean, () => void];
 }
