@@ -18,7 +18,7 @@
     "strict": true,
     // Temporary strict-mode carve-outs while nullability and function variance are incrementally tightened.
     "strictNullChecks": false,
-    "strictFunctionTypes": false,
+    "strictFunctionTypes": true,
     "useUnknownInCatchVariables": true,
     "noImplicitAny": true,
     "noUnusedLocals": true,
