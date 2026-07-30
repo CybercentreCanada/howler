@@ -32,8 +32,12 @@ const TYPES = {
 };
 
 const VISUALIZATIONS = ['assessment', 'created', 'escalation', 'status', 'detection'];
+type DashboardCard = NonNullable<HowlerUser['dashboard']>[number];
 
-const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard) => void }> = ({ dashboard, addCard }) => {
+const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard: DashboardCard) => void }> = ({
+  dashboard,
+  addCard
+}) => {
   const { t } = useTranslation();
   const views = useContextSelector(ViewContext, ctx => ctx.views ?? {});
   const fetchViews = useContextSelector(ViewContext, ctx => ctx.fetchViews);

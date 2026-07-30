@@ -1,34 +1,42 @@
 import { useCallback, useLayoutEffect, useMemo, useState, type MutableRefObject } from 'react';
 
-const getBrowserFullscreenElementProp = () => {
-  if (typeof document.fullscreenElement !== 'undefined') {
+type FullscreenDocument = Document & {
+  mozFullScreenElement?: Element | null;
+  msFullscreenElement?: Element | null;
+  webkitFullscreenElement?: Element | null;
+};
+
+const getBrowserFullscreenElementProp = (): keyof FullscreenDocument => {
+  const fullscreenDocument = document as FullscreenDocument;
+
+  if (typeof fullscreenDocument.fullscreenElement !== 'undefined') {
     return 'fullscreenElement';
   }
-  // eslint-disable-next-line @typescript-eslint/dot-notation
-  if (typeof document['mozFullScreenElement'] !== 'undefined') {
+  if (typeof fullscreenDocument.mozFullScreenElement !== 'undefined') {
     return 'mozFullScreenElement';
   }
-  // eslint-disable-next-line @typescript-eslint/dot-notation
-  if (typeof document['msFullscreenElement'] !== 'undefined') {
+  if (typeof fullscreenDocument.msFullscreenElement !== 'undefined') {
     return 'msFullscreenElement';
   }
-  // eslint-disable-next-line @typescript-eslint/dot-notation
-  if (typeof document['webkitFullscreenElement'] !== 'undefined') {
+  if (typeof fullscreenDocument.webkitFullscreenElement !== 'undefined') {
     return 'webkitFullscreenElement';
   }
   throw new Error('fullscreenElement is not supported by this browser');
 };
 
 export default function useFullscreenStatus(elRef: MutableRefObject<any>) {
-  const [isFullscreen, setIsFullscreen] = useState(document[getBrowserFullscreenElementProp()] != null);
+  const fullscreenDocument = document as FullscreenDocument;
+  const [isFullscreen, setIsFullscreen] = useState(fullscreenDocument[getBrowserFullscreenElementProp()] != null);
 
   const setFullscreen = useCallback(() => {
-    if (elRef.current == null) return;
+    if (elRef.current == null) {
+      return;
+    }
 
     elRef.current
       .requestFullscreen()
       .then(() => {
-        setIsFullscreen(document[getBrowserFullscreenElementProp()] != null);
+        setIsFullscreen(fullscreenDocument[getBrowserFullscreenElementProp()] != null);
       })
       .catch(() => {
         setIsFullscreen(false);
@@ -36,12 +44,12 @@ export default function useFullscreenStatus(elRef: MutableRefObject<any>) {
   }, [elRef]);
 
   useLayoutEffect(() => {
-    document.onfullscreenchange = () => setIsFullscreen(document[getBrowserFullscreenElementProp()] != null);
+    document.onfullscreenchange = () => setIsFullscreen(fullscreenDocument[getBrowserFullscreenElementProp()] != null);
 
     return () => {
       document.onfullscreenchange = undefined;
     };
-  });
+  }, []);
 
   return useMemo(() => [isFullscreen, setFullscreen], [isFullscreen, setFullscreen]) as [boolean, () => void];
 }

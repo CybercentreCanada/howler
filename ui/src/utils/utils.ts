@@ -2,6 +2,7 @@ import * as colors from '@mui/material/colors';
 import dayjs from 'dayjs';
 import { flatten, unflatten } from 'flat';
 import { isArray, isEmpty, isNil, isObject, isPlainObject } from 'lodash-es';
+import type { PluginStore } from 'react-pluggable';
 
 export const bytesToSize = (bytes: number | null) => {
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -68,7 +69,8 @@ export const stringToColor = (string: string) => {
 
   const colorKey = colorKeys[number % colorKeys.length];
   // eslint-disable-next-line import/namespace
-  const color = colors[colorKey] as { [shade: string]: string };
+  const colorMap = colors as unknown as Record<string, { [shade: string]: string }>;
+  const color = colorMap[colorKey] ?? colorMap.blue;
 
   const shade = Math.max(Math.floor((number / 1000) % 10), 1) * 100;
 
@@ -110,10 +112,16 @@ export const getTimeRange = (arr: string[]): [string, string] => {
   return [sorted[0], sorted[sorted.length - 1]];
 };
 
-export const removeEmpty = (obj: any, aggressive = false) => {
+export const removeEmpty = (obj: unknown, aggressive = false): unknown => {
   if (aggressive && isEmpty(obj)) {
     return null;
-  } else if (isArray(obj)) {
+  }
+
+  if (isArray(obj)) {
+    return obj;
+  }
+
+  if (!isPlainObject(obj)) {
     return obj;
   }
 
@@ -142,7 +150,7 @@ export const searchObject = (o: any, query: string, returnFlat = false) => {
   }
 };
 
-const DATE_TO_LUCENE_MAP = {
+const DATE_TO_LUCENE_MAP: Record<string, string> = {
   day: 'd',
   week: 'w',
   month: 'M',
@@ -221,7 +229,11 @@ export const flattenDeep = (data: { [index: string]: any }): { [index: string]: 
   return final;
 };
 
-export const modifyDocumentation = (original: string, howlerPluginStore, pluginStore) => {
+export const modifyDocumentation = (
+  original: string,
+  howlerPluginStore: { plugins: string[] },
+  pluginStore: PluginStore
+): string => {
   for (const plugin of howlerPluginStore.plugins) {
     original = pluginStore.executeFunction(`${plugin}.documentation`, original) as string;
   }

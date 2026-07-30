@@ -121,7 +121,7 @@ const HitViewer: FC = () => {
       return;
     }
 
-    return {
+    const tabSections: Record<string, () => JSX.Element> = {
       overview: () => <HitOverview hit={hit} />,
       details: () => <ObjectDetails obj={hit} />,
       hit_comments: () => <RecordComments record={hit} users={users} />,
@@ -140,7 +140,9 @@ const HitViewer: FC = () => {
           ])
         )
       )
-    }[tab]?.();
+    };
+
+    return tabSections[tab]?.();
   }, [dossiers, hit, tab, users]);
 
   useEffect(() => {

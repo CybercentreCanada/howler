@@ -17,7 +17,6 @@ import { ApiConfigContext } from 'components/app/providers/ApiConfigProvider';
 import type { PivotFormProps } from 'components/routes/dossiers/PivotForm';
 import ErrorBoundary from 'components/routes/ErrorBoundary';
 import { flatten, unflatten } from 'flat';
-import type { JSONSchema7 } from 'json-schema';
 import capitalize from 'lodash-es/capitalize';
 import cloneDeep from 'lodash-es/cloneDeep';
 import isBoolean from 'lodash-es/isBoolean';
@@ -160,7 +159,7 @@ const CluePivotForm: FC<PivotFormProps> = ({ pivot, update }) => {
           scope: `#/properties/${key}`,
           options: {
             // Enable autocomplete for fields with enum values
-            autocomplete: !!(value as JSONSchema7).enum || !!(value as JSONSchema7).oneOf,
+            autocomplete: !!(value as JsonSchema7).enum || !!(value as JsonSchema7).oneOf,
             showUnfocusedDescription: true,
             // Apply any custom options from the schema
             ...(value as any).options

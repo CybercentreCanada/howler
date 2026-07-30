@@ -92,6 +92,9 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
   );
 
   const filterValue = filter?.replaceAll('"', '').replaceAll('\\-', '-') || '';
+  const configuredLookup =
+    category && category in config.lookups ? config.lookups[category as keyof APILookups] : undefined;
+  const lookupOptions = Array.isArray(configuredLookup) ? configuredLookup : customLookups;
 
   return (
     <ChipPopper
@@ -117,10 +120,7 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
           loading={loading}
           size={size ?? 'small'}
           value={filter?.replaceAll('"', '').replaceAll('\\-', '-') || ''}
-          options={[
-            ...(config.lookups[category as keyof APILookups] ? config.lookups[category as keyof APILookups] : customLookups),
-            '*'
-          ]}
+          options={[...lookupOptions, '*']}
           renderInput={_params => <TextField {..._params} label={t('hit.search.filter.values')} />}
           getOptionLabel={option => t(option)}
           onChange={onValueChange}
