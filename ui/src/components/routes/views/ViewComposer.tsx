@@ -141,7 +141,7 @@ const ViewComposer: FC = () => {
 
       showSuccessMessage(t(routeParams.id ? 'route.views.update.success' : 'route.views.create.success'));
     } catch (e) {
-      showErrorMessage(e.message);
+      showErrorMessage(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
@@ -186,7 +186,7 @@ const ViewComposer: FC = () => {
         loadRecords(_response.items);
         setResponse(_response);
       } catch (e) {
-        setError(e.message);
+        setError(e instanceof Error ? e.message : String(e));
       } finally {
         setSearching(false);
       }

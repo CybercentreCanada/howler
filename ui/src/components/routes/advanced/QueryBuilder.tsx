@@ -182,7 +182,7 @@ const QueryBuilder: FC = () => {
       setResponse(result);
       setError(null);
     } catch (e) {
-      setError(e.message ?? e.toString());
+      setError(e instanceof Error ? (e.message ?? e.toString()) : String(e));
     } finally {
       setLoading(false);
     }

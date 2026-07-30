@@ -148,7 +148,7 @@ const HitSummary: FC<{
         }
       }
     } catch (e) {
-      showErrorMessage(e);
+      showErrorMessage(e instanceof Error ? e.message : String(e));
       setAggregateResults({});
     } finally {
       setLoading(false);

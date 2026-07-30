@@ -50,7 +50,7 @@ const NewLabelForm: FC<{ handleSubmit: (label: LabelState) => Promise<void> }> =
         await handleSubmit({ label: label, category: category as keyof Labels });
         setLabel('');
       } catch (e) {
-        setError(e.message);
+        setError(e instanceof Error ? e.message : String(e));
       }
     }
   };

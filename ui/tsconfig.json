@@ -19,8 +19,7 @@
     // Temporary strict-mode carve-outs while nullability and function variance are incrementally tightened.
     "strictNullChecks": false,
     "strictFunctionTypes": false,
-    // Keep existing catch handling behavior until unknown-catch migration is completed.
-    "useUnknownInCatchVariables": false,
+    "useUnknownInCatchVariables": true,
     "noImplicitAny": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
