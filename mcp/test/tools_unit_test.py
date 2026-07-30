@@ -11,7 +11,6 @@ from uuid import uuid4
 
 import pytest
 from howler_mcp.tools import MAXIMUM_LOOK_BACK, MAXIMUM_TICKET, RegisterTools
-
 from mcp.server.auth.provider import AccessToken
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -311,6 +310,9 @@ async def test_get_hit_by_id_calls_correct_path(tools_and_api):
                 "comment": "note",
             },
         ),
+        ("GetHitFields", {}),
+        ("GetFieldValues", {"field": "howler.escalation"}),
+        ("luceneQuery", {"query": "howler.id:*"}),
     ],
 )
 async def test_tool_call_error_is_propagated(tools_and_api, tool_name, kwargs):
@@ -326,3 +328,124 @@ async def test_tool_call_error_is_propagated(tools_and_api, tool_name, kwargs):
     with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
         with pytest.raises(ValueError, match="Missing 'api_response'"):
             await tools[tool_name](**effective_kwargs)
+
+
+# ── Happy path: GetHitFields ─────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_get_hit_fields_calls_correct_path(tools_and_api):
+    tools, mock_api = tools_and_api
+    mock_api.call.return_value = {
+        "howler.escalation": {"type": "keyword", "indexed": True, "stored": False}
+    }
+    with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
+        result = await tools["GetHitFields"]()
+
+    call_kwargs = mock_api.call.call_args.kwargs
+    assert call_kwargs["path"] == "/search/fields/hit"
+    assert call_kwargs["method"] == "GET"
+    assert "howler.escalation" in result
+
+
+# ── Happy path: GetFieldValues ───────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_get_field_values_calls_facet_endpoint(tools_and_api):
+    tools, mock_api = tools_and_api
+    mock_api.call.return_value = {"alert": 120, "hit": 340, "miss": 5}
+    with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
+        result = await tools["GetFieldValues"](field="howler.escalation")
+
+    call_kwargs = mock_api.call.call_args.kwargs
+    assert call_kwargs["path"] == "/search/facet/hit/howler.escalation"
+    assert call_kwargs["method"] == "GET"
+    assert call_kwargs["params"] == {"query": "howler.id:*"}
+    assert result["alert"] == 120
+
+
+@pytest.mark.asyncio
+async def test_get_field_values_passes_field_verbatim(tools_and_api):
+    """The field name must appear verbatim in the path, including dots."""
+    tools, mock_api = tools_and_api
+    mock_api.call.return_value = {}
+    with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
+        await tools["GetFieldValues"](field="howler.assessment")
+
+    assert (
+        "/search/facet/hit/howler.assessment" in mock_api.call.call_args.kwargs["path"]
+    )
+
+
+# ── Happy path / validation: luceneQuery ─────────────────────────────────────
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "rows",
+    [0, -1, MAXIMUM_TICKET + 1],
+)
+async def test_lucene_query_rows_validation(tools_and_api, rows):
+    tools, _ = tools_and_api
+    with pytest.raises(ValueError):
+        await tools["luceneQuery"](query="howler.id:*", rows=rows)
+
+
+@pytest.mark.asyncio
+async def test_lucene_query_sends_correct_body(tools_and_api):
+    tools, mock_api = tools_and_api
+    mock_api.call.return_value = {"rows": 1, "total": 1, "items": []}
+    with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
+        await tools["luceneQuery"](query="howler.assignment:user", rows=20, offset=30)
+
+    body = mock_api.call.call_args.kwargs["body"]
+    assert body["query"] == "howler.assignment:user"
+    assert body["rows"] == 20
+    assert body["offset"] == 30
+
+
+@pytest.mark.asyncio
+async def test_lucene_query_omits_sort_when_empty(tools_and_api):
+    """sort must not appear in the POST body when the caller leaves it as the default empty string."""
+    tools, mock_api = tools_and_api
+    mock_api.call.return_value = {"rows": 0, "total": 0, "items": []}
+    with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
+        await tools["luceneQuery"](query="howler.id:*")
+
+    body = mock_api.call.call_args.kwargs["body"]
+    assert "sort" not in body
+
+
+@pytest.mark.asyncio
+async def test_lucene_query_includes_sort_when_provided(tools_and_api):
+    tools, mock_api = tools_and_api
+    mock_api.call.return_value = {"rows": 0, "total": 0, "items": []}
+    with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
+        await tools["luceneQuery"](query="howler.id:*", sort="event.created desc")
+
+    body = mock_api.call.call_args.kwargs["body"]
+    assert body["sort"] == "event.created desc"
+
+
+@pytest.mark.asyncio
+async def test_lucene_query_shapes_howler_response(tools_and_api):
+    tools, mock_api = tools_and_api
+    mock_api.call.return_value = {
+        "rows": 1,
+        "total": 5,
+        "items": [
+            {
+                "classification": "TLP:WHITE",
+                "howler": {"id": "hit-abc", "analytic": "test"},
+                "timestamp": "2024-01-01",
+            }
+        ],
+    }
+    with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
+        result = await tools["luceneQuery"](query="howler.id:*")
+
+    assert result.rows == 1
+    assert result.total == 5
+    assert result.hits[0]["classification"] == "TLP:WHITE"
+    assert result.hits[0]["howler"]["id"] == "hit-abc"
