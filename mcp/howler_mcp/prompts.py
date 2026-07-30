@@ -92,3 +92,68 @@ def RegisterPrompts(mcp):
         - Should the hit in Howler be escalated, reassigned, or closed based on {target_system} findings?
 
         Format the report clearly with markdown headings, tables, and bullet points. Make it suitable for sharing with security analysts and response teams."""
+
+    @mcp.prompt(name="luceneQuery")
+    def search_luecene() -> str:
+        """Build a Lucene query from the user's request and search for matching hits."""
+        return """Interpret the user's request as a Howler hit search and use the luceneQuery tool.
+
+        Your job is to translate the user's natural language request into a valid Lucene query for Howler hits, then call the luceneQuery tool with the correct arguments.
+
+        Available tools:
+        - GetHitFields: call this when you are unsure which field names exist. It returns the full list of searchable Howler hit fields with their types. Use the returned field names verbatim in your Lucene query.
+        - GetFieldValues(field): call this when you are unsure which values a field accepts. For example, call it with howler.escalation or howler.assessment before filtering on those fields. The response maps each distinct value to its hit count. Use only values returned by this call.
+        - luceneQuery: call this to execute the query once you have confirmed field names and values.
+
+        Follow these rules:
+        - Search only Howler hits.
+        - Build a valid Lucene query string using field:value syntax.
+        - Use quoted values when the value contains spaces.
+        - Use Lucene operators such as AND, OR, NOT, parentheses, and range expressions when needed.
+        - Pass rows, offset, and sort as separate tool arguments. Do not include them inside the Lucene query string.
+        - Do not invent field names. If you are unsure whether a field exists, call GetHitFields before building the query.
+        - Do not invent field values. If you are unsure what values a field accepts, call GetFieldValues before building the query.
+        - If the user gives a plain English filter, translate it into the simplest valid Lucene expression.
+        - If the user asks for pagination, pass rows and offset explicitly to the tool.
+        - If the user asks for sorting, pass sort explicitly to the tool.
+
+        Common Howler fields:
+        - howler.id: exact hit identifier.
+        - howler.assignment: assigned user or queue.
+        - howler.escalation: escalation state such as alert.
+        - howler.assessment: analyst assessment such as false-positive.
+        - howler.analytic: analytic name.
+        - howler.score: numeric hit score.
+        - howler.outline.indicators: indicator values extracted from the hit.
+        - howler.outline.target: target values associated with the hit.
+        - howler.outline.threat: threat values associated with the hit.
+        - event.created: hit event timestamp, commonly used in time ranges.
+
+        Common field examples:
+        - howler.id:12345678-1234-1234-1234-123456789abc
+        - howler.assignment:user
+        - howler.escalation:alert
+        - howler.assessment:false-positive
+        - howler.analytic:"Password Checker"
+        - howler.score:[50 TO 100]
+        - event.created:[now-7d TO now]
+
+        Common examples:
+        - "Find hits assigned to user" -> query: howler.assignment:user
+        - "Find hits from analytic Password Checker" -> query: howler.analytic:\"Password Checker\"
+        - "Find alert hits from the last 7 days" -> query: howler.escalation:alert AND event.created:[now-7d TO now]
+        - "Find hits with score between 50 and 100" -> query: howler.score:[50 TO 100]
+
+        Example transformation:
+        - User request: Search for all tickets where howler.assignment equals user. Give me 20 rows and an offset of 30.
+        - Tool call arguments:
+            - query: howler.assignment:user
+            - rows: 20
+            - offset: 30
+
+        After calling the tool:
+        - Summarize what query was executed.
+        - Report the total number of matches.
+        - Present the returned hits clearly.
+        - If the user asked for a filter that cannot be translated safely into Lucene, explain what is missing and ask for clarification.
+        """
