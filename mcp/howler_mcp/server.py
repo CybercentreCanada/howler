@@ -2,10 +2,9 @@ import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from pydantic import AnyHttpUrl
-
 from mcp.server.auth.settings import AuthSettings
 from mcp.server.fastmcp import FastMCP
+from pydantic import AnyHttpUrl
 
 from .api import HowlerApiClient
 from .auth import KeycloakTokenVerifier
@@ -32,6 +31,18 @@ api_client = HowlerApiClient()
 
 @asynccontextmanager
 async def lifespan(_: FastMCP) -> AsyncGenerator[dict[str, None]]:
+    """Manage the lifespan of the MCP server.
+
+    Ensures that long-lived resources, such as the shared HTTP client, are
+    properly closed when the server shuts down.
+
+    Args:
+        _: The FastMCP application instance (unused).
+
+    Yields:
+        dict[str, None]: Empty context dictionary required by the lifespan
+        protocol.
+    """
     try:
         yield {}
     finally:
@@ -61,7 +72,7 @@ RegisterPrompts(mcp)
 
 
 if __name__ == "__main__":
-    """Start the MCP server using streamable-HTTP transport."""
+    # Start the MCP server using streamable-HTTP transport.
 
     logger.info(
         "Starting Howler MCP server on %s:%s",
