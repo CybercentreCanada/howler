@@ -431,12 +431,7 @@ const ViewComposer: FC = () => {
           </VSBox>
 
           {/* Membership Modal */}
-          {routeParams.id && (
-            <MembershipManagement
-              open={memberModalOpen}
-              onClose={() => setMemberModalOpen(false)}
-            />
-          )}
+          {routeParams.id && <MembershipManagement open={memberModalOpen} onClose={() => setMemberModalOpen(false)} />}
         </PageCenter>
       </ErrorBoundary>
     </FlexPort>

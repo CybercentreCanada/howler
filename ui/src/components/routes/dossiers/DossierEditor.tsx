@@ -339,12 +339,7 @@ const DossierEditor: FC = () => {
         </Stack>
       </Box>
 
-      {dossier.dossier_id && (
-        <MembershipManagement
-          open={memberModalOpen}
-          onClose={() => setMemberModalOpen(false)}
-        />
-      )}
+      {dossier.dossier_id && <MembershipManagement open={memberModalOpen} onClose={() => setMemberModalOpen(false)} />}
     </PageCenter>
   );
 };
