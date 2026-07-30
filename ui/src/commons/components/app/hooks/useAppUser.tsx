@@ -3,5 +3,5 @@ import type { AppUser, AppUserService } from 'commons/components/app/AppUserServ
 import { useContext } from 'react';
 
 export function useAppUser<U extends AppUser>(): AppUserService<U> {
-  return useContext(AppUserContext) as AppUserService<U>;
+  return useContext(AppUserContext) as unknown as AppUserService<U>;
 }

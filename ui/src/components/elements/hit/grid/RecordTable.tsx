@@ -33,7 +33,7 @@ const RecordTable = ({
   query: string;
   items?: WithMetadata<Hit | Event>[];
   refreshItems?: (query: string, append?: boolean) => void;
-  ContextMenu?: React.FC<PropsWithChildren<object>>;
+  ContextMenu?: React.FC<PropsWithChildren<any>>;
   contextMenuProps?: object;
   onItemClick?: (event: React.MouseEvent<HTMLDivElement, MouseEvent>, record: Hit | Event) => void;
 }) => {

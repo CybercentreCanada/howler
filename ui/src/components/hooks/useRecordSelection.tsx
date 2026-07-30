@@ -1,6 +1,7 @@
 import { ParameterContext } from 'components/app/providers/ParameterProvider';
 import { RecordContext } from 'components/app/providers/RecordProvider';
 import { RecordSearchContext } from 'components/app/providers/RecordSearchProvider';
+import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
 import type React from 'react';
 import { useCallback, useState } from 'react';
@@ -18,7 +19,7 @@ const useRecordSelection = () => {
   const [lastSelected, setLastSelected] = useState<string>(null);
 
   const onClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>, hit: Hit) => {
+    (e: React.MouseEvent<HTMLDivElement>, hit: Hit | Event) => {
       setLastSelected(hit.howler.id);
 
       if (e.ctrlKey) {

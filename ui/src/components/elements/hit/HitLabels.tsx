@@ -120,12 +120,12 @@ const HitLabels: FC<{ hit: Hit; readOnly?: boolean }> = ({ hit, readOnly = false
   const [openDrawer, setOpenDrawer] = useState(false);
   const [loading, setLoading] = useState(false);
   const [labels, setLabels] = useState<LabelState[]>(
-    Object.entries(hit.howler.labels).flatMap(([key, category]: [keyof Labels, string | string[]]) => {
+    Object.entries(hit.howler.labels).flatMap(([key, category]: [string, string | string[]]) => {
       if (typeof category === 'string') {
         category = [category];
       }
 
-      return (category ?? []).map?.(label => ({ category: key, label: label })) ?? [];
+      return (category ?? []).map?.(label => ({ category: key as keyof Labels, label: label })) ?? [];
     })
   );
 
@@ -170,12 +170,12 @@ const HitLabels: FC<{ hit: Hit; readOnly?: boolean }> = ({ hit, readOnly = false
   useEffect(() => {
     if (hit.howler.labels) {
       setLabels(
-        Object.entries(hit.howler.labels).flatMap(([key, category]: [keyof Labels, string | string[]]) => {
+        Object.entries(hit.howler.labels).flatMap(([key, category]: [string, string | string[]]) => {
           if (typeof category === 'string') {
             category = [category];
           }
 
-          return (category ?? []).map?.(label => ({ category: key, label: label })) ?? [];
+          return (category ?? []).map?.(label => ({ category: key as keyof Labels, label: label })) ?? [];
         })
       );
     }

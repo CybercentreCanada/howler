@@ -46,7 +46,7 @@ export interface RecordSearchContextType {
   getFilters: () => Promise<string[]>;
 
   queryHistory: QueryEntry;
-  setQueryHistory: ReturnType<typeof useMyLocalStorageItem>[1];
+  setQueryHistory: (value: Record<string, string>) => void;
 }
 
 export const RecordSearchContext = createContext<RecordSearchContextType>(null);

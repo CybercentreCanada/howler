@@ -167,7 +167,7 @@ const HitActions: FC<{
 
   const handleOpenSetting = useCallback((e: React.MouseEvent<HTMLElement>) => setOpenSetting(e.currentTarget), []);
   const handleCloseSetting = useCallback(() => setOpenSetting(null), []);
-  const onShortcutChange = useCallback((__: any, s: HitShortcuts) => set(StorageKey.HIT_SHORTCUTS, s), [set]);
+  const onShortcutChange = useCallback((__: any, s: string) => set(StorageKey.HIT_SHORTCUTS, s as HitShortcuts), [set]);
   const onDropdownChange = useCallback((__: any, checked: boolean) => set(StorageKey.FORCE_DROPDOWN, checked), [set]);
 
   const showButton = useMediaQuery(

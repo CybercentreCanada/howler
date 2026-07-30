@@ -20,8 +20,10 @@ const Settings: FC = () => {
   const isOAuth = useMemo(() => get<string>(StorageKey.APP_TOKEN)?.includes('.'), [get]);
 
   const currentUserWrapper = useCallback(
-    (fn: (user: HowlerUser, newValue: unknown) => Promise<HowlerUser>) => {
-      return async (value: unknown) => setUser(await fn(currentUser, value));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (fn: (user: HowlerUser, newValue: any) => Promise<HowlerUser>) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return async (value: any) => setUser(await fn(currentUser, value));
     },
     [currentUser, setUser]
   );
