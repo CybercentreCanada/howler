@@ -472,8 +472,13 @@ def RegisterTools(mcp, api_client):
         )
         return await api_client.call(
             user_access_token=access_token,
+            # The facet endpoint lives under /search/facet/<index>/<field>.
+            # Passing the field directly in the path avoids a separate body.
             path=f"/search/facet/hit/{field}",
             method="GET",
+            # A broad query is required — the facet endpoint needs at least one
+            # matching document to return any distinct values. Using howler.id:*
+            # matches every hit so we always get the full value distribution.
             params={"query": "howler.id:*"},
         )
 
@@ -504,6 +509,10 @@ def RegisterTools(mcp, api_client):
         )
         return await api_client.call(
             user_access_token=access_token,
+            # /search/fields/<index> returns the Elasticsearch field mapping
+            # for that index, including type, indexed, and stored flags.
+            # This is the authoritative source of valid field names for
+            # Lucene queries — use these names verbatim.
             path="/search/fields/hit",
             method="GET",
         )
@@ -573,12 +582,19 @@ def RegisterTools(mcp, api_client):
             access_token.subject,
         )
 
+        # Build the POST body incrementally so that optional fields are only
+        # sent when they carry a meaningful value.
         body: dict[str, Any] = {"query": query, "offset": offset, "rows": rows}
         if sort:
+            # Only include sort when the caller explicitly set it. Sending an
+            # empty string causes the API to reject the request rather than
+            # falling back to its default sort order.
             body["sort"] = sort
 
         data = await api_client.call(
             user_access_token=access_token,
+            # The search endpoint accepts any Lucene query against the hit index.
+            # The caller is responsible for providing valid Lucene syntax.
             path="/search/hit",
             method="POST",
             body=body,
