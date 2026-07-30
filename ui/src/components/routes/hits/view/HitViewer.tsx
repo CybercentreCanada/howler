@@ -82,7 +82,7 @@ const HitViewer: FC = () => {
 
       setAnalytic(await getMatchingAnalytic(hit));
     } catch (err) {
-      if (err.cause?.api_status_code === 404) {
+      if (err instanceof Error && (err.cause as { api_status_code?: number })?.api_status_code === 404) {
         navigate('/404');
       }
     }

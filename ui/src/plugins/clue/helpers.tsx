@@ -54,9 +54,9 @@ const MarkdownTypography: FC<EnrichedTypographyProps & TypographyProps> = ({ typ
     return (
       <Stack>
         <strong style={{ color: 'red' }}>{t('markdown.error')}</strong>
-        <strong>{err.toString()}</strong>
+        <strong>{err instanceof Error ? err.toString() : String(err)}</strong>
         <code style={{ fontSize: '0.8rem' }}>
-          <pre>{err.stack}</pre>
+          <pre>{err instanceof Error ? err.stack : undefined}</pre>
         </code>
       </Stack>
     );

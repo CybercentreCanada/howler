@@ -139,10 +139,10 @@ ${err.hint ? `<br/><span style="color: gray; font-family: monospace;">${err.hint
         setRendered(`
 <h2 style="color: red">${t('markdown.error')}</h2>
 
-**\`${err.toString()}\`**
+**\`${err instanceof Error ? err.toString() : String(err)}\`**
 
 <code style="font-size: 0.8rem"><pre>
-${err.stack}
+${err instanceof Error ? err.stack : ''}
 </pre></code>
         `);
       }

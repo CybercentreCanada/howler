@@ -187,7 +187,7 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
             );
           }
         } catch (e) {
-          setError(e.message);
+          setError(e instanceof Error ? e.message : String(e));
         } finally {
           setSearching(false);
         }
