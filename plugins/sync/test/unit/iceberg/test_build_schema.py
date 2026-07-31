@@ -58,10 +58,11 @@ def model_with_optional_fields(nested_model) -> type[odm.Model]:
         required_field = odm.Keyword()
         optional_field = odm.Optional(odm.Integer())
         default_value_field = odm.Date(default="NOW")
-        nullable_list = odm.Optional(odm.List(odm.Text()))
-        list_with_nullable_elements = odm.List(odm.Optional(odm.Text()))
-        nullable_mapping = odm.Optional(odm.Mapping(odm.Text()))
-        mapping_with_nullable_values = odm.Mapping(odm.Optional(odm.Text()))
+        nullable_default_field = odm.Optional(odm.Text(default="default_value"))
+        nullable_list = odm.Optional(odm.List(odm.Text(default="default_value")))
+        list_with_nullable_elements = odm.List(odm.Optional(odm.Text()), default=[])
+        nullable_mapping = odm.Optional(odm.Mapping(odm.Text(default="default_value")))
+        mapping_with_nullable_values = odm.Mapping(odm.Optional(odm.Text()), default={})
         nullable_compound = odm.Optional(odm.Compound(nested_model))
 
     return TestModel
@@ -152,6 +153,7 @@ def test_build_schema_with_optional_fields(model_with_optional_fields):
         "required_field",
         "optional_field",
         "default_value_field",
+        "nullable_default_field",
         "nullable_list",
         "list_with_nullable_elements",
         "nullable_mapping",
@@ -160,13 +162,16 @@ def test_build_schema_with_optional_fields(model_with_optional_fields):
     ]
 
     required_field = schema["required_field"]
-    assert required_field.nullable is False
+    assert required_field.nullable is True
 
     optional_field = schema["optional_field"]
     assert optional_field.nullable is True
 
     default_value_field = schema["default_value_field"]
-    assert default_value_field.nullable is True
+    assert default_value_field.nullable is False
+
+    nullable_default_field = schema["nullable_default_field"]
+    assert nullable_default_field.nullable is True
 
     nullable_list = schema["nullable_list"]
     assert nullable_list.nullable is True
