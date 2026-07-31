@@ -55,14 +55,14 @@ const LeftNavItem = ({ item, context = 'item', popover = false, hideIcon = false
   const user = useAppUser();
   const leftnav = useAppLeftNav();
   const { text, i18nKey, nested, route, render, userPropValidators } = item;
-  const label = i18nKey ? t(i18nKey) : text;
+  const label = i18nKey ? t(i18nKey) : (text ?? '');
 
-  return user.validateProps(userPropValidators) ? (
+  return (user.validateProps?.(userPropValidators ?? []) ?? true) ? (
     render ? (
       <ListItem disablePadding>{render(leftnav.open)}</ListItem>
     ) : (
       <Tooltip title={!leftnav.open && !nested ? label : ''} aria-label={label} placement="right">
-        <ListItemButton component={route ? Link : null} to={route} key={text} onClick={onClick ? onClick : null}>
+        <ListItemButton component={route ? Link : 'div'} to={route!} key={text} onClick={onClick}>
           <LeftNavItemInner
             hideIcon={hideIcon}
             context={context}

@@ -39,7 +39,7 @@ import AddColumnModal from 'components/elements/hit/grid/AddColumnModal';
 import RecordTable from 'components/elements/hit/grid/RecordTable';
 import HitCard from 'components/elements/hit/HitCard';
 import { HitLayout } from 'components/elements/hit/HitLayout';
-import LayoutToggle, { type HowlerViewLayoutType } from 'components/elements/view/LayoutToggle';
+import LayoutToggle from 'components/elements/view/LayoutToggle';
 import useMyApi from 'components/hooks/useMyApi';
 import { useMyLocalStorageItem } from 'components/hooks/useMyLocalStorage';
 import useMySnackbar from 'components/hooks/useMySnackbar';
@@ -91,7 +91,7 @@ const ViewComposer: FC = () => {
   const [loading, setLoading] = useState(false);
   const [isSearchDirty, setIsSearchDirty] = useState(false);
   const [searching, setSearching] = useState<boolean>(false);
-  const [error, setError] = useState<string>(null);
+  const [error, setError] = useState<string | null>(null);
   const [response, setResponse] = useState<HowlerSearchResponse<Hit | Event>>();
   const [isLoadingView, setIsLoadingView] = useState(!!routeParams.id);
   const displayType = useContextSelector(RecordSearchContext, ctx => ctx.displayType);
@@ -106,19 +106,19 @@ const ViewComposer: FC = () => {
     }));
 
     try {
-      const normalizedIndexes = indexes?.length > 0 ? indexes : ['hit'];
+      const normalizedIndexes = (indexes?.length ?? 0) > 0 ? indexes! : ['hit' as const];
       if (!routeParams.id) {
         const newView = await addView({
           title,
           type,
           query,
           indexes: normalizedIndexes,
-          sort: sort || null,
-          span: span || null,
+          sort: sort || undefined,
+          span: span || undefined,
           settings: {
             advance_on_triage: advanceOnTriage,
             display: displayType,
-            columns: displayType === 'grid' ? _columnData : null
+            columns: displayType === 'grid' ? _columnData : undefined
           }
         });
 
@@ -134,7 +134,7 @@ const ViewComposer: FC = () => {
           settings: {
             advance_on_triage: advanceOnTriage,
             display: displayType,
-            columns: displayType === 'grid' ? _columnData : null
+            columns: displayType === 'grid' ? _columnData : undefined
           }
         });
       }
@@ -166,12 +166,12 @@ const ViewComposer: FC = () => {
   ]);
 
   const performSearch = useCallback(
-    async (searchQuery: string, searchIndexes: SearchIndex[], searchSort: string, searchSpan: string) => {
+    async (searchQuery: string, searchIndexes: SearchIndex[] | undefined, searchSort: string | undefined, searchSpan: string | undefined) => {
       setSearching(true);
       setError(null);
 
       try {
-        const normalizedIndexes = searchIndexes?.length > 0 ? searchIndexes : ['hit' as const];
+        const normalizedIndexes = (searchIndexes?.length ?? 0) > 0 ? searchIndexes! : ['hit' as const];
         const _response = await dispatchApi(
           api.v2.search.post(normalizedIndexes, {
             rows: pageCount,
@@ -224,7 +224,7 @@ const ViewComposer: FC = () => {
     }
 
     void (async () => {
-      const viewToEdit = (await getCurrentViews({ views: [routeParams.id] }))[0];
+      const viewToEdit = (await getCurrentViews({ views: [routeParams.id!] }))[0];
 
       if (!viewToEdit) {
         setError('route.views.missing');
@@ -233,25 +233,25 @@ const ViewComposer: FC = () => {
         setError(null);
       }
 
-      setTitle(viewToEdit.title);
+      setTitle(viewToEdit.title ?? '');
       setAdvanceOnTriage(viewToEdit.settings?.advance_on_triage ?? false);
-      setDisplayType((viewToEdit.settings?.display ?? null) as HowlerViewLayoutType);
-      setType(viewToEdit.type);
+      setDisplayType(((viewToEdit.settings?.display === 'grid' || viewToEdit.settings?.display === 'list' ? viewToEdit.settings.display : displayType) ?? 'list') as 'grid' | 'list');
+      setType(viewToEdit.type!);
 
       const loadedQuery = viewToEdit.query || DEFAULT_QUERY;
-      const loadedIndexes = (viewToEdit.indexes as SearchIndex[]) || indexes;
-      const loadedSort = viewToEdit.sort || sort;
-      const loadedSpan = viewToEdit.span || span;
+      const loadedIndexes = (viewToEdit.indexes as SearchIndex[] | undefined) || indexes || ['hit'];
+      const loadedSort = viewToEdit.sort || sort || undefined;
+      const loadedSpan = viewToEdit.span || span || undefined;
 
       setQuery(loadedQuery);
       if (viewToEdit.indexes) {
         setIndexes(loadedIndexes);
       }
       if (viewToEdit.sort) {
-        setSort(loadedSort);
+        setSort(loadedSort!);
       }
       if (viewToEdit.span) {
-        setSpan(loadedSpan);
+        setSpan(loadedSpan!);
       }
 
       // Perform search with the loaded values to avoid using stale state
@@ -361,7 +361,7 @@ const ViewComposer: FC = () => {
                             <Typography component="span">{t('view.settings.layout')}</Typography>
                             <LayoutToggle
                               displayType={displayType}
-                              setDisplayType={setDisplayType}
+                              setDisplayType={type => type && setDisplayType(type as 'grid' | 'list')}
                               size="small"
                               allowNullValue
                             />
@@ -394,7 +394,7 @@ const ViewComposer: FC = () => {
             <VSBoxContent>
               {displayType === 'grid' ? (
                 <Stack component={Paper} spacing={1} width="100%" height="100%" sx={{ overflow: 'auto', flex: 1 }}>
-                  <RecordTable query={query} items={response?.items} />
+                  <RecordTable query={query ?? DEFAULT_QUERY} items={response?.items} />
                 </Stack>
               ) : (
                 <Stack spacing={1}>

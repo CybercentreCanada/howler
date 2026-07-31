@@ -50,7 +50,7 @@ const ActionDetails = () => {
 
   const onTriggerChange: ChangeEventHandler<HTMLInputElement> = useCallback(
     async e => {
-      let newTriggers = action.triggers ?? [];
+      let newTriggers = action!.triggers ?? [];
 
       if (e.target.checked && !newTriggers.includes(e.target.name)) {
         newTriggers.push(e.target.name);
@@ -62,12 +62,12 @@ const ActionDetails = () => {
 
       try {
         await dispatchApi(
-          api.action.patch(action.action_id, {
+          api.action.patch(action!.action_id!, {
             triggers: newTriggers
           })
         );
 
-        setAction({ ...action, triggers: newTriggers });
+        setAction({ ...action!, triggers: newTriggers });
       } finally {
         setLoading(false);
       }
@@ -78,7 +78,7 @@ const ActionDetails = () => {
   const onDelete = useCallback(
     () =>
       withConfirmDeleteModal(async () => {
-        await deleteAction(action?.action_id);
+        await deleteAction(action!.action_id!);
         showSuccessMessage(t('route.actions.manager.delete.success'));
       }),
     [withConfirmDeleteModal, deleteAction, action?.action_id, showSuccessMessage, t]
@@ -89,23 +89,23 @@ const ActionDetails = () => {
 
     void Promise.all([
       dispatchApi(api.action.operations.get()).then(setOperations),
-      dispatchApi(api.action.get(params.id).then(setAction))
+      dispatchApi(api.action.get(params.id!).then(setAction))
     ]).finally(() => setLoading(false));
   }, [dispatchApi, params.id, setLoading]);
 
   useEffect(() => {
     if (action?.query) {
-      void onSearch(action?.query);
+      void onSearch(action.query!);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [action?.query]);
 
-  const editRoles = user.roles.includes('automation_basic') || user.roles.includes('automation_advanced');
+  const editRoles = (user.roles ?? []).includes('automation_basic') || (user.roles ?? []).includes('automation_advanced');
   const execRoles =
     editRoles ||
-    user.roles.includes('admin') ||
-    user.roles.includes('actionrunner_basic') ||
-    user.roles.includes('actionrunner_advanced');
+    (user.roles ?? []).includes('admin') ||
+    (user.roles ?? []).includes('actionrunner_basic') ||
+    (user.roles ?? []).includes('actionrunner_advanced');
 
   return (
     <PageCenter maxWidth="1500px" textAlign="left" height="100%">
@@ -116,18 +116,18 @@ const ActionDetails = () => {
         </Stack>
         <Phrase
           fullWidth
-          value={action?.query}
+          value={action?.query ?? ''}
           disabled
           size="small"
           onChange={() => {}}
           startAdornment={
-            <IconButton onClick={() => onSearch(action?.query)}>
+            <IconButton onClick={() => onSearch(action?.query ?? '')}>
               <Search fontSize="small" />
             </IconButton>
           }
         />
         <Stack direction="row" alignItems="center" spacing={1}>
-          {response && <QueryResultText count={response.total} query={action?.query} />}
+          {response && <QueryResultText count={response.total} query={action?.query ?? ''} />}
           <FlexOne />
           {((action?.owner_id === user.username && editRoles) || user.roles?.includes('admin')) && (
             <Button startIcon={<Delete />} size="small" variant="outlined" color="error" onClick={onDelete}>
@@ -140,7 +140,7 @@ const ActionDetails = () => {
               size="small"
               variant="outlined"
               color="success"
-              onClick={() => executeAction(action?.action_id)}
+              onClick={() => executeAction(action!.action_id!)}
             >
               {t('route.actions.execute')}
             </Button>
@@ -157,7 +157,7 @@ const ActionDetails = () => {
             </Button>
           )}
         </Stack>
-        {user.roles.includes('automation_advanced') && (
+        {(user.roles ?? []).includes('automation_advanced') && (
           <FormGroup>
             <Stack direction="row" spacing={1}>
               {action?.operations
@@ -192,13 +192,13 @@ const ActionDetails = () => {
         {report && <ActionReportDisplay report={report} operations={operations} />}
         {operations.length > 0 &&
           action &&
-          action.operations.map(a => {
-            if (howlerPluginStore.operations.includes(a.operation_id)) {
+          action.operations?.map(a => {
+            if (howlerPluginStore.operations.includes(a.operation_id!)) {
               return pluginStore.executeFunction(`operation.${a.operation_id}`, {
                 readonly: true,
                 operation: operations.find(_operation => _operation.id === a.operation_id),
                 operations,
-                query: action.query,
+                query: action.query!,
                 values: a.data_json
               } as CustomActionProps);
             }
@@ -208,9 +208,9 @@ const ActionDetails = () => {
                 key={a.operation_id}
                 readonly
                 operations={operations}
-                query={action.query}
+                query={action.query!}
                 values={a.data_json}
-                operation={operations.find(_operation => _operation.id === a.operation_id)}
+                operation={operations.find(_operation => _operation.id === a.operation_id)!}
               />
             );
           })}

@@ -19,7 +19,7 @@ const ItemPage: FC<{ case?: Case }> = ({ case: providedCase }) => {
 
   const { dispatchApi } = useMyApi();
 
-  const [item, setItem] = useState<Item>(null);
+  const [item, setItem] = useState<Item | null>(null);
   const [loading, setLoading] = useState(true);
 
   // When rendered as a child route, the wildcard segment is in params['*'].
@@ -48,7 +48,7 @@ const ItemPage: FC<{ case?: Case }> = ({ case: providedCase }) => {
       while (currentCase && remainingPath) {
         const currentRemainingPath = remainingPath;
 
-        const matchedNestedCase = currentCase.items
+        const matchedNestedCase = currentCase.items!
           .filter(Boolean)
           .find(_item => _item.type === 'case' && currentRemainingPath.startsWith(`${_item.name}/`));
 
@@ -86,7 +86,7 @@ const ItemPage: FC<{ case?: Case }> = ({ case: providedCase }) => {
         currentCase = nextCase;
       }
 
-      const resolvedItem = currentCase.items.find(_item => buildPathFromID(currentCase, _item.id) === remainingPath);
+      const resolvedItem = currentCase.items!.find(_item => buildPathFromID(currentCase!, _item.id!) === remainingPath);
 
       if (!cancelled) {
         setItem(resolvedItem || null);

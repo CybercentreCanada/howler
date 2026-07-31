@@ -44,20 +44,20 @@ const AnalyticSearchBase: FC = () => {
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
   const appUser = useAppUser<HowlerUser>();
 
-  const { response, request } = useContext<SearchResponseContextType<Analytic>>(SearchResponseContext);
+  const { response, request } = useContext<SearchResponseContextType<Analytic>>(SearchResponseContext as any);
 
   const [searching, setSearching] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);
   const [phrase, setPhrase] = useState(searchParams.get('phrase') || '');
-  const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
+  const [offset, setOffset] = useState(parseInt(searchParams.get('offset')!) || 0);
 
   const addFavourite = useCallback(
     async (analytic: Analytic) => {
-      await dispatchApi(api.analytic.favourite.post(analytic.analytic_id));
+      await dispatchApi(api.analytic.favourite.post(analytic.analytic_id!));
 
       appUser.setUser({
         ...appUser.user,
-        favourite_analytics: [...appUser.user.favourite_analytics, analytic.analytic_id]
+        favourite_analytics: [...(appUser.user.favourite_analytics ?? []), analytic.analytic_id!]
       });
     },
     [appUser, dispatchApi]
@@ -65,11 +65,11 @@ const AnalyticSearchBase: FC = () => {
 
   const removeFavourite = useCallback(
     async (analytic: Analytic) => {
-      await dispatchApi(api.analytic.favourite.del(analytic.analytic_id));
+      await dispatchApi(api.analytic.favourite.del(analytic.analytic_id!));
 
       appUser.setUser({
         ...appUser.user,
-        favourite_analytics: appUser.user.favourite_analytics.filter(v => v !== analytic.analytic_id)
+        favourite_analytics: (appUser.user.favourite_analytics ?? []).filter(v => v !== analytic.analytic_id)
       });
     },
     [appUser, dispatchApi]
@@ -94,7 +94,7 @@ const AnalyticSearchBase: FC = () => {
         rows: pageCount,
         offset
       });
-      load(_response.items.map(u => ({ id: u.analytic_id, item: u })));
+      load(_response.items.map(u => ({ id: u.analytic_id!, item: u })));
     } catch {
       setHasError(true);
     } finally {
@@ -118,7 +118,7 @@ const AnalyticSearchBase: FC = () => {
       event.preventDefault();
       event.stopPropagation();
 
-      if (appUser.user?.favourite_analytics.includes(analytic.analytic_id)) {
+      if (appUser.user?.favourite_analytics?.includes(analytic.analytic_id!)) {
         await dispatchApi(removeFavourite(analytic));
       } else {
         await dispatchApi(addFavourite(analytic));
@@ -142,7 +142,7 @@ const AnalyticSearchBase: FC = () => {
   );
 
   useEffect(() => {
-    if (response?.total <= offset) {
+    if ((response?.total ?? 0) <= offset) {
       setOffset(0);
       searchParams.set('offset', '0');
       setSearchParams(searchParams, { replace: true });
@@ -192,32 +192,32 @@ const AnalyticSearchBase: FC = () => {
                 </Stack>
                 <Tooltip title={t('button.pin')}>
                   <IconButton size="small" onClick={e => onFavourite(e, item.item)}>
-                    {appUser.user?.favourite_analytics?.includes(item.item.analytic_id) ? <Star /> : <StarBorder />}
+                    {appUser.user?.favourite_analytics?.includes(item.item.analytic_id!) ? <Star /> : <StarBorder />}
                   </IconButton>
                 </Tooltip>
               </Stack>
             }
           />
-          {item.item.detections?.length > 0 && (
+          {(item.item.detections?.length ?? 0) > 0 && (
             <CardContent sx={{ paddingTop: 0 }}>
               <Grid container spacing={0.5} sx={{ marginTop: `${theme.spacing(-0.5)} !important` }}>
-                {item.item.detections.slice(0, 5).map(d => (
+                {item.item.detections!.slice(0, 5).map(d => (
                   <Grid item key={d}>
                     <Chip variant="outlined" label={d} />
                   </Grid>
                 ))}
-                {item.item.detections.length > 5 && (
+                {item.item.detections!.length > 5 && (
                   <Grid item>
                     <Tooltip
                       title={
                         <Stack>
-                          {item.item.detections.slice(5).map(d => (
+                          {item.item.detections!.slice(5).map(d => (
                             <span key={d}>{d}</span>
                           ))}
                         </Stack>
                       }
                     >
-                      <Chip variant="outlined" label={`+ ${item.item.detections.length - 5}`} />
+                      <Chip variant="outlined" label={`+ ${item.item.detections!.length - 5}`} />
                     </Tooltip>
                   </Grid>
                 )}
@@ -244,7 +244,7 @@ const AnalyticSearchBase: FC = () => {
         </Typography>
       }
       renderer={renderer}
-      response={response}
+      response={response!}
       searchPrompt="route.analytics.manager.search"
     />
   );

@@ -42,7 +42,7 @@ const MarkdownTypography: FC<EnrichedTypographyProps & TypographyProps> = ({ typ
     const guessType = useClueEnrichSelector(ctx => ctx.guessType);
 
     if (!type || type?.toString().toLowerCase() === 'guess') {
-      type = guessType(value.toString());
+      type = guessType(value!.toString()) ?? undefined;
     }
 
     if (!type) {
@@ -131,7 +131,7 @@ const HELPERS: HowlerHelper[] = [
           slotProps={{ stack: { component: 'span', sx: { width: 'fit-content' } } }}
           component="span"
           type={type}
-          value={typeof value === 'string' ? value : null}
+          value={value}
         />
       );
     }

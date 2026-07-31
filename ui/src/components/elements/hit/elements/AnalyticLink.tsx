@@ -25,7 +25,7 @@ const AnalyticLink: FC<{ hit: Hit; lazy?: boolean; compressed?: boolean; alignSe
   return (
     <Typography
       variant={compressed ? 'body1' : 'h6'}
-      fontWeight={compressed && 'bold'}
+      fontWeight={compressed ? 'bold' : undefined}
       sx={{ alignSelf, '& a': { color: 'text.primary' } }}
     >
       {analyticId ? (

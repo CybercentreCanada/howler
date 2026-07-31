@@ -7,7 +7,7 @@ import { memo, useCallback, useRef } from 'react';
 
 type PageFullscreenProps = {
   children: React.ReactNode;
-  margin?: number;
+  margin?: number | null;
   mb?: number;
   ml?: number;
   mr?: number;
@@ -20,8 +20,8 @@ const PageFullscreen = ({ children, margin = null, mb = 2, ml = 2, mr = 2, mt = 
   const layout = useAppLayout();
   const appbar = useAppBar();
   let isFullscreen: boolean;
-  let setIsFullscreen: () => void;
-  let fullscreenSupported: boolean;
+  let setIsFullscreen: () => void = () => {};
+  let fullscreenSupported = false;
 
   const barWillHide = layout.current !== 'top' && appbar.autoHide;
 
@@ -30,7 +30,6 @@ const PageFullscreen = ({ children, margin = null, mb = 2, ml = 2, mr = 2, mt = 
   } catch (e) {
     fullscreenSupported = false;
     isFullscreen = false;
-    setIsFullscreen = undefined;
   }
 
   const handleEnterFullscreen = useCallback(() => {

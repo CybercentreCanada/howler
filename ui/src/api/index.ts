@@ -173,7 +173,7 @@ export const hfetch = async <R>(
     ...requestHeaders,
     ...(currentObject && setHeaders(currentObject)),
     'Content-Type': 'application/json',
-    'X-XSRF-TOKEN': getXSRFCookie()
+    'X-XSRF-TOKEN': getXSRFCookie()!
   };
 
   if (authToken) {
@@ -194,7 +194,7 @@ export const hfetch = async <R>(
   }
 
   if (!json) {
-    return null;
+    return null as R;
   }
 
   // Did it work?
@@ -231,7 +231,7 @@ export const hfetch = async <R>(
     if (window.location.pathname !== '/login') {
       window.location.pathname = '/login';
     }
-    return;
+    return undefined as R;
   }
 
   // Throw it back.

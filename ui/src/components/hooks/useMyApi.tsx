@@ -13,7 +13,7 @@ const DEFAULT_CONFIG: DispatchApiConfig = {
   throwError: true,
   logError: false,
   showError: true,
-  onConflict: null
+  onConflict: undefined
 };
 
 const useMyApi = () => {
@@ -30,7 +30,7 @@ const useMyApi = () => {
         if (error instanceof Error) {
           if (onConflict && [409, 412].includes((error.cause as HowlerResponse<any>)?.api_status_code)) {
             void onConflict();
-            return null;
+            return null as R;
           }
 
           if (showError) {
@@ -47,7 +47,7 @@ const useMyApi = () => {
           }
         }
 
-        return null;
+        return null as R;
       }
     },
     [showErrorMessage]

@@ -22,7 +22,7 @@ type EditRowTypes<T extends string | number | boolean> = {
   titleKey: string;
   descriptionKey?: string;
   value: T;
-  onEdit?: (value: string) => Promise<void>;
+  onEdit?: (value: string | null) => Promise<void>;
   validate?: (value: T) => boolean;
   failOnValidate?: boolean;
   type?: 'password' | 'number' | 'text' | 'checkbox' | 'range';
@@ -95,7 +95,7 @@ const EditRow = <T extends string | number | boolean>({
       if (type !== 'checkbox') {
         setEditValue(_value);
       } else {
-        void onEdit(_value.toString());
+        void onEdit!(_value.toString());
       }
     },
     [failOnValidate, max, min, onEdit, type, validate]
@@ -115,7 +115,7 @@ const EditRow = <T extends string | number | boolean>({
 
     setLoading(true);
     try {
-      await onEdit(editValue.toString());
+      await onEdit!(editValue.toString());
       setEditing(false);
     } finally {
       setLoading(false);
@@ -232,7 +232,7 @@ const EditRow = <T extends string | number | boolean>({
                 <IconButton
                   onClick={() => {
                     setEditing(false);
-                    void onEdit(null);
+                    void onEdit!(null);
                   }}
                   disabled={loading}
                 >

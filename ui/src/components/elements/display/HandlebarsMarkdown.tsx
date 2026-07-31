@@ -84,7 +84,7 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
           return new Handlebars.SafeString(`\`${id}\``);
         }
         try {
-          const result = helper.callback(...args);
+          const result = helper.callback!(...args);
           return result instanceof Promise
             ? result.catch(err => {
                 if (err instanceof HowlerHelperError) {

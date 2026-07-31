@@ -30,8 +30,8 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
   const setSavedFilter = useContextSelector(ParameterContext, ctx => ctx.setFilter);
   const removeSavedFilter = useContextSelector(ParameterContext, ctx => ctx.removeFilter);
 
-  const [category, setCategory] = useState(value?.split(':')[0] ?? ACCEPTED_LOOKUPS[0]);
-  const [filter, setFilter] = useState(value?.split(':')[1] ?? null);
+  const [category, setCategory] = useState<string | null>(value?.split(':')[0] ?? ACCEPTED_LOOKUPS[0]!);
+  const [filter, setFilter] = useState<string | null>(value?.split(':')[1] ?? null);
   const [loading, setLoading] = useState(false);
 
   const [customLookups, setCustomLookups] = useState<string[]>([]);
@@ -59,6 +59,10 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
       setCategory(_category);
       setFilter(null);
 
+      if (!_category) {
+        return;
+      }
+
       if (!config.lookups[_category as keyof APILookups]) {
         setLoading(true);
 
@@ -69,7 +73,7 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
           }
         );
 
-        setCustomLookups(Object.keys((facets ?? {})[_category]));
+        setCustomLookups(Object.keys((facets ?? {})[_category] ?? {}));
         setLoading(false);
       } else {
         setCustomLookups([]);
@@ -83,9 +87,9 @@ const HitFilter: FC<{ size?: 'small' | 'medium'; id: number; value: string }> = 
       setFilter(newValue);
 
       if (newValue && newValue !== '*') {
-        setSavedFilter(id, `${category}:"${sanitizeLuceneQuery(newValue)}"`);
+        setSavedFilter(id, `${category!}:"${sanitizeLuceneQuery(newValue)}"`);
       } else {
-        setSavedFilter(id, `${category}:*`);
+        setSavedFilter(id, `${category!}:*`);
       }
     },
     [category, id, setSavedFilter]

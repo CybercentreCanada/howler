@@ -7,13 +7,13 @@ interface AvatarContextType {
   getAvatar: (id: string) => Promise<string>;
 }
 
-export const AvatarContext = createContext<AvatarContextType>(null);
+export const AvatarContext = createContext<AvatarContextType>(null as unknown as AvatarContextType);
 
 /**
  * Because of the nature of requesting avatars, there's often LOTS of requests firing off in rapid succession,
  * too quickly for React to react (pardon the pun). To circumvent this, we just use a global object to remove race conditions.
  */
-const promises: { [index: string]: Promise<string> } = {};
+const promises: { [index: string]: Promise<string> | undefined } = {};
 
 const AvatarProvider: FC<PropsWithChildren> = ({ children }) => {
   const { dispatchApi } = useMyApi();

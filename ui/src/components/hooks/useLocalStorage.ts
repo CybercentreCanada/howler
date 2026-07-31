@@ -10,9 +10,9 @@ const useLocalStorage = (prefix?: string) => {
   const get = useCallback(
     <T>(key: string): T => {
       try {
-        return JSON.parse(localStorage.getItem(_buildKey(key)));
+        return JSON.parse(localStorage.getItem(_buildKey(key)) ?? 'null');
       } catch {
-        return null;
+        return null as T;
       }
     },
     [_buildKey]

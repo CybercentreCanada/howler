@@ -89,7 +89,7 @@ const ButtonActions: FC<DesktopActionProps> = ({ actions, loading, orientation, 
     <Stack
       direction={isHorizontal ? 'row' : 'column'}
       spacing={0.75}
-      alignItems={!isHorizontal && 'start'}
+      alignItems={isHorizontal ? undefined : 'start'}
       py={1}
       sx={{ position: 'relative', flex: 1 }}
       justifyContent="space-between"

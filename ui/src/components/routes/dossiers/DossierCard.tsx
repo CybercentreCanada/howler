@@ -31,7 +31,7 @@ const DossierCard: FC<{
           </Typography>
           <Grid container spacing={1} sx={{ mt: 1 }}>
             {dossier.leads?.map((lead, index) => (
-              <Grid item key={lead.format + lead.label?.en}>
+              <Grid item key={(lead.format ?? '') + (lead.label?.en ?? '')}>
                 <Chip
                   sx={{ maxWidth: '300px' }}
                   clickable
@@ -49,7 +49,7 @@ const DossierCard: FC<{
               </Grid>
             )}
             {dossier.pivots?.map((pivot, index) => (
-              <Grid item key={pivot.format + pivot.label?.en}>
+              <Grid item key={(pivot.format ?? '') + (pivot.label?.en ?? '')}>
                 <Chip
                   sx={{ maxWidth: '300px' }}
                   clickable
@@ -64,7 +64,7 @@ const DossierCard: FC<{
           </Grid>
         </Stack>
 
-        <HowlerAvatar sx={{ height: '28px', width: '28px' }} userId={dossier.owner} />
+        <HowlerAvatar sx={{ height: '28px', width: '28px' }} userId={dossier.owner!} />
         <Tooltip title={t('route.dossiers.manager.openinsearch')}>
           <IconButton component={Link} to={`/search?query=${dossier.query}`} onClick={e => e.stopPropagation()}>
             <ManageSearch />
@@ -72,7 +72,7 @@ const DossierCard: FC<{
         </Tooltip>
         {onDelete && (
           <Tooltip title={t('route.dossiers.manager.delete')}>
-            <IconButton onClick={e => onDelete(e, dossier.dossier_id)}>
+            <IconButton onClick={e => onDelete(e, dossier.dossier_id!)}>
               <Delete />
             </IconButton>
           </Tooltip>

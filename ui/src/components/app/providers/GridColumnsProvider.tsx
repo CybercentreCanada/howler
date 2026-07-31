@@ -50,7 +50,7 @@ export type GridColumnsContextType = {
   isReady: boolean;
 };
 
-export const GridColumnsContext = createContext<GridColumnsContextType>(null);
+export const GridColumnsContext = createContext<GridColumnsContextType>(null as unknown as GridColumnsContextType);
 
 /**
  * Manages which grid columns are active and how wide they are.
@@ -75,7 +75,7 @@ const GridColumnsProvider = ({
   // Resolve view IDs from the appropriate source.
   const parameterViewIds = useContextSelector(ParameterContext, ctx => ctx.views);
   const pathViewIds = useMemo(() => (routeParams.id ? [routeParams.id] : []), [routeParams.id]);
-  const viewIds = viewSource === 'params' ? parameterViewIds : pathViewIds;
+  const viewIds = (viewSource === 'params' ? parameterViewIds : pathViewIds) ?? [];
 
   const getCurrentViews = useContextSelector(ViewContext, ctx => ctx.getCurrentViews);
   const setDisplayType = useContextSelector(RecordSearchContext, ctx => ctx.setDisplayType);
@@ -160,9 +160,9 @@ const GridColumnsProvider = ({
       }
 
       // Honour the display-type declared by the highest-priority view.
-      if (views[0].settings?.display === 'list') {
+      if (views[0]!.settings?.display === 'list') {
         setDisplayType('list');
-      } else if (views[0].settings?.display === 'grid') {
+      } else if (views[0]!.settings?.display === 'grid') {
         setDisplayType('grid');
 
         // Sort grid views by their position in the requested viewIds array so that
@@ -170,7 +170,7 @@ const GridColumnsProvider = ({
         const idRankMap = new Map(viewIds.map((id, i) => [id, i]));
         const gridViews = views
           .filter(v => v.settings?.display === 'grid')
-          .sort((a, b) => (idRankMap.get(a.view_id) ?? Infinity) - (idRankMap.get(b.view_id) ?? Infinity));
+          .sort((a, b) => (idRankMap.get(a.view_id!) ?? Infinity) - (idRankMap.get(b.view_id!) ?? Infinity));
 
         const columns: string[] = [];
         const widths: Record<string, number> = {};
@@ -178,14 +178,16 @@ const GridColumnsProvider = ({
 
         for (const view of gridViews) {
           for (const { field, width } of view.settings?.columns ?? []) {
-            if (!sources[field]) {
+            if (!sources[field!]) {
               // First occurrence wins for column order and width.
-              columns.push(field);
-              widths[field] = width ?? undefined;
-              sources[field] = [view.title];
+              columns.push(field!);
+              if (width !== undefined) {
+                widths[field!] = width;
+              }
+              sources[field!] = [view.title!];
             } else {
               // Subsequent views that also declare this field are recorded as additional sources.
-              sources[field].push(view.title);
+              sources[field!].push(view.title!);
             }
           }
         }

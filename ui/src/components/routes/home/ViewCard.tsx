@@ -111,7 +111,7 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
   const refreshView = useCallback(async () => {
     if (!view?.query || isRefreshing.current) {
       onRefreshComplete?.();
-      return;
+      return '';
     }
 
     isRefreshing.current = true;
@@ -204,7 +204,7 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
     const selectedElement = target.closest('[id]') as HTMLElement;
 
     if (!selectedElement) {
-      return;
+      return '';
     }
 
     return selectedElement.id;
@@ -215,14 +215,14 @@ const ViewCard: FC<ViewSettings> = ({ viewId, limit, refreshTick, onRefreshCompl
       <Stack spacing={1} sx={{ p: 1, minHeight: 100 }}>
         <Stack direction="row" spacing={1} alignItems="center">
           <Typography variant="h6">
-            {t(view?.title) || <Skeleton variant="text" height="2em" width="100px" />}
+            {t(view?.title ?? '') || <Skeleton variant="text" height="2em" width="100px" />}
           </Typography>
           <IconButton
             size="small"
             component={Link}
             disabled={!view}
             to={view ? buildViewUrl(view) : ''}
-            onClick={() => onClick(view.query)}
+            onClick={() => onClick(view!.query!)}
           >
             <OpenInNew fontSize="small" />
           </IconButton>

@@ -19,7 +19,7 @@ const UserList: FC<{
 }> = ({ buttonSx = {}, userIds, onChange, i18nLabel, avatarHeight = 32, multiple = false, disabled = false }) => {
   const { t } = useTranslation();
 
-  const [anchorEl, setAnchorEl] = useState<HTMLButtonElement>(null);
+  const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
   const { users, fetchUsers } = useContext(UserListContext);
 
   const allUserIds = useMemo(() => Object.keys(users), [users]);

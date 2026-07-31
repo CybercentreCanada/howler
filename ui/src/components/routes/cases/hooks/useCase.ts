@@ -88,7 +88,7 @@ const useCase: (args: CaseArguments) => CaseResult = ({ caseId, case: providedCa
     [activeCaseId, dispatchApi]
   );
 
-  return { case: _case, update, loading, missing };
+  return { case: _case!, update, loading, missing };
 };
 
 export default useCase;

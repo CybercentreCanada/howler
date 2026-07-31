@@ -30,10 +30,12 @@ const CasesBase: FC = () => {
   const { load } = useContext<TuiListMethodsState<Case>>(TuiListMethodContext);
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
-  const { response, request } = useContext<SearchResponseContextType<FuzzySearchItem<Case>>>(SearchResponseContext);
+  const { response, request } = useContext<SearchResponseContextType<FuzzySearchItem<Case>>>(
+    SearchResponseContext as any
+  );
 
   const [phrase, setPhrase] = useState<string>('');
-  const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
+  const [offset, setOffset] = useState(parseInt(searchParams.get('offset') ?? '') || 0);
   const [hasError, setHasError] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -105,8 +107,8 @@ const CasesBase: FC = () => {
   useEffect(() => {
     if (response) {
       load(
-        response.items.map((item: Case) => ({
-          id: item.case_id,
+        response.items.map(item => ({
+          id: item.case_id!,
           item,
           selected: false,
           cursor: false
@@ -138,7 +140,7 @@ const CasesBase: FC = () => {
   }, []);
 
   useEffect(() => {
-    if (response?.total <= offset) {
+    if ((response?.total ?? 0) <= offset) {
       setOffset(0);
       searchParams.set('offset', '0');
       setSearchParams(searchParams, { replace: true });
@@ -197,7 +199,7 @@ const CasesBase: FC = () => {
         </Stack>
       }
       renderer={({ item }: TuiListItemProps<Case>, classRenderer) => renderer(item.item, classRenderer())}
-      response={response}
+      response={response as any}
       onSelect={(item: TuiListItem<Case>) => navigate(`/cases/${item.id}`)}
       searchPrompt="route.cases.manager.search"
       createIcon={<Topic sx={{ mr: 1 }} />}

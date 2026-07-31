@@ -66,13 +66,13 @@ const CaseTimeline: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase
   const ids = useMemo(
     () =>
       (_case?.items ?? [])
-        .filter(item => ['hit', 'event'].includes(item.type))
+        .filter(item => item.type && ['hit', 'event'].includes(item.type))
         .map(item => item.value)
-        .filter(Boolean),
+        .filter((value): value is string => !!value),
     [_case]
   );
 
-  const getItemId = (value: string) => _case!.items.find(item => item.value === value)?.id;
+  const getItemId = (value: string) => _case!.items?.find(item => item.value === value)?.id;
 
   useEffect(() => {
     if (ids.length < 1) {
@@ -94,13 +94,13 @@ const CaseTimeline: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase
 
       const tactics: MitreOption[] = Object.keys(result['threat.tactic.id'] ?? {}).map(tactic => ({
         id: tactic,
-        name: config.lookups?.tactics?.[tactic].name ?? tactic,
+        name: config.lookups?.tactics?.[tactic]?.name ?? tactic,
         kind: 'tactic'
       }));
 
       const techniques: MitreOption[] = Object.keys(result['threat.technique.id'] ?? {}).map(technique => ({
         id: technique,
-        name: config.lookups?.techniques?.[technique].name ?? technique,
+        name: config.lookups?.techniques?.[technique]?.name ?? technique,
         kind: 'technique'
       }));
 
@@ -218,10 +218,10 @@ const CaseTimeline: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase
                   </Typography>
                   {entry.threat?.technique?.id && (
                     <Tooltip
-                      title={`${entry.threat.technique.id}: ${config.lookups?.techniques?.[entry.threat.technique.id].name}`}
+                      title={`${entry.threat.technique.id}: ${config.lookups?.techniques?.[entry.threat.technique.id]?.name ?? t('unknown')}`}
                     >
                       <Typography
-                        component={config.lookups?.techniques?.[entry.threat.technique.id]?.url ? 'a' : undefined}
+                        component={config.lookups?.techniques?.[entry.threat.technique.id]?.url ? 'a' : 'span'}
                         href={config.lookups?.techniques?.[entry.threat.technique.id]?.url}
                         variant="caption"
                         color="text.secondary"
@@ -237,7 +237,7 @@ const CaseTimeline: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase
                       title={`${entry.threat.tactic.id}: ${config.lookups?.tactics?.[entry.threat.tactic.id]?.name ?? t('unknown')}`}
                     >
                       <Typography
-                        component={config.lookups?.tactics?.[entry.threat.tactic.id]?.url ? 'a' : undefined}
+                        component={config.lookups?.tactics?.[entry.threat.tactic.id]?.url ? 'a' : 'span'}
                         href={config.lookups?.tactics?.[entry.threat.tactic.id]?.url}
                         variant="caption"
                         color="text.secondary"

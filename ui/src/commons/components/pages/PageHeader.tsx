@@ -41,7 +41,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
   backgroundColor,
   className,
   isSticky = false,
-  top = null,
+  top = undefined,
   elevation = 0
 }) => {
   const theme = useTheme();
@@ -55,9 +55,9 @@ const PageHeader: React.FC<PageHeaderProps> = ({
       id="header1"
       position={isSticky ? 'sticky' : 'relative'}
       style={{
-        top: top !== null ? top : isSticky ? (barWillHide ? 0 : appBarHeight) : null,
+        top: top !== undefined ? top : isSticky ? (barWillHide ? 0 : appBarHeight) : undefined,
         backgroundColor: backgroundColor || theme.palette.background.default,
-        zIndex: !isSticky ? theme.zIndex.appBar - 100 : null
+        zIndex: !isSticky ? theme.zIndex.appBar - 100 : undefined
       }}
       className={className}
       elevation={elevation}
@@ -74,7 +74,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
                 if (a.title) {
                   act = (
                     <Button
-                      key={a.tooltip ? null : a.key ? a.key : `ph-action-${i}`}
+                      key={a.tooltip ? undefined : a.key ? a.key : `ph-action-${i}`}
                       startIcon={a.icon}
                       color={a.color}
                       onClick={a.action}
@@ -87,7 +87,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
                 } else {
                   act = (
                     <IconButton
-                      key={a.tooltip ? null : a.key ? a.key : `ph-action-${i}`}
+                      key={a.tooltip ? undefined : a.key ? a.key : `ph-action-${i}`}
                       color={a.color}
                       onClick={a.action}
                       {...(a.btnProp as IconButtonProps)}

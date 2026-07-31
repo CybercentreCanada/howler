@@ -5,7 +5,7 @@ export type PageProps = {
   className?: string;
   width?: string | number;
   height?: string | number;
-  margin?: number;
+  margin?: number | null;
   mb?: number;
   ml?: number;
   mr?: number;
@@ -30,10 +30,10 @@ export default function usePageProps({
       style: {
         width,
         height,
-        marginBottom: theme.spacing(margin !== null ? margin / divider : mb / divider),
-        marginLeft: theme.spacing(margin !== null ? margin / divider : ml / divider),
-        marginRight: theme.spacing(margin !== null ? margin / divider : mr / divider),
-        marginTop: theme.spacing(margin !== null ? margin / divider : mt / divider)
+        marginBottom: theme.spacing(margin != null ? margin / divider : (mb ?? 0) / divider),
+        marginLeft: theme.spacing(margin != null ? margin / divider : (ml ?? 0) / divider),
+        marginRight: theme.spacing(margin != null ? margin / divider : (mr ?? 0) / divider),
+        marginTop: theme.spacing(margin != null ? margin / divider : (mt ?? 0) / divider)
       }
     }),
     [className, width, height, margin, mt, mr, mb, ml, divider, theme]

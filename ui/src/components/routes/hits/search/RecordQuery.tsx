@@ -49,7 +49,7 @@ const RecordQuery: FC<RecordQueryProps> = ({
   const [multiline, setMultiline] = useState(false);
   const [y, setY] = useState(0);
 
-  const wrapper = useRef<HTMLDivElement>();
+  const wrapper = useRef<HTMLDivElement>(null);
 
   const search = useCallback(() => triggerSearch(sanitizeMultilineLucene(query)), [query, triggerSearch]);
 
@@ -105,7 +105,7 @@ const RecordQuery: FC<RecordQueryProps> = ({
   const onMouseMove = useCallback((event: MouseEvent) => {
     const wrapperRect = wrapper.current?.getBoundingClientRect();
 
-    const offset = event.clientY - (wrapperRect.top + DEFAULT_MULTILINE_HEIGHT);
+    const offset = event.clientY - (wrapperRect!.top + DEFAULT_MULTILINE_HEIGHT);
 
     setY(offset);
   }, []);
@@ -169,14 +169,17 @@ const RecordQuery: FC<RecordQueryProps> = ({
           },
           transition: theme.transitions.create('border-color')
         },
-        isDirty &&
-          new URLSearchParams(location.search).has('query') && {
-            borderColor: 'warning.main'
-          },
-        compact && {
-          p: 0.5,
-          height: multiline ? `${DEFAULT_MULTILINE_HEIGHT + y}px` : theme.spacing(5)
-        }
+        isDirty && new URLSearchParams(location.search).has('query')
+          ? {
+              borderColor: 'warning.main'
+            }
+          : {},
+        compact
+          ? {
+              p: 0.5,
+              height: multiline ? `${DEFAULT_MULTILINE_HEIGHT + y}px` : theme.spacing(5)
+            }
+          : {}
       ]}
       onKeyDown={e => e.stopPropagation()}
     >

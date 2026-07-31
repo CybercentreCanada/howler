@@ -15,7 +15,7 @@ export default function AppAvatar({ d, url, email, ...props }: AppAvatarProps) {
       url ||
       (configs.preferences.allowGravatar
         ? `https://s.gravatar.com/avatar/${email ? md5(email as string) : ''}?d=${d || configs.preferences.avatarD}`
-        : null),
+        : undefined),
     [configs, url, email, d]
   );
 

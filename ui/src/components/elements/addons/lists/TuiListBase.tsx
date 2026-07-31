@@ -56,7 +56,7 @@ type TuiListBaseProps<T> = {
 };
 
 const TuiListBase = <T,>({ keyboard = false, onSelect, children }: TuiListBaseProps<T>) => {
-  const listEl = useRef<HTMLDivElement>();
+  const listEl = useRef<HTMLDivElement>(null);
   const appbar = useAppBar();
   const appbarHeight = useAppBarHeight();
   const layout = useAppLayout();
@@ -77,13 +77,13 @@ const TuiListBase = <T,>({ keyboard = false, onSelect, children }: TuiListBasePr
 
   useEffect(() => {
     if (keyboard) {
-      return register(listEl.current);
+      return register(listEl.current!);
     }
   }, [keyboard, register]);
 
   useLayoutEffect(() => {
     if (keyboard) {
-      listEl.current.focus({ preventScroll: true });
+      listEl.current?.focus({ preventScroll: true });
     }
   }, [keyboard]);
 

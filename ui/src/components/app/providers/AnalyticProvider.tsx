@@ -11,7 +11,7 @@ interface AnalyticContextType {
   getAnalyticFromId: (id: string) => Promise<Analytic>;
 }
 
-export const AnalyticContext = createContext<AnalyticContextType>(null);
+export const AnalyticContext = createContext<AnalyticContextType>(null!);
 
 /**
  * A set of promises for each analytic search. This is to stop several identical
@@ -74,7 +74,7 @@ const AnalyticProvider: FC<PropsWithChildren> = ({ children }) => {
         console.error(e);
       }
 
-      return null;
+      return null!;
     },
     [analytics]
   );

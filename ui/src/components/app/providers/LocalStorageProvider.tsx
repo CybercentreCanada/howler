@@ -11,7 +11,7 @@ export interface LocalStorageContextType {
   remove: (key: string) => void;
 }
 
-export const LocalStorageContext = createContext<LocalStorageContextType>(null);
+export const LocalStorageContext = createContext<LocalStorageContextType>(null!);
 
 const LocalStorageProvider: FC<PropsWithChildren> = ({ children }) => {
   const { get: getStored, set: setStored, remove: removeStored } = useLocalStorage(MY_LOCAL_STORAGE_PREFIX);

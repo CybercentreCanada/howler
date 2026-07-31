@@ -77,7 +77,7 @@ export default function AppLayoutProvider({ children }: AppLayoutProps) {
   const context = useMemo(() => {
     return {
       ready: layoutReady,
-      current: preferences.allowLayoutSelection ? current : preferences.defaultLayout,
+      current: ((preferences.allowLayoutSelection ? current : preferences.defaultLayout) ?? 'top') as AppLayoutMode,
       hideMenus,
       setReady,
       toggle

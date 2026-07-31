@@ -61,13 +61,13 @@ const HitLinks: FC<HitLinksProps> = ({ hit, analytic, dossiers = [] }) => {
       {displayPivots.map(({ pivot, dossier, resolvedUrl }) => {
         return (
           <Grid item key={`${dossier.dossier_id}-${pivot.value}`}>
-            <PivotLink pivot={pivot} hit={hit} dossier={dossier} resolvedUrl={resolvedUrl} compact />
+            <PivotLink pivot={pivot} hit={hit!} dossier={dossier} resolvedUrl={resolvedUrl} compact />
           </Grid>
         );
       })}
       {hasNotebooks && (
         <Grid item>
-          <HitNotebooks analytic={analytic} hit={hit} compact />
+          <HitNotebooks analytic={analytic!} hit={hit!} compact />
         </Grid>
       )}
     </Grid>

@@ -17,7 +17,7 @@ export interface LeadFormProps {
   updateMetadata: (data: any) => void;
 }
 
-const LeadEditor: FC<{ lead?: Lead; update: (lead: Partial<Lead>) => void }> = ({ lead, update }) => {
+const LeadEditor: FC<{ lead?: Lead; update: (lead: Partial<Lead> | null) => void }> = ({ lead, update }) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const monaco = useMonaco();
@@ -95,7 +95,7 @@ const LeadEditor: FC<{ lead?: Lead; update: (lead: Partial<Lead>) => void }> = (
         id="lead-format"
         renderInput={params => <TextField {...params} size="small" label={t('route.dossiers.manager.format')} />}
         value={lead?.format ?? null}
-        onChange={(_ev, format) => update({ format, metadata: '{}', content: '' })}
+        onChange={(_ev, format) => update({ format: format ?? undefined, metadata: '{}', content: '' })}
       />
       {!!lead?.format &&
         (lead.format === 'markdown' ? (

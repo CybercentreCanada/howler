@@ -119,7 +119,7 @@ const LeftNavDrawer = () => {
       <StyledDrawer
         variant="permanent"
         style={{ height: '100%' }}
-        width={preferences.leftnav.width}
+        width={preferences.leftnav.width!}
         open={leftnav.open}
       >
         {leftnav.open ? (
@@ -133,11 +133,11 @@ const LeftNavDrawer = () => {
           {leftnav.elements.map((e, i) => {
             if (e.type === 'item') {
               const item = e.element as AppLeftNavItem;
-              return <LeftNavItem key={item.id} item={item} onClick={isSmDown && onCloseDrawerIfOpen} />;
+              return <LeftNavItem key={item.id} item={item} onClick={isSmDown ? onCloseDrawerIfOpen : () => null} />;
             }
             if (e.type === 'group') {
               const item = e.element as AppLeftNavGroup;
-              return <LeftNavGroup key={item.id} group={item} onItemClick={isSmDown && onCloseDrawerIfOpen} />;
+              return <LeftNavGroup key={item.id} group={item} onItemClick={isSmDown ? onCloseDrawerIfOpen : () => null} />;
             }
             if (e.type === 'divider') {
               return <Divider key={`divider-${i}`} />;

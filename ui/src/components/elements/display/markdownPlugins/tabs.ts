@@ -34,6 +34,9 @@ const findTabs = (index: number, parent: mdast.Parent) => {
 export const codeTabs: Plugin<[], mdast.Root> = () => {
   return (tree, file) => {
     visit(tree, 'code', (node, index, parent) => {
+      if (index === undefined || !parent) {
+        return;
+      }
       const metaString = `${node.lang ?? ''} ${node.meta ?? ''}`.trim();
       if (!metaString) {
         return;

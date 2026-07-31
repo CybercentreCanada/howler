@@ -33,10 +33,10 @@ const TemplatesBase: FC = () => {
 
   const { analytics } = useContext(AnalyticContext);
   const { response, request, remove, getSearchRequestData } =
-    useContext<SearchResponseContextType<Template>>(SearchResponseContext);
+    useContext<SearchResponseContextType<Template>>(SearchResponseContext as any);
 
   const [phrase, setPhrase] = useState<string>('');
-  const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
+  const [offset, setOffset] = useState(parseInt(searchParams.get('offset')!) || 0);
   const [types, setTypes] = useState<('personal' | 'global')[]>([]);
   const [hasError, setHasError] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -77,16 +77,16 @@ const TemplatesBase: FC = () => {
     if (response) {
       load(
         response.items.map((item: Template) => ({
-          id: item.template_id,
+          id: item.template_id!,
           item,
           selected: false,
           cursor: false,
           disabled:
-            item.detection &&
+            !!(item.detection &&
             !analytics
               .find(v => v.name === item.analytic)
               ?.detections?.map((s: string) => s.toLowerCase())
-              ?.includes(item.detection?.toLowerCase())
+              ?.includes(item.detection?.toLowerCase()))
         }))
       );
     }
@@ -96,9 +96,9 @@ const TemplatesBase: FC = () => {
     (_offset: number) => {
       if (_offset !== offset) {
         const modifiedRequest = getSearchRequestData({ offset: _offset });
-        searchParams.set('offset', modifiedRequest.offset.toString());
+        searchParams.set('offset', modifiedRequest.offset!.toString());
         setSearchParams(searchParams, { replace: true });
-        setOffset(modifiedRequest.offset);
+        setOffset(modifiedRequest.offset!);
       }
     },
     [offset, searchParams, setSearchParams, getSearchRequestData]
@@ -115,7 +115,7 @@ const TemplatesBase: FC = () => {
   }, [dispatchApi, types]);
 
   useEffect(() => {
-    if (response?.total <= offset) {
+    if ((response?.total ?? 0) <= offset) {
       setOffset(0);
       searchParams.set('offset', '0');
       setSearchParams(searchParams, { replace: true });
@@ -190,7 +190,7 @@ const TemplatesBase: FC = () => {
       renderer={({ item }: TuiListItemProps<Template>, classRenderer) =>
         renderer(item.item, !!item.disabled, classRenderer())
       }
-      response={response}
+      response={response!}
       onSelect={(item: TuiListItem<Template>) => {
         navigate(
           `/templates/view?type=${item.item.type}&analytic=${item.item.analytic}${

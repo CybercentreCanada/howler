@@ -33,10 +33,10 @@ class CluePlugin extends HowlerPlugin {
     super.activate();
 
     const leadForm = (props: LeadFormProps) => <ClueLeadForm {...props} />;
-    const leadRenderer = (content: string, metadata: string, hit: Hit) => {
+    const leadRenderer = (content: string, metadata: string, hit?: Hit) => {
       const parsedProps = JSON.parse(metadata);
 
-      const value = get(hit, parsedProps.value);
+      const value = get(hit!, parsedProps.value);
 
       if (Array.isArray(value)) {
         // TODO: Revisit handling for array values

@@ -23,7 +23,7 @@ const UserEditor: FC = () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (fn: (user: HowlerUser, newValue: any) => Promise<HowlerUser>) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return async (value: any) => setUser(await fn(user, value));
+      return async (value: any) => setUser(await fn(user!, value));
     },
     [user, setUser]
   );
@@ -35,20 +35,20 @@ const UserEditor: FC = () => {
   }, [dispatchApi, id, user]);
 
   return (
-    <UserPageWrapper user={user}>
+    <UserPageWrapper user={user!}>
       <ProfileSection
-        user={user}
-        editName={(isAdmin || currentUser.username === user?.username) && userWrapper(editName)}
-        addRole={isAdmin && userWrapper(addRole)}
-        removeRole={isAdmin && userWrapper(removeRole)}
-        viewGroups={currentUser.username === user?.username && viewGroups}
+        user={user!}
+        editName={(isAdmin || currentUser.username === user?.username) ? userWrapper(editName) : undefined}
+        addRole={isAdmin ? userWrapper(addRole) : undefined}
+        removeRole={isAdmin ? userWrapper(removeRole) : undefined}
+        viewGroups={currentUser.username === user?.username ? viewGroups : undefined}
       />
       <SecuritySection
-        user={user}
-        editPassword={currentUser.username === user?.username && editPassword}
-        addApiKey={currentUser.username === user?.username && addApiKey}
-        removeApiKey={(isAdmin || currentUser.username === user?.username) && userWrapper(removeApiKey)}
-        editQuota={isAdmin && userWrapper(editQuota)}
+        user={user!}
+        editPassword={currentUser.username === user?.username ? editPassword : undefined}
+        addApiKey={currentUser.username === user?.username ? addApiKey : undefined}
+        removeApiKey={(isAdmin || currentUser.username === user?.username) ? userWrapper(removeApiKey) : undefined}
+        editQuota={isAdmin ? userWrapper(editQuota) : undefined}
       />
     </UserPageWrapper>
   );

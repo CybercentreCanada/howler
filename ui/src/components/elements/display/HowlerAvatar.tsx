@@ -44,7 +44,7 @@ const HowlerAvatar: FC<HowlerAvatarProps> = ({ userId, ...avatarProps }) => {
           // eslint-disable-next-line no-console
           console.debug(e);
           setProps({
-            src: null
+            src: undefined
           });
         });
     }

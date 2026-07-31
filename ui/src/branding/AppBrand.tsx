@@ -100,7 +100,7 @@ const AppLogo = ({
   size?: BrandSize;
 }) => {
   return (
-    <img src={src} alt={`${application} logo`} style={{ ...SIZES[size].icon, marginLeft: variant === 'app' && -7 }} />
+    <img src={src} alt={`${application} logo`} style={{ ...SIZES[size].icon, marginLeft: variant === 'app' ? -7 : undefined }} />
   );
 };
 

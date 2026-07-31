@@ -54,12 +54,12 @@ const HitBanner: FC<HitBannerProps> = ({ hit, lazy = false, layout = HitLayout.N
   const textVariant = useMemo(() => (layout === HitLayout.COMFY ? 'body1' : 'caption'), [layout]);
 
   const providerColor = useMemo(() => {
-    if (!hit?.event.provider) {
+    if (!hit?.event?.provider) {
       return PROVIDER_COLORS.unknown;
     }
 
-    return PROVIDER_COLORS[hit?.event.provider as keyof typeof PROVIDER_COLORS] ?? stringToColor(hit?.event.provider);
-  }, [hit?.event.provider]);
+    return PROVIDER_COLORS[hit?.event?.provider as keyof typeof PROVIDER_COLORS] ?? stringToColor(hit?.event?.provider);
+  }, [hit?.event?.provider]);
 
   const mitreId = useMemo(() => {
     if (hit.threat?.framework?.toLowerCase().startsWith('mitre')) {
@@ -245,7 +245,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, lazy = false, layout = HitLayout.N
                 </Grid>
               )}
             </Grid>
-            {hit.howler.outline.indicators?.length > 0 && (
+            {(hit.howler.outline.indicators?.length ?? 0) > 0 && (
               <Stack direction="row" spacing={1}>
                 <Typography component="span" variant={textVariant}>
                   {t('hit.header.indicators')}:
@@ -262,7 +262,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, lazy = false, layout = HitLayout.N
                           <PluginTypography context="indicators" variant={textVariant} value={_indicator}>
                             {_indicator}
                           </PluginTypography>
-                          {index < hit.howler.outline.indicators.length - 1 && (
+                          {index < hit.howler.outline!.indicators!.length - 1 && (
                             <Typography variant={textVariant}>{','}</Typography>
                           )}
                         </Stack>
@@ -322,7 +322,7 @@ const HitBanner: FC<HitBannerProps> = ({ hit, lazy = false, layout = HitLayout.N
         )}
         <Stack direction="row" spacing={layout !== HitLayout.COMFY ? 0.5 : 1}>
           <EscalationChip hit={hit} layout={layout} />
-          {['in-progress', 'on-hold'].includes(hit.howler.status) && (
+          {['in-progress', 'on-hold'].includes(hit.howler.status!) && (
             <Chip sx={{ width: 'fit-content', display: 'inline-flex' }} label={hit.howler.status} color="primary" />
           )}
         </Stack>

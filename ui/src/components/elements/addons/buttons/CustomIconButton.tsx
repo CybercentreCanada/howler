@@ -87,7 +87,7 @@ const CustomIconButton = ({
               style={{
                 position: 'absolute',
                 color: progressColor,
-                animationDuration: typeof progress === 'number' ? `${progress}s` : null
+                animationDuration: typeof progress === 'number' ? `${progress}s` : undefined
               }}
             />
           }

@@ -34,7 +34,7 @@ export class PhraseBuffer {
     this.type = type;
   }
 
-  private type: string;
+  private type?: string;
 
   private startIndex: number = 0;
 
@@ -81,6 +81,6 @@ export class PhraseBuffer {
           startIndex: this.startIndex,
           endIndex: this.endIndex - 1
         }
-      : null;
+      : null as any;
   }
 }

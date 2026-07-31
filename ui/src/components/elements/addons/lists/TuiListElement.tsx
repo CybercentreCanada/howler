@@ -10,7 +10,7 @@ type TuiListElementProps<T> = {
 };
 
 const TuiListElement = <T,>({ position, item, onSelect: onClick, children }: TuiListElementProps<T>) => {
-  const elementEl = useRef<HTMLDivElement>();
+  const elementEl = useRef<HTMLDivElement>(null);
 
   const onItemClick = useCallback(
     (_event: MouseEvent<HTMLDivElement>) => {

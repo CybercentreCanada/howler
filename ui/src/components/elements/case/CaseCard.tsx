@@ -45,14 +45,14 @@ const CaseCard: FC<{
     return <Skeleton variant="rounded" height={250} sx={{ mb: 1 }} className={className} />;
   }
 
-  const statusColor = STATUS_COLORS[_case.status];
+  const statusColor = STATUS_COLORS[_case.status!];
 
   return (
     <HowlerCard
       key={_case.case_id}
       {...slotProps?.card}
       sx={[
-        { p: 1, mb: 1, borderColor: statusColor ? theme.palette[statusColor]?.main : undefined },
+        { p: 1, mb: 1, borderColor: statusColor ? theme.palette[statusColor].main : undefined },
         ...(Array.isArray(slotProps?.card?.sx) ? slotProps.card.sx : slotProps?.card?.sx ? [slotProps.card.sx] : [])
       ]}
       className={className}
@@ -63,7 +63,7 @@ const CaseCard: FC<{
             <Typography variant="h6" display="flex" alignItems="start">
               {_case.title}
             </Typography>
-            <StatusIcon status={_case.status} />
+            <StatusIcon status={_case.status!} />
 
             <div style={{ flex: 1 }} />
 
@@ -78,13 +78,13 @@ const CaseCard: FC<{
             )}
 
             <Tooltip title={dayjs(_case.updated).toString()}>
-              <Chip icon={<UpdateOutlined fontSize="small" />} size="small" label={twitterShort(_case.updated)} />
+              <Chip icon={<UpdateOutlined fontSize="small" />} size="small" label={twitterShort(_case.updated!)} />
             </Tooltip>
           </Stack>
           <Typography variant="caption" color="textSecondary">
-            {_case.summary.trim().split('\n')[0]}
+            {_case.summary?.trim().split('\n')[0]}
           </Typography>
-          {_case.participants?.length > 0 && (
+          {(_case.participants?.length ?? 0) > 0 && (
             <>
               <Divider flexItem />
               <Stack direction="row" spacing={1}>
@@ -113,7 +113,7 @@ const CaseCard: FC<{
               </Grid>
             ))}
 
-            {_case.targets?.length > 0 && (_case.indicators?.length > 0 || _case.threats?.length > 0) && (
+            {(_case.targets?.length ?? 0) > 0 && ((_case.indicators?.length ?? 0) > 0 || (_case.threats?.length ?? 0) > 0) && (
               <Grid item>
                 <Divider orientation="vertical" />
               </Grid>
@@ -125,7 +125,7 @@ const CaseCard: FC<{
               </Grid>
             ))}
 
-            {_case.indicators?.length > 0 && _case.threats?.length > 0 && (
+            {(_case.indicators?.length ?? 0) > 0 && (_case.threats?.length ?? 0) > 0 && (
               <Grid item>
                 <Divider orientation="vertical" />
               </Grid>
@@ -145,21 +145,21 @@ const CaseCard: FC<{
             ))}
           </Grid>
 
-          {_case.tasks?.length > 0 && (
+          {(_case.tasks?.length ?? 0) > 0 && (
             <>
               <Divider flexItem />
 
               <Stack spacing={0.5} alignItems="start">
-                {_case.tasks.some(task => task.complete) && (
+                {_case.tasks!.some(task => task.complete) && (
                   <Chip
                     size="small"
                     color="success"
                     icon={<CheckCircleOutline />}
-                    label={`${countBy(_case.tasks, task => task.complete).true} ${t('complete')}`}
+                    label={`${countBy(_case.tasks!, task => task.complete).true} ${t('complete')}`}
                   />
                 )}
 
-                {_case.tasks
+                {_case.tasks!
                   .filter(task => !task.complete)
                   .map(task => (
                     <Chip key={task.id} icon={<RadioButtonUnchecked />} label={task.summary} />

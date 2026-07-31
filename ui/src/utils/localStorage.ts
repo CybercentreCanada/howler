@@ -28,12 +28,12 @@ export const setStored = (name: StorageKey, item: any) => {
  */
 export const getStored = <T = string>(name?: StorageKey): T => {
   try {
-    return JSON.parse(localStorage.getItem(buildName(name))) as T;
+    return JSON.parse(localStorage.getItem(buildName(name!)) ?? 'null') as T;
   } catch {
     // Migrating from the old system, some values were not JSON encoded. Decoding them will cause an exception.
     // Obviously, this is not optimal, but it's the only way to get Typescript to play nice.
     // When this is called, T will be type string.
-    return localStorage.getItem(buildName(name)) as unknown as T;
+    return localStorage.getItem(buildName(name!)) as unknown as T;
   }
 };
 

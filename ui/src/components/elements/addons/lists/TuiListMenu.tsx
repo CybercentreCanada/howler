@@ -4,15 +4,15 @@ import { memo } from 'react';
 
 const MY_PROPS = ['permanent', 'placement'];
 
-type PlacementBox = { top: number | null; right: number | null; bottom: number | null; left: number | null };
+type PlacementBox = { top: number | undefined; right: number | undefined; bottom: number | undefined; left: number | undefined };
 
 const PLACEMENTS = {
-  right: { top: 0, right: 0, bottom: 0, left: null } as PlacementBox,
-  left: { top: 0, right: null, bottom: 0, left: 0 } as PlacementBox,
-  'top-left': { top: 0, right: null, bottom: null, left: 0 } as PlacementBox,
-  'top-right': { top: 0, right: 0, bottom: null, left: null } as PlacementBox,
-  'bottom-left': { top: null, right: null, bottom: 0, left: 0 } as PlacementBox,
-  'bottom-right': { top: null, right: 0, bottom: 0, left: null } as PlacementBox
+  right: { top: 0, right: 0, bottom: 0, left: undefined } as PlacementBox,
+  left: { top: 0, right: undefined, bottom: 0, left: 0 } as PlacementBox,
+  'top-left': { top: 0, right: undefined, bottom: undefined, left: 0 } as PlacementBox,
+  'top-right': { top: 0, right: 0, bottom: undefined, left: undefined } as PlacementBox,
+  'bottom-left': { top: undefined, right: undefined, bottom: 0, left: 0 } as PlacementBox,
+  'bottom-right': { top: undefined, right: 0, bottom: 0, left: undefined } as PlacementBox
 };
 
 type TuiListMenuProps = {
@@ -32,7 +32,7 @@ const TuiListMenuRoot = styled('div', { shouldForwardProp: prop => !MY_PROPS.inc
   const position = PLACEMENTS[placement];
   return {
     ...position,
-    zIndex: position ? 100 : null,
+    zIndex: position ? 100 : undefined,
     display: permanent ? 'flex' : 'none',
     position: position ? 'absolute' : 'inherit',
     alignItems: 'center',
@@ -49,8 +49,8 @@ const TuiListMenuRoot = styled('div', { shouldForwardProp: prop => !MY_PROPS.inc
 const TuiListMenu = ({ style, className, permanent, placement, children }: TuiListMenuProps) => {
   return (
     <TuiListMenuRoot
-      permanent={permanent}
-      placement={placement}
+      permanent={!!permanent}
+      placement={placement ?? 'right'}
       style={style}
       className={`actions ${className || ''}`}
       onClick={event => event.stopPropagation()}

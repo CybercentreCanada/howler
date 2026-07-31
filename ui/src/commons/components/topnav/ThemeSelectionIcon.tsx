@@ -5,7 +5,7 @@ import ThemeSelection from 'commons/components/topnav/ThemeSelection';
 import { useRef, useState } from 'react';
 
 const ThemeSelectionIcon = () => {
-  const anchorEl = useRef();
+  const anchorEl = useRef<HTMLButtonElement>(null);
   const theme = useTheme();
   const { allowPersonalization, preferences } = useAppConfigs();
   const [open, setOpen] = useState<boolean>(false);

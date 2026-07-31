@@ -6,23 +6,27 @@ import type { PluginStore } from 'react-pluggable';
 
 export const bytesToSize = (bytes: number | null) => {
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  if (bytes === 0 || bytes === null) return '0 B';
+  if (bytes === 0 || bytes === null) {
+    return '0 B';
+  }
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${Math.round(bytes / Math.pow(1024, i))} ${sizes[i]}`;
+  return `${Math.round(bytes / Math.pow(1024, i))} ${sizes[i]!}`;
 };
 
 export const humanReadableNumber = (num: number | null) => {
   const sizes = ['', 'k', 'm', 'g', 't', 'p', 'e', 'z', 'y'];
-  if (num === 0 || num === null) return '0 ';
+  if (num === 0 || num === null) {
+    return '0 ';
+  }
   const i = Math.floor(Math.log(num) / Math.log(1000));
-  return `${Math.round(num / Math.pow(1000, i))}${sizes[i]} `;
+  return `${Math.round(num / Math.pow(1000, i))}${sizes[i]!} `;
 };
 
 export const getProvider = () => {
   if (window.location.pathname.indexOf(`${import.meta.env.PUBLIC_URL}/oauth/`) !== -1) {
     return window.location.pathname
       .split(`${import.meta.env.PUBLIC_URL}/oauth/`)
-      .pop()
+      .pop()!
       .slice(0, -1);
   }
   const params = new URLSearchParams(window.location.search);
@@ -33,7 +37,7 @@ export const searchResultsDisplay = (count: number, max: number = 10000) => {
   const params = new URLSearchParams(window.location.search);
   const trackedHits = params.get('track_total_hits');
 
-  if (count === parseInt(trackedHits) || (trackedHits === null && count === max)) {
+  if (count === parseInt(trackedHits ?? '') || (trackedHits === null && count === max)) {
     return `${count}+`;
   }
 
@@ -103,13 +107,13 @@ type Timestamp = {
 };
 
 export const sortByTimestamp = <T extends Timestamp>(arr: T[]) => {
-  return (arr ?? []).slice().sort((a, b) => compareTimestamp(b.timestamp, a.timestamp));
+  return (arr ?? []).slice().sort((a, b) => compareTimestamp(b.timestamp!, a.timestamp!));
 };
 
 export const getTimeRange = (arr: string[]): [string, string] => {
   const sorted = arr.sort((a, b) => compareTimestamp(a, b));
 
-  return [sorted[0], sorted[sorted.length - 1]];
+  return [sorted[0]!, sorted[sorted.length - 1]!];
 };
 
 export const removeEmpty = (obj: unknown, aggressive = false): unknown => {
@@ -142,7 +146,7 @@ export const searchObject = (o: any, query: string, returnFlat = false) => {
     const regex = new RegExp(query, 'i');
 
     const filteredData =
-      Object.fromEntries(Object.entries(flatten(o)).filter(([k, v]) => regex.test(k) || regex.test(v))) ?? {};
+      Object.fromEntries(Object.entries(flatten(o) as Record<string, unknown>).filter(([k, v]) => regex.test(k) || regex.test(String(v)))) ?? {};
 
     return returnFlat ? filteredData : unflatten(filteredData);
   } catch {
@@ -168,7 +172,7 @@ export const convertDateToLucene = (date: string) => {
 
   const [amount, type] = date.replace('date.range.', '').split('.');
 
-  return `[now-${amount}${DATE_TO_LUCENE_MAP[type] ?? 'd'} TO now]`;
+  return `[now-${amount}${DATE_TO_LUCENE_MAP[type!] ?? 'd'} TO now]`;
 };
 
 export const convertCustomDateRangeToLucene = (startDate: string, endDate: string) => {
@@ -199,7 +203,7 @@ export const flattenDeep = (data: { [index: string]: any }): { [index: string]: 
   const partialFlat = flatten(data, { safe: true });
 
   const final: { [index: string]: any } = {};
-  Object.entries(partialFlat).forEach(([key, value]) => {
+  Object.entries(partialFlat as Record<string, any>).forEach(([key, value]) => {
     if (!Array.isArray(value) || value.length === 0 || !value.some(entry => isObject(entry))) {
       final[key] = value;
     } else {

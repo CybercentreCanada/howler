@@ -8,7 +8,7 @@ type AppUserProviderProps<U extends AppUser> = {
 };
 
 const AppUserServiceImpl: AppUserService<AppUser> = {
-  user: null,
+  user: null as unknown as AppUser,
   setUser: () => undefined,
   isReady: () => false,
   validateProps: () => true

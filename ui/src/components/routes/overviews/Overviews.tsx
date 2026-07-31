@@ -30,12 +30,12 @@ const OverviewsBase: FC = () => {
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
   const [phrase, setPhrase] = useState<string>('');
-  const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
+  const [offset, setOffset] = useState(parseInt(searchParams.get('offset')!) || 0);
   const [hasError, setHasError] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const { response, request, remove, getSearchRequestData } =
-    useContext<SearchResponseContextType<Overview>>(SearchResponseContext);
+    useContext<SearchResponseContextType<Overview>>(SearchResponseContext as any);
 
   const onSearch = useCallback(async () => {
     try {
@@ -70,7 +70,7 @@ const OverviewsBase: FC = () => {
     if (response) {
       load(
         response.items.map((item: Overview) => ({
-          id: item.overview_id,
+          id: item.overview_id!,
           item,
           selected: false,
           cursor: false
@@ -84,9 +84,9 @@ const OverviewsBase: FC = () => {
     (_offset: number) => {
       if (_offset !== offset) {
         const modifiedRequest = getSearchRequestData({ offset: _offset });
-        searchParams.set('offset', modifiedRequest.offset.toString());
+        searchParams.set('offset', modifiedRequest.offset!.toString());
         setSearchParams(searchParams, { replace: true });
-        setOffset(modifiedRequest.offset);
+        setOffset(modifiedRequest.offset!);
       }
     },
     [offset, searchParams, setSearchParams, getSearchRequestData]
@@ -122,7 +122,7 @@ const OverviewsBase: FC = () => {
   }, []);
 
   useEffect(() => {
-    if (response?.total <= offset) {
+    if ((response?.total ?? 0) <= offset) {
       setOffset(0);
       searchParams.set('offset', '0');
       setSearchParams(searchParams, { replace: true });
@@ -158,7 +158,7 @@ const OverviewsBase: FC = () => {
         </Typography>
       }
       renderer={({ item }: TuiListItemProps<Overview>, classRenderer) => renderer(item.item, classRenderer())}
-      response={response}
+      response={response!}
       onSelect={(item: TuiListItem<Overview>) =>
         navigate(
           `/overviews/view?analytic=${item.item.analytic}${

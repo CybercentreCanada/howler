@@ -122,16 +122,16 @@ const QueryBuilder: FC = () => {
   const [type, setType] = useState<'eql' | 'lucene' | 'yaml'>('lucene');
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState(DEFAULT_VALUES.lucene);
-  const [queryType, setQueryType] = useState(LUCENE_QUERY_OPTIONS[0]);
-  const [groupByField, setGroupByField] = useState<string>(null);
+  const [queryType, setQueryType] = useState<'default' | 'facet' | 'groupby' | 'explain'>(LUCENE_QUERY_OPTIONS[0]!);
+  const [groupByField, setGroupByField] = useState<string>('');
   const [allFields, setAllFields] = useState(true);
   const [fields, setFields] = useState<string[]>(['howler.id']);
-  const [response, setResponse] = useState<SearchResponse<Hit> | HowlerExplainSearchResponse>(null);
-  const [error, setError] = useState<string>(null);
+  const [response, setResponse] = useState<SearchResponse<Hit> | HowlerExplainSearchResponse | null>(null);
+  const [error, setError] = useState<string>('');
   const [rows, setRows] = useState(1);
   const [x, setX] = useState(0);
 
-  const wrapper = useRef<HTMLDivElement>();
+  const wrapper = useRef<HTMLDivElement>(null);
 
   const fieldOptions = useMemo(() => hitFields.map(_field => _field.key), [hitFields]);
 
@@ -140,8 +140,8 @@ const QueryBuilder: FC = () => {
 
     try {
       const searchProperties = {
-        fl: allFields ? null : fields.join(','),
-        rows: STEPS[rows]
+        fl: allFields ? undefined : fields.join(','),
+        rows: STEPS[rows]!
       };
 
       let result: SearchResponse<Hit> | HowlerExplainSearchResponse;
@@ -149,7 +149,7 @@ const QueryBuilder: FC = () => {
         if (queryType === 'facet') {
           result = await api.search.facet.hit.post({
             query: sanitizeMultilineLucene(query),
-            rows: STEPS[rows],
+            rows: STEPS[rows]!,
             fields
           });
         } else if (queryType === 'groupby') {
@@ -180,7 +180,7 @@ const QueryBuilder: FC = () => {
       }
 
       setResponse(result);
-      setError(null);
+      setError('');
     } catch (e) {
       setError(e instanceof Error ? (e.message ?? e.toString()) : String(e));
     } finally {
@@ -201,6 +201,10 @@ const QueryBuilder: FC = () => {
 
   const onMouseMove = useCallback((event: MouseEvent) => {
     const wrapperRect = wrapper.current?.getBoundingClientRect();
+
+    if (!wrapperRect) {
+      return;
+    }
 
     const offset = event.clientX - (wrapperRect.left + wrapperRect.width / 2);
 
@@ -367,7 +371,11 @@ const QueryBuilder: FC = () => {
               getOptionLabel={opt => t(`route.advanced.query.type.${opt}`)}
               options={LUCENE_QUERY_OPTIONS}
               value={queryType}
-              onChange={(_event, value) => setQueryType(value)}
+              onChange={(_event, value) => {
+                if (value) {
+                  setQueryType(value);
+                }
+              }}
               renderInput={params => (
                 <TextField {...params} label={t('route.advanced.query.lucene.type')} sx={{ minWidth: '230px' }} />
               )}
@@ -386,7 +394,7 @@ const QueryBuilder: FC = () => {
               size="small"
               options={fieldOptions}
               value={groupByField}
-              onChange={(__, value) => setGroupByField(value)}
+              onChange={(__, value) => setGroupByField(value ?? '')}
               renderInput={params => <TextField {...params} label={t('route.advanced.pivot.field')} />}
               sx={{ minWidth: '200px', '& label': { zIndex: 1200 } }}
               onKeyDown={onKeyDown}
@@ -427,7 +435,7 @@ const QueryBuilder: FC = () => {
               size="small"
               options={fieldOptions}
               value={fields}
-              onChange={(__, values) => (values.length > 0 ? setFields(values) : setAllFields(true))}
+              onChange={(__, values) => (values.length > 0 ? setFields(values.filter((v): v is string => !!v)) : setAllFields(true))}
               renderInput={params => <TextField {...params} label={t('route.advanced.fields')} />}
               sx={{ maxWidth: '500px', width: '20vw', minWidth: '200px', '& label': { zIndex: 1200 } }}
               onKeyDown={onKeyDown}

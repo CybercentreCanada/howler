@@ -116,7 +116,7 @@ const AppBar = () => {
       <Toolbar
         disableGutters
         style={{
-          paddingLeft: !isXs && !isTopLayout ? muiTheme.spacing(2) : null,
+          paddingLeft: !isXs && !isTopLayout ? muiTheme.spacing(2) : undefined,
           paddingRight: muiTheme.spacing(1)
         }}
       >

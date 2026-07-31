@@ -18,7 +18,7 @@ const HitPreview: FC<PreviewProps> = ({ hit, options }) => {
   const isUnderLg = useMediaQuery(theme.breakpoints.down('lg'));
 
   const providerColor = useMemo(
-    () => PROVIDER_COLORS[(hit.event?.provider ?? 'unknown') as keyof typeof PROVIDER_COLORS] ?? stringToColor(hit.event.provider),
+    () => PROVIDER_COLORS[(hit.event?.provider ?? 'unknown') as keyof typeof PROVIDER_COLORS] ?? stringToColor(hit.event?.provider ?? 'unknown'),
     [hit.event?.provider]
   );
 
@@ -60,7 +60,7 @@ const HitPreview: FC<PreviewProps> = ({ hit, options }) => {
                 <div>
                   <Trans i18nKey="hit.header.target" />: {hit.howler.outline.target}
                 </div>
-                <div>{hit.howler.outline.indicators.join(', ')}</div>
+                <div>{(hit.howler.outline.indicators ?? []).join(', ')}</div>
               </Stack>
             }
           >

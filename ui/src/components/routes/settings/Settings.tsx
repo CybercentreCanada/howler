@@ -32,9 +32,9 @@ const Settings: FC = () => {
     <UserPageWrapper user={currentUser}>
       <ProfileSection
         user={currentUser}
-        editName={!isOAuth && currentUserWrapper(editName)}
-        addRole={currentUser.is_admin && !isOAuth && currentUserWrapper(addRole)}
-        removeRole={currentUser.is_admin && !isOAuth && currentUserWrapper(removeRole)}
+        editName={!isOAuth ? currentUserWrapper(editName) : undefined}
+        addRole={currentUser.is_admin && !isOAuth ? currentUserWrapper(addRole) : undefined}
+        removeRole={currentUser.is_admin && !isOAuth ? currentUserWrapper(removeRole) : undefined}
         viewGroups={viewGroups}
       />
       <SecuritySection
@@ -42,10 +42,10 @@ const Settings: FC = () => {
         editPassword={editPassword}
         addApiKey={addApiKey}
         removeApiKey={currentUserWrapper(removeApiKey)}
-        editQuota={currentUser.is_admin && currentUserWrapper(editQuota)}
+        editQuota={currentUser.is_admin ? currentUserWrapper(editQuota) : undefined}
       />
       <LocalSection />
-      {currentUser.roles.includes('admin') && <AdminSection />}
+      {currentUser.roles!.includes('admin') && <AdminSection />}
     </UserPageWrapper>
   );
 };

@@ -100,7 +100,7 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard: Da
   }, []);
 
   const filteredAnalyticVisualizations = useMemo(() => {
-    const existingAnalyticCards = dashboard.filter(_card => _card.type === 'analytic');
+    const existingAnalyticCards = (dashboard ?? []).filter(_card => _card.type === 'analytic');
     return VISUALIZATIONS.filter(viz => {
       return !existingAnalyticCards.some(_card => {
         const parsedConfig = JSON.parse(_card.config);
@@ -171,13 +171,13 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard: Da
                 </Typography>
                 <Autocomplete
                   sx={{ pt: 1 }}
-                  onChange={(__, opt) => setConfig('analyticId', opt.analytic_id)}
+                  onChange={(__, opt) => setConfig('analyticId', opt!.analytic_id)}
                   loading={analyticsLoading}
                   options={analytics}
                   filterOptions={(options, state) =>
                     options.filter(
                       opt =>
-                        opt.name.toLowerCase().includes(state.inputValue.toLowerCase()) ||
+                        opt.name!.toLowerCase().includes(state.inputValue.toLowerCase()) ||
                         opt.description?.split('\n')[0]?.toLowerCase().includes(state.inputValue.toLowerCase())
                     )
                   }
@@ -191,7 +191,7 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard: Da
                       </Stack>
                     </li>
                   )}
-                  getOptionLabel={option => option.name}
+                  getOptionLabel={option => option.name ?? ''}
                   renderInput={params => <TextField {...params} label={t('route.home.add.analytic')} />}
                 />
                 <FormControl sx={theme => ({ mt: `${theme.spacing(2)} !important` })}>
@@ -228,7 +228,7 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard: Da
                 <Autocomplete
                   sx={{ pt: 1 }}
                   value={views[config.viewId] || null}
-                  onChange={(__, opt) => setConfig('viewId', opt.view_id)}
+                  onChange={(__, opt) => setConfig('viewId', opt!.view_id)}
                   onOpen={onViewOpen}
                   onClose={() => setViewOpen(false)}
                   open={viewOpen}
@@ -241,21 +241,21 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard: Da
                         !dashboard?.find(
                           entry => entry.type === 'view' && JSON.parse(entry.config).viewId === opt.view_id
                         ) &&
-                        (opt.title.toLowerCase().includes(state.inputValue.toLowerCase()) ||
-                          opt.query.toLowerCase().includes(state.inputValue.toLowerCase()))
+                        (opt.title!.toLowerCase().includes(state.inputValue.toLowerCase()) ||
+                          opt.query!.toLowerCase().includes(state.inputValue.toLowerCase()))
                     )
                   }
                   renderOption={(props, option) => (
-                    <li {...props} key={option.view_id}>
+                    <li {...props} key={option!.view_id}>
                       <Stack>
-                        <Typography variant="body1">{t(option.title)}</Typography>
+                        <Typography variant="body1">{t(option!.title!)}</Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {option.query}
+                          {option!.query}
                         </Typography>
                       </Stack>
                     </li>
                   )}
-                  getOptionLabel={option => t(option.title)}
+                  getOptionLabel={option => t(option!.title!)}
                   renderInput={params => <TextField {...params} label={t('route.home.add.view')} />}
                 />
                 <Typography variant="body1" sx={{ pt: 1 }}>

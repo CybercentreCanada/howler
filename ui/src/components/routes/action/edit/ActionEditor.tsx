@@ -24,7 +24,6 @@ import RecordQuery from 'components/routes/hits/search/RecordQuery';
 import { difference, uniq } from 'lodash-es';
 import type { ActionOperation } from 'models/ActionTypes';
 import type { HowlerUser } from 'models/entities/HowlerUser';
-import type { Action } from 'models/entities/generated/Action';
 import type { Operation } from 'models/entities/generated/Operation';
 import howlerPluginStore from 'plugins/store';
 import { useCallback, useContext, useEffect, useMemo, useState, type ChangeEventHandler, type FC } from 'react';
@@ -63,7 +62,7 @@ const ActionEditor: FC = () => {
   const [operations, setOperations] = useState<ActionOperation[]>([]);
   const [name, setName] = useState('');
   const [userOperations, setUserOperations] = useState<Operation[]>([]);
-  const [triggers, setTriggers] = useState<Action['triggers']>([]);
+  const [triggers, setTriggers] = useState<string[]>([]);
 
   const availableOperations = useMemo(
     () => operations.filter(o => !userOperations.some(uo => uo.operation_id === o.id)),
@@ -80,7 +79,7 @@ const ActionEditor: FC = () => {
 
       const newOperation = operations.find(op => op.id === a.operation_id);
 
-      setTriggers(triggers.filter(_trigger => newOperation.triggers.includes(_trigger)));
+      setTriggers(triggers.filter(_trigger => newOperation!.triggers!.includes(_trigger)));
     },
     [operations, triggers]
   );
@@ -108,7 +107,7 @@ const ActionEditor: FC = () => {
 
   useEffect(() => {
     void dispatchApi(api.action.operations.get())
-      .then(_operations => _operations.filter(a => difference(a.roles, user.roles).length < a.roles.length))
+      .then(_operations => _operations.filter(a => difference(a.roles, user.roles!).length < a.roles.length))
       .then(setOperations);
 
     if (responseQuery) {
@@ -141,12 +140,12 @@ const ActionEditor: FC = () => {
         }
 
         const existingAction = result.items[0];
-        setName(existingAction.name);
-        searchParams.set('query', existingAction.query);
+        setName(existingAction.name!);
+        searchParams.set('query', existingAction.query!);
         setSearchParams(new URLSearchParams(searchParams), { replace: true });
-        setUserOperations(existingAction.operations);
+        setUserOperations(existingAction.operations!);
         setLoading(false);
-        void onSearch(existingAction.query);
+        void onSearch(existingAction.query!);
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -174,7 +173,7 @@ const ActionEditor: FC = () => {
               !name ||
               loading ||
               userOperations.length < 1 ||
-              userOperations.some(a => !operationReady(a?.data_json, operations.find(_a => _a.id === a.operation_id)))
+              userOperations.some(a => !operationReady(a?.data_json, operations.find(_a => _a.id === a.operation_id)!))
             }
             onClick={() => saveAction(name, responseQuery, userOperations, triggers)}
           >
@@ -184,12 +183,12 @@ const ActionEditor: FC = () => {
 
         <FormGroup>
           <Stack direction="row" spacing={1} ml={-1} mr={-1}>
-            {uniq(operations.flatMap(op => op.triggers)).map(trigger => {
+            {uniq(operations.flatMap(op => op.triggers!)).map(trigger => {
               const disabled =
-                !user.roles.includes('automation_advanced') ||
+                !user.roles!.includes('automation_advanced') ||
                 userOperations.length < 1 ||
                 !userOperations.every(userOperation =>
-                  operations.find(operation => operation.id === userOperation.operation_id)?.triggers.includes(trigger)
+                  operations.find(operation => operation.id === userOperation.operation_id)?.triggers!.includes(trigger)
                 );
 
               const component = (
@@ -212,7 +211,7 @@ const ActionEditor: FC = () => {
                 <Tooltip
                   key={trigger}
                   title={
-                    !user.roles.includes('automation_advanced')
+                    !user.roles!.includes('automation_advanced')
                       ? t('route.actions.trigger.disabled.permissions')
                       : disabled && userOperations.length > 0
                         ? t('route.actions.trigger.disabled.explanation')
@@ -236,7 +235,7 @@ const ActionEditor: FC = () => {
         </Stack>
         <RecordQuery triggerSearch={onSearch} />
         {response ? (
-          <QueryResultText count={response.total} query={responseQuery} />
+          <QueryResultText count={response.total!} query={responseQuery} />
         ) : (
           <Typography
             sx={theme => ({
@@ -268,10 +267,10 @@ const ActionEditor: FC = () => {
           {userOperations.map((a, index) => {
             const operation = operations.find(_operation => _operation.id === a.operation_id);
 
-            if (howlerPluginStore.operations.includes(a.operation_id)) {
+            if (howlerPluginStore.operations.includes(a.operation_id!)) {
               return pluginStore.executeFunction(`operation.${a.operation_id}`, {
-                operation,
-                operations: [operation, ...availableOperations],
+                operation: operation!,
+                operations: [operation!, ...availableOperations],
                 query: responseQuery,
                 onChange: onActionChange(index),
                 onDelete: onActionDelete(index),
@@ -283,8 +282,8 @@ const ActionEditor: FC = () => {
               <OperationEntry
                 key={a.operation_id}
                 query={responseQuery}
-                operation={operation}
-                operations={[operation, ...availableOperations]}
+                operation={operation!}
+                operations={[operation!, ...availableOperations]}
                 values={a.data_json}
                 onChange={onActionChange(index)}
                 onDelete={onActionDelete(index)}
@@ -296,7 +295,7 @@ const ActionEditor: FC = () => {
             <Card variant="outlined" sx={{ flex: 1 }}>
               <CardContent sx={{ paddingBottom: '16px !important' }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
-                  <Typography variant="body1" color={!response && 'text.secondary'}>
+                  <Typography variant="body1" color={!response ? 'text.secondary' : undefined}>
                     {t('route.actions.operation.add')}
                   </Typography>
                   <IconButton
@@ -306,7 +305,7 @@ const ActionEditor: FC = () => {
                       setUserOperations(_userActions => [
                         ..._userActions,
                         {
-                          operation_id: operations.find(a => !_userActions.some(_a => _a.operation_id === a.id)).id,
+                          operation_id: operations.find(a => !_userActions.some(_a => _a.operation_id === a.id))!.id,
                           data_json: '{}'
                         }
                       ])
@@ -330,7 +329,7 @@ const ActionEditor: FC = () => {
                 !response ||
                 loading ||
                 userOperations.length < 1 ||
-                userOperations.some(a => !operationReady(a?.data_json, operations.find(_a => _a.id === a.operation_id)))
+                userOperations.some(a => !operationReady(a?.data_json, operations.find(_a => _a.id === a.operation_id)!))
               }
               onClick={_submitAction}
             >

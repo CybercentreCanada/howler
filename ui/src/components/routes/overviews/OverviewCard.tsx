@@ -18,12 +18,12 @@ const OverviewCard: FC<{
       <Stack direction="row" alignItems="center" spacing={1}>
         <Stack>
           <Typography variant="body1">
-            {t(overview.analytic)} - {t(overview.detection ?? 'all')}
+            {t(overview.analytic!)} - {t(overview.detection ?? 'all')}
           </Typography>
           <Typography variant="caption" color="text.secondary">
             <code>
               <pre>
-                {overview.content
+                {(overview.content ?? '')
                   .split('\n')
                   .filter(line => !!line)
                   .slice(0, 3)
@@ -34,11 +34,11 @@ const OverviewCard: FC<{
           </Typography>
         </Stack>
         <FlexOne />
-        <HowlerAvatar sx={{ height: '24px', width: '24px' }} userId={overview.owner} />
+        <HowlerAvatar sx={{ height: '24px', width: '24px' }} userId={overview.owner!} />
 
         {onDelete && (
           <Tooltip title={t('route.overviews.manager.delete')}>
-            <IconButton onClick={e => onDelete(e, overview.overview_id)}>
+            <IconButton onClick={e => onDelete(e, overview.overview_id!)}>
               <Delete />
             </IconButton>
           </Tooltip>

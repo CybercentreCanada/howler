@@ -33,8 +33,8 @@ const LocalSection: FC = () => {
   const [hitLayout, setHitLayout] = useMyLocalStorageItem(StorageKey.HIT_LAYOUT, false);
   const [displayType, setDisplayType] = useMyLocalStorageItem(StorageKey.DISPLAY_TYPE, 'list');
   const [pageCount, setPageCount] = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25);
-  const [searchWidth, setSearchWidth] = useMyLocalStorageItem(StorageKey.SEARCH_PANE_WIDTH, null);
-  const [templateFieldCount, setTemplateFieldCount] = useMyLocalStorageItem(StorageKey.TEMPLATE_FIELD_COUNT, null);
+  const [searchWidth, setSearchWidth] = useMyLocalStorageItem<number | null>(StorageKey.SEARCH_PANE_WIDTH, null);
+  const [templateFieldCount, setTemplateFieldCount] = useMyLocalStorageItem<number | null>(StorageKey.TEMPLATE_FIELD_COUNT, null);
 
   return (
     <SettingsSection title={t('page.settings.local.title')} colSpan={3}>
@@ -43,33 +43,33 @@ const LocalSection: FC = () => {
         descriptionKey="page.settings.local.compact.json.description"
         value={compactJson}
         type="checkbox"
-        onEdit={async value => setCompactJson(JSON.parse(value))}
+        onEdit={async value => setCompactJson(JSON.parse(value!))}
       />
       <EditRow
         titleKey="page.settings.local.flatten.json"
         descriptionKey="page.settings.local.flatten.json.description"
         value={flattenJson}
         type="checkbox"
-        onEdit={async value => setFlattenJson(JSON.parse(value))}
+        onEdit={async value => setFlattenJson(JSON.parse(value!))}
       />
       <EditRow
         titleKey="page.settings.local.details.drawer"
         descriptionKey="page.settings.local.details.drawer.description"
         value={forceDrawer}
         type="checkbox"
-        onEdit={async value => setForceDrawer(JSON.parse(value))}
+        onEdit={async value => setForceDrawer(JSON.parse(value!))}
       />
       <EditRow
         titleKey="page.settings.local.show.hit.summary.graph"
         descriptionKey="page.settings.local.show.hit.summary.graph.description"
         value={showHitSummaryGraph}
         type="checkbox"
-        onEdit={async value => setShowHitSummaryGraph(JSON.parse(value))}
+        onEdit={async value => setShowHitSummaryGraph(JSON.parse(value!))}
       />
       <EditRow
         titleKey="page.settings.local.search.width"
         descriptionKey="page.settings.local.search.width.description"
-        value={searchWidth}
+        value={searchWidth as number}
         type="range"
         min={400}
         max={Math.floor(window.innerWidth / 100) * 100}
@@ -113,7 +113,7 @@ const LocalSection: FC = () => {
       <EditRow
         titleKey="page.settings.local.hits.field_count"
         descriptionKey="page.settings.local.hits.field_count.description"
-        value={templateFieldCount}
+        value={templateFieldCount as number}
         type="range"
         min={0}
         step={1}

@@ -26,11 +26,11 @@ const useMyActionFunctions = () => {
   const { addListener, removeListener } = useContext(SocketContext);
 
   const [loading, setLoading] = useState(false);
-  const [response, setResponse] = useState<HowlerSearchResponse<Hit>>(null);
+  const [response, setResponse] = useState<HowlerSearchResponse<Hit> | null>(null);
   const [responseQuery, setResponseQuery] = useState('');
   const [progress, setProgress] = useState<[number, number]>([0, 0]);
-  const [requestId, setRequestId] = useState<string>(null);
-  const [report, setReport] = useState<ActionReport>();
+  const [requestId, setRequestId] = useState<string | null>(null);
+  const [report, setReport] = useState<ActionReport | null>();
 
   const handler = useCallback(
     (data: RecievedDataType<{ request_id: string; processed: number; total: number }>) => {
@@ -156,7 +156,7 @@ const useMyActionFunctions = () => {
         setRequestId(reqId);
         setReport(null);
 
-        let key: SnackbarKey = null;
+        let key: SnackbarKey | null = null;
         try {
           const action = api.search.action.post({ query: `action_id:${actionId}`, rows: 1 });
 

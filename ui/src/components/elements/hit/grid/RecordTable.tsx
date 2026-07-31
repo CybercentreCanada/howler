@@ -57,7 +57,7 @@ const RecordTable = ({
 
       void getMatchingAnalytic(record).then(_analytic => {
         if (_analytic) {
-          setAnalyticIds(_analyticIds => ({ ..._analyticIds, [record.howler.analytic]: _analytic.analytic_id }));
+          setAnalyticIds(_analyticIds => ({ ..._analyticIds, [record.howler.analytic]: _analytic.analytic_id! }));
         }
       });
     });
@@ -68,7 +68,7 @@ const RecordTable = ({
     event.stopPropagation();
     event.preventDefault();
 
-    const { col, width } = resizingCol.current;
+    const { col, width } = resizingCol.current!;
     const newWidth = width + event.movementX;
 
     document.querySelectorAll<HTMLElement>(`.col-${col.replaceAll('.', '-')}`).forEach(el => {
@@ -76,22 +76,22 @@ const RecordTable = ({
       el.style.width = newWidth + 'px';
     });
 
-    resizingCol.current.width = newWidth;
+    resizingCol.current!.width = newWidth;
   }, []);
 
   const onMouseUp = useCallback(() => {
-    const { col, width, element } = resizingCol.current;
+    const { col, width, element } = resizingCol.current!;
 
     if (isReady) {
       setColumnWidth(col, Math.round(width));
     }
 
-    element.style.width = null;
-    element.style.maxWidth = null;
+    element.style.width = '';
+    element.style.maxWidth = '';
 
     document.querySelectorAll<HTMLElement>(`.col-${col.replaceAll('.', '-')}`).forEach(el => {
-      el.style.maxWidth = null;
-      el.style.width = null;
+      el.style.maxWidth = '';
+      el.style.width = '';
     });
 
     window.removeEventListener('mousemove', onMouseMove);
@@ -103,7 +103,7 @@ const RecordTable = ({
       event.stopPropagation();
       event.preventDefault();
 
-      const element = (event.target as HTMLElement).parentElement;
+      const element = (event.target as HTMLElement).parentElement!;
       const rect = element.getBoundingClientRect();
 
       resizingCol.current = { col, width: rect.width, element };

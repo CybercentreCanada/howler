@@ -26,10 +26,10 @@ const HitOutline: FC<{ hit: WithMetadata<Hit>; lazy?: boolean; layout: HitLayout
 
   const [templateFieldCount] = useMyLocalStorageItem(StorageKey.TEMPLATE_FIELD_COUNT, null);
 
-  const [template, setTemplate] = useState<Template>(null);
+  const [template, setTemplate] = useState<Template | null>(null);
 
   useEffect(() => {
-    void getMatchingTemplate(hit).then(setTemplate);
+    void getMatchingTemplate(hit).then(value => setTemplate(value!));
   }, [getMatchingTemplate, hit]);
 
   const outline = useMemo(() => {
@@ -40,8 +40,8 @@ const HitOutline: FC<{ hit: WithMetadata<Hit>; lazy?: boolean; layout: HitLayout
         template,
         fields:
           !isNil(templateFieldCount) && !forceAllFields
-            ? [...template.keys].slice(0, templateFieldCount)
-            : template.keys,
+            ? [...template.keys!].slice(0, templateFieldCount)
+            : template.keys!,
         readonly: template.type === 'readonly'
       });
     } else {

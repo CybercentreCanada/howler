@@ -37,7 +37,7 @@ import { useSearchParams } from 'react-router-dom';
 
 export interface PivotFormProps {
   pivot: Pivot;
-  update: (pivot: Partial<Pivot>) => void;
+  update: (pivot: Partial<Pivot> | null) => void;
 }
 
 const LinkForm: FC<PivotFormProps> = ({ pivot, update }) => {
@@ -68,7 +68,7 @@ const LinkForm: FC<PivotFormProps> = ({ pivot, update }) => {
               value={_mapping?.key ?? ''}
               onChange={ev =>
                 update({
-                  mappings: pivot.mappings.map((_m, _index) =>
+                  mappings: pivot.mappings!.map((_m, _index) =>
                     index === _index ? { ..._m, key: ev.target.value } : _m
                   )
                 })
@@ -91,14 +91,14 @@ const LinkForm: FC<PivotFormProps> = ({ pivot, update }) => {
               value={_mapping.field ?? ''}
               onChange={(_ev, field) =>
                 update({
-                  mappings: pivot.mappings.map((_m, _index) => (index === _index ? { ..._m, field } : _m))
+                  mappings: pivot.mappings!.map((_m, _index) => (index === _index ? { ..._m, field: field ?? undefined } : _m))
                 })
               }
             />
             <IconButton
               onClick={() =>
                 update({
-                  mappings: pivot.mappings.filter((_m, _index) => index !== _index)
+                  mappings: pivot.mappings!.filter((_m, _index) => index !== _index)
                 })
               }
             >
@@ -113,7 +113,7 @@ const LinkForm: FC<PivotFormProps> = ({ pivot, update }) => {
               value={_mapping?.custom_value ?? ''}
               onChange={ev =>
                 update({
-                  mappings: pivot.mappings.map((_m, _index) =>
+                  mappings: pivot.mappings!.map((_m, _index) =>
                     index === _index ? { ..._m, custom_value: ev.target.value } : _m
                   )
                 })
@@ -153,7 +153,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
   const [tab, setTab] = useState(parseInt(searchParams.get('pivot') ?? '0'));
 
   const update = useCallback(
-    (data: Partial<Pivot>) =>
+    (data: Partial<Pivot> | null) =>
       setDossier(_dossier => ({
         ..._dossier,
         pivots: (_dossier.pivots ?? [])
@@ -162,7 +162,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
               return pivot;
             }
 
-            if (isNull(data)) {
+            if (data === null) {
               return null;
             }
 
@@ -179,7 +179,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
     [setDossier, tab]
   );
 
-  const pivot: Pivot = useMemo(() => dossier.pivots?.[tab] ?? null, [dossier.pivots, tab]);
+  const pivot: Pivot | null = useMemo(() => dossier.pivots?.[tab] ?? null, [dossier.pivots, tab]);
   const icon = useMemo(() => pivot?.icon ?? 'material-symbols:find-in-page', [pivot?.icon]);
 
   useEffect(() => {
@@ -228,7 +228,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
                   label={
                     <Stack direction="row" spacing={0.5}>
                       {lead.icon && <Icon icon={lead.icon} />}
-                      <span>{i18n.language === 'en' ? lead.label.en : lead.label.fr}</span>
+                      <span>{i18n.language === 'en' ? lead.label!.en : lead.label!.fr}</span>
                     </Stack>
                   }
                   value={index}
@@ -309,7 +309,7 @@ const PivotForm: FC<{ dossier: Dossier; setDossier: Dispatch<SetStateAction<Part
               <TextField {...params} size="small" label={t('route.dossiers.manager.pivot.format')} />
             )}
             value={pivot?.format ?? null}
-            onChange={(_ev, format) => update({ format, value: '', mappings: [] })}
+            onChange={(_ev, format) => update({ format: format ?? undefined, value: '', mappings: [] })}
           />
           {!!pivot?.format &&
             (pivot.format === 'link' ? (

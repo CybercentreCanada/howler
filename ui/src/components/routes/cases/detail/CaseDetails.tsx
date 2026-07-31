@@ -109,7 +109,7 @@ const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
               'in-progress': <HourglassBottom color="warning" />,
               'on-hold': <Pause color="disabled" />,
               resolved: <Check color="success" />
-            }[_case.status] ?? <WarningRounded fontSize="small" />}
+            }[_case.status!] ?? <WarningRounded fontSize="small" />}
             <Typography variant="body1">{t('page.cases.detail.status')}</Typography>
           </Stack>
           <Autocomplete
@@ -117,7 +117,7 @@ const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
             disabled={loading}
             disableClearable
             value={_case.status}
-            options={config.lookups['howler.status']}
+            options={config.lookups['howler.status'] ?? []}
             renderInput={params => <TextField {...params} size="small" />}
             onChange={(_ev, status) => {
               if (status) {
@@ -134,8 +134,8 @@ const CaseDetails: FC<{ case: Case }> = ({ case: providedCase }) => {
             size="small"
             disabled={loading}
             disableClearable
-            value={_case.escalation ?? null}
-            options={(config.lookups as unknown as Record<string, string[]>)['case.escalation']}
+            value={_case.escalation ?? undefined}
+            options={(config.lookups as unknown as Record<string, string[]>)['case.escalation'] ?? []}
             renderInput={params => <TextField {...params} size="small" />}
             onChange={(_ev, escalation) => {
               if (escalation) {

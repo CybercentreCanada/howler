@@ -16,7 +16,7 @@ const {
 
   const _getStored = <T = string>(name: StorageKey): T => {
     return {
-      ...JSON.parse(sessionStorage.getItem(buildName(name))),
+      ...JSON.parse(sessionStorage.getItem(buildName(name)) ?? '{}'),
       ...changes[buildName(name)]
     } as T;
   };

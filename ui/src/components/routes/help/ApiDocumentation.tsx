@@ -42,7 +42,7 @@ const ApiDocumentation: FC = () => {
 
   const isLg = useMediaQuery(theme.breakpoints.down('lg'));
 
-  const [data, setData] = useState<HelpResponse>(null);
+  const [data, setData] = useState<HelpResponse | null>(null);
 
   useEffect(() => {
     void dispatchApi(api.help.get()).then(setData);

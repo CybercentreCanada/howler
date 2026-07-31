@@ -37,7 +37,7 @@ const AppSearchInput = ({
   ...inputProps
 }: AppSearchInputProps) => {
   const { t } = useTranslation();
-  const rootRef = useRef<HTMLDivElement>();
+  const rootRef = useRef<HTMLDivElement>(null);
 
   // CTRL+K button click handler.
   // Decicde whether to open search in normal or fullscreen/modal mode.
@@ -45,7 +45,7 @@ const AppSearchInput = ({
     if (open && provided) {
       onToggleFullscreen();
     } else {
-      rootRef.current.querySelector('input').focus();
+      rootRef.current!.querySelector('input')!.focus();
     }
   }, [open, provided, onToggleFullscreen]);
 

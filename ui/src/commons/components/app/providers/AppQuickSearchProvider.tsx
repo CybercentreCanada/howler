@@ -18,7 +18,7 @@ export default function AppQuickSearchProvider({ search, children }: AppQuickSea
   const [show, setShow] = useLocalStorageItem(LS_KEY_SHOW_QUICK_SEARCH, preferences.defaultShowQuickSearch);
   const context = useMemo(
     () => ({
-      show: preferences.allowQuickSearch && show,
+      show: !!preferences.allowQuickSearch && !!show,
       setShow,
       toggle: () => setShow(!show)
     }),

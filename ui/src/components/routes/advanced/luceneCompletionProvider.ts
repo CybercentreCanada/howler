@@ -42,7 +42,7 @@ const useLuceneCompletionProvider = (): languages.CompletionItemProvider => {
           return {
             suggestions: (config.lookups[key] as string[]).map(_value => ({
               label: _value,
-              kind: monaco.languages.CompletionItemKind.Constant,
+              kind: monaco!.languages.CompletionItemKind.Constant,
               insertText: _value,
               range: {
                 startLineNumber: position.lineNumber,
@@ -62,7 +62,7 @@ const useLuceneCompletionProvider = (): languages.CompletionItemProvider => {
           return {
             suggestions: Object.keys(options[key] || {}).map(_value => ({
               label: _value,
-              kind: monaco.languages.CompletionItemKind.Constant,
+              kind: monaco!.languages.CompletionItemKind.Constant,
               insertText: `"${_value}"`,
               range: {
                 startLineNumber: position.lineNumber,
@@ -87,22 +87,22 @@ const useLuceneCompletionProvider = (): languages.CompletionItemProvider => {
         const fuzzyMatches = fuse.search(portion);
         return {
           suggestions: fuzzyMatches.map(({ item }) => ({
-            label: item.key,
+            label: item.key!,
             detail: item.type,
             documentation: item.description,
-            kind: monaco.languages.CompletionItemKind.Property,
-            insertText: item.key + ':',
+            kind: monaco!.languages.CompletionItemKind.Property,
+            insertText: item.key! + ':',
             range
           }))
         };
       } else {
         return {
           suggestions: hitFields.map(_field => ({
-            label: _field.key,
+            label: _field.key!,
             detail: _field.type,
             documentation: _field.description,
-            kind: monaco.languages.CompletionItemKind.Property,
-            insertText: _field.key + ':',
+            kind: monaco!.languages.CompletionItemKind.Property,
+            insertText: _field.key! + ':',
             range
           }))
         };

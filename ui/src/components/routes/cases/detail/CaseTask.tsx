@@ -36,7 +36,7 @@ const CaseTask: FC<{
   const [editing, setEditing] = useState(newTask);
 
   const [summary, setSummary] = useState(task?.summary || '');
-  const [item, setItem] = useState(task?.item ? _case?.items.find(_item => _item.id === task.item) : null);
+  const [item, setItem] = useState(task?.item ? _case.items?.find(_item => _item.id === task.item) : null);
   const [assignment, setAssignment] = useState(task?.assignment);
   const [complete, setComplete] = useState(task?.complete ?? false);
 
@@ -51,7 +51,7 @@ const CaseTask: FC<{
   const onSubmit = async () => {
     if (dirty && editing) {
       setLoading(true);
-      await onEdit({ summary, item: !item ? null : item.id, assignment, complete });
+      await onEdit?.({ summary, item: !item ? undefined : item.id, assignment, complete });
       setLoading(false);
     }
   };
@@ -59,7 +59,7 @@ const CaseTask: FC<{
   useEffect(() => {
     if (!readOnly && !editing && task?.assignment !== assignment) {
       setLoading(true);
-      void onEdit({ assignment }).finally(() => setLoading(false));
+      void onEdit?.({ assignment }).finally(() => setLoading(false));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assignment]);
@@ -67,16 +67,16 @@ const CaseTask: FC<{
   useEffect(() => {
     if (!readOnly && !editing && task?.complete !== complete) {
       setLoading(true);
-      void onEdit({ complete }).finally(() => setLoading(false));
+      void onEdit?.({ complete }).finally(() => setLoading(false));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [complete]);
 
   useEffect(() => {
     if (!editing && task) {
-      setSummary(task.summary);
-      setItem(task?.item ? _case?.items.find(_item => _item.id === task.item) : null);
-      setComplete(task.complete);
+      setSummary(task.summary ?? '');
+      setItem(task?.item ? _case.items?.find(_item => _item.id === task.item) : null);
+      setComplete(task.complete ?? false);
       setAssignment(task.assignment);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -109,7 +109,7 @@ const CaseTask: FC<{
           <Chip
             clickable
             component={Link}
-            to={`/cases/${_case.case_id}/${buildPathFromID(_case, item.id)}`}
+            to={`/cases/${_case.case_id}/${buildPathFromID(_case, item.id!)}`}
             label={item.name}
           />
         )}
@@ -118,8 +118,8 @@ const CaseTask: FC<{
             disabled={loading}
             value={item}
             options={options}
-            getOptionLabel={opt => buildPathFromID(_case, opt.id)}
-            isOptionEqualToValue={opt => opt.id === item.id}
+            getOptionLabel={opt => buildPathFromID(_case, opt.id!)}
+            isOptionEqualToValue={opt => opt.id === item?.id}
             onChange={(_ev, value) => setItem(value)}
             fullWidth
             renderInput={params => <TextField {...params} size="small" />}
@@ -127,8 +127,8 @@ const CaseTask: FC<{
         )}
         <UserList
           disabled={loading || readOnly}
-          userIds={[assignment]}
-          onChange={([_assigment]) => !readOnly && setAssignment(_assigment)}
+          userIds={assignment ? [assignment] : []}
+          onChange={([_assigment]) => !readOnly && setAssignment(_assigment ?? '')}
           i18nLabel="route.cases.task.set.assignment"
           avatarHeight={24}
         />
@@ -140,7 +140,7 @@ const CaseTask: FC<{
               color="error"
               onClick={() => {
                 setLoading(true);
-                void onDelete().then(() => setLoading(false));
+                void onDelete?.().then(() => setLoading(false));
               }}
               disabled={loading}
             >
@@ -176,7 +176,7 @@ const CaseTask: FC<{
               size="small"
               onClick={() => {
                 if (newTask) {
-                  void onDelete();
+                  void onDelete?.();
                 } else {
                   setEditing(false);
                 }

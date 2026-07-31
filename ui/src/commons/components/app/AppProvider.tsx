@@ -70,7 +70,7 @@ export default function AppProvider<U extends AppUser>({
     <AppContext.Provider value={contextValue}>
       <StyledEngineProvider injectFirst>
         <ThemeProvider theme={_darkMode ? darkTheme : lightTheme}>
-          <AppUserProvider service={user}>
+          <AppUserProvider service={user!}>
             <AppBarProvider search={search} notification={notification}>
               <AppLeftNavProvider>
                 <AppLayoutProvider>

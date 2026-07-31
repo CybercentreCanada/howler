@@ -47,7 +47,7 @@ export default function useFullscreenStatus(elRef: MutableRefObject<any>) {
     document.onfullscreenchange = () => setIsFullscreen(fullscreenDocument[getBrowserFullscreenElementProp()] != null);
 
     return () => {
-      document.onfullscreenchange = undefined;
+      document.onfullscreenchange = null;
     };
   }, []);
 

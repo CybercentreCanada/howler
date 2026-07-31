@@ -30,10 +30,10 @@ const DossiersBase: FC = () => {
   const pageCount = useMyLocalStorageItem(StorageKey.PAGE_COUNT, 25)[0];
 
   const { response, request, remove, getSearchRequestData } =
-    useContext<SearchResponseContextType<Dossier>>(SearchResponseContext);
+    useContext<SearchResponseContextType<Dossier>>(SearchResponseContext as any);
 
   const [phrase, setPhrase] = useState<string>('');
-  const [offset, setOffset] = useState(parseInt(searchParams.get('offset')) || 0);
+  const [offset, setOffset] = useState(parseInt(searchParams.get('offset')!) || 0);
   const [hasError, setHasError] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -70,7 +70,7 @@ const DossiersBase: FC = () => {
     if (response) {
       load(
         response.items.map((item: Dossier) => ({
-          id: item.dossier_id,
+          id: item.dossier_id!,
           item,
           selected: false,
           cursor: false
@@ -84,9 +84,9 @@ const DossiersBase: FC = () => {
     (_offset: number) => {
       if (_offset !== offset) {
         const modifiedRequest = getSearchRequestData({ offset: _offset });
-        searchParams.set('offset', modifiedRequest.offset.toString());
+        searchParams.set('offset', modifiedRequest.offset!.toString());
         setSearchParams(searchParams, { replace: true });
-        setOffset(modifiedRequest.offset);
+        setOffset(modifiedRequest.offset!);
       }
     },
     [offset, searchParams, setSearchParams, getSearchRequestData]
@@ -122,7 +122,7 @@ const DossiersBase: FC = () => {
   }, []);
 
   useEffect(() => {
-    if (response?.total <= offset) {
+    if ((response?.total ?? 0) <= offset) {
       setOffset(0);
       searchParams.set('offset', '0');
       setSearchParams(searchParams, { replace: true });
@@ -158,7 +158,7 @@ const DossiersBase: FC = () => {
         </Typography>
       }
       renderer={({ item }: TuiListItemProps<Dossier>, classRenderer) => renderer(item.item, classRenderer())}
-      response={response}
+      response={response!}
       onSelect={(item: TuiListItem<Dossier>) => navigate(`/dossiers/${item.id}/edit`)}
       onCreate={() => navigate('/dossiers/create')}
       createPrompt="route.dossiers.create"

@@ -42,7 +42,7 @@ const CaseRules: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, c
         return;
       }
 
-      const updatedCase = await dispatchApi(api.v2.case.rules.post(_case.case_id, ruleData));
+      const updatedCase = await dispatchApi(api.v2.case.rules.post(_case.case_id!, ruleData));
       void update(updatedCase, false);
     },
     [_case, dispatchApi, update]
@@ -57,7 +57,7 @@ const CaseRules: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, c
       showModal(
         <ConfirmDeleteModal
           onConfirm={async () => {
-            const updatedCase = await dispatchApi(api.v2.case.rules.del(_case.case_id, ruleId), { throwError: false });
+            const updatedCase = await dispatchApi(api.v2.case.rules.del(_case.case_id!, ruleId), { throwError: false });
             if (updatedCase) {
               void update(updatedCase, false);
             }
@@ -75,7 +75,7 @@ const CaseRules: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, c
         return;
       }
 
-      const updatedCase = await dispatchApi(api.v2.case.rules.put(_case.case_id, ruleId, { enabled }));
+      const updatedCase = await dispatchApi(api.v2.case.rules.put(_case.case_id!, ruleId, { enabled }));
       void update(updatedCase, false);
     },
     [_case, dispatchApi, update]
@@ -165,7 +165,7 @@ const CaseRules: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, c
                       <Switch
                         id={`rule-toggle-${rule.rule_id}`}
                         checked={rule.enabled ?? true}
-                        onChange={(_e, checked) => handleToggleEnabled(rule.rule_id, checked)}
+                        onChange={(_e, checked) => handleToggleEnabled(rule.rule_id!, checked)}
                         size="small"
                       />
                     </TableCell>
@@ -174,7 +174,7 @@ const CaseRules: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase, c
                         <IconButton
                           id={`rule-delete-${rule.rule_id}`}
                           size="small"
-                          onClick={() => handleDeleteRule(rule.rule_id)}
+                          onClick={() => handleDeleteRule(rule.rule_id!)}
                         >
                           <Delete fontSize="small" />
                         </IconButton>

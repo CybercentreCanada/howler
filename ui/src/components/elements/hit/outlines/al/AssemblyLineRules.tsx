@@ -31,9 +31,9 @@ const VERDICT_ORDER = ['malicious', 'suspicious', 'safe', 'info'];
 const ARRAY_LIMIT = 10;
 
 const sortByVerdict = (a: Antivirus, b: Antivirus): -1 | 0 | 1 => {
-  return VERDICT_ORDER.indexOf(a.verdict) > VERDICT_ORDER.indexOf(b.verdict)
+  return VERDICT_ORDER.indexOf(a.verdict!) > VERDICT_ORDER.indexOf(b.verdict!)
     ? 1
-    : VERDICT_ORDER.indexOf(b.verdict) > VERDICT_ORDER.indexOf(a.verdict)
+    : VERDICT_ORDER.indexOf(b.verdict!) > VERDICT_ORDER.indexOf(a.verdict!)
       ? -1
       : 0;
 };
@@ -41,7 +41,7 @@ const sortByVerdict = (a: Antivirus, b: Antivirus): -1 | 0 | 1 => {
 const AssemblyLineRules: FC<{ hit: Hit }> = ({ hit }) => {
   const { t } = useTranslation();
 
-  const ipArr: string[] = (hit.related.ip ?? []).filter(e => !!e).slice(0, ARRAY_LIMIT);
+  const ipArr: string[] = (hit.related?.ip ?? []).filter(e => !!e).slice(0, ARRAY_LIMIT);
 
   const tagsArr = TAGS.map(each => get(hit, each) as Antivirus)
     .filter(tag => !!tag?.value)
@@ -59,7 +59,7 @@ const AssemblyLineRules: FC<{ hit: Hit }> = ({ hit }) => {
         </Typography>
       </Grid>
       <Grid item xs={10}>
-        <Typography variant="caption">{hit.file.path ?? t('unknown')}</Typography>
+        <Typography variant="caption">{hit.file?.path ?? t('unknown')}</Typography>
       </Grid>
       <Grid item xs={2}>
         <Typography variant="caption" fontWeight="bold">
@@ -102,12 +102,12 @@ const AssemblyLineRules: FC<{ hit: Hit }> = ({ hit }) => {
         <Stack direction="row" spacing={0.5} sx={{ mb: 0.5 }}>
           {tagsArr.map(analytic => {
             return (
-              <Grid item key={analytic?.value + analytic?.verdict + analytic?.type + analytic?.subtype}>
+              <Grid item key={analytic.value! + analytic.verdict! + analytic.type + analytic.subtype}>
                 <Chip
                   label={analytic?.value}
                   color={
-                    analytic?.verdict in VERDICT_COLORS
-                      ? VERDICT_COLORS[analytic?.verdict as 'malicious' | 'suspicious' | 'safe' | 'info']
+                    analytic.verdict! in VERDICT_COLORS
+                      ? VERDICT_COLORS[analytic.verdict! as 'malicious' | 'suspicious' | 'safe' | 'info']
                       : 'error'
                   }
                   variant="outlined"

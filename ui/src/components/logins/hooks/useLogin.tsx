@@ -47,7 +47,7 @@ const useLogin = () => {
         }
         // If the user is null but there's no exception?
       } else {
-        setUser(null);
+        setUser(null!);
         showErrorMessage(t('user.error.failed'));
       }
     } catch (e) {

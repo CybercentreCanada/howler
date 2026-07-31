@@ -5,15 +5,16 @@ import type {
   AppThemeConfigs,
   AppTopNavConfigs
 } from 'commons/components/app/AppConfigs';
+import type { ReactElement } from 'react';
 
 // AppPreferenceConfigs defaults.
 export const AppDefaultsPreferencesConfigs: AppPreferenceConfigs = {
-  appName: null,
+  appName: null as unknown as string,
   appLink: '/',
-  appIconDark: null,
-  appIconLight: null,
-  bannerDark: null,
-  bannerLight: null,
+  appIconDark: null as unknown as ReactElement<any>,
+  appIconLight: null as unknown as ReactElement<any>,
+  bannerDark: null as unknown as ReactElement<any>,
+  bannerLight: null as unknown as ReactElement<any>,
   defaultLayout: 'side',
   defaultTheme: 'dark',
   defaultShowBreadcrumbs: true,

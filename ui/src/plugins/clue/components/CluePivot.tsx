@@ -29,24 +29,24 @@ const CluePivot: FC<PivotLinkProps> = ({ pivot, hit, compact }: PivotLinkProps) 
 
   const getValue = useCallback(
     (actionId: string, mapping: Mapping) => {
-      const parameterSchema = actions[actionId].params?.properties?.[mapping.key];
+      const parameterSchema = actions[actionId]!.params?.properties?.[mapping.key!];
       if (mapping.field === 'custom') {
         if ((parameterSchema as JsonSchema7)?.type === 'number') {
-          return parseFloat(mapping.custom_value);
+          return parseFloat(mapping.custom_value!);
         }
 
         if ((parameterSchema as JsonSchema7)?.type === 'integer') {
-          return Math.floor(parseFloat(mapping.custom_value));
+          return Math.floor(parseFloat(mapping.custom_value!));
         }
 
         return mapping.custom_value;
       }
 
-      if (!Object.keys(config.indexes.hit).includes(mapping.field)) {
-        return mapping.field;
+      if (!Object.keys(config.indexes.hit).includes(mapping.field!)) {
+        return mapping.field!;
       }
 
-      const hitData = get(hit, mapping.field) as string | string[];
+      const hitData = get(hit, mapping.field!) as string | string[];
 
       // No schema provided - just pass on the value
       if (!parameterSchema) {
@@ -90,7 +90,7 @@ const CluePivot: FC<PivotLinkProps> = ({ pivot, hit, compact }: PivotLinkProps) 
         return;
       }
 
-      if (!actions[pivot.value]) {
+      if (!actions[pivot.value!]) {
         showErrorMessage(t('pivot.clue.missing'));
         return;
       }
@@ -99,11 +99,11 @@ const CluePivot: FC<PivotLinkProps> = ({ pivot, hit, compact }: PivotLinkProps) 
 
       const data: { [index: string]: any } = Object.fromEntries(
         (pivot.mappings ?? []).map(_mapping => {
-          const value = getValue(pivot.value, _mapping);
+          const value = getValue(pivot.value!, _mapping);
 
-          if (['selector', 'selectors'].includes(_mapping.key)) {
+          if (['selector', 'selectors'].includes(_mapping.key!)) {
             if (!value) {
-              return _mapping.key === 'selector' ? ['selector', null] : ['selectors', []];
+              return _mapping.key! === 'selector' ? ['selector', null] : ['selectors', []];
             }
 
             if (Array.isArray(value)) {
@@ -112,7 +112,7 @@ const CluePivot: FC<PivotLinkProps> = ({ pivot, hit, compact }: PivotLinkProps) 
                 value
                   .filter(val => !isNil(val))
                   .map(val => ({
-                    type: (config.configuration?.mapping as unknown as Record<string, string>)?.[_mapping.field] || guessType(val.toString()),
+                    type: (config.configuration?.mapping as unknown as Record<string, string>)?.[_mapping.field!] || guessType!(val.toString()),
                     value: val
                   }))
               ];
@@ -121,17 +121,17 @@ const CluePivot: FC<PivotLinkProps> = ({ pivot, hit, compact }: PivotLinkProps) 
             return [
               _mapping.key,
               {
-                type: (config.configuration?.mapping as unknown as Record<string, string>)?.[_mapping.field] || guessType(value.toString()),
+                type: (config.configuration?.mapping as unknown as Record<string, string>)?.[_mapping.field!] || guessType!(value.toString()),
                 value
               }
             ];
           }
 
-          return [_mapping.key, value];
+          return [_mapping.key!, value];
         })
       );
 
-      const selectors = (actions[pivot.value].accept_multiple ? [data.selectors] : [data.selector])
+      const selectors = (actions[pivot.value!].accept_multiple ? [data.selectors] : [data.selector])
         .flat()
         .filter(val => !isNil(val));
 
@@ -139,7 +139,7 @@ const CluePivot: FC<PivotLinkProps> = ({ pivot, hit, compact }: PivotLinkProps) 
       delete data.selectors;
 
       try {
-        await executeAction(pivot.value, selectors, data, { forceMenu });
+        await executeAction!(pivot.value!, selectors, data, { forceMenu });
       } finally {
         setLoading(false);
       }
@@ -158,8 +158,8 @@ const CluePivot: FC<PivotLinkProps> = ({ pivot, hit, compact }: PivotLinkProps) 
     ]
   );
 
-  if (!actions[pivot.value]) {
-    return;
+  if (!actions[pivot.value!]) {
+    return null;
   }
 
   return (
@@ -184,8 +184,8 @@ const CluePivot: FC<PivotLinkProps> = ({ pivot, hit, compact }: PivotLinkProps) 
       ]}
     >
       <Stack direction="row" p={compact ? 0.5 : 1} spacing={1} alignItems="center">
-        <Icon fontSize="1.5rem" icon={pivot.icon} />
-        <Typography>{pivot.label[i18n.language as 'en' | 'fr']}</Typography>
+        <Icon fontSize="1.5rem" icon={pivot.icon!} />
+        <Typography>{pivot.label![i18n.language as 'en' | 'fr']}</Typography>
         <Divider orientation="vertical" flexItem />
         <IconButton size="small" onClick={e => onClueClick(e, true)}>
           <Settings fontSize="small" />

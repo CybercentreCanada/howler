@@ -27,7 +27,7 @@ const FlexPort = ({ children, disableOverflow = false, id = '', ...props }: Flex
       }}
     >
       <div
-        style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, overflow: !disableOverflow && 'auto' }}
+        style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, overflow: disableOverflow ? undefined : 'auto' }}
         id={id}
       >
         {children}

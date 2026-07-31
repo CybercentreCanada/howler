@@ -9,7 +9,7 @@ const EscalationChip: FC<{ hit: Hit; layout: HitLayout; hideLabel?: boolean }> =
   layout,
   hideLabel = false
 }) => {
-  const label = ['evidence', 'miss'].includes(hit.howler.escalation) ? hit.howler.assessment : hit.howler.escalation;
+  const label = ['evidence', 'miss'].includes(hit.howler.escalation!) ? hit.howler.assessment : hit.howler.escalation;
 
   const component = (
     <Chip

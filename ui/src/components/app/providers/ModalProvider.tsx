@@ -22,7 +22,7 @@ interface ModalContextType {
   close: () => void;
 }
 
-export const ModalContext = createContext<ModalContextType>(null);
+export const ModalContext = createContext<ModalContextType>(null as any);
 
 const ModalProvider: FC<PropsWithChildren> = ({ children }) => {
   const [content, setContent] = useState<ReactNode>(null);

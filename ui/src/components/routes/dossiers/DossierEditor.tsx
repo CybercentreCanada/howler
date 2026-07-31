@@ -174,9 +174,9 @@ const DossierEditor: FC = () => {
         const result = await dispatchApi(api.dossier.post(dossier));
 
         showSuccessMessage(t('route.dossiers.manager.create.success'));
-        navigate(`/dossiers/${result.dossier_id}/edit`);
+        navigate(`/dossiers/${result.dossier_id!}/edit`);
       } else {
-        setDossier(await dispatchApi(api.dossier.put(dossier.dossier_id, omit(dossier, ['dossier_id', 'id']))));
+        setDossier(await dispatchApi(api.dossier.put(dossier.dossier_id!, omit(dossier, ['dossier_id', 'id']))));
         showSuccessMessage(t('route.dossiers.manager.edit.success'));
       }
     } finally {
@@ -210,7 +210,7 @@ const DossierEditor: FC = () => {
       setLoading(true);
 
       try {
-        const result = await dispatchApi(api.search.hit.post({ query: dossier.query, rows: 0 }));
+        const result = await dispatchApi(api.search.hit.post({ query: dossier.query!, rows: 0 }));
 
         setSearchTotal(result.total);
       } finally {
@@ -300,7 +300,7 @@ const DossierEditor: FC = () => {
                 onChange={(_val, isDirty) => setSearchDirty(isDirty)}
                 triggerSearch={query => setDossier(_dossier => ({ ..._dossier, query }))}
               />
-              {searchTotal >= 0 && <QueryResultText count={searchTotal} query={dossier.query} />}
+              {searchTotal >= 0 && <QueryResultText count={searchTotal} query={dossier.query!} />}
             </Stack>
           </Paper>
           <Tabs value={tab} onChange={(_ev, value) => setTab(value)}>

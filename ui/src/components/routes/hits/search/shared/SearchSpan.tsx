@@ -69,7 +69,7 @@ const SearchSpan: FC<{
       label={
         <Typography variant="body2">
           {span !== 'date.range.custom'
-            ? t(span)
+            ? t(span ?? '')
             : `${startDate?.format('YYYY-MM-DD HH:mm') ?? '?'} ${t('to')} ${endDate?.format('YYYY-MM-DD HH:mm') ?? '?'}`}
         </Typography>
       }
@@ -85,7 +85,7 @@ const SearchSpan: FC<{
           options={omitCustom ? DATE_RANGES.slice(0, DATE_RANGES.length - 1) : DATE_RANGES}
           renderInput={_params => <TextField {..._params} label={t('hit.search.span')} />}
           getOptionLabel={option => t(option)}
-          onChange={(_, value) => setSpan(value)}
+          onChange={(_, value) => setSpan(value!)}
           disableClearable
         />
 

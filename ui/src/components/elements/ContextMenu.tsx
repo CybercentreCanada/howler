@@ -89,7 +89,7 @@ const ContextMenu: FC<PropsWithChildren<ContextMenuProps>> = ({
   children
 }) => {
   const theme = useTheme();
-  const [show, setShow] = useState<Record<string, EventTarget & HTMLElement>>({});
+  const [show, setShow] = useState<Record<string, (EventTarget & HTMLElement) | null>>({});
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [transformProps, setTransformProps] = useState<SxProps>({});
 
@@ -228,7 +228,7 @@ const ContextMenu: FC<PropsWithChildren<ContextMenuProps>> = ({
               <ListItemText sx={{ flex: 1 }}>{label}</ListItemText>
               {!disabled && <KeyboardArrowRight fontSize="small" sx={{ color: 'text.secondary', mr: -1 }} />}
               <Fade in={!!show[entryId]} unmountOnExit>
-                <Paper id={`${entryId}-submenu`} sx={calculateSubMenuStyles(show[entryId])} elevation={2}>
+                <Paper id={`${entryId}-submenu`} sx={calculateSubMenuStyles(show[entryId]!)} elevation={2}>
                   <MenuList sx={{ p: 0, borderTopLeftRadius: 0 }} dense role="group">
                     {subItems.map(subItem => (
                       <MenuItem key={subItem.key} onClick={subItem.onClick} disabled={subItem.disabled}>

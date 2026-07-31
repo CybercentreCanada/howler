@@ -7,16 +7,16 @@ export type ApiConfigContextType = {
   setConfig: (config: ApiType) => void;
 };
 
-export const ApiConfigContext = createContext<ApiConfigContextType>(null);
+export const ApiConfigContext = createContext<ApiConfigContextType>(null as any);
 
 const ApiConfigProvider: FC<PropsWithChildren<{ defaultConfig?: ApiType }>> = ({
   children,
   defaultConfig = {
-    indexes: null,
-    lookups: null,
-    configuration: null,
-    c12nDef: null,
-    mapping: null
+    indexes: null as any,
+    lookups: null as any,
+    configuration: null as any,
+    c12nDef: null as any,
+    mapping: null as any
   }
 }) => {
   const [config, setConfig] = useState<ApiType>(defaultConfig);

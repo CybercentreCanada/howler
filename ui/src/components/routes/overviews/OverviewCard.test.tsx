@@ -112,7 +112,7 @@ describe('OverviewCard', () => {
 
     render(<OverviewCard overview={overview as any} onDelete={mockOnDelete} />, { wrapper: Wrapper });
 
-    const deleteButton = document.querySelector('[data-testid="DeleteIcon"]').closest('button');
+    const deleteButton = document.querySelector('[data-testid="DeleteIcon"]')!.closest('button')!;
     await user.click(deleteButton);
 
     expect(mockOnDelete).toHaveBeenCalledWith(expect.anything(), 'ov-1');

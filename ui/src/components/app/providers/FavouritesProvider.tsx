@@ -10,7 +10,7 @@ import { buildViewUrl } from 'utils/viewUtils';
 import { AnalyticContext } from './AnalyticProvider';
 import { ViewContext } from './ViewProvider';
 
-export const FavouriteContext = createContext<object>(null);
+export const FavouriteContext = createContext<object>(null!);
 
 const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
   const { t } = useTranslation();
@@ -20,7 +20,7 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
 
   const fetchViews = useContextSelector(ViewContext, ctx => ctx.fetchViews);
 
-  const processViewElement = useCallback(async (): Promise<AppLeftNavElement> => {
+  const processViewElement = useCallback(async (): Promise<AppLeftNavElement | null> => {
     const viewElement = leftNav.elements.find(el => el.element?.id === 'views');
     const favourites = uniq(appUser.user?.favourite_views || []);
 
@@ -39,8 +39,8 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
     const items = sortBy(savedViews, 'title')
       .filter(view => !!view)
       .map(view => ({
-        id: view.view_id,
-        text: t(view.title),
+        id: view.view_id!,
+        text: t(view.title!),
         route: buildViewUrl(view),
         nested: true
       }));
@@ -49,7 +49,7 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
       const newViewElement: AppLeftNavElement = {
         type: 'group',
         element: {
-          ...viewElement.element,
+          ...(viewElement.element as AppLeftNavGroup),
           items
         }
       };
@@ -68,9 +68,9 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
     }
   }, [appUser.user?.favourite_views, fetchViews, leftNav.elements, t]);
 
-  const processAnalyticElement = useCallback((): AppLeftNavElement => {
+  const processAnalyticElement = useCallback((): AppLeftNavElement | null => {
     const analyticElement = leftNav.elements.find(el => el.element?.id === 'analytics');
-    const favourites = appUser.user?.favourite_analytics;
+    const favourites = appUser.user?.favourite_analytics ?? [];
 
     // There are no favourites and no nav elements - return
     if (favourites.length < 1 && !analyticElement) {
@@ -84,7 +84,7 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
 
     // The favourite list is fully represented, skip
     if (favourites.length === (analyticElement?.element as AppLeftNavGroup)?.items?.length) {
-      return analyticElement;
+      return analyticElement!;
     }
 
     const items = favourites
@@ -92,8 +92,8 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
         const analytic = analytics.analytics.find(v => v.analytic_id === aid);
         return analytic
           ? {
-              id: analytic.analytic_id,
-              text: t(analytic.name),
+              id: analytic.analytic_id!,
+              text: t(analytic.name!),
               route: `/analytics/${analytic.analytic_id}`,
               nested: true
             }
@@ -105,7 +105,7 @@ const FavouriteProvider: FC<PropsWithChildren> = ({ children }) => {
       return {
         type: 'group',
         element: {
-          ...analyticElement.element,
+          ...(analyticElement.element as AppLeftNavGroup),
           items
         }
       };

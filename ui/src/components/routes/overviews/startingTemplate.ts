@@ -20,7 +20,7 @@ export const useStartingTemplate = () => {
           `
 ### \`${helper.keyword}\`
 
-${helper.documentation[i18n.language as 'en' | 'fr']}
+${helper.documentation?.[i18n.language as 'en' | 'fr'] ?? ''}
 
 ---
 `.trim()

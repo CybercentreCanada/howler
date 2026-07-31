@@ -31,7 +31,9 @@ export const ViewTitle: FC<ViewTitleProps> = ({ title, type, query, sort, span, 
   const indexLabel = useMemo(() => {
     if (!indexes || indexes.length === 0) {
       return '';
-    } else return `(${indexes.join(', ')})`;
+    }
+
+    return `(${indexes.join(', ')})`;
   }, [indexes]);
 
   return (
@@ -43,7 +45,7 @@ export const ViewTitle: FC<ViewTitleProps> = ({ title, type, query, sort, span, 
               readonly: <Lock fontSize="small" />,
               global: <Language fontSize="small" />,
               personal: <Person fontSize="small" />
-            }[type]
+            }[type!] ?? <span />
           }
         </Tooltip>
         {settings?.display && (
@@ -52,11 +54,11 @@ export const ViewTitle: FC<ViewTitleProps> = ({ title, type, query, sort, span, 
               {
                 list: <List fontSize="small" />,
                 grid: <TableChart fontSize="small" />
-              }[settings.display]
+              }[settings.display] ?? <span />
             }
           </Tooltip>
         )}
-        <Typography variant="body1">{t(title)}</Typography>
+        <Typography variant="body1">{t(title!)}</Typography>
       </Stack>
       <Typography variant="caption">
         <code>{query}</code>

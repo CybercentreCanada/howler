@@ -16,6 +16,6 @@ export default class WordConsumer extends PhraseConsumer<PhraseLexer> {
         value: this._buffer.join('')
       };
     }
-    return null;
+    return null as any;
   }
 }

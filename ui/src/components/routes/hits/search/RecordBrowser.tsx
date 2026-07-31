@@ -105,7 +105,7 @@ const HitBrowser: FC = () => {
   }, [location.pathname, location.search]);
 
   const onClose = useCallback(() => {
-    setSelected(null);
+    setSelected(null as unknown as string);
   }, [setSelected]);
 
   useEffect(() => {
@@ -115,7 +115,7 @@ const HitBrowser: FC = () => {
       !response.items.some(_hit => _hit.howler.id === selected) &&
       (!location.pathname.startsWith('/bundles') || routeParams.id !== selected)
     ) {
-      setSelected(null);
+      setSelected(null as unknown as string);
       if (selectedHits.length < 2) {
         removeHitFromSelection(selected);
       }
@@ -159,7 +159,7 @@ const HitBrowser: FC = () => {
                   !!response?.items.every(_hit1 => selectedHits.some(_hit2 => _hit1.howler.id === _hit2.howler.id))
                 }
                 onChange={(__, checked) =>
-                  checked ? response.items.forEach(_hit => addHitToSelection(_hit.howler.id)) : clearSelectedHits()
+                  checked ? response!.items.forEach(_hit => addHitToSelection(_hit.howler.id)) : clearSelectedHits()
                 }
               />
             </Tooltip>
@@ -173,7 +173,7 @@ const HitBrowser: FC = () => {
               <IconButton
                 size="small"
                 onClick={() => {
-                  setSelected(null);
+                  setSelected(null as unknown as string);
                   clearSelectedHits();
                 }}
               >
@@ -195,7 +195,7 @@ const HitBrowser: FC = () => {
         </Collapse>
       </Box>
       <Wrapper show={show} showDrawer={showDrawer} onClose={() => setShow(false)}>
-        <HitSummary response={response} />
+        <HitSummary response={response ?? undefined} />
         <Card
           variant="outlined"
           sx={[
@@ -211,13 +211,16 @@ const HitBrowser: FC = () => {
               borderBottom: 0,
               transition: theme.transitions.create('left')
             },
-            selected && {
-              left: theme.spacing(5)
-            },
-            location.pathname.startsWith('/bundles') &&
-              routeParams.id && {
-                left: 0
-              }
+            selected
+              ? {
+                  left: theme.spacing(5)
+                }
+              : {},
+            location.pathname.startsWith('/bundles') && routeParams.id
+              ? {
+                  left: 0
+                }
+              : {}
           ]}
         >
           <InformationPane onClose={onClose} />

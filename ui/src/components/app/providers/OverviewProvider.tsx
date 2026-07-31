@@ -12,7 +12,7 @@ interface OverviewContextType {
   loaded: boolean;
 }
 
-export const OverviewContext = createContext<OverviewContextType>(null);
+export const OverviewContext = createContext<OverviewContextType>(null as unknown as OverviewContextType);
 
 const OverviewProvider: FC<PropsWithChildren> = ({ children }) => {
   const [fetching, setFetching] = useState(false);

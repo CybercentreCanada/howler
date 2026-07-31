@@ -21,7 +21,7 @@ export interface RecordContextType {
   getRecord: (id: string, force?: boolean) => Promise<WithMetadata<Hit | Event>>;
 }
 
-export const RecordContext = createContext<RecordContextType>(null);
+export const RecordContext = createContext<RecordContextType>(null!);
 
 /**
  * Central repository for storing individual hit data across the application. Allows efficient retrieval of hits across componenents.
@@ -126,7 +126,7 @@ const RecordProvider: FC<PropsWithChildren> = ({ children }) => {
     setSelectedHitIds(_selected => _selected.filter(_id => _id !== id));
   }, []);
 
-  const clearSelectedRecords: RecordContextType['clearSelectedRecords'] = useCallback((except: string) => {
+  const clearSelectedRecords: RecordContextType['clearSelectedRecords'] = useCallback((except?: string) => {
     setSelectedHitIds(except ? [except] : []);
   }, []);
 

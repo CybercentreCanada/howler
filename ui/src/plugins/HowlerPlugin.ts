@@ -43,7 +43,7 @@ abstract class HowlerPlugin implements IPlugin {
   abstract author: string;
   abstract description: string;
 
-  pluginStore: PluginStore;
+  pluginStore!: PluginStore;
 
   private functionsToRemove: string[] = [];
 
@@ -198,7 +198,7 @@ abstract class HowlerPlugin implements IPlugin {
 
     if (isRoot) {
       if (breadcrumbs != null) {
-        breadcrumbs = null;
+        breadcrumbs = undefined;
         // eslint-disable-next-line no-console
         console.warn(`Sitemap '${path}' with isRoot should not contain breadcrumbs and have been removed`);
       }
@@ -232,7 +232,7 @@ abstract class HowlerPlugin implements IPlugin {
 
     let isRoot = true;
     let isLeaf = false;
-    let breadcrumbs = null;
+    let breadcrumbs = undefined;
 
     if (routeParts.length > 1) {
       // Set as leaf and not root

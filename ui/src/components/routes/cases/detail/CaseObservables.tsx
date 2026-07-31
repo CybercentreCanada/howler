@@ -37,9 +37,9 @@ const CaseObservables: FC<{ case?: Case; caseId?: string }> = ({ case: providedC
   const ids = useMemo(
     () =>
       (_case?.items ?? [])
-        .filter(item => ['hit', 'event'].includes(item.type))
+        .filter(item => ['hit', 'event'].includes(item.type!))
         .map(item => item.value)
-        .filter(val => !!val),
+        .filter((val): val is string => !!val),
     [_case?.items]
   );
 
@@ -99,7 +99,7 @@ const CaseObservables: FC<{ case?: Case; caseId?: string }> = ({ case: providedC
     return entries.map(entry => ({
       ...entry,
       role: classifyRole(entry.value, _case, records),
-      sources: resolveSources(entry.seenIn, _case.items, escalationMap)
+      sources: resolveSources(entry.seenIn, _case.items ?? [], escalationMap)
     }));
   }, [records, _case, escalationMap]);
 

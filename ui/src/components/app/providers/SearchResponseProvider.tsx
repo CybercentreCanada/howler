@@ -20,11 +20,11 @@ export type SearchResponseContextType<T, R = HowlerSearchResponse<T>> = {
   response: SearchResponseState<T> | null;
 };
 
-export const SearchResponseContext = createContext<SearchResponseContextType<any>>(null);
+export const SearchResponseContext = createContext<SearchResponseContextType<any> | null>(null);
 
 type SearchResponseProviderProps<T> = PropsWithChildren<{
   idField: string;
-  initialResponse?: SearchResponseState<T>;
+  initialResponse?: SearchResponseState<T> | null;
 }>;
 
 const SearchResponseProvider = <T,>({ children, idField, initialResponse = null }: SearchResponseProviderProps<T>) => {
@@ -44,7 +44,7 @@ const SearchResponseProvider = <T,>({ children, idField, initialResponse = null 
 
       setResponse(_prevResponse => ({
         ..._response,
-        removeCount: _response.offset <= _prevResponse?.offset ? 0 : (_prevResponse?.removeCount ?? 0)
+        removeCount: (_response.offset ?? 0) <= (_prevResponse?.offset ?? 0) ? 0 : (_prevResponse?.removeCount ?? 0)
       }));
       return _response;
     },
@@ -56,7 +56,7 @@ const SearchResponseProvider = <T,>({ children, idField, initialResponse = null 
       const modifiedRequest = { ...requestData };
 
       if (response?.removeCount) {
-        if (response.offset < modifiedRequest.offset) {
+        if (response.offset !== undefined && modifiedRequest.offset !== undefined && response.offset < modifiedRequest.offset) {
           modifiedRequest.offset = Math.max(0, modifiedRequest.offset - response.removeCount);
         }
       }

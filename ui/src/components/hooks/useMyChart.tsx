@@ -125,7 +125,7 @@ const useMyChart = () => {
     line: (titleKey: string, subtitleKey?: string) => {
       const options = generateOptions(titleKey, subtitleKey);
 
-      options.plugins.subtitle = null;
+      options.plugins.subtitle = null as any;
 
       options.plugins.zoom.pan.mode = 'x';
 
@@ -134,7 +134,7 @@ const useMyChart = () => {
 
     // https://www.chartjs.org/docs/latest/charts/doughnut.html
     doughnut: (titleKey: string, subtitleKey?: string) => {
-      const options: ReturnType<typeof generateOptions> = { ...generateOptions(titleKey, subtitleKey), scales: null };
+      const options: ReturnType<typeof generateOptions> = { ...generateOptions(titleKey, subtitleKey), scales: null as any };
 
       return options;
     },

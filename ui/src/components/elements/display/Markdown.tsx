@@ -92,7 +92,7 @@ const Markdown: FC<MarkdownProps> = ({ md, components = {}, disableLinks = false
       urlTransform={(value: string) => value}
       components={{
         code({ node, className, children, ...props }) {
-          if (node.children?.length === 1 && node.children[0].type === 'text') {
+          if (node?.children?.length === 1 && node.children[0].type === 'text') {
             if (node.children[0].value.startsWith('t(')) {
               return <span>{t(node.children[0].value.replace(/t\((.+)\)/, '$1'))}</span>;
             } else if (components[node.children[0].value]) {
@@ -107,12 +107,12 @@ const Markdown: FC<MarkdownProps> = ({ md, components = {}, disableLinks = false
           }
 
           if (match?.[1] === 'mermaid') {
-            return <pre className="mermaid">{(node.children[0] as any).value}</pre>;
+            return <pre className="mermaid">{(node!.children[0] as any).value}</pre>;
           }
 
           if (match?.[1] === 'json') {
             try {
-              return <JSONViewer data={JSON.parse((node.children[0] as any).value)} />;
+              return <JSONViewer data={JSON.parse((node!.children[0] as any).value)} />;
             } catch {
               return <code style={{ color: 'red' }}>{t('markdown.json.invalid')}</code>;
             }

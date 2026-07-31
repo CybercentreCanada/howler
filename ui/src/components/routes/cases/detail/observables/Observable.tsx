@@ -32,17 +32,17 @@ const Observable: FC<{ observable: ObservableEntry; case: Case }> = ({ observabl
               </Typography>
               <Stack direction="row" flexWrap="wrap" gap={0.5}>
                 {observable.seenIn.map(id => {
-                  const entry = _case.items.find(item => item.value === id);
+                  const entry = _case.items!.find(item => item.value === id)!;
 
                   return (
                     <Chip
                       key={id}
                       clickable
                       size="small"
-                      label={entry.name}
+                      label={entry.name!}
                       variant="outlined"
                       component={Link}
-                      to={`/cases/${_case.case_id}/${buildPathFromID(_case, entry.id)}`}
+                      to={`/cases/${_case.case_id}/${buildPathFromID(_case, entry.id!)}`}
                     />
                   );
                 })}

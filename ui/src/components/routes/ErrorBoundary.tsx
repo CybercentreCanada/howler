@@ -3,7 +3,7 @@ import { Accordion, AccordionDetails, AccordionSummary, Box, Typography } from '
 import React, { type PropsWithChildren } from 'react';
 import ErrorOccured from './ErrorOccured';
 
-class ErrorBoundary extends React.Component<PropsWithChildren<{}>, { hasError: boolean; error: Error }> {
+class ErrorBoundary extends React.Component<PropsWithChildren<{}>, { hasError: boolean; error: Error | null }> {
   constructor(props: PropsWithChildren<{}>) {
     super(props);
     this.state = { hasError: false, error: null };
@@ -25,12 +25,12 @@ class ErrorBoundary extends React.Component<PropsWithChildren<{}>, { hasError: b
           <Accordion elevation={0}>
             <AccordionSummary expandIcon={<ExpandMore />} aria-controls="panel1-content" id="panel1-header">
               <Typography align="center" sx={{ width: '100%', fontSize: '1.2rem' }} variant="h5">
-                {this.state.error.message}
+                {this.state.error?.message}
               </Typography>
             </AccordionSummary>
             <AccordionDetails>
               <code>
-                <Typography variant="h6">{this.state.error.stack}</Typography>
+                <Typography variant="h6">{this.state.error?.stack}</Typography>
               </code>
             </AccordionDetails>
           </Accordion>

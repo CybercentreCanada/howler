@@ -36,15 +36,15 @@ const OperationStep: FC<{
   const { dispatchApi } = useMyApi();
 
   const [validating, setValidating] = useState(false);
-  const [warnResponse, setWarnResponse] = useState<HowlerSearchResponse<Hit>>(null);
-  const [errorResponse, setErrorResponse] = useState<HowlerSearchResponse<Hit>>(null);
+  const [warnResponse, setWarnResponse] = useState<HowlerSearchResponse<Hit> | null>(null);
+  const [errorResponse, setErrorResponse] = useState<HowlerSearchResponse<Hit> | null>(null);
 
   const filled = useMemo(() => checkArgsAreFilled(step, values), [step, values]);
   const validationStatus = useMemo(
     () =>
-      errorResponse?.total > 0
+      (errorResponse?.total ?? 0) > 0
         ? 'error'
-        : warnResponse?.total > 0
+        : (warnResponse?.total ?? 0) > 0
           ? 'warning'
           : errorResponse || warnResponse
             ? 'success'
@@ -91,7 +91,7 @@ const OperationStep: FC<{
       if (step.validation?.warn) {
         const result = await dispatchApi(
           api.search.hit.post({
-            query: `(${query}) AND (${substitute(step.validation.warn.query)})`
+            query: `(${query}) AND (${substitute(step.validation.warn!.query)})`
           }),
           { throwError: false }
         );
@@ -102,7 +102,7 @@ const OperationStep: FC<{
       if (step.validation?.error) {
         const result = await dispatchApi(
           api.search.hit.post({
-            query: `(${query}) AND (${substitute(step.validation.error.query)})`
+            query: `(${query}) AND (${substitute(step.validation.error!.query)})`
           }),
           { throwError: false }
         );
@@ -151,7 +151,7 @@ const OperationStep: FC<{
                   label={getLabel(arg)}
                 />
               )}
-              onChange={(_, value) => setValues(JSON.stringify({ ...parsedValues, [arg]: value }))}
+              onChange={(_, value) => setValues?.(JSON.stringify({ ...parsedValues, [arg]: value }))}
             />
           );
         } else {
@@ -160,7 +160,7 @@ const OperationStep: FC<{
               key={arg}
               disabled={readonly}
               value={parsedValues?.[arg] || ''}
-              onChange={e => setValues(JSON.stringify({ ...parsedValues, [arg]: e.target.value }))}
+              onChange={e => setValues?.(JSON.stringify({ ...parsedValues, [arg]: e.target.value }))}
               label={getLabel(arg)}
             />
           );
@@ -189,7 +189,7 @@ const OperationStep: FC<{
                   (validationStatus === 'error' ? step.validation.error?.message : step.validation.warn?.message) ??
                     `route.actions.alert.${validationStatus}`,
                   {
-                    count: validationStatus === 'error' ? errorResponse.total : warnResponse?.total
+                    count: validationStatus === 'error' ? errorResponse!.total ?? 0 : warnResponse?.total
                   }
                 )}
               </AlertTitle>
@@ -197,14 +197,16 @@ const OperationStep: FC<{
                 <Link
                   to={`/hits?query=${encodeURIComponent(
                     errorResponse?.total
-                      ? substitute(step.validation.error.query)
-                      : warnResponse?.total && substitute(step.validation.warn.query)
+                      ? substitute(step.validation.error!.query)
+                      : warnResponse?.total
+                        ? substitute(step.validation.warn!.query)
+                        : ''
                   )}`}
                 >
                   {errorResponse?.total ? (
-                    <code>{substitute(step.validation.error.query)}</code>
+                    <code>{substitute(step.validation.error!.query)}</code>
                   ) : (
-                    warnResponse?.total && <code>{substitute(step.validation.warn.query)}</code>
+                    warnResponse?.total && <code>{substitute(step.validation.warn!.query)}</code>
                   )}
                 </Link>
               )}

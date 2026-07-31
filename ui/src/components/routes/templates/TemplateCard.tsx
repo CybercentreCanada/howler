@@ -18,21 +18,21 @@ const TemplateCard: FC<{
   return (
     <Card key={template.template_id} variant="outlined" sx={{ p: 1, mb: 1 }} className={className}>
       <Stack direction="row" spacing={1}>
-        <Tooltip title={t(`route.templates.manager.${template.type}`)}>
+        <Tooltip title={t(`route.templates.manager.${template.type!}`)}>
           {
             {
               readonly: <Lock />,
               global: <Language />,
               personal: <Person />
-            }[template.type]
+            }[template.type!] ?? <Lock />
           }
         </Tooltip>
         <Divider orientation="vertical" flexItem />
         <Stack>
           <Typography variant="body1">
-            {t(template.analytic)} - {t(template.detection ?? 'all')}
+            {t(template.analytic!)} - {t(template.detection ?? 'all')}
           </Typography>
-          {template.keys.map(key => (
+          {(template.keys ?? []).map(key => (
             <Typography key={template.template_id + key} variant="caption" sx={{ ml: 1 }}>
               <code>{key}</code>
             </Typography>
@@ -48,7 +48,7 @@ const TemplateCard: FC<{
                   onClick={() =>
                     showModal(
                       <ConfirmDeleteModal
-                        onConfirm={() => onRemove?.(template.template_id)}
+                        onConfirm={() => onRemove?.(template.template_id!)}
                         title={t('route.templates.manager.error.modal.title')}
                         description={t('route.templates.manager.error.modal.description')}
                         preferDelete

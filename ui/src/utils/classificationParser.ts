@@ -165,7 +165,7 @@ export const getLevelText = (
   format: FormatProp,
   isMobile: boolean
 ): string => {
-  let text: string = null;
+  let text: string | null = null;
   if (c12nDef != null && lvl != null) {
     text = c12nDef.levels_map[lvl.toString()];
   }
@@ -660,14 +660,14 @@ export const applyClassificationRules = (
   for (const item in c12nDef.params_map) {
     if ({}.hasOwnProperty.call(c12nDef.params_map, item)) {
       const data = c12nDef.params_map[item];
-      if ('require_lvl' in data) {
-        requireLvl[item] = data.require_lvl;
+      if ('require_lvl' in data!) {
+        requireLvl[item] = data!.require_lvl!;
       }
-      if ('limited_to_group' in data) {
-        limitedToGroup[item] = data.limited_to_group;
+      if ('limited_to_group' in data!) {
+        limitedToGroup[item] = data!.limited_to_group!;
       }
-      if ('require_group' in data) {
-        requireGroup[item] = data.require_group;
+      if ('require_group' in data!) {
+        requireGroup[item] = data!.require_group!;
       }
     }
   }

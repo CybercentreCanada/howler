@@ -55,8 +55,8 @@ const Stacked = forwardRef<
                 x: new Date(time).getTime(),
                 y: sum(arr.map(key => ingestionData[key]).slice(0, index))
               })),
-              borderColor: color(_value),
-              backgroundColor: color(_value),
+              borderColor: color?.(_value),
+              backgroundColor: color?.(_value),
               pointBackgroundColor: 'transparent',
               pointBorderWidth: 0
             };

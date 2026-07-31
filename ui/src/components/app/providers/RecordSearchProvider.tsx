@@ -49,7 +49,7 @@ export interface RecordSearchContextType {
   setQueryHistory: (value: Record<string, string>) => void;
 }
 
-export const RecordSearchContext = createContext<RecordSearchContextType>(null);
+export const RecordSearchContext = createContext<RecordSearchContextType>(null!);
 
 const THROTTLER = new Throttler(500);
 
@@ -80,14 +80,16 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
 
   const [displayType, setDisplayType] = useState<'list' | 'grid'>(get(StorageKey.DISPLAY_TYPE) ?? 'list');
   const [searching, setSearching] = useState<boolean>(false);
-  const [error, setError] = useState<string>(null);
-  const [response, setResponse] = useState<HowlerSearchResponse<WithMetadata<Hit>>>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [response, setResponse] = useState<HowlerSearchResponse<WithMetadata<Hit | Event>> | null>(null);
   const [queryHistory, setQueryHistory] = useMyLocalStorageItem<Record<string, string>>(StorageKey.QUERY_HISTORY, {
     'howler.id: *': new Date().toISOString()
   });
   const [fzfSearch, setFzfSearch] = useState<boolean>(false);
 
-  const filters = useMemo(() => allFilters.filter(filter => !filter.endsWith('*')), [allFilters]);
+  const activeViews = views ?? [];
+
+  const filters = useMemo(() => (allFilters ?? []).filter(filter => !filter.endsWith('*')), [allFilters]);
 
   // On load check to filter out any queries older than one month
   useEffect(() => {
@@ -99,10 +101,10 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
 
   // Inject default view into URL when no views present
   useEffect(() => {
-    if (views.length === 0 && defaultView) {
+    if (activeViews.length === 0 && defaultView) {
       addView(defaultView);
     }
-  }, [views.length, defaultView, addView]);
+  }, [activeViews.length, defaultView, addView]);
 
   const getFilters = useCallback(async () => {
     const _filters: string[] = cloneDeep(filters);
@@ -115,18 +117,18 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
     }
 
     // Fetch all view queries
-    if (views.length > 0) {
-      const viewObjects = await getCurrentViews({ views });
+    if (activeViews.length > 0) {
+      const viewObjects = await getCurrentViews({ views: activeViews });
 
       // Filter out null/undefined views and extract queries
       viewObjects
         .filter(view => view?.query)
         .map(view => view.query)
-        .forEach(viewQuery => _filters.push(viewQuery));
+        .forEach(viewQuery => _filters.push(viewQuery!));
     }
 
     return _filters;
-  }, [endDate, filters, getCurrentViews, span, startDate, views]);
+  }, [activeViews, endDate, filters, getCurrentViews, span, startDate]);
 
   const search = useCallback(
     async (_query?: string, appendResults?: boolean) => {
@@ -154,7 +156,7 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
 
         try {
           const _response = await dispatchApi(
-            api.v2.search.post<WithMetadata<Hit>>(indexes, {
+            api.v2.search.post<WithMetadata<Hit | Event>>(indexes!, {
               offset: appendResults && !isNil(response?.rows) ? response.rows : offset,
               rows: pageCount,
               query: _query || DEFAULT_QUERY,
@@ -166,7 +168,7 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
             { showError: false, throwError: true }
           );
 
-          if (_response.total < offset) {
+          if ((_response.total ?? 0) < offset) {
             setOffset(0);
           }
 
@@ -180,7 +182,7 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
                 ? {
                     ..._response,
                     offset: _existingResponse.offset,
-                    rows: Math.min(_existingResponse.rows + _response.rows, _response.total),
+                    rows: Math.min(_existingResponse.rows + _response.rows, _response.total ?? Infinity),
                     items: [..._existingResponse.items, ..._response.items]
                   }
                 : _response
@@ -218,14 +220,14 @@ const RecordSearchProvider: FC<PropsWithChildren> = ({ children }) => {
       return;
     }
 
-    if (views.length > 0 || (query && query !== DEFAULT_QUERY) || offset > 0 || filters.length > 0) {
+    if (activeViews.length > 0 || (query && query !== DEFAULT_QUERY) || offset > 0 || filters.length > 0) {
       void search(query);
     } else {
       setResponse(null);
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offset, pageCount, sort, span, indexes, location.pathname, startDate, endDate, filters, query, views]);
+  }, [offset, pageCount, sort, span, indexes, location.pathname, startDate, endDate, filters, query, activeViews]);
 
   return (
     <RecordSearchContext.Provider

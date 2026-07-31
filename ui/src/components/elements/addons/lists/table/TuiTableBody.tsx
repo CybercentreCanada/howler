@@ -58,7 +58,7 @@ const TuiTableBody = <T,>({
   );
 
   return (
-    <TuiListBase keyboard={keyboard} onSelect={onRowSelect}>
+    <TuiListBase keyboard={keyboard} onSelect={onRowSelect!}>
       {(items, onClick) => {
         return items.length > 0 ? (
           items.map((item, index) => (

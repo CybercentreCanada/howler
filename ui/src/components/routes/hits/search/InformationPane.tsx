@@ -67,7 +67,7 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
 
   const users = useMyUserList(userIds);
 
-  const record = useContextSelector(RecordContext, ctx => ctx.records[selected]);
+  const record = useContextSelector(RecordContext, ctx => ctx.records[selected!]);
 
   howlerPluginStore.plugins.forEach(plugin => {
     pluginStore.executeFunction(`${plugin}.on`, 'viewing');
@@ -91,7 +91,7 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
 
   useEffect(() => {
     if (selected) {
-      setAnalytic(null);
+      setAnalytic(undefined);
       setDossiers(null);
       setHasOverview(false);
     }
@@ -99,13 +99,13 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
 
   useEffect(() => {
     if (isHit(record) && !analytic) {
-      void getMatchingAnalytic(record).then(setAnalytic);
+      void getMatchingAnalytic(record).then(analytic => setAnalytic(analytic ?? undefined));
     }
   }, [analytic, getMatchingAnalytic, record]);
 
   useEffect(() => {
     if (isHit(record) && !_dossiers) {
-      void getMatchingDossiers(record).then(setDossiers);
+      void getMatchingDossiers(record).then(dossiers => setDossiers(dossiers ?? null));
     }
   }, [_dossiers, getMatchingDossiers, record]);
 
@@ -149,25 +149,25 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
     const defaultContent = {
       details: () => (
         <Box pr={2}>
-          <ObjectDetails obj={record} />
+          <ObjectDetails obj={record ?? {}} />
         </Box>
       ),
-      comments: () => <RecordComments record={record} users={users} />,
-      raw: () => <JSONViewer data={!loading && record} hideSearch filter={filter} />,
+      comments: () => (record ? <RecordComments record={record} users={users} /> : <></>),
+      raw: () => <JSONViewer data={!loading && record ? record : {}} hideSearch filter={filter} />,
       data: () => (
         <JSONViewer
-          data={!loading && record?.howler?.data?.map(entry => tryParse(entry))}
+          data={!loading ? (record?.howler?.data?.map(entry => tryParse(entry)) ?? []) : []}
           collapse={false}
           hideSearch
           filter={filter}
         />
       ),
-      related: () => <RecordRelated record={record} />,
-      worklog: () => <RecordWorklog record={!loading && record} users={users} />
+      related: () => (record ? <RecordRelated record={record} /> : <></>),
+      worklog: () => (record && !loading ? <RecordWorklog record={record} users={users} /> : <></>)
     };
 
     if (!isHit(record)) {
-      return (defaultContent as Record<string, () => JSX.Element>)[tab]?.();
+      return (defaultContent as Record<string, () => JSX.Element | undefined>)[tab]?.();
     }
 
     return (
@@ -189,7 +189,7 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
             ])
           )
         )
-      } as Record<string, () => JSX.Element>
+      } as Record<string, () => JSX.Element | undefined>
     )[tab]?.();
   }, [dossiers, filter, record, loading, tab, users]);
 
@@ -310,7 +310,7 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
                   label={
                     <Stack direction="row" spacing={0.5}>
                       {lead.icon && <Icon icon={lead.icon} />}
-                      <span>{i18n.language === 'en' ? lead.label.en : lead.label.fr}</span>
+                      <span>{i18n.language === 'en' ? lead.label!.en : lead.label!.fr}</span>
                     </Stack>
                   }
                   value={'lead:' + index}
@@ -325,7 +325,7 @@ const InformationPane: FC<{ selected?: string; onClose?: () => void }> = ({ onCl
                   label={
                     <Stack direction="row" spacing={0.5}>
                       {_lead.icon && <Icon icon={_lead.icon} />}
-                      <span>{i18n.language === 'en' ? _lead.label.en : _lead.label.fr}</span>
+                      <span>{i18n.language === 'en' ? _lead.label!.en : _lead.label!.fr}</span>
                     </Stack>
                   }
                   value={`external-lead:${dossierIndex}:${leadIndex}`}

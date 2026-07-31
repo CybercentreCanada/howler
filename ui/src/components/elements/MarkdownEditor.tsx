@@ -91,7 +91,7 @@ const MarkdownEditor: FC<OverviewEditorProps> = ({
       width={width}
       theme={theme.palette.mode === 'light' ? 'howler' : 'howler-dark'}
       value={content}
-      onChange={value => setContent(value)}
+      onChange={value => setContent(value ?? '')}
       beforeMount={beforeEditorMount}
       onMount={onMount}
       options={options}

@@ -29,15 +29,17 @@ const AnalyticComments: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
   const [length, setLength] = useState(0);
   const [loading, setLoading] = useState(false);
   const [showClear, setShowClear] = useState(false);
-  const input = useRef<HTMLTextAreaElement>();
+  const input = useRef<HTMLTextAreaElement | null>(null);
 
   const onSubmit = useCallback(async () => {
-    if (!input.current?.value || !analytic || input.current.value.length > MAX_LENGTH) return;
+    if (!input.current?.value || !analytic || input.current.value.length > MAX_LENGTH) {
+      return;
+    }
 
     setLoading(true);
     try {
       const result = await dispatchApi(
-        api.analytic.comments.post(analytic.analytic_id, input.current.value, searchParams.get('filter')),
+        api.analytic.comments.post(analytic.analytic_id!, input.current.value, searchParams.get('filter') ?? undefined),
         {
           showError: true,
           throwError: true,
@@ -47,7 +49,7 @@ const AnalyticComments: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
 
       setAnalytic(result);
 
-      input.current.value = '';
+      input.current!.value = '';
       setShowClear(false);
     } finally {
       setLoading(false);
@@ -55,7 +57,7 @@ const AnalyticComments: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
   }, [analytic, dispatchApi, searchParams, setAnalytic]);
 
   const onClear = useCallback(() => {
-    input.current.value = '';
+    input.current!.value = '';
     setShowClear(false);
     setLength(0);
   }, []);
@@ -75,15 +77,15 @@ const AnalyticComments: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
     [loading, onSubmit]
   );
 
-  const checkLength = useCallback(() => setLength(input.current?.value.length), []);
+  const checkLength = useCallback(() => setLength(input.current?.value.length ?? 0), []);
 
   const handleDelete = useCallback(
     async (commentId: string) => {
-      await dispatchApi(api.analytic.comments.del(analytic?.analytic_id, [commentId]));
+      await dispatchApi(api.analytic.comments.del(analytic.analytic_id!, [commentId]));
 
       setAnalytic({
         ...analytic,
-        comment: analytic.comment.filter(c => c.id !== commentId)
+        comment: analytic.comment!.filter(c => c.id !== commentId)
       });
     },
     [analytic, dispatchApi, setAnalytic]
@@ -91,11 +93,11 @@ const AnalyticComments: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
 
   const handleEdit = useCallback(
     async (commentId: string, editValue: string) => {
-      await dispatchApi(api.analytic.comments.put(analytic?.analytic_id, commentId, editValue));
+      await dispatchApi(api.analytic.comments.put(analytic.analytic_id!, commentId, editValue));
 
       setAnalytic({
         ...analytic,
-        comment: analytic.comment.map(cmt => (cmt.id !== commentId ? cmt : { ...cmt, value: editValue }))
+        comment: analytic.comment!.map(cmt => (cmt.id !== commentId ? cmt : { ...cmt, value: editValue }))
       });
     },
     [analytic, dispatchApi, setAnalytic]
@@ -109,31 +111,33 @@ const AnalyticComments: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
         .join('\n')}\n\n`.trimStart();
 
       setTimeout(() => {
-        input.current.focus();
+        input.current!.focus();
         // SPBK-2197 Fix - https://stackoverflow.com/a/10576409
-        input.current.selectionStart = input.current.selectionEnd = input.current.value.length;
+        input.current!.selectionStart = input.current!.selectionEnd = input.current!.value.length;
       }, 10);
     }
   }, []);
 
   const handleReact = useCallback(
-    async (commentId: string, type: string) => {
+    async (commentId: string, type: string | null) => {
       if (type) {
-        await dispatchApi(api.analytic.comments.react.put(analytic?.analytic_id, commentId, type));
+        await dispatchApi(api.analytic.comments.react.put(analytic.analytic_id!, commentId, type));
 
         setAnalytic({
           ...analytic,
-          comment: analytic.comment.map(cmt =>
-            cmt.id !== commentId ? cmt : { ...cmt, reactions: { ...cmt?.reactions, [user.username]: type } }
+          comment: analytic.comment!.map(cmt =>
+            cmt.id !== commentId ? cmt : { ...cmt, reactions: { ...cmt?.reactions, [user.username!]: type } }
           )
         });
       } else {
-        await dispatchApi(api.analytic.comments.react.del(analytic?.analytic_id, commentId));
+        await dispatchApi(api.analytic.comments.react.del(analytic.analytic_id!, commentId));
 
         setAnalytic({
           ...analytic,
-          comment: analytic.comment.map(cmt =>
-            cmt.id !== commentId ? cmt : { ...cmt, reactions: { ...cmt?.reactions, [user.username]: undefined } }
+          comment: analytic.comment!.map(cmt =>
+            cmt.id !== commentId
+              ? cmt
+              : ({ ...cmt, reactions: { ...cmt?.reactions, [user.username!]: undefined } } as typeof cmt)
           )
         });
       }
@@ -142,24 +146,24 @@ const AnalyticComments: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
   );
 
   useEffect(() => {
-    setUserIds(new Set(analytic?.comment.map(c => c.user)));
+    setUserIds(new Set((analytic.comment ?? []).map(c => c.user!)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analytic?.analytic_id]);
 
   const comments = useMemo(
     () =>
       analytic?.comment
-        .filter(c => !searchParams.get('filter') || c.detection === searchParams.get('filter'))
-        .sort((a, b) => compareTimestamp(b.timestamp, a.timestamp))
+        ?.filter(c => !searchParams.get('filter') || c.detection === searchParams.get('filter'))
+        .sort((a, b) => compareTimestamp(b.timestamp!, a.timestamp!))
         .map(c => (
           <Comment
-            key={c.id}
+            key={c.id!}
             comment={c}
             users={users}
-            handleDelete={() => handleDelete(c.id)}
-            handleEdit={value => handleEdit(c.id, value)}
-            handleReact={type => handleReact(c.id, type)}
-            handleQuote={() => handleQuote(c.value)}
+            handleDelete={() => handleDelete(c.id!)}
+            handleEdit={value => handleEdit(c.id!, value)}
+            handleReact={type => handleReact(c.id!, type)}
+            handleQuote={() => handleQuote(c.value!)}
             extra={
               !searchParams.get('filter') && (
                 <Chip
@@ -178,7 +182,7 @@ const AnalyticComments: FC<{ analytic: Analytic; setAnalytic: (a: Analytic) => v
     <Stack direction="column" py={2} spacing={1}>
       <Divider orientation="horizontal" flexItem />
       <Stack direction="row" spacing={1}>
-        <HowlerAvatar userId={user.username} />
+        <HowlerAvatar userId={user.username!} />
         <TextField
           inputProps={{ sx: (theme: Theme) => ({ fontSize: theme.typography.body2.fontSize }) }}
           InputLabelProps={{ shrink: false }}

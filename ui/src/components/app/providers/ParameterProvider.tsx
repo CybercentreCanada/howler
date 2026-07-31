@@ -45,20 +45,20 @@ export interface ParameterContextType {
 }
 
 interface SearchValues {
-  selected: string;
+  selected: string | undefined;
   query: string;
   sort: string;
   span: string;
   indexes: SearchIndex[];
   filters: string[];
   views: string[];
-  startDate: string;
-  endDate: string;
+  startDate: string | undefined;
+  endDate: string | undefined;
   offset: number;
   trackTotalHits: boolean;
 }
 
-export const ParameterContext = createContext<ParameterContextType>(null);
+export const ParameterContext = createContext<ParameterContextType>(null as any);
 
 const DEFAULT_VALUES: Partial<SearchValues> = {
   query: DEFAULT_QUERY,
@@ -96,9 +96,13 @@ const WRITE_THROTTLER = new Throttler(100);
  * Helper function to convert a number/string representation of a number into a valid offset.
  * @returns
  */
-const parseOffset = (_offset: string | number) => {
+const parseOffset = (_offset: string | number | null) => {
   if (typeof _offset === 'number') {
     return _offset;
+  }
+
+  if (!_offset) {
+    return 0;
   }
 
   const candidate = parseInt(_offset);
@@ -110,12 +114,12 @@ const parseOffset = (_offset: string | number) => {
  */
 const getSelectedValue = (params: URLSearchParams, pathname: string, bundleId?: string) => {
   if (params.has('selected')) {
-    return params.get('selected');
+    return params.get('selected') ?? undefined;
   }
   if (pathname.startsWith('/bundles') && bundleId) {
     return bundleId;
   }
-  return null;
+  return undefined;
 };
 
 /**
@@ -262,7 +266,7 @@ const useUrlSync = (
     // selected
     const selectedValue = getSelectedValue(params, pathname, routeId);
     if (selectedValue !== values.selected) {
-      changes.selected = selectedValue;
+      changes.selected = selectedValue ?? undefined;
     }
 
     // offset
@@ -328,15 +332,15 @@ const ParameterProvider: FC<PropsWithChildren<{ defaults?: Partial<SearchValues>
   const pendingChanges = useRef<Partial<SearchValues>>({});
 
   const [values, _setValues] = useState<SearchValues>({
-    selected: getSelectedValue(params, location.pathname, routeParams.id),
-    query: params.get('query') ?? defaults.query,
-    sort: params.get('sort') ?? defaults.sort,
-    span: params.get('span') ?? defaults.span,
-    indexes: params.has('index') ? uniq(params.getAll('index') as SearchIndex[]).filter(identity) : defaults.indexes,
+    selected: getSelectedValue(params, location.pathname, routeParams.id)!,
+    query: params.get('query') ?? defaults.query!,
+    sort: params.get('sort') ?? defaults.sort!,
+    span: params.get('span') ?? defaults.span!,
+    indexes: params.has('index') ? uniq(params.getAll('index') as SearchIndex[]).filter(identity) : defaults.indexes!,
     filters: params.getAll('filter'),
     views: params.getAll('view'),
-    startDate: params.get('start_date'),
-    endDate: params.get('end_date'),
+    startDate: params.get('start_date') ?? undefined,
+    endDate: params.get('end_date') ?? undefined,
     offset: parseOffset(params.get('offset')),
     trackTotalHits: (params.get('track_total_hits') ?? 'false') !== 'false'
   });
@@ -352,14 +356,14 @@ const ParameterProvider: FC<PropsWithChildren<{ defaults?: Partial<SearchValues>
         }
 
         if (key === 'selected') {
-          pendingChanges.current.selected = value as string | null;
+          pendingChanges.current.selected = value as string | undefined;
         } else {
           (pendingChanges.current as any)[key] = value ?? defaults[key] ?? null;
         }
 
         if (key === 'span' && typeof value === 'string' && !value.endsWith('custom')) {
-          pendingChanges.current.startDate = null;
-          pendingChanges.current.endDate = null;
+          pendingChanges.current.startDate = undefined;
+          pendingChanges.current.endDate = undefined;
         }
 
         WRITE_THROTTLER.debounce(() => {

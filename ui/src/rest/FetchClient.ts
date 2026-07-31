@@ -18,7 +18,7 @@ export default class FetchClient implements RestClient {
     });
 
     if (response.status === 204) {
-      return null;
+      return null as any;
     }
 
     const json = (await response.json()) as HowlerResponse<R>;

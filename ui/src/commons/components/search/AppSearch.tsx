@@ -33,19 +33,19 @@ const AppSearchRoot = styled(Box, { shouldForwardProp: prop => prop !== 'menuOpe
   return {
     position: 'relative',
     borderRadius: theme.shape.borderRadius,
-    borderBottomLeftRadius: menuOpen && 0,
-    borderBottomRightRadius: menuOpen && 0,
+    borderBottomLeftRadius: menuOpen ? 0 : undefined,
+    borderBottomRightRadius: menuOpen ? 0 : undefined,
 
     '.app-search-input': {
       backgroundColor:
         theme.palette.mode === 'dark' ? backgroundColor : menuOpen ? theme.palette.background.default : backgroundColor,
-      boxShadow: menuOpen && theme.shadows[4]
+      boxShadow: menuOpen ? theme.shadows[4] : undefined
     },
     '.app-search-result': {
       backgroundColor: theme.palette.mode === 'dark' ? backgroundColor : theme.palette.background.default,
       borderBottomLeftRadius: theme.shape.borderRadius,
       borderBottomRightRadius: theme.shape.borderRadius,
-      boxShadow: menuOpen && theme.shadows[4],
+      boxShadow: menuOpen ? theme.shadows[4] : undefined,
       color: theme.palette.text.primary
     }
   };
@@ -83,13 +83,13 @@ export default function AppSearch() {
       const { key, isCtrl } = parseEvent(event);
       if (isCtrl && key === 'k') {
         event.preventDefault();
-        const inputRef = menuRef.current.querySelector('input');
+        const inputRef = menuRef.current?.querySelector('input');
         if (provided && !inputRef) {
           state.set({ ...state, menu: !state.menu, mode: 'fullscreen' });
         } else if (provided && state.menu) {
           state.set({ ...state, mode: 'fullscreen' });
         } else {
-          inputRef.focus();
+          inputRef!.focus();
         }
       }
     };
@@ -149,7 +149,7 @@ export default function AppSearch() {
   // Clear search input handler.
   const onClear = useCallback(() => {
     setValue('');
-    state.set({ ...state, items: null });
+    state.set({ ...state, items: [] });
   }, [state]);
 
   // Fullscreen modal toggle handler.
@@ -159,7 +159,7 @@ export default function AppSearch() {
 
   return (
     <ClickAwayListener onClickAway={() => state.set({ ...state, menu: false })}>
-      <AppSearchRoot ref={menuRef} sx={{ mr: !showSearchIcon && 1 }} menuOpen={state.menu}>
+      <AppSearchRoot ref={menuRef} sx={{ mr: !showSearchIcon ? 1 : undefined }} menuOpen={state.menu}>
         {showSearchIcon ? (
           <IconButton
             color="inherit"

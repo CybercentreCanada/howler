@@ -67,14 +67,14 @@ const HitGraph: FC = () => {
   const chartRef = useRef<Chart<'scatter'>>();
 
   const [loading, setLoading] = useState(false);
-  const [filterField, setFilterField] = useState<string>(FILTER_FIELDS[0]);
+  const [filterField, setFilterField] = useState<string>(FILTER_FIELDS[0]!);
   const [data, setData] = useState<ChartDataset<'scatter'>[]>([]);
   const [showWarning, setShowWarning] = useState(false);
   const [override, setOverride] = useState(false);
   const [disabled, setDisabled] = useState(false);
   const [searchTotal, setSearchTotal] = useState(0);
 
-  const [escalationFilter, setEscalationFilter] = useState<string>(null);
+  const [escalationFilter, setEscalationFilter] = useState<string | null>(null);
 
   const performQuery = useCallback(async () => {
     setLoading(true);
@@ -90,7 +90,7 @@ const HitGraph: FC = () => {
       const total = (
         await dispatchApi(
           api.search.count.hit.post({
-            query,
+            query: query ?? DEFAULT_QUERY,
             filters
           })
         )
@@ -147,7 +147,7 @@ const HitGraph: FC = () => {
   }, [dispatchApi, escalationFilter, filterField, getFilters, override, query]);
 
   useEffect(() => {
-    if ((!query && views?.length < 1) || error || !response) {
+    if ((!query && (views?.length ?? 0) < 1) || error || !response) {
       return;
     }
 
@@ -167,7 +167,7 @@ const HitGraph: FC = () => {
           return;
         }
 
-        if ((event.native as MouseEvent).ctrlKey || (event.native as MouseEvent).shiftKey) {
+        if ((event.native! as MouseEvent).ctrlKey || (event.native! as MouseEvent).shiftKey) {
           ids.forEach(id => {
             if (selectedHits.some(hit => hit.howler.id === id)) {
               removeHitFromSelection(id);
@@ -184,7 +184,7 @@ const HitGraph: FC = () => {
         }
       },
       onHover: (event, chartElement) => {
-        (event.native.target as any).style.cursor = chartElement[0] ? 'pointer' : 'default';
+        (event.native!.target as any).style.cursor = chartElement[0] ? 'pointer' : 'default';
       },
       interaction: {
         mode: 'nearest'
@@ -275,7 +275,7 @@ const HitGraph: FC = () => {
           options={FILTER_FIELDS}
           renderInput={params => <TextField {...params} label={t('hit.summary.filter.field')} size="small" />}
           value={filterField}
-          onChange={(__, option) => setFilterField(option)}
+          onChange={(__, option) => setFilterField(option!)}
         />
         <Autocomplete
           sx={{ flex: 1 }}
