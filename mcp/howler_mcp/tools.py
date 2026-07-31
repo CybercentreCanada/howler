@@ -519,7 +519,11 @@ def RegisterTools(mcp, api_client):
 
     @mcp.tool(name="luceneQuery")
     async def luecen_query(
-        query: str, sort: str = "", rows: int = MAXIMUM_TICKET, offset: int = 0
+        query: str,
+        sort: str = "",
+        rows: int = MAXIMUM_TICKET,
+        offset: int = 0,
+        fl: str = "",
     ) -> HowlerResponse:
         """Search hits using a valid Lucene query.
 
@@ -552,6 +556,24 @@ def RegisterTools(mcp, api_client):
         first. If you are unsure which values a field accepts, call
         ``GetFieldValues`` first.
 
+        **Reducing response size with** ``fl``:
+
+        Large responses (many hits or hits with long comment/log/dossier arrays)
+        are written to a file that cannot be read back. Use ``fl`` to request
+        only the fields you need so the response stays small enough to return
+        inline.
+
+        Pass ``fl`` as a comma-separated list of dot-notation field names.
+        ``howler.id`` is always returned regardless of ``fl``.
+
+        Examples:
+            fl="howler.id,howler.assignment,howler.status"
+            fl="howler.id,howler.analytic,howler.detection,howler.assessment"
+            fl="howler.id,howler.outline.indicators,howler.outline.threat"
+
+        Use ``fl`` whenever you only need specific fields rather than the full
+        hit payload. This is the preferred approach for large result sets.
+
         Args:
             query: A valid Lucene query string. Use ``field:value`` syntax, quote
                 phrase values that contain spaces, and use Lucene operators such as
@@ -562,6 +584,10 @@ def RegisterTools(mcp, api_client):
                 ``event.created desc``. Leave empty to use the API default.
             rows: Maximum number of hits to return.
             offset: Starting offset into the result set for pagination.
+            fl: Optional comma-separated list of field names to include in each
+                returned hit. Leave empty to return the default set of fields
+                (classification, full howler object, timestamp). When set, only
+                the requested fields are returned, keeping the response compact.
 
         Returns:
             HowlerResponse: Structured search results containing the total count,
@@ -590,6 +616,16 @@ def RegisterTools(mcp, api_client):
             # empty string causes the API to reject the request rather than
             # falling back to its default sort order.
             body["sort"] = sort
+
+        if fl:
+            # Pass the field list to the API so it projects only the requested
+            # fields server-side. The API expects a comma-separated string, not
+            # a list — matching the "fl": "id,score" format in the data block.
+            # howler.id is always included so hits remain identifiable.
+            requested = [f.strip() for f in fl.split(",") if f.strip()]
+            if "howler.id" not in requested:
+                requested.insert(0, "howler.id")
+            body["fl"] = ",".join(requested)
 
         data = await api_client.call(
             user_access_token=access_token,

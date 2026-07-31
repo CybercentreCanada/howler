@@ -255,4 +255,15 @@ def RegisterPrompts(mcp):
         - Report the total number of matches.
         - Present the returned hits clearly.
         - If the user asked for a filter that cannot be translated safely into Lucene, explain what is missing and ask for clarification.
+
+        Mandatory fl usage:
+        Always pass fl when searching for more than 1 hit. Only omit fl when fetching a single specific ticket by ID.
+        Build fl from the fields the user actually asked for, always including howler.id.
+
+        Example fl values for common requests:
+        - "give me the IDs"                         -> fl="howler.id"
+        - "IDs, detection, status"                  -> fl="howler.id,howler.detection,howler.status"
+        - "IDs, analytic, assignment, assessment"   -> fl="howler.id,howler.analytic,howler.assignment,howler.assessment"
+        - "IDs, indicators, threat"                 -> fl="howler.id,howler.outline.indicators,howler.outline.threat"
+        - "full ticket details for one ticket"      -> omit fl entirely
         """
