@@ -130,7 +130,7 @@ python-baseconv = "^1.2.2"
 coverage = { extras = ["toml"], version = "^7.6.1" }
 
 [tool.poetry.group.dev.dependencies]
-ruff = ">=0.6.8,<0.16.0"
+ruff = ">=0.6.8,<0.17.0"
 pre-commit = "^3.8.0"
 mypy = "^1.11.2"
 
