@@ -256,7 +256,7 @@ const RecordContextMenu: FC<PropsWithChildren<RecordContextMenuProps>> = ({ chil
         items: actions.map(action => ({
           key: action.action_id!,
           label: action.name!,
-          onClick: () => executeAction(action.action_id!, `howler.id:${record?.howler.id}`)
+          onClick: () => executeAction(action.action_id!, `howler.id:(${records.map(r => r.howler.id).join(' OR ')})`)
         }))
       });
 

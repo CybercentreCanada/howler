@@ -195,9 +195,13 @@ describe('HitContextMenu', () => {
     user = userEvent.setup();
 
     vi.clearAllMocks();
-    mockRecordContext.selectedRecords.length = 0;
 
-    mockRecordContext.records['test-hit-1'] = createMockHit();
+    // Reset context to clean state
+    mockRecordContext.selectedRecords.length = 0;
+    mockRecordContext.records = {
+      'test-hit-1': createMockHit()
+    };
+    mockGetSelectedId.mockReturnValue('test-hit-1');
 
     mockGetMatchingAnalytic.mockResolvedValue(createMockAnalytic());
     mockGetMatchingTemplate.mockResolvedValue(createMockTemplate());
@@ -641,7 +645,7 @@ describe('HitContextMenu', () => {
       });
     });
 
-    it('should call executeAction with action_id and hit query', async () => {
+    it('should call executeAction with action_id and hit query for a single hit', async () => {
       const mockActions = [createMockAction({ action_id: 'action-1', name: 'Custom Action' })];
       mockDispatchApi.mockResolvedValue({ items: mockActions });
 
@@ -678,7 +682,58 @@ describe('HitContextMenu', () => {
       });
 
       await waitFor(() => {
-        expect(mockExecuteAction).toHaveBeenCalledWith('action-1', 'howler.id:test-hit-1');
+        expect(mockExecuteAction).toHaveBeenCalledWith('action-1', 'howler.id:(test-hit-1)');
+      });
+    });
+
+    it('should call executeAction with combined hit query when multiple hits are selected', async () => {
+      const mockActions = [createMockAction({ action_id: 'action-1', name: 'Custom Action' })];
+      mockDispatchApi.mockResolvedValue({ items: mockActions });
+
+      const hit1 = createMockHit({ howler: { id: 'hit-1' } });
+      const hit2 = createMockHit({ howler: { id: 'hit-2' } });
+      const hit3 = createMockHit({ howler: { id: 'hit-3' } });
+
+      mockRecordContext.records['hit-1'] = hit1;
+      mockRecordContext.records['hit-2'] = hit2;
+      mockRecordContext.records['hit-3'] = hit3;
+      mockRecordContext.selectedRecords = [hit1, hit2, hit3];
+      mockGetSelectedId.mockReturnValue('hit-1');
+
+      rerender(
+        <Wrapper>
+          <RecordContextMenu getSelectedId={mockGetSelectedId}>
+            <div>Test Content</div>
+          </RecordContextMenu>
+        </Wrapper>
+      );
+
+      act(() => {
+        const contextMenuWrapper = screen.getByText('Test Content').parentElement;
+        fireEvent.contextMenu(contextMenuWrapper);
+      });
+
+      let actionsMenuItem: HTMLElement;
+      await waitFor(() => {
+        actionsMenuItem = screen.getByText('Run Action');
+        expect(actionsMenuItem).toBeInTheDocument();
+      });
+
+      act(() => {
+        fireEvent.mouseEnter(actionsMenuItem);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('actions-submenu')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        const customActionOption = screen.getByText('Custom Action');
+        await user.click(customActionOption);
+      });
+
+      await waitFor(() => {
+        expect(mockExecuteAction).toHaveBeenCalledWith('action-1', 'howler.id:(hit-1 OR hit-2 OR hit-3)');
       });
     });
 

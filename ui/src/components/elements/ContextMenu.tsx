@@ -178,7 +178,7 @@ const ContextMenu: FC<PropsWithChildren<ContextMenuProps>> = ({
           sx: {
             minWidth: '250px',
             paddingY: '0 !important',
-            '& > :first-child': {
+            '& > .first': {
               borderTopLeftRadius: theme.shape.borderRadius,
               borderTopRightRadius: theme.shape.borderRadius
             },
@@ -191,15 +191,20 @@ const ContextMenu: FC<PropsWithChildren<ContextMenuProps>> = ({
         anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
         onClick={handleClose}
       >
-        {items.map(entry => {
+        {items.map((entry, index) => {
+          let className = '';
+          if (index === 0) {
+            className = 'first';
+          }
+
           if (entry.kind === 'divider') {
-            return <Divider key={entry.id} sx={{ my: '0 !important' }} />;
+            return <Divider className={className} key={entry.id} sx={{ my: '0 !important' }} />;
           }
 
           if (entry.kind === 'item') {
             if (entry.to) {
               return (
-                <MenuItem key={entry.id} component={Link} to={entry.to} disabled={entry.disabled}>
+                <MenuItem key={entry.id} className={className} component={Link} to={entry.to} disabled={entry.disabled}>
                   {entry.icon && <ListItemIcon>{entry.icon}</ListItemIcon>}
                   <ListItemText>{entry.label}</ListItemText>
                 </MenuItem>
@@ -207,7 +212,7 @@ const ContextMenu: FC<PropsWithChildren<ContextMenuProps>> = ({
             }
 
             return (
-              <MenuItem key={entry.id} disabled={entry.disabled} onClick={entry.onClick}>
+              <MenuItem key={entry.id} className={className} disabled={entry.disabled} onClick={entry.onClick}>
                 {entry.icon && <ListItemIcon>{entry.icon}</ListItemIcon>}
                 <ListItemText>{entry.label}</ListItemText>
               </MenuItem>

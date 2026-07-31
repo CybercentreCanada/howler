@@ -29,7 +29,14 @@ const HitOverview: FC<{ content?: string; hit: Hit }> = ({ content, hit }) => {
   );
 
   return (
-    <Box sx={{ position: 'relative', height: '100%', overflow: 'auto' }}>
+    <Box className="no-margin-first-child" sx={{ position: 'relative', height: '100%', overflow: 'auto' }}>
+      {matchingOverview || content ? (
+        <ErrorBoundary>
+          <HandlebarsMarkdown md={content ?? matchingOverview!.content} object={hit} disableLinks />
+        </ErrorBoundary>
+      ) : (
+        <Skeleton variant="rounded" height="40vh" />
+      )}
       {link && (
         <IconButton
           component={Link}
@@ -38,13 +45,6 @@ const HitOverview: FC<{ content?: string; hit: Hit }> = ({ content, hit }) => {
         >
           <InsertLink />
         </IconButton>
-      )}
-      {matchingOverview || content ? (
-        <ErrorBoundary>
-          <HandlebarsMarkdown md={(content ?? matchingOverview?.content)!} object={hit} disableLinks />
-        </ErrorBoundary>
-      ) : (
-        <Skeleton variant="rounded" height="40vh" />
       )}
     </Box>
   );
