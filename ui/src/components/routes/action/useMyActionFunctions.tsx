@@ -58,7 +58,7 @@ const useMyActionFunctions = () => {
   );
 
   useEffect(() => {
-    addListener<{ processed: number; total: number }>('action', handler);
+    addListener<{ request_id: string; processed: number; total: number }>('action', handler);
 
     return () => removeListener('action');
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -44,7 +44,7 @@ const HandlebarsMarkdown: FC<HandlebarsMarkdownProps> = ({ md, object = {}, disa
     instance.registerHelper('img', async (context: Handlebars.HelperOptions) => {
       const hash = Object.fromEntries(
         await Promise.all(Object.entries(context.hash).map(async ([key, val]) => [key, await val]))
-      );
+      ) as Record<string, string>;
 
       if (!hash.src) {
         return '';

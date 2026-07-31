@@ -1,4 +1,5 @@
 import { parseFeed, type Feed, type FeedItem } from 'commons/components/notification';
+import type { ItemComponentProps } from 'commons/components/app/AppNotificationService';
 import { NotificationContainer } from 'commons/components/notification/elements/NotificationContainer';
 import { NotificationTopNavButton } from 'commons/components/notification/elements/NotificationTopNavButton';
 import { NotificationItem } from 'commons/components/notification/elements/item/NotificationItem';
@@ -6,7 +7,7 @@ import { memo, useCallback, useEffect, useRef, useState, type FC } from 'react';
 
 type Props = {
   urls: string[];
-  notificationItem?: FC;
+  notificationItem?: FC<ItemComponentProps>;
   inDrawer?: boolean;
   openIfNew?: boolean;
   maxDrawerWidth?: string;

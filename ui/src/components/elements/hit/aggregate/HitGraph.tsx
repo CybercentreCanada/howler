@@ -183,8 +183,9 @@ const HitGraph: FC = () => {
           }
         }
       },
-      onHover: (event, chartElement) =>
-        ((event.native.target as any).style.cursor = chartElement[0] ? 'pointer' : 'default'),
+      onHover: (event, chartElement) => {
+        (event.native.target as any).style.cursor = chartElement[0] ? 'pointer' : 'default';
+      },
       interaction: {
         mode: 'nearest'
       },
@@ -221,8 +222,9 @@ const HitGraph: FC = () => {
             color: theme.palette.divider
           },
           ticks: {
-            callback: (value: number) => {
-              const [hour, minute] = [Math.floor(value), Math.floor((value - Math.floor(value)) * 60)];
+            callback: (value: number | string) => {
+              const numValue = typeof value === 'number' ? value : parseFloat(value);
+              const [hour, minute] = [Math.floor(numValue), Math.floor((numValue - Math.floor(numValue)) * 60)];
 
               return dayjs().hour(hour).minute(minute).format('HH:mm');
             }

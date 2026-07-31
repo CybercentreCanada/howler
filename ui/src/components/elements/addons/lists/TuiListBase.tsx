@@ -100,4 +100,4 @@ const TuiListBase = <T,>({ keyboard = false, onSelect, children }: TuiListBasePr
   );
 };
 
-export default memo(TuiListBase);
+export default memo(TuiListBase) as typeof TuiListBase;

@@ -15,8 +15,8 @@ const AppUserServiceImpl: AppUserService<AppUser> = {
 };
 
 export default function AppUserProvider<U extends AppUser>({
-  service = AppUserServiceImpl as AppUserService<U>,
+  service = AppUserServiceImpl as unknown as AppUserService<U>,
   children
 }: AppUserProviderProps<U>) {
-  return <AppUserContext.Provider value={{ ...AppUserServiceImpl, ...service }}>{children}</AppUserContext.Provider>;
+  return <AppUserContext.Provider value={{ ...AppUserServiceImpl, ...service } as unknown as AppUserService<AppUser>}>{children}</AppUserContext.Provider>;
 }

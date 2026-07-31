@@ -268,7 +268,7 @@ const AddNewCard: FC<{ dashboard: HowlerUser['dashboard']; addCard: (newCard: Da
                   <Slider
                     value={config.limit ?? 3}
                     valueLabelDisplay="auto"
-                    onChange={(_, value: number) => setConfig('limit', value)}
+                    onChange={(_, value: number | number[]) => setConfig('limit', Array.isArray(value) ? value[0] : value)}
                     min={1}
                     max={10}
                     step={1}

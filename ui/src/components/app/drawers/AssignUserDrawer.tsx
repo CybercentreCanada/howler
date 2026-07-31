@@ -60,7 +60,7 @@ const AssignUserDrawer: FC<AssignUserDrawerProps> = ({ assignment, ids, onAssign
             email: t('app.drawer.hit.assignment.unassigned.email'),
             name: t('app.drawer.hit.assignment.unassigned.name'),
             username: 'unassigned'
-          }
+          } as HowlerUser
         ]}
         filterOptions={(_users, { inputValue }) =>
           _users.filter(

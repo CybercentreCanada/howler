@@ -28,4 +28,4 @@ const TuiList = <T,>({ keyboard, children, onSelection }: TuiListProps<T>) => {
   );
 };
 
-export default memo(TuiList);
+export default memo(TuiList) as typeof TuiList;

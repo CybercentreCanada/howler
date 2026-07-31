@@ -342,7 +342,7 @@ const SearchDocumentation: FC = () => {
             </ul>
           </Paragraph>
 
-          {Object.keys(indexes).map((idx: keyof APIIndexes) => (
+          {(Object.keys(indexes) as (keyof APIIndexes)[]).map(idx => (
             <Accordion key={idx} sx={{ mb: 2, backgroundColor: 'background.paper' }}>
               <AccordionSummary expandIcon={<ExpandMore />}>
                 <Typography variant="h6">{t(`fields.idx_${idx}`)}</Typography>

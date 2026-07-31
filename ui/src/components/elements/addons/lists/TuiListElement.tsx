@@ -53,4 +53,4 @@ const TuiListElement = <T,>({ position, item, onSelect: onClick, children }: Tui
   );
 };
 
-export default memo(TuiListElement);
+export default memo(TuiListElement) as typeof TuiListElement;
