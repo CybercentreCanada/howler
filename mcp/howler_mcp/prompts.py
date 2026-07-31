@@ -93,6 +93,92 @@ def RegisterPrompts(mcp):
 
         Format the report clearly with markdown headings, tables, and bullet points. Make it suitable for sharing with security analysts and response teams."""
 
+    @mcp.prompt(name="ParseHits")
+    def parse_hits() -> str:
+        """Extract specific fields from a Howler search response into a compact per-ticket mapping."""
+        return """Use the parseHits tool to extract specific fields from a Howler search response and reduce it to a compact, readable per-ticket mapping.
+
+        ## When to use this tool
+
+        Use parseHits immediately after luceneQuery (or any other search tool) when:
+        - The raw HowlerResponse is too large to reason over directly.
+        - You only need a few specific fields per ticket, not the full payload.
+        - You need to present results clearly, such as listing IDs, assignments, statuses, or analytic names.
+        - You want to avoid writing custom parsing logic or terminal scripts to extract values.
+
+        Do NOT call parseHits on its own. It requires a HowlerResponse produced by a prior search tool call.
+
+        ## Standard two-step flow
+
+        Step 1 — Search: call luceneQuery (or any search tool) to get a HowlerResponse.
+        Step 2 — Parse: immediately pass that response to parseHits with the fields you care about.
+
+        Never skip step 1. parseHits is a post-processing tool, not a search tool.
+
+        ## How to build the searched_information list
+
+        Each entry is a dot-notation path that mirrors the nested structure of a Howler hit object.
+        Split the field name at every dot to get the traversal path.
+
+        Examples:
+        - howler.id            -> hit["howler"]["id"]
+        - howler.assignment    -> hit["howler"]["assignment"]
+        - howler.status        -> hit["howler"]["status"]
+        - howler.analytic      -> hit["howler"]["analytic"]
+        - howler.assessment    -> hit["howler"]["assessment"]
+        - howler.escalation    -> hit["howler"]["escalation"]
+        - howler.score         -> hit["howler"]["score"]
+        - howler.outline.indicators -> hit["howler"]["outline"]["indicators"]
+        - timestamp            -> hit["timestamp"]
+
+        If you are unsure which fields exist on a hit, call GetHitFields first to get the full list of valid field names.
+
+        ## Output format
+
+        parseHits returns a dict keyed by hit ID. Each value is a flat dict of the requested paths and their string-coerced values:
+
+        {
+            "7Vot6oh8FfgY21LqtOfRwT": {
+                "howler.id": "7Vot6oh8FfgY21LqtOfRwT",
+                "howler.assignment": "user",
+                "howler.status": "open"
+            },
+            "2raorrc8LXIJj1qGgxCHMG": {
+                "howler.id": "2raorrc8LXIJj1qGgxCHMG",
+                "howler.assignment": "user",
+                "howler.status": "resolved"
+            }
+        }
+
+        List-valued fields (e.g. howler.outline.indicators) are coerced to their string representation.
+
+        ## Common example requests and their searched_information lists
+
+        - "Give me the IDs of all hits assigned to user"
+            searched_information: ["howler.id"]
+
+        - "Show me each ticket's ID, analytic, and status"
+            searched_information: ["howler.id", "howler.analytic", "howler.status"]
+
+        - "List all hits with their assignment and escalation state"
+            searched_information: ["howler.id", "howler.assignment", "howler.escalation"]
+
+        - "What indicators are on these hits?"
+            searched_information: ["howler.id", "howler.outline.indicators"]
+
+        ## Important rules
+
+        - Always include "howler.id" in searched_information so results are identifiable.
+        - Only use field paths that exist in the Howler hit schema. Call GetHitFields if unsure.
+        - If a path does not exist on a hit, the traversal stops early and the value will be a partial dict string — not a crash, but not useful either. Verify field names before calling.
+        - parseHits does not filter hits. Use luceneQuery filters for that. parseHits only reshapes the response you already have.
+
+        After calling parseHits:
+        - Present the extracted fields clearly, one ticket per row.
+        - Report the total number of tickets parsed.
+        - If the user asked for a specific field that returned an unexpected value, note it and suggest calling GetHitFields to verify the correct path.
+        """
+
     @mcp.prompt(name="luceneQuery")
     def search_luecene() -> str:
         """Build a Lucene query from the user's request and search for matching hits."""
@@ -102,8 +188,21 @@ def RegisterPrompts(mcp):
 
         Available tools:
         - GetHitFields: call this when you are unsure which field names exist. It returns the full list of searchable Howler hit fields with their types. Use the returned field names verbatim in your Lucene query.
-        - GetFieldValues(field): call this when you are unsure which values a field accepts. For example, call it with howler.escalation or howler.assessment before filtering on those fields. The response maps each distinct value to its hit count. Use only values returned by this call.
-        - luceneQuery: call this to execute the query once you have confirmed field names and values.
+        - GetFieldValues(field): call this to retrieve the exact distinct values stored in a field before using that field as a filter. The response maps each distinct value to its hit count. ALWAYS call this before filtering on any enumerated field (see mandatory list below). Use only values returned by this call — never assume casing or spelling from example data.
+        - luceneQuery: call this to execute the query only after field names and values have been confirmed with the tools above.
+
+        Mandatory pre-query verification steps:
+        1. For every field the user filters on that is NOT a free-text or numeric field, call GetFieldValues FIRST.
+           Fields that ALWAYS require GetFieldValues before use:
+           - howler.detection
+           - howler.escalation
+           - howler.assessment
+           - howler.status
+           - howler.scrutiny
+           - howler.analytic (use GetFieldValues to confirm exact analytic name casing)
+           - howler.assignment (use GetFieldValues to confirm exact username)
+        2. Do NOT rely on values seen in previous responses, example data, or context. Always verify from GetFieldValues.
+        3. Only after GetFieldValues confirms the exact value should you build and execute the query.
 
         Follow these rules:
         - Search only Howler hits.
@@ -112,7 +211,7 @@ def RegisterPrompts(mcp):
         - Use Lucene operators such as AND, OR, NOT, parentheses, and range expressions when needed.
         - Pass rows, offset, and sort as separate tool arguments. Do not include them inside the Lucene query string.
         - Do not invent field names. If you are unsure whether a field exists, call GetHitFields before building the query.
-        - Do not invent field values. If you are unsure what values a field accepts, call GetFieldValues before building the query.
+        - Do not invent field values. ALWAYS call GetFieldValues for enumerated fields — do not guess from prior context.
         - If the user gives a plain English filter, translate it into the simplest valid Lucene expression.
         - If the user asks for pagination, pass rows and offset explicitly to the tool.
         - If the user asks for sorting, pass sort explicitly to the tool.

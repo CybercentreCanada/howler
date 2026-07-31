@@ -612,3 +612,67 @@ def RegisterTools(mcp, api_client):
                 for item in (data.get("items") or [])
             ],
         )
+
+    @mcp.tool(name="parseHits")
+    def parse_hit(
+        howlerdata: HowlerResponse, searched_information: list[str]
+    ) -> dict[str, dict[str, str]]:
+        """Extract specific fields from a Howler search response and return a compact per-ticket mapping.
+
+        Use this tool after ``luceneQuery`` when the raw response is too large
+        to reason over. Feed the full ``HowlerResponse`` and the dot-notation
+        paths of the fields you care about; the tool returns one flat record per
+        ticket containing only those values.
+
+        Field paths follow the nested structure of the Howler hit object.
+        For example ``howler.id`` maps to ``hit["howler"]["id"]``, and
+        ``howler.outline.indicators`` maps to
+        ``hit["howler"]["outline"]["indicators"]``.
+
+        Args:
+            howlerdata: A ``HowlerResponse`` returned by ``luceneQuery`` or
+                any other search tool.
+            searched_information: List of dot-notation field paths to extract
+                from each hit, for example
+                ``["howler.id", "howler.assignment", "howler.status"]``.
+
+        Returns:
+            dict[str, dict[str, str]]: Mapping of hit ID to a flat dictionary
+            of the requested field paths and their string-coerced values.
+            Example::
+
+                {
+                    "7Vot6oh8FfgY21LqtOfRwT": {
+                        "howler.id": "7Vot6oh8FfgY21LqtOfRwT",
+                        "howler.assignment": "user",
+                        "howler.status": "open"
+                    }
+                }
+        """
+        # Accumulator: hit ID -> {field_path -> value}
+        answer: dict[str, dict[str, str]] = {}
+
+        for hit in howlerdata.hits:
+            # One flat record per ticket — reset for every hit.
+            searched_hit_value: dict[str, str] = {}
+
+            for path in searched_information:
+                # Start traversal at the top-level hit dict.
+                # Each dot-separated segment drills one level deeper.
+                # e.g. "howler.id" -> hit["howler"] -> hit["howler"]["id"]
+                data: Any = hit
+                for next_step in path.split("."):
+                    # If we have already reached a leaf string value, there is
+                    # nothing left to index into — stop early.
+                    if isinstance(data, str):
+                        break
+                    data = data[next_step]
+
+                # Coerce to str so the output type stays dict[str, str].
+                # Lists (e.g. howler.outline.indicators) become their repr.
+                searched_hit_value[path] = str(data)
+
+            # Key the record by the hit's own ID for easy lookup.
+            answer[hit["howler"]["id"]] = searched_hit_value
+
+        return answer
