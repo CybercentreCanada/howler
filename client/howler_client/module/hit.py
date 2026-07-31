@@ -164,7 +164,8 @@ class Hit(object):
                 Defaults to False.
 
         Returns:
-            CreateHitsResponse | None: Created and invalid hits with warnings, or ``None`` when no new hits are submitted (e.g., input is empty or all submitted hits already exist)
+            CreateHitsResponse | None: Created and invalid hits with warnings, or ``None`` when no
+                new hits are submitted (e.g., input is empty or all submitted hits already exist).
         """
         if not isinstance(data, list):
             data = [data]
