@@ -8,7 +8,9 @@ from mcp.server.auth.provider import AccessToken
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
+# Unsure if we want to keep this. But they do add some safety net on our side
 MAXIMUM_TICKET: int = 200
+MAXIMUM_OFFSET: int = 10000
 
 
 class WhoAmIResponse(BaseModel):
@@ -349,11 +351,13 @@ def RegisterTools(mcp, api_client):
                 f"Row : {rows} can not be lower then 0 or higher then {MAXIMUM_TICKET}"
             )
 
+        if offset <= 0 or offset > MAXIMUM_OFFSET:
+            raise ValueError(
+                f"Offset : {offset} can not be lower then 0 or higher then {MAXIMUM_OFFSET}"
+            )
+
         if not fl.strip():
             raise ValueError("fl must be provided and cannot be empty.")
-
-        if not isinstance(offset, int):
-            raise ValueError(f"Offset must be an integer not {offset} a {type(offset)}")
 
         logger.info(
             "Tool called: luceneQuery. Client: %s User:%s",

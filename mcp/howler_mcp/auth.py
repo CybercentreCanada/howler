@@ -3,6 +3,15 @@ from typing import Any
 
 import jwt
 from jwt import PyJWKClient
+from jwt.exceptions import (
+    DecodeError,
+    ExpiredSignatureError,
+    InvalidIssuedAtError,
+    InvalidIssuerError,
+    InvalidTokenError,
+    MissingRequiredClaimError,
+    PyJWKClientError,
+)
 from mcp.server.auth.provider import AccessToken, TokenVerifier
 
 logger = logging.getLogger(__name__)
@@ -90,8 +99,25 @@ class KeycloakTokenVerifier(TokenVerifier):
                 resource=self.audience,
             )
 
+        except PyJWKClientError as exc:
+            logger.warning(
+                "TOKEN REJECTED: unable to fetch/resolve JWKS signing key: %s", exc
+            )
+            return None
+        except (
+            ExpiredSignatureError,
+            InvalidIssuerError,
+            InvalidIssuedAtError,
+            MissingRequiredClaimError,
+            DecodeError,
+            InvalidTokenError,
+        ) as exc:
+            logger.warning("TOKEN REJECTED: invalid token claims/signature: %s", exc)
+            return None
         except Exception:
-            logger.exception("TOKEN REJECTED: Exception during verification.")
+            logger.exception(
+                "TOKEN REJECTED: unexpected exception during verification."
+            )
             return None
 
     def _audience_matches(self, claims: dict[str, Any]) -> bool:
