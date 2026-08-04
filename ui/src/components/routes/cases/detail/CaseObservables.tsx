@@ -13,7 +13,7 @@ import { useOutletContext } from 'react-router-dom';
 import useCase from '../hooks/useCase';
 import ObservableTable from './observables/ObservableTable';
 import type { ObservableRole, ObservableType, OriginType } from './types';
-import { OBSERVABLE_FIELDS, buildObservableEntries, classifyRole, resolveSources } from './utils';
+import { OBSERVABLE_FIELDS, buildObservableEntries } from './utils';
 
 const RELATED_FIELDS = OBSERVABLE_FIELDS.map(f => `related.${f}`).join(',');
 const EXTRA_FIELDS =
@@ -25,14 +25,13 @@ const CaseObservables: FC<{ case?: Case; caseId?: string }> = ({ case: providedC
   const routeCase = useOutletContext<Case>();
   const { case: _case } = useCase({ case: providedCase ?? routeCase, caseId });
 
-  const [records, setRecords] = useState<Partial<Hit | Event>[] | null>(null);
+  const [records, setRecords] = useState<(Hit | Event)[] | null>(null);
   const [activeFilters, setActiveFilters] = useState<ObservableType[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [originFilters, setOriginFilters] = useState<OriginType[]>([]);
   const [roleFilters, setRoleFilters] = useState<ObservableRole[]>([]);
   const [escalationOptions, setEscalationOptions] = useState<string[]>([]);
   const [activeEscalations, setActiveEscalations] = useState<string[]>([]);
-  const [escalationMap, setEscalationMap] = useState<Map<string, string>>(new Map());
 
   const ids = useMemo(
     () =>
@@ -53,21 +52,9 @@ const CaseObservables: FC<{ case?: Case; caseId?: string }> = ({ case: providedC
       api.v2.search.post<Hit | Event>(['hit', 'event'], {
         query: `howler.id:(${ids.join(' OR ')})`,
         fl: `howler.id,${RELATED_FIELDS},${EXTRA_FIELDS}`
-      })
-    ).then(response => {
-      setRecords(response.items);
-
-      // Build escalation map from fetched records
-      const escMap = new Map<string, string>();
-      for (const record of response.items) {
-        const id = (record as Hit).howler?.id ?? (record as Event).howler?.id;
-        const escalation = (record as Hit).howler?.escalation;
-        if (id && escalation) {
-          escMap.set(id, escalation);
-        }
-      }
-      setEscalationMap(escMap);
-    });
+      }),
+      { throwError: false, showError: true }
+    ).then(response => response && setRecords(response.items));
   }, [dispatchApi, ids]);
 
   useEffect(() => {
@@ -91,17 +78,16 @@ const CaseObservables: FC<{ case?: Case; caseId?: string }> = ({ case: providedC
   }, [dispatchApi, ids]);
 
   const allObservables = useMemo(() => {
-    if (!records || !_case) {
+    if (!_case) {
       return [];
     }
 
-    const entries = buildObservableEntries(records);
-    return entries.map(entry => ({
-      ...entry,
-      role: classifyRole(entry.value, _case, records),
-      sources: resolveSources(entry.seenIn, _case.items, escalationMap)
-    }));
-  }, [records, _case, escalationMap]);
+    if (!records?.length) {
+      return [];
+    }
+
+    return buildObservableEntries(_case, records);
+  }, [records, _case]);
 
   const observableTypes = useMemo(
     () => (allObservables ? (uniq(allObservables.map(a => a.type)) as ObservableType[]).sort() : []),

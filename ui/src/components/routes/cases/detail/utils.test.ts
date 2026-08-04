@@ -1,4 +1,3 @@
-/// <reference types="vitest" />
 import type { Hit } from 'models/entities/generated/Hit';
 import { createMockCase, createMockEvent, createMockHit } from 'tests/utils';
 import { describe, expect, it } from 'vitest';
@@ -10,17 +9,27 @@ import { buildObservableEntries, classifyRole } from './utils';
 
 describe('buildObservableEntries', () => {
   it('returns an empty array for records with no related field', () => {
-    expect(buildObservableEntries([createMockHit({ howler: { id: 'h1' } })])).toEqual([]);
+    expect(buildObservableEntries(createMockCase(), [createMockHit({ howler: { id: 'h1' } })])).toEqual([]);
   });
 
-  it('extracts a single IP from a hit', () => {
-    const result = buildObservableEntries([createMockHit({ howler: { id: 'h1' }, related: { ip: ['1.2.3.4'] } })]);
+  it('extracts a single IP with a resolved source', () => {
+    const _case = createMockCase({
+      items: [{ id: 'hit-item', type: 'hit', value: 'h1', name: 'First hit' }]
+    });
+    const result = buildObservableEntries(_case, [
+      createMockHit({ howler: { id: 'h1', escalation: 'evidence' }, related: { ip: ['1.2.3.4'] } })
+    ]);
     expect(result).toHaveLength(1);
-    expect(result[0]).toEqual({ type: 'ip', value: '1.2.3.4', seenIn: ['h1'] });
+    expect(result[0]).toEqual({
+      type: 'ip',
+      value: '1.2.3.4',
+      role: 'indicator',
+      sources: [{ id: 'h1', type: 'hit', path: 'First hit', label: 'First hit', escalation: 'evidence' }]
+    });
   });
 
   it('extracts multiple fields from a single record', () => {
-    const result = buildObservableEntries([
+    const result = buildObservableEntries(createMockCase(), [
       createMockHit({ howler: { id: 'h1' }, related: { ip: ['1.2.3.4'], user: ['alice'] } })
     ]);
     const types = result.map(a => a.type).sort();
@@ -28,39 +37,51 @@ describe('buildObservableEntries', () => {
   });
 
   it('deduplicates the same observable value across multiple records', () => {
-    const result = buildObservableEntries([
+    const _case = createMockCase({
+      items: [
+        { id: 'hit-item', type: 'hit', value: 'h1', name: 'First hit' },
+        { id: 'event-item', type: 'event', value: 'obs1', name: 'First event' }
+      ]
+    });
+    const result = buildObservableEntries(_case, [
       createMockHit({ howler: { id: 'h1' }, related: { ip: ['1.2.3.4'] } }),
       createMockEvent({ howler: { id: 'obs1' }, related: { ip: ['1.2.3.4'] } })
     ]);
     expect(result).toHaveLength(1);
-    expect(result[0].seenIn).toEqual(['h1', 'obs1']);
+    expect(result[0].sources).toEqual([
+      { id: 'h1', type: 'hit', path: 'First hit', label: 'First hit', escalation: undefined },
+      { id: 'obs1', type: 'event', path: 'First event', label: 'First event', escalation: undefined }
+    ]);
   });
 
   it('keeps distinct observable values as separate entries', () => {
-    const result = buildObservableEntries([
+    const result = buildObservableEntries(createMockCase(), [
       createMockHit({ howler: { id: 'h1' }, related: { ip: ['1.2.3.4'] } }),
       createMockHit({ howler: { id: 'h2' }, related: { ip: ['5.6.7.8'] } })
     ]);
     expect(result).toHaveLength(2);
   });
 
-  it('does not duplicate seenIn ids when the same record appears twice for the same observable', () => {
-    const result = buildObservableEntries([
+  it('does not duplicate sources when the same record appears twice for the same observable', () => {
+    const _case = createMockCase({ items: [{ id: 'hit-item', type: 'hit', value: 'h1' }] });
+    const result = buildObservableEntries(_case, [
       createMockHit({ howler: { id: 'h1' }, related: { ip: ['1.2.3.4'] } }),
       createMockHit({ howler: { id: 'h1' }, related: { ip: ['1.2.3.4'] } })
     ]);
-    expect(result[0].seenIn).toEqual(['h1']);
+    expect(result[0].sources).toEqual([{ id: 'h1', type: 'hit', path: 'h1', label: 'h1', escalation: undefined }]);
   });
 
   it('skips records with no howler.id', () => {
-    const noId: Partial<Hit> = { related: { ip: ['1.2.3.4'] } } as any;
-    expect(buildObservableEntries([noId])).toEqual([]);
+    const noId: Hit = { related: { ip: ['1.2.3.4'] } } as any;
+    expect(buildObservableEntries(createMockCase(), [noId])).toEqual([]);
   });
 
   it('handles the scalar `id` field on Related', () => {
-    const result = buildObservableEntries([createMockHit({ howler: { id: 'h1' }, related: { id: 'some-id' } })]);
+    const result = buildObservableEntries(createMockCase(), [
+      createMockHit({ howler: { id: 'h1' }, related: { id: 'some-id' } })
+    ]);
     expect(result).toHaveLength(1);
-    expect(result[0]).toEqual({ type: 'id', value: 'some-id', seenIn: ['h1'] });
+    expect(result[0]).toEqual({ type: 'id', value: 'some-id', role: 'indicator', sources: [] });
   });
 
   it('handles array fields like hash, hosts, user, ids, uri, signature', () => {
@@ -72,7 +93,7 @@ describe('buildObservableEntries', () => {
       uri: ['https://example.com'],
       signature: ['rule-X']
     };
-    const result = buildObservableEntries([createMockHit({ howler: { id: 'h1' }, related })]);
+    const result = buildObservableEntries(createMockCase(), [createMockHit({ howler: { id: 'h1' }, related })]);
     const types = result.map(a => a.type).sort();
     expect(types).toEqual(['hash', 'hosts', 'ids', 'signature', 'uri', 'user']);
   });

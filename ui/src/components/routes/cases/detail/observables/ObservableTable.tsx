@@ -37,7 +37,7 @@ const getSortValue = (observable: ObservableEntry, column: SortColumn): string |
     case 'role':
       return observable.role ?? '';
     case 'seen_in':
-      return observable.seenIn.length;
+      return observable.sources?.length ?? 0;
     case 'escalation':
       return (observable.sources ?? [])
         .map(s => s.escalation)
@@ -160,7 +160,7 @@ const ObservableTable: FC<{ observables: ObservableEntry[]; case: Case }> = ({ o
                   )}
                 </TableCell>
                 <TableCell align="right">
-                  <Typography variant="body2">{observable.seenIn.length}</Typography>
+                  <Typography variant="body2">{sources.length}</Typography>
                 </TableCell>
                 <TableCell>
                   {linkedSources.length === 0 ? null : linkedSources.length === 1 ? (
