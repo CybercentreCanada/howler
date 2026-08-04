@@ -4,7 +4,7 @@
 
 - **Case Correlation for v1 Ingestion** _(bugfix)_: Fixed a gap where records ingested through v1 endpoints were not queued for correlation processing, so case correlation rules did not apply to those records.
 
-## Howler UI `v2.19.0`
+## Howler UI `v3.0.0`
 
 - **View Grid Preferences** _(new feature)_: Added list/grid display preferences to views, including configurable grid columns and widths, persisted local settings, view-composer controls, and safeguards for views whose grid configuration is inactive ([#444](https://github.com/CybercentreCanada/howler/pull/444)).
 - **Dossier Tooltips in Hits** _(new feature)_: Added tooltips for dossier information displayed inside hit rows and cards.
@@ -66,7 +66,7 @@
 - **Case Model and Access Support** _(technical update)_: Added backend model and datastore updates for case-aware operations, including case lookup, item traversal, and related metadata used by the UI.
 - **Case Workflow Validation** _(technical update)_: Added service validation and workflow safeguards so rule and automation behavior stays consistent when cases are created, updated, or resolved.
 
-## Howler Client `v2.4.0`
+## Howler Client `v3.0.0`
 
 - **Authentication Callbacks** _(new feature)_: Added callbacks for alternative authentication implementations and incorporated general client fixes and updates ([#392](https://github.com/CybercentreCanada/howler/pull/392)).
 - **Client Test and Dependency Maintenance** _(technical update)_: Updated client dependencies and corrected unit-test coverage for the new API/client behavior.
