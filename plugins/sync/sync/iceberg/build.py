@@ -35,33 +35,33 @@ def data_type_from_field(field: base._Field, allow_any_as_string: bool = False) 
     field_name = field.__class__.__name__
     if field_name in TYPE_MAPPING:
         return TYPE_MAPPING[field_name], _is_optional(field)
-    else:
-        if isinstance(field, Optional):
-            child_type, _ = data_type_from_field(field.child_type, allow_any_as_string=allow_any_as_string)
-            return child_type, True
 
-        if isinstance(field, List):
-            child_type, nullable = data_type_from_field(field.child_type, allow_any_as_string=allow_any_as_string)
-            return ArrayType(elementType=child_type, containsNull=nullable), _is_optional(field)
+    if isinstance(field, Optional):
+        child_type, _ = data_type_from_field(field.child_type, allow_any_as_string=allow_any_as_string)
+        return child_type, True
 
-        if isinstance(field, Compound):
-            schema = build_schema(field.child_type)
-            return schema, _is_optional(field)
+    if isinstance(field, List):
+        child_type, nullable = data_type_from_field(field.child_type, allow_any_as_string=allow_any_as_string)
+        return ArrayType(elementType=child_type, containsNull=nullable), _is_optional(field)
 
-        if isinstance(field, Mapping):
-            child_type, nullable = data_type_from_field(field.child_type, allow_any_as_string=allow_any_as_string)
-            return (
-                MapType(keyType=TYPE_MAPPING["Keyword"], valueType=child_type, valueContainsNull=nullable),
-                _is_optional(field),
-            )
+    if isinstance(field, Compound):
+        schema = build_schema(field.child_type)
+        return schema, _is_optional(field)
 
-        if isinstance(field, Any):
-            if not allow_any_as_string:
-                raise HowlerValueError(f"``Any`` type is not supported for Spark schema: {field.name}")
-            logger.warning(f"Using string type for ``Any`` field: {field.name}")
-            return TYPE_MAPPING["Any"], _is_optional(field)
+    if isinstance(field, Mapping):
+        child_type, nullable = data_type_from_field(field.child_type, allow_any_as_string=allow_any_as_string)
+        return (
+            MapType(keyType=TYPE_MAPPING["Keyword"], valueType=child_type, valueContainsNull=nullable),
+            _is_optional(field),
+        )
 
-        raise HowlerValueError(f"Unknown type for Spark schema: {field_name}")
+    if isinstance(field, Any):
+        if not allow_any_as_string:
+            raise HowlerValueError(f"``Any`` type is not supported for Spark schema: {field.name}")
+        logger.warning(f"Using string type for ``Any`` field: {field.name}")
+        return TYPE_MAPPING["Any"], _is_optional(field)
+
+    raise HowlerValueError(f"Unknown type for Spark schema: {field_name}")
 
 
 def build_schema(model: type[odm.Model] | odm.Model) -> StructType:
