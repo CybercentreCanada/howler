@@ -2,6 +2,7 @@ import difflib
 import json
 from typing import Any, Optional, cast
 
+from api.howler.services import correlation_service
 from flask import request
 from mergedeep import Strategy, merge
 
@@ -130,7 +131,9 @@ def create_hits(user: User, **kwargs):
 
             hit_service.create_hits(odms, user=user.uname, refresh="true" if DEBUG_FORCE_REFRESH else refresh)
             analytic_service.save_from_hits(odms, user, refresh=refresh)
-            action_service.enqueue_action_execution([odm.howler.id for odm in odms], trigger="create", user=user)
+            ids = [odm.howler.id for odm in odms]
+            action_service.enqueue_action_execution(ids, trigger="create", user=user)
+            correlation_service.enqueue_for_correlation(ids)
 
         response_body["warnings"] = warnings
 

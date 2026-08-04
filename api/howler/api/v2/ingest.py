@@ -1,6 +1,7 @@
 import json
 from typing import Any, Literal, cast
 
+from api.howler.services import correlation_service
 from flask import request
 from mergedeep import Strategy, merge
 
@@ -11,7 +12,6 @@ from howler.common.exceptions import HowlerException, HowlerValueError
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.common.swagger import generate_swagger_docs
-from howler.config import CORRELATION_QUEUE_NAME, config
 from howler.datastore.collection import ESCollection
 from howler.datastore.exceptions import DataStoreException
 from howler.datastore.howler_store import INDEXES
@@ -19,7 +19,6 @@ from howler.datastore.operations import OdmHelper, OdmUpdateOperation
 from howler.odm.models.event import Event
 from howler.odm.models.hit import Hit
 from howler.odm.models.user import User
-from howler.remote.datatypes.queues.named import NamedQueue
 from howler.security import api_login
 from howler.services import event_service, hit_service
 from howler.utils.dict_utils import flatten
@@ -35,24 +34,6 @@ FIELDS = Hit.flat_fields()
 logger = get_logger(__file__)
 
 hit_helper = OdmHelper(Hit)
-
-# Persistent queue for the correlation worker to consume newly ingested hit IDs.
-_ingestion_queue: NamedQueue[str] | None = None
-
-
-def _get_ingestion_queue() -> NamedQueue[str]:
-    """Return the shared ingestion queue, creating it on first use."""
-    global _ingestion_queue
-
-    if _ingestion_queue is None:
-        _ingestion_queue = NamedQueue(
-            CORRELATION_QUEUE_NAME,
-            host=config.core.redis.persistent.host,
-            port=config.core.redis.persistent.port,
-            private=False,
-        )
-
-    return _ingestion_queue
 
 
 @generate_swagger_docs()
@@ -121,7 +102,7 @@ def create(index: str, user: User, **kwargs):
     # Enqueue newly created hit IDs for the correlation worker.
     if ids:
         try:
-            _get_ingestion_queue().push(*ids)
+            correlation_service.get_ingestion_queue().push(*ids)
         except Exception:
             logger.exception("Failed to enqueue hit IDs for correlation")
 

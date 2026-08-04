@@ -1,5 +1,6 @@
 from typing import Any, Optional
 
+from api.howler.services import correlation_service
 from flask import request
 
 from howler.api import bad_request, created, make_subapi_blueprint
@@ -233,6 +234,8 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
         hit_service.create_hits(odms, user=user.uname, refresh="true" if DEBUG_FORCE_REFRESH else refresh)
         analytic_service.save_from_hits(odms, user, refresh=refresh)
 
-    action_service.enqueue_action_execution([entry["id"] for entry in out], trigger="create", user=user)
+    ids = [entry["id"] for entry in out]
+    action_service.enqueue_action_execution(ids, trigger="create", user=user)
+    correlation_service.enqueue_for_correlation(ids)
 
     return created(out, warnings=warnings)

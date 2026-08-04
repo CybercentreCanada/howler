@@ -64,7 +64,7 @@ def _sample_event() -> dict:
 class TestCreateEndpoint:
     """Tests for the POST create endpoint."""
 
-    @patch("howler.api.v2.ingest._get_ingestion_queue")
+    @patch("howler.api.v2.ingest.correlation_service.get_ingestion_queue")
     @patch("howler.api.v2.ingest.event_service")
     @patch("howler.api.v2.ingest.hit_service")
     @patch("howler.security.auth_service")
@@ -94,7 +94,7 @@ class TestCreateEndpoint:
             mock_hit_svc.create_hit.assert_called_once()
             mock_queue_fn.return_value.push.assert_called_once_with("hit-001")
 
-    @patch("howler.api.v2.ingest._get_ingestion_queue")
+    @patch("howler.api.v2.ingest.correlation_service.get_ingestion_queue")
     @patch("howler.api.v2.ingest.event_service")
     @patch("howler.api.v2.ingest.hit_service")
     @patch("howler.security.auth_service")
@@ -179,7 +179,7 @@ class TestCreateEndpoint:
 
             assert result.status_code == 400
 
-    @patch("howler.api.v2.ingest._get_ingestion_queue")
+    @patch("howler.api.v2.ingest.correlation_service.get_ingestion_queue")
     @patch("howler.api.v2.ingest.hit_service")
     @patch("howler.security.auth_service")
     def test_create_multiple_hits(self, mock_auth_service, mock_hit_svc, mock_queue_fn, request_context: Flask):
@@ -207,7 +207,7 @@ class TestCreateEndpoint:
             assert "warning1" in body["api_warning"]
             mock_queue_fn.return_value.push.assert_called_once_with("hit-001", "hit-002")
 
-    @patch("howler.api.v2.ingest._get_ingestion_queue")
+    @patch("howler.api.v2.ingest.correlation_service.get_ingestion_queue")
     @patch("howler.api.v2.ingest.hit_service")
     @patch("howler.security.auth_service")
     def test_create_conversion_failure_returns_400(
@@ -233,7 +233,7 @@ class TestCreateEndpoint:
             assert result.status_code == 400
             mock_queue_fn.return_value.push.assert_not_called()
 
-    @patch("howler.api.v2.ingest._get_ingestion_queue")
+    @patch("howler.api.v2.ingest.correlation_service.get_ingestion_queue")
     @patch("howler.api.v2.ingest.hit_service")
     @patch("howler.security.auth_service")
     def test_create_queue_failure_still_returns_201(
@@ -529,7 +529,7 @@ class TestValidateEndpoint:
 class TestIngestionQueueing:
     """Tests that the create endpoint enqueues IDs for the correlation worker."""
 
-    @patch("howler.api.v2.ingest._get_ingestion_queue")
+    @patch("howler.api.v2.ingest.correlation_service.get_ingestion_queue")
     @patch("howler.api.v2.ingest.hit_service")
     @patch("howler.security.auth_service")
     def test_enqueues_hit_ids(self, mock_auth_service, mock_hit_svc, mock_queue_fn, request_context: Flask):
@@ -553,7 +553,7 @@ class TestIngestionQueueing:
 
             mock_queue_fn.return_value.push.assert_called_once_with("hit-a", "hit-b")
 
-    @patch("howler.api.v2.ingest._get_ingestion_queue")
+    @patch("howler.api.v2.ingest.correlation_service.get_ingestion_queue")
     @patch("howler.api.v2.ingest.event_service")
     @patch("howler.security.auth_service")
     def test_enqueues_event_ids(self, mock_auth_service, mock_obs_svc, mock_queue_fn, request_context: Flask):
@@ -576,7 +576,7 @@ class TestIngestionQueueing:
 
             mock_queue_fn.return_value.push.assert_called_once_with("obs-a")
 
-    @patch("howler.api.v2.ingest._get_ingestion_queue")
+    @patch("howler.api.v2.ingest.correlation_service.get_ingestion_queue")
     @patch("howler.api.v2.ingest.hit_service")
     @patch("howler.security.auth_service")
     def test_no_enqueue_when_all_fail(self, mock_auth_service, mock_hit_svc, mock_queue_fn, request_context: Flask):

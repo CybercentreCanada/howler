@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 import chevron
 from opentelemetry import trace
 
-from howler.common.exceptions import InvalidDataException, NotFoundException
+from howler.common.exceptions import HowlerRuntimeError, InvalidDataException, NotFoundException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.config import CORRELATION_QUEUE_NAME
@@ -35,6 +35,40 @@ def _normalize_utc(ts: datetime) -> datetime:
     if ts.tzinfo is None:
         return ts.replace(tzinfo=timezone.utc)
     return ts
+
+
+# Persistent queue for the correlation worker to consume newly ingested hit IDs.
+_ingestion_queue: NamedQueue[str] | None = None
+
+
+def get_ingestion_queue() -> NamedQueue[str]:
+    """Return the shared ingestion queue, creating it on first use."""
+    global _ingestion_queue
+
+    if _ingestion_queue is None:
+        _ingestion_queue = NamedQueue(
+            CORRELATION_QUEUE_NAME,
+            host=config.core.redis.persistent.host,
+            port=config.core.redis.persistent.port,
+            private=False,
+        )
+
+    return _ingestion_queue
+
+
+def enqueue_for_correlation(ids: list[str]):
+    """Enqueue record IDs for correlation processing.
+
+    Args:
+        ids: List of record IDs to enqueue for correlation.
+
+    Raises:
+        HowlerRuntimeError: If enqueueing fails.
+    """
+    try:
+        get_ingestion_queue().push(*ids)
+    except Exception as exc:
+        raise HowlerRuntimeError("Error on queuing for correlation") from exc
 
 
 def get_active_rules() -> list[tuple[str, CaseRule]]:  # noqa: C901
@@ -179,23 +213,13 @@ def process_batch(record_ids: list[str]) -> int:  # noqa: C901
     return added
 
 
-def _build_queue() -> NamedQueue[str]:
-    """Create the NamedQueue backed by persistent Redis."""
-    return NamedQueue(
-        CORRELATION_QUEUE_NAME,
-        host=config.core.redis.persistent.host,
-        port=config.core.redis.persistent.port,
-        private=False,
-    )
-
-
 def run_worker() -> None:  # pragma: no cover – long-running loop, tested via process_batch
     """Block on the ingestion queue and process batches of record IDs.
 
     Accumulates up to ``BATCH_SIZE`` IDs or flushes after ``BATCH_TIMEOUT``
     seconds, whichever comes first.
     """
-    queue = _build_queue()
+    queue = get_ingestion_queue()
     logger.info("Correlation worker started (batch_size=%d, timeout=%ds)", BATCH_SIZE, BATCH_TIMEOUT)
 
     batch: list[str] = []

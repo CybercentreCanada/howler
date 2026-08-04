@@ -347,3 +347,78 @@ class TestCorrelationWorker:
         assert not missing_hit_ids, (
             f"Worker did not add hits {missing_hit_ids} to case {case_id} within {self.MAX_WAIT}s"
         )
+
+    def test_worker_processes_v1_hit_ingestion(self, test_case, datastore: HowlerDatastore):
+        """Hits created via v1 /hit are queued and processed by the correlation worker."""
+        case_id, session, host = test_case
+        analytic = f"v1-hit-worker-{uuid.uuid4().hex}"
+
+        self._add_rule(session, host, case_id, f"howler.analytic:{analytic}", "worker-v1-hit")
+        datastore.case.commit()
+
+        ingest_resp = get_api_data(
+            session,
+            f"{host}/api/v1/hit/",
+            method="POST",
+            data=json.dumps([{"howler": {"analytic": analytic, "score": "0.8"}}]),
+        )
+        hit_ids = [entry["howler"]["id"] for entry in ingest_resp["valid"]]
+
+        seen_hit_ids = self._wait_for_case_items(datastore, case_id, hit_ids)
+        missing_hit_ids = set(hit_ids) - set(seen_hit_ids)
+        assert not missing_hit_ids, (
+            f"Worker did not add v1 ingested hits {missing_hit_ids} to case {case_id} within {self.MAX_WAIT}s"
+        )
+
+    def test_worker_processes_v1_tool_ingestion(self, test_case, datastore: HowlerDatastore):
+        """Hits created via v1 tool mapping are queued and processed by the worker."""
+        case_id, session, host = test_case
+        analytic = f"v1-tool-worker-{uuid.uuid4().hex}"
+
+        self._add_rule(session, host, case_id, f"howler.analytic:{analytic}", "worker-v1-tool")
+        datastore.case.commit()
+
+        ingest_resp = get_api_data(
+            session,
+            f"{host}/api/v1/tools/test/hits",
+            method="POST",
+            data=json.dumps(
+                {
+                    "map": {
+                        "analytic": ["howler.analytic"],
+                        "file.sha256": ["file.hash.sha256", "howler.hash"],
+                        "file.name": ["file.name"],
+                        "src_ip": ["source.ip", "related.ip"],
+                        "dest_ip": ["destination.ip", "related.ip"],
+                        "time.created": ["event.start"],
+                        "time.completed": ["event.end"],
+                        "raw": ["howler.data"],
+                        "zone": ["cloud.availability_zone"],
+                    },
+                    "hits": [
+                        {
+                            "analytic": analytic,
+                            "file": {
+                                "name": "worker-tool-hit.bin",
+                                "sha256": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+                            },
+                            "src_ip": "10.10.10.10",
+                            "dest_ip": "10.10.10.11",
+                            "time": {
+                                "created": "2026-01-01T00:00:00Z",
+                                "completed": "2026-01-01T00:01:00Z",
+                            },
+                            "zone": "test-zone",
+                            "raw": {"analytic": analytic},
+                        }
+                    ],
+                }
+            ),
+        )
+        hit_ids = [entry["id"] for entry in ingest_resp]
+
+        seen_hit_ids = self._wait_for_case_items(datastore, case_id, hit_ids)
+        missing_hit_ids = set(hit_ids) - set(seen_hit_ids)
+        assert not missing_hit_ids, (
+            f"Worker did not add v1 tool ingested hits {missing_hit_ids} to case {case_id} within {self.MAX_WAIT}s"
+        )
