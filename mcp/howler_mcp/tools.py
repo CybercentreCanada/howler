@@ -346,7 +346,7 @@ def RegisterTools(mcp, api_client):
 
         query = await validate_query_fields(query)
 
-        if rows <= 0 or rows > MAXIMUM_TICKET:
+        if rows < 0 or rows > MAXIMUM_TICKET:
             raise ValueError(
                 f"Row : {rows} can not be lower then 0 or higher then {MAXIMUM_TICKET}"
             )
