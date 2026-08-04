@@ -10,7 +10,7 @@ fastmcp = {extras = ["server"], version = "^3.4.0"}
 pydantic = "^2.8.0"
 httpx = ">=0.27.1"
 pyjwt = {extras = ["crypto"], version = "^2.8.0"}
-cryptography = "^48.0.1"
+cryptography = "^50.0.0"
 requests = "^2.34.0"
 howler-client = "^2.4.0"
 
