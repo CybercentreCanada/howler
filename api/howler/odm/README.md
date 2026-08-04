@@ -11,14 +11,17 @@ Here's example of a user model with settings and stats:
 ```python
 from howler import odm
 
+
 @odm.model(index=True, store=False, description="Settings of user")
 class Settings(odm.Model):
-    default_view: str = odm.Enum(value=['detail', 'simple'], default='simple', description="Some random setting")
+    default_view: str = odm.Enum(value=["detail", "simple"], default="simple", description="Some random setting")
+
 
 @odm.model(index=True, store=False, description="Settings of user")
 class Stats(odm.Model):
-    last_login: str = odm.Date(default='NOW', description="Last time user logged in")
+    last_login: str = odm.Date(default="NOW", description="Last time user logged in")
     login_count: str = odm.Integer(default=0, description="Number of time the user logged in")
+
 
 @odm.model(index=True, store=True, description="User example")
 class User(odm.Model):
