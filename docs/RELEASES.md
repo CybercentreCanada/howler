@@ -133,7 +133,7 @@
 - **Case Model and Access Support** _(technical update)_: Added backend model and datastore updates for case-aware operations, including case lookup, item traversal, and related metadata used by the UI.
 - **Case Workflow Validation** _(technical update)_: Added service validation and workflow safeguards so rule and automation behavior stays consistent when cases are created, updated, or resolved.
 
-## Howler Client `v2.4.0`
+## Howler Client `v3.0.0`
 
 - **Authentication Callbacks** _(new feature)_: Added callbacks for alternative authentication implementations and incorporated general client fixes and updates ([#392](https://github.com/CybercentreCanada/howler/pull/392)).
 - **Client Test and Dependency Maintenance** _(technical update)_: Updated client dependencies and corrected unit-test coverage for the new API/client behavior.
