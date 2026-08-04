@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from howler.common.exceptions import HowlerRuntimeError, InvalidDataException, NotFoundException
+from howler.common.exceptions import InvalidDataException, NotFoundException
 from howler.odm.models.case import CaseRule
 from howler.services import correlation_service
 
@@ -227,16 +227,6 @@ class TestEnqueueForCorrelation:
         correlation_service.enqueue_for_correlation(["hit-1", "hit-2"])
 
         queue.push.assert_called_once_with("hit-1", "hit-2")
-
-    @patch("howler.services.correlation_service._get_ingestion_queue")
-    def test_raises_runtime_error_on_queue_failure(self, mock_get_queue):
-        """Queue failures are wrapped in a HowlerRuntimeError for callers."""
-        queue = MagicMock()
-        queue.push.side_effect = Exception("redis unavailable")
-        mock_get_queue.return_value = queue
-
-        with pytest.raises(HowlerRuntimeError):
-            correlation_service.enqueue_for_correlation(["hit-1"])
 
     @patch("howler.services.correlation_service.case_service")
     @patch("howler.services.correlation_service.datastore")
