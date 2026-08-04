@@ -25,9 +25,10 @@ Example:
 
 ```python
 from howler.remote.datatypes.counters import Counters
-with Counters('test-counter') as ct:
+
+with Counters("test-counter") as ct:
     # Increment counter by 4
-    ct.inc('value_1', 4)
+    ct.inc("value_1", 4)
 
     # Get Counter values
     ct.get_queues_sizes()
@@ -60,19 +61,20 @@ Example, A container register a watcher for a specific event:
 import time
 from howler.remote.datatypes.events import EventWatcher
 
+
 def callback_func(data: dict[str, Any]):
     print(data)
+
 
 watcher = EventWatcher()
 try:
     # register for the test event in the event group
-    watcher.register('event.test', callback_func)
+    watcher.register("event.test", callback_func)
     watcher.start()
     while True:
         time.sleep(1)
 finally:
     watcher.stop()
-
 ```
 
 Another container creates an event to wake up the first container:
@@ -82,10 +84,10 @@ import time
 from howler.remote.datatypes.events import EventSender
 
 # create a sender for the event group
-sender = EventSender('event.', redis_connection)
+sender = EventSender("event.", redis_connection)
 
 # send a test even
-sender.send('test', {'payload': 100})
+sender.send("test", {"payload": 100})
 # After this call, the first container will have woken up and executed its callback function
 # that would print: {'payload': 100}
 ```
@@ -114,7 +116,8 @@ Example:
 
 ```python
 from howler.remote.datatypes.hash import Hash
-with Hash('test-hashmap') as h:
+
+with Hash("test-hashmap") as h:
     h.add("key", "value")
     print(h.exists("key"))
     print(h.get("key"))
@@ -172,10 +175,11 @@ Example:
 
 ```python
 from howler.remote.datatypes.set import Set
-with Set('test-set') as s:
-    values = ['a', 'b', 1, 2]
+
+with Set("test-set") as s:
+    values = ["a", "b", 1, 2]
     s.add(*values)
-    print(s.exist('b'))
+    print(s.exist("b"))
     print(s.pop())
     print(s.length())
 ```
@@ -184,7 +188,7 @@ Output:
 
 ```python
 True
-'a' or 'b' or 1 or 2
+"a" or "b" or 1 or 2
 3
 ```
 
@@ -234,7 +238,7 @@ Example of message receiver:
 ```python
 from howler.remote.datatypes.queues.comms import CommsQueue
 
-with CommsQueue('test-comms-queue') as cq:
+with CommsQueue("test-comms-queue") as cq:
     for msg in cq.listen(blocking=True):
         if msg == "stop":
             break
@@ -247,7 +251,7 @@ Example of message sender:
 ```python
 from howler.remote.datatypes.queues.comms import CommsQueue
 
-with CommsQueue('test-comms-queue') as cq:
+with CommsQueue("test-comms-queue") as cq:
     # send a message to the receiver
     cq.publish("This is my message!")
 
@@ -273,7 +277,8 @@ Example:
 
 ```python
 from howler.remote.datatypes.queues.named import NamedQueue, select
-with NamedQueue('test-named-queue') as nq:
+
+with NamedQueue("test-named-queue") as nq:
     for x in range(5):
         nq.push(x)
 
@@ -307,12 +312,13 @@ Example:
 
 ```python
 from howler.remote.datatypes.queues.priority import PriorityQueue, length, select
-with PriorityQueue('test-priority-queue') as pq:
+
+with PriorityQueue("test-priority-queue") as pq:
     for x in range(10):
         pq.push(100, x)
 
-    a_key = pq.push(101, 'a')
-    z_key = pq.push(99, 'z')
+    a_key = pq.push(101, "a")
+    z_key = pq.push(99, "z")
     print(pq.rank(a_key))
     print(pq.rank(z_key))
     print(pq.pop())
@@ -323,7 +329,7 @@ Output:
 ```python
 0
 11
-'a'
+"a"
 ```
 
 #### Unique Priority queues
@@ -334,7 +340,8 @@ Example:
 
 ```python
 from howler.remote.datatypes.queues.priority import PriorityQueue, length, select
-with PriorityQueue('test-priority-queue') as pq:
+
+with PriorityQueue("test-priority-queue") as pq:
     for x in range(10):
         pq.push(100, x)
 

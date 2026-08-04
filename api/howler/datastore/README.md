@@ -37,10 +37,9 @@ from howler.common import loader
 from myapp.models.mymodel import MyModel
 
 ds = loader.get_esstore()
-ds.register('mymodel', MyModel)
+ds.register("mymodel", MyModel)
 
 my_document = ds.mymodel.get(document_id)
-
 ```
 
 ### Creating your own datastore
@@ -59,10 +58,10 @@ from myapp.models.mycollection import MyCollection
 
 
 class MyDatastore(object):
-    def __init__(self, esstore_object: ESStore = None ):
+    def __init__(self, esstore_object: ESStore = None):
 
         self.ds = esstore_object or loader.get_esstore()
-        self.ds.register('mycollection', MyCollection)
+        self.ds.register("mycollection", MyCollection)
         # ... + all other collections
 
     def __enter__(self):
