@@ -60,7 +60,7 @@ module = ["howler.odm.base", "test", "test.*"]
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "howler.security.login"
+module = "howler.security"
 disable_error_code = "attr-defined"
 
 [[tool.mypy.overrides]]
@@ -152,7 +152,7 @@ suppress-none-returning = true
 [tool.poetry]
 package-mode = true
 name = "howler-api"
-version = "4.0.11"
+version = "4.1.0"
 description = "Howler - API server"
 authors = [
     "Canadian Centre for Cyber Security <howler@cyber.gc.ca>",
