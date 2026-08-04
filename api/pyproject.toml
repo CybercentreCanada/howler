@@ -206,7 +206,7 @@ gevent = "^25.9.1"
 flask-caching = "2.4.1"
 packaging = "<25.0"
 passlib = "1.7.4"
-prometheus-client = "0.25.0"
+prometheus-client = "0.26.0"
 pyjwt = "2.13.0"
 python-baseconv = "1.2.2"
 python-datemath = "3.0.3"
@@ -235,7 +235,7 @@ azure-monitor-opentelemetry = "^1.8.7"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.7.0"
-ruff = ">=0.8,<0.16"
+ruff = ">=0.8,<0.17"
 pyright = { extras = ["nodejs"], version = "^1.1.408" }
 mypy = "^1.6.1"
 
@@ -252,10 +252,10 @@ coverage = { extras = ["toml"], version = "^7.4.4" }
 
 [tool.poetry.group.types.dependencies]
 typing-extensions = "^4.12.2"
-types-PyYAML = "6.0.12.20260518"
+types-PyYAML = "6.0.12.20260724"
 types-paramiko = "3.5.0.20250801"
 types-pyOpenSSL = "23.3.0.20240106"
-types-six = "1.17.0.20260721"
+types-six = "1.17.0.20260724"
 types-requests = "<2.33.0.20260713"
 websocket-client = "1.9.0"
 types-pytz = "^2024.1.0.20240417"
