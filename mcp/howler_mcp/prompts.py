@@ -54,9 +54,11 @@ def RegisterPrompts(mcp):
     @mcp.prompt(name="SearchMatchingIndicatorsInOtherSystem")
     def search_indicators(hit_id: str, target_system: str) -> str:
         """Retrieve all indicators from a hit and query a third party system for matching alerts, then produce an action plan.
-        This requires to have a third party system connected through an MCP tool."""
+        This prompt is the canonical way to retrieve all indicators for a hit.
+        It requires a third party system connected through an MCP tool."""
         return f"""Perform the following steps for hit {hit_id}:
         1) Retrieve the hit details using GetHitById and extract all indicators (IPs, domains, hashes, URLs, email addresses, etc.) attached to this hit.
+           This step must collect every available indicator from the hit payload.
         2) For each indicator, query {target_system} for alerts or incidents that contain or reference that indicator. Use the available MCP tools for {target_system} to search for matching alerts, incidents, or security events.
         3) Produce a report with the following sections:
 
@@ -93,92 +95,6 @@ def RegisterPrompts(mcp):
 
         Format the report clearly with markdown headings, tables, and bullet points. Make it suitable for sharing with security analysts and response teams."""
 
-    @mcp.prompt(name="ParseHits")
-    def parse_hits() -> str:
-        """Extract specific fields from a Howler search response into a compact per-ticket mapping."""
-        return """Use the parseHits tool to extract specific fields from a Howler search response and reduce it to a compact, readable per-ticket mapping.
-
-        ## When to use this tool
-
-        Use parseHits immediately after luceneQuery (or any other search tool) when:
-        - The raw HowlerResponse is too large to reason over directly.
-        - You only need a few specific fields per ticket, not the full payload.
-        - You need to present results clearly, such as listing IDs, assignments, statuses, or analytic names.
-        - You want to avoid writing custom parsing logic or terminal scripts to extract values.
-
-        Do NOT call parseHits on its own. It requires a HowlerResponse produced by a prior search tool call.
-
-        ## Standard two-step flow
-
-        Step 1 — Search: call luceneQuery (or any search tool) to get a HowlerResponse.
-        Step 2 — Parse: immediately pass that response to parseHits with the fields you care about.
-
-        Never skip step 1. parseHits is a post-processing tool, not a search tool.
-
-        ## How to build the searched_information list
-
-        Each entry is a dot-notation path that mirrors the nested structure of a Howler hit object.
-        Split the field name at every dot to get the traversal path.
-
-        Examples:
-        - howler.id            -> hit["howler"]["id"]
-        - howler.assignment    -> hit["howler"]["assignment"]
-        - howler.status        -> hit["howler"]["status"]
-        - howler.analytic      -> hit["howler"]["analytic"]
-        - howler.assessment    -> hit["howler"]["assessment"]
-        - howler.escalation    -> hit["howler"]["escalation"]
-        - howler.score         -> hit["howler"]["score"]
-        - howler.outline.indicators -> hit["howler"]["outline"]["indicators"]
-        - timestamp            -> hit["timestamp"]
-
-        If you are unsure which fields exist on a hit, call GetHitFields first to get the full list of valid field names.
-
-        ## Output format
-
-        parseHits returns a dict keyed by hit ID. Each value is a flat dict of the requested paths and their string-coerced values:
-
-        {
-            "7Vot6oh8FfgY21LqtOfRwT": {
-                "howler.id": "7Vot6oh8FfgY21LqtOfRwT",
-                "howler.assignment": "user",
-                "howler.status": "open"
-            },
-            "2raorrc8LXIJj1qGgxCHMG": {
-                "howler.id": "2raorrc8LXIJj1qGgxCHMG",
-                "howler.assignment": "user",
-                "howler.status": "resolved"
-            }
-        }
-
-        List-valued fields (e.g. howler.outline.indicators) are coerced to their string representation.
-
-        ## Common example requests and their searched_information lists
-
-        - "Give me the IDs of all hits assigned to user"
-            searched_information: ["howler.id"]
-
-        - "Show me each ticket's ID, analytic, and status"
-            searched_information: ["howler.id", "howler.analytic", "howler.status"]
-
-        - "List all hits with their assignment and escalation state"
-            searched_information: ["howler.id", "howler.assignment", "howler.escalation"]
-
-        - "What indicators are on these hits?"
-            searched_information: ["howler.id", "howler.outline.indicators"]
-
-        ## Important rules
-
-        - Always include "howler.id" in searched_information so results are identifiable.
-        - Only use field paths that exist in the Howler hit schema. Call GetHitFields if unsure.
-        - If a path does not exist on a hit, the traversal stops early and the value will be a partial dict string — not a crash, but not useful either. Verify field names before calling.
-        - parseHits does not filter hits. Use luceneQuery filters for that. parseHits only reshapes the response you already have.
-
-        After calling parseHits:
-        - Present the extracted fields clearly, one ticket per row.
-        - Report the total number of tickets parsed.
-        - If the user asked for a specific field that returned an unexpected value, note it and suggest calling GetHitFields to verify the correct path.
-        """
-
     @mcp.prompt(name="luceneQuery")
     def search_luecene() -> str:
         """Build a Lucene query from the user's request and search for matching hits."""
@@ -190,6 +106,7 @@ def RegisterPrompts(mcp):
         - GetHitFields: call this when you are unsure which field names exist. It returns the full list of searchable Howler hit fields with their types. Use the returned field names verbatim in your Lucene query.
         - GetFieldValues(field): call this to retrieve the exact distinct values stored in a field before using that field as a filter. The response maps each distinct value to its hit count. ALWAYS call this before filtering on any enumerated field (see mandatory list below). Use only values returned by this call — never assume casing or spelling from example data.
         - luceneQuery: call this to execute the query only after field names and values have been confirmed with the tools above.
+        - SearchMatchingIndicatorsInOtherSystem (search_indicators): use this when the user asks to retrieve all indicators from a specific hit. This is the canonical prompt for complete indicator extraction.
 
         Mandatory pre-query verification steps:
         1. For every field the user filters on that is NOT a free-text or numeric field, call GetFieldValues FIRST.
@@ -229,7 +146,7 @@ def RegisterPrompts(mcp):
         - event.created: hit event timestamp, commonly used in time ranges.
 
         Common field examples:
-        - howler.id:12345678-1234-1234-1234-123456789abc
+        - howler.id:1THVzoMxLWnvH8Z2u8XYsj
         - howler.assignment:user
         - howler.escalation:alert
         - howler.assessment:false-positive
@@ -257,8 +174,13 @@ def RegisterPrompts(mcp):
         - If the user asked for a filter that cannot be translated safely into Lucene, explain what is missing and ask for clarification.
 
         Mandatory fl usage:
-        Always pass fl when searching for more than 1 hit. Only omit fl when fetching a single specific ticket by ID.
-        Build fl from the fields the user actually asked for, always including howler.id.
+        Always pass fl. Build fl from the exact field(s) the user asked for,
+        always including howler.id.
+
+        Think of fl as the precise output projection.
+        Example question: "Find me the detection for every ticket that the victime was 8.8.8.8"
+        - Query should filter tickets where the victime criterion matches 8.8.8.8.
+        - fl should request detection (and howler.id), so the response is minimal and does not require extra parsing.
 
         Example fl values for common requests:
         - "give me the IDs"                         -> fl="howler.id"

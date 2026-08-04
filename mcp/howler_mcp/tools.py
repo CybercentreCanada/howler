@@ -87,10 +87,9 @@ def RegisterTools(mcp, api_client):
             ValueError: If ``hit_id`` is not a valid UUID or if no access token
                 is available.
         """
-        try:
-            uuid.UUID(hit_id)
-        except ValueError:
-            raise ValueError("hit_id must be a valid UUID.")
+        if not hit_id.strip() or not hit_id:
+            raise ValueError("hit_id cannot be empty")
+
         access_token: AccessToken | None = get_access_token()
         if not access_token:
             raise ValueError("Access token is not available.")
@@ -520,10 +519,10 @@ def RegisterTools(mcp, api_client):
     @mcp.tool(name="luceneQuery")
     async def luecen_query(
         query: str,
+        fl: str,
         sort: str = "",
         rows: int = MAXIMUM_TICKET,
         offset: int = 0,
-        fl: str = "",
     ) -> HowlerResponse:
         """Search hits using a valid Lucene query.
 
@@ -571,8 +570,11 @@ def RegisterTools(mcp, api_client):
             fl="howler.id,howler.analytic,howler.detection,howler.assessment"
             fl="howler.id,howler.outline.indicators,howler.outline.threat"
 
-        Use ``fl`` whenever you only need specific fields rather than the full
-        hit payload. This is the preferred approach for large result sets.
+        Use ``fl`` to request the exact field(s) the user asked for so the
+        response is as small as possible and does not require extra parsing.
+        Example request: "Find me the detection for every ticket where the
+        victim was 8.8.8.8" should request only detection (and ``howler.id``)
+        in ``fl``, while filtering with the victim criterion in ``query``.
 
         Args:
             query: A valid Lucene query string. Use ``field:value`` syntax, quote
@@ -584,10 +586,9 @@ def RegisterTools(mcp, api_client):
                 ``event.created desc``. Leave empty to use the API default.
             rows: Maximum number of hits to return.
             offset: Starting offset into the result set for pagination.
-            fl: Optional comma-separated list of field names to include in each
-                returned hit. Leave empty to return the default set of fields
-                (classification, full howler object, timestamp). When set, only
-                the requested fields are returned, keeping the response compact.
+            fl: Required comma-separated list of field names to include in each
+                returned hit. Always pass only the exact fields requested by the
+                user. ``howler.id`` is always added automatically if missing.
 
         Returns:
             HowlerResponse: Structured search results containing the total count,
@@ -601,6 +602,9 @@ def RegisterTools(mcp, api_client):
             raise ValueError(
                 f"Row : {rows} can not be lower then 0 or higher then {MAXIMUM_TICKET}"
             )
+
+        if not fl.strip():
+            raise ValueError("fl must be provided and cannot be empty.")
 
         logger.info(
             "Tool called: luceneQuery. Client: %s User:%s",
@@ -617,15 +621,14 @@ def RegisterTools(mcp, api_client):
             # falling back to its default sort order.
             body["sort"] = sort
 
-        if fl:
-            # Pass the field list to the API so it projects only the requested
-            # fields server-side. The API expects a comma-separated string, not
-            # a list — matching the "fl": "id,score" format in the data block.
-            # howler.id is always included so hits remain identifiable.
-            requested = [f.strip() for f in fl.split(",") if f.strip()]
-            if "howler.id" not in requested:
-                requested.insert(0, "howler.id")
-            body["fl"] = ",".join(requested)
+        # Pass the field list to the API so it projects only the requested
+        # fields server-side. The API expects a comma-separated string, not
+        # a list — matching the "fl": "id,score" format in the data block.
+        # howler.id is always included so hits remain identifiable.
+        requested = [f.strip() for f in fl.split(",") if f.strip()]
+        if "howler.id" not in requested:
+            requested.insert(0, "howler.id")
+        body["fl"] = ",".join(requested)
 
         data = await api_client.call(
             user_access_token=access_token,
@@ -635,7 +638,6 @@ def RegisterTools(mcp, api_client):
             method="POST",
             body=body,
         )
-
         return HowlerResponse(
             rows=data.get("rows", 0),
             total=data.get("total", 0),
@@ -648,67 +650,3 @@ def RegisterTools(mcp, api_client):
                 for item in (data.get("items") or [])
             ],
         )
-
-    @mcp.tool(name="parseHits")
-    def parse_hit(
-        howlerdata: HowlerResponse, searched_information: list[str]
-    ) -> dict[str, dict[str, str]]:
-        """Extract specific fields from a Howler search response and return a compact per-ticket mapping.
-
-        Use this tool after ``luceneQuery`` when the raw response is too large
-        to reason over. Feed the full ``HowlerResponse`` and the dot-notation
-        paths of the fields you care about; the tool returns one flat record per
-        ticket containing only those values.
-
-        Field paths follow the nested structure of the Howler hit object.
-        For example ``howler.id`` maps to ``hit["howler"]["id"]``, and
-        ``howler.outline.indicators`` maps to
-        ``hit["howler"]["outline"]["indicators"]``.
-
-        Args:
-            howlerdata: A ``HowlerResponse`` returned by ``luceneQuery`` or
-                any other search tool.
-            searched_information: List of dot-notation field paths to extract
-                from each hit, for example
-                ``["howler.id", "howler.assignment", "howler.status"]``.
-
-        Returns:
-            dict[str, dict[str, str]]: Mapping of hit ID to a flat dictionary
-            of the requested field paths and their string-coerced values.
-            Example::
-
-                {
-                    "7Vot6oh8FfgY21LqtOfRwT": {
-                        "howler.id": "7Vot6oh8FfgY21LqtOfRwT",
-                        "howler.assignment": "user",
-                        "howler.status": "open"
-                    }
-                }
-        """
-        # Accumulator: hit ID -> {field_path -> value}
-        answer: dict[str, dict[str, str]] = {}
-
-        for hit in howlerdata.hits:
-            # One flat record per ticket — reset for every hit.
-            searched_hit_value: dict[str, str] = {}
-
-            for path in searched_information:
-                # Start traversal at the top-level hit dict.
-                # Each dot-separated segment drills one level deeper.
-                # e.g. "howler.id" -> hit["howler"] -> hit["howler"]["id"]
-                data: Any = hit
-                for next_step in path.split("."):
-                    # If we have already reached a leaf string value, there is
-                    # nothing left to index into — stop early.
-                    if isinstance(data, str):
-                        break
-                    data = data[next_step]
-
-                # Coerce to str so the output type stays dict[str, str].
-                # Lists (e.g. howler.outline.indicators) become their repr.
-                searched_hit_value[path] = str(data)
-
-            # Key the record by the hit's own ID for easy lookup.
-            answer[hit["howler"]["id"]] = searched_hit_value
-
-        return answer
