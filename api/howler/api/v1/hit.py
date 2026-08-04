@@ -30,7 +30,7 @@ from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import Comment, HitOperationType, HitStatusTransition
 from howler.odm.models.user import User
 from howler.security import api_login
-from howler.services import action_service, analytic_service, comms_service, hit_service
+from howler.services import action_service, analytic_service, comms_service, correlation_service, hit_service
 from howler.utils.constants import DEBUG_FORCE_REFRESH
 from howler.utils.str_utils import sanitize_lucene_query
 
@@ -130,7 +130,9 @@ def create_hits(user: User, **kwargs):
 
             hit_service.create_hits(odms, user=user.uname, refresh="true" if DEBUG_FORCE_REFRESH else refresh)
             analytic_service.save_from_hits(odms, user, refresh=refresh)
-            action_service.enqueue_action_execution([odm.howler.id for odm in odms], trigger="create", user=user)
+            ids = [odm.howler.id for odm in odms]
+            action_service.enqueue_action_execution(ids, trigger="create", user=user)
+            correlation_service.enqueue_for_correlation(ids)
 
         response_body["warnings"] = warnings
 
