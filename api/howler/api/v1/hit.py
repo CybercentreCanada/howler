@@ -2,7 +2,6 @@ import difflib
 import json
 from typing import Any, Optional, cast
 
-from api.howler.services import correlation_service
 from flask import request
 from mergedeep import Strategy, merge
 
@@ -31,7 +30,7 @@ from howler.odm.models.hit import Hit
 from howler.odm.models.howler_data import Comment, HitOperationType, HitStatusTransition
 from howler.odm.models.user import User
 from howler.security import api_login
-from howler.services import action_service, analytic_service, comms_service, hit_service
+from howler.services import action_service, analytic_service, comms_service, correlation_service, hit_service
 from howler.utils.constants import DEBUG_FORCE_REFRESH
 from howler.utils.str_utils import sanitize_lucene_query
 

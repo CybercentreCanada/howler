@@ -1,6 +1,5 @@
 from typing import Any, Optional
 
-from api.howler.services import correlation_service
 from flask import request
 
 from howler.api import bad_request, created, make_subapi_blueprint
@@ -14,7 +13,7 @@ from howler.odm.base import _Field
 from howler.odm.models.hit import Hit
 from howler.odm.models.user import User
 from howler.security import api_login
-from howler.services import action_service, analytic_service, hit_service
+from howler.services import action_service, analytic_service, correlation_service, hit_service
 from howler.utils.constants import DEBUG_FORCE_REFRESH
 from howler.utils.dict_utils import flatten
 from howler.utils.isotime import now_as_iso
