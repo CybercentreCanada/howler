@@ -8,9 +8,7 @@ from mcp.server.auth.provider import AccessToken
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
-LUCENE_SPECIAL_CHARS = frozenset(' +-!(){}[]^"~:\\/&|?*')
 MAXIMUM_TICKET: int = 200
-MAXIMUM_LOOK_BACK: int = 3650  # 10 years (3650 days = ~120 months = ~521 weeks)
 
 
 class WhoAmIResponse(BaseModel):
@@ -103,39 +101,6 @@ def RegisterTools(mcp, api_client):
             roles=data.get("roles") or [],
         )
 
-    @mcp.tool(name="GetHitById")
-    async def get_hit_by_id(hit_id: str) -> dict[str, Any]:
-        """Return the full Howler hit payload for a specific hit ID.
-
-        Args:
-            hit_id: Exact UUID of the hit to retrieve.
-
-        Returns:
-            dict[str, Any]: Raw hit data returned by the Howler API.
-
-        Raises:
-            ValueError: If ``hit_id`` is not a valid UUID or if no access token
-                is available.
-        """
-        if not hit_id.strip() or not hit_id:
-            raise ValueError("hit_id cannot be empty")
-
-        access_token: AccessToken | None = get_access_token()
-        if not access_token:
-            raise ValueError("Access token is not available.")
-
-        logger.info(
-            "Tool called: GetHitById. Client: %s User:%s",
-            access_token.client_id,
-            access_token.subject,
-        )
-        data = await api_client.call(
-            user_access_token=access_token,
-            path=f"/hit/{hit_id}",
-            method="GET",
-        )
-        return data
-
     @mcp.tool(name="ListAssignedHits")
     async def list_assigned_hits() -> list[dict[str, Any]]:
         """Return hits assigned to the currently authenticated user.
@@ -222,22 +187,29 @@ def RegisterTools(mcp, api_client):
         Raises:
             ValueError: If no access token is available.
         """
+        nonlocal cached_hit_fields
+
         access_token: AccessToken | None = get_access_token()
         if not access_token:
             raise ValueError("Access token is not available.")
-        if not field or not field.strip():
+
+        normalized_field = field.strip()
+        if not normalized_field:
             raise ValueError("field parameter is required")
 
-        if field not in (await get_hit_fields()):
+        if cached_hit_fields is None:
+            cached_hit_fields = set((await get_hit_fields()).keys())
+
+        if normalized_field not in cached_hit_fields:
             raise ValueError(
-                f"The field : {field} is not a valid option. Use GetHitFields to see availible fields "
+                f"The field: {normalized_field} is not a valid option. Use GetHitFields to see available fields."
             )
 
         return await api_client.call(
             user_access_token=access_token,
             # The facet endpoint lives under /search/facet/<index>/<field>.
             # Passing the field directly in the path avoids a separate body.
-            path=f"/search/facet/hit/{field}",
+            path=f"/search/facet/hit/{normalized_field}",
             method="GET",
             # A broad query is required — the facet endpoint needs at least one
             # matching document to return any distinct values. Using howler.id:*
@@ -273,15 +245,20 @@ def RegisterTools(mcp, api_client):
             path="/search/fields/hit",
             method="GET",
         )
-        # make the output smaller to help LLM understand the output. Kept only the fields that seem to mather
-        for key in all_values:
-            all_values[key] = {
-                "list": all_values[key]["list"],
-                "type": all_values[key]["type"],
-                "description": all_values[key]["description"],
+        # Keep only the metadata required for query authoring.
+        projected_values: dict[str, Any] = {}
+        for key, values in all_values.items():
+            # Somehow this key has no value?
+            if not isinstance(values, dict):
+                continue
+
+            projected_values[key] = {
+                "list": values.get("list"),
+                "type": values.get("type"),
+                "description": values.get("description"),
             }
 
-        return all_values
+        return projected_values
 
     @mcp.tool(name="luceneQuery")
     async def lucene_query(
@@ -374,6 +351,9 @@ def RegisterTools(mcp, api_client):
 
         if not fl.strip():
             raise ValueError("fl must be provided and cannot be empty.")
+
+        if not isinstance(offset, int):
+            raise ValueError(f"Offset must be an integer not {offset} a {type(offset)}")
 
         logger.info(
             "Tool called: luceneQuery. Client: %s User:%s",
