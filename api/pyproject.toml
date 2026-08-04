@@ -60,7 +60,7 @@ module = ["howler.odm.base", "test", "test.*"]
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "howler.security.login"
+module = "howler.security"
 disable_error_code = "attr-defined"
 
 [[tool.mypy.overrides]]
@@ -133,7 +133,7 @@ suppress-none-returning = true
 "build_scripts/*" = ["D", "ANN", "S", "N818", "T20", "TRY"]
 "howler/app.py" = ["E402"]
 "howler/odm/random*.py" = ["C901", "S105", "S311", "E402"]
-"howler/security/login.py" = ["TRY301"]
+"howler/security/__init__.py" = ["TRY301"]
 "howler/external/*.py" = ["T20"]
 "howler/odm/helper.py" = ["S311"]
 "howler/common/classification.py" = ["D", "ANN", "C901", "TRY"]
