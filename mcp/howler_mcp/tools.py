@@ -40,6 +40,36 @@ class HowlerResponse(BaseModel):
 
 
 def RegisterTools(mcp, api_client):
+    cached_hit_fields: set[str] | None = None
+
+    async def validate_query_fields(query: str) -> str:
+        nonlocal cached_hit_fields
+
+        # Normalize first so empty/whitespace-only queries are rejected early.
+        normalized = re.sub(r"[\r\n\t]+", " ", query).strip()
+        if not normalized:
+            raise ValueError("query must be provided and cannot be empty.")
+
+        # Match dotted field names only when they appear as field selectors
+        # (left side of a Lucene field:value expression).
+        regex = r"\b([a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)+)\s*:"
+        all_options: list[str] = re.findall(regex, normalized)
+
+        if cached_hit_fields is None:
+            cached_hit_fields = set((await get_hit_fields()).keys())
+
+        errors: list[str] = []
+        for option in all_options:
+            if option not in cached_hit_fields:
+                errors.append(f"{option}")
+
+        if errors:
+            raise ValueError(
+                f"values {', '.join(errors)} are not allowed in howler. Attempt again"
+            )
+
+        return normalized
+
     @mcp.tool(name="WhoAmI", description="Get information about the current user")
     async def whoami() -> WhoAmIResponse:
         """Return identity details for the authenticated Howler user.
@@ -106,57 +136,6 @@ def RegisterTools(mcp, api_client):
         )
         return data
 
-    @mcp.tool(name="ListAlerts")
-    async def list_alerts(lookback_in_days: int = 7, limit: int = 25) -> dict[str, Any]:
-        """Return hits with ``howler.escalation:alert`` in a recent time window.
-
-        Use this tool when the user asks for active or escalated alerts over a
-        recent period.
-
-        Args:
-            lookback_in_days: Number of days to look back from now when filtering
-                on ``event.created``.
-            limit: Maximum number of hits to return.
-
-        Returns:
-            dict[str, Any]: Raw search response from the Howler search API,
-            including total hit count and returned items.
-
-        Raises:
-            ValueError: If ``lookback_in_days`` or ``limit`` is outside the
-                accepted range, or if no access token is available.
-        """
-        if lookback_in_days < 1 or lookback_in_days > MAXIMUM_LOOK_BACK:
-            raise ValueError(
-                f"lookback_in_days must be between 1 and {MAXIMUM_LOOK_BACK}."
-            )
-
-        if limit < 1 or limit > MAXIMUM_TICKET:
-            raise ValueError(f"limit must be between 1 and {MAXIMUM_TICKET}.")
-
-        access_token: AccessToken | None = get_access_token()
-        if not access_token:
-            raise ValueError("Access token is not available.")
-
-        logger.info(
-            "Tool called: ListAlerts. Client: %s User:%s",
-            access_token.client_id,
-            access_token.subject,
-        )
-        return await api_client.call(
-            user_access_token=access_token,
-            path="/search/hit",
-            method="POST",
-            body={
-                "query": "\nhowler.id:*\nAND\nhowler.escalation:alert",
-                "fl": None,
-                "filters": [
-                    "event.created:[now-" + str(lookback_in_days) + "d TO now]"
-                ],
-                "rows": limit,
-            },
-        )
-
     @mcp.tool(name="ListAssignedHits")
     async def list_assigned_hits() -> list[dict[str, Any]]:
         """Return hits assigned to the currently authenticated user.
@@ -183,222 +162,6 @@ def RegisterTools(mcp, api_client):
             user_access_token=access_token,
             path="/hit/user",
             method="GET",
-        )
-
-    @mcp.tool(name="SearchHitsWithIndicators")
-    async def search_hits_with_indicators(
-        indicators: list[str], limit: int = 25
-    ) -> HowlerResponse:
-        """Search hits whose indicator fields match one or more indicators.
-
-        This tool builds a Lucene query across ``howler.outline.indicators``,
-        ``howler.outline.target``, and ``howler.outline.threat`` using the
-        provided indicator values.
-
-        Args:
-            indicators: Non-empty list of indicator strings such as IPs,
-                domains, hashes, or URLs.
-            limit: Maximum number of hits to return.
-
-        Returns:
-            HowlerResponse: Structured search results with simplified hit data.
-
-        Raises:
-            ValueError: If the indicator list is empty, contains blank values
-                after normalization, if ``limit`` is out of range, or if no
-                access token is available.
-        """
-        if not indicators:
-            raise ValueError("indicators must be a non-empty list.")
-
-        if limit < 1 or limit > MAXIMUM_TICKET:
-            raise ValueError(f"limit must be between 1 and {MAXIMUM_TICKET}.")
-        for i in range(len(indicators)):
-            indicators[i] = re.sub(r"[\r\n\t]+", " ", indicators[i]).strip()
-            if not indicators[i]:
-                raise ValueError(
-                    "indicators cannot contain empty strings after whitespace normalization."
-                )
-
-        access_token: AccessToken | None = get_access_token()
-        if not access_token:
-            raise ValueError("Access token is not available.")
-
-        logger.info(
-            "Tool called: SearchHitsWithIndicators. Client: %s User:%s",
-            access_token.client_id,
-            access_token.subject,
-        )
-
-        converted_indicators = " OR ".join(
-            "".join(
-                f"\\{char}" if char in LUCENE_SPECIAL_CHARS else char
-                for char in indicator
-            )
-            for indicator in indicators
-        )
-        query = f"howler.outline.indicators:({converted_indicators}) OR howler.outline.target:({converted_indicators}) OR howler.outline.threat:({converted_indicators})"
-        data = await api_client.call(
-            user_access_token=access_token,
-            path="/search/hit",
-            method="POST",
-            body={"query": query, "fl": None, "rows": limit},
-        )
-
-        return HowlerResponse(
-            rows=data.get("rows", 0),
-            total=data.get("total", 0),
-            hits=[
-                {
-                    "classification": item.get("classification"),
-                    "howler": item.get("howler", {}),
-                    "timestamp": item.get("timestamp"),
-                }
-                for item in (data.get("items") or [])
-            ],
-        )
-
-    @mcp.tool(name="GetFalsePositiveHits")
-    async def get_false_positive_hits(
-        lookback_in_days: int = 7, limit: int = 25
-    ) -> HowlerResponse:
-        """Return hits assessed as false positives in a recent time window.
-
-        This tool searches for ``howler.assessment:false-positive`` and also
-        requests analytic metadata for each matching hit.
-
-        Args:
-            lookback_in_days: Number of days to look back from now when filtering
-                on ``event.created``.
-            limit: Maximum number of hits to return.
-
-        Returns:
-            HowlerResponse: Structured false-positive search results including
-            analytic identifiers when available.
-
-        Raises:
-            ValueError: If ``lookback_in_days`` or ``limit`` is outside the
-                accepted range, or if no access token is available.
-        """
-        if lookback_in_days < 1 or lookback_in_days > MAXIMUM_LOOK_BACK:
-            raise ValueError(
-                f"lookback_in_days must be between 1 and {MAXIMUM_LOOK_BACK}."
-            )
-
-        if limit < 1 or limit > MAXIMUM_TICKET:
-            raise ValueError(f"limit must be between 1 and {MAXIMUM_TICKET}.")
-
-        access_token: AccessToken | None = get_access_token()
-        if not access_token:
-            raise ValueError("Access token is not available.")
-        logger.info(
-            "Tool called: GetFalsePositiveHits. Client: %s User:%s",
-            access_token.client_id,
-            access_token.subject,
-        )
-
-        data = await api_client.call(
-            user_access_token=access_token,
-            path="/search/hit",
-            method="POST",
-            body={
-                "query": "howler.id:*\nAND\nhowler.assessment:false-positive",
-                "fl": None,
-                "filters": [
-                    "event.created:[now-" + str(lookback_in_days) + "d TO now]"
-                ],
-                "metadata": ["analytic"],
-                "rows": limit,
-            },
-        )
-        return HowlerResponse(
-            rows=data.get("rows", 0),
-            total=data.get("total", 0),
-            hits=[
-                {
-                    "classification": item.get("classification"),
-                    "analytic_id": (item.get("__analytic") or {}).get("analytic_id"),
-                    "howler": item.get("howler", {}),
-                    "timestamp": item.get("timestamp"),
-                }
-                for item in (data.get("items") or [])
-            ],
-        )
-
-    @mcp.tool(name="ListHitsByAnalytic")
-    async def list_hits_by_analytic(
-        analytic_name: str, lookback_in_days: int = 30, limit: int = 25
-    ) -> HowlerResponse:
-        """Return hits generated by an analytic with an exact display name.
-
-        This tool searches on ``howler.analytic`` using a quoted Lucene phrase.
-        The input is the analytic name, not the analytic ID.
-
-        Args:
-            analytic_name: Exact analytic name to match.
-            lookback_in_days: Number of days to look back from now when filtering
-                on ``event.created``.
-            limit: Maximum number of hits to return.
-
-        Returns:
-            HowlerResponse: Structured search results containing hits generated
-            by the requested analytic.
-
-        Raises:
-            ValueError: If ``analytic_name`` becomes empty after normalization,
-                if ``lookback_in_days`` or ``limit`` is outside the accepted
-                range, or if no access token is available.
-        """
-        if lookback_in_days < 1 or lookback_in_days > MAXIMUM_LOOK_BACK:
-            raise ValueError(
-                f"lookback_in_days must be between 1 and {MAXIMUM_LOOK_BACK}."
-            )
-
-        if limit < 1 or limit > MAXIMUM_TICKET:
-            raise ValueError(f"limit must be between 1 and {MAXIMUM_TICKET}.")
-
-        access_token: AccessToken | None = get_access_token()
-        if not access_token:
-            raise ValueError("Access token is not available.")
-
-        logger.info(
-            "Tool called: ListHitsByAnalytic. Client: %s User:%s",
-            access_token.client_id,
-            access_token.subject,
-        )
-        # Escape backslashes and quotes before embedding the value in a Lucene phrase.
-        analytic_name = analytic_name.replace("\\", "\\\\").replace('"', '\\"')
-
-        analytic_name = re.sub(r"[\r\n\t]+", " ", analytic_name).strip()
-        if not analytic_name:
-            raise ValueError(
-                "analytic_name cannot be empty after whitespace normalization."
-            )
-
-        data = await api_client.call(
-            user_access_token=access_token,
-            path="/search/hit",
-            method="POST",
-            body={
-                "query": f'howler.analytic:"{analytic_name}"',
-                "fl": None,
-                "filters": [
-                    "event.created:[now-" + str(lookback_in_days) + "d TO now]"
-                ],
-                "rows": limit,
-            },
-        )
-        return HowlerResponse(
-            rows=data.get("rows", 0),
-            total=data.get("total", 0),
-            hits=[
-                {
-                    "classification": item.get("classification"),
-                    "howler": item.get("howler", {}),
-                    "timestamp": item.get("timestamp"),
-                }
-                for item in (data.get("items") or [])
-            ],
         )
 
     @mcp.tool(name="AddCommentToHit")
@@ -462,13 +225,14 @@ def RegisterTools(mcp, api_client):
         access_token: AccessToken | None = get_access_token()
         if not access_token:
             raise ValueError("Access token is not available.")
+        if not field or not field.strip():
+            raise ValueError("field parameter is required")
 
-        logger.info(
-            "Tool called: GetFieldValues(%s). Client: %s User:%s",
-            field,
-            access_token.client_id,
-            access_token.subject,
-        )
+        if field not in (await get_hit_fields()):
+            raise ValueError(
+                f"The field : {field} is not a valid option. Use GetHitFields to see availible fields "
+            )
+
         return await api_client.call(
             user_access_token=access_token,
             # The facet endpoint lives under /search/facet/<index>/<field>.
@@ -478,7 +242,7 @@ def RegisterTools(mcp, api_client):
             # A broad query is required — the facet endpoint needs at least one
             # matching document to return any distinct values. Using howler.id:*
             # matches every hit so we always get the full value distribution.
-            params={"query": "howler.id:*"},
+            params={"query": r"howler.id:*"},
         )
 
     @mcp.tool(name="GetHitFields")
@@ -500,13 +264,7 @@ def RegisterTools(mcp, api_client):
         access_token: AccessToken | None = get_access_token()
         if not access_token:
             raise ValueError("Access token is not available.")
-
-        logger.info(
-            "Tool called: GetHitFields. Client: %s User:%s",
-            access_token.client_id,
-            access_token.subject,
-        )
-        return await api_client.call(
+        all_values: dict[str, Any] = await api_client.call(
             user_access_token=access_token,
             # /search/fields/<index> returns the Elasticsearch field mapping
             # for that index, including type, indexed, and stored flags.
@@ -515,9 +273,18 @@ def RegisterTools(mcp, api_client):
             path="/search/fields/hit",
             method="GET",
         )
+        # make the output smaller to help LLM understand the output. Kept only the fields that seem to mather
+        for key in all_values:
+            all_values[key] = {
+                "list": all_values[key]["list"],
+                "type": all_values[key]["type"],
+                "description": all_values[key]["description"],
+            }
+
+        return all_values
 
     @mcp.tool(name="luceneQuery")
-    async def luecen_query(
+    async def lucene_query(
         query: str,
         fl: str,
         sort: str = "",
@@ -597,6 +364,8 @@ def RegisterTools(mcp, api_client):
         access_token: AccessToken | None = get_access_token()
         if not access_token:
             raise ValueError("Access token is not available.")
+
+        query = await validate_query_fields(query)
 
         if rows <= 0 or rows > MAXIMUM_TICKET:
             raise ValueError(

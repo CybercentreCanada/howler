@@ -41,8 +41,6 @@ class HowlerApiClient:
         self.timeout = timeout
         self._client = client or httpx.AsyncClient(timeout=timeout)
         self._owns_client = client is None
-        self._obo_token_cache: dict[str, tuple[str, int]] = {}
-        self._default_cache_ttl_seconds = 300
 
     async def aclose(self) -> None:
         """Close the underlying HTTP client if it is owned by this instance."""

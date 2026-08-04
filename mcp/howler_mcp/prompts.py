@@ -96,7 +96,7 @@ def RegisterPrompts(mcp):
         Format the report clearly with markdown headings, tables, and bullet points. Make it suitable for sharing with security analysts and response teams."""
 
     @mcp.prompt(name="luceneQuery")
-    def search_luecene() -> str:
+    def search_lucene() -> str:
         """Build a Lucene query from the user's request and search for matching hits."""
         return """Interpret the user's request as a Howler hit search and use the luceneQuery tool.
 
@@ -187,5 +187,5 @@ def RegisterPrompts(mcp):
         - "IDs, detection, status"                  -> fl="howler.id,howler.detection,howler.status"
         - "IDs, analytic, assignment, assessment"   -> fl="howler.id,howler.analytic,howler.assignment,howler.assessment"
         - "IDs, indicators, threat"                 -> fl="howler.id,howler.outline.indicators,howler.outline.threat"
-        - "full ticket details for one ticket"      -> omit fl entirely
+        - "full ticket details for one ticket"      -> fl="howler.id"
         """
