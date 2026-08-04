@@ -100,10 +100,7 @@ def create(index: str, user: User, **kwargs):
 
     # Enqueue newly created hit IDs for the correlation worker.
     if ids:
-        try:
-            correlation_service.get_ingestion_queue().push(*ids)
-        except Exception:
-            logger.exception("Failed to enqueue hit IDs for correlation")
+        correlation_service.enqueue_for_correlation(ids)
 
     return created(ids, warnings=warnings)
 

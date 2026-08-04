@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 import chevron
 from opentelemetry import trace
 
-from howler.common.exceptions import HowlerRuntimeError, InvalidDataException, NotFoundException
+from howler.common.exceptions import InvalidDataException, NotFoundException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.config import CORRELATION_QUEUE_NAME
@@ -41,7 +41,7 @@ def _normalize_utc(ts: datetime) -> datetime:
 _ingestion_queue: NamedQueue[str] | None = None
 
 
-def get_ingestion_queue() -> NamedQueue[str]:
+def _get_ingestion_queue() -> NamedQueue[str]:
     """Return the shared ingestion queue, creating it on first use."""
     global _ingestion_queue
 
@@ -56,7 +56,7 @@ def get_ingestion_queue() -> NamedQueue[str]:
     return _ingestion_queue
 
 
-def enqueue_for_correlation(ids: list[str]):
+def enqueue_for_correlation(ids: list[str]) -> None:
     """Enqueue record IDs for correlation processing.
 
     Args:
@@ -66,9 +66,9 @@ def enqueue_for_correlation(ids: list[str]):
         HowlerRuntimeError: If enqueueing fails.
     """
     try:
-        get_ingestion_queue().push(*ids)
-    except Exception as exc:
-        raise HowlerRuntimeError("Error on queuing for correlation") from exc
+        _get_ingestion_queue().push(*ids)
+    except Exception:
+        logger.exception("Error on queuing for correlation")
 
 
 def get_active_rules() -> list[tuple[str, CaseRule]]:  # noqa: C901
@@ -219,7 +219,7 @@ def run_worker() -> None:  # pragma: no cover – long-running loop, tested via 
     Accumulates up to ``BATCH_SIZE`` IDs or flushes after ``BATCH_TIMEOUT``
     seconds, whichever comes first.
     """
-    queue = get_ingestion_queue()
+    queue = _get_ingestion_queue()
     logger.info("Correlation worker started (batch_size=%d, timeout=%ds)", BATCH_SIZE, BATCH_TIMEOUT)
 
     batch: list[str] = []
