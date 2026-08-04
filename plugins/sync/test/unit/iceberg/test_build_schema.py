@@ -44,9 +44,10 @@ def nested_model() -> type[odm.Model]:
 def model_with_nested_fields(nested_model) -> type[odm.Model]:
     @odm.model()
     class TestModel(odm.Model):
+        top_level_field = odm.Keyword(description="top level description")
         compound_field = odm.Compound(nested_model)
-        list_field = odm.List(odm.Integer())
-        mapping_field = odm.Mapping(odm.Text())
+        list_field = odm.List(odm.Integer(description="internal description"))
+        mapping_field = odm.Mapping(odm.Text(), description="parent level description")
 
     return TestModel
 
@@ -123,7 +124,7 @@ def test_build_schema_with_basic_fields(model_with_basic_fields):
 def test_build_schema_with_nested_fields(model_with_nested_fields):
     schema = build_schema(model_with_nested_fields)
 
-    assert schema.fieldNames() == ["compound_field", "list_field", "mapping_field"]
+    assert schema.fieldNames() == ["top_level_field", "compound_field", "list_field", "mapping_field"]
 
     compound_field = schema["compound_field"]
     assert isinstance(compound_field.dataType, StructType)
@@ -144,6 +145,22 @@ def test_build_schema_with_nested_fields(model_with_nested_fields):
     assert isinstance(mapping_field.dataType, MapType)
     assert mapping_field.dataType.keyType == StringType()
     assert mapping_field.dataType.valueType == StringType()
+
+
+def test_descriptions_added_to_metadata(model_with_nested_fields):
+    schema = build_schema(model_with_nested_fields)
+
+    top_level_field = schema["top_level_field"]
+    assert top_level_field.metadata == {"description": "top level description"}
+
+    compound_field = schema["compound_field"]
+    assert compound_field.metadata == {}  # check that it's not {"description": None}
+
+    list_field = schema["list_field"]
+    assert list_field.metadata == {"description": "internal description"}
+
+    mapping_field = schema["mapping_field"]
+    assert mapping_field.metadata == {"description": "parent level description"}
 
 
 def test_build_schema_with_optional_fields(model_with_optional_fields):

@@ -75,6 +75,12 @@ def build_schema(model: type[odm.Model] | odm.Model) -> StructType:
 
         name: str = field.name  # type: ignore
         data_type, nullable = data_type_from_field(field)
-        fields.append(StructField(name, data_type, nullable=nullable))
+
+        description = field.description
+        if not description and isinstance(field, (Optional, List, Mapping)):
+            description = field.child_type.description
+        metadata = {"description": description} if description else None
+
+        fields.append(StructField(name, data_type, nullable=nullable, metadata=metadata))
 
     return StructType(fields=fields)
