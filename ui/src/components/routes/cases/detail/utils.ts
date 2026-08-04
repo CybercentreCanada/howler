@@ -1,22 +1,21 @@
+import { has } from 'lodash-es';
 import type { Case } from 'models/entities/generated/Case';
 import type { Event } from 'models/entities/generated/Event';
 import type { Hit } from 'models/entities/generated/Hit';
 import type { Related } from 'models/entities/generated/Related';
+import { buildPathFromID } from '../utils';
 import type { ObservableEntry, ObservableRole, ObservableSource, ObservableType } from './types';
 
 /** All Related fields that carry asset values */
 export const OBSERVABLE_FIELDS: ObservableType[] = ['hash', 'hosts', 'ip', 'user', 'ids', 'id', 'uri', 'signature'];
 
 /** Extract (type, value, seenInId) triples from a record's related field */
-export const extractObservables = (
-  related: Related | undefined,
-  recordId: string
-): { type: ObservableType; value: string; id: string }[] => {
+export const extractObservables = (related: Related | undefined): { type: ObservableType; value: string }[] => {
   if (!related) {
     return [];
   }
 
-  const results: { type: ObservableType; value: string; id: string }[] = [];
+  const results: { type: ObservableType; value: string }[] = [];
   for (const field of OBSERVABLE_FIELDS) {
     const raw = related[field];
     if (!raw) {
@@ -26,7 +25,7 @@ export const extractObservables = (
     const values = Array.isArray(raw) ? raw : [raw];
     for (const value of values) {
       if (value) {
-        results.push({ type: field, value: String(value), id: recordId });
+        results.push({ type: field, value: String(value) });
       }
     }
   }
@@ -34,9 +33,9 @@ export const extractObservables = (
   return results;
 };
 
-/** Deduplicate and merge seenIn lists into a map keyed by `type:value` */
-export const buildObservableEntries = (records: Partial<Hit | Event>[]): ObservableEntry[] => {
-  const map = new Map<string, ObservableEntry>();
+/** Deduplicate observables and resolve their record IDs to case-item sources */
+export const buildObservableEntries = (_case: Case, records: (Hit | Event)[]): ObservableEntry[] => {
+  const map: Record<string, ObservableEntry> = {};
 
   for (const record of records) {
     const related = (record as Hit).related ?? (record as Event).related;
@@ -45,20 +44,27 @@ export const buildObservableEntries = (records: Partial<Hit | Event>[]): Observa
       continue;
     }
 
-    for (const { type, value, id } of extractObservables(related, recordId)) {
+    for (const { type, value } of extractObservables(related)) {
       const key = `${type}:${value}`;
-      if (!map.has(key)) {
-        map.set(key, { type, value, seenIn: [] });
+      if (!has(map, key)) {
+        map[key] = { type, value, sources: [], role: classifyRole(value, _case, records) };
       }
 
-      const entry = map.get(key)!;
-      if (!entry.seenIn.includes(id)) {
-        entry.seenIn.push(id);
+      const entry = map[key]!;
+      if (entry.sources.some(existingSource => existingSource.id === recordId)) {
+        continue;
       }
+
+      const source = resolveSource(record, _case);
+      if (!source) {
+        continue;
+      }
+
+      entry.sources.push(source);
     }
   }
 
-  return Array.from(map.values());
+  return Object.values(map).filter(Boolean);
 };
 
 /**
@@ -119,30 +125,22 @@ export const classifyRole = (value: string, _case: Case, records: Partial<Hit | 
   return 'indicator';
 };
 
-/** Resolve source metadata for an asset's seenIn IDs */
-export const resolveSources = (
-  seenIn: string[],
-  caseItems: Case['items'],
-  escalationMap: Map<string, string>
-): ObservableSource[] => {
-  if (!caseItems?.length) {
-    return [];
+/** Resolve source metadata for an observable's record IDs */
+export const resolveSource = (record: Hit | Event, _case: Case): ObservableSource => {
+  if (!_case?.items?.length) {
+    return null;
   }
 
-  return seenIn
-    .map(id => {
-      const item = caseItems.find(i => i.value === id);
-      if (!item) {
-        return null;
-      }
+  const item = _case.items.find(i => i.value === record.howler.id);
+  if (!item) {
+    return null;
+  }
 
-      return {
-        id,
-        type: item.type as 'hit' | 'event' | 'case',
-        path: item.id,
-        label: item.name ?? item.value,
-        escalation: escalationMap.get(id)
-      };
-    })
-    .filter(Boolean) as ObservableSource[];
+  return {
+    id: record.howler.id,
+    type: item.type as ObservableSource['type'],
+    path: item.id ? buildPathFromID(_case, item.id) : undefined,
+    label: item.name ?? item.value,
+    escalation: record.howler.escalation
+  };
 };

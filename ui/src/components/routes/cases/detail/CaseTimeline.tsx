@@ -19,6 +19,7 @@ import { useContextSelector } from 'use-context-selector';
 import { ESCALATION_COLORS } from 'utils/constants';
 import { isHit } from 'utils/typeUtils';
 import useCase from '../hooks/useCase';
+import { buildPathFromID } from '../utils';
 
 interface MitreOption {
   id: string;
@@ -242,16 +243,30 @@ const CaseTimeline: FC<{ case?: Case; caseId?: string }> = ({ case: providedCase
                     </Tooltip>
                   )}
                 </Stack>
-                <Box
-                  component={Link}
-                  to={`/cases/${_case.case_id}/${getItemId(entry.howler.id)}`}
-                  sx={{ flex: 1, minWidth: 0, textDecoration: 'none' }}
-                >
+                <Box sx={{ flex: 1, minWidth: 0, textDecoration: 'none', position: 'relative' }}>
                   {isHit(entry) ? (
                     <HitCard id={entry.howler.id} hit={entry} layout={HitLayout.DENSE} readOnly />
                   ) : (
                     <EventCard id={entry.howler.id} event={entry} />
                   )}
+                  <Box
+                    component={Link}
+                    to={`/cases/${_case.case_id}/${buildPathFromID(_case, getItemId(entry.howler.id))}`}
+                    sx={theme => ({
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      cursor: 'pointer',
+                      zIndex: 100,
+                      borderRadius: '4px',
+                      '&:hover': {
+                        background: theme.palette.divider,
+                        border: `thin solid ${theme.palette.primary.light}`
+                      }
+                    })}
+                  />
                 </Box>
               </Stack>
               <Divider flexItem />

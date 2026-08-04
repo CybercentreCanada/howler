@@ -3,7 +3,6 @@ import type { Case } from 'models/entities/generated/Case';
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { buildPathFromID } from '../../utils';
 import type { ObservableEntry } from '../types';
 
 const Observable: FC<{ observable: ObservableEntry; case: Case }> = ({ observable, case: _case }) => {
@@ -25,24 +24,26 @@ const Observable: FC<{ observable: ObservableEntry; case: Case }> = ({ observabl
             </Typography>
           </Stack>
 
-          {observable.seenIn.length > 0 && (
+          {(observable.sources?.length ?? 0) > 0 && (
             <Stack spacing={0.5}>
               <Typography variant="caption" color="text.secondary">
                 {t('page.cases.observables.seen_in')}
               </Typography>
               <Stack direction="row" flexWrap="wrap" gap={0.5}>
-                {observable.seenIn.map(id => {
-                  const entry = _case.items.find(item => item.value === id);
+                {observable.sources?.map(source => {
+                  if (!source.path) {
+                    return <Chip key={source.id} size="small" label={source.label ?? source.id} variant="outlined" />;
+                  }
 
                   return (
                     <Chip
-                      key={id}
+                      key={source.id}
                       clickable
                       size="small"
-                      label={entry.name}
+                      label={source.label ?? source.id}
                       variant="outlined"
                       component={Link}
-                      to={`/cases/${_case.case_id}/${buildPathFromID(_case, entry.id)}`}
+                      to={`/cases/${_case.case_id}/${source.path}`}
                     />
                   );
                 })}
