@@ -1,5 +1,4 @@
-/// <reference types="vitest" />
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createElement, type FC, type PropsWithChildren } from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -190,10 +189,10 @@ describe('CaseObservables component', () => {
 
     render(<CaseObservables case={mockCase} />, { wrapper: Wrapper });
     await screen.findByText('1.2.3.4');
-    await waitFor(() => {
-      // 'evidence' appears in the table escalation column
-      expect(screen.getByText('evidence')).toBeTruthy();
-    });
+    await screen.findByText('page.cases.observables.filter_by_escalation');
+    await userEvent.click(screen.getByText('page.cases.observables.filter_by_escalation'));
+
+    expect(screen.getAllByText('evidence').length).toBeGreaterThanOrEqual(2);
   });
 
   it('classifies roles and renders role chips in the table', async () => {

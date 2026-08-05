@@ -335,20 +335,21 @@ class TestCaseEnrichment:
 
     def test_create_enrichment_empty_annotations(self):
         """CaseEnrichment defaults to empty annotations list."""
-        enrichment = CaseEnrichment({"path": "/alerts"})
+        enrichment = CaseEnrichment({"item": "item-001"})
 
-        assert enrichment.path == "/alerts"
+        assert enrichment.item == "item-001"
         assert enrichment.annotations == []
 
     def test_create_enrichment_with_annotations(self):
         """CaseEnrichment can store annotation IDs."""
         enrichment = CaseEnrichment(
             {
-                "path": "/alerts/phishing",
+                "item": "item-002",
                 "annotations": ["ann-1", "ann-2", "ann-3"],
             }
         )
 
+        assert enrichment.item == "item-002"
         assert len(enrichment.annotations) == 3
         assert "ann-2" in enrichment.annotations
 
@@ -507,12 +508,13 @@ class TestCase:
                 "overview": "O",
                 "escalation": "crisis",
                 "enrichments": [
-                    {"path": "/obs/ip", "annotations": ["ann-1"]},
+                    {"item": "item-003", "annotations": ["ann-1"]},
                 ],
             }
         )
 
         assert len(case.enrichments) == 1
+        assert case.enrichments[0].item == "item-003"
         assert case.enrichments[0].annotations == ["ann-1"]
 
     def test_case_as_primitives_roundtrip(self):
@@ -527,7 +529,7 @@ class TestCase:
                 "targets": ["t1"],
                 "items": [{"type": "hit", "value": "v1"}],
                 "rules": [{"destination": "/b", "query": "q", "author": "admin"}],
-                "enrichments": [{"path": "/c", "annotations": ["x"]}],
+                "enrichments": [{"item": "item-004", "annotations": ["x"]}],
                 "tasks": [
                     {
                         "id": "00000000-0000-0000-0000-000000000099",
@@ -557,7 +559,7 @@ class TestCase:
         assert rebuilt.rules[0].query == original.rules[0].query
         assert rebuilt.rules[0].author == original.rules[0].author
         assert len(rebuilt.enrichments) == len(original.enrichments)
-        assert rebuilt.enrichments[0].path == original.enrichments[0].path
+        assert rebuilt.enrichments[0].item == original.enrichments[0].item
         assert rebuilt.enrichments[0].annotations == original.enrichments[0].annotations
         assert len(rebuilt.tasks) == len(original.tasks)
         assert rebuilt.tasks[0].assignment == original.tasks[0].assignment

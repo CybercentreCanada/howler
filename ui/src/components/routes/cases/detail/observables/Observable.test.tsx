@@ -9,7 +9,7 @@ import Observable from './Observable';
 const makeObservable = (overrides: Partial<ObservableEntry> = {}): ObservableEntry => ({
   type: 'ip',
   value: '192.168.1.1',
-  seenIn: [],
+  sources: [],
   ...overrides
 });
 
@@ -50,29 +50,29 @@ describe('Observable', () => {
     });
   });
 
-  describe('seen-in chips', () => {
-    it('renders nothing when seenIn is empty', () => {
+  describe('source chips', () => {
+    it('renders nothing when sources are empty', () => {
       render(
         <MemoryRouter>
-          <Observable observable={makeObservable({ seenIn: [] })} case={createMockCase()} />
+          <Observable observable={makeObservable({ sources: [] })} case={createMockCase()} />
         </MemoryRouter>
       );
       expect(screen.queryByText('page.cases.observables.seen_in')).toBeNull();
     });
 
-    it('renders "Seen in" label when seenIn has entries', () => {
+    it('renders "Seen in" label when sources have entries', () => {
       const _case = createMockCase({
         items: [{ type: 'hit', value: 'hit-001' }]
       });
       render(
         <MemoryRouter>
-          <Observable observable={makeObservable({ seenIn: ['hit-001'] })} case={_case} />
+          <Observable observable={makeObservable({ sources: [{ id: 'hit-001', type: 'hit' }] })} case={_case} />
         </MemoryRouter>
       );
       expect(screen.getByText('page.cases.observables.seen_in')).toBeTruthy();
     });
 
-    it('renders chips labelled from item name/value for each seenIn id', () => {
+    it('renders chips labelled from source metadata', () => {
       const _case = createMockCase({
         items: [
           { id: 'i1', type: 'hit', value: 'hit-001', name: 'first-hit' },
@@ -82,7 +82,16 @@ describe('Observable', () => {
       });
       render(
         <MemoryRouter>
-          <Observable observable={makeObservable({ seenIn: ['hit-001', 'obs-002', 'hit-003'] })} case={_case} />
+          <Observable
+            observable={makeObservable({
+              sources: [
+                { id: 'hit-001', type: 'hit', label: 'first-hit' },
+                { id: 'obs-002', type: 'event', label: 'obs-two' },
+                { id: 'hit-003', type: 'hit', label: 'third-hit' }
+              ]
+            })}
+            case={_case}
+          />
         </MemoryRouter>
       );
       expect(screen.getByText('first-hit')).toBeTruthy();
@@ -97,7 +106,12 @@ describe('Observable', () => {
       });
       render(
         <MemoryRouter>
-          <Observable observable={makeObservable({ seenIn: ['hit-001'] })} case={_case} />
+          <Observable
+            observable={makeObservable({
+              sources: [{ id: 'hit-001', type: 'hit', path: 'first-hit', label: 'first-hit' }]
+            })}
+            case={_case}
+          />
         </MemoryRouter>
       );
       const link = screen.getByText('first-hit').closest('a');

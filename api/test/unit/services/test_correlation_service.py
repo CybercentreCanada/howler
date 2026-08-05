@@ -185,14 +185,14 @@ class TestCorrelationWorker:
     """Tests for correlation worker batching behavior."""
 
     @patch("howler.services.correlation_service.process_batch")
-    @patch("howler.services.correlation_service._build_queue")
+    @patch("howler.services.correlation_service._get_ingestion_queue")
     @patch.object(correlation_service, "BATCH_TIMEOUT", 1)
     @patch.object(correlation_service, "BATCH_SIZE", 3)
-    def test_processes_full_batch(self, mock_build_queue, mock_process_batch):
+    def test_processes_full_batch(self, mock_get_queue, mock_process_batch):
         """A full queue batch is delivered to process_batch without waiting for a timeout."""
         queue = MagicMock()
         queue.pop.side_effect = ["hit-1", "hit-2", "hit-3", KeyboardInterrupt]
-        mock_build_queue.return_value = queue
+        mock_get_queue.return_value = queue
 
         with pytest.raises(KeyboardInterrupt):
             correlation_service.run_worker()
@@ -200,19 +200,33 @@ class TestCorrelationWorker:
         mock_process_batch.assert_called_once_with(["hit-1", "hit-2", "hit-3"])
 
     @patch("howler.services.correlation_service.process_batch")
-    @patch("howler.services.correlation_service._build_queue")
+    @patch("howler.services.correlation_service._get_ingestion_queue")
     @patch.object(correlation_service, "BATCH_TIMEOUT", 1)
     @patch.object(correlation_service, "BATCH_SIZE", 3)
-    def test_flushes_partial_batch_after_timeout(self, mock_build_queue, mock_process_batch):
+    def test_flushes_partial_batch_after_timeout(self, mock_get_queue, mock_process_batch):
         """A timeout flushes queued records when the batch is not yet full."""
         queue = MagicMock()
         queue.pop.side_effect = ["hit-1", None, KeyboardInterrupt]
-        mock_build_queue.return_value = queue
+        mock_get_queue.return_value = queue
 
         with pytest.raises(KeyboardInterrupt):
             correlation_service.run_worker()
 
         mock_process_batch.assert_called_once_with(["hit-1"])
+
+
+class TestEnqueueForCorrelation:
+    """Tests for enqueue_for_correlation queue producer behavior."""
+
+    @patch("howler.services.correlation_service._get_ingestion_queue")
+    def test_enqueues_all_ids(self, mock_get_queue):
+        """All provided IDs are pushed to the shared ingestion queue."""
+        queue = MagicMock()
+        mock_get_queue.return_value = queue
+
+        correlation_service.enqueue_for_correlation(["hit-1", "hit-2"])
+
+        queue.push.assert_called_once_with("hit-1", "hit-2")
 
     @patch("howler.services.correlation_service.case_service")
     @patch("howler.services.correlation_service.datastore")

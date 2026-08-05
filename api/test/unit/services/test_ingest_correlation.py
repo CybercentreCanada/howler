@@ -360,7 +360,6 @@ class TestIngestToCorrelationContract:
         rule = _make_rule(query="*:*", destination="related")
         mock_get_rules.return_value = [("case-1", rule)]
 
-        # Simulate IDs exactly as they would be pushed by _get_ingestion_queue().push(...)
         ingested_ids = ["abc123", "def456"]
 
         mock_search_svc.search.return_value = {

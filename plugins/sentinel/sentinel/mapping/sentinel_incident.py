@@ -2,9 +2,15 @@
 
 import json
 import logging
+import sys
 from typing import Any, Optional
 
 from dateutil import parser
+
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    from typing_extensions import Self
 
 # Use standard logging for now
 logger = logging.getLogger(__name__)
@@ -15,7 +21,7 @@ class SentinelIncident:
 
     DEFAULT_CUSTOMER_NAME = "Unknown Customer"
 
-    def __init__(self, tid_mapping: Optional[dict[str, str]] = None):
+    def __init__(self: Self, tid_mapping: Optional[dict[str, str]] = None):
         """Initialize the Sentiel Incident mapper.
 
         Args:
@@ -25,7 +31,7 @@ class SentinelIncident:
 
     # --- Public mapping methods ---
 
-    def map_incident_to_bundle(self, sentinel_incident: dict[str, Any]) -> Optional[dict[str, Any]]:
+    def map_incident_to_bundle(self: Self, sentinel_incident: dict[str, Any]) -> Optional[dict[str, Any]]:
         """Map an Sentiel Incident to a Howler bundle.
 
         Args:
@@ -97,8 +103,10 @@ class SentinelIncident:
             }
             self._map_graph_host_link(sentinel_incident, bundle)
             self._map_timestamps(sentinel_incident, bundle)
-            # Add assessment conditionally if classification is not null
-            if classification is not None:
+            # Only apply assessment for incidents that are already resolved.
+            # Otherwise, convert_hit may coerce status to resolved based on
+            # escalation inferred from assessment.
+            if classification is not None and bundle["howler"]["status"] == "resolved":
                 bundle["howler"]["assessment"] = self.map_classification(classification)
             logger.info("Successfully mapped Sentinel Incident %s", incident_id)
             return bundle
@@ -107,7 +115,7 @@ class SentinelIncident:
             logger.error("Failed to map Sentiel Incident: %s", exc, exc_info=True)
             return None
 
-    def get_customer_name(self, tid: str) -> str:
+    def get_customer_name(self: Self, tid: str) -> str:
         """Get customer name from tenant ID, return default if not found.
 
         Args:
@@ -117,7 +125,7 @@ class SentinelIncident:
         """
         return self.tid_mapping.get(tid, self.DEFAULT_CUSTOMER_NAME)
 
-    def map_sentinel_status_to_howler(self, sentinel_status: Optional[str]) -> str:
+    def map_sentinel_status_to_howler(self: Self, sentinel_status: Optional[str]) -> str:
         """Map Sentinel Incident status to Howler status.
 
         Args:
@@ -138,7 +146,7 @@ class SentinelIncident:
         }
         return status_mapping.get(sentinel_status, "open")
 
-    def map_sentinel_user_to_howler(self, sentinel_user: Optional[str]) -> str:
+    def map_sentinel_user_to_howler(self: Self, sentinel_user: Optional[str]) -> str:
         """Map Sentinel user assignment to Howler format.
 
         Args:
@@ -150,7 +158,7 @@ class SentinelIncident:
             return "unassigned"
         return sentinel_user
 
-    def map_severity_to_score(self, severity: str) -> int:
+    def map_severity_to_score(self: Self, severity: str) -> int:
         """Map string severity to numeric score.
 
         Args:
@@ -161,7 +169,7 @@ class SentinelIncident:
         severity_mapping: dict[str, int] = {"low": 25, "medium": 50, "high": 75, "critical": 100}
         return severity_mapping.get(severity.lower() if severity else "medium", 50)
 
-    def map_classification(self, classification: str) -> str:
+    def map_classification(self: Self, classification: str) -> str:
         """Map Sentinel classification to Howler assessment.
 
         Args:
@@ -180,7 +188,7 @@ class SentinelIncident:
 
     # --- Private helper methods ---
 
-    def _map_graph_host_link(self, graph_alert: dict[str, Any], howler_hit: dict[str, Any]) -> None:
+    def _map_graph_host_link(self: Self, graph_alert: dict[str, Any], howler_hit: dict[str, Any]) -> None:
         """Map Graph host link from Graph alert to Howler hit.
 
         Args:
@@ -196,7 +204,7 @@ class SentinelIncident:
             howler_hit["howler"]["links"] = howler_hit["howler"].get("links", [])
             howler_hit["howler"]["links"].append(link)
 
-    def _map_timestamps(self, graph_alert: dict[str, Any], howler_hit: dict[str, Any]) -> None:
+    def _map_timestamps(self: Self, graph_alert: dict[str, Any], howler_hit: dict[str, Any]) -> None:
         """Map timestamps from Graph alert to Howler hit.
 
         Args:
@@ -222,7 +230,7 @@ class SentinelIncident:
                 except Exception as exc:
                     logger.warning("Invalid timestamp format for %s: %s (%s)", time_field, timestamp, exc)
 
-    def _build_labels(self, custom_tags: list[str], system_tags: list[str]) -> list[str]:
+    def _build_labels(self: Self, custom_tags: list[str], system_tags: list[str]) -> list[str]:
         """Build combined labels from custom and system tags.
 
         Args:
