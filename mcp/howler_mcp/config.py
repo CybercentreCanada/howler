@@ -66,6 +66,16 @@ class AUTH:
         os.environ.get("AUTH_AS_SERVER_URL", f"http://{HOST}:{PORT}/realms/{REALM}"),
         "AUTH_AS_SERVER_URL",
     )
+    try:
+        TIMEOUT = float(os.environ.get("AUTH_TIMEOUT", "5.0"))
+    except ValueError:
+        raise ValueError(
+            f'"AUTH_TIMEOUT" need to be a float and {os.environ.get("AUTH_TIMEOUT")} is not a float.'
+        )
+    if TIMEOUT <= 0.0:
+        raise ValueError(
+            f"AUTH_TIMEOUT require to be higher then 0.0. {TIMEOUT} is not bigger then 0.0"
+        )
 
 
 class MCPSettings:

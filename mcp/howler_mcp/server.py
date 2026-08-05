@@ -56,6 +56,7 @@ mcp = FastMCP(
         jwks_uri=AUTH.JWKS_URI,
         audience=MCPSettings.AUDIENCE,
         required_scope=MCPSettings.SCOPE,
+        timeout=AUTH.TIMEOUT,
     ),
     auth=AuthSettings(
         issuer_url=AnyHttpUrl(AUTH.ISSUER),

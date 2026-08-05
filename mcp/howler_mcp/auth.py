@@ -24,7 +24,14 @@ class KeycloakTokenVerifier(TokenVerifier):
     MCP user tokens before allowing tool calls.
     """
 
-    def __init__(self, issuer: str, jwks_uri: str, audience: str, required_scope: str):
+    def __init__(
+        self,
+        issuer: str,
+        jwks_uri: str,
+        audience: str,
+        required_scope: str,
+        timeout: float,
+    ):
         """Initialise the verifier.
 
         Args:
@@ -36,7 +43,7 @@ class KeycloakTokenVerifier(TokenVerifier):
         self.issuer = issuer
         self.audience = audience
         self.required_scope = required_scope
-        self.jwks_client = PyJWKClient(jwks_uri)
+        self.jwks_client = PyJWKClient(jwks_uri, timeout=timeout)
 
     async def verify_token(self, token: str) -> AccessToken | None:
         """Verify a raw JWT string and return an ``AccessToken`` on success.

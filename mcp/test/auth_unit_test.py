@@ -13,6 +13,7 @@ def verifier() -> KeycloakTokenVerifier:
         jwks_uri="https://issuer.example/realms/howler/protocol/openid-connect/certs",
         audience="howlermcp",
         required_scope="howlermcp:access",
+        timeout=5.0,
     )
 
 
