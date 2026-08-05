@@ -13,7 +13,7 @@ from howler.odm.base import _Field
 from howler.odm.models.hit import Hit
 from howler.odm.models.user import User
 from howler.security import api_login
-from howler.services import action_service, analytic_service, hit_service
+from howler.services import action_service, analytic_service, correlation_service, hit_service
 from howler.utils.constants import DEBUG_FORCE_REFRESH
 from howler.utils.dict_utils import flatten
 from howler.utils.isotime import now_as_iso
@@ -233,6 +233,8 @@ def create_one_or_many_hits(tool_name: str, user: User, **kwargs):  # noqa: C901
         hit_service.create_hits(odms, user=user.uname, refresh="true" if DEBUG_FORCE_REFRESH else refresh)
         analytic_service.save_from_hits(odms, user, refresh=refresh)
 
-    action_service.enqueue_action_execution([entry["id"] for entry in out], trigger="create", user=user)
+    ids = [entry["id"] for entry in out]
+    action_service.enqueue_action_execution(ids, trigger="create", user=user)
+    correlation_service.enqueue_for_correlation(ids)
 
     return created(out, warnings=warnings)
