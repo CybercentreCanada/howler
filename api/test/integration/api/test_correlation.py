@@ -62,10 +62,10 @@ def test_case(datastore: HowlerDatastore, login_session):
         session,
         f"{host}/api/v2/case",
         method="POST",
+        params={"refresh": "wait_for"},
         data=json.dumps(_make_case()),
     )
     case_id = resp["case_id"]
-    datastore.case.commit()
 
     yield case_id, session, host
 
@@ -88,20 +88,19 @@ class TestCorrelationPipeline:
             session,
             f"{host}/api/v2/case/{case_id}/rules",
             method="POST",
+            params={"refresh": "wait_for"},
             data=json.dumps(rule_data),
         )
-        datastore.case.commit()
 
         # Ingest a hit that matches the rule
         ingest_resp = get_api_data(
             session,
             f"{host}/api/v2/ingest/hit",
             method="POST",
+            params={"refresh": "wait_for"},
             data=json.dumps([_make_hit(analytic="My Detection", kind="alert")]),
         )
         hit_id = ingest_resp[0]
-        datastore.hit.commit()
-        time.sleep(1)
 
         # Run the correlation directly.  The background worker may have
         # already processed the hit from the ingestion queue, so we
@@ -135,6 +134,7 @@ class TestCorrelationPipeline:
             session,
             f"{host}/api/v2/case/{case_id}/rules",
             method="POST",
+            params={"refresh": "wait_for"},
             data=json.dumps(rule_data),
         )
         datastore.case.commit()
@@ -146,8 +146,6 @@ class TestCorrelationPipeline:
             data=json.dumps([_make_hit(analytic="Deeply Nested Detection", kind="alert")]),
         )
         hit_id = ingest_resp[0]
-        datastore.hit.commit()
-        time.sleep(1)
 
         correlation_service.process_batch([hit_id])
 
@@ -183,6 +181,7 @@ class TestCorrelationPipeline:
             session,
             f"{host}/api/v2/case/{case_id}/rules",
             method="POST",
+            params={"refresh": "wait_for"},
             data=json.dumps(rule_data),
         )
         datastore.case.commit()
@@ -192,6 +191,7 @@ class TestCorrelationPipeline:
             session,
             f"{host}/api/v2/ingest/hit",
             method="POST",
+            params={"refresh": "wait_for"},
             data=json.dumps([_make_hit(analytic="Other", kind="alert")]),
         )
         hit_id = ingest_resp[0]
@@ -218,6 +218,7 @@ class TestCorrelationPipeline:
             session,
             f"{host}/api/v2/case/{case_id}/rules",
             method="POST",
+            params={"refresh": "wait_for"},
             data=json.dumps(rule_data),
         )
         rule_id = resp["rules"][-1]["rule_id"]
@@ -228,6 +229,7 @@ class TestCorrelationPipeline:
             session,
             f"{host}/api/v2/case/{case_id}/rules/{rule_id}",
             method="PUT",
+            params={"refresh": "wait_for"},
             data=json.dumps({"enabled": False}),
         )
         datastore.case.commit()
@@ -259,19 +261,18 @@ class TestCorrelationPipeline:
             session,
             f"{host}/api/v2/case/{case_id}/rules",
             method="POST",
+            params={"refresh": "wait_for"},
             data=json.dumps(rule_data),
         )
-        datastore.case.commit()
 
         ingest_resp = get_api_data(
             session,
             f"{host}/api/v2/ingest/hit",
             method="POST",
+            params={"refresh": "wait_for"},
             data=json.dumps([_make_hit(kind="alert")]),
         )
         hit_id = ingest_resp[0]
-        datastore.hit.commit()
-        time.sleep(1)
 
         # The background worker may have already processed the hit from
         # the ingestion queue, so we cannot rely on exact return values.
@@ -282,7 +283,6 @@ class TestCorrelationPipeline:
         assert first + second <= 1
 
         # The hit must appear exactly once in the case.
-        datastore.case.commit()
         case = datastore.case.get(case_id)
         hit_count = sum(1 for item in case.items if item.type == "hit" and item.value == hit_id)
         assert hit_count == 1
@@ -294,10 +294,9 @@ class TestCorrelationWorker:
     MAX_WAIT = 15
     POLL_INTERVAL = 0.25
 
-    @pytest.fixture()
-    def worker_event_provider(self) -> str:
+    def _worker_event_provider(self, test_name: str) -> str:
         """Create an event provider that cannot match another test's broad rule."""
-        return f"correlationworker{uuid.uuid4().hex}"
+        return f"correlation_{test_name}"
 
     def _wait_for_case_items(self, datastore: HowlerDatastore, case_id: str, hit_ids: list[str]) -> list[str]:
         """Wait for expected hits and return those that were added to the case."""
@@ -322,20 +321,27 @@ class TestCorrelationWorker:
             session,
             f"{host}/api/v2/case/{case_id}/rules",
             method="POST",
+            params={"refresh": "wait_for"},
             data=json.dumps({"query": query, "destination": destination}),
         )
 
-    def test_worker_adds_matching_hit(self, test_case, datastore: HowlerDatastore, worker_event_provider: str):
+    def test_worker_adds_matching_hit(self, test_case, datastore: HowlerDatastore):
         """The worker adds a newly ingested hit that matches an active rule."""
         case_id, session, host = test_case
-        self._add_rule(session, host, case_id, f"event.provider:{worker_event_provider}", "worker")
-        datastore.case.commit()
+        self._add_rule(
+            session,
+            host,
+            case_id,
+            f"event.provider:{self._worker_event_provider('test_worker_adds_matching_hit')}",
+            "worker",
+        )
 
         ingest_resp = get_api_data(
             session,
             f"{host}/api/v2/ingest/hit",
             method="POST",
-            data=json.dumps([_make_hit(provider=worker_event_provider)]),
+            params={"refresh": "wait_for"},
+            data=json.dumps([_make_hit(provider=self._worker_event_provider("test_worker_adds_matching_hit"))]),
         )
 
         seen_hit_ids = self._wait_for_case_items(datastore, case_id, ingest_resp)
@@ -344,17 +350,30 @@ class TestCorrelationWorker:
             f"Worker did not add hits {missing_hit_ids} to case {case_id} within {self.MAX_WAIT}s"
         )
 
-    def test_worker_renders_destination_path(self, test_case, datastore: HowlerDatastore, worker_event_provider: str):
+    def test_worker_renders_destination_path(self, test_case, datastore: HowlerDatastore):
         """The worker renders the matching hit's destination path."""
         case_id, session, host = test_case
-        self._add_rule(session, host, case_id, f"event.provider:{worker_event_provider}", "worker/{{howler.analytic}}")
-        datastore.case.commit()
+        self._add_rule(
+            session,
+            host,
+            case_id,
+            f"event.provider:{self._worker_event_provider('test_worker_renders_destination_path')}",
+            "worker/{{howler.analytic}}",
+        )
 
         ingest_resp = get_api_data(
             session,
             f"{host}/api/v2/ingest/hit",
             method="POST",
-            data=json.dumps([_make_hit(analytic="Worker Detection", provider=worker_event_provider)]),
+            params={"refresh": "wait_for"},
+            data=json.dumps(
+                [
+                    _make_hit(
+                        analytic="Worker Detection",
+                        provider=self._worker_event_provider("test_worker_renders_destination_path"),
+                    )
+                ]
+            ),
         )
 
         seen_hit_ids = self._wait_for_case_items(datastore, case_id, ingest_resp)
@@ -369,32 +388,42 @@ class TestCorrelationWorker:
         assert matching_item.name == "Worker Detection"
         assert matching_item.parent == worker_folder.id
 
-    def test_worker_handles_multiple_hits(self, test_case, datastore: HowlerDatastore, worker_event_provider: str):
+    def test_worker_handles_multiple_hits(self, test_case, datastore: HowlerDatastore):
         """Multiple hits ingested in sequence are each processed by the worker."""
         case_id, session, host = test_case
         self._add_rule(
             session,
             host,
             case_id,
-            f"event.provider:{worker_event_provider}",
+            f"event.provider:{self._worker_event_provider('test_worker_handles_multiple_hits')}",
             "worker-multi/{{howler.analytic}}",
         )
-        datastore.case.commit()
 
-        hit_ids = []
-        for index in range(3):
-            ingest_resp = get_api_data(
+        hit_ids: list[str] = []
+        for _ in range(3):
+            hits = []
+            for index in range(3):
+                hits.append(
+                    _make_hit(
+                        analytic=f"Multi-{index}",
+                        provider=self._worker_event_provider("test_worker_handles_multiple_hits"),
+                    )
+                )
+
+            added = get_api_data(
                 session,
                 f"{host}/api/v2/ingest/hit",
                 method="POST",
-                data=json.dumps([_make_hit(analytic=f"Multi-{index}", provider=worker_event_provider)]),
+                params={"refresh": "wait_for"},
+                data=json.dumps(hits),
             )
-            hit_ids.append(ingest_resp[0])
 
+            hit_ids = [*hit_ids, *added]
         seen_hit_ids = self._wait_for_case_items(datastore, case_id, hit_ids)
         missing_hit_ids = set(hit_ids) - set(seen_hit_ids)
         assert not missing_hit_ids, (
-            f"Worker did not add hits {missing_hit_ids} to case {case_id} within {self.MAX_WAIT}s"
+            f"Worker did not add {len(missing_hit_ids)} hits ({missing_hit_ids}) "
+            f"to case {case_id} within {self.MAX_WAIT}s"
         )
 
     def test_worker_processes_v1_hit_ingestion(self, test_case, datastore: HowlerDatastore):
@@ -403,12 +432,12 @@ class TestCorrelationWorker:
         analytic = f"v1-hit-worker-{uuid.uuid4().hex}"
 
         self._add_rule(session, host, case_id, f"howler.analytic:{analytic}", "worker-v1-hit")
-        datastore.case.commit()
 
         ingest_resp = get_api_data(
             session,
             f"{host}/api/v1/hit/",
             method="POST",
+            params={"refresh": "wait_for"},
             data=json.dumps([{"howler": {"analytic": analytic, "score": "0.8"}}]),
         )
         hit_ids = [entry["howler"]["id"] for entry in ingest_resp["valid"]]
@@ -425,12 +454,12 @@ class TestCorrelationWorker:
         analytic = f"v1-tool-worker-{uuid.uuid4().hex}"
 
         self._add_rule(session, host, case_id, f"howler.analytic:{analytic}", "worker-v1-tool")
-        datastore.case.commit()
 
         ingest_resp = get_api_data(
             session,
             f"{host}/api/v1/tools/test/hits",
             method="POST",
+            params={"refresh": "wait_for"},
             data=json.dumps(
                 {
                     "map": {

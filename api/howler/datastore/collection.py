@@ -566,7 +566,14 @@ class ESCollection(Generic[ModelType]):
         for operation_batch in operations.get_plan_batches():
             response = self.with_retries(self.datastore.client.bulk, operations=operation_batch, refresh=refresh)
             responses.append(response)
-        return not any(response["errors"] for response in responses)
+
+        has_errors = False
+        for response in responses:
+            if response["errors"]:
+                has_errors = True
+                logger.error("Errors on bulk plan: %s", response["errors"])
+
+        return not has_errors
 
     def get_bulk_plan(self):
         """

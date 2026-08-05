@@ -37,8 +37,8 @@ system:
   type: development
   correlation:
     enabled: true
-    batch_size: 1
-    batch_timeout: 1
+    batch_size: 5
+    batch_timeout: 2
 
 ui:
   audit: false

@@ -9,7 +9,13 @@ from typing import Any, Literal, overload
 
 from prometheus_client import Counter
 
-from howler.common.exceptions import HowlerTypeError, HowlerValueError, InvalidDataException, NotFoundException
+from howler.common.exceptions import (
+    HowlerTypeError,
+    HowlerValueError,
+    InvalidDataException,
+    NotFoundException,
+    ResourceExists,
+)
 from howler.common.loader import APP_NAME, datastore
 from howler.common.logging import get_logger
 from howler.config import CLASSIFICATION
@@ -49,7 +55,7 @@ def create_case(
     items = case_data.pop("items", [])
 
     case = Case(case_data)
-    case.log = [CaseLog({"timestamp": "NOW", "explanation": "Case created", "user": user or "system"})]
+    case.log = [CaseLog({"timestamp": "NOW", "explanation": "Case created", "user": user.uname if user else "system"})]
     case.save(refresh="wait_for")
     CREATED_CASES.inc()
 
@@ -476,16 +482,37 @@ def append_case_item(  # noqa: C901
     if item.parent is not None:
         _ensure_parent_exists(case, item.parent)
 
-    check_conflicts(case, item)
+    conflict = check_conflicts(case, item)
 
     match item.type:
         case CaseItemTypes.HIT:
+            if conflict:
+                item.name = f"{item.name} ({item.value})" if item.name else item.value
+
+                if check_conflicts(case, item):
+                    raise ResourceExists("An item with the same name already exists in this location.")
+
             return append_hit(case, item, refresh)
         case CaseItemTypes.EVENT:
+            if conflict:
+                item.name = f"{item.name} ({item.value})" if item.name else item.value
+
+                if check_conflicts(case, item):
+                    raise ResourceExists("An item with the same name already exists in this location.")
+
             return append_event(case, item, refresh)
         case CaseItemTypes.CASE:
+            if conflict:
+                item.name = f"{item.name} ({item.value})" if item.name else item.value
+
+                if check_conflicts(case, item):
+                    raise ResourceExists("An item with the same name already exists in this location.")
+
             return append_case(case, item, refresh)
         case CaseItemTypes.REFERENCE | CaseItemTypes.MARKDOWN | CaseItemTypes.FOLDER:
+            if conflict:
+                raise ResourceExists("An item with the same name already exists in this location.")
+
             case.items.append(item)
 
             if not case.save(refresh):  # pragma: no cover
@@ -498,7 +525,7 @@ def append_case_item(  # noqa: C901
             raise InvalidDataException(f"Unsupported item type: {item.type}")
 
 
-def check_conflicts(case: Case, item: CaseItem) -> None:
+def check_conflicts(case: Case, item: CaseItem) -> bool:
     """Validate that two items are not created with the same name and parent.
 
     Args:
@@ -510,15 +537,12 @@ def check_conflicts(case: Case, item: CaseItem) -> None:
     """
     # Unnamed items (name=None) are identified by their value, not their name; skip name-based
     # conflict detection for them so that multiple unnamed hits can coexist in the same parent.
+    name = item.name
     if item.name is None:
-        return
+        name = item.value
 
     # Check for duplicate folder under same parent
-    if any(ci.name == item.name and ci.parent == item.parent for ci in case.items):
-        raise InvalidDataException(
-            f"An item with name '{item.name}' already exists in "
-            + (f"parent {item.parent}." if item.parent else "root.")
-        )
+    return any(ci.name == name and ci.parent == item.parent for ci in case.items)
 
 
 def _ensure_parent_exists(case: Case, parent_id: str) -> None:

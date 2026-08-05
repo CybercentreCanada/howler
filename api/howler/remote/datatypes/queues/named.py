@@ -1,6 +1,8 @@
 import json
 import time
-from typing import Any, Generic, Optional, TypeVar
+from typing import Generic, Optional, TypeVar
+
+import redis
 
 from howler.common.exceptions import HowlerTypeError
 from howler.remote.datatypes import get_client, retry_call
@@ -10,7 +12,7 @@ T = TypeVar("T")
 
 class NamedQueue(Generic[T]):
     def __init__(self, name: str, host=None, port=None, private: bool = False, ttl: int = 0):
-        self.c: Any = get_client(host, port, private)
+        self.c: redis.Redis | redis.StrictRedis | redis.RedisCluster = get_client(host, port, private)
         self.name: str = name
         self.ttl: int = ttl
         self.last_expire_time: float = 0
@@ -66,8 +68,7 @@ class NamedQueue(Generic[T]):
             return json.loads(response)
 
     def push(self, *messages: T):
-        for message in messages:
-            retry_call(self.c.rpush, self.name, json.dumps(message))
+        retry_call(self.c.rpush, self.name, *[json.dumps(message) for message in messages])
         self._conditional_expire()
 
     def unpop(self, *messages: T):

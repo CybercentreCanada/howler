@@ -117,7 +117,11 @@ def _add_record_to_case(
         if item.name is None:
             item.name = item.value
 
-        case_service.check_conflicts(case, item)
+        if case_service.check_conflicts(case, item):
+            item.name = f"{item.name} ({item.value})" if item.name else item.value
+
+            if case_service.check_conflicts(case, item):
+                return False
 
         item.classification = backing_obj.classification
         case.items.append(item)
@@ -127,7 +131,7 @@ def _add_record_to_case(
 
         return True
     except InvalidDataException:
-        logger.debug("Record %s already exists in case %s, skipping", record_id, case_id)
+        logger.info("Record %s already exists in case %s, skipping", record_id, case_id)
     except NotFoundException:
         logger.warning("Case %s or record %s not found during correlation", case_id, record_id)
     except Exception:  # pragma: no cover
@@ -253,15 +257,14 @@ def process_batch(record_ids: list[str]) -> int:  # noqa: C901
 
         if case_id not in case_cache:
             case = ds.case.get(case_id)
-            if case is None:
-                logger.warning("Case %s not found during correlation", case_id)
-            else:
+            if case:
                 case_original_item_counts[case_id] = len(case.items)
 
             case_cache[case_id] = case
 
         case = case_cache[case_id]
         if case is None:
+            logger.warning("Case %s not found during correlation", case_id)
             continue
 
         try:
@@ -287,8 +290,9 @@ def process_batch(record_ids: list[str]) -> int:  # noqa: C901
     modified_cases = [
         case for cid, case in case_cache.items() if case and len(case.items) != case_original_item_counts[cid]
     ]
-
     bulk_plan = ds.case.get_bulk_plan()
+
+    logger.info("Modified cases: %s", len(modified_cases))
     if modified_cases:
         for case in modified_cases:
             case_service.recompute_case_metadata(case)
@@ -296,8 +300,15 @@ def process_batch(record_ids: list[str]) -> int:  # noqa: C901
             # to the case (title, summary, rules, ...) aren't clobbered by a stale in-memory copy.
             bulk_plan.add_update_operation(case.case_id, case, fields=["items", "targets", "threats", "indicators"])
 
-    if not bulk_plan.empty and not ds.case.bulk(bulk_plan):
-        raise HowlerRuntimeError("Bulk case update reported errors while flushing correlation batch")
+    if bulk_plan.empty:
+        logger.info(
+            "Bulk plan for batch %s is empty.", f"({', '.join(record_ids[:5])}{', ...' if len(record_ids) > 5 else ''})"
+        )
+    else:
+        logger.info("Exexcuting bulk plan (%s operations)", len(bulk_plan.operations))
+
+        if not ds.case.bulk(bulk_plan, refresh="wait_for"):
+            raise HowlerRuntimeError("Bulk case update reported errors while flushing correlation batch")
 
     for case in modified_cases:
         comms_service.emit("cases", {"case": case.as_primitives()})
@@ -318,19 +329,27 @@ def run_worker() -> None:  # pragma: no cover – long-running loop, tested via 
 
     while True:
         try:
-            item: str | None = queue.pop(blocking=True, timeout=BATCH_TIMEOUT)
+            item: str | None = queue.pop(timeout=BATCH_TIMEOUT)
 
             if item is not None:
                 batch.append(item)
 
+            if len(batch) > 0:
+                logger.info("Batch size: %s", len(batch))
+
             if len(batch) >= BATCH_SIZE or (item is None and batch):
-                logger.debug("Processing correlation batch of %d hit(s)", len(batch))
+                finalized_batch = [*batch]
+                batch = []
+
+                logger.debug("Processing correlation batch of %d hit(s)", len(finalized_batch))
                 try:
-                    added = process_batch(batch)
-                    logger.info("Correlation batch complete: %d case item(s) added for %d record(s)", added, len(batch))
+                    added = process_batch(finalized_batch)
+                    logger.info(
+                        "Correlation batch complete: %d case item(s) added for %d record(s)",
+                        added,
+                        len(finalized_batch),
+                    )
                 except Exception:
-                    logger.exception("Error processing correlation batch")
-                finally:
-                    batch = []
+                    logger.exception("Error processing correlation batch %s", ", ".join(finalized_batch))
         except Exception:
             logger.exception("Unexpected error in correlation worker loop")

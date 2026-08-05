@@ -71,6 +71,11 @@ from howler.telemetry import setup_telemetry
 logger = get_logger(__file__)
 
 
+def _should_start_background_services() -> bool:
+    """Return whether this process should start long-lived background services."""
+    return not DEBUG or os.environ.get("WERKZEUG_RUN_MAIN") == "true"
+
+
 app = Flask(
     "howler-api",
     static_url_path="/api/static",
@@ -177,14 +182,15 @@ if HWL_USE_WEBSOCKET_API or DEBUG:
     logger.debug("Enabled Websocket API")
     app.register_blueprint(socket_api)
 
-    # Start the Redis pubsub watcher so this pod receives events from all pods
-    import howler.services.comms_service as comms_service
+    if _should_start_background_services():
+        # Start the Redis pubsub watcher so this pod receives events from all pods
+        import howler.services.comms_service as comms_service
 
-    comms_service.start_watcher()
+        comms_service.start_watcher()
 else:
     logger.info("Disabled Websocket API")
 
-if HWL_USE_JOB_SYSTEM or DEBUG:
+if HWL_USE_JOB_SYSTEM and _should_start_background_services():
     setup_jobs()
 
 
