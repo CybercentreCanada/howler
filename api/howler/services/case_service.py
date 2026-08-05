@@ -476,7 +476,7 @@ def append_case_item(  # noqa: C901
     if item.parent is not None:
         _ensure_parent_exists(case, item.parent)
 
-    _check_conflicts(case, item)
+    check_conflicts(case, item)
 
     match item.type:
         case CaseItemTypes.HIT:
@@ -498,7 +498,7 @@ def append_case_item(  # noqa: C901
             raise InvalidDataException(f"Unsupported item type: {item.type}")
 
 
-def _check_conflicts(case: Case, item: CaseItem) -> None:
+def check_conflicts(case: Case, item: CaseItem) -> None:
     """Validate that two items are not created with the same name and parent.
 
     Args:

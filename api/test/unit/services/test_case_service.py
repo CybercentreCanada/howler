@@ -2801,15 +2801,15 @@ class TestGetParentFromPath:
 
 
 # ---------------------------------------------------------------------------
-# _check_conflicts()
+# check_conflicts()
 # ---------------------------------------------------------------------------
 
 
 class TestCheckConflicts:
-    """Tests for case_service._check_conflicts."""
+    """Tests for case_service.check_conflicts."""
 
     def test_item_with_none_name_skips_conflict_check(self):
-        """_check_conflicts returns immediately without checking when item.name is None."""
+        """check_conflicts returns immediately without checking when item.name is None."""
         existing = CaseItem({"type": "hit", "value": "existing", "name": "taken"})
         mock_case = MagicMock()
         mock_case.items = [existing]
@@ -2818,7 +2818,7 @@ class TestCheckConflicts:
         item.name = None
 
         # Should not raise even though there is an item named "taken" in the case
-        case_service._check_conflicts(mock_case, item)
+        case_service.check_conflicts(mock_case, item)
 
 
 # ---------------------------------------------------------------------------

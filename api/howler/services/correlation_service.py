@@ -109,15 +109,16 @@ def _add_record_to_case(
         name = rendered_path
 
     try:
+        backing_obj = _resolve_backing_object(item_type, record_id, backing_cache)
+
         parent = case_service.get_parent_from_path(case, path, create_if_missing=True, persist=False)
 
         item = CaseItem({"type": item_type, "value": record_id, "parent": parent.id if parent else None, "name": name})
         if item.name is None:
             item.name = item.value
 
-        case_service._check_conflicts(case, item)
+        case_service.check_conflicts(case, item)
 
-        backing_obj = _resolve_backing_object(item_type, record_id, backing_cache)
         item.classification = backing_obj.classification
         case.items.append(item)
 

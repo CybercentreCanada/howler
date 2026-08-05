@@ -1630,7 +1630,7 @@ class ESCollection(Generic[ModelType]):
             return fl
 
         patterns = [p.strip() for p in fl.split(",") if p.strip()]
-        return ",".join(expand_field_patterns(self.model_class, patterns, preserve_all=True))
+        return ",".join(sorted(expand_field_patterns(self.model_class, patterns, preserve_all=True)))
 
     def _format_output(self, result, fields=None, as_obj=True):
         # Getting search document data
