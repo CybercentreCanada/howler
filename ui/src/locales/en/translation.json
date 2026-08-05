@@ -212,6 +212,8 @@
   "hit.notebook.select": "Please Select a notebook",
   "hit.notebook.tooltip": "Open in Jupyterhub",
   "hit.open": "Open Hit",
+  "hit.outline.add_filter": "Add filter",
+  "hit.outline.copy": "Copy value",
   "hit.overview.missing": "No overview has been created for this hit. In order to create an overview, press the add button to the right.",
   "hit.panel.aggregation.run": "Create Summary",
   "hit.panel.bundles.open": "Parent Bundles",

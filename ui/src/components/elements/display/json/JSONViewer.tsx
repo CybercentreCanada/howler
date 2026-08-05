@@ -11,8 +11,6 @@ import { validateRegex } from 'utils/stringUtils';
 import Throttler from 'utils/Throttler';
 import { removeEmpty, searchObject } from 'utils/utils';
 
-const THROTTLER = new Throttler(150);
-
 const JSONViewer: FC<{ data: object; collapse?: boolean; hideSearch?: boolean; filter?: string }> = ({
   data,
   collapse = true,
@@ -26,16 +24,27 @@ const JSONViewer: FC<{ data: object; collapse?: boolean; hideSearch?: boolean; f
 
   const [query, setQuery] = useState('');
   const [result, setResult] = useState<any>(null);
+  const throttler = useMemo(() => new Throttler(150), []);
 
   useEffect(() => {
-    THROTTLER.debounce(() => {
+    let cancelled = false;
+
+    throttler.debounce(() => {
+      if (cancelled) {
+        return;
+      }
+
       const filteredData = removeEmpty(data, compact);
 
       const searchedData = searchObject(filteredData, filter ?? query, flat);
 
       setResult(searchedData);
     });
-  }, [compact, data, filter, flat, query]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [compact, data, filter, flat, query, throttler]);
 
   const hasError = useMemo(() => !validateRegex(filter ?? query), [query, filter]);
 
