@@ -182,7 +182,7 @@ def test_mcp_server_connection():
 
 def test_tool_whoami():
     token = get_token()
-    result = call_mcp_tool(token, "WhoAmI")
+    result = call_mcp_tool(token, "whoami")
 
     assert not result.get("isError", False), f"Tool execution failed: {result}"
     tool_output = json.loads(result["content"][0]["text"])
@@ -192,7 +192,7 @@ def test_tool_whoami():
 
 def test_tool_list_assigned_hits():
     token = get_token()
-    result = call_mcp_tool(token, "ListAssignedHits")
+    result = call_mcp_tool(token, "list_assigned_hits")
 
     assert not result.get("isError", False)
     assert "content" in result
@@ -200,7 +200,7 @@ def test_tool_list_assigned_hits():
 
 def test_tool_get_hit_fields():
     token = get_token()
-    result = call_mcp_tool(token, "GetHitFields")
+    result = call_mcp_tool(token, "get_hit_fields")
 
     assert not result.get("isError", False)
     tool_output = json.loads(result["content"][0]["text"])
@@ -210,7 +210,7 @@ def test_tool_get_hit_fields():
 
 def test_tool_get_field_values():
     token = get_token()
-    result = call_mcp_tool(token, "GetFieldValues", {"field": "howler.escalation"})
+    result = call_mcp_tool(token, "get_field_values", {"field": "howler.escalation"})
 
     assert not result.get("isError", False)
     tool_output = json.loads(result["content"][0]["text"])
@@ -221,7 +221,7 @@ def test_tool_lucene_query():
     token = get_token()
     result = call_mcp_tool(
         token,
-        "luceneQuery",
+        "lucene_query",
         {
             "query": "howler.id:*",
             "fl": "howler.id,howler.assignment",
@@ -244,7 +244,7 @@ def test_tool_add_comment_to_hit():
 
     result = call_mcp_tool(
         token,
-        "AddCommentToHit",
+        "add_comment_to_hit",
         {"hit_id": hit_id, "comment": "network test comment"},
     )
 

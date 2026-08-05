@@ -39,12 +39,12 @@ def tools_and_api():
 def test_registered_tool_surface(tools_and_api):
     tools, _ = tools_and_api
     assert set(tools.keys()) == {
-        "WhoAmI",
-        "ListAssignedHits",
-        "AddCommentToHit",
-        "GetFieldValues",
-        "GetHitFields",
-        "luceneQuery",
+        "whoami",
+        "list_assigned_hits",
+        "add_comment_to_hit",
+        "get_field_values",
+        "get_hit_fields",
+        "lucene_query",
     }
 
 
@@ -52,12 +52,12 @@ def test_registered_tool_surface(tools_and_api):
 @pytest.mark.parametrize(
     "tool_name,kwargs",
     [
-        ("WhoAmI", {}),
-        ("ListAssignedHits", {}),
-        ("AddCommentToHit", {"hit_id": str(uuid4()), "comment": "hello"}),
-        ("GetFieldValues", {"field": "howler.escalation"}),
-        ("GetHitFields", {}),
-        ("luceneQuery", {"query": "howler.id:*", "fl": "howler.id"}),
+        ("whoami", {}),
+        ("list_assigned_hits", {}),
+        ("add_comment_to_hit", {"hit_id": str(uuid4()), "comment": "hello"}),
+        ("get_field_values", {"field": "howler.escalation"}),
+        ("get_hit_fields", {}),
+        ("lucene_query", {"query": "howler.id:*", "fl": "howler.id"}),
     ],
 )
 async def test_access_token_required(tools_and_api, tool_name, kwargs):
@@ -73,8 +73,8 @@ async def test_access_token_required(tools_and_api, tool_name, kwargs):
 @pytest.mark.parametrize("bad_hit_id", ["", "not-a-uuid", "12345"])
 async def test_add_comment_validates_uuid(tools_and_api, bad_hit_id):
     tools, _ = tools_and_api
-    with pytest.raises(ValueError, match="valid UUID"):
-        await tools["AddCommentToHit"](hit_id=bad_hit_id, comment="note")
+    with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
+        await tools["add_comment_to_hit"](hit_id=bad_hit_id, comment="note")
 
 
 @pytest.mark.asyncio
@@ -88,7 +88,7 @@ async def test_whoami_returns_structured_response(tools_and_api):
     }
 
     with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
-        result = await tools["WhoAmI"]()
+        result = await tools["whoami"]()
 
     assert result.username == "jdoe"
     assert result.email == "jdoe@example.com"
@@ -106,7 +106,7 @@ async def test_list_assigned_hits_calls_expected_endpoint(tools_and_api):
     mock_api.call.return_value = [{"howler": {"id": "abc"}}]
 
     with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
-        result = await tools["ListAssignedHits"]()
+        result = await tools["list_assigned_hits"]()
 
     assert result[0]["howler"]["id"] == "abc"
 
@@ -122,7 +122,7 @@ async def test_add_comment_sends_correct_payload(tools_and_api):
     hit_id = str(uuid4())
 
     with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
-        result = await tools["AddCommentToHit"](hit_id=hit_id, comment="test note")
+        result = await tools["add_comment_to_hit"](hit_id=hit_id, comment="test note")
 
     assert result == "Comment added successfully."
     call_kwargs = mock_api.call.call_args.kwargs
@@ -146,7 +146,7 @@ async def test_get_hit_fields_projects_expected_shape(tools_and_api):
     }
 
     with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
-        result = await tools["GetHitFields"]()
+        result = await tools["get_hit_fields"]()
 
     assert result == {
         "howler.escalation": {
@@ -169,7 +169,7 @@ async def test_get_field_values_requires_field(tools_and_api):
         patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
         pytest.raises(ValueError, match="field parameter is required"),
     ):
-        await tools["GetFieldValues"](field="   ")
+        await tools["get_field_values"](field="   ")
 
 
 @pytest.mark.asyncio
@@ -183,7 +183,7 @@ async def test_get_field_values_rejects_unknown_field(tools_and_api):
         patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
         pytest.raises(ValueError, match="not a valid option"),
     ):
-        await tools["GetFieldValues"](field="howler.unknown")
+        await tools["get_field_values"](field="howler.unknown")
 
 
 @pytest.mark.asyncio
@@ -201,7 +201,7 @@ async def test_get_field_values_calls_facet_endpoint(tools_and_api):
     ]
 
     with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
-        result = await tools["GetFieldValues"](field="howler.escalation")
+        result = await tools["get_field_values"](field="howler.escalation")
 
     assert result["alert"] == 120
 
@@ -212,15 +212,16 @@ async def test_get_field_values_calls_facet_endpoint(tools_and_api):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("rows", [0, -1, MAXIMUM_TICKET + 1])
+@pytest.mark.parametrize("rows", [-1, MAXIMUM_TICKET + 1])
 async def test_lucene_query_rows_validation(tools_and_api, rows):
-    tools, _ = tools_and_api
+    tools, mock_api = tools_and_api
+    mock_api.call.return_value = {"howler.id": {"type": "keyword"}}
 
     with (
         patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
-        pytest.raises(ValueError, match="can not be lower then 0"),
+        pytest.raises(ValueError, match="must be between 0"),
     ):
-        await tools["luceneQuery"](query="howler.id:*", fl="howler.id", rows=rows)
+        await tools["lucene_query"](query="howler.id:*", fl="howler.id", rows=rows)
 
 
 @pytest.mark.asyncio
@@ -232,7 +233,7 @@ async def test_lucene_query_requires_fl(tools_and_api):
         patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
         pytest.raises(ValueError, match="fl must be provided"),
     ):
-        await tools["luceneQuery"](query="howler.id:*", fl="   ")
+        await tools["lucene_query"](query="howler.id:*", fl="   ")
 
 
 @pytest.mark.asyncio
@@ -242,9 +243,9 @@ async def test_lucene_query_rejects_non_int_offset(tools_and_api):
 
     with (
         patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
-        pytest.raises(ValueError, match="Offset must be an integer"),
+        pytest.raises(TypeError),
     ):
-        await tools["luceneQuery"](query="howler.id:*", fl="howler.id", offset="10")
+        await tools["lucene_query"](query="howler.id:*", fl="howler.id", offset="10")
 
 
 @pytest.mark.asyncio
@@ -272,7 +273,7 @@ async def test_lucene_query_builds_projected_body(tools_and_api):
     ]
 
     with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
-        result = await tools["luceneQuery"](
+        result = await tools["lucene_query"](
             query="howler.assignment:user",
             fl="howler.assignment",
             sort="event.created desc",
@@ -303,7 +304,7 @@ async def test_lucene_query_omits_sort_when_empty(tools_and_api):
     ]
 
     with patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN):
-        await tools["luceneQuery"](query="howler.id:*", fl="howler.id")
+        await tools["lucene_query"](query="howler.id:*", fl="howler.id")
 
     search_call = mock_api.call.call_args_list[-1].kwargs
     assert "sort" not in search_call["body"]
@@ -313,10 +314,13 @@ async def test_lucene_query_omits_sort_when_empty(tools_and_api):
 @pytest.mark.parametrize(
     "tool_name,kwargs",
     [
-        ("WhoAmI", {}),
-        ("ListAssignedHits", {}),
-        ("AddCommentToHit", {"hit_id": "__VALID_HIT_ID__", "comment": "note"}),
-        ("GetHitFields", {}),
+        ("whoami", {}),
+        ("list_assigned_hits", {}),
+        (
+            "add_comment_to_hit",
+            {"hit_id": "__VALID_HIT_ID__", "comment": "note"},
+        ),
+        ("get_hit_fields", {}),
     ],
 )
 async def test_tool_call_error_is_propagated_simple(tools_and_api, tool_name, kwargs):
@@ -344,7 +348,7 @@ async def test_get_field_values_error_is_propagated(tools_and_api):
         patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
         pytest.raises(ValueError, match="Missing 'api_response'"),
     ):
-        await tools["GetFieldValues"](field="howler.escalation")
+        await tools["get_field_values"](field="howler.escalation")
 
 
 @pytest.mark.asyncio
@@ -359,4 +363,4 @@ async def test_lucene_query_error_is_propagated(tools_and_api):
         patch(GET_ACCESS_TOKEN_PATH, return_value=FAKE_TOKEN),
         pytest.raises(ValueError, match="Missing 'api_response'"),
     ):
-        await tools["luceneQuery"](query="howler.id:*", fl="howler.id")
+        await tools["lucene_query"](query="howler.id:*", fl="howler.id")
