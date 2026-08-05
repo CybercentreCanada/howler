@@ -1,14 +1,11 @@
-import logging
 import re
-import uuid
 from typing import Any
 
 from fastmcp.server.dependencies import get_access_token
 from mcp.server.auth.provider import AccessToken
 from pydantic import BaseModel, Field
 
-logger = logging.getLogger(__name__)
-# Unsure if we want to keep this. But they do add some safety net on our side
+# Safety limits to avoid oversized backend requests.
 MAXIMUM_TICKET: int = 200
 MAXIMUM_OFFSET: int = 10000
 
@@ -30,7 +27,7 @@ class WhoAmIResponse(BaseModel):
     )
 
 
-# Howler_response is a wrapper around the response_api to have a more structured output for the tools.
+# Structured response envelope returned by ``lucene_query``.
 class HowlerResponse(BaseModel):
     rows: int = Field(description="Number of rows returned in the search results.")
     total: int = Field(description="Total number of hits matching the search criteria.")
@@ -40,9 +37,45 @@ class HowlerResponse(BaseModel):
 
 
 def RegisterTools(mcp, api_client):
+    """Register all Howler MCP tools on the provided FastMCP instance.
+
+    Args:
+        mcp: FastMCP server instance used to register tool handlers.
+        api_client: Shared API client used by tools to call the Howler backend.
+    """
+    # Cache searchable fields for this process to reduce mapping calls.
     cached_hit_fields: set[str] | None = None
 
-    async def validate_query_fields(query: str) -> str:
+    def _proper_access_token() -> AccessToken:
+        """Return the current request access token.
+
+        This helper centralizes token extraction so every tool enforces the
+        same auth precondition before calling the backend.
+
+        Returns:
+            AccessToken: The active MCP access token from request context.
+
+        Raises:
+            ValueError: If the request has no access token in context.
+        """
+        access_token: AccessToken | None = get_access_token()
+        if not access_token:
+            raise ValueError("Access token is not available.")
+        return access_token
+
+    async def _validate_query_fields(query: str) -> str:
+        """Normalize and validate field names referenced in a Lucene query.
+
+        Args:
+            query: Raw Lucene query provided by the caller.
+
+        Returns:
+            str: Normalized Lucene query with collapsed control whitespace.
+
+        Raises:
+            ValueError: If the query is empty after normalization or contains
+                unsupported field names.
+        """
         nonlocal cached_hit_fields
 
         # Normalize first so empty/whitespace-only queries are rejected early.
@@ -51,26 +84,33 @@ def RegisterTools(mcp, api_client):
             raise ValueError("query must be provided and cannot be empty.")
 
         # Match dotted field names only when they appear as field selectors
-        # (left side of a Lucene field:value expression).
+        # on the left side of a Lucene field:value expression.
         regex = r"\b([a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)+)\s*:"
-        all_options: list[str] = re.findall(regex, normalized)
+        referenced_fields: list[str] = re.findall(regex, normalized)
 
+        # Cache field metadata for the current process lifetime to avoid
+        # re-fetching index mapping for every query validation.
         if cached_hit_fields is None:
             cached_hit_fields = set((await get_hit_fields()).keys())
 
-        errors: list[str] = []
-        for option in all_options:
-            if option not in cached_hit_fields:
-                errors.append(f"{option}")
+        invalid_fields = sorted(
+            {
+                field_name
+                for field_name in referenced_fields
+                if field_name not in cached_hit_fields
+            }
+        )
 
-        if errors:
+        if invalid_fields:
             raise ValueError(
-                f"values {', '.join(errors)} are not allowed in howler. Attempt again"
+                "Invalid query field(s): "
+                f"{', '.join(invalid_fields)}. "
+                "Use get_hit_fields to list supported fields."
             )
 
         return normalized
 
-    @mcp.tool(name="WhoAmI", description="Get information about the current user")
+    @mcp.tool(name="whoami", description="Get information about the current user")
     async def whoami() -> WhoAmIResponse:
         """Return identity details for the authenticated Howler user.
 
@@ -82,15 +122,8 @@ def RegisterTools(mcp, api_client):
             WhoAmIResponse: Username, email, group membership, and role
             information for the current Howler user.
         """
-        access_token: AccessToken | None = get_access_token()
-        if not access_token:
-            raise ValueError("Access token is not available.")
+        access_token: AccessToken = _proper_access_token()
 
-        logger.info(
-            "Tool called: whoami. Client: %s User:%s",
-            access_token.client_id,
-            access_token.subject,
-        )
         data = await api_client.call(
             user_access_token=access_token,
             path="/user/whoami",
@@ -103,7 +136,7 @@ def RegisterTools(mcp, api_client):
             roles=data.get("roles") or [],
         )
 
-    @mcp.tool(name="ListAssignedHits")
+    @mcp.tool(name="list_assigned_hits")
     async def list_assigned_hits() -> list[dict[str, Any]]:
         """Return hits assigned to the currently authenticated user.
 
@@ -116,14 +149,7 @@ def RegisterTools(mcp, api_client):
         Raises:
             ValueError: If no access token is available.
         """
-        access_token: AccessToken | None = get_access_token()
-        if not access_token:
-            raise ValueError("Access token is not available.")
-        logger.info(
-            "Tool called: ListAssignedHits. Client: %s User:%s",
-            access_token.client_id,
-            access_token.subject,
-        )
+        access_token: AccessToken = _proper_access_token()
 
         return await api_client.call(
             user_access_token=access_token,
@@ -131,7 +157,7 @@ def RegisterTools(mcp, api_client):
             method="GET",
         )
 
-    @mcp.tool(name="AddCommentToHit")
+    @mcp.tool(name="add_comment_to_hit")
     async def add_comment_to_hit(hit_id: str, comment: str) -> str:
         """Add an analyst comment to a specific hit.
 
@@ -144,31 +170,20 @@ def RegisterTools(mcp, api_client):
             str: Confirmation message after the comment is added.
 
         Raises:
-            ValueError: If ``hit_id`` is not a valid UUID or if no access token
-                is available.
+            ValueError: no access token is available.
         """
-        try:
-            uuid.UUID(hit_id)
-        except ValueError:
-            raise ValueError("hit_id must be a valid UUID.")
-        access_token: AccessToken | None = get_access_token()
-        if not access_token:
-            raise ValueError("Access token is not available.")
+        access_token: AccessToken = _proper_access_token()
 
-        logger.info(
-            "Tool called: AddCommentToHit. Client: %s User:%s",
-            access_token.client_id,
-            access_token.subject,
-        )
-        _ = await api_client.call(
+        await api_client.call(
             user_access_token=access_token,
             path=f"/hit/{hit_id}/comments",
             method="POST",
             body={"value": f"From MCP Client: {comment}"},
         )
+
         return "Comment added successfully."
 
-    @mcp.tool(name="GetFieldValues")
+    @mcp.tool(name="get_field_values")
     async def get_field_values(field: str) -> dict[str, int]:
         """Return the distinct values and their hit counts for a specific Howler hit field.
 
@@ -191,9 +206,7 @@ def RegisterTools(mcp, api_client):
         """
         nonlocal cached_hit_fields
 
-        access_token: AccessToken | None = get_access_token()
-        if not access_token:
-            raise ValueError("Access token is not available.")
+        access_token: AccessToken = _proper_access_token()
 
         normalized_field = field.strip()
         if not normalized_field:
@@ -204,10 +217,10 @@ def RegisterTools(mcp, api_client):
 
         if normalized_field not in cached_hit_fields:
             raise ValueError(
-                f"The field: {normalized_field} is not a valid option. Use GetHitFields to see available fields."
+                f"The field: {normalized_field} is not a valid option. Use get_hit_fields to see available fields."
             )
 
-        return await api_client.call(
+        field_values = await api_client.call(
             user_access_token=access_token,
             # The facet endpoint lives under /search/facet/<index>/<field>.
             # Passing the field directly in the path avoids a separate body.
@@ -219,7 +232,9 @@ def RegisterTools(mcp, api_client):
             params={"query": r"howler.id:*"},
         )
 
-    @mcp.tool(name="GetHitFields")
+        return field_values
+
+    @mcp.tool(name="get_hit_fields")
     async def get_hit_fields() -> dict[str, Any]:
         """Return all searchable fields available on Howler hits.
 
@@ -235,9 +250,8 @@ def RegisterTools(mcp, api_client):
         Raises:
             ValueError: If no access token is available.
         """
-        access_token: AccessToken | None = get_access_token()
-        if not access_token:
-            raise ValueError("Access token is not available.")
+        access_token: AccessToken = _proper_access_token()
+
         all_values: dict[str, Any] = await api_client.call(
             user_access_token=access_token,
             # /search/fields/<index> returns the Elasticsearch field mapping
@@ -247,6 +261,7 @@ def RegisterTools(mcp, api_client):
             path="/search/fields/hit",
             method="GET",
         )
+
         # Keep only the metadata required for query authoring.
         projected_values: dict[str, Any] = {}
         for key, values in all_values.items():
@@ -262,7 +277,7 @@ def RegisterTools(mcp, api_client):
 
         return projected_values
 
-    @mcp.tool(name="luceneQuery")
+    @mcp.tool(name="lucene_query")
     async def lucene_query(
         query: str,
         fl: str,
@@ -297,9 +312,9 @@ def RegisterTools(mcp, api_client):
             howler.score:[50 TO 100] AND NOT howler.assessment:false-positive
             howler.outline.indicators:(example.com OR 1.2.3.4)
 
-        If you are unsure which field names are valid, call ``GetHitFields``
+        If you are unsure which field names are valid, call ``get_hit_fields``
         first. If you are unsure which values a field accepts, call
-        ``GetFieldValues`` first.
+        ``get_field_values`` first.
 
         **Reducing response size with** ``fl``:
 
@@ -326,8 +341,8 @@ def RegisterTools(mcp, api_client):
             query: A valid Lucene query string. Use ``field:value`` syntax, quote
                 phrase values that contain spaces, and use Lucene operators such as
                 ``AND``, ``OR``, ``NOT``, parentheses, and range expressions.
-                Do not invent field names or values. Use ``GetHitFields`` and
-                ``GetFieldValues`` to verify them before querying.
+                Do not invent field names or values. Use ``get_hit_fields`` and
+                ``get_field_values`` to verify them before querying.
             sort: Optional Howler sort expression, such as
                 ``event.created desc``. Leave empty to use the API default.
             rows: Maximum number of hits to return.
@@ -340,30 +355,18 @@ def RegisterTools(mcp, api_client):
             HowlerResponse: Structured search results containing the total count,
             returned row count, and simplified hit payloads.
         """
-        access_token: AccessToken | None = get_access_token()
-        if not access_token:
-            raise ValueError("Access token is not available.")
+        access_token: AccessToken = _proper_access_token()
 
-        query = await validate_query_fields(query)
+        query = await _validate_query_fields(query)
 
         if rows < 0 or rows > MAXIMUM_TICKET:
-            raise ValueError(
-                f"Row : {rows} can not be lower then 0 or higher then {MAXIMUM_TICKET}"
-            )
+            raise ValueError(f"rows={rows} must be between 0 and {MAXIMUM_TICKET}.")
 
-        if offset <= 0 or offset > MAXIMUM_OFFSET:
-            raise ValueError(
-                f"Offset : {offset} can not be lower then 0 or higher then {MAXIMUM_OFFSET}"
-            )
+        if offset < 0 or offset > MAXIMUM_OFFSET:
+            raise ValueError(f"offset={offset} must be between 0 and {MAXIMUM_OFFSET}.")
 
         if not fl.strip():
             raise ValueError("fl must be provided and cannot be empty.")
-
-        logger.info(
-            "Tool called: luceneQuery. Client: %s User:%s",
-            access_token.client_id,
-            access_token.subject,
-        )
 
         # Build the POST body incrementally so that optional fields are only
         # sent when they carry a meaningful value.
@@ -391,6 +394,7 @@ def RegisterTools(mcp, api_client):
             method="POST",
             body=body,
         )
+
         return HowlerResponse(
             rows=data.get("rows", 0),
             total=data.get("total", 0),

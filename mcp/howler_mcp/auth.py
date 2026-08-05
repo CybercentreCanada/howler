@@ -39,6 +39,7 @@ class KeycloakTokenVerifier(TokenVerifier):
             jwks_uri: URL of the Keycloak JWKS endpoint used to fetch signing keys.
             audience: Expected ``aud`` claim value for this resource server.
             required_scope: Scope string that must be present in the token.
+            timeout: Timeout in seconds for JWKS key retrieval.
         """
         self.issuer = issuer
         self.audience = audience
@@ -75,9 +76,7 @@ class KeycloakTokenVerifier(TokenVerifier):
 
             if not self._audience_matches(claims):
                 logger.warning(
-                    "TOKEN REJECTED: audience mismatch. EXPECTED AUD: %s, ACTUAL AUD: %s",
-                    self.audience,
-                    claims.get("aud"),
+                    f"token_rejected reason=audience_mismatch expected_aud={self.audience} actual_aud={claims.get('aud')}"
                 )
                 return None
 
@@ -85,15 +84,13 @@ class KeycloakTokenVerifier(TokenVerifier):
 
             if self.required_scope not in scopes:
                 logger.warning(
-                    "TOKEN REJECTED: missing required scope. REQUIRED SCOPE: %s, TOKEN SCOPES: %s",
-                    self.required_scope,
-                    scopes,
+                    f"token_rejected reason=missing_required_scope required_scope={self.required_scope} token_scopes={scopes}"
                 )
                 return None
 
             expires_at = claims.get("exp")
             if not isinstance(expires_at, int):
-                logger.warning("TOKEN REJECTED: exp missing or invalid")
+                logger.warning("token_rejected reason=invalid_exp")
                 return None
 
             client_id = self._extract_client_id(claims)
@@ -107,9 +104,7 @@ class KeycloakTokenVerifier(TokenVerifier):
             )
 
         except PyJWKClientError as exc:
-            logger.warning(
-                "TOKEN REJECTED: unable to fetch/resolve JWKS signing key: %s", exc
-            )
+            logger.warning(f"token_rejected reason=jwks_fetch_failure error={exc}")
             return None
         except (
             ExpiredSignatureError,
@@ -119,12 +114,10 @@ class KeycloakTokenVerifier(TokenVerifier):
             DecodeError,
             InvalidTokenError,
         ) as exc:
-            logger.warning("TOKEN REJECTED: invalid token claims/signature: %s", exc)
+            logger.warning(f"token_rejected reason=invalid_token error={exc}")
             return None
         except Exception:
-            logger.exception(
-                "TOKEN REJECTED: unexpected exception during verification."
-            )
+            logger.exception("token_rejected reason=unexpected_exception")
             return None
 
     def _audience_matches(self, claims: dict[str, Any]) -> bool:

@@ -17,27 +17,36 @@ This service intentionally uses token pass-through. It does not mint a second ba
 
 The server currently registers these tools:
 
-| Tool             | Backend path              | Method | Purpose                                                     |
-| ---------------- | ------------------------- | ------ | ----------------------------------------------------------- |
-| WhoAmI           | /user/whoami              | GET    | Return current user identity and roles.                     |
-| ListAssignedHits | /hit/user                 | GET    | Return hits assigned to the authenticated user.             |
-| AddCommentToHit  | /hit/{hit_id}/comments    | POST   | Append an analyst comment to a hit.                         |
-| GetHitFields     | /search/fields/hit        | GET    | Return valid searchable fields for hit Lucene queries.      |
-| GetFieldValues   | /search/facet/hit/{field} | GET    | Return value distribution for one field.                    |
-| luceneQuery      | /search/hit               | POST   | Execute Lucene search with field projection and pagination. |
+| Tool               | Backend path              | Method | Purpose                                                     |
+| ------------------ | ------------------------- | ------ | ----------------------------------------------------------- |
+| whoami             | /user/whoami              | GET    | Return current user identity and roles.                     |
+| list_assigned_hits | /hit/user                 | GET    | Return hits assigned to the authenticated user.             |
+| add_comment_to_hit | /hit/{hit_id}/comments    | POST   | Append an analyst comment to a hit.                         |
+| get_hit_fields     | /search/fields/hit        | GET    | Return valid searchable fields for hit Lucene queries.      |
+| get_field_values   | /search/facet/hit/{field} | GET    | Return value distribution for one field.                    |
+| lucene_query       | /search/hit               | POST   | Execute Lucene search with field projection and pagination. |
 
-Important note: older helper tools such as ListAlerts, GetHitById, SearchHitsWithIndicators, GetFalsePositiveHits, and ListHitsByAnalytic were replaced by luceneQuery plus discovery helpers GetHitFields and GetFieldValues.
+Important note: older helper tools such as ListAlerts, GetHitById, SearchHitsWithIndicators, GetFalsePositiveHits, and ListHitsByAnalytic were replaced by lucene_query plus discovery helpers get_hit_fields and get_field_values.
 
 ## Prompt Surface
 
 The server currently registers prompt guidance for:
 
-- WhoAmI
-- ListAssignedHits
-- AddCommentToHit
-- GetFieldValues
-- GetHitFields
-- luceneQuery
+- whoami
+- list_assigned_hits
+- add_comment_to_hit
+- get_field_values
+- get_hit_fields
+- lucene_query
+
+## Capability Summary
+
+Current server capabilities:
+
+- Authenticates requests by validating JWT signature and claims via Keycloak JWKS.
+- Forwards the validated user token to Howler API (token pass-through model).
+- Exposes analyst triage tools for identity checks, assigned-hit retrieval, commenting, field discovery, and Lucene hit search.
+- Validates Lucene query fields against backend-exposed searchable fields before issuing search requests.
 
 ## Project Layout
 
@@ -147,7 +156,7 @@ Empty/failed query execution:
 
 - invalid field names in Lucene query.
 - invalid values for enumerated fields.
-- use GetHitFields and GetFieldValues before complex luceneQuery filters.
+- use get_hit_fields and get_field_values before complex lucene_query filters.
 
 ## Security Model Summary
 

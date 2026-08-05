@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 try:
     port: int = int(MCPSettings.PORT)
 except ValueError:
-    logger.error("Invalid port number: %s", MCPSettings.PORT)
+    logger.error(f"server_config_error invalid_port={MCPSettings.PORT}")
     port: int = 8000
 
 
@@ -75,11 +75,6 @@ RegisterPrompts(mcp)
 if __name__ == "__main__":
     # Start the MCP server using streamable-HTTP transport.
 
-    logger.info(
-        "Starting Howler MCP server on %s:%s",
-        MCPSettings.HOST,
-        port,
-    )
-    logger.info("Targeting Howler instance at %s", HOWLER_API.BASE_URL)
-
+    logger.info(f"server_start host={MCPSettings.HOST} port={port}")
+    logger.info(f"server_backend_target base_url={HOWLER_API.BASE_URL}")
     mcp.run(transport="streamable-http")

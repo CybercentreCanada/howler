@@ -12,14 +12,42 @@ HttpVerb = Literal["GET", "POST", "OPTIONS"]
 logger = logging.getLogger(__name__)
 
 
+def _endpoint_name(route: str) -> str:
+    """Map backend API routes to stable endpoint aliases for logs.
+
+    Args:
+        route: Normalized API route beginning with ``/``.
+
+    Returns:
+        str: A low-cardinality endpoint name for structured logging.
+    """
+    # Keep exact-route checks above pattern checks to avoid accidental matches.
+    if route == "/user/whoami":
+        return "user_whoami"
+    if route == "/hit/user":
+        return "hit_user"
+    if route.startswith("/hit/") and route.endswith("/comments"):
+        return "hit_comments_add"
+    if route.startswith("/search/facet/hit/"):
+        return "search_facet_hit"
+    if route == "/search/fields/hit":
+        return "search_fields_hit"
+    if route == "/search/hit":
+        return "search_hit"
+    return "unknown_endpoint"
+
+
+def _status_class(code: int) -> str:
+    """Return HTTP status class label, for example ``4xx``."""
+    return f"{code // 100}xx"
+
+
 class HowlerApiClient:
     """HTTP client for communicating with the Howler REST API.
 
     Handles token exchange, request construction, and response unwrapping
     for all MCP tool calls that need to reach the Howler backend.
     """
-
-    logger = logging.getLogger(__name__)
 
     def __init__(
         self,
@@ -83,8 +111,9 @@ class HowlerApiClient:
         api_response = None
         status_code: int = -1  # Initialised to known impossible answer value
         route = f"/{path.lstrip('/')}"
+        endpoint = _endpoint_name(route)
         logger.info(
-            f"api_request_start method={method} route={route} timeout={self.timeout:.2f}"
+            f"api_request_start method={method} endpoint={endpoint} timeout={self.timeout:.2f}"
         )
 
         try:
@@ -109,7 +138,7 @@ class HowlerApiClient:
             if "api_response" not in _json:
                 outcome = "invalid_envelope"
                 logger.error(
-                    f"api_request_invalid_envelope method={method} route={route} status={response.status_code}"
+                    f"api_request_invalid_envelope method={method} endpoint={endpoint} status={response.status_code}"
                 )
                 raise ValueError("Howler API did not return in expected format")
 
@@ -119,12 +148,13 @@ class HowlerApiClient:
         except httpx.HTTPStatusError as e:
             code = e.response.status_code
             status_code = code
-            outcome = f"http_{code // 100}xx"
+            status_class = _status_class(code)
+            outcome = f"http_{status_class}"
             logger.warning(
-                f"api_request_http_error method={method} route={route} status_code={code} outcome={outcome}"
+                f"api_request_http_error method={method} endpoint={endpoint} status_code={code} outcome={outcome}"
             )
             raise httpx.HTTPStatusError(
-                f"Backend HTTP status error for {method} {route}: {code}",
+                f"Backend HTTP status error for {method} {endpoint}: {code}",
                 request=e.request,
                 response=e.response,
             ) from e
@@ -132,30 +162,33 @@ class HowlerApiClient:
         except httpx.TimeoutException as e:
             outcome = "timeout"
             logger.warning(
-                f"api_request_timeout method={method} route={route} outcome={outcome}"
+                f"api_request_timeout method={method} endpoint={endpoint} outcome={outcome}"
             )
             raise httpx.TimeoutException(
-                f"Backend timeout for {method} {route}",
+                f"Backend timeout for {method} {endpoint}",
             ) from e
 
         except httpx.HTTPError as e:
             outcome = "network_error"
             logger.exception(
-                f"api_request_http_error method={method} route={route} outcome={outcome}"
+                f"api_request_http_error method={method} endpoint={endpoint} outcome={outcome}"
             )
-            raise httpx.HTTPError(f"Backend network error for {method} {route}") from e
+            raise httpx.HTTPError(
+                f"Backend network error for {method} {endpoint}"
+            ) from e
 
         except ValueError as e:
             outcome = "value_error"
             logger.warning(
-                f"api_request_value_error method={method} route={route} outcome={outcome}"
+                f"api_request_value_error method={method} endpoint={endpoint} outcome={outcome}"
             )
             raise ValueError(
-                f"Request validation error for {method} {route}: {e}"
+                f"Request validation error for {method} {endpoint}: {e}"
             ) from e
 
         finally:
+            duration_seconds = time.perf_counter() - started
             logger.info(
-                f"api_request_end method={method} route={route} outcome={outcome} status={status_code} duration_ms={(time.perf_counter() - started) * 1000.0:.2f}"
+                f"api_request_end method={method} endpoint={endpoint} outcome={outcome} status={status_code} duration_ms={duration_seconds * 1000.0:.2f}"
             )
         return api_response
