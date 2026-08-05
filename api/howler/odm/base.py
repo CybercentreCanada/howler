@@ -16,7 +16,7 @@ import copy
 import json
 import re
 import typing
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum as PyEnum
 from enum import EnumMeta
 from ipaddress import ip_address
@@ -1538,6 +1538,8 @@ class Model:
             if timestamp_format == "posix":
                 return int(value.timestamp())
 
+            if value.tzinfo is not None:
+                value = value.astimezone(timezone.utc)
             return value.strftime(DATEFORMAT)
 
         if value is not None and isinstance(field_type, IP):
@@ -1550,6 +1552,8 @@ class Model:
 
             if ip_format == "str":
                 return str(ip_address(value))
+
+            return value
 
         if isinstance(value, TypedMapping):
             return {
