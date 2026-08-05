@@ -5,6 +5,7 @@ from typing import List, Optional
 
 from howler import odm
 from howler.config import config
+from howler.datastore.utils import expand_field_patterns, prune_to_paths
 
 _OPERATION_GROUP = tuple[str] | tuple[str, str]
 
@@ -86,7 +87,19 @@ class ElasticBulkPlan(object):
             )
         )
 
-    def add_update_operation(self, doc_id, doc, index=None):
+    def add_update_operation(self, doc_id, doc, index=None, fields: Optional[List[str]] = None):
+        """Queue a partial-merge (ES ``update``) operation.
+
+        Args:
+            fields: When provided, restricts the update body to just these dotted field
+                paths (any valid key from :meth:`ESCollection.fields`/`Model.flat_fields`),
+                dropping everything else so unrelated concurrent edits to the stored
+                document aren't clobbered. Entries may contain ``*`` wildcards, expanded
+                against the model's known field paths (e.g. ``"items.*"`` selects every
+                subfield of the ``items`` list without touching ``title``, ``summary``,
+                etc.). A path with no wildcard is kept wholesale, including any nested
+                subfields, e.g. ``"items"`` alone also keeps every subfield of ``items``.
+        """
         if self.model and isinstance(doc, self.model):
             saved_doc = doc.as_primitives(hidden_fields=True)
         elif self.model:
@@ -96,6 +109,9 @@ class ElasticBulkPlan(object):
                 saved_doc = {"__non_doc_raw__": doc}
             else:
                 saved_doc = deepcopy(doc)
+
+        if fields is not None:
+            saved_doc = prune_to_paths(saved_doc, allowed=expand_field_patterns(self.model, fields))
 
         if index:
             self.operations.append(

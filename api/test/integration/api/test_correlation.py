@@ -122,6 +122,55 @@ class TestCorrelationPipeline:
         assert matching_item.name == "My Detection"
         assert matching_item.parent == alerts_folder.id
 
+    def test_deeply_nested_destination_persists_all_folders(self, test_case, datastore: HowlerDatastore):
+        """A deeply nested rule destination has every intermediate folder persisted to the case."""
+        case_id, session, host = test_case
+
+        parts = ["a", "b", "c", "d", "e", "f", "g", "h"]
+        rule_data = {
+            "query": "event.kind:alert",
+            "destination": "/".join(parts) + "/{{howler.analytic}}",
+        }
+        get_api_data(
+            session,
+            f"{host}/api/v2/case/{case_id}/rules",
+            method="POST",
+            data=json.dumps(rule_data),
+        )
+        datastore.case.commit()
+
+        ingest_resp = get_api_data(
+            session,
+            f"{host}/api/v2/ingest/hit",
+            method="POST",
+            data=json.dumps([_make_hit(analytic="Deeply Nested Detection", kind="alert")]),
+        )
+        hit_id = ingest_resp[0]
+        datastore.hit.commit()
+        time.sleep(1)
+
+        correlation_service.process_batch([hit_id])
+
+        # Re-fetch the case from the datastore to confirm the whole folder chain, not just
+        # the in-memory objects mutated by process_batch, was actually persisted.
+        datastore.case.commit()
+        case = datastore.case.get(case_id)
+        assert case is not None
+
+        folders = [item for item in case.items if item.type == "folder"]
+        assert len(folders) == len(parts)
+
+        matching_item = next(item for item in case.items if item.value == hit_id)
+        assert matching_item.name == "Deeply Nested Detection"
+
+        names_leaf_to_root = []
+        current = next((item for item in case.items if item.id == matching_item.parent), None)
+        while current is not None:
+            names_leaf_to_root.append(current.name)
+            current = next((item for item in case.items if item.id == current.parent), None)
+
+        assert names_leaf_to_root == list(reversed(parts))
+
     def test_non_matching_hit_not_added(self, test_case, datastore: HowlerDatastore):
         """A hit that does not match the rule's query is not added."""
         case_id, session, host = test_case

@@ -40,6 +40,7 @@ from howler.datastore.support.schemas import (
     default_mapping,
 )
 from howler.datastore.types import AggSearchResult, SearchResult
+from howler.datastore.utils import expand_field_patterns
 from howler.odm.base import (
     BANNED_FIELDS,
     IP,
@@ -1628,23 +1629,8 @@ class ESCollection(Generic[ModelType]):
         if not self.model_class or "*" not in fl:
             return fl
 
-        all_fields = list(self.model_class.flat_fields().keys())
-        expanded: list[str] = []
-        for pattern in fl.split(","):
-            pattern = pattern.strip()
-            if not pattern:
-                # Skip empty entries (e.g. from trailing commas).
-                continue
-            if "*" not in pattern or pattern == "*":
-                # Exact names and the bare '*' (meaning "all fields") are kept as-is.
-                expanded.append(pattern)
-            else:
-                # Convert the glob-style wildcard to a full regex pattern.
-                # Replace '*' with '.*' and escape all other regex special characters.
-                regex = re.compile("^" + re.escape(pattern).replace(r"\*", ".*") + "$")
-                matched = [f for f in all_fields if regex.match(f)]
-                expanded.extend(matched if matched else [pattern])
-        return ",".join(expanded)
+        patterns = [p.strip() for p in fl.split(",") if p.strip()]
+        return ",".join(expand_field_patterns(self.model_class, patterns, preserve_all=True))
 
     def _format_output(self, result, fields=None, as_obj=True):
         # Getting search document data

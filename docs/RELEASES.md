@@ -1,5 +1,9 @@
 # Howler Releases
 
+## Howler API `v4.0.2`
+
+- **Add to Case Destination Template** _(bugfix)_: The `add_to_case` action now uses a single Mustache `destination` template (e.g. `related/{{howler.analytic}} ({{howler.id}})`) instead of separate `path` and `title_template` arguments, matching the placement behavior used by case correlation rules.
+
 ## Howler API `v4.0.1`
 
 - **Case Correlation for v1 Ingestion** _(bugfix)_: Fixed a gap where records ingested through v1 endpoints were not queued for correlation processing, so case correlation rules did not apply to those records.

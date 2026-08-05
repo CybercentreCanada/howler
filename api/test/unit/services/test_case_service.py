@@ -627,11 +627,11 @@ class TestAppendCaseItemRouting:
 class TestAppendHit:
     """Tests for case_service.append_hit."""
 
-    @patch("howler.services.case_service._sync_case_metadata")
-    @patch("howler.services.case_service._add_backreference")
+    @patch("howler.services.case_service.recompute_case_metadata")
+    @patch("howler.services.case_service.add_backreference")
     @patch("howler.services.case_service.datastore")
     def test_append_hit_adds_item(self, mock_ds_fn, mock_backref, mock_sync):
-        """append_hit appends the item to the case and delegates save to _sync_case_metadata."""
+        """append_hit appends the item to the case and delegates metadata sync to recompute_case_metadata."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -650,9 +650,10 @@ class TestAppendHit:
         assert len(mock_case.items) == 1
         mock_backref.assert_called_once_with(mock_hit, "case-001")
         mock_sync.assert_called_once_with(mock_case)
+        mock_hit.save.assert_called_once()
 
-    @patch("howler.services.case_service._sync_case_metadata")
-    @patch("howler.services.case_service._add_backreference")
+    @patch("howler.services.case_service.recompute_case_metadata")
+    @patch("howler.services.case_service.add_backreference")
     @patch("howler.services.case_service.datastore")
     def test_append_hit_preserves_name_and_parent(self, mock_ds_fn, mock_backref, mock_sync):
         """append_hit preserves the item's name and parent fields without modification."""
@@ -728,8 +729,8 @@ class TestAppendHit:
 class TestAppendEvent:
     """Tests for case_service.append_event."""
 
-    @patch("howler.services.case_service._sync_case_metadata")
-    @patch("howler.services.case_service._add_backreference")
+    @patch("howler.services.case_service.recompute_case_metadata")
+    @patch("howler.services.case_service.add_backreference")
     @patch("howler.services.case_service.datastore")
     def test_append_event_adds_item(self, mock_ds_fn, mock_backref, mock_sync):
         """append_event appends the item to the case and saves."""
@@ -754,6 +755,7 @@ class TestAppendEvent:
         assert len(mock_case.items) == 1
         mock_backref.assert_called_once_with(mock_obs, "case-001")
         mock_sync.assert_called_once_with(mock_case)
+        mock_obs.save.assert_called_once()
 
     @patch("howler.services.case_service.datastore")
     def test_append_event_missing_case_raises(self, mock_ds_fn):
@@ -1047,7 +1049,7 @@ class TestRemoveCaseItem:
         with pytest.raises(NotFoundException):
             case_service.remove_case_items("case-001", ["00000000-0000-0000-0000-000000000000"])
 
-    @patch("howler.services.case_service._sync_case_metadata")
+    @patch("howler.services.case_service.recompute_case_metadata")
     @patch("howler.services.case_service.datastore")
     def test_remove_hit_item_clears_backreference(self, mock_ds_fn, mock_sync):
         """remove_case_item removes the item from the case and removes the hit back-reference."""
@@ -1071,7 +1073,7 @@ class TestRemoveCaseItem:
         assert hit_item not in mock_case.items
         mock_sync.assert_called_once_with(mock_case)
 
-    @patch("howler.services.case_service._sync_case_metadata")
+    @patch("howler.services.case_service.recompute_case_metadata")
     @patch("howler.services.case_service.datastore")
     def test_remove_event_item_clears_backreference(self, mock_ds_fn, mock_sync):
         """remove_case_item removes an event item from the case."""
@@ -1293,26 +1295,16 @@ class TestCollectIndicatorsFromRelated:
 
 
 # ---------------------------------------------------------------------------
-# _sync_case_metadata()
+# recompute_case_metadata()
 # ---------------------------------------------------------------------------
 
 
 class TestSyncCaseMetadata:
-    """Tests for case_service._sync_case_metadata."""
-
-    @patch("howler.services.case_service.datastore")
-    def test_sync_case_metadata_noop_on_missing_case(self, mock_ds_fn):
-        """_sync_case_metadata does nothing when the case does not exist."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-
-        case_service._sync_case_metadata(None)
-
-        mock_ds.case.save.assert_not_called()
+    """Tests for case_service.recompute_case_metadata."""
 
     @patch("howler.services.case_service.datastore")
     def test_sync_case_metadata_updates_from_hit_outline(self, mock_ds_fn):
-        """_sync_case_metadata populates threats/targets/indicators from hit outline data."""
+        """recompute_case_metadata populates threats/targets/indicators from hit outline data, in memory only."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -1320,7 +1312,6 @@ class TestSyncCaseMetadata:
 
         mock_case = MagicMock()
         mock_case.items = [hit_item]
-        mock_case.save.return_value = True
 
         mock_outline = MagicMock()
         mock_outline.threat = "evil.example.com"
@@ -1332,33 +1323,32 @@ class TestSyncCaseMetadata:
         mock_hit.howler.outline = mock_outline
         mock_ds.hit.get.return_value = mock_hit
 
-        case_service._sync_case_metadata(mock_case)
+        case_service.recompute_case_metadata(mock_case)
 
-        mock_case.save.assert_called_once()
+        mock_case.save.assert_not_called()
         assert mock_case.threats == ["evil.example.com"]
         assert mock_case.targets == ["workstation-01"]
         assert mock_case.indicators == ["hash-abc"]
 
     @patch("howler.services.case_service.datastore")
     def test_sync_case_metadata_clears_when_no_items(self, mock_ds_fn):
-        """_sync_case_metadata resets threats/targets/indicators to empty lists when no items exist."""
+        """recompute_case_metadata resets threats/targets/indicators to empty lists when no items exist."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
         mock_case = MagicMock()
         mock_case.items = []
-        mock_case.save.return_value = True
 
-        case_service._sync_case_metadata(mock_case)
+        case_service.recompute_case_metadata(mock_case)
 
-        mock_case.save.assert_called_once()
+        mock_case.save.assert_not_called()
         assert mock_case.targets == []
         assert mock_case.threats == []
         assert mock_case.indicators == []
 
     @patch("howler.services.case_service.datastore")
     def test_sync_case_metadata_collects_from_events(self, mock_ds_fn):
-        """_sync_case_metadata collects indicators from event items via their related data."""
+        """recompute_case_metadata collects indicators from event items via their related data."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -1366,22 +1356,21 @@ class TestSyncCaseMetadata:
 
         mock_case = MagicMock()
         mock_case.items = [obs_item]
-        mock_case.save.return_value = True
 
         mock_related = Related({"ip": ["10.0.0.1"], "hosts": ["host-x"]})
         mock_obs = MagicMock()
         mock_obs.related = mock_related
         mock_ds.event.get.return_value = mock_obs
 
-        case_service._sync_case_metadata(mock_case)
+        case_service.recompute_case_metadata(mock_case)
 
-        mock_case.save.assert_called_once()
+        mock_case.save.assert_not_called()
         assert "10.0.0.1" in mock_case.indicators
         assert "host-x" in mock_case.indicators
 
     @patch("howler.services.case_service.datastore")
     def test_sync_case_metadata_skips_missing_event(self, mock_ds_fn):
-        """_sync_case_metadata skips event items whose backing object is None."""
+        """recompute_case_metadata skips event items whose backing object is None."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -1389,55 +1378,56 @@ class TestSyncCaseMetadata:
 
         mock_case = MagicMock()
         mock_case.items = [obs_item]
-        mock_case.save.return_value = True
 
         mock_ds.event.get.return_value = None
 
-        case_service._sync_case_metadata(mock_case)
+        case_service.recompute_case_metadata(mock_case)
 
-        mock_case.save.assert_called_once()
+        mock_case.save.assert_not_called()
         assert mock_case.indicators == []
 
 
 # ---------------------------------------------------------------------------
-# _add_backreference()
+# add_backreference()
 # ---------------------------------------------------------------------------
 
 
 class TestAddBackreference:
-    """Tests for case_service._add_backreference."""
+    """Tests for case_service.add_backreference."""
 
     def test_add_backreference_raises_on_none_object(self):
-        """_add_backreference raises InvalidDataException when backing_obj is None."""
+        """add_backreference raises InvalidDataException when backing_obj is None."""
         with pytest.raises(InvalidDataException):
-            case_service._add_backreference(None, "case-id")
+            case_service.add_backreference(None, "case-id")
 
     def test_add_backreference_raises_on_empty_case_id(self):
-        """_add_backreference raises InvalidDataException when case_id is empty."""
+        """add_backreference raises InvalidDataException when case_id is empty."""
         mock_obj = MagicMock()
 
         with pytest.raises(InvalidDataException):
-            case_service._add_backreference(mock_obj, "")
+            case_service.add_backreference(mock_obj, "")
 
-    def test_add_backreference_appends_and_saves(self):
-        """_add_backreference appends the case_id to related and saves the object."""
+    def test_add_backreference_appends_without_saving(self):
+        """add_backreference appends the case_id to related, in memory only."""
         mock_obj = MagicMock()
         mock_obj.howler.related = []
         mock_obj.howler.id = "obj-001"
 
-        case_service._add_backreference(mock_obj, "case-abc")
+        added = case_service.add_backreference(mock_obj, "case-abc")
 
+        assert added is True
         assert "case-abc" in mock_obj.howler.related
-        mock_obj.save.assert_called_once()
+        mock_obj.save.assert_not_called()
 
     def test_add_backreference_is_idempotent(self):
-        """_add_backreference does not add a duplicate if the case_id is already present."""
+        """add_backreference does not add a duplicate if the case_id is already present."""
         mock_obj = MagicMock()
         mock_obj.howler.related = ["case-abc"]
         mock_obj.howler.id = "obj-001"
 
-        case_service._add_backreference(mock_obj, "case-abc")
+        added = case_service.add_backreference(mock_obj, "case-abc")
 
+        assert added is False
         assert mock_obj.howler.related.count("case-abc") == 1
         mock_obj.save.assert_not_called()
 
@@ -1465,8 +1455,8 @@ class TestRemoveBackreference:
         assert "other-case" in mock_obj.howler.related
         mock_obj.save.assert_not_called()
 
-    def test_remove_backreference_removes_and_saves(self):
-        """remove_backreference removes the case_id from related and saves."""
+    def test_remove_backreference_removes_without_saving(self):
+        """remove_backreference removes the case_id from related, in memory only."""
         mock_obj = MagicMock()
         mock_obj.howler.related = ["case-abc", "other-case"]
         mock_obj.howler.id = "obj-001"
@@ -1475,7 +1465,7 @@ class TestRemoveBackreference:
 
         assert "case-abc" not in mock_obj.howler.related
         assert "other-case" in mock_obj.howler.related
-        mock_obj.save.assert_called_once()
+        mock_obj.save.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -1522,7 +1512,7 @@ class TestCaseEventEmission:
         assert "case" in args[0][1]
         assert args[0][1]["case"]["title"] == "New"
 
-    @patch("howler.services.case_service._sync_case_metadata")
+    @patch("howler.services.case_service.recompute_case_metadata")
     @patch("howler.services.case_service.comms_service")
     @patch("howler.services.case_service.datastore")
     def test_append_hit_emits_event(self, mock_ds_fn, mock_events, mock_sync):
@@ -1547,30 +1537,6 @@ class TestCaseEventEmission:
         args = mock_events.emit.call_args
         assert args[0][0] == "cases"
         assert "case" in args[0][1]
-
-    @patch("howler.services.case_service._sync_case_metadata")
-    @patch("howler.services.case_service.comms_service")
-    @patch("howler.services.case_service.datastore")
-    def test_append_hit_skips_emit_when_refetch_returns_none(self, mock_ds_fn, mock_events, mock_sync):
-        """append_hit does not emit when the re-fetch returns None."""
-        mock_ds = MagicMock()
-        mock_ds_fn.return_value = mock_ds
-
-        mock_case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
-        mock_hit = MagicMock()
-        mock_hit.classification = CLASSIFICATION.UNRESTRICTED
-        mock_hit.howler.related = []
-        mock_hit.howler.id = "hit-001"
-
-        # First get returns the case, second get (refetch) returns None
-        mock_ds.case.get.side_effect = [None]
-        mock_ds.hit.get.return_value = mock_hit
-        mock_ds.case.save.return_value = True
-
-        item = CaseItem({"type": "hit", "value": "hit-001", "name": "test"})
-        case_service.append_hit(mock_case, item)
-
-        mock_events.emit.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -2096,8 +2062,8 @@ def _make_log_change(key: str, prev: str, new: str, timestamp: str) -> CaseLog:
 class TestCaseItemClassificationPropagation:
     """Tests that append_hit / append_event copy the record's classification onto the item."""
 
-    @patch("howler.services.case_service._sync_case_metadata")
-    @patch("howler.services.case_service._add_backreference")
+    @patch("howler.services.case_service.recompute_case_metadata")
+    @patch("howler.services.case_service.add_backreference")
     @patch("howler.services.case_service.datastore")
     def test_append_hit_copies_classification(self, mock_ds_fn, _mock_backref, _mock_sync):
         """append_hit sets item.classification from the fetched hit."""
@@ -2119,8 +2085,8 @@ class TestCaseItemClassificationPropagation:
 
         assert item.classification.value == CLASSIFICATION.normalize_classification("RESTRICTED")
 
-    @patch("howler.services.case_service._sync_case_metadata")
-    @patch("howler.services.case_service._add_backreference")
+    @patch("howler.services.case_service.recompute_case_metadata")
+    @patch("howler.services.case_service.add_backreference")
     @patch("howler.services.case_service.datastore")
     def test_append_hit_overwrites_any_existing_classification(self, mock_ds_fn, _mock_backref, _mock_sync):
         """append_hit overwrites any classification already set on the item with the hit's value."""
@@ -2142,8 +2108,8 @@ class TestCaseItemClassificationPropagation:
 
         assert item.classification.value == CLASSIFICATION.normalize_classification("UNRESTRICTED")
 
-    @patch("howler.services.case_service._sync_case_metadata")
-    @patch("howler.services.case_service._add_backreference")
+    @patch("howler.services.case_service.recompute_case_metadata")
+    @patch("howler.services.case_service.add_backreference")
     @patch("howler.services.case_service.datastore")
     def test_append_event_copies_classification(self, mock_ds_fn, _mock_backref, _mock_sync):
         """append_event sets item.classification from the fetched event."""
@@ -2166,8 +2132,8 @@ class TestCaseItemClassificationPropagation:
 
         assert item.classification.value == CLASSIFICATION.normalize_classification("RESTRICTED")
 
-    @patch("howler.services.case_service._sync_case_metadata")
-    @patch("howler.services.case_service._add_backreference")
+    @patch("howler.services.case_service.recompute_case_metadata")
+    @patch("howler.services.case_service.add_backreference")
     @patch("howler.services.case_service.datastore")
     def test_append_event_copies_unrestricted_classification(self, mock_ds_fn, _mock_backref, _mock_sync):
         """append_event sets item.classification even when the event is UNRESTRICTED."""
@@ -2514,7 +2480,7 @@ class TestMoveCaseItem:
 class TestRemoveCaseItemsByIds:
     """Tests for case_service.remove_case_items."""
 
-    @patch("howler.services.case_service._sync_case_metadata")
+    @patch("howler.services.case_service.recompute_case_metadata")
     @patch("howler.services.case_service.datastore")
     def test_remove_item_by_id(self, mock_ds_fn, mock_sync):
         """remove_case_items removes a single item by its UUID."""
@@ -2575,7 +2541,7 @@ class TestRemoveCaseItemsByIds:
         with pytest.raises(InvalidDataException, match="not empty"):
             case_service.remove_case_items("case-001", [folder.id], force=False)
 
-    @patch("howler.services.case_service._sync_case_metadata")
+    @patch("howler.services.case_service.recompute_case_metadata")
     @patch("howler.services.case_service.datastore")
     def test_remove_non_empty_folder_with_force(self, mock_ds_fn, mock_sync):
         """remove_case_items with force=True removes a folder and its children."""
@@ -2810,6 +2776,29 @@ class TestGetParentFromPath:
         with pytest.raises(NotFoundException):
             case_service.get_parent_from_path(None, "some/path")
 
+    @patch("howler.odm.models.case.Case.save")
+    def test_deeply_nested_path_creates_all_folders_without_persisting(self, mock_save):
+        """With persist=False, every folder in a deep path is created in memory without saving."""
+        case = Case({"case_id": "case-001", "title": "T", "summary": "S", "overview": "O", "escalation": "normal"})
+        case.items = []
+
+        parts = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]
+        result = case_service.get_parent_from_path(case, "/".join(parts), create_if_missing=True, persist=False)
+
+        mock_save.assert_not_called()
+
+        folders = [item for item in case.items if item.type == "folder"]
+        assert len(folders) == len(parts)
+
+        # Walk the returned leaf folder back up to the root via parent pointers.
+        names_leaf_to_root = []
+        current = result
+        while current is not None:
+            names_leaf_to_root.append(current.name)
+            current = next((item for item in case.items if item.id == current.parent), None)
+
+        assert names_leaf_to_root == list(reversed(parts))
+
 
 # ---------------------------------------------------------------------------
 # _check_conflicts()
@@ -2887,16 +2876,16 @@ class TestMoveCaseItemNameConflict:
 
 
 # ---------------------------------------------------------------------------
-# _sync_case_metadata() — missing hit
+# recompute_case_metadata() — missing hit
 # ---------------------------------------------------------------------------
 
 
 class TestSyncCaseMetadataMissingHit:
-    """Test _sync_case_metadata skips a hit item when the backing hit is not found."""
+    """Test recompute_case_metadata skips a hit item when the backing hit is not found."""
 
     @patch("howler.services.case_service.datastore")
     def test_sync_skips_hit_not_in_datastore(self, mock_ds_fn):
-        """_sync_case_metadata continues gracefully when ds.hit.get returns None."""
+        """recompute_case_metadata continues gracefully when ds.hit.get returns None."""
         mock_ds = MagicMock()
         mock_ds_fn.return_value = mock_ds
 
@@ -2904,13 +2893,12 @@ class TestSyncCaseMetadataMissingHit:
 
         mock_case = MagicMock()
         mock_case.items = [hit_item]
-        mock_case.save.return_value = True
 
         mock_ds.hit.get.return_value = None
 
-        case_service._sync_case_metadata(mock_case)
+        case_service.recompute_case_metadata(mock_case)
 
-        mock_case.save.assert_called_once()
+        mock_case.save.assert_not_called()
         assert mock_case.targets == []
         assert mock_case.threats == []
         assert mock_case.indicators == []

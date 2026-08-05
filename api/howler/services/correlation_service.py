@@ -13,14 +13,16 @@ from datetime import datetime, timedelta, timezone
 import chevron
 from opentelemetry import trace
 
-from howler.common.exceptions import InvalidDataException, NotFoundException
+from howler.common.exceptions import HowlerRuntimeError, InvalidDataException, NotFoundException
 from howler.common.loader import datastore
 from howler.common.logging import get_logger
 from howler.config import CORRELATION_QUEUE_NAME
-from howler.odm.models.case import CaseRule, RuleIndexTypes
+from howler.odm.models.case import Case, CaseItem, CaseRule, RuleIndexTypes
 from howler.odm.models.config import config
+from howler.odm.models.event import Event
+from howler.odm.models.hit import Hit
 from howler.remote.datatypes.queues.named import NamedQueue
-from howler.services import case_service, search_service
+from howler.services import case_service, comms_service, search_service
 from howler.utils.str_utils import sanitize_lucene_query
 
 logger = get_logger(__file__)
@@ -54,6 +56,83 @@ def _get_ingestion_queue() -> NamedQueue[str]:
         )
 
     return _ingestion_queue
+
+
+def _resolve_backing_object(
+    item_type: str, record_id: str, backing_cache: dict[tuple[str, str], Hit | Event | None]
+) -> Hit | Event:
+    """Fetch (and cache) the hit/event backing a correlation match, across the whole batch.
+
+    Raises:
+        NotFoundException: If the backing hit/event does not exist.
+    """
+    key = (item_type, record_id)
+    if key not in backing_cache:
+        ds = datastore()
+        if item_type == RuleIndexTypes.EVENT:
+            backing_cache[key] = ds.event.get(key=record_id)
+        else:
+            backing_cache[key] = ds.hit.get(record_id)
+
+    backing_obj = backing_cache[key]
+    if backing_obj is None:
+        raise NotFoundException(f"{item_type.capitalize()} {record_id} not found, cannot be added to case")
+
+    return backing_obj
+
+
+def _add_record_to_case(
+    case: Case,
+    case_id: str,
+    record: dict,
+    rule: CaseRule,
+    backing_cache: dict[tuple[str, str], Hit | Event | None],
+    dirty_backing_keys: set[tuple[str, str]],
+) -> bool:
+    """Append a single matching record to a case, in memory only (no datastore writes).
+
+    Mirrors the validation/dispatch behaviour of ``case_service.append_case_item`` for hit
+    and event items, but mutates ``case.items`` directly instead of saving the case (and its
+    backing hit/event) on every call.
+
+    Returns:
+        True if the record was added to the case.
+    """
+    record_id = record["howler"]["id"]
+    item_type = record.get("__index", "hit")
+
+    rendered_path = chevron.render(rule.destination, record)
+    try:
+        path, name = rendered_path.rsplit("/", maxsplit=1)
+    except ValueError:
+        path = None
+        name = rendered_path
+
+    try:
+        parent = case_service.get_parent_from_path(case, path, create_if_missing=True, persist=False)
+
+        item = CaseItem({"type": item_type, "value": record_id, "parent": parent.id if parent else None, "name": name})
+        if item.name is None:
+            item.name = item.value
+
+        case_service._check_conflicts(case, item)
+
+        backing_obj = _resolve_backing_object(item_type, record_id, backing_cache)
+        item.classification = backing_obj.classification
+        case.items.append(item)
+
+        if case_service.add_backreference(backing_obj, case_id):
+            dirty_backing_keys.add((item_type, record_id))
+
+        return True
+    except InvalidDataException:
+        logger.debug("Record %s already exists in case %s, skipping", record_id, case_id)
+    except NotFoundException:
+        logger.warning("Case %s or record %s not found during correlation", case_id, record_id)
+    except Exception:  # pragma: no cover
+        logger.exception("Failed to add record %s to case %s", record_id, case_id)
+
+    return False
 
 
 def enqueue_for_correlation(ids: list[str]) -> None:
@@ -138,8 +217,10 @@ def process_batch(record_ids: list[str]) -> int:  # noqa: C901
 
     For each rule, a single Elasticsearch query is run against the indexes
     specified by the rule (hit, event, or both) to find which of the
-    given records match. Matching records are appended to the owning case at
-    the rule's (Mustache-rendered) destination path.
+    given records match. Matching records are accumulated in memory against
+    their owning case (at the rule's Mustache-rendered destination path), and
+    every touched case is written to the datastore once, in a single bulk
+    transaction, rather than saving on every match.
 
     Args:
         record_ids: List of record IDs (hit or event) to evaluate.
@@ -152,10 +233,6 @@ def process_batch(record_ids: list[str]) -> int:  # noqa: C901
 
     ds = datastore()
 
-    # Ensure recently written data is searchable before querying.
-    ds.case.commit()
-    ds.hit.commit()
-
     rules = get_active_rules()
     if not rules:
         return 0
@@ -163,11 +240,27 @@ def process_batch(record_ids: list[str]) -> int:  # noqa: C901
     id_filter = f"howler.id:({' OR '.join(sanitize_lucene_query(h) for h in record_ids)})"
     added = 0
 
+    # Cases and their backing hit/event objects are fetched once per batch and mutated in
+    # memory; they're only written to the datastore after every rule has been evaluated.
+    case_cache: dict[str, Case | None] = {}
+    case_original_item_counts: dict[str, int] = {}
+    backing_cache: dict[tuple[str, str], Hit | Event | None] = {}
+    dirty_backing_keys: set[tuple[str, str]] = set()
+
     for case_id, rule in rules:
         indexes: list[str] = list(rule.indexes) if rule.indexes else [RuleIndexTypes.HIT]
-        case = ds.case.get(case_id)
+
+        if case_id not in case_cache:
+            case = ds.case.get(case_id)
+            if case is None:
+                logger.warning("Case %s not found during correlation", case_id)
+            else:
+                case_original_item_counts[case_id] = len(case.items)
+
+            case_cache[case_id] = case
+
+        case = case_cache[case_id]
         if case is None:
-            logger.warning("Case %s not found during correlation", case_id)
             continue
 
         try:
@@ -182,33 +275,31 @@ def process_batch(record_ids: list[str]) -> int:  # noqa: C901
             continue
 
         for record in results["items"]:
-            record_id = record["howler"]["id"]
-            item_type = record.get("__index", "hit")
-
-            rendered_path = chevron.render(rule.destination, record)
-            try:
-                path, name = rendered_path.rsplit("/", maxsplit=1)
-            except ValueError:
-                path = None
-                name = rendered_path
-
-            parent = case_service.get_parent_from_path(case, path, create_if_missing=True)
-
-            try:
-                case_service.append_case_item(
-                    case,
-                    item_type=item_type,
-                    item_value=record_id,
-                    item_name=name,
-                    item_parent=parent.id if parent else None,
-                )
+            if _add_record_to_case(case, case_id, record, rule, backing_cache, dirty_backing_keys):
                 added += 1
-            except InvalidDataException:
-                logger.debug("Record %s already exists in case %s, skipping", record_id, case_id)
-            except NotFoundException:
-                logger.warning("Case %s or record %s not found during correlation", case_id, record_id)
-            except Exception:  # pragma: no cover
-                logger.exception("Failed to add record %s to case %s", record_id, case_id)
+
+    for key in dirty_backing_keys:
+        backing_obj = backing_cache[key]
+        if backing_obj is not None:
+            backing_obj.save()
+
+    modified_cases = [
+        case for cid, case in case_cache.items() if case and len(case.items) != case_original_item_counts[cid]
+    ]
+
+    bulk_plan = ds.case.get_bulk_plan()
+    if modified_cases:
+        for case in modified_cases:
+            case_service.recompute_case_metadata(case)
+            # Partial update: only touch fields derived from items, so concurrent user edits
+            # to the case (title, summary, rules, ...) aren't clobbered by a stale in-memory copy.
+            bulk_plan.add_update_operation(case.case_id, case, fields=["items", "targets", "threats", "indicators"])
+
+    if not bulk_plan.empty and not ds.case.bulk(bulk_plan):
+        raise HowlerRuntimeError("Bulk case update reported errors while flushing correlation batch")
+
+    for case in modified_cases:
+        comms_service.emit("cases", {"case": case.as_primitives()})
 
     return added
 
