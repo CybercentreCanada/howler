@@ -14,8 +14,12 @@ def _require_https_for_non_local(url: str, env_name: str) -> str:
             f"{env_name} must use http or https scheme. Got: {parsed.scheme!r}"
         )
 
+    hostname = (parsed.hostname or "").strip().lower()
+    if not hostname:
+        raise ValueError(f"{env_name} must include a hostname. Got: {url!r}")
+
     # Verify if the request go outside of the local host. If yes is it HTTPS? if no, not allowed
-    if parsed.scheme == "http" and str(parsed.hostname).strip().lower() not in {
+    if parsed.scheme == "http" and hostname not in {
         "localhost",
         "127.0.0.1",
         "::1",

@@ -8,6 +8,9 @@ from pydantic import BaseModel, Field
 # Safety limits to avoid oversized backend requests.
 MAXIMUM_TICKET: int = 200
 MAXIMUM_OFFSET: int = 10000
+# Reject ASCII control characters and path separators in path-bound
+# identifiers such as hit_id.
+CONTROL_OR_PATH_SEP_PATTERN = re.compile(r"[\x00-\x1F\x7F/\\]")
 
 
 class WhoAmIResponse(BaseModel):
@@ -45,6 +48,10 @@ def RegisterTools(mcp, api_client):
     """
     # Cache searchable fields for this process to reduce mapping calls.
     cached_hit_fields: set[str] | None = None
+
+    def _contains_escape_characters(value: str) -> bool:
+        """Return True when value contains control chars or path separators."""
+        return bool(CONTROL_OR_PATH_SEP_PATTERN.search(value))
 
     def _proper_access_token() -> AccessToken:
         """Return the current request access token.
@@ -173,6 +180,14 @@ def RegisterTools(mcp, api_client):
             ValueError: no access token is available.
         """
         access_token: AccessToken = _proper_access_token()
+
+        if not hit_id or not hit_id.strip():
+            raise ValueError("hit_id is required and cannot be empty.")
+
+        if _contains_escape_characters(hit_id):
+            raise ValueError("hit_id cannot contain escape/control characters.")
+
+        hit_id = hit_id.strip()  # removing any space character
 
         await api_client.call(
             user_access_token=access_token,
@@ -356,6 +371,8 @@ def RegisterTools(mcp, api_client):
             returned row count, and simplified hit payloads.
         """
         access_token: AccessToken = _proper_access_token()
+        if not query or not query.strip():
+            raise ValueError("query can not be empty or white spaces")
 
         query = await _validate_query_fields(query)
 
