@@ -13,8 +13,7 @@ OPERATION_ID = "add_to_case"
 def execute(  # noqa: C901
     query: str,
     case_id: Optional[str] = None,
-    path: str = "related",
-    title_template: str = "{{howler.analytic}} ({{howler.id}})",
+    destination: str = "related/{{howler.analytic}} ({{howler.id}})",
     **kwargs,
 ):
     """Add matching alerts to a given case.
@@ -22,10 +21,9 @@ def execute(  # noqa: C901
     Args:
         query (str): The query on which to apply this automation.
         case_id (str): The ID of the case to add the alerts to.
-        path (str): The path within the case at which to place the alerts. Defaults to "related".
-        title_template (str): A Mustache-compatible template string used to generate each item's
-            name. The hit's fields are available as template variables.
-            Defaults to "{{howler.analytic}} ({{howler.id}})".
+        destination (str): A Mustache-compatible template string for the case path at which each
+            alert will be placed, in the form "path/to/parent/name". The hit's fields are
+            available as template variables. Defaults to "related/{{howler.analytic}} ({{howler.id}})".
     """
     if not case_id:
         return [
@@ -67,15 +65,15 @@ def execute(  # noqa: C901
     added = []
 
     for hit in hits:
-        title = chevron.render(title_template, hit.as_primitives())
-        item_path = f"{path.rstrip('/')}/{title}" if path else title
+        rendered_destination = chevron.render(destination, hit.as_primitives())
         try:
-            path, name = item_path.rsplit("/", maxsplit=1)
+            item_path, name = rendered_destination.rsplit("/", maxsplit=1)
         except ValueError:
-            name = item_path
+            item_path = None
+            name = rendered_destination
 
         try:
-            parent = case_service.get_parent_from_path(case, path, create_if_missing=True)
+            parent = case_service.get_parent_from_path(case, item_path, create_if_missing=True)
 
             case_service.append_case_item(
                 case,
@@ -131,8 +129,7 @@ def specification():
             {
                 "args": {
                     "case_id": [],
-                    "path": [],
-                    "title_template": [],
+                    "destination": [],
                 },
                 "options": {},
             }

@@ -159,7 +159,7 @@ def test_execute_custom_path():
     execute(
         "howler.analytic:TestingCustomPath",
         case_id=_case.case_id,
-        path="investigations/test",
+        destination="investigations/test/{{howler.analytic}} ({{howler.id}})",
     )
 
     updated = ds.case.get(_case.case_id)
@@ -193,7 +193,7 @@ def test_execute_custom_title_template():
     execute(
         "howler.analytic:TestingTitleTemplate",
         case_id=_case.case_id,
-        title_template="Alert: {{howler.analytic}}",
+        destination="related/Alert: {{howler.analytic}}",
     )
 
     updated = ds.case.get(_case.case_id)
@@ -304,17 +304,16 @@ def test_specification():
     assert isinstance(step, dict)
     args = step["args"]
     assert "case_id" in args
-    assert "path" in args
-    assert "title_template" in args
+    assert "destination" in args
 
 
 # ---------------------------------------------------------------------------
-# path="" with no slash in rendered title → name = item_path (ValueError path)
+# destination with no '/' in the rendered value → name = rendered_destination (ValueError path)
 # ---------------------------------------------------------------------------
 
 
 def test_execute_empty_path_and_simple_title():
-    """When path is empty and the rendered title has no '/', name equals the full item_path."""
+    """When the rendered destination has no '/', name equals the full rendered destination."""
     lookups = loader.get_lookups()
     users = datastore().user.search("uname:*")["items"]
 
@@ -332,8 +331,7 @@ def test_execute_empty_path_and_simple_title():
     result = execute(
         "howler.analytic:TestingEmptyPath",
         case_id=_case.case_id,
-        path="",
-        title_template="SimpleTitle",
+        destination="SimpleTitle",
     )
 
     assert any(r["outcome"] == "success" for r in result)
