@@ -33,6 +33,13 @@ def _is_optional(field: base._Field) -> bool:
 def data_type_from_field(field: base._Field, allow_any_as_string: bool = False) -> tuple[DataType, bool]:
     """Get the Spark data type and nullability for a given field."""
     field_name = field.__class__.__name__
+
+    if isinstance(field, Any):
+        if not allow_any_as_string:
+            raise HowlerValueError(f"``Any`` type is not supported for Spark schema: {field.name}")
+        logger.warning(f"Using string type for ``Any`` field: {field.name}")
+        return TYPE_MAPPING["Any"], _is_optional(field)
+
     if field_name in TYPE_MAPPING:
         return TYPE_MAPPING[field_name], _is_optional(field)
 
@@ -45,7 +52,7 @@ def data_type_from_field(field: base._Field, allow_any_as_string: bool = False) 
         return ArrayType(elementType=child_type, containsNull=nullable), _is_optional(field)
 
     if isinstance(field, Compound):
-        schema = build_schema(field.child_type)
+        schema = build_schema(field.child_type, allow_any_as_string=allow_any_as_string)
         return schema, _is_optional(field)
 
     if isinstance(field, Mapping):
@@ -55,16 +62,10 @@ def data_type_from_field(field: base._Field, allow_any_as_string: bool = False) 
             _is_optional(field),
         )
 
-    if isinstance(field, Any):
-        if not allow_any_as_string:
-            raise HowlerValueError(f"``Any`` type is not supported for Spark schema: {field.name}")
-        logger.warning(f"Using string type for ``Any`` field: {field.name}")
-        return TYPE_MAPPING["Any"], _is_optional(field)
-
     raise HowlerValueError(f"Unknown type for Spark schema: {field_name}")
 
 
-def build_schema(model: type[odm.Model] | odm.Model) -> StructType:
+def build_schema(model: type[odm.Model] | odm.Model, allow_any_as_string: bool = False) -> StructType:
     """The spark schema based on a python model object."""
     field_data: list[base._Field] = model.fields().values()  # type: ignore
     fields = []
@@ -74,7 +75,7 @@ def build_schema(model: type[odm.Model] | odm.Model) -> StructType:
             continue
 
         name: str = field.name  # type: ignore
-        data_type, nullable = data_type_from_field(field)
+        data_type, nullable = data_type_from_field(field, allow_any_as_string=allow_any_as_string)
 
         description = field.description
         if not description and isinstance(field, (Optional, List, Mapping)):

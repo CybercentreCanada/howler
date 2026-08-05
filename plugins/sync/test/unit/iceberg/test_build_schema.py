@@ -1,5 +1,6 @@
 import pytest
 from howler import odm
+from howler.common.exceptions import HowlerValueError
 from pyspark.sql.types import (
     ArrayType,
     BooleanType,
@@ -237,3 +238,15 @@ def test_build_schema_does_not_include_sync_false_fields(model_with_sync_false_f
 
     assert "sync_false_field" not in schema.fieldNames()
     assert len(schema.fieldNames()) == len(model_with_sync_false_field.fields()) - 1
+
+
+def test_build_schema_with_any_field_raises_error(model_with_any_field):
+    with pytest.raises(HowlerValueError, match="``Any`` type is not supported for Spark schema"):
+        build_schema(model_with_any_field)
+
+
+def test_build_schema_with_allow_any_as_string(model_with_any_field):
+    schema = build_schema(model_with_any_field, allow_any_as_string=True)
+
+    assert schema.fieldNames() == ["any_field"]
+    assert schema["any_field"].dataType == StringType()
