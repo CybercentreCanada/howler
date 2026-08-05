@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Any, Literal
 
 import httpx
@@ -17,6 +18,8 @@ class HowlerApiClient:
     Handles token exchange, request construction, and response unwrapping
     for all MCP tool calls that need to reach the Howler backend.
     """
+
+    logger = logging.getLogger(__name__)
 
     def __init__(
         self,
@@ -75,27 +78,84 @@ class HowlerApiClient:
                 the response JSON does not contain an ``api_response`` key.
             httpx.HTTPStatusError: If the server returns a 4xx or 5xx status.
         """
-        if method != "POST" and body is not None:
-            raise ValueError("Request body is only allowed for POST")
-
-        exchanged_token = await self.auth_provider.get_howler_token(
-            user_access_token.token
+        started = time.perf_counter()
+        outcome = "unknown"
+        api_response = None
+        status_code: int = -1  # Initialised to known impossible answer value
+        route = f"/{path.lstrip('/')}"
+        logger.info(
+            f"api_request_start method={method} route={route} timeout={self.timeout:.2f}"
         )
-        headers = {"Authorization": f"Bearer {exchanged_token}"}
-        url = f"{self.base_url}/{path.lstrip('/')}"
 
-        response = await self._client.request(
-            method=method,
-            url=url,
-            headers=headers,
-            params=params,
-            json=body if method == "POST" else None,
-        )
-        response.raise_for_status()
+        try:
+            if method != "POST" and body is not None:
+                outcome = "body_error"
+                raise ValueError("Request body is only allowed for POST")
+            exchanged_token = await self.auth_provider.get_howler_token(
+                user_access_token.token
+            )
+            headers = {"Authorization": f"Bearer {exchanged_token}"}
+            url = f"{self.base_url}/{route.lstrip('/')}"
+            response = await self._client.request(
+                method=method,
+                url=url,
+                headers=headers,
+                params=params,
+                json=body if method == "POST" else None,
+            )
+            status_code = response.status_code
+            response.raise_for_status()
+            _json = response.json()
+            if "api_response" not in _json:
+                outcome = "invalid_envelope"
+                logger.error(
+                    f"api_request_invalid_envelope method={method} route={route} status={response.status_code}"
+                )
+                raise ValueError("Howler API did not return in expected format")
 
-        _json = response.json()
+            outcome = "success"
+            api_response = _json["api_response"]
 
-        if "api_response" not in _json:
-            raise ValueError("Howler API did not return in expected format")
+        except httpx.HTTPStatusError as e:
+            code = e.response.status_code
+            status_code = code
+            outcome = f"http_{code // 100}xx"
+            logger.warning(
+                f"api_request_http_error method={method} route={route} status_code={code} outcome={outcome}"
+            )
+            raise httpx.HTTPStatusError(
+                f"Backend HTTP status error for {method} {route}: {code}",
+                request=e.request,
+                response=e.response,
+            ) from e
 
-        return _json["api_response"]
+        except httpx.TimeoutException as e:
+            outcome = "timeout"
+            logger.warning(
+                f"api_request_timeout method={method} route={route} outcome={outcome}"
+            )
+            raise httpx.TimeoutException(
+                f"Backend timeout for {method} {route}",
+            ) from e
+
+        except httpx.HTTPError as e:
+            outcome = "network_error"
+            logger.exception(
+                f"api_request_http_error method={method} route={route} outcome={outcome}"
+            )
+            raise httpx.HTTPError(f"Backend network error for {method} {route}") from e
+
+        except ValueError as e:
+            outcome = "value_error"
+            logger.warning(
+                f"api_request_value_error method={method} route={route} outcome={outcome}"
+            )
+            raise ValueError(
+                f"Request validation error for {method} {route}: {e}"
+            ) from e
+
+        finally:
+            logger.info(
+                f"api_request_end method={method} route={route} outcome={outcome} status={status_code} duration_ms={(time.perf_counter() - started) * 1000.0:.2f}"
+            )
+        return api_response
