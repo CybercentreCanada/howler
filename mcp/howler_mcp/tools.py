@@ -53,23 +53,6 @@ def RegisterTools(mcp, api_client):
         """Return True when value contains control chars or path separators."""
         return bool(CONTROL_OR_PATH_SEP_PATTERN.search(value))
 
-    def _proper_access_token() -> AccessToken:
-        """Return the current request access token.
-
-        This helper centralizes token extraction so every tool enforces the
-        same auth precondition before calling the backend.
-
-        Returns:
-            AccessToken: The active MCP access token from request context.
-
-        Raises:
-            ValueError: If the request has no access token in context.
-        """
-        access_token: AccessToken | None = get_access_token()
-        if not access_token:
-            raise ValueError("Access token is not available.")
-        return access_token
-
     async def _validate_query_fields(query: str) -> str:
         """Normalize and validate field names referenced in a Lucene query.
 
@@ -129,7 +112,7 @@ def RegisterTools(mcp, api_client):
             WhoAmIResponse: Username, email, group membership, and role
             information for the current Howler user.
         """
-        access_token: AccessToken = _proper_access_token()
+        access_token: AccessToken = get_access_token()
 
         data = await api_client.call(
             user_access_token=access_token,
@@ -156,7 +139,7 @@ def RegisterTools(mcp, api_client):
         Raises:
             ValueError: If no access token is available.
         """
-        access_token: AccessToken = _proper_access_token()
+        access_token: AccessToken = get_access_token()
 
         return await api_client.call(
             user_access_token=access_token,
@@ -179,7 +162,7 @@ def RegisterTools(mcp, api_client):
         Raises:
             ValueError: no access token is available.
         """
-        access_token: AccessToken = _proper_access_token()
+        access_token: AccessToken = get_access_token()
 
         if not hit_id or not hit_id.strip():
             raise ValueError("hit_id is required and cannot be empty.")
@@ -221,7 +204,7 @@ def RegisterTools(mcp, api_client):
         """
         nonlocal cached_hit_fields
 
-        access_token: AccessToken = _proper_access_token()
+        access_token: AccessToken = get_access_token()
 
         normalized_field = field.strip()
         if not normalized_field:
@@ -265,7 +248,7 @@ def RegisterTools(mcp, api_client):
         Raises:
             ValueError: If no access token is available.
         """
-        access_token: AccessToken = _proper_access_token()
+        access_token: AccessToken = get_access_token()
 
         all_values: dict[str, Any] = await api_client.call(
             user_access_token=access_token,
@@ -370,7 +353,7 @@ def RegisterTools(mcp, api_client):
             HowlerResponse: Structured search results containing the total count,
             returned row count, and simplified hit payloads.
         """
-        access_token: AccessToken = _proper_access_token()
+        access_token: AccessToken = get_access_token()
         if not query or not query.strip():
             raise ValueError("query can not be empty or white spaces")
 
