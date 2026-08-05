@@ -53,6 +53,13 @@ def RegisterTools(mcp, api_client):
         """Return True when value contains control chars or path separators."""
         return bool(CONTROL_OR_PATH_SEP_PATTERN.search(value))
 
+    def _proper_access_token() -> AccessToken:
+        """Return the current request access token or fail consistently."""
+        access_token: AccessToken | None = get_access_token()
+        if not access_token:
+            raise ValueError("Access token is not available.")
+        return access_token
+
     async def _validate_query_fields(query: str) -> str:
         """Normalize and validate field names referenced in a Lucene query.
 
@@ -112,7 +119,7 @@ def RegisterTools(mcp, api_client):
             WhoAmIResponse: Username, email, group membership, and role
             information for the current Howler user.
         """
-        access_token: AccessToken = get_access_token()
+        access_token: AccessToken = _proper_access_token()
 
         data = await api_client.call(
             user_access_token=access_token,
@@ -139,7 +146,7 @@ def RegisterTools(mcp, api_client):
         Raises:
             ValueError: If no access token is available.
         """
-        access_token: AccessToken = get_access_token()
+        access_token: AccessToken = _proper_access_token()
 
         return await api_client.call(
             user_access_token=access_token,
@@ -162,7 +169,7 @@ def RegisterTools(mcp, api_client):
         Raises:
             ValueError: no access token is available.
         """
-        access_token: AccessToken = get_access_token()
+        access_token: AccessToken = _proper_access_token()
 
         if not hit_id or not hit_id.strip():
             raise ValueError("hit_id is required and cannot be empty.")
@@ -204,7 +211,7 @@ def RegisterTools(mcp, api_client):
         """
         nonlocal cached_hit_fields
 
-        access_token: AccessToken = get_access_token()
+        access_token: AccessToken = _proper_access_token()
 
         normalized_field = field.strip()
         if not normalized_field:
@@ -248,7 +255,7 @@ def RegisterTools(mcp, api_client):
         Raises:
             ValueError: If no access token is available.
         """
-        access_token: AccessToken = get_access_token()
+        access_token: AccessToken = _proper_access_token()
 
         all_values: dict[str, Any] = await api_client.call(
             user_access_token=access_token,
