@@ -39,7 +39,7 @@ class HowlerResponse(BaseModel):
     )
 
 
-def RegisterTools(mcp, api_client):
+def register_tools(mcp, api_client):
     """Register all Howler MCP tools on the provided FastMCP instance.
 
     Args:
@@ -167,7 +167,7 @@ def RegisterTools(mcp, api_client):
             str: Confirmation message after the comment is added.
 
         Raises:
-            ValueError: no access token is available.
+            ValueError: If no access token is available or if hit_id is invalid.
         """
         access_token: AccessToken = _proper_access_token()
 
@@ -175,7 +175,9 @@ def RegisterTools(mcp, api_client):
             raise ValueError("hit_id is required and cannot be empty.")
 
         if _contains_escape_characters(hit_id):
-            raise ValueError("hit_id cannot contain escape/control characters.")
+            raise ValueError(
+                "hit_id cannot contain control characters or path separators."
+            )
 
         hit_id = hit_id.strip()  # removing any space character
 
@@ -388,7 +390,8 @@ def RegisterTools(mcp, api_client):
         # fields server-side. The API expects a comma-separated string, not
         # a list — matching the "fl": "id,score" format in the data block.
         # howler.id is always included so hits remain identifiable.
-        requested = [f.strip() for f in fl.split(",") if f.strip()]
+        # We use a set -> list here to deduplicate entries
+        requested = list({f.strip() for f in fl.split(",") if f.strip()})
         if "howler.id" not in requested:
             requested.insert(0, "howler.id")
         body["fl"] = ",".join(requested)
