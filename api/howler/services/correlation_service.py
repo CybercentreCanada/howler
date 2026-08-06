@@ -9,7 +9,7 @@ The public API consists of three functions:
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import chevron
 from opentelemetry import trace
@@ -27,7 +27,7 @@ from howler.services import case_service, comms_service, search_service
 from howler.utils.str_utils import sanitize_lucene_query
 
 if TYPE_CHECKING:
-    from howler.datastore.collection import ESCollection
+    pass
 
 
 logger = get_logger(__file__)
@@ -64,7 +64,9 @@ def _get_ingestion_queue() -> NamedQueue[str]:
 
 
 def _resolve_backing_object(
-    item_type: str, record_id: str, backing_cache: dict[tuple[str, str], Hit | Event | None]
+    item_type: Literal["hit", "event"],
+    record_id: str,
+    backing_cache: dict[tuple[Literal["hit", "event"], str], Hit | Event | None],
 ) -> Hit | Event:
     """Fetch (and cache) the hit/event backing a correlation match, across the whole batch.
 
@@ -93,8 +95,8 @@ def _add_record_to_case(
     case_id: str,
     record: dict,
     rule: CaseRule,
-    backing_cache: dict[tuple[str, str], Hit | Event | None],
-) -> tuple[str, str] | None:
+    backing_cache: dict[tuple[Literal["hit", "event"], str], Hit | Event | None],
+) -> tuple[Literal["hit", "event"], str] | None:
     """Append a single matching record to a case, in memory only (no datastore writes).
 
     Mirrors the validation/dispatch behaviour of ``case_service.append_case_item`` for hit
@@ -255,8 +257,8 @@ def process_batch(record_ids: list[str]) -> int:  # noqa: C901
     # memory; they're only written to the datastore after every rule has been evaluated.
     case_cache: dict[str, Case | None] = {}
     case_original_item_counts: dict[str, int] = {}
-    backing_cache: dict[tuple[str, str], Hit | Event | None] = {}
-    dirty_backing_keys: set[tuple[str, str]] = set()
+    backing_cache: dict[tuple[Literal["hit", "event"], str], Hit | Event | None] = {}
+    dirty_backing_keys: set[tuple[Literal["hit", "event"], str]] = set()
 
     for case_id, rule in rules:
         indexes: list[str] = list(rule.indexes) if rule.indexes else [RuleIndexTypes.HIT]
@@ -289,14 +291,7 @@ def process_batch(record_ids: list[str]) -> int:  # noqa: C901
                 dirty_backing_keys.add(result)
                 added += 1
 
-    backing_collections: dict[str, "ESCollection"] = {
-        "hit": ds.hit,
-        "case": ds.event,
-    }
-    backing_bulk_plans = {
-        item_type: backing_collections[item_type].get_bulk_plan()
-        for item_type in {key[0] for key in dirty_backing_keys}
-    }
+    backing_bulk_plans = {item_type: ds[item_type].get_bulk_plan() for item_type, _ in dirty_backing_keys}
 
     for item_type, record_id in dirty_backing_keys:
         backing_obj = backing_cache[(item_type, record_id)]
@@ -304,7 +299,7 @@ def process_batch(record_ids: list[str]) -> int:  # noqa: C901
             backing_bulk_plans[item_type].add_update_operation(record_id, backing_obj, fields=["howler.related"])
 
     for item_type, bulk_plan in backing_bulk_plans.items():
-        if not backing_collections[item_type].bulk(bulk_plan):
+        if not ds[item_type].bulk(bulk_plan):
             raise HowlerRuntimeError("Bulk backing record update reported errors while flushing correlation batch")
 
     modified_cases = [
