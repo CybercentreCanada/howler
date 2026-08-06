@@ -2,8 +2,8 @@ import json
 import os
 from urllib.parse import urlparse, urlunparse
 
+import httpx
 import pytest
-import requests
 from howler_mcp.config import AUTH, HOWLER_API, MCPSettings
 
 RUN_MCP_NETWORK_TESTS = os.environ.get("RUN_MCP_NETWORK_TESTS", "").lower() in {
@@ -68,7 +68,7 @@ def get_token() -> str:
     if AUTH.CLIENT_SECRET:
         payload["client_secret"] = AUTH.CLIENT_SECRET
 
-    response = requests.post(AUTH.TOKEN_URL, data=payload, timeout=HOWLER_API.TIMEOUT)
+    response = httpx.post(AUTH.TOKEN_URL, data=payload, timeout=HOWLER_API.TIMEOUT)
     response.raise_for_status()
     token = response.json().get("access_token")
     assert token, "Token response did not include access_token"
@@ -97,7 +97,7 @@ def call_mcp_tool(token: str, tool_name: str, arguments: dict | None = None) -> 
         "id": 1,
     }
 
-    init_response = requests.post(
+    init_response = httpx.post(
         url_mcp, headers=headers, json=init_payload, timeout=HOWLER_API.TIMEOUT
     )
     assert init_response.status_code == 200, (
@@ -121,7 +121,7 @@ def call_mcp_tool(token: str, tool_name: str, arguments: dict | None = None) -> 
         "id": 2,
     }
 
-    response = requests.post(
+    response = httpx.post(
         url_mcp, headers=tool_headers, json=mcp_payload, timeout=HOWLER_API.TIMEOUT
     )
     assert response.status_code == 200, (
@@ -141,7 +141,7 @@ def call_mcp_tool(token: str, tool_name: str, arguments: dict | None = None) -> 
 
 
 def _get_any_hit_id(token: str) -> str:
-    response = requests.post(
+    response = httpx.post(
         headers={"Authorization": f"Bearer {token}"},
         url=f"{HOWLER_API.BASE_URL}/search/hit",
         json={"query": "howler.id:*", "rows": 1, "offset": 0, "fl": "howler.id"},
@@ -174,7 +174,7 @@ def test_mcp_server_connection():
         "id": 1,
     }
 
-    response = requests.post(
+    response = httpx.post(
         url_mcp, headers=headers, json=payload, timeout=HOWLER_API.TIMEOUT
     )
     assert response.status_code == 200
