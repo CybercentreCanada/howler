@@ -249,11 +249,6 @@ class TestEnqueueForCorrelation:
         assert result[0][0] == "case-1"
 
 
-# ---------------------------------------------------------------------------
-# process_batch
-# ---------------------------------------------------------------------------
-
-
 def _make_case(case_id: str, items: list | None = None) -> MagicMock:
     case = MagicMock()
     case.case_id = case_id
