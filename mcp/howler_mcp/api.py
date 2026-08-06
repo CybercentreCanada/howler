@@ -22,19 +22,12 @@ def _endpoint_name(route: str) -> str:
         str: A low-cardinality endpoint name for structured logging.
     """
     # Keep exact-route checks above pattern checks to avoid accidental matches.
-    if route == "/user/whoami":
-        return "user_whoami"
-    if route == "/hit/user":
-        return "hit_user"
     if route.startswith("/hit/") and route.endswith("/comments"):
         return "hit_comments_add"
-    if route.startswith("/search/facet/hit/"):
-        return "search_facet_hit"
-    if route == "/search/fields/hit":
-        return "search_fields_hit"
-    if route == "/search/hit":
-        return "search_hit"
-    return "unknown_endpoint"
+
+    # Transform the
+    # /search/facet/hit -> search_facet_hit
+    return route.strip("/").replace("/", "_")
 
 
 def _status_class(code: int) -> str:
