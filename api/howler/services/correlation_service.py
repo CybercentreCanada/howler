@@ -9,7 +9,7 @@ The public API consists of three functions:
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
 import chevron
 from opentelemetry import trace
@@ -25,10 +25,6 @@ from howler.odm.models.hit import Hit
 from howler.remote.datatypes.queues.named import NamedQueue
 from howler.services import case_service, comms_service, search_service
 from howler.utils.str_utils import sanitize_lucene_query
-
-if TYPE_CHECKING:
-    pass
-
 
 logger = get_logger(__file__)
 tracer = trace.get_tracer(__name__)
