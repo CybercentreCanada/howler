@@ -288,6 +288,7 @@ def _setup_ds(
     mock_ds.case.get.side_effect = lambda cid: cases.get(cid)
     mock_ds.hit.get.side_effect = lambda hid: (hits or {}).get(hid)
     mock_ds.event.get.side_effect = event_get
+    mock_ds.__getitem__.side_effect = lambda item_type: getattr(mock_ds, item_type)
 
     # Mirror ElasticBulkPlan.empty: starts empty, flips once an operation is queued.
     bulk_plan = mock_ds.case.get_bulk_plan.return_value
