@@ -846,7 +846,7 @@ class TypedList(list):
 class List(_Field):
     """A field storing a sequence of typed elements."""
 
-    def __init__(self, child_type, **kwargs):
+    def __init__(self, child_type: _Field, **kwargs):
         super().__init__(**kwargs)
         self.child_type = child_type
 
@@ -1099,6 +1099,8 @@ class Optional(_Field):
 
 
 class Model:
+    _odm_flat_field_cache_version = 0
+
     @classmethod
     def fields(cls, skip_mappings=False, no_cache=False) -> dict[str, _Field]:
         """Describe the elements of the model.
@@ -1138,6 +1140,7 @@ class Model:
 
     @classmethod
     def add_namespace(cls, namespace: str, field: _Field, index=None, store=None, description=None):
+        Model._odm_flat_field_cache_version += 1
         recursive_set_name(field, namespace)
 
         if "_odm_field_cache_skip" in cls.__dict__:
@@ -1158,6 +1161,7 @@ class Model:
 
     @classmethod
     def remove_namespace(cls, namespace: str):
+        Model._odm_flat_field_cache_version += 1
         if "_odm_field_cache_skip" in cls.__dict__:
             del cls._odm_field_cache_skip[namespace.rstrip("_")]
 
@@ -1211,6 +1215,12 @@ class Model:
             show_compound (bool): Show compound as valid fields.
             skip_mappings (bool): Skip over mappings where the real subfield names are unknown.
         """
+        cache_key = (show_compound, skip_mappings)
+        cache = cls.__dict__.get("_odm_flat_field_cache", {})
+        cached = cache.get(cache_key)
+        if cached and cached[0] == Model._odm_flat_field_cache_version:
+            return dict(cached[1])
+
         out = dict()
         for base in cls.__bases__:
             _flat_fields: Callable[..., dict[str, _Field]] | None = getattr(base, "flat_fields", None)
@@ -1230,7 +1240,9 @@ class Model:
                         multivalued=isinstance(field, List),
                     )
                 )
-        return out
+        cache[cache_key] = (Model._odm_flat_field_cache_version, out)
+        cls._odm_flat_field_cache = cache
+        return dict(out)
 
     @classmethod
     def markdown(

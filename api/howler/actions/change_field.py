@@ -29,10 +29,21 @@ def execute(query: str, field: str, value: str, **kwargs):
     report = []
 
     try:
-        datastore().hit.update_by_query(
+        updated = datastore().hit.update_by_query(
             query,
             [hit_helper.update(field, value)],
+            refresh=kwargs.get("refresh"),
         )
+        if not updated:
+            report.append(
+                {
+                    "query": query,
+                    "outcome": "error",
+                    "title": "Failed to Execute",
+                    "message": "No matching hits were updated",
+                }
+            )
+            return report
 
         report.append(
             {

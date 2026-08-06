@@ -1,5 +1,4 @@
 import json
-import time
 from uuid import uuid4
 
 import pytest
@@ -38,8 +37,6 @@ def datastore(datastore_connection):
 
         ds.hit.commit()
 
-        time.sleep(1)
-
         yield ds
     finally:
         wipe_hits(ds)
@@ -66,7 +63,6 @@ def test_add_label_happy_path(datastore: HowlerDatastore, login_session):
             assert "message" in entry
 
     datastore.hit.commit()
-    time.sleep(1)
 
     labelled = datastore.hit.search("howler.labels.generic:test-add-label")["total"]
     assert labelled > 0
@@ -85,7 +81,6 @@ def test_add_label_already_labelled_skipped(datastore: HowlerDatastore, login_se
     _execute(session, host, query="howler.id:*", category="generic", label="test-skip-label")
 
     datastore.hit.commit()
-    time.sleep(1)
 
     # Second call — all hits already have the label
     resp = _execute(session, host, query="howler.id:*", category="generic", label="test-skip-label")

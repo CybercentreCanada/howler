@@ -46,9 +46,9 @@ def datastore(datastore_connection: HowlerDatastore):
 @pytest.fixture(scope="module")
 def transition_data(datastore: HowlerDatastore) -> list[dict[str, Any]]:
 
-    def check_assignment(user: str):
+    def check_assignment(username: str):
         def check():
-            assert datastore.hit.get(HIT_ID).howler.assignment == user
+            assert datastore.hit.get(HIT_ID).howler.assignment == username
 
         return check
 

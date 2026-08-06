@@ -1,5 +1,4 @@
 import json
-import time
 from uuid import uuid4
 
 import pytest
@@ -44,10 +43,6 @@ def datastore(datastore_connection):
         wipe_hits(ds)
         create_hits(ds, hit_count=5)
 
-        ds.hit.commit()
-
-        time.sleep(1)
-
         yield ds
     finally:
         wipe_hits(ds)
@@ -74,7 +69,6 @@ def test_promote_to_alert(datastore: HowlerDatastore, login_session):
             assert "message" in entry
 
     datastore.hit.commit()
-    time.sleep(1)
 
     promoted = datastore.hit.search(f"howler.escalation:{Escalation.ALERT}")["total"]
     assert promoted > 0
@@ -120,7 +114,6 @@ def test_promote_already_at_escalation_skipped(datastore: HowlerDatastore, login
     # First promote to alert
     _execute(session, host, query="howler.id:*", escalation=Escalation.ALERT)
     datastore.hit.commit()
-    time.sleep(1)
 
     # Second call with same escalation — all hits already there
     resp = _execute(session, host, query=f"howler.escalation:{Escalation.ALERT}", escalation=Escalation.ALERT)

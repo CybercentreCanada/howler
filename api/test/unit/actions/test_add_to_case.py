@@ -264,12 +264,14 @@ def test_execute_mixed_results():
 
     # Pre-add hit_existing at the same default destination/path as execute() so it is treated as a duplicate.
     related_folder = case_service.get_parent_from_path(_case, "related", create_if_missing=True)
-    case_service.append_case_item(
+    case_service.append_case_items(
         _case,
-        item_type="hit",
-        item_value=hit_existing.howler.id,
-        item_name=f"{hit_existing.howler.analytic} ({hit_existing.howler.id})",
-        item_parent=related_folder.id if related_folder else None,
+        case_service.make_case_item(
+            item_type="hit",
+            item_value=hit_existing.howler.id,
+            item_name=f"{hit_existing.howler.analytic} ({hit_existing.howler.id})",
+            item_parent=related_folder.id if related_folder else None,
+        ),
     )
 
     result = execute("howler.analytic:TestingMixed", case_id=_case.case_id)

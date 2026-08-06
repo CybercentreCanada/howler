@@ -10,7 +10,13 @@ from prometheus_client import Counter
 
 import howler.services.comms_service as comms_service
 from howler.actions.promote import Escalation
-from howler.common.exceptions import HowlerTypeError, HowlerValueError, NotFoundException, ResourceExists
+from howler.common.exceptions import (
+    HowlerRuntimeError,
+    HowlerTypeError,
+    HowlerValueError,
+    NotFoundException,
+    ResourceExists,
+)
 from howler.common.loader import APP_NAME, datastore
 from howler.common.logging import get_logger
 from howler.datastore.collection import ESCollection
@@ -474,8 +480,8 @@ def create_hits(
 def update_hit(
     hit_id: str,
     operations: list[OdmUpdateOperation],
-    user: Optional[str] = None,
-    version: Optional[str] = None,
+    username: str | None = None,
+    version: str | None = None,
     refresh: str | None = None,
 ):
     """Update one or more properties of a hit in the database.
@@ -486,7 +492,7 @@ def update_hit(
     Args:
         hit_id: The unique identifier of the hit to update
         operations: List of ODM update operations to apply
-        user: Optional username to record in the update log
+        username: Optional username to record in the update log
         version: Optional version string for optimistic locking
 
     Returns:
@@ -501,7 +507,11 @@ def update_hit(
             "Status of a Hit cannot be modified like other properties. Please use a transition to do so."
         )
 
-    return _update_hit(hit_id, operations, user, version=version, refresh=refresh)
+    hit = get_hit(hit_id, as_odm=True)
+    if not hit:
+        raise NotFoundException("Hit does not exist")
+
+    return _update_hits([(hit, operations)], username, version=version, refresh=refresh)[0]
 
 
 @tracer.start_as_current_span(f"{__name__}.overwrite_hits")
@@ -542,56 +552,28 @@ def save_hit(hit: Hit, version: Optional[str] = None, refresh: str | None = None
     return data, _version
 
 
-@tracer.start_as_current_span(f"{__name__}._update_hit")
-def _update_hit(
-    hit_id: str,
+@tracer.start_as_current_span(f"{__name__}._prepare_hit_update_operations")
+def _prepare_hit_update_operations(
+    hit: Hit,
     operations: list[OdmUpdateOperation],
-    user: Optional[str] = None,
-    version: Optional[str] = None,
-    refresh: str | None = None,
-) -> tuple[Hit | None, str | None]:
-    """Internal function to update a hit with proper logging and event emission.
-
-    This function applies update operations to a hit, automatically adding worklog entries
-    for non-silent operations and emitting events to notify other systems of changes.
-
-    Args:
-        hit_id: The unique identifier of the hit to update
-        operations: List of ODM update operations to apply
-        user: Optional username to record in operation logs
-        version: Optional version string for optimistic locking
-        refresh: Optional refresh parameter for the datastore
-
-    Returns:
-        Tuple of (updated_hit_data, new_version)
-
-    Raises:
-        HowlerValueError: If user parameter is provided but not a string
-    """
+    username: str | None = None,
+    version: str | None = None,
+) -> list[OdmUpdateOperation]:
+    """Add worklog entries to a hit's update operations."""
     final_operations = []
-
-    if user and not isinstance(user, str):
-        raise HowlerValueError("User must be of type string")
-
-    if version is None:
-        fetched_hit, version = datastore().hit.get(hit_id, as_obj=True, version=True)
-        current_hit = cast(Hit, fetched_hit)
-    else:
-        current_hit = cast(Hit, get_hit(hit_id, as_odm=True))
-
     for operation in operations:
         if not operation:
             continue
 
         try:
-            is_list = current_hit.flat_fields()[operation.key].multivalued
+            is_list = hit.flat_fields()[operation.key].multivalued
             try:
-                previous_value = current_hit[operation.key]
+                previous_value = hit[operation.key]
             except (TypeError, KeyError):
                 previous_value = None
         except KeyError:
-            key = next(key for key in current_hit.flat_fields().keys() if key.startswith(operation.key))
-            is_list = current_hit.flat_fields()[key].multivalued
+            key = next(key for key in hit.flat_fields().keys() if key.startswith(operation.key))
+            is_list = hit.flat_fields()[key].multivalued
             previous_value = "list"
 
         if is_list:
@@ -607,7 +589,7 @@ def _update_hit(
         else:
             operation_type = HitOperationType.SET
 
-        logger.debug("%s - %s - %s -> %s", hit_id, operation.key, previous_value, operation.value)
+        logger.debug("%s - %s - %s -> %s", hit.howler.id, operation.key, previous_value, operation.value)
         final_operations.append(operation)
 
         if not operation.silent:
@@ -623,18 +605,44 @@ def _update_hit(
                         "new_value": operation.value or "None",
                         "previous_value": previous_value or "None",
                         "type": operation_type,
-                        "user": user if user else "Unknown",
+                        "user": username if username else "Unknown",
                     },
                 )
             )
 
-    datastore().hit.update(hit_id, final_operations, version, refresh=refresh)
-    # Need to fetch the new data of the hit for the comms_service
-    data, _version = datastore().hit.get(hit_id, as_obj=True, version=True) or (None, None)
-    if data and _version:
-        comms_service.emit("hits", {"hit": data.as_primitives(), "version": _version})
+    return final_operations
 
-    return data, _version
+
+@tracer.start_as_current_span(f"{__name__}._update_hits")
+def _update_hits(
+    hit_updates: list[tuple[Hit, list[OdmUpdateOperation]]],
+    username: str | None = None,
+    version: str | None = None,
+    refresh: str | None = None,
+) -> list[tuple[dict[str, Any] | None, str | None]]:
+    """Apply prepared operations to one or more hits in a single bulk request."""
+    if version and len(hit_updates) > 1:
+        raise HowlerValueError("A version can only be used when updating one hit")
+
+    collection = datastore().hit
+    bulk_plan = collection.get_bulk_plan()
+
+    for hit, operations in hit_updates:
+        script = collection.create_scripts_from_operations(
+            _prepare_hit_update_operations(hit, operations, username, version)
+        )
+        bulk_plan.add_scripted_update_operation(hit.howler.id, script, version=version)
+
+    # Format and print the profiling data
+    if not bulk_plan.empty and not collection.bulk(bulk_plan, refresh=refresh):
+        raise HowlerRuntimeError("Unable to update all hits")
+
+    updated_hits = [collection.get(hit.howler.id, as_obj=False, version=True) for hit, _ in hit_updates]
+    for data, hit_version in updated_hits:
+        if data and hit_version:
+            comms_service.emit("hits", {"hit": data, "version": hit_version})
+
+    return cast(list[tuple[dict[str, Any] | None, str | None]], updated_hits)
 
 
 @tracer.start_as_current_span(f"{__name__}.get_transitions")
@@ -650,54 +658,52 @@ def get_transitions(status: Status) -> list[str]:
     return get_hit_workflow().get_transitions(status)
 
 
-def transition_hit(
-    id: str,
+def transition_hits(
+    hits: Hit | list[Hit] | None,
     transition: HitStatusTransition,
     user: User,
     version: Optional[str] = None,
     refresh: str | None = None,
     **kwargs,
-) -> tuple[Hit | None, str | None]:
-    """Transition a hit from one status to another while updating related properties.
+) -> list[tuple[dict[str, Any] | None, str | None]]:
+    """Transition one or more hits in a single bulk transaction.
 
     For certain transitions (PROMOTE, DEMOTE, ASSESS, RE_EVALUATE), it also executes bulk actions and emits events.
 
     Args:
-        id: The id of the hit to transition
+        hits: A hit ID, list of hit IDs, hit dictionary, or list of hit dictionaries to transition
         transition: The transition to execute (e.g., ASSIGN_TO_ME, ASSESS, PROMOTE)
         user: The user running the transition
-        version: Optional version to validate against. The transition will not run if the version doesn't match.
-        **kwargs: Additional arguments including potential 'hit' object and 'assessment' value
+        version: Optional version to validate against when transitioning a single hit ID
+        **kwargs: Additional arguments including an assessment value
 
     Returns:
         A tuple containing the updated hit and the optimistic-lock version token after the transition.
 
     Raises:
-        NotFoundException: If the hit does not exist
+        NotFoundException: If one or more hits do not exist
     """
-    # Get the primary hit (either provided in kwargs or fetch from database)
-    hit: dict[str, Any] | None = cast(dict[str, Any] | None, kwargs.pop("hit", None)) or get_hit(id, as_odm=False)
-
-    if not hit:
+    if hits is None:
         raise NotFoundException("Hit does not exist")
 
+    if not isinstance(hits, list):
+        hits = [hits]
+
     workflow: Workflow = get_hit_workflow()
+    hit_updates: list[tuple[Hit, list[OdmUpdateOperation]]] = []
+    transitioned_ids: list[str] = []
 
-    # Log hit that will be transitioned
-    logger.debug("Transitioning (%s)", hit)
+    for hit in hits:
+        hit_status = hit["howler"]["status"]
+        hit_id = hit["howler"]["id"]
 
-    # Process each hit (primary + children) with the workflow transition
-    hit_status = hit["howler"]["status"]
-    hit_id = hit["howler"]["id"]
+        logger.debug("Transitioning (%s)", hit)
 
-    # Apply the workflow transition to get required updates
-    updates = workflow.transition(hit_status, transition, user=user, hit=hit, **kwargs)
-    new_version = version
+        updates = workflow.transition(hit_status, transition, user=user, hit=hit, **kwargs)
+        hit_updates.append((hit, updates))
+        transitioned_ids.append(hit_id)
 
-    # Apply updates if any were generated by the workflow
-    updated_hit: Hit | None = None
-    if updates:
-        updated_hit, new_version = _update_hit(hit_id, updates, user.uname, version=version, refresh=refresh)
+    updated_hits = _update_hits(hit_updates, user.uname, version=version, refresh=refresh)
 
     # Execute bulk actions for transitions that require them
     # These transitions need additional processing beyond the workflow
@@ -723,20 +729,11 @@ def transition_hit(
             # For direct PROMOTE/DEMOTE transitions, use the transition name
             trigger = cast(Union[Literal["promote"], Literal["demote"]], transition)
 
-        # Commit database changes before executing bulk actions
         datastore().hit.commit()
+        # Enqueue action execution for all hits in a single request.
+        action_service.enqueue_action_execution(transitioned_ids, trigger=trigger, user=user)
 
-        # Enqueue action execution for all hits
-        action_service.enqueue_action_execution([hit_id], trigger=trigger, user=user)
-
-        # Emit events for processed hit to notify other systems
-        updated_hit, new_version = datastore().hit.get(hit_id, as_obj=True, version=True)
-        comms_service.emit(
-            "hits", {"hit": updated_hit.as_primitives() if updated_hit else None, "version": new_version}
-        )
-
-        updated_hit, new_version = datastore().hit.get(hit_id, as_obj=True, version=True)
-    return updated_hit, new_version
+    return updated_hits
 
 
 DELETED_HITS = Counter(f"{APP_NAME.replace('-', '_')}_deleted_hits_total", "The number of deleted hits")

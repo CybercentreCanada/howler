@@ -282,6 +282,7 @@ README.md, LICENSE, .gitignore, .pre-commit-config.yaml, pyrightconfig.json
 
 - In `ui/`, `@fontsource/roboto` may fail TypeScript side-effect import resolution at the package root even when the dependency is installed; prefer importing the explicit CSS entry `@fontsource/roboto/index.css` from the app entrypoint.
 - When ILM indices coexist with a legacy `_hot` index, alias existence alone is insufficient: remove the legacy alias and ensure the latest ILM index is the only write index. Maintenance commands that skip collection bootstrap must resolve the latest ILM index before reindexing; recovery must restore only aliases actually present on its source index.
+- Case metadata recomputation must search only the backing record types present in the case. Searching both `hit` and `event` fails when an otherwise unused collection index has not been created.
 
 ---
 
@@ -441,6 +442,12 @@ For legacy collections, pass the collection alias through the `aliases` argument
 
 ---
 
+### Initial Case Items Must Be Saved Once
+
+When a case is created with initial items, pass them to `case_service.create_case(..., refresh=...)`. It delegates to `append_case_items` for the single final persisted write, so do not save an empty case before appending the items or an avoidable Elasticsearch refresh wait is reintroduced.
+
+---
+
 ### React Testing Library: Do Not Wrap `userEvent` in `act`
 
 `userEvent` already manages React updates through Testing Library. Wrapping awaited `userEvent` calls in `act` conflicts with its async wrapper, which temporarily disables `IS_REACT_ACT_ENVIRONMENT`, and produces `The current testing environment is not configured to support act(...)` warnings. Await `userEvent` calls directly; reserve `act` for direct state-changing operations that Testing Library does not wrap.
@@ -460,3 +467,7 @@ Reindex and cleanup must enumerate `index_list_full`, not `index_list`, so exist
 ### ILM Collection Existence Checks
 
 Elasticsearch single-document `exists` requests cannot target an alias that resolves to multiple ILM rollover indexes. For ILM collections, use a zero-result `ids` search against the alias and derive existence from `hits.total`; retain the same search as a logged fallback when a legacy single-document check returns `BadRequestError`.
+
+### ODM Flattened Field Cache
+
+`Model.flat_fields()` caches its flattened metadata by `(show_compound, skip_mappings)`. Dynamic namespace additions and removals increment the shared cache version, so flattened field layouts are rebuilt after either operation.

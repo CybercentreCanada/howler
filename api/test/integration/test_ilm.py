@@ -262,43 +262,26 @@ class TestILMDataOperations:
 
     def test_save_and_get(self, ilm_collection: ESCollection):
         """Documents can be saved and retrieved via the alias."""
-        ilm_collection.save("doc1", {"field_s": "value1", "count_i": 42})
-        ilm_collection.commit()
+        ilm_collection.save("doc1", {"field_s": "value1", "count_i": 42}, refresh="wait_for")
         result = ilm_collection.get("doc1")
         assert result["field_s"] == "value1"
         assert result["count_i"] == 42
 
     def test_search(self, ilm_collection: ESCollection):
         """Search through the alias should find documents."""
-        ilm_collection.save("search_doc", {"field_s": "searchable", "count_i": 1})
-        ilm_collection.commit()
+        ilm_collection.save("search_doc", {"field_s": "searchable", "count_i": 1}, refresh="wait_for")
 
-        # Wait for doc to be visible
-        retries = 0
-        while retries < 5:
-            results = ilm_collection.search("field_s:searchable")
-            if results["total"] > 0:
-                break
-            time.sleep(0.5)
-            retries += 1
-
-        assert results["total"] >= 1
+        assert ilm_collection.search("field_s:searchable")["total"] >= 1
 
     def test_delete_by_query(self, ilm_collection: ESCollection):
         """delete_by_query should work through the alias across ILM indices."""
         ilm_collection.save("del1", {"field_s": "to_delete", "count_i": 1})
         ilm_collection.save("del2", {"field_s": "to_delete", "count_i": 2})
-        ilm_collection.save("keep1", {"field_s": "to_keep", "count_i": 3})
-        ilm_collection.commit()
+        ilm_collection.save("keep1", {"field_s": "to_keep", "count_i": 3}, refresh="wait_for")
 
-        # Wait for docs to be visible
-        time.sleep(1)
+        ilm_collection.delete_by_query("field_s:to_delete", refresh="true")
 
-        ilm_collection.delete_by_query("field_s:to_delete")
-        ilm_collection.commit()
-
-        # Wait for deletion to take effect
-        time.sleep(1)
+        time.sleep(0.1)
 
         assert ilm_collection.get_if_exists("del1") is None
         assert ilm_collection.get_if_exists("del2") is None
@@ -306,21 +289,22 @@ class TestILMDataOperations:
 
     def test_update(self, ilm_collection: ESCollection):
         """Update operations should work on ILM-managed indices."""
-        ilm_collection.save("upd1", {"field_s": "original", "count_i": 1})
-        ilm_collection.commit()
+        ilm_collection.save("upd1", {"field_s": "original", "count_i": 1}, refresh="wait_for")
 
-        ilm_collection.update("upd1", [(ilm_collection.UPDATE_SET, "field_s", "updated")])
-        ilm_collection.commit()
+        ilm_collection.update("upd1", [(ilm_collection.UPDATE_SET, "field_s", "updated")], refresh="true")
+
+        time.sleep(0.1)
 
         result = ilm_collection.get("upd1")
         assert result["field_s"] == "updated"
 
     def test_stream_search(self, ilm_collection: ESCollection):
         """stream_search should work through the ILM alias."""
+        bulk_plan = ilm_collection.get_bulk_plan()
         for i in range(5):
-            ilm_collection.save(f"stream_{i}", {"field_s": "streamable", "count_i": i})
-        ilm_collection.commit()
-        time.sleep(1)
+            bulk_plan.add_index_operation(f"stream_{i}", {"field_s": "streamable", "count_i": i})
+
+        ilm_collection.bulk(bulk_plan, refresh="wait_for")
 
         items = list(ilm_collection.stream_search("field_s:streamable"))
         assert len(items) >= 5

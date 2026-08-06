@@ -412,7 +412,7 @@ def test_user_quota_tracker(redis_connection):
         from howler.remote.datatypes.user_quota_tracker import UserQuotaTracker
 
         max_quota = 3
-        timeout = 2
+        timeout = 1
         name = get_random_id()
         uqt = UserQuotaTracker("test-quota", timeout=timeout)
 
@@ -430,6 +430,6 @@ def test_user_quota_tracker(redis_connection):
         assert uqt.begin(name, max_quota) is False
 
         # if you wait the timeout, all items can go in
-        time.sleep(timeout + 1)
+        time.sleep(timeout + 0.25)
         for _ in range(max_quota):
             assert uqt.begin(name, max_quota) is True

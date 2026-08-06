@@ -204,6 +204,29 @@ class ElasticBulkPlan(object):
                     )
                 )
 
+    def add_scripted_update_operation(self, doc_id: str, script: dict, version: str | None = None, index=None):
+        """Queue an Elasticsearch scripted update operation.
+
+        Args:
+            doc_id: Identifier of the document to update.
+            script: Painless script definition to execute.
+            version: Optional ``sequence_number---primary_term`` optimistic-locking version.
+            index: Explicit index to target. When omitted, queues one update
+                operation for each configured index.
+        """
+        metadata = {"_id": doc_id}
+        if version:
+            sequence_number, primary_term = version.split("---")
+            metadata.update({"if_seq_no": sequence_number, "if_primary_term": primary_term})
+
+        for current_index in [index] if index else self.indexes:
+            self.operations.append(
+                (
+                    json.dumps({"update": {"_index": current_index, **metadata}}),
+                    json.dumps({"script": script}),
+                )
+            )
+
     def get_plan_data(self):
         """Render all queued operations as an Elasticsearch bulk request.
 

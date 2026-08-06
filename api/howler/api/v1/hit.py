@@ -650,7 +650,7 @@ def remove_labels(id: str, label_set: str, user: User, server_version: str | Non
 @api_login(audit=False, required_priv=["W"])
 @add_etag(getter=hit_service.get_hit, check_if_match=True)
 @parse_parameters(refresh=parse_refresh)
-def transition(id: str, user: User, server_version: str | None = None, **kwargs):
+def transition(id: str, user: User, cached_hit: Hit | None = None, server_version: str | None = None, **kwargs):
     """Transition a hit
 
     Variables:
@@ -673,7 +673,7 @@ def transition(id: str, user: User, server_version: str | None = None, **kwargs)
     """
     refresh = kwargs.pop("refresh")
 
-    if not kwargs.get("cached_hit"):
+    if not cached_hit:
         return not_found(err="Hit %s does not exist" % id)
 
     transition_data = request.json
@@ -685,7 +685,7 @@ def transition(id: str, user: User, server_version: str | None = None, **kwargs)
     if "If-Match" in request.headers:
         version = request.headers["If-Match"]
     else:
-        logger.warning("User is mising version - no If-Match header in request.")
+        logger.warning("User is missing version - no If-Match header in request.")
         version = server_version
 
     try:
@@ -697,9 +697,16 @@ def transition(id: str, user: User, server_version: str | None = None, **kwargs)
                 )
             )
 
-        hit, version = hit_service.transition_hit(
-            id, transition, user, version, refresh=refresh, **kwargs, **transition_data.get("data", {})
+        updated_hits = hit_service.transition_hits(
+            cached_hit,
+            transition,
+            user,
+            version,
+            refresh=refresh,
+            **kwargs,
+            **transition_data.get("data", {}),
         )
+        hit, version = updated_hits[0]
     except (WorkflowException, DataStoreException, InvalidDataException) as e:
         return bad_request(err=str(e))
     except VersionConflictException as e:
@@ -1069,7 +1076,7 @@ def create_bundle(user: User, **kwargs):
     if not isinstance(data, dict):
         return bad_request(err="Invalid data format")
 
-    bundle_hit: Optional[dict[str, Any]] = data.get("bundle")
+    bundle_hit: dict[str, Any] | None = data.get("bundle")
     if bundle_hit is None:
         return bad_request(err="You did not provide a bundle hit.")
 

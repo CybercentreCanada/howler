@@ -1,5 +1,4 @@
 import json
-import time
 from uuid import uuid4
 
 import pytest
@@ -55,10 +54,6 @@ def datastore(datastore_connection):
         wipe_hits(ds)
         create_hits(ds, hit_count=5)
 
-        ds.hit.commit()
-
-        time.sleep(1)
-
         yield ds
     finally:
         wipe_hits(ds)
@@ -76,7 +71,6 @@ def test_remove_label_happy_path(datastore: HowlerDatastore, login_session):
     # Add the label first so there is something to remove
     _add_label(session, host, query="howler.id:*", category="generic", label="test-remove-label")
     datastore.hit.commit()
-    time.sleep(1)
 
     resp = _execute(session, host, query="howler.id:*", category="generic", label="test-remove-label")
 
@@ -90,7 +84,6 @@ def test_remove_label_happy_path(datastore: HowlerDatastore, login_session):
             assert "message" in entry
 
     datastore.hit.commit()
-    time.sleep(1)
 
     remaining = datastore.hit.search("howler.labels.generic:test-remove-label")["total"]
     assert remaining == 0

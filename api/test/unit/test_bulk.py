@@ -46,11 +46,23 @@ def test_get_plan_batches(bulk_plan, operations, operation_length, batch_size):
     assert "".join(batches) == bulk_plan.get_plan_data()
 
 
-def test_collection_bulk_returns_false_and_logs_errors():
+def test_collection_bulk_returns_false_and_logs_item_failures():
     operations = MagicMock()
     operations.get_plan_batches.return_value = ["bulk-operation"]
     collection = MagicMock()
-    collection.with_retries.return_value = {"errors": {"delete": "document not found"}}
+    collection.with_retries.return_value = {
+        "errors": True,
+        "items": [
+            {
+                "update": {
+                    "_index": "howler_case_hot",
+                    "_id": "case-123",
+                    "status": 409,
+                    "error": {"type": "version_conflict_engine_exception", "reason": "document changed"},
+                }
+            }
+        ],
+    }
 
     with patch("howler.datastore.collection.logger") as mock_logger:
         result = ESCollection.bulk(collection, operations)
@@ -61,7 +73,34 @@ def test_collection_bulk_returns_false_and_logs_errors():
         operations="bulk-operation",
         refresh=None,
     )
-    mock_logger.error.assert_called_once_with("Errors on bulk plan: %s", {"delete": "document not found"})
+    mock_logger.error.assert_called_once_with(
+        "Bulk plan failures: %s",
+        [
+            {
+                "operation": "update",
+                "index": "howler_case_hot",
+                "id": "case-123",
+                "status": 409,
+                "error": {"type": "version_conflict_engine_exception", "reason": "document changed"},
+            }
+        ],
+    )
+
+
+def test_update_by_query_translates_wait_for_refresh_to_true():
+    collection = MagicMock()
+    collection.create_scripts_from_operations.return_value = {"source": "ctx._source.field = params.value"}
+    collection._update_async.return_value = {"updated": 1}
+
+    result = ESCollection.update_by_query(
+        collection,
+        "howler.id:hit-123",
+        [("SET", "howler.outline.summary", "Updated summary")],
+        refresh="wait_for",
+    )
+
+    assert result == 1
+    assert collection._update_async.call_args.kwargs["refresh"] == "true"
 
 
 # ---------------------------------------------------------------------------

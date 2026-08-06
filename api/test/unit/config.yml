@@ -39,6 +39,9 @@ system:
     enabled: true
     batch_size: 5
     batch_timeout: 2
+  action_queue:
+    batch_size: 5
+    batch_timeout: 2
 
 ui:
   audit: false

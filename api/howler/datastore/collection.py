@@ -58,6 +58,8 @@ from howler.odm.base import (
 from howler.utils.dict_utils import prune, recursive_update
 
 if typing.TYPE_CHECKING:
+    from howler.odm.models.config import ILMIndexConfig
+
     from .store import ESStore
 
 
@@ -221,7 +223,15 @@ class ESCollection(Generic[ModelType]):
     ENSURE_COLLECTION_WARNED: bool = False
     CUSTOM_AGG_PREFIX: str = "_custom_agg__"
 
-    def __init__(self, datastore: ESStore, name, model_class=None, validate=True, max_attempts=10, ilm_config=None):
+    def __init__(
+        self,
+        datastore: ESStore,
+        name: str,
+        model_class: type[odm.Model] | None = None,
+        validate: bool = True,
+        max_attempts: int = 10,
+        ilm_config: ILMIndexConfig | None = None,
+    ):
         self.replicas = int(
             environ.get(
                 f"ELASTIC_{name.upper()}_REPLICAS",
@@ -558,10 +568,10 @@ class ESCollection(Generic[ModelType]):
                 updated += res["updated"]
 
     def bulk(self, operations: ElasticBulkPlan, refresh: str | None = None):
-        """
-        Execute a bulk plan.
+        """Execute a bulk plan.
 
-        :return: True if the operation completed without errors
+        Returns:
+            True if the operation completed without errors
         """
         responses = []
         for operation_batch in operations.get_plan_batches():
@@ -572,34 +582,58 @@ class ESCollection(Generic[ModelType]):
         for response in responses:
             if response["errors"]:
                 has_errors = True
-                logger.error("Errors on bulk plan: %s", response["errors"])
+                failures = []
+                for item in response.get("items", []):
+                    operation, result = next(iter(item.items()))
+                    if "error" in result:
+                        failures.append(
+                            {
+                                "operation": operation,
+                                "index": result.get("_index"),
+                                "id": result.get("_id"),
+                                "status": result.get("status"),
+                                "error": result["error"],
+                            }
+                        )
+
+                logger.error("Bulk plan failures: %s", failures or response["errors"])
 
         return not has_errors
 
     def get_bulk_plan(self):
-        """
-        Create a BulkPlan tailored for the current datastore
+        """Create a BulkPlan tailored for the current datastore.
 
-        :return: The BulkPlan object
+        Returns:
+            The BulkPlan object
         """
         return ElasticBulkPlan(self.index_list, self.model_class)
 
-    @tracer.start_as_current_span(f"{__name__}.commit")
-    def commit(self):
-        """This function should be overloaded to perform a commit of the index data of all the different hosts
-        specified in self.datastore.hosts.
+    @tracer.start_as_current_span(f"{__name__}.refresh")
+    def refresh(self):
+        """Perform a refresh of the index data of all the different hosts specified in self.datastore.hosts.
 
-        :return: Should return True of the commit was successful on all hosts
+        Returns:
+            True if the refresh was successful on all hosts
         """
         self.with_retries(self.datastore.client.indices.refresh, index=self.index_name)
+        return True
+
+    @tracer.start_as_current_span(f"{__name__}.commit")
+    def commit(self):
+        """Perform a commit of the index data of all the different hosts specified in self.datastore.hosts.
+
+        Returns:
+            True if the commit was successful on all hosts
+        """
+        self.refresh()
         self.with_retries(self.datastore.client.indices.clear_cache, index=self.index_name)
         return True
 
     def fix_replicas(self):
-        """This function should be overloaded to fix the replica configuration of the index of all the different hosts
-        specified in self.datastore.hosts.
+        """Fix the replica configuration of the index of all the different hosts specified in self.datastore.hosts.
 
-        :return: Should return True of the fix was successful on all hosts
+        Returns:
+            True if the fix was successful on all hosts
         """
         replicas = self._get_index_settings()["index"]["number_of_replicas"]
         settings = {"number_of_replicas": replicas}
@@ -1464,7 +1498,9 @@ class ESCollection(Generic[ModelType]):
         )
         return info.get("deleted", 0) != 0
 
-    def _create_scripts_from_operations(self, operations):
+    def create_scripts_from_operations(self, operations):
+        operations = self._validate_operations(operations)
+
         op_sources = []
         op_params = {}
         val_id = 0
@@ -1564,7 +1600,10 @@ class ESCollection(Generic[ModelType]):
                         raise DataStoreException(f"Invalid field for model: {doc_key}")
 
                 if prev_key:
-                    field = fields[prev_key].child_type
+                    parent_field = fields[prev_key]
+                    if not isinstance(parent_field, Mapping):
+                        raise DataStoreException(f"Invalid field for model: {prev_key}")
+                    field = parent_field.child_type
                 else:
                     field = fields[doc_key]
 
@@ -1609,7 +1648,8 @@ class ESCollection(Generic[ModelType]):
         :return: True is update successful
         """
         operations = self._validate_operations(operations)
-        script = self._create_scripts_from_operations(operations)
+        script = self.create_scripts_from_operations(operations)
+
         index = self.name
         seq_no = None
         primary_term = None
@@ -1668,14 +1708,13 @@ class ESCollection(Generic[ModelType]):
         :param operations: List of tuple of operations e.q. [(SET, document_key, operation_value), ...]
         :return: True is update successful
         """
-        operations = self._validate_operations(operations)
         if filters is None:
             filters = []
 
         if access_control:
             filters.append(access_control)
 
-        script = self._create_scripts_from_operations(operations)
+        script = self.create_scripts_from_operations(operations)
 
         try:
             res = self._update_async(
@@ -1688,9 +1727,11 @@ class ESCollection(Generic[ModelType]):
                     }
                 },
                 max_docs=max_docs,
-                refresh=refresh,
+                # Unlike bulk, Elasticsearch's update-by-query API only accepts a Boolean refresh value.
+                refresh="true" if refresh == "wait_for" else refresh,
             )
         except Exception:
+            logger.exception("Update by query failed for %s", self.name)
             return False
 
         return res["updated"]
@@ -2670,9 +2711,11 @@ class ESCollection(Generic[ModelType]):
 
             if "." in p_name:
                 parent_p_name = re.sub(r"^(.+)\..+?$", r"\1", p_name)
-                if parent_p_name in model_fields and isinstance(model_fields.get(parent_p_name), Mapping):
+                parent_field = model_fields.get(parent_p_name)
+                if isinstance(parent_field, Mapping):
                     if parent_p_name not in collection_data:
-                        field_model = model_fields.get(parent_p_name, None)
+                        field_model = parent_field
+                        child_field = field_model.child_type
                         f_type = self._get_odm_type(p_val.get("analyzer", None) or p_val["type"])
 
                         collection_data[parent_p_name] = {
@@ -2683,19 +2726,11 @@ class ESCollection(Generic[ModelType]):
                             "type": f_type,
                             "description": (field_model.description if field_model else ""),
                             "regex": (
-                                field_model.child_type.validation_regex.pattern
-                                if field_model
-                                and (
-                                    issubclass(type(field_model.child_type), ValidatedKeyword)
-                                    or issubclass(type(field_model.child_type), IP)
-                                )
+                                child_field.validation_regex.pattern
+                                if isinstance(child_field, (ValidatedKeyword, IP))
                                 else None
                             ),
-                            "values": (
-                                list(field_model.child_type.values)
-                                if field_model and issubclass(type(field_model.child_type), Enum)
-                                else None
-                            ),
+                            "values": (list(child_field.values) if isinstance(child_field, Enum) else None),
                             "deprecated_description": (field_model.deprecated_description if field_model else ""),
                         }
 
@@ -2714,12 +2749,9 @@ class ESCollection(Generic[ModelType]):
                 "type": f_type,
                 "description": field_model.description if field_model else "",
                 "regex": (
-                    field_model.validation_regex.pattern
-                    if field_model
-                    and (issubclass(type(field_model), ValidatedKeyword) or issubclass(type(field_model), IP))
-                    else None
+                    field_model.validation_regex.pattern if isinstance(field_model, (ValidatedKeyword, IP)) else None
                 ),
-                "values": list(field_model.values) if field_model and issubclass(type(field_model), Enum) else None,
+                "values": list(field_model.values) if isinstance(field_model, Enum) else None,
                 "deprecated_description": (field_model.deprecated_description if field_model else ""),
             }
 

@@ -369,7 +369,7 @@ class TestAppendItemEndpoint:
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        mock_case_service.append_case_item.return_value = Case({"case_id": "case-001", "title": "T", "summary": "S"})
+        mock_case_service.append_case_items.return_value = Case({"case_id": "case-001", "title": "T", "summary": "S"})
 
         with request_context.test_request_context(
             method="POST",
@@ -381,7 +381,7 @@ class TestAppendItemEndpoint:
             result: Response = append_item("case-001", user=user)
 
             assert result.status_code == 200
-            mock_case_service.append_case_item.assert_called_once()
+            mock_case_service.append_case_items.assert_called_once()
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
@@ -396,7 +396,7 @@ class TestAppendItemEndpoint:
         resolved_parent.id = "folder-123"
 
         mock_case_service.get_parent_from_path.return_value = resolved_parent
-        mock_case_service.append_case_item.return_value = Case({"case_id": "case-001", "title": "T", "summary": "S"})
+        mock_case_service.append_case_items.return_value = Case({"case_id": "case-001", "title": "T", "summary": "S"})
 
         with request_context.test_request_context(
             method="POST",
@@ -410,7 +410,7 @@ class TestAppendItemEndpoint:
             assert result.status_code == 200
             mock_case_service.get_parent_from_path.assert_called_once_with("case-001", "refs/external")
 
-            appended_item = mock_case_service.append_case_item.call_args.kwargs["item"]
+            appended_item = mock_case_service.append_case_items.call_args.args[1]
             assert appended_item.parent == "folder-123"
             assert appended_item.name == "Example"
 
@@ -425,7 +425,7 @@ class TestAppendItemEndpoint:
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        mock_case_service.append_case_item.return_value = Case({"case_id": "case-001", "title": "T", "summary": "S"})
+        mock_case_service.append_case_items.return_value = Case({"case_id": "case-001", "title": "T", "summary": "S"})
 
         with request_context.test_request_context(
             method="POST",
@@ -439,7 +439,7 @@ class TestAppendItemEndpoint:
             assert result.status_code == 200
             mock_case_service.get_parent_from_path.assert_not_called()
 
-            appended_item = mock_case_service.append_case_item.call_args.kwargs["item"]
+            appended_item = mock_case_service.append_case_items.call_args.args[1]
             assert appended_item.parent == "folder-456"
             assert appended_item.name == "Example"
 
@@ -461,7 +461,7 @@ class TestAppendItemEndpoint:
             result: Response = append_item("case-001", user=user)
 
             assert result.status_code == 400
-            mock_case_service.append_case_item.assert_not_called()
+            mock_case_service.append_case_items.assert_not_called()
 
     @pytest.mark.parametrize("missing_field", ["value", "type", "name"])
     @patch("howler.api.v2.case.case_service")
@@ -487,7 +487,7 @@ class TestAppendItemEndpoint:
 
             assert result.status_code == 400
             assert missing_field in result.get_json()["api_error_message"]
-            mock_case_service.append_case_item.assert_not_called()
+            mock_case_service.append_case_items.assert_not_called()
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
@@ -509,7 +509,7 @@ class TestAppendItemEndpoint:
 
             assert result.status_code == 400
             assert result.get_json()["api_error_message"] == "CaseItem 'name' is required"
-            mock_case_service.append_case_item.assert_not_called()
+            mock_case_service.append_case_items.assert_not_called()
 
     @patch("howler.api.v2.case.case_service")
     @patch("howler.security.auth_service")
@@ -522,7 +522,7 @@ class TestAppendItemEndpoint:
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        mock_case_service.append_case_item.side_effect = DataStoreException("save failed")
+        mock_case_service.append_case_items.side_effect = DataStoreException("save failed")
 
         with request_context.test_request_context(
             method="POST",
@@ -542,7 +542,7 @@ class TestAppendItemEndpoint:
         user = _build_user()
         _mock_auth(mock_auth_service, user)
 
-        mock_case_service.append_case_item.side_effect = InvalidDataException("bad type")
+        mock_case_service.append_case_items.side_effect = InvalidDataException("bad type")
 
         with request_context.test_request_context(
             method="POST",
@@ -604,11 +604,11 @@ class TestHideCasesEndpoint:
         ):
             from howler.api.v2.case import hide_cases
 
-            result: Response = hide_cases(user=user)
+            result: Response = hide_cases(username=user)
 
             assert result.status_code == 204
             mock_case_service.hide_cases.assert_called_once_with(
-                ["case-001", "case-002"], user=user.uname, refresh=None
+                ["case-001", "case-002"], username=user.uname, refresh=None
             )
 
     @patch("howler.api.v2.case.case_service")
@@ -1131,7 +1131,7 @@ class TestRenameItemEndpoint:
             result: Response = append_item("case-001", user=user)
 
             assert result.status_code == 400
-            mock_case_service.append_case_item.assert_not_called()
+            mock_case_service.append_case_items.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

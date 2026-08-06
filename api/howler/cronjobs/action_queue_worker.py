@@ -45,7 +45,7 @@ def run_worker(trigger: str) -> None:  # pragma: no cover – long-running loop,
 
     while True:
         try:
-            item = queue.pop(blocking=True, timeout=BATCH_TIMEOUT)
+            item = queue.pop(timeout=BATCH_TIMEOUT)
 
             if item is not None:
                 batch.append(item)
