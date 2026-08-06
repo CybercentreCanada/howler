@@ -9,7 +9,7 @@ The public API consists of three functions:
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import TYPE_CHECKING
 
 import chevron
 from opentelemetry import trace
@@ -25,6 +25,10 @@ from howler.odm.models.hit import Hit
 from howler.remote.datatypes.queues.named import NamedQueue
 from howler.services import case_service, comms_service, search_service
 from howler.utils.str_utils import sanitize_lucene_query
+
+if TYPE_CHECKING:
+    from howler.datastore.collection import ESCollection
+
 
 logger = get_logger(__file__)
 tracer = trace.get_tracer(__name__)
@@ -285,11 +289,11 @@ def process_batch(record_ids: list[str]) -> int:  # noqa: C901
                 dirty_backing_keys.add(result)
                 added += 1
 
-    backing_collections: dict[str, Any] = {
-        str(RuleIndexTypes.HIT): ds.hit,
-        str(RuleIndexTypes.EVENT): ds.event,
+    backing_collections: dict[str, "ESCollection"] = {
+        "hit": ds.hit,
+        "case": ds.event,
     }
-    backing_bulk_plans: dict[str, Any] = {
+    backing_bulk_plans = {
         item_type: backing_collections[item_type].get_bulk_plan()
         for item_type in {key[0] for key in dirty_backing_keys}
     }
