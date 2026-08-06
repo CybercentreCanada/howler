@@ -72,10 +72,16 @@ logger = get_logger(__file__)
 
 
 def _should_start_background_services() -> bool:
-    """Return whether this process should start long-lived background services."""
+    """Return whether this process should start long-lived background services.
+
+    Flask's development reloader imports this module in a parent process and
+    again in its serving child. The functional test server disables reloading,
+    so its single process must start the workers explicitly.
+    """
     return (
         not DEBUG
         or os.environ.get("WERKZEUG_RUN_MAIN") == "true"
+        or os.environ.get("TESTING", "").lower() == "true"
         or Path(sys.argv[0]).name.lower().startswith("gunicorn")
     )
 
