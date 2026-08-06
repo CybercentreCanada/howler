@@ -21,37 +21,26 @@ from howler.utils.list_utils import flatten_list
 OPERATION_ID = "transition"
 MAX_HITS_BASIC = 10
 MAX_HITS_ADVANCED = 1000
-MAX_VERSION_CONFLICT_ATTEMPTS = 3
 SKIP_CENTRAL_LIMIT = True  # This operation transforms the query, handles limit check locally
 
 log = get_logger(__file__)
 
 
-def _transition_failure_report(hit_id: str, error: Exception) -> dict[str, str]:
+def _transition_failure_report(query: str, error: Exception) -> dict[str, str]:
     if isinstance(error, VersionConflictException):
         return {
-            "query": f"howler.id:{hit_id}",
+            "query": query,
             "outcome": "error",
             "title": "Version Conflict",
             "message": "The hit was modified while this transition was running.",
         }
 
     return {
-        "query": f"howler.id:{hit_id}",
+        "query": query,
         "outcome": "error",
         "title": "An error occurred while processing.",
         "message": str(error),
     }
-
-
-def _transition_hit_with_retry(hit_id: str, transition: HitStatusTransition, user: User, **kwargs) -> None:
-    for attempt in range(MAX_VERSION_CONFLICT_ATTEMPTS):
-        try:
-            hit_service.transition_hit(hit_id, transition, user, **kwargs)
-            return
-        except VersionConflictException:
-            if attempt == MAX_VERSION_CONFLICT_ATTEMPTS - 1:
-                raise
 
 
 def __parse_workflow_actions(workflow: Workflow) -> dict[str, set[str]]:
@@ -113,11 +102,12 @@ def execute(
 
     is_advanced = "automation_advanced" in user.type or "actionrunner_advanced" in user.type or "admin" in user.type
     rows = MAX_HITS_ADVANCED if is_advanced else MAX_HITS_BASIC
-    hits = datastore().hit.search(effective_query, rows=rows, fl="howler.id")
+    result = datastore().hit.search(effective_query, rows=rows)
 
-    ids = [hit.howler.id for hit in hits["items"]]
+    hits = result["items"]
+    ids = [hit["howler"]["id"] for hit in hits]
 
-    if len(ids) < 1:
+    if len(hits) < 1:
         return [
             {
                 "query": query,
@@ -129,13 +119,15 @@ def execute(
 
     report = []
 
-    if rows < hits["total"]:
+    if rows < result["total"]:
         report.append(
             {
                 "query": query,
                 "outcome": "skipped",
                 "title": "Too Many Hits",
-                "message": f"A maximum of {rows} hits can be processed at once, but {hits['total']} matched the query.",
+                "message": (
+                    f"A maximum of {rows} hits can be processed at once, but {result['total']} matched the query."
+                ),
             }
         )
 
@@ -151,51 +143,45 @@ def execute(
             }
         )
 
-    success_ids = set()
-    total_processed = 0
-    for hit_id in ids:
-        try:
-            _transition_hit_with_retry(
-                hit_id,
-                cast(HitStatusTransition, HitStatusTransition[transition]),
-                user,
-                **kwargs,
-            )
-            success_ids.add(hit_id)
-        except (InvalidDataException, NotFoundException, VersionConflictException, WorkflowException) as e:
-            report.append(_transition_failure_report(hit_id, e))
+    try:
+        kwargs.pop("refresh", None)
+        hit_service.transition_hits(
+            hits,
+            cast(HitStatusTransition, HitStatusTransition[transition]),
+            user,
+            refresh="wait_for",
+            **kwargs,
+        )
+    except (InvalidDataException, NotFoundException, VersionConflictException, WorkflowException) as error:
+        report.append(_transition_failure_report(f"howler.id:({' OR '.join(ids)})", error))
+        successful_hit_count = 0
+    else:
+        successful_hit_count = len(ids)
+        report.append(
+            {
+                "query": f"howler.id:({' OR '.join(ids)})",
+                "outcome": "success",
+                "title": "Transition Executed Successfully",
+                "message": f"The transition {transition} successfully executed on {successful_hit_count} hits.",
+            }
+        )
 
-        total_processed += 1
-        if total_processed % 10 == 0:
-            log.debug("Transition executed on %s hits", total_processed)
-            if request_id is not None:
-                comms_service.emit(
-                    "automation",
-                    {
-                        "request_id": request_id,
-                        "processed": total_processed,
-                        "total": len(ids),
-                    },
-                )
+    if request_id is not None:
+        comms_service.emit(
+            "automation",
+            {
+                "request_id": request_id,
+                "processed": len(ids),
+                "total": len(ids),
+            },
+        )
 
     log.info(
         "Transition %s processed on %s hits (%s successful)",
         transition,
         len(ids),
-        len(success_ids),
+        successful_hit_count,
     )
-
-    if len(success_ids) > 0:
-        report.append(
-            {
-                "query": f"howler.id:({' OR '.join(success_ids)})",
-                "outcome": "success",
-                "title": "Transition Executed Successfully",
-                "message": f"The transition {transition} successfully executed on {len(success_ids)} hits.",
-            }
-        )
-
-    datastore().hit.commit()
 
     return report
 

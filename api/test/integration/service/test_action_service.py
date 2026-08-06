@@ -102,12 +102,12 @@ def test_execute_action(datastore_connection: HowlerDatastore):
     # Clear any stale items from all trigger queues
     _drain_action_queues()
 
-    hit_service.transition_hit(
-        test_hit_demote.howler.id, HitStatusTransition.ASSESS, user=user, assessment=Assessment.FALSE_POSITIVE
+    hit_service.transition_hits(
+        test_hit_demote, HitStatusTransition.ASSESS, user=user, assessment=Assessment.FALSE_POSITIVE
     )
 
-    hit_service.transition_hit(
-        test_hit_promote.howler.id, HitStatusTransition.ASSESS, user=user, assessment=Assessment.COMPROMISE
+    hit_service.transition_hits(
+        test_hit_promote, HitStatusTransition.ASSESS, user=user, assessment=Assessment.COMPROMISE
     )
 
     # Wait for the background worker to process the queued actions
@@ -159,8 +159,8 @@ def test_execute_action_no_results(datastore_connection: HowlerDatastore):
     # Clear stale items and enqueue via transition
     _drain_action_queues()
 
-    hit_service.transition_hit(
-        test_hit.howler.id, HitStatusTransition.ASSESS, user=users[0], assessment=Assessment.FALSE_POSITIVE
+    hit_service.transition_hits(
+        test_hit, HitStatusTransition.ASSESS, user=users[0], assessment=Assessment.FALSE_POSITIVE
     )
 
     # Wait long enough for the worker to process

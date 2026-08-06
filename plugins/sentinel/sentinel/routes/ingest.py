@@ -252,11 +252,14 @@ def _create_new_incident(
                 user=SYSTEM_USER,
             )
 
-            case_service.append_case_item(
+            case_service.append_case_items(
                 case,
-                item_type="hit",
-                item_value=bundle_odm.howler.id,
-                item_name=analytic,
+                case_service.make_case_item(
+                    item_type="hit",
+                    item_value=bundle_odm.howler.id,
+                    item_name=analytic,
+                ),
+                user=SYSTEM_USER,
             )
 
             # Create the "hits" folder before adding children beneath it.
@@ -268,12 +271,15 @@ def _create_new_incident(
                 if child_hit:
                     child_name = f"{child_hit.howler.analytic} ({child_id})"
                     try:
-                        case_service.append_case_item(
+                        case_service.append_case_items(
                             case,
-                            item_type="hit",
-                            item_value=child_id,
-                            item_parent=hits_folder.id if hits_folder else None,
-                            item_name=child_name,
+                            case_service.make_case_item(
+                                item_type="hit",
+                                item_value=child_id,
+                                item_parent=hits_folder.id if hits_folder else None,
+                                item_name=child_name,
+                            ),
+                            user=SYSTEM_USER,
                         )
                     except Exception:
                         logger.exception("Failed to add child hit %s to case", child_id)

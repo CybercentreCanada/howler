@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import Any, Literal, Union, overload
 
 from howler.common.loader import datastore
@@ -112,9 +113,9 @@ def save_from_hits(
         hits = [hits]
 
     # group by analytics for bulk update
-    hits_by_analytic: dict[str, list[Hit]] = {}
+    hits_by_analytic: dict[str, list[Hit]] = defaultdict(list)
     for hit in hits:
-        hits_by_analytic.setdefault(hit.howler.analytic, []).append(hit)
+        hits_by_analytic[hit.howler.analytic].append(hit)
 
     analytics = []
     for analytic_name, hit_group in hits_by_analytic.items():

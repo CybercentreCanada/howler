@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Any, cast
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -234,45 +234,37 @@ def test_convert_hit_warnings(mock_exists):
 
 
 @patch("howler.services.hit_service.get_hit", return_value=None)
-def test_transition_hit_not_found(mock_get_hit):
-    """Test transition_hit when the hit does not exist."""
+def test_transition_hits_not_found(mock_get_hit):
+    """Test transition_hits when the hit does not exist."""
     with pytest.raises(NotFoundException, match="Hit does not exist"):
-        hit_service.transition_hit(
-            "non_existent_id",
+        hit_service.transition_hits(
+            None,
             HitStatusTransition.ASSIGN_TO_ME,
             user=User({"uname": "test_user", "name": "Test User", "password": "test_password"}),
         )
 
 
 @patch(
-    "howler.services.hit_service._update_hit",
-    return_value=(
-        Hit({"howler": {"id": "hit-id", "status": "open", "analytic": "example", "hash": "abc123"}}),
-        "new-version",
-    ),
+    "howler.services.hit_service._update_hits",
+    return_value=[({"howler": {"id": "hit-id"}}, "new-version")],
 )
 @patch("howler.services.hit_service.get_hit_workflow")
-@patch(
-    "howler.services.hit_service.get_hit",
-    return_value=Hit({"howler": {"id": "hit-id", "status": "open", "analytic": "example", "hash": "abc123"}}),
-)
-def test_transition_hit_returns_new_version(mock_get_hit, mock_get_workflow, mock_update_hit):
-    mock_get_workflow.return_value.transition.return_value = [
-        OdmUpdateOperation(ESCollection.UPDATE_SET, "howler.status", "in-progress")
-    ]
+def test_transition_hits_returns_new_version(mock_get_workflow, mock_update_hits):
+    hit = {"howler": {"id": "hit-id", "status": "open", "analytic": "example", "hash": "abc123"}}
+    updates = [OdmUpdateOperation(ESCollection.UPDATE_SET, "howler.status", "in-progress")]
+    mock_get_workflow.return_value.transition.return_value = updates
     user = User({"uname": "test_user", "name": "Test User", "password": "test_password"})
 
-    updated_hit, new_version = hit_service.transition_hit(
-        "hit-id",
+    updated_hits = hit_service.transition_hits(
+        hit,
         HitStatusTransition.ASSIGN_TO_ME,
         user=user,
         version="current-version",
     )
 
-    assert updated_hit
-    assert new_version == "new-version"
-    mock_update_hit.assert_called_once()
-    assert mock_update_hit.call_args.kwargs["version"] == "current-version"
+    assert updated_hits[0][0] == {"howler": {"id": "hit-id"}}
+    assert updated_hits[0][1] == "new-version"
+    mock_update_hits.assert_called_once_with([(hit, updates)], user.uname, version="current-version", refresh=None)
 
 
 @patch("howler.services.hit_service.exists", return_value=True)
@@ -282,7 +274,7 @@ def test_create_hit_already_exists(mock_exists):
         hit_service.create_hit("some_id", Hit(SAMPLE_HIT_DATA))
 
 
-@patch("howler.services.hit_service._update_hit", return_value=(random_model_obj(cast(Any, Hit)), "version number"))
+@patch("howler.services.hit_service._update_hits", return_value=(random_model_obj(cast(Any, Hit)), "version number"))
 def test_update_hit_modifies_status(datastore_connection):
     """Test that update_hit raises an error when trying to modify the status directly."""
     with pytest.raises(HowlerValueError, match="Status of a Hit cannot be modified like other properties"):
@@ -292,42 +284,18 @@ def test_update_hit_modifies_status(datastore_connection):
         )
 
 
-def test_update_hit_fetches_version_when_missing():
-    hit = random_model_obj(cast(Any, Hit))
-    version = "hit-index---1---1"
-    storage = MagicMock()
-    storage.hit.get.side_effect = [(hit, version), (hit, version)]
+@patch("howler.services.hit_service._update_hits", return_value=[({"howler": {}}, "version number")])
+@patch("howler.services.hit_service.get_hit")
+def test_update_hit_loads_an_odm(mock_get_hit, mock_update_hits):
+    """Ensure update preparation receives a Hit model rather than raw datastore data."""
+    hit = MagicMock(spec=Hit)
+    mock_get_hit.return_value = hit
+    operations = [OdmUpdateOperation(ESCollection.UPDATE_SET, "howler.score", 100)]
 
-    with patch("howler.services.hit_service.datastore", return_value=storage):
-        hit_service._update_hit(
-            hit.howler.id,
-            [OdmUpdateOperation(ESCollection.UPDATE_SET, "howler.score", 100, silent=True)],
-        )
+    hit_service.update_hit("some_id", operations)
 
-    storage.hit.get.assert_any_call(hit.howler.id, as_obj=True, version=True)
-    storage.hit.update.assert_called_once()
-    assert storage.hit.update.call_args.args[2] == version
-
-
-def test_update_hit_preserves_provided_version():
-    hit = random_model_obj(cast(Any, Hit))
-    version = "hit-index---2---3"
-    storage = MagicMock()
-    storage.hit.get.return_value = (hit, version)
-
-    with (
-        patch("howler.services.hit_service.datastore", return_value=storage),
-        patch("howler.services.hit_service.get_hit", return_value=hit),
-    ):
-        hit_service._update_hit(
-            hit.howler.id,
-            [OdmUpdateOperation(ESCollection.UPDATE_SET, "howler.score", 100, silent=True)],
-            version=version,
-        )
-
-    storage.hit.get.assert_called_once_with(hit.howler.id, as_obj=True, version=True)
-    storage.hit.update.assert_called_once()
-    assert storage.hit.update.call_args.args[2] == version
+    mock_get_hit.assert_called_once_with("some_id", as_odm=True)
+    mock_update_hits.assert_called_once_with([(hit, operations)], None, version=None, refresh=None)
 
 
 @patch("howler.services.template_service.datastore")
@@ -774,3 +742,99 @@ def test_augment_metadata_none_hit(mock_datastore):
 
     # Verify the hit remains None
     assert none_hit is None
+
+
+def _make_hit(hit_id: str) -> dict[str, Any]:
+    return {"howler": {"id": hit_id, "status": "open"}}
+
+
+@patch("howler.services.hit_service.comms_service.emit")
+@patch("howler.services.hit_service._prepare_hit_update_operations")
+@patch("howler.services.hit_service.datastore")
+def test_update_hits_uses_one_bulk_plan(mock_datastore, mock_prepare_operations, mock_emit):
+    first_hit = MagicMock(spec=Hit)
+    first_hit.howler.id = "first-hit"
+    second_hit = MagicMock(spec=Hit)
+    second_hit.howler.id = "second-hit"
+    first_operations = [OdmUpdateOperation(ESCollection.UPDATE_SET, "howler.status", "in_progress")]
+    second_operations = [OdmUpdateOperation(ESCollection.UPDATE_SET, "howler.status", "on_hold")]
+    collection = mock_datastore.return_value.hit
+    collection.ilm_config = False
+    bulk_plan = MagicMock(empty=False)
+    collection.get_bulk_plan.return_value = bulk_plan
+    mock_prepare_operations.side_effect = [first_operations, second_operations]
+    collection._validate_operations.side_effect = [first_operations, second_operations]
+    collection.create_scripts_from_operations.side_effect = [
+        {"source": "first"},
+        {"source": "second"},
+    ]
+    collection.bulk.return_value = True
+    first_updated_hit = _make_hit("first-hit")
+    second_updated_hit = _make_hit("second-hit")
+    collection.get.side_effect = [
+        (first_updated_hit, "first-version"),
+        (second_updated_hit, "second-version"),
+    ]
+
+    hit_service._update_hits(
+        [(first_hit, first_operations, None), (second_hit, second_operations, None)], username="analyst"
+    )
+
+    collection.bulk.assert_called_once_with(bulk_plan, refresh=None)
+    assert bulk_plan.add_scripted_update_operation.call_args_list == [
+        call("first-hit", {"source": "first"}, version=None, index=None),
+        call("second-hit", {"source": "second"}, version=None, index=None),
+    ]
+    assert mock_emit.call_args_list == [
+        call("hits", {"hit": first_updated_hit, "version": "first-version"}),
+        call("hits", {"hit": second_updated_hit, "version": "second-version"}),
+    ]
+
+
+@patch("howler.services.hit_service.comms_service.emit")
+@patch("howler.services.hit_service._prepare_hit_update_operations")
+@patch("howler.services.hit_service.datastore")
+def test_update_hits_resolves_ilm_version_to_concrete_index(mock_datastore, mock_prepare_operations, mock_emit):
+    hit = MagicMock(spec=Hit)
+    hit.howler.id = "hit-001"
+    operations = [OdmUpdateOperation(ESCollection.UPDATE_SET, "howler.status", "in_progress")]
+    collection = mock_datastore.return_value.hit
+    collection.ilm_config = True
+    collection.get_if_exists.return_value = (None, "hit-000001---10---2")
+    collection._get_version_write_target.return_value = ("hit-000001", "10", "2")
+    bulk_plan = MagicMock(empty=False)
+    collection.get_bulk_plan.return_value = bulk_plan
+    mock_prepare_operations.return_value = operations
+    collection.create_scripts_from_operations.return_value = {"source": "update"}
+    collection.bulk.return_value = True
+    collection.get.return_value = (_make_hit("hit-001"), "new-version")
+
+    hit_service._update_hits([(hit, operations, None)], username="analyst")
+
+    bulk_plan.add_scripted_update_operation.assert_called_once_with(
+        "hit-001",
+        {"source": "update"},
+        version="10---2",
+        index="hit-000001",
+    )
+    mock_emit.assert_called_once_with("hits", {"hit": _make_hit("hit-001"), "version": "new-version"})
+
+
+@patch("howler.services.hit_service._update_hits")
+@patch("howler.services.hit_service.get_hit_workflow")
+def test_transition_hits_accumulates_workflow_updates(mock_get_workflow, mock_update_hits):
+    first_hit = _make_hit("first-hit")
+    second_hit = _make_hit("second-hit")
+    first_updates = [OdmUpdateOperation(ESCollection.UPDATE_SET, "howler.status", "in_progress")]
+    second_updates = [OdmUpdateOperation(ESCollection.UPDATE_SET, "howler.status", "in_progress")]
+    workflow = mock_get_workflow.return_value
+    workflow.transition.side_effect = [first_updates, second_updates]
+    user = MagicMock(uname="analyst")
+
+    hit_service.transition_hits([first_hit, second_hit], HitStatusTransition.ASSIGN_TO_ME, user)
+
+    mock_update_hits.assert_called_once_with(
+        [(first_hit, first_updates, None), (second_hit, second_updates, None)],
+        "analyst",
+        refresh=None,
+    )

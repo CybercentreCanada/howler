@@ -457,7 +457,7 @@ class TestCaseMutationClassification:
             "howler": {"id": "hit-001"},
             "classification": "RESTRICTED",
         }
-        mock_case_service.append_case_item.side_effect = NotFoundException("hit hit-001 does not exist")
+        mock_case_service.append_case_items.side_effect = NotFoundException("hit hit-001 does not exist")
 
         with request_context.test_request_context(
             method="POST",
@@ -470,7 +470,7 @@ class TestCaseMutationClassification:
 
             assert result.status_code == 404
             assert result.get_json()["api_error_message"] == "hit hit-001 does not exist"
-            mock_case_service.append_case_item.assert_called_once()
+            mock_case_service.append_case_items.assert_called_once()
 
     @patch("howler.services.case_service.datastore")
     @patch("howler.api.v2.case.case_service")
@@ -488,7 +488,7 @@ class TestCaseMutationClassification:
         mock_datastore.return_value.__getitem__.return_value.get.return_value = {
             "classification": "RESTRICTED",
         }
-        mock_case_service.append_case_item.return_value = Case({"case_id": "case-001", "title": "T", "summary": "S"})
+        mock_case_service.append_case_items.return_value = Case({"case_id": "case-001", "title": "T", "summary": "S"})
 
         with request_context.test_request_context(
             method="POST",
@@ -500,7 +500,7 @@ class TestCaseMutationClassification:
             result: Response = append_item("case-001", user=user, record=_build_case(classification="RESTRICTED"))
 
             assert result.status_code == 200
-            mock_case_service.append_case_item.assert_called_once()
+            mock_case_service.append_case_items.assert_called_once()
 
     @patch("howler.services.case_service.datastore")
     @patch("howler.api.v2.case.case_service")
@@ -519,7 +519,7 @@ class TestCaseMutationClassification:
         mock_datastore.return_value.__getitem__.return_value.get.return_value = {
             "classification": "RESTRICTED",
         }
-        mock_case_service.append_case_item.side_effect = InvalidDataException(
+        mock_case_service.append_case_items.side_effect = InvalidDataException(
             "Cannot add hit hit-001 to a lower-classified case"
         )
 
@@ -533,7 +533,7 @@ class TestCaseMutationClassification:
             result: Response = append_item("case-001", user=user, record=_build_case())
 
         assert result.status_code == 400
-        mock_case_service.append_case_item.assert_called_once()
+        mock_case_service.append_case_items.assert_called_once()
 
 
 # ---------------------------------------------------------------------------

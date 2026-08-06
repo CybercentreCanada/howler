@@ -23,12 +23,12 @@ from howler.config import CLASSIFICATION
 from howler.datastore.collection import CREATE_TOKEN
 from howler.datastore.exceptions import DataStoreException
 from howler.odm.models.case import Case, CaseItem, CaseItemTypes, CaseLog, CaseRule
-from howler.odm.models.ecs.related import Related
 from howler.odm.models.event import Event
 from howler.odm.models.hit import Hit
 from howler.odm.models.user import User
 from howler.security.utils import is_classification_accessible
 from howler.services import comms_service, event_service, hit_service
+from howler.utils.str_utils import sanitize_lucene_query
 
 logger = get_logger(__file__)
 
@@ -42,15 +42,9 @@ def get_case(
 
 
 @overload
-def get_case(id: str, as_odm: Literal[True], version: Literal[False]) -> Case | None: ...
-
-
-@overload
-def get_case(id: str, as_odm: Literal[True], version: Literal[False], user: User | None = None) -> Case | None: ...
-
-
-@overload
-def get_case(id: str, as_odm: Literal[True]) -> Case | None: ...
+def get_case(
+    id: str, as_odm: Literal[True], version: Literal[False] = False, user: User | None = None
+) -> Case | None: ...
 
 
 @overload
@@ -130,21 +124,20 @@ def create_case(
         raise InvalidDataException("Case data is required to create a case")
 
     case_data.pop("case_id", None)
-    items = case_data.pop("items", [])
+    items = [CaseItem(item) for item in case_data.pop("items", [])]
 
     case = Case(case_data)
     case.log = [CaseLog({"timestamp": "NOW", "explanation": "Case created", "user": user.uname if user else "system"})]
-
     if not is_classification_accessible(user, case.classification):
         raise ForbiddenException(f"User cannot create case at classification {case.classification}")
 
-    # Accumulate initial case items in memory and write the case once after validation.
-    for item in items:
-        append_case_item(case, item=CaseItem(item), user=user)
+    if items:
+        case = append_case_items(case, items, refresh=refresh, version=CREATE_TOKEN, user=user)
+    else:
+        case.save(refresh=refresh, version=CREATE_TOKEN)
+        comms_service.emit("cases", {"case": case.as_primitives()})
 
-    case.save(refresh=refresh, version=CREATE_TOKEN)
-
-    comms_service.emit("cases", {"case": case.as_primitives()})
+    CREATED_CASES.inc()
 
     return case
 
@@ -157,7 +150,7 @@ def hide_cases(case_ids: set[str], user: User, refresh: Literal["true", "false",
 
     Args:
         case_ids (set[str]): The IDs of the cases to hide
-        user (str): The username performing the hide action
+        username (str): The username performing the hide action
     """
     ds = datastore()
     access_control = user.access_control if user else None
@@ -428,6 +421,7 @@ def get_parent_from_path(
     path: str | None,
     create_if_missing: bool = False,
     user: User | None = None,
+    persist: bool = False,
 ) -> CaseItem | None:
     """Given a path, return the lowest parent of the path in the case.
 
@@ -458,6 +452,7 @@ def get_parent_from_path(
         return None
 
     current_parent: str | None = None
+    created = False
     for part in path_parts:
         # Find folder matching this part with current parent
         folder = next(
@@ -476,14 +471,38 @@ def get_parent_from_path(
             folder_item = CaseItem({"type": CaseItemTypes.FOLDER, "name": part, "parent": current_parent, "value": ""})
             case.items.append(folder_item)
             current_parent = folder_item.id
+            created = True
         else:
             current_parent = folder.id
+
+    if created and persist:
+        case.save()
 
     # Find the final parent folder
     if current_parent is None:  # pragma: no cover
         return None  # pragma: no cover
 
     return next((item for item in case.items if item.id == current_parent), None)
+
+
+def make_case_item(
+    item_type: str | None = None,
+    item_value: str | None = None,
+    item_parent: str | None = None,
+    item_name: str | None = None,
+) -> CaseItem:
+    """Build a case item from its individual API fields."""
+    if not all([item_type, item_value]):
+        raise InvalidDataException("item_type and item_value are required")
+
+    if item_type not in CaseItemTypes:
+        raise InvalidDataException(f"Invalid item type: {item_type}, valid types are: {', '.join(CaseItemTypes)}")
+
+    data: dict = {"type": item_type, "value": item_value, "parent": item_parent}
+    if item_name is not None:
+        data["name"] = item_name
+
+    return CaseItem(data)
 
 
 @overload
@@ -534,10 +553,6 @@ def append_case_item(  # noqa: C901
             is not provided.
         item_parent: Parent folder ID, or None for root placement.
         item_name: Optional display name for the item.
-
-    Raises:
-        InvalidDataException: If item is not provided and item_type or item_value
-            are missing, or if item_type is not a valid CaseItemTypes value.
     """
     if isinstance(case, str):
         case = get_case(case, as_odm=True, version=False, user=user)
@@ -548,18 +563,38 @@ def append_case_item(  # noqa: C901
     if item is None:
         if not all([item_type, item_value]):
             raise InvalidDataException("item_type and item_value are required if item is not provided")
-
-        if item_type not in CaseItemTypes:
-            raise InvalidDataException(f"Invalid item type: {item_type}, valid types are: {', '.join(CaseItemTypes)}")
-
-        data: dict = {"type": item_type, "value": item_value, "parent": item_parent}
-        if item_name is not None:
-            data["name"] = item_name
-        item = CaseItem(data)
+        item = make_case_item(item_type, item_value, item_parent, item_name)
 
     if item.name is None:
         item.name = item.value
 
+    _validate_case_item_access(case, item, user)
+    conflict = check_conflicts(case, item)
+
+    match item.type:
+        case CaseItemTypes.HIT:
+            if conflict:
+                item.name = f"{item.name} ({item.value})" if item.name else item.value
+            return append_hit(case, item, user=user)
+        case CaseItemTypes.EVENT:
+            if conflict:
+                item.name = f"{item.name} ({item.value})" if item.name else item.value
+            return append_event(case, item, user=user)
+        case CaseItemTypes.CASE:
+            if conflict:
+                item.name = f"{item.name} ({item.value})" if item.name else item.value
+            return append_case(case, item, user=user)
+        case CaseItemTypes.REFERENCE | CaseItemTypes.MARKDOWN | CaseItemTypes.FOLDER:
+            if conflict:
+                raise ResourceExists("An item with the same name already exists in this location.")
+            case.items.append(item)
+            return case
+        case _:
+            raise InvalidDataException(f"Unsupported item type: {item.type}")
+
+
+def _validate_case_item_access(case: Case, item: CaseItem, user: User | None) -> None:
+    """Validate item classification and parent folder access before mutation."""
     if not is_classification_accessible(user, item.classification):
         raise ForbiddenException(f"User cannot add item at classification {item.classification}.")
 
@@ -569,37 +604,130 @@ def append_case_item(  # noqa: C901
             f"case at classification {case.classification}"
         )
 
-    # If a parent is specified, ensure it references an existing folder item.
     if item.parent is not None:
         _ensure_parent_exists(case, item.parent)
 
-    conflict = check_conflicts(case, item)
 
-    match item.type:
-        case CaseItemTypes.HIT:
-            if conflict:
-                item.name = f"{item.name} ({item.value})" if item.name else item.value
+def append_case_items(  # noqa: C901
+    case: str | Case | None,
+    items: CaseItem | list[CaseItem] | None = None,
+    refresh: Literal["true", "false", "wait_for"] | None = None,
+    version: str | None = None,
+    user: User | None = None,
+) -> Case:
+    """Append one or more items to a case and persist all changes once.
 
-            return append_hit(case, item, user=user)
-        case CaseItemTypes.EVENT:
-            if conflict:
-                item.name = f"{item.name} ({item.value})" if item.name else item.value
+    Items are validated in order against the in-memory case so folders and
+    siblings created earlier in a batch are available to later items.
+    """
+    if isinstance(case, str):
+        case = get_case(case, as_odm=True, version=False, user=user)
 
-            return append_event(case, item, user=user)
-        case CaseItemTypes.CASE:
-            if conflict:
-                item.name = f"{item.name} ({item.value})" if item.name else item.value
+    if not case:
+        raise NotFoundException("Case does not exist")
 
-            return append_case(case, item, user=user)
-        case CaseItemTypes.REFERENCE | CaseItemTypes.MARKDOWN | CaseItemTypes.FOLDER:
-            if conflict:
-                raise ResourceExists("An item with the same name already exists in this location.")
+    if not items:
+        raise InvalidDataException("At least one case item is required")
 
-            case.items.append(item)
+    if not isinstance(items, list):
+        items = [items]
 
-            return case
-        case _:
-            raise InvalidDataException(f"Unsupported item type: {item.type}")
+    if not items:
+        return case
+    backing_items: list[tuple[Hit | Event, str]] = []
+    update_metadata = False
+
+    # Validate every item before changing the case or its backing records.
+    for item in items:
+        if item.name is None:
+            item.name = item.value
+
+        _validate_case_item_access(case, item, user)
+        check_conflicts(case, item)
+
+    for item in items:
+        conflict = (
+            any(existing.type == item.type and existing.value == item.value for existing in case.items)
+            if item.type in {CaseItemTypes.HIT, CaseItemTypes.EVENT, CaseItemTypes.CASE}
+            else any(
+                existing.name == (item.name or item.value) and existing.parent == item.parent for existing in case.items
+            )
+        )
+        match item.type:
+            case CaseItemTypes.HIT:
+                if conflict:
+                    item.name = f"{item.name} ({item.value})" if item.name else item.value
+                hit_obj, hit_version = cast(
+                    tuple[Hit | None, str],
+                    hit_service.get_hit(item.value, as_odm=True, version=True, user=user),
+                )
+                if hit_obj is None:
+                    raise NotFoundException(f"Hit {item.value} not found, cannot be added to case")
+                if not is_classification_accessible(user, hit_obj.classification):
+                    raise NotFoundException(f"Hit {item.value} not found, cannot be added to case")
+                if not CLASSIFICATION.is_accessible(case.classification, hit_obj.classification):
+                    raise ForbiddenException(
+                        f"Cannot add hit at classification {hit_obj.classification} to "
+                        f"case at classification {case.classification}"
+                    )
+                item.classification = hit_obj.classification
+                case.items.append(item)
+                add_backreference(hit_obj, case.case_id)
+                backing_items.append((hit_obj, hit_version))
+                update_metadata = True
+            case CaseItemTypes.EVENT:
+                if conflict:
+                    item.name = f"{item.name} ({item.value})" if item.name else item.value
+                event_obj, event_version = cast(
+                    tuple[Event | None, str],
+                    event_service.get_event(item.value, as_odm=True, version=True, user=user),
+                )
+                if event_obj is None:
+                    raise NotFoundException(f"Event {item.value} not found, cannot be added to case")
+                if not is_classification_accessible(user, event_obj.classification):
+                    raise NotFoundException(f"Event {item.value} not found, cannot be added to case")
+                if not CLASSIFICATION.is_accessible(case.classification, event_obj.classification):
+                    raise ForbiddenException(
+                        f"Cannot add event at classification {event_obj.classification} to "
+                        f"case at classification {case.classification}"
+                    )
+                item.classification = event_obj.classification
+                case.items.append(item)
+                add_backreference(event_obj, case.case_id)
+                backing_items.append((event_obj, event_version))
+                update_metadata = True
+            case CaseItemTypes.CASE:
+                if conflict:
+                    item.name = f"{item.name} ({item.value})" if item.name else item.value
+                referenced_case = get_case(item.value, as_odm=True, version=False, user=user)
+                if referenced_case is None:
+                    raise NotFoundException(f"Referenced case {item.value} not found, cannot be added to case")
+                if not CLASSIFICATION.is_accessible(case.classification, referenced_case.classification):
+                    raise ForbiddenException(
+                        f"Cannot add case at classification {referenced_case.classification} to case at "
+                        f"classification {case.classification}"
+                    )
+                item.classification = referenced_case.classification
+                case.items.append(item)
+            case CaseItemTypes.REFERENCE | CaseItemTypes.MARKDOWN | CaseItemTypes.FOLDER:
+                if conflict:
+                    raise ResourceExists("An item with the same name already exists in this location.")
+                case.items.append(item)
+            case _:
+                raise InvalidDataException(f"Unsupported item type: {item.type}")
+
+    if update_metadata:
+        recompute_case_metadata(case)
+
+    for backing_item, backing_version in backing_items:
+        backing_item.save(version=backing_version)
+
+    if not case.save(refresh=refresh, version=version):  # pragma: no cover
+        raise DataStoreException(f"Failed to save {case.case_id} with new case items")
+
+    comms_service.emit("cases", {"case": case.as_primitives()})
+
+    return case
 
 
 def check_conflicts(case: Case, item: CaseItem) -> bool:
@@ -612,7 +740,7 @@ def check_conflicts(case: Case, item: CaseItem) -> bool:
     Raises:
         InvalidDataException: If there is a conflict between the existing case items and the new item
     """
-    if item.type in {CaseItemTypes.HIT, CaseItemTypes.EVENT} and any(
+    if item.type in {CaseItemTypes.HIT, CaseItemTypes.EVENT, CaseItemTypes.CASE} and any(
         existing.type == item.type and existing.value == item.value for existing in case.items
     ):
         raise InvalidDataException(f"Item {item.value} already exists in case {case.case_id}")
@@ -939,13 +1067,13 @@ def append_case(
     return case
 
 
-def _collect_indicators_from_related(related: Related | None) -> set[str]:
+def _collect_indicators_from_related(related: dict[str, Any] | None) -> set[str]:
     """Extract all indicator values from a Related ECS compound object."""
     if related is None:
         return set()
 
     indicators: set[str] = set()
-    for key in related.fields().keys():
+    for key in related.keys():
         value = related[key]
         if value:
             indicators.update(str(v) for v in value if v)
@@ -961,35 +1089,43 @@ def recompute_case_metadata(case: Case) -> None:  # noqa: C901
     objects' ECS ``related.*`` fields and, for hits, the outline fields. Does
     not persist the case; callers are responsible for saving it.
     """
-    ds = datastore()
-
     targets: set[str] = set()
     threats: set[str] = set()
     indicators: set[str] = set()
 
-    for item in case.items:
-        if item.type == CaseItemTypes.HIT and item.value:
-            hit = ds.hit.get(item.value)
-            if hit is None:
+    hit_ids = {item.value for item in case.items if item.type == CaseItemTypes.HIT and item.value}
+    event_ids = {item.value for item in case.items if item.type == CaseItemTypes.EVENT and item.value}
+
+    if hit_ids or event_ids:
+        from howler.services.search_service import search
+
+        record_ids = hit_ids | event_ids
+        query = f"howler.id:({' OR '.join(sanitize_lucene_query(record_id) for record_id in record_ids)})"
+        indexes: list[str] = []
+
+        if hit_ids:
+            indexes.append("hit")
+
+        if event_ids:
+            indexes.append("event")
+
+        results = search(indexes, query=query, rows=len(hit_ids) + len(event_ids))["items"]
+        for result in results:
+            if result["__index"] == "hit":
+                indicators.update(_collect_indicators_from_related(result.get("related")))
+
+                outline = result.get("howler", {}).get("outline")
+                if outline:
+                    if outline.get("threat"):
+                        threats.add(outline["threat"])
+                    if outline.get("target"):
+                        targets.add(outline["target"])
+                    if outline.get("indicators"):
+                        indicators.update(str(v) for v in outline["indicators"] if v)
                 continue
 
-            indicators.update(_collect_indicators_from_related(hit.related))
-
-            if hit.howler.outline:
-                outline = hit.howler.outline
-                if outline.threat:
-                    threats.add(outline.threat)
-                if outline.target:
-                    targets.add(outline.target)
-                if outline.indicators:
-                    indicators.update(str(v) for v in outline.indicators if v)
-
-        elif item.type == CaseItemTypes.EVENT and item.value:
-            event = ds.event.get(item.value)
-            if event is None:
-                continue
-
-            indicators.update(_collect_indicators_from_related(event.related))
+            if result["__index"] == "event":
+                indicators.update(_collect_indicators_from_related(result.get("related")))
 
     case.targets = sorted(targets)
     case.threats = sorted(threats)
