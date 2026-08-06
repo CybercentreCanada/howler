@@ -489,24 +489,15 @@ def append_case_item(  # noqa: C901
             if conflict:
                 item.name = f"{item.name} ({item.value})" if item.name else item.value
 
-                if check_conflicts(case, item):
-                    raise ResourceExists("An item with the same name already exists in this location.")
-
             return append_hit(case, item, refresh)
         case CaseItemTypes.EVENT:
             if conflict:
                 item.name = f"{item.name} ({item.value})" if item.name else item.value
 
-                if check_conflicts(case, item):
-                    raise ResourceExists("An item with the same name already exists in this location.")
-
             return append_event(case, item, refresh)
         case CaseItemTypes.CASE:
             if conflict:
                 item.name = f"{item.name} ({item.value})" if item.name else item.value
-
-                if check_conflicts(case, item):
-                    raise ResourceExists("An item with the same name already exists in this location.")
 
             return append_case(case, item, refresh)
         case CaseItemTypes.REFERENCE | CaseItemTypes.MARKDOWN | CaseItemTypes.FOLDER:

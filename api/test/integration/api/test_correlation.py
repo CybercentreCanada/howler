@@ -502,3 +502,76 @@ class TestCorrelationWorker:
         assert not missing_hit_ids, (
             f"Worker did not add v1 tool ingested hits {missing_hit_ids} to case {case_id} within {self.MAX_WAIT}s"
         )
+
+
+class TestCorrelationConflicts:
+    """Integration coverage for correlation item conflict handling."""
+
+    def _ingest_hits(self, session, host: str, hits: list[dict]) -> list[str]:
+        return get_api_data(
+            session,
+            f"{host}/api/v2/ingest/hit",
+            method="POST",
+            params={"refresh": "wait_for"},
+            data=json.dumps(hits),
+        )
+
+    def _add_case_item(self, session, host: str, case_id: str, value: str, name: str) -> None:
+        get_api_data(
+            session,
+            f"{host}/api/v2/case/{case_id}/items",
+            method="POST",
+            params={"refresh": "wait_for"},
+            data=json.dumps({"type": "hit", "value": value, "name": name}),
+        )
+
+    def _add_rule(self, session, host: str, case_id: str, destination: str) -> None:
+        get_api_data(
+            session,
+            f"{host}/api/v2/case/{case_id}/rules",
+            method="POST",
+            params={"refresh": "wait_for"},
+            data=json.dumps({"query": "*:*", "destination": destination}),
+        )
+
+    def test_matching_name_is_renamed_with_record_id(self, test_case, datastore: HowlerDatastore):
+        """A real duplicate name is disambiguated with the correlated hit ID."""
+        case_id, session, host = test_case
+        hit_ids = self._ingest_hits(
+            session,
+            host,
+            [_make_hit(analytic="Existing"), _make_hit(analytic="Target")],
+        )
+        self._add_case_item(session, host, case_id, hit_ids[0], "related")
+
+        self._add_rule(session, host, case_id, "related")
+        correlation_service.process_batch([hit_ids[1]])
+
+        datastore.case.commit()
+        case = datastore.case.get(case_id)
+        assert case is not None
+        target_item = next(item for item in case.items if item.value == hit_ids[1])
+        assert target_item.name == f"related ({hit_ids[1]})"
+
+    def test_duplicate_name_after_renaming_is_skipped(self, test_case, datastore: HowlerDatastore):
+        """A real conflict with both candidate names causes correlation to skip the hit."""
+        case_id, session, host = test_case
+        hit_ids = self._ingest_hits(
+            session,
+            host,
+            [
+                _make_hit(analytic="Existing"),
+                _make_hit(analytic="Existing Name"),
+                _make_hit(analytic="Target"),
+            ],
+        )
+        self._add_case_item(session, host, case_id, hit_ids[0], "related")
+        self._add_case_item(session, host, case_id, hit_ids[1], f"related ({hit_ids[2]})")
+
+        self._add_rule(session, host, case_id, "related")
+        correlation_service.process_batch([hit_ids[2]])
+
+        datastore.case.commit()
+        case = datastore.case.get(case_id)
+        assert case is not None
+        assert not any(item.value == hit_ids[2] for item in case.items)

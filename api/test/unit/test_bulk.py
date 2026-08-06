@@ -1,9 +1,11 @@
 import json
 import math
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from howler.datastore.bulk import ElasticBulkPlan
+from howler.datastore.collection import ESCollection
 from howler.odm.models.case import Case, CaseItem
 
 
@@ -42,6 +44,24 @@ def test_get_plan_batches(bulk_plan, operations, operation_length, batch_size):
 
     assert len(batches) == math.ceil(operation_length / (batch_size or operation_length))
     assert "".join(batches) == bulk_plan.get_plan_data()
+
+
+def test_collection_bulk_returns_false_and_logs_errors():
+    operations = MagicMock()
+    operations.get_plan_batches.return_value = ["bulk-operation"]
+    collection = MagicMock()
+    collection.with_retries.return_value = {"errors": {"delete": "document not found"}}
+
+    with patch("howler.datastore.collection.logger") as mock_logger:
+        result = ESCollection.bulk(collection, operations)
+
+    assert result is False
+    collection.with_retries.assert_called_once_with(
+        collection.datastore.client.bulk,
+        operations="bulk-operation",
+        refresh=None,
+    )
+    mock_logger.error.assert_called_once_with("Errors on bulk plan: %s", {"delete": "document not found"})
 
 
 # ---------------------------------------------------------------------------

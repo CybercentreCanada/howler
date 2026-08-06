@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from howler.common.exceptions import HowlerRuntimeError
 from howler.config import CLASSIFICATION
 from howler.odm.models.case import CaseItem, CaseRule
 from howler.services import correlation_service
@@ -687,3 +688,59 @@ class TestProcessBatch:
 
         assert added == 0
         mock_ds.case.bulk.assert_not_called()
+
+
+class TestCorrelationUnreachableBranches:
+    """Cover correlation states that require controlled fault injection."""
+
+    def test_missing_item_name_falls_back_to_record_id(self):
+        """An item with no rendered name uses its record ID."""
+        case = MagicMock(items=[])
+        backing_obj = _make_backing_obj()
+        item = MagicMock(type="hit", value="hit-1")
+        item.name = None
+        rule = _make_rule(destination="related")
+
+        with (
+            patch.object(correlation_service, "CaseItem", return_value=item),
+            patch.object(correlation_service, "_resolve_backing_object", return_value=backing_obj),
+            patch.object(correlation_service.case_service, "get_parent_from_path", return_value=None),
+            patch.object(correlation_service.case_service, "check_conflicts", return_value=False),
+            patch.object(correlation_service.case_service, "add_backreference", return_value=False),
+        ):
+            added = correlation_service._add_record_to_case(
+                case,
+                "case-1",
+                {"howler": {"id": "hit-1"}},
+                rule,
+                {},
+                set(),
+            )
+
+        assert added is True
+        assert item.name == "hit-1"
+        assert case.items == [item]
+
+    @patch("howler.services.correlation_service.search_service")
+    @patch("howler.services.correlation_service.get_active_rules")
+    @patch("howler.services.correlation_service.datastore")
+    def test_bulk_failure_raises_runtime_error(self, mock_ds_fn, mock_get_rules, mock_search_svc):
+        """A failed bulk case update is surfaced to the caller."""
+        case = _make_case("case-1")
+        datastore = _setup_ds(mock_ds_fn, {"case-1": case}, hits={"hit-1": _make_backing_obj()})
+        datastore.case.bulk.return_value = False
+        datastore.case.get_bulk_plan.return_value.empty = False
+        datastore.case.get_bulk_plan.return_value.operations = ["update"]
+
+        mock_get_rules.return_value = [("case-1", _make_rule(destination="related"))]
+        mock_search_svc.search.return_value = {
+            "items": [{"howler": {"id": "hit-1"}, "__index": "hit"}],
+            "total": 1,
+            "offset": 0,
+            "rows": 1,
+        }
+
+        with pytest.raises(HowlerRuntimeError, match="Bulk case update reported errors"):
+            correlation_service.process_batch(["hit-1"])
+
+        datastore.case.bulk.assert_called_once()
