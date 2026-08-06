@@ -362,7 +362,7 @@ def register_tools(mcp, api_client):
             HowlerResponse: Structured search results containing the total count,
             returned row count, and simplified hit payloads.
         """
-        access_token: AccessToken = get_access_token()
+        access_token: AccessToken = _proper_access_token()
         if not query or not query.strip():
             raise ValueError("query can not be empty or white spaces")
 
